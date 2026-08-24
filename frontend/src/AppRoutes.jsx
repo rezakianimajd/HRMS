@@ -1,0 +1,81 @@
+import React from 'react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import useAuth from './core/hooks/useAuth';
+import Layout from './core/components/ui/Layout';
+import Login from './pages/Login';
+import DashboardPage from './pages/DashboardPage';
+import EmployeeListPage from './pages/EmployeeListPage';
+import EmployeeProfilePage from './pages/EmployeeProfilePage';
+import EmployeeForm from './pages/EmployeeForm';
+import PhonebookPage from './pages/PhonebookPage';
+import AdvancedSearchPage from './pages/AdvancedSearchPage';
+import ReportsPage from './pages/ReportsPage';
+import OrgChartPage from './pages/OrgChartPage';
+import DefinitionsPage from './pages/DefinitionsPage';
+import DataEntryPage from './pages/DataEntryPage';
+import CorrespondencesPage from './pages/CorrespondencesPage';
+import AssistantPage from './pages/AssistantPage';
+import ScoringPage from './pages/ScoringPage';
+import Settings from './modules/settings/Settings';
+
+/**
+ * Protected route wrapper - redirects to login if not authenticated.
+ */
+const ProtectedRoute = ({ children }) => {
+  const { isAuthenticated, loading } = useAuth();
+
+  if (loading) {
+    return <div className="loading-container">Loading...</div>;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+};
+
+/**
+ * Protected layout route - wraps content with Layout component.
+ */
+const ProtectedLayout = ({ children }) => (
+  <ProtectedRoute>
+    <Layout>{children}</Layout>
+  </ProtectedRoute>
+);
+
+/**
+ * Application routes configuration.
+ */
+const AppRoutes = () => {
+  return (
+    <Routes>
+      {/* Public routes */}
+      <Route path="/login" element={<Login />} />
+
+      {/* Protected routes with layout */}
+      <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
+      <Route path="/search" element={<ProtectedLayout><AdvancedSearchPage /></ProtectedLayout>} />
+      <Route path="/phonebook" element={<ProtectedLayout><PhonebookPage /></ProtectedLayout>} />
+      <Route path="/reports" element={<ProtectedLayout><ReportsPage /></ProtectedLayout>} />
+      <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
+      <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
+      <Route path="/data-entry" element={<ProtectedLayout><DataEntryPage /></ProtectedLayout>} />
+      <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
+      <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
+      <Route path="/scoring" element={<ProtectedLayout><ScoringPage /></ProtectedLayout>} />
+      <Route path="/employees" element={<ProtectedLayout><EmployeeListPage /></ProtectedLayout>} />
+      <Route path="/employees/new" element={<ProtectedLayout><EmployeeForm /></ProtectedLayout>} />
+      <Route path="/employees/:id" element={<ProtectedLayout><EmployeeProfilePage /></ProtectedLayout>} />
+      <Route path="/employees/:id/edit" element={<ProtectedLayout><EmployeeForm /></ProtectedLayout>} />
+      <Route path="/orgchart/*" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
+      <Route path="/settings/*" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+
+      {/* Default redirect */}
+      <Route path="/" element={<Navigate to="/dashboard" replace />} />
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+    </Routes>
+  );
+};
+
+export default AppRoutes;

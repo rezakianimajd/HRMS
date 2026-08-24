@@ -1,0 +1,1 @@
+Persian locale directory for translation .po/.mo files

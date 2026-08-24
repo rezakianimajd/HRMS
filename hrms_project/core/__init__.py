@@ -1,0 +1,1 @@
+# Core app for HRMS - shared and tenant-specific functionality
