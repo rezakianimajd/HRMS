@@ -21,6 +21,12 @@ class Command(BaseCommand):
             help='Run migrations only on a specific schema name',
         )
         parser.add_argument(
+            '--shared',
+            action='store_true',
+            default=False,
+            help='Run migrations only on the public (shared) schema',
+        )
+        parser.add_argument(
             '--app',
             type=str,
             default=None,
@@ -37,6 +43,25 @@ class Command(BaseCommand):
         schema_name = options.get('schema')
         app_label = options.get('app')
         fake = options.get('fake', False)
+        shared_only = options.get('shared', False)
+
+        # Shared schema: run a normal migrate against the public search path.
+        if shared_only:
+            self.stdout.write(self.style.NOTICE("Migrating public (shared) schema..."))
+            migrate_kwargs = {
+                'verbosity': 1,
+                'interactive': False,
+                'run_syncdb': False,
+            }
+            if app_label:
+                migrate_args = [app_label]
+            else:
+                migrate_args = []
+            if fake:
+                migrate_kwargs['fake'] = True
+            call_command('migrate', *migrate_args, **migrate_kwargs)
+            self.stdout.write(self.style.SUCCESS("  ✓ Shared schema migrated"))
+            return
 
         if schema_name:
             # Migrate only a specific schema
