@@ -4,7 +4,7 @@
 # Run as: sudo bash deploy.sh
 #
 # IMPORTANT: run this ONCE. It performs a full provisioning:
-#   - system deps (PostgreSQL, Redis, Nginx, Node.js, Python 3.12)
+#   - system deps (PostgreSQL, Redis, Nginx, Node.js, Python 3)
 #   - application user, directories, virtualenv
 #   - database, migrations, static files
 #   - frontend build
@@ -37,8 +37,8 @@ MEDIA_DIR="/var/www/hrms/media"
 FILE_STORAGE_DIR="/var/hr_data"
 USER="hrms"
 GROUP="www-data"
-DOMAIN="hrms.company.com"          # <-- CHANGE to your real domain
-SERVER_IP="192.168.1.100"          # <-- CHANGE to your server IP
+DOMAIN="192.168.134.111"           # <-- CHANGE to your real domain (IP if no DNS)
+SERVER_IP="192.168.134.111"        # <-- CHANGE to your server IP
 ADMIN_EMAIL="admin@hrms.company.com"  # <-- CHANGE for Let's Encrypt / Django ADMINS
 ENABLE_SSL="false"                 # set to "true" AFTER you have a real DNS domain
 
@@ -50,7 +50,7 @@ log "Updating system packages..."
 apt update && apt upgrade -y
 
 log "Installing system dependencies..."
-apt install -y python3.12 python3.12-venv python3.12-dev \
+apt install -y python3 python3-venv python3-dev \
     postgresql postgresql-contrib redis-server nginx \
     build-essential libpq-dev libssl-dev libffi-dev \
     curl git htop ufw rsync ca-certificates
@@ -75,6 +75,7 @@ usermod -aG "$GROUP" "$USER"
 
 log "Creating directory structure..."
 mkdir -p "$PROJECT_DIR"
+mkdir -p "$DJANGO_DIR/static"
 mkdir -p "$LOG_DIR"
 mkdir -p "$STATIC_DIR"
 mkdir -p "$MEDIA_DIR"
@@ -114,6 +115,11 @@ else
     warn "Database 'hrms_db' already exists, skipping."
 fi
 
+# Always ensure the app user owns the database and can create tables in public,
+# even when the database already existed before this script ran.
+sudo -u postgres psql -c "ALTER DATABASE hrms_db OWNER TO $USER;" || warn "Could not change db owner (may already be correct)"
+sudo -u postgres psql -d hrms_db -c "GRANT ALL ON SCHEMA public TO $USER;" || warn "Could not grant schema public"
+
 # =============================================================================
 # 5. Redis Setup (keep listening on localhost only)
 # =============================================================================
@@ -126,12 +132,12 @@ systemctl enable redis-server
 systemctl restart redis-server
 
 # =============================================================================
-# 6. Python Virtual Environment (Python 3.12)
+# 6. Python Virtual Environment (Python 3)
 # =============================================================================
 
 log "Setting up Python virtual environment..."
 if [ ! -d "$VENV_DIR" ]; then
-    python3.12 -m venv "$VENV_DIR"
+    python3 -m venv "$VENV_DIR"
 fi
 source "$VENV_DIR/bin/activate"
 
@@ -187,6 +193,9 @@ log "Running Django migrations..."
 cd "$DJANGO_DIR"
 export DJANGO_SETTINGS_MODULE=hrms_project.settings.production
 
+# Generate missing migrations first (e.g. core app model changes).
+python manage.py makemigrations core || warn "makemigrations core skipped"
+
 # No tenants exist yet on a fresh deploy, so first migrate only the
 # public (shared) schema, then migrate every tenant schema.
 python manage.py migrate_schemas --shared
@@ -203,7 +212,8 @@ python manage.py collectstatic --noinput
 
 log "Building React frontend..."
 cd "$PROJECT_DIR/frontend"
-npm ci
+rm -rf node_modules package-lock.json
+npm install --no-audit --no-fund
 REACT_APP_API_URL=/api npm run build
 
 # =============================================================================
