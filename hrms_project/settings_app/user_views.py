@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.contrib.auth.models import User
-from core.models.user import UserProfile, ROLE_PERMISSIONS
+from core.models.user import UserProfile, RolePermission, ROLE_PERMISSIONS
 from core.models import Company
 
 
@@ -22,6 +22,13 @@ def _can_manage_users(user):
     profile = _get_user_profile(user)
     if profile:
         return profile.can_manage_users
+    return user.is_superuser
+
+
+def _can_manage_roles(user):
+    profile = _get_user_profile(user)
+    if profile:
+        return profile.can_manage_roles
     return user.is_superuser
 
 
@@ -44,6 +51,7 @@ def _serialize_user(user):
         'is_superuser': user.is_superuser,
         'role': role,
         'role_display': dict(UserProfile.Role.choices).get(role, role),
+        'phone': profile.phone if profile else None,
         'companies': companies,
         'current_company': current_company,
         'last_login': user.last_login.isoformat() if user.last_login else None,
@@ -134,6 +142,8 @@ def users_update(request, user_id):
     profile, _ = UserProfile.objects.get_or_create(user=user)
     if request.data.get('role'):
         profile.role = request.data['role']
+    if 'phone' in request.data:
+        profile.phone = request.data['phone']
     company_ids = request.data.get('company_ids')
     if company_ids is not None:
         profile.companies.set(company_ids)
@@ -147,7 +157,7 @@ def users_update(request, user_id):
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def users_delete(request, user_id):
-    """Soft-delete (deactivate) a user."""
+    """Hard delete a user and their profile."""
     if not _can_manage_users(request.user):
         return Response({'error': 'دسترسی غیرمجاز'}, status=403)
 
@@ -156,29 +166,64 @@ def users_delete(request, user_id):
     except User.DoesNotExist:
         return Response({'error': 'کاربر یافت نشد'}, status=404)
 
-    user.is_active = False
-    user.save()
-    return Response({'message': 'کاربر غیرفعال شد'})
+    # Prevent deleting yourself (would lock you out).
+    if user.id == request.user.id:
+        return Response({'error': 'نمی‌توانید حساب خود را حذف کنید'}, status=400)
+
+    user.delete()
+    return Response({'message': 'کاربر حذف شد'})
+
+
+ROLE_DESCRIPTIONS = {
+    'super_admin': {'label': 'مدیر ارشد سیستم', 'description': 'دسترسی کامل به تمام شرکت‌ها و تنظیمات'},
+    'hr_manager': {'label': 'مدیر منابع انسانی', 'description': 'دسترسی کامل به ماژول‌های HR (بدون تنظیمات سیستم)'},
+    'hr_specialist': {'label': 'کارشناس منابع انسانی', 'description': 'مدیریت پرسنل و مدارک (بدون حذف)'},
+    'department_head': {'label': 'مدیر دپارتمان', 'description': 'فقط مشاهده و تأیید مرخصی دپارتمان خود'},
+    'employee': {'label': 'کارمند', 'description': 'دسترسی به پروفایل خود (فاز آینده)'},
+}
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def roles_list(request):
-    """List all roles with descriptions and permissions."""
-    roles = [
-        {'key': 'super_admin', 'label': 'مدیر ارشد سیستم', 'description': 'دسترسی کامل به تمام شرکت‌ها و تنظیمات'},
-        {'key': 'hr_manager', 'label': 'مدیر منابع انسانی', 'description': 'دسترسی کامل به ماژول‌های HR (بدون تنظیمات سیستم)'},
-        {'key': 'hr_specialist', 'label': 'کارشناس منابع انسانی', 'description': 'مدیریت پرسنل و مدارک (بدون حذف)'},
-        {'key': 'department_head', 'label': 'مدیر دپارتمان', 'description': 'فقط مشاهده و تأیید مرخصی دپارتمان خود'},
-        {'key': 'employee', 'label': 'کارمند', 'description': 'دسترسی به پروفایل خود (فاز آینده)'},
-    ]
+    """List all roles with descriptions and effective permissions."""
     result = []
-    for r in roles:
+    for key, meta in ROLE_DESCRIPTIONS.items():
         result.append({
-            **r,
-            'permissions': ROLE_PERMISSIONS.get(r['key'], {}),
+            'key': key,
+            **meta,
+            'permissions': RolePermission.get_for_role(key),
         })
     return Response(result)
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def roles_update(request, role):
+    """Update permissions for a role (super_admin & hr_manager only)."""
+    if not _can_manage_roles(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    if role not in ROLE_DESCRIPTIONS:
+        return Response({'error': 'نقش نامعتبر است'}, status=404)
+
+    permissions = request.data.get('permissions')
+    if not isinstance(permissions, dict):
+        return Response({'error': 'permissions باید یک object باشد'}, status=400)
+
+    # Keep only boolean permission keys.
+    allowed_keys = set(list(ROLE_PERMISSIONS.get('super_admin', {}).keys()) + ['can_manage_roles'])
+    clean = {k: bool(v) for k, v in permissions.items() if k in allowed_keys}
+
+    obj, _ = RolePermission.objects.update_or_create(
+        role=role,
+        defaults={'permissions': clean},
+    )
+    return Response({
+        'role': role,
+        'permissions': RolePermission.get_for_role(role),
+        'message': 'دسترسی‌ها به‌روزرسانی شد',
+    })
 
 
 @api_view(['GET'])

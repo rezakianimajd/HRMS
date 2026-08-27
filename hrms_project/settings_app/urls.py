@@ -15,6 +15,7 @@ urlpatterns = [
 
     # Roles & permissions
     path('roles/', user_views.roles_list, name='api-roles-list'),
+    path('roles/<str:role>/', user_views.roles_update, name='api-roles-update'),
 
     # User management
     path('users/', user_views.users_list, name='api-users-list'),

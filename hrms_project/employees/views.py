@@ -82,6 +82,13 @@ class EmployeeViewSet(viewsets.ModelViewSet):
 
         employee = self.get_object()
         employee.is_active = False
+        # Release unique fields so they can be reused by another employee.
+        # Use a short, unique suffix derived from the primary key so the
+        # values stay within the fields' max_length limits.
+        suffix = str(employee.id)
+        employee.employee_id = ('D' + suffix)[:20]
+        employee.national_id = ('D' + suffix)[:10]
+        employee.mobile = ('D' + suffix)[:15]
         employee.save()
         return Response(status=status.HTTP_204_NO_CONTENT)
 
