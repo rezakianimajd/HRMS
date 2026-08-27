@@ -55,10 +55,15 @@ class BackupEngine:
         for f in obj._meta.fields:  # concrete fields (excludes M2M)
             if f.name == 'id':
                 continue
-            val = getattr(obj, f.name)
             if f.is_relation:
-                fields[f.name] = val.pk if val is not None else None
-            elif isinstance(f, (django_models.DateField, django_models.DateTimeField)):
+                # Use attname to read the raw foreign-key pk without a DB query;
+                # this avoids lazy-loading shared models (e.g. Company) inside a
+                # tenant schema that does not contain them.
+                fields[f.name] = getattr(obj, f.attname, None)
+                continue
+
+            val = getattr(obj, f.name)
+            if isinstance(f, (django_models.DateField, django_models.DateTimeField)):
                 fields[f.name] = val.isoformat() if val is not None else None
             elif isinstance(f, django_models.DecimalField):
                 fields[f.name] = str(val) if val is not None else None
