@@ -2,6 +2,7 @@ from django.urls import path
 from settings_app import views
 from settings_app import user_views
 from settings_app import import_views
+from settings_app import backup_views
 
 urlpatterns = [
     # Company profile (must come before <str:key> to avoid conflict)
@@ -28,4 +29,10 @@ urlpatterns = [
     path('import/types/', import_views.import_types, name='api-import-types'),
     path('import/template/<str:import_type>/', import_views.import_template, name='api-import-template'),
     path('import/upload/', import_views.import_upload, name='api-import-upload'),
+
+    # Backup / Restore / Wipe
+    path('backup/list/', backup_views.backup_list, name='api-backup-list'),
+    path('backup/create/', backup_views.backup_create, name='api-backup-create'),
+    path('backup/restore/<str:filename>/', backup_views.backup_restore, name='api-backup-restore'),
+    path('backup/wipe/', backup_views.wipe_data, name='api-backup-wipe'),
 ]
