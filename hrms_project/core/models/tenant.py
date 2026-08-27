@@ -22,8 +22,8 @@ else:
         paid_until = models.DateField(blank=True, null=True)
         on_trial = models.BooleanField(default=False)
         created_on = models.DateField(auto_now_add=True)
-        auto_create_schema = False
-        auto_drop_schema = False
+        auto_create_schema = True
+        auto_drop_schema = True
 
         class Meta:
             abstract = True
