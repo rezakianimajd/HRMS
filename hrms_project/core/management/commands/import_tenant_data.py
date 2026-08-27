@@ -147,9 +147,18 @@ class Command(BaseCommand):
                             continue
 
                         if field.is_relation and raw is not None:
-                            value = self._resolve_fk(
-                                field, raw, company.pk, id_map
-                            )
+                            # Assign FK/OneToOne via the `<field>_id` attribute
+                            # instead of `instance.<field>`, so a raw pk works.
+                            if field.related_model is Company:
+                                setattr(instance, f'{fname}_id', company.pk)
+                            else:
+                                new_pk = id_map.get((
+                                    field.related_model._meta.label_lower,
+                                    raw,
+                                ))
+                                if new_pk is not None:
+                                    setattr(instance, f'{fname}_id', new_pk)
+                            continue
 
                         setattr(instance, fname, value)
 
@@ -209,12 +218,3 @@ class Command(BaseCommand):
             except Exception:
                 return value
         return value
-
-    @staticmethod
-    def _resolve_fk(field, raw_pk, company_pk, id_map):
-        """Return the new PK for a FK reference."""
-        rel_model = field.related_model
-        if rel_model is Company:
-            return company_pk
-        key = (rel_model._meta.label_lower, raw_pk)
-        return id_map.get(key)
