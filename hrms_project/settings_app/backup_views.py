@@ -47,7 +47,11 @@ def backup_create(request):
     if not company:
         return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
 
-    result = BackupEngine.create_backup(company)
+    try:
+        result = BackupEngine.create_backup(company)
+    except Exception as e:
+        return Response({'error': f'خطا در تهیه بکاپ: {str(e)[:300]}'}, status=500)
+
     return Response({
         'message': 'بکاپ با موفقیت ساخته شد',
         **result,
