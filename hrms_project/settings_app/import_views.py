@@ -14,12 +14,8 @@ def _get_company(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def import_types(request):
-    """List all available import types plus employee lookup lists."""
-    data = {
-        'types': ImportEngine.get_types(),
-        'employee_lookups': ImportEngine.get_employee_choice_lists(_get_company(request)),
-    }
-    return Response(data)
+    """List all available import types."""
+    return Response(ImportEngine.get_types())
 
 
 @api_view(['GET'])
