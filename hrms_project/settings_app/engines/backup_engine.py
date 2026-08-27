@@ -37,6 +37,18 @@ class BackupEngine:
         return base
 
     @staticmethod
+    def _json_default(value):
+        """Convert non-JSON-native values (Decimal, date, ...) to primitives."""
+        from decimal import Decimal
+        if isinstance(value, Decimal):
+            return str(value)
+        if isinstance(value, (django_models.DateField,)):
+            return value.isoformat() if value is not None else None
+        if hasattr(value, 'isoformat'):
+            return value.isoformat()
+        return str(value)
+
+    @staticmethod
     def _serialize_object(obj):
         """Serialize one model instance, including FK pks and M2M pk lists."""
         fields = {}
@@ -48,6 +60,8 @@ class BackupEngine:
                 fields[f.name] = val.pk if val is not None else None
             elif isinstance(f, (django_models.DateField, django_models.DateTimeField)):
                 fields[f.name] = val.isoformat() if val is not None else None
+            elif isinstance(f, django_models.DecimalField):
+                fields[f.name] = str(val) if val is not None else None
             else:
                 fields[f.name] = val
 
@@ -80,7 +94,10 @@ class BackupEngine:
 
         filename = f"backup_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
         path = BackupEngine.get_backup_dir(company) / filename
-        path.write_text(json.dumps(payload, ensure_ascii=False), encoding='utf-8')
+        path.write_text(
+            json.dumps(payload, ensure_ascii=False, default=BackupEngine._json_default),
+            encoding='utf-8',
+        )
 
         return {'filename': path.name, 'path': str(path), 'counts': counts}
 
