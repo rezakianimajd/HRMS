@@ -18,6 +18,8 @@ import TuneIcon from '@mui/icons-material/Tune';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
 import PaletteIcon from '@mui/icons-material/Palette';
+import BackupIcon from '@mui/icons-material/Backup';
+import RestoreIcon from '@mui/icons-material/Restore';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../../core/context/ThemeContext';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
@@ -526,6 +528,121 @@ const ImportTab = () => {
 };
 
 /* =============================================================================
+ * Backup Tab (backup / list / restore)
+ * ============================================================================= */
+const BackupTab = () => {
+  const queryClient = useQueryClient();
+  const [message, setMessage] = useState('');
+
+  const { data: backups, isLoading } = useQuery({
+    queryKey: ['backups'],
+    queryFn: () => axiosInstance.get('/backup/list/').then(r => r.data),
+  });
+
+  const createMutation = useMutation({
+    mutationFn: () => axiosInstance.post('/backup/create/'),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['backups'] }),
+  });
+
+  const restoreMutation = useMutation({
+    mutationFn: (filename) => axiosInstance.post(`/backup/restore/${filename}/`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['backups'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+    },
+  });
+
+  const handleCreate = async () => {
+    setMessage('');
+    try {
+      await createMutation.mutateAsync();
+      setMessage('✅ بکاپ با موفقیت ساخته شد');
+    } catch (e) {
+      setMessage('❌ ' + (e.response?.data?.error || 'خطا در تهیه بکاپ'));
+    }
+  };
+
+  const handleRestore = async (filename) => {
+    if (!window.confirm(`آیا از بازیابی بکاپ «${filename}» مطمئن هستید؟ این کار داده‌های فعلی را بازنویسی می‌کند.`)) return;
+    setMessage('');
+    try {
+      await restoreMutation.mutateAsync(filename);
+      setMessage('✅ بکاپ با موفقیت بازیابی شد');
+    } catch (e) {
+      setMessage('❌ ' + (e.response?.data?.error || 'خطا در بازیابی بکاپ'));
+    }
+  };
+
+  return (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
+        <Typography variant="body2" color="textSecondary" sx={{ maxWidth: 520 }}>
+          تهیه بکاپ برای همه کاربران مجاز است؛ اما بازیابی بکاپ فقط برای مدیر ارشد سیستم (super_admin) امکان‌پذیر است.
+        </Typography>
+        <Button
+          variant="contained"
+          startIcon={<BackupIcon />}
+          size="small"
+          onClick={handleCreate}
+          disabled={createMutation.isLoading}
+        >
+          {createMutation.isLoading ? <CircularProgress size={20} /> : 'تهیه بکاپ جدید'}
+        </Button>
+      </Box>
+
+      {message && <Alert severity={message.startsWith('✅') ? 'success' : 'error'} sx={{ mb: 2 }}>{message}</Alert>}
+
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+        {isLoading ? (
+          <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={24} /></Box>
+        ) : backups?.length === 0 ? (
+          <Box sx={{ p: 4, textAlign: 'center' }}>
+            <Typography variant="body2" color="textSecondary">هنوز بکاپی ساخته نشده است.</Typography>
+          </Box>
+        ) : (
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 700 }}>تاریخ</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>حجم</TableCell>
+                <TableCell width={120} sx={{ fontWeight: 700 }}>عملیات</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {(backups || []).map(b => (
+                <TableRow key={b.filename} hover>
+                  <TableCell>
+                    <Typography variant="body2" fontWeight={600}>
+                      {b.created_at ? toJalali(b.created_at.slice(0, 10)) : b.filename}
+                    </Typography>
+                    <Typography variant="caption" color="textSecondary">{b.filename}</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Typography variant="caption">{formatPersianNumber((b.size / 1024).toFixed(1))} KB</Typography>
+                  </TableCell>
+                  <TableCell>
+                    <Button
+                      size="small"
+                      color="warning"
+                      variant="outlined"
+                      startIcon={<RestoreIcon />}
+                      onClick={() => handleRestore(b.filename)}
+                      disabled={restoreMutation.isLoading}
+                    >
+                      بازیابی
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </TableContainer>
+    </Box>
+  );
+};
+
+/* =============================================================================
  * Appearance Tab (light / dark / fmode)
  * ============================================================================= */
 const AppearanceTab = () => {
@@ -624,6 +741,7 @@ const Settings = () => {
     { label: 'کاربران', icon: <PeopleIcon />, key: 'users', color: '#10b981', desc: 'مدیریت حساب‌های کاربری و نقش‌های آن‌ها' },
     { label: 'نقش‌ها و دسترسی', icon: <SecurityIcon />, key: 'roles', color: '#f59e0b', desc: 'تعریف سطوح دسترسی و مجوزهای هر نقش' },
     { label: 'درون‌ریزی اکسل', icon: <UploadFileIcon />, key: 'import', color: '#14b8a6', desc: 'بارگذاری گروهی داده‌ها از فایل اکسل' },
+    { label: 'پشتیبان‌گیری', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'تهیه، مشاهده و بازیابی نسخه‌های پشتیبان داده' },
     { label: 'ظاهر', icon: <PaletteIcon />, key: 'appearance', color: '#8b5cf6', desc: 'شخصی‌سازی تم، مد نمایش و رنگ نئونی' },
   ];
 
@@ -692,7 +810,8 @@ const Settings = () => {
           {tabIndex === 1 && <UserManagementTab />}
           {tabIndex === 2 && <RolesTab />}
           {tabIndex === 3 && <ImportTab />}
-          {tabIndex === 4 && <AppearanceTab />}
+          {tabIndex === 4 && <BackupTab />}
+          {tabIndex === 5 && <AppearanceTab />}
         </Box>
       </Paper>
     </Box>
