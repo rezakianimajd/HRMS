@@ -23,10 +23,27 @@ PERSIAN_FIELD_LABELS = {
     'employee_id': 'کد پرسنلی',
     'employee_code': 'کد پرسنلی',
     'hire_date': 'تاریخ استخدام',
+    'birth_place': 'محل تولد',
+    'children_count': 'تعداد فرزندان',
+    'email': 'ایمیل',
+    'city': 'شهر',
+    'address': 'آدرس',
+    'official_date': 'تاریخ رسمی شدن',
+    'probation_end_date': 'تاریخ پایان دوره آزمایشی',
+    'department': 'دپارتمان',
+    'job_title': 'عنوان شغلی',
+    'work_location': 'محل استقرار',
+    'insurance_list': 'لیست بیمه',
+    'contract_type': 'نوع قرارداد',
+    'contract_start_date': 'تاریخ شروع قرارداد',
+    'contract_end_date': 'تاریخ پایان قرارداد',
+    'status': 'وضعیت',
+    'work_shift': 'نوبت کاری',
+    'education_level': 'میزان تحصیلات',
+    'education_field': 'رشته تحصیلی',
     'department_code': 'کد دپارتمان',
     'job_title_code': 'کد عنوان شغلی',
     'work_location_code': 'کد محل استقرار',
-    'contract_type': 'نوع قرارداد',
     'year': 'سال',
     'month': 'ماه',
     'work_days': 'کارکرد (روز)',
@@ -82,15 +99,26 @@ class ImportEngine:
             'description': 'اطلاعات کامل کارکنان (اطلاعات فردی، تماس، و شغلی)',
             'headers': [
                 'first_name', 'last_name', 'national_id', 'birth_date',
-                'gender', 'marital_status', 'mobile', 'employee_id',
-                'hire_date', 'department_code', 'job_title_code',
-                'work_location_code', 'contract_type',
+                'birth_place', 'gender', 'marital_status', 'children_count',
+                'mobile', 'phone', 'email', 'city', 'address',
+                'employee_id', 'hire_date', 'probation_end_date', 'official_date',
+                'department', 'job_title', 'work_location', 'insurance_list',
+                'contract_type', 'contract_start_date', 'contract_end_date',
+                'status', 'work_shift', 'education_level', 'education_field',
             ],
-            'required': ['first_name', 'last_name', 'national_id', 'birth_date', 'gender', 'marital_status', 'mobile', 'employee_id', 'hire_date'],
+            'required': [
+                'first_name', 'last_name', 'national_id', 'birth_date',
+                'gender', 'marital_status', 'mobile', 'employee_id', 'hire_date',
+                'department', 'job_title',
+            ],
             'sample': [
-                'علی', 'محمدی', '0012345678', '1985-03-15',
-                'male', 'married', '09120000001', 'EMP100',
-                '2010-01-01', 'MGT', 'CEO', 'HQ', 'permanent',
+                'علی', 'محمدی', '0012345678', '1364/01/22', 'تهران',
+                'مرد', 'متأهل', '2',
+                '09120000001', '02112345678', 'ali@example.com', 'تهران', 'خیابان نمونه، پلاک ۱',
+                'EMP100', '1390/04/15', '1390/07/15', '1390/10/15',
+                'مدیریت', 'مدیرعامل', 'دفتر مرکزی', 'بیمه اصلی',
+                'دائم', '1390/04/15', '',
+                'شاغل', 'صبح', 'کارشناسی', 'مهندسی نرم‌افزار',
             ],
         },
         'departments': {
@@ -278,17 +306,125 @@ class ImportEngine:
                 valid.append(clean)
         return valid, errors
 
+    # Choice maps: Persian label -> model value
+    GENDER_MAP = {'مرد': 'male', 'زن': 'female', 'male': 'male', 'female': 'female', '': ''}
+    MARITAL_MAP = {
+        'مجرد': 'single', 'متأهل': 'married', 'مطلقه': 'divorced',
+        'همسر فوت‌شده': 'widowed', 'همسر فوت شده': 'widowed',
+        'single': 'single', 'married': 'married', 'divorced': 'divorced', 'widowed': 'widowed', '': '',
+    }
+    STATUS_MAP = {
+        'شاغل': 'active', 'مرخصی طولانی‌مدت': 'leave', 'مرخصی طولانی مدت': 'leave',
+        'بازنشسته': 'retired', 'اخراج': 'terminated', 'فوت': 'deceased',
+        'active': 'active', 'leave': 'leave', 'retired': 'retired',
+        'terminated': 'terminated', 'deceased': 'deceased', '': 'active',
+    }
+    WORK_SHIFT_MAP = {
+        'صبح': 'morning', 'عصر': 'evening', 'شیفتی': 'rotating', 'نامنظم': 'irregular',
+        'morning': 'morning', 'evening': 'evening', 'rotating': 'rotating',
+        'irregular': 'irregular', '': '',
+    }
+    EDUCATION_MAP = {
+        'زیر دیپلم': 'under_diploma', 'دیپلم': 'diploma', 'کاردانی': 'associate',
+        'کارشناسی': 'bachelor', 'کارشناسی ارشد': 'master', 'دکتری': 'phd',
+        'under_diploma': 'under_diploma', 'diploma': 'diploma', 'associate': 'associate',
+        'bachelor': 'bachelor', 'master': 'master', 'phd': 'phd', '': '',
+    }
+
+    @staticmethod
+    def parse_jalali_date(value):
+        """Parse a date value to a Gregorian `datetime.date`.
+
+        Accepts:
+          - Jalali text: '1404/01/22', '1404-01-22', '۱۴۰۴/۰۱/۲۲'
+          - Gregorian text: '2026-04-11', '2026/04/11'
+          - an Excel date cell (datetime/date) → returns as-is (Gregorian)
+        Returns a datetime.date (Gregorian) or None on failure.
+        """
+        from datetime import date as _date
+        if value in (None, ''):
+            return None
+        if isinstance(value, _date):
+            return value
+        if isinstance(value, datetime):
+            return value.date()
+        if isinstance(value, int):
+            value = str(value)
+
+        s = str(value).strip()
+        if not s:
+            return None
+
+        # Normalize Persian/Arabic digits to ASCII
+        _fa_digits = '۰۱۲۳۴۵۶۷۸۹'
+        _en_digits = '0123456789'
+        trans = str.maketrans(_fa_digits, _en_digits)
+        s = s.translate(trans).replace('-', '/')
+
+        parts = s.split('/')
+        if len(parts) != 3:
+            return None
+        try:
+            y = int(parts[0])
+            m = int(parts[1])
+            d = int(parts[2])
+        except ValueError:
+            return None
+
+        # Jalali year range → convert from Jalali
+        if 1200 <= y <= 1500:
+            import jdatetime
+            try:
+                return jdatetime.date(y, m, d).togregorian()
+            except Exception:
+                return None
+
+        # Gregorian year range → build date directly
+        if 1800 <= y <= 2200:
+            try:
+                return _date(y, m, d)
+            except ValueError:
+                return None
+
+        return None
+
+    @staticmethod
+    def get_employee_choice_lists(company):
+        """Return current lookup lists (name-based) for employee import."""
+        from employees.models import Department, JobTitle, WorkLocation, InsuranceList, ContractType
+        return {
+            'department': list(Department.objects.filter(company=company).values_list('name', flat=True)),
+            'job_title': list(JobTitle.objects.filter(company=company).values_list('name', flat=True)),
+            'work_location': list(WorkLocation.objects.filter(company=company).values_list('name', flat=True)),
+            'insurance_list': list(InsuranceList.objects.filter(company=company).values_list('name', flat=True)),
+            'contract_type': list(ContractType.objects.filter(company=company).values_list('name', flat=True)),
+        }
+
     @staticmethod
     def import_employees(rows, company):
-        """Import employee rows."""
-        from employees.models import Employee, Department, JobTitle, WorkLocation, InsuranceList, ContractType
+        """Import employee rows.
 
-        gender_map = {'مرد': 'male', 'زن': 'female', 'male': 'male', 'female': 'female'}
-        marital_map = {'مجرد': 'single', 'متأهل': 'married', 'مطلقه': 'divorced', 'همسر فوت‌شده': 'widowed',
-                       'single': 'single', 'married': 'married', 'divorced': 'divorced', 'widowed': 'widowed'}
+        Dates are interpreted as Jalali and converted to Gregorian.
+        Lookup fields (department, job_title, ...) are matched by Persian name.
+        """
+        from employees.models import Employee, Department, JobTitle, WorkLocation, InsuranceList, ContractType
 
         created = 0
         skipped = []
+
+        # Cache lookups for performance and consistent resolution by name
+        dept_by_name = {d.name: d for d in Department.objects.filter(company=company)}
+        title_by_name = {t.name: t for t in JobTitle.objects.filter(company=company)}
+        loc_by_name = {l.name: l for l in WorkLocation.objects.filter(company=company)}
+        ins_by_name = {i.name: i for i in InsuranceList.objects.filter(company=company)}
+        ctype_by_name = {c.name: c for c in ContractType.objects.filter(company=company)}
+
+        def _lookup(cache, value):
+            if not value:
+                return None
+            name = str(value).strip()
+            return cache.get(name)
+
         for row in rows:
             employee_id = str(row.get('employee_id', '')).strip()
             national_id = str(row.get('national_id', '')).strip()
@@ -300,43 +436,67 @@ class ImportEngine:
             if national_id and Employee.objects.filter(company=company, national_id=national_id).exists():
                 skipped.append(f'{employee_id}: کد ملی تکراری')
                 continue
+            if mobile and Employee.objects.filter(company=company, mobile=mobile).exists():
+                skipped.append(f'{employee_id}: موبایل تکراری')
+                continue
 
-            department = Department.objects.filter(company=company, code=row.get('department_code')).first()
-            job_title = JobTitle.objects.filter(company=company, code=row.get('job_title_code')).first()
-            work_location = WorkLocation.objects.filter(company=company, code=row.get('work_location_code')).first()
-            insurance = InsuranceList.objects.filter(company=company, code=row.get('insurance_code', 'INS_MAIN')).first() or InsuranceList.objects.filter(company=company).first()
-            contract_type = ContractType.objects.filter(company=company, code=row.get('contract_type_code', 'PERMANENT')).first() or ContractType.objects.filter(company=company, code='PERMANENT').first()
+            department = _lookup(dept_by_name, row.get('department'))
+            job_title = _lookup(title_by_name, row.get('job_title'))
+            work_location = _lookup(loc_by_name, row.get('work_location'))
+            insurance = _lookup(ins_by_name, row.get('insurance_list'))
+            contract_type = _lookup(ctype_by_name, row.get('contract_type'))
 
             if not department:
-                department, _ = Department.objects.get_or_create(company=company, code=row.get('department_code') or 'GEN', defaults={'name': row.get('department_code') or 'عمومی'})
+                skipped.append(f'{employee_id}: دپارتمان «{row.get("department")}» یافت نشد')
+                continue
             if not job_title:
-                job_title, _ = JobTitle.objects.get_or_create(company=company, code=row.get('job_title_code') or 'GEN', defaults={'name': row.get('job_title_code') or 'عمومی', 'level': 'operational'})
+                skipped.append(f'{employee_id}: عنوان شغلی «{row.get("job_title")}» یافت نشد')
+                continue
             if not work_location:
                 work_location = WorkLocation.objects.filter(company=company).first()
             if not insurance:
-                insurance, _ = InsuranceList.objects.get_or_create(company=company, code='INS_MAIN', defaults={'name': 'بیمه اصلی'})
+                insurance = InsuranceList.objects.filter(company=company).first()
+            if not contract_type:
+                contract_type = ContractType.objects.filter(company=company, code='PERMANENT').first()
+
+            def _date(key):
+                return ImportEngine.parse_jalali_date(row.get(key))
 
             try:
                 Employee.objects.create(
                     company=company,
-                    first_name=row.get('first_name', ''),
-                    last_name=row.get('last_name', ''),
+                    first_name=str(row.get('first_name', '')).strip(),
+                    last_name=str(row.get('last_name', '')).strip(),
                     national_id=national_id or '',
-                    birth_date=row.get('birth_date') or None,
-                    gender=gender_map.get(row.get('gender', ''), 'male'),
-                    marital_status=marital_map.get(row.get('marital_status', ''), 'single'),
+                    birth_date=_date('birth_date'),
+                    birth_place=str(row.get('birth_place', '')).strip() or None,
+                    gender=ImportEngine.GENDER_MAP.get(str(row.get('gender', '')).strip(), ''),
+                    marital_status=ImportEngine.MARITAL_MAP.get(str(row.get('marital_status', '')).strip(), ''),
+                    children_count=int(row.get('children_count') or 0),
                     mobile=mobile or '',
+                    phone=str(row.get('phone', '')).strip() or None,
+                    email=str(row.get('email', '')).strip() or None,
+                    city=str(row.get('city', '')).strip() or None,
+                    address=str(row.get('address', '')).strip() or None,
                     employee_id=employee_id,
-                    hire_date=row.get('hire_date') or None,
+                    hire_date=_date('hire_date'),
+                    probation_end_date=_date('probation_end_date'),
+                    official_date=_date('official_date'),
                     department=department,
                     job_title=job_title,
                     work_location=work_location,
                     insurance_list=insurance,
                     contract_type=contract_type,
+                    contract_start_date=_date('contract_start_date'),
+                    contract_end_date=_date('contract_end_date'),
+                    status=ImportEngine.STATUS_MAP.get(str(row.get('status', '')).strip(), 'active'),
+                    work_shift=ImportEngine.WORK_SHIFT_MAP.get(str(row.get('work_shift', '')).strip(), ''),
+                    education_level=ImportEngine.EDUCATION_MAP.get(str(row.get('education_level', '')).strip(), ''),
+                    education_field=str(row.get('education_field', '')).strip() or None,
                 )
                 created += 1
             except Exception as e:
-                skipped.append(f'{employee_id}: {str(e)[:80]}')
+                skipped.append(f'{employee_id}: {str(e)[:100]}')
 
         return created, skipped
 

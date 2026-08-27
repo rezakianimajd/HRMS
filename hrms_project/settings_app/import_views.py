@@ -14,8 +14,12 @@ def _get_company(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def import_types(request):
-    """List all available import types."""
-    return Response(ImportEngine.get_types())
+    """List all available import types plus employee lookup lists."""
+    data = {
+        'types': ImportEngine.get_types(),
+        'employee_lookups': ImportEngine.get_employee_choice_lists(_get_company(request)),
+    }
+    return Response(data)
 
 
 @api_view(['GET'])
@@ -51,6 +55,50 @@ def import_template(request, import_type):
     for col_idx, sample_val in enumerate(cfg['sample'], start=1):
         cell = ws.cell(row=2, column=col_idx, value=sample_val)
         cell.alignment = center
+
+    # Employee-specific: add dropdown data validations for choice columns
+    if import_type == 'employees':
+        from openpyxl.worksheet.datavalidation import DataValidation
+
+        company = _get_company(request)
+        lookups = ImportEngine.get_employee_choice_lists(company)
+
+        # (headers index, lookup key) for columns requiring dropdowns
+        dropdown_cols = {
+            'gender': ['مرد', 'زن'],
+            'marital_status': ['مجرد', 'متأهل', 'مطلقه', 'همسر فوت‌شده'],
+            'status': ['شاغل', 'مرخصی طولانی‌مدت', 'بازنشسته', 'اخراج', 'فوت'],
+            'work_shift': ['صبح', 'عصر', 'شیفتی', 'نامنظم'],
+            'education_level': ['زیر دیپلم', 'دیپلم', 'کاردانی', 'کارشناسی', 'کارشناسی ارشد', 'دکتری'],
+            'department': lookups.get('department', []),
+            'job_title': lookups.get('job_title', []),
+            'work_location': lookups.get('work_location', []),
+            'insurance_list': lookups.get('insurance_list', []),
+            'contract_type': lookups.get('contract_type', []),
+        }
+
+        # Map header key -> column index (1-based)
+        col_idx_by_key = {key: idx for idx, key in enumerate(cfg['headers'], start=1)}
+
+        for key, choices in dropdown_cols.items():
+            if not choices:
+                continue
+            col_idx = col_idx_by_key.get(key)
+            if not col_idx:
+                continue
+            col_letter = openpyxl.utils.get_column_letter(col_idx)
+            formula = '"' + ','.join(str(c) for c in choices) + '"'
+            dv = DataValidation(
+                type='list',
+                formula1=formula,
+                allow_blank=True,
+                showDropDown=False,
+            )
+            dv.error = 'لطفاً از لیست انتخاب کنید'
+            dv.errorTitle = 'مقدار نامعتبر'
+            ws.add_data_validation(dv)
+            # Apply to rows 2..1000
+            dv.add(f'{col_letter}2:{col_letter}1000')
 
     response = HttpResponse(
         content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
