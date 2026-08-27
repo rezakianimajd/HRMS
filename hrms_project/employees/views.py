@@ -45,11 +45,14 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         return EmployeeSerializer
 
     def get_queryset(self):
-        """Filter queryset by current tenant (company)."""
+        """Filter queryset by current tenant (company) and active status."""
         qs = super().get_queryset()
         company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
         if company:
             qs = qs.filter(company=company)
+        # Soft-deleted employees (is_active=False) must not appear in the
+        # main employee list, reports, or phonebook.
+        qs = qs.filter(is_active=True)
         # Optimize queries
         qs = qs.select_related('department', 'job_title', 'work_location', 'insurance_list')
         return qs
@@ -63,7 +66,20 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         serializer.save()
 
     def destroy(self, request, *args, **kwargs):
-        """Soft delete - set is_active=False instead of physical delete."""
+        """Soft delete - set is_active=False instead of physical delete.
+
+        Only superusers, HR managers, and super admins may delete employees.
+        """
+        profile = getattr(request.user, 'profile', None)
+        allowed = request.user.is_superuser or (
+            profile is not None and profile.is_hr_manager
+        )
+        if not allowed:
+            return Response(
+                {'error': 'شما مجاز به حذف پرسنل نیستید'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
         employee = self.get_object()
         employee.is_active = False
         employee.save()
