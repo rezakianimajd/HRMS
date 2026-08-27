@@ -21,16 +21,20 @@ SECRET_KEY = os.environ.get('SECRET_KEY')
 # SSL & Security Headers
 # =============================================================================
 
-SECURE_SSL_REDIRECT = True
+# Enable SSL/HSTS only when explicitly configured. For internal/IP deployments
+# (no TLS cert), leave SSL_ENABLED unset or False to avoid redirect loops.
+SSL_ENABLED = os.environ.get('SSL_ENABLED', 'False').lower() in ('true', '1', 'yes')
+
+SECURE_SSL_REDIRECT = SSL_ENABLED
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-SECURE_HSTS_SECONDS = 31536000  # 1 year
-SECURE_HSTS_INCLUDE_SUBDOMAINS = True
-SECURE_HSTS_PRELOAD = True
+SECURE_HSTS_SECONDS = 31536000 if SSL_ENABLED else 0  # 1 year only when TLS on
+SECURE_HSTS_INCLUDE_SUBDOMAINS = SSL_ENABLED
+SECURE_HSTS_PRELOAD = SSL_ENABLED
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-SESSION_COOKIE_SECURE = True
-CSRF_COOKIE_SECURE = True
+SESSION_COOKIE_SECURE = SSL_ENABLED
+CSRF_COOKIE_SECURE = SSL_ENABLED
 SESSION_COOKIE_HTTPONLY = True
 CSRF_COOKIE_HTTPONLY = True
 SECURE_REFERRER_POLICY = 'same-origin'

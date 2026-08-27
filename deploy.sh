@@ -162,6 +162,7 @@ DB_PASSWORD=$DB_PASSWORD
 DB_HOST=localhost
 DB_PORT=5432
 DEBUG=False
+SSL_ENABLED=$ENABLE_SSL
 ALLOWED_HOSTS=$SERVER_IP,$DOMAIN,localhost
 CORS_ALLOWED_ORIGINS=https://$DOMAIN
 BASE_FILE_STORAGE_PATH=$FILE_STORAGE_DIR
@@ -215,6 +216,12 @@ cd "$PROJECT_DIR/frontend"
 rm -rf node_modules package-lock.json
 npm install --no-audit --no-fund
 REACT_APP_API_URL=/api npm run build
+
+# Copy React static assets into Django's static root so nginx serves them
+# through the /static/ location (React's index.html references static/js/*).
+log "Copying React static assets..."
+cp -a "$PROJECT_DIR/frontend/build/static/." "$STATIC_DIR/"
+chown -R "$USER:$GROUP" "$STATIC_DIR"
 
 # =============================================================================
 # 10. Gunicorn Configuration
