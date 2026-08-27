@@ -11,6 +11,7 @@ class BaseModel(models.Model):
         'core.Company',
         on_delete=models.CASCADE,
         related_name='%(class)s_records',
+        db_constraint=False,
         verbose_name=_('شرکت'),
         help_text=_('شرکت مربوطه'),
     )

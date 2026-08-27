@@ -75,6 +75,7 @@ class CompanyProfile(models.Model):
         Company,
         on_delete=models.CASCADE,
         related_name='profile',
+        db_constraint=False,
         verbose_name=_('شرکت'),
     )
     legal_name = models.CharField(

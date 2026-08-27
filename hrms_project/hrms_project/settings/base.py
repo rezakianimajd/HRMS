@@ -61,7 +61,6 @@ TENANT_APPS = [
     'orgchart',
     'settings_app',                    # Renamed from 'settings' to avoid conflict
     'correspondences',
-    'core',                            # For tenant-specific models
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]
@@ -296,3 +295,23 @@ TENANT_CREATION_FAKES_MIGRATIONS = False
 LOGIN_URL = '/api/auth/login/'
 SESSION_COOKIE_SECURE = not DEBUG
 CSRF_COOKIE_SECURE = not DEBUG
+
+# =============================================================================
+# Python 3.14+ compatibility fix for Django admin template rendering
+# Python 3.14 changed super() behavior which breaks Django's BaseContext.__copy__
+# See: https://code.djangoproject.com/ticket/36031
+# Kept in base.py so it applies in BOTH development and production.
+# =============================================================================
+import django.template.context
+
+def _fixed_basecontext_copy(self):
+    """Fixed __copy__ for Python 3.14+ compatibility."""
+    import copy as _copy_mod
+    duplicate = _copy_mod.copy(self)
+    if not hasattr(duplicate, 'dicts'):
+        object.__setattr__(duplicate, 'dicts', self.dicts[:])
+    else:
+        duplicate.dicts = self.dicts[:]
+    return duplicate
+
+django.template.context.BaseContext.__copy__ = _fixed_basecontext_copy
