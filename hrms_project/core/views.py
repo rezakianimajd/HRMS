@@ -62,6 +62,11 @@ def login_view(request):
             ip_address=request.META.get('REMOTE_ADDR'),
         )
 
+    # Always include the list of companies this user can access, so the
+    # frontend can show a company picker when there are multiple tenants.
+    accessible = AuthenticationEngine.get_user_companies(user)
+    result['available_companies'] = CompanySerializer(accessible, many=True).data
+
     return Response(result, status=status.HTTP_200_OK)
 
 
