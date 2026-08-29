@@ -5,6 +5,7 @@ from employees.views import (
     JobTitleViewSet, InsuranceListViewSet, ContractTypeViewSet,
     EmploymentChangeViewSet, ContractVersionViewSet, WorkExperienceViewSet,
     EmploymentChangeReadViewSet, ContractVersionReadViewSet,
+    SupplementaryInsuranceViewSet, SupplementaryInsuranceDependentViewSet,
 )
 from employees.phonebook_views import PhonebookViewSet
 from employees import report_views
@@ -23,6 +24,8 @@ router.register(r'phonebook', PhonebookViewSet, basename='phonebook')
 router.register(r'employment-changes', EmploymentChangeViewSet, basename='employment-change')
 router.register(r'contract-versions', ContractVersionViewSet, basename='contract-version')
 router.register(r'work-experiences', WorkExperienceViewSet, basename='work-experience')
+router.register(r'supplementary-insurances', SupplementaryInsuranceViewSet, basename='supplementary-insurance')
+router.register(r'supplementary-insurance-dependents', SupplementaryInsuranceDependentViewSet, basename='supplementary-insurance-dependent')
 
 urlpatterns = [
     path('', include(router.urls)),

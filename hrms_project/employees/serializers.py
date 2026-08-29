@@ -2,7 +2,11 @@
 Serializers for the Employees module.
 """
 from rest_framework import serializers
-from employees.models import Employee, Department, WorkLocation, JobTitle, InsuranceList, ContractType, EmploymentChange, ContractVersion, WorkExperience
+from employees.models import (
+    Employee, Department, WorkLocation, JobTitle, InsuranceList, ContractType,
+    EmploymentChange, ContractVersion, WorkExperience,
+    SupplementaryInsurance, SupplementaryInsuranceDependent,
+)
 
 
 class DepartmentSerializer(serializers.ModelSerializer):
@@ -111,6 +115,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     work_shift_display = serializers.CharField(source='get_work_shift_display', read_only=True)
     education_level_display = serializers.CharField(source='get_education_level_display', read_only=True)
+    university_type_display = serializers.CharField(source='get_university_type_display', read_only=True)
+    supplementary_insurances = serializers.SerializerMethodField()
 
     photo_url = serializers.SerializerMethodField()
 
@@ -143,10 +149,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'description',
             # Evaluation
             'education_level', 'education_level_display', 'education_field',
-            'education_place',
+            'education_place', 'university_type', 'university_type_display',
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
             'bank_name', 'account_number', 'sheba_number',
+            'supplementary_insurances',
             # Meta
             'is_active', 'created_at', 'updated_at',
         ]
@@ -159,6 +166,11 @@ class EmployeeSerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.photo.url)
             return obj.photo.url
         return None
+
+    def get_supplementary_insurances(self, obj):
+        return SupplementaryInsuranceSerializer(
+            obj.supplementary_insurances.all(), many=True
+        ).data
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
@@ -197,6 +209,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'work_start_time', 'work_end_time', 'description',
             # Evaluation
             'education_level', 'education_field', 'education_place',
+            'university_type',
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
             # Banking
@@ -259,5 +272,36 @@ class ContractVersionSerializer(serializers.ModelSerializer):
             'id', 'employee', 'employee_name', 'version', 'year',
             'contract_type', 'contract_type_display',
             'start_date', 'end_date', 'base_salary', 'description', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
+    relation_display = serializers.CharField(source='get_relation_display', read_only=True)
+    full_name = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = SupplementaryInsuranceDependent
+        fields = [
+            'id', 'insurance', 'first_name', 'last_name',
+            'relation', 'relation_display', 'full_name',
+        ]
+
+    def get_full_name(self, obj):
+        return f"{obj.first_name} {obj.last_name}"
+
+
+class SupplementaryInsuranceSerializer(serializers.ModelSerializer):
+    dependents = SupplementaryInsuranceDependentSerializer(many=True, read_only=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+
+    class Meta:
+        model = SupplementaryInsurance
+        fields = [
+            'id', 'employee', 'employee_name',
+            'insurance_name', 'insurance_type', 'plan',
+            'start_date', 'end_date',
+            'monthly_amount', 'total_amount',
+            'dependents', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']

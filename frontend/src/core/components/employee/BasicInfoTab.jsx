@@ -77,12 +77,13 @@ const BasicInfoTab = ({ employee }) => {
         <InfoCard label={t('employees.birth_place')} value={e.birth_place} />
         <InfoCard label="میزان تحصیلات" value={e.education_level_display || e.education_level || '—'} />
         <InfoCard label="رشته / مدرک تحصیلی" value={e.education_field} />
+        <InfoCard label="محل اخذ مدرک تحصیلی" value={e.education_place} />
+        <InfoCard label="نوع دانشگاه" value={e.university_type_display || e.university_type || '—'} />
         <InfoCard label={t('employees.gender')} value={e.gender_display} />
         <InfoCard label={t('employees.marital_status')} value={e.marital_status_display} />
         <InfoCard fieldName="children_count" label={t('employees.children_count')} value={e.children_count} />
         <InfoCard label={t('employees.spouse_name')} value={e.spouse_name} />
         <InfoCard label="نام پدر" value={e.father_name} />
-        <InfoCard label="محل اخذ مدرک تحصیلی" value={e.education_place} />
       </Grid>
 
       <Box sx={{ mt: 3 }}>

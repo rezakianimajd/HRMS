@@ -41,6 +41,7 @@ PERSIAN_FIELD_LABELS = {
     'work_shift': 'نوبت کاری',
     'education_level': 'میزان تحصیلات',
     'education_field': 'رشته تحصیلی',
+    'university_type': 'نوع دانشگاه',
     'father_name': 'نام پدر',
     'birth_certificate_number': 'شماره شناسنامه',
     'insurance_number': 'شماره بیمه',
@@ -114,7 +115,8 @@ class ImportEngine:
                 'insurance_number',
                 'contract_type', 'contract_start_date', 'contract_end_date',
                 'status', 'work_shift', 'education_level', 'education_field',
-                'education_place', 'bank_name', 'account_number', 'sheba_number',
+                'education_place', 'university_type',
+                'bank_name', 'account_number', 'sheba_number',
             ],
             'required': [
                 'first_name', 'last_name', 'national_id', 'birth_date',
@@ -128,7 +130,7 @@ class ImportEngine:
                 'EMP100', '1390/04/15', '1390/07/15', '1390/10/15',
                 'مدیریت', 'مدیرعامل', 'دفتر مرکزی', 'بیمه اصلی', '1234567890',
                 'دائم', '1390/04/15', '',
-                'شاغل', 'صبح', 'کارشناسی', 'مهندسی نرم‌افزار', 'دانشگاه تهران',
+                'شاغل', 'صبح', 'کارشناسی', 'مهندسی نرم‌افزار', 'دانشگاه تهران', 'دولتی',
                 'ملت', '123456789012', 'IR123456789012345678901234',
             ],
         },
@@ -341,6 +343,12 @@ class ImportEngine:
         'under_diploma': 'under_diploma', 'diploma': 'diploma', 'associate': 'associate',
         'bachelor': 'bachelor', 'master': 'master', 'phd': 'phd', '': '',
     }
+    UNIVERSITY_TYPE_MAP = {
+        'دولتی': 'state', 'آزاد': 'azad', 'پیام نور': 'payam_noor',
+        'غیرانتفاعی': 'nonprofit', 'فنی و حرفه‌ای': 'technical', 'سایر': 'other',
+        'state': 'state', 'azad': 'azad', 'payam_noor': 'payam_noor',
+        'nonprofit': 'nonprofit', 'technical': 'technical', 'other': 'other', '': '',
+    }
 
     @staticmethod
     def parse_jalali_date(value):
@@ -508,6 +516,7 @@ class ImportEngine:
                     education_level=ImportEngine.EDUCATION_MAP.get(str(row.get('education_level', '')).strip(), ''),
                     education_field=str(row.get('education_field', '')).strip() or None,
                     education_place=str(row.get('education_place', '')).strip() or None,
+                    university_type=ImportEngine.UNIVERSITY_TYPE_MAP.get(str(row.get('university_type', '')).strip(), None),
                     bank_name=str(row.get('bank_name', '')).strip() or None,
                     account_number=str(row.get('account_number', '')).strip() or None,
                     sheba_number=str(row.get('sheba_number', '')).strip() or None,

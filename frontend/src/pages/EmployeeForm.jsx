@@ -45,7 +45,7 @@ const EMPTY_FORM = {
   contract_type: '', contract_start_date: '', contract_end_date: '',
   status: 'active', status_change_date: '', work_shift: '',
   work_start_time: '', work_end_time: '', description: '',
-  education_level: '', education_field: '', education_place: '',
+  education_level: '', education_field: '', education_place: '', university_type: '',
   distance_to_work_km: 0,
   housing_type: '', has_car: false,
   performance_score: '', satisfaction_score: '',
@@ -348,6 +348,14 @@ const EmployeeForm = () => {
           {textField(t('employees.national_id_place'), 'national_id_place', form.national_id_place, handleChange)}
           {dateField(t('employees.national_id_date'), 'national_id_date', form.national_id_date, handleChange)}
           {textField('محل اخذ مدرک تحصیلی', 'education_place', form.education_place, handleChange)}
+          {selectField('نوع دانشگاه', 'university_type', form.university_type, handleChange, [
+            { value: 'state', label: 'دولتی' },
+            { value: 'azad', label: 'آزاد' },
+            { value: 'payam_noor', label: 'پیام نور' },
+            { value: 'nonprofit', label: 'غیرانتفاعی' },
+            { value: 'technical', label: 'فنی و حرفه‌ای' },
+            { value: 'other', label: 'سایر' },
+          ])}
         </Grid>
       </SectionCard>
 

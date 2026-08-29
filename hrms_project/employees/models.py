@@ -472,6 +472,23 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('محل اخذ مدرک تحصیلی'),
     )
+
+    class UniversityType(models.TextChoices):
+        STATE = 'state', _('دولتی')
+        AZAD = 'azad', _('آزاد')
+        PAYAM = 'payam_noor', _('پیام نور')
+        NONPROFIT = 'nonprofit', _('غیرانتفاعی')
+        TECHNICAL = 'technical', _('فنی و حرفه‌ای')
+        OTHER = 'other', _('سایر')
+
+    university_type = models.CharField(
+        max_length=20,
+        choices=UniversityType.choices,
+        blank=True,
+        null=True,
+        verbose_name=_('نوع دانشگاه'),
+    )
+
     distance_to_work_km = models.PositiveIntegerField(
         default=0,
         verbose_name=_('مسافت خانه تا محل کار (کیلومتر)'),
@@ -750,3 +767,98 @@ class ContractVersion(BaseModel):
 
     def __str__(self):
         return f"{self.employee.full_name} - نسخه {self.version} ({self.year})"
+
+
+class SupplementaryInsurance(BaseModel):
+    """
+    بیمه تکمیلی کارکنان (درمان، بازنشستگی تکمیلی و ...).
+    """
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='supplementary_insurances',
+        verbose_name=_('پرسنل'),
+    )
+    insurance_name = models.CharField(
+        max_length=200,
+        verbose_name=_('نام بیمه تکمیلی'),
+    )
+    insurance_type = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_('نوع بیمه تکمیلی'),
+    )
+    plan = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name=_('طرح انتخابی'),
+    )
+    start_date = models.DateField(
+        verbose_name=_('تاریخ شروع'),
+    )
+    end_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name=_('تاریخ خاتمه'),
+    )
+    monthly_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        default=0,
+        verbose_name=_('مبلغ ماهانه (ریال)'),
+    )
+    total_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        default=0,
+        verbose_name=_('مبلغ کل (ریال)'),
+    )
+
+    class Meta:
+        verbose_name = _('بیمه تکمیلی')
+        verbose_name_plural = _('بیمه‌های تکمیلی')
+        ordering = ['-start_date']
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.insurance_name}"
+
+
+class SupplementaryInsuranceDependent(models.Model):
+    """
+    افراد تحت تکفل بیمه تکمیلی.
+    """
+    insurance = models.ForeignKey(
+        SupplementaryInsurance,
+        on_delete=models.CASCADE,
+        related_name='dependents',
+        verbose_name=_('بیمه تکمیلی'),
+    )
+    first_name = models.CharField(
+        max_length=100,
+        verbose_name=_('نام'),
+    )
+    last_name = models.CharField(
+        max_length=100,
+        verbose_name=_('نام خانوادگی'),
+    )
+    relation = models.CharField(
+        max_length=50,
+        verbose_name=_('نسبت'),
+        choices=[
+            ('spouse', _('همسر')),
+            ('child', _('فرزند')),
+            ('father', _('پدر')),
+            ('mother', _('مادر')),
+            ('other', _('سایر')),
+        ],
+    )
+
+    class Meta:
+        verbose_name = _('فرد تحت تکفل')
+        verbose_name_plural = _('افراد تحت تکفل')
+        ordering = ['id']
+
+    def __str__(self):
+        return f"{self.first_name} {self.last_name} ({self.get_relation_display()})"

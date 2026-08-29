@@ -7,12 +7,17 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.pagination import PageNumberPagination
 from django.db.models import Q
-from employees.models import Employee, Department, WorkLocation, JobTitle, InsuranceList, ContractType, EmploymentChange, ContractVersion, WorkExperience
+from employees.models import (
+    Employee, Department, WorkLocation, JobTitle, InsuranceList, ContractType,
+    EmploymentChange, ContractVersion, WorkExperience,
+    SupplementaryInsurance, SupplementaryInsuranceDependent,
+)
 from employees.serializers import (
     EmployeeSerializer, EmployeeListSerializer, EmployeeCreateSerializer,
     DepartmentSerializer, WorkLocationSerializer, JobTitleSerializer, InsuranceListSerializer,
     ContractTypeSerializer, EmploymentChangeSerializer, ContractVersionSerializer,
     WorkExperienceSerializer,
+    SupplementaryInsuranceSerializer, SupplementaryInsuranceDependentSerializer,
 )
 from employees.filters import EmployeeFilter
 from employees.engines.employee_engine import EmployeeEngine
@@ -226,4 +231,32 @@ class ContractVersionReadViewSet(viewsets.ReadOnlyModelViewSet):
         employee_id = self.request.query_params.get('employee_id')
         if employee_id:
             qs = qs.filter(employee_id=employee_id)
+        return qs
+
+
+class SupplementaryInsuranceViewSet(BaseCompanyViewSet):
+    """Supplementary insurance records for employees."""
+    serializer_class = SupplementaryInsuranceSerializer
+    queryset = SupplementaryInsurance.objects.all()
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        employee_id = self.request.query_params.get('employee_id')
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
+        return qs
+
+
+class SupplementaryInsuranceDependentViewSet(viewsets.ModelViewSet):
+    """Dependents under a supplementary insurance record."""
+    serializer_class = SupplementaryInsuranceDependentSerializer
+    queryset = SupplementaryInsuranceDependent.objects.all()
+    pagination_class = None
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        insurance_id = self.request.query_params.get('insurance_id')
+        if insurance_id:
+            qs = qs.filter(insurance_id=insurance_id)
         return qs
