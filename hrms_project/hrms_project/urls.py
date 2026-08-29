@@ -23,6 +23,7 @@ urlpatterns = [
     path('', root_view, name='root'),
     path('admin/', admin.site.urls),
     path('api/', include('core.urls')),
+    path('api/search/', include('core.urls_search')),
     path('api/', include('employees.urls')),
     path('api/', include('documents.urls')),
     path('api/', include('orgchart.urls')),

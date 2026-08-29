@@ -250,6 +250,18 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('نام همسر'),
     )
+    father_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_('نام پدر'),
+    )
+    birth_certificate_number = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
+        verbose_name=_('شماره شناسنامه'),
+    )
     national_id_serial = models.CharField(
         max_length=20,
         blank=True,
@@ -368,6 +380,12 @@ class Employee(BaseModel):
         related_name='employees',
         verbose_name=_('لیست بیمه'),
     )
+    insurance_number = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        verbose_name=_('شماره بیمه'),
+    )
     contract_type = models.ForeignKey(
         ContractType,
         on_delete=models.SET_NULL,
@@ -448,6 +466,12 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('رشته / مدرک تحصیلی'),
     )
+    education_place = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        verbose_name=_('محل اخذ مدرک تحصیلی'),
+    )
     distance_to_work_km = models.PositiveIntegerField(
         default=0,
         verbose_name=_('مسافت خانه تا محل کار (کیلومتر)'),
@@ -484,6 +508,28 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('نمره رضایت شغلی'),
         help_text=_('۰ تا ۱۰۰ — از پرسشنامه‌های ارزیابی'),
+    )
+
+    # =========================================================================
+    # اطلاعات بانکی (Banking Info)
+    # =========================================================================
+    bank_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_('بانک'),
+    )
+    account_number = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        verbose_name=_('شماره حساب'),
+    )
+    sheba_number = models.CharField(
+        max_length=30,
+        blank=True,
+        null=True,
+        verbose_name=_('شماره شبا'),
     )
 
     # =========================================================================

@@ -21,6 +21,7 @@ import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import DescriptionIcon from '@mui/icons-material/Description';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import axiosInstance from '../core/api/axiosConfig';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
@@ -34,17 +35,21 @@ import { useDocumentTypes, useUploadDocument, useDocuments, useDeleteDocument } 
 const EMPTY_FORM = {
   first_name: '', last_name: '', national_id: '', birth_date: '', birth_place: '',
   gender: '', marital_status: '', children_count: 0, spouse_name: '',
+  father_name: '', birth_certificate_number: '',
   national_id_serial: '', national_id_place: '', national_id_date: '',
   phone: '', mobile: '', email: '', address: '', postal_code: '',
   emergency_contact_name: '', emergency_contact_phone: '',
   employee_id: '', hire_date: '', probation_end_date: '', official_date: '',
   department: '', job_title: '', work_location: '', insurance_list: '',
+  insurance_number: '',
   contract_type: '', contract_start_date: '', contract_end_date: '',
   status: 'active', status_change_date: '', work_shift: '',
   work_start_time: '', work_end_time: '', description: '',
-  education_level: '', education_field: '', distance_to_work_km: 0,
+  education_level: '', education_field: '', education_place: '',
+  distance_to_work_km: 0,
   housing_type: '', has_car: false,
   performance_score: '', satisfaction_score: '',
+  bank_name: '', account_number: '', sheba_number: '',
 };
 
 /* Glass section card with colored header */
@@ -337,9 +342,12 @@ const EmployeeForm = () => {
           {selectField(t('employees.marital_status'), 'marital_status', form.marital_status, handleChange, MARITAL)}
           {textField(t('employees.children_count'), 'children_count', form.children_count, handleChange, false, 'number')}
           {textField(t('employees.spouse_name'), 'spouse_name', form.spouse_name, handleChange)}
+          {textField('نام پدر', 'father_name', form.father_name, handleChange)}
+          {textField('شماره شناسنامه', 'birth_certificate_number', form.birth_certificate_number, handleChange)}
           {textField(t('employees.national_id_serial'), 'national_id_serial', form.national_id_serial, handleChange)}
           {textField(t('employees.national_id_place'), 'national_id_place', form.national_id_place, handleChange)}
           {dateField(t('employees.national_id_date'), 'national_id_date', form.national_id_date, handleChange)}
+          {textField('محل اخذ مدرک تحصیلی', 'education_place', form.education_place, handleChange)}
         </Grid>
       </SectionCard>
 
@@ -371,6 +379,7 @@ const EmployeeForm = () => {
           {selectField(t('employees.job_title'), 'job_title', form.job_title, handleChange, mapOpts(jobTitles))}
           {selectField(t('employees.work_location'), 'work_location', form.work_location, handleChange, mapOpts(workLocations))}
           {selectField(t('employees.insurance_list'), 'insurance_list', form.insurance_list, handleChange, mapOpts(insuranceLists))}
+          {textField('شماره بیمه', 'insurance_number', form.insurance_number, handleChange)}
           {selectField(t('employees.contract_type'), 'contract_type', form.contract_type, handleChange, CONTRACT)}
           {dateField(t('employees.contract_start_date'), 'contract_start_date', form.contract_start_date, handleChange)}
           {dateField(t('employees.contract_end_date'), 'contract_end_date', form.contract_end_date, handleChange)}
@@ -401,6 +410,15 @@ const EmployeeForm = () => {
           ])}
           {textField('نمره عملکرد (۰-۱۰۰)', 'performance_score', form.performance_score, handleChange, false, 'number')}
           {textField('نمره رضایت شغلی (۰-۱۰۰)', 'satisfaction_score', form.satisfaction_score, handleChange, false, 'number')}
+        </Grid>
+      </SectionCard>
+
+      {/* 3b-bis. Banking Info */}
+      <SectionCard title="اطلاعات بانکی" icon={<AccountBalanceIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#0ea5e9">
+        <Grid container spacing={2}>
+          {textField('بانک', 'bank_name', form.bank_name, handleChange)}
+          {textField('شماره حساب', 'account_number', form.account_number, handleChange)}
+          {textField('شماره شبا', 'sheba_number', form.sheba_number, handleChange)}
         </Grid>
       </SectionCard>
 

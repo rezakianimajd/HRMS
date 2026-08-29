@@ -15,6 +15,8 @@ import { toPersianDigits } from '../../utils/numberUtils';
 const DIGIT_FIELDS = [
   'national_id', 'mobile', 'phone', 'postal_code',
   'children_count', 'emergency_contact_phone', 'national_id_serial',
+  'birth_certificate_number', 'insurance_number',
+  'account_number', 'sheba_number',
 ];
 
 const DATE_FIELDS = ['birth_date', 'national_id_date'];
@@ -79,6 +81,8 @@ const BasicInfoTab = ({ employee }) => {
         <InfoCard label={t('employees.marital_status')} value={e.marital_status_display} />
         <InfoCard fieldName="children_count" label={t('employees.children_count')} value={e.children_count} />
         <InfoCard label={t('employees.spouse_name')} value={e.spouse_name} />
+        <InfoCard label="نام پدر" value={e.father_name} />
+        <InfoCard label="محل اخذ مدرک تحصیلی" value={e.education_place} />
       </Grid>
 
       <Box sx={{ mt: 3 }}>
@@ -86,9 +90,22 @@ const BasicInfoTab = ({ employee }) => {
       </Box>
       <Divider sx={{ mb: 2 }} />
       <Grid container spacing={1.5}>
+        <InfoCard fieldName="birth_certificate_number" label="شماره شناسنامه" value={e.birth_certificate_number} />
         <InfoCard fieldName="national_id_serial" label={t('employees.national_id_serial')} value={e.national_id_serial} />
         <InfoCard fieldName="national_id_place" label={t('employees.national_id_place')} value={e.national_id_place} />
         <InfoCard fieldName="national_id_date" label={t('employees.national_id_date')} value={e.national_id_date} />
+        <InfoCard fieldName="insurance_number" label="شماره بیمه" value={e.insurance_number} />
+      </Grid>
+
+      {/* اطلاعات بانکی */}
+      <Box sx={{ mt: 3 }}>
+        <SectionHeader title="اطلاعات بانکی" icon={<CallIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#0ea5e9" />
+      </Box>
+      <Divider sx={{ mb: 2 }} />
+      <Grid container spacing={1.5}>
+        <InfoCard label="بانک" value={e.bank_name} />
+        <InfoCard fieldName="account_number" label="شماره حساب" value={e.account_number} />
+        <InfoCard fieldName="sheba_number" label="شماره شبا" value={e.sheba_number} />
       </Grid>
 
       {/* سوابق کاری */}

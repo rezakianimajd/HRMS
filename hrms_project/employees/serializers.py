@@ -122,7 +122,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'first_name', 'last_name', 'photo', 'photo_url', 'national_id',
             'birth_date', 'birth_place', 'gender', 'gender_display',
             'marital_status', 'marital_status_display',
-            'children_count', 'spouse_name',
+            'children_count', 'spouse_name', 'father_name',
+            'birth_certificate_number',
             'national_id_serial', 'national_id_place', 'national_id_date',
             # Contact
             'phone', 'mobile', 'email', 'address', 'city', 'postal_code',
@@ -133,6 +134,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'job_title', 'job_title_detail',
             'work_location', 'work_location_detail',
             'insurance_list', 'insurance_list_detail',
+            'insurance_number',
             'contract_type', 'contract_type_display',
             'contract_start_date', 'contract_end_date',
             'status', 'status_display',
@@ -141,8 +143,10 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'description',
             # Evaluation
             'education_level', 'education_level_display', 'education_field',
+            'education_place',
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
+            'bank_name', 'account_number', 'sheba_number',
             # Meta
             'is_active', 'created_at', 'updated_at',
         ]
@@ -178,7 +182,8 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             # Personal
             'first_name', 'last_name', 'photo', 'national_id',
             'birth_date', 'birth_place', 'gender',
-            'marital_status', 'children_count', 'spouse_name',
+            'marital_status', 'children_count', 'spouse_name', 'father_name',
+            'birth_certificate_number',
             'national_id_serial', 'national_id_place', 'national_id_date',
             # Contact
             'phone', 'mobile', 'email', 'address', 'city', 'postal_code',
@@ -186,13 +191,16 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             # Employment
             'employee_id', 'hire_date', 'probation_end_date', 'official_date',
             'department', 'job_title', 'work_location', 'insurance_list',
+            'insurance_number',
             'contract_type', 'contract_start_date', 'contract_end_date',
             'status', 'status_change_date', 'work_shift',
             'work_start_time', 'work_end_time', 'description',
             # Evaluation
-            'education_level', 'education_field',
+            'education_level', 'education_field', 'education_place',
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
+            # Banking
+            'bank_name', 'account_number', 'sheba_number',
         ]
 
     def validate_national_id(self, value):
