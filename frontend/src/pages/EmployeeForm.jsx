@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Box, Typography, Button, Grid, CircularProgress, Alert, Paper,
   FormControl, InputLabel, Select, MenuItem, TextField, Chip,
-  IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Stack,
+  IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Stack, Divider,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
@@ -22,6 +22,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import DescriptionIcon from '@mui/icons-material/Description';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import axiosInstance from '../core/api/axiosConfig';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
@@ -153,6 +154,11 @@ const EmployeeForm = () => {
   const [workExperiences, setWorkExperiences] = useState([]);
   const [expDialogOpen, setExpDialogOpen] = useState(false);
   const [expForm, setExpForm] = useState({ id: null, company_name: '', job_title: '', start_date: '', end_date: '', description: '' });
+  const [supplementaryInsurances, setSupplementaryInsurances] = useState([]);
+  const [supDialogOpen, setSupDialogOpen] = useState(false);
+  const [supForm, setSupForm] = useState({ id: null, insurance_name: '', insurance_type: '', plan: '', start_date: '', end_date: '', monthly_amount: 0, total_amount: 0, dependents: [] });
+  const [depDialogOpen, setDepDialogOpen] = useState(false);
+  const [depForm, setDepForm] = useState({ id: null, first_name: '', last_name: '', relation: 'spouse' });
 
   // Load existing work experiences (edit mode)
   const { data: existingExperiences } = useQuery({
@@ -178,6 +184,27 @@ const EmployeeForm = () => {
       })));
     }
   }, [existingExperiences]);
+
+  useEffect(() => {
+    if (employee?.supplementary_insurances) {
+      setSupplementaryInsurances(employee.supplementary_insurances.map(s => ({
+        id: s.id,
+        insurance_name: s.insurance_name || '',
+        insurance_type: s.insurance_type || '',
+        plan: s.plan || '',
+        start_date: s.start_date || '',
+        end_date: s.end_date || '',
+        monthly_amount: s.monthly_amount ?? 0,
+        total_amount: s.total_amount ?? 0,
+        dependents: (s.dependents || []).map(d => ({
+          id: d.id,
+          first_name: d.first_name,
+          last_name: d.last_name,
+          relation: d.relation,
+        })),
+      })));
+    }
+  }, [employee]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -256,6 +283,31 @@ const EmployeeForm = () => {
             end_date: exp.end_date || null,
             description: exp.description || '',
           });
+        }
+      }
+
+      // Save supplementary insurances (create new)
+      if (empId) {
+        for (const ins of supplementaryInsurances.filter(x => !x.id)) {
+          const insRes = await axiosInstance.post('/supplementary-insurances/', {
+            employee: empId,
+            insurance_name: ins.insurance_name,
+            insurance_type: ins.insurance_type || '',
+            plan: ins.plan || '',
+            start_date: ins.start_date || null,
+            end_date: ins.end_date || null,
+            monthly_amount: ins.monthly_amount ?? 0,
+            total_amount: ins.total_amount ?? 0,
+          });
+          // Create dependents
+          for (const dep of (ins.dependents || [])) {
+            await axiosInstance.post('/supplementary-insurance-dependents/', {
+              insurance: insRes.data.id,
+              first_name: dep.first_name,
+              last_name: dep.last_name,
+              relation: dep.relation,
+            });
+          }
         }
       }
 
@@ -430,6 +482,62 @@ const EmployeeForm = () => {
         </Grid>
       </SectionCard>
 
+      {/* 3b-ter. Supplementary Insurance */}
+      <SectionCard title="بیمه تکمیلی" icon={<HealthAndSafetyIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#8b5cf6">
+        <Box sx={{ mb: 2 }}>
+          {supplementaryInsurances.length === 0 ? (
+            <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
+              بیمه تکمیلی ثبت نشده است
+            </Typography>
+          ) : (
+            <Stack spacing={1} sx={{ mb: 2 }}>
+              {supplementaryInsurances.map((ins, i) => (
+                <Paper key={ins.id || i} variant="outlined" sx={{
+                  p: 1.5,
+                  background: 'rgba(139,92,246,0.05)',
+                  border: '1px solid rgba(139,92,246,0.2)',
+                  borderRadius: 2,
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Avatar sx={{ width: 34, height: 34, background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)', fontSize: 14 }}>
+                      <HealthAndSafetyIcon sx={{ fontSize: 18, color: '#fff' }} />
+                    </Avatar>
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="body2" fontWeight={700}>{ins.insurance_name}</Typography>
+                      <Typography variant="caption" color="textSecondary" display="block">
+                        {ins.plan || ins.insurance_type || '—'} · {ins.start_date ? `از ${ins.start_date}` : ''} {ins.end_date ? `تا ${ins.end_date}` : ''}
+                      </Typography>
+                      {ins.dependents?.length > 0 && (
+                        <Typography variant="caption" color="textSecondary" display="block">
+                          تحت تکفل: {ins.dependents.map(d => `${d.first_name} ${d.last_name}`).join('، ')}
+                        </Typography>
+                      )}
+                    </Box>
+                    <IconButton
+                      size="small" color="error"
+                      onClick={() => setSupplementaryInsurances(prev => prev.filter((_, idx) => idx !== i))}
+                    >
+                      <DeleteIcon fontSize="small" />
+                    </IconButton>
+                  </Box>
+                </Paper>
+              ))}
+            </Stack>
+          )}
+          <Button
+            variant="outlined"
+            size="small"
+            startIcon={<AddIcon />}
+            onClick={() => {
+              setSupForm({ id: null, insurance_name: '', insurance_type: '', plan: '', start_date: '', end_date: '', monthly_amount: 0, total_amount: 0, dependents: [] });
+              setSupDialogOpen(true);
+            }}
+          >
+            افزودن بیمه تکمیلی
+          </Button>
+        </Box>
+      </SectionCard>
+
       {/* 3c. Work Experience */}
       <SectionCard title="سوابق کاری پیشین" icon={<WorkHistoryIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#14b8a6">
         <Box sx={{ mb: 2 }}>
@@ -593,6 +701,90 @@ const EmployeeForm = () => {
               setExpDialogOpen(false);
             }}>
             {expForm.id ? 'ذخیره تغییرات' : 'افزودن'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Supplementary Insurance Dialog */}
+      <Dialog open={supDialogOpen} onClose={() => setSupDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ color: '#8b5cf6' }}>بیمه تکمیلی</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+          <TextField fullWidth size="small" label="نام بیمه تکمیلی" value={supForm.insurance_name || ''}
+            onChange={e => setSupForm(p => ({ ...p, insurance_name: e.target.value }))} required />
+          <TextField fullWidth size="small" label="نوع بیمه تکمیلی" value={supForm.insurance_type || ''}
+            onChange={e => setSupForm(p => ({ ...p, insurance_type: e.target.value }))} />
+          <TextField fullWidth size="small" label="طرح انتخابی" value={supForm.plan || ''}
+            onChange={e => setSupForm(p => ({ ...p, plan: e.target.value }))} />
+          <JalaliDatePicker fullWidth label="تاریخ شروع" value={supForm.start_date}
+            onChange={g => setSupForm(p => ({ ...p, start_date: g }))} />
+          <JalaliDatePicker fullWidth label="تاریخ خاتمه" value={supForm.end_date}
+            onChange={g => setSupForm(p => ({ ...p, end_date: g }))} />
+          <TextField fullWidth size="small" label="مبلغ ماهانه (ریال)" type="number" value={supForm.monthly_amount || 0}
+            onChange={e => setSupForm(p => ({ ...p, monthly_amount: e.target.value }))} />
+          <TextField fullWidth size="small" label="مبلغ کل (ریال)" type="number" value={supForm.total_amount || 0}
+            onChange={e => setSupForm(p => ({ ...p, total_amount: e.target.value }))} />
+
+          <Divider />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="subtitle2" color="#8b5cf6">افراد تحت تکفل</Typography>
+            <Button size="small" startIcon={<AddIcon />}
+              onClick={() => { setDepForm({ first_name: '', last_name: '', relation: 'spouse' }); setDepDialogOpen(true); }}>
+              افزودن فرد
+            </Button>
+          </Box>
+          {(supForm.dependents || []).map((dep, i) => (
+            <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+              <Typography variant="body2" sx={{ flex: 1 }}>
+                {dep.first_name} {dep.last_name} ({dep.relation_display || dep.relation})
+              </Typography>
+              <IconButton size="small" color="error"
+                onClick={() => setSupForm(p => ({ ...p, dependents: p.dependents.filter((_, idx) => idx !== i) }))}>
+                <DeleteIcon fontSize="small" />
+              </IconButton>
+            </Box>
+          ))}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setSupDialogOpen(false)}>انصراف</Button>
+          <Button variant="contained" sx={{ background: '#8b5cf6' }}
+            onClick={() => {
+              if (!supForm.insurance_name || !supForm.start_date) return;
+              setSupplementaryInsurances(prev => [...prev, { ...supForm, id: null }]);
+              setSupDialogOpen(false);
+            }}>
+            افزودن بیمه
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dependent Dialog */}
+      <Dialog open={depDialogOpen} onClose={() => setDepDialogOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: '#8b5cf6' }}>فرد تحت تکفل</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+          <TextField fullWidth size="small" label="نام" value={depForm.first_name || ''}
+            onChange={e => setDepForm(p => ({ ...p, first_name: e.target.value }))} required />
+          <TextField fullWidth size="small" label="نام خانوادگی" value={depForm.last_name || ''}
+            onChange={e => setDepForm(p => ({ ...p, last_name: e.target.value }))} required />
+          <FormControl fullWidth size="small">
+            <InputLabel>نسبت</InputLabel>
+            <Select value={depForm.relation} label="نسبت" onChange={e => setDepForm(p => ({ ...p, relation: e.target.value }))}>
+              <MenuItem value="spouse">همسر</MenuItem>
+              <MenuItem value="child">فرزند</MenuItem>
+              <MenuItem value="father">پدر</MenuItem>
+              <MenuItem value="mother">مادر</MenuItem>
+              <MenuItem value="other">سایر</MenuItem>
+            </Select>
+          </FormControl>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDepDialogOpen(false)}>انصراف</Button>
+          <Button variant="contained" sx={{ background: '#8b5cf6' }}
+            onClick={() => {
+              if (!depForm.first_name || !depForm.last_name) return;
+              setSupForm(p => ({ ...p, dependents: [...(p.dependents || []), { ...depForm }] }));
+              setDepDialogOpen(false);
+            }}>
+            افزودن
           </Button>
         </DialogActions>
       </Dialog>
