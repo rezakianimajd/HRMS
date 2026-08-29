@@ -109,6 +109,48 @@ const BasicInfoTab = ({ employee }) => {
         <InfoCard fieldName="sheba_number" label="شماره شبا" value={e.sheba_number} />
       </Grid>
 
+      {/* بیمه تکمیلی */}
+      <Box sx={{ mt: 3 }}>
+        <SectionHeader title="بیمه تکمیلی" icon={<BadgeIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#8b5cf6" />
+      </Box>
+      <Divider sx={{ mb: 2 }} />
+      {(e.supplementary_insurances || []).length === 0 ? (
+        <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
+          بیمه تکمیلی ثبت نشده است
+        </Typography>
+      ) : (
+        <Stack spacing={1.5}>
+          {(e.supplementary_insurances || []).map((ins) => (
+            <Paper key={ins.id} sx={{
+              p: 2,
+              background: 'rgba(139,92,246,0.05)',
+              border: '1px solid rgba(139,92,246,0.2)',
+              borderRadius: 2,
+            }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
+                <Typography variant="body2" fontWeight={700}>{ins.insurance_name}</Typography>
+                <Chip size="small" label={ins.plan || ins.insurance_type || '—'} variant="outlined" sx={{ color: '#8b5cf6', borderColor: '#8b5cf6' }} />
+              </Box>
+              <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
+                {toJalali(ins.start_date)} تا {ins.end_date ? toJalali(ins.end_date) : 'اکنون'} · مبلغ ماهانه: {toPersianDigits(ins.monthly_amount)} ریال · مبلغ کل: {toPersianDigits(ins.total_amount)} ریال
+              </Typography>
+
+              {(ins.dependents || []).length > 0 && (
+                <Box sx={{ mt: 1 }}>
+                  <Typography variant="caption" fontWeight={700} color="#8b5cf6">افراد تحت تکفل:</Typography>
+                  {(ins.dependents || []).map(dep => (
+                    <Box key={dep.id} sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                      <Typography variant="caption">{dep.first_name} {dep.last_name}</Typography>
+                      <Chip size="small" label={dep.relation_display || dep.relation} sx={{ height: 20, fontSize: 10 }} />
+                    </Box>
+                  ))}
+                </Box>
+              )}
+            </Paper>
+          ))}
+        </Stack>
+      )}
+
       {/* سوابق کاری */}
       <Box sx={{ mt: 3 }}>
         <SectionHeader title="سوابق کاری" icon={<WorkHistoryIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#14b8a6" />
