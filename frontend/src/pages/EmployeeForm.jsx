@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Button, Grid, CircularProgress, Alert, Paper,
   FormControl, InputLabel, Select, MenuItem, TextField, Chip,
@@ -161,10 +161,22 @@ const EmployeeForm = () => {
   const [depForm, setDepForm] = useState({ id: null, first_name: '', last_name: '', relation: 'spouse' });
 
   // Load existing work experiences (edit mode)
+  const queryClient = useQueryClient();
+
+  // Load existing work experiences (edit mode) - separate endpoint so data is always fresh
   const { data: existingExperiences } = useQuery({
     queryKey: ['work-experiences', id],
     queryFn: () => axiosInstance.get(`/work-experiences/?employee_id=${id}`).then(r => r.data),
     enabled: !!id,
+    staleTime: 0,
+  });
+
+  // Load existing supplementary insurances (edit mode) - separate endpoint so data is always fresh
+  const { data: existingInsurances } = useQuery({
+    queryKey: ['supplementary-insurances', id],
+    queryFn: () => axiosInstance.get(`/supplementary-insurances/?employee_id=${id}`).then(r => r.data),
+    enabled: !!id,
+    staleTime: 0,
   });
 
   useEffect(() => {
@@ -186,8 +198,9 @@ const EmployeeForm = () => {
   }, [existingExperiences]);
 
   useEffect(() => {
-    if (employee?.supplementary_insurances) {
-      setSupplementaryInsurances(employee.supplementary_insurances.map(s => ({
+    if (existingInsurances) {
+      const list = Array.isArray(existingInsurances) ? existingInsurances : existingInsurances?.results || [];
+      setSupplementaryInsurances(list.map(s => ({
         id: s.id,
         insurance_name: s.insurance_name || '',
         insurance_type: s.insurance_type || '',
@@ -204,7 +217,7 @@ const EmployeeForm = () => {
         })),
       })));
     }
-  }, [employee]);
+  }, [existingInsurances]);
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
 
@@ -310,6 +323,11 @@ const EmployeeForm = () => {
           }
         }
       }
+
+      // Invalidate caches so profile and re-edit always fetch fresh data
+      queryClient.invalidateQueries({ queryKey: ['employee', empId] });
+      queryClient.invalidateQueries({ queryKey: ['work-experiences', empId] });
+      queryClient.invalidateQueries({ queryKey: ['supplementary-insurances', empId] });
 
       setSuccess(true);
       setTimeout(() => navigate(`/employees/${empId}`), 1200);
