@@ -44,7 +44,6 @@ yarn-error.log*
 .pnp.*
 coverage/
 build/
-package-lock.json
 
 # =============================================================================
 # IDE / OS
