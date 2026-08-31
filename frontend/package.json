@@ -6,8 +6,8 @@
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
-    "@mui/material": "^5.15.0",
-    "@mui/icons-material": "^5.15.0",
+    "@mui/material": "5.16.7",
+    "@mui/icons-material": "5.16.7",
     "@mui/x-date-pickers": "^6.18.0",
     "@tanstack/react-query": "^5.12.0",
     "axios": "^1.6.2",
@@ -27,7 +27,9 @@
     "recharts": "^2.10.0"
   },
   "overrides": {
-    "@mui/utils": "5.15.0"
+    "@mui/utils": "5.16.7",
+    "@mui/system": "5.16.7",
+    "@mui/private-theming": "5.16.7"
   },
   "scripts": {
     "start": "react-scripts start",
