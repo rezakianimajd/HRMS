@@ -52,7 +52,12 @@ class SearchEngine:
             qs = qs.filter(company=company, is_active=True)
 
         if query:
-            # Full-text search fields
+            # Full-text search fields (case-insensitive contains).
+            # We intentionally avoid `trigram_similar` here because that lookup
+            # requires the PostgreSQL `pg_trgm` extension to be installed on the
+            # database. If it isn't (common on fresh deploys), the query would
+            # raise `FieldError` and return 500. `icontains` is robust and fast
+            # enough for normal HR search workloads.
             full_text_q = (
                 Q(first_name__icontains=query) |
                 Q(last_name__icontains=query) |
@@ -64,17 +69,7 @@ class SearchEngine:
                 Q(address__icontains=query)
             )
 
-            if HAS_TRIGRAM:
-                fuzzy_q = (
-                    Q(first_name__trigram_similar=query) |
-                    Q(last_name__trigram_similar=query)
-                )
-                qs = qs.filter(full_text_q | fuzzy_q).annotate(
-                    first_name_sim=TrigramSimilarity('first_name', query),
-                    last_name_sim=TrigramSimilarity('last_name', query),
-                ).order_by('-first_name_sim', '-last_name_sim', '-hire_date')
-            else:
-                qs = qs.filter(full_text_q).order_by('-hire_date')
+            qs = qs.filter(full_text_q).order_by('-hire_date')
         else:
             qs = qs.order_by('-hire_date')
 
