@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
   Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Toolbar, Divider, Typography, Avatar, IconButton, Tooltip,
+  Divider, Typography, Avatar, IconButton, Tooltip,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';

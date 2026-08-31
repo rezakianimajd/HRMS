@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  AppBar, Toolbar, Typography, IconButton, Box, Avatar, Menu, MenuItem,
+  AppBar, Typography, IconButton, Box, Avatar, Menu, MenuItem,
   Tooltip
 } from '@mui/material';
+import Toolbar from '@mui/material/Toolbar';
 import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
