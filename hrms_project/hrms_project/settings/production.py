@@ -75,8 +75,10 @@ DATABASES = {
 STATIC_ROOT = os.environ.get('STATIC_ROOT', '/var/www/hrms/static/')
 MEDIA_ROOT = os.environ.get('MEDIA_ROOT', '/var/www/hrms/media/')
 
-# Static files storage for production (cache busting)
-STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.ManifestStaticFilesStorage'
+# Plain static files storage. Manifest-based storage is avoided on this server
+# because it requires a run of `collectstatic` and a writable staticfiles.json
+# which breaks admin rendering when permissions aren't set up for it.
+STATICFILES_STORAGE = 'django.contrib.staticfiles.storage.StaticFilesStorage'
 
 # =============================================================================
 # Email Configuration (SMTP)
