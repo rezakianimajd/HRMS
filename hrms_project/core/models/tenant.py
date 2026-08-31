@@ -1,47 +1,12 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
-from django.conf import settings
-
-
-# =============================================================================
-# Conditional Multi-Tenancy Support
-# When django_tenants is in INSTALLED_APPS (PostgreSQL), use real TenantMixin.
-# When NOT in INSTALLED_APPS (SQLite), use a dummy mixin.
-# =============================================================================
-
-if 'django_tenants' in getattr(settings, 'INSTALLED_APPS', []):
-    from django_tenants.models import TenantMixin, DomainMixin
-    _is_multi_tenant = True
-else:
-    _is_multi_tenant = False
-
-    class TenantMixin(models.Model):
-        """Dummy TenantMixin for SQLite/non-tenant modes."""
-        schema_name = models.CharField(max_length=63, unique=True, default='public')
-        domain_url = models.CharField(max_length=128, blank=True, null=True)
-        paid_until = models.DateField(blank=True, null=True)
-        on_trial = models.BooleanField(default=False)
-        created_on = models.DateField(auto_now_add=True)
-        auto_create_schema = True
-        auto_drop_schema = True
-
-        class Meta:
-            abstract = True
-
-    class DomainMixin(models.Model):
-        """Dummy DomainMixin for SQLite/non-tenant modes."""
-        domain = models.CharField(max_length=253)
-        is_primary = models.BooleanField(default=True)
-
-        class Meta:
-            abstract = True
+from django_tenants.models import TenantMixin, DomainMixin
 
 
 class Company(TenantMixin):
     """
     Company model representing a tenant in the multi-tenant system.
-    Each company gets its own PostgreSQL schema (when using django_tenants).
-    In SQLite mode, it acts as a regular model.
+    Each company gets its own PostgreSQL schema via django_tenants.
     """
     name = models.CharField(
         max_length=200,

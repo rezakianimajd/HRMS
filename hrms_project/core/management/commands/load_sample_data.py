@@ -1,10 +1,7 @@
 """Management command to load sample data for testing and development."""
 from django.core.management.base import BaseCommand
-from django.contrib.auth.models import User
-from django.utils import timezone
 from datetime import date, timedelta
 from django.db import connection
-from django.conf import settings
 from core.models import Company
 from employees.models import Employee, Department, WorkLocation, JobTitle, InsuranceList
 from documents.models import DocumentType, Document
@@ -16,9 +13,6 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.NOTICE('Loading sample data...'))
-
-        # Check if using SQLite (development mode)
-        is_sqlite = 'sqlite3' in settings.DATABASES['default']['ENGINE']
 
         # Get or create the first active company
         company = Company.objects.filter(is_active=True).first()
@@ -32,14 +26,11 @@ class Command(BaseCommand):
             )
             self.stdout.write(self.style.SUCCESS(f'  ✓ Company "{company.name}" created with ID {company.id}'))
 
-        if not is_sqlite:
-            # Switch to company schema (PostgreSQL only)
-            try:
-                connection.set_tenant(company)
-            except Exception:
-                pass  # Skip if set_tenant fails (not using django_tenants)
-        else:
-            self.stdout.write(self.style.NOTICE('  Running in SQLite mode - skipping schema switching'))
+        # Switch to company schema (PostgreSQL / django_tenants)
+        try:
+            connection.set_tenant(company)
+        except Exception:
+            pass  # Skip if set_tenant fails
 
         # =========================================================================
         # 1. Departments

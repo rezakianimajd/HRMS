@@ -6,7 +6,7 @@ from celery import Celery
 from celery.schedules import crontab
 
 # Set the default Django settings module
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hrms_project.settings.development')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'hrms_project.settings.production')
 
 # Create Celery app
 app = Celery('hrms_project')

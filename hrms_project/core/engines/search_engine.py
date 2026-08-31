@@ -1,25 +1,8 @@
 """
 Search Engine - Advanced full-text and fuzzy search across employees and documents.
 """
-from django.db.models import Q, F, Value, CharField
-from django.db.models.functions import Concat
-from django.conf import settings
+from django.db.models import Q
 from employees.models import Employee
-
-# Trigram similarity only works on PostgreSQL (requires the pg_trgm extension).
-# Simply importing TrigramSimilarity succeeds even on SQLite, so we must check
-# the actual database engine rather than the import.
-_HAS_PG = False
-try:
-    _ENGINE = settings.DATABASES.get('default', {}).get('ENGINE', '')
-    _HAS_PG = 'postgresql' in _ENGINE
-except Exception:
-    _HAS_PG = False
-
-HAS_TRIGRAM = _HAS_PG
-
-if HAS_TRIGRAM:
-    from django.contrib.postgres.search import TrigramSimilarity
 
 from documents.models import Document
 from core.models import Company

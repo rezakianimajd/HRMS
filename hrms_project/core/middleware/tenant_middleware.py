@@ -33,7 +33,6 @@ class CustomTenantMiddleware:
         Priority:
         1. django_tenants sets request.tenant (from domain/subdomain)
         2. Session-stored company
-        3. First active company (SQLite dev fallback)
         """
         # First, check if django_tenants already set the tenant
         tenant = getattr(request, 'tenant', None)
@@ -47,11 +46,9 @@ class CustomTenantMiddleware:
             if company:
                 return company
 
-        # Third, fallback to first active company (needed in SQLite/dev mode)
-        try:
-            return CompanyEngine.get_all_active_companies().first()
-        except Exception:
-            return None
+        # No tenant found. django_tenants already sets request.tenant from the
+        # request host/domain, so this only happens for unexpected cases.
+        return None
 
     def _get_company_id(self, request):
         """Get the current company ID from request context."""
