@@ -27,7 +27,9 @@
     "recharts": "^2.10.0"
   },
   "overrides": {
-    "@mui/utils": "5.15.0"
+    "@mui/utils": "5.15.0",
+    "@mui/system": "5.15.0",
+    "@mui/private-theming": "5.15.0"
   },
   "scripts": {
     "start": "react-scripts start",
