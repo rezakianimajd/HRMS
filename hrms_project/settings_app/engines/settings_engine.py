@@ -78,6 +78,14 @@ class SettingsEngine:
         if 'logo' in data:
             profile.logo = data['logo']
         profile.save()
+
+        # Keep the Company.name (shown in the sidebar as company_name) in sync
+        # with the legal name edited from the Settings/Definitions page.
+        legal_name = getattr(profile, 'legal_name', None)
+        if legal_name and legal_name != company.name:
+            company.name = legal_name
+            company.save(update_fields=['name'])
+
         return profile
 
     @staticmethod
