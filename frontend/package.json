@@ -27,6 +27,9 @@
     "jspdf": "^2.5.1",
     "recharts": "^2.10.0"
   },
+  "overrides": {
+    "@mui/utils": "5.15.0"
+  },
   "scripts": {
     "start": "react-scripts start",
     "build": "react-scripts build",
