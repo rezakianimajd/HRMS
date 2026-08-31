@@ -8,6 +8,9 @@
     "@emotion/styled": "^11.11.0",
     "@mui/material": "5.18.0",
     "@mui/icons-material": "5.18.0",
+    "@mui/utils": "5.17.1",
+    "@mui/system": "5.18.0",
+    "@mui/private-theming": "5.17.1",
     "@mui/x-date-pickers": "6.20.2",
     "@tanstack/react-query": "^5.12.0",
     "axios": "^1.6.2",
@@ -26,11 +29,6 @@
     "html2canvas": "^1.4.1",
     "jspdf": "^2.5.1",
     "recharts": "^2.10.0"
-  },
-  "overrides": {
-    "@mui/utils": "5.17.1",
-    "@mui/private-theming": "5.17.1",
-    "@mui/base": "5.0.0-dev.20240529-082515-213b5e33ab"
   },
   "scripts": {
     "start": "react-scripts start",
