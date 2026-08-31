@@ -305,13 +305,20 @@ CSRF_COOKIE_SECURE = not DEBUG
 import django.template.context
 
 def _fixed_basecontext_copy(self):
-    """Fixed __copy__ for Python 3.14+ compatibility."""
-    import copy as _copy_mod
-    duplicate = _copy_mod.copy(self)
-    if not hasattr(duplicate, 'dicts'):
-        object.__setattr__(duplicate, 'dicts', self.dicts[:])
-    else:
-        duplicate.dicts = self.dicts[:]
+    """Fixed __copy__ for Python 3.14+ compatibility.
+
+    IMPORTANT: we must NOT call copy.copy(self) here, because
+    BaseContext.__copy__ is overridden by this very function, which would
+    re-enter it and cause infinite recursion (RecursionError) in admin.
+    Instead we build a brand-new instance and assign `dicts` directly.
+    """
+    # Instantiate with a dummy context dict so __init__ runs cleanly.
+    # The exact constructor signature is (dict_, current_app=None).
+    duplicate = django.template.context.Context(
+        self.dicts[0] if self.dicts else {},
+    )
+    # Replace the deep context stack with a shallow copy of ours.
+    duplicate.dicts = self.dicts[:]
     return duplicate
 
 django.template.context.BaseContext.__copy__ = _fixed_basecontext_copy
