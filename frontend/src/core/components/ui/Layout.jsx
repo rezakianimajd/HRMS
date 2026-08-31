@@ -54,11 +54,13 @@ const Layout = ({ children }) => {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  // Fetch company profile for logo & name
+  // Fetch company profile for logo & name.
+  // staleTime=0: always refetch so an updated company name/logo shows immediately.
   const { data: profile } = useQuery({
     queryKey: ['company-profile-layout'],
     queryFn: () => axiosInstance.get('/settings/company-profile/').then(r => r.data).catch(() => null),
-    staleTime: 10 * 60 * 1000,
+    staleTime: 0,
+    refetchOnWindowFocus: true,
   });
 
   const drawerWidth = collapsed ? MINI_WIDTH : DRAWER_WIDTH;
