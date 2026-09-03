@@ -68,7 +68,8 @@ const menuConfig = [
     title: 'مالی و جبران خدمات',
     color: '#3b82f6',
     items: [
-      { id: 'reports', title: 'فیش حقوق و گزارش مالی', icon: <PaymentsIcon />, path: '/reports', color: '#3b82f6', primary: true, ready: true },
+      { id: 'payslips', title: 'فیش حقوق', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: true, ready: false },
+      { id: 'finance-reports', title: 'گزارش مالی', icon: <PaymentsIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: false },
       { id: 'benefits', title: 'مزایا و کارانه', icon: <CardGiftcardIcon />, path: '/benefits', color: '#10b981', primary: false, ready: false },
       { id: 'contracts', title: 'قراردادها و بیمه', icon: <ReceiptLongIcon />, path: '/contracts', color: '#8b5cf6', primary: false, ready: false },
     ],

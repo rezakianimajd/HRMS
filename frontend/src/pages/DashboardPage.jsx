@@ -16,6 +16,7 @@ import EventBusyIcon from '@mui/icons-material/EventBusy';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { DonutChart, BarChart } from '../core/components/charts/Charts';
 import { toJalali } from '../core/utils/dateUtils';
+import ReportsPage from './ReportsPage';
 
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
@@ -113,12 +114,13 @@ const DashboardPage = () => {
 
   return (
     <Box sx={{
-      height: 'calc(100vh - 24px)',
-      display: 'flex',
-      flexDirection: 'column',
-      gap: 2,
-      overflow: 'hidden',
+      // Scrollable dashboard: compact overview on top, full analytics below it.
+      minHeight: '100vh',
+      overflowY: 'auto',
+      p: 0.5,
     }}>
+      {/* ========= Part 1 — compact at-a-glance ========= */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, mb: 3 }}>
       {/* Stat cards row */}
       <Grid container spacing={2}>
         <Grid item xs={6} md={3}>
@@ -219,6 +221,12 @@ const DashboardPage = () => {
           </Paper>
         </Grid>
       </Grid>
+      </Box>
+
+      {/* ========= Part 2 — full analytics (previously ReportsPage) ========= */}
+      <Box sx={{ mt: 2 }}>
+        <ReportsPage />
+      </Box>
     </Box>
   );
 };

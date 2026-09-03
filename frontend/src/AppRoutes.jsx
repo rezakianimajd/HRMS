@@ -9,7 +9,7 @@ import EmployeeProfilePage from './pages/EmployeeProfilePage';
 import EmployeeForm from './pages/EmployeeForm';
 import PhonebookPage from './pages/PhonebookPage';
 import AdvancedSearchPage from './pages/AdvancedSearchPage';
-import ReportsPage from './pages/ReportsPage';
+import ComingSoonPage from './pages/ComingSoonPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
 import DataEntryPage from './pages/DataEntryPage';
@@ -17,7 +17,6 @@ import CorrespondencesPage from './pages/CorrespondencesPage';
 import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
-import ComingSoonPage from './pages/ComingSoonPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -58,7 +57,11 @@ const AppRoutes = () => {
       <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
       <Route path="/search" element={<ProtectedLayout><AdvancedSearchPage /></ProtectedLayout>} />
       <Route path="/phonebook" element={<ProtectedLayout><PhonebookPage /></ProtectedLayout>} />
-      <Route path="/reports" element={<ProtectedLayout><ReportsPage /></ProtectedLayout>} />
+      {/* /reports moved into dashboard (ReportsPage embedded). Kept as a redirect for
+          backward-compatible bookmarks/old links. */}
+      <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
+      <Route path="/payslips" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/finance-reports" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
       <Route path="/data-entry" element={<ProtectedLayout><DataEntryPage /></ProtectedLayout>} />
@@ -73,6 +76,7 @@ const AppRoutes = () => {
       <Route path="/settings/*" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
 
       {/* Under-development modules (professional placeholders until shipped) */}
+      {/* legacy routes removed - import cleanup */}
       <Route path="/attendance" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/leaves" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/requests" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
