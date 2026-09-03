@@ -120,21 +120,34 @@ const Layout = ({ children }) => {
                 onClick={() => !collapsed && setExpandedGroups((prev) => ({ ...prev, [group.id]: !prev[group.id] }))}
                 sx={{
                   display: 'flex', alignItems: 'center',
-                  px: 1.5, py: 0.75, mb: 0.25, mt: 0.5,
+                  px: 1.5, py: 0.9, mb: 0.25, mt: 0.75,
                   cursor: collapsed ? 'default' : 'pointer',
                   borderRadius: 1.5,
-                  ...(groupActive && { bgcolor: 'rgba(99,102,241,0.06)' }),
-                  '&:hover': { bgcolor: collapsed ? 'transparent' : 'rgba(0,0,0,0.04)' },
+                  ...(groupActive && { bgcolor: `${iconColor}0d` }),
+                  '&:hover': { bgcolor: collapsed ? 'transparent' : `${iconColor}14` },
                 }}
               >
+                {/* Colored accent bar */}
+                {!collapsed && (
+                  <Box
+                    sx={{
+                      width: 4,
+                      height: 18,
+                      borderRadius: 2,
+                      mr: 1.2,
+                      ml: 0.3,
+                      background: `linear-gradient(180deg, ${iconColor}, ${iconColor}55)`,
+                      opacity: groupActive ? 1 : 0.55,
+                    }}
+                  />
+                )}
                 <Typography
-                  variant="caption"
                   sx={{
-                    fontWeight: groupActive ? 800 : 700,
-                    fontSize: '0.68rem',
-                    letterSpacing: '0.06em',
-                    textTransform: 'uppercase',
-                    color: groupActive ? iconColor : 'text.secondary',
+                    fontWeight: 800,
+                    fontFamily: 'Vazirmatn, IRANSans, sans-serif',
+                    fontSize: collapsed ? '0.72rem' : '0.9rem',
+                    letterSpacing: '0.02em',
+                    color: groupActive ? iconColor : 'text.primary',
                     flex: 1,
                     whiteSpace: 'nowrap',
                     overflow: 'hidden',
@@ -144,7 +157,7 @@ const Layout = ({ children }) => {
                   {collapsed ? '··' : group.title}
                 </Typography>
                 {!collapsed && (
-                  <IconButton size="small" sx={{ p: 0.3, color: groupActive ? iconColor : 'text.disabled' }}>
+                  <IconButton size="small" sx={{ p: 0.3, color: groupActive ? iconColor : 'text.secondary', opacity: 0.7 }}>
                     {open ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowLeftIcon fontSize="small" />}
                   </IconButton>
                 )}
@@ -181,7 +194,10 @@ const Layout = ({ children }) => {
                         <ListItemIcon sx={{
                           minWidth: collapsed ? 0 : 36,
                           justifyContent: 'center',
-                          color: active ? (item.color || '#6366f1') : 'text.secondary',
+                          color: item.color || '#6366f1',
+                          opacity: active ? 1 : 0.72,
+                          filter: active ? `drop-shadow(0 2px 6px ${item.color || '#6366f1'}66)` : 'none',
+                          transition: 'opacity 0.2s ease',
                         }}>
                           {item.icon}
                         </ListItemIcon>
@@ -190,9 +206,10 @@ const Layout = ({ children }) => {
                             <ListItemText
                               primary={item.title}
                               primaryTypographyProps={{
-                                fontSize: '0.83rem',
+                                fontFamily: 'Vazirmatn, IRANSans, sans-serif',
+                                fontSize: '0.85rem',
                                 fontWeight: active ? 700 : 500,
-                                color: active ? (item.color || 'inherit') : 'inherits',
+                                color: active ? (item.color || 'inherit') : 'text.primary',
                                 noWrap: true,
                               }}
                             />
