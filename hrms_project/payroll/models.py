@@ -294,3 +294,78 @@ class BenefitRecord(BaseModel):
 
     def __str__(self):
         return f"{self.employee.full_name} - {self.get_benefit_type_display()} ({self.year}/{self.get_month_display()})"
+
+
+class EmployeeLoan(BaseModel):
+    """
+    Loan / facility given to an employee.
+    Records total amount, instalments, status and purpose so HR can manage
+    loans across the company and track outstanding balances.
+    """
+
+    class LoanType(models.TextChoices):
+        QARZ = 'qarz', _('وام قرض‌الحسنه')
+        CAR = 'car', _('وام خودرو')
+        HOUSING = 'housing', _('وام مسکن')
+        URGENT = 'urgent', _('وام ضروری')
+        OTHER = 'other', _('سایر')
+
+    class LoanStatus(models.TextChoices):
+        ACTIVE = 'active', _('فعال')
+        PAID = 'paid', _('تسویه‌شده')
+        CANCELLED = 'cancelled', _('لغو شده')
+
+    employee = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.CASCADE,
+        related_name='loans',
+        verbose_name=_('پرسنل'),
+    )
+    loan_type = models.CharField(
+        max_length=30,
+        choices=LoanType.choices,
+        default=LoanType.QARZ,
+        verbose_name=_('نوع وام'),
+    )
+    amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        verbose_name=_('مبلغ کل وام'),
+    )
+    installment_count = models.PositiveIntegerField(
+        default=1,
+        verbose_name=_('تعداد اقساط'),
+    )
+    installment_amount = models.DecimalField(
+        max_digits=15,
+        decimal_places=0,
+        default=0,
+        verbose_name=_('مبلغ هر قسط'),
+    )
+    grant_date = models.DateField(
+        verbose_name=_('تاریخ اعطای وام'),
+    )
+    due_date = models.DateField(
+        null=True,
+        blank=True,
+        verbose_name=_('تاریخ سررسید/تسویه'),
+        help_text=_('اختیاری — تاریخ نهایی تسویه'),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=LoanStatus.choices,
+        default=LoanStatus.ACTIVE,
+        verbose_name=_('وضعیت'),
+    )
+    description = models.TextField(
+        blank=True,
+        verbose_name=_('شرح / کاربری'),
+    )
+
+    class Meta:
+        verbose_name = _('وام و تسهیلات')
+        verbose_name_plural = _('وام‌ها و تسهیلات')
+        ordering = ['-grant_date']
+
+    def __str__(self):
+        return f"{self.employee.full_name} - {self.get_loan_type_display()} ({self.amount})"

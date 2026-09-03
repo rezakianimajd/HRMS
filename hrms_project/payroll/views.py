@@ -3,10 +3,10 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Count
-from payroll.models import EmployeeTransaction, SalaryRecord, BenefitRecord
+from payroll.models import EmployeeTransaction, SalaryRecord, BenefitRecord, EmployeeLoan
 from payroll.serializers import (
     TransactionSerializer, TransactionSummarySerializer, SalaryRecordSerializer,
-    BenefitRecordSerializer,
+    BenefitRecordSerializer, EmployeeLoanSerializer,
 )
 
 
@@ -165,6 +165,31 @@ class BenefitRecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(company=company)
         years = list(qs.values_list('year', flat=True).distinct().order_by('-year'))
         return Response(years)
+
+
+class EmployeeLoanViewSet(viewsets.ModelViewSet):
+    serializer_class = EmployeeLoanSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['employee__first_name', 'employee__last_name', 'employee__employee_id', 'employee__national_id']
+    ordering_fields = ['grant_date', 'amount', 'employee__employee_id']
+    ordering = ['-grant_date']
+
+    def get_queryset(self):
+        qs = EmployeeLoan.objects.select_related('employee')
+        company = _get_company(self.request)
+        if company:
+            qs = qs.filter(company=company)
+        employee_id = self.request.query_params.get('employee_id')
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    def perform_create(self, serializer):
+        company = _get_company(self.request)
+        serializer.save(company=company)
 
 
 class TransactionSummaryViewSet(viewsets.ViewSet):

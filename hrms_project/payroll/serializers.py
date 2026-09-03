@@ -1,6 +1,6 @@
 """Serializers for the Payroll module."""
 from rest_framework import serializers
-from payroll.models import EmployeeTransaction, SalaryRecord, BenefitRecord
+from payroll.models import EmployeeTransaction, SalaryRecord, BenefitRecord, EmployeeLoan
 
 
 class TransactionSerializer(serializers.ModelSerializer):
@@ -49,4 +49,22 @@ class BenefitRecordSerializer(serializers.ModelSerializer):
     class Meta:
         model = BenefitRecord
         fields = '__all__'
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class EmployeeLoanSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    loan_type_display = serializers.CharField(source='get_loan_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = EmployeeLoan
+        fields = [
+            'id', 'employee', 'employee_name', 'employee_code',
+            'loan_type', 'loan_type_display',
+            'amount', 'installment_count', 'installment_amount',
+            'grant_date', 'due_date', 'status', 'status_display',
+            'description', 'created_at', 'updated_at',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
