@@ -47,15 +47,36 @@ const Layout = ({ children }) => {
     staleTime: 0,
   });
 
-  useEffect(() => {
-    // When route changes (mobile/desktop), auto-expand its group.
+  // Exclusive accordion toggle: opening one group closes the others.
+  const toggleGroup = (id) => {
     setExpandedGroups((prev) => {
-      const next = { ...prev };
-      let changed = false;
+      const currentlyOpen = !!prev[id];
+      const next = {};
       menuConfig.forEach((g) => {
-        const isActive = g.items.some((i) => location.pathname === i.path || location.pathname.startsWith(`${i.path}/`));
-        if (isActive && !next[g.id]) {
-          next[g.id] = true;
+        next[g.id] = currentlyOpen ? false : g.id === id;
+      });
+      return next;
+    });
+  };
+
+  useEffect(() => {
+    // Keep a single group open that matches the active route (exclusive).
+    let activeGroupId = null;
+    menuConfig.forEach((g) => {
+      const isActive = g.items.some(
+        (i) => location.pathname === i.path || location.pathname.startsWith(`${i.path}/`)
+      );
+      if (isActive) activeGroupId = g.id;
+    });
+    if (!activeGroupId) return;
+
+    setExpandedGroups((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      menuConfig.forEach((g) => {
+        const shouldBe = g.id === activeGroupId;
+        if (!!next[g.id] !== shouldBe) {
+          next[g.id] = shouldBe;
           changed = true;
         }
       });
@@ -117,7 +138,7 @@ const Layout = ({ children }) => {
             <Box key={group.id} sx={{ mb: 0.5 }}>
               {/* Section header */}
               <Box
-                onClick={() => !collapsed && setExpandedGroups((prev) => ({ ...prev, [group.id]: !prev[group.id] }))}
+                onClick={() => !collapsed && toggleGroup(group.id)}
                 sx={{
                   display: 'flex', alignItems: 'center',
                   px: 1.5, py: 0.9, mb: 0.25, mt: 0.75,
