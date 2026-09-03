@@ -17,6 +17,8 @@ import CorrespondencesPage from './pages/CorrespondencesPage';
 import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
+import SupplementaryInsurancePage from './pages/SupplementaryInsurancePage';
+import LoansPage from './pages/LoansPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -77,6 +79,8 @@ const AppRoutes = () => {
 
       {/* Under-development modules (professional placeholders until shipped) */}
       {/* legacy routes removed - import cleanup */}
+      <Route path="/insurance" element={<ProtectedLayout><SupplementaryInsurancePage /></ProtectedLayout>} />
+      <Route path="/loans" element={<ProtectedLayout><LoansPage /></ProtectedLayout>} />
       <Route path="/attendance" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/leaves" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/requests" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
