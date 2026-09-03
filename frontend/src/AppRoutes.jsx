@@ -17,6 +17,7 @@ import CorrespondencesPage from './pages/CorrespondencesPage';
 import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
+import ComingSoonPage from './pages/ComingSoonPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -70,6 +71,16 @@ const AppRoutes = () => {
       <Route path="/employees/:id/edit" element={<ProtectedLayout><EmployeeForm /></ProtectedLayout>} />
       <Route path="/orgchart/*" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/settings/*" element={<ProtectedLayout><Settings /></ProtectedLayout>} />
+
+      {/* Under-development modules (professional placeholders until shipped) */}
+      <Route path="/attendance" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/leaves" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/requests" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/benefits" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/contracts" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/documents" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/users" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/audit" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />

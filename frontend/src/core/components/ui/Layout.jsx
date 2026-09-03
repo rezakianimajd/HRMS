@@ -1,49 +1,26 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Drawer, List, ListItem, ListItemButton, ListItemIcon, ListItemText,
-  Divider, Typography, Avatar, IconButton, Tooltip,
+  Box, Drawer, List, ListItem, ListItemButton, ListItemIcon,
+  ListItemText, Divider, Typography, Avatar, IconButton, Tooltip,
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import PeopleIcon from '@mui/icons-material/People';
-import DescriptionIcon from '@mui/icons-material/Description';
-import EventBusyIcon from '@mui/icons-material/EventBusy';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import SettingsIcon from '@mui/icons-material/Settings';
-import CategoryIcon from '@mui/icons-material/Category';
-import InputIcon from '@mui/icons-material/Input';
-import MailIcon from '@mui/icons-material/Mail';
-import SmartToyIcon from '@mui/icons-material/SmartToy';
-import AssessmentIcon from '@mui/icons-material/Assessment';
-import BusinessIcon from '@mui/icons-material/Business';
-import LogoutIcon from '@mui/icons-material/Logout';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import BusinessIcon from '@mui/icons-material/Business';
+import LogoutIcon from '@mui/icons-material/Logout';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import ConstructionIcon from '@mui/icons-material/Construction';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
+import menuConfig from '../../config/menuConfig';
 
-const DRAWER_WIDTH = 270;
-const MINI_WIDTH = 76;
-
-const menuItems = [
-  { key: 'dashboard', icon: <DashboardIcon />, path: '/dashboard', color: '#6366f1' },
-  { key: 'employees', icon: <PeopleIcon />, path: '/employees', color: '#ec4899' },
-  { key: 'phonebook', icon: <DescriptionIcon />, path: '/phonebook', color: '#10b981' },
-  { key: 'search', icon: <EventBusyIcon />, path: '/search', color: '#f59e0b' },
-  { key: 'orgchart', icon: <AccountTreeIcon />, path: '/org-chart', color: '#8b5cf6' },
-  { key: 'reports', icon: <AttachMoneyIcon />, path: '/reports', color: '#3b82f6' },
-  { key: 'definitions', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6' },
-  { key: 'data-entry', icon: <InputIcon />, path: '/data-entry', color: '#f97316' },
-  { key: 'correspondences', icon: <MailIcon />, path: '/correspondences', color: '#06b6d4' },
-  { key: 'assistant', icon: <SmartToyIcon />, path: '/assistant', color: '#f43f5e' },
-  { key: 'scoring', icon: <AssessmentIcon />, path: '/scoring', color: '#3b82f6' },
-  { key: 'settings', icon: <SettingsIcon />, path: '/settings', color: '#64748b' },
-];
+const DRAWER_WIDTH = 290;
+const MINI_WIDTH = 82;
 
 const Layout = ({ children }) => {
   const { t } = useTranslation();
@@ -53,15 +30,38 @@ const Layout = ({ children }) => {
   const { currentCompany } = useCompany();
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [expandedGroups, setExpandedGroups] = useState(() => {
+    // Auto-open the group of the active route on first render
+    const path = window.location.pathname;
+    const init = {};
+    menuConfig.forEach((g) => {
+      init[g.id] = g.items.some((i) => path === i.path || path.startsWith(`${i.path}/`));
+    });
+    return init;
+  });
 
-  // Fetch company profile for logo & name.
-  // staleTime=0: always refetch so an updated company name/logo shows immediately.
+  // Fetch company profile for logo & name
   const { data: profile } = useQuery({
     queryKey: ['company-profile-layout'],
     queryFn: () => axiosInstance.get('/settings/company-profile/').then(r => r.data).catch(() => null),
     staleTime: 0,
-    refetchOnWindowFocus: true,
   });
+
+  useEffect(() => {
+    // When route changes (mobile/desktop), auto-expand its group.
+    setExpandedGroups((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      menuConfig.forEach((g) => {
+        const isActive = g.items.some((i) => location.pathname === i.path || location.pathname.startsWith(`${i.path}/`));
+        if (isActive && !next[g.id]) {
+          next[g.id] = true;
+          changed = true;
+        }
+      });
+      return changed ? next : prev;
+    });
+  }, [location.pathname]);
 
   const drawerWidth = collapsed ? MINI_WIDTH : DRAWER_WIDTH;
   const companyName = profile?.company_name || profile?.legal_name || currentCompany?.name || t('app.shortName');
@@ -71,23 +71,19 @@ const Layout = ({ children }) => {
     await logout();
   };
 
+  const isActive = (path) =>
+    location.pathname === path || location.pathname.startsWith(`${path}/`);
+
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Company logo & name */}
+      {/* Company header */}
       <Box sx={{
-        p: 2, pb: 2.5, position: 'relative', overflow: 'hidden',
+        p: 2,
         borderBottom: '1px solid rgba(99,102,241,0.12)',
         display: 'flex', alignItems: 'center', gap: 1.5,
         justifyContent: collapsed ? 'center' : 'flex-start',
       }}>
-        {/* Decorative glow behind logo */}
-        <Box sx={{
-          position: 'absolute', top: -18, left: '50%', transform: 'translateX(-50%)',
-          width: 130, height: 90, borderRadius: '50%',
-          background: 'radial-gradient(circle, rgba(99,102,241,0.18), rgba(236,72,153,0.06), transparent 70%)',
-          filter: 'blur(6px)', pointerEvents: 'none',
-        }} />
-        <Box sx={{ position: 'relative', zIndex: 1 }}>
+        <Box sx={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
           {companyLogo ? (
             <Avatar src={companyLogo} sx={{ width: 46, height: 46, boxShadow: '0 4px 16px rgba(99,102,241,0.35)', border: '2px solid rgba(255,255,255,0.6)' }} />
           ) : (
@@ -95,14 +91,13 @@ const Layout = ({ children }) => {
               width: 46, height: 46,
               background: 'linear-gradient(135deg, #6366f1, #ec4899)',
               boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
-              border: '2px solid rgba(255,255,255,0.6)',
             }}>
               <BusinessIcon sx={{ fontSize: 24, color: '#fff' }} />
             </Avatar>
           )}
         </Box>
         {!collapsed && (
-          <Box sx={{ minWidth: 0, position: 'relative', zIndex: 1 }}>
+          <Box sx={{ minWidth: 0 }}>
             <Typography variant="subtitle1" fontWeight={800} noWrap sx={{ letterSpacing: '-0.2px' }}>{companyName}</Typography>
             <Box sx={{ mt: 0.25 }}>
               <CompanySwitcher />
@@ -111,49 +106,114 @@ const Layout = ({ children }) => {
         )}
       </Box>
 
-      {/* Menu items */}
-      <List sx={{ flex: 1, overflowY: 'auto', py: 1 }}>
-        {menuItems.map((item) => (
-          <ListItem key={item.key} disablePadding>
-            <Tooltip title={collapsed ? t(`nav.${item.key}`) : ''} placement="left" arrow>
-              <ListItemButton
-                selected={location.pathname.startsWith(item.path)}
-                onClick={() => { navigate(item.path); setMobileOpen(false); }}
+      {/* Navigation — grouped work spaces */}
+      <List sx={{ flex: 1, overflowY: 'auto', py: 1, px: 1 }}>
+        {menuConfig.map((group) => {
+          const groupActive = group.items.some((i) => isActive(i.path));
+          const open = collapsed ? false : expandedGroups[group.id];
+          const iconColor = group.color || '#6366f1';
+
+          return (
+            <Box key={group.id} sx={{ mb: 0.5 }}>
+              {/* Section header */}
+              <Box
+                onClick={() => !collapsed && setExpandedGroups((prev) => ({ ...prev, [group.id]: !prev[group.id] }))}
                 sx={{
-                  justifyContent: collapsed ? 'center' : 'flex-start',
-                  px: collapsed ? 1.5 : 2,
-                  borderRadius: 2.5,
-                  mx: 1,
-                  mb: 0.25,
-                  position: 'relative',
-                  overflow: 'hidden',
-                  backdropFilter: location.pathname.startsWith(item.path) ? 'blur(8px)' : 'none',
-                  WebkitBackdropFilter: location.pathname.startsWith(item.path) ? 'blur(8px)' : 'none',
-                  '&.Mui-selected': {
-                    background: 'linear-gradient(135deg, rgba(99,102,241,0.16), rgba(139,92,246,0.12))',
-                    border: '1px solid rgba(99,102,241,0.22)',
-                    boxShadow: '0 4px 14px rgba(99,102,241,0.12)',
-                    '&:hover': { background: 'linear-gradient(135deg, rgba(99,102,241,0.22), rgba(139,92,246,0.16))' },
-                  },
-                  '&:hover': { background: 'rgba(99,102,241,0.06)' },
+                  display: 'flex', alignItems: 'center',
+                  px: 1.5, py: 0.75, mb: 0.25, mt: 0.5,
+                  cursor: collapsed ? 'default' : 'pointer',
+                  borderRadius: 1.5,
+                  ...(groupActive && { bgcolor: 'rgba(99,102,241,0.06)' }),
+                  '&:hover': { bgcolor: collapsed ? 'transparent' : 'rgba(0,0,0,0.04)' },
                 }}
               >
-                <ListItemIcon sx={{
-                  minWidth: collapsed ? 0 : 40, justifyContent: 'center',
-                  color: item.color,
-                  transition: 'transform 0.2s ease',
-                  ...(location.pathname.startsWith(item.path) && { transform: 'scale(1.15)' }),
-                }}>
-                  {React.cloneElement(item.icon, { sx: { filter: `drop-shadow(0 2px 6px ${item.color}55)` } })}
-                </ListItemIcon>
-                {!collapsed && <ListItemText primary={t(`nav.${item.key}`)} primaryTypographyProps={{ fontWeight: location.pathname.startsWith(item.path) ? 700 : 500, fontSize: '0.84rem' }} />}
-              </ListItemButton>
-            </Tooltip>
-          </ListItem>
-        ))}
+                <Typography
+                  variant="caption"
+                  sx={{
+                    fontWeight: groupActive ? 800 : 700,
+                    fontSize: '0.68rem',
+                    letterSpacing: '0.06em',
+                    textTransform: 'uppercase',
+                    color: groupActive ? iconColor : 'text.secondary',
+                    flex: 1,
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {collapsed ? '··' : group.title}
+                </Typography>
+                {!collapsed && (
+                  <IconButton size="small" sx={{ p: 0.3, color: groupActive ? iconColor : 'text.disabled' }}>
+                    {open ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowLeftIcon fontSize="small" />}
+                  </IconButton>
+                )}
+              </Box>
+
+              {/* Items */}
+              {(collapsed || open) && group.items.map((item) => {
+                const active = isActive(item.path);
+                const isPlaceholder = item.ready === false;
+                return (
+                  <Tooltip key={item.id} title={collapsed ? item.title : ''} placement="left" arrow>
+                    <ListItem disablePadding sx={{ mb: 0.4 }}>
+                      <ListItemButton
+                        selected={active}
+                        onClick={() => navigate(item.path)}
+                        sx={{
+                          justifyContent: collapsed ? 'center' : 'flex-start',
+                          px: collapsed ? 1.5 : 1.5,
+                          py: 0.7,
+                          borderRadius: 2,
+                          minHeight: 36,
+                          ...(active
+                            ? {
+                                background: `linear-gradient(135deg, ${item.color || '#6366f1'}26, ${item.color || '#6366f1'}12)`,
+                                border: `1px solid ${item.color || '#6366f1'}55`,
+                                boxShadow: `0 3px 12px ${item.color || '#6366f1'}20`,
+                              }
+                            : {}),
+                          '&:hover': {
+                            background: 'rgba(99,102,241,0.06)',
+                          },
+                        }}
+                      >
+                        <ListItemIcon sx={{
+                          minWidth: collapsed ? 0 : 36,
+                          justifyContent: 'center',
+                          color: active ? (item.color || '#6366f1') : 'text.secondary',
+                        }}>
+                          {item.icon}
+                        </ListItemIcon>
+                        {!collapsed && (
+                          <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
+                            <ListItemText
+                              primary={item.title}
+                              primaryTypographyProps={{
+                                fontSize: '0.83rem',
+                                fontWeight: active ? 700 : 500,
+                                color: active ? (item.color || 'inherit') : 'inherits',
+                                noWrap: true,
+                              }}
+                            />
+                            {isPlaceholder && (
+                              <Tooltip title="در حال توسعه" placement="left">
+                                <ConstructionIcon sx={{ fontSize: 15, color: 'text.disabled', ml: 0.5 }} />
+                              </Tooltip>
+                            )}
+                          </Box>
+                        )}
+                      </ListItemButton>
+                    </ListItem>
+                  </Tooltip>
+                );
+              })}
+            </Box>
+          );
+        })}
       </List>
 
-      {/* Bottom: user info + collapse */}
+      {/* Bottom: user + collapse */}
       <Box sx={{ borderTop: '1px solid rgba(99,102,241,0.1)', p: collapsed ? 1 : 1.5 }}>
         <Box sx={{
           display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
@@ -165,34 +225,30 @@ const Layout = ({ children }) => {
               background: 'linear-gradient(135deg, #10b981, #059669)',
               fontSize: 16, fontWeight: 700,
               boxShadow: '0 3px 12px rgba(16,185,129,0.35)',
-              border: '2px solid rgba(255,255,255,0.55)',
             }}>
               {(user?.first_name?.charAt(0) || user?.username?.charAt(0) || 'U')}
             </Avatar>
           </Tooltip>
           {!collapsed && (
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="body2" fontWeight={700} noWrap>
-                {user?.first_name || ''} {user?.last_name || ''}
-              </Typography>
-              <Typography variant="caption" color="textSecondary" noWrap>@{user?.username}</Typography>
-            </Box>
-          )}
-          {!collapsed && (
-            <Tooltip title={t('nav.logout')} placement="left">
-              <IconButton size="small" onClick={handleLogout} color="error"
-                sx={{ bgcolor: 'rgba(239,68,68,0.08)', '&:hover': { bgcolor: 'rgba(239,68,68,0.16)' } }}>
-                <LogoutIcon fontSize="small" />
-              </IconButton>
-            </Tooltip>
+            <>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" fontWeight={700} noWrap>
+                  {user?.first_name || ''} {user?.last_name || ''}
+                </Typography>
+                <Typography variant="caption" color="textSecondary" noWrap>@{user?.username}</Typography>
+              </Box>
+              <Tooltip title={t('nav.logout')} placement="left">
+                <IconButton size="small" onClick={handleLogout} color="error"
+                  sx={{ bgcolor: 'rgba(239,68,68,0.08)', '&:hover': { bgcolor: 'rgba(239,68,68,0.16)' } }}>
+                  <LogoutIcon fontSize="small" />
+                </IconButton>
+              </Tooltip>
+            </>
           )}
         </Box>
-
         <Divider sx={{ mb: 0.5 }} />
-
-        {/* Collapse toggle below user */}
         <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Tooltip title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'} placement="left" arrow>
+          <Tooltip title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'} placement="left">
             <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ color: 'text.secondary' }}>
               {collapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>
@@ -203,7 +259,7 @@ const Layout = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
+    <Box sx={{ display: 'flex' }}>
       {/* Mobile drawer */}
       <Drawer
         variant="temporary"
@@ -219,7 +275,7 @@ const Layout = ({ children }) => {
         {drawerContent}
       </Drawer>
 
-      {/* Desktop permanent collapsible drawer */}
+      {/* Desktop collapsible drawer */}
       <Drawer
         variant="permanent"
         anchor="right"
@@ -240,14 +296,7 @@ const Layout = ({ children }) => {
       </Drawer>
 
       {/* Main content */}
-      <Box
-        component="main"
-        sx={{
-          flexGrow: 1,
-          p: { xs: 2, md: 3 },
-          minWidth: 0,
-        }}
-      >
+      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
         {children}
       </Box>
     </Box>
