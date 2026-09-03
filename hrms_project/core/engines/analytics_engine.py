@@ -441,42 +441,106 @@ def high_perf_tenure_underpaid(company=None):
 
 
 # ---------------------------------------------------------------------------
-# Dispatcher — detect & run
+# Dispatcher — weighted-keyword intent detection for free-form Persian
 # ---------------------------------------------------------------------------
-INTENT_MAP = [
-    ('managers_best_team', managers_best_team,
-     ['بالاترین میانگین امتیاز تیم', 'تیمشان بالاترین میانگین', 'مدیرانی که تیمشان', 'بهترین مدیر از نظر میانگین']),
-    ('avg_age_tenure', avg_age_tenure_by_dept,
-     ['میانگین سنی و سابقه', 'سن و سابقه در هر بخش', 'میانگین سن به تفکیک', 'سن و سابقه کار در هر']),
-    ('orgchart', orgchart_summary,
-     ['چند لایه', 'چارت سازمانی ما', 'چند زیردست', 'بیشترین زیردست', 'چند لایه دارد']),
-    ('salary_dept', salary_dept,
-     ['میانگین حقوق در هر بخش', 'میانگین حقوق به تفکیک', 'میانگین حقوق هر بخش']),
-    ('cost_per_emp', lambda company=None: salary_dept(company, cost_per_emp=True),
-     ['هزینه هر بخش', 'هر بخش به ازای هر کارمند', 'هزینه به ازای هر کارمند']),
-    ('ot_lowpay', overtime_lowest_pay,
-     ['بیشترین اضافه', 'اضافهکار دارند', 'کمترین حقوق را', 'زیاد اضافهکار']),
-    ('resign_next6', likely_resign_in_6m,
-     ['۶ ماه آینده', 'استعفا در', 'پیشبینی کن کدام', 'احتمالا استعفا']),
-    ('patterns', patterns_overview,
-     ['چه الگوهایی', 'بین سابقه کار', 'بین جنسیت', 'و نمره ارزیابی']),
-    ('high_perf_tenure_underpaid', high_perf_tenure_underpaid,
-     ['عملکرد بالایی دارند', 'سابقه بالای ۱۰', 'بالای 10 سال', 'حقوقشان پایین']),
+# Each intent: (name, fn, must_words, score_words, min_score, deny_words)
+#  * must_words  : ALL must appear verbatim in the normalized query
+#  * score_words : each contributes its weight if the word appears
+#  * min_score   : minimum accumulated weight required
+#  * deny_words  : if ANY appears, the intent is rejected (disambiguation)
+_INTENT_SPECS = [
+    dict(
+        name='salary_dept', fn=salary_dept,
+        must=[], deny=['سن', 'سني', 'اضافه', 'عملکرد', 'الگو', 'مدیر'],
+        score={'حقوق': 2.0, 'میانگین حقوق': 2.6, 'دستمزد': 1.5, 'بخش': 0.6, 'دپارتمان': 0.6,
+               'هر بخش': 1.2, 'به تفکیک': 1.0},
+        min_score=2.0,
+    ),
+    dict(
+        name='cost_per_emp',
+        fn=lambda company=None: salary_dept(company, cost_per_emp=True),
+        must=[], deny=['سن', 'الگو', 'عملکرد'],
+        score={'هزینه': 2.0, 'سرانه': 2.0, 'به ازای': 1.5, 'هر کارمند': 2.0, 'کارمند': 0.4,
+               'بخش': 0.6, 'دپارتمان': 0.6},
+        min_score=2.0,
+    ),
+    dict(
+        name='avg_age_tenure', fn=avg_age_tenure_by_dept,
+        must=[], deny=['حقوق', 'اضافه', 'عملکرد', 'هزینه', 'الگو'],
+        score={'میانگین': 1.2, 'سن': 1.8, 'سني': 1.2, 'سنین': 1.2, 'سابقه': 1.0,
+               'بخش': 0.6, 'دپارتمان': 0.6, 'کار در هر': 1.2, 'به تفکیک': 1.0},
+        min_score=2.0,
+    ),
+    dict(
+        name='managers_best_team', fn=managers_best_team,
+        must=['مدیر'], deny=[],
+        score={'تیم': 1.5, 'تیمش': 1.8, 'تیمشان': 1.8, 'میانگین': 1.0, 'بالاترین': 1.5,
+               'بهترین': 1.5, 'برتر': 1.2, 'امتیاز': 1.2},
+        min_score=1.5,
+    ),
+    dict(
+        name='ot_lowpay', fn=overtime_lowest_pay,
+        must=[], deny=['سن', 'عملکرد بالا', 'الگو'],
+        score={'اضافه': 2.0, 'اضافه کار': 2.6, 'اضافه‌کار': 2.6, 'اضافهکاری': 2.6,
+               'کمترین حقوق': 2.6, 'حقوق پایین': 1.8, 'زیاد اضافه': 2.6},
+        min_score=2.0,
+    ),
+    dict(
+        name='orgchart', fn=orgchart_summary,
+        must=[], deny=['نمودار', 'دیاگرام', 'چارت بده', 'ساختار'] if False else ['نمودار', 'دیاگرام'],
+        score={'چند لایه': 2.0, 'چند رده': 2.0, 'چند سطح': 1.8, 'این چارت': 1.5, 'سازمانی ما': 1.5,
+               'چارت سازمانی': 1.8, 'عمق': 2.0, 'چند زیردست': 2.0, 'بیشترین زیردست': 2.0,
+               'زیرمجموعه': 1.2},
+        min_score=2.0,
+    ),
+    dict(
+        name='resign_next6', fn=likely_resign_in_6m,
+        must=[], deny=['الگو', 'عملکرد'],
+        score={'۶ ماه': 2.4, 'شش ماه': 1.9, 'استعفا': 1.5, 'پیش بینی': 1.5, 'پیشبینی': 1.5,
+               'جاگیری': 1.2},
+        min_score=2.0,
+    ),
+    dict(
+        name='patterns', fn=patterns_overview,
+        must=[], deny=['مدیر', 'استعفا'],
+        score={'الگو': 2.0, 'الگویی': 2.0, 'بین سابقه': 1.8, 'بین جنسیت': 1.8, 'تحصیلات': 0.8,
+               'نمره ارزیابی': 1.2, 'ارزیابی': 0.5, ' چه رابطه': 1.5},
+        min_score=2.0,
+    ),
+    dict(
+        name='high_perf_tenure_underpaid', fn=high_perf_tenure_underpaid,
+        must=[], deny=['میانگین سن', 'نمودار'],
+        score={'عملکرد بالا': 1.5, 'عملکرد بالایی': 2.0, 'سابقه بالا': 1.2, 'بالای ۱۰': 2.0,
+               'بالای 10': 2.0, 'ده سال': 1.5, 'حقوق': 0.6, 'پایین': 1.0, 'زیر میانه': 1.0},
+        min_score=2.0,
+    ),
 ]
 
 
 def detect_analytics(q, company=None):
-    """Return analytics result if q matches one of the analytic intents else None."""
-    for _, fn, phrases in INTENT_MAP:
-        if any(p in q for p in phrases):
-            try:
-                return fn(company)
-            except Exception:
-                return {
-                    'type': 'analytics',
-                    'answer': 'متاسفانه در محاسبه تحلیل خطایی رخ داد. لطفاً بعداً دوباره بپرسید.',
-                }
-    return None
+    """
+    Weighted, deny-aware intent detection that understands free-form Persian.
+    Returns the BEST matching analytics result, or None.
+    """
+    best_fn, best_score = None, 0.0
+    for spec in _INTENT_SPECS:
+        if any(d in q for d in spec['deny']):
+            continue
+        if not all(m in q for m in spec['must']):
+            continue
+        sc = sum(w for word, w in spec['score'].items() if word in q)
+        if sc >= spec['min_score'] and sc > best_score:
+            best_fn, best_score = spec['fn'], sc
+
+    if best_fn is None:
+        return None
+    try:
+        return best_fn(company)
+    except Exception:
+        return {
+            'type': 'analytics',
+            'answer': 'متاسفانه در محاسبه تحلیل خطایی رخ داد. لطفاً بعداً دوباره بپرسید.',
+        }
 
 
 class AnalyticsEngine:
