@@ -13,6 +13,7 @@ import math
 from collections import defaultdict
 from datetime import date, timedelta
 from django.db.models import Sum
+from core.engines.analytics_engine import AnalyticsEngine  # multi-step analytic intents
 
 
 # ---------------------------------------------------------------------------
@@ -305,7 +306,12 @@ class AssistantEngine:
         if intent:
             return AssistantEngine._answer_general(q, intent, company, employees)
 
-        # ---- 3) RAG over documents + knowledge base (semantic fallback) ----
+        # ---- 3) Advanced multi-step analytics (cross-cutting) ----
+        anal = AnalyticsEngine.detect(q, company=company)
+        if anal:
+            return anal
+
+        # ---- 4) RAG over documents + knowledge base (semantic fallback) ----
         rag = AssistantEngine._rag_search(q, company)
         if rag:
             return {'answer': rag, 'type': 'rag'}
