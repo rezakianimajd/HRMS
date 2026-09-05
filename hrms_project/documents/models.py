@@ -46,6 +46,8 @@ class OrganizationDocument(BaseModel):
     """
     Company-level archived document (independent from employee documents).
     Used for the "بایگانی اسناد سازمان" page.
+    Optionally linked to an employee (so a company document can appear on
+    that employee's profile too).
     """
 
     class ArchiveCategory(models.TextChoices):
@@ -60,6 +62,15 @@ class OrganizationDocument(BaseModel):
         LEGAL = 'legal', _('اسناد حقوقی')
         OTHER = 'other', _('سایر')
 
+    # Optional link to an employee → this document also shows on their profile.
+    employee = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='company_archive_documents',
+        verbose_name=_('پرسنل مرتبط (اختیاری)'),
+    )
     title = models.CharField(max_length=250, verbose_name=_('عنوان سند'))
     category = models.CharField(
         max_length=30,
@@ -82,6 +93,7 @@ class OrganizationDocument(BaseModel):
         ordering = ['-issue_date', '-created_at']
         indexes = [
             models.Index(fields=['company', 'category']),
+            models.Index(fields=['company', 'employee']),
             models.Index(fields=['expiry_date']),
         ]
 

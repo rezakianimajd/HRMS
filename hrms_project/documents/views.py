@@ -48,6 +48,9 @@ class OrganizationDocumentViewSet(viewsets.ModelViewSet):
         category = self.request.query_params.get('category')
         if category:
             qs = qs.filter(category=category)
+        employee_id = self.request.query_params.get('employee_id')
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
         expired = self.request.query_params.get('expired')
         if expired in ('true', '1'):
             from datetime import date

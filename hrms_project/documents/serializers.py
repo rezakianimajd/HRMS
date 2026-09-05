@@ -68,11 +68,13 @@ class OrganizationDocumentSerializer(serializers.ModelSerializer):
     file_extension = serializers.CharField(read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
     file_url = serializers.SerializerMethodField()
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
 
     class Meta:
         model = OrganizationDocument
         fields = [
             'id', 'title', 'category', 'category_display',
+            'employee', 'employee_name',
             'reference_number', 'issue_date', 'expiry_date',
             'file', 'file_url', 'file_extension',
             'tags', 'description',
