@@ -56,7 +56,7 @@ TENANT_APPS = [
     'employees',
     'documents',
     'leaves',
-    'attendance',
+    'attendance',                      # Attendance & absence module
     'payroll',
     'orgchart',
     'settings_app',                    # Renamed from 'settings' to avoid conflict
