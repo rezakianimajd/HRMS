@@ -88,11 +88,12 @@ const CompanyDocumentsPage = () => {
   const items = Array.isArray(data) ? data : data?.results || [];
 
   // ---- Employee documents (lazy: only when a person is chosen) ----
-  const { data: empDocs, isLoading: empDocLoading } = useQuery({
+  const { data: empDocsData, isLoading: empDocLoading } = useQuery({
     queryKey: ['employee-docs-archive', selectedEmployeeId],
     queryFn: () => axiosInstance.get('/documents/', { params: { employee_id: selectedEmployeeId } }).then(r => r.data),
     enabled: !!selectedEmployeeId,
   });
+  const empDocs = Array.isArray(empDocsData) ? empDocsData : empDocsData?.results || [];
 
   const docEmployee = empList.find(x => String(x.id) === String(selectedEmployeeId));
 
