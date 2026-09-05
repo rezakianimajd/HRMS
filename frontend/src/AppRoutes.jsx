@@ -10,6 +10,7 @@ import EmployeeForm from './pages/EmployeeForm';
 import PhonebookPage from './pages/PhonebookPage';
 import AdvancedSearchPage from './pages/AdvancedSearchPage';
 import ComingSoonPage from './pages/ComingSoonPage';
+import CompanyDocumentsPage from './pages/CompanyDocumentsPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
 import DataEntryPage from './pages/DataEntryPage';
@@ -86,7 +87,7 @@ const AppRoutes = () => {
       <Route path="/requests" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/benefits" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
-      <Route path="/documents" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />
       <Route path="/users" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/audit" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
 

@@ -87,7 +87,7 @@ const menuConfig = [
     color: '#06b6d4',
     items: [
       { id: 'correspondences', title: 'مکاتبات اداری', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
-      { id: 'company-documents', title: 'بایگانی اسناد سازمان', icon: <FolderSharedIcon />, path: '/documents', color: '#f97316', primary: false, ready: false },
+      { id: 'company-documents', title: 'بایگانی اسناد سازمان', icon: <FolderSharedIcon />, path: '/documents', color: '#f97316', primary: false, ready: true },
     ],
   },
   {

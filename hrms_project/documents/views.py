@@ -4,10 +4,10 @@ Views for the Documents module.
 from rest_framework import viewsets, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from documents.models import Document, DocumentType
+from documents.models import Document, DocumentType, OrganizationDocument
 from documents.serializers import (
     DocumentSerializer, DocumentListSerializer, DocumentUploadSerializer,
-    DocumentTypeSerializer,
+    DocumentTypeSerializer, OrganizationDocumentSerializer,
 )
 from documents.engines.document_engine import DocumentEngine
 
@@ -23,6 +23,38 @@ class DocumentTypeViewSet(viewsets.ModelViewSet):
         company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
         if company:
             qs = qs.filter(company=company)
+        return qs
+
+    def perform_create(self, serializer):
+        company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
+        serializer.save(company=company)
+
+
+class OrganizationDocumentViewSet(viewsets.ModelViewSet):
+    """CRUD for company-level archived documents (بایگانی اسناد سازمان)."""
+    queryset = OrganizationDocument.objects.all()
+    serializer_class = OrganizationDocumentSerializer
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    search_fields = ['title', 'reference_number', 'tags', 'description']
+    ordering_fields = ['issue_date', 'created_at', 'title']
+    ordering = ['-issue_date', '-created_at']
+    filterset_fields = ['category', 'is_active']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
+        if company:
+            qs = qs.filter(company=company)
+        category = self.request.query_params.get('category')
+        if category:
+            qs = qs.filter(category=category)
+        expired = self.request.query_params.get('expired')
+        if expired in ('true', '1'):
+            from datetime import date
+            qs = qs.filter(expiry_date__lt=date.today())
+        elif expired in ('false', '0'):
+            from datetime import date
+            qs = qs.filter(expiry_date__gte=date.today()) | qs.filter(expiry_date__isnull=True)
         return qs
 
     def perform_create(self, serializer):

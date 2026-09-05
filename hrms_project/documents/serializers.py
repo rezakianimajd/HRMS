@@ -2,7 +2,7 @@
 Serializers for the Documents module.
 """
 from rest_framework import serializers
-from documents.models import Document, DocumentType
+from documents.models import Document, DocumentType, OrganizationDocument
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
@@ -60,6 +60,33 @@ class DocumentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'created_at', 'updated_at', 'file_extension',
                            'file_size_display', 'is_expired', 'days_until_expiry']
+
+
+class OrganizationDocumentSerializer(serializers.ModelSerializer):
+    """Serializer for company archive documents."""
+    category_display = serializers.CharField(source='get_category_display', read_only=True)
+    file_extension = serializers.CharField(read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    file_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = OrganizationDocument
+        fields = [
+            'id', 'title', 'category', 'category_display',
+            'reference_number', 'issue_date', 'expiry_date',
+            'file', 'file_url', 'file_extension',
+            'tags', 'description',
+            'is_expired', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at', 'file_extension', 'is_expired']
+
+    def get_file_url(self, obj):
+        if obj.file:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.file.url)
+            return obj.file.url
+        return None
 
 
 class DocumentUploadSerializer(serializers.ModelSerializer):

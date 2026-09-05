@@ -42,6 +42,72 @@ class DocumentType(BaseModel):
         return f"{self.name} ({self.code})"
 
 
+class OrganizationDocument(BaseModel):
+    """
+    Company-level archived document (independent from employee documents).
+    Used for the "بایگانی اسناد سازمان" page.
+    """
+
+    class ArchiveCategory(models.TextChoices):
+        CONTRACT = 'contract', _('قرارداد سازمانی')
+        AGREEMENT = 'agreement', _('تفاهم‌نامه')
+        OFFICIAL = 'official', _('ابلاغیه/بخشنامه رسمی')
+        LICENSE = 'license', _('مجوز/پروانه')
+        AUDIT = 'audit', _('گزارش حسابرسی/مالی')
+        INSURANCE = 'insurance', _('بیمه نامه')
+        CERTIFICATE = 'certificate', _('گواهی/گواهینامه')
+        HR_DOC = 'hr_doc', _('مستندات منابع انسانی')
+        LEGAL = 'legal', _('اسناد حقوقی')
+        OTHER = 'other', _('سایر')
+
+    title = models.CharField(max_length=250, verbose_name=_('عنوان سند'))
+    category = models.CharField(
+        max_length=30,
+        choices=ArchiveCategory.choices,
+        default=ArchiveCategory.CONTRACT,
+        verbose_name=_('دسته‌بندی'),
+    )
+    reference_number = models.CharField(
+        max_length=80, blank=True, verbose_name=_('شماره ثبت/مرجع'),
+    )
+    issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
+    expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
+    file = models.FileField(upload_to='company_archive/%Y/%m/', verbose_name=_('فایل'))
+    tags = models.CharField(max_length=300, blank=True, verbose_name=_('برچسب‌ها'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('سند سازمانی')
+        verbose_name_plural = _('اسناد سازمانی (بایگانی)')
+        ordering = ['-issue_date', '-created_at']
+        indexes = [
+            models.Index(fields=['company', 'category']),
+            models.Index(fields=['expiry_date']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def is_expired(self):
+        from datetime import date
+        return bool(self.expiry_date and self.expiry_date < date.today())
+
+    @property
+    def file_extension(self):
+        if self.file:
+            return os.path.splitext(self.file.name)[1].lower()
+        return ''
+
+    @property
+    def is_image(self):
+        return self.file_extension in ['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp']
+
+    @property
+    def is_pdf(self):
+        return self.file_extension == '.pdf'
+
+
 class Document(BaseModel):
     """
     An employee document with file upload support.
