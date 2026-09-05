@@ -12,6 +12,7 @@ import AdvancedSearchPage from './pages/AdvancedSearchPage';
 import ComingSoonPage from './pages/ComingSoonPage';
 import AttendancePage from './pages/AttendancePage';
 import LeavePage from './pages/LeavePage';
+import RequestsPage from './pages/RequestsPage';
 import CompanyDocumentsPage from './pages/CompanyDocumentsPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
@@ -86,7 +87,7 @@ const AppRoutes = () => {
       <Route path="/loans" element={<ProtectedLayout><LoansPage /></ProtectedLayout>} />
       <Route path="/attendance" element={<ProtectedLayout><AttendancePage /></ProtectedLayout>} />
       <Route path="/leaves" element={<ProtectedLayout><LeavePage /></ProtectedLayout>} />
-      <Route path="/requests" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/requests" element={<ProtectedLayout><RequestsPage /></ProtectedLayout>} />
       <Route path="/benefits" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />

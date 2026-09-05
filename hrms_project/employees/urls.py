@@ -7,6 +7,7 @@ from employees.views import (
     EmploymentChangeReadViewSet, ContractVersionReadViewSet,
     SupplementaryInsuranceViewSet, SupplementaryInsuranceDependentViewSet,
 )
+from employees.requests_views import HRRequestViewSet
 from employees.phonebook_views import PhonebookViewSet
 from employees import report_views
 from employees import dashboard_views
@@ -26,6 +27,7 @@ router.register(r'contract-versions', ContractVersionViewSet, basename='contract
 router.register(r'work-experiences', WorkExperienceViewSet, basename='work-experience')
 router.register(r'supplementary-insurances', SupplementaryInsuranceViewSet, basename='supplementary-insurance')
 router.register(r'supplementary-insurance-dependents', SupplementaryInsuranceDependentViewSet, basename='supplementary-insurance-dependent')
+router.register(r'hr-requests', HRRequestViewSet, basename='hr-request')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -862,3 +862,67 @@ class SupplementaryInsuranceDependent(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.get_relation_display()})"
+
+
+class HRRequest(BaseModel):
+    """Administrative HR request with a workflow (pending/approved/rejected)."""
+
+    class RequestType(models.TextChoices):
+        TRANSFER = 'transfer', _('انتقال واحد')
+        PROMOTION = 'promotion', _('ارتقا شغلی')
+        RESIGNATION = 'resignation', _('استعفا')
+        RETIREMENT = 'retirement', _('بازنشستگی')
+        SHIFT_CHANGE = 'shift_change', _('تغییر شیفت')
+        CERTIFICATE = 'certificate', _('صدور گواهی اشتغال')
+        SALARY_INCREASE = 'salary_increase', _('افزایش حقوق')
+        OTHER = 'other', _('سایر')
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('در انتظار بررسی')
+        APPROVED = 'approved', _('تأیید شده')
+        REJECTED = 'rejected', _('رد شده')
+        CANCELLED = 'cancelled', _('لغو شده')
+
+    employee = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.CASCADE,
+        related_name='hr_requests',
+        verbose_name=_('پرسنل'),
+    )
+    request_type = models.CharField(
+        max_length=30,
+        choices=RequestType.choices,
+        default=RequestType.TRANSFER,
+        verbose_name=_('نوع درخواست'),
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+        verbose_name=_('وضعیت'),
+    )
+    requested_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ درخواست'))
+    target_value = models.CharField(
+        max_length=200, blank=True, verbose_name=_('ارزش هدف'),
+        help_text=_('مثلاً واحد/سمت/شیفت جدید، یا مبلغ برای افزایش حقوق'),
+    )
+    description = models.TextField(blank=True, verbose_name=_('شرح درخواست'))
+    reviewed_by = models.ForeignKey(
+        'employees.Employee',
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='reviewed_hr_requests',
+        verbose_name=_('بررسی‌کننده'),
+    )
+
+    class Meta:
+        verbose_name = _('درخواست اداری')
+        verbose_name_plural = _('درخواست‌های اداری')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['company', 'status']),
+            models.Index(fields=['company', 'request_type']),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.full_name} - {self.get_request_type_display()} ({self.get_status_display()})'
