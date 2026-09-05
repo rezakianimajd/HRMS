@@ -7,7 +7,6 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton,
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EventBusyIcon from '@mui/icons-material/EventBusy';
 import PersonOffIcon from '@mui/icons-material/PersonOff';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
@@ -15,7 +14,6 @@ import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import InputIcon from '@mui/icons-material/Input';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
-import LeaveForm from '../modules/dataEntry/LeaveForm';
 import AbsenceForm from '../modules/dataEntry/AbsenceForm';
 import SalaryTab from '../modules/dataEntry/SalaryTab';
 import BenefitTab from '../modules/dataEntry/BenefitTab';
@@ -23,7 +21,6 @@ import DeductionForm from '../modules/dataEntry/DeductionForm';
 import { SUB_TYPE_LABELS } from '../modules/dataEntry/config';
 
 const TYPE_META = {
-  leave: { icon: <EventBusyIcon />, color: '#6366f1', desc: 'ثبت مرخصی استحقاقی، استعلاجی، بدون حقوق و ...' },
   absence: { icon: <PersonOffIcon />, color: '#ef4444', desc: 'ثبت غیبت موجه و غیرموجه با تعداد روز' },
   salary: { icon: <PaymentsIcon />, color: '#f59e0b', desc: 'ثبت فیش حقوقی ماهانه، درون‌ریزی گروهی و لیست' },
   benefit: { icon: <CardGiftcardIcon />, color: '#10b981', desc: 'ثبت مزایای رفاهی و مناسبتی (عیدی، بن کارت، وام و ...)' },
@@ -31,7 +28,6 @@ const TYPE_META = {
 };
 
 const TABS = [
-  { key: 'leave', label: 'مرخصی', icon: <EventBusyIcon /> },
   { key: 'absence', label: 'غیبت', icon: <PersonOffIcon /> },
   { key: 'salary', label: 'حقوق', icon: <PaymentsIcon /> },
   { key: 'benefit', label: 'مزایا', icon: <CardGiftcardIcon /> },
@@ -64,7 +60,6 @@ const DataEntryPage = () => {
       queryClient.invalidateQueries({ queryKey: ['employee-transactions'] });
     };
     switch (active.key) {
-      case 'leave': return <LeaveForm onSuccess={onSuccess} />;
       case 'absence': return <AbsenceForm onSuccess={onSuccess} />;
       case 'salary': return <SalaryTab onSuccess={onSuccess} />;
       case 'benefit': return <BenefitTab onSuccess={onSuccess} />;
@@ -93,7 +88,7 @@ const DataEntryPage = () => {
         </Avatar>
         <Box>
           <Typography variant="h5" fontWeight={800}>ورود اطلاعات</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت تخصصی مرخصی، غیبت، حقوق، مزایا و کسورات پرسنل</Typography>
+          <Typography variant="body2" color="textSecondary">ثبت تخصصی غیبت، حقوق، مزایا و کسورات پرسنل</Typography>
         </Box>
       </Paper>
 

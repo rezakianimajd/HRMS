@@ -17,6 +17,7 @@ import BeachAccessIcon from '@mui/icons-material/BeachAccess';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import BulkExcelImport from '../core/components/ui/BulkExcelImport';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 /* Attendance module: register daily presence per employee, with monthly summary.
@@ -214,6 +215,15 @@ const AttendancePage = () => {
       </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+      {/* Bulk excel import — ثبت گروهی از طریق اکسل */}
+      <BulkExcelImport
+        importType="attendance_bulk"
+        title="درون‌ریزی گروهی حضور و غیاب"
+        description="با یک فایل اکسل، رکورد حضورِ چند پرسنل را همزمان ثبت کنید (کد پرسنلی، تاریخ شمسی، وضعیت و ...)."
+        accent="#0ea5e9"
+        invalidateKeys={['attendance-records', 'attendance-month-summary']}
+      />
 
       {/* Records table */}
       <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>

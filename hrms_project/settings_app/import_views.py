@@ -153,6 +153,10 @@ def import_upload(request):
             year = int(year) if year else None
             month = str(month) if month else None
             created, skipped = ImportEngine.import_benefits(valid_rows, company, year=year, month=month)
+        elif import_type == 'attendance_bulk':
+            created, skipped = ImportEngine.import_attendance(valid_rows, company)
+        elif import_type == 'leave_bulk':
+            created, skipped = ImportEngine.import_leaves(valid_rows, company)
         else:
             created, skipped = ImportEngine.import_simple(valid_rows, company, import_type)
     except Exception as e:

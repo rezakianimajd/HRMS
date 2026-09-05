@@ -236,6 +236,26 @@ class ImportEngine:
                 'EMP100', 'performance', '3000000', '300000', '2700000',
             ],
         },
+        'attendance_bulk': {
+            'label': 'حضور و غیاب گروهی',
+            'description': 'درون‌ریزی گروهی رکوردهای حضور روزانه (employee_code, date)',
+            'headers': [
+                'employee_code', 'date', 'status', 'check_in', 'check_out',
+                'work_hours', 'overtime_hours', 'note',
+            ],
+            'required': ['employee_code', 'date', 'status'],
+            'sample': ['EMP100', '1404/06/15', 'present', '08:00', '16:00', '8', '0', ''],
+        },
+        'leave_bulk': {
+            'label': 'مرخصی و مأموریت گروهی',
+            'description': 'درون‌ریزی گروهی درخواست‌های مرخصی/مأموریت (employee_code, start_date, end_date)',
+            'headers': [
+                'employee_code', 'leave_type', 'status', 'start_date', 'end_date',
+                'days', 'reason',
+            ],
+            'required': ['employee_code', 'leave_type', 'start_date', 'end_date'],
+            'sample': ['EMP100', 'annual', 'approved', '1404/06/01', '1404/06/05', '5', 'مسافرت'],
+        },
     }
 
     @staticmethod
@@ -665,6 +685,122 @@ class ImportEngine:
                 gross_amount=gross,
                 reserved_tax=tax,
                 paid_amount=paid,
+            )
+            created += 1
+        return created, skipped
+
+    @staticmethod
+    def import_attendance(rows, company):
+        """Bulk import daily attendance rows (employee_code, date, status)."""
+        from employees.models import Employee
+        from attendance.models import AttendanceRecord
+
+        ATTENDANCE_STATUS_MAP = {
+            'حضور': 'present', 'غیبت': 'absent', 'مرخصی': 'leave',
+            'مأموریت': 'mission', 'ماموریت': 'mission', 'تعطیل': 'holiday',
+            'present': 'present', 'absent': 'absent', 'leave': 'leave',
+            'mission': 'mission', 'holiday': 'holiday', '': 'present',
+        }
+        created = 0
+        skipped = []
+        for row in rows:
+            employee_code = str(row.get('employee_code', '')).strip()
+            status_val = str(row.get('status', '')).strip()
+            employee = Employee.objects.filter(company=company, employee_id=employee_code).first()
+            if not employee:
+                skipped.append(f'{employee_code}: پرسنل یافت نشد')
+                continue
+
+            att_date = ImportEngine.parse_jalali_date(row.get('date'))
+            if not att_date:
+                skipped.append(f'{employee_code}: تاریخ نامعتبر')
+                continue
+
+            if AttendanceRecord.objects.filter(company=company, employee=employee, date=att_date).exists():
+                skipped.append(f'{employee_code}: رکورد {att_date} تکراری')
+                continue
+
+            def _time(v):
+                if v in (None, ''):
+                    return None
+                s = str(v).strip()
+                parts = s.split(':')
+                if len(parts) == 2:
+                    try:
+                        return f'{int(parts[0])}:{parts[1]}'
+                    except ValueError:
+                        return None
+                return None
+
+            def _num(v):
+                try:
+                    return float(v) if v not in (None, '') else 0
+                except (ValueError, TypeError):
+                    return 0
+
+            AttendanceRecord.objects.create(
+                company=company,
+                employee=employee,
+                date=att_date,
+                status=ATTENDANCE_STATUS_MAP.get(status_val, 'present'),
+                check_in=_time(row.get('check_in')),
+                check_out=_time(row.get('check_out')),
+                work_hours=_num(row.get('work_hours')),
+                overtime_hours=_num(row.get('overtime_hours')),
+                note=str(row.get('note', '')).strip() or '',
+            )
+            created += 1
+        return created, skipped
+
+    @staticmethod
+    def import_leaves(rows, company):
+        """Bulk import leave/mission requests (employee_code, start_date, end_date)."""
+        from employees.models import Employee
+        from leaves.models import LeaveRequest
+
+        LEAVE_TYPE_MAP = {
+            'استحقاقی': 'annual', 'استعلاجی': 'sick', 'مأموریت': 'mission',
+            'ماموریت': 'mission', 'بدون حقوق': 'unpaid', 'ازدواج': 'marriage',
+            'زایمان': 'maternity', 'سایر': 'other',
+            'annual': 'annual', 'sick': 'sick', 'mission': 'mission',
+            'unpaid': 'unpaid', 'marriage': 'marriage', 'maternity': 'maternity',
+            'other': 'other', '': 'annual',
+        }
+        LEAVE_STATUS_MAP = {
+            'در انتظار تأیید': 'pending', 'تأیید شده': 'approved',
+            'رد شده': 'rejected', 'لغو شده': 'cancelled',
+            'pending': 'pending', 'approved': 'approved',
+            'rejected': 'rejected', 'cancelled': 'cancelled', '': 'approved',
+        }
+        created = 0
+        skipped = []
+        for row in rows:
+            employee_code = str(row.get('employee_code', '')).strip()
+            employee = Employee.objects.filter(company=company, employee_id=employee_code).first()
+            if not employee:
+                skipped.append(f'{employee_code}: پرسنل یافت نشد')
+                continue
+
+            start = ImportEngine.parse_jalali_date(row.get('start_date'))
+            end = ImportEngine.parse_jalali_date(row.get('end_date'))
+            if not start or not end:
+                skipped.append(f'{employee_code}: تاریخ شروع/پایان نامعتبر')
+                continue
+
+            try:
+                days = float(row.get('days')) if row.get('days') not in (None, '') else (end - start).days + 1
+            except (ValueError, TypeError):
+                days = (end - start).days + 1
+
+            LeaveRequest.objects.create(
+                company=company,
+                employee=employee,
+                leave_type=LEAVE_TYPE_MAP.get(str(row.get('leave_type', '')).strip(), 'annual'),
+                status=LEAVE_STATUS_MAP.get(str(row.get('status', '')).strip(), 'approved'),
+                start_date=start,
+                end_date=end,
+                days=days,
+                reason=str(row.get('reason', '')).strip() or '',
             )
             created += 1
         return created, skipped
