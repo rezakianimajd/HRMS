@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Grid, Card, CardContent, CardActions,
   IconButton, Tooltip, Chip, Button, CircularProgress, Paper, Avatar
@@ -19,11 +19,92 @@ import { useEmployee } from '../../hooks/useEmployees';
 import DocumentUploadModal from './DocumentUploadModal';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import EmployeeAvatar from '../ui/EmployeeAvatar';
+import { toJalali } from '../../utils/dateUtils';
+import FolderSharedIcon from '@mui/icons-material/FolderShared';
+
+// Render company-archive documents that are linked to this employee.
+const CompanyLinkedDocs = ({ employeeId }) => {
+  const { t } = useTranslation();
+  const { data, isLoading } = useQuery({
+    queryKey: ['company-documents', employeeId],
+    queryFn: () => axiosInstance.get(`/organization-documents/?employee_id=${employeeId}`).then(r => r.data),
+  });
+  const linked = Array.isArray(data) ? data : data?.results || [];
+
+  if (isLoading) return <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={26} /></Box>;
+
+  if (linked.length === 0) {
+    return (
+      <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: 2, borderColor: 'rgba(245,158,11,0.2)' }}>
+        <Typography variant="body2" color="textSecondary">
+          سند سازمانی به این پرسنل متصل نشده است. از «بایگانی اسناد سازمان» میتوانید سند مرتبط را به او اتصال دهید.
+        </Typography>
+      </Paper>
+    );
+  }
+
+  return (
+    <Grid container spacing={2}>
+      {linked.map(doc => (
+        <Grid item xs={12} sm={6} md={4} key={doc.id}>
+          <Card variant="outlined" sx={{
+            position: 'relative',
+            borderColor: 'rgba(245,158,11,0.25)',
+            background: 'linear-gradient(160deg, rgba(245,158,11,0.06), rgba(255,255,255,0.5))',
+            transition: 'all 0.2s ease',
+            '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(245,158,11,0.15)' },
+          }}>
+            <CardContent>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(245,158,11,0.15)', color: '#b45309' }}>
+                    <FolderSharedIcon sx={{ fontSize: 17 }} />
+                  </Avatar>
+                  <Typography variant="subtitle2" noWrap sx={{ maxWidth: 160 }}>{doc.title}</Typography>
+                </Box>
+                {archiveStatusChip(doc)}
+              </Box>
+              {doc.category_display && (
+                <Chip label={doc.category_display} size="small" variant="outlined"
+                  sx={{ height: 20, fontSize: '0.65rem', color: '#b45309', borderColor: 'rgba(245,158,11,0.3)', mb: 1 }} />
+              )}
+              {doc.reference_number && (
+                <Typography variant="caption" color="textSecondary" display="block">
+                  ثبت: {doc.reference_number}
+                </Typography>
+              )}
+              {doc.issue_date && (
+                <Typography variant="caption" color="textSecondary" display="block">
+                  صدور: {toJalali(doc.issue_date)}
+                </Typography>
+              )}
+              {doc.file_url && (
+                <Box sx={{ mt: 1 }}>
+                  <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
+                    startIcon={<DownloadIcon fontSize="small" />}
+                    sx={{ color: '#b45309', fontSize: '0.72rem' }}>
+                    دریافت
+                  </Button>
+                </Box>
+              )}
+            </CardContent>
+          </Card>
+        </Grid>
+      ))}
+    </Grid>
+  );
+};
 
 const fileIcon = (ext) => {
   if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) return <ImageIcon />;
   if (ext === '.pdf') return <PictureAsPdfIcon />;
   return <DescriptionIcon />;
+};
+
+const archiveStatusChip = (doc) => {
+  if (!doc.expiry_date) return <Chip label="بدون انقضا" color="default" size="small" variant="outlined" />;
+  if (doc.is_expired) return <Chip label="منقضی" color="error" size="small" />;
+  return <Chip label="معتبر" color="success" size="small" variant="outlined" />;
 };
 
 const expiryChip = (doc, t) => {
@@ -138,6 +219,30 @@ const DocumentsTab = ({ employeeId }) => {
           ))}
         </Grid>
       )}
+
+      {/* ===== Related company-archive documents ===== */}
+      <Box sx={{ mt: 4 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+          <Typography variant="h6" sx={{ color: '#b45309' }}>
+            اسناد سازمانی مرتبط
+          </Typography>
+          <Button size="small" variant="outlined"
+            onClick={() => {
+              if (window.location.pathname !== '/documents') {
+                window.location.href = '/documents';
+              }
+            }}
+            sx={{ color: '#b45309', borderColor: 'rgba(245,158,11,0.4)' }}
+          >
+            مشاهده بایگانی کامل ←
+          </Button>
+        </Box>
+        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5 }}>
+          اسنادی که در بایگانی سازمان به ‌این پرسنل متصل شده‌اند
+        </Typography>
+
+        <CompanyLinkedDocs employeeId={employeeId} />
+      </Box>
 
       {showUpload && (
         <DocumentUploadModal

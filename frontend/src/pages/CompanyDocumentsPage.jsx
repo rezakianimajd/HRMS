@@ -21,8 +21,10 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import ArchiveIcon from '@mui/icons-material/Archive';
+import PersonIcon from '@mui/icons-material/Person';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import { useEmployees } from '../core/hooks/useEmployees';
 
 const CATEGORIES = [
   { value: 'contract', label: 'قرارداد سازمانی', color: '#6366f1' },
@@ -41,6 +43,7 @@ const emptyForm = {
   id: null,
   title: '',
   category: 'contract',
+  employee: '',
   reference_number: '',
   issue_date: '',
   expiry_date: '',
@@ -64,6 +67,8 @@ const CompanyDocumentsPage = () => {
     queryFn: () => axiosInstance.get('/organization-documents/').then(r => r.data),
   });
   const items = Array.isArray(data) ? data : data?.results || [];
+  const { data: employees } = useEmployees({ is_active: true });
+  const empList = Array.isArray(employees) ? employees : employees?.results || [];
 
   const filtered = items.filter(doc => {
     const term = search.trim().toLowerCase();
@@ -87,6 +92,7 @@ const CompanyDocumentsPage = () => {
       const fd = new FormData();
       fd.append('title', payload.title);
       fd.append('category', payload.category);
+      if (payload.employee) fd.append('employee', payload.employee);
       fd.append('reference_number', payload.reference_number || '');
       fd.append('issue_date', payload.issue_date || '');
       fd.append('expiry_date', payload.expiry_date || '');
@@ -122,6 +128,7 @@ const CompanyDocumentsPage = () => {
       id: doc.id,
       title: doc.title || '',
       category: doc.category || 'contract',
+      employee: doc.employee || '',
       reference_number: doc.reference_number || '',
       issue_date: doc.issue_date || '',
       expiry_date: doc.expiry_date || '',
@@ -253,6 +260,11 @@ const CompanyDocumentsPage = () => {
                       </Typography>
                     </Tooltip>
 
+                    {doc.employee_name && (
+                      <Typography variant="caption" color="#8b5cf6" display="flex" alignItems="center" gap={0.5} sx={{ mt: 0.5 }}>
+                        <PersonIcon sx={{ fontSize: 13 }} /> {doc.employee_name}
+                      </Typography>
+                    )}
                     {doc.reference_number && (
                       <Typography variant="caption" color="textSecondary" display="flex" alignItems="center" gap={0.5} sx={{ mt: 0.5 }}>
                         <DescriptionIcon sx={{ fontSize: 13 }} /> {doc.reference_number}
@@ -344,6 +356,14 @@ const CompanyDocumentsPage = () => {
             <Select value={form.category} label="دسته‌بندی"
               onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
               {CATEGORIES.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl fullWidth size="small">
+            <InputLabel>پرسنل مرتبط (اختیاری)</InputLabel>
+            <Select value={form.employee || ''} label="پرسنل مرتبط (اختیاری)"
+              onChange={e => setForm(p => ({ ...p, employee: e.target.value }))}>
+              <MenuItem value="">— بدون پرسنل —</MenuItem>
+              {empList.map(emp => <MenuItem key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
           <Box sx={{ display: 'flex', gap: 1.5 }}>
