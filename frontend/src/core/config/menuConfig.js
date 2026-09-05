@@ -68,8 +68,8 @@ const menuConfig = [
     title: 'مالی',
     color: '#3b82f6',
     items: [
-      { id: 'payslips', title: 'فیش حقوق', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: true, ready: false },
-      { id: 'finance-reports', title: 'گزارش مالی', icon: <PaymentsIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: false },
+      { id: 'payslips', title: 'فیش حقوق', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: true, ready: true },
+      { id: 'finance-reports', title: 'گزارش مالی', icon: <PaymentsIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
     ],
   },
   {

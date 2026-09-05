@@ -13,6 +13,8 @@ import ComingSoonPage from './pages/ComingSoonPage';
 import AttendancePage from './pages/AttendancePage';
 import LeavePage from './pages/LeavePage';
 import RequestsPage from './pages/RequestsPage';
+import PayslipsPage from './pages/PayslipsPage';
+import FinanceReportsPage from './pages/FinanceReportsPage';
 import CompanyDocumentsPage from './pages/CompanyDocumentsPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
@@ -66,8 +68,8 @@ const AppRoutes = () => {
       {/* /reports moved into dashboard (ReportsPage embedded). Kept as a redirect for
           backward-compatible bookmarks/old links. */}
       <Route path="/reports" element={<Navigate to="/dashboard" replace />} />
-      <Route path="/payslips" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
-      <Route path="/finance-reports" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/payslips" element={<ProtectedLayout><PayslipsPage /></ProtectedLayout>} />
+      <Route path="/finance-reports" element={<ProtectedLayout><FinanceReportsPage /></ProtectedLayout>} />
       <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
       <Route path="/data-entry" element={<ProtectedLayout><DataEntryPage /></ProtectedLayout>} />
