@@ -13,8 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import BeachAccessIcon from '@mui/icons-material/BeachAccess';
-import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
+import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import BulkExcelImport from '../core/components/ui/BulkExcelImport';
@@ -35,12 +34,11 @@ const emptyForm = {
   note: '',
 };
 
+// Note: مرخصی و مأموریت از صفحهٔ خودشان (مرخصی و مأموریت) ثبت میشوند.
 const STATUS_META = {
   present: { label: 'حضور', color: '#10b981', icon: <CheckCircleIcon fontSize="small" /> },
   absent: { label: 'غیبت', color: '#ef4444', icon: <EventBusyIcon fontSize="small" /> },
-  leave: { label: 'مرخصی', color: '#f59e0b', icon: <BeachAccessIcon fontSize="small" /> },
-  mission: { label: 'مأموریت', color: '#3b82f6', icon: <FlightTakeoffIcon fontSize="small" /> },
-  holiday: { label: 'تعطیل', color: '#94a3b8', icon: <EventBusyIcon fontSize="small" /> },
+  holiday: { label: 'تعطیل', color: '#94a3b8', icon: <HolidayVillageIcon fontSize="small" /> },
 };
 
 const AttendancePage = () => {
@@ -173,7 +171,7 @@ const AttendancePage = () => {
         <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
           {stat('روزهای حضور', summary.present_days, '#10b981', <CheckCircleIcon />)}
           {stat('غیبت', summary.absent_days, '#ef4444', <EventBusyIcon />)}
-          {stat('مرخصی', summary.leave_days, '#f59e0b', <BeachAccessIcon />)}
+          {stat('تعطیل', summary.holiday_days ?? summary.by_status?.holiday ?? 0, '#94a3b8', <HolidayVillageIcon />)}
           <Grid item xs={12} md={3}>
             <Paper sx={{
               p: 2, borderRadius: 2.5, height: '100%',
@@ -264,8 +262,8 @@ const AttendancePage = () => {
                         <Chip size="small" label={rec.status_display || sm.label} icon={sm.icon}
                           sx={{ bgcolor: `${sm.color}15`, color: sm.color, border: `1px solid ${sm.color}30`, fontWeight: 700 }} />
                       </td>
-                      <td style={{ padding: '10px 14px' }}>{formatPersianNumber(rec.check_in || '—')}</td>
-                      <td style={{ padding: '10px 14px' }}>{formatPersianNumber(rec.check_out || '—')}</td>
+                      <td style={{ padding: '10px 14px' }}><span dir="ltr">{rec.check_in || '—'}</span></td>
+                      <td style={{ padding: '10px 14px' }}><span dir="ltr">{rec.check_out || '—'}</span></td>
                       <td style={{ padding: '10px 14px' }}>{rec.work_hours ? formatPersianNumber(rec.work_hours) : '—'}</td>
                       <td style={{ padding: '10px 14px' }}>{rec.overtime_hours ? formatPersianNumber(rec.overtime_hours) : '—'}</td>
                       <td style={{ padding: '10px 14px', maxWidth: 180 }}>
@@ -316,14 +314,31 @@ const AttendancePage = () => {
           {(form.status === 'present') && (
             <>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-                <TextField fullWidth size="small" label="ساعت ورود" type="time"
+                <TextField
+                  fullWidth size="small" label="ساعت ورود"
+                  placeholder="۰۸:۰۰"
+                  helperText="فرمت ۲۴ ساعته، مثال ۰۸:۰۰ یا ۱۴:۳۰"
                   value={form.check_in || ''}
-                  InputLabelProps={{ shrink: true }}
-                  onChange={e => setForm(p => ({ ...p, check_in: e.target.value }))} />
-                <TextField fullWidth size="small" label="ساعت خروج" type="time"
+                  onChange={e => {
+                    // هم‌روش فرم پرسنلی: فقط ارقام/دو‌نقطه؛ بعد از دو رقم خودکار «:» اضافه می‌شود
+                    let v = e.target.value.replace(/[^\d:]/g, '');
+                    if (v.length === 2 && !v.includes(':') && e.target.value.length > 2) v = v + ':';
+                    setForm(p => ({ ...p, check_in: v.slice(0, 5) }));
+                  }}
+                  inputProps={{ maxLength: 5, inputMode: 'numeric', style: { direction: 'ltr' } }}
+                />
+                <TextField
+                  fullWidth size="small" label="ساعت خروج"
+                  placeholder="۱۶:۳۰"
+                  helperText="فرمت ۲۴ ساعته، مثال ۰۸:۰۰ یا ۱۴:۳۰"
                   value={form.check_out || ''}
-                  InputLabelProps={{ shrink: true }}
-                  onChange={e => setForm(p => ({ ...p, check_out: e.target.value }))} />
+                  onChange={e => {
+                    let v = e.target.value.replace(/[^\d:]/g, '');
+                    if (v.length === 2 && !v.includes(':') && e.target.value.length > 2) v = v + ':';
+                    setForm(p => ({ ...p, check_out: v.slice(0, 5) }));
+                  }}
+                  inputProps={{ maxLength: 5, inputMode: 'numeric', style: { direction: 'ltr' } }}
+                />
               </Stack>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
                 <TextField fullWidth size="small" label="ساعت کاری" type="number" value={form.work_hours}

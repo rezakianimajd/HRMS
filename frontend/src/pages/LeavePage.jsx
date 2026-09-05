@@ -14,6 +14,7 @@ import CheckIcon from '@mui/icons-material/Check';
 import CloseIcon from '@mui/icons-material/Close';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
 import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import BulkExcelImport from '../core/components/ui/BulkExcelImport';
@@ -27,6 +28,7 @@ const emptyForm = {
   start_date: '',
   end_date: '',
   days: 1,
+  hours: '',
   reason: '',
 };
 
@@ -34,6 +36,7 @@ const LEAVE_META = {
   annual: { label: 'استحقاقی', color: '#10b981', icon: <EventBusyIcon fontSize="small" /> },
   sick: { label: 'استعلاجی', color: '#f59e0b', icon: <EventBusyIcon fontSize="small" /> },
   mission: { label: 'مأموریت', color: '#3b82f6', icon: <FlightTakeoffIcon fontSize="small" /> },
+  hourly: { label: 'ساعتی', color: '#0ea5e9', icon: <AccessTimeIcon fontSize="small" /> },
   unpaid: { label: 'بدون حقوق', color: '#64748b', icon: <EventBusyIcon fontSize="small" /> },
   marriage: { label: 'ازدواج', color: '#ec4899', icon: <EventBusyIcon fontSize="small" /> },
   maternity: { label: 'زایمان', color: '#8b5cf6', icon: <EventBusyIcon fontSize="small" /> },
@@ -73,10 +76,20 @@ const LeavePage = () => {
   });
 
   const saveMutation = useMutation({
-    mutationFn: (payload) =>
-      payload.id
-        ? axiosInstance.patch(`/leave-requests/${payload.id}/`, payload)
-        : axiosInstance.post('/leave-requests/', payload),
+    mutationFn: (payload) => {
+      // برای مرخصی ساعتی: hours ارسال و days صفر شود
+      const body = { ...payload };
+      if (body.leave_type === 'hourly') {
+        body.hours = Number(body.hours || 1);
+        body.days = 0;
+      } else {
+        body.hours = null;
+        body.days = Number(body.days || 1);
+      }
+      return payload.id
+        ? axiosInstance.patch(`/leave-requests/${payload.id}/`, body)
+        : axiosInstance.post('/leave-requests/', body);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leave-requests'] });
       queryClient.invalidateQueries({ queryKey: ['leave-balance'] });
@@ -196,7 +209,7 @@ const LeavePage = () => {
                   <th style={{ padding: '10px 14px' }}>نوع</th>
                   <th style={{ padding: '10px 14px' }}>از</th>
                   <th style={{ padding: '10px 14px' }}>تا</th>
-                  <th style={{ padding: '10px 14px' }}>روزها</th>
+                  <th style={{ padding: '10px 14px' }}>روزها/ساعت</th>
                   <th style={{ padding: '10px 14px' }}>وضعیت</th>
                   <th style={{ padding: '10px 14px' }}>دلیل</th>
                   <th style={{ padding: '10px 14px' }}>اقدامات</th>
@@ -223,7 +236,11 @@ const LeavePage = () => {
                       </td>
                       <td style={{ padding: '10px 14px' }}>{r.start_date || '—'}</td>
                       <td style={{ padding: '10px 14px' }}>{r.end_date || '—'}</td>
-                      <td style={{ padding: '10px 14px' }}>{formatPersianNumber(r.days)}</td>
+                      <td style={{ padding: '10px 14px' }}>
+                        {r.leave_type === 'hourly'
+                          ? `${formatPersianNumber(r.hours || r.days)} ساعت`
+                          : `${formatPersianNumber(r.days)} روز`}
+                      </td>
                       <td style={{ padding: '10px 14px' }}>
                         <Chip size="small" label={r.status_display || sm.label}
                           sx={{ bgcolor: `${sm.color}15`, color: sm.color, fontWeight: 700 }} />
@@ -285,8 +302,15 @@ const LeavePage = () => {
           <JalaliDatePicker fullWidth label="تاریخ پایان *" value={form.end_date}
             onChange={g => setForm(p => ({ ...p, end_date: g }))} />
 
-          <TextField fullWidth size="small" label="تعداد روز *" type="number" value={form.days}
-            onChange={e => setForm(p => ({ ...p, days: Number(e.target.value) }))} />
+          {form.leave_type === 'hourly' ? (
+            <TextField fullWidth size="small" label="تعداد ساعت *" type="number"
+              value={form.hours || 1}
+              inputProps={{ step: '0.5', min: 0.5 }}
+              onChange={e => setForm(p => ({ ...p, hours: Number(e.target.value) }))} />
+          ) : (
+            <TextField fullWidth size="small" label="تعداد روز *" type="number" value={form.days}
+              onChange={e => setForm(p => ({ ...p, days: Number(e.target.value) }))} />
+          )}
 
           <TextField fullWidth size="small" label="دلیل/توضیح" multiline rows={2} value={form.reason}
             onChange={e => setForm(p => ({ ...p, reason: e.target.value }))} />

@@ -11,6 +11,7 @@ class LeaveRequest(BaseModel):
         ANNUAL = 'annual', _('مرخصی استحقاقی')
         SICK = 'sick', _('مرخصی استعلاجی')
         MISSION = 'mission', _('مأموریت')
+        HOURLY = 'hourly', _('مرخصی ساعتی')
         UNPAID = 'unpaid', _('مرخصی بدون حقوق')
         MARRIAGE = 'marriage', _('مرخصی ازدواج')
         MATERNITY = 'maternity', _('مرخصی زایمان')
@@ -45,6 +46,10 @@ class LeaveRequest(BaseModel):
     days = models.DecimalField(
         max_digits=5, decimal_places=1, default=1,
         verbose_name=_('تعداد روز'),
+    )
+    hours = models.DecimalField(
+        max_digits=5, decimal_places=1, null=True, blank=True,
+        verbose_name=_('ساعت (برای مرخصی ساعتی)'),
     )
     reason = models.TextField(blank=True, verbose_name=_('دلیل/توضیح'))
     approved_by = models.ForeignKey(
