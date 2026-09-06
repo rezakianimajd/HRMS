@@ -93,6 +93,17 @@ class SalaryRecordViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         company = _get_company(self.request)
         instance = serializer.save(company=company)
+
+        # ۲c) اگر برای این کارمند وام «فعال» وجود دارد و کاربر مبلغ قسط را صریح
+        # تنظیم نکرده، قسط اولین وام فعال به‌صورت خودکار لحاظ می‌شود.
+        if not instance.employee_loan:
+            active_loan = (EmployeeLoan.objects
+                           .filter(company=company, employee_id=instance.employee_id,
+                                   status=EmployeeLoan.LoanStatus.ACTIVE)
+                           .order_by('-grant_date').first())
+            if active_loan:
+                instance.employee_loan = active_loan.installment_amount
+
         instance.calculate_totals()
         instance.save()
 

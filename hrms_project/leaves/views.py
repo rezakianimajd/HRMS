@@ -45,14 +45,46 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
-        """Approve a pending leave request (admin/HR only by permission)."""
+        """Approve a pending leave request (admin/HR only by permission).
+        On approval, sync daily attendance rows with status=leave so the
+        presence calendar/month summary reflects the leave period."""
+        from datetime import timedelta
         from core.engines.permission_engine import require
+        from attendance.models import AttendanceRecord
+
         require(request.user, 'can_approve_leaves')
         obj = self.get_object()
         if obj.status != LeaveRequest.Status.PENDING:
-            return Response({'error': 'فقط درخواستهای در انتظار قابل تأیید هستند.'}, status=400)
-        obj.status = LeaveRequest.Status.APPROVED
-        obj.save(update_fields=['status', 'updated_at'])
+            return Response({'error': 'فقط درخواست‌های در انتظار قابل تأیید هستند.'}, status=400)
+
+        try:
+            from django.db import transaction
+            with transaction.atomic():
+                obj.status = LeaveRequest.Status.APPROVED
+                obj.save(update_fields=['status', 'updated_at'])
+
+                # Sync attendance for every date in [start, end] IF there is no
+                # conflicting record that is already marked 'present'.
+                cursor = obj.start_date
+                while cursor <= obj.end_date:
+                    existing = AttendanceRecord.objects.filter(
+                        company=obj.company, employee=obj.employee, date=cursor,
+                    ).first()
+                    if existing is None:
+                        AttendanceRecord.objects.create(
+                            company=obj.company,
+                            employee=obj.employee,
+                            date=cursor,
+                            status=AttendanceRecord.Status.LEAVE,
+                            note=f'مرخصی تأییدشده ({obj.get_leave_type_display()})',
+                        )
+                    elif existing.status == AttendanceRecord.Status.PRESENT:
+                        # keep actual clock-in; do not overwrite presence
+                        pass
+                    cursor += timedelta(days=1)
+        except Exception as e:
+            return Response({'error': f'خطا در همگام‌سازی مرخصی: {str(e)[:120]}'}, status=500)
+
         return Response(LeaveRequestSerializer(obj).data)
 
     @action(detail=True, methods=['post'])
@@ -62,7 +94,7 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         require(request.user, 'can_approve_leaves')
         obj = self.get_object()
         if obj.status != LeaveRequest.Status.PENDING:
-            return Response({'error': 'فقط درخواستهای در انتظار قابل رد هستند.'}, status=400)
+            return Response({'error': 'فقط درخواست‌های در انتظار قابل رد هستند.'}, status=400)
         obj.status = LeaveRequest.Status.REJECTED
         obj.save(update_fields=['status', 'updated_at'])
         return Response(LeaveRequestSerializer(obj).data)
