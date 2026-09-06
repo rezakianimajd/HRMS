@@ -10,6 +10,9 @@ import AddIcon from '@mui/icons-material/Add';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import DrawIcon from '@mui/icons-material/Draw';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
+import PrintIcon from '@mui/icons-material/Print';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -25,6 +28,8 @@ const ContractsPage = () => {
   const [compareInfo, setCompareInfo] = useState(null);
   const [signTarget, setSignTarget] = useState(null);
   const [compareWith, setCompareWith] = useState('');
+  const [textTarget, setTextTarget] = useState(null);
+  const [textValue, setTextValue] = useState('');
   const [form, setForm] = useState({
     employee: '', version: 1, year: 1404, contract_type: '',
     start_date: '', end_date: '', base_salary: '', description: '',
@@ -54,6 +59,37 @@ const ContractsPage = () => {
     mutationFn: ({ id, signed_by }) => axiosInstance.post(`/contract-versions/${id}/sign/`, { signed_by }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contract-versions'] }),
   });
+
+  const generateTextMutation = useMutation({
+    mutationFn: (id) => axiosInstance.post(`/contract-versions/${id}/generate_text/`),
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ['contract-versions'] });
+      setTextTarget(data);
+      setTextValue(data.contract_text || '');
+    },
+  });
+
+  const saveTextMutation = useMutation({
+    mutationFn: ({ id, contract_text }) => axiosInstance.patch(`/contract-versions/${id}/`, { contract_text }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contract-versions'] });
+      setTextTarget(null);
+    },
+  });
+
+  const openText = (contract) => {
+    setTextTarget(contract);
+    setTextValue(contract.contract_text || '');
+  };
+
+  const handlePrint = () => {
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    w.document.write(`<!doctype html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>قرارداد</title><style>body{font-family:Tahoma,Vazirmatn,sans-serif;direction:rtl;white-space:pre-wrap;padding:32px;line-height:2;}</style></head><body>${textValue}</body></html>`);
+    w.document.close();
+    w.focus();
+    w.print();
+  };
 
   const compareQuery = useQuery({
     queryKey: ['contract-compare', compareInfo?.id, compareWith],
@@ -162,6 +198,19 @@ const ContractsPage = () => {
                           </IconButton>
                         </Tooltip>
                       )}
+                      {c.contract_text ? (
+                        <Tooltip title="مشاهده / ویرایش متن">
+                          <IconButton size="small" color="info" onClick={() => openText(c)}>
+                            <VisibilityIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      ) : (
+                        <Tooltip title="تولید متن قرارداد">
+                          <IconButton size="small" color="warning" onClick={() => generateTextMutation.mutate(c.id)}>
+                            <TextFieldsIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
@@ -264,6 +313,41 @@ const ContractsPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => { setCompareInfo(null); setCompareWith(''); }}>بستن</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Contract text dialog (view / edit / print) */}
+      <Dialog open={!!textTarget} onClose={() => setTextTarget(null)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span>متن قرارداد {textTarget ? `(نسخه ${textTarget.version} - ${textTarget.year})` : ''}</span>
+          <Button variant="contained" size="small" startIcon={<PrintIcon />} onClick={handlePrint}
+            sx={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
+            چاپ
+          </Button>
+        </DialogTitle>
+        <DialogContent>
+          <TextField
+            fullWidth multiline minRows={18} maxRows={30}
+            variant="outlined" size="small"
+            label="متن قرارداد"
+            value={textValue}
+            dir="rtl"
+            onChange={(e) => setTextValue(e.target.value)}
+            sx={{
+              mt: 1,
+              '& textarea': { fontFamily: 'Tahoma, Vazirmatn, sans-serif', lineHeight: 2, textAlign: 'right' },
+            }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setTextTarget(null)}>بستن</Button>
+          <Button
+            variant="contained"
+            onClick={() => textTarget && saveTextMutation.mutate({ id: textTarget.id, contract_text: textValue })}
+            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+          >
+            ذخیره متن
+          </Button>
         </DialogActions>
       </Dialog>
 

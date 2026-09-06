@@ -763,6 +763,19 @@ class ContractVersion(BaseModel):
         null=True, blank=True, verbose_name=_('زمان امضای دیجیتال'),
     )
 
+    # Salary & benefits breakdown (for the standard contract text).
+    attraction_allowance = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('حق جذب (ریال)'))
+    job_allowance = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('فوق‌العاده شغل (ریال)'))
+    housing_allowance = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('حق مسکن (ریال)'))
+    meal_voucher = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('بن و خواربار (ریال)'))
+    travel_cost = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('ایاب و ذهاب (ریال)'))
+    family_allowance = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('حق عائله‌مندی (ریال)'))
+    children_allowance = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('حق اولاد (ریال)'))
+
+    # The fully rendered contract text (generated from the standard template,
+    # editable and printable from the frontend).
+    contract_text = models.TextField(blank=True, verbose_name=_('متن کامل قرارداد'))
+
     class Meta:
         verbose_name = _('نسخه قرارداد')
         verbose_name_plural = _('نسخه‌های قرارداد')

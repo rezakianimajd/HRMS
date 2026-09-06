@@ -243,6 +243,17 @@ class ContractVersionViewSet(BaseCompanyViewSet):
         obj.save(update_fields=['signed_by', 'signed_at', 'updated_at'])
         return Response(ContractVersionSerializer(obj).data)
 
+    @action(detail=True, methods=['post'])
+    def generate_text(self, request, pk=None):
+        """Render the standard 14-article contract text from current fields."""
+        from employees.engines.contract_engine import render_contract
+
+        obj = self.get_object()
+        company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+        obj.contract_text = render_contract(obj, company)
+        obj.save(update_fields=['contract_text', 'updated_at'])
+        return Response(ContractVersionSerializer(obj).data)
+
 
 class EmploymentChangeReadViewSet(viewsets.ReadOnlyModelViewSet):
     """Alias for read-only employment change history (used in profile)."""
