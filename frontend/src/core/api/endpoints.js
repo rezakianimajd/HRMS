@@ -61,6 +61,24 @@ const endpoints = {
     markRead: (id) => `${API_BASE}/notifications/${id}/mark_read/`,
     sync: `${API_BASE}/notifications/sync/`,
   },
+  assets: {
+    list: `${API_BASE}/assets/`,
+    detail: (id) => `${API_BASE}/assets/${id}/`,
+    return: (id) => `${API_BASE}/assets/${id}/return_asset/`,
+  },
+  lifecycleChecklists: {
+    list: `${API_BASE}/lifecycle-checklists/`,
+    detail: (id) => `${API_BASE}/lifecycle-checklists/${id}/`,
+    toggleItem: (id) => `${API_BASE}/lifecycle-checklists/${id}/toggle_item/`,
+  },
+  checklistItems: {
+    list: `${API_BASE}/checklist-items/`,
+  },
+  calendarEvents: {
+    list: `${API_BASE}/calendar-events/`,
+    detail: (id) => `${API_BASE}/calendar-events/${id}/`,
+    feed: `${API_BASE}/calendar/feed/`,
+  },
 };
 
 export default endpoints;

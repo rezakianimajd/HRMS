@@ -31,6 +31,9 @@ import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
 import SupplementaryInsurancePage from './pages/SupplementaryInsurancePage';
 import LoansPage from './pages/LoansPage';
+import CalendarPage from './pages/CalendarPage';
+import AssetsPage from './pages/AssetsPage';
+import LifecyclePage from './pages/LifecyclePage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -96,6 +99,9 @@ const AppRoutes = () => {
       <Route path="/attendance" element={<ProtectedLayout><AttendancePage /></ProtectedLayout>} />
       <Route path="/leaves" element={<ProtectedLayout><LeavePage /></ProtectedLayout>} />
       <Route path="/requests" element={<ProtectedLayout><RequestsPage /></ProtectedLayout>} />
+      <Route path="/calendar" element={<ProtectedLayout><CalendarPage /></ProtectedLayout>} />
+      <Route path="/assets" element={<ProtectedLayout><AssetsPage /></ProtectedLayout>} />
+      <Route path="/lifecycle" element={<ProtectedLayout><LifecyclePage /></ProtectedLayout>} />
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />

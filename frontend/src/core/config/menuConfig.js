@@ -9,6 +9,9 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import BeachAccessIcon from '@mui/icons-material/BeachAccess';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
@@ -64,6 +67,9 @@ const menuConfig = [
       { id: 'attendance', title: 'حضور و غیاب', icon: <AccessTimeFilledIcon />, path: '/attendance', color: '#0ea5e9', primary: false, ready: true },
       { id: 'leaves', title: 'مرخصی و مأموریت', icon: <BeachAccessIcon />, path: '/leaves', color: '#06b6d4', primary: false, ready: true },
       { id: 'requests', title: 'درخواست‌های اداری', icon: <FactCheckIcon />, path: '/requests', color: '#f59e0b', primary: false, ready: true },
+      { id: 'calendar', title: 'تقویم سازمانی', icon: <CalendarMonthIcon />, path: '/calendar', color: '#ec4899', primary: false, ready: true },
+      { id: 'assets', title: 'اموال و تجهیزات', icon: <Inventory2Icon />, path: '/assets', color: '#10b981', primary: false, ready: true },
+      { id: 'lifecycle', title: 'ورود و خروج', icon: <PlaylistAddCheckIcon />, path: '/lifecycle', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {

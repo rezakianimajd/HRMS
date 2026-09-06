@@ -62,6 +62,7 @@ TENANT_APPS = [
     'settings_app',                    # Renamed from 'settings' to avoid conflict
     'correspondences',
     'notifications',                   # Notification Center
+    'lifecycle',                       # Employee lifecycle (on/offboarding, assets, calendar)
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]
