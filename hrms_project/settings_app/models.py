@@ -138,6 +138,16 @@ class CompanyProfile(models.Model):
         blank=True, null=True,
         verbose_name=_('توضیحات'),
     )
+    # Legal representative / CEO (used in contracts).
+    employer_rep_name = models.CharField(
+        max_length=200, blank=True, verbose_name=_('نام نماینده حقوقی / مدیرعامل'),
+    )
+    employer_rep_title = models.CharField(
+        max_length=100, blank=True, verbose_name=_('سمت نماینده'),
+    )
+    employer_rep_national_id = models.CharField(
+        max_length=20, blank=True, verbose_name=_('کد ملی نماینده'),
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('تاریخ ایجاد'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('تاریخ به‌روزرسانی'))
 

@@ -97,6 +97,7 @@ class SettingsEngine:
             'legal_name', 'registration_number', 'national_id', 'economic_code',
             'phone', 'email', 'address', 'postal_code', 'website',
             'tax_id', 'established_date', 'description',
+            'employer_rep_name', 'employer_rep_title', 'employer_rep_national_id',
         ]
         for field in updatable:
             if field in data:

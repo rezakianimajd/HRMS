@@ -155,14 +155,35 @@ DEFAULT_ARTICLES = [
 ]
 
 
+def _get_profile(company):
+    """Return the CompanyProfile for the tenant (or None)."""
+    if company is None:
+        return None
+    try:
+        return company.profile
+    except Exception:
+        return None
+
+
 def render_contract(contract, company=None):
     """Render the standard contract text as a single string."""
     emp = contract.employee
-    company_name = getattr(company, 'name', '') or 'مؤسسه ...'
-    company_address = getattr(company, 'address', '') or '...'
+    profile = _get_profile(company)
 
-    # Employer representative: fallback to a static default; the user can edit later.
-    employer_rep = 'حسین سلیمانی'
+    company_name = (
+        (getattr(profile, 'legal_name', '') or getattr(profile, 'company_name', ''))
+        or (getattr(company, 'name', '') if company else '')
+        or 'مؤسسه ...'
+    )
+    company_address = (
+        getattr(profile, 'address', '')
+        or (getattr(company, 'address', '') if company else '')
+        or '...'
+    )
+    employer_rep = (
+        getattr(profile, 'employer_rep_name', '') or 'حسین سلیمانی'
+    )
+    employer_rep_title = getattr(profile, 'employer_rep_title', '') or 'مدیر عامل'
 
     # Employee side: full name + father + birth cert + birth info + national id + address
     employee_side = (
@@ -177,6 +198,7 @@ def render_contract(contract, company=None):
         'company_address': company_address,
         'employer_rep': employer_rep,
         'employee_side': employee_side,
+        'employer_rep_title': employer_rep_title,
         'job_title': emp.job_title.name if emp.job_title else 'کارشناس',
         'work_location': emp.work_location.name if emp.work_location else 'دفتر مرکزی',
         'start_date': _fa_date(contract.start_date),
@@ -197,6 +219,6 @@ def render_contract(contract, company=None):
         parts.append(article['body'].format(**values))
         parts.append('')
     parts.append('')
-    parts.append('مدیرعامل                                                               نام و نام خانوادگی کارپذیر')
+    parts.append(f'{employer_rep_title}                                                                 نام و نام خانوادگی کارپذیر')
 
     return '\n'.join(parts)

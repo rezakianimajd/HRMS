@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   Box, Typography, Paper, Button, IconButton, Chip, Avatar, Grid,
@@ -13,6 +13,8 @@ import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import PrintIcon from '@mui/icons-material/Print';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -20,25 +22,41 @@ import { useEmployees, useContractTypes } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
+const EMPTY_FORM = {
+  employee: '', version: 1, year: 1404, contract_type: '',
+  start_date: '', end_date: '', base_salary: '',
+  attraction_allowance: '', job_allowance: '', housing_allowance: '',
+  meal_voucher: '', travel_cost: '', family_allowance: '', children_allowance: '',
+  description: '',
+};
+
+function num(v) {
+  return v === '' || v == null ? null : Number(v);
+}
+
 const ContractsPage = () => {
   const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const [employeeFilter, setEmployeeFilter] = useState(searchParams.get('employee_id') || '');
-  const [openCreate, setOpenCreate] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState(null);
   const [compareInfo, setCompareInfo] = useState(null);
   const [signTarget, setSignTarget] = useState(null);
   const [compareWith, setCompareWith] = useState('');
   const [textTarget, setTextTarget] = useState(null);
   const [textValue, setTextValue] = useState('');
-  const [form, setForm] = useState({
-    employee: '', version: 1, year: 1404, contract_type: '',
-    start_date: '', end_date: '', base_salary: '', description: '',
-  });
+  const [form, setForm] = useState(EMPTY_FORM);
 
   const { data: employees } = useEmployees({ is_active: true });
   const empList = Array.isArray(employees) ? employees : employees?.results || [];
   const { data: contractTypes } = useContractTypes();
   const cts = Array.isArray(contractTypes) ? contractTypes : contractTypes?.results || [];
+
+  const { data: profile } = useQuery({
+    queryKey: ['company-profile-contracts'],
+    queryFn: () => axiosInstance.get('/settings/company-profile/').then(r => r.data).catch(() => null),
+  });
+  const companyLogo = profile?.logo_url || null;
 
   const { data, isLoading } = useQuery({
     queryKey: ['contract-versions', employeeFilter],
@@ -51,8 +69,21 @@ const ContractsPage = () => {
     mutationFn: (payload) => axiosInstance.post('/contract-versions/', payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['contract-versions'] });
-      setOpenCreate(false);
+      setCreating(false);
     },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, payload }) => axiosInstance.patch(`/contract-versions/${id}/`, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contract-versions'] });
+      setEditing(null);
+    },
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/contract-versions/${id}/`),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contract-versions'] }),
   });
 
   const signMutation = useMutation({
@@ -77,20 +108,6 @@ const ContractsPage = () => {
     },
   });
 
-  const openText = (contract) => {
-    setTextTarget(contract);
-    setTextValue(contract.contract_text || '');
-  };
-
-  const handlePrint = () => {
-    const w = window.open('', '_blank', 'width=800,height=900');
-    if (!w) return;
-    w.document.write(`<!doctype html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>قرارداد</title><style>body{font-family:Tahoma,Vazirmatn,sans-serif;direction:rtl;white-space:pre-wrap;padding:32px;line-height:2;}</style></head><body>${textValue}</body></html>`);
-    w.document.close();
-    w.focus();
-    w.print();
-  };
-
   const compareQuery = useQuery({
     queryKey: ['contract-compare', compareInfo?.id, compareWith],
     queryFn: () => axiosInstance.get(`/contract-versions/${compareInfo.id}/compare/`, { params: { other_id: compareWith } }).then(r => r.data),
@@ -99,18 +116,74 @@ const ContractsPage = () => {
 
   const empName = (id) => empList.find((e) => String(e.id) === String(id))?.full_name || '—';
 
-  const doCreate = () => {
-    createMutation.mutate({
-      employee: form.employee,
-      version: Number(form.version),
-      year: Number(form.year),
-      contract_type: form.contract_type || null,
-      start_date: form.start_date,
-      end_date: form.end_date || null,
-      base_salary: form.base_salary || null,
-      description: form.description,
+  const openCreate = () => { setForm(EMPTY_FORM); setCreating(true); };
+  const openEdit = (c) => {
+    setForm({
+      employee: c.employee || '',
+      version: c.version || 1,
+      year: c.year || 1404,
+      contract_type: c.contract_type || '',
+      start_date: c.start_date || '',
+      end_date: c.end_date || '',
+      base_salary: c.base_salary ?? '',
+      attraction_allowance: c.attraction_allowance ?? '',
+      job_allowance: c.job_allowance ?? '',
+      housing_allowance: c.housing_allowance ?? '',
+      meal_voucher: c.meal_voucher ?? '',
+      travel_cost: c.travel_cost ?? '',
+      family_allowance: c.family_allowance ?? '',
+      children_allowance: c.children_allowance ?? '',
+      description: c.description || '',
     });
+    setEditing(c);
   };
+
+  const buildPayload = () => ({
+    employee: form.employee,
+    version: Number(form.version),
+    year: Number(form.year),
+    contract_type: form.contract_type || null,
+    start_date: form.start_date,
+    end_date: form.end_date || null,
+    base_salary: num(form.base_salary),
+    attraction_allowance: num(form.attraction_allowance),
+    job_allowance: num(form.job_allowance),
+    housing_allowance: num(form.housing_allowance),
+    meal_voucher: num(form.meal_voucher),
+    travel_cost: num(form.travel_cost),
+    family_allowance: num(form.family_allowance),
+    children_allowance: num(form.children_allowance),
+    description: form.description,
+  });
+
+  const handleDelete = (c) => {
+    if (window.confirm(`حذف قرارداد نسخه ${c.version} (${c.year})؟`)) {
+      deleteMutation.mutate(c.id);
+    }
+  };
+
+  const openText = (contract) => {
+    setTextTarget(contract);
+    setTextValue(contract.contract_text || '');
+  };
+
+  const handlePrint = () => {
+    const w = window.open('', '_blank', 'width=800,height=900');
+    if (!w) return;
+    const logoHtml = companyLogo
+      ? `<img src="${companyLogo}" style="max-height:70px;margin-bottom:16px;display:block;" />`
+      : '';
+    const esc = String(textValue || '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
+    w.document.write(`<!doctype html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>قرارداد</title><link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet"><style>body{font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;white-space:pre-wrap;padding:40px;line-height:2;max-width:900px;margin:0 auto;text-align:justify;}</style></head><body>${logoHtml}<pre style="font-family:inherit;white-space:pre-wrap;text-align:right;">${esc}</pre></body></html>`);
+    w.document.close();
+    w.focus();
+    setTimeout(() => w.print(), 300);
+  };
+
+  const moneyField = (key, label) => (
+    <TextField fullWidth size="small" label={label} type="number" value={form[key]}
+      onChange={(e) => setForm((p) => ({ ...p, [key]: e.target.value }))} />
+  );
 
   return (
     <Box>
@@ -127,7 +200,7 @@ const ContractsPage = () => {
           <Typography variant="h6" fontWeight={800} color="#b45309">قراردادها و نسخه‌بندی</Typography>
           <Typography variant="body2" color="textSecondary">نسخه‌بندی هوشمند، مقایسهٔ نسخه‌ها و امضای دیجیتال</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenCreate(true)}
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
           sx={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', borderRadius: 2, px: 2.5 }}>
           نسخهٔ جدید
         </Button>
@@ -186,6 +259,11 @@ const ContractsPage = () => {
                       )}
                     </TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                      <Tooltip title="ویرایش">
+                        <IconButton size="small" color="primary" onClick={() => openEdit(c)}>
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                       <Tooltip title="مقایسه">
                         <IconButton size="small" color="primary" onClick={() => setCompareInfo(c)}>
                           <CompareArrowsIcon fontSize="small" />
@@ -211,6 +289,11 @@ const ContractsPage = () => {
                           </IconButton>
                         </Tooltip>
                       )}
+                      <Tooltip title="حذف">
+                        <IconButton size="small" color="error" onClick={() => handleDelete(c)}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -220,47 +303,69 @@ const ContractsPage = () => {
         )}
       </Paper>
 
-      {/* Create dialog */}
-      <Dialog open={openCreate} onClose={() => setOpenCreate(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#b45309' }}>نسخهٔ جدید قرارداد</DialogTitle>
+      {/* Create / Edit dialog */}
+      <Dialog open={creating || !!editing} onClose={() => { setCreating(false); setEditing(null); }} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ color: '#b45309' }}>{editing ? 'ویرایش نسخهٔ قرارداد' : 'نسخهٔ جدید قرارداد'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl fullWidth size="small">
-            <InputLabel>پرسنل *</InputLabel>
-            <Select value={form.employee || ''} label="پرسنل *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
-              {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl fullWidth size="small">
-            <InputLabel>نوع قرارداد</InputLabel>
-            <Select value={form.contract_type || ''} label="نوع قرارداد" onChange={(e) => setForm((p) => ({ ...p, contract_type: e.target.value }))}>
-              <MenuItem value="">—</MenuItem>
-              {cts.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <Grid container spacing={1}>
-            <Grid item xs={6}>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>پرسنل *</InputLabel>
+                <Select value={form.employee || ''} label="پرسنل *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
+                  {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>نوع قرارداد</InputLabel>
+                <Select value={form.contract_type || ''} label="نوع قرارداد" onChange={(e) => setForm((p) => ({ ...p, contract_type: e.target.value }))}>
+                  <MenuItem value="">—</MenuItem>
+                  {cts.map((c) => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6} md={3}>
               <TextField fullWidth size="small" label="نسخه" type="number" value={form.version}
                 onChange={(e) => setForm((p) => ({ ...p, version: e.target.value }))} />
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={6} md={3}>
               <TextField fullWidth size="small" label="سال" type="number" value={form.year}
                 onChange={(e) => setForm((p) => ({ ...p, year: e.target.value }))} />
             </Grid>
+            <Grid item xs={12} md={6}>
+              <JalaliDatePicker fullWidth label="تاریخ شروع *" value={form.start_date}
+                onChange={(g) => setForm((p) => ({ ...p, start_date: g }))} />
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <JalaliDatePicker fullWidth label="تاریخ پایان" value={form.end_date}
+                onChange={(g) => setForm((p) => ({ ...p, end_date: g }))} />
+            </Grid>
           </Grid>
-          <JalaliDatePicker fullWidth label="تاریخ شروع *" value={form.start_date}
-            onChange={(g) => setForm((p) => ({ ...p, start_date: g }))} />
-          <JalaliDatePicker fullWidth label="تاریخ پایان" value={form.end_date}
-            onChange={(g) => setForm((p) => ({ ...p, end_date: g }))} />
-          <TextField fullWidth size="small" label="حقوق پایه (ریال)" type="number" value={form.base_salary}
-            onChange={(e) => setForm((p) => ({ ...p, base_salary: e.target.value }))} />
+
+          <Divider />
+          <Typography variant="subtitle2" fontWeight={800} color="#b45309">حقوق و مزایا (ریال)</Typography>
+          <Grid container spacing={1.5}>
+            <Grid item xs={12} md={6}>{moneyField('base_salary', 'حقوق پایه')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('attraction_allowance', 'حق جذب')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('job_allowance', 'فوق‌العاده شغل')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('housing_allowance', 'حق مسکن')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('meal_voucher', 'بن و خواربار')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('travel_cost', 'ایاب و ذهاب')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('family_allowance', 'حق عائله‌مندی')}</Grid>
+            <Grid item xs={12} md={6}>{moneyField('children_allowance', 'حق اولاد')}</Grid>
+          </Grid>
+
           <TextField fullWidth size="small" label="توضیحات" multiline rows={2} value={form.description}
             onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCreate(false)}>انصراف</Button>
-          <Button variant="contained" disabled={!form.employee || !form.start_date} onClick={doCreate}
+          <Button onClick={() => { setCreating(false); setEditing(null); }}>انصراف</Button>
+          <Button
+            variant="contained" disabled={!form.employee || !form.start_date}
+            onClick={() => editing ? updateMutation.mutate({ id: editing.id, payload: buildPayload() }) : createMutation.mutate(buildPayload())}
             sx={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-            ثبت نسخه
+            {editing ? 'ذخیره تغییرات' : 'ثبت نسخه'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -279,7 +384,6 @@ const ContractsPage = () => {
                   ))}
                 </Select>
               </FormControl>
-
               {compareQuery.data && (
                 <Alert severity="info">
                   {compareQuery.data.diffs.length === 0
@@ -287,23 +391,14 @@ const ContractsPage = () => {
                     : `${toPersianDigits(compareQuery.data.diffs.length)} تفاوت یافت شد.`}
                 </Alert>
               )}
-
               {compareQuery.data?.diffs?.length > 0 && (
                 <Table size="small">
                   <TableHead>
-                    <TableRow>
-                      <TableCell>فیلد</TableCell>
-                      <TableCell>نسخهٔ قدیمی</TableCell>
-                      <TableCell>نسخهٔ جدید</TableCell>
-                    </TableRow>
+                    <TableRow><TableCell>فیلد</TableCell><TableCell>نسخهٔ قدیمی</TableCell><TableCell>نسخهٔ جدید</TableCell></TableRow>
                   </TableHead>
                   <TableBody>
                     {compareQuery.data.diffs.map((d, i) => (
-                      <TableRow key={i}>
-                        <TableCell>{d.label}</TableCell>
-                        <TableCell>{String(d.old ?? '—')}</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>{String(d.new ?? '—')}</TableCell>
-                      </TableRow>
+                      <TableRow key={i}><TableCell>{d.label}</TableCell><TableCell>{String(d.old ?? '—')}</TableCell><TableCell sx={{ fontWeight: 700 }}>{String(d.new ?? '—')}</TableCell></TableRow>
                     ))}
                   </TableBody>
                 </Table>
@@ -321,33 +416,20 @@ const ContractsPage = () => {
         <DialogTitle sx={{ color: '#b45309', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span>متن قرارداد {textTarget ? `(نسخه ${textTarget.version} - ${textTarget.year})` : ''}</span>
           <Button variant="contained" size="small" startIcon={<PrintIcon />} onClick={handlePrint}
-            sx={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-            چاپ
-          </Button>
+            sx={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>چاپ</Button>
         </DialogTitle>
         <DialogContent>
           <TextField
-            fullWidth multiline minRows={18} maxRows={30}
-            variant="outlined" size="small"
-            label="متن قرارداد"
-            value={textValue}
-            dir="rtl"
+            fullWidth multiline minRows={18} maxRows={30} variant="outlined" size="small"
+            label="متن قرارداد" value={textValue} dir="rtl"
             onChange={(e) => setTextValue(e.target.value)}
-            sx={{
-              mt: 1,
-              '& textarea': { fontFamily: 'Tahoma, Vazirmatn, sans-serif', lineHeight: 2, textAlign: 'right' },
-            }}
+            sx={{ mt: 1, '& textarea': { fontFamily: 'Vazirmatn, Tahoma, sans-serif', lineHeight: 2, textAlign: 'right' } }}
           />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setTextTarget(null)}>بستن</Button>
-          <Button
-            variant="contained"
-            onClick={() => textTarget && saveTextMutation.mutate({ id: textTarget.id, contract_text: textValue })}
-            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
-          >
-            ذخیره متن
-          </Button>
+          <Button variant="contained" onClick={() => textTarget && saveTextMutation.mutate({ id: textTarget.id, contract_text: textValue })}
+            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>ذخیره متن</Button>
         </DialogActions>
       </Dialog>
 
@@ -355,23 +437,16 @@ const ContractsPage = () => {
       <Dialog open={!!signTarget} onClose={() => setSignTarget(null)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ color: '#047857' }}>امضای دیجیتال</DialogTitle>
         <DialogContent>
-          <TextField
-            autoFocus fullWidth size="small" label="نام امضاکننده" sx={{ mt: 1 }}
-            onChange={(e) => setForm((p) => ({ ...p, signed_by: e.target.value }))}
-          />
+          <TextField autoFocus fullWidth size="small" label="نام امضاکننده" sx={{ mt: 1 }}
+            onChange={(e) => setForm((p) => ({ ...p, signed_by: e.target.value }))} />
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setSignTarget(null)}>انصراف</Button>
-          <Button
-            variant="contained"
-            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+          <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
             disabled={!form.signed_by}
-            onClick={() => {
-              signMutation.mutate({ id: signTarget.id, signed_by: form.signed_by }, {
-                onSuccess: () => { setSignTarget(null); setForm((p) => ({ ...p, signed_by: '' })); },
-              });
-            }}
-          >
+            onClick={() => signMutation.mutate({ id: signTarget.id, signed_by: form.signed_by }, {
+              onSuccess: () => { setSignTarget(null); setForm((p) => ({ ...p, signed_by: '' })); },
+            })}>
             ثبت امضاء
           </Button>
         </DialogActions>

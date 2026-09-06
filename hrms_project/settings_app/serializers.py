@@ -24,6 +24,7 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'economic_code', 'phone', 'email', 'address', 'postal_code',
             'website', 'logo', 'logo_url', 'tax_id',
             'established_date', 'description',
+            'employer_rep_name', 'employer_rep_title', 'employer_rep_national_id',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
