@@ -18,7 +18,6 @@ import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
 import NotificationBell from './NotificationBell';
-import GlobalSearch from './GlobalSearch';
 import menuConfig from '../../config/menuConfig';
 
 const DRAWER_WIDTH = 290;
@@ -328,10 +327,6 @@ const Layout = ({ children }) => {
 
       {/* Main content */}
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
-        {/* Header strip — global search */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', mb: 2 }}>
-          <GlobalSearch />
-        </Box>
         {children}
       </Box>
     </Box>

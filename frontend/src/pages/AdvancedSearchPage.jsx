@@ -1,23 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useQuery } from '@tanstack/react-query';
-import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, TextField, InputAdornment, Paper, Tabs, Tab, CircularProgress,
-  Grid, Card, CardContent, Avatar, Chip, Button, Collapse, FormControl,
-  InputLabel, Select, MenuItem, Divider, IconButton, Tooltip,
+  Box, Typography, TextField, InputAdornment, Paper, Avatar, Chip,
+  CircularProgress, Divider, Grid, Card, CardContent, Stack,
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
-import FilterListIcon from '@mui/icons-material/FilterList';
-import BadgeIcon from '@mui/icons-material/Badge';
+import PersonIcon from '@mui/icons-material/Person';
 import DescriptionIcon from '@mui/icons-material/Description';
-import SmartphoneIcon from '@mui/icons-material/Smartphone';
-import BusinessIcon from '@mui/icons-material/Business';
-import WorkIcon from '@mui/icons-material/Work';
-import { useDepartments, useJobTitles, useWorkLocations } from '../core/hooks/useEmployees';
-import { useDocumentTypes } from '../core/hooks/useDocuments';
-import { toJalali } from '../core/utils/dateUtils';
+import MailIcon from '@mui/icons-material/Mail';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import NorthIcon from '@mui/icons-material/North';
+import { useGlobalSearch } from '../core/hooks/useGlobalSearch';
+import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
+
+const SECTIONS = [
+  { key: 'employees', label: 'پرسنل', icon: <PersonIcon fontSize="small" />, color: '#6366f1' },
+  { key: 'documents', label: 'مدارک', icon: <DescriptionIcon fontSize="small" />, color: '#14b8a6' },
+  { key: 'letters', label: 'نامه‌ها', icon: <MailIcon fontSize="small" />, color: '#06b6d4' },
+  { key: 'hr_requests', label: 'درخواست‌های اداری', icon: <AssignmentIcon fontSize="small" />, color: '#8b5cf6' },
+  { key: 'leave_requests', label: 'مرخصی‌ها', icon: <EventBusyIcon fontSize="small" />, color: '#f59e0b' },
+  { key: 'salary_records', label: 'فیش‌های حقوقی', icon: <PaymentsIcon fontSize="small" />, color: '#10b981' },
+];
 
 const avatarColors = [
   'linear-gradient(135deg, #6366f1, #8b5cf6)', 'linear-gradient(135deg, #ec4899, #f472b6)',
@@ -30,201 +35,214 @@ const getAvatarColor = (name) => {
   return avatarColors[Math.abs(hash) % avatarColors.length];
 };
 
+function resultTitle(section, r) {
+  switch (section) {
+    case 'employees': return r.full_name || r.first_name || '';
+    case 'documents': return r.title || '';
+    case 'letters': return r.subject || '';
+    case 'hr_requests': return r.employee_name || '';
+    case 'leave_requests': return r.employee_name || '';
+    case 'salary_records': return r.employee_name || '';
+    default: return '';
+  }
+}
+
+function resultSubtitle(section, r) {
+  switch (section) {
+    case 'employees': return `${r.department_name || ''}${r.job_title_name ? ' — ' + r.job_title_name : ''}`;
+    case 'documents': return `${r.document_type_name || ''}${r.employee_name ? ' · ' + r.employee_name : ''}`;
+    case 'letters': return `${r.kind === 'incoming' ? 'از' : 'به'}: ${r.counterparty || ''} · ${r.number || ''}`;
+    case 'hr_requests': return `${r.request_type || ''} · ${r.status || ''}`;
+    case 'leave_requests': return `${r.leave_type || ''} · ${r.days ? toPersianDigits(r.days) + ' روز' : ''}`;
+    case 'salary_records': return `دوره ${r.period || ''} · ${formatPersianNumber(r.net_payable)} ریال`;
+    default: return '';
+  }
+}
+
 const AdvancedSearchPage = () => {
-  const { t } = useTranslation();
   const navigate = useNavigate();
-  const [tab, setTab] = useState(0);
-  const [query, setQuery] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
-  const [filters, setFilters] = useState({
-    department: '', job_title: '', work_location: '', gender: '',
-    marital_status: '', status: '', document_type: '',
-  });
+  const inputRef = useRef(null);
+  const [input, setInput] = useState('');
+  const [debounced, setDebounced] = useState('');
 
-  const [debouncedQuery, setDebouncedQuery] = useState('');
-  useEffect(() => { const tm = setTimeout(() => setDebouncedQuery(query), 400); return () => clearTimeout(tm); }, [query]);
+  useEffect(() => {
+    const tm = setTimeout(() => setDebounced(input), 400);
+    return () => clearTimeout(tm);
+  }, [input]);
 
-  const { data: departments } = useDepartments();
-  const { data: jobTitles } = useJobTitles();
-  const { data: workLocations } = useWorkLocations();
-  const { data: docTypes } = useDocumentTypes();
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
 
-  // Build request payload
-  const payload = {
-    query: debouncedQuery,
-    filters: Object.fromEntries(Object.entries(filters).filter(([_, v]) => v !== '')),
-    type: tab === 0 ? 'employees' : 'documents',
+  const { data, isLoading } = useGlobalSearch(debounced);
+
+  const total = useMemo(() => {
+    if (!data) return 0;
+    return SECTIONS.reduce((sum, s) => sum + (data[s.key]?.length || 0), 0);
+  }, [data]);
+
+  const hasQuery = debounced.trim().length >= 2;
+
+  const handleSelect = (section, r) => {
+    const map = {
+      employees: () => navigate(`/employees/${r.id}`),
+      documents: () => navigate(`/employees/${r.employee}`),
+      letters: () => navigate('/correspondences'),
+      hr_requests: () => navigate('/requests'),
+      leave_requests: () => navigate('/leaves'),
+      salary_records: () => navigate(`/employees/${r.id}`),
+    };
+    // salary records don't carry employee id; ignore navigation.
+    if (section !== 'salary_records') map[section]?.();
   };
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['advanced-search', payload],
-    queryFn: () => axiosInstance.post('/search/', payload).then(r => r.data),
-    enabled: debouncedQuery.length >= 2 || Object.values(filters).some(v => v !== ''),
-  });
-
-  const employees = data?.employees || [];
-  const documents = data?.documents || [];
-  const results = tab === 0 ? employees : documents;
-  const hasQuery = debouncedQuery.length >= 2 || Object.values(filters).some(v => v !== '');
-
-  const handleFilterChange = (field, value) => setFilters(prev => ({ ...prev, [field]: value }));
-  const resetFilters = () => setFilters({ department: '', job_title: '', work_location: '', gender: '', marital_status: '', status: '', document_type: '' });
-
-  const mapOpts = (data) => Array.isArray(data) ? data.map(d => ({ value: d.id, label: d.name })) : [];
-
-  const filterRow = (label, field, options) => (
-    <FormControl size="small" sx={{ minWidth: 150 }}>
-      <InputLabel>{label}</InputLabel>
-      <Select value={filters[field] || ''} label={label} onChange={e => handleFilterChange(field, e.target.value)}>
-        <MenuItem value="">همه</MenuItem>
-        {options.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
-      </Select>
-    </FormControl>
-  );
-
   return (
-    <Box>
-      {/* Glass header */}
+    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+      {/* Hero */}
       <Paper sx={{
-        mb: 3, p: 2.5,
-        display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.05))',
-        border: '1px solid rgba(99,102,241,0.2)',
+        mb: 3, p: 3, textAlign: 'center',
+        background: 'linear-gradient(135deg, rgba(99,102,241,0.14), rgba(236,72,153,0.07))',
+        border: '1px solid rgba(99,102,241,0.18)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 3,
+        borderRadius: 4,
       }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #6366f1, #ec4899)', boxShadow: '0 6px 20px rgba(99,102,241,0.4)' }}>
-          <SearchIcon sx={{ fontSize: 28, color: '#fff' }} />
+        <Avatar sx={{
+          width: 64, height: 64, mx: 'auto', mb: 1.5,
+          background: 'linear-gradient(135deg, #6366f1, #ec4899)',
+          boxShadow: '0 8px 28px rgba(99,102,241,0.45)',
+        }}>
+          <SearchIcon sx={{ fontSize: 32, color: '#fff' }} />
         </Avatar>
-        <Box>
-          <Typography variant="h5" fontWeight={800}>{t('search.title')}</Typography>
-          <Typography variant="body2" color="textSecondary">جستجو در پرسنل و مدارک با فیلترهای پیشرفته</Typography>
-        </Box>
+        <Typography variant="h5" fontWeight={800}>جستجوی سراسری</Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
+          پرسنل، مدارک، نامه‌ها، درخواست‌ها، مرخصی‌ها و فیش‌های حقوقی را یکجا جستجو کنید
+        </Typography>
       </Paper>
 
-      {/* Search Bar - glass */}
+      {/* Search bar */}
       <Paper sx={{
-        p: 2, mb: 2, display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap',
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.3))',
+        p: 1.5, mb: 3,
+        background: 'rgba(255,255,255,0.55)',
         backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-        border: '1px solid rgba(255,255,255,0.4)',
+        border: '1px solid rgba(255,255,255,0.5)',
         borderRadius: 3,
       }}>
         <TextField
-          fullWidth size="medium" autoFocus
-          placeholder={t('search.placeholder')}
-          value={query} onChange={e => setQuery(e.target.value)}
+          fullWidth
+          inputRef={inputRef}
+          placeholder="تایپ کنید… (حداقل ۲ حرف)"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
           InputProps={{
-            startAdornment: <InputAdornment position="start"><SearchIcon color="primary" /></InputAdornment>,
-            sx: { borderRadius: 3 }
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon color="primary" />
+              </InputAdornment>
+            ),
+            sx: { fontSize: 16 },
           }}
-          sx={{ flex: 1, minWidth: 280 }}
+          variant="standard"
         />
-        <Button variant={showFilters ? 'contained' : 'outlined'}
-          onClick={() => setShowFilters(!showFilters)} size="small">
-          {t('common.filter')}
-        </Button>
       </Paper>
-
-      {/* Tabs - glass */}
-      <Paper sx={{
-        mb: 2, overflow: 'hidden',
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.5), rgba(255,255,255,0.3))',
-        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-        border: '1px solid rgba(255,255,255,0.4)', borderRadius: 2.5,
-      }}>
-        <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ px: 2, borderBottom: '1px solid rgba(255,255,255,0.4)' }}>
-          <Tab label={`${t('search.employees_tab')} (${employees.length})`} sx={{ fontWeight: 600 }} />
-          <Tab label={`${t('search.documents_tab')} (${documents.length})`} sx={{ fontWeight: 600 }} />
-        </Tabs>
-      </Paper>
-
-      {/* Advanced Filters */}
-      <Collapse in={showFilters}>
-        <Paper sx={{ p: 2, mb: 2 }}>
-          <Typography variant="body2" fontWeight={600} gutterBottom>فیلترهای پیشرفته</Typography>
-          <Divider sx={{ mb: 1.5 }} />
-          <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mb: 1.5 }}>
-            {filterRow(t('employees.department'), 'department', mapOpts(departments))}
-            {filterRow(t('employees.job_title'), 'job_title', mapOpts(jobTitles))}
-            {filterRow(t('employees.work_location'), 'work_location', mapOpts(workLocations))}
-            {filterRow(t('employees.gender'), 'gender', [{ value: 'male', label: t('employees.male') }, { value: 'female', label: t('employees.female') }])}
-            {filterRow(t('employees.marital_status'), 'marital_status', [
-              { value: 'single', label: t('employees.single') }, { value: 'married', label: t('employees.married') },
-              { value: 'divorced', label: t('employees.divorced') }, { value: 'widowed', label: t('employees.widowed') }
-            ])}
-            {filterRow(t('employees.status'), 'status', [
-              { value: 'active', label: t('employees.active') }, { value: 'leave', label: t('employees.on_leave') },
-              { value: 'retired', label: t('employees.retired') }, { value: 'terminated', label: t('employees.terminated') }
-            ])}
-            {filterRow(t('documents.document_type'), 'document_type', mapOpts(docTypes))}
-          </Box>
-          <Button size="small" onClick={resetFilters}>پاک‌سازی فیلترها</Button>
-        </Paper>
-      </Collapse>
 
       {/* Results */}
-      {isLoading ? (
-        <Box sx={{ textAlign: 'center', p: 6 }}><CircularProgress /></Box>
-      ) : !hasQuery ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <SearchIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-          <Typography color="textSecondary">{t('search.type_query')}</Typography>
-          <Typography variant="caption" color="textDisabled">
-            می‌توانید بر اساس نام، کد ملی، کد پرسنلی، شماره تماس، ایمیل، آدرس و ... جستجو کنید
-          </Typography>
+      {!hasQuery ? (
+        <Paper sx={{
+          p: 5, textAlign: 'center',
+          background: 'rgba(99,102,241,0.03)', border: '1px dashed rgba(99,102,241,0.25)', borderRadius: 3,
+        }}>
+          <SearchIcon sx={{ fontSize: 52, color: 'text.disabled', mb: 1 }} />
+          <Typography color="textSecondary">برای شروع جستجو حداقل ۲ حرف وارد کنید</Typography>
         </Paper>
-      ) : results.length === 0 ? (
-        <Paper sx={{ p: 4, textAlign: 'center' }}>
-          <Typography color="textSecondary">{t('search.no_results')}</Typography>
+      ) : isLoading ? (
+        <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>
+      ) : total === 0 ? (
+        <Paper sx={{
+          p: 5, textAlign: 'center',
+          background: 'rgba(239,68,68,0.04)', border: '1px dashed rgba(239,68,68,0.25)', borderRadius: 3,
+        }}>
+          <Typography color="textSecondary">نتیجه‌ای برای «{debounced}» یافت نشد</Typography>
         </Paper>
-      ) : tab === 0 ? (
-        /* Employee Results */
-        <Grid container spacing={2}>
-          {employees.map(emp => (
-            <Grid item xs={12} sm={6} md={4} key={emp.id}>
-              <Card sx={{ cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.id}`)}>
-                <CardContent>
-                  <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
-                    <Avatar sx={{ width: 48, height: 48, background: getAvatarColor(emp.full_name), fontWeight: 700 }}>
-                      {emp.first_name?.charAt(0)}{emp.last_name?.charAt(0)}
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" fontWeight={700} noWrap>{emp.full_name}</Typography>
-                      <Typography variant="caption" color="textSecondary">{emp.department_name} — {emp.job_title_name}</Typography>
-                      <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                        <Chip icon={<BadgeIcon sx={{ fontSize: 14 }} />} label={emp.employee_id} size="small" />
-                        {emp.mobile && <Chip icon={<SmartphoneIcon sx={{ fontSize: 14 }} />} label={emp.mobile} size="small" variant="outlined" />}
-                      </Box>
-                    </Box>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
       ) : (
-        /* Document Results */
-        <Grid container spacing={2}>
-          {documents.map(doc => (
-            <Grid item xs={12} sm={6} md={4} key={doc.id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="body2" fontWeight={700} noWrap>{doc.title}</Typography>
-                  <Box sx={{ display: 'flex', gap: 1, mt: 0.5, flexWrap: 'wrap' }}>
-                    <Chip icon={<DescriptionIcon sx={{ fontSize: 14 }} />} label={doc.document_type_name} size="small" />
-                    <Chip label={doc.file_extension} size="small" variant="outlined" color="primary" />
-                    {doc.expiry_date && <Chip label={`انقضا: ${toJalali(doc.expiry_date)}`} size="small" variant="outlined"
-                      color={doc.is_expired ? 'error' : doc.days_until_expiry <= 30 ? 'warning' : 'default'} />}
+        <Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <Typography variant="h6" fontWeight={800}>نتایج</Typography>
+            <Chip label={`${toPersianDigits(total)} مورد`} color="primary" size="small" />
+          </Box>
+
+          <Stack spacing={2.5}>
+            {SECTIONS.map((sec) => {
+              const items = data?.[sec.key] || [];
+              if (items.length === 0) return null;
+              return (
+                <Paper key={sec.key} sx={{
+                  p: 2,
+                  background: `linear-gradient(135deg, ${sec.color}0d, ${sec.color}05)`,
+                  border: `1px solid ${sec.color}20`,
+                  borderRadius: 3,
+                }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+                    <Avatar sx={{ width: 30, height: 30, background: `linear-gradient(135deg, ${sec.color}, ${sec.color}99)`, color: '#fff' }}>
+                      {sec.icon}
+                    </Avatar>
+                    <Typography variant="subtitle1" fontWeight={800} color={sec.color}>{sec.label}</Typography>
+                    <Chip size="small" label={toPersianDigits(items.length)} sx={{ bgcolor: `${sec.color}20`, color: sec.color }} />
+                    <Divider sx={{ flex: 1, borderColor: `${sec.color}22` }} />
                   </Box>
-                  <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
-                    پرسنل: {doc.employee_name}
-                  </Typography>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+
+                  <Grid container spacing={1.5}>
+                    {items.map((r, i) => (
+                      <Grid item xs={12} sm={6} key={`${sec.key}-${r.id}-${i}`}>
+                        <Card
+                          elevation={0}
+                          onClick={() => handleSelect(sec.key, r)}
+                          sx={{
+                            cursor: 'pointer', height: '100%',
+                            background: 'rgba(255,255,255,0.5)',
+                            border: `1px solid ${sec.color}18`,
+                            borderRadius: 2.5,
+                            transition: 'all 0.2s ease',
+                            '&:hover': {
+                              transform: 'translateY(-2px)',
+                              borderColor: `${sec.color}40`,
+                              boxShadow: `0 8px 20px ${sec.color}20`,
+                            },
+                          }}
+                        >
+                          <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                              <Avatar sx={{
+                                width: 38, height: 38,
+                                background: sec.key === 'employees' ? getAvatarColor(r.full_name || r.id) : `${sec.color}20`,
+                                color: sec.key === 'employees' ? '#fff' : sec.color,
+                                fontSize: 15, fontWeight: 700,
+                              }}>
+                                {sec.key === 'employees'
+                                  ? (r.first_name?.charAt(0) || '')
+                                  : sec.icon}
+                              </Avatar>
+                              <Box sx={{ minWidth: 0 }}>
+                                <Typography variant="body2" fontWeight={700} noWrap>
+                                  {resultTitle(sec.key, r)}
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary" noWrap display="block">
+                                  {resultSubtitle(sec.key, r)}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ ml: 'auto', color: sec.color, display: 'flex', alignItems: 'center' }}>
+                                <NorthIcon sx={{ fontSize: 14, transform: 'rotate(45deg)' }} />
+                              </Box>
+                            </Box>
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
+                </Paper>
+              );
+            })}
+          </Stack>
+        </Box>
       )}
     </Box>
   );
