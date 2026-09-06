@@ -17,7 +17,6 @@ import FlightTakeoffIcon from '@mui/icons-material/FlightTakeoff';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-import BulkExcelImport from '../core/components/ui/BulkExcelImport';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 /* P2: Leaves & Missions — requests, approve/reject, balance summary. */
@@ -182,15 +181,6 @@ const LeavePage = () => {
           </FormControl>
         </Stack>
       </Paper>
-
-      {/* Bulk excel import — ثبت گروهی مرخصی/مأموریت */}
-      <BulkExcelImport
-        importType="leave_bulk"
-        title="درون‌ریزی گروهی مرخصی و مأموریت"
-        description="با یک فایل اکسل، درخواست‌های مرخصی/مأموریتِ چند پرسنل را همزمان ثبت کنید (کد پرسنلی، تاریخ شمسی شروع/پایان)."
-        accent="#06b6d4"
-        invalidateKeys={['leave-requests', 'leave-balance']}
-      />
 
       {/* Table */}
       <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
