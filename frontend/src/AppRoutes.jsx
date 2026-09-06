@@ -15,6 +15,8 @@ import LeavePage from './pages/LeavePage';
 import RequestsPage from './pages/RequestsPage';
 import PayslipsPage from './pages/PayslipsPage';
 import FinanceReportsPage from './pages/FinanceReportsPage';
+import BenefitsPage from './pages/BenefitsPage';
+import DeductionsPage from './pages/DeductionsPage';
 import UsersPage from './pages/UsersPage';
 import AuditPage from './pages/AuditPage';
 import DataImportPage from './pages/DataImportPage';
@@ -76,7 +78,7 @@ const AppRoutes = () => {
       <Route path="/finance-reports" element={<ProtectedLayout><FinanceReportsPage /></ProtectedLayout>} />
       <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
-      <Route path="/data-entry" element={<ProtectedLayout><DataEntryPage /></ProtectedLayout>} />
+      <Route path="/data-entry" element={<Navigate to="/payslips" replace />} />
       <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
       <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
       <Route path="/scoring" element={<ProtectedLayout><ScoringPage /></ProtectedLayout>} />
@@ -94,7 +96,8 @@ const AppRoutes = () => {
       <Route path="/attendance" element={<ProtectedLayout><AttendancePage /></ProtectedLayout>} />
       <Route path="/leaves" element={<ProtectedLayout><LeavePage /></ProtectedLayout>} />
       <Route path="/requests" element={<ProtectedLayout><RequestsPage /></ProtectedLayout>} />
-      <Route path="/benefits" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
+      <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
+      <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
       <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />
       <Route path="/users" element={<ProtectedLayout><UsersPage /></ProtectedLayout>} />

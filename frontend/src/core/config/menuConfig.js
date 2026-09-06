@@ -10,6 +10,7 @@ import AccessTimeFilledIcon from '@mui/icons-material/AccessTimeFilled';
 import BeachAccessIcon from '@mui/icons-material/BeachAccess';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
@@ -59,7 +60,6 @@ const menuConfig = [
     color: '#14b8a6',
     items: [
       { id: 'org-chart', title: 'چارت سازمانی', icon: <AccountTreeIcon />, path: '/org-chart', color: '#8b5cf6', primary: true, ready: true },
-      { id: 'data-entry', title: 'ورود اطلاعات', icon: <EditNoteIcon />, path: '/data-entry', color: '#f97316', primary: false, ready: true },
       { id: 'data-import', title: 'درون‌ریزی داده', icon: <UploadFileIcon />, path: '/data-import', color: '#f97316', primary: false, ready: true },
       { id: 'attendance', title: 'حضور و غیاب', icon: <AccessTimeFilledIcon />, path: '/attendance', color: '#0ea5e9', primary: false, ready: true },
       { id: 'leaves', title: 'مرخصی و مأموریت', icon: <BeachAccessIcon />, path: '/leaves', color: '#06b6d4', primary: false, ready: true },
@@ -72,7 +72,9 @@ const menuConfig = [
     color: '#3b82f6',
     items: [
       { id: 'payslips', title: 'فیش حقوق', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: true, ready: true },
-      { id: 'finance-reports', title: 'گزارش مالی', icon: <PaymentsIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
+      { id: 'benefits', title: 'مزایا و کارانه', icon: <CardGiftcardIcon />, path: '/benefits', color: '#10b981', primary: false, ready: true },
+      { id: 'deductions', title: 'کسورات', icon: <PaymentsIcon />, path: '/deductions', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'finance-reports', title: 'گزارش مالی', icon: <BarChartOutlinedIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
     ],
   },
   {
