@@ -28,6 +28,7 @@ const OutgoingLetters = () => (
       { key: 'receiver', label: 'گیرنده', required: true },
       { key: 'subject', label: 'موضوع', required: true, multiline: true },
       { key: 'priority', label: 'اولویت', render: renderPriorityField },
+      { key: 'employees', label: 'پرسنل مرتبط', type: 'employees' },
       { key: 'description', label: 'توضیحات', multiline: true },
     ]}
     columns={[
@@ -36,6 +37,7 @@ const OutgoingLetters = () => (
       { key: 'number', label: 'شماره', render: it => toPersianDigits(it.number) },
       { key: 'date', label: 'تاریخ' },
       { key: 'priority', label: 'اولویت' },
+      { key: 'employee_names', label: 'پرسنل' },
     ]}
     defaultForm={{ priority: 'normal' }}
   />

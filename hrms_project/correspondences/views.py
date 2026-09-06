@@ -26,9 +26,27 @@ class BaseCorrespondenceViewSet(viewsets.ModelViewSet):
             qs = qs.filter(company=company)
         return qs
 
+    def _set_employees(self, instance, data):
+        """For letter models with `employees` M2M, set the related persons."""
+        if 'employees' in data:
+            ids = data.get('employees') or []
+            if isinstance(ids, str):
+                ids = [x.strip() for x in ids.split(',') if x.strip()]
+            ids = [int(x) for x in ids if str(x).isdigit()]
+            instance.employees.set(ids)
+
     def perform_create(self, serializer):
         company = _get_company(self.request)
-        serializer.save(company=company)
+        data = self.request.data
+        instance = serializer.save(company=company)
+        self._set_employees(instance, data)
+
+    def perform_update(self, serializer):
+        instance = serializer.save()
+        data = self.request.data
+        if 'employees' in data:
+            self._set_employees(instance, data)
+        return instance
 
 
 class IncomingLetterViewSet(BaseCorrespondenceViewSet):

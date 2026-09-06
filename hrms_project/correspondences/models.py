@@ -10,9 +10,9 @@ class IncomingLetter(BaseModel):
     date = models.DateField(verbose_name=_('تاریخ نامه'))
     sender = models.CharField(max_length=200, verbose_name=_('فرستنده'))
     subject = models.CharField(max_length=500, verbose_name=_('موضوع'))
-    employee = models.ForeignKey(
-        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
-        verbose_name=_('پرسنل مرتبط'),
+    employees = models.ManyToManyField(
+        'employees.Employee', blank=True,
+        related_name='incoming_letters', verbose_name=_('پرسنل مرتبط'),
     )
     priority = models.CharField(max_length=20, default='normal', choices=[
         ('low', _('کم')), ('normal', _('عادی')), ('high', _('زیاد')), ('urgent', _('فوری')),
@@ -35,9 +35,9 @@ class OutgoingLetter(BaseModel):
     date = models.DateField(verbose_name=_('تاریخ نامه'))
     receiver = models.CharField(max_length=200, verbose_name=_('گیرنده'))
     subject = models.CharField(max_length=500, verbose_name=_('موضوع'))
-    employee = models.ForeignKey(
-        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
-        verbose_name=_('پرسنل مرتبط'),
+    employees = models.ManyToManyField(
+        'employees.Employee', blank=True,
+        related_name='outgoing_letters', verbose_name=_('پرسنل مرتبط'),
     )
     priority = models.CharField(max_length=20, default='normal', choices=[
         ('low', _('کم')), ('normal', _('عادی')), ('high', _('زیاد')), ('urgent', _('فوری')),

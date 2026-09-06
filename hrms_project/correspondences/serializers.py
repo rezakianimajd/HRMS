@@ -16,7 +16,7 @@ def _clean(data):
 
 
 class IncomingLetterSerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_names = serializers.SerializerMethodField()
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
 
     class Meta:
@@ -24,18 +24,24 @@ class IncomingLetterSerializer(serializers.ModelSerializer):
         fields = '__all__'
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
+    def get_employee_names(self, obj):
+        return [e.full_name for e in obj.employees.all()]
+
     def to_internal_value(self, data):
         return super().to_internal_value(_clean(data))
 
 
 class OutgoingLetterSerializer(serializers.ModelSerializer):
-    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_names = serializers.SerializerMethodField()
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
 
     class Meta:
         model = OutgoingLetter
         fields = '__all__'
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_employee_names(self, obj):
+        return [e.full_name for e in obj.employees.all()]
 
     def to_internal_value(self, data):
         return super().to_internal_value(_clean(data))

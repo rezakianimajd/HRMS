@@ -4,7 +4,7 @@ import axiosInstance from '../../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Grid, Avatar, Chip, CircularProgress, TextField,
   InputAdornment, Button, Dialog, DialogTitle, DialogContent, DialogActions,
-  IconButton, Tooltip,
+  IconButton, Tooltip, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -15,6 +15,31 @@ import { toJalali } from '../../core/utils/dateUtils';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import { PRIORITY_LABELS, PRIORITY_COLORS } from './config';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
+import { useEmployees } from '../../core/hooks/useEmployees';
+
+/* Multi-select employee field (reads active employees) */
+const EmployeeMultiSelect = ({ value, onChange }) => {
+  const { data: employees } = useEmployees({ is_active: true });
+  const empList = Array.isArray(employees) ? employees : employees?.results || [];
+  const selected = Array.isArray(value) ? value : (value ? String(value).split(',').filter(Boolean) : []);
+  return (
+    <FormControl fullWidth size="small">
+      <InputLabel>پرسنل مرتبط</InputLabel>
+      <Select multiple value={selected.map(String)} label="پرسنل مرتبط"
+        renderValue={(sel) => (
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+            {sel.map(id => {
+              const e = empList.find(x => String(x.id) === String(id));
+              return <Chip key={id} size="small" label={e?.full_name || id} />;
+            })}
+          </Box>
+        )}
+        onChange={e => onChange(Array.isArray(e.target.value) ? e.target.value : [e.target.value])}>
+        {empList.map(e => <MenuItem key={e.id} value={String(e.id)}>{e.full_name} ({e.employee_id})</MenuItem>)}
+      </Select>
+    </FormControl>
+  );
+};
 
 /* Generic glassmorphism CRUD for correspondences. */
 export const CorrespondenceCRUD = ({
@@ -75,11 +100,18 @@ export const CorrespondenceCRUD = ({
     }
     if (col.key === 'date' || col.key.endsWith('_date')) return toJalali(v);
     if (col.key === 'number' || col.key === 'code') return toPersianDigits(v);
+    if (col.key === 'employee_names') {
+      const names = Array.isArray(v) ? v : [];
+      return names.length ? names.join('، ') : '—';
+    }
     return v || '—';
   };
 
   const renderField = (f) => {
     if (f.render) return React.cloneElement(f.render(form, setForm), { key: f.key });
+    if (f.type === 'employees') {
+      return <EmployeeMultiSelect key={f.key} value={form[f.key]} onChange={v => setForm(p => ({ ...p, [f.key]: v }))} />;
+    }
     if (f.type === 'date') {
       return (
         <JalaliDatePicker key={f.key} fullWidth label={f.label} required={f.required}
