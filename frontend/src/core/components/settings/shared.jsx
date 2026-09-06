@@ -274,6 +274,9 @@ export const CompanyProfileTab = () => {
         <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ایمیل" value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
         <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="وب‌سایت" value={form.website || ''} onChange={e => setForm(p => ({ ...p, website: e.target.value }))} /></Grid>
         <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="کد پستی" value={form.postal_code || ''} onChange={e => setForm(p => ({ ...p, postal_code: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="نام نماینده حقوقی / مدیرعامل" value={form.employer_rep_name || ''} onChange={e => setForm(p => ({ ...p, employer_rep_name: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="سمت نماینده" value={form.employer_rep_title || ''} onChange={e => setForm(p => ({ ...p, employer_rep_title: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="کد ملی نماینده" value={form.employer_rep_national_id || ''} onChange={e => setForm(p => ({ ...p, employer_rep_national_id: e.target.value }))} /></Grid>
         <Grid item xs={12}><TextField fullWidth size="small" label="آدرس" multiline rows={2} value={form.address || ''} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
         <Grid item xs={12}><TextField fullWidth size="small" label="توضیحات" multiline rows={3} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
       </Grid>
