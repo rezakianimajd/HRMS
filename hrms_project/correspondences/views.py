@@ -26,28 +26,61 @@ class BaseCorrespondenceViewSet(viewsets.ModelViewSet):
             qs = qs.filter(company=company)
         return qs
 
-    def _set_employees(self, instance, data):
-        """For letter models with `employees` M2M, set the related persons."""
-        if 'employees' in data:
-            ids = data.get('employees') or []
-            if isinstance(ids, str):
-                ids = [x.strip() for x in ids.split(',') if x.strip()]
-            ids = [int(x) for x in ids if str(x).isdigit()]
-            instance.employees.set(ids)
+    def _set_employees_and_archive(self, instance, data):
+        """
+        Save related persons (M2M) AND mirror letters into the company
+        archive (OrganizationDocument) so the letter appears both on each
+        employee's profile and in "بایگانی اسناد سازمان".
+        """
+        from employees.models import Employee
+        from documents.models import OrganizationDocument
+
+        company = instance.company
+        ids = []
+        raw = data.get('employees') if isinstance(data, dict) else None
+        if raw is None:
+            raw = data.get('employees')
+        if raw:
+            if isinstance(raw, str):
+                raw = [x.strip() for x in raw.split(',') if x.strip()]
+            ids = [int(x) for x in raw if str(x).isdigit()]
+
+        employees = list(Employee.objects.filter(company=company, id__in=ids))
+        instance.employees.set(ids)
+
+        subject = getattr(instance, 'subject', None) or getattr(instance, 'title', None) or ''
+        number = getattr(instance, 'number', '')
+        letter_date = getattr(instance, 'date', None)
+        description = getattr(instance, 'description', '') or ''
+
+        for emp in employees:
+            OrganizationDocument.objects.create(
+                company=company,
+                employee=emp,
+                title=f"نامه: {subject} ({number})",
+                category=OrganizationDocument.ArchiveCategory.HR_DOC,
+                reference_number=number,
+                issue_date=letter_date,
+                file=instance.file if getattr(instance, 'file', None) else None,
+                description=description,
+                tags='مکاتبات',
+            )
 
     def perform_create(self, serializer):
         company = _get_company(self.request)
         data = self.request.data
         instance = serializer.save(company=company)
-        self._set_employees(instance, data)
+        # For incoming/outgoing letters -> mirror into archive + employee profile
+        if hasattr(instance, 'employees'):
+            self._set_employees_and_archive(instance, data)
+        return instance
 
     def perform_update(self, serializer):
         instance = serializer.save()
         data = self.request.data
-        if 'employees' in data:
-            self._set_employees(instance, data)
+        if 'employees' in data and hasattr(instance, 'employees'):
+            self._set_employees_and_archive(instance, data)
         return instance
-
 
 class IncomingLetterViewSet(BaseCorrespondenceViewSet):
     serializer_class = IncomingLetterSerializer

@@ -83,7 +83,11 @@ class OrganizationDocument(BaseModel):
     )
     issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
     expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
-    file = models.FileField(upload_to='company_archive/%Y/%m/', verbose_name=_('فایل'))
+    file = models.FileField(
+        upload_to='company_archive/%Y/%m/',
+        blank=True, null=True,
+        verbose_name=_('فایل'),
+    )
     tags = models.CharField(max_length=300, blank=True, verbose_name=_('برچسب‌ها'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 
