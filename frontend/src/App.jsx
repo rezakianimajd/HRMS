@@ -15,7 +15,17 @@ import './core/engines/languageEngine';
 
 const queryClient = new QueryClient({
   defaultOptions: {
-    queries: { retry: 1, refetchOnWindowFocus: false, staleTime: 5 * 60 * 1000 },
+    queries: {
+      // CACHE-CENTRAL (Proposal 5):
+      //  - refetchOnMount 'always'  => whenever the user opens a page, get the
+      //    freshest data even if cache exists (no more stale dashboards/lists).
+      //  - refetchOnWindowFocus true => returning to the tab refreshes data.
+      //  - staleTime 60s prevents noisy refetches inside the same page while
+      //    still keeping mounted data sufficiently fresh.
+      retry: 1,
+      refetchOnWindowFocus: true,
+      staleTime: 60 * 1000,
+    },
   },
 });
 
