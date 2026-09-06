@@ -738,11 +738,7 @@ const Settings = () => {
 
   const tabs = [
     { label: 'تنظیمات عمومی', icon: <TuneIcon />, key: 'general', color: '#6366f1', desc: 'پیکربندی ذخیره‌سازی، هشدارها و تنظیمات پایه سیستم' },
-    { label: 'کاربران', icon: <PeopleIcon />, key: 'users', color: '#10b981', desc: 'مدیریت حساب‌های کاربری و نقش‌های آن‌ها' },
-    { label: 'نقش‌ها و دسترسی', icon: <SecurityIcon />, key: 'roles', color: '#f59e0b', desc: 'تعریف سطوح دسترسی و مجوزهای هر نقش' },
-    { label: 'درون‌ریزی اکسل', icon: <UploadFileIcon />, key: 'import', color: '#14b8a6', desc: 'بارگذاری گروهی داده‌ها از فایل اکسل' },
     { label: 'پشتیبان‌گیری', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'تهیه، مشاهده و بازیابی نسخه‌های پشتیبان داده' },
-    { label: 'ظاهر', icon: <PaletteIcon />, key: 'appearance', color: '#8b5cf6', desc: 'شخصی‌سازی تم، مد نمایش و رنگ نئونی' },
   ];
 
   const active = tabs[tabIndex];
@@ -807,11 +803,7 @@ const Settings = () => {
           </Paper>
 
           {tabIndex === 0 && <GeneralSettingsTab />}
-          {tabIndex === 1 && <UserManagementTab />}
-          {tabIndex === 2 && <RolesTab />}
-          {tabIndex === 3 && <ImportTab />}
-          {tabIndex === 4 && <BackupTab />}
-          {tabIndex === 5 && <AppearanceTab />}
+          {tabIndex === 1 && <BackupTab />}
         </Box>
       </Paper>
     </Box>

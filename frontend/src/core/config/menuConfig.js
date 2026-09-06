@@ -58,6 +58,7 @@ const menuConfig = [
     items: [
       { id: 'org-chart', title: 'چارت سازمانی', icon: <AccountTreeIcon />, path: '/org-chart', color: '#8b5cf6', primary: true, ready: true },
       { id: 'data-entry', title: 'ورود اطلاعات', icon: <EditNoteIcon />, path: '/data-entry', color: '#f97316', primary: false, ready: true },
+      { id: 'data-import', title: 'درون‌ریزی داده', icon: <UploadFileIcon />, path: '/data-import', color: '#f97316', primary: false, ready: true },
       { id: 'attendance', title: 'حضور و غیاب', icon: <AccessTimeFilledIcon />, path: '/attendance', color: '#0ea5e9', primary: false, ready: true },
       { id: 'leaves', title: 'مرخصی و مأموریت', icon: <BeachAccessIcon />, path: '/leaves', color: '#06b6d4', primary: false, ready: true },
       { id: 'requests', title: 'درخواست‌های اداری', icon: <FactCheckIcon />, path: '/requests', color: '#f59e0b', primary: false, ready: true },
@@ -107,7 +108,8 @@ const menuConfig = [
       { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: true, ready: true },
       { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
       { id: 'audit', title: 'دفترچه فعالیت (Audit)', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
-      { id: 'settings', title: 'تنظیمات کلی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
+      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
+      { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
 ];

@@ -17,6 +17,8 @@ import PayslipsPage from './pages/PayslipsPage';
 import FinanceReportsPage from './pages/FinanceReportsPage';
 import UsersPage from './pages/UsersPage';
 import AuditPage from './pages/AuditPage';
+import DataImportPage from './pages/DataImportPage';
+import AppearancePage from './pages/AppearancePage';
 import CompanyDocumentsPage from './pages/CompanyDocumentsPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
@@ -97,6 +99,8 @@ const AppRoutes = () => {
       <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />
       <Route path="/users" element={<ProtectedLayout><UsersPage /></ProtectedLayout>} />
       <Route path="/audit" element={<ProtectedLayout><AuditPage /></ProtectedLayout>} />
+      <Route path="/data-import" element={<ProtectedLayout><DataImportPage /></ProtectedLayout>} />
+      <Route path="/appearance" element={<ProtectedLayout><AppearancePage /></ProtectedLayout>} />
 
       {/* Default redirect */}
       <Route path="/" element={<Navigate to="/dashboard" replace />} />
