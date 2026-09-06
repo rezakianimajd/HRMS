@@ -234,8 +234,8 @@ const LeavePage = () => {
                         <Chip size="small" icon={lm.icon} label={r.leave_type_display || lm.label}
                           sx={{ bgcolor: `${lm.color}15`, color: lm.color, border: `1px solid ${lm.color}30`, fontWeight: 700 }} />
                       </td>
-                      <td style={{ padding: '10px 14px' }}>{r.start_date || '—'}</td>
-                      <td style={{ padding: '10px 14px' }}>{r.end_date || '—'}</td>
+                      <td style={{ padding: '10px 14px' }}>{r.start_date_display || r.start_date || '—'}</td>
+                      <td style={{ padding: '10px 14px' }}>{r.end_date_display || r.end_date || '—'}</td>
                       <td style={{ padding: '10px 14px' }}>
                         {r.leave_type === 'hourly'
                           ? `${formatPersianNumber(r.hours || r.days)} ساعت`

@@ -126,6 +126,11 @@ const RequestsPage = () => {
                       هدف: {r.target_value}
                     </Typography>
                   )}
+                  {r.requested_date_display && (
+                    <Typography variant="body2" color="textSecondary" sx={{ mb: 0.5 }}>
+                      تاریخ درخواست: {r.requested_date_display}
+                    </Typography>
+                  )}
                   {r.description && (
                     <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>{r.description}</Typography>
                   )}
