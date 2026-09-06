@@ -157,6 +157,8 @@ def import_upload(request):
             created, skipped = ImportEngine.import_attendance(valid_rows, company)
         elif import_type == 'leave_bulk':
             created, skipped = ImportEngine.import_leaves(valid_rows, company)
+        elif import_type == 'contract_versions':
+            created, skipped = ImportEngine.import_contracts(valid_rows, company)
         else:
             created, skipped = ImportEngine.import_simple(valid_rows, company, import_type)
     except Exception as e:

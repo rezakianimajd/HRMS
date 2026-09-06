@@ -92,6 +92,8 @@ PERSIAN_FIELD_LABELS = {
     'gross_amount': 'مبلغ ناخالص',
     'reserved_tax': 'مالیات ذخیره شده',
     'paid_amount': 'مبلغ پرداخت شده',
+    'version': 'نسخه',
+    'family_allowance': 'حق عائله‌مندی',
 }
 
 
@@ -255,6 +257,25 @@ class ImportEngine:
             ],
             'required': ['employee_code', 'leave_type', 'start_date', 'end_date'],
             'sample': ['EMP100', 'annual', 'approved', '1404/06/01', '1404/06/05', '5', 'مسافرت'],
+        },
+        'contract_versions': {
+            'label': 'قراردادها',
+            'description': 'درون‌ریزی نسخه‌های قرارداد پرسنل (سال، نسخه، تاریخ، حقوق و مزایا)',
+            'headers': [
+                'employee_code', 'year', 'version', 'contract_type',
+                'start_date', 'end_date', 'base_salary',
+                'attraction_allowance', 'job_allowance', 'housing_allowance',
+                'meal_voucher', 'travel_cost', 'family_allowance', 'children_allowance',
+                'description',
+            ],
+            'required': ['employee_code', 'year', 'version', 'start_date'],
+            'sample': [
+                'EMP100', '1404', '1', 'دائم',
+                '1404/01/01', '1404/12/29', '450586470',
+                '101499990', '58000000', '30000000',
+                '22000000', '0', '5000000', '0',
+                'قرارداد سال ۱۴۰۴',
+            ],
         },
     }
 
@@ -749,6 +770,71 @@ class ImportEngine:
                 overtime_hours=_num(row.get('overtime_hours')),
                 note=str(row.get('note', '')).strip() or '',
             )
+            created += 1
+        return created, skipped
+
+    @staticmethod
+    def import_contracts(rows, company):
+        """Bulk import contract versions (employee_code, year, version, ...)."""
+        from employees.models import Employee, ContractType, ContractVersion
+
+        def _num(val):
+            try:
+                return float(val) if val not in (None, '') else None
+            except (ValueError, TypeError):
+                return None
+
+        created = 0
+        skipped = []
+        for row in rows:
+            employee_code = str(row.get('employee_code', '')).strip()
+            employee = Employee.objects.filter(company=company, employee_id=employee_code).first()
+            if not employee:
+                skipped.append(f'{employee_code}: پرسنل یافت نشد')
+                continue
+
+            try:
+                year = int(row.get('year'))
+                version = int(row.get('version') or 1)
+            except (TypeError, ValueError):
+                skipped.append(f'{employee_code}: سال/نسخه نامعتبر')
+                continue
+
+            if ContractVersion.objects.filter(company=company, employee=employee, year=year, version=version).exists():
+                skipped.append(f'{employee_code}: نسخه {version} سال {year} تکراری')
+                continue
+
+            # Contract type by name
+            ctype_name = str(row.get('contract_type', '')).strip()
+            contract_type = None
+            if ctype_name:
+                contract_type = ContractType.objects.filter(company=company, name=ctype_name).first()
+
+            start_date = ImportEngine.parse_jalali_date(row.get('start_date'))
+            end_date = ImportEngine.parse_jalali_date(row.get('end_date'))
+            if not start_date:
+                skipped.append(f'{employee_code}: تاریخ شروع نامعتبر')
+                continue
+
+            numeric_fields = [
+                'base_salary', 'attraction_allowance', 'job_allowance',
+                'housing_allowance', 'meal_voucher', 'travel_cost',
+                'family_allowance', 'children_allowance',
+            ]
+            kwargs = {
+                'company': company,
+                'employee': employee,
+                'year': year,
+                'version': version,
+                'contract_type': contract_type,
+                'start_date': start_date,
+                'end_date': end_date,
+                'description': str(row.get('description', '')).strip() or '',
+            }
+            for f in numeric_fields:
+                kwargs[f] = _num(row.get(f))
+
+            ContractVersion.objects.create(**kwargs)
             created += 1
         return created, skipped
 
