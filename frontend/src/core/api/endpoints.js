@@ -54,6 +54,13 @@ const endpoints = {
   },
   orgchart: `${API_BASE}/orgchart/`,
   settings: `${API_BASE}/settings/`,
+  notifications: {
+    list: `${API_BASE}/notifications/`,
+    unreadCount: `${API_BASE}/notifications/unread_count/`,
+    markAllRead: `${API_BASE}/notifications/mark_all_read/`,
+    markRead: (id) => `${API_BASE}/notifications/${id}/mark_read/`,
+    sync: `${API_BASE}/notifications/sync/`,
+  },
 };
 
 export default endpoints;

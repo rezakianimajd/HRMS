@@ -70,7 +70,75 @@ def turnover_rate(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def salary_cost(request):
-    return Response({'message': 'Data available after payroll module activation.', 'departments': []})
+    """Monthly payroll cost trend over the last 12 months (payroll module)."""
+    from payroll.models import SalaryRecord
+    from django.db.models import Sum
+
+    company = _get_company(request)
+    qs = SalaryRecord.objects.all()
+    if company:
+        qs = qs.filter(company=company)
+
+    today = date.today()
+    rows = []
+    for i in range(11, -1, -1):
+        y = today.year
+        m = today.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        agg = qs.filter(year=y, month=str(m)).aggregate(s=Sum('net_payable'))
+        # Jalali label for the trend axis
+        from jdatetime import date as jdate
+        try:
+            jd = jdate.fromgregorian(year=y, month=m, day=1)
+            label = f'{jd.month}/{jd.year}'
+        except Exception:
+            label = f'{m}/{y}'
+        rows.append({'label': label, 'year': y, 'month': m, 'total': agg['s'] or 0})
+
+    return Response({'months': rows, 'total': sum(r['total'] for r in rows)})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def attendance_summary(request):
+    """Monthly attendance/absence/leave rate over the last 12 months."""
+    from attendance.models import AttendanceRecord
+
+    company = _get_company(request)
+    qs = AttendanceRecord.objects.all()
+    if company:
+        qs = qs.filter(company=company)
+
+    today = date.today()
+    months = []
+    for i in range(11, -1, -1):
+        y = today.year
+        m = today.month - i
+        while m <= 0:
+            m += 12
+            y -= 1
+        subset = qs.filter(date__year=y, date__month=m)
+        total = subset.count()
+        present = subset.filter(status=AttendanceRecord.Status.PRESENT).count()
+        absent = subset.filter(status=AttendanceRecord.Status.ABSENT).count()
+        leave = subset.filter(status=AttendanceRecord.Status.LEAVE).count()
+        mission = subset.filter(status=AttendanceRecord.Status.MISSION).count()
+        from jdatetime import date as jdate
+        try:
+            jd = jdate.fromgregorian(year=y, month=m, day=1)
+            label = f'{jd.month}/{jd.year}'
+        except Exception:
+            label = f'{m}/{y}'
+        months.append({
+            'label': label, 'year': y, 'month': m,
+            'total': total, 'present': present, 'absent': absent,
+            'leave': leave, 'mission': mission,
+            'present_rate': round(present / total * 100, 1) if total else 0,
+        })
+
+    return Response({'months': months})
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

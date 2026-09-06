@@ -41,6 +41,12 @@ def dashboard_stats(request):
         contract_end_date__lte=today + timedelta(days=90)
     ).count()
 
+    # Pending approval counts (workflow load) — used by the dashboard KPI row.
+    from leaves.models import LeaveRequest
+    from employees.models import HRRequest
+    pending_leaves = LeaveRequest.objects.filter(company=company, status='pending').count() if company else LeaveRequest.objects.filter(status='pending').count()
+    pending_hr = HRRequest.objects.filter(company=company, status='pending').count() if company else HRRequest.objects.filter(status='pending').count()
+
     return Response({
         'total_active': total_active,
         'on_leave': on_leave,
@@ -49,6 +55,8 @@ def dashboard_stats(request):
         'expired_documents': expired_docs,
         'expiring_contracts': expiring_contracts,
         'total_documents': doc_qs.count(),
+        'pending_leave_requests': pending_leaves,
+        'pending_hr_requests': pending_hr,
     })
 
 

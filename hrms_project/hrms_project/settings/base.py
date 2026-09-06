@@ -61,6 +61,7 @@ TENANT_APPS = [
     'orgchart',
     'settings_app',                    # Renamed from 'settings' to avoid conflict
     'correspondences',
+    'notifications',                   # Notification Center
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]
@@ -260,6 +261,9 @@ ORG_CHART_ENABLE_DRAG_DROP = True  # فعال‌سازی جابجایی گره�
 
 LEAVE_DEFAULT_TOTAL_DAYS = 30  # تعداد روز مرخصی استحقاقی پیش‌فرض در سال
 LEAVE_ALERT_DAYS_BEFORE_EXPIRY = 30  # چند روز قبل از پایان سال، هشدار ارسال شود؟
+CONTRACT_ALERT_DAYS = 60  # چند روز قبل از پایان قرارداد، هشدار داده شود
+DOCUMENT_ALERT_DAYS = 30  # چند روز قبل از انقضای مدرک، هشدار داده شود
+LEAVE_BALANCE_ALERT_RATIO = 0.2  # نسبتِ مانده‌ی مرخصی که زیر آن هشدار داده شود (۲۰٪)
 
 # =============================================================================
 # Attendance Settings

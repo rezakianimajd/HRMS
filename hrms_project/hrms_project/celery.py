@@ -43,6 +43,13 @@ app.conf.beat_schedule = {
         'schedule': crontab(hour=3, minute=0),
         'options': {'queue': 'hrms_default'},
     },
+
+    # Notification Center sync — every 30 minutes so the bell stays fresh.
+    'sync-all-notifications': {
+        'task': 'notifications.tasks.sync_all_notifications',
+        'schedule': crontab(minute='*/30'),
+        'options': {'queue': 'hrms_default'},
+    },
 }
 
 # =============================================================================
@@ -53,6 +60,7 @@ app.conf.task_routes = {
     'leaves.tasks.*': {'queue': 'hrms_default'},
     'attendance.tasks.*': {'queue': 'hrms_default'},
     'core.tasks.*': {'queue': 'hrms_default'},
+    'notifications.tasks.*': {'queue': 'hrms_default'},
 }
 
 # =============================================================================

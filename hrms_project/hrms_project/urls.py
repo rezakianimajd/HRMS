@@ -32,6 +32,7 @@ urlpatterns = [
     path('api/', include('correspondences.urls')),
     path('api/', include('attendance.urls')),
     path('api/', include('leaves.urls')),
+    path('api/', include('notifications.urls')),
 ]
 
 if settings.DEBUG:

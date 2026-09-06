@@ -26,6 +26,7 @@ import DocumentsTab from '../core/components/employee/DocumentsTab';
 import ReceiptsTab from '../core/components/employee/ReceiptsTab';
 import WorkRecordTab from '../core/components/employee/WorkRecordTab';
 import EmploymentHistoryTab from '../core/components/employee/EmploymentHistoryTab';
+import TimelineTab from '../core/components/employee/TimelineTab';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import { toJalali } from '../core/utils/dateUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
@@ -179,6 +180,7 @@ const EmployeeProfilePage = () => {
           scrollButtons="auto"
           sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
         >
+          <Tab label="تایملاین" />
           <Tab label="اطلاعات فردی" />
           <Tab label="اطلاعات شغلی" />
           <Tab label="دریافتی‌ها" />
@@ -187,12 +189,13 @@ const EmployeeProfilePage = () => {
           <Tab label="مدارک" />
         </Tabs>
         <Box sx={{ p: 3 }}>
-          {tabIndex === 0 && <BasicInfoTab employee={e} />}
-          {tabIndex === 1 && <EmploymentTab employee={e} />}
-          {tabIndex === 2 && <ReceiptsTab employeeId={e.id} />}
-          {tabIndex === 3 && <WorkRecordTab employeeId={e.id} />}
-          {tabIndex === 4 && <EmploymentHistoryTab employeeId={e.id} />}
-          {tabIndex === 5 && <DocumentsTab employeeId={e.id} />}
+          {tabIndex === 0 && <TimelineTab employeeId={e.id} />}
+          {tabIndex === 1 && <BasicInfoTab employee={e} />}
+          {tabIndex === 2 && <EmploymentTab employee={e} />}
+          {tabIndex === 3 && <ReceiptsTab employeeId={e.id} />}
+          {tabIndex === 4 && <WorkRecordTab employeeId={e.id} />}
+          {tabIndex === 5 && <EmploymentHistoryTab employeeId={e.id} />}
+          {tabIndex === 6 && <DocumentsTab employeeId={e.id} />}
         </Box>
       </Paper>
     </Box>

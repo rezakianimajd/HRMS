@@ -121,6 +121,8 @@ const ReportsPage = () => {
   const { data: birthdays } = useQuery({ queryKey: ['report-birthdays'], queryFn: () => axiosInstance.get('/reports/upcoming-birthdays/').then(r => r.data) });
   const { data: corrSummary } = useQuery({ queryKey: ['report-correspondences'], queryFn: () => axiosInstance.get('/reports/correspondences-summary/').then(r => r.data) });
   const { data: salaryBenefit } = useQuery({ queryKey: ['report-salary-benefit'], queryFn: () => axiosInstance.get('/reports/salary-benefits-summary/').then(r => r.data) });
+  const { data: salaryCost } = useQuery({ queryKey: ['report-salary-cost'], queryFn: () => axiosInstance.get('/reports/salary-cost/').then(r => r.data) });
+  const { data: attendanceSummary } = useQuery({ queryKey: ['report-attendance-summary'], queryFn: () => axiosInstance.get('/reports/attendance-summary/').then(r => r.data) });
 
   const totalEmployees = (byGender || []).reduce((sum, g) => sum + (g.count || 0), 0);
   const hiresTotal = (hiresTrend || []).reduce((sum, d) => sum + (Number(d.count) || 0), 0);
@@ -139,6 +141,10 @@ const ReportsPage = () => {
   const hiresData = (hiresTrend || []).map(d => d.count);
   const hiresLabels = (hiresTrend || []).map(d => d.label);
   const txSummaryData = (txSummary || []).map((d, i) => ({ label: d.transaction_type_display, value: d.count, color: PALETTE[i % PALETTE.length] }));
+  const salaryCostMonths = salaryCost?.months || [];
+  const salaryCostData = salaryCostMonths.map((m) => Number(m.total) || 0);
+  const salaryCostLabels = salaryCostMonths.map((m) => m.label);
+  const attendanceMonths = attendanceSummary?.months || [];
 
   return (
     <Box>
@@ -241,6 +247,32 @@ const ReportsPage = () => {
           <Paper sx={glassCard(sectionColors.age)}>
             <SectionHeader title="توزیع سنی کارکنان" color={sectionColors.age} icon={<CakeIcon />} />
             <ColumnChart data={ageGroupData} color={sectionColors.age} height={200} />
+          </Paper>
+        </Grid>
+
+        {/* Monthly Salary Cost Trend */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={glassCard('#f59e0b')}>
+            <SectionHeader title="روند هزینه حقوق ماهانه" color="#f59e0b" icon={<PaymentsIcon />} subtitle="۱۲ ماه اخیر (خالص پرداختی)" />
+            <LineChart data={salaryCostData} labels={salaryCostLabels} color="#f59e0b" height={200} />
+          </Paper>
+        </Grid>
+
+        {/* Attendance / Absence Monthly Rate */}
+        <Grid item xs={12} md={6}>
+          <Paper sx={glassCard(sectionColors.turnover)}>
+            <SectionHeader title="نرخ حضور / غیبت ماهانه" color={sectionColors.turnover} icon={<AccessTimeIcon />} subtitle="۱۲ ماه اخیر" />
+            <LineChart
+              data={attendanceMonths.map((m) => m.present_rate)}
+              labels={attendanceMonths.map((m) => m.label)}
+              color="#3b82f6"
+              height={200}
+            />
+            <Box sx={{ mt: 1.5, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              <Chip size="small" label={`حضور: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.present, 0))}`} sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#3b82f6' }} />
+              <Chip size="small" label={`غیبت: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.absent, 0))}`} sx={{ bgcolor: 'rgba(239,68,68,0.1)', color: '#ef4444' }} />
+              <Chip size="small" label={`مرخصی: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.leave, 0))}`} sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b' }} />
+            </Box>
           </Paper>
         </Grid>
 

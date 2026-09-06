@@ -13,6 +13,7 @@ from employees import report_views
 from employees import dashboard_views
 from employees import assistant_views
 from employees import scoring_views
+from employees import timeline_views
 
 router = DefaultRouter()
 router.register(r'employees', EmployeeViewSet, basename='employee')
@@ -48,6 +49,7 @@ urlpatterns = [
     path('reports/monthly-hires-trend/', report_views.monthly_hires_trend),
     path('reports/turnover-rate/', report_views.turnover_rate),
     path('reports/salary-cost/', report_views.salary_cost),
+    path('reports/attendance-summary/', report_views.attendance_summary),
     path('reports/average-age-experience/', report_views.average_age_experience),
     path('reports/contracts-expiring/', report_views.contracts_expiring),
     path('reports/leave-balance-summary/', report_views.leave_balance_summary),
@@ -70,4 +72,7 @@ urlpatterns = [
     # Employee scoring (weighted multi-criteria evaluation)
     path('scoring/employees/', scoring_views.employee_scores),
     path('scoring/employees/<int:employee_id>/', scoring_views.employee_score_detail),
+
+    # Employee 360° timeline
+    path('employees/<int:employee_id>/timeline/', timeline_views.employee_timeline),
 ]

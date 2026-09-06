@@ -17,6 +17,7 @@ import ConstructionIcon from '@mui/icons-material/Construction';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
+import NotificationBell from './NotificationBell';
 import menuConfig from '../../config/menuConfig';
 
 const DRAWER_WIDTH = 290;
@@ -335,6 +336,10 @@ const Layout = ({ children }) => {
 
       {/* Main content */}
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
+        {/* Top action strip — notification bell aligned to the start (right in RTL). */}
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
+          <NotificationBell />
+        </Box>
         {children}
       </Box>
     </Box>
