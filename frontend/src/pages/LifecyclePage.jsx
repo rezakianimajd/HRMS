@@ -9,7 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import PersonAddAlt1Icon from '@mui/icons-material/PersonAddAlt1';
 import LogoutIcon from '@mui/icons-material/Logout';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CheckboxOutlineBlankIcon from '@mui/icons-material/CheckboxOutlineBlank';
+import CheckboxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { useChecklists, useCreateChecklist, useToggleChecklistItem } from '../core/hooks/useLifecycle';
 import { useEmployees } from '../core/hooks/useEmployees';

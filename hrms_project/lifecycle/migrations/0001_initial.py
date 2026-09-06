@@ -35,8 +35,8 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'اموال و تجهیزات',
                 'ordering': ['-assigned_date', '-created_at'],
                 'indexes': [
-                    models.Index(fields=['company', 'employee'], name='lifecycle_asset_company_employee_idx'),
-                    models.Index(fields=['company', 'status'], name='lifecycle_asset_company_status_idx'),
+                    models.Index(fields=['company', 'employee'], name='lc_asset_emp_idx'),
+                    models.Index(fields=['company', 'status'], name='lc_asset_status_idx'),
                 ],
             },
         ),
@@ -59,7 +59,7 @@ class Migration(migrations.Migration):
                 'verbose_name_plural': 'رویدادهای تقویم',
                 'ordering': ['event_date', 'id'],
                 'indexes': [
-                    models.Index(fields=['company', 'event_date'], name='lifecycle_event_company_date_idx'),
+                    models.Index(fields=['company', 'event_date'], name='lc_event_date_idx'),
                 ],
             },
         ),
