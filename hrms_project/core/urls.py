@@ -26,5 +26,9 @@ urlpatterns = [
 
     # Users & roles
     path('users/', views.users_view, name='api-users'),
+    path('users/create/', views.user_create_view, name='api-user-create'),
     path('users/<int:user_id>/role/', views.user_set_role_view, name='api-user-set-role'),
+    path('users/<int:user_id>/delete/', views.user_delete_view, name='api-user-delete'),
+    path('users/roles/', views.user_roles_view, name='api-user-roles'),
+    path('users/roles/<str:role>/save/', views.user_role_save_view, name='api-user-role-save'),
 ]

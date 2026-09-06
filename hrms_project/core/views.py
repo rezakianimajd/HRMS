@@ -319,3 +319,141 @@ def user_set_role_view(request, user_id):
     p.save(update_fields=['role', 'updated_at'])
 
     return Response({'message': 'نقش کاربر به‌روزرسانی شد.', 'role': role, 'role_label': p.get_role_display()})
+
+
+# ---------------------------------------------------------------------------
+# Extended user management & role customization (P5)
+# ---------------------------------------------------------------------------
+def _role_meta():
+    from core.models.user import UserProfile
+    return {c[0]: c[1] for c in UserProfile.Role.choices}
+
+
+def _can_admin(request):
+    from core.models.user import UserProfile
+    p = getattr(request.user, 'profile', None)
+    return request.user.is_superuser or (p and p.is_hr_manager)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def user_create_view(request):
+    """Create a new Django user (sysadmin/hr_manager only)."""
+    if not _can_admin(request):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+    from django.contrib.auth.models import User
+    from core.models.user import UserProfile
+
+    data = request.data
+    username = (data.get('username') or '').strip()
+    email = (data.get('email') or '').strip()
+    password = data.get('password') or ''
+    role = data.get('role') or 'employee'
+    role_map = _role_meta()
+
+    if not username or not password:
+        return Response({'error': 'نام کاربری و رمز عبور الزامی است'}, status=400)
+    if User.objects.filter(username=username).exists():
+        return Response({'error': 'نام کاربری تکراری است'}, status=400)
+    if role not in role_map:
+        return Response({'error': 'نقش نامعتبر است'}, status=400)
+
+    u = User.objects.create_user(
+        username=username,
+        email=email or '',
+        password=password,
+        first_name=(data.get('first_name') or '').strip() or username,
+        last_name=(data.get('last_name') or '').strip(),
+        is_staff=True,
+    )
+    p, _ = UserProfile.objects.get_or_create(user=u)
+    p.role = role
+
+    # Auto-assign to current company (multi-tenant setup)
+    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+    if company:
+        p.companies.add(company)
+        p.current_company = company
+    p.save()
+
+    return Response({
+        'message': 'کاربر ساخته شد.',
+        'user': {
+            'id': u.id, 'username': u.username, 'email': u.email,
+            'first_name': u.first_name, 'last_name': u.last_name,
+            'role': p.role, 'role_label': role_map.get(p.role, ''),
+            'is_superuser': u.is_superuser,
+        },
+    }, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def user_delete_view(request, user_id):
+    """Soft-delete a user (is_active=False), sysadmin/hr_manager only."""
+    if not _can_admin(request):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+    from django.contrib.auth.models import User
+    if request.user.id == user_id:
+        return Response({'error': 'امکان حذف حساب خودتان وجود ندارد'}, status=400)
+    u = User.objects.filter(id=user_id).first()
+    if not u:
+        return Response({'error': 'کاربر یافت نشد'}, status=404)
+    u.is_active = False
+    u.save(update_fields=['is_active'])
+    return Response({'message': 'کاربر غیرفعال شد.'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_roles_view(request):
+    """Return role definitions + effective permission map (defaults merged with overrides)."""
+    if not _can_admin(request):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+    from core.models.user import UserProfile, RolePermission
+    from core.models.user import ROLE_PERMISSIONS
+
+    config = []
+
+    # Permission keys (unified set) from defaults
+    keys = []
+    for role, perms in ROLE_PERMISSIONS.items():
+        for k in perms:
+            if k not in keys:
+                keys.append(k)
+
+    role_map = _role_meta()
+
+    for role, label in role_map.items():
+        defaults = ROLE_PERMISSIONS.get(role, {})
+        override = None
+        try:
+            override = RolePermission.objects.get(role=role)
+            eff = {**defaults, **override.permissions}
+        except RolePermission.DoesNotExist:
+            eff = {**defaults}
+        config.append({
+            'role': role,
+            'label': label,
+            'permissions': {k: bool(eff.get(k)) for k in keys},
+        })
+    return Response(config)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def user_role_save_view(request, role):
+    """Persist a role's custom permission map (sysadmin/hr_manager only)."""
+    if not _can_admin(request):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+    from core.models.user import RolePermission
+
+    role_map = _role_meta()
+    if role not in role_map:
+        return Response({'error': 'نقش نامعتبر است'}, status=404)
+
+    raw = request.data.get('permissions') or {}
+    # keep only bool values
+    clean = {k: bool(v) for k, v in raw.items() if isinstance(v, bool)}
+    RolePermission.objects.update_or_create(role=role, defaults={'permissions': clean})
+    return Response({'message': f'مجوزهای نقش {role_map[role]} ذخیره شد.', 'role': role, 'permissions': clean})
