@@ -3,8 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Stack, Chip, Alert, Button, CircularProgress,
-  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Grid, Stepper,
-  Step, StepLabel, LinearProgress, Tooltip,
+  Dialog, DialogTitle, DialogContent, DialogActions, IconButton, Grid,
+  LinearProgress, Tooltip,
 } from '@mui/material';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -137,15 +137,6 @@ const DataImportPage = () => {
         <Button variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => setHelpOpen(true)}>
           راهنمای ستون‌ها
         </Button>
-      </Paper>
-
-      {/* Stepper */}
-      <Paper sx={{ p: 2, mb: 2, borderRadius: 2.5, background: 'rgba(255,255,255,0.6)' }}>
-        <Stepper activeStep={step} alternativeLabel>
-          <Step><StepLabel>انتخاب نوع</StepLabel></Step>
-          <Step><StepLabel>بارگذاری فایل</StepLabel></Step>
-          <Step><StepLabel>نتیجه</StepLabel></Step>
-        </Stepper>
       </Paper>
 
       {/* Feedback */}
