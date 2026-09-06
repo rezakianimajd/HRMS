@@ -33,9 +33,35 @@ class TransactionViewSet(viewsets.ModelViewSet):
             qs = qs.filter(transaction_type=ttype)
         return qs
 
+    def _sync_attendance(self, instance):
+        """
+        پل معکوس یکپارچگی: وقتی در «ورود اطلاعات» رکورد غیبت/مرخصی ثبت میشود،
+        رکوردِ حضور متناظر نیز ساخته میشود تا «حضور و غیاب» همان واقعیت را ببیند.
+        """
+        from attendance.models import AttendanceRecord
+
+        company = _get_company(self.request)
+        status_map = {
+            EmployeeTransaction.TransactionType.ABSENCE: AttendanceRecord.Status.ABSENT,
+            EmployeeTransaction.TransactionType.LEAVE: AttendanceRecord.Status.LEAVE,
+        }
+        status = status_map.get(instance.transaction_type)
+        if not status:
+            return
+        AttendanceRecord.objects.update_or_create(
+            company=company,
+            employee_id=instance.employee_id,
+            date=instance.date,
+            defaults={'status': status, 'note': instance.title or 'از «ورود اطلاعات»'},
+        )
+
     def perform_create(self, serializer):
         company = _get_company(self.request)
-        serializer.save(company=company)
+        instance = serializer.save(company=company)
+        try:
+            self._sync_attendance(instance)
+        except Exception:
+            pass
 
     @action(detail=False, methods=['get'])
     def summary(self, request):
@@ -46,16 +72,16 @@ class TransactionViewSet(viewsets.ModelViewSet):
         qs = qs.values('transaction_type').annotate(
             count=Count('id'), total_amount=Sum('amount'), total_quantity=Sum('quantity'),
         ).order_by('transaction_type')
-        result = []
-        for row in qs:
-            ttype = row['transaction_type']
-            result.append({
-                'transaction_type': ttype,
-                'transaction_type_display': dict(EmployeeTransaction.TransactionType.choices).get(ttype, ttype),
+        result = [
+            {
+                'transaction_type': row['transaction_type'],
+                'transaction_type_display': dict(EmployeeTransaction.TransactionType.choices).get(row['transaction_type'], row['transaction_type']),
                 'count': row['count'],
                 'total_amount': row['total_amount'] or 0,
                 'total_quantity': row['total_quantity'] or 0,
-            })
+            }
+            for row in qs
+        ]
         return Response(result)
 
     @action(detail=False, methods=['get'])
@@ -93,17 +119,14 @@ class SalaryRecordViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         company = _get_company(self.request)
         instance = serializer.save(company=company)
-
-        # ۲c) اگر برای این کارمند وام «فعال» وجود دارد و کاربر مبلغ قسط را صریح
-        # تنظیم نکرده، قسط اولین وام فعال به‌صورت خودکار لحاظ می‌شود.
+        # 2c: قسط وام فعال خودکار در فیش حقوق
         if not instance.employee_loan:
-            active_loan = (EmployeeLoan.objects
-                           .filter(company=company, employee_id=instance.employee_id,
-                                   status=EmployeeLoan.LoanStatus.ACTIVE)
-                           .order_by('-grant_date').first())
-            if active_loan:
-                instance.employee_loan = active_loan.installment_amount
-
+            active = (EmployeeLoan.objects
+                      .filter(company=company, employee_id=instance.employee_id,
+                              status=EmployeeLoan.LoanStatus.ACTIVE)
+                      .order_by('-grant_date').first())
+            if active:
+                instance.employee_loan = active.installment_amount
         instance.calculate_totals()
         instance.save()
 
