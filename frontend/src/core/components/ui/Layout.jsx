@@ -252,27 +252,13 @@ const Layout = ({ children }) => {
         })}
       </List>
 
-      {/* Bottom: notifications + user + collapse */}
+      {/* Bottom: user + collapse */}
       <Box sx={{ borderTop: '1px solid rgba(99,102,241,0.1)', p: collapsed ? 1 : 1.5 }}>
-        {/* Glass notification orb */}
-        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
-          <NotificationBell glass />
-        </Box>
-
         <Box sx={{
           display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
           justifyContent: collapsed ? 'center' : 'flex-start',
         }}>
-          <Tooltip title={collapsed ? (user?.first_name || user?.username || '') : ''} placement="left" arrow>
-            <Avatar sx={{
-              width: 40, height: 40, flexShrink: 0,
-              background: 'linear-gradient(135deg, #10b981, #059669)',
-              fontSize: 16, fontWeight: 700,
-              boxShadow: '0 3px 12px rgba(16,185,129,0.35)',
-            }}>
-              {(user?.first_name?.charAt(0) || user?.username?.charAt(0) || 'U')}
-            </Avatar>
-          </Tooltip>
+          <NotificationBell glass />
           {!collapsed && (
             <>
               <Box sx={{ flex: 1, minWidth: 0 }}>
