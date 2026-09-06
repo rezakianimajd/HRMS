@@ -168,3 +168,134 @@ class SearchEngine:
             results['documents'] = SearchEngine.search_documents(query, filters, company)[:50]
 
         return results
+
+    @staticmethod
+    def global_search(query, company=None):
+        """
+        Unified global search across every searchable entity:
+        employees, documents, incoming/outgoing letters, HR requests,
+        leave requests, and salary payslips.
+
+        Returns a dict of entity-type -> lightweight result dicts. Each result
+        carries ``entity_type`` so the frontend can render/group/navigate it.
+        """
+        results = {
+            'employees': [],
+            'documents': [],
+            'letters': [],
+            'hr_requests': [],
+            'leave_requests': [],
+            'salary_records': [],
+        }
+        if not query:
+            return results
+
+        # Employees & documents reuse the existing engines (already ordered).
+        results['employees'] = SearchEngine.search_employees(query, {}, company)[:20]
+        results['documents'] = SearchEngine.search_documents(query, {}, company)[:20]
+
+        # Incoming / outgoing letters (different sender/receiver fields).
+        from correspondences.models import IncomingLetter, OutgoingLetter
+
+        letters = []
+        inc_qs = IncomingLetter.objects.filter(is_active=True)
+        if company:
+            inc_qs = inc_qs.filter(company=company)
+        inc_qs = inc_qs.filter(
+            Q(number__icontains=query) | Q(subject__icontains=query) |
+            Q(sender__icontains=query) | Q(description__icontains=query)
+        )
+        for o in inc_qs[:10]:
+            letters.append({
+                'id': o.id,
+                'kind': 'incoming',
+                'number': o.number,
+                'subject': o.subject,
+                'counterparty': o.sender,
+                'date': o.date.isoformat() if o.date else None,
+                'priority': o.priority,
+                'entity_type': 'letter',
+            })
+
+        out_qs = OutgoingLetter.objects.filter(is_active=True)
+        if company:
+            out_qs = out_qs.filter(company=company)
+        out_qs = out_qs.filter(
+            Q(number__icontains=query) | Q(subject__icontains=query) |
+            Q(receiver__icontains=query) | Q(description__icontains=query)
+        )
+        for o in out_qs[:10]:
+            letters.append({
+                'id': o.id,
+                'kind': 'outgoing',
+                'number': o.number,
+                'subject': o.subject,
+                'counterparty': o.receiver,
+                'date': o.date.isoformat() if o.date else None,
+                'priority': o.priority,
+                'entity_type': 'letter',
+            })
+        results['letters'] = letters
+
+        # HR administrative requests.
+        from employees.models import HRRequest
+        hr_qs = HRRequest.objects.filter(is_active=True)
+        if company:
+            hr_qs = hr_qs.filter(company=company)
+        hr_qs = hr_qs.filter(
+            Q(employee__first_name__icontains=query) |
+            Q(employee__last_name__icontains=query) |
+            Q(employee__employee_id__icontains=query) |
+            Q(description__icontains=query) |
+            Q(target_value__icontains=query)
+        ).select_related('employee')
+        results['hr_requests'] = [{
+            'id': r.id,
+            'employee_name': r.employee.full_name if r.employee else '',
+            'request_type': r.get_request_type_display(),
+            'status': r.get_status_display(),
+            'date': (r.requested_date.isoformat() if r.requested_date else
+                     (r.created_at.date().isoformat() if r.created_at else None)),
+            'entity_type': 'hr_request',
+        } for r in hr_qs[:10]]
+
+        # Leave requests.
+        from leaves.models import LeaveRequest
+        leave_qs = LeaveRequest.objects.filter(is_active=True)
+        if company:
+            leave_qs = leave_qs.filter(company=company)
+        leave_qs = leave_qs.filter(
+            Q(employee__first_name__icontains=query) |
+            Q(employee__last_name__icontains=query) |
+            Q(employee__employee_id__icontains=query) |
+            Q(reason__icontains=query)
+        ).select_related('employee')
+        results['leave_requests'] = [{
+            'id': r.id,
+            'employee_name': r.employee.full_name if r.employee else '',
+            'leave_type': r.get_leave_type_display(),
+            'status': r.get_status_display(),
+            'days': float(r.days or 0),
+            'date': r.start_date.isoformat() if r.start_date else None,
+            'entity_type': 'leave_request',
+        } for r in leave_qs[:10]]
+
+        # Salary payslips.
+        from payroll.models import SalaryRecord
+        salary_qs = SalaryRecord.objects.filter(is_active=True)
+        if company:
+            salary_qs = salary_qs.filter(company=company)
+        salary_qs = salary_qs.filter(
+            Q(employee__first_name__icontains=query) |
+            Q(employee__last_name__icontains=query) |
+            Q(employee__employee_id__icontains=query)
+        ).select_related('employee')
+        results['salary_records'] = [{
+            'id': r.id,
+            'employee_name': r.employee.full_name if r.employee else '',
+            'period': f'{r.year}/{r.month}',
+            'net_payable': float(r.net_payable or 0),
+            'entity_type': 'payslip',
+        } for r in salary_qs[:10]]
+
+        return results

@@ -52,3 +52,31 @@ def search_documents_view(request):
     company = _get_company(request)
     documents = SearchEngine.search_documents(query, filters, company)[:50]
     return Response(DocumentListSerializer(documents, many=True).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def global_search_view(request):
+    """Unified global search across all searchable entities.
+
+    The frontend header sends a debounced GET with ?q=... and renders
+    results grouped by entity type (employees, documents, letters,
+    HR requests, leave requests, payslips).
+    """
+    query = request.query_params.get('q', '').strip()
+    if len(query) < 2:
+        return Response({
+            'employees': [], 'documents': [], 'letters': [],
+            'hr_requests': [], 'leave_requests': [], 'salary_records': [],
+        })
+
+    company = _get_company(request)
+    results = SearchEngine.global_search(query, company)
+
+    # Serialize employees/documents into their standard shapes.
+    if results['employees']:
+        results['employees'] = EmployeeListSerializer(results['employees'], many=True).data
+    if results['documents']:
+        results['documents'] = DocumentListSerializer(results['documents'], many=True).data
+
+    return Response(results)

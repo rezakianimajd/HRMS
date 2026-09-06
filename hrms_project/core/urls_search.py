@@ -6,4 +6,5 @@ urlpatterns = [
     path('', search_views.advanced_search_view, name='api-advanced-search'),
     path('employees/', search_views.search_employees_view, name='api-search-employees'),
     path('documents/', search_views.search_documents_view, name='api-search-documents'),
+    path('global/', search_views.global_search_view, name='api-global-search'),
 ]
