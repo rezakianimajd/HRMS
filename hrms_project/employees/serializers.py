@@ -271,7 +271,8 @@ class ContractVersionSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'employee', 'employee_name', 'version', 'year',
             'contract_type', 'contract_type_display',
-            'start_date', 'end_date', 'base_salary', 'description', 'created_at',
+            'start_date', 'end_date', 'base_salary', 'description',
+            'signed_by', 'signed_at', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 

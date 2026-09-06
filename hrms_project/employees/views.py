@@ -197,6 +197,52 @@ class ContractVersionViewSet(BaseCompanyViewSet):
             qs = qs.filter(year=year)
         return qs
 
+    @action(detail=True, methods=['get'])
+    def compare(self, request, pk=None):
+        """Compare this contract version with `other_id` and return diffs."""
+        base = self.get_object()
+        other_id = request.query_params.get('other_id')
+        other = ContractVersion.objects.filter(id=other_id).first()
+        if not other:
+            return Response({'error': 'نسخهٔ مقایسه یافت نشد.'}, status=404)
+
+        fields = [
+            ('contract_type', 'نوع قرارداد', 'contract_type_display'),
+            ('start_date', 'تاریخ شروع', None),
+            ('end_date', 'تاریخ پایان', None),
+            ('base_salary', 'حقوق پایه', None),
+            ('description', 'توضیحات', None),
+        ]
+        diffs = []
+        for field, label, display in fields:
+            a = getattr(base, field)
+            b = getattr(other, field)
+            if display:
+                a = getattr(base, display, a)
+                b = getattr(other, display, b)
+            if str(a) != str(b):
+                diffs.append({'field': field, 'label': label, 'old': b, 'new': a})
+
+        return Response({
+            'base': ContractVersionSerializer(base).data,
+            'other': ContractVersionSerializer(other).data,
+            'diffs': diffs,
+        })
+
+    @action(detail=True, methods=['post'])
+    def sign(self, request, pk=None):
+        """Record a digital signature on a contract version."""
+        from django.utils import timezone
+
+        obj = self.get_object()
+        signed_by = (request.data.get('signed_by') or '').strip()
+        if not signed_by:
+            return Response({'error': 'نام امضاکننده الزامی است.'}, status=400)
+        obj.signed_by = signed_by
+        obj.signed_at = timezone.now()
+        obj.save(update_fields=['signed_by', 'signed_at', 'updated_at'])
+        return Response(ContractVersionSerializer(obj).data)
+
 
 class EmploymentChangeReadViewSet(viewsets.ReadOnlyModelViewSet):
     """Alias for read-only employment change history (used in profile)."""

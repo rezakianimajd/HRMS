@@ -755,6 +755,13 @@ class ContractVersion(BaseModel):
         verbose_name=_('حقوق پایه (ریال)'),
     )
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    # Digital signature support (Phase 4): a free-text signature / signed-by marker.
+    signed_by = models.CharField(
+        max_length=200, blank=True, verbose_name=_('امضای دیجیتال (نام امضاکننده)'),
+    )
+    signed_at = models.DateTimeField(
+        null=True, blank=True, verbose_name=_('زمان امضای دیجیتال'),
+    )
 
     class Meta:
         verbose_name = _('نسخه قرارداد')

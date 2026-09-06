@@ -12,6 +12,7 @@ import FactCheckIcon from '@mui/icons-material/FactCheck';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
+import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
@@ -55,6 +56,7 @@ const menuConfig = [
       { id: 'employee-new', title: 'افزودن پرسنل', icon: <PersonAddIcon />, path: '/employees/new', color: '#ec4899', primary: false, ready: true },
       { id: 'phonebook', title: 'دفترچه تلفن', icon: <PhoneInTalkIcon />, path: '/phonebook', color: '#10b981', primary: false, ready: true },
       { id: 'advanced-search', title: 'جستجوی پیشرفته', icon: <ManageSearchIcon />, path: '/search', color: '#f59e0b', primary: false, ready: true },
+      { id: 'contracts', title: 'قراردادها', icon: <HistoryEduIcon />, path: '/contracts', color: '#f59e0b', primary: false, ready: true },
     ],
   },
   {
