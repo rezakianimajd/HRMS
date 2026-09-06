@@ -1,9 +1,8 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  Badge, IconButton, Menu, Box, Typography, List, ListItem,
-  ListItemButton, ListItemText, Divider, Button, CircularProgress,
-  Chip, Tooltip,
+  Badge, Box, Button, Chip, Divider, List, ListItemButton, ListItemText,
+  Menu, IconButton, Tooltip, Typography,
 } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -33,7 +32,29 @@ const CATEGORY_COLORS = {
   leave_balance: '#10b981',
 };
 
-const NotificationBell = () => {
+const glassOrb = {
+  width: 44,
+  height: 44,
+  borderRadius: '50%',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  position: 'relative',
+  cursor: 'pointer',
+  background: 'linear-gradient(135deg, rgba(255,255,255,0.16), rgba(255,255,255,0.05))',
+  backdropFilter: 'blur(18px)',
+  WebkitBackdropFilter: 'blur(18px)',
+  border: '1px solid rgba(255,255,255,0.35)',
+  boxShadow: '0 4px 18px rgba(99,102,241,0.28), inset 0 1px 0 rgba(255,255,255,0.45)',
+  transition: 'transform 0.25s ease, box-shadow 0.25s ease, background 0.25s ease',
+  '&:hover': {
+    transform: 'translateY(-2px)',
+    background: 'linear-gradient(135deg, rgba(129,140,248,0.22), rgba(236,72,153,0.10))',
+    boxShadow: '0 8px 26px rgba(99,102,241,0.4), inset 0 1px 0 rgba(255,255,255,0.5)',
+  },
+};
+
+const NotificationBell = ({ glass = false }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const { data: notifications = [] } = useNotifications(20);
@@ -53,8 +74,6 @@ const NotificationBell = () => {
       navigate('/requests');
     } else if (n.entity_type === 'document') {
       navigate('/documents');
-    } else {
-      // no specific route: just mark read
     }
     if (!n.is_read) {
       markRead.mutate(n.id);
@@ -62,29 +81,38 @@ const NotificationBell = () => {
     handleClose();
   };
 
-  const handleMarkAll = () => {
-    markAllRead.mutate();
-  };
+  const icon = unread ? (
+    <NotificationsActiveIcon sx={{ fontSize: 22, color: 'text.primary' }} />
+  ) : (
+    <NotificationsIcon sx={{ fontSize: 22, color: 'text.secondary' }} />
+  );
+
+  const trigger = glass ? (
+    <Box onClick={handleOpen} sx={glassOrb}>
+      <Badge
+        badgeContent={toPersianDigits(unread)}
+        color="error"
+        overlap="circular"
+        max={99}
+        invisible={!unread}
+        sx={{ '& .MuiBadge-badge': { fontSize: 10, fontWeight: 700, height: 18, minWidth: 18 } }}
+      >
+        {icon}
+      </Badge>
+    </Box>
+  ) : (
+    <Tooltip title="اعلان‌ها">
+      <IconButton color="inherit" onClick={handleOpen}>
+        <Badge badgeContent={toPersianDigits(unread)} color="error" max={99} invisible={!unread}>
+          {icon}
+        </Badge>
+      </IconButton>
+    </Tooltip>
+  );
 
   return (
     <>
-      <Tooltip title="اعلان‌ها">
-        <IconButton color="inherit" onClick={handleOpen} sx={{ mr: 0.5 }}>
-          <Badge
-            badgeContent={toPersianDigits(unread)}
-            color="error"
-            overlap="circular"
-            max={99}
-            invisible={!unread}
-          >
-            {unread ? (
-              <NotificationsActiveIcon sx={{ color: 'text.primary' }} />
-            ) : (
-              <NotificationsIcon sx={{ color: 'text.primary' }} />
-            )}
-          </Badge>
-        </IconButton>
-      </Tooltip>
+      {trigger}
 
       <Menu
         anchorEl={anchorEl}
@@ -94,10 +122,13 @@ const NotificationBell = () => {
         transformOrigin={{ vertical: 'top', horizontal: 'left' }}
         PaperProps={{ sx: { width: 360, maxHeight: 480, overflow: 'hidden' } }}
       >
-        <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider' }}>
+        <Box sx={{
+          px: 2, py: 1.5, display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', borderBottom: '1px solid', borderColor: 'divider',
+        }}>
           <Typography variant="subtitle1" fontWeight={700}>اعلان‌ها</Typography>
           {notifications.length > 0 && (
-            <Button size="small" onClick={handleMarkAll} startIcon={<DoneAllIcon />}>
+            <Button size="small" onClick={markAllRead.mutate} startIcon={<DoneAllIcon />}>
               خواندن همه
             </Button>
           )}
@@ -115,10 +146,7 @@ const NotificationBell = () => {
                 <React.Fragment key={n.id}>
                   <ListItemButton
                     onClick={() => navigateTo(n)}
-                    sx={{
-                      px: 2, py: 1.25,
-                      bgcolor: n.is_read ? 'transparent' : 'action.hover',
-                    }}
+                    sx={{ px: 2, py: 1.25, bgcolor: n.is_read ? 'transparent' : 'action.hover' }}
                   >
                     <Box sx={{ width: '100%' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.25 }}>
@@ -126,8 +154,7 @@ const NotificationBell = () => {
                           size="small"
                           label={CATEGORY_LABELS[n.category] || n.category_display}
                           sx={{
-                            fontSize: 10.5,
-                            height: 20,
+                            fontSize: 10.5, height: 20,
                             bgcolor: `${CATEGORY_COLORS[n.category] || '#6366f1'}1a`,
                             color: CATEGORY_COLORS[n.category] || '#6366f1',
                           }}

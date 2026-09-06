@@ -252,8 +252,13 @@ const Layout = ({ children }) => {
         })}
       </List>
 
-      {/* Bottom: user + collapse */}
+      {/* Bottom: notifications + user + collapse */}
       <Box sx={{ borderTop: '1px solid rgba(99,102,241,0.1)', p: collapsed ? 1 : 1.5 }}>
+        {/* Glass notification orb */}
+        <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1.5 }}>
+          <NotificationBell glass />
+        </Box>
+
         <Box sx={{
           display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
           justifyContent: collapsed ? 'center' : 'flex-start',
@@ -336,10 +341,6 @@ const Layout = ({ children }) => {
 
       {/* Main content */}
       <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
-        {/* Top action strip — notification bell aligned to the start (right in RTL). */}
-        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
-          <NotificationBell />
-        </Box>
         {children}
       </Box>
     </Box>
