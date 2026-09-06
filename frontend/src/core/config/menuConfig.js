@@ -20,6 +20,8 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
+import UploadFileIcon from '@mui/icons-material/UploadFile';
+import PaletteIcon from '@mui/icons-material/Palette';
 
 /**
  * Central navigation model for the HRMS.
