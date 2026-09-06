@@ -12,6 +12,7 @@ import AppRoutes from './AppRoutes';
 import GummyBearOverlay from './core/components/ui/GummyBearOverlay';
 import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
+import ErrorBoundary from './core/components/ui/ErrorBoundary';
 import './core/engines/languageEngine';
 
 const queryClient = new QueryClient({
@@ -461,10 +462,12 @@ const ThemedApp = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <GummyBearOverlay />
-      <HelpDialog />
-      <GlobalErrorSnackbar />
-      <AppRoutes />
+      <ErrorBoundary>
+        <GummyBearOverlay />
+        <HelpDialog />
+        <GlobalErrorSnackbar />
+        <AppRoutes />
+      </ErrorBoundary>
     </ThemeProvider>
   );
 };
