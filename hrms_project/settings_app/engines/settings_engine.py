@@ -45,6 +45,32 @@ class SettingsEngine:
         return setting
 
     @staticmethod
+    def get_effective_setting(key, default=None, company=None):
+        """
+        حرفهای: مقدار مؤثر یک تنظیم را برابر اولویت زیر برمیگرداند:
+          1) SystemSetting ذخیرهشده برای این شرکت (با cache کوتاه)
+          2) تنظیم ثابت در settings/base.py
+        این باعث میشود تنظیمات UI واقعاً در برنامه اثر بگذارد.
+        """
+        from django.conf import settings as dj_settings
+        cached = cache.get(f'effset_{getattr(company, "id", "")}_{key}')
+        if cached is not None:
+            return cached
+        value = None
+        if company:
+            try:
+                s = SystemSetting.objects.get(company=company, key=key, is_active=True)
+                value = SettingsEngine._cast_value(s.value, s.data_type)
+            except SystemSetting.DoesNotExist:
+                pass
+        if value is None:
+            # fallback to Django constants (same name, with underscore helpers if any)
+            value = getattr(dj_settings, key, default)
+        if value is not None:
+            cache.set(f'effset_{getattr(company, "id", "")}_{key}', value, 30)
+        return value
+
+    @staticmethod
     def get_all_settings(company):
         """Get all settings for a company as a dict."""
         qs = SystemSetting.objects.filter(company=company, is_active=True)

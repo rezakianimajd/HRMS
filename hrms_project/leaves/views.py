@@ -6,6 +6,7 @@ from django.conf import settings
 
 from leaves.models import LeaveRequest
 from leaves.serializers import LeaveRequestSerializer
+from settings_app.engines.settings_engine import SettingsEngine
 
 
 def _company(request):
@@ -71,8 +72,10 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
         if not employee_id:
             return Response({'error': 'employee_id الزامی است'}, status=400)
 
-        annual = int(getattr(settings, 'LEAVE_DEFAULT_TOTAL_DAYS', 30))
         company = _company(request)
+        annual = int(SettingsEngine.get_effective_setting(
+            'LEAVE_DEFAULT_TOTAL_DAYS', default=30, company=company,
+        ) or 30)
 
         # Sum approved leave days in current Jalali year (excluding mission — that is not leave)
         today = jdate.today()
