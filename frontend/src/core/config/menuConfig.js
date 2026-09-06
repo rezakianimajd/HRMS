@@ -105,8 +105,8 @@ const menuConfig = [
     color: '#64748b',
     items: [
       { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: true, ready: true },
-      { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: false },
-      { id: 'audit', title: 'دفترچه فعالیت (Audit)', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: false },
+      { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
+      { id: 'audit', title: 'دفترچه فعالیت (Audit)', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
       { id: 'settings', title: 'تنظیمات کلی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
     ],
   },

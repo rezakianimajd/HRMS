@@ -23,4 +23,8 @@ urlpatterns = [
 
     # Audit Logs
     path('audit-logs/', views.audit_log_list_view, name='api-audit-logs'),
+
+    # Users & roles
+    path('users/', views.users_view, name='api-users'),
+    path('users/<int:user_id>/role/', views.user_set_role_view, name='api-user-set-role'),
 ]

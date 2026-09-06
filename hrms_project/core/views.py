@@ -247,3 +247,75 @@ def audit_log_list_view(request):
     logs = AuditLog.objects.filter(company=company).order_by('-timestamp')[:100]
     serializer = AuditLogSerializer(logs, many=True)
     return Response(serializer.data)
+
+
+# =============================================================================
+# Users & Roles (P5)
+# =============================================================================
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def users_view(request):
+    """List platform users (with role labels). Access: only for sysadmin/hr_manager."""
+    from core.models.user import UserProfile
+    from django.contrib.auth.models import User
+
+    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+    profile = getattr(request.user, 'profile', None)
+
+    allowed = request.user.is_superuser or (profile and profile.is_hr_manager)
+    if not allowed:
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    qs = User.objects.filter(is_active=True).select_related('profile')
+    if not request.user.is_superuser:
+        allowed_ids = UserProfile.objects.filter(
+            companies=company
+        ).values_list('user_id', flat=True) if company else []
+        # If no explicit mapping yet, show all active users
+        qs = qs.filter(id__in=allowed_ids) if allowed_ids else qs
+
+    data = []
+    for u in qs:
+        p = getattr(u, 'profile', None)
+        data.append({
+            'id': u.id,
+            'username': u.username,
+            'email': u.email,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
+            'is_active': u.is_active,
+            'is_superuser': u.is_superuser,
+            'role': p.role if p else '',
+            'role_label': p.get_role_display() if p else '',
+            'companies': list(p.companies.values_list('id', flat=True)) if (p and company) else [],
+        })
+    return Response(data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def user_set_role_view(request, user_id):
+    """Set role for a user (sysadmin/hr_manager only)."""
+    from core.models.user import UserProfile
+    from django.contrib.auth.models import User
+
+    profile = getattr(request.user, 'profile', None)
+    allowed = request.user.is_superuser or (profile and profile.is_hr_manager)
+    if not allowed:
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        return Response({'error': 'کاربر یافت نشد'}, status=404)
+
+    role = (request.data.get('role') or '').strip()
+    valid = {c[0] for c in UserProfile.Role.choices}
+    if role not in valid:
+        return Response({'error': f'نقش نامعتبر. مقادیر مجاز: {", ".join(valid)}'}, status=400)
+
+    p, _ = UserProfile.objects.get_or_create(user=user)
+    p.role = role
+    p.save(update_fields=['role', 'updated_at'])
+
+    return Response({'message': 'نقش کاربر به‌روزرسانی شد.', 'role': role, 'role_label': p.get_role_display()})
