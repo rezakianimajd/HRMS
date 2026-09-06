@@ -46,6 +46,8 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """Approve a pending leave request (admin/HR only by permission)."""
+        from core.engines.permission_engine import require
+        require(request.user, 'can_approve_leaves')
         obj = self.get_object()
         if obj.status != LeaveRequest.Status.PENDING:
             return Response({'error': 'فقط درخواستهای در انتظار قابل تأیید هستند.'}, status=400)
@@ -56,6 +58,8 @@ class LeaveRequestViewSet(viewsets.ModelViewSet):
     @action(detail=True, methods=['post'])
     def reject(self, request, pk=None):
         """Reject a pending leave request."""
+        from core.engines.permission_engine import require
+        require(request.user, 'can_approve_leaves')
         obj = self.get_object()
         if obj.status != LeaveRequest.Status.PENDING:
             return Response({'error': 'فقط درخواستهای در انتظار قابل رد هستند.'}, status=400)
