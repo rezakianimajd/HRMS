@@ -100,23 +100,26 @@ const AdvancedSearchPage = () => {
     <Box>
       {/* Hero */}
       <Paper sx={{
-        mb: 3, p: 3, textAlign: 'center',
+        mb: 3, p: 2.5,
+        display: 'flex', alignItems: 'center', gap: 2,
         background: 'linear-gradient(135deg, rgba(99,102,241,0.14), rgba(236,72,153,0.07))',
         border: '1px solid rgba(99,102,241,0.18)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
         borderRadius: 4,
       }}>
         <Avatar sx={{
-          width: 64, height: 64, mx: 'auto', mb: 1.5,
+          width: 56, height: 56,
           background: 'linear-gradient(135deg, #6366f1, #ec4899)',
           boxShadow: '0 8px 28px rgba(99,102,241,0.45)',
         }}>
-          <SearchIcon sx={{ fontSize: 32, color: '#fff' }} />
+          <SearchIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
-        <Typography variant="h5" fontWeight={800}>جستجوی سراسری</Typography>
-        <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>
-          پرسنل، مدارک، نامه‌ها، درخواست‌ها، مرخصی‌ها و فیش‌های حقوقی را یکجا جستجو کنید
-        </Typography>
+        <Box>
+          <Typography variant="h5" fontWeight={800}>جستجوی سراسری</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ mt: 0.25 }}>
+            پرسنل، مدارک، نامه‌ها، درخواست‌ها، مرخصی‌ها و فیش‌های حقوقی را یکجا جستجو کنید
+          </Typography>
+        </Box>
       </Paper>
 
       {/* Search bar */}
