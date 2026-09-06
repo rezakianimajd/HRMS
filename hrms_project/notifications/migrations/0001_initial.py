@@ -7,7 +7,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ('core', '__first__'),
+        ('core', '0002_rolepermission_remove_company_created_on_and_more'),
     ]
 
     operations = [

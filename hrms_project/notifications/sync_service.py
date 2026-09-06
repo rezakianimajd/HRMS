@@ -223,16 +223,21 @@ def _annual_used_days(company, employee):
 
 def sync_all_companies():
     """Iterate every active tenant and sync its notifications."""
+    import logging
     from django.db import connection
     from core.models import Company
 
+    logger = logging.getLogger('hrms.notifications')
     total_created = 0
+    errors = []
     for company in Company.objects.filter(is_active=True):
         try:
             connection.set_tenant(company)
             res = sync_for_company(company)
             total_created += res['created']
-        except Exception:
-            # A single tenant failure must not stop the whole run.
-            continue
-    return total_created
+        except Exception as exc:
+            msg = f"tenant={company.schema_name}: {exc}"
+            errors.append(msg)
+            logger.error(msg)
+    connection.set_schema_to_public()
+    return {'created': total_created, 'errors': errors}

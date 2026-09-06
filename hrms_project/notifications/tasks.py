@@ -10,6 +10,10 @@ def sync_all_notifications():
     """Run a full notification sync across all active tenants."""
     from notifications.sync_service import sync_all_companies
 
-    total = sync_all_companies()
-    logger.info(f'Notification sync completed: {total} notifications created.')
-    return {'created': total}
+    result = sync_all_companies()
+    created = result.get('created', 0)
+    errors = result.get('errors', [])
+    if errors:
+        logger.error(f'Notification sync errors: {errors}')
+    logger.info(f'Notification sync completed: {created} notifications created.')
+    return {'created': created, 'errors': errors}
