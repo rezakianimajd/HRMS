@@ -97,7 +97,7 @@ const AdvancedSearchPage = () => {
   };
 
   return (
-    <Box sx={{ maxWidth: 960, mx: 'auto' }}>
+    <Box>
       {/* Hero */}
       <Paper sx={{
         mb: 3, p: 3, textAlign: 'center',
