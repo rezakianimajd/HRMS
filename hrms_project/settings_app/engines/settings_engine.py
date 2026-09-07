@@ -98,6 +98,7 @@ class SettingsEngine:
             'phone', 'email', 'address', 'postal_code', 'website',
             'tax_id', 'established_date', 'description',
             'employer_rep_name', 'employer_rep_title', 'employer_rep_national_id',
+            'notify_email_enabled', 'notify_bale_enabled', 'bale_token', 'bale_chat_id',
         ]
         for field in updatable:
             if field in data:

@@ -100,3 +100,44 @@ def sync_now_view(request):
         return Response({'message': 'همگام‌سازی اعلان‌ها انجام شد.', **result})
 
     return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def test_send_view(request):
+    """Send a test message over Email and/or Bale (admin only).
+
+    Body: { 'channel': 'email' | 'bale' | 'both' }
+    """
+    company = _company(request)
+    if not company:
+        return Response({'error': 'شرکت فعالی انتخاب نشده است.'}, status=400)
+
+    if not (request.user.is_superuser or getattr(getattr(request.user, 'profile', None), 'is_hr_manager', False)):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    channel = (request.data.get('channel') or 'both').lower()
+    from notifications.channels import (
+        _company_settings, send_email, send_bale,
+    )
+
+    email_enabled, bale_enabled, bale_token, bale_chat_id = _company_settings(company)
+    results = {}
+
+    if channel in ('email', 'both'):
+        # Determine admin emails in the same tenant context
+        from notifications.sync_service import _admin_emails
+        recipients = _admin_emails(company)
+        results['email'] = send_email(
+            recipients,
+            'HRMS — پیام آزمایشی',
+            'این یک پیام آزمایشی از سامانه HRMS است.',
+        )
+
+    if channel in ('bale', 'both'):
+        results['bale'] = send_bale(
+            bale_token, bale_chat_id,
+            'HRMS — پیام آزمایشی\nاین یک پیام آزمایشی از سامانه HRMS است.',
+        )
+
+    return Response({'message': 'ارسال آزمایشی انجام شد.', 'results': results})

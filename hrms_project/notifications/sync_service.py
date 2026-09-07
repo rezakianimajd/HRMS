@@ -1,4 +1,5 @@
-"""Notification sync service — derive notifications from live HR data.
+"""Notification sync service — derive notifications from live HR data and
+deliver them through the enabled external channels (email + Bale).
 
 Derives Notification rows for one tenant (or all tenants) for:
   1. pending leave requests   (leave_request)
@@ -10,16 +11,13 @@ Derives Notification rows for one tenant (or all tenants) for:
 Every item has a stable ``dedup_key`` so repeated runs (on-demand + Celery beat)
 are idempotent. Notifications with ``user_id=None`` are company-wide and are
 shown to HR managers / superusers.
+
+Only NEW notifications are pushed to external channels, so a repeated sync
+does not spam the recipients.
 """
 from datetime import date, timedelta
 
 from django.contrib.auth.models import User
-
-
-def _company_context(company):
-    """Return the current company context, used to decide whether a tenant
-    switch is needed before querying tenant models."""
-    return company
 
 
 def _upsert(company, dedup_key, defaults):
@@ -32,7 +30,6 @@ def _upsert(company, dedup_key, defaults):
         defaults=defaults,
     )
     if not created:
-        # Refresh mutable fields but keep read-state.
         changed = False
         for field, value in defaults.items():
             if getattr(obj, field) != value:
@@ -53,16 +50,50 @@ def _admin_user_ids(company):
         role__in=admin_roles,
     ).values_list('user_id', flat=True)
     return list(User.objects.filter(is_active=True).filter(
-        # superusers OR users with an HR-typed profile in this company
         is_superuser=True,
     ).values_list('id', flat=True)) + list(profile_ids)
+
+
+def _admin_emails(company):
+    """Email addresses of the HR/admin users for this company."""
+    from core.models.user import UserProfile
+
+    admin_roles = ['super_admin', 'hr_manager', 'hr_specialist']
+    profile_ids = UserProfile.objects.filter(
+        companies=company,
+        role__in=admin_roles,
+    ).values_list('user_id', flat=True)
+    emails = list(
+        User.objects.filter(is_active=True, is_superuser=True)
+        .exclude(email='')
+        .values_list('email', flat=True)
+    )
+    emails += list(
+        User.objects.filter(id__in=profile_ids, is_active=True)
+        .exclude(email='')
+        .values_list('email', flat=True)
+    )
+    return sorted(set(emails))
+
+
+def _deliver(company, pending):
+    """Push a digest of NEW notifications through email + Bale."""
+    if not pending:
+        return {'email': False, 'bale': False}
+
+    lines = [f'{s}\n{b}' for s, b in pending]
+    subject = f'HRMS — {len(pending)} اعلان جدید'
+    body = '\n\n---\n\n'.join(lines)
+
+    from notifications.channels import deliver_notification
+
+    return deliver_notification(company, _admin_emails(company), subject, body)
 
 
 def sync_for_company(company):
     """
     Run a full sync for one tenant. Assumes the caller has already activated
-    this tenant's schema (e.g. inside a request or after ``set_tenant``).
-    Returns {'created': N, 'updated': M}.
+    this tenant's schema. Returns {'created': N, 'updated': M}.
     """
     from employees.models import Employee, HRRequest
     from leaves.models import LeaveRequest
@@ -87,19 +118,25 @@ def sync_for_company(company):
 
     created = 0
     admin_ids = _admin_user_ids(company)
+    pending = []
 
     def _emit(dedup_key, payload):
         nonlocal created
+        made_new = False
         if admin_ids:
             for uid in admin_ids:
-                created += _upsert(
-                    company, f'{dedup_key}-user-{uid}',
-                    {**payload, 'user_id': uid},
-                )
+                if _upsert(company, f'{dedup_key}-user-{uid}',
+                           {**payload, 'user_id': uid}):
+                    made_new = True
+                    created += 1
         else:
-            created += _upsert(company, f'{dedup_key}-all', {
-                **payload, 'user_id': None,
-            })
+            if _upsert(company, f'{dedup_key}-all',
+                       {**payload, 'user_id': None}):
+                made_new = True
+                created += 1
+
+        if made_new:
+            pending.append((payload['title'], payload['body']))
 
     # 1) Pending leave requests
     leaves = LeaveRequest.objects.filter(
@@ -191,7 +228,13 @@ def sync_for_company(company):
                 'entity_id': emp.id,
             })
 
-    return {'created': created, 'updated': 0}
+    delivered = _deliver(company, pending)
+
+    return {
+        'created': created,
+        'updated': 0,
+        'delivered': delivered,
+    }
 
 
 def _annual_used_days(company, employee):

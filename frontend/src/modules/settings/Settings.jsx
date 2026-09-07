@@ -8,7 +8,9 @@ import {
 import TuneIcon from '@mui/icons-material/Tune';
 import BackupIcon from '@mui/icons-material/Backup';
 import RestoreIcon from '@mui/icons-material/Restore';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import GeneralSettingsPanel from '../../core/components/settings/GeneralSettingsPanel';
+import NotificationSettingsPanel from '../../core/components/settings/NotificationSettingsPanel';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 
@@ -106,8 +108,9 @@ const Settings = () => {
   const [tabIndex, setTabIndex] = useState(0);
 
   const tabs = [
-    { label: 'تنظیمات عمومی', icon: <TuneIcon />, key: 'general', color: '#6366f1', desc: 'پیکربندی ذخیرهسازی، هشدارها و تنظیمات پایه سیستم' },
-    { label: 'پشتیبانگیری', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'تهیه، مشاهده و بازیابی نسخههای پشتیبان داده' },
+    { label: 'تنظیمات عمومی', icon: <TuneIcon />, key: 'general', color: '#6366f1', desc: 'پیکربندی ذخیره‌سازی، هشدارها و تنظیمات پایه سیستم' },
+    { label: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, key: 'notifications', color: '#10b981', desc: 'ارسال اعلان‌ها از طریق ایمیل و پیام‌رسان بله' },
+    { label: 'پشتیبان‌گیری', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'تهیه، مشاهده و بازیابی نسخه‌های پشتیبان داده' },
   ];
 
   const active = tabs[tabIndex];
@@ -160,7 +163,8 @@ const Settings = () => {
             <Typography variant="body2" sx={{ color: active.color, fontWeight: 600 }}>{active.desc}</Typography>
           </Paper>
           {tabIndex === 0 && <GeneralSettingsPanel />}
-          {tabIndex === 1 && <BackupTab />}
+          {tabIndex === 1 && <NotificationSettingsPanel />}
+          {tabIndex === 2 && <BackupTab />}
         </Box>
       </Paper>
     </Box>

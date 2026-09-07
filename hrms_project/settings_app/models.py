@@ -148,6 +148,19 @@ class CompanyProfile(models.Model):
     employer_rep_national_id = models.CharField(
         max_length=20, blank=True, verbose_name=_('کد ملی نماینده'),
     )
+    # Notification channels (Bale messenger + email)
+    notify_email_enabled = models.BooleanField(
+        default=True, verbose_name=_('ارسال ایمیل فعال'),
+    )
+    notify_bale_enabled = models.BooleanField(
+        default=False, verbose_name=_('ارسال پیام بله فعال'),
+    )
+    bale_token = models.CharField(
+        max_length=200, blank=True, verbose_name=_('توکن ربات بله'),
+    )
+    bale_chat_id = models.CharField(
+        max_length=100, blank=True, verbose_name=_('شناسه گفتگوی بله (chat_id)'),
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('تاریخ ایجاد'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('تاریخ به‌روزرسانی'))
 
