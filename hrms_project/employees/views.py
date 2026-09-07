@@ -231,7 +231,7 @@ class ContractVersionViewSet(BaseCompanyViewSet):
 
     @action(detail=True, methods=['post'])
     def sign(self, request, pk=None):
-        """Record a digital signature on a contract version."""
+        """Record a digital signature on a contract version (text + optional image)."""
         from django.utils import timezone
 
         obj = self.get_object()
@@ -240,7 +240,15 @@ class ContractVersionViewSet(BaseCompanyViewSet):
             return Response({'error': 'نام امضاکننده الزامی است.'}, status=400)
         obj.signed_by = signed_by
         obj.signed_at = timezone.now()
-        obj.save(update_fields=['signed_by', 'signed_at', 'updated_at'])
+
+        image = request.FILES.get('signature_image')
+        if image:
+            obj.signature_image = image
+
+        update_fields = ['signed_by', 'signed_at', 'updated_at']
+        if image:
+            update_fields.append('signature_image')
+        obj.save(update_fields=update_fields)
         return Response(ContractVersionSerializer(obj).data)
 
     @action(detail=True, methods=['post'])

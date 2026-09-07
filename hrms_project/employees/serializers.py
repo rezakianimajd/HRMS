@@ -54,14 +54,12 @@ class ContractTypeSerializer(serializers.ModelSerializer):
 # =============================================================================
 
 class EmployeeListSerializer(serializers.ModelSerializer):
-    """Compact serializer for employee list (better performance)."""
     department_name = serializers.CharField(source='department.name', read_only=True)
     job_title_name = serializers.CharField(source='job_title.name', read_only=True)
     work_location_name = serializers.CharField(source='work_location.name', read_only=True)
     full_name = serializers.CharField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     gender_display = serializers.CharField(source='get_gender_display', read_only=True)
-
     photo_url = serializers.SerializerMethodField()
 
     class Meta:
@@ -88,11 +86,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
-    """Full serializer for employee detail and create/update."""
-
     def to_internal_value(self, data):
-        # Drop empty-string values so nullable fields get None (not '').
-        # Also ignore `photo` when it's a URL string (not an uploaded file).
         cleaned = {}
         for k, v in data.items():
             if v == '':
@@ -107,8 +101,6 @@ class EmployeeSerializer(serializers.ModelSerializer):
     work_location_detail = WorkLocationSerializer(source='work_location', read_only=True)
     insurance_list_detail = InsuranceListSerializer(source='insurance_list', read_only=True)
     full_name = serializers.CharField(read_only=True)
-
-    # Display strings for choice fields
     gender_display = serializers.CharField(source='get_gender_display', read_only=True)
     marital_status_display = serializers.CharField(source='get_marital_status_display', read_only=True)
     contract_type_display = serializers.CharField(source='contract_type.name', read_only=True)
@@ -117,24 +109,20 @@ class EmployeeSerializer(serializers.ModelSerializer):
     education_level_display = serializers.CharField(source='get_education_level_display', read_only=True)
     university_type_display = serializers.CharField(source='get_university_type_display', read_only=True)
     supplementary_insurances = serializers.SerializerMethodField()
-
     photo_url = serializers.SerializerMethodField()
 
     class Meta:
         model = Employee
         fields = [
             'id', 'full_name',
-            # Personal
             'first_name', 'last_name', 'photo', 'photo_url', 'national_id',
             'birth_date', 'birth_place', 'gender', 'gender_display',
             'marital_status', 'marital_status_display',
             'children_count', 'spouse_name', 'father_name',
             'birth_certificate_number',
             'national_id_serial', 'national_id_place', 'national_id_date',
-            # Contact
             'phone', 'mobile', 'email', 'address', 'city', 'postal_code',
             'emergency_contact_name', 'emergency_contact_phone',
-            # Employment
             'employee_id', 'hire_date', 'probation_end_date', 'official_date',
             'department', 'department_detail',
             'job_title', 'job_title_detail',
@@ -147,16 +135,13 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'status_change_date', 'work_shift', 'work_shift_display',
             'work_start_time', 'work_end_time',
             'description',
-            # Evaluation
             'education_level', 'education_level_display', 'education_field',
             'education_place', 'university_type', 'university_type_display',
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
             'bank_name', 'account_number', 'sheba_number',
             'supplementary_insurances',
-            # Bale
             'bale_chat_id',
-            # Meta
             'is_active', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'full_name', 'created_at', 'updated_at']
@@ -176,11 +161,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating a new employee with validations."""
-
     def to_internal_value(self, data):
-        # Drop empty-string values so nullable fields get None (not '').
-        # Also ignore `photo` when it's a URL string (not an uploaded file).
         cleaned = {}
         for k, v in data.items():
             if v == '':
@@ -193,49 +174,40 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Employee
         fields = [
-            # Personal
             'first_name', 'last_name', 'photo', 'national_id',
             'birth_date', 'birth_place', 'gender',
             'marital_status', 'children_count', 'spouse_name', 'father_name',
             'birth_certificate_number',
             'national_id_serial', 'national_id_place', 'national_id_date',
-            # Contact
             'phone', 'mobile', 'email', 'address', 'city', 'postal_code',
             'emergency_contact_name', 'emergency_contact_phone',
-            # Employment
             'employee_id', 'hire_date', 'probation_end_date', 'official_date',
             'department', 'job_title', 'work_location', 'insurance_list',
             'insurance_number',
             'contract_type', 'contract_start_date', 'contract_end_date',
             'status', 'status_change_date', 'work_shift',
             'work_start_time', 'work_end_time', 'description',
-            # Evaluation
             'education_level', 'education_field', 'education_place',
             'university_type',
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
-            # Banking
             'bank_name', 'account_number', 'sheba_number',
-            # Bale
             'bale_chat_id',
         ]
 
     def validate_national_id(self, value):
-        # Normalize Persian/Arabic digits to English before validation
         normalized = str(value).translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789'))
         if not normalized.isdigit() or len(normalized) != 10:
             raise serializers.ValidationError("کد ملی باید ۱۰ رقم باشد.")
         return normalized
 
     def validate_mobile(self, value):
-        # Normalize Persian/Arabic digits to English before validation
         normalized = str(value).translate(str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789'))
         if not normalized.isdigit() or len(normalized) != 11:
             raise serializers.ValidationError("شماره موبایل باید ۱۱ رقم باشد.")
         return normalized
 
     def validate(self, data):
-        # Validate marital status dependent fields
         if data.get('marital_status') == 'married':
             if data.get('children_count', 0) > 0 and not data.get('spouse_name'):
                 raise serializers.ValidationError({
@@ -269,6 +241,15 @@ class WorkExperienceSerializer(serializers.ModelSerializer):
 class ContractVersionSerializer(serializers.ModelSerializer):
     contract_type_display = serializers.CharField(source='contract_type.name', read_only=True)
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    signature_image_url = serializers.SerializerMethodField()
+
+    def get_signature_image_url(self, obj):
+        if obj.signature_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.signature_image.url)
+            return obj.signature_image.url
+        return None
 
     class Meta:
         model = ContractVersion
@@ -279,24 +260,23 @@ class ContractVersionSerializer(serializers.ModelSerializer):
             'attraction_allowance', 'job_allowance', 'housing_allowance',
             'meal_voucher', 'travel_cost', 'family_allowance', 'children_allowance',
             'contract_text',
-            'signed_by', 'signed_at', 'created_at',
+            'signed_by', 'signed_at', 'signature_image', 'signature_image_url',
+            'created_at',
         ]
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = [
+            'id', 'company', 'is_active', 'created_at', 'updated_at',
+        ]
 
 
 class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
     relation_display = serializers.CharField(source='get_relation_display', read_only=True)
-    full_name = serializers.CharField(read_only=True)
 
     class Meta:
         model = SupplementaryInsuranceDependent
         fields = [
             'id', 'insurance', 'first_name', 'last_name',
-            'relation', 'relation_display', 'full_name',
+            'relation', 'relation_display',
         ]
-
-    def get_full_name(self, obj):
-        return f"{obj.first_name} {obj.last_name}"
 
 
 class SupplementaryInsuranceSerializer(serializers.ModelSerializer):

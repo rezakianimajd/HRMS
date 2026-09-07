@@ -115,6 +115,15 @@ class UserProfile(models.Model):
         null=True,
         verbose_name=_('تلفن'),
     )
+    # Link to an Employee (plain integer, NOT a FK — Employee lives in each
+    # tenant schema while UserProfile lives in the public schema). Used for
+    # role-aware, per-employee targeting of approvals/notifications.
+    employee_id = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name=_('شناسه پرسنل مرتبط'),
+        help_text=_('کاربر به کدام پرسنل متصل است؟ (برای اعلان‌های هدفمند)'),
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('تاریخ ایجاد'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('تاریخ به‌روزرسانی'))
 

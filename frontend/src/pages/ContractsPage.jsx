@@ -20,6 +20,7 @@ import axiosInstance from '../core/api/axiosConfig';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useEmployees, useContractTypes } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
+import { buildContractPrintHtml } from '../core/utils/contractPrintHtml';
 import { toJalali } from '../core/utils/dateUtils';
 
 const EMPTY_FORM = {
@@ -86,8 +87,9 @@ const ContractsPage = () => {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contract-versions'] }),
   });
 
+  const [signImageFile, setSignImageFile] = useState(null);
   const signMutation = useMutation({
-    mutationFn: ({ id, signed_by }) => axiosInstance.post(`/contract-versions/${id}/sign/`, { signed_by }),
+    mutationFn: ({ id, payload }) => axiosInstance.post(`/contract-versions/${id}/sign/`, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contract-versions'] }),
   });
 
@@ -170,14 +172,18 @@ const ContractsPage = () => {
   const handlePrint = () => {
     const w = window.open('', '_blank', 'width=800,height=900');
     if (!w) return;
-    const logoHtml = companyLogo
-      ? `<img src="${companyLogo}" style="max-height:70px;margin-bottom:16px;display:block;" />`
-      : '';
-    const esc = String(textValue || '').replace(/&/g, '&').replace(/</g, '<').replace(/>/g, '>');
-    w.document.write(`<!doctype html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>قرارداد</title><link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700&display=swap" rel="stylesheet"><style>body{font-family:'Vazirmatn',Tahoma,sans-serif;direction:rtl;white-space:pre-wrap;padding:40px;line-height:2;max-width:900px;margin:0 auto;text-align:justify;}</style></head><body>${logoHtml}<pre style="font-family:inherit;white-space:pre-wrap;text-align:right;">${esc}</pre></body></html>`);
+    const html = buildContractPrintHtml({
+      textValue,
+      logoUrl: companyLogo,
+      companyName: profile?.legal_name || profile?.company_name,
+      companyAddress: profile?.address,
+      signatureImageUrl: textTarget?.signature_image_url,
+      reportTitle: 'قرارداد کار',
+    });
+    w.document.write(html);
     w.document.close();
     w.focus();
-    setTimeout(() => w.print(), 300);
+    setTimeout(() => w.print(), 400);
   };
 
   const moneyField = (key, label) => (
@@ -434,19 +440,30 @@ const ContractsPage = () => {
       </Dialog>
 
       {/* Sign dialog */}
-      <Dialog open={!!signTarget} onClose={() => setSignTarget(null)} maxWidth="xs" fullWidth>
+      <Dialog open={!!signTarget} onClose={() => setSignTarget(null)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color: '#047857' }}>امضای دیجیتال</DialogTitle>
-        <DialogContent>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <TextField autoFocus fullWidth size="small" label="نام امضاکننده" sx={{ mt: 1 }}
             onChange={(e) => setForm((p) => ({ ...p, signed_by: e.target.value }))} />
+          <TextField fullWidth size="small" label="آپلود تصویر امضا / مهر (اختیاری)" InputLabelProps={{ shrink: true }}
+            type="file" inputProps={{ accept: 'image/*' }}
+            onChange={(e) => setSignImageFile(e.target.files?.[0] || null)} />
+          {signImageFile && (
+            <Typography variant="caption" color="textSecondary">فایل انتخاب شد: {signImageFile.name}</Typography>
+          )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSignTarget(null)}>انصراف</Button>
+          <Button onClick={() => { setSignTarget(null); setSignImageFile(null); }}>انصراف</Button>
           <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
             disabled={!form.signed_by}
-            onClick={() => signMutation.mutate({ id: signTarget.id, signed_by: form.signed_by }, {
-              onSuccess: () => { setSignTarget(null); setForm((p) => ({ ...p, signed_by: '' })); },
-            })}>
+            onClick={() => {
+              const fd = new FormData();
+              fd.append('signed_by', form.signed_by);
+              if (signImageFile) fd.append('signature_image', signImageFile);
+              signMutation.mutate({ id: signTarget.id, payload: fd }, {
+                onSuccess: () => { setSignTarget(null); setSignImageFile(null); setForm((p) => ({ ...p, signed_by: '' })); },
+              });
+            }}>
             ثبت امضاء
           </Button>
         </DialogActions>

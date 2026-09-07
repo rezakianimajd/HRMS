@@ -770,6 +770,12 @@ class ContractVersion(BaseModel):
     signed_at = models.DateTimeField(
         null=True, blank=True, verbose_name=_('زمان امضای دیجیتال'),
     )
+    # Uploaded signature image (digital signature visual / seal).
+    signature_image = models.ImageField(
+        upload_to='signatures/',
+        null=True, blank=True,
+        verbose_name=_('تصویر امضا / مهر'),
+    )
 
     # Salary & benefits breakdown (for the standard contract text).
     attraction_allowance = models.DecimalField(max_digits=15, decimal_places=0, null=True, blank=True, verbose_name=_('حق جذب (ریال)'))
