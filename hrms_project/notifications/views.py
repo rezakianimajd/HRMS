@@ -137,7 +137,39 @@ def send_now_view(request):
         results['email'] = send_email(_admin_emails(company), subject, text)
 
     if channel in ('bale', 'both'):
-        results['bale'] = send_bale(bale_token, bale_chat_id, f'{subject}\n\n{text}')
+        # Send to EVERY registered recipient: employees with chat_id,
+        # custom contacts, plus the company default chat_id.
+        from employees.models import Employee
+        from settings_app.models import BaleContact
+
+        emp_ids = list(
+            Employee.objects.filter(is_active=True)
+            .exclude(bale_chat_id__isnull=True)
+            .exclude(bale_chat_id='')
+            .values_list('bale_chat_id', flat=True)
+        )
+        contact_ids = list(
+            BaleContact.objects.filter(is_active=True)
+            .exclude(chat_id='')
+            .values_list('chat_id', flat=True)
+        )
+        all_ids = []
+        seen = set()
+        for cid in [bale_chat_id] + emp_ids + contact_ids:
+            cid = str(cid).strip() if cid else ''
+            if cid and cid not in seen:
+                seen.add(cid)
+                all_ids.append(cid)
+
+        sent = 0
+        failed = []
+        message = f'{subject}\n\n{text}'
+        for cid in all_ids:
+            if send_bale(bale_token, cid, message):
+                sent += 1
+            else:
+                failed.append(cid)
+        results['bale'] = {'sent': sent, 'failed': failed, 'total': len(all_ids)}
 
     return Response({'message': 'پیام ارسال شد.', 'results': results})
 
