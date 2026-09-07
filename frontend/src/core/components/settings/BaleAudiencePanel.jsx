@@ -42,6 +42,7 @@ const BaleAudiencePanel = () => {
   const [selected, setSelected] = useState([]);
   const [result, setResult] = useState(null);
   const [sending, setSending] = useState(false);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   // templates
   const [tplDialog, setTplDialog] = useState(false);
@@ -192,7 +193,11 @@ const BaleAudiencePanel = () => {
         text,
         chat_ids: selected,
       });
-      setResult({ ok: true, message: `ارسال شد: ${formatPersianNumber(res.data.sent)} موفق، ${formatPersianNumber(res.data.failed.length)} ناموفق` });
+      setResult({ ok: true, message: `ارسال شد: ${formatPersianNumber(res.data.sent)} موفق، ${formatPersianNumber(res.data.failed)} ناموفق` });
+      setConfirmOpen(false);
+      setSelected([]);
+      setText('');
+      setSubject('');
     } catch (e) {
       setResult({ ok: false, message: e.response?.data?.error || 'خطا در ارسال' });
     } finally {
@@ -378,9 +383,10 @@ const BaleAudiencePanel = () => {
 
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
               <Chip label={`${formatPersianNumber(selected.length)} گیرنده`} color="primary" />
-              <Button variant="contained" startIcon={<SendIcon />} onClick={sendBulk} disabled={sending}
+              <Button variant="contained" startIcon={<SendIcon />} disabled={sending || !text || selected.length === 0}
+                onClick={() => setConfirmOpen(true)}
                 sx={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
-                {sending ? <CircularProgress size={18} color="inherit" /> : 'ارسال'}
+                {sending ? <CircularProgress size={18} color="inherit" /> : 'ادامه'}
               </Button>
             </Box>
           </Box>
@@ -429,6 +435,27 @@ const BaleAudiencePanel = () => {
           <Button variant="contained" disabled={!contactForm.name || !contactForm.chat_id}
             onClick={() => saveContact.mutate({ id: contactForm.id, ...contactForm })}
             sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}>ذخیره</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* ===== Confirm send dialog ===== */}
+      <Dialog open={confirmOpen} onClose={() => setConfirmOpen(false)} maxWidth="xs" fullWidth>
+        <DialogTitle>تأیید ارسال</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="textSecondary" gutterBottom>
+            پیام زیر به <strong>{formatPersianNumber(selected.length)} گیرنده</strong> ارسال میشود:
+          </Typography>
+          <Paper sx={{ p: 1.25, mt: 1, background: 'rgba(255,255,255,0.6)', borderRadius: 2 }}>
+            {subject && <Typography variant="subtitle2" fontWeight={700}>{subject}</Typography>}
+            <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{text}</Typography>
+          </Paper>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmOpen(false)}>بازگشت</Button>
+          <Button variant="contained" startIcon={<SendIcon />} onClick={sendBulk} disabled={sending}
+            sx={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
+            {sending ? <CircularProgress size={18} color="inherit" /> : 'ارسال قطعی'}
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

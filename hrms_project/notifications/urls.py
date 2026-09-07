@@ -3,7 +3,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from notifications.views import NotificationViewSet, sync_now_view, test_send_view, send_now_view
 from notifications.template_views import BaleTemplateViewSet
-from notifications.audience_views import bale_recipients, bale_bulk_send
+from notifications.audience_views import bale_recipients, bale_bulk_send, bale_resend_failed
 from notifications.log_views import BaleSendLogViewSet, BaleScheduleViewSet
 
 router = DefaultRouter()
@@ -20,5 +20,6 @@ urlpatterns = [
     path('notifications/send/', send_now_view, name='api-notifications-send'),
     path('notifications/bale-recipients/', bale_recipients, name='api-bale-recipients'),
     path('notifications/bale-bulk-send/', bale_bulk_send, name='api-bale-bulk-send'),
+    path('notifications/bale-resend-failed/', bale_resend_failed, name='api-bale-resend-failed'),
     path('', include(router.urls)),
 ]

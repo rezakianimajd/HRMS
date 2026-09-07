@@ -1,17 +1,29 @@
 import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
   Box, Typography, Paper, Chip, CircularProgress, Table, TableHead, TableRow,
-  TableCell, TableBody, FormControl, InputLabel, Select, MenuItem,
+  TableCell, TableBody, FormControl, InputLabel, Select, MenuItem, Button, Alert, IconButton,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
+import ReplayIcon from '@mui/icons-material/Replay';
 import { formatPersianNumber, toPersianDigits } from '../../utils/numberUtils';
 import { toJalali } from '../../utils/dateUtils';
 
 const BaleHistoryPanel = () => {
+  const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState('');
+  const [resendResult, setResendResult] = useState(null);
+
+  const resend = useMutation({
+    mutationFn: () => axiosInstance.post('/notifications/bale-resend-failed/', {}),
+    onSuccess: (res) => {
+      setResendResult({ ok: true, message: `ارسال مجدد: ${formatPersianNumber(res.data.sent)} موفق، ${formatPersianNumber(res.data.failed)} ناموفق` });
+      qc.invalidateQueries({ queryKey: ['bale-send-logs'] });
+    },
+    onError: (e) => setResendResult({ ok: false, message: e.response?.data?.error || 'خطا' }),
+  });
 
   const { data, isLoading } = useQuery({
     queryKey: ['bale-send-logs', statusFilter],
@@ -44,17 +56,29 @@ const BaleHistoryPanel = () => {
       </Paper>
 
       <Paper sx={{ p: 2, borderRadius: 3, background: 'rgba(255,255,255,0.6)' }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, flexWrap: 'wrap', gap: 1 }}>
           <Typography variant="subtitle1" fontWeight={800}>تاریخچهٔ ارسال</Typography>
-          <FormControl size="small" sx={{ minWidth: 140 }}>
-            <InputLabel>وضعیت</InputLabel>
-            <Select value={statusFilter} label="وضعیت" onChange={e => setStatusFilter(e.target.value)}>
-              <MenuItem value="">همه</MenuItem>
-              <MenuItem value="sent">موفق</MenuItem>
-              <MenuItem value="failed">ناموفق</MenuItem>
-            </Select>
-          </FormControl>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <Button size="small" startIcon={<ReplayIcon />} variant="outlined" color="warning"
+              onClick={() => resend.mutate()} disabled={resend.isLoading || failedCount === 0}>
+              ارسال مجدد ناموفق‌ها
+            </Button>
+            <FormControl size="small" sx={{ minWidth: 140 }}>
+              <InputLabel>وضعیت</InputLabel>
+              <Select value={statusFilter} label="وضعیت" onChange={e => setStatusFilter(e.target.value)}>
+                <MenuItem value="">همه</MenuItem>
+                <MenuItem value="sent">موفق</MenuItem>
+                <MenuItem value="failed">ناموفق</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
         </Box>
+
+        {resendResult && (
+          <Alert severity={resendResult.ok ? 'success' : 'error'} sx={{ mb: 1.5 }} onClose={() => setResendResult(null)}>
+            {resendResult.message}
+          </Alert>
+        )}
 
         {list.length === 0 ? (
           <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 3 }}>

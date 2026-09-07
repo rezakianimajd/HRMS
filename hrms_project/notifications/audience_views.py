@@ -77,6 +77,60 @@ def bale_recipients(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def bale_resend_failed(request):
+    """Re-send to recipients whose previous send failed.
+
+    Body: { 'template_id': optional }
+    """
+    company = _company(request)
+    if not company:
+        return Response({'error': 'شرکت فعالی انتخاب نشده است.'}, status=400)
+
+    if not (request.user.is_superuser or getattr(getattr(request.user, 'profile', None), 'is_hr_manager', False)):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    _, _, token, _ = _company_settings(company)
+    if not token:
+        return Response({'error': 'توکن بله تنظیم نشده است.'}, status=400)
+
+    from notifications.models import BaleSendLog
+    from notifications.channels import send_bale
+
+    qs = BaleSendLog.objects.filter(company=company, status=BaleSendLog.Status.FAILED)
+    template_id = request.data.get('template_id')
+    if template_id:
+        qs = qs.filter(template_id=template_id)
+
+    # latest failed per chat_id
+    latest = {}
+    for log in qs.order_by('-created_at'):
+        if log.chat_id not in latest:
+            latest[log.chat_id] = log
+
+    sent = 0
+    failed = 0
+    for cid, log in latest.items():
+        ok = send_bale(token, cid, log.text)
+        BaleSendLog.objects.create(
+            company=company,
+            template=log.template,
+            subject=log.subject,
+            text=log.text,
+            chat_id=cid,
+            recipient_name=log.recipient_name,
+            status=BaleSendLog.Status.SENT if ok else BaleSendLog.Status.FAILED,
+            error='' if ok else 'API error',
+        )
+        if ok:
+            sent += 1
+        else:
+            failed += 1
+
+    return Response({'sent': sent, 'failed': failed, 'total': len(latest)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def bale_bulk_send(request):
     """Send one message to a set of chat_ids.
 
