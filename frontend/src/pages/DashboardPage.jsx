@@ -19,7 +19,7 @@ import FolderIcon from '@mui/icons-material/Folder';
 import WavingHandIcon from '@mui/icons-material/WavingHand';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { DonutChart, BarChart } from '../core/components/charts/Charts';
-import { toJalali } from '../core/utils/dateUtils';
+import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
 import useAuth from '../core/hooks/useAuth';
 
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
@@ -30,9 +30,9 @@ const JALALI_MONTHS = [
 ];
 
 function todayLabel() {
-  const j = toJalali(new Date().toISOString().slice(0, 10));
-  const [y, m, d] = j.split('/').map(Number);
-  return `${toPersianDigits(d)} ${JALALI_MONTHS[(m || 1) - 1]} ${toPersianDigits(y)}`;
+  const parts = getJalaliParts(new Date().toISOString().slice(0, 10));
+  if (!parts) return '—';
+  return `${toPersianDigits(parts[2])} ${JALALI_MONTHS[(parts[1] || 1) - 1]} ${toPersianDigits(parts[0])}`;
 }
 
 const StatCard = ({ title, value, icon, color }) => (

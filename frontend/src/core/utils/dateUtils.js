@@ -4,6 +4,10 @@
  * guaranteed-correct forward conversion, plus a symmetric binary search
  * for the reverse conversion. This keeps the form (save) and display
  * (profile) perfectly in sync with no off-by-one drift.
+ *
+ * All DISPLAY dates (toJalali) are output with Persian digits so the UI is
+ * consistently Persian. The raw (English-digit) converter is kept internal
+ * for toGregorian's binary search, which must compare ASCII strings.
  */
 
 const JALALI_FORMATTER = new Intl.DateTimeFormat('en-US-u-ca-persian', {
@@ -17,32 +21,61 @@ function pad(n) {
   return String(n).padStart(2, '0');
 }
 
+function toPersianDigits(input) {
+  if (input == null || input === '') return '';
+  return String(input).replace(/\d/g, (d) => '۰۱۲۳۴۵۶۷۸۹'[parseInt(d, 10)]);
+}
+
 /**
- * Convert a Gregorian date string (YYYY-MM-DD) to Jalali date string (YYYY/MM/DD).
+ * Raw Jalali converter — returns ASCII digits (e.g. "1404/06/15").
+ * Used internally by toGregorian's binary search.
+ */
+function toJalaliRaw(gregorianDate) {
+  const [y, m, d] = gregorianDate.split('-').map(Number);
+  if (!y || !m || !d) return gregorianDate;
+  const date = new Date(Date.UTC(y, m - 1, d));
+  const parts = JALALI_FORMATTER.formatToParts(date);
+  const get = (type) => parts.find((p) => p.type === type)?.value ?? '';
+  return `${get('year')}/${get('month')}/${get('day')}`;
+}
+
+/**
+ * Convert a Gregorian date string (YYYY-MM-DD) to a Jalali date string.
+ * Display output uses Persian digits (e.g. "۱۴۰۴/۰۶/۱۵").
  */
 export function toJalali(gregorianDate) {
   if (!gregorianDate) return '—';
   try {
-    const [y, m, d] = gregorianDate.split('-').map(Number);
-    if (!y || !m || !d) return gregorianDate;
-    const date = new Date(Date.UTC(y, m - 1, d));
-    const parts = JALALI_FORMATTER.formatToParts(date);
-    const get = (type) => parts.find((p) => p.type === type)?.value ?? '';
-    return `${get('year')}/${get('month')}/${get('day')}`;
+    return toPersianDigits(toJalaliRaw(gregorianDate));
   } catch {
     return gregorianDate;
   }
 }
 
 /**
+ * Return the Jalali [year, month, day] as NUMBERS for programmatic logic.
+ * (toJalali returns Persian digits for display, which breaks Number() parsing.)
+ */
+export function getJalaliParts(gregorianDate) {
+  if (!gregorianDate) return null;
+  try {
+    return toJalaliRaw(gregorianDate).split('/').map(Number);
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Convert a Jalali date string (YYYY/MM/DD) to Gregorian date string (YYYY-MM-DD).
- * Uses the same Intl-based forward function (toJalali) via binary search so the
- * two directions are guaranteed to be exact inverses.
+ * Accepts both Persian and English digits on input.
  */
 export function toGregorian(jalaliDate) {
   if (!jalaliDate) return '';
   try {
-    const parts = String(jalaliDate).split('/');
+    const normalized = String(jalaliDate)
+      .replace(/[۰-۹]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)))
+      .replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
+    const parts = normalized.split('/');
     if (parts.length !== 3) return jalaliDate;
     const [jy, jm, jd] = parts.map(Number);
     if (!jy || !jm || !jd) return jalaliDate;
@@ -50,7 +83,6 @@ export function toGregorian(jalaliDate) {
     const target = `${jy}/${pad(jm)}/${pad(jd)}`;
 
     // Search a generous Gregorian range (1800..2300) for the matching Jalali date.
-    // This covers Jalali years ~1179..1679, including common modern dates (1400s).
     let lo = Date.UTC(1800, 0, 1);
     let hi = Date.UTC(2300, 0, 1);
 
@@ -58,12 +90,11 @@ export function toGregorian(jalaliDate) {
       const mid = Math.floor((lo + hi) / 2);
       const candidate = new Date(mid);
       const iso = candidate.toISOString().slice(0, 10);
-      const candidateJalali = toJalali(iso);
+      const candidateJalali = toJalaliRaw(iso);
 
       if (candidateJalali === target) {
         return iso;
       }
-      // String compare works because both are zero-padded YYYY/MM/DD.
       if (candidateJalali < target) {
         lo = mid;
       } else {

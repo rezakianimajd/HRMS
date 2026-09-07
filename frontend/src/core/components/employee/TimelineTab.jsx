@@ -14,7 +14,7 @@ import MailIcon from '@mui/icons-material/Mail';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import BusinessIcon from '@mui/icons-material/Business';
-import { toJalali } from '../../utils/dateUtils';
+import { getJalaliParts, toJalali } from '../../utils/dateUtils';
 import { toPersianDigits } from '../../utils/numberUtils';
 
 const TYPE_META = {
@@ -35,14 +35,11 @@ const JALALI_MONTHS = [
   'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
 ];
 
-// Convert a Jalali "YYYY/MM/DD" string to a "ماه سال" group key.
-const monthKey = (jalali) => {
-  const [y, m] = jalali.split('/').map(Number);
-  return `${y}/${m}`;
+const monthKey = (parts) => {
+  return `${parts[0]}/${parts[1]}`;
 };
-const monthLabel = (jalali) => {
-  const [y, m] = jalali.split('/').map(Number);
-  return `${JALALI_MONTHS[(m || 1) - 1]} ${toPersianDigits(y)}`;
+const monthLabel = (parts) => {
+  return `${JALALI_MONTHS[(parts[1] || 1) - 1]} ${toPersianDigits(parts[0])}`;
 };
 
 const TimelineTab = ({ employeeId }) => {
@@ -57,9 +54,10 @@ const TimelineTab = ({ employeeId }) => {
     const events = data?.events || [];
     const map = {};
     events.forEach((ev) => {
-      const j = toJalali(ev.date);
-      const key = monthKey(j);
-      if (!map[key]) map[key] = { label: monthLabel(j), items: [] };
+      const parts = getJalaliParts(ev.date);
+      if (!parts) return;
+      const key = monthKey(parts);
+      if (!map[key]) map[key] = { label: monthLabel(parts), items: [] };
       map[key].items.push(ev);
     });
     // Keep insertion order, newest-first (backend already sorts desc).
@@ -134,7 +132,8 @@ const TimelineTab = ({ employeeId }) => {
 
             {group.items.map((ev, idx) => {
               const meta = TYPE_META[ev.type] || { color: '#94a3b8', label: ev.type, icon: <HistoryIcon fontSize="small" /> };
-              const day = toJalali(ev.date).split('/')[2];
+              const parts = getJalaliParts(ev.date);
+              const day = parts ? toPersianDigits(parts[2]) : '';
               return (
                 <Box key={`${ev.type}-${ev.date}-${idx}`} sx={{ position: 'relative', pr: 4, pb: 2.25 }}>
                   {/* Node */}
@@ -176,7 +175,7 @@ const TimelineTab = ({ employeeId }) => {
                         }}
                       />
                       <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>
-                        {toPersianDigits(day)} {group.label.split(' ')[0]}
+                        {day} {group.label.split(' ')[0]}
                       </Typography>
                     </Box>
                     <Typography variant="body2" fontWeight={800} sx={{ mt: 0.75 }}>

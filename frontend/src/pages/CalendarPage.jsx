@@ -12,7 +12,7 @@ import EventBusyIcon from '@mui/icons-material/EventBusy';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import EventIcon from '@mui/icons-material/Event';
 import { useCalendarFeed, useCreateCalendarEvent } from '../core/hooks/useLifecycle';
-import { toGregorian, toJalali } from '../core/utils/dateUtils';
+import { toGregorian, toJalali, getJalaliParts } from '../core/utils/dateUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
@@ -27,9 +27,8 @@ function jalaliMonthInfo(jy, jm) {
   for (let d = 1; d <= 31; d++) {
     const g = toGregorian(`${jy}/${PAD(jm)}/${PAD(d)}`);
     if (g && /^\d{4}-\d{2}-\d{2}$/.test(g)) {
-      const back = toJalali(g);
-      const parts = back.split('/').map(Number);
-      if (parts[1] === jm) days = d;
+      const parts = getJalaliParts(g);
+      if (parts && parts[1] === jm) days = d;
       else break;
     }
   }
@@ -51,9 +50,10 @@ const EVENT_META = {
 };
 
 const CalendarPage = () => {
-  const todayJ = toJalali(new Date().toISOString().slice(0, 10));
-  const [curYear, setCurYear] = useState(Number(todayJ.split('/')[0]));
-  const [curMonth, setCurMonth] = useState(Number(todayJ.split('/')[1]));
+  const todayParts = getJalaliParts(new Date().toISOString().slice(0, 10)) || [1404, 1, 1];
+  const todayJ = `${todayParts[0]}/${PAD(todayParts[1])}/${PAD(todayParts[2])}`;
+  const [curYear, setCurYear] = useState(todayParts[0]);
+  const [curMonth, setCurMonth] = useState(todayParts[1]);
   const [selectedJ, setSelectedJ] = useState(todayJ);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [form, setForm] = useState({ title: '', event_date: '', event_type: 'custom', description: '' });
@@ -69,7 +69,9 @@ const CalendarPage = () => {
   const eventsByDate = useMemo(() => {
     const map = {};
     (data?.events || []).forEach((ev) => {
-      const j = toJalali(ev.date);
+      const parts = getJalaliParts(ev.date);
+      if (!parts) return;
+      const j = `${parts[0]}/${PAD(parts[1])}/${PAD(parts[2])}`;
       if (!map[j]) map[j] = [];
       map[j].push(ev);
     });
@@ -85,8 +87,8 @@ const CalendarPage = () => {
     else setCurMonth(curMonth + 1);
   };
   const goToday = () => {
-    setCurYear(Number(todayJ.split('/')[0]));
-    setCurMonth(Number(todayJ.split('/')[1]));
+    setCurYear(todayParts[0]);
+    setCurMonth(todayParts[1]);
     setSelectedJ(todayJ);
   };
 
@@ -179,7 +181,7 @@ const CalendarPage = () => {
         <Grid item xs={12} lg={4}>
           <Paper sx={{ p: 2, borderRadius: 3, mb: 2, background: 'rgba(255,255,255,0.6)' }}>
             <Typography variant="subtitle1" fontWeight={800} color="#be185d" gutterBottom>
-              {selectedJ}
+              {toPersianDigits(selectedJ)}
             </Typography>
             {isLoading ? (
               <Box sx={{ textAlign: 'center', py: 3 }}><CircularProgress size={24} /></Box>
