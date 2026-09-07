@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Grid, Card, CardContent, Avatar,
-  List, ListItem, ListItemText, ListItemIcon, Chip, Tooltip,
+  List, ListItem, ListItemText, ListItemIcon,
 } from '@mui/material';
 import PeopleIcon from '@mui/icons-material/People';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
@@ -16,6 +16,7 @@ import EventBusyIcon from '@mui/icons-material/EventBusy';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import FolderIcon from '@mui/icons-material/Folder';
+import WavingHandIcon from '@mui/icons-material/WavingHand';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { DonutChart, BarChart } from '../core/components/charts/Charts';
 import { toJalali } from '../core/utils/dateUtils';
@@ -23,26 +24,38 @@ import useAuth from '../core/hooks/useAuth';
 
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
-/* -------------------------------------------------------------------------
- * Compact stat card
- * ------------------------------------------------------------------------- */
+const JALALI_MONTHS = [
+  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
+];
+
+function todayLabel() {
+  const j = toJalali(new Date().toISOString().slice(0, 10));
+  const [y, m, d] = j.split('/').map(Number);
+  return `${d} ${JALALI_MONTHS[(m || 1) - 1]} ${y}`;
+}
+
 const StatCard = ({ title, value, icon, color }) => (
   <Card sx={{
     height: '100%',
-    background: `linear-gradient(135deg, ${color}12, ${color}05)`,
-    border: `1px solid ${color}20`,
+    background: `linear-gradient(135deg, ${color}16, ${color}06)`,
+    border: `1px solid ${color}22`,
     borderRadius: 2.5,
     transition: 'all 0.2s ease',
-    '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 20px ${color}20` },
+    '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 10px 24px ${color}26` },
   }}>
     <CardContent sx={{ py: 1.25, px: 1.75, '&:last-child': { pb: 1.25 } }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-        <Avatar sx={{ width: 36, height: 36, background: `linear-gradient(135deg, ${color}, ${color}99)`, boxShadow: `0 3px 10px ${color}30` }}>
+        <Avatar sx={{
+          width: 36, height: 36,
+          background: `linear-gradient(135deg, ${color}, ${color}99)`,
+          boxShadow: `0 3px 10px ${color}30`,
+        }}>
           {icon}
         </Avatar>
         <Box sx={{ minWidth: 0 }}>
           <Typography variant="caption" color="textSecondary" noWrap display="block">{title}</Typography>
-          <Typography variant="h6" fontWeight={800} sx={{ color, lineHeight: 1.1 }}>
+          <Typography variant="h6" fontWeight={800} sx={{ color, lineHeight: 1.15 }}>
             {formatPersianNumber(value ?? 0)}
           </Typography>
         </Box>
@@ -53,10 +66,10 @@ const StatCard = ({ title, value, icon, color }) => (
 
 const PanelHeader = ({ title, icon, color }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-    <Avatar sx={{ width: 24, height: 24, background: `linear-gradient(135deg, ${color}, ${color}90)`, color: '#fff', boxShadow: `0 2px 8px ${color}40` }}>
+    <Avatar sx={{ width: 24, height: 24, background: `linear-gradient(135deg, ${color}, ${color}90)`, color: '#fff' }}>
       {icon}
     </Avatar>
-    <Typography variant="subtitle2" fontWeight={700} noWrap>{title}</Typography>
+    <Typography variant="subtitle2" fontWeight={800} noWrap>{title}</Typography>
   </Box>
 );
 
@@ -68,8 +81,8 @@ const glassPanel = (from) => ({
   overflow: 'hidden',
   background: `linear-gradient(135deg, ${from}10, ${from}05)`,
   border: `1px solid ${from}1e`,
-  backdropFilter: 'blur(12px)',
-  WebkitBackdropFilter: 'blur(12px)',
+  backdropFilter: 'blur(14px)',
+  WebkitBackdropFilter: 'blur(14px)',
   borderRadius: 3,
 });
 
@@ -100,27 +113,41 @@ const DashboardPage = () => {
   });
 
   const genderData = (byGender || []).map((g, i) => ({ label: g.gender, value: g.count, color: ['#ec4899', '#3b82f6'][i] }));
-  const deptData = (byDept || []).slice(0, 5).map((d, i) => ({ label: d.name, value: d.count, color: PALETTE[i] }));
+  const deptData = (byDept || []).slice(0, 4).map((d, i) => ({ label: d.name, value: d.count, color: PALETTE[i] }));
 
   const pendingApprovals = (stats?.pending_leave_requests || 0) + (stats?.pending_hr_requests || 0);
   const alertsCount = (alerts?.expiring_documents?.length || 0) + (alerts?.expiring_contracts?.length || 0);
 
-  return (
-    <Box sx={{
-      height: 'calc(100vh - 64px)',
-      display: 'flex',
-      flexDirection: 'column',
-      overflow: 'hidden',
-    }}>
-      {/* Compact greeting */}
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1.5 }}>
-        <Typography variant="subtitle1" fontWeight={800}>
-          {t('dashboard.welcome')}، {user?.first_name || user?.username}
-        </Typography>
-        <Chip size="small" label={t('dashboard_home.total_employees')} color="primary" variant="outlined" />
-      </Box>
+  const firstName = user?.first_name || user?.username || '';
 
-      {/* Stat cards — 8 compact widgets */}
+  return (
+    <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+      {/* Greeting hero — compact, RTL */}
+      <Paper sx={{
+        p: 1.75, mb: 1.5, borderRadius: 3,
+        display: 'flex', alignItems: 'center', gap: 1.75,
+        background: 'linear-gradient(135deg, rgba(99,102,241,0.16), rgba(236,72,153,0.08), rgba(255,255,255,0.4))',
+        border: '1px solid rgba(99,102,241,0.2)',
+        backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
+      }}>
+        <Avatar sx={{
+          width: 46, height: 46,
+          background: 'linear-gradient(135deg, #6366f1, #ec4899)',
+          boxShadow: '0 6px 18px rgba(99,102,241,0.4)',
+        }}>
+          <WavingHandIcon sx={{ color: '#fff', fontSize: 24 }} />
+        </Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography variant="h6" fontWeight={800} sx={{ color: '#4338ca', lineHeight: 1.2 }}>
+            سلام، {firstName} 👋
+          </Typography>
+          <Typography variant="caption" color="textSecondary">
+            {todayLabel()} · خوش آمدید
+          </Typography>
+        </Box>
+      </Paper>
+
+      {/* 8 KPI cards */}
       <Grid container spacing={1.25}>
         <Grid item xs={6} md={3}>
           <StatCard title={t('dashboard_home.total_employees')} value={stats?.total_active} icon={<PeopleIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#6366f1" />
@@ -148,38 +175,38 @@ const DashboardPage = () => {
         </Grid>
       </Grid>
 
-      {/* Charts + alerts + activities (fills remaining, no scroll) */}
+      {/* Bottom row — 3 equal panels */}
       <Grid container spacing={1.25} sx={{ flex: 1, minHeight: 0, mt: 0.5 }}>
-        <Grid item xs={12} md={4} sx={{ display: 'flex', minHeight: 0 }}>
+        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
           <Paper sx={glassPanel('#ec4899')}>
             <PanelHeader title="ترکیب جنسیتی" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#ec4899" />
             <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-              <DonutChart data={genderData} size={120} thickness={20} centerLabel="نفر" />
+              <DonutChart data={genderData} size={130} thickness={22} centerLabel="نفر" />
             </Box>
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4} sx={{ display: 'flex', minHeight: 0 }}>
+        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
           <Paper sx={glassPanel('#6366f1')}>
             <PanelHeader title="توزیع دپارتمان" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#6366f1" />
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              <BarChart data={deptData} color="#6366f1" height={150} />
+            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+              <BarChart data={deptData} color="#6366f1" />
             </Box>
           </Paper>
         </Grid>
 
-        <Grid item xs={12} md={4} sx={{ display: 'flex', minHeight: 0 }}>
+        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
           <Paper sx={glassPanel('#f59e0b')}>
             <PanelHeader title="هشدارها" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} color="#f59e0b" />
             <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
               {alertsCount === 0 ? (
-                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
+                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 1.5 }}>
                   هشداری نیست
                 </Typography>
               ) : (
-                <List dense disablePadding sx={{ overflow: 'hidden' }}>
+                <List dense disablePadding>
                   {alerts?.expiring_documents?.slice(0, 3).map(doc => (
-                    <ListItem key={`doc-${doc.id}`} disableGutters sx={{ py: 0.25 }}>
+                    <ListItem key={`doc-${doc.id}`} disableGutters sx={{ py: 0.2 }}>
                       <ListItemIcon sx={{ minWidth: 26 }}>
                         <DescriptionIcon color="warning" fontSize="small" />
                       </ListItemIcon>
@@ -190,7 +217,7 @@ const DashboardPage = () => {
                     </ListItem>
                   ))}
                   {alerts?.expiring_contracts?.slice(0, 2).map(emp => (
-                    <ListItem key={`ctr-${emp.id}`} disableGutters sx={{ py: 0.25 }}>
+                    <ListItem key={`ctr-${emp.id}`} disableGutters sx={{ py: 0.2 }}>
                       <ListItemIcon sx={{ minWidth: 26 }}>
                         <AssignmentIcon color="info" fontSize="small" />
                       </ListItemIcon>
@@ -206,22 +233,20 @@ const DashboardPage = () => {
 
             <Box sx={{ borderTop: '1px solid #f59e0b22', pt: 0.75, mt: 0.75 }}>
               <PanelHeader title="فعالیت اخیر" icon={<AssignmentIcon sx={{ fontSize: 14 }} />} color="#10b981" />
-              <Box sx={{ overflow: 'hidden' }}>
-                {(activities || []).length === 0 ? (
-                  <Typography variant="caption" color="textSecondary">فعالیتی ثبت نشده است</Typography>
-                ) : (
-                  <List dense disablePadding>
-                    {activities.slice(0, 3).map(act => (
-                      <ListItem key={act.id} disableGutters sx={{ py: 0.15 }}>
-                        <ListItemText
-                          primary={<Typography variant="body2" noWrap>{act.description}</Typography>}
-                          secondary={<Typography variant="caption" noWrap>{act.user} · {act.action}</Typography>}
-                        />
-                      </ListItem>
-                    ))}
-                  </List>
-                )}
-              </Box>
+              {(activities || []).length === 0 ? (
+                <Typography variant="caption" color="textSecondary">فعالیتی ثبت نشده است</Typography>
+              ) : (
+                <List dense disablePadding>
+                  {activities.slice(0, 3).map(act => (
+                    <ListItem key={act.id} disableGutters sx={{ py: 0.1 }}>
+                      <ListItemText
+                        primary={<Typography variant="body2" noWrap>{act.description}</Typography>}
+                        secondary={<Typography variant="caption" noWrap>{act.user} · {act.action}</Typography>}
+                      />
+                    </ListItem>
+                  ))}
+                </List>
+              )}
             </Box>
           </Paper>
         </Grid>
