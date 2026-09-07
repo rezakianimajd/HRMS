@@ -56,7 +56,8 @@ const BaleAudiencePanel = () => {
 
   // recipients
   const [contactDialog, setContactDialog] = useState(false);
-  const [contactForm, setContactForm] = useState({ name: '', chat_id: '', category: '' });
+  const [contactForm, setContactForm] = useState({ name: '', chat_id: '', category: '', tag: '' });
+  const [tagFilter, setTagFilter] = useState('');
   const [openContacts, setOpenContacts] = useState(true);
   const [openEmployees, setOpenEmployees] = useState(true);
   const [openMissing, setOpenMissing] = useState(true);
@@ -155,14 +156,26 @@ const BaleAudiencePanel = () => {
     return Object.entries(map);
   }, [audience]);
 
+  const allTags = useMemo(() => {
+    const set = new Set();
+    (audience?.contacts || []).forEach(c => c.tag && set.add(c.tag));
+    return [...set];
+  }, [audience]);
+
+  const filteredContacts = useMemo(() => {
+    const list = audience?.contacts || [];
+    if (tagFilter) return list.filter(c => c.tag === tagFilter);
+    return list;
+  }, [audience, tagFilter]);
+
   const contactsByCat = useMemo(() => {
     const map = {};
-    (audience?.contacts || []).forEach(c => {
+    filteredContacts.forEach(c => {
       const cat = c.category || '(بدون دسته)';
       (map[cat] = map[cat] || []).push(c);
     });
     return Object.entries(map);
-  }, [audience]);
+  }, [filteredContacts]);
 
   const allRecipients = useMemo(() => {
     const set = new Set();
@@ -352,10 +365,18 @@ const BaleAudiencePanel = () => {
                 <Button size="small" onClick={() => setOpenContacts(!openContacts)} startIcon={openContacts ? <ExpandLessIcon /> : <ExpandMoreIcon />}>
                   <Typography variant="body2" fontWeight={700}>مخاطبان ذخیره‌شده</Typography>
                 </Button>
-                <Button size="small" startIcon={<AddIcon />} onClick={() => { setContactForm({ name: '', chat_id: '', category: '' }); setContactDialog(true); }}>افزودن</Button>
+                <Button size="small" startIcon={<AddIcon />} onClick={() => { setContactForm({ name: '', chat_id: '', category: '', tag: '' }); setContactDialog(true); }}>افزودن</Button>
                 <Button size="small" onClick={() => importFileRef.current?.click()} color="secondary">واردکردن اکسل</Button>
                 <input ref={importFileRef} type="file" hidden accept=".xlsx,.xls" onChange={onImportFile} />
               </Box>
+              {allTags.length > 0 && (
+                <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1 }}>
+                  <Chip size="small" label="همه" variant={tagFilter === '' ? 'filled' : 'outlined'} color="primary" onClick={() => setTagFilter('')} />
+                  {allTags.map(t => (
+                    <Chip key={t} size="small" label={t} variant={tagFilter === t ? 'filled' : 'outlined'} color="secondary" onClick={() => setTagFilter(tagFilter === t ? '' : t)} />
+                  ))}
+                </Box>
+              )}
               <Collapse in={openContacts}>
                 {contactsByCat.length === 0 ? (
                   <Typography variant="caption" color="textSecondary">مخاطب ذخیره‌شده‌ای نیست.</Typography>
@@ -373,8 +394,9 @@ const BaleAudiencePanel = () => {
                         <Box key={c.chat_id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                           <Checkbox size="small" checked={selected.includes(c.chat_id)} onChange={() => toggle(c.chat_id)} />
                           <Typography variant="body2" noWrap>{c.name}</Typography>
+                          {c.tag && <Chip size="small" label={c.tag} sx={{ height: 18, fontSize: 10 }} color="secondary" />}
                           <Typography variant="caption" color="textSecondary">{c.chat_id}</Typography>
-                          <IconButton size="small" onClick={() => { setContactForm({ id: c.id, name: c.name, chat_id: c.chat_id, category: c.category }); setContactDialog(true); }}><EditIcon fontSize="small" /></IconButton>
+                          <IconButton size="small" onClick={() => { setContactForm({ id: c.id, name: c.name, chat_id: c.chat_id, category: c.category, tag: c.tag || '' }); setContactDialog(true); }}><EditIcon fontSize="small" /></IconButton>
                           <IconButton size="small" color="error" onClick={() => deleteContact.mutate(c.id)}><DeleteIcon fontSize="small" /></IconButton>
                         </Box>
                       ))}

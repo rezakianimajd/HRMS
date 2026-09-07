@@ -65,6 +65,7 @@ def bale_recipients(request):
         'name': c.name,
         'chat_id': c.chat_id,
         'category': c.category or '',
+        'tag': c.tag or '',
         'kind': 'contact',
     } for c in contacts]
 

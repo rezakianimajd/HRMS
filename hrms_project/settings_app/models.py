@@ -180,6 +180,13 @@ class BaleContact(BaseModel):
         max_length=100, blank=True, verbose_name=_('دسته‌بندی'),
         help_text=_('مثلاً: مالی، فنی، پشتیبانی'),
     )
+    tag = models.CharField(
+        max_length=100, blank=True, null=True, verbose_name=_('برچسب'),
+        help_text=_('مثلاً: مشتری، هیئت‌مدیره، قرارداد'),
+    )
+    country_code = models.CharField(
+        max_length=10, blank=True, null=True, default='+98', verbose_name=_('کد کشور'),
+    )
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
 
     class Meta:

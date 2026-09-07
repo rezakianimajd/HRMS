@@ -15,7 +15,7 @@ class SystemSettingSerializer(serializers.ModelSerializer):
 class BaleContactSerializer(serializers.ModelSerializer):
     class Meta:
         model = BaleContact
-        fields = ['id', 'name', 'chat_id', 'category', 'note', 'is_active', 'created_at']
+        fields = ['id', 'name', 'chat_id', 'category', 'tag', 'country_code', 'note', 'is_active', 'created_at']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
