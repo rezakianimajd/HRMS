@@ -114,7 +114,8 @@ const NotificationSettingsPanel = () => {
         <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
           <TextField size="small" label="توکن ربات بله" value={p.bale_token || ''}
             onChange={(e) => setVal('bale_token', e.target.value)} />
-          <TextField size="small" label="شناسه گفتگو (chat_id)" value={p.bale_chat_id || ''}
+          <TextField size="small" label="شناسه گفتگوی دریافت اعلان‌ها (chat_id)" value={p.bale_chat_id || ''}
+            helperText="این chat_id فقط برای دریافت اعلان‌های سراسری است و با chat_id پرسنل (برای پیام خصوصی) فرق دارد."
             onChange={(e) => setVal('bale_chat_id', e.target.value)} />
         </Box>
       </Paper>
