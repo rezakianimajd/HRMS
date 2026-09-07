@@ -102,6 +102,8 @@ const endpoints = {
     recipients: `${API_BASE}/notifications/bale-recipients/`,
     bulkSend: `${API_BASE}/notifications/bale-bulk-send/`,
     resendFailed: `${API_BASE}/notifications/bale-resend-failed/`,
+    segments: `${API_BASE}/notifications/bale-segments/`,
+    importContacts: `${API_BASE}/notifications/bale-contacts-import/`,
   },
 };
 

@@ -75,6 +75,58 @@ def bale_recipients(request):
     })
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def bale_segments(request):
+    """Smart recipient groups (segments) for targeted sending.
+
+    Returns pre-built groups:
+      - all_active: every employee with a chat_id
+      - by_department: employees grouped by department
+      - by_gender / by_marital_status / by_contract_type / by_status
+    """
+    from employees.models import Employee
+
+    company = _company(request)
+
+    def _emp_list(qs):
+        qs = qs.exclude(bale_chat_id__isnull=True).exclude(bale_chat_id='').select_related('department', 'contract_type')
+        return [{
+            'id': e.id,
+            'name': e.full_name,
+            'chat_id': e.bale_chat_id,
+            'department': e.department.name if e.department else '(بدون دپارتمان)',
+            'kind': 'employee',
+        } for e in qs]
+
+    base = Employee.objects.filter(is_active=True, status='active')
+    if company:
+        base = base.filter(company=company)
+
+    def _group_by(qs, key_fn):
+        groups = {}
+        for e in qs:
+            k = key_fn(e) or '(نامشخص)'
+            groups.setdefault(k, []).append(e.id)
+        # Convert grouped ids back to employee rows (keeps ordering stable)
+        from django.db.models import Case, When, IntegerField
+        return {
+            k: _emp_list(
+                Employee.objects.filter(id__in=ids)
+            )
+            for k, ids in groups.items()
+        }
+
+    return Response({
+        'all_active': _emp_list(base),
+        'by_department': _group_by(base, lambda e: e.department.name if e.department else '(بدون دپارتمان)'),
+        'by_gender': _group_by(base, lambda e: e.get_gender_display()),
+        'by_marital_status': _group_by(base, lambda e: e.get_marital_status_display()),
+        'by_contract_type': _group_by(base, lambda e: (e.contract_type.name if e.contract_type else 'نامشخص')),
+        'by_work_shift': _group_by(base, lambda e: e.get_work_shift_display()),
+    })
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def bale_resend_failed(request):

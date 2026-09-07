@@ -21,6 +21,7 @@ import DialogTitle from '@mui/material/DialogTitle';
 import DialogContent from '@mui/material/DialogContent';
 import DialogActions from '@mui/material/DialogActions';
 import { formatPersianNumber } from '../../utils/numberUtils';
+import SegmentsPicker from './SegmentsPicker';
 
 const EVENT_TYPES = [
   { value: 'birthday', label: 'تولد', color: '#ec4899' },
@@ -49,6 +50,9 @@ const BaleAudiencePanel = () => {
   const [tplForm, setTplForm] = useState({ title: '', event_type: 'announcement', text: '' });
   const [tplOpen, setTplOpen] = useState(true);
   const [audienceOpen, setAudienceOpen] = useState(true);
+  const [segmentsOpen, setSegmentsOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const importFileRef = React.useRef(null);
 
   // recipients
   const [contactDialog, setContactDialog] = useState(false);
@@ -110,6 +114,28 @@ const BaleAudiencePanel = () => {
       qc.invalidateQueries({ queryKey: ['bale-audience'] });
     },
   });
+
+  const importContacts = useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('file', file);
+      return axiosInstance.post('/notifications/bale-contacts-import/', fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+    },
+    onSuccess: (res) => {
+      setResult({ ok: true, message: `وارد شد: ${formatPersianNumber(res.data.imported_count)} مخاطب` });
+      qc.invalidateQueries({ queryKey: ['bale-audience'] });
+      qc.invalidateQueries({ queryKey: ['bale-contacts'] });
+    },
+    onError: (e) => setResult({ ok: false, message: e.response?.data?.error || 'خطا' }),
+  });
+
+  const onImportFile = (e) => {
+    const file = e.target.files?.[0];
+    if (file) importContacts.mutate(file);
+    e.target.value = '';
+  };
 
   const fillChatId = useMutation({
     mutationFn: ({ id, chat_id }) => axiosInstance.patch(`/employees/${id}/`, { bale_chat_id: chat_id }),
@@ -292,6 +318,23 @@ const BaleAudiencePanel = () => {
         </Collapse>
       </Paper>
 
+      {/* ===== گروه‌های هوشمند ===== */}
+      <Paper sx={{ p: 2.5, borderRadius: 3, mb: 2, background: 'rgba(255,255,255,0.5)' }}>
+        <Button size="small" onClick={() => setSegmentsOpen(!segmentsOpen)} startIcon={segmentsOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}>
+          <Typography variant="subtitle1" fontWeight={800}>گروه‌های هوشمند (ارسال هدفمند)</Typography>
+        </Button>
+        <Collapse in={segmentsOpen}>
+          <Box sx={{ mt: 1 }}>
+            <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>
+              بدون تیک دستی، از میان گروه‌های ازپیش‌ساخته‌شده انتخاب کنید.
+            </Typography>
+            <SegmentsPicker
+              onSelect={(chatIds) => { setSelected(chatIds); setSegmentsOpen(false); }}
+            />
+          </Box>
+        </Collapse>
+      </Paper>
+
       {/* ===== انتخاب گیرنده + ارسال دستی ===== */}
       <Paper sx={{ p: 2.5, borderRadius: 3, mb: 2, background: 'rgba(255,255,255,0.5)' }}>
         <Button size="small" onClick={() => setAudienceOpen(!audienceOpen)} startIcon={audienceOpen ? <ExpandLessIcon /> : <ExpandMoreIcon />}>
@@ -310,6 +353,8 @@ const BaleAudiencePanel = () => {
                   <Typography variant="body2" fontWeight={700}>مخاطبان ذخیره‌شده</Typography>
                 </Button>
                 <Button size="small" startIcon={<AddIcon />} onClick={() => { setContactForm({ name: '', chat_id: '', category: '' }); setContactDialog(true); }}>افزودن</Button>
+                <Button size="small" onClick={() => importFileRef.current?.click()} color="secondary">واردکردن اکسل</Button>
+                <input ref={importFileRef} type="file" hidden accept=".xlsx,.xls" onChange={onImportFile} />
               </Box>
               <Collapse in={openContacts}>
                 {contactsByCat.length === 0 ? (
