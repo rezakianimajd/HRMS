@@ -96,6 +96,7 @@ def bale_bulk_send(request):
     text = (request.data.get('text') or '').strip()
     subject = (request.data.get('subject') or '').strip()
     chat_ids = request.data.get('chat_ids') or []
+    template_id = request.data.get('template_id')
 
     if not text:
         return Response({'error': 'متن پیام الزامی است.'}, status=400)
@@ -106,23 +107,20 @@ def bale_bulk_send(request):
     if not bale_enabled or not token:
         return Response({'error': 'ارسال بله فعال نیست یا توکن تنظیم نشده است.'}, status=400)
 
-    message = f'{subject}\n\n{text}' if subject else text
+    from notifications.models import BaleTemplate
+    from notifications.messaging_service import send_to_all
 
-    sent = 0
-    failed = []
-    seen = set()
-    for cid in chat_ids:
-        cid = str(cid).strip()
-        if not cid or cid in seen:
-            continue
-        seen.add(cid)
-        if send_bale(token, cid, message):
-            sent += 1
-        else:
-            failed.append(cid)
+    template = None
+    if template_id:
+        template = BaleTemplate.objects.filter(id=template_id, company=company).first()
 
-    return Response({
-        'sent': sent,
-        'failed': failed,
-        'total': len(seen),
-    })
+    result = send_to_all(
+        company=company,
+        token=token,
+        chat_ids=chat_ids,
+        text=text,
+        subject=subject,
+        template=template,
+    )
+
+    return Response(result)

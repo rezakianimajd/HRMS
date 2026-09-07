@@ -89,6 +89,15 @@ const endpoints = {
     list: `${API_BASE}/bale-templates/`,
     detail: (id) => `${API_BASE}/bale-templates/${id}/`,
   },
+  baleSendLogs: {
+    list: `${API_BASE}/bale-send-logs/`,
+  },
+  baleSchedules: {
+    list: `${API_BASE}/bale-schedules/`,
+    detail: (id) => `${API_BASE}/bale-schedules/${id}/`,
+    cancel: (id) => `${API_BASE}/bale-schedules/${id}/cancel/`,
+    runNow: (id) => `${API_BASE}/bale-schedules/${id}/run_now/`,
+  },
   baleAudience: {
     recipients: `${API_BASE}/notifications/bale-recipients/`,
     bulkSend: `${API_BASE}/notifications/bale-bulk-send/`,

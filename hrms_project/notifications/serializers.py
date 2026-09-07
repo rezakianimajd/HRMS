@@ -1,6 +1,6 @@
 """Serializers for the Notification module."""
 from rest_framework import serializers
-from notifications.models import Notification, BaleTemplate
+from notifications.models import Notification, BaleTemplate, BaleSendLog, BaleSchedule
 
 
 class BaleTemplateSerializer(serializers.ModelSerializer):
@@ -13,6 +13,35 @@ class BaleTemplateSerializer(serializers.ModelSerializer):
             'text', 'is_default', 'is_active', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class BaleSendLogSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    template_title = serializers.CharField(source='template.title', read_only=True)
+
+    class Meta:
+        model = BaleSendLog
+        fields = [
+            'id', 'template', 'template_title', 'subject', 'text',
+            'chat_id', 'recipient_name', 'status', 'status_display',
+            'error', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+
+class BaleScheduleSerializer(serializers.ModelSerializer):
+    frequency_display = serializers.CharField(source='get_frequency_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    template_title = serializers.CharField(source='template.title', read_only=True)
+
+    class Meta:
+        model = BaleSchedule
+        fields = [
+            'id', 'title', 'template', 'template_title', 'text',
+            'frequency', 'frequency_display', 'scheduled_at',
+            'chat_ids', 'status', 'status_display', 'last_run_at', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'status', 'last_run_at', 'created_at', 'updated_at']
 
 
 class NotificationSerializer(serializers.ModelSerializer):

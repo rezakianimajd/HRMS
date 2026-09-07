@@ -94,3 +94,80 @@ class BaleTemplate(BaseModel):
 
     def __str__(self):
         return f'{self.title} ({self.get_event_type_display()})'
+
+
+class BaleSendLog(BaseModel):
+    """Audit trail of every Bale message sent (for tracking / reporting)."""
+
+    class Status(models.TextChoices):
+        SENT = 'sent', _('ارسال موفق')
+        FAILED = 'failed', _('ناموفق')
+
+    template = models.ForeignKey(
+        BaleTemplate,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='logs',
+        verbose_name=_('قالب'),
+    )
+    subject = models.CharField(max_length=200, blank=True, verbose_name=_('موضوع'))
+    text = models.TextField(verbose_name=_('متن ارسال‌شده'))
+    chat_id = models.CharField(max_length=100, verbose_name=_('chat_id گیرنده'))
+    recipient_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام گیرنده'))
+    status = models.CharField(max_length=10, choices=Status.choices, verbose_name=_('وضعیت'))
+    error = models.TextField(blank=True, verbose_name=_('خطا'))
+
+    class Meta:
+        verbose_name = _('تاریخچه ارسال بله')
+        verbose_name_plural = _('تاریخچه ارسال‌های بله')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.recipient_name or self.chat_id} - {self.get_status_display()}'
+
+
+class BaleSchedule(BaseModel):
+    """A scheduled Bale broadcast (time-based, execution via Celery beat/worker)."""
+
+    class Frequency(models.TextChoices):
+        ONCE = 'once', _('یک‌بار')
+        DAILY = 'daily', _('روزانه')
+        WEEKLY = 'weekly', _('هفتگی')
+        MONTHLY = 'monthly', _('ماهانه')
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('در انتظار')
+        DONE = 'done', _('انجام شده')
+        CANCELLED = 'cancelled', _('لغو شده')
+
+    title = models.CharField(max_length=200, verbose_name=_('عنوان برنامه'))
+    template = models.ForeignKey(
+        BaleTemplate,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='schedules',
+        verbose_name=_('قالب'),
+    )
+    text = models.TextField(verbose_name=_('متن پیام'))
+    frequency = models.CharField(
+        max_length=10, choices=Frequency.choices, default=Frequency.ONCE,
+        verbose_name=_('تکرار'),
+    )
+    scheduled_at = models.DateTimeField(verbose_name=_('زمان اجرا'))
+    chat_ids = models.TextField(
+        verbose_name=_('لیست گیرندگان'),
+        help_text=_('chat_id ها با کاما جدا شوند؛ خالی = همه‌گیرندگان'),
+    )
+    status = models.CharField(
+        max_length=10, choices=Status.choices, default=Status.PENDING,
+        verbose_name=_('وضعیت'),
+    )
+    last_run_at = models.DateTimeField(null=True, blank=True, verbose_name=_('آخرین اجرا'))
+
+    class Meta:
+        verbose_name = _('زمان‌بندی ارسال بله')
+        verbose_name_plural = _('زمان‌بندی‌های ارسال بله')
+        ordering = ['scheduled_at']
+
+    def __str__(self):
+        return self.title

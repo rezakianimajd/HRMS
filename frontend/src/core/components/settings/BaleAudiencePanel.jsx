@@ -401,6 +401,7 @@ const BaleAudiencePanel = () => {
             </Select>
           </FormControl>
           <TextField size="small" label="متن پیام" value={tplForm.text} multiline rows={4}
+            helperText="متغیرها: {name}، {first_name}، {last_name}، {employee_id}، {national_id}، {mobile}، {department}، {job_title}"
             onChange={e => setTplForm(p => ({ ...p, text: e.target.value }))} />
         </DialogContent>
         <DialogActions>

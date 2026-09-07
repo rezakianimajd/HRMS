@@ -1,9 +1,18 @@
-import React from 'react';
-import { Box, Typography, Paper, Avatar } from '@mui/material';
+import React, { useState } from 'react';
+import {
+  Box, Typography, Paper, Avatar, Tabs, Tab,
+} from '@mui/material';
 import ChatIcon from '@mui/icons-material/Chat';
+import SendIcon from '@mui/icons-material/Send';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import HistoryIcon from '@mui/icons-material/History';
 import BaleAudiencePanel from '../core/components/settings/BaleAudiencePanel';
+import BaleSchedulePanel from '../core/components/settings/BaleSchedulePanel';
+import BaleHistoryPanel from '../core/components/settings/BaleHistoryPanel';
 
 const BaleMessagingPage = () => {
+  const [tab, setTab] = useState(0);
+
   return (
     <Box>
       {/* Header */}
@@ -17,11 +26,22 @@ const BaleMessagingPage = () => {
         </Avatar>
         <Box sx={{ flex: 1 }}>
           <Typography variant="h6" fontWeight={800} color="#047857">اطلاع‌رسانی و ارسال پیام بله</Typography>
-          <Typography variant="body2" color="textSecondary">قالب‌های پیام، مخاطبان گروهی و ارسال سریع از طریق ربات بله</Typography>
+          <Typography variant="body2" color="textSecondary">قالب‌های پیام، مخاطبان گروهی، زمان‌بندی و تاریخچهٔ ارسال</Typography>
         </Box>
       </Paper>
 
-      <BaleAudiencePanel />
+      {/* Tabs */}
+      <Paper sx={{ mb: 2, borderRadius: 2.5, background: 'rgba(255,255,255,0.6)' }}>
+        <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
+          <Tab icon={<SendIcon />} iconPosition="start" label="ارسال و قالب‌ها" />
+          <Tab icon={<ScheduleIcon />} iconPosition="start" label="زمان‌بندی" />
+          <Tab icon={<HistoryIcon />} iconPosition="start" label="تاریخچه" />
+        </Tabs>
+      </Paper>
+
+      {tab === 0 && <BaleAudiencePanel />}
+      {tab === 1 && <BaleSchedulePanel />}
+      {tab === 2 && <BaleHistoryPanel />}
     </Box>
   );
 };

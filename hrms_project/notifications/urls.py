@@ -4,10 +4,13 @@ from rest_framework.routers import DefaultRouter
 from notifications.views import NotificationViewSet, sync_now_view, test_send_view, send_now_view
 from notifications.template_views import BaleTemplateViewSet
 from notifications.audience_views import bale_recipients, bale_bulk_send
+from notifications.log_views import BaleSendLogViewSet, BaleScheduleViewSet
 
 router = DefaultRouter()
 router.register(r'notifications', NotificationViewSet, basename='notification')
 router.register(r'bale-templates', BaleTemplateViewSet, basename='bale-template')
+router.register(r'bale-send-logs', BaleSendLogViewSet, basename='bale-send-log')
+router.register(r'bale-schedules', BaleScheduleViewSet, basename='bale-schedule')
 
 urlpatterns = [
     # Must be declared BEFORE the router include so 'sync' is not captured
