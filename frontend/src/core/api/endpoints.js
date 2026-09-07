@@ -85,6 +85,10 @@ const endpoints = {
     list: `${API_BASE}/bale-contacts/`,
     detail: (id) => `${API_BASE}/bale-contacts/${id}/`,
   },
+  baleTemplates: {
+    list: `${API_BASE}/bale-templates/`,
+    detail: (id) => `${API_BASE}/bale-templates/${id}/`,
+  },
   baleAudience: {
     recipients: `${API_BASE}/notifications/bale-recipients/`,
     bulkSend: `${API_BASE}/notifications/bale-bulk-send/`,

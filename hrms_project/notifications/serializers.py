@@ -1,6 +1,18 @@
 """Serializers for the Notification module."""
 from rest_framework import serializers
-from notifications.models import Notification
+from notifications.models import Notification, BaleTemplate
+
+
+class BaleTemplateSerializer(serializers.ModelSerializer):
+    event_type_display = serializers.CharField(source='get_event_type_display', read_only=True)
+
+    class Meta:
+        model = BaleTemplate
+        fields = [
+            'id', 'title', 'event_type', 'event_type_display',
+            'text', 'is_default', 'is_active', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
 class NotificationSerializer(serializers.ModelSerializer):

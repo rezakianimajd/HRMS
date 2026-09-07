@@ -64,3 +64,33 @@ class Notification(BaseModel):
 
     def __str__(self):
         return self.title
+
+
+class BaleTemplate(BaseModel):
+    """A reusable message template for quick Bale sending."""
+
+    class EventType(models.TextChoices):
+        BIRTHDAY = 'birthday', _('تولد')
+        BENEFITS = 'benefits', _('مزایا')
+        PAYSLIP = 'payslip', _('فیش حقوقی')
+        EID = 'eid', _('اعیاد')
+        ANNOUNCEMENT = 'announcement', _('اطلاعیه')
+        OTHER = 'other', _('سایر')
+
+    title = models.CharField(max_length=200, verbose_name=_('عنوان قالب'))
+    event_type = models.CharField(
+        max_length=20,
+        choices=EventType.choices,
+        default=EventType.ANNOUNCEMENT,
+        verbose_name=_('نوع مناسبت'),
+    )
+    text = models.TextField(verbose_name=_('متن پیام'))
+    is_default = models.BooleanField(default=False, verbose_name=_('پیش‌فرض'))
+
+    class Meta:
+        verbose_name = _('قالب پیام بله')
+        verbose_name_plural = _('قالب‌های پیام بله')
+        ordering = ['event_type', 'title']
+
+    def __str__(self):
+        return f'{self.title} ({self.get_event_type_display()})'
