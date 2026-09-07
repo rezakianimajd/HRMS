@@ -61,6 +61,7 @@ const endpoints = {
     markRead: (id) => `${API_BASE}/notifications/${id}/mark_read/`,
     sync: `${API_BASE}/notifications/sync/`,
     testSend: `${API_BASE}/notifications/test-send/`,
+    send: `${API_BASE}/notifications/send/`,
   },
   assets: {
     list: `${API_BASE}/assets/`,

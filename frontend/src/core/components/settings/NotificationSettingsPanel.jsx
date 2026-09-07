@@ -16,7 +16,8 @@ const NotificationSettingsPanel = () => {
   const qc = useQueryClient();
   const [result, setResult] = useState(null);
   const [sending, setSending] = useState(false);
-  const [channel, setChannel] = useState('both');
+  const [customSubject, setCustomSubject] = useState('');
+  const [customText, setCustomText] = useState('');
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ['company-profile'],
@@ -41,6 +42,24 @@ const NotificationSettingsPanel = () => {
       setResult({ ok: true, message: 'ارسال آزمایشی انجام شد ✓', detail: res.data.results });
     } catch (e) {
       setResult({ ok: false, message: e.response?.data?.error || 'خطا در ارسال آزمایشی' });
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const sendCustom = async (ch) => {
+    setSending(true);
+    try {
+      const res = await axiosInstance.post('/notifications/send/', {
+        channel: ch,
+        subject: customSubject,
+        text: customText,
+      });
+      setResult({ ok: true, message: 'پیام ارسال شد ✓', detail: res.data.results });
+      setCustomText('');
+      setCustomSubject('');
+    } catch (e) {
+      setResult({ ok: false, message: e.response?.data?.error || 'خطا در ارسال پیام' });
     } finally {
       setSending(false);
     }
@@ -96,6 +115,30 @@ const NotificationSettingsPanel = () => {
             onChange={(e) => setVal('bale_token', e.target.value)} />
           <TextField size="small" label="شناسه گفتگو (chat_id)" value={p.bale_chat_id || ''}
             onChange={(e) => setVal('bale_chat_id', e.target.value)} />
+        </Box>
+      </Paper>
+
+      {/* Custom message */}
+      <Paper sx={{ p: 2.5, borderRadius: 3, background: 'linear-gradient(135deg, rgba(236,72,153,0.06), rgba(255,255,255,0.3))', border: '1px solid rgba(236,72,153,0.18)' }}>
+        <Typography variant="subtitle1" fontWeight={800} gutterBottom sx={{ color: '#ec4899' }}>ارسال پیام دلخواه</Typography>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+          <TextField size="small" label="عنوان / موضوع" value={customSubject}
+            placeholder="مثلاً اطلاعیه مهم"
+            onChange={(e) => setCustomSubject(e.target.value)} />
+          <TextField size="small" label="متن پیام" value={customText} multiline rows={3}
+            placeholder="هر متنی که می‌خواهید برای مدیران ارسال شود…"
+            onChange={(e) => setCustomText(e.target.value)} />
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Button variant="outlined" size="small" startIcon={<SendIcon />} disabled={sending || !customText}
+              onClick={() => sendCustom('email')}>ایمیل</Button>
+            <Button variant="outlined" size="small" startIcon={<SendIcon />} disabled={sending || !customText}
+              onClick={() => sendCustom('bale')}>بله</Button>
+            <Button variant="contained" size="small" startIcon={<SendIcon />} disabled={sending || !customText}
+              onClick={() => sendCustom('both')}
+              sx={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
+              ارسال به هر دو
+            </Button>
+          </Box>
         </Box>
       </Paper>
 

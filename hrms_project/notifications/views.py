@@ -104,6 +104,46 @@ def sync_now_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+def send_now_view(request):
+    """Send a custom message through Email and/or Bale (admin only).
+
+    Body: {
+      'channel': 'email' | 'bale' | 'both',
+      'subject': '...',      # used for email subject
+      'text': '...'          # message body (Bale text / email body)
+    }
+    """
+    company = _company(request)
+    if not company:
+        return Response({'error': 'شرکت فعالی انتخاب نشده است.'}, status=400)
+
+    if not (request.user.is_superuser or getattr(getattr(request.user, 'profile', None), 'is_hr_manager', False)):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    channel = (request.data.get('channel') or 'both').lower()
+    subject = (request.data.get('subject') or 'پیام مدیریتی').strip()
+    text = (request.data.get('text') or '').strip()
+
+    if not text:
+        return Response({'error': 'متن پیام الزامی است.'}, status=400)
+
+    from notifications.channels import _company_settings, send_email, send_bale
+
+    email_enabled, bale_enabled, bale_token, bale_chat_id = _company_settings(company)
+    results = {}
+
+    if channel in ('email', 'both'):
+        from notifications.sync_service import _admin_emails
+        results['email'] = send_email(_admin_emails(company), subject, text)
+
+    if channel in ('bale', 'both'):
+        results['bale'] = send_bale(bale_token, bale_chat_id, f'{subject}\n\n{text}')
+
+    return Response({'message': 'پیام ارسال شد.', 'results': results})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def test_send_view(request):
     """Send a test message over Email and/or Bale (admin only).
 
