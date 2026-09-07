@@ -20,6 +20,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
+import InsightsIcon from '@mui/icons-material/Insights';
 import PsychologyIcon from '@mui/icons-material/Psychology';
 import CategoryIcon from '@mui/icons-material/Category';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -109,6 +110,7 @@ const menuConfig = [
     color: '#f43f5e',
     items: [
       { id: 'scoring', title: 'امتیازدهی و ارزیابی', icon: <LeaderboardIcon />, path: '/scoring', color: '#3b82f6', primary: true, ready: true },
+      { id: 'management-analytics', title: 'داشبورد مدیریتی', icon: <InsightsIcon />, path: '/management-analytics', color: '#3b82f6', primary: false, ready: true },
       { id: 'assistant', title: 'دستیار هوشمند', icon: <PsychologyIcon />, path: '/assistant', color: '#8b5cf6', primary: false, ready: true },
     ],
   },

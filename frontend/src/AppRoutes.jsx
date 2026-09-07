@@ -35,6 +35,7 @@ import CalendarPage from './pages/CalendarPage';
 import AssetsPage from './pages/AssetsPage';
 import LifecyclePage from './pages/LifecyclePage';
 import ContractsPage from './pages/ContractsPage';
+import ManagementAnalyticsPage from './pages/ManagementAnalyticsPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -106,6 +107,7 @@ const AppRoutes = () => {
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
+      <Route path="/management-analytics" element={<ProtectedLayout><ManagementAnalyticsPage /></ProtectedLayout>} />
       <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />
       <Route path="/users" element={<ProtectedLayout><UsersPage /></ProtectedLayout>} />
       <Route path="/audit" element={<ProtectedLayout><AuditPage /></ProtectedLayout>} />

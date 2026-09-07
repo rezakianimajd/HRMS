@@ -119,6 +119,58 @@ export const ColumnChart = ({ data, color = '#10b981', height = 200 }) => {
 /* =============================================================================
  * Line Chart (pure SVG)
  * ============================================================================= */
+export const MultiLineChart = ({ series = [], labels = [], height = 220 }) => {
+  const allValues = series.flatMap(s => s.data);
+  const max = Math.max(...allValues, 1);
+  const min = 0;
+  const range = max - min || 1;
+
+  return (
+    <Box>
+      <Box sx={{ height, position: 'relative', px: 1 }}>
+        <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
+          {[0, 25, 50, 75, 100].map((y) => (
+            <line key={y} x1="0" y1={y} x2="100" y2={y} stroke="#eef2f7" strokeWidth="0.5" />
+          ))}
+          {series.map((s) => {
+            const points = s.data.map((v, i) => {
+              const x = (i / (s.data.length - 1)) * 100;
+              const y = 100 - ((v - min) / range) * 90 - 5;
+              return `${x},${y}`;
+            }).join(' ');
+            return (
+              <polyline
+                key={s.key}
+                points={points}
+                fill="none"
+                stroke={s.color}
+                strokeWidth="2"
+                strokeLinejoin="round"
+                strokeLinecap="round"
+              />
+            );
+          })}
+        </svg>
+      </Box>
+      {labels.length > 0 && (
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
+          {labels.map((l, i) => (
+            <Typography key={i} variant="caption" fontSize={10}>{l}</Typography>
+          ))}
+        </Box>
+      )}
+      <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap', mt: 1 }}>
+        {series.map((s) => (
+          <Box key={s.key} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+            <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: s.color }} />
+            <Typography variant="caption" color="textSecondary">{s.label}</Typography>
+          </Box>
+        ))}
+      </Box>
+    </Box>
+  );
+};
+
 export const LineChart = ({ data, color = '#3b82f6', height = 200, labels }) => {
   const max = Math.max(...data, 1);
   const min = Math.min(...data, 0);
