@@ -100,6 +100,18 @@ const BaleAudiencePanel = () => {
     });
   };
 
+  const fillChatId = useMutation({
+    mutationFn: ({ id, chat_id }) => axiosInstance.patch(`/employees/${id}/`, { bale_chat_id: chat_id }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['bale-audience'] });
+      setFillTarget(null);
+      setFillId('');
+    },
+  });
+
+  const [fillTarget, setFillTarget] = useState(null);
+  const [fillId, setFillId] = useState('');
+
   const sendBulk = async () => {
     if (!text.trim()) { setResult({ ok: false, message: 'متن پیام الزامی است' }); return; }
     if (selected.length === 0) { setResult({ ok: false, message: 'هیچ گیرنده‌ای انتخاب نشده' }); return; }
@@ -193,6 +205,36 @@ const BaleAudiencePanel = () => {
           </Typography>
         ) : (
           employeesByDept.map(([dept, items]) => group(dept, items, '#6366f1', <PeopleIcon sx={{ fontSize: 14 }} />))
+        )}
+      </Paper>
+
+      {/* پرسنل بدون chat_id — ثبت سریع */}
+      <Paper sx={{ p: 2.5, borderRadius: 3, background: 'rgba(255,255,255,0.5)' }}>
+        <Typography variant="subtitle1" fontWeight={800} gutterBottom>پرسنل بدون chat_id (ثبت سریع)</Typography>
+        {(audience?.employees_without_chat_id || []).length === 0 ? (
+          <Typography variant="caption" color="textSecondary">همهٔ پرسنل دارای chat_id هستند.</Typography>
+        ) : (
+          <Stack spacing={1}>
+            {(audience.employees_without_chat_id || []).map(emp => (
+              <Box key={emp.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                <Typography variant="body2" sx={{ minWidth: 180 }}>{emp.name}</Typography>
+                <Chip size="small" label={emp.mobile} variant="outlined" />
+                <Chip size="small" label={emp.department} />
+                {fillTarget === emp.id ? (
+                  <Box sx={{ display: 'flex', gap: 0.5, alignItems: 'center' }}>
+                    <TextField size="small" placeholder="chat_id" value={fillId} sx={{ width: 140 }}
+                      onChange={e => setFillId(e.target.value)} />
+                    <Button size="small" variant="contained" onClick={() => fillChatId.mutate({ id: emp.id, chat_id: fillId.trim() })}>ذخیره</Button>
+                    <Button size="small" onClick={() => { setFillTarget(null); setFillId(''); }}>لغو</Button>
+                  </Box>
+                ) : (
+                  <Button size="small" variant="outlined" onClick={() => { setFillTarget(emp.id); setFillId(''); }}>
+                    ثبت chat_id
+                  </Button>
+                )}
+              </Box>
+            ))}
+          </Stack>
         )}
       </Paper>
 

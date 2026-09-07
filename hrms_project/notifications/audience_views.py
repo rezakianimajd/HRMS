@@ -1,4 +1,6 @@
 """Bulk Bale sending to employees, custom contacts, and raw chat_ids."""
+from django.db.models import Q
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -13,27 +15,48 @@ def _company(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def bale_recipients(request):
-    """Return employees (with chat_id) grouped by department + custom contacts."""
+    """Return employees (with/without chat_id) + custom contacts."""
     from employees.models import Employee
     from settings_app.models import BaleContact
 
     company = _company(request)
 
-    employees = Employee.objects.filter(is_active=True, status='active', bale_chat_id__isnull=False)
+    # Employees WITH a chat_id (ready to send).
+    employees = Employee.objects.filter(is_active=True, status='active').exclude(
+        bale_chat_id__isnull=True
+    ).exclude(bale_chat_id='')
     if company:
         employees = employees.filter(company=company)
-    employees = employees.exclude(bale_chat_id='').select_related('department')
+    employees = employees.select_related('department')
 
-    emp_list = []
-    for e in employees:
-        emp_list.append({
-            'id': e.id,
-            'name': e.full_name,
-            'chat_id': e.bale_chat_id,
-            'department': e.department.name if e.department else '(بدون دپارتمان)',
-            'kind': 'employee',
-        })
+    emp_list = [{
+        'id': e.id,
+        'name': e.full_name,
+        'chat_id': e.bale_chat_id,
+        'mobile': e.mobile or '',
+        'department': e.department.name if e.department else '(بدون دپارتمان)',
+        'kind': 'employee',
+    } for e in employees]
 
+    # Employees WITHOUT a chat_id (with a mobile) → shown in the panel so the
+    # admin can backfill their chat_id quickly without opening each profile.
+    missing = Employee.objects.filter(is_active=True, status='active').filter(
+        Q(bale_chat_id__isnull=True) | Q(bale_chat_id='')
+    ).exclude(mobile='')
+    if company:
+        missing = missing.filter(company=company)
+    missing = missing.select_related('department')
+
+    missing_list = [{
+        'id': e.id,
+        'name': e.full_name,
+        'chat_id': '',
+        'mobile': e.mobile or '',
+        'department': e.department.name if e.department else '(بدون دپارتمان)',
+        'kind': 'employee',
+    } for e in missing]
+
+    # Custom contacts.
     contacts = BaleContact.objects.filter(is_active=True)
     if company:
         contacts = contacts.filter(company=company)
@@ -47,6 +70,7 @@ def bale_recipients(request):
 
     return Response({
         'employees': emp_list,
+        'employees_without_chat_id': missing_list,
         'contacts': contact_list,
     })
 
