@@ -18,6 +18,7 @@ import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import InsightsIcon from '@mui/icons-material/Insights';
@@ -101,6 +102,7 @@ const menuConfig = [
     color: '#06b6d4',
     items: [
       { id: 'correspondences', title: 'مکاتبات اداری', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
+      { id: 'bale-messaging', title: 'اطلاع‌رسانی و پیام بله', icon: <ChatBubbleOutlineIcon />, path: '/bale-messaging', color: '#10b981', primary: false, ready: true },
       { id: 'company-documents', title: 'بایگانی اسناد سازمان', icon: <FolderSharedIcon />, path: '/documents', color: '#f97316', primary: false, ready: true },
     ],
   },

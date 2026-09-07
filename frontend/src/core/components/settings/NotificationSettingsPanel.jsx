@@ -10,7 +10,6 @@ import MailIcon from '@mui/icons-material/Mail';
 import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
 import CircularProgress from '@mui/material/CircularProgress';
-import BaleAudiencePanel from './BaleAudiencePanel';
 
 const NotificationSettingsPanel = () => {
   const { t } = useTranslation();
@@ -100,11 +99,6 @@ const NotificationSettingsPanel = () => {
             onChange={(e) => setVal('bale_chat_id', e.target.value)} />
         </Box>
       </Paper>
-
-      {/* Bale audience (bulk + recipients + contacts) */}
-      <Divider />
-      <Typography variant="h6" fontWeight={800} sx={{ color: '#10b981' }}>مخاطبان و ارسال گروهی بله</Typography>
-      <BaleAudiencePanel />
 
       {/* Test send */}
       <Paper sx={{ p: 2.5, borderRadius: 3, background: 'rgba(100,116,139,0.04)' }}>
