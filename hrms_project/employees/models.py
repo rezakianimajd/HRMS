@@ -548,6 +548,14 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('شماره شبا'),
     )
+    # Bale messenger chat_id (robot must be started by the employee first).
+    bale_chat_id = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_('شناسه گفتگوی بله (chat_id)'),
+        help_text=_('برای ارسال پیام خصوصی از طریق ربات بله'),
+    )
 
     # =========================================================================
     # Meta & Constraints

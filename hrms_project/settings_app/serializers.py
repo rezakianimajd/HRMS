@@ -1,6 +1,6 @@
 """Serializers for the Settings module."""
 from rest_framework import serializers
-from settings_app.models import SystemSetting, CompanyProfile
+from settings_app.models import SystemSetting, CompanyProfile, BaleContact
 
 
 class SystemSettingSerializer(serializers.ModelSerializer):
@@ -10,6 +10,13 @@ class SystemSettingSerializer(serializers.ModelSerializer):
         model = SystemSetting
         fields = ['id', 'key', 'value', 'description', 'data_type', 'data_type_display', 'is_editable', 'is_active']
         read_only_fields = ['id', 'key']
+
+
+class BaleContactSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = BaleContact
+        fields = ['id', 'name', 'chat_id', 'category', 'note', 'is_active', 'created_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):

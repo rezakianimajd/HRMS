@@ -1,10 +1,16 @@
-from django.urls import path
+from django.urls import path, include
+from rest_framework.routers import DefaultRouter
 from settings_app import views
 from settings_app import user_views
 from settings_app import import_views
 from settings_app import backup_views
+from settings_app.bale_views import BaleContactViewSet
+
+router = DefaultRouter()
+router.register(r'bale-contacts', BaleContactViewSet, basename='bale-contact')
 
 urlpatterns = [
+    path('', include(router.urls)),
     # Company profile (must come before <str:key> to avoid conflict)
     path('settings/company-profile/', views.company_profile_view, name='api-company-profile'),
     path('settings/company-profile/update/', views.company_profile_update, name='api-company-profile-update'),

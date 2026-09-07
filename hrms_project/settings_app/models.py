@@ -170,3 +170,22 @@ class CompanyProfile(models.Model):
 
     def __str__(self):
         return f"Profile: {self.company.name}"
+
+
+class BaleContact(BaseModel):
+    """A custom Bale recipient with a free-form category (finance, IT, ...)."""
+    name = models.CharField(max_length=200, verbose_name=_('نام / عنوان'))
+    chat_id = models.CharField(max_length=100, verbose_name=_('شناسه گفتگوی بله (chat_id)'))
+    category = models.CharField(
+        max_length=100, blank=True, verbose_name=_('دسته‌بندی'),
+        help_text=_('مثلاً: مالی، فنی، پشتیبانی'),
+    )
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
+
+    class Meta:
+        verbose_name = _('مخاطب بله')
+        verbose_name_plural = _('مخاطبان بله')
+        ordering = ['category', 'name']
+
+    def __str__(self):
+        return f'{self.name} ({self.chat_id})'

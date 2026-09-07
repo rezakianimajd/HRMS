@@ -81,6 +81,14 @@ const endpoints = {
     detail: (id) => `${API_BASE}/calendar-events/${id}/`,
     feed: `${API_BASE}/calendar/feed/`,
   },
+  baleContacts: {
+    list: `${API_BASE}/bale-contacts/`,
+    detail: (id) => `${API_BASE}/bale-contacts/${id}/`,
+  },
+  baleAudience: {
+    recipients: `${API_BASE}/notifications/bale-recipients/`,
+    bulkSend: `${API_BASE}/notifications/bale-bulk-send/`,
+  },
 };
 
 export default endpoints;

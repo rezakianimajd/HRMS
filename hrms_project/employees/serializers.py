@@ -154,6 +154,8 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'performance_score', 'satisfaction_score',
             'bank_name', 'account_number', 'sheba_number',
             'supplementary_insurances',
+            # Bale
+            'bale_chat_id',
             # Meta
             'is_active', 'created_at', 'updated_at',
         ]
@@ -214,6 +216,8 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'performance_score', 'satisfaction_score',
             # Banking
             'bank_name', 'account_number', 'sheba_number',
+            # Bale
+            'bale_chat_id',
         ]
 
     def validate_national_id(self, value):
