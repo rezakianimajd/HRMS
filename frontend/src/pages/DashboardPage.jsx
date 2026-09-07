@@ -17,7 +17,7 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import FactCheckIcon from '@mui/icons-material/FactCheck';
 import FolderIcon from '@mui/icons-material/Folder';
 import WavingHandIcon from '@mui/icons-material/WavingHand';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { DonutChart, BarChart } from '../core/components/charts/Charts';
 import { toJalali } from '../core/utils/dateUtils';
 import useAuth from '../core/hooks/useAuth';
@@ -32,7 +32,7 @@ const JALALI_MONTHS = [
 function todayLabel() {
   const j = toJalali(new Date().toISOString().slice(0, 10));
   const [y, m, d] = j.split('/').map(Number);
-  return `${d} ${JALALI_MONTHS[(m || 1) - 1]} ${y}`;
+  return `${toPersianDigits(d)} ${JALALI_MONTHS[(m || 1) - 1]} ${toPersianDigits(y)}`;
 }
 
 const StatCard = ({ title, value, icon, color }) => (
@@ -75,7 +75,6 @@ const PanelHeader = ({ title, icon, color }) => (
 
 const glassPanel = (from) => ({
   p: 1.75,
-  height: '100%',
   display: 'flex',
   flexDirection: 'column',
   overflow: 'hidden',
@@ -125,7 +124,7 @@ const DashboardPage = () => {
       {/* Greeting hero — compact, RTL */}
       <Paper sx={{
         p: 1.75, mb: 1.5, borderRadius: 3,
-        display: 'flex', alignItems: 'center', gap: 1.75,
+        display: 'flex', alignItems: 'center', gap: 1.75, flexShrink: 0,
         background: 'linear-gradient(135deg, rgba(99,102,241,0.16), rgba(236,72,153,0.08), rgba(255,255,255,0.4))',
         border: '1px solid rgba(99,102,241,0.2)',
         backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
@@ -148,7 +147,7 @@ const DashboardPage = () => {
       </Paper>
 
       {/* 8 KPI cards */}
-      <Grid container spacing={1.25}>
+      <Grid container spacing={1.25} sx={{ flexShrink: 0 }}>
         <Grid item xs={6} md={3}>
           <StatCard title={t('dashboard_home.total_employees')} value={stats?.total_active} icon={<PeopleIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#6366f1" />
         </Grid>
@@ -175,82 +174,76 @@ const DashboardPage = () => {
         </Grid>
       </Grid>
 
-      {/* Bottom row — 3 equal panels */}
-      <Grid container spacing={1.25} sx={{ flex: 1, minHeight: 0, mt: 0.5 }}>
-        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-          <Paper sx={glassPanel('#ec4899')}>
-            <PanelHeader title="ترکیب جنسیتی" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#ec4899" />
-            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-              <DonutChart data={genderData} size={130} thickness={22} centerLabel="نفر" />
-            </Box>
-          </Paper>
-        </Grid>
+      {/* Bottom row — 3 equal panels (flexbox, fixed gap) */}
+      <Box sx={{ flex: 1, minHeight: 0, mt: 1, display: 'flex', gap: 1 }}>
+        <Paper sx={{ ...glassPanel('#ec4899'), flex: 1, minWidth: 0 }}>
+          <PanelHeader title="ترکیب جنسیتی" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#ec4899" />
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
+            <DonutChart data={genderData} size={130} thickness={22} centerLabel="نفر" />
+          </Box>
+        </Paper>
 
-        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-          <Paper sx={glassPanel('#6366f1')}>
-            <PanelHeader title="توزیع دپارتمان" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#6366f1" />
-            <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-              <BarChart data={deptData} color="#6366f1" />
-            </Box>
-          </Paper>
-        </Grid>
+        <Paper sx={{ ...glassPanel('#6366f1'), flex: 1, minWidth: 0 }}>
+          <PanelHeader title="توزیع دپارتمان" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#6366f1" />
+          <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+            <BarChart data={deptData} color="#6366f1" />
+          </Box>
+        </Paper>
 
-        <Grid item xs={12} md={4} sx={{ display: 'flex' }}>
-          <Paper sx={glassPanel('#f59e0b')}>
-            <PanelHeader title="هشدارها" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} color="#f59e0b" />
-            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
-              {alertsCount === 0 ? (
-                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 1.5 }}>
-                  هشداری نیست
-                </Typography>
-              ) : (
-                <List dense disablePadding>
-                  {alerts?.expiring_documents?.slice(0, 3).map(doc => (
-                    <ListItem key={`doc-${doc.id}`} disableGutters sx={{ py: 0.2 }}>
-                      <ListItemIcon sx={{ minWidth: 26 }}>
-                        <DescriptionIcon color="warning" fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={<Typography variant="body2" noWrap>{doc.title}</Typography>}
-                        secondary={<Typography variant="caption" noWrap>{doc.employee_name} · {formatPersianNumber(doc.days_left)} روز</Typography>}
-                      />
-                    </ListItem>
-                  ))}
-                  {alerts?.expiring_contracts?.slice(0, 2).map(emp => (
-                    <ListItem key={`ctr-${emp.id}`} disableGutters sx={{ py: 0.2 }}>
-                      <ListItemIcon sx={{ minWidth: 26 }}>
-                        <AssignmentIcon color="info" fontSize="small" />
-                      </ListItemIcon>
-                      <ListItemText
-                        primary={<Typography variant="body2" noWrap>{emp.full_name}</Typography>}
-                        secondary={<Typography variant="caption" noWrap>قرارداد · {toJalali(emp.contract_end_date)}</Typography>}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </Box>
+        <Paper sx={{ ...glassPanel('#f59e0b'), flex: 1, minWidth: 0 }}>
+          <PanelHeader title="هشدارها" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} color="#f59e0b" />
+          <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
+            {alertsCount === 0 ? (
+              <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 1.5 }}>
+                هشداری نیست
+              </Typography>
+            ) : (
+              <List dense disablePadding>
+                {alerts?.expiring_documents?.slice(0, 3).map(doc => (
+                  <ListItem key={`doc-${doc.id}`} disableGutters sx={{ py: 0.2 }}>
+                    <ListItemIcon sx={{ minWidth: 26 }}>
+                      <DescriptionIcon color="warning" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="body2" noWrap>{doc.title}</Typography>}
+                      secondary={<Typography variant="caption" noWrap>{doc.employee_name} · {formatPersianNumber(doc.days_left)} روز</Typography>}
+                    />
+                  </ListItem>
+                ))}
+                {alerts?.expiring_contracts?.slice(0, 2).map(emp => (
+                  <ListItem key={`ctr-${emp.id}`} disableGutters sx={{ py: 0.2 }}>
+                    <ListItemIcon sx={{ minWidth: 26 }}>
+                      <AssignmentIcon color="info" fontSize="small" />
+                    </ListItemIcon>
+                    <ListItemText
+                      primary={<Typography variant="body2" noWrap>{emp.full_name}</Typography>}
+                      secondary={<Typography variant="caption" noWrap>قرارداد · {toPersianDigits(toJalali(emp.contract_end_date))}</Typography>}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
 
-            <Box sx={{ borderTop: '1px solid #f59e0b22', pt: 0.75, mt: 0.75 }}>
-              <PanelHeader title="فعالیت اخیر" icon={<AssignmentIcon sx={{ fontSize: 14 }} />} color="#10b981" />
-              {(activities || []).length === 0 ? (
-                <Typography variant="caption" color="textSecondary">فعالیتی ثبت نشده است</Typography>
-              ) : (
-                <List dense disablePadding>
-                  {activities.slice(0, 3).map(act => (
-                    <ListItem key={act.id} disableGutters sx={{ py: 0.1 }}>
-                      <ListItemText
-                        primary={<Typography variant="body2" noWrap>{act.description}</Typography>}
-                        secondary={<Typography variant="caption" noWrap>{act.user} · {act.action}</Typography>}
-                      />
-                    </ListItem>
-                  ))}
-                </List>
-              )}
-            </Box>
-          </Paper>
-        </Grid>
-      </Grid>
+          <Box sx={{ borderTop: '1px solid #f59e0b22', pt: 0.75, mt: 0.75 }}>
+            <PanelHeader title="فعالیت اخیر" icon={<AssignmentIcon sx={{ fontSize: 14 }} />} color="#10b981" />
+            {(activities || []).length === 0 ? (
+              <Typography variant="caption" color="textSecondary">فعالیتی ثبت نشده است</Typography>
+            ) : (
+              <List dense disablePadding>
+                {activities.slice(0, 3).map(act => (
+                  <ListItem key={act.id} disableGutters sx={{ py: 0.1 }}>
+                    <ListItemText
+                      primary={<Typography variant="body2" noWrap>{act.description}</Typography>}
+                      secondary={<Typography variant="caption" noWrap>{act.user} · {act.action}</Typography>}
+                    />
+                  </ListItem>
+                ))}
+              </List>
+            )}
+          </Box>
+        </Paper>
+      </Box>
     </Box>
   );
 };
