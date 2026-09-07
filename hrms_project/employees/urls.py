@@ -15,6 +15,7 @@ from employees import assistant_views
 from employees import scoring_views
 from employees import timeline_views
 from employees import management_views
+from employees import employee_summary_views
 
 router = DefaultRouter()
 router.register(r'employees', EmployeeViewSet, basename='employee')
@@ -76,6 +77,9 @@ urlpatterns = [
 
     # Employee 360° timeline
     path('employees/<int:employee_id>/timeline/', timeline_views.employee_timeline),
+
+    # Employee summary (profile overview)
+    path('employees/<int:employee_id>/summary/', employee_summary_views.employee_summary),
 
     # Deep management analytics
     path('management/kpis/', management_views.management_kpis),
