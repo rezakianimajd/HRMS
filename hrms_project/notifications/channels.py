@@ -1,11 +1,14 @@
 """Notification delivery channels: Email (SMTP) and Bale messenger.
 
-Bale is delivered via its Bot API (HTTPS). The bot token is configured per
-company through the CompanyProfile fields (see settings_app.models). Email is
-delivered through Django's SMTP backend configured in production settings.
+Bale is delivered via its Bot API (HTTPS) using only the Python standard
+library (urllib) so no extra dependency is required. The bot token is
+configured per company through the CompanyProfile fields (see
+settings_app.models). Email is delivered through Django's SMTP backend
+configured in production settings.
 """
+import json
 import logging
-import requests
+import urllib.request
 
 from django.conf import settings
 from django.core.mail import send_mail
@@ -50,17 +53,20 @@ def send_email(recipients, subject, body):
 
 
 def send_bale(token, chat_id, text):
-    """Send a message through the Bale Bot API."""
+    """Send a message through the Bale Bot API (urllib, no extra deps)."""
     if not token or not chat_id:
         return False
     url = BALE_SEND_URL.format(token=token)
+    payload = json.dumps({'chat_id': chat_id, 'text': text}).encode('utf-8')
+    req = urllib.request.Request(
+        url,
+        data=payload,
+        headers={'Content-Type': 'application/json'},
+        method='POST',
+    )
     try:
-        r = requests.post(
-            url,
-            json={'chat_id': chat_id, 'text': text},
-            timeout=10,
-        )
-        data = r.json()
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            data = json.loads(resp.read().decode('utf-8'))
         ok = bool(data.get('ok'))
         if not ok:
             logger.error(f'Bale send failed: {data}')
@@ -71,11 +77,7 @@ def send_bale(token, chat_id, text):
 
 
 def deliver_notification(company, admins_emails, subject, body):
-    """Deliver a notification over all enabled channels.
-
-    `admins_emails` is a list of email addresses of the HR/admin users.
-    Bale delivery requires bale_token + bale_chat_id configured on the company.
-    """
+    """Deliver a notification over all enabled channels."""
     email_enabled, bale_enabled, bale_token, bale_chat_id = _company_settings(company)
 
     results = {'email': False, 'bale': False}
