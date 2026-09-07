@@ -106,11 +106,15 @@ const BaleAudiencePanel = () => {
       qc.invalidateQueries({ queryKey: ['bale-audience'] });
       setFillTarget(null);
       setFillId('');
+      setEditTarget(null);
+      setEditId('');
     },
   });
 
   const [fillTarget, setFillTarget] = useState(null);
   const [fillId, setFillId] = useState('');
+  const [editTarget, setEditTarget] = useState(null);
+  const [editId, setEditId] = useState('');
 
   const sendBulk = async () => {
     if (!text.trim()) { setResult({ ok: false, message: 'متن پیام الزامی است' }); return; }
@@ -133,7 +137,7 @@ const BaleAudiencePanel = () => {
 
   if (isLoading) return <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>;
 
-  const group = (title, items, color, icon) => (
+  const group = (title, items, color, icon, editable = false) => (
     items.length === 0 ? null : (
       <Box sx={{ mb: 1.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
@@ -148,13 +152,32 @@ const BaleAudiencePanel = () => {
           <Chip size="small" label={formatPersianNumber(items.length)} />
         </Box>
         <Stack spacing={0.25} sx={{ pl: 2 }}>
-          {items.map(x => (
-            <Box key={x.chat_id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-              <Checkbox size="small" checked={selected.includes(x.chat_id)} onChange={() => toggle(x.chat_id)} />
-              <Typography variant="body2" noWrap>{x.name}</Typography>
-              <Typography variant="caption" color="textSecondary">{x.chat_id}</Typography>
-            </Box>
-          ))}
+          {items.map(x => {
+            const isEditing = editable && editTarget === x.id;
+            return (
+              <Box key={x.chat_id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexWrap: 'wrap' }}>
+                <Checkbox size="small" checked={selected.includes(x.chat_id)} onChange={() => toggle(x.chat_id)} />
+                <Typography variant="body2" noWrap>{x.name}</Typography>
+                {isEditing ? (
+                  <>
+                    <TextField size="small" placeholder="chat_id" value={editId} sx={{ width: 140 }}
+                      onChange={e => setEditId(e.target.value)} />
+                    <Button size="small" variant="contained" onClick={() => fillChatId.mutate({ id: x.id, chat_id: editId.trim() })}>ذخیره</Button>
+                    <Button size="small" onClick={() => { setEditTarget(null); setEditId(''); }}>لغو</Button>
+                  </>
+                ) : (
+                  <>
+                    <Typography variant="caption" color="textSecondary">{x.chat_id}</Typography>
+                    {editable && (
+                      <IconButton size="small" onClick={() => { setEditTarget(x.id); setEditId(x.chat_id); }}>
+                        <EditIcon fontSize="small" />
+                      </IconButton>
+                    )}
+                  </>
+                )}
+              </Box>
+            );
+          })}
         </Stack>
       </Box>
     )
@@ -204,7 +227,7 @@ const BaleAudiencePanel = () => {
             هنوز پرسنلی با chat_id ثبت نشده است. در پروندهٔ هر پرسنل، فیلد «شناسه گفتگوی بله» را پر کنید.
           </Typography>
         ) : (
-          employeesByDept.map(([dept, items]) => group(dept, items, '#6366f1', <PeopleIcon sx={{ fontSize: 14 }} />))
+          employeesByDept.map(([dept, items]) => group(dept, items, '#6366f1', <PeopleIcon sx={{ fontSize: 14 }} />, true))
         )}
       </Paper>
 
