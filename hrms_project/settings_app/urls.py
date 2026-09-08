@@ -5,9 +5,11 @@ from settings_app import user_views
 from settings_app import import_views
 from settings_app import backup_views
 from settings_app.bale_views import BaleContactViewSet
+from settings_app.signatory_views import SignatoryViewSet
 
 router = DefaultRouter()
 router.register(r'bale-contacts', BaleContactViewSet, basename='bale-contact')
+router.register(r'signatories', SignatoryViewSet, basename='signatory')
 
 urlpatterns = [
     path('', include(router.urls)),

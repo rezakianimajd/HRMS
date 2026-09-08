@@ -1,5 +1,5 @@
 """
-Models for the Settings module - System settings and company profile.
+Models for the Settings module - System settings, company profile, signatories.
 """
 from django.db import models
 from django.utils.translation import gettext_lazy as _
@@ -19,28 +19,17 @@ class SystemSetting(BaseModel):
         JSON = 'json', _('JSON')
         FILE_PATH = 'file_path', _('مسیر فایل')
 
-    key = models.CharField(
-        max_length=100,
-        verbose_name=_('کلید تنظیم'),
-    )
+    key = models.CharField(max_length=100, verbose_name=_('کلید تنظیم'))
     value = models.TextField(
         verbose_name=_('مقدار'),
         help_text=_('مقدار تنظیم (همیشه به‌صورت متن ذخیره می‌شود)'),
     )
-    description = models.TextField(
-        blank=True, null=True,
-        verbose_name=_('توضیحات'),
-    )
+    description = models.TextField(blank=True, null=True, verbose_name=_('توضیحات'))
     data_type = models.CharField(
-        max_length=20,
-        choices=DataType.choices,
-        default=DataType.STRING,
+        max_length=20, choices=DataType.choices, default=DataType.STRING,
         verbose_name=_('نوع داده'),
     )
-    is_editable = models.BooleanField(
-        default=True,
-        verbose_name=_('قابل ویرایش'),
-    )
+    is_editable = models.BooleanField(default=True, verbose_name=_('قابل ویرایش'))
 
     class Meta:
         verbose_name = _('تنظیم سیستم')
@@ -53,7 +42,6 @@ class SystemSetting(BaseModel):
 
     @staticmethod
     def get_default_settings():
-        """Return the default settings dict for new companies."""
         import json
         return [
             {'key': 'BASE_FILE_STORAGE_PATH', 'value': '', 'data_type': 'file_path', 'description': _('مسیر ذخیره‌سازی فایل‌ها'), 'is_editable': True},
@@ -78,89 +66,49 @@ class CompanyProfile(models.Model):
         db_constraint=False,
         verbose_name=_('شرکت'),
     )
-    legal_name = models.CharField(
-        max_length=200,
-        blank=True, null=True,
-        verbose_name=_('نام کامل حقوقی'),
-    )
-    registration_number = models.CharField(
-        max_length=50,
-        blank=True, null=True,
-        verbose_name=_('شماره ثبت'),
-    )
-    national_id = models.CharField(
-        max_length=20,
-        blank=True, null=True,
-        verbose_name=_('شناسه ملی'),
-    )
-    economic_code = models.CharField(
-        max_length=20,
-        blank=True, null=True,
-        verbose_name=_('کد اقتصادی'),
-    )
-    phone = models.CharField(
-        max_length=20,
-        blank=True, null=True,
-        verbose_name=_('تلفن'),
-    )
-    email = models.EmailField(
-        blank=True, null=True,
-        verbose_name=_('ایمیل'),
-    )
-    address = models.TextField(
-        blank=True, null=True,
-        verbose_name=_('آدرس'),
-    )
-    postal_code = models.CharField(
-        max_length=20,
-        blank=True, null=True,
-        verbose_name=_('کد پستی'),
-    )
-    website = models.URLField(
-        blank=True, null=True,
-        verbose_name=_('وب‌سایت'),
-    )
-    logo = models.ImageField(
-        upload_to='company_logos/',
-        blank=True, null=True,
-        verbose_name=_('لوگو'),
-    )
-    tax_id = models.CharField(
-        max_length=50,
-        blank=True, null=True,
-        verbose_name=_('شناسه مالیاتی'),
-    )
-    established_date = models.DateField(
-        blank=True, null=True,
-        verbose_name=_('تاریخ تأسیس'),
-    )
-    description = models.TextField(
-        blank=True, null=True,
-        verbose_name=_('توضیحات'),
-    )
+    legal_name = models.CharField(max_length=200, blank=True, null=True, verbose_name=_('نام کامل حقوقی'))
+    registration_number = models.CharField(max_length=50, blank=True, null=True, verbose_name=_('شماره ثبت'))
+    national_id = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('شناسه ملی'))
+    economic_code = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('کد اقتصادی'))
+    phone = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('تلفن'))
+    email = models.EmailField(blank=True, null=True, verbose_name=_('ایمیل'))
+    address = models.TextField(blank=True, null=True, verbose_name=_('آدرس'))
+    postal_code = models.CharField(max_length=20, blank=True, null=True, verbose_name=_('کد پستی'))
+    website = models.URLField(blank=True, null=True, verbose_name=_('وب‌سایت'))
+    logo = models.ImageField(upload_to='company_logos/', blank=True, null=True, verbose_name=_('لوگو'))
+    tax_id = models.CharField(max_length=50, blank=True, null=True, verbose_name=_('شناسه مالیاتی'))
+    established_date = models.DateField(blank=True, null=True, verbose_name=_('تاریخ تأسیس'))
+    description = models.TextField(blank=True, null=True, verbose_name=_('توضیحات'))
+
     # Legal representative / CEO (used in contracts).
-    employer_rep_name = models.CharField(
-        max_length=200, blank=True, verbose_name=_('نام نماینده حقوقی / مدیرعامل'),
-    )
-    employer_rep_title = models.CharField(
-        max_length=100, blank=True, verbose_name=_('سمت نماینده'),
-    )
-    employer_rep_national_id = models.CharField(
-        max_length=20, blank=True, verbose_name=_('کد ملی نماینده'),
-    )
+    employer_rep_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام نماینده حقوقی / مدیرعامل'))
+    employer_rep_title = models.CharField(max_length=100, blank=True, verbose_name=_('سمت نماینده'))
+    employer_rep_national_id = models.CharField(max_length=20, blank=True, verbose_name=_('کد ملی نماینده'))
+
     # Notification channels (Bale messenger + email)
-    notify_email_enabled = models.BooleanField(
-        default=True, verbose_name=_('ارسال ایمیل فعال'),
+    notify_email_enabled = models.BooleanField(default=True, verbose_name=_('ارسال ایمیل فعال'))
+    notify_bale_enabled = models.BooleanField(default=False, verbose_name=_('ارسال پیام بله فعال'))
+    bale_token = models.CharField(max_length=200, blank=True, verbose_name=_('توکن ربات بله'))
+    bale_chat_id = models.CharField(max_length=100, blank=True, verbose_name=_('شناسه گفتگوی بله (chat_id)'))
+
+    # Storage paths (configurable, per category)
+    base_storage_path = models.CharField(
+        max_length=500, blank=True, verbose_name=_('مسیر پایه ذخیره‌سازی'),
+        help_text=_('ریشهٔ همهٔ فایل‌های آپلودی (مثال: /var/hr_data)'),
     )
-    notify_bale_enabled = models.BooleanField(
-        default=False, verbose_name=_('ارسال پیام بله فعال'),
+    storage_path_employees = models.CharField(
+        max_length=500, blank=True, verbose_name=_('مسیر مدارک پرسنل'),
+        help_text=_('پوشهٔ مدارک پرسنلی (نسبی به مسیر پایه)'),
     )
-    bale_token = models.CharField(
-        max_length=200, blank=True, verbose_name=_('توکن ربات بله'),
+    storage_path_correspondences = models.CharField(
+        max_length=500, blank=True, verbose_name=_('مسیر مکاتبات'),
+        help_text=_('پوشهٔ لازم برای نامه‌ها و مکاتبات'),
     )
-    bale_chat_id = models.CharField(
-        max_length=100, blank=True, verbose_name=_('شناسه گفتگوی بله (chat_id)'),
+    storage_path_documents = models.CharField(
+        max_length=500, blank=True, verbose_name=_('مسیر بایگانی اسناد'),
+        help_text=_('پوشهٔ اسناد سازمان'),
     )
+
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('تاریخ ایجاد'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('تاریخ به‌روزرسانی'))
 
@@ -172,21 +120,34 @@ class CompanyProfile(models.Model):
         return f"Profile: {self.company.name}"
 
 
+class Signatory(BaseModel):
+    """A named signatory (صاحب امضا) — at least 3 can be configured in the UI."""
+    full_name = models.CharField(max_length=200, verbose_name=_('نام و نام خانوادگی'))
+    position = models.CharField(max_length=200, blank=True, verbose_name=_('سمت / عنوان'))
+    national_id = models.CharField(max_length=20, blank=True, verbose_name=_('کد ملی'))
+    signature_image = models.ImageField(
+        upload_to='signatory_samples/',
+        null=True, blank=True,
+        verbose_name=_('نمونه امضا'),
+    )
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('صاحب امضا')
+        verbose_name_plural = _('صاحبان امضا')
+        ordering = ['full_name']
+
+    def __str__(self):
+        return self.full_name
+
+
 class BaleContact(BaseModel):
     """A custom Bale recipient with a free-form category (finance, IT, ...)."""
     name = models.CharField(max_length=200, verbose_name=_('نام / عنوان'))
     chat_id = models.CharField(max_length=100, verbose_name=_('شناسه گفتگوی بله (chat_id)'))
-    category = models.CharField(
-        max_length=100, blank=True, verbose_name=_('دسته‌بندی'),
-        help_text=_('مثلاً: مالی، فنی، پشتیبانی'),
-    )
-    tag = models.CharField(
-        max_length=100, blank=True, null=True, verbose_name=_('برچسب'),
-        help_text=_('مثلاً: مشتری، هیئت‌مدیره، قرارداد'),
-    )
-    country_code = models.CharField(
-        max_length=10, blank=True, null=True, default='+98', verbose_name=_('کد کشور'),
-    )
+    category = models.CharField(max_length=100, blank=True, verbose_name=_('دسته‌بندی'), help_text=_('مثلاً: مالی، فنی، پشتیبانی'))
+    tag = models.CharField(max_length=100, blank=True, null=True, verbose_name=_('برچسب'), help_text=_('مثلاً: مشتری، هیئت‌مدیره، قرارداد'))
+    country_code = models.CharField(max_length=10, blank=True, null=True, default='+98', verbose_name=_('کد کشور'))
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
 
     class Meta:

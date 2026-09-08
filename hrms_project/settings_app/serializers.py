@@ -1,6 +1,6 @@
 """Serializers for the Settings module."""
 from rest_framework import serializers
-from settings_app.models import SystemSetting, CompanyProfile, BaleContact
+from settings_app.models import SystemSetting, CompanyProfile, BaleContact, Signatory
 
 
 class SystemSettingSerializer(serializers.ModelSerializer):
@@ -19,6 +19,26 @@ class BaleContactSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
+class SignatorySerializer(serializers.ModelSerializer):
+    signature_image_url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Signatory
+        fields = [
+            'id', 'full_name', 'position', 'national_id',
+            'signature_image', 'signature_image_url', 'is_active', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+    def get_signature_image_url(self, obj):
+        if obj.signature_image:
+            request = self.context.get('request')
+            if request:
+                return request.build_absolute_uri(obj.signature_image.url)
+            return obj.signature_image.url
+        return None
+
+
 class CompanyProfileSerializer(serializers.ModelSerializer):
     company_name = serializers.CharField(source='company.name', read_only=True)
     logo_url = serializers.SerializerMethodField()
@@ -34,6 +54,8 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
             'employer_rep_name', 'employer_rep_title', 'employer_rep_national_id',
             'notify_email_enabled', 'notify_bale_enabled',
             'bale_token', 'bale_chat_id',
+            'base_storage_path', 'storage_path_employees',
+            'storage_path_correspondences', 'storage_path_documents',
             'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'created_at', 'updated_at']
