@@ -1,412 +1,276 @@
-# HRMS — سیستم جامع مدیریت منابع انسانی
+<div align="center">
 
-سیستم مدیریت منابع انسانی (Human Resource Management System) با معماری **چندشرکتی (Multi-Tenant)** و **چندزبانه (i18n)**.
+# 🏢 HRMS 2026 — سامانهٔ جامع مدیریت منابع انسانی
 
-- **بک‌اند**: Django 5 + Django REST Framework
-- **فرانت‌اند**: React 18 + Material UI (MUI) + i18next
-- **احراز هویت**: JWT (`djangorestframework-simplejwt`) با refresh token چرخشی
-- **دیتابیس تولید**: PostgreSQL 16 + `django-tenants` (هر شرکت یک schema جداگانه)
-- **وظایف پس‌زمینه**: Celery + Redis + Celery Beat
-- **زبان‌ها**: فارسی (`fa`) و انگلیسی (`en`) — چیدمان RTL/LTR خودکار
+**Human Resource Management System · Multi-Tenant · Multi-Language · Enterprise Ready**
 
----
+[![Django](https://img.shields.io/badge/Django-5.x-092E20?logo=django&logoColor=white&style=for-the-badge)](https://www.djangoproject.com/)
+[![Django REST Framework](https://img.shields.io/badge/DRF-3.15-red?logo=django&logoColor=white&style=for-the-badge)](https://www.django-rest-framework.org/)
+[![React](https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=white&style=for-the-badge)](https://reactjs.org/)
+[![Material UI](https://img.shields.io/badge/MUI-6-007FFF?logo=mui&logoColor=white&style=for-the-badge)](https://mui.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-16-4169E1?logo=postgresql&logoColor=white&style=for-the-badge)](https://www.postgresql.org/)
+[![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white&style=for-the-badge)](https://redis.io/)
 
-## فهرست
+[![Celery](https://img.shields.io/badge/Celery-5-37814A?logo=celery&logoColor=white&style=for-the-badge)](https://docs.celeryq.dev/)
+[![JWT](https://img.shields.io/badge/Auth-JWT-000000?logo=jsonwebtokens&logoColor=white&style=for-the-badge)](https://jwt.io/)
+[![Nginx](https://img.shields.io/badge/Nginx-+1.24-009639?logo=nginx&logoColor=white&style=for-the-badge)](https://nginx.org/)
+[![Gunicorn](https://img.shields.io/badge/Gunicorn-21+-499848?logo=gunicorn&logoColor=white&style=for-the-badge)](https://gunicorn.org/)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-26.04-E95420?logo=ubuntu&logoColor=white&style=for-the-badge)](https://ubuntu.com/)
+[![License](https://img.shields.io/badge/License-Proprietary-Gray?style=for-the-badge)](#-نحوه-استفاده)
 
-- [ماژول‌های فعال](#ماژول‌های-فعال)
-- [معماری چندشرکتی](#معماری-چندشرکتی)
-- [پیش‌نیازهای سرور](#پیش‌نیازهای-سرور)
-- [استقرار در محیط تولید](#استقرار-در-محیط-تولید-ubuntu)
-- [راه‌اندازی در محیط توسعه](#راه‌اندازی-در-محیط-توسعه)
-- [انتقال دیتابیس از SQLite به PostgreSQL](#انتقال-دیتابیس-از-sqlite-به-postgresql)
-- [متغیرهای محیطی](#متغیرهای-محیطی)
-- [مدیریت سرویس‌ها](#مدیریت-سرویس‌ها)
-- [پشتیبان‌گیری](#پشتیبان‌گیری)
-- [API Endpoints](#api-endpoints)
-- [ساختار پروژه](#ساختار-پروژه)
-- [عیب‌یابی](#عیب‌یابی)
+**💬 حمل‌ونقل اعلان با پیام‌رسان ایرانی «بله» · تقویم شمسی · رابط راست‌به‌چپ · طراحی Glassmorphism ۲۰۲۶**
+
+</div>
 
 ---
 
-## ماژول‌های فعال
+## ✨ چرا HRMS 2026؟
 
-| ماژول | مسیر | توضیح |
-|-------|------|-------|
-| **داشبورد** | `/dashboard` | آمار + نمودارها + هشدارها (تک‌صفحه) |
-| **پرسنل** | `/employees` | لیست + افزودن/ویرایش (چند مرحله‌ای) + پرونده پرسنلی |
-| **ورود اطلاعات** | `/data-entry` | مرخصی، غیبت، حقوق، مزایا، کسورات |
-| **دفترچه تلفن** | `/phonebook` | کارت‌های تماس + خروجی اکسل |
-| **جستجو** | `/search` | جستجوی پیشرفته + فیلتر |
-| **چارت سازمانی** | `/org-chart` | درخت سلسله‌مراتبی + ویرایش + نفرات مستقر |
-| **گزارشات** | `/reports` | ۱۵+ نمودار + تولدها + خلاصه مکاتبات |
-| **تعاریف اولیه** | `/definitions` | مشخصات شرکت + دپارتمان‌ها + لیست‌های پایه |
-| **مکاتبات** | `/correspondences` | نامه وارده/صادره + ابلاغ‌ها + فرم‌ها |
-| **تنظیمات** | `/settings` | کاربران، نقش‌ها، درون‌ریزی اکسل |
-
-### زیرماژول‌های «ورود اطلاعات»
-
-| نوع | زیرتب‌ها | فیلدهای کلیدی |
-|-----|---------|--------------|
-| **حقوق** | ثبت فیش جدید / درون‌ریزی گروهی / لیست | ۳۳ فیلد (حقوق پایه، اضافه‌کاری، شب‌کاری، بیمه، کسورات و...) |
-| **مزایا** | ثبت مزایا / درون‌ریزی گروهی / لیست | ۱۵ نوع مزایای رفاهی + مبلغ ناخالص/مالیات/پرداختی |
-| **مرخصی** | — | ۷ زیرنوع + تعداد روز + بازه |
-| **غیبت** | — | ۳ زیرنوع + تعداد روز + جریمه |
-| **کسورات** | — | ۶ زیرنوع + مبلغ + دوره |
+| 💡 ویژگی | 📌 چرا مهم است |
+|---|---|
+| 🏘️ **چندشرکتی واقعی** | هر شرکت یک `schema` مستقل در PostgreSQL — ایزولاسیون کامل داده |
+| 🛡️ **RBAC حرفه‌ای** | ۵ نقش از پیش‌سازمان‌یافته + امکان سفارشی‌سازی دسترسی‌ها |
+| 🗓️ **تاریخ و تقویم شمسی** | تاریخ‌ها بومی، ارقام فارسی، تقویم هیبریدی |
+| 🔔 **اعلان + پیام‌رسان بله** | مرکز اعلان داخلی + ارسال ایمیل و بله به مدیران/پرسنل |
+| 🧠 **پیشرفته‌ترین ماژول‌ها** | کارکرد، فیش، مکاتبات، قرارداد هوشمند، چرخهٔ عمر کارمند |
+| 📊 **داشبورد BI مدیریتی** | نمودارهای تعاملی بدون وابستگی خارجی |
+| 🔍 **جستجوی سراسری** | یک باکس برای Pرسنل/مدرک/نامه/درخواست |
+| ⚡ **درون‌ریزی اکسل ۲۰۲۶** | ۱۲+ نوع ورود داده با استپر و Drag&Drop |
 
 ---
 
-## معماری چندشرکتی
-
-سیستم از `django-tenants` استفاده می‌کند:
-
-- **مدل tenant**: `core.Company`
-- **مدل دامنه**: `core.Domain`
-- **schema جداگانه**: هر شرکت در دیتابیس PostgreSQL یک `schema` مستقل دارد
-- **توسعه محلی (SQLite)**: برای تست بدون PostgreSQL، حالت غیرفعالِ tenant با
-  `CustomTenantMiddleware` استفاده می‌شود (رجوع به `settings/development.py`)
+## 🧩 نقشهٔ محصول — ماژول‌های فعال
 
 ```
- درخواست ورودی
-      │
-      ▼
- TenantMiddleware ── تعیین شرکت بر اساس دامنه
-      │
-      ▼
- schema اختصاصی شرکت (PostgreSQL search_path)
-      │
-      ▼
- Employees / Payroll / OrgChart / ...
+┌──────────────────────────────────────────────────────────────────────────┐
+│                          HRMS 2026  —  Work-Spaces                      │
+├───────────┬──────────────────────────────────────────────────────────────┤
+│ 🏠 خانه   │ داشبورد هوشمند (KPI · هشدارها · نمودارها · بدون اسکرول)     │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ 👥 پرسنل  │ پرونده · افزودن · جستجو · دفترچه · قرارداد (نسخه/امضا)      │
+│           │ پرونده ۳۶۰°: تایم‌لاین + نمای کلی (اموال/وام/جرائم/بیمه)     │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ 🔄 عملیات │ چارت · آنبوردینگ/آفبوردینگ · اموال · تقویم سازمانی           │
+│           │ حضور/غیاب · مرخصی · درخواست اداری · درون‌ریزی اکسل           │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ 💰 مالی   │ فیش حقوق · مزایا و کارانه · کسورات · گزارش مالی · وام        │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ 🏖️ رفاهی  │ بیمه تکمیلی · وام و تسهیلات                                  │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ 📁 ارتباط │ مکاتبات (وارده/صادره/ابلاغ) · بایگانی اسناد · اطلاع‌رسانی بله │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ 📈 بینش   │ داشبورد مدیریتی · امتیازدهی و ارزیابی · دستیار هوشمند        │
+├───────────┼──────────────────────────────────────────────────────────────┤
+│ ⚙️ سیستم  │ تعاریف اولیه · کاربران و نقش‌ها · لاگ · تنظیمات · پشتیبان‌گیری│
+└───────────┴──────────────────────────────────────────────────────────────┘
 ```
 
-نقش‌ها و دسترسی‌ها (RBAC):
+### 🗂️ پروندهٔ پرسنلی ۳۶۰° — یک مرجع واحد
 
-| نقش | توضیح |
-|-----|-------|
-| `super_admin` | مدیر ارشد سیستم — دسترسی کامل |
-| `hr_manager` | مدیر منابع انسانی — مدیریت پرسنل و تنظیمات |
-| `hr_specialist` | کارشناس منابع انسانی — ثبت و ویرایش محدود |
-| `department_head` | مدیر دپارتمان — مشاهده و تأیید محدود |
-| `employee` | کارمند — دسترسی حداقلی |
-
----
-
-## پیش‌نیازهای سرور
-
-| نرم‌افزار | نسخه پیشنهادی | توضیح |
-|-----------|---------------|-------|
-| **Ubuntu Server** | 26.04 LTS | سیستم‌عامل هدف |
-| **Python** | 3.12 | توسط `deploy.sh` نصب می‌شود |
-| **PostgreSQL** | 16 | دیتابیس چندشرکتی |
-| **Redis** | 7+ | broker و cache |
-| **Node.js** | 20 LTS | build فرانت‌اند |
-| **Nginx** | 1.24+ | وب‌سرور و reverse proxy |
-| **Gunicorn** | 21+ | WSGI سرور جنگو |
-
-> تمام پیش‌نیازها به‌صورت خودکار توسط `deploy.sh` نصب می‌شوند.
+| تب | محتوا |
+|---|---|
+| 🧭 **نمای کلی** | قراردادها، اموال، وام، چک‌لیست ورود/خروج، جرائم، بیمه تکمیلی |
+| ⏳ **تایم‌لاین** | استخدام ← تغییرات ← مرخصی ← مدارک ← مکاتبات |
+| 👤 **فردی** | اطلاعات شناسنامه‌ای، تحصیلات، تماس، بانکی، بیمه |
+| 💼 **شغلی** | دپارتمان، سمت، قرارداد، وضعیت، ساعات کاری |
+| 💵 **دریافتی‌ها** | فیش حقوقی + مزایا (سال/ماه) |
+| 📝 **کارکرد** | روزهای کار/مرخصی/غیبت + اضافه‌کاری |
+| 🔄 **تغییرات** | سوابق شغلی + نسخه‌های قرارداد |
+| 📎 **مدارک** | آپلود/پیش‌نمایش/انقضا + آرشیو سازمانی |
 
 ---
 
-## استقرار در محیط تولید (Ubuntu)
-
-راهنمای کامل گام‌به‌گام در فایل [`INSTALLATION.md`](INSTALLATION.md) آمده است.
-خلاصهٔ مراحل:
+## 🚀 راه‌اندازی سریع (محیط توسعه)
 
 ```bash
-# ۱) دریافت کد از گیت
-sudo mkdir -p /opt/hrms
-sudo chown $USER: /opt/hrms
-git clone https://github.com/rezakianimajd/HRMS.git /opt/hrms
-
-# ۲) ویرایش متغیرهای deploy.sh (دامنه، IP، ایمیل)
-#    DOMAIN، SERVER_IP، ADMIN_EMAIL و ENABLE_SSL
-
-# ۳) اجرای اسکریپت استقرار
-cd /opt/hrms
-sudo bash deploy.sh
-
-# ۴) ساخت tenant (شرکت)
-cd /opt/hrms/hrms_project
-source /opt/hrms/venv/bin/activate
-export DJANGO_SETTINGS_MODULE=hrms_project.settings.production
-python manage.py create_tenant \
-    --name='نام شرکت' --code='YOURCO' --domain='your-domain.com'
-
-# ۵) ساخت کاربر مدیر
-python manage.py createsuperuser
-```
-
-پس از اجرا:
-
-| سرویس | توضیح |
-|-------|-------|
-| `gunicorn` | اپلیکیشن جنگو روی socket |
-| `celery-worker` | پردازش وظایف پس‌زمینه |
-| `celery-beat` | زمان‌بندی وظایف دوره‌ای (با `django_celery_beat`) |
-| `nginx` | سرو استاتیک + reverse proxy |
-| `postgresql` | دیتابیس |
-| `redis-server` | broker و cache |
-| `cron` | پشتیبان‌گیری روزانه |
-
----
-
-## راه‌اندازی در محیط توسعه
-
-برای توسعه روی لینوکس/مک با SQLite (بدون نیاز به PostgreSQL و Redis):
-
-```bash
+# ۱) بک‌اند
 cd hrms_project
-python3 -m venv venv
-source venv/bin/activate
-
+python3 -m venv venv && source venv/bin/activate
 pip install -r requirements.txt
-
-# ساخت و اعمال migration برای SQLite
 python manage.py migrate
+python manage.py setup_dev          # کاربر و دادهٔ نمونه
+python manage.py runserver          # http://localhost:8000
 
-# ساخت کاربر و داده نمونه
-python manage.py setup_dev
-
-# اجرای بک‌اند
-python manage.py runserver
-```
-
-در ترمینال دوم، فرانت‌اند:
-
-```bash
-cd frontend
+# ۲) فرانت‌اند (ترمینال دوم)
+cd ../frontend
 npm install
-npm start
+npm run start                       # http://localhost:3000
 ```
 
-ورود توسعه‌ای: `http://localhost:3000` با `admin` / `admin123`
-
-> ⚠️ حالت توسعه **فاقد** قابلیت چندشرکتی واقعی است (SQLite از schema پشتیبانی
-> نمی‌کند). برای تست دقیق multi-tenancy باید از PostgreSQL استفاده کنید.
-
----
-
-## انتقال دیتابیس از SQLite به PostgreSQL
-
-برای انتقال داده‌های ثبت‌شده در حالت توسعه، از دو دستور مدیریتی استفاده می‌شود:
-
-```bash
-# روی سیستم توسعه (SQLite)
-python manage.py export_tenant_data --output hrms_tenant_data.json
-
-# روی سرور (PostgreSQL + پس از create_tenant و migrate_schemas)
-python manage.py import_tenant_data hrms_tenant_data.json \
-    --schema=yourco --company-code=YOURCO
+```
+ورود توسعه:  admin / admin123
 ```
 
-مستندات کامل در [`DATABASE_MIGRATION.md`](DATABASE_MIGRATION.md).
+> ⚠️ حالت توسعه روی SQLite فاقد چندشرکتی واقعی است؛ برای تست دقیق از PostgreSQL استفاده کنید.
 
 ---
 
-## متغیرهای محیطی
+## 🧱 معماری
 
-مقادیر از فایل `.env` (در کنار `manage.py`) خوانده می‌شوند. نمونه‌ی امن در
-`.env.example` موجود است:
+### 🏗️ Multi-Tenant — هر شرکت یک Schema
 
-| متغیر | توضیح | پیش‌فرض |
-|-------|-------|---------|
-| `SECRET_KEY` | کلید محرمانه جنگو | — (الزامی در تولید) |
-| `DB_NAME` | نام دیتابیس | `hrms_db` |
-| `DB_USER` | کاربر PostgreSQL | `hrms` |
-| `DB_PASSWORD` | رمز دیتابیس | — (الزامی) |
-| `DB_HOST` / `DB_PORT` | آدرس و پورت دیتابیس | `localhost` / `5432` |
-| `DEBUG` | حالت اشکال‌زدایی | `False` |
-| `ALLOWED_HOSTS` | دامنه‌های مجاز (با کاما) | — |
-| `CORS_ALLOWED_ORIGINS` | آدرس‌های مجاز فرانت‌اند | — |
-| `CELERY_BROKER_URL` | آدرس Redis برای Celery | `redis://localhost:6379/0` |
-| `REDIS_CACHE_URL` | آدرس کش | `redis://localhost:6379/1` |
-| `STATIC_ROOT` / `MEDIA_ROOT` | مسیر فایل‌های استاتیک/رسانه | `/var/www/hrms/...` |
-| `BASE_FILE_STORAGE_PATH` | مسیر ذخیره فایل‌های پرسنلی | `/var/hr_data/` |
-| `EMAIL_HOST` / `EMAIL_PORT` | سرور SMTP | — |
+<div align="center">
 
-> کلید امن با `python -c "import secrets; print(secrets.token_urlsafe(50))"` تولید کنید.
-
----
-
-## مدیریت سرویس‌ها
-
-```bash
-# وضعیت همه سرویس‌ها
-systemctl status gunicorn celery-worker celery-beat nginx postgresql redis-server
-
-# راه‌اندازی مجدد
-sudo systemctl restart gunicorn celery-worker celery-beat
-
-# مشاهده لاگ‌ها
-journalctl -u gunicorn -f
-tail -f /var/log/hrms/error.log
+```
+        درخواست ←───→ TenantMiddleware
+                              │
+                 (دامنه/schema شرکت را یافت)
+                              ▼
+        ┌─────────────── PostgreSQL ───────────────┐
+        │  public (companies, domains, users)      │
+        │  schema: demo.company1*                  │
+        │  schema: hr_company2                     │
+        └──────────────────────────────────────────┘
+                              │
+                        Employees / Payroll / Documents / ...
 ```
 
----
+</div>
 
-## پشتیبان‌گیری
+- **Tenant model:** `core.Company`
+- **Domain model:** `core.Domain`
+- **DB Router:** `django_tenants.routers.TenantSyncRouter`
 
-اسکریپت `backup.sh` هر شب ساعت ۲ (از طریق cron) اجرا می‌شود و شامل موارد زیر است:
+### 🔐 نقش‌ها و دسترسی (RBAC)
 
-- دامپ فشردهٔ PostgreSQL (فرمت custom)
-- فایل‌های پرسنلی (`/var/hr_data`)
-- فایل‌های آپلودشده (`/var/www/hrms/media`)
-- فایل `.env`
-
-```bash
-# اجرای دستی
-sudo -u hrms /opt/hrms/backup.sh
-
-# بازیابی
-sudo -u postgres pg_restore -U hrms -d hrms_db --clean --if-exists \
-    /var/backups/hrms/hrms_backup_XXXX.db.dump
-```
-
-پشتیبان‌ها به‌مدت ۳۰ روز نگهداری می‌شوند (`RETENTION_DAYS` در `backup.sh`).
+| نقش | دسترسی‌های کلیدی |
+|---|---|
+| 🟣 `super_admin` | کامل — مدیریت شرکت/کاربر/تنظیمات/حذف |
+| 🔵 `hr_manager` | مدیریت پرسنل، تأیید مرخصی، تنظیمات، آرشیو |
+| 🟢 `hr_specialist` | ثبت/ویرایش پرسنل و مدارک، درون‌ریزی |
+| 🟡 `department_head` | تأییدها و مشاهدهٔ محدود به تیم خود |
+| ⚪ `employee` | حداقلی — فقط داده‌های مرتبط با خود |
 
 ---
 
-## API Endpoints
+## ✍️ قرارداد هوشمند (Contract Center)
 
-### احراز هویت
+- 📄 قالب استاندارد ۱۴ مادهای — با **فونت Vazirmatn** و لوگوی شرکت
+- 🖨️ خروجی آمادهٔ چاپ/PDF (مواد **بولد**، فونت ۱۰pt، لوگو وسط‌چین)
+- 🖊️ **امضای دیجیتال + آپلود تصویر امضا/مهر**
+- 🔁 نسخه‌بندی سالانه + **مقایسهٔ نسخه‌ها**
+- 💰 فیلدهای مزایای کامل (حق جذب، مسکن، بن، …)
 
-| Method | Endpoint | توضیح |
-|--------|----------|-------|
-| `POST` | `/api/auth/login/` | ورود — دریافت JWT |
-| `POST` | `/api/auth/refresh/` | تازه‌سازی access token |
-| `POST` | `/api/auth/logout/` | خروج |
-| `GET` | `/api/auth/me/` | پروفایل کاربر جاری |
+---
 
-### پرسنل
+## 🔔 اطلاع‌رسانی و ادغام پیام‌رسان «بله»
 
-| Method | Endpoint | توضیح |
-|--------|----------|-------|
-| `GET/POST` | `/api/employees/` | لیست / ایجاد پرسنل |
-| `GET/PUT/DELETE` | `/api/employees/{id}/` | مشاهده / ویرایش / حذف |
-| `GET` | `/api/departments/` | دپارتمان‌ها |
-| `GET` | `/api/job-titles/` | عناوین شغلی |
-| `GET` | `/api/work-locations/` | محل‌های استقرار |
-| `GET` | `/api/insurance-lists/` | لیست بیمه |
+| قابلیت | توضیح |
+|---|---|
+| 📣 ارسال به همهٔ گیرندگان | پرسنل دارای chat_id + مخاطبین دسته‌بندیشده + chat_id دلخواه |
+| 🗂️ دپارتمان/برچسب/سگمنت‌ها | حمایت از دسته‌بندی هوشمند (دپارتمان، جنسیت، تأهل، قرارداد، شیفت) |
+| 🎨 قالب‌های ذخیره‌شده | تولد، مزایا، فیش، اعیاد، اطلاعیه — با دکمهٔ «ارسال سریع» |
+| 🕐 زمان‌بندی | اجرای یک‌باره/روزانه/هفتگی + اجرای فوری (رون‌نو) |
+| 📆 تولد خودکار | ارسال پیام در روز تولد پرسنل (شمسی) |
+| 📜 تاریخچهٔ ارسال | موفق/ناموفق + دکمهٔ ارسال مجدد خطاها |
+| 🧩 متغیر پویا | `{name}`، `{department}`، `{job_title}` و… در متن پیام |
+| 📑 ورود اکسل مخاطبین | همگروه با تعداد زیادی مخاطب در چند ثانیه |
 
-### حقوق و مزایا
+> اعلان‌ها (انقضای مدرک/قرارداد، پایان مانده مرخصی، درخواست) با **ایمیل** و **بله** به مدیران ارسال می‌شوند.
 
-| Method | Endpoint | توضیح |
-|--------|----------|-------|
-| `GET/POST` | `/api/salaries/` | فیش حقوقی |
-| `GET` | `/api/salaries/by_employee/` | فیش‌های یک پرسنل |
-| `GET/POST` | `/api/benefits/` | مزایا |
-| `GET` | `/api/benefits/by_employee/` | مزایای یک پرسنل |
-| `GET/POST` | `/api/transactions/` | تراکنش (مرخصی/غیبت/...) |
+---
 
-### چارت سازمانی
+## 📊 داشبورد مدیریتی (BI)
 
-| Method | Endpoint | توضیح |
-|--------|----------|-------|
-| `GET` | `/api/org-chart/positions/tree/` | درخت سازمانی |
-| `GET/POST` | `/api/org-chart/positions/` | لیست / ایجاد جایگاه |
-| `POST` | `/api/org-chart/positions/{id}/set_occupants/` | تخصیص نفرات |
+- ۸ کارت KPI زنده + دونات جنسیت + توزیع دپارتمان + هشدارها/فعالیت
+- نمودار MultiLine روند هزینه‌ی ۱۲ ماه (خالص/مزایا/کسورات/بیمه)
+- تحلیل دپارتمان‌ها، توزیع سن/تحصیلات/شهر، ماندهٔ مرخصی، اموال/وام، نرخ غیبت
 
-### مکاتبات
+| API | توضیح |
+|---|---|
+| `GET /api/management/kpis/` | KPI کلی |
+| `GET /api/management/department-analytics/` | دپارتمان |
+| `GET /api/management/payroll-cost-trend/` | هزینه‌ی حقوق |
+| `GET /api/management/leave-utilization/` | مرخصی |
+| `GET /api/management/absenteeism-summary/` | حضور و غیبت |
 
-| Method | Endpoint | توضیح |
-|--------|----------|-------|
-| `GET/POST` | `/api/incoming-letters/` | نامه‌های وارده |
-| `GET/POST` | `/api/outgoing-letters/` | نامه‌های صادره |
-| `GET/POST` | `/api/announcements/` | ابلاغ‌ها |
-| `GET/POST` | `/api/forms/` | فرم‌ها |
+---
 
-### گزارشات
+## ⌨️ API Highlights
 
-| Endpoint | توضیح |
-|----------|-------|
-| `/api/reports/employees-by-department/` | پرسنل به تفکیک دپارتمان |
-| `/api/reports/employees-by-gender/` | ترکیب جنسیتی |
-| `/api/reports/upcoming-birthdays/` | تولدهای ۷ روز آینده |
-| `/api/reports/correspondences-summary/` | خلاصه مکاتبات |
-| `/api/reports/salary-benefits-summary/` | خلاصه حقوق و مزایا |
-
-### درون‌ریزی اکسل
-
+### Auth
 | Method | Endpoint |
-|--------|----------|
-| `GET` | `/api/import/types/` |
-| `GET` | `/api/import/template/{type}/` |
-| `POST` | `/api/import/upload/` |
+|---|---|
+| `POST` | `/api/auth/login/` |
+| `POST` | `/api/auth/refresh/` |
+| `GET` | `/api/auth/me/` |
+
+### Employees & Org
+| Method | Endpoint |
+|---|---|
+| `GET/POST` | `/api/employees/` |
+| `GET/PUT/PATCH/DELETE` | `/api/employees/{id}/` |
+| `GET` | `/api/employees/{id}/timeline/` |
+| `GET` | `/api/employees/{id}/summary/` |
+| `GET/POST` | `/api/org-chart/positions/` |
+
+### Financial
+| Method | Endpoint |
+|---|---|
+| `GET/POST` | `/api/salaries/` |
+| `GET/POST` | `/api/benefits/` |
+| `GET/POST` | `/api/transactions/` |
+
+### Correspondences / Documents / Attendance / Leaves
+| Method | Endpoint |
+|---|---|
+| `GET/POST` | `/api/incoming-letters/` |
+| `GET/POST` | `/api/outgoing-letters/` |
+| `GET/POST` | `/api/announcements/` |
+| `GET/POST` | `/api/documents/` |
+| `GET` | `/api/calendar/feed/` |
+
+### Notifications + Bale
+| Endpoint | توضیح |
+|---|---|
+| `GET` `/api/notifications/` | اعلان‌های کاربر |
+| `POST` `/api/notifications/sync/` | همگام‌سازی اعلان‌ها |
+| `POST` `/api/notifications/bale-bulk-send/` | ارسال گروهی بله |
+| `GET` `/api/notifications/bale-segments/` | گروه‌های هوشمند |
+| `POST` `/api/notifications/bale-contacts-import/` | ورود مخاطبین |
+| `GET/POST` `/api/bale-templates/` | قالب‌ها |
+| `GET/POST` `/api/bale-schedules/` | زمان‌بندی |
+| `GET` `/api/bale-send-logs/` | تاریخچه |
+
+### Management Analytics + Employee Summary
+| Endpoint | توضیح |
+|---|---|
+| `GET` `/api/management/kpis/` | داشبورد مدیریتی |
+| `GET` `/api/management/department-analytics/` | دپارتمان‌ها |
+| `GET` `/api/management/payroll-cost-trend/` | هزینه‌ها |
+| `GET` `/api/employees/{id}/summary/` | نمای کلی پرسنل |
 
 ---
 
-## ساختار پروژه
+## 🛠️ متغیرهای محیطی (نمونه)
 
-```
-HRMS/
-├── deploy.sh                 # استقرار کامل سرور Ubuntu
-├── backup.sh                 # پشتیبان‌گیری روزانه
-├── INSTALLATION.md           # راهنمای نصب و دیپلوی
-├── DATABASE_MIGRATION.md     # راهنمای انتقال دیتابیس
-├── .env.example              # نمونه متغیرهای محیطی
-├── hrms_project/             # بک‌اند Django
-│   ├── core/                 # هسته (شرکت، کاربران، موتورها، لاگ‌ها)
-│   ├── employees/            # پرسنل + گزارشات
-│   ├── payroll/              # حقوق و مزایا
-│   ├── orgchart/             # چارت سازمانی
-│   ├── correspondences/      # مکاتبات
-│   ├── settings_app/         # تنظیمات + کاربران + درون‌ریزی اکسل
-│   ├── documents/            # مدارک پرسنل
-│   ├── leaves/               # مرخصی
-│   ├── attendance/           # حضور و غیاب
-│   ├── locale/               # ترجمه‌ها
-│   └── hrms_project/         # پیکربندی پروژه (settings/urls/wsgi/...)
-└── frontend/                 # فرانت‌اند React
-    └── src/
-        ├── core/             # api، hooks، context، کامپوننت‌های مشترک
-        ├── modules/          # ماژول‌ها
-        ├── pages/            # صفحات
-        ├── locales/          # ترجمه‌ها
-        └── AppRoutes.jsx
-```
+| متغیر | توضیح |
+|---|---|
+| `SECRET_KEY` | کلید امن (الزامی در production) |
+| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | PostgreSQL |
+| `DB_HOST` / `DB_PORT` | `localhost` / `5432` |
+| `ALLOWED_HOSTS` | دامنه‌های مجاز |
+| `CELERY_BROKER_URL` | `redis://localhost:6379/0` |
+| `REDIS_CACHE_URL` | `redis://localhost:6379/1` |
+| `EMAIL_HOST`/`EMAIL_PORT` | SMTP |
 
 ---
 
-## چندزبانه (i18n)
+## 🔒 امنیت
 
-- **زبان‌ها**: فارسی (`fa`) و انگلیسی (`en`)
-- **تشخیص خودکار**: هدر مرورگر ← session ← پیش‌فرض
-- **RTL/LTR**: `document.dir` به‌صورت خودکار تنظیم می‌شود
-- فایل‌های ترجمه: `frontend/src/locales/{fa,en}/translation.json`
-
----
-
-## امنیت
-
-- `DEBUG=False` در محیط تولید
-- کوکی‌های امن و HTTPS (هدر HSTS، XSS، X-Frame-Options)
-- محدودسازی CORS به دامنه‌های مجاز
-- محدودسازی نرخ درخواست (`django-ratelimit`)
-- رمزنگاری فایل‌های پرسنلی با `ENCRYPTION_KEY`
-- تفکیک دسترسی بر اساس نقش (RBAC)
+- `DEBUG=False` در تولید
+- کوکی امن + HTTPS + هدرهای امنیتی
+- محدودسازی CORS
+- `django-ratelimit` برای جلوگیری از حملات
+- رمزنگاری فایل‌های پرسنلی
+- چندلایه دسترسی RBAC
 
 ---
 
-## عیب‌یابی
+## 📋 مجوز
 
-| مشکل | راه‌حل |
-|-------|--------|
-| `no such table: payroll_salaryrecord` | `python manage.py migrate` |
-| `CommandError: Company with code ...` | ابتدا `create_tenant` را اجرا کنید |
-| `schema "xxx" does not exist` | `python manage.py migrate_schemas` |
-| `charmap codec can't encode` (ویندوز) | `export_tenant_data` را با خروجی UTF-8 اجرا کنید |
-| خطای `psycopg2` | نصب `python3.12-dev libpq-dev` سپس نصب مجدد requirements |
-| استاتیک ۴۰۴ | `python manage.py collectstatic --noinput` |
-| CORS | تنظیم `CORS_ALLOWED_ORIGINS` در `.env` |
+حقوق معنوی محفوظ است. استفادهٔ تجاری نیاز به مجوز دارد.
 
 ---
 
-## مستندات مرتبط
-
-- [`INSTALLATION.md`](INSTALLATION.md) — نصب و استقرار کامل
-- [`DATABASE_MIGRATION.md`](DATABASE_MIGRATION.md) — انتقال دیتابیس
-
----
-
-## مجوز
-
-حقوق معنوی محفوظ است. برای استفاده تجاری با تیم توسعه تماس بگیرید.
+<sub>💜 با همراهی منابع فارسی و استانداردهای ۲۰۲۶، ساخته‌شده برای تیم‌های منابع انسانی ایرانی.</sub>
