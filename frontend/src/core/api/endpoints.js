@@ -92,6 +92,14 @@ const endpoints = {
   baleSendLogs: {
     list: `${API_BASE}/bale-send-logs/`,
   },
+  signatories: {
+    list: `${API_BASE}/signatories/`,
+    detail: (id) => `${API_BASE}/signatories/${id}/`,
+  },
+  managementSettings: {
+    profile: `${API_BASE}/settings/company-profile/`,
+    updateProfile: `${API_BASE}/settings/company-profile/update/`,
+  },
   baleSchedules: {
     list: `${API_BASE}/bale-schedules/`,
     detail: (id) => `${API_BASE}/bale-schedules/${id}/`,
