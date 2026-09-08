@@ -143,6 +143,8 @@ const SignatoryManager = () => {
       fd.append('position', payload.position || '');
       fd.append('national_id', payload.national_id || '');
       if (payload.signature_image) fd.append('signature_image', payload.signature_image);
+      // Do NOT set Content-Type manually: with FormData the browser/axios sets
+      // the correct multipart boundary automatically.
       return payload.id
         ? axiosInstance.patch(`/signatories/${payload.id}/`, fd)
         : axiosInstance.post('/signatories/', fd);

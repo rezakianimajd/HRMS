@@ -21,6 +21,12 @@ axiosInstance.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
 
+    // For FormData, remove the JSON content-type so axios sets the correct
+    // multipart boundary automatically.
+    if (typeof FormData !== 'undefined' && config.data instanceof FormData) {
+      config.headers['Content-Type'] = undefined;
+    }
+
     // Attach language header
     const language = localStorage.getItem('language') || 'fa';
     config.headers['Accept-Language'] = language;
