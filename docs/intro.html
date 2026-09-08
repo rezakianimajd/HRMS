@@ -1,0 +1,93 @@
+<!doctype html>
+<html dir="rtl" lang="fa">
+<head>
+<meta charset="utf-8">
+<title>HRMS 2026 — معرفی محصول</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Vazirmatn', Tahoma, sans-serif;
+    direction: rtl;
+    background: linear-gradient(135deg, #f6f8ff, #eef1ff);
+    color: #1a2744;
+    line-height: 2;
+    padding: 32px 16px;
+  }
+  .wrap { max-width: 960px; margin: 0 auto; }
+  .glass {
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(14px);
+    border: 1px solid rgba(99,102,241,0.18);
+    border-radius: 20px;
+    padding: 16px;
+    box-shadow: 0 10px 30px rgba(99,102,241,0.12);
+  }
+  .hero {
+    display: flex; align-items: center; flex-direction: column; gap: 8px;
+    padding: 30px 20px; text-align: center;
+  }
+  h1 { font-size: 2.2rem; font-weight: 900; }
+  h2 { font-size: 1.4rem; margin-bottom: 10px; color: #4338ca; }
+  .sub { color: #4b5563; margin-top: 6px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px,1fr)); gap: 14px; margin-top: 20px; }
+  .card {
+    background: #fff; border-radius: 16px; padding: 18px;
+    border: 1px solid #e5e9ff;
+    box-shadow: 0 4px 16px rgba(99,102,241,0.08);
+    transition: .18s ease;
+  }
+  .card:hover { transform: translateY(-4px); box-shadow: 0 12px 26px rgba(99,102,241,0.2); }
+  .badges { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin: 14px 0; }
+  .badge { display: inline-block; background: #4338ca; color: #fff; border-radius: 50em; padding: 4px 16px; font-size: 0.85rem; }
+  .tag { display: inline-block; font-size: .8rem; padding: 2px 10px; border-radius: 50em; background:#eef2ff; color: #4338ca; margin: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: .9rem; }
+  th, td { border-bottom: 1px solid #e5e9ff; padding: 8px 10px; text-align: right; }
+  th { background: #eef2ff; color: #4338ca; }
+  footer { text-align: center; margin-top: 24px; color: #6b7280; font-size: .8rem; }
+</style>
+</head>
+<body>
+<div class="wrap glass">
+  <div class="hero">
+    <h1>🏢 HRMS 2026</h1>
+    <p class="sub">سامانهٔ جامع مدیریت منابع انسانی — چندشرکتی، چندزبانه، آمادهٔ سازمان شما</p>
+    <div class="badges">
+      <span class="badge">Django</span><span class="badge">React</span><span class="badge">PostgreSQL</span><span class="badge">Redis</span><span class="badge">JWT</span><span class="badge">بله</span>
+    </div>
+    <div>💬 اعلان با پیام‌رسان بله · 📅 تقویم شمسی · 🎨 رابط RTL ۲۰۲۶</div>
+  </div>
+
+  <h2>✨ چرا HRMS؟</h2>
+  <div class="grid">
+    <div class="card">🏘️ چندشرکتی واقعی<br><span class="tag">معماری Multi-Tenant</span></div>
+    <div class="card">🛡️ RBAC حرفه‌ای<br><span class="tag">۵ نقش سفارشی</span></div>
+    <div class="card">🗓️ تاریخ شمسی<br><span class="tag">تقویم هیبریدی</span></div>
+    <div class="card">🔔 اعلان + بله<br><span class="tag">ارسال گروهی/هدفمند</span></div>
+    <div class="card">📊 BI مدیریتی<br><span class="tag">نمودار بدون وابستگی</span></div>
+    <div class="card">✍️ قرارداد هوشمند<br><span class="tag">۱۴ ماده + PDF + امضا</span></div>
+    <div class="card">👥 پروندهٔ ۳۶۰°<br><span class="tag">تایم‌لاین + نمای کلی</span></div>
+    <div class="card">⚡ درون‌ریزی اکسل<br><span class="tag">۱۲+ نوع، درگ‌اند‌دراپ</span></div>
+  </div>
+
+  <h2 style="margin-top:34px;">🧩 ماژول‌های اصلی</h2>
+  <div class="grid">
+    <div class="card"><b>پرسنل</b><br>پرونده، فیش، مرخصی، مدارک، مکاتبات</div>
+    <div class="card"><b>مالی</b><br>حقوق، مزایا، کسورات، وام، بیمه</div>
+    <div class="card"><b>بینش</b><br>داشبورد مدیریتی، امتیازدهی، دستیار هوشمند</div>
+    <div class="card"><b>سیستم</b><br>نقش‌ها، تنظیمات، پشتیبان‌گیری</div>
+  </div>
+
+  <h2 style="margin-top:34px;">🚀 شروع سریع</h2>
+  <table>
+    <tr><th>مرحله</th><th>دستور</th></tr>
+    <tr><td>بک‌اند</td><td dir="ltr">cd hrms_project && pip install -r requirements.txt && python manage.py migrate</td></tr>
+    <tr><td>دادهٔ نمونه</td><td dir="ltr">python manage.py setup_dev</td></tr>
+    <tr><td>فرانت‌اند</td><td dir="ltr">cd frontend && npm install && npm start</td></tr>
+  </table>
+
+  <footer>HRMS 2026 — ساخته‌شده با ❤️ برای تیم‌های منابع انسانی<br>حقوق معنوی محفوظ است.</footer>
+</div>
+</body>
+</html>
