@@ -231,13 +231,44 @@ class ContractVersionViewSet(BaseCompanyViewSet):
 
     @action(detail=True, methods=['post'])
     def sign(self, request, pk=None):
-        """Record a digital signature on a contract version (text + optional image)."""
+        """Record a digital signature on a contract version.
+
+        Two modes:
+          * signatory_id  -> pick from the configured authorized signatories
+                             (full name + their signature sample).
+          * signed_by (text) + optional signature_image upload (legacy).
+        """
         from django.utils import timezone
 
         obj = self.get_object()
+        signatory_id = request.data.get('signatory_id')
+
+        if signatory_id:
+            from settings_app.models import Signatory
+            company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+            signatory = Signatory.objects.filter(id=signatory_id).first()
+            if not signatory:
+                return Response({'error': 'صاحب امضا یافت نشد.'}, status=404)
+            if company:
+                signatory = Signatory.objects.filter(id=signatory_id, company=company).first()
+                if not signatory:
+                    return Response({'error': 'صاحب امضا یافت نشد.'}, status=404)
+
+            obj.signed_by = signatory.full_name
+            obj.signed_at = timezone.now()
+            update_fields = ['signed_by', 'signed_at', 'updated_at']
+
+            # Copy the signatory's uploaded signature sample to the contract.
+            if signatory.signature_image and signatory.signature_image.name:
+                obj.signature_image = signatory.signature_image.name
+                update_fields.append('signature_image')
+
+            obj.save(update_fields=update_fields)
+            return Response(ContractVersionSerializer(obj).data)
+
         signed_by = (request.data.get('signed_by') or '').strip()
         if not signed_by:
-            return Response({'error': 'نام امضاکننده الزامی است.'}, status=400)
+            return Response({'error': 'انتخاب صاحب امضا الزامی است.'}, status=400)
         obj.signed_by = signed_by
         obj.signed_at = timezone.now()
 

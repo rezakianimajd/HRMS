@@ -88,10 +88,17 @@ const ContractsPage = () => {
   });
 
   const [signImageFile, setSignImageFile] = useState(null);
+  const [selectedSignatory, setSelectedSignatory] = useState('');
   const signMutation = useMutation({
     mutationFn: ({ id, payload }) => axiosInstance.post(`/contract-versions/${id}/sign/`, payload),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['contract-versions'] }),
   });
+
+  const { data: signatories } = useQuery({
+    queryKey: ['signatories'],
+    queryFn: () => axiosInstance.get('/signatories/').then(r => r.data),
+  });
+  const signatoryList = Array.isArray(signatories) ? signatories : signatories?.results || [];
 
   const generateTextMutation = useMutation({
     mutationFn: (id) => axiosInstance.post(`/contract-versions/${id}/generate_text/`),
@@ -439,31 +446,57 @@ const ContractsPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Sign dialog */}
+      {/* Sign dialog — select from authorized signatories */}
       <Dialog open={!!signTarget} onClose={() => setSignTarget(null)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#047857' }}>امضای دیجیتال</DialogTitle>
+        <DialogTitle sx={{ color: '#047857' }}>امضای قرارداد</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField autoFocus fullWidth size="small" label="نام امضاکننده" sx={{ mt: 1 }}
-            onChange={(e) => setForm((p) => ({ ...p, signed_by: e.target.value }))} />
-          <TextField fullWidth size="small" label="آپلود تصویر امضا / مهر (اختیاری)" InputLabelProps={{ shrink: true }}
-            type="file" inputProps={{ accept: 'image/*' }}
-            onChange={(e) => setSignImageFile(e.target.files?.[0] || null)} />
-          {signImageFile && (
-            <Typography variant="caption" color="textSecondary">فایل انتخاب شد: {signImageFile.name}</Typography>
+          <Typography variant="caption" color="textSecondary">
+            صاحب امضا را از فهرست امضاهای مجاز انتخاب کنید.
+          </Typography>
+          <FormControl fullWidth size="small">
+            <InputLabel>صاحب امضا *</InputLabel>
+            <Select
+              value={selectedSignatory || ''}
+              label="صاحب امضا *"
+              onChange={(e) => setSelectedSignatory(e.target.value)}
+            >
+              {signatoryList
+                .filter((s) => s.is_active !== false)
+                .map((s) => (
+                  <MenuItem key={s.id} value={s.id}>
+                    {s.full_name}{s.position ? ` — ${s.position}` : ''}
+                  </MenuItem>
+                ))}
+            </Select>
+          </FormControl>
+          {selectedSignatory && signatoryList.find((s) => s.id === selectedSignatory)?.signature_image_url && (
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+              <img
+                src={signatoryList.find((s) => s.id === selectedSignatory)?.signature_image_url}
+                alt="نمونه امضا"
+                style={{ maxHeight: 80, objectFit: 'contain', background: '#f8fafc', borderRadius: 8, padding: 6 }}
+              />
+            </Box>
           )}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setSignTarget(null); setSignImageFile(null); }}>انصراف</Button>
-          <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
-            disabled={!form.signed_by}
-            onClick={() => {
-              const fd = new FormData();
-              fd.append('signed_by', form.signed_by);
-              if (signImageFile) fd.append('signature_image', signImageFile);
-              signMutation.mutate({ id: signTarget.id, payload: fd }, {
-                onSuccess: () => { setSignTarget(null); setSignImageFile(null); setForm((p) => ({ ...p, signed_by: '' })); },
-              });
-            }}>
+          <Button onClick={() => { setSignTarget(null); setSelectedSignatory(''); }}>انصراف</Button>
+          <Button
+            variant="contained"
+            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)' }}
+            disabled={!selectedSignatory}
+            onClick={() =>
+              signMutation.mutate(
+                { id: signTarget.id, payload: { signatory_id: selectedSignatory } },
+                {
+                  onSuccess: () => {
+                    setSignTarget(null);
+                    setSelectedSignatory('');
+                  },
+                }
+              )
+            }
+          >
             ثبت امضاء
           </Button>
         </DialogActions>
