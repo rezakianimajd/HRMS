@@ -95,7 +95,11 @@ class ContractSerializer(serializers.ModelSerializer):
             'id', 'number', 'subject', 'party', 'party_name', 'contract_type',
             'contract_type_display', 'status', 'status_display', 'amount',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
-            'guarantee_amount', 'description',
+            'guarantee_amount',
+            'category', 'project_name', 'project_location', 'tender_number',
+            'advance_payment', 'retention_percent', 'warranty_period',
+            'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
+            'description',
             'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
             'created_at',
         ]

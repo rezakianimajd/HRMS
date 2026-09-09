@@ -76,6 +76,19 @@ class Contract(BaseModel):
         related_name='external_contracts', verbose_name=_('امضاکنندهٔ مجاز'),
     )
     guarantee_amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ تضمین (ریال)'))
+
+    # --- Extended / enterprise detail fields ---
+    category = models.CharField(max_length=50, blank=True, verbose_name=_('طبقه‌بندی قرارداد'))
+    project_name = models.CharField(max_length=300, blank=True, verbose_name=_('نام پروژه / طرح'))
+    project_location = models.CharField(max_length=300, blank=True, verbose_name=_('محل اجرا / تحویل'))
+    tender_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مناقصه / استعلام'))
+    advance_payment = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('پیش‌پرداخت (ریال)'))
+    retention_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name=_('درصد حسن انجام کار'))
+    warranty_period = models.CharField(max_length=100, blank=True, verbose_name=_('دوره گارانتی / تضمین کیفیت'))
+    payment_terms = models.TextField(blank=True, verbose_name=_('شرایط و نحوه پرداخت'))
+    delivery_terms = models.TextField(blank=True, verbose_name=_('شرایط تحویل'))
+    penalty_terms = models.TextField(blank=True, verbose_name=_('شرایط وجه التزام / جریمه تأخیر'))
+    insurance_terms = models.TextField(blank=True, verbose_name=_('شرایط بیمه'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 
     class Meta:
