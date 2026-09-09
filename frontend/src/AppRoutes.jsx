@@ -78,6 +78,7 @@ const AppRoutes = () => {
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
       <Route path="/app-select" element={<AppSelectPage />} />
+      <Route path="/coming-soon" element={<ProtectedLayout><ComingSoonPage /></ProtectedLayout>} />
 
       {/* Protected routes with layout */}
       <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />

@@ -6,7 +6,7 @@ import {
 import ConstructionIcon from '@mui/icons-material/Construction';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
-import menuConfig from '../core/config/menuConfig';
+import menuConfig, { getMenuForApp } from '../core/config/menuConfig';
 
 /**
  * Professional "under development" placeholder page.
@@ -14,15 +14,18 @@ import menuConfig from '../core/config/menuConfig';
  * an untranslated path.
  */
 const ComingSoonPage = () => {
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
 
-  let activeTitle = 'این بخش';
-  menuConfig.forEach((group) => {
-    group.items.forEach((item) => {
-      if (item.path === pathname || pathname.startsWith(`${item.path}/`)) {
-        activeTitle = item.title;
-      }
+  let activeTitle = state?.title || 'این بخش';
+  const menus = [menuConfig, getMenuForApp('contracts')];
+  menus.forEach((menu) => {
+    menu.forEach((group) => {
+      group.items.forEach((item) => {
+        if (item.path === pathname || pathname.startsWith(`${item.path}/`)) {
+          activeTitle = item.title;
+        }
+      });
     });
   });
 

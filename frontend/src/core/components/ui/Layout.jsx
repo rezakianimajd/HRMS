@@ -201,7 +201,13 @@ const Layout = ({ children }) => {
                     <ListItem disablePadding sx={{ mb: 0.4 }}>
                       <ListItemButton
                         selected={active}
-                        onClick={() => navigate(item.path)}
+                        onClick={() => {
+                          if (item.ready === false) {
+                            navigate('/coming-soon', { state: { title: item.title } });
+                          } else {
+                            navigate(item.path);
+                          }
+                        }}
                         sx={{
                           justifyContent: collapsed ? 'center' : 'flex-start',
                           px: collapsed ? 1.5 : 1.5,

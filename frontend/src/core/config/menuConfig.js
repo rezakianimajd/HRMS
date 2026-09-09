@@ -31,6 +31,19 @@ import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PaletteIcon from '@mui/icons-material/Palette';
+import DescriptionIcon from '@mui/icons-material/Description';
+import PostAddIcon from '@mui/icons-material/PostAdd';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import LockIcon from '@mui/icons-material/Lock';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import GavelIcon from '@mui/icons-material/Gavel';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import RuleIcon from '@mui/icons-material/Rule';
+import HandshakeIcon from '@mui/icons-material/Handshake';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import WarningIcon from '@mui/icons-material/Warning';
 
 /**
  * Central navigation model for the HRMS.
@@ -134,6 +147,10 @@ const menuConfig = [
   },
 ];
 
+const comingSoon = (path, id, title, icon, color, primary = false) => ({
+  id, title, icon, path, color, primary, ready: false,
+});
+
 const contractsMenu = [
   {
     id: 'home',
@@ -144,13 +161,64 @@ const contractsMenu = [
     ],
   },
   {
-    id: 'contracts-main',
+    id: 'contracts-lifecycle',
     title: 'قراردادها',
     color: '#f97316',
     items: [
-      { id: 'external-contracts', title: 'قراردادهای برون‌سازمانی', icon: <HistoryEduIcon />, path: '/external-contracts', color: '#f59e0b', primary: false, ready: true },
+      { id: 'external-contracts', title: 'قراردادهای من', icon: <HistoryEduIcon />, path: '/external-contracts', color: '#f59e0b', primary: true, ready: true },
+      comingSoon('/contracts-new', 'contracts-new', 'قرارداد جدید', <PostAddIcon />, '#10b981'),
+      comingSoon('/contracts-templates', 'contracts-templates', 'قالب‌ها و پیش‌نویس‌ها', <DescriptionIcon />, '#6366f1'),
+      comingSoon('/contracts-drafts', 'contracts-drafts', 'پیش‌نویس‌ها', <FactCheckIcon />, '#64748b'),
+      comingSoon('/contracts-approvals', 'contracts-approvals', 'در انتظار تأیید', <RuleIcon />, '#f59e0b'),
+    ],
+  },
+  {
+    id: 'contracts-finance',
+    title: 'مالی قرارداد',
+    color: '#3b82f6',
+    items: [
+      comingSoon('/contracts-invoices', 'contracts-invoices', 'فاکتورها', <ReceiptIcon />, '#10b981'),
+      comingSoon('/contracts-statements', 'contracts-statements', 'صورت‌وضعیت‌ها', <ReceiptLongIcon />, '#6366f1'),
+      comingSoon('/contracts-payments', 'contracts-payments', 'پرداخت‌ها', <PaymentsIcon />, '#8b5cf6'),
+      comingSoon('/contracts-guarantees', 'contracts-guarantees', 'تضامین', <LockIcon />, '#ef4444'),
+    ],
+  },
+  {
+    id: 'contracts-parties',
+    title: 'طرف‌های قرارداد',
+    color: '#0ea5e9',
+    items: [
+      comingSoon('/contract-parties', 'contract-parties-list', 'پیمانکاران و فروشندگان', <StorefrontIcon />, '#0ea5e9'),
+      comingSoon('/contract-parties-eval', 'contract-parties-eval', 'ارزیابی تأمین‌کنندگان', <AssessmentIcon />, '#f97316'),
+    ],
+  },
+  {
+    id: 'contracts-risks',
+    title: 'مدیریت ریسک',
+    color: '#ef4444',
+    items: [
+      comingSoon('/contracts-expiring', 'contracts-expiring', 'قراردادهای رو به انقضا', <WarningIcon />, '#ef4444'),
+      comingSoon('/contracts-alerts', 'contracts-alerts', 'هشدارها و یادآوری‌ها', <NotificationsActiveIcon />, '#f59e0b'),
+      comingSoon('/contracts-disputes', 'contracts-disputes', 'اختلافات و دعاوی', <GavelIcon />, '#8b5cf6'),
+    ],
+  },
+  {
+    id: 'contracts-config',
+    title: 'پیکربندی',
+    color: '#64748b',
+    items: [
       { id: 'signatories', title: 'صاحبان امضا', icon: <FactCheckOutlinedIcon />, path: '/settings?tab=management', color: '#10b981', primary: false, ready: true },
+      comingSoon('/contracts-workflow', 'contracts-workflow', 'گردشکار تأیید', <SwapHorizIcon />, '#6366f1'),
+      comingSoon('/contracts-types', 'contracts-types', 'انواع قرارداد', <CategoryIcon />, '#14b8a6'),
+    ],
+  },
+  {
+    id: 'contracts-docs',
+    title: 'ارتباطات و اسناد',
+    color: '#06b6d4',
+    items: [
       { id: 'correspondences-c', title: 'مکاتبات', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
+      comingSoon('/contracts-documents', 'contracts-docs', 'بایگانی اسناد قرارداد', <FolderSharedIcon />, '#f97316'),
     ],
   },
 ];
