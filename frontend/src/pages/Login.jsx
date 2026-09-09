@@ -55,7 +55,7 @@ const Login = () => {
         const single = companies[0];
         CompanyEngine.setStoredCompany(single);
         setCurrentCompany(single);
-        navigate('/dashboard');
+        navigate('/app-select');
         return;
       }
 
@@ -68,7 +68,7 @@ const Login = () => {
       }
 
       // No companies at all (shouldn't happen for normal users).
-      navigate('/dashboard');
+      navigate('/app-select');
     } catch (err) {
       setError(typeof err === 'string' ? err : (err.response?.data?.error || t('auth.loginError')));
     } finally {
@@ -90,7 +90,7 @@ const Login = () => {
 
       CompanyEngine.setStoredCompany(data.company || selectedCompany);
       setCurrentCompany(data.company || selectedCompany);
-      navigate('/dashboard');
+      navigate('/app-select');
     } catch (err) {
       setError(err.response?.data?.error || 'خطا در ورود به شرکت');
     } finally {

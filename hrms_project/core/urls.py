@@ -3,6 +3,7 @@ URL configuration for the core app.
 """
 from django.urls import path
 from core import views
+from core import application_views
 
 urlpatterns = [
     # Authentication
@@ -23,6 +24,10 @@ urlpatterns = [
 
     # Audit Logs
     path('audit-logs/', views.audit_log_list_view, name='api-audit-logs'),
+
+    # Applications (multi-app platform)
+    path('applications/', application_views.applications_view, name='api-applications'),
+    path('applications/switch/', application_views.switch_application_view, name='api-applications-switch'),
 
     # Users & roles
     path('users/', views.users_view, name='api-users'),

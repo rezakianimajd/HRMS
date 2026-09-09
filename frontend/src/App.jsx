@@ -5,6 +5,7 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './core/context/AuthContext';
 import { CompanyProvider } from './core/context/CompanyContext';
+import { ApplicationProvider } from './core/context/ApplicationContext';
 import { LanguageProvider } from './core/context/LanguageContext';
 import { ThemeProvider as AppThemeProvider, useThemeMode } from './core/context/ThemeContext';
 import useLanguage from './core/hooks/useLanguage';
@@ -479,9 +480,11 @@ function App() {
         <AppThemeProvider>
           <AuthProvider>
             <CompanyProvider>
-              <LanguageProvider>
-                <ThemedApp />
-              </LanguageProvider>
+              <ApplicationProvider>
+                <LanguageProvider>
+                  <ThemedApp />
+                </LanguageProvider>
+              </ApplicationProvider>
             </CompanyProvider>
           </AuthProvider>
         </AppThemeProvider>

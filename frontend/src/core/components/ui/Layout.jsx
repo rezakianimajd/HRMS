@@ -18,6 +18,7 @@ import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
 import NotificationBell from './NotificationBell';
+import AppSwitcher from './AppSwitcher';
 import menuConfig from '../../config/menuConfig';
 
 const DRAWER_WIDTH = 290;
@@ -123,6 +124,9 @@ const Layout = ({ children }) => {
             <Typography variant="subtitle1" fontWeight={800} noWrap sx={{ letterSpacing: '-0.2px' }}>{companyName}</Typography>
             <Box sx={{ mt: 0.25 }}>
               <CompanySwitcher />
+            </Box>
+            <Box sx={{ mt: 0.5 }}>
+              <AppSwitcher />
             </Box>
           </Box>
         )}

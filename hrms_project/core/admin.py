@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import User
 from django.db import connection
 from django.utils.translation import gettext_lazy as _
-from core.models import Company, Domain, AuditLog
+from core.models import Company, Domain, AuditLog, Application
 from core.models.user import UserProfile
 
 
@@ -63,6 +63,13 @@ class UserProfileAdmin(admin.ModelAdmin):
     list_filter = ['role']
     search_fields = ['user__username', 'phone']
     filter_horizontal = ['companies']
+
+
+@admin.register(Application)
+class ApplicationAdmin(admin.ModelAdmin):
+    list_display = ['title', 'slug', 'icon', 'color', 'order', 'is_active']
+    list_editable = ['order', 'is_active']
+    search_fields = ['title', 'slug']
 
 
 @admin.register(Domain)

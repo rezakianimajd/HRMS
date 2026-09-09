@@ -109,6 +109,20 @@ class UserProfile(models.Model):
         related_name='active_users',
         verbose_name=_('شرکت جاری'),
     )
+    applications = models.ManyToManyField(
+        'core.Application',
+        blank=True,
+        related_name='users',
+        verbose_name=_('سامانه‌های مجاز'),
+    )
+    current_application = models.ForeignKey(
+        'core.Application',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='active_users',
+        verbose_name=_('سامانهٔ جاری'),
+    )
     phone = models.CharField(
         max_length=15,
         blank=True,

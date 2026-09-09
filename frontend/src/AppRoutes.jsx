@@ -39,6 +39,7 @@ import ManagementAnalyticsPage from './pages/ManagementAnalyticsPage';
 import BaleMessagingPage from './pages/BaleMessagingPage';
 import RecruitmentPage from './pages/RecruitmentPage';
 import AppraisalPage from './pages/AppraisalPage';
+import AppSelectPage from './pages/AppSelectPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -74,6 +75,7 @@ const AppRoutes = () => {
     <Routes>
       {/* Public routes */}
       <Route path="/login" element={<Login />} />
+      <Route path="/app-select" element={<AppSelectPage />} />
 
       {/* Protected routes with layout */}
       <Route path="/dashboard" element={<ProtectedLayout><DashboardPage /></ProtectedLayout>} />
