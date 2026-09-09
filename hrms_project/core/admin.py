@@ -39,23 +39,6 @@ class CompanyAdmin(admin.ModelAdmin):
             'fields': ('logo', 'created_at', 'updated_at')
         }),
     )
-    list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'code', 'schema_name', 'email']
-    readonly_fields = ['created_at', 'updated_at']
-    fieldsets = (
-        (_('اطلاعات پایه'), {
-            'fields': ('name', 'code', 'schema_name', 'is_active')
-        }),
-        (_('اطلاعات تماس'), {
-            'fields': ('email', 'phone', 'address', 'postal_code')
-        }),
-        (_('اطلاعات حقوقی'), {
-            'fields': ('national_id', 'economic_code', 'registration_number')
-        }),
-        (_('لوگو و سایر'), {
-            'fields': ('logo', 'created_at', 'updated_at')
-        }),
-    )
 
 
 class UserProfileInline(admin.StackedInline):
