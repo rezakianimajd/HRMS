@@ -1,6 +1,9 @@
 from django.contrib import admin
+from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
+from django.contrib.auth.models import User
 from django.utils.translation import gettext_lazy as _
 from core.models import Company, Domain, AuditLog
+from core.models.user import UserProfile
 
 
 @admin.register(Company)
@@ -23,6 +26,30 @@ class CompanyAdmin(admin.ModelAdmin):
             'fields': ('logo', 'created_at', 'updated_at')
         }),
     )
+
+
+class UserProfileInline(admin.StackedInline):
+    model = UserProfile
+    can_delete = False
+    fk_name = 'user'
+    extra = 0
+
+
+class CustomUserAdmin(DjangoUserAdmin):
+    inlines = [UserProfileInline]
+    list_display = ['username', 'email', 'first_name', 'last_name', 'is_staff', 'is_active']
+
+
+admin.site.unregister(User)
+admin.site.register(User, CustomUserAdmin)
+
+
+@admin.register(UserProfile)
+class UserProfileAdmin(admin.ModelAdmin):
+    list_display = ['user', 'role', 'phone', 'created_at']
+    list_filter = ['role']
+    search_fields = ['user__username', 'phone']
+    filter_horizontal = ['companies']
 
 
 @admin.register(Domain)
