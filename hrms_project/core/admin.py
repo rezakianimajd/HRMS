@@ -1,6 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.models import User
+from django.db import connection
 from django.utils.translation import gettext_lazy as _
 from core.models import Company, Domain, AuditLog
 from core.models.user import UserProfile
@@ -9,6 +10,35 @@ from core.models.user import UserProfile
 @admin.register(Company)
 class CompanyAdmin(admin.ModelAdmin):
     list_display = ['name', 'code', 'schema_name', 'email', 'phone', 'is_active', 'created_at']
+    search_fields = ['name', 'code', 'schema_name', 'email']
+    list_filter = ['is_active', 'created_at']
+    readonly_fields = ['created_at', 'updated_at']
+
+    def save_model(self, request, obj, form, change):
+        """Run tenant creation on the PUBLIC schema only."""
+        connection.set_schema_to_public()
+        if not obj.schema_name:
+            obj.schema_name = (obj.code or '').lower() or obj.name.lower()
+        super().save_model(request, obj, form, change)
+
+    def delete_model(self, request, obj):
+        connection.set_schema_to_public()
+        super().delete_model(request, obj)
+
+    fieldsets = (
+        (_('اطلاعات پایه'), {
+            'fields': ('name', 'code', 'schema_name', 'is_active')
+        }),
+        (_('اطلاعات تماس'), {
+            'fields': ('email', 'phone', 'address', 'postal_code')
+        }),
+        (_('اطلاعات حقوقی'), {
+            'fields': ('national_id', 'economic_code', 'registration_number')
+        }),
+        (_('لوگو و سایر'), {
+            'fields': ('logo', 'created_at', 'updated_at')
+        }),
+    )
     list_filter = ['is_active', 'created_at']
     search_fields = ['name', 'code', 'schema_name', 'email']
     readonly_fields = ['created_at', 'updated_at']
