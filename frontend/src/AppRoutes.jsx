@@ -37,6 +37,8 @@ import LifecyclePage from './pages/LifecyclePage';
 import ContractsPage from './pages/ContractsPage';
 import ManagementAnalyticsPage from './pages/ManagementAnalyticsPage';
 import BaleMessagingPage from './pages/BaleMessagingPage';
+import RecruitmentPage from './pages/RecruitmentPage';
+import AppraisalPage from './pages/AppraisalPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -110,6 +112,8 @@ const AppRoutes = () => {
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
       <Route path="/management-analytics" element={<ProtectedLayout><ManagementAnalyticsPage /></ProtectedLayout>} />
       <Route path="/bale-messaging" element={<ProtectedLayout><BaleMessagingPage /></ProtectedLayout>} />
+      <Route path="/recruitment" element={<ProtectedLayout><RecruitmentPage /></ProtectedLayout>} />
+      <Route path="/appraisal" element={<ProtectedLayout><AppraisalPage /></ProtectedLayout>} />
       <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />
       <Route path="/users" element={<ProtectedLayout><UsersPage /></ProtectedLayout>} />
       <Route path="/audit" element={<ProtectedLayout><AuditPage /></ProtectedLayout>} />

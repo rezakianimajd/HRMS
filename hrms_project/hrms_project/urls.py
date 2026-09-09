@@ -34,6 +34,8 @@ urlpatterns = [
     path('api/', include('leaves.urls')),
     path('api/', include('notifications.urls')),
     path('api/', include('lifecycle.urls')),
+    path('api/', include('recruitment.urls')),
+    path('api/', include('appraisal.urls')),
 ]
 
 if settings.DEBUG:

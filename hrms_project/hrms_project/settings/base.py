@@ -63,6 +63,8 @@ TENANT_APPS = [
     'correspondences',
     'notifications',                   # Notification Center
     'lifecycle',                       # Employee lifecycle (on/offboarding, assets, calendar)
+    'recruitment',                     # Recruitment & candidate pipeline
+    'appraisal',                       # Performance appraisal cycles & history
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]

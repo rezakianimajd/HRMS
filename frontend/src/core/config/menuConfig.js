@@ -13,6 +13,8 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
+import PersonSearchIcon from '@mui/icons-material/PersonSearch';
+import FactCheckOutlinedIcon from '@mui/icons-material/FactCheckOutlined';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
@@ -59,6 +61,7 @@ const menuConfig = [
       { id: 'phonebook', title: 'دفترچه تلفن', icon: <PhoneInTalkIcon />, path: '/phonebook', color: '#10b981', primary: false, ready: true },
       { id: 'advanced-search', title: 'جستجوی پیشرفته', icon: <ManageSearchIcon />, path: '/search', color: '#f59e0b', primary: false, ready: true },
       { id: 'contracts', title: 'قراردادها', icon: <HistoryEduIcon />, path: '/contracts', color: '#f59e0b', primary: false, ready: true },
+      { id: 'recruitment', title: 'جذب و استخدام', icon: <PersonSearchIcon />, path: '/recruitment', color: '#0ea5e9', primary: false, ready: true },
     ],
   },
   {
@@ -113,6 +116,7 @@ const menuConfig = [
     items: [
       { id: 'scoring', title: 'امتیازدهی و ارزیابی', icon: <LeaderboardIcon />, path: '/scoring', color: '#3b82f6', primary: true, ready: true },
       { id: 'management-analytics', title: 'داشبورد مدیریتی', icon: <InsightsIcon />, path: '/management-analytics', color: '#3b82f6', primary: false, ready: true },
+      { id: 'appraisal', title: 'ارزیابی عملکرد', icon: <FactCheckOutlinedIcon />, path: '/appraisal', color: '#10b981', primary: false, ready: true },
       { id: 'assistant', title: 'دستیار هوشمند', icon: <PsychologyIcon />, path: '/assistant', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
