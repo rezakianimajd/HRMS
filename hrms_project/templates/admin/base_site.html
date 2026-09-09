@@ -1,0 +1,74 @@
+{% extends "admin/base.html" %}
+{% load i18n %}
+
+{% block title %}{% if subtitle %}{{ subtitle }} | {% endif %}{{ title }} | مدیریت منابع انسانی HRMS{% endblock %}
+
+{% block extrahead %}
+{{ block.super }}
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --hrms-primary: #6366f1;
+    --hrms-primary-dark: #4338ca;
+    --hrms-accent: #8b5cf6;
+    --hrms-bg: #f4f5fb;
+  }
+  body {
+    font-family: 'Vazirmatn', Tahoma, sans-serif !important;
+    background: var(--hrms-bg) !important;
+  }
+  #header {
+    background: linear-gradient(135deg, var(--hrms-primary), var(--hrms-accent)) !important;
+    color: #fff !important;
+    box-shadow: 0 4px 20px rgba(99, 102, 241, 0.35);
+  }
+  #branding h1, #branding h1 a:link, #branding h1 a:visited {
+    color: #fff !important;
+    font-weight: 700;
+  }
+  #header a:link, #header a:visited { color: #eef2ff; }
+  .module h2, .module caption, .inline-group h2 {
+    background: linear-gradient(135deg, var(--hrms-primary), var(--hrms-accent)) !important;
+    color: #fff !important;
+  }
+  .object-tools a:link, .object-tools a:visited {
+    background: var(--hrms-primary) !important;
+    border-radius: 6px;
+  }
+  .button, input[type="submit"], input[type="button"], .submit-row input {
+    background: var(--hrms-primary) !important;
+    border-radius: 6px;
+  }
+  .button.default, input[type="submit"].default, .submit-row input.default {
+    background: var(--hrms-primary-dark) !important;
+  }
+  .breadcrumbs {
+    background: #eef2ff !important;
+    color: var(--hrms-primary-dark) !important;
+  }
+  .breadcrumbs a { color: var(--hrms-primary-dark) !important; }
+  #content {
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 4px 18px rgba(99, 102, 241, 0.06);
+  }
+  a:link, a:visited { color: var(--hrms-primary-dark); }
+  #nav-sidebar .current-model { background: #eef2ff; }
+  .login #header { padding: 24px 40px; }
+</style>
+<script>
+  document.documentElement.setAttribute('dir', 'rtl');
+  document.documentElement.setAttribute('lang', 'fa');
+  document.body.setAttribute('dir', 'rtl');
+</script>
+{% endblock %}
+
+{% block branding %}
+<div id="site-name">
+  <a href="{% url 'admin:index' %}">🏢 مدیریت منابع انسانی HRMS</a>
+</div>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
