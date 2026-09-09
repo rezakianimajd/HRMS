@@ -148,7 +148,7 @@ const contractsMenu = [
     title: 'قراردادها',
     color: '#f97316',
     items: [
-      { id: 'contracts', title: 'قراردادها و نسخه‌بندی', icon: <HistoryEduIcon />, path: '/contracts', color: '#f59e0b', primary: false, ready: true },
+      { id: 'external-contracts', title: 'قراردادهای برون‌سازمانی', icon: <HistoryEduIcon />, path: '/external-contracts', color: '#f59e0b', primary: false, ready: true },
       { id: 'signatories', title: 'صاحبان امضا', icon: <FactCheckOutlinedIcon />, path: '/settings?tab=management', color: '#10b981', primary: false, ready: true },
       { id: 'correspondences-c', title: 'مکاتبات', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
     ],

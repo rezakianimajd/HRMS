@@ -1,0 +1,1 @@
+# Contract management module (procurement / purchase / tenders).
