@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -41,8 +41,46 @@ const EMPTY = {
 const ContractNewPage = () => {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { id } = useParams();
   const [form, setForm] = useState(EMPTY);
   const [message, setMessage] = useState(null);
+  const isEdit = Boolean(id);
+
+  const { data: existing } = useQuery({
+    queryKey: ['external-contract-edit', id],
+    queryFn: () => axiosInstance.get(`/external-contracts/${id}/`).then(r => r.data),
+    enabled: isEdit,
+  });
+
+  useEffect(() => {
+    if (existing) {
+      setForm({
+        number: existing.number || '',
+        subject: existing.subject || '',
+        party: existing.party || '',
+        contract_type: existing.contract_type || 'purchase',
+        status: existing.status || 'draft',
+        amount: existing.amount ?? '',
+        start_date: existing.start_date || '',
+        end_date: existing.end_date || '',
+        signing_date: existing.signing_date || '',
+        signatory: existing.signatory || '',
+        guarantee_amount: existing.guarantee_amount ?? '',
+        category: existing.category || '',
+        project_name: existing.project_name || '',
+        project_location: existing.project_location || '',
+        tender_number: existing.tender_number || '',
+        advance_payment: existing.advance_payment ?? '',
+        retention_percent: existing.retention_percent ?? '',
+        warranty_period: existing.warranty_period || '',
+        payment_terms: existing.payment_terms || '',
+        delivery_terms: existing.delivery_terms || '',
+        penalty_terms: existing.penalty_terms || '',
+        insurance_terms: existing.insurance_terms || '',
+        description: existing.description || '',
+      });
+    }
+  }, [existing]);
 
   const { data: parties } = useQuery({ queryKey: ['contract-parties'], queryFn: () => axiosInstance.get('/contract-parties/').then(r => r.data) });
   const partyList = Array.isArray(parties) ? parties : parties?.results || [];
@@ -51,11 +89,14 @@ const ContractNewPage = () => {
   const signatoryList = Array.isArray(signatories) ? signatories : signatories?.results || [];
 
   const create = useMutation({
-    mutationFn: (payload) => axiosInstance.post('/external-contracts/', payload),
+    mutationFn: (payload) =>
+      isEdit
+        ? axiosInstance.patch(`/external-contracts/${id}/`, payload)
+        : axiosInstance.post('/external-contracts/', payload),
     onSuccess: () => {
-      setMessage({ ok: true, text: 'قرارداد با موفقیت ثبت شد ✓' });
+      setMessage({ ok: true, text: isEdit ? 'قرارداد با موفقیت ویرایش شد ✓' : 'قرارداد با موفقیت ثبت شد ✓' });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
-      setTimeout(() => navigate('/external-contracts'), 1200);
+      setTimeout(() => navigate(isEdit ? `/external-contracts/${id}` : '/external-contracts'), 1200);
     },
     onError: (e) => setMessage({ ok: false, text: e.response?.data?.error || 'خطا در ثبت قرارداد' }),
   });
@@ -106,7 +147,7 @@ const ContractNewPage = () => {
           <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">قرارداد جدید</Typography>
+          <Typography variant="h6" fontWeight={800} color="#b45309">{isEdit ? 'ویرایش قرارداد' : 'قرارداد جدید'}</Typography>
           <Typography variant="body2" color="textSecondary">ثبت کامل قرارداد با جزئیات حقوقی، مالی و اجرایی — تاریخ‌ها شمسی</Typography>
         </Box>
         <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>

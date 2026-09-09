@@ -161,7 +161,10 @@ const ContractProfilePage = () => {
       {/* Navigation */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Button variant="text" onClick={() => navigate('/external-contracts')}>بازگشت</Button>
-        <Button variant="contained" onClick={() => navigate('/contracts/new')}>قرارداد جدید</Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Button variant="contained" onClick={() => navigate(`/contracts/${id}/edit`)}>ویرایش</Button>
+          <Button variant="contained" onClick={() => navigate('/contracts/new')}>قرارداد جدید</Button>
+        </Box>
       </Box>
 
       {/* Glass Hero Card */}

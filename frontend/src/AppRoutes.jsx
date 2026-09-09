@@ -123,6 +123,7 @@ const AppRoutes = () => {
       <Route path="/external-contracts" element={<ProtectedLayout><ExternalContractsPage /></ProtectedLayout>} />
       <Route path="/contract-parties" element={<ProtectedLayout><ContractPartiesPage /></ProtectedLayout>} />
       <Route path="/contracts/new" element={<ProtectedLayout><ContractNewPage /></ProtectedLayout>} />
+      <Route path="/contracts/:id/edit" element={<ProtectedLayout><ContractNewPage /></ProtectedLayout>} />
       <Route path="/external-contracts/:id" element={<ProtectedLayout><ContractProfilePage /></ProtectedLayout>} />
       <Route path="/contracts-guarantees" element={<ProtectedLayout><GuaranteesPage /></ProtectedLayout>} />
       <Route path="/management-analytics" element={<ProtectedLayout><ManagementAnalyticsPage /></ProtectedLayout>} />
