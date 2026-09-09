@@ -309,23 +309,35 @@ CSRF_COOKIE_SECURE = not DEBUG
 # See: https://code.djangoproject.com/ticket/36031
 # Kept in base.py so it applies in BOTH development and production.
 # =============================================================================
+import copy as _copy
 import django.template.context
 
-def _fixed_basecontext_copy(self):
-    """Fixed __copy__ for Python 3.14+ compatibility.
 
-    IMPORTANT: we must NOT call copy.copy(self) here, because
-    BaseContext.__copy__ is overridden by this very function, which would
-    re-enter it and cause infinite recursion (RecursionError) in admin.
-    Instead we build a brand-new instance and assign `dicts` directly.
+def _fixed_basecontext_copy(self):
+    """Fixed ``BaseContext.__copy__`` for Python 3.14+ / Django 5.0.
+
+    Python 3.14 changed ``object.__copy__`` handling in a way that makes
+    Django's stock ``BaseContext.__copy__`` recurse infinitely. We must also
+    preserve ``render_context`` (which is a ``RenderContext`` carrying
+    ``push_state``/``pop_state``) — otherwise the admin raises:
+        AttributeError: 'Context' object has no attribute 'push_state'
     """
-    # Instantiate with a dummy context dict so __init__ runs cleanly.
-    # The exact constructor signature is (dict_, current_app=None).
-    duplicate = django.template.context.Context(
-        self.dicts[0] if self.dicts else {},
-    )
-    # Replace the deep context stack with a shallow copy of ours.
+    # Build a fresh instance via __new__ (NOT __init__) so we do not need a
+    # ``request`` for RequestContext and do NOT re-enter __copy__.
+    duplicate = self.__class__.__new__(self.__class__)
+
     duplicate.dicts = self.dicts[:]
+
+    if hasattr(self, 'render_context'):
+        duplicate.render_context = _copy.copy(self.render_context)
+    if hasattr(self, '_render_context'):
+        duplicate._render_context = _copy.copy(self._render_context)
+
+    for attr in ('wrapped', 'template', 'token'):
+        if hasattr(self, attr):
+            setattr(duplicate, attr, getattr(self, attr))
+
     return duplicate
+
 
 django.template.context.BaseContext.__copy__ = _fixed_basecontext_copy
