@@ -173,7 +173,14 @@ class Addendum(BaseModel):
 
 
 class Guarantee(BaseModel):
-    """ضمانت‌نامه / سپرده associated with a contract."""
+    """ضمانت / چک / سفته associated with a contract.
+
+    Instrument kinds:
+      - check             چک
+      - promissory        سفته
+      - bank_guarantee    ضمانت‌نامه بانکی
+    Lifecycle actions depend on the kind.
+    """
 
     class GuaranteeType(models.TextChoices):
         PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
@@ -181,15 +188,42 @@ class Guarantee(BaseModel):
         BID = 'bid', _('ضمانت شرکت در مناقصه')
         OTHER = 'other', _('سایر')
 
+    class InstrumentType(models.TextChoices):
+        CHECK = 'check', _('چک')
+        PROMISSORY = 'promissory', _('سفته')
+        BANK_GUARANTEE = 'bank_guarantee', _('ضمانت‌نامه بانکی')
+        CHECK_AND_GUARANTEE = 'check_and_guarantee', _('چک + ضمانت‌نامه')
+        PROMISSORY_AND_GUARANTEE = 'promissory_and_guarantee', _('سفته + ضمانت‌نامه')
+
+    class LifecycleAction(models.TextChoices):
+        RETURNED = 'returned', _('استرداد')
+        EXECUTED = 'executed', _('اجرا / ضبط')
+        CANCELED = 'canceled', _('ابطال')
+        EXTENDED = 'extended', _('تمدید')
+
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='guarantees', verbose_name=_('قرارداد'))
     guarantee_type = models.CharField(max_length=20, choices=GuaranteeType.choices, default=GuaranteeType.PERFORMANCE, verbose_name=_('نوع تضمین'))
+    instrument_type = models.CharField(max_length=40, choices=InstrumentType.choices, default=InstrumentType.CHECK, verbose_name=_('نوع ابزار تضمین'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره'))
     amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
     issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
     expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
     bank = models.CharField(max_length=100, blank=True, verbose_name=_('بانک صادرکننده'))
+    # چک و سفته: تاریخ سررسید / ضمانت‌نامه: تاریخ انقضا مشترکاً از expiry_date استفاده می‌شود،
+    # اما برای وضوح فیلدهای زیر اضافه شده‌اند:
+    check_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره چک'))
+    check_bank = models.CharField(max_length=100, blank=True, verbose_name=_('بانک چک'))
+    check_due_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ سررسید چک'))
+    promissory_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره سفته'))
+    promissory_due_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ سررسید سفته'))
+    guarantee_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره ضمانت‌نامه'))
+    guarantee_expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضای ضمانت‌نامه'))
+
     is_released = models.BooleanField(default=False, verbose_name=_('آزاد شده'))
     release_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ آزادسازی'))
+    # آخرین اقدام چرخهٔ عمر (استرداد/اجرا/ابطال/تمدید)
+    last_action = models.CharField(max_length=20, choices=LifecycleAction.choices, blank=True, verbose_name=_('آخرین اقدام'))
+    last_action_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ آخرین اقدام'))
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
 
     class Meta:

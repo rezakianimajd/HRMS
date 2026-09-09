@@ -166,12 +166,44 @@ class GuaranteeViewSet(BaseContractViewSet):
     @action(detail=True, methods=['post'])
     def release(self, request, pk=None):
         """Release a guarantee and record the release date."""
-        from django.utils import timezone
         from datetime import date
         obj = self.get_object()
         obj.is_released = True
         obj.release_date = request.data.get('release_date') or date.today().isoformat()
-        obj.save(update_fields=['is_released', 'release_date', 'updated_at'])
+        obj.last_action = 'returned'
+        obj.last_action_date = date.today().isoformat()
+        obj.save(update_fields=['is_released', 'release_date', 'last_action', 'last_action_date', 'updated_at'])
+        return Response(GuaranteeSerializer(obj, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def lifecycle(self, request, pk=None):
+        """Apply a lifecycle action (returned/executed/canceled/extended)."""
+        from datetime import date
+        obj = self.get_object()
+        action = request.data.get('action')
+        valid = {'returned', 'executed', 'canceled', 'extended'}
+        if action not in valid:
+            return Response({'error': 'اقدام نامعتبر است.'}, status=400)
+
+        if action != 'extended':
+            obj.is_released = True
+        else:
+            obj.is_released = False
+
+        obj.last_action = action
+        obj.last_action_date = request.data.get('date') or date.today().isoformat()
+
+        # For extension, optionally push the expiry date forward.
+        new_expiry = request.data.get('new_expiry_date')
+        if action == 'extended' and new_expiry:
+            obj.expiry_date = new_expiry
+            if obj.instrument_type in ('bank_guarantee', 'check_and_guarantee', 'promissory_and_guarantee'):
+                obj.guarantee_expiry_date = new_expiry
+
+        update_fields = ['is_released', 'last_action', 'last_action_date', 'updated_at']
+        if action == 'extended' and new_expiry:
+            update_fields += ['expiry_date', 'guarantee_expiry_date']
+        obj.save(update_fields=update_fields)
         return Response(GuaranteeSerializer(obj, context={'request': request}).data)
 
 

@@ -44,14 +44,20 @@ class AddendumSerializer(serializers.ModelSerializer):
 
 class GuaranteeSerializer(serializers.ModelSerializer):
     guarantee_type_display = serializers.CharField(source='get_guarantee_type_display', read_only=True)
+    instrument_type_display = serializers.CharField(source='get_instrument_type_display', read_only=True)
+    last_action_display = serializers.CharField(source='get_last_action_display', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
 
     class Meta:
         model = Guarantee
         fields = [
-            'id', 'contract', 'contract_subject', 'guarantee_type', 'guarantee_type_display', 'number',
-            'amount', 'issue_date', 'expiry_date', 'bank', 'is_released',
-            'release_date', 'note',
+            'id', 'contract', 'contract_subject', 'guarantee_type', 'guarantee_type_display',
+            'instrument_type', 'instrument_type_display', 'number', 'amount',
+            'issue_date', 'expiry_date', 'bank', 'is_released', 'release_date',
+            'check_number', 'check_bank', 'check_due_date',
+            'promissory_number', 'promissory_due_date',
+            'guarantee_number', 'guarantee_expiry_date',
+            'last_action', 'last_action_display', 'last_action_date', 'note',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
