@@ -146,13 +146,33 @@ class AddendumViewSet(BaseContractViewSet):
 class GuaranteeViewSet(BaseContractViewSet):
     serializer_class = GuaranteeSerializer
     queryset = Guarantee.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['number', 'bank', 'contract__subject']
+    ordering = ['-expiry_date']
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related('contract', 'contract__party')
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
+        guarantee_type = self.request.query_params.get('guarantee_type')
+        if guarantee_type:
+            qs = qs.filter(guarantee_type=guarantee_type)
+        only_active = self.request.query_params.get('active')
+        if only_active in ('true', '1'):
+            qs = qs.filter(is_released=False)
         return qs
+
+    @action(detail=True, methods=['post'])
+    def release(self, request, pk=None):
+        """Release a guarantee and record the release date."""
+        from django.utils import timezone
+        from datetime import date
+        obj = self.get_object()
+        obj.is_released = True
+        obj.release_date = request.data.get('release_date') or date.today().isoformat()
+        obj.save(update_fields=['is_released', 'release_date', 'updated_at'])
+        return Response(GuaranteeSerializer(obj, context={'request': request}).data)
 
 
 class PaymentViewSet(BaseContractViewSet):

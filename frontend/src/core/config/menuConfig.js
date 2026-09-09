@@ -180,7 +180,7 @@ const contractsMenu = [
       comingSoon('/contracts-invoices', 'contracts-invoices', 'فاکتورها', <ReceiptIcon />, '#10b981'),
       comingSoon('/contracts-statements', 'contracts-statements', 'صورت‌وضعیت‌ها', <ReceiptLongIcon />, '#6366f1'),
       comingSoon('/contracts-payments', 'contracts-payments', 'پرداخت‌ها', <PaymentsIcon />, '#8b5cf6'),
-      comingSoon('/contracts-guarantees', 'contracts-guarantees', 'تضامین', <LockIcon />, '#ef4444'),
+      { id: 'contracts-guarantees', title: 'تضامین', icon: <LockIcon />, path: '/contracts-guarantees', color: '#ef4444', primary: false, ready: true },
     ],
   },
   {

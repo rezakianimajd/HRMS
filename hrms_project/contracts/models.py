@@ -189,6 +189,8 @@ class Guarantee(BaseModel):
     expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
     bank = models.CharField(max_length=100, blank=True, verbose_name=_('بانک صادرکننده'))
     is_released = models.BooleanField(default=False, verbose_name=_('آزاد شده'))
+    release_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ آزادسازی'))
+    note = models.TextField(blank=True, verbose_name=_('یادداشت'))
 
     class Meta:
         verbose_name = _('تضمین')
