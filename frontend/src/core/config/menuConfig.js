@@ -134,4 +134,30 @@ const menuConfig = [
   },
 ];
 
+const contractsMenu = [
+  {
+    id: 'home',
+    title: 'خانه',
+    color: '#f59e0b',
+    items: [
+      { id: 'contracts-dashboard', title: 'داشبورد قراردادها', icon: <DashboardIcon />, path: '/contracts-dashboard', color: '#f59e0b', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'contracts-main',
+    title: 'قراردادها',
+    color: '#f97316',
+    items: [
+      { id: 'contracts', title: 'قراردادها و نسخه‌بندی', icon: <HistoryEduIcon />, path: '/contracts', color: '#f59e0b', primary: false, ready: true },
+      { id: 'signatories', title: 'صاحبان امضا', icon: <FactCheckOutlinedIcon />, path: '/settings?tab=management', color: '#10b981', primary: false, ready: true },
+      { id: 'correspondences-c', title: 'مکاتبات', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
+    ],
+  },
+];
+
+export function getMenuForApp(appSlug) {
+  if (appSlug === 'contracts') return contractsMenu;
+  return menuConfig;
+}
+
 export default menuConfig;

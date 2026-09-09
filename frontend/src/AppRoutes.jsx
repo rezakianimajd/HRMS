@@ -40,6 +40,7 @@ import BaleMessagingPage from './pages/BaleMessagingPage';
 import RecruitmentPage from './pages/RecruitmentPage';
 import AppraisalPage from './pages/AppraisalPage';
 import AppSelectPage from './pages/AppSelectPage';
+import ContractsDashboardPage from './pages/ContractsDashboardPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -112,6 +113,7 @@ const AppRoutes = () => {
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
+      <Route path="/contracts-dashboard" element={<ProtectedLayout><ContractsDashboardPage /></ProtectedLayout>} />
       <Route path="/management-analytics" element={<ProtectedLayout><ManagementAnalyticsPage /></ProtectedLayout>} />
       <Route path="/bale-messaging" element={<ProtectedLayout><BaleMessagingPage /></ProtectedLayout>} />
       <Route path="/recruitment" element={<ProtectedLayout><RecruitmentPage /></ProtectedLayout>} />

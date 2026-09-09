@@ -19,7 +19,8 @@ import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
 import NotificationBell from './NotificationBell';
 import AppSwitcher from './AppSwitcher';
-import menuConfig from '../../config/menuConfig';
+import menuConfig, { getMenuForApp } from '../../config/menuConfig';
+import { useApplication } from '../../context/ApplicationContext';
 
 const DRAWER_WIDTH = 290;
 const MINI_WIDTH = 82;
@@ -30,13 +31,15 @@ const Layout = ({ children }) => {
   const location = useLocation();
   const { user, logout } = useAuth();
   const { currentCompany } = useCompany();
+  const { currentApp } = useApplication();
+  const menu = getMenuForApp(currentApp?.slug);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(() => {
     // Auto-open the group of the active route on first render
     const path = window.location.pathname;
     const init = {};
-    menuConfig.forEach((g) => {
+    menu.forEach((g) => {
       init[g.id] = g.items.some((i) => path === i.path || path.startsWith(`${i.path}/`));
     });
     return init;
@@ -54,7 +57,7 @@ const Layout = ({ children }) => {
     setExpandedGroups((prev) => {
       const currentlyOpen = !!prev[id];
       const next = {};
-      menuConfig.forEach((g) => {
+      menu.forEach((g) => {
         next[g.id] = currentlyOpen ? false : g.id === id;
       });
       return next;
@@ -64,7 +67,7 @@ const Layout = ({ children }) => {
   useEffect(() => {
     // Keep a single group open that matches the active route (exclusive).
     let activeGroupId = null;
-    menuConfig.forEach((g) => {
+    menu.forEach((g) => {
       const isActive = g.items.some(
         (i) => location.pathname === i.path || location.pathname.startsWith(`${i.path}/`)
       );
@@ -75,7 +78,7 @@ const Layout = ({ children }) => {
     setExpandedGroups((prev) => {
       let changed = false;
       const next = { ...prev };
-      menuConfig.forEach((g) => {
+      menu.forEach((g) => {
         const shouldBe = g.id === activeGroupId;
         if (!!next[g.id] !== shouldBe) {
           next[g.id] = shouldBe;
@@ -134,7 +137,7 @@ const Layout = ({ children }) => {
 
       {/* Navigation — grouped work spaces */}
       <List sx={{ flex: 1, overflowY: 'auto', py: 1, px: 1 }}>
-        {menuConfig.map((group) => {
+        {menu.map((group) => {
           const groupActive = group.items.some((i) => isActive(i.path));
           const open = collapsed ? false : expandedGroups[group.id];
           const iconColor = group.color || '#6366f1';
