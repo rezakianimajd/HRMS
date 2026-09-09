@@ -1,5 +1,7 @@
 """Views for the Contracts module."""
 from rest_framework import viewsets, filters, parsers
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
     Addendum, Guarantee, Payment,
@@ -32,8 +34,39 @@ class ContractPartyViewSet(BaseContractViewSet):
     serializer_class = ContractPartySerializer
     queryset = ContractParty.objects.all()
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['name', 'national_id', 'mobile', 'email']
+    search_fields = ['name', 'national_id', 'mobile', 'email', 'economic_code', 'registration_number']
     ordering = ['name']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        party_type = self.request.query_params.get('party_type')
+        if party_type:
+            qs = qs.filter(party_type=party_type)
+        return qs
+
+    @action(detail=True, methods=['get'])
+    def summary(self, request, pk=None):
+        """Return a party's contracts and aggregated financial figures."""
+        from django.db.models import Sum, Count
+        party = self.get_object()
+        contracts = party.contracts.all()
+        total_amount = contracts.aggregate(s=Sum('amount'))['s'] or 0
+        active_count = contracts.filter(status='active').count()
+        stats = {
+            'contracts_count': contracts.count(),
+            'active_count': active_count,
+            'total_amount': total_amount,
+            'contracts': ContractSerializer(contracts, many=True).data,
+        }
+        return Response(stats)
+
+    @action(detail=True, methods=['post'])
+    def toggle_status(self, request, pk=None):
+        """Enable/disable a party (soft)."""
+        party = self.get_object()
+        party.is_active = not party.is_active
+        party.save(update_fields=['is_active', 'updated_at'])
+        return Response(ContractPartySerializer(party).data)
 
 
 class ContractViewSet(BaseContractViewSet):

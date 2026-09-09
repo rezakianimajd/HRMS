@@ -188,7 +188,7 @@ const contractsMenu = [
     title: 'طرف‌های قرارداد',
     color: '#0ea5e9',
     items: [
-      comingSoon('/contract-parties', 'contract-parties-list', 'پیمانکاران و فروشندگان', <StorefrontIcon />, '#0ea5e9'),
+      { id: 'contract-parties-list', title: 'پیمانکاران و فروشندگان', icon: <StorefrontIcon />, path: '/contract-parties', color: '#0ea5e9', primary: false, ready: true },
       comingSoon('/contract-parties-eval', 'contract-parties-eval', 'ارزیابی تأمین‌کنندگان', <AssessmentIcon />, '#f97316'),
     ],
   },
