@@ -53,7 +53,7 @@ const ContractsDashboardPage = () => {
   if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
 
   const card = (title, value, color, icon, suffix) => (
-    <Paper sx={{ p: 2.5, borderRadius: 3, background: 'rgba(255,255,255,0.65)', border: `1px solid ${color}22` }}>
+    <Paper sx={{ p: 2.5, borderRadius: 10, background: 'rgba(255,255,255,0.65)', border: `1px solid ${color}22` }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Avatar sx={{ width: 52, height: 52, background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
           {icon}
@@ -72,7 +72,7 @@ const ContractsDashboardPage = () => {
       <Paper sx={{
         p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
         background: 'linear-gradient(120deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.18)', borderRadius: 3,
+        border: '1px solid rgba(245,158,11,0.18)', borderRadius: 10,
       }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
           <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
@@ -82,7 +82,7 @@ const ContractsDashboardPage = () => {
           <Typography variant="body2" color="textSecondary">داشبورد وضعیت قراردادهای پیمانکاری، خرید و مناقصه</Typography>
         </Box>
         <Button variant="contained" onClick={() => navigate('/external-contracts')}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: 2 }}>
+          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: 10 }}>
           مشاهده قراردادها
         </Button>
       </Paper>
@@ -105,7 +105,7 @@ const ContractsDashboardPage = () => {
 
       {/* Expiring alerts */}
       {stats.expiring.length > 0 && (
-        <Paper sx={{ p: 2, mb: 3, borderRadius: 3, background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.25)' }}>
+        <Paper sx={{ p: 2, mb: 3, borderRadius: 10, background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.25)' }}>
           <Typography variant="subtitle1" fontWeight={800} color="error" sx={{ mb: 1 }}>
             ⚠️ قراردادهای رو به انقضا
           </Typography>
@@ -123,7 +123,7 @@ const ContractsDashboardPage = () => {
       )}
 
       {/* Recent contracts */}
-      <Paper sx={{ p: 2, borderRadius: 3, background: 'rgba(255,255,255,0.65)' }}>
+      <Paper sx={{ p: 2, borderRadius: 10, background: 'rgba(255,255,255,0.65)' }}>
         <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>آخرین قراردادها</Typography>
         {items.length === 0 ? (
           <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 3 }}>
@@ -132,7 +132,7 @@ const ContractsDashboardPage = () => {
         ) : (
           <Stack spacing={1}>
             {items.slice(0, 8).map(c => (
-              <Paper key={c.id} variant="outlined" sx={{ p: 1.5, borderRadius: 2.5, background: 'rgba(255,255,255,0.4)' }}>
+              <Paper key={c.id} variant="outlined" sx={{ p: 1.5, borderRadius: 10, background: 'rgba(255,255,255,0.4)' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   <Box sx={{ flex: 1, minWidth: 160 }}>
                     <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
