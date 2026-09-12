@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Container, TextField, Button, Typography, Paper, Alert,
-  CircularProgress, InputAdornment, IconButton, Avatar, Stack, Fade, Chip,
+  CircularProgress, InputAdornment, IconButton, Avatar, Stack, Fade,
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -14,20 +14,12 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import GroupsIcon from '@mui/icons-material/Groups';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AppsIcon from '@mui/icons-material/Apps';
-import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import useAuth from '../core/hooks/useAuth';
 import useCompany from '../core/hooks/useCompany';
 import { useApplication } from '../core/context/ApplicationContext';
 import CompanyEngine from '../core/engines/companyEngine';
 
-const KIAN_MEANINGS = [
-  { letter: 'K', fa: 'دانش' },
-  { letter: 'I', fa: 'یکپارچگی' },
-  { letter: 'A', fa: 'مدیریت' },
-  { letter: 'N', fa: 'اتوماسیون' },
-];
-
-const R = '5px';
+const R = '10px';
 
 const Login = () => {
   const { t } = useTranslation();
@@ -47,6 +39,11 @@ const Login = () => {
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
 
+  const goApplication = async () => {
+    await loadApplications();
+    setStep('application');
+  };
+
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -65,8 +62,7 @@ const Login = () => {
         const single = companies[0];
         CompanyEngine.setStoredCompany(single);
         setCurrentCompany(single);
-        await loadApplications();
-        setStep('application');
+        await goApplication();
         return;
       }
 
@@ -77,8 +73,7 @@ const Login = () => {
         return;
       }
 
-      await loadApplications();
-      setStep('application');
+      await goApplication();
     } catch (err) {
       setError(typeof err === 'string' ? err : (err.response?.data?.error || t('auth.loginError')));
     } finally {
@@ -98,8 +93,7 @@ const Login = () => {
       const data = await login(username, password, selectedCompany.id);
       CompanyEngine.setStoredCompany(data.company || selectedCompany);
       setCurrentCompany(data.company || selectedCompany);
-      await loadApplications();
-      setStep('application');
+      await goApplication();
     } catch (err) {
       setError(err.response?.data?.error || 'خطا در ورود به شرکت');
     } finally {
@@ -133,8 +127,6 @@ const Login = () => {
     setError('');
   };
 
-  const stepIndex = ['credentials', 'company', 'application'].indexOf(step);
-
   const activeApps = applications.filter(a => !a.is_coming_soon);
   const comingSoonApps = applications.filter(a => a.is_coming_soon);
 
@@ -156,13 +148,17 @@ const Login = () => {
       <Box sx={{ position: 'absolute', width: 360, height: 360, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(236,72,153,0.3)', bottom: '-6%', right: '-4%', animation: 'floatOrb 12s ease-in-out infinite reverse' }} />
       <Box sx={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(14,165,233,0.3)', bottom: '20%', left: '30%', animation: 'floatOrb 14s ease-in-out infinite' }} />
 
-      <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="xs" sx={{ position: 'relative', zIndex: 1 }}>
         <Fade in timeout={700}>
           <Paper
             elevation={0}
             sx={{
               p: { xs: 3, sm: 4 },
               borderRadius: R,
+              minHeight: 480,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
               background: 'rgba(255,255,255,0.06)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
@@ -170,84 +166,44 @@ const Login = () => {
               boxShadow: '0 30px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1)',
             }}
           >
-            {/* Brand header */}
+            {/* Brand header — logo centered + title under it */}
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 1.5 }}>
-                <Avatar
-                  sx={{
-                    width: 64,
-                    height: 64,
-                    borderRadius: R,
-                    background: 'linear-gradient(135deg, #818cf8, #ec4899)',
-                    boxShadow: '0 10px 30px rgba(129,140,248,0.5)',
-                  }}
-                >
-                  <GroupsIcon sx={{ fontSize: 34, color: '#fff' }} />
-                </Avatar>
-                <Box sx={{ textAlign: 'right' }}>
-                  <Typography
-                    variant="h4"
-                    component="h1"
-                    fontWeight={900}
-                    sx={{
-                      background: 'linear-gradient(90deg, #e0e7ff, #fbcfe8, #bae6fd)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                      lineHeight: 1.2,
-                    }}
-                  >
-                    کیان
-                  </Typography>
-                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
-                    پلتفرم یکپارچه مدیریت و عملیات سازمانی
-                  </Typography>
-                </Box>
-              </Box>
-
-              {/* KIAN acronym in Persian */}
-              <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
-                {KIAN_MEANINGS.map((l) => (
-                  <Chip
-                    key={l.letter}
-                    size="small"
-                    label={`${l.letter} · ${l.fa}`}
-                    sx={{
-                      borderRadius: R,
-                      bgcolor: 'rgba(255,255,255,0.08)',
-                      color: '#c7d2fe',
-                      border: '1px solid rgba(129,140,248,0.3)',
-                      fontWeight: 600,
-                      fontSize: 11,
-                    }}
-                  />
-                ))}
-              </Stack>
+              <Avatar
+                sx={{
+                  width: 72,
+                  height: 72,
+                  mx: 'auto',
+                  mb: 1.5,
+                  borderRadius: R,
+                  background: 'linear-gradient(135deg, #818cf8, #ec4899)',
+                  boxShadow: '0 10px 30px rgba(129,140,248,0.5)',
+                }}
+              >
+                <GroupsIcon sx={{ fontSize: 38, color: '#fff' }} />
+              </Avatar>
+              <Typography
+                variant="h5"
+                component="h1"
+                fontWeight={900}
+                sx={{
+                  background: 'linear-gradient(90deg, #e0e7ff, #fbcfe8, #bae6fd)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                }}
+              >
+                کیان
+              </Typography>
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', mt: 0.5 }}>
+                پلتفرم جامع مدیریت و عملیات کیان
+              </Typography>
             </Box>
-
-            {/* Step indicator */}
-            <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 3 }}>
-              {['ورود', 'شرکت', 'ماژول'].map((label, i) => (
-                <Chip
-                  key={label}
-                  size="small"
-                  label={`${i + 1} · ${label}`}
-                  icon={i < stepIndex ? <CheckCircleIcon /> : i === stepIndex ? <AutoAwesomeIcon /> : undefined}
-                  sx={{
-                    borderRadius: R,
-                    bgcolor: i === stepIndex ? 'rgba(129,140,248,0.25)' : 'rgba(255,255,255,0.06)',
-                    color: i <= stepIndex ? '#e0e7ff' : 'rgba(255,255,255,0.4)',
-                    border: i === stepIndex ? '1px solid #818cf8' : '1px solid rgba(255,255,255,0.12)',
-                  }}
-                />
-              ))}
-            </Stack>
 
             {error && <Alert severity="error" sx={{ mb: 2, borderRadius: R }}>{error}</Alert>}
 
             {/* STEP 1: credentials */}
             {step === 'credentials' && (
               <form onSubmit={handleCredentialsSubmit}>
-                <Stack spacing={2}>
+                <Stack spacing={2.5}>
                   <TextField
                     fullWidth
                     label="نام کاربری"
@@ -310,7 +266,7 @@ const Login = () => {
             {step === 'company' && (
               <Stack spacing={2}>
                 <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                  شما به چند شرکت دسترسی دارید. شرکت مورد نظر را انتخاب کنید:
+                  شرکت مورد نظر را انتخاب کنید:
                 </Typography>
                 <Stack spacing={1.5}>
                   {availableCompanies.map((c) => {
@@ -367,12 +323,12 @@ const Login = () => {
             {step === 'application' && (
               <Stack spacing={2}>
                 <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                  برای ورود، یک ماژول انتخاب کنید:
+                  یک ماژول را برای ورود انتخاب کنید:
                 </Typography>
 
                 {activeApps.length === 0 ? (
                   <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', py: 2 }}>
-                    ماژولی در دسترس نیست. با مدیر سیستم تماس بگیرید.
+                    ماژولی در دسترس نیست.
                   </Typography>
                 ) : (
                   <Stack spacing={1.5}>
@@ -424,13 +380,25 @@ const Login = () => {
                     </Typography>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap">
                       {comingSoonApps.map((app) => (
-                        <Chip
+                        <Paper
                           key={app.id}
-                          size="small"
-                          avatar={<Avatar sx={{ width: 18, height: 18, borderRadius: R, background: app.color, fontSize: 10 }}>{app.icon}</Avatar>}
-                          label={app.title}
-                          sx={{ borderRadius: R, bgcolor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}
-                        />
+                          variant="outlined"
+                          sx={{
+                            px: 1,
+                            py: 0.5,
+                            borderRadius: R,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            bgcolor: 'rgba(255,255,255,0.04)',
+                            borderColor: 'rgba(255,255,255,0.1)',
+                          }}
+                        >
+                          <Box sx={{ width: 16, height: 16, borderRadius: R, background: app.color, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
+                            {app.icon}
+                          </Box>
+                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.45)' }}>{app.title}</Typography>
+                        </Paper>
                       ))}
                     </Stack>
                   </Box>
@@ -447,20 +415,11 @@ const Login = () => {
                     endIcon={<ArrowForwardIcon />}
                     sx={{ flex: 1, fontWeight: 700, borderRadius: R, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
                   >
-                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ورود به ماژول'}
+                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ورود'}
                   </Button>
                 </Stack>
               </Stack>
             )}
-
-            <Typography
-              variant="caption"
-              align="center"
-              display="block"
-              sx={{ mt: 3, color: 'rgba(255,255,255,0.4)' }}
-            >
-              پلتفرم کسب‌وکار سازمانی کیان · نسخهٔ ۲
-            </Typography>
           </Paper>
         </Fade>
       </Container>
