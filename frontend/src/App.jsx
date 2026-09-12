@@ -127,7 +127,7 @@ const getComponents = (mode, neonColor) => {
             WebkitBackdropFilter: 'blur(20px)',
             border: `1px solid ${neonColor}4d`,
             boxShadow: `0 0 24px ${neonColor}1f`,
-            borderRadius: 16,
+            borderRadius: 10,
           },
         },
       },
@@ -138,7 +138,7 @@ const getComponents = (mode, neonColor) => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: `1px solid ${neonColor}40`,
-            borderRadius: 16,
+            borderRadius: 10,
             transition: 'all 0.3s ease',
             '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 0 32px ${neonColor}30` },
           },
@@ -158,7 +158,7 @@ const getComponents = (mode, neonColor) => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 12,
+              borderRadius: 10,
               background: 'rgba(0,255,255,0.03)',
               border: `1px solid ${neonColor}33`,
               '&:hover': { border: `1px solid ${neonColor}66` },
@@ -199,7 +199,7 @@ const getComponents = (mode, neonColor) => {
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid rgba(0,0,0,0.08)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            borderRadius: 16,
+            borderRadius: 10,
           },
         },
       },
@@ -210,7 +210,7 @@ const getComponents = (mode, neonColor) => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(0,0,0,0.1)',
-            borderRadius: 16,
+            borderRadius: 10,
             transition: 'all 0.3s ease',
             '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.18)' },
           },
@@ -230,7 +230,7 @@ const getComponents = (mode, neonColor) => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 12,
+              borderRadius: 10,
               background: 'rgba(255,255,255,0.6)',
               border: '1px solid rgba(0,0,0,0.12)',
               '&:hover': { background: 'rgba(255,255,255,0.85)' },
@@ -266,7 +266,7 @@ const getComponents = (mode, neonColor) => {
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid rgba(148,163,184,0.12)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            borderRadius: 16,
+            borderRadius: 10,
           },
         },
       },
@@ -277,7 +277,7 @@ const getComponents = (mode, neonColor) => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(148,163,184,0.12)',
-            borderRadius: 16,
+            borderRadius: 10,
             transition: 'all 0.3s ease',
             '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' },
           },
@@ -297,7 +297,7 @@ const getComponents = (mode, neonColor) => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 12,
+              borderRadius: 10,
               background: 'rgba(15,23,42,0.5)',
               '&:hover': { background: 'rgba(15,23,42,0.8)' },
               '&.Mui-focused': { background: 'rgba(15,23,42,0.9)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' },
@@ -332,7 +332,7 @@ const getComponents = (mode, neonColor) => {
           WebkitBackdropFilter: 'blur(20px)',
           border: '1px solid rgba(255,255,255,0.5)',
           boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
-          borderRadius: 16,
+          borderRadius: 10,
         },
       },
     },
@@ -343,7 +343,7 @@ const getComponents = (mode, neonColor) => {
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           border: '1px solid rgba(255,255,255,0.4)',
-          borderRadius: 16,
+          borderRadius: 10,
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(99,102,241,0.15)' },
         },
@@ -363,7 +363,7 @@ const getComponents = (mode, neonColor) => {
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 12,
+            borderRadius: 10,
             background: 'rgba(255,255,255,0.5)',
             '&:hover': { background: 'rgba(255,255,255,0.8)' },
             '&.Mui-focused': { background: 'rgba(255,255,255,0.9)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' },
@@ -407,7 +407,7 @@ const ThemedApp = () => {
       body1: { fontWeight: 400 },
       body2: { fontWeight: 400 },
     },
-    shape: { borderRadius: 16 },
+    shape: { borderRadius: 10 },
     components: {
       ...components,
       MuiButton: {
@@ -415,7 +415,7 @@ const ThemedApp = () => {
           root: {
             textTransform: 'none',
             fontWeight: 600,
-            borderRadius: 12,
+            borderRadius: 10,
             padding: '8px 20px',
             transition: 'all 0.2s ease',
             // Remove all button icons app-wide (text-only buttons)
@@ -446,7 +446,7 @@ const ThemedApp = () => {
       MuiListItemButton: {
         styleOverrides: {
           root: {
-            borderRadius: 12,
+            borderRadius: 10,
             margin: '2px 8px',
             transition: 'all 0.2s ease',
             '&.Mui-selected': {
