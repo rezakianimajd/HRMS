@@ -20,12 +20,14 @@ import useCompany from '../core/hooks/useCompany';
 import { useApplication } from '../core/context/ApplicationContext';
 import CompanyEngine from '../core/engines/companyEngine';
 
-const KIAN_LETTERS = [
-  { en: 'Knowledge', fa: 'دانش' },
-  { en: 'Integration', fa: 'یکپارچگی' },
-  { en: 'Administration', fa: 'مدیریت' },
-  { en: 'Automation', fa: 'اتوماسیون' },
+const KIAN_MEANINGS = [
+  { letter: 'K', fa: 'دانش' },
+  { letter: 'I', fa: 'یکپارچگی' },
+  { letter: 'A', fa: 'مدیریت' },
+  { letter: 'N', fa: 'اتوماسیون' },
 ];
+
+const R = '5px';
 
 const Login = () => {
   const { t } = useTranslation();
@@ -40,15 +42,10 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Steps: credentials → company → application
   const [step, setStep] = useState('credentials');
   const [availableCompanies, setAvailableCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [selectedApp, setSelectedApp] = useState(null);
-
-  useEffect(() => {
-    loadApplications();
-  }, []);
 
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
@@ -61,7 +58,6 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // Login without a company to discover accessible tenants.
       const data = await login(username, password, null);
       const companies = data.available_companies || data.user?.companies || [];
 
@@ -69,6 +65,7 @@ const Login = () => {
         const single = companies[0];
         CompanyEngine.setStoredCompany(single);
         setCurrentCompany(single);
+        await loadApplications();
         setStep('application');
         return;
       }
@@ -80,6 +77,7 @@ const Login = () => {
         return;
       }
 
+      await loadApplications();
       setStep('application');
     } catch (err) {
       setError(typeof err === 'string' ? err : (err.response?.data?.error || t('auth.loginError')));
@@ -100,6 +98,7 @@ const Login = () => {
       const data = await login(username, password, selectedCompany.id);
       CompanyEngine.setStoredCompany(data.company || selectedCompany);
       setCurrentCompany(data.company || selectedCompany);
+      await loadApplications();
       setStep('application');
     } catch (err) {
       setError(err.response?.data?.error || 'خطا در ورود به شرکت');
@@ -134,13 +133,10 @@ const Login = () => {
     setError('');
   };
 
-  const stepTitle = {
-    credentials: 'ورود به سامانه',
-    company: 'انتخاب شرکت',
-    application: 'انتخاب ماژول',
-  };
-
   const stepIndex = ['credentials', 'company', 'application'].indexOf(step);
+
+  const activeApps = applications.filter(a => !a.is_coming_soon);
+  const comingSoonApps = applications.filter(a => a.is_coming_soon);
 
   return (
     <Box
@@ -156,7 +152,6 @@ const Login = () => {
         animation: 'loginGradient 16s ease infinite',
       }}
     >
-      {/* Floating blurred orbs */}
       <Box sx={{ position: 'absolute', width: 420, height: 420, borderRadius: '50%', filter: 'blur(100px)', background: 'rgba(99,102,241,0.35)', top: '-8%', left: '-6%', animation: 'floatOrb 10s ease-in-out infinite' }} />
       <Box sx={{ position: 'absolute', width: 360, height: 360, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(236,72,153,0.3)', bottom: '-6%', right: '-4%', animation: 'floatOrb 12s ease-in-out infinite reverse' }} />
       <Box sx={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(14,165,233,0.3)', bottom: '20%', left: '30%', animation: 'floatOrb 14s ease-in-out infinite' }} />
@@ -166,8 +161,8 @@ const Login = () => {
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 3.5, sm: 5 },
-              borderRadius: 4,
+              p: { xs: 3, sm: 4 },
+              borderRadius: R,
               background: 'rgba(255,255,255,0.06)',
               backdropFilter: 'blur(24px)',
               WebkitBackdropFilter: 'blur(24px)',
@@ -177,16 +172,17 @@ const Login = () => {
           >
             {/* Brand header */}
             <Box sx={{ textAlign: 'center', mb: 3 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 1.5 }}>
                 <Avatar
                   sx={{
-                    width: 68,
-                    height: 68,
+                    width: 64,
+                    height: 64,
+                    borderRadius: R,
                     background: 'linear-gradient(135deg, #818cf8, #ec4899)',
                     boxShadow: '0 10px 30px rgba(129,140,248,0.5)',
                   }}
                 >
-                  <GroupsIcon sx={{ fontSize: 36, color: '#fff' }} />
+                  <GroupsIcon sx={{ fontSize: 34, color: '#fff' }} />
                 </Avatar>
                 <Box sx={{ textAlign: 'right' }}>
                   <Typography
@@ -208,18 +204,15 @@ const Login = () => {
                 </Box>
               </Box>
 
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mb: 1.5 }}>
-                KIAN Enterprise Business Platform
-              </Typography>
-
-              {/* KIAN letters + expanded meaning */}
+              {/* KIAN acronym in Persian */}
               <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
-                {KIAN_LETTERS.map((l) => (
+                {KIAN_MEANINGS.map((l) => (
                   <Chip
-                    key={l.en}
+                    key={l.letter}
                     size="small"
-                    label={`${l.en} · ${l.fa}`}
+                    label={`${l.letter} · ${l.fa}`}
                     sx={{
+                      borderRadius: R,
                       bgcolor: 'rgba(255,255,255,0.08)',
                       color: '#c7d2fe',
                       border: '1px solid rgba(129,140,248,0.3)',
@@ -240,6 +233,7 @@ const Login = () => {
                   label={`${i + 1} · ${label}`}
                   icon={i < stepIndex ? <CheckCircleIcon /> : i === stepIndex ? <AutoAwesomeIcon /> : undefined}
                   sx={{
+                    borderRadius: R,
                     bgcolor: i === stepIndex ? 'rgba(129,140,248,0.25)' : 'rgba(255,255,255,0.06)',
                     color: i <= stepIndex ? '#e0e7ff' : 'rgba(255,255,255,0.4)',
                     border: i === stepIndex ? '1px solid #818cf8' : '1px solid rgba(255,255,255,0.12)',
@@ -248,15 +242,15 @@ const Login = () => {
               ))}
             </Stack>
 
-            {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
+            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: R }}>{error}</Alert>}
 
             {/* STEP 1: credentials */}
             {step === 'credentials' && (
               <form onSubmit={handleCredentialsSubmit}>
-                <Stack spacing={2.5}>
+                <Stack spacing={2}>
                   <TextField
                     fullWidth
-                    label={t('auth.username')}
+                    label="نام کاربری"
                     variant="outlined"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
@@ -271,7 +265,7 @@ const Login = () => {
                   />
                   <TextField
                     fullWidth
-                    label={t('auth.password')}
+                    label="رمز عبور"
                     type={showPassword ? 'text' : 'password'}
                     variant="outlined"
                     value={password}
@@ -298,15 +292,15 @@ const Login = () => {
                     variant="contained"
                     disabled={loading}
                     sx={{
-                      py: 1.5,
-                      borderRadius: 2.5,
+                      py: 1.4,
+                      borderRadius: R,
                       fontWeight: 700,
                       background: 'linear-gradient(90deg, #6366f1, #a855f7)',
                       boxShadow: '0 10px 25px rgba(99,102,241,0.4)',
                       '&:hover': { background: 'linear-gradient(90deg, #4f46e5, #9333ea)' },
                     }}
                   >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : t('auth.loginButton')}
+                    {loading ? <CircularProgress size={24} color="inherit" /> : 'ورود'}
                   </Button>
                 </Stack>
               </form>
@@ -326,12 +320,12 @@ const Login = () => {
                         key={c.id}
                         onClick={() => setSelectedCompany(c)}
                         sx={{
-                          p: 2,
+                          p: 1.75,
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          borderRadius: 2.5,
+                          borderRadius: R,
                           background: isSelected ? 'rgba(99,102,241,0.22)' : 'rgba(255,255,255,0.04)',
                           border: `1px solid ${isSelected ? 'rgba(129,140,248,0.8)' : 'rgba(255,255,255,0.14)'}`,
                           transition: 'all 0.2s',
@@ -339,7 +333,7 @@ const Login = () => {
                         }}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Avatar sx={{ width: 44, height: 44, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
+                          <Avatar sx={{ width: 40, height: 40, borderRadius: R, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
                             <BusinessIcon sx={{ color: '#c7d2fe' }} />
                           </Avatar>
                           <Box>
@@ -353,15 +347,15 @@ const Login = () => {
                   })}
                 </Stack>
                 <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
-                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
+                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, borderRadius: R, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
                     بازگشت
                   </Button>
                   <Button
                     variant="contained"
                     onClick={handleCompanySelect}
-                    disabled={loading}
+                    disabled={loading || !selectedCompany}
                     endIcon={<ArrowForwardIcon />}
-                    sx={{ flex: 1, fontWeight: 700, borderRadius: 2, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
+                    sx={{ flex: 1, fontWeight: 700, borderRadius: R, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
                   >
                     {loading ? <CircularProgress size={22} color="inherit" /> : 'ادامه'}
                   </Button>
@@ -373,24 +367,28 @@ const Login = () => {
             {step === 'application' && (
               <Stack spacing={2}>
                 <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                  ماژول مورد نظر خود را برای ورود انتخاب کنید:
+                  برای ورود، یک ماژول انتخاب کنید:
                 </Typography>
-                <Stack spacing={1.5}>
-                  {applications
-                    .filter(a => !a.is_coming_soon)
-                    .map((app) => {
+
+                {activeApps.length === 0 ? (
+                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', py: 2 }}>
+                    ماژولی در دسترس نیست. با مدیر سیستم تماس بگیرید.
+                  </Typography>
+                ) : (
+                  <Stack spacing={1.5}>
+                    {activeApps.map((app) => {
                       const isSelected = selectedApp?.id === app.id;
                       return (
                         <Paper
                           key={app.id}
                           onClick={() => setSelectedApp(app)}
                           sx={{
-                            p: 2,
+                            p: 1.75,
                             cursor: 'pointer',
                             display: 'flex',
                             alignItems: 'center',
                             gap: 1.5,
-                            borderRadius: 2.5,
+                            borderRadius: R,
                             background: isSelected
                               ? `linear-gradient(135deg, ${app.color}33, rgba(255,255,255,0.08))`
                               : 'rgba(255,255,255,0.04)',
@@ -399,9 +397,9 @@ const Login = () => {
                             '&:hover': { borderColor: app.color, background: `${app.color}22` },
                           }}
                         >
-                          <Avatar sx={{ width: 44, height: 44, background: app.color, boxShadow: `0 4px 14px ${app.color}55` }}>
+                          <Avatar sx={{ width: 40, height: 40, borderRadius: R, background: app.color, boxShadow: `0 4px 14px ${app.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             {app.icon ? (
-                              <Typography fontSize={20}>{app.icon}</Typography>
+                              <Typography fontSize={18}>{app.icon}</Typography>
                             ) : (
                               <AppsIcon sx={{ color: '#fff' }} />
                             )}
@@ -416,22 +414,22 @@ const Login = () => {
                         </Paper>
                       );
                     })}
-                </Stack>
+                  </Stack>
+                )}
 
-                {/* Coming soon modules */}
-                {applications.some(a => a.is_coming_soon) && (
+                {comingSoonApps.length > 0 && (
                   <Box>
                     <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', mb: 0.5, display: 'block' }}>
                       در حال بهسازی — به‌زودی
                     </Typography>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                      {applications.filter(a => a.is_coming_soon).map((app) => (
+                      {comingSoonApps.map((app) => (
                         <Chip
                           key={app.id}
                           size="small"
-                          avatar={<Avatar sx={{ width: 18, height: 18, background: app.color, fontSize: 10 }}>{app.icon}</Avatar>}
+                          avatar={<Avatar sx={{ width: 18, height: 18, borderRadius: R, background: app.color, fontSize: 10 }}>{app.icon}</Avatar>}
                           label={app.title}
-                          sx={{ bgcolor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}
+                          sx={{ borderRadius: R, bgcolor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}
                         />
                       ))}
                     </Stack>
@@ -439,7 +437,7 @@ const Login = () => {
                 )}
 
                 <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
-                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
+                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, borderRadius: R, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
                     بازگشت
                   </Button>
                   <Button
@@ -447,7 +445,7 @@ const Login = () => {
                     onClick={handleAppSelect}
                     disabled={loading || !selectedApp}
                     endIcon={<ArrowForwardIcon />}
-                    sx={{ flex: 1, fontWeight: 700, borderRadius: 2, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
+                    sx={{ flex: 1, fontWeight: 700, borderRadius: R, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
                   >
                     {loading ? <CircularProgress size={22} color="inherit" /> : 'ورود به ماژول'}
                   </Button>
@@ -461,7 +459,7 @@ const Login = () => {
               display="block"
               sx={{ mt: 3, color: 'rgba(255,255,255,0.4)' }}
             >
-              KIAN Enterprise Business Platform · v2.0
+              پلتفرم کسب‌وکار سازمانی کیان · نسخهٔ ۲
             </Typography>
           </Paper>
         </Fade>
@@ -479,7 +477,7 @@ const Login = () => {
 
 const glassField = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: 2.5,
+    borderRadius: R,
     color: '#fff',
     background: 'rgba(255,255,255,0.04)',
     '& fieldset': { borderColor: 'rgba(255,255,255,0.18)' },
