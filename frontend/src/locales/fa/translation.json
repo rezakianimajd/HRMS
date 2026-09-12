@@ -1,7 +1,8 @@
 {
   "app": {
-    "name": "سیستم مدیریت منابع انسانی",
-    "shortName": "HRMS"
+    "name": "پلتفرم یکپارچه مدیریت و عملیات سازمانی کیان",
+    "shortName": "کیان",
+    "tagline": "Knowledge · Integration · Administration · Automation"
   },
   "nav": {
     "home": "خانه",

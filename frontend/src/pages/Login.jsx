@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Container, TextField, Button, Typography, Paper, Alert,
-  CircularProgress, InputAdornment, IconButton, Avatar, Stack, Fade,
+  CircularProgress, InputAdornment, IconButton, Avatar, Stack, Fade, Chip,
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -13,15 +13,26 @@ import LockIcon from '@mui/icons-material/Lock';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import GroupsIcon from '@mui/icons-material/Groups';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import AppsIcon from '@mui/icons-material/Apps';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import useAuth from '../core/hooks/useAuth';
 import useCompany from '../core/hooks/useCompany';
+import { useApplication } from '../core/context/ApplicationContext';
 import CompanyEngine from '../core/engines/companyEngine';
+
+const KIAN_LETTERS = [
+  { en: 'Knowledge', fa: 'دانش' },
+  { en: 'Integration', fa: 'یکپارچگی' },
+  { en: 'Administration', fa: 'مدیریت' },
+  { en: 'Automation', fa: 'اتوماسیون' },
+];
 
 const Login = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { login } = useAuth();
   const { setCurrentCompany } = useCompany();
+  const { loadApplications, applications, switchApplication } = useApplication();
 
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -29,10 +40,15 @@ const Login = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Step 1: credentials, Step 2: pick company
+  // Steps: credentials → company → application
   const [step, setStep] = useState('credentials');
   const [availableCompanies, setAvailableCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
+  const [selectedApp, setSelectedApp] = useState(null);
+
+  useEffect(() => {
+    loadApplications();
+  }, []);
 
   const handleCredentialsSubmit = async (e) => {
     e.preventDefault();
@@ -45,30 +61,26 @@ const Login = () => {
 
     setLoading(true);
     try {
-      // First, login without a company to discover which tenants the user has.
+      // Login without a company to discover accessible tenants.
       const data = await login(username, password, null);
-
       const companies = data.available_companies || data.user?.companies || [];
 
       if (companies.length === 1) {
-        // Only one company — enter it directly.
         const single = companies[0];
         CompanyEngine.setStoredCompany(single);
         setCurrentCompany(single);
-        navigate('/app-select');
+        setStep('application');
         return;
       }
 
       if (companies.length > 1) {
-        // Multiple companies — show selection step.
         setAvailableCompanies(companies);
         setSelectedCompany(null);
         setStep('company');
         return;
       }
 
-      // No companies at all (shouldn't happen for normal users).
-      navigate('/app-select');
+      setStep('application');
     } catch (err) {
       setError(typeof err === 'string' ? err : (err.response?.data?.error || t('auth.loginError')));
     } finally {
@@ -85,12 +97,10 @@ const Login = () => {
     setError('');
     setLoading(true);
     try {
-      // Re-login with the chosen company so the JWT carries the tenant claim.
       const data = await login(username, password, selectedCompany.id);
-
       CompanyEngine.setStoredCompany(data.company || selectedCompany);
       setCurrentCompany(data.company || selectedCompany);
-      navigate('/app-select');
+      setStep('application');
     } catch (err) {
       setError(err.response?.data?.error || 'خطا در ورود به شرکت');
     } finally {
@@ -98,11 +108,39 @@ const Login = () => {
     }
   };
 
+  const handleAppSelect = async () => {
+    if (!selectedApp) {
+      setError('لطفاً یک ماژول انتخاب کنید');
+      return;
+    }
+    setLoading(true);
+    try {
+      await switchApplication(selectedApp);
+      navigate('/dashboard', { replace: true });
+    } catch (err) {
+      setError('خطا در انتخاب ماژول');
+      setLoading(false);
+    }
+  };
+
   const handleBack = () => {
-    setStep('credentials');
-    setSelectedCompany(null);
+    if (step === 'company') {
+      setStep('credentials');
+      setSelectedCompany(null);
+    } else if (step === 'application') {
+      setStep('company');
+      setSelectedApp(null);
+    }
     setError('');
   };
+
+  const stepTitle = {
+    credentials: 'ورود به سامانه',
+    company: 'انتخاب شرکت',
+    application: 'انتخاب ماژول',
+  };
+
+  const stepIndex = ['credentials', 'company', 'application'].indexOf(step);
 
   return (
     <Box
@@ -113,15 +151,9 @@ const Login = () => {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        // Futuristic 2026 animated gradient
         background: 'linear-gradient(-45deg, #0f172a 0%, #312e81 25%, #7c3aed 50%, #0ea5e9 75%, #0f172a 100%)',
         backgroundSize: '400% 400%',
         animation: 'loginGradient 16s ease infinite',
-        '@keyframes loginGradient': {
-          '0%': { backgroundPosition: '0% 50%' },
-          '50%': { backgroundPosition: '100% 50%' },
-          '100%': { backgroundPosition: '0% 50%' },
-        },
       }}
     >
       {/* Floating blurred orbs */}
@@ -129,7 +161,7 @@ const Login = () => {
       <Box sx={{ position: 'absolute', width: 360, height: 360, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(236,72,153,0.3)', bottom: '-6%', right: '-4%', animation: 'floatOrb 12s ease-in-out infinite reverse' }} />
       <Box sx={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(14,165,233,0.3)', bottom: '20%', left: '30%', animation: 'floatOrb 14s ease-in-out infinite' }} />
 
-      <Container maxWidth="sm" sx={{ position: 'relative', zIndex: 1 }}>
+      <Container maxWidth="md" sx={{ position: 'relative', zIndex: 1 }}>
         <Fade in timeout={700}>
           <Paper
             elevation={0}
@@ -144,39 +176,82 @@ const Login = () => {
             }}
           >
             {/* Brand header */}
-            <Box sx={{ textAlign: 'center', mb: 4 }}>
-              <Avatar
-                sx={{
-                  width: 72,
-                  height: 72,
-                  mx: 'auto',
-                  mb: 2,
-                  background: 'linear-gradient(135deg, #818cf8, #ec4899)',
-                  boxShadow: '0 10px 30px rgba(129,140,248,0.5)',
-                }}
-              >
-                <GroupsIcon sx={{ fontSize: 38, color: '#fff' }} />
-              </Avatar>
-              <Typography
-                variant="h4"
-                component="h1"
-                fontWeight={900}
-                sx={{
-                  background: 'linear-gradient(90deg, #e0e7ff, #fbcfe8, #bae6fd)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                }}
-              >
-                {t('app.name')}
+            <Box sx={{ textAlign: 'center', mb: 3 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 2 }}>
+                <Avatar
+                  sx={{
+                    width: 68,
+                    height: 68,
+                    background: 'linear-gradient(135deg, #818cf8, #ec4899)',
+                    boxShadow: '0 10px 30px rgba(129,140,248,0.5)',
+                  }}
+                >
+                  <GroupsIcon sx={{ fontSize: 36, color: '#fff' }} />
+                </Avatar>
+                <Box sx={{ textAlign: 'right' }}>
+                  <Typography
+                    variant="h4"
+                    component="h1"
+                    fontWeight={900}
+                    sx={{
+                      background: 'linear-gradient(90deg, #e0e7ff, #fbcfe8, #bae6fd)',
+                      WebkitBackgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                      lineHeight: 1.2,
+                    }}
+                  >
+                    کیان
+                  </Typography>
+                  <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                    پلتفرم یکپارچه مدیریت و عملیات سازمانی
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.75)', mb: 1.5 }}>
+                KIAN Enterprise Business Platform
               </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', mt: 1 }}>
-                {step === 'credentials' ? t('auth.welcomeBack') : 'انتخاب شرکت برای ورود'}
-              </Typography>
+
+              {/* KIAN letters + expanded meaning */}
+              <Stack direction="row" spacing={1} justifyContent="center" flexWrap="wrap">
+                {KIAN_LETTERS.map((l) => (
+                  <Chip
+                    key={l.en}
+                    size="small"
+                    label={`${l.en} · ${l.fa}`}
+                    sx={{
+                      bgcolor: 'rgba(255,255,255,0.08)',
+                      color: '#c7d2fe',
+                      border: '1px solid rgba(129,140,248,0.3)',
+                      fontWeight: 600,
+                      fontSize: 11,
+                    }}
+                  />
+                ))}
+              </Stack>
             </Box>
+
+            {/* Step indicator */}
+            <Stack direction="row" spacing={1} justifyContent="center" sx={{ mb: 3 }}>
+              {['ورود', 'شرکت', 'ماژول'].map((label, i) => (
+                <Chip
+                  key={label}
+                  size="small"
+                  label={`${i + 1} · ${label}`}
+                  icon={i < stepIndex ? <CheckCircleIcon /> : i === stepIndex ? <AutoAwesomeIcon /> : undefined}
+                  sx={{
+                    bgcolor: i === stepIndex ? 'rgba(129,140,248,0.25)' : 'rgba(255,255,255,0.06)',
+                    color: i <= stepIndex ? '#e0e7ff' : 'rgba(255,255,255,0.4)',
+                    border: i === stepIndex ? '1px solid #818cf8' : '1px solid rgba(255,255,255,0.12)',
+                  }}
+                />
+              ))}
+            </Stack>
 
             {error && <Alert severity="error" sx={{ mb: 2.5, borderRadius: 2 }}>{error}</Alert>}
 
-            {step === 'credentials' ? (
+            {/* STEP 1: credentials */}
+            {step === 'credentials' && (
               <form onSubmit={handleCredentialsSubmit}>
                 <Stack spacing={2.5}>
                   <TextField
@@ -235,7 +310,10 @@ const Login = () => {
                   </Button>
                 </Stack>
               </form>
-            ) : (
+            )}
+
+            {/* STEP 2: company */}
+            {step === 'company' && (
               <Stack spacing={2}>
                 <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
                   شما به چند شرکت دسترسی دارید. شرکت مورد نظر را انتخاب کنید:
@@ -283,14 +361,95 @@ const Login = () => {
                     onClick={handleCompanySelect}
                     disabled={loading}
                     endIcon={<ArrowForwardIcon />}
-                    sx={{
-                      flex: 1,
-                      fontWeight: 700,
-                      borderRadius: 2,
-                      background: 'linear-gradient(90deg, #6366f1, #a855f7)',
-                    }}
+                    sx={{ flex: 1, fontWeight: 700, borderRadius: 2, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
                   >
-                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ورود به شرکت'}
+                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ادامه'}
+                  </Button>
+                </Stack>
+              </Stack>
+            )}
+
+            {/* STEP 3: application */}
+            {step === 'application' && (
+              <Stack spacing={2}>
+                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
+                  ماژول مورد نظر خود را برای ورود انتخاب کنید:
+                </Typography>
+                <Stack spacing={1.5}>
+                  {applications
+                    .filter(a => !a.is_coming_soon)
+                    .map((app) => {
+                      const isSelected = selectedApp?.id === app.id;
+                      return (
+                        <Paper
+                          key={app.id}
+                          onClick={() => setSelectedApp(app)}
+                          sx={{
+                            p: 2,
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 1.5,
+                            borderRadius: 2.5,
+                            background: isSelected
+                              ? `linear-gradient(135deg, ${app.color}33, rgba(255,255,255,0.08))`
+                              : 'rgba(255,255,255,0.04)',
+                            border: `1px solid ${isSelected ? app.color : 'rgba(255,255,255,0.14)'}`,
+                            transition: 'all 0.2s',
+                            '&:hover': { borderColor: app.color, background: `${app.color}22` },
+                          }}
+                        >
+                          <Avatar sx={{ width: 44, height: 44, background: app.color, boxShadow: `0 4px 14px ${app.color}55` }}>
+                            {app.icon ? (
+                              <Typography fontSize={20}>{app.icon}</Typography>
+                            ) : (
+                              <AppsIcon sx={{ color: '#fff' }} />
+                            )}
+                          </Avatar>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="body1" fontWeight={700} sx={{ color: '#fff' }}>{app.title}</Typography>
+                            <Typography variant="caption" noWrap sx={{ color: 'rgba(255,255,255,0.55)', display: 'block' }}>
+                              {app.description}
+                            </Typography>
+                          </Box>
+                          {isSelected && <CheckCircleIcon sx={{ color: app.color }} />}
+                        </Paper>
+                      );
+                    })}
+                </Stack>
+
+                {/* Coming soon modules */}
+                {applications.some(a => a.is_coming_soon) && (
+                  <Box>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', mb: 0.5, display: 'block' }}>
+                      در حال بهسازی — به‌زودی
+                    </Typography>
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap">
+                      {applications.filter(a => a.is_coming_soon).map((app) => (
+                        <Chip
+                          key={app.id}
+                          size="small"
+                          avatar={<Avatar sx={{ width: 18, height: 18, background: app.color, fontSize: 10 }}>{app.icon}</Avatar>}
+                          label={app.title}
+                          sx={{ bgcolor: 'rgba(255,255,255,0.04)', color: 'rgba(255,255,255,0.45)', border: '1px solid rgba(255,255,255,0.1)' }}
+                        />
+                      ))}
+                    </Stack>
+                  </Box>
+                )}
+
+                <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
+                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
+                    بازگشت
+                  </Button>
+                  <Button
+                    variant="contained"
+                    onClick={handleAppSelect}
+                    disabled={loading || !selectedApp}
+                    endIcon={<ArrowForwardIcon />}
+                    sx={{ flex: 1, fontWeight: 700, borderRadius: 2, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
+                  >
+                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ورود به ماژول'}
                   </Button>
                 </Stack>
               </Stack>
@@ -302,7 +461,7 @@ const Login = () => {
               display="block"
               sx={{ mt: 3, color: 'rgba(255,255,255,0.4)' }}
             >
-              {t('app.shortName')} v0.1.0
+              KIAN Enterprise Business Platform · v2.0
             </Typography>
           </Paper>
         </Fade>

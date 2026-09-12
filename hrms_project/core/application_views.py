@@ -34,7 +34,8 @@ def applications_view(request):
         'icon': a.icon,
         'color': a.color,
         'order': a.order,
-    } for a in apps]
+        'is_coming_soon': a.is_coming_soon,
+    } for a in apps.order_by('order', 'title')]
 
     current = getattr(profile, 'current_application', None) if profile else None
     return Response({

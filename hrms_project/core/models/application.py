@@ -18,6 +18,11 @@ class Application(models.Model):
     color = models.CharField(max_length=20, blank=True, default='#6366f1', verbose_name=_('رنگ'))
     order = models.PositiveIntegerField(default=0, verbose_name=_('ترتیب'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+    is_coming_soon = models.BooleanField(
+        default=False,
+        verbose_name=_('در حال بهسازی/به‌زودی'),
+        help_text=_('ماژول‌هایی که هنوز پیاده‌سازی نشده و در کاتالوگ نمایش داده می‌شوند'),
+    )
 
     class Meta:
         verbose_name = _('سامانه')
