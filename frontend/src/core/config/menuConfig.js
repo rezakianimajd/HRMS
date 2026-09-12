@@ -29,6 +29,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
+import BackupIcon from '@mui/icons-material/Backup';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PaletteIcon from '@mui/icons-material/Palette';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -133,16 +134,33 @@ const menuConfig = [
       { id: 'assistant', title: 'دستیار هوشمند', icon: <PsychologyIcon />, path: '/assistant', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
+];
+
+/* ---------------------------------------------------------------------------
+ * تنظیمات و تعاریف — یک ماژول متمرکز برای همهٔ تنظیمات پلتفرم.
+ * هیچ تنظیمی نباید داخل ماژول HR یا قراردادها بماند؛ همه از اینجا است.
+ * ------------------------------------------------------------------------- */
+const settingsMenu = [
   {
-    id: 'system',
-    title: 'مدیریت سیستم',
+    id: 'settings-system',
+    title: 'تنظیمات سیستم',
     color: '#64748b',
     items: [
-      { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: true, ready: true },
+      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: true, ready: true },
+      { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: false, ready: true },
       { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
-      { id: 'audit', title: 'دفترچه فعالیت (Audit)', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
-      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
       { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'audit', title: 'دفترچه فعالیت (Audit)', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'settings-maintenance',
+    title: 'نگهداری و امنیت',
+    color: '#3b82f6',
+    items: [
+      { id: 'settings-backup', title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, path: '/settings?tab=backup', color: '#3b82f6', primary: false, ready: true },
+      { id: 'settings-management', title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, path: '/settings?tab=management', color: '#f97316', primary: false, ready: true },
+      { id: 'settings-notifications', title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, path: '/settings?tab=notifications', color: '#10b981', primary: false, ready: true },
     ],
   },
 ];
@@ -207,7 +225,6 @@ const contractsMenu = [
     title: 'پیکربندی',
     color: '#64748b',
     items: [
-      { id: 'signatories', title: 'صاحبان امضا', icon: <FactCheckOutlinedIcon />, path: '/settings?tab=management', color: '#10b981', primary: false, ready: true },
       comingSoon('/contracts-workflow', 'contracts-workflow', 'گردشکار تأیید', <SwapHorizIcon />, '#6366f1'),
       comingSoon('/contracts-types', 'contracts-types', 'انواع قرارداد', <CategoryIcon />, '#14b8a6'),
     ],
@@ -225,6 +242,7 @@ const contractsMenu = [
 
 export function getMenuForApp(appSlug) {
   if (appSlug === 'contracts') return contractsMenu;
+  if (appSlug === 'settings') return settingsMenu;
   return menuConfig;
 }
 
