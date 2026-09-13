@@ -270,7 +270,7 @@ const projectsMenu = [
     color: '#10b981',
     items: [
       comingSoon('/projects/budget', 'projects-budget', 'بودجه', <AssessmentIcon />, '#10b981'),
-      comingSoon('/projects/reports', 'projects-reports', 'گزارش‌ها', <InsightsIcon />, '#6366f1'),
+      { id: 'projects-reports', title: 'گزارش‌ها', icon: <InsightsIcon />, path: '/projects/reports', color: '#6366f1', primary: false, ready: true },
     ],
   },
 ];

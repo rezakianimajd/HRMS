@@ -38,6 +38,11 @@ router.register(r'cost-transaction-lines', CostTransactionLineViewSet, basename=
 router.register(r'progress-statements', ProgressStatementViewSet, basename='progress-statement')
 router.register(r'progress-statement-items', ProgressStatementItemViewSet, basename='progress-statement-item')
 
+from projects import analytics_views
+
 urlpatterns = [
     path('', include(router.urls)),
+    path('analytics/cost-summary/', analytics_views.cost_summary, name='cost-summary'),
+    path('analytics/cost-by-wbs/', analytics_views.cost_by_wbs, name='cost-by-wbs'),
+    path('analytics/cost-by-cbs/', analytics_views.cost_by_cbs, name='cost-by-cbs'),
 ]
