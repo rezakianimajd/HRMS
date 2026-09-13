@@ -51,6 +51,7 @@ import PriceListPage from './pages/PriceListPage';
 import CommercialPage from './pages/CommercialPage';
 import CostDashboardPage from './pages/CostDashboardPage';
 import AnalyticsPage from './pages/AnalyticsPage';
+import ContractFinancePage from './pages/ContractFinancePage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -131,6 +132,7 @@ const AppRoutes = () => {
       <Route path="/contracts/:id/edit" element={<ProtectedLayout><ContractNewPage /></ProtectedLayout>} />
       <Route path="/external-contracts/:id" element={<ProtectedLayout><ContractProfilePage /></ProtectedLayout>} />
       <Route path="/contracts-guarantees" element={<ProtectedLayout><GuaranteesPage /></ProtectedLayout>} />
+      <Route path="/contracts-finance" element={<ProtectedLayout><ContractFinancePage /></ProtectedLayout>} />
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
       <Route path="/projects/price-lists" element={<ProtectedLayout><PriceListPage /></ProtectedLayout>} />
       <Route path="/projects/commercial" element={<ProtectedLayout><CommercialPage /></ProtectedLayout>} />

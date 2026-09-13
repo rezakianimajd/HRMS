@@ -77,6 +77,12 @@ class Contract(BaseModel):
     )
     guarantee_amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ تضمین (ریال)'))
 
+    # Link to Project Business Platform (nullable; a contract may or may not belong to a project)
+    project = models.ForeignKey(
+        'projects.Project', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='external_contracts', verbose_name=_('پروژه'),
+    )
+
     # --- Extended / enterprise detail fields ---
     category = models.CharField(max_length=50, blank=True, verbose_name=_('طبقه‌بندی قرارداد'))
     project_name = models.CharField(max_length=300, blank=True, verbose_name=_('نام پروژه / طرح'))

@@ -89,6 +89,7 @@ class ContractSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     party_name = serializers.CharField(source='party.name', read_only=True)
     signatory_name = serializers.CharField(source='signatory.full_name', read_only=True)
+    project_name = serializers.CharField(source='project.name', read_only=True)
 
     documents = ContractDocumentSerializer(many=True, read_only=True)
     invoices = InvoiceSerializer(many=True, read_only=True)
@@ -103,8 +104,7 @@ class ContractSerializer(serializers.ModelSerializer):
             'id', 'number', 'subject', 'party', 'party_name', 'contract_type',
             'contract_type_display', 'status', 'status_display', 'amount',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
-            'guarantee_amount',
-            'category', 'project_name', 'project_location', 'tender_number',
+            'guarantee_amount', 'project', 'project_name', 'project_location', 'tender_number',
             'advance_payment', 'retention_percent', 'warranty_period',
             'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
             'description',

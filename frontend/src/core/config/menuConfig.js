@@ -301,6 +301,7 @@ const contractsMenu = [
     title: 'مالی قرارداد',
     color: '#3b82f6',
     items: [
+      { id: 'contracts-finance-page', title: 'مالی قرارداد', icon: <ReceiptIcon />, path: '/contracts-finance', color: '#3b82f6', primary: false, ready: true },
       comingSoon('/contracts-invoices', 'contracts-invoices', 'فاکتورها', <ReceiptIcon />, '#10b981'),
       comingSoon('/contracts-statements', 'contracts-statements', 'صورت‌وضعیت‌ها', <ReceiptLongIcon />, '#6366f1'),
       comingSoon('/contracts-payments', 'contracts-payments', 'پرداخت‌ها', <PaymentsIcon />, '#8b5cf6'),
