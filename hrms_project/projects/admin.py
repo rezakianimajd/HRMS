@@ -4,6 +4,8 @@ from projects.models import (
     ResourceCategory, Resource, CostSource, OBSNode,
     PriceList, PriceListVersion, PriceListChapter, PriceListItem,
     ContractItem, ContractWBS, ContractPriceBasis,
+    BudgetLine, CommittedCost, CostTransaction, CostTransactionLine,
+    ProgressStatement, ProgressStatementItem,
 )
 
 
@@ -104,3 +106,42 @@ class ContractWBSAdmin(admin.ModelAdmin):
 @admin.register(ContractPriceBasis)
 class ContractPriceBasisAdmin(admin.ModelAdmin):
     list_display = ['contract', 'price_list', 'price_list_version', 'pricing_method']
+
+
+@admin.register(BudgetLine)
+class BudgetLineAdmin(admin.ModelAdmin):
+    list_display = ['project', 'wbs', 'cbs', 'description', 'amount']
+    list_filter = ['project']
+    search_fields = ['description']
+
+
+@admin.register(CommittedCost)
+class CommittedCostAdmin(admin.ModelAdmin):
+    list_display = ['project', 'contract', 'contract_item', 'wbs', 'cbs', 'description', 'amount', 'date']
+    list_filter = ['project']
+    search_fields = ['description', 'reference']
+
+
+@admin.register(CostTransaction)
+class CostTransactionAdmin(admin.ModelAdmin):
+    list_display = ['number', 'project', 'date', 'cost_source', 'currency', 'description']
+    list_filter = ['project', 'cost_source']
+    search_fields = ['number', 'description']
+
+
+@admin.register(CostTransactionLine)
+class CostTransactionLineAdmin(admin.ModelAdmin):
+    list_display = ['transaction', 'wbs', 'cbs', 'resource', 'description', 'amount']
+    list_filter = ['wbs', 'cbs', 'resource']
+
+
+@admin.register(ProgressStatement)
+class ProgressStatementAdmin(admin.ModelAdmin):
+    list_display = ['number', 'project', 'contract', 'date', 'gross', 'net_payable', 'is_approved']
+    list_filter = ['project', 'is_approved']
+    search_fields = ['number']
+
+
+@admin.register(ProgressStatementItem)
+class ProgressStatementItemAdmin(admin.ModelAdmin):
+    list_display = ['statement', 'contract_item', 'wbs', 'description', 'amount']

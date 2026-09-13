@@ -8,6 +8,10 @@ from projects.views import (
     PriceListItemViewSet, ContractItemViewSet, ContractWBSViewSet,
     ContractPriceBasisViewSet,
 )
+from projects.cost_views import (
+    BudgetLineViewSet, CommittedCostViewSet, CostTransactionViewSet,
+    CostTransactionLineViewSet, ProgressStatementViewSet, ProgressStatementItemViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'project-types', ProjectTypeViewSet, basename='project-type')
@@ -27,6 +31,12 @@ router.register(r'price-list-items', PriceListItemViewSet, basename='price-list-
 router.register(r'contract-items', ContractItemViewSet, basename='contract-item')
 router.register(r'contract-wbs', ContractWBSViewSet, basename='contract-wbs')
 router.register(r'contract-price-bases', ContractPriceBasisViewSet, basename='contract-price-basis')
+router.register(r'budget-lines', BudgetLineViewSet, basename='budget-line')
+router.register(r'committed-costs', CommittedCostViewSet, basename='committed-cost')
+router.register(r'cost-transactions', CostTransactionViewSet, basename='cost-transaction')
+router.register(r'cost-transaction-lines', CostTransactionLineViewSet, basename='cost-transaction-line')
+router.register(r'progress-statements', ProgressStatementViewSet, basename='progress-statement')
+router.register(r'progress-statement-items', ProgressStatementItemViewSet, basename='progress-statement-item')
 
 urlpatterns = [
     path('', include(router.urls)),

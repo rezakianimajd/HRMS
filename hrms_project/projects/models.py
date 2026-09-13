@@ -14,6 +14,13 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
 
+# Phase 2 cost/progress models live in a separate module imported here so
+# Django discovers them as part of this app.
+from projects.cost_models import (  # noqa: F401
+    BudgetLine, CommittedCost, CostTransaction, CostTransactionLine,
+    ProgressStatement, ProgressStatementItem,
+)
+
 from django.core.exceptions import ValidationError
 
 
