@@ -359,14 +359,15 @@ const Layout = ({ children }) => {
           flexGrow: 1,
           minWidth: 0,
           height: '100vh',
-          overflowY: 'auto',
-          overflowX: 'hidden',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'hidden',
         }}
       >
-        <Box sx={{ p: { xs: 2, md: 3 } }}>
+        <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 } }}>
           {children}
-          <WorkspaceTabs />
         </Box>
+        <WorkspaceTabs />
       </Box>
     </Box>
   );
