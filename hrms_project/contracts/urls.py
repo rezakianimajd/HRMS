@@ -2,7 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from contracts.views import (
     ContractPartyViewSet, ContractViewSet, ContractDocumentViewSet,
-    InvoiceViewSet, StatementViewSet, AddendumViewSet, GuaranteeViewSet, PaymentViewSet,
+    InvoiceViewSet, StatementViewSet, AddendumViewSet, GuaranteeViewSet,
+    PaymentViewSet, ContractDisputeViewSet,
 )
 
 router = DefaultRouter()
@@ -14,6 +15,7 @@ router.register(r'contract-statements', StatementViewSet, basename='contract-sta
 router.register(r'contract-addendums', AddendumViewSet, basename='contract-addendum')
 router.register(r'contract-guarantees', GuaranteeViewSet, basename='contract-guarantee')
 router.register(r'contract-payments', PaymentViewSet, basename='contract-payment')
+router.register(r'contract-disputes', ContractDisputeViewSet, basename='contract-dispute')
 
 urlpatterns = [
     path('', include(router.urls)),

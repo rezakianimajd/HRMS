@@ -2,8 +2,24 @@
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment,
+    Addendum, Guarantee, Payment, ContractDispute,
 )
+
+
+class ContractDisputeSerializer(serializers.ModelSerializer):
+    dispute_type_display = serializers.CharField(source='get_dispute_type_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    severity_display = serializers.CharField(source='get_severity_display', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+
+    class Meta:
+        model = ContractDispute
+        fields = [
+            'id', 'contract', 'contract_subject', 'title', 'dispute_type', 'dispute_type_display',
+            'severity', 'severity_display', 'status', 'status_display', 'claim_amount',
+            'opened_date', 'resolved_date', 'description', 'resolution', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
 class ContractDocumentSerializer(serializers.ModelSerializer):

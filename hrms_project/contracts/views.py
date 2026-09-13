@@ -4,12 +4,12 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment,
+    Addendum, Guarantee, Payment, ContractDispute,
 )
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
     InvoiceSerializer, StatementSerializer, AddendumSerializer,
-    GuaranteeSerializer, PaymentSerializer,
+    GuaranteeSerializer, PaymentSerializer, ContractDisputeSerializer,
 )
 
 
@@ -216,4 +216,22 @@ class PaymentViewSet(BaseContractViewSet):
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
+        return qs
+
+
+class ContractDisputeViewSet(BaseContractViewSet):
+    serializer_class = ContractDisputeSerializer
+    queryset = ContractDispute.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'description']
+    ordering = ['-opened_date']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('contract')
+        contract_id = self.request.query_params.get('contract')
+        if contract_id:
+            qs = qs.filter(contract_id=contract_id)
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
         return qs

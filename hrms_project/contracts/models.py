@@ -257,3 +257,47 @@ class Payment(BaseModel):
 
     def __str__(self):
         return f'{self.date} - {self.amount}'
+
+
+class ContractDispute(BaseModel):
+    """اختلاف / دعوای مرتبط با قرارداد (Risk Management)."""
+
+    class DisputeType(models.TextChoices):
+        FINANCIAL = 'financial', _('مالی')
+        TECHNICAL = 'technical', _('فنی')
+        TIMELINE = 'timeline', _('زمان‌بندی / تأخیر')
+        QUALITY = 'quality', _('کیفیت')
+        LEGAL = 'legal', _('حقوقی')
+        OTHER = 'other', _('سایر')
+
+    class Status(models.TextChoices):
+        OPEN = 'open', _('باز')
+        UNDER_REVIEW = 'under_review', _('در حال بررسی')
+        RESOLVED = 'resolved', _('حل‌شده')
+        ESCALATED = 'escalated', _('ارجاع به مرجع بالاتر')
+        CLOSED = 'closed', _('بسته')
+
+    class Severity(models.TextChoices):
+        LOW = 'low', _('کم')
+        MEDIUM = 'medium', _('متوسط')
+        HIGH = 'high', _('زیاد')
+        CRITICAL = 'critical', _('بحرانی')
+
+    contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='disputes', verbose_name=_('قرارداد'))
+    title = models.CharField(max_length=250, verbose_name=_('موضوع اختلاف'))
+    dispute_type = models.CharField(max_length=20, choices=DisputeType.choices, default=DisputeType.OTHER, verbose_name=_('نوع اختلاف'))
+    severity = models.CharField(max_length=20, choices=Severity.choices, default=Severity.MEDIUM, verbose_name=_('شدت'))
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.OPEN, verbose_name=_('وضعیت'))
+    claim_amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ ادعا (ریال)'))
+    opened_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ طرح'))
+    resolved_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ حل'))
+    description = models.TextField(blank=True, verbose_name=_('شرح'))
+    resolution = models.TextField(blank=True, verbose_name=_('اقدام/نتیجه'))
+
+    class Meta:
+        verbose_name = _('اختلاف قرارداد')
+        verbose_name_plural = _('اختلافات و دعاوی')
+        ordering = ['-opened_date', '-created_at']
+
+    def __str__(self):
+        return f'{self.get_dispute_type_display()} - {self.title}'

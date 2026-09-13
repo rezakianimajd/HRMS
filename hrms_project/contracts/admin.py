@@ -1,6 +1,7 @@
 from django.contrib import admin
 from contracts.models import (
-    ContractParty, Contract, ContractDocument, Invoice, Statement, Addendum, Guarantee, Payment,
+    ContractParty, Contract, ContractDocument, Invoice, Statement, Addendum, Guarantee,
+    Payment, ContractDispute,
 )
 
 
@@ -58,3 +59,10 @@ admin.site.register(Statement)
 admin.site.register(Addendum)
 admin.site.register(Guarantee)
 admin.site.register(Payment)
+
+
+@admin.register(ContractDispute)
+class ContractDisputeAdmin(admin.ModelAdmin):
+    list_display = ['title', 'contract', 'dispute_type', 'severity', 'status', 'claim_amount', 'opened_date']
+    list_filter = ['dispute_type', 'severity', 'status']
+    search_fields = ['title', 'description']
