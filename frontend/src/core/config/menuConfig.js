@@ -342,7 +342,7 @@ const contractsMenu = [
     color: '#06b6d4',
     items: [
       { id: 'correspondences-c', title: 'مکاتبات', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
-      comingSoon('/contracts-documents', 'contracts-docs', 'بایگانی اسناد قرارداد', <FolderSharedIcon />, '#f97316'),
+      { id: 'contracts-docs', title: 'بایگانی اسناد قرارداد', icon: <FolderSharedIcon />, path: '/contracts-documents', color: '#f97316', primary: false, ready: true },
     ],
   },
 ];
