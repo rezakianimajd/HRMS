@@ -37,7 +37,7 @@ const CompanyLinkedDocs = ({ employeeId }) => {
     return (
       <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: '10px', borderColor: 'rgba(245,158,11,0.2)' }}>
         <Typography variant="body2" color="textSecondary">
-          ط³ظ†ط¯ ط³ط§ط²ظ…ط§ظ†غŒ ط¨ظ‡ ط§غŒظ† ظ¾ط±ط³ظ†ظ„ ظ…طھطµظ„ ظ†ط´ط¯ظ‡ ط§ط³طھ. ط§ط² آ«ط¨ط§غŒع¯ط§ظ†غŒ ط§ط³ظ†ط§ط¯ ط³ط§ط²ظ…ط§ظ†آ» ظ…غŒطھظˆط§ظ†غŒط¯ ط³ظ†ط¯ ظ…ط±طھط¨ط· ط±ط§ ط¨ظ‡ ط§ظˆ ط§طھطµط§ظ„ ط¯ظ‡غŒط¯.
+          سند سازمانی به این پرسنل متصل نشده است. از «بایگانی اسناد سازمان» میتوانید سند مرتبط را به او اتصال دهید.
         </Typography>
       </Paper>
     );
@@ -70,12 +70,12 @@ const CompanyLinkedDocs = ({ employeeId }) => {
               )}
               {doc.reference_number && (
                 <Typography variant="caption" color="textSecondary" display="block">
-                  ط«ط¨طھ: {doc.reference_number}
+                  ثبت: {doc.reference_number}
                 </Typography>
               )}
               {doc.issue_date && (
                 <Typography variant="caption" color="textSecondary" display="block">
-                  طµط¯ظˆط±: {toJalali(doc.issue_date)}
+                  صدور: {toJalali(doc.issue_date)}
                 </Typography>
               )}
               {doc.file_url && (
@@ -83,7 +83,7 @@ const CompanyLinkedDocs = ({ employeeId }) => {
                   <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
                     startIcon={<DownloadIcon fontSize="small" />}
                     sx={{ color: '#b45309', fontSize: '0.72rem' }}>
-                    ط¯ط±غŒط§ظپطھ
+                    دریافت
                   </Button>
                 </Box>
               )}
@@ -102,9 +102,9 @@ const fileIcon = (ext) => {
 };
 
 const archiveStatusChip = (doc) => {
-  if (!doc.expiry_date) return <Chip label="ط¨ط¯ظˆظ† ط§ظ†ظ‚ط¶ط§" color="default" size="small" variant="outlined" />;
-  if (doc.is_expired) return <Chip label="ظ…ظ†ظ‚ط¶غŒ" color="error" size="small" />;
-  return <Chip label="ظ…ط¹طھط¨ط±" color="success" size="small" variant="outlined" />;
+  if (!doc.expiry_date) return <Chip label="بدون انقضا" color="default" size="small" variant="outlined" />;
+  if (doc.is_expired) return <Chip label="منقضی" color="error" size="small" />;
+  return <Chip label="معتبر" color="success" size="small" variant="outlined" />;
 };
 
 const expiryChip = (doc, t) => {
@@ -154,9 +154,9 @@ const DocumentsTab = ({ employeeId }) => {
       <Paper sx={{ p: 2, mb: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
         <EmployeeAvatar employee={employee} size={72} />
         <Box sx={{ flex: 1 }}>
-          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>ط¹ع©ط³ ظ¾ط±ط³ظ†ظ„غŒ</Typography>
+          <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>عکس پرسنلی</Typography>
           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
-            ط¹ع©ط³ ط¯ط± طھظ…ط§ظ… ط¨ط®ط´â€Œظ‡ط§ (ظ„غŒط³طھ ظ¾ط±ط³ظ†ظ„طŒ ط¯ظپطھط±ع†ظ‡ طھظ„ظپظ†طŒ ظ¾ط±ظˆظ†ط¯ظ‡) ظ†ظ…ط§غŒط´ ط¯ط§ط¯ظ‡ ظ…غŒâ€Œط´ظˆط¯.
+            عکس در تمام بخش‌ها (لیست پرسنل، دفترچه تلفن، پرونده) نمایش داده می‌شود.
           </Typography>
           <input id="employee-photo-input" type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
           <Button
@@ -164,7 +164,7 @@ const DocumentsTab = ({ employeeId }) => {
             onClick={() => document.getElementById('employee-photo-input').click()}
             disabled={uploadingPhoto}
           >
-            {uploadingPhoto ? <CircularProgress size={16} /> : (employee?.photo_url ? 'طھط؛غŒغŒط± ط¹ع©ط³ ظ¾ط±ط³ظ†ظ„غŒ' : 'ط¢ظ¾ظ„ظˆط¯ ط¹ع©ط³ ظ¾ط±ط³ظ†ظ„غŒ')}
+            {uploadingPhoto ? <CircularProgress size={16} /> : (employee?.photo_url ? 'تغییر عکس پرسنلی' : 'آپلود عکس پرسنلی')}
           </Button>
         </Box>
       </Paper>
@@ -224,7 +224,7 @@ const DocumentsTab = ({ employeeId }) => {
       <Box sx={{ mt: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
           <Typography variant="h6" sx={{ color: '#b45309' }}>
-            ط§ط³ظ†ط§ط¯ ط³ط§ط²ظ…ط§ظ†غŒ ظ…ط±طھط¨ط·
+            اسناد سازمانی مرتبط
           </Typography>
           <Button size="small" variant="outlined"
             onClick={() => {
@@ -234,11 +234,11 @@ const DocumentsTab = ({ employeeId }) => {
             }}
             sx={{ color: '#b45309', borderColor: 'rgba(245,158,11,0.4)' }}
           >
-            ظ…ط´ط§ظ‡ط¯ظ‡ ط¨ط§غŒع¯ط§ظ†غŒ ع©ط§ظ…ظ„ â†گ
+            مشاهده بایگانی کامل ←
           </Button>
         </Box>
         <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5 }}>
-          ط§ط³ظ†ط§ط¯غŒ ع©ظ‡ ط¯ط± ط¨ط§غŒع¯ط§ظ†غŒ ط³ط§ط²ظ…ط§ظ† ط¨ظ‡ â€Œط§غŒظ† ظ¾ط±ط³ظ†ظ„ ظ…طھطµظ„ ط´ط¯ظ‡â€Œط§ظ†ط¯
+          اسنادی که در بایگانی سازمان به ‌این پرسنل متصل شده‌اند
         </Typography>
 
         <CompanyLinkedDocs employeeId={employeeId} />

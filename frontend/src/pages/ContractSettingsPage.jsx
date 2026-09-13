@@ -23,10 +23,10 @@ const glassPaper = {
 };
 
 const RECOMMENDATIONS = {
-  approved: { label: 'طھط£غŒغŒط¯ط´ط¯ظ‡', color: '#10b981' },
-  conditional: { label: 'طھط£غŒغŒط¯ ظ…ط´ط±ظˆط·', color: '#f59e0b' },
-  suspended: { label: 'طھط¹ظ„غŒظ‚', color: '#f97316' },
-  blacklisted: { label: 'ظ„غŒط³طھ ط³غŒط§ظ‡', color: '#ef4444' },
+  approved: { label: 'تأییدشده', color: '#10b981' },
+  conditional: { label: 'تأیید مشروط', color: '#f59e0b' },
+  suspended: { label: 'تعلیق', color: '#f97316' },
+  blacklisted: { label: 'لیست سیاه', color: '#ef4444' },
 };
 
 const ContractSettingsPage = () => {
@@ -40,13 +40,13 @@ const ContractSettingsPage = () => {
           <CategoryIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#475569">ظ¾غŒع©ط±ط¨ظ†ط¯غŒ ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
-          <Typography variant="body2" color="textSecondary">ط§ظ†ظˆط§ط¹ ظ‚ط±ط§ط±ط¯ط§ط¯ ظˆ ط§ط±ط²غŒط§ط¨غŒ طھط£ظ…غŒظ†â€Œع©ظ†ظ†ط¯ع¯ط§ظ†</Typography>
+          <Typography variant="h6" fontWeight={800} color="#475569">پیکربندی قرارداد</Typography>
+          <Typography variant="body2" color="textSecondary">انواع قرارداد و ارزیابی تأمین‌کنندگان</Typography>
         </Box>
       </Paper>
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab icon={<CategoryIcon />} label="ط§ظ†ظˆط§ط¹ ظ‚ط±ط§ط±ط¯ط§ط¯" />
-        <Tab icon={<AssessmentIcon />} label="ط§ط±ط²غŒط§ط¨غŒ طھط£ظ…غŒظ†â€Œع©ظ†ظ†ط¯ع¯ط§ظ†" />
+        <Tab icon={<CategoryIcon />} label="انواع قرارداد" />
+        <Tab icon={<AssessmentIcon />} label="ارزیابی تأمین‌کنندگان" />
       </Tabs>
       {tab === 0 && <ContractTypesManager />}
       {tab === 1 && <EvaluationsManager />}
@@ -66,29 +66,29 @@ const ContractTypesManager = () => {
   return (
     <Paper sx={{ ...glassPaper, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-        <Typography variant="subtitle2" fontWeight={800}>ط§ظ†ظˆط§ط¹ ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
-        <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => { setForm({}); setDialog(true); }}>ط§ظپط²ظˆط¯ظ†</Button>
+        <Typography variant="subtitle2" fontWeight={800}>انواع قرارداد</Typography>
+        <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => { setForm({}); setDialog(true); }}>افزودن</Button>
       </Box>
       <Stack spacing={0.75}>
         {list.map(t => (
           <Paper key={t.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box sx={{ flex: 1 }}><Typography variant="body2" fontWeight={700}>{t.name}</Typography><Typography variant="caption" color="textSecondary">{t.code}</Typography></Box>
             <IconButton size="small" onClick={() => { setForm({ ...t }); setDialog(true); }}><EditNoteIcon fontSize="small" /></IconButton>
-            <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) del.mutate(t.id); }}><DeleteIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(t.id); }}><DeleteIcon fontSize="small" /></IconButton>
           </Paper>
         ))}
-        {list.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ظ†ظˆط¹غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡</Typography>}
+        {list.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">نوعی ثبت نشده</Typography>}
       </Stack>
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>ظ†ظˆط¹ ظ‚ط±ط§ط±ط¯ط§ط¯</DialogTitle>
+        <DialogTitle>نوع قرارداد</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField size="small" label="ع©ط¯" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
-          <TextField size="small" label="ط¹ظ†ظˆط§ظ†" value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
-          <TextField size="small" label="طھظˆط¶غŒط­ط§طھ" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          <TextField size="small" label="کد" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
+          <TextField size="small" label="عنوان" value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} />
+          <TextField size="small" label="توضیحات" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
-          <Button variant="contained" disabled={!form.name || !form.code} onClick={() => save.mutate(form)} sx={{ background: 'linear-gradient(135deg,#64748b,#8b5cf6)' }}>ط°ط®غŒط±ظ‡</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
+          <Button variant="contained" disabled={!form.name || !form.code} onClick={() => save.mutate(form)} sx={{ background: 'linear-gradient(135deg,#64748b,#8b5cf6)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Paper>
@@ -112,23 +112,23 @@ const EvaluationsManager = () => {
   return (
     <Paper sx={{ ...glassPaper, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-        <Typography variant="subtitle2" fontWeight={800}>ط§ط±ط²غŒط§ط¨غŒ طھط£ظ…غŒظ†â€Œع©ظ†ظ†ط¯ع¯ط§ظ†</Typography>
-        <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => { setForm({}); setDialog(true); }}>ط§ظپط²ظˆط¯ظ†</Button>
+        <Typography variant="subtitle2" fontWeight={800}>ارزیابی تأمین‌کنندگان</Typography>
+        <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => { setForm({}); setDialog(true); }}>افزودن</Button>
       </Box>
-      {list.length === 0 ? <Typography variant="caption" color="textSecondary" textAlign="center">ط§ط±ط²غŒط§ط¨غŒâ€Œط§غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡</Typography> : (
+      {list.length === 0 ? <Typography variant="caption" color="textSecondary" textAlign="center">ارزیابی‌ای ثبت نشده</Typography> : (
         <Grid container spacing={2}>
           {list.map(ev => (
             <Grid item xs={12} md={6} key={ev.id}>
               <Paper sx={{ ...glassPaper, p: 2 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <AssessmentIcon sx={{ color: RECOMMENDATIONS[ev.recommendation]?.color }} />
-                  <Box sx={{ flex: 1 }}><Typography variant="body2" fontWeight={800}>{ev.party_name}</Typography><Typography variant="caption" color="textSecondary">ط¯ظˆط±ظ‡: {ev.period || 'â€”'} آ· {toJalali(ev.evaluation_date)}</Typography></Box>
+                  <Box sx={{ flex: 1 }}><Typography variant="body2" fontWeight={800}>{ev.party_name}</Typography><Typography variant="caption" color="textSecondary">دوره: {ev.period || '—'} · {toJalali(ev.evaluation_date)}</Typography></Box>
                   <Chip size="small" label={RECOMMENDATIONS[ev.recommendation]?.label} sx={{ bgcolor: `${RECOMMENDATIONS[ev.recommendation]?.color}22`, color: RECOMMENDATIONS[ev.recommendation]?.color }} />
                 </Box>
-                <Chip size="small" label={`ط§ظ…طھغŒط§ط² ع©ظ„: ${formatPersianNumber(ev.total_score || 0)}`} sx={{ mb: 1 }} />
+                <Chip size="small" label={`امتیاز کل: ${formatPersianNumber(ev.total_score || 0)}`} sx={{ mb: 1 }} />
                 <Box sx={{ display: 'flex', gap: 0.5 }}>
                   <IconButton size="small" onClick={() => { setForm({ ...ev }); setDialog(true); }}><EditNoteIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) del.mutate(ev.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(ev.id); }}><DeleteIcon fontSize="small" /></IconButton>
                 </Box>
               </Paper>
             </Grid>
@@ -136,36 +136,36 @@ const EvaluationsManager = () => {
         </Grid>
       )}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>ط§ط±ط²غŒط§ط¨غŒ طھط£ظ…غŒظ†â€Œع©ظ†ظ†ط¯ظ‡</DialogTitle>
+        <DialogTitle>ارزیابی تأمین‌کننده</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl size="small" fullWidth><InputLabel>ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯ *</InputLabel>
-            <Select value={form.party || ''} label="ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯ *" onChange={e => setForm(p => ({ ...p, party: e.target.value }))}>
+          <FormControl size="small" fullWidth><InputLabel>طرف قرارداد *</InputLabel>
+            <Select value={form.party || ''} label="طرف قرارداد *" onChange={e => setForm(p => ({ ...p, party: e.target.value }))}>
               {partyList.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
             </Select>
           </FormControl>
           <Grid container spacing={1.5}>
-            <Grid item xs={6}><TextField size="small" label="ط¯ظˆط±ظ‡" value={form.period || ''} onChange={e => setForm(p => ({ ...p, period: e.target.value }))} /></Grid>
-            <Grid item xs={6}><JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط§ط±ط²غŒط§ط¨غŒ" value={form.evaluation_date} onChange={(g) => setForm(p => ({ ...p, evaluation_date: g }))} /></Grid>
-            <Grid item xs={6}>{scoreField('quality_score', 'ع©غŒظپغŒطھ (غ°-غ±غ°غ°)')}</Grid>
-            <Grid item xs={6}>{scoreField('delivery_score', 'طھط­ظˆغŒظ„ (غ°-غ±غ°غ°)')}</Grid>
-            <Grid item xs={6}>{scoreField('price_score', 'ظ‚غŒظ…طھ (غ°-غ±غ°غ°)')}</Grid>
-            <Grid item xs={6}>{scoreField('cooperation_score', 'ظ‡ظ…ع©ط§ط±غŒ (غ°-غ±غ°غ°)')}</Grid>
-            <Grid item xs={6}>{scoreField('safety_score', 'ط§غŒظ…ظ†غŒ (غ°-غ±غ°غ°)')}</Grid>
+            <Grid item xs={6}><TextField size="small" label="دوره" value={form.period || ''} onChange={e => setForm(p => ({ ...p, period: e.target.value }))} /></Grid>
+            <Grid item xs={6}><JalaliDatePicker fullWidth label="تاریخ ارزیابی" value={form.evaluation_date} onChange={(g) => setForm(p => ({ ...p, evaluation_date: g }))} /></Grid>
+            <Grid item xs={6}>{scoreField('quality_score', 'کیفیت (۰-۱۰۰)')}</Grid>
+            <Grid item xs={6}>{scoreField('delivery_score', 'تحویل (۰-۱۰۰)')}</Grid>
+            <Grid item xs={6}>{scoreField('price_score', 'قیمت (۰-۱۰۰)')}</Grid>
+            <Grid item xs={6}>{scoreField('cooperation_score', 'همکاری (۰-۱۰۰)')}</Grid>
+            <Grid item xs={6}>{scoreField('safety_score', 'ایمنی (۰-۱۰۰)')}</Grid>
             <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>ظ†طھغŒط¬ظ‡</InputLabel>
-                <Select value={form.recommendation || 'approved'} label="ظ†طھغŒط¬ظ‡" onChange={e => setForm(p => ({ ...p, recommendation: e.target.value }))}>
+              <FormControl size="small" fullWidth><InputLabel>نتیجه</InputLabel>
+                <Select value={form.recommendation || 'approved'} label="نتیجه" onChange={e => setForm(p => ({ ...p, recommendation: e.target.value }))}>
                   {Object.entries(RECOMMENDATIONS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
-          <TextField size="small" label="ظ†ظ‚ط§ط· ظ‚ظˆطھ" multiline rows={2} value={form.strengths || ''} onChange={e => setForm(p => ({ ...p, strengths: e.target.value }))} />
-          <TextField size="small" label="ظ†ظ‚ط§ط· ط¶ط¹ظپ" multiline rows={2} value={form.weaknesses || ''} onChange={e => setForm(p => ({ ...p, weaknesses: e.target.value }))} />
-          <TextField size="small" label="ط§ط±ط²غŒط§ط¨" value={form.evaluator || ''} onChange={e => setForm(p => ({ ...p, evaluator: e.target.value }))} />
+          <TextField size="small" label="نقاط قوت" multiline rows={2} value={form.strengths || ''} onChange={e => setForm(p => ({ ...p, strengths: e.target.value }))} />
+          <TextField size="small" label="نقاط ضعف" multiline rows={2} value={form.weaknesses || ''} onChange={e => setForm(p => ({ ...p, weaknesses: e.target.value }))} />
+          <TextField size="small" label="ارزیاب" value={form.evaluator || ''} onChange={e => setForm(p => ({ ...p, evaluator: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
-          <Button variant="contained" disabled={!form.party} onClick={() => save.mutate({ ...form, quality_score: Number(form.quality_score) || 0, delivery_score: Number(form.delivery_score) || 0, price_score: Number(form.price_score) || 0, cooperation_score: Number(form.cooperation_score) || 0, safety_score: Number(form.safety_score) || 0 })} sx={{ background: 'linear-gradient(135deg,#64748b,#8b5cf6)' }}>ط°ط®غŒط±ظ‡</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
+          <Button variant="contained" disabled={!form.party} onClick={() => save.mutate({ ...form, quality_score: Number(form.quality_score) || 0, delivery_score: Number(form.delivery_score) || 0, price_score: Number(form.price_score) || 0, cooperation_score: Number(form.cooperation_score) || 0, safety_score: Number(form.safety_score) || 0 })} sx={{ background: 'linear-gradient(135deg,#64748b,#8b5cf6)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Paper>

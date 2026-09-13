@@ -31,7 +31,7 @@ const SectionHeader = ({ title, icon, color }) => (
 );
 
 const InfoCard = ({ fieldName, label, value }) => {
-  let display = value || 'â€”';
+  let display = value || '—';
   if (DATE_FIELDS.includes(fieldName)) {
     display = toJalali(value);
   } else if (DIGIT_FIELDS.includes(fieldName)) {
@@ -75,15 +75,15 @@ const BasicInfoTab = ({ employee }) => {
         <InfoCard fieldName="national_id" label={t('employees.national_id')} value={e.national_id} />
         <InfoCard fieldName="birth_date" label={t('employees.birth_date')} value={e.birth_date} />
         <InfoCard label={t('employees.birth_place')} value={e.birth_place} />
-        <InfoCard label="ظ…غŒط²ط§ظ† طھط­طµغŒظ„ط§طھ" value={e.education_level_display || e.education_level || 'â€”'} />
-        <InfoCard label="ط±ط´طھظ‡ / ظ…ط¯ط±ع© طھط­طµغŒظ„غŒ" value={e.education_field} />
-        <InfoCard label="ظ…ط­ظ„ ط§ط®ط° ظ…ط¯ط±ع© طھط­طµغŒظ„غŒ" value={e.education_place} />
-        <InfoCard label="ظ†ظˆط¹ ط¯ط§ظ†ط´ع¯ط§ظ‡" value={e.university_type_display || e.university_type || 'â€”'} />
+        <InfoCard label="میزان تحصیلات" value={e.education_level_display || e.education_level || '—'} />
+        <InfoCard label="رشته / مدرک تحصیلی" value={e.education_field} />
+        <InfoCard label="محل اخذ مدرک تحصیلی" value={e.education_place} />
+        <InfoCard label="نوع دانشگاه" value={e.university_type_display || e.university_type || '—'} />
         <InfoCard label={t('employees.gender')} value={e.gender_display} />
         <InfoCard label={t('employees.marital_status')} value={e.marital_status_display} />
         <InfoCard fieldName="children_count" label={t('employees.children_count')} value={e.children_count} />
         <InfoCard label={t('employees.spouse_name')} value={e.spouse_name} />
-        <InfoCard label="ظ†ط§ظ… ظ¾ط¯ط±" value={e.father_name} />
+        <InfoCard label="نام پدر" value={e.father_name} />
       </Grid>
 
       <Box sx={{ mt: 3 }}>
@@ -91,32 +91,32 @@ const BasicInfoTab = ({ employee }) => {
       </Box>
       <Divider sx={{ mb: 2 }} />
       <Grid container spacing={1.5}>
-        <InfoCard fieldName="birth_certificate_number" label="ط´ظ…ط§ط±ظ‡ ط´ظ†ط§ط³ظ†ط§ظ…ظ‡" value={e.birth_certificate_number} />
+        <InfoCard fieldName="birth_certificate_number" label="شماره شناسنامه" value={e.birth_certificate_number} />
         <InfoCard fieldName="national_id_serial" label={t('employees.national_id_serial')} value={e.national_id_serial} />
         <InfoCard fieldName="national_id_place" label={t('employees.national_id_place')} value={e.national_id_place} />
         <InfoCard fieldName="national_id_date" label={t('employees.national_id_date')} value={e.national_id_date} />
-        <InfoCard fieldName="insurance_number" label="ط´ظ…ط§ط±ظ‡ ط¨غŒظ…ظ‡" value={e.insurance_number} />
+        <InfoCard fieldName="insurance_number" label="شماره بیمه" value={e.insurance_number} />
       </Grid>
 
-      {/* ط§ط·ظ„ط§ط¹ط§طھ ط¨ط§ظ†ع©غŒ */}
+      {/* اطلاعات بانکی */}
       <Box sx={{ mt: 3 }}>
-        <SectionHeader title="ط§ط·ظ„ط§ط¹ط§طھ ط¨ط§ظ†ع©غŒ" icon={<CallIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#0ea5e9" />
+        <SectionHeader title="اطلاعات بانکی" icon={<CallIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#0ea5e9" />
       </Box>
       <Divider sx={{ mb: 2 }} />
       <Grid container spacing={1.5}>
-        <InfoCard label="ط¨ط§ظ†ع©" value={e.bank_name} />
-        <InfoCard fieldName="account_number" label="ط´ظ…ط§ط±ظ‡ ط­ط³ط§ط¨" value={e.account_number} />
-        <InfoCard fieldName="sheba_number" label="ط´ظ…ط§ط±ظ‡ ط´ط¨ط§" value={e.sheba_number} />
+        <InfoCard label="بانک" value={e.bank_name} />
+        <InfoCard fieldName="account_number" label="شماره حساب" value={e.account_number} />
+        <InfoCard fieldName="sheba_number" label="شماره شبا" value={e.sheba_number} />
       </Grid>
 
-      {/* ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ */}
+      {/* بیمه تکمیلی */}
       <Box sx={{ mt: 3 }}>
-        <SectionHeader title="ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ" icon={<BadgeIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#8b5cf6" />
+        <SectionHeader title="بیمه تکمیلی" icon={<BadgeIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#8b5cf6" />
       </Box>
       <Divider sx={{ mb: 2 }} />
       {(e.supplementary_insurances || []).length === 0 ? (
         <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
-          ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ
+          بیمه تکمیلی ثبت نشده است
         </Typography>
       ) : (
         <Stack spacing={1.5}>
@@ -129,15 +129,15 @@ const BasicInfoTab = ({ employee }) => {
             }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 1 }}>
                 <Typography variant="body2" fontWeight={700}>{ins.insurance_name}</Typography>
-                <Chip size="small" label={ins.plan || ins.insurance_type || 'â€”'} variant="outlined" sx={{ color: '#8b5cf6', borderColor: '#8b5cf6' }} />
+                <Chip size="small" label={ins.plan || ins.insurance_type || '—'} variant="outlined" sx={{ color: '#8b5cf6', borderColor: '#8b5cf6' }} />
               </Box>
               <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>
-                {toJalali(ins.start_date)} طھط§ {ins.end_date ? toJalali(ins.end_date) : 'ط§ع©ظ†ظˆظ†'} آ· ظ…ط¨ظ„ط؛ ظ…ط§ظ‡ط§ظ†ظ‡: {toPersianDigits(ins.monthly_amount)} ط±غŒط§ظ„ آ· ظ…ط¨ظ„ط؛ ع©ظ„: {toPersianDigits(ins.total_amount)} ط±غŒط§ظ„
+                {toJalali(ins.start_date)} تا {ins.end_date ? toJalali(ins.end_date) : 'اکنون'} · مبلغ ماهانه: {toPersianDigits(ins.monthly_amount)} ریال · مبلغ کل: {toPersianDigits(ins.total_amount)} ریال
               </Typography>
 
               {(ins.dependents || []).length > 0 && (
                 <Box sx={{ mt: 1 }}>
-                  <Typography variant="caption" fontWeight={700} color="#8b5cf6">ط§ظپط±ط§ط¯ طھط­طھ طھع©ظپظ„:</Typography>
+                  <Typography variant="caption" fontWeight={700} color="#8b5cf6">افراد تحت تکفل:</Typography>
                   {(ins.dependents || []).map(dep => (
                     <Box key={dep.id} sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                       <Typography variant="caption">{dep.first_name} {dep.last_name}</Typography>
@@ -151,14 +151,14 @@ const BasicInfoTab = ({ employee }) => {
         </Stack>
       )}
 
-      {/* ط³ظˆط§ط¨ظ‚ ع©ط§ط±غŒ */}
+      {/* سوابق کاری */}
       <Box sx={{ mt: 3 }}>
-        <SectionHeader title="ط³ظˆط§ط¨ظ‚ ع©ط§ط±غŒ" icon={<WorkHistoryIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#14b8a6" />
+        <SectionHeader title="سوابق کاری" icon={<WorkHistoryIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#14b8a6" />
       </Box>
       <Divider sx={{ mb: 2 }} />
       {expList.length === 0 ? (
         <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>
-          ط³ط§ط¨ظ‚ظ‡ ع©ط§ط±غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ
+          سابقه کاری ثبت نشده است
         </Typography>
       ) : (
         <Stack spacing={1}>
@@ -174,11 +174,11 @@ const BasicInfoTab = ({ employee }) => {
               <Box sx={{ flex: 1 }}>
                 <Typography variant="body2" fontWeight={700}>{exp.company_name}</Typography>
                 <Typography variant="caption" color="textSecondary" display="block">
-                  {exp.job_title || 'â€”'} آ· {toJalali(exp.start_date)} طھط§ {exp.end_date ? toJalali(exp.end_date) : 'ط§ع©ظ†ظˆظ†'}
+                  {exp.job_title || '—'} · {toJalali(exp.start_date)} تا {exp.end_date ? toJalali(exp.end_date) : 'اکنون'}
                 </Typography>
               </Box>
               {exp.duration_years != null && (
-                <Chip size="small" label={`${toPersianDigits(exp.duration_years)} ط³ط§ظ„`} variant="outlined"
+                <Chip size="small" label={`${toPersianDigits(exp.duration_years)} سال`} variant="outlined"
                   sx={{ color: '#14b8a6', borderColor: '#14b8a6' }} />
               )}
             </Paper>
@@ -195,7 +195,7 @@ const BasicInfoTab = ({ employee }) => {
         <InfoCard fieldName="mobile" label={t('employees.mobile')} value={e.mobile} />
         <InfoCard label={t('employees.email')} value={e.email} />
         <InfoCard label={t('employees.address')} value={e.address} />
-        <InfoCard label="ط´ظ‡ط±" value={e.city} />
+        <InfoCard label="شهر" value={e.city} />
         <InfoCard fieldName="postal_code" label={t('employees.postal_code')} value={e.postal_code} />
       </Grid>
 

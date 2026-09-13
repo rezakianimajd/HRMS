@@ -25,13 +25,13 @@ import useAuth from '../core/hooks/useAuth';
 const PALETTE = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
 const JALALI_MONTHS = [
-  'ظپط±ظˆط±ط¯غŒظ†', 'ط§ط±ط¯غŒط¨ظ‡ط´طھ', 'ط®ط±ط¯ط§ط¯', 'طھغŒط±', 'ظ…ط±ط¯ط§ط¯', 'ط´ظ‡ط±غŒظˆط±',
-  'ظ…ظ‡ط±', 'ط¢ط¨ط§ظ†', 'ط¢ط°ط±', 'ط¯غŒ', 'ط¨ظ‡ظ…ظ†', 'ط§ط³ظپظ†ط¯',
+  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
 ];
 
 function todayLabel() {
   const parts = getJalaliParts(new Date().toISOString().slice(0, 10));
-  if (!parts) return 'â€”';
+  if (!parts) return '—';
   return `${toPersianDigits(parts[2])} ${JALALI_MONTHS[(parts[1] || 1) - 1]} ${toPersianDigits(parts[0])}`;
 }
 
@@ -121,7 +121,7 @@ const DashboardPage = () => {
 
   return (
     <Box sx={{ height: 'calc(100vh - 80px)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Greeting hero â€” compact, RTL */}
+      {/* Greeting hero — compact, RTL */}
       <Paper sx={{
         p: 1.75, mb: 1.5, borderRadius: '10px',
         display: 'flex', alignItems: 'center', gap: 1.75, flexShrink: 0,
@@ -138,10 +138,10 @@ const DashboardPage = () => {
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography variant="h6" fontWeight={800} sx={{ color: '#4338ca', lineHeight: 1.2 }}>
-            ط³ظ„ط§ظ…طŒ {firstName} ًں‘‹
+            سلام، {firstName} 👋
           </Typography>
           <Typography variant="caption" color="textSecondary">
-            {todayLabel()} آ· ط®ظˆط´ ط¢ظ…ط¯غŒط¯
+            {todayLabel()} · خوش آمدید
           </Typography>
         </Box>
       </Paper>
@@ -161,41 +161,41 @@ const DashboardPage = () => {
           <StatCard title={t('dashboard_home.retired_this_year')} value={stats?.retired_this_year} icon={<TrendingDownIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#ef4444" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard title="ط¯ط± ط§ظ†طھط¸ط§ط± طھط£غŒغŒط¯" value={pendingApprovals} icon={<PendingActionsIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#8b5cf6" />
+          <StatCard title="در انتظار تأیید" value={pendingApprovals} icon={<PendingActionsIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#8b5cf6" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard title="ظ‚ط±ط§ط±ط¯ط§ط¯ ط±ظˆ ط¨ظ‡ ط§ظ†ظ‚ط¶ط§" value={stats?.expiring_contracts} icon={<FactCheckIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#f97316" />
+          <StatCard title="قرارداد رو به انقضا" value={stats?.expiring_contracts} icon={<FactCheckIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#f97316" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard title="ظ…ط¯ط§ط±ع© ظ…ظ†ظ‚ط¶غŒ" value={stats?.expired_documents} icon={<WarningAmberIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#f43f5e" />
+          <StatCard title="مدارک منقضی" value={stats?.expired_documents} icon={<WarningAmberIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#f43f5e" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <StatCard title="ظ…ط¬ظ…ظˆط¹ ظ…ط¯ط§ط±ع©" value={stats?.total_documents} icon={<FolderIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#14b8a6" />
+          <StatCard title="مجموع مدارک" value={stats?.total_documents} icon={<FolderIcon sx={{ color: '#fff', fontSize: 20 }} />} color="#14b8a6" />
         </Grid>
       </Grid>
 
-      {/* Bottom row â€” 3 equal panels (flexbox, fixed gap) */}
+      {/* Bottom row — 3 equal panels (flexbox, fixed gap) */}
       <Box sx={{ flex: 1, minHeight: 0, mt: 1, display: 'flex', gap: 1 }}>
         <Paper sx={{ ...glassPanel('#ec4899'), flex: 1, minWidth: 0 }}>
-          <PanelHeader title="طھط±ع©غŒط¨ ط¬ظ†ط³غŒطھغŒ" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#ec4899" />
+          <PanelHeader title="ترکیب جنسیتی" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#ec4899" />
           <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 0 }}>
-            <DonutChart data={genderData} size={130} thickness={22} centerLabel="ظ†ظپط±" />
+            <DonutChart data={genderData} size={130} thickness={22} centerLabel="نفر" />
           </Box>
         </Paper>
 
         <Paper sx={{ ...glassPanel('#6366f1'), flex: 1, minWidth: 0 }}>
-          <PanelHeader title="طھظˆط²غŒط¹ ط¯ظ¾ط§ط±طھظ…ط§ظ†" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#6366f1" />
+          <PanelHeader title="توزیع دپارتمان" icon={<PeopleIcon sx={{ fontSize: 14 }} />} color="#6366f1" />
           <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
             <BarChart data={deptData} color="#6366f1" />
           </Box>
         </Paper>
 
         <Paper sx={{ ...glassPanel('#f59e0b'), flex: 1, minWidth: 0 }}>
-          <PanelHeader title="ظ‡ط´ط¯ط§ط±ظ‡ط§" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} color="#f59e0b" />
+          <PanelHeader title="هشدارها" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} color="#f59e0b" />
           <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
             {alertsCount === 0 ? (
               <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 1.5 }}>
-                ظ‡ط´ط¯ط§ط±غŒ ظ†غŒط³طھ
+                هشداری نیست
               </Typography>
             ) : (
               <List dense disablePadding>
@@ -206,7 +206,7 @@ const DashboardPage = () => {
                     </ListItemIcon>
                     <ListItemText
                       primary={<Typography variant="body2" noWrap>{doc.title}</Typography>}
-                      secondary={<Typography variant="caption" noWrap>{doc.employee_name} آ· {formatPersianNumber(doc.days_left)} ط±ظˆط²</Typography>}
+                      secondary={<Typography variant="caption" noWrap>{doc.employee_name} · {formatPersianNumber(doc.days_left)} روز</Typography>}
                     />
                   </ListItem>
                 ))}
@@ -217,7 +217,7 @@ const DashboardPage = () => {
                     </ListItemIcon>
                     <ListItemText
                       primary={<Typography variant="body2" noWrap>{emp.full_name}</Typography>}
-                      secondary={<Typography variant="caption" noWrap>ظ‚ط±ط§ط±ط¯ط§ط¯ آ· {toPersianDigits(toJalali(emp.contract_end_date))}</Typography>}
+                      secondary={<Typography variant="caption" noWrap>قرارداد · {toPersianDigits(toJalali(emp.contract_end_date))}</Typography>}
                     />
                   </ListItem>
                 ))}
@@ -226,16 +226,16 @@ const DashboardPage = () => {
           </Box>
 
           <Box sx={{ borderTop: '1px solid #f59e0b22', pt: 0.75, mt: 0.75 }}>
-            <PanelHeader title="ظپط¹ط§ظ„غŒطھ ط§ط®غŒط±" icon={<AssignmentIcon sx={{ fontSize: 14 }} />} color="#10b981" />
+            <PanelHeader title="فعالیت اخیر" icon={<AssignmentIcon sx={{ fontSize: 14 }} />} color="#10b981" />
             {(activities || []).length === 0 ? (
-              <Typography variant="caption" color="textSecondary">ظپط¹ط§ظ„غŒطھغŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+              <Typography variant="caption" color="textSecondary">فعالیتی ثبت نشده است</Typography>
             ) : (
               <List dense disablePadding>
                 {activities.slice(0, 3).map(act => (
                   <ListItem key={act.id} disableGutters sx={{ py: 0.1 }}>
                     <ListItemText
                       primary={<Typography variant="body2" noWrap>{act.description}</Typography>}
-                      secondary={<Typography variant="caption" noWrap>{act.user} آ· {act.action}</Typography>}
+                      secondary={<Typography variant="caption" noWrap>{act.user} · {act.action}</Typography>}
                     />
                   </ListItem>
                 ))}

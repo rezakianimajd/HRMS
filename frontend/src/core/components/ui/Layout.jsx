@@ -135,7 +135,7 @@ const Layout = ({ children }) => {
         )}
       </Box>
 
-      {/* Navigation â€” grouped work spaces */}
+      {/* Navigation — grouped work spaces */}
       <List sx={{ flex: 1, overflowY: 'auto', py: 1, px: 1 }}>
         {menu.map((group) => {
           const groupActive = group.items.some((i) => isActive(i.path));
@@ -183,7 +183,7 @@ const Layout = ({ children }) => {
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {collapsed ? 'آ·آ·' : group.title}
+                  {collapsed ? '··' : group.title}
                 </Typography>
                 {!collapsed && (
                   <IconButton size="small" sx={{ p: 0.3, color: groupActive ? iconColor : 'text.secondary', opacity: 0.7 }}>
@@ -249,7 +249,7 @@ const Layout = ({ children }) => {
                               }}
                             />
                             {isPlaceholder && (
-                              <Tooltip title="ط¯ط± ط­ط§ظ„ طھظˆط³ط¹ظ‡" placement="left">
+                              <Tooltip title="در حال توسعه" placement="left">
                                 <ConstructionIcon sx={{ fontSize: 15, color: 'text.disabled', ml: 0.5 }} />
                               </Tooltip>
                             )}
@@ -291,7 +291,7 @@ const Layout = ({ children }) => {
         </Box>
         <Divider sx={{ mb: 0.5 }} />
         <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Tooltip title={collapsed ? 'ط¨ط§ط² ع©ط±ط¯ظ† ظ…ظ†ظˆ' : 'ط¬ظ…ط¹ ع©ط±ط¯ظ† ظ…ظ†ظˆ'} placement="left">
+          <Tooltip title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'} placement="left">
             <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ color: 'text.secondary' }}>
               {collapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>

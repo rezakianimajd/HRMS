@@ -16,8 +16,8 @@ import { toGregorian, toJalali, getJalaliParts } from '../core/utils/dateUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
-const WEEKDAYS = ['ط´ظ†ط¨ظ‡', 'غŒع©ط´ظ†ط¨ظ‡', 'ط¯ظˆط´ظ†ط¨ظ‡', 'ط³ظ‡â€Œط´ظ†ط¨ظ‡', 'ع†ظ‡ط§ط±ط´ظ†ط¨ظ‡', 'ظ¾ظ†ط¬ط´ظ†ط¨ظ‡', 'ط¬ظ…ط¹ظ‡'];
-const JALALI_MONTHS = ['ظپط±ظˆط±ط¯غŒظ†', 'ط§ط±ط¯غŒط¨ظ‡ط´طھ', 'ط®ط±ط¯ط§ط¯', 'طھغŒط±', 'ظ…ط±ط¯ط§ط¯', 'ط´ظ‡ط±غŒظˆط±', 'ظ…ظ‡ط±', 'ط¢ط¨ط§ظ†', 'ط¢ط°ط±', 'ط¯غŒ', 'ط¨ظ‡ظ…ظ†', 'ط§ط³ظپظ†ط¯'];
+const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
+const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
 const PAD = (n) => String(n).padStart(2, '0');
 
@@ -43,10 +43,10 @@ function jalaliMonthInfo(jy, jm) {
 }
 
 const EVENT_META = {
-  birthday: { color: '#ec4899', label: 'طھظˆظ„ط¯', icon: <CakeIcon fontSize="small" /> },
-  leave: { color: '#3b82f6', label: 'ظ…ط±ط®طµغŒ', icon: <EventBusyIcon fontSize="small" /> },
-  contract_end: { color: '#f59e0b', label: 'ظ¾ط§غŒط§ظ† ظ‚ط±ط§ط±ط¯ط§ط¯', icon: <AssignmentIcon fontSize="small" /> },
-  custom: { color: '#14b8a6', label: 'ط±ظˆغŒط¯ط§ط¯', icon: <EventIcon fontSize="small" /> },
+  birthday: { color: '#ec4899', label: 'تولد', icon: <CakeIcon fontSize="small" /> },
+  leave: { color: '#3b82f6', label: 'مرخصی', icon: <EventBusyIcon fontSize="small" /> },
+  contract_end: { color: '#f59e0b', label: 'پایان قرارداد', icon: <AssignmentIcon fontSize="small" /> },
+  custom: { color: '#14b8a6', label: 'رویداد', icon: <EventIcon fontSize="small" /> },
 };
 
 const CalendarPage = () => {
@@ -115,12 +115,12 @@ const CalendarPage = () => {
           <CalendarMonthIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#be185d">طھظ‚ظˆغŒظ… ط³ط§ط²ظ…ط§ظ†غŒ</Typography>
-          <Typography variant="body2" color="textSecondary">ط±ظˆغŒط¯ط§ط¯ظ‡ط§طŒ طھظˆظ„ط¯ظ‡ط§طŒ ظ…ط±ط®طµغŒâ€Œظ‡ط§ ظˆ ظ¾ط§غŒط§ظ† ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§ â€” ظ‡غŒط¨ط±غŒط¯غŒ ط´ظ…ط³غŒ</Typography>
+          <Typography variant="h6" fontWeight={800} color="#be185d">تقویم سازمانی</Typography>
+          <Typography variant="body2" color="textSecondary">رویدادها، تولدها، مرخصی‌ها و پایان قراردادها — هیبریدی شمسی</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}
           sx={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', borderRadius: '10px', px: 2.5 }}>
-          ط±ظˆغŒط¯ط§ط¯ ط¬ط¯غŒط¯
+          رویداد جدید
         </Button>
       </Paper>
 
@@ -134,7 +134,7 @@ const CalendarPage = () => {
                 <Typography variant="h6" fontWeight={800} color="#be185d">
                   {JALALI_MONTHS[curMonth - 1]} {toPersianDigits(curYear)}
                 </Typography>
-                <Button size="small" onClick={goToday}>ط§ظ…ط±ظˆط²</Button>
+                <Button size="small" onClick={goToday}>امروز</Button>
               </Box>
               <IconButton onClick={nextMonth}><ChevronLeftIcon /></IconButton>
             </Box>
@@ -186,7 +186,7 @@ const CalendarPage = () => {
             {isLoading ? (
               <Box sx={{ textAlign: 'center', py: 3 }}><CircularProgress size={24} /></Box>
             ) : selectedEvents.length === 0 ? (
-              <Typography variant="body2" color="textSecondary">ط±ظˆغŒط¯ط§ط¯غŒ ط¯ط± ط§غŒظ† ط±ظˆط² ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+              <Typography variant="body2" color="textSecondary">رویدادی در این روز ثبت نشده است</Typography>
             ) : (
               <Stack spacing={1}>
                 {selectedEvents.map((ev) => {
@@ -211,7 +211,7 @@ const CalendarPage = () => {
 
           {/* Legend */}
           <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
-            <Typography variant="subtitle2" fontWeight={800} gutterBottom>ط±ط§ظ‡ظ†ظ…ط§</Typography>
+            <Typography variant="subtitle2" fontWeight={800} gutterBottom>راهنما</Typography>
             <Stack spacing={0.75}>
               {Object.entries(EVENT_META).map(([k, m]) => (
                 <Box key={k} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -226,26 +226,26 @@ const CalendarPage = () => {
 
       {/* Add event dialog */}
       <Dialog open={dialogOpen} onClose={() => setDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#be185d' }}>ط«ط¨طھ ط±ظˆغŒط¯ط§ط¯ طھظ‚ظˆغŒظ…</DialogTitle>
+        <DialogTitle sx={{ color: '#be185d' }}>ثبت رویداد تقویم</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="ط¹ظ†ظˆط§ظ† *" value={form.title}
+          <TextField fullWidth size="small" label="عنوان *" value={form.title}
             onChange={(e) => setForm((p) => ({ ...p, title: e.target.value }))} />
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® *" value={form.event_date}
+          <JalaliDatePicker fullWidth label="تاریخ *" value={form.event_date}
             onChange={(g) => setForm((p) => ({ ...p, event_date: g }))} />
           <TextField
-            select fullWidth size="small" label="ظ†ظˆط¹" SelectProps={{ native: true }}
+            select fullWidth size="small" label="نوع" SelectProps={{ native: true }}
             value={form.event_type} onChange={(e) => setForm((p) => ({ ...p, event_type: e.target.value }))}
           >
             {Object.entries(EVENT_META).map(([k, m]) => <option key={k} value={k}>{m.label}</option>)}
           </TextField>
-          <TextField fullWidth size="small" label="طھظˆط¶غŒط­ط§طھ" multiline rows={2} value={form.description}
+          <TextField fullWidth size="small" label="توضیحات" multiline rows={2} value={form.description}
             onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialogOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialogOpen(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.title || !form.event_date} onClick={saveEvent}
             sx={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)' }}>
-            ط«ط¨طھ
+            ثبت
           </Button>
         </DialogActions>
       </Dialog>

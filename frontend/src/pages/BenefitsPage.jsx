@@ -3,7 +3,7 @@ import { Box, Paper, Typography, Avatar } from '@mui/material';
 import CardGiftcardIcon from '@mui/icons-material/CardGiftcard';
 import BenefitTab from '../modules/dataEntry/BenefitTab';
 
-/* ظ…ط§ظ„غŒ â†گ ظ…ط²ط§غŒط§: ط«ط¨طھ/ط¯ط±ظˆظ†ط±غŒط²غŒ/ظ„غŒط³طھ ظ…ط²ط§غŒط§غŒ ط±ظپط§ظ‡غŒ */
+/* مالی ← مزایا: ثبت/درونریزی/لیست مزایای رفاهی */
 const BenefitsPage = () => (
   <Box>
     <Paper sx={{
@@ -16,8 +16,8 @@ const BenefitsPage = () => (
         <CardGiftcardIcon sx={{ color: '#fff', fontSize: 28 }} />
       </Avatar>
       <Box>
-        <Typography variant="h6" fontWeight={800}>ظ…ط²ط§غŒط§ ظˆ ع©ط§ط±ط§ظ†ظ‡</Typography>
-        <Typography variant="body2" color="textSecondary">ط«ط¨طھطŒ ط¯ط±ظˆظ†ط±غŒط²غŒ ظˆ ظ„غŒط³طھ ظ…ط²ط§غŒط§غŒ ط±ظپط§ظ‡غŒ (ط§غŒط¯غŒطŒ ط¨ظ†ع©ط§ط±طھطŒ ع©ظ…ع© ظ‡ط²غŒظ†ظ‡ ظˆ ...)</Typography>
+        <Typography variant="h6" fontWeight={800}>مزایا و کارانه</Typography>
+        <Typography variant="body2" color="textSecondary">ثبت، درونریزی و لیست مزایای رفاهی (ایدی، بنکارت، کمک هزینه و ...)</Typography>
       </Box>
     </Paper>
     <BenefitTab />

@@ -24,8 +24,8 @@ const EmployeeMultiSelect = ({ value, onChange }) => {
   const selected = Array.isArray(value) ? value : (value ? String(value).split(',').filter(Boolean) : []);
   return (
     <FormControl fullWidth size="small">
-      <InputLabel>ظ¾ط±ط³ظ†ظ„ ظ…ط±طھط¨ط·</InputLabel>
-      <Select multiple value={selected.map(String)} label="ظ¾ط±ط³ظ†ظ„ ظ…ط±طھط¨ط·"
+      <InputLabel>پرسنل مرتبط</InputLabel>
+      <Select multiple value={selected.map(String)} label="پرسنل مرتبط"
         renderValue={(sel) => (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
             {sel.map(id => {
@@ -102,9 +102,9 @@ export const CorrespondenceCRUD = ({
     if (col.key === 'number' || col.key === 'code') return toPersianDigits(v);
     if (col.key === 'employee_names') {
       const names = Array.isArray(v) ? v : [];
-      return names.length ? names.join('طŒ ') : 'â€”';
+      return names.length ? names.join('، ') : '—';
     }
-    return v || 'â€”';
+    return v || '—';
   };
 
   const renderField = (f) => {
@@ -145,7 +145,7 @@ export const CorrespondenceCRUD = ({
         />
         <Button variant="contained" onClick={openNew}
           sx={{ background: `linear-gradient(135deg, ${color}, ${color}90)`, '&:hover': { background: color } }}>
-          ط§ظپط²ظˆط¯ظ†
+          افزودن
         </Button>
       </Paper>
 
@@ -157,7 +157,7 @@ export const CorrespondenceCRUD = ({
           p: 5, textAlign: 'center',
           background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', borderRadius: '10px',
         }}>
-          <Typography color="textSecondary">ظ…ظˆط±ط¯غŒ غŒط§ظپطھ ظ†ط´ط¯</Typography>
+          <Typography color="textSecondary">موردی یافت نشد</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -209,7 +209,7 @@ export const CorrespondenceCRUD = ({
                   {it.file ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <Chip
-                        label="ظ¾غŒظˆط³طھ ط¯ط§ط±ط¯"
+                        label="پیوست دارد"
                         size="small"
                         variant="outlined"
                         component="a"
@@ -221,11 +221,11 @@ export const CorrespondenceCRUD = ({
                       />
                     </Box>
                   ) : (
-                    <Typography variant="caption" color="textSecondary">ط¨ط¯ظˆظ† ظ¾غŒظˆط³طھ</Typography>
+                    <Typography variant="caption" color="textSecondary">بدون پیوست</Typography>
                   )}
                   <Box sx={{ display: 'flex', gap: 0.25 }}>
                     {it.file && (
-                      <Tooltip title="ط¨ط§ط² ع©ط±ط¯ظ† ظ¾غŒظˆط³طھ" placement="top">
+                      <Tooltip title="باز کردن پیوست" placement="top">
                         <IconButton size="small" component="a" href={it.file} target="_blank" rel="noreferrer">
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
@@ -244,27 +244,27 @@ export const CorrespondenceCRUD = ({
       {/* Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color, background: `linear-gradient(135deg, ${color}10, transparent)` }}>
-          {editing ? `ظˆغŒط±ط§غŒط´ ${title}` : `ط§ظپط²ظˆط¯ظ† ${title}`}
+          {editing ? `ویرایش ${title}` : `افزودن ${title}`}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
             {fields.map(renderField)}
             <Box>
               <Typography variant="caption" color="textSecondary" sx={{ mb: 0.5, display: 'block' }}>
-                ظپط§غŒظ„ ظ¾غŒظˆط³طھ (ط§ط®طھغŒط§ط±غŒ)
+                فایل پیوست (اختیاری)
               </Typography>
               <input id={`file-${endpoint}`} type="file" hidden onChange={e => setFile(e.target.files[0] || null)} />
               <Button variant="outlined" size="small" onClick={() => document.getElementById(`file-${endpoint}`).click()}>
-                {file ? file.name : (editing?.file ? 'طھط¹ظˆغŒط¶ ظپط§غŒظ„ ظ¾غŒظˆط³طھ' : 'ط§ظ†طھط®ط§ط¨ ظپط§غŒظ„ ظ¾غŒظˆط³طھ')}
+                {file ? file.name : (editing?.file ? 'تعویض فایل پیوست' : 'انتخاب فایل پیوست')}
               </Button>
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpen(false)}>انصراف</Button>
           <Button variant="contained" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isLoading}
             sx={{ background: `linear-gradient(135deg, ${color}, ${color}90)` }}>
-            {saveMutation.isLoading ? <CircularProgress size={20} /> : 'ط°ط®غŒط±ظ‡'}
+            {saveMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیره'}
           </Button>
         </DialogActions>
       </Dialog>

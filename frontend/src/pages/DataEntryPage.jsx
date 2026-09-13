@@ -21,17 +21,17 @@ import DeductionForm from '../modules/dataEntry/DeductionForm';
 import { SUB_TYPE_LABELS } from '../modules/dataEntry/config';
 
 const TYPE_META = {
-  absence: { icon: <PersonOffIcon />, color: '#ef4444', desc: 'ط«ط¨طھ ط؛غŒط¨طھ ظ…ظˆط¬ظ‡ ظˆ ط؛غŒط±ظ…ظˆط¬ظ‡ ط¨ط§ طھط¹ط¯ط§ط¯ ط±ظˆط²' },
-  salary: { icon: <PaymentsIcon />, color: '#f59e0b', desc: 'ط«ط¨طھ ظپغŒط´ ط­ظ‚ظˆظ‚غŒ ظ…ط§ظ‡ط§ظ†ظ‡طŒ ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ع¯ط±ظˆظ‡غŒ ظˆ ظ„غŒط³طھ' },
-  benefit: { icon: <CardGiftcardIcon />, color: '#10b981', desc: 'ط«ط¨طھ ظ…ط²ط§غŒط§غŒ ط±ظپط§ظ‡غŒ ظˆ ظ…ظ†ط§ط³ط¨طھغŒ (ط¹غŒط¯غŒطŒ ط¨ظ† ع©ط§ط±طھطŒ ظˆط§ظ… ظˆ ...)' },
-  deduction: { icon: <MoneyOffIcon />, color: '#8b5cf6', desc: 'ط«ط¨طھ ع©ط³ظˆط±ط§طھ (ظ…ط§ظ„غŒط§طھطŒ ط¨غŒظ…ظ‡طŒ ط§ظ‚ط³ط§ط· ظˆط§ظ… ظˆ ...)' },
+  absence: { icon: <PersonOffIcon />, color: '#ef4444', desc: 'ثبت غیبت موجه و غیرموجه با تعداد روز' },
+  salary: { icon: <PaymentsIcon />, color: '#f59e0b', desc: 'ثبت فیش حقوقی ماهانه، درون‌ریزی گروهی و لیست' },
+  benefit: { icon: <CardGiftcardIcon />, color: '#10b981', desc: 'ثبت مزایای رفاهی و مناسبتی (عیدی، بن کارت، وام و ...)' },
+  deduction: { icon: <MoneyOffIcon />, color: '#8b5cf6', desc: 'ثبت کسورات (مالیات، بیمه، اقساط وام و ...)' },
 };
 
 const TABS = [
-  { key: 'absence', label: 'ط؛غŒط¨طھ', icon: <PersonOffIcon /> },
-  { key: 'salary', label: 'ط­ظ‚ظˆظ‚', icon: <PaymentsIcon /> },
-  { key: 'benefit', label: 'ظ…ط²ط§غŒط§', icon: <CardGiftcardIcon /> },
-  { key: 'deduction', label: 'ع©ط³ظˆط±ط§طھ', icon: <MoneyOffIcon /> },
+  { key: 'absence', label: 'غیبت', icon: <PersonOffIcon /> },
+  { key: 'salary', label: 'حقوق', icon: <PaymentsIcon /> },
+  { key: 'benefit', label: 'مزایا', icon: <CardGiftcardIcon /> },
+  { key: 'deduction', label: 'کسورات', icon: <MoneyOffIcon /> },
 ];
 
 const DataEntryPage = () => {
@@ -87,8 +87,8 @@ const DataEntryPage = () => {
           <InputIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box>
-          <Typography variant="h5" fontWeight={800}>ظˆط±ظˆط¯ ط§ط·ظ„ط§ط¹ط§طھ</Typography>
-          <Typography variant="body2" color="textSecondary">ط«ط¨طھ طھط®طµطµغŒ ط؛غŒط¨طھطŒ ط­ظ‚ظˆظ‚طŒ ظ…ط²ط§غŒط§ ظˆ ع©ط³ظˆط±ط§طھ ظ¾ط±ط³ظ†ظ„</Typography>
+          <Typography variant="h5" fontWeight={800}>ورود اطلاعات</Typography>
+          <Typography variant="body2" color="textSecondary">ثبت تخصصی غیبت، حقوق، مزایا و کسورات پرسنل</Typography>
         </Box>
       </Paper>
 
@@ -143,22 +143,22 @@ const DataEntryPage = () => {
         border: '1px solid rgba(255,255,255,0.4)',
         borderRadius: '10px',
       }}>
-        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>طھط±ط§ع©ظ†ط´â€Œظ‡ط§غŒ ط§ط®غŒط±</Typography>
+        <Typography variant="h6" fontWeight={700} sx={{ mb: 2 }}>تراکنش‌های اخیر</Typography>
         {isLoading ? (
           <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={24} /></Box>
         ) : !items.length ? (
-          <Typography color="textSecondary" sx={{ textAlign: 'center', py: 3 }}>طھط±ط§ع©ظ†ط´غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+          <Typography color="textSecondary" sx={{ textAlign: 'center', py: 3 }}>تراکنشی ثبت نشده است</Typography>
         ) : (
           <TableContainer>
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ fontWeight: 700 }}>ظ¾ط±ط³ظ†ظ„</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>ظ†ظˆط¹</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>ط²غŒط±ظ†ظˆط¹</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>ظ…ط¨ظ„ط؛ (ط±غŒط§ظ„)</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>ظ…ظ‚ط¯ط§ط±</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>طھط§ط±غŒط®</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>پرسنل</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>نوع</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>زیرنوع</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>مبلغ (ریال)</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>مقدار</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>تاریخ</TableCell>
                   <TableCell width={50}></TableCell>
                 </TableRow>
               </TableHead>
@@ -172,9 +172,9 @@ const DataEntryPage = () => {
                         <Chip size="small" label={tx.transaction_type_display} variant="outlined"
                           sx={{ color: meta.color, borderColor: meta.color }} />
                       </TableCell>
-                      <TableCell>{SUB_TYPE_LABELS[tx.sub_type] || 'â€”'}</TableCell>
-                      <TableCell>{tx.amount ? formatPersianNumber(tx.amount) : 'â€”'}</TableCell>
-                      <TableCell>{tx.quantity ? formatPersianNumber(tx.quantity) : 'â€”'}</TableCell>
+                      <TableCell>{SUB_TYPE_LABELS[tx.sub_type] || '—'}</TableCell>
+                      <TableCell>{tx.amount ? formatPersianNumber(tx.amount) : '—'}</TableCell>
+                      <TableCell>{tx.quantity ? formatPersianNumber(tx.quantity) : '—'}</TableCell>
                       <TableCell>{toJalali(tx.date)}</TableCell>
                       <TableCell>
                         <IconButton size="small" color="error" onClick={() => handleDelete(tx.id)}>

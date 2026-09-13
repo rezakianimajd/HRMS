@@ -22,8 +22,8 @@ const AssistantPage = () => (
         <SmartToyIcon sx={{ fontSize: 28, color: '#fff' }} />
       </Avatar>
       <Box>
-        <Typography variant="h5" fontWeight={800}>ط¯ط³طھغŒط§ط±</Typography>
-        <Typography variant="body2" color="textSecondary">ط¯ط³طھغŒط§ط± ظ‡ظˆط´ظ…ظ†ط¯ ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ â€” ظ¾ط§ط³ط® ظپظˆط±غŒ ظˆ ط¢ظپظ„ط§غŒظ†</Typography>
+        <Typography variant="h5" fontWeight={800}>دستیار</Typography>
+        <Typography variant="body2" color="textSecondary">دستیار هوشمند منابع انسانی — پاسخ فوری و آفلاین</Typography>
       </Box>
     </Paper>
 

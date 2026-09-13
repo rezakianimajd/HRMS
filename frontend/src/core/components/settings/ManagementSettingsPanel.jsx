@@ -19,7 +19,7 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import { toPersianDigits } from '../../utils/numberUtils';
 
 /* =============================================================================
- * ظ…ط¯غŒط±غŒطھ ظ…ط³غŒط±ظ‡ط§غŒ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ â€” ع¯ظ„ط³ظ…ظˆط±ظپغŒط³ظ… غ²غ°غ²غ¶
+ * مدیریت مسیرهای ذخیره‌سازی — گلسمورفیسم ۲۰۲۶
  * ============================================================================= */
 const StorageManager = () => {
   const qc = useQueryClient();
@@ -51,10 +51,10 @@ const StorageManager = () => {
     mutationFn: (data) => axiosInstance.put('/settings/company-profile/update/', data),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['company-profile'] });
-      setMessage({ ok: true, text: 'ظ…ط³غŒط±ظ‡ط§غŒ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ ط¨ط§ ظ…ظˆظپظ‚غŒطھ ط°ط®غŒط±ظ‡ ط´ط¯ âœ“' });
+      setMessage({ ok: true, text: 'مسیرهای ذخیره‌سازی با موفقیت ذخیره شد ✓' });
     },
     onError: (e) => {
-      setMessage({ ok: false, text: e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡ ظ…ط³غŒط±ظ‡ط§' });
+      setMessage({ ok: false, text: e.response?.data?.error || 'خطا در ذخیره مسیرها' });
     },
   });
 
@@ -95,16 +95,16 @@ const StorageManager = () => {
 
       <Grid container spacing={2}>
         <Grid item xs={12}>
-          {field('base_storage_path', 'ظ…ط³غŒط± ظ¾ط§غŒظ‡ظ” ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ', 'ط±غŒط´ظ‡ظ” ظ‡ظ…ظ‡ظ” ظپط§غŒظ„â€Œظ‡ط§غŒ ط¢ظ¾ظ„ظˆط¯غŒ (ظ…ط«ط§ظ„: /var/hr_data)', <StorageIcon sx={{ fontSize: 16 }} />)}
+          {field('base_storage_path', 'مسیر پایهٔ ذخیره‌سازی', 'ریشهٔ همهٔ فایل‌های آپلودی (مثال: /var/hr_data)', <StorageIcon sx={{ fontSize: 16 }} />)}
         </Grid>
         <Grid item xs={12} md={4}>
-          {field('storage_path_employees', 'ظ…ط¯ط§ط±ع© ظ¾ط±ط³ظ†ظ„', 'ظ¾ط±ظˆظ†ط¯ظ‡â€Œظ‡ط§غŒ ع©ط§ط±ع©ظ†ط§ظ†', <PeopleOutlineIcon sx={{ fontSize: 16 }} />)}
+          {field('storage_path_employees', 'مدارک پرسنل', 'پرونده‌های کارکنان', <PeopleOutlineIcon sx={{ fontSize: 16 }} />)}
         </Grid>
         <Grid item xs={12} md={4}>
-          {field('storage_path_correspondences', 'ظ…ع©ط§طھط¨ط§طھ', 'ظ†ط§ظ…ظ‡â€Œظ‡ط§ ظˆ ط§ط¨ظ„ط§ط؛â€Œظ‡ط§', <LibraryBooksOutlinedIcon sx={{ fontSize: 16 }} />)}
+          {field('storage_path_correspondences', 'مکاتبات', 'نامه‌ها و ابلاغ‌ها', <LibraryBooksOutlinedIcon sx={{ fontSize: 16 }} />)}
         </Grid>
         <Grid item xs={12} md={4}>
-          {field('storage_path_documents', 'ط¨ط§غŒع¯ط§ظ†غŒ ط§ط³ظ†ط§ط¯', 'ط§ط³ظ†ط§ط¯ ط¹ظ…ظˆظ…غŒ ط³ط§ط²ظ…ط§ظ†', <FolderOpenIcon sx={{ fontSize: 16 }} />)}
+          {field('storage_path_documents', 'بایگانی اسناد', 'اسناد عمومی سازمان', <FolderOpenIcon sx={{ fontSize: 16 }} />)}
         </Grid>
       </Grid>
 
@@ -115,14 +115,14 @@ const StorageManager = () => {
         disabled={saveStorage.isLoading}
         sx={{ mt: 1, background: 'linear-gradient(135deg,#3b82f6,#6366f1)', borderRadius: '10px', px: 2.5 }}
       >
-        {saveStorage.isLoading ? 'ط¯ط± ط­ط§ظ„ ط°ط®غŒط±ظ‡...' : 'ط°ط®غŒط±ظ‡ ظ…ط³غŒط±ظ‡ط§'}
+        {saveStorage.isLoading ? 'در حال ذخیره...' : 'ذخیره مسیرها'}
       </Button>
     </Box>
   );
 };
 
 /* =============================================================================
- * طµط§ط­ط¨ط§ظ† ط§ظ…ط¶ط§ â€” ط¨ط§ ظ†ظ…ظˆظ†ظ‡ ط§ظ…ط¶ط§غŒ ظ‚ط§ط¨ظ„ ط¢ظ¾ظ„ظˆط¯
+ * صاحبان امضا — با نمونه امضای قابل آپلود
  * ============================================================================= */
 const SignatoryManager = () => {
   const qc = useQueryClient();
@@ -152,11 +152,11 @@ const SignatoryManager = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['signatories'] });
       setDialog(false);
-      setMessage({ ok: true, text: 'طµط§ط­ط¨ ط§ظ…ط¶ط§ ط°ط®غŒط±ظ‡ ط´ط¯ âœ“' });
+      setMessage({ ok: true, text: 'صاحب امضا ذخیره شد ✓' });
       setForm({ id: null, full_name: '', position: '', national_id: '', signature_image: null });
     },
     onError: (e) => {
-      setMessage({ ok: false, text: e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡ طµط§ط­ط¨ ط§ظ…ط¶ط§' });
+      setMessage({ ok: false, text: e.response?.data?.error || 'خطا در ذخیره صاحب امضا' });
     },
   });
 
@@ -164,7 +164,7 @@ const SignatoryManager = () => {
     mutationFn: (id) => axiosInstance.delete(`/signatories/${id}/`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['signatories'] });
-      setMessage({ ok: true, text: 'ط­ط°ظپ ط´ط¯' });
+      setMessage({ ok: true, text: 'حذف شد' });
     },
   });
 
@@ -185,21 +185,21 @@ const SignatoryManager = () => {
 
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="body2" color="textSecondary" sx={{ maxWidth: 460 }}>
-          ط§ظپط±ط§ط¯غŒ ع©ظ‡ ط­ظ‚ ط§ظ…ط¶ط§غŒ ظ‚ط±ط§ط±ط¯ط§ط¯/ط³ظ†ط¯ ط¯ط§ط±ظ†ط¯. ط­ط¯ط§ظ‚ظ„ غ³ ظ†ظپط± ظ¾غŒط´ظ†ظ‡ط§ط¯ ظ…غŒâ€Œط´ظˆط¯ط› ظ‡ظ†ع¯ط§ظ… ط§ظ…ط¶ط§غŒ ظ‚ط±ط§ط±ط¯ط§ط¯ ط§ط² ظ‡ظ…غŒظ† ظپظ‡ط±ط³طھ ط§ظ†طھط®ط§ط¨ ظ…غŒâ€Œط´ظˆظ†ط¯.
+          افرادی که حق امضای قرارداد/سند دارند. حداقل ۳ نفر پیشنهاد می‌شود؛ هنگام امضای قرارداد از همین فهرست انتخاب می‌شوند.
         </Typography>
         <Button
           variant="contained" startIcon={<AddIcon />}
           onClick={() => { setForm({ id: null, full_name: '', position: '', national_id: '', signature_image: null }); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg,#10b981,#059669)', borderRadius: '10px', px: 2 }}
         >
-          ط§ظپط²ظˆط¯ظ† طµط§ط­ط¨ ط§ظ…ط¶ط§
+          افزودن صاحب امضا
         </Button>
       </Box>
 
       {list.length === 0 ? (
         <Paper variant="outlined" sx={{ p: 4, textAlign: 'center', borderRadius: '10px' }}>
           <ShieldIcon sx={{ fontSize: 52, color: 'text.disabled', mb: 1 }} />
-          <Typography variant="body2" color="textSecondary">ظ‡ظ†ظˆط² طµط§ط­ط¨ ط§ظژظ…ط¶ط§غŒغŒ طھط¹ط±غŒظپ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
+          <Typography variant="body2" color="textSecondary">هنوز صاحب اَمضایی تعریف نشده است.</Typography>
         </Paper>
       ) : (
         <Grid container spacing={1.5}>
@@ -215,7 +215,7 @@ const SignatoryManager = () => {
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                   {s.signature_image_url ? (
                     <img
-                      src={s.signature_image_url} alt="ط§ظ…ط¶ط§"
+                      src={s.signature_image_url} alt="امضا"
                       style={{ width: 88, height: 46, objectFit: 'contain', background: '#f8fafc', borderRadius: '10px', padding: 4 }}
                     />
                   ) : (
@@ -225,10 +225,10 @@ const SignatoryManager = () => {
                   )}
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="subtitle2" fontWeight={800} noWrap>{s.full_name}</Typography>
-                    <Typography variant="caption" color="textSecondary" display="block">{s.position || 'â€”'}</Typography>
+                    <Typography variant="caption" color="textSecondary" display="block">{s.position || '—'}</Typography>
                     {s.national_id && (
                       <Typography variant="caption" color="textSecondary" display="block">
-                        ع©ط¯ ظ…ظ„غŒ: {toPersianDigits(s.national_id)}
+                        کد ملی: {toPersianDigits(s.national_id)}
                       </Typography>
                     )}
                   </Box>
@@ -241,16 +241,16 @@ const SignatoryManager = () => {
                       checked={Boolean(s.is_active !== false)}
                       onChange={e => toggleActive.mutate({ id: s.id, is_active: e.target.checked })}
                     />
-                    <Chip size="small" label={s.is_active !== false ? 'ظپط¹ط§ظ„' : 'ط؛غŒط±ظپط¹ط§ظ„'} color={s.is_active !== false ? 'success' : 'default'} variant="outlined" />
+                    <Chip size="small" label={s.is_active !== false ? 'فعال' : 'غیرفعال'} color={s.is_active !== false ? 'success' : 'default'} variant="outlined" />
                   </Box>
                   <Box>
-                    <Tooltip title="ظˆغŒط±ط§غŒط´">
+                    <Tooltip title="ویرایش">
                       <IconButton size="small" color="primary"
                         onClick={() => { setForm({ id: s.id, full_name: s.full_name, position: s.position, national_id: s.national_id, signature_image: null }); setDialog(true); }}>
                         <EditNoteIcon fontSize="small" />
                       </IconButton>
                     </Tooltip>
-                    <Tooltip title="ط­ط°ظپ">
+                    <Tooltip title="حذف">
                       <IconButton size="small" color="error" onClick={() => remove.mutate(s.id)}>
                         <DeleteIcon fontSize="small" />
                       </IconButton>
@@ -264,27 +264,27 @@ const SignatoryManager = () => {
       )}
 
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#10b981' }}>{form.id ? 'ظˆغŒط±ط§غŒط´ طµط§ط­ط¨ ط§ظ…ط¶ط§' : 'ط§ظپط²ظˆط¯ظ† طµط§ط­ط¨ ط§ظ…ط¶ط§'}</DialogTitle>
+        <DialogTitle sx={{ color: '#10b981' }}>{form.id ? 'ویرایش صاحب امضا' : 'افزودن صاحب امضا'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="ظ†ط§ظ… ظˆ ظ†ط§ظ… ط®ط§ظ†ظˆط§ط¯ع¯غŒ *" value={form.full_name}
+          <TextField fullWidth size="small" label="نام و نام خانوادگی *" value={form.full_name}
             onChange={e => setForm(p => ({ ...p, full_name: e.target.value }))} />
-          <TextField fullWidth size="small" label="ط³ظ…طھ / ط¹ظ†ظˆط§ظ†" value={form.position}
+          <TextField fullWidth size="small" label="سمت / عنوان" value={form.position}
             onChange={e => setForm(p => ({ ...p, position: e.target.value }))} />
-          <TextField fullWidth size="small" label="ع©ط¯ ظ…ظ„غŒ" value={form.national_id}
+          <TextField fullWidth size="small" label="کد ملی" value={form.national_id}
             onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} />
           <Button component="label" variant="outlined" startIcon={<UploadFileIcon />} fullWidth>
-            {form.signature_image ? form.signature_image.name : 'ط¢ظ¾ظ„ظˆط¯ ظ†ظ…ظˆظ†ظ‡ ط§ظ…ط¶ط§ (طھطµظˆغŒط±)'}
+            {form.signature_image ? form.signature_image.name : 'آپلود نمونه امضا (تصویر)'}
             <input type="file" hidden accept="image/*"
               onChange={e => setForm(p => ({ ...p, signature_image: e.target.files?.[0] || null }))} />
           </Button>
           {save.isLoading && <LinearProgress sx={{ borderRadius: '10px' }} />}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.full_name || save.isLoading}
             onClick={() => save.mutate(form)}
             sx={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
-            ط°ط®غŒط±ظ‡
+            ذخیره
           </Button>
         </DialogActions>
       </Dialog>
@@ -306,8 +306,8 @@ const ManagementSettingsPanel = () => {
             <StorageIcon sx={{ color: '#fff', fontSize: 22 }} />
           </Avatar>
           <Box>
-            <Typography variant="h6" fontWeight={800} sx={{ color: '#1d4ed8' }}>ظ…ط¯غŒط±غŒطھ ظ…ط³غŒط± ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ ظپط§غŒظ„â€Œظ‡ط§</Typography>
-            <Typography variant="caption" color="textSecondary">ظ‡ط± ظ†ظˆط¹ ظپط§غŒظ„ ط¯ط± ظ¾ظˆط´ظ‡ظ” ظ…ط®طµظˆطµ ط®ظˆط¯ ط°ط®غŒط±ظ‡ ظ…غŒâ€Œط´ظˆط¯ â€” ظ‚ط§ط¨ظ„ ظ…ط³غŒط±ط¯ظ‡غŒ ط¯ظ‚غŒظ‚</Typography>
+            <Typography variant="h6" fontWeight={800} sx={{ color: '#1d4ed8' }}>مدیریت مسیر ذخیره‌سازی فایل‌ها</Typography>
+            <Typography variant="caption" color="textSecondary">هر نوع فایل در پوشهٔ مخصوص خود ذخیره می‌شود — قابل مسیردهی دقیق</Typography>
           </Box>
         </Box>
         <Divider sx={{ mb: 2 }} />
@@ -325,8 +325,8 @@ const ManagementSettingsPanel = () => {
             <EditNoteIcon sx={{ color: '#fff', fontSize: 22 }} />
           </Avatar>
           <Box>
-            <Typography variant="h6" fontWeight={800} sx={{ color: '#047857' }}>طµط§ط­ط¨ط§ظ† ط§ظ…ط¶ط§ (ط§ظ…ط¶ط§غŒ ظ…ط¬ط§ط²)</Typography>
-            <Typography variant="caption" color="textSecondary">ط§ظپط±ط§ط¯ ط¯ط§ط±ط§غŒ ط­ظ‚ ط§ظ…ط¶ط§غŒ ظ‚ط±ط§ط±ط¯ط§ط¯ + ظ†ظ…ظˆظ†ظ‡ ط§ظ…ط¶ط§غŒ ط¢ظ¾ظ„ظˆط¯غŒ</Typography>
+            <Typography variant="h6" fontWeight={800} sx={{ color: '#047857' }}>صاحبان امضا (امضای مجاز)</Typography>
+            <Typography variant="caption" color="textSecondary">افراد دارای حق امضای قرارداد + نمونه امضای آپلودی</Typography>
           </Box>
         </Box>
         <Divider sx={{ mb: 2 }} />

@@ -30,16 +30,16 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 const CATEGORIES = [
-  { value: 'contract', label: 'ظ‚ط±ط§ط±ط¯ط§ط¯ ط³ط§ط²ظ…ط§ظ†غŒ', color: '#6366f1' },
-  { value: 'agreement', label: 'طھظپط§ظ‡ظ…â€Œظ†ط§ظ…ظ‡', color: '#0ea5e9' },
-  { value: 'official', label: 'ط§ط¨ظ„ط§ط؛غŒظ‡/ط¨ط®ط´ظ†ط§ظ…ظ‡ ط±ط³ظ…غŒ', color: '#f59e0b' },
-  { value: 'license', label: 'ظ…ط¬ظˆط²/ظ¾ط±ظˆط§ظ†ظ‡', color: '#10b981' },
-  { value: 'audit', label: 'ع¯ط²ط§ط±ط´ ط­ط³ط§ط¨ط±ط³غŒ/ظ…ط§ظ„غŒ', color: '#ef4444' },
-  { value: 'insurance', label: 'ط¨غŒظ…ظ‡â€Œظ†ط§ظ…ظ‡', color: '#8b5cf6' },
-  { value: 'certificate', label: 'ع¯ظˆط§ظ‡غŒ/ع¯ظˆط§ظ‡غŒظ†ط§ظ…ظ‡', color: '#14b8a6' },
-  { value: 'hr_doc', label: 'ظ…ط³طھظ†ط¯ط§طھ ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ', color: '#ec4899' },
-  { value: 'legal', label: 'ط§ط³ظ†ط§ط¯ ط­ظ‚ظˆظ‚غŒ', color: '#64748b' },
-  { value: 'other', label: 'ط³ط§غŒط±', color: '#94a3b8' },
+  { value: 'contract', label: 'قرارداد سازمانی', color: '#6366f1' },
+  { value: 'agreement', label: 'تفاهم‌نامه', color: '#0ea5e9' },
+  { value: 'official', label: 'ابلاغیه/بخشنامه رسمی', color: '#f59e0b' },
+  { value: 'license', label: 'مجوز/پروانه', color: '#10b981' },
+  { value: 'audit', label: 'گزارش حسابرسی/مالی', color: '#ef4444' },
+  { value: 'insurance', label: 'بیمه‌نامه', color: '#8b5cf6' },
+  { value: 'certificate', label: 'گواهی/گواهینامه', color: '#14b8a6' },
+  { value: 'hr_doc', label: 'مستندات منابع انسانی', color: '#ec4899' },
+  { value: 'legal', label: 'اسناد حقوقی', color: '#64748b' },
+  { value: 'other', label: 'سایر', color: '#94a3b8' },
 ];
 
 const emptyForm = {
@@ -131,7 +131,7 @@ const CompanyDocumentsPage = () => {
     },
     onError: (e) => {
       console.error('Archive save error:', e.response?.data || e);
-      setError(e.response?.data?.detail || e.response?.data?.file?.[0] || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡ ط³ظ†ط¯');
+      setError(e.response?.data?.detail || e.response?.data?.file?.[0] || 'خطا در ذخیره سند');
     },
   });
 
@@ -181,16 +181,16 @@ const CompanyDocumentsPage = () => {
               <ArchiveIcon sx={{ color: '#fff', fontSize: 28 }} />
             </Avatar>
             <Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: '#b45309' }}>ط¨ط§غŒع¯ط§ظ†غŒ ط§ط³ظ†ط§ط¯</Typography>
+              <Typography variant="h6" fontWeight={800} sx={{ color: '#b45309' }}>بایگانی اسناد</Typography>
               <Typography variant="body2" color="textSecondary">
-                ط§ط³ظ†ط§ط¯ ط³ط§ط²ظ…ط§ظ†غŒ ظˆ ظ…ط¯ط§ط±ع© ظ¾ط±ط³ظ†ظ„غŒ ط¯ط± غŒع©â€Œط¬ط§ â€” ط¨ظ‡ طھظپع©غŒع© ط¯ظˆ ط¨ط®ط´
+                اسناد سازمانی و مدارک پرسنلی در یک‌جا — به تفکیک دو بخش
               </Typography>
             </Box>
           </Box>
           {activeTab === 0 && (
             <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
               sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 3 }}>
-              ط¨ط§غŒع¯ط§ظ†غŒ ط³ظ†ط¯ ط³ط§ط²ظ…ط§ظ†غŒ ط¬ط¯غŒط¯
+              بایگانی سند سازمانی جدید
             </Button>
           )}
         </Box>
@@ -199,8 +199,8 @@ const CompanyDocumentsPage = () => {
       {/* ============ Tabs: Organisation / Employee ============ */}
       <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}
         sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Tab icon={<ArchiveIcon />} iconPosition="start" label="ط§ط³ظ†ط§ط¯ ط³ط§ط²ظ…ط§ظ†غŒ" />
-        <Tab icon={<PersonSearchIcon />} iconPosition="start" label="ظ…ط¯ط§ط±ع© ظ¾ط±ط³ظ†ظ„غŒ" />
+        <Tab icon={<ArchiveIcon />} iconPosition="start" label="اسناد سازمانی" />
+        <Tab icon={<PersonSearchIcon />} iconPosition="start" label="مدارک پرسنلی" />
       </Tabs>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -212,15 +212,15 @@ const CompanyDocumentsPage = () => {
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
               <TextField
                 fullWidth size="small"
-                placeholder="ط¬ط³طھط¬ظˆ ط¯ط± ط¹ظ†ظˆط§ظ†طŒ ظ¾ط±ط³ظ†ظ„طŒ ط´ظ…ط§ط±ظ‡ ط«ط¨طھطŒ ط¨ط±ع†ط³ط¨â€Œظ‡ط§..."
+                placeholder="جستجو در عنوان، پرسنل، شماره ثبت، برچسب‌ها..."
                 value={search}
                 onChange={e => setSearch(e.target.value)}
                 InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }}
               />
               <FormControl sx={{ minWidth: { xs: '100%', md: 200 } }} size="small">
-                <InputLabel>ط¯ط³طھظ‡â€Œط¨ظ†ط¯غŒ</InputLabel>
-                <Select value={categoryFilter} label="ط¯ط³طھظ‡â€Œط¨ظ†ط¯غŒ" onChange={e => setCategoryFilter(e.target.value)}>
-                  <MenuItem value="">ظ‡ظ…ظ‡</MenuItem>
+                <InputLabel>دسته‌بندی</InputLabel>
+                <Select value={categoryFilter} label="دسته‌بندی" onChange={e => setCategoryFilter(e.target.value)}>
+                  <MenuItem value="">همه</MenuItem>
                   {CATEGORIES.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
                 </Select>
               </FormControl>
@@ -228,8 +228,8 @@ const CompanyDocumentsPage = () => {
           </Paper>
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-            <Chip icon={<FolderIcon />} label={`${formatPersianNumber(items.length)} ط³ظ†ط¯ ط³ط§ط²ظ…ط§ظ†غŒ`} sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309' }} />
-            {expiredCount > 0 && <Chip icon={<WarningAmberIcon />} label={`${formatPersianNumber(expiredCount)} ظ…ظ†ظ‚ط¶غŒ`} color="error" sx={{ fontWeight: 700 }} />}
+            <Chip icon={<FolderIcon />} label={`${formatPersianNumber(items.length)} سند سازمانی`} sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309' }} />
+            {expiredCount > 0 && <Chip icon={<WarningAmberIcon />} label={`${formatPersianNumber(expiredCount)} منقضی`} color="error" sx={{ fontWeight: 700 }} />}
           </Box>
 
           {isLoading ? (
@@ -237,7 +237,7 @@ const CompanyDocumentsPage = () => {
           ) : filtered.length === 0 ? (
             <Paper sx={{ p: 6, textAlign: 'center', borderRadius: '10px' }}>
               <ArchiveIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-              <Typography variant="h6" color="textSecondary">ط³ظ†ط¯غŒ غŒط§ظپطھ ظ†ط´ط¯</Typography>
+              <Typography variant="h6" color="textSecondary">سندی یافت نشد</Typography>
             </Paper>
           ) : (
             <Grid container spacing={2.5}>
@@ -262,7 +262,7 @@ const CompanyDocumentsPage = () => {
                             sx={{ fontSize: '0.68rem', fontWeight: 700, bgcolor: `${cat.color}18`, color: cat.color }} />
                         </Box>
                         <Tooltip title={doc.title || ''}>
-                          <Typography variant="subtitle1" fontWeight={700} noWrap>{doc.title || 'ط¨ط¯ظˆظ† ط¹ظ†ظˆط§ظ†'}</Typography>
+                          <Typography variant="subtitle1" fontWeight={700} noWrap>{doc.title || 'بدون عنوان'}</Typography>
                         </Tooltip>
                         {doc.employee_name && (
                           <Typography variant="caption" color="#8b5cf6" sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
@@ -274,13 +274,13 @@ const CompanyDocumentsPage = () => {
                         )}
                         {doc.issue_date && (
                           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.25 }}>
-                            طµط¯ظˆط±: {toJalali(doc.issue_date)}
+                            صدور: {toJalali(doc.issue_date)}
                           </Typography>
                         )}
                         {doc.expiry_date && (
                           <Typography variant="caption" color={doc.is_expired ? 'error.main' : 'text.secondary'}
                             sx={{ display: 'block', fontWeight: doc.is_expired ? 700 : 400 }}>
-                            ط§ظ†ظ‚ط¶ط§: {toJalali(doc.expiry_date)} {doc.is_expired && ' (ظ…ظ†ظ‚ط¶غŒ)'}
+                            انقضا: {toJalali(doc.expiry_date)} {doc.is_expired && ' (منقضی)'}
                           </Typography>
                         )}
                         <Divider sx={{ my: 1.5 }} />
@@ -288,13 +288,13 @@ const CompanyDocumentsPage = () => {
                           <Box>
                             <IconButton size="small" onClick={() => openEdit(doc)} sx={{ color: cat.color }}><EditIcon fontSize="small" /></IconButton>
                             <IconButton size="small" color="error"
-                              onClick={() => { if (window.confirm('ط­ط°ظپ ط§غŒظ† ط³ظ†ط¯ ط³ط§ط²ظ…ط§ظ†غŒطں')) deleteMutation.mutate(doc.id); }}>
+                              onClick={() => { if (window.confirm('حذف این سند سازمانی؟')) deleteMutation.mutate(doc.id); }}>
                               <DeleteIcon fontSize="small" />
                             </IconButton>
                           </Box>
                           {doc.file_url && (
                             <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
-                              sx={{ color: cat.color, fontSize: '0.7rem' }}>ط¯ط±غŒط§ظپطھ</Button>
+                              sx={{ color: cat.color, fontSize: '0.7rem' }}>دریافت</Button>
                           )}
                         </Box>
                       </Box>
@@ -312,16 +312,16 @@ const CompanyDocumentsPage = () => {
         <Box>
           <Paper sx={{ p: 2.5, mb: 2, borderRadius: '10px', border: '1px solid rgba(139,92,246,0.18)' }}>
             <Typography variant="subtitle1" fontWeight={700} color="#7c3aed" sx={{ mb: 1.5 }}>
-              ظ…ط¯ط§ط±ع© ط«ط¨طھâ€Œط´ط¯ظ‡ ط¯ط± ظ¾ط±ظˆظ†ط¯ظ‡ ظ¾ط±ط³ظ†ظ„غŒ
+              مدارک ثبت‌شده در پرونده پرسنلی
             </Typography>
             <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 2 }}>
-              غŒع© ظ¾ط±ط³ظ†ظ„ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ† طھط§ طھظ…ط§ظ… ظ…ط¯ط§ط±ع©ط´ (ع©ظ‡ ط¯ط± ظ¾ط±ظˆظ†ط¯ظ‡ ط¨ط§ط±ع¯ط°ط§ط±غŒ ط´ط¯ظ‡) ط¨ط§ ط¹ظ†ظˆط§ظ† ظˆ ظ†ظˆط¹ ط¯ط± ط§غŒظ† ط¨ط§غŒع¯ط§ظ†غŒ ظ†ظ…ط§غŒط´ ط¯ط§ط¯ظ‡ ط´ظˆط¯.
+              یک پرسنل را انتخاب کن تا تمام مدارکش (که در پرونده بارگذاری شده) با عنوان و نوع در این بایگانی نمایش داده شود.
             </Typography>
             <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} alignItems={{ md: 'center' }}>
               <FormControl sx={{ minWidth: { xs: '100%', md: 280 } }} size="small">
-                <InputLabel>ظ¾ط±ط³ظ†ظ„</InputLabel>
-                <Select value={selectedEmployeeId || ''} label="ظ¾ط±ط³ظ†ظ„" onChange={e => setSelectedEmployeeId(e.target.value)}>
-                  <MenuItem value=""><em>â€” ط§ظ†طھط®ط§ط¨ ظ¾ط±ط³ظ†ظ„ â€”</em></MenuItem>
+                <InputLabel>پرسنل</InputLabel>
+                <Select value={selectedEmployeeId || ''} label="پرسنل" onChange={e => setSelectedEmployeeId(e.target.value)}>
+                  <MenuItem value=""><em>— انتخاب پرسنل —</em></MenuItem>
                   {empList.map(emp => <MenuItem key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_id})</MenuItem>)}
                 </Select>
               </FormControl>
@@ -329,12 +329,12 @@ const CompanyDocumentsPage = () => {
                 <>
                   <Button variant="outlined" color="secondary" startIcon={<PersonIcon />}
                     onClick={() => navigate(`/employees/${selectedEmployeeId}`)}>
-                    ظ…ط´ط§ظ‡ط¯ظ‡ ظ¾ط±ظˆظ†ط¯ظ‡
+                    مشاهده پرونده
                   </Button>
                   <Button variant="contained" startIcon={<RecapIcon />}
                     onClick={() => navigate(`/employees/${selectedEmployeeId}/edit`)}
                     sx={{ background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)' }}>
-                    ط¨ط§ط±ع¯ط°ط§ط±غŒ ظ…ط¯ط±ع© ط¯ط± ظ¾ط±ظˆظ†ط¯ظ‡
+                    بارگذاری مدرک در پرونده
                   </Button>
                 </>
               )}
@@ -344,18 +344,18 @@ const CompanyDocumentsPage = () => {
           {!selectedEmployeeId ? (
             <Paper sx={{ p: 6, textAlign: 'center', borderRadius: '10px' }}>
               <PersonSearchIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 2 }} />
-              <Typography color="textSecondary">ط¨ط±ط§غŒ ظ…ط´ط§ظ‡ط¯ظ‡ ظ…ط¯ط§ط±ع©طŒ ط§ط¨طھط¯ط§ ظ¾ط±ط³ظ†ظ„ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯</Typography>
+              <Typography color="textSecondary">برای مشاهده مدارک، ابتدا پرسنل را انتخاب کنید</Typography>
             </Paper>
           ) : empDocLoading ? (
             <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
           ) : !empDocs || empDocs.length === 0 ? (
             <Paper sx={{ p: 5, textAlign: 'center', borderRadius: '10px' }}>
-              <Typography color="textSecondary">ظ…ط¯ط±ع©غŒ ط¯ط± ظ¾ط±ظˆظ†ط¯ظ‡ آ«{docEmployee?.full_name || ''}آ» ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+              <Typography color="textSecondary">مدرکی در پرونده «{docEmployee?.full_name || ''}» ثبت نشده است</Typography>
             </Paper>
           ) : (
             <>
               <Box sx={{ mb: 1.5, display: 'flex', alignItems: 'center', gap: 1 }}>
-                <Chip label={`${formatPersianNumber(empDocs.length)} ظ…ط¯ط±ع© ط¨ط±ط§غŒ ${docEmployee?.full_name || ''}`} color="secondary" sx={{ fontWeight: 700 }} />
+                <Chip label={`${formatPersianNumber(empDocs.length)} مدرک برای ${docEmployee?.full_name || ''}`} color="secondary" sx={{ fontWeight: 700 }} />
               </Box>
               <Grid container spacing={2}>
                 {empDocs.map(doc => {
@@ -383,13 +383,13 @@ const CompanyDocumentsPage = () => {
                         <Chip label={doc.document_type_name} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem', color: typeColor, borderColor: `${typeColor}40` }} />
                         {doc.issue_date && (
                           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.75 }}>
-                            طµط¯ظˆط±: {toJalali(doc.issue_date)}
+                            صدور: {toJalali(doc.issue_date)}
                           </Typography>
                         )}
                         {doc.expiry_date && doc.days_until_expiry != null && (
                           <Box sx={{ mt: 0.5 }}>
                             <Chip size="small"
-                              label={doc.is_expired ? 'ظ…ظ†ظ‚ط¶غŒ' : doc.days_until_expiry <= 30 ? 'ط¯ط± ط¢ط³طھط§ظ†ظ‡ ط§ظ†ظ‚ط¶ط§' : 'ظ…ط¹طھط¨ط±'}
+                              label={doc.is_expired ? 'منقضی' : doc.days_until_expiry <= 30 ? 'در آستانه انقضا' : 'معتبر'}
                               color={doc.is_expired ? 'error' : doc.days_until_expiry <= 30 ? 'warning' : 'success'}
                               variant={doc.is_expired || doc.days_until_expiry <= 30 ? 'filled' : 'outlined'}
                               sx={{ height: 20, fontSize: '0.65rem' }} />
@@ -398,7 +398,7 @@ const CompanyDocumentsPage = () => {
                         <Box sx={{ mt: 1, pt: 1, borderTop: `1px solid ${typeColor}15`, display: 'flex', justifyContent: 'flex-end' }}>
                           {doc.file && (
                             <Button size="small" component="a" href={doc.file} target="_blank" rel="noreferrer"
-                              sx={{ color: typeColor, fontSize: '0.7rem' }}>ط¯ط±غŒط§ظپطھ / ظ…ط´ط§ظ‡ط¯ظ‡</Button>
+                              sx={{ color: typeColor, fontSize: '0.7rem' }}>دریافت / مشاهده</Button>
                           )}
                         </Box>
                       </Paper>
@@ -414,50 +414,50 @@ const CompanyDocumentsPage = () => {
       {/* ============ Add / Edit Organisation doc dialog (Jalali dates) ============ */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color: '#b45309' }}>
-          {editing ? 'ظˆغŒط±ط§غŒط´ ط³ظ†ط¯ ط³ط§ط²ظ…ط§ظ†غŒ' : 'ط¨ط§غŒع¯ط§ظ†غŒ ط³ظ†ط¯ ط³ط§ط²ظ…ط§ظ†غŒ ط¬ط¯غŒط¯'}
+          {editing ? 'ویرایش سند سازمانی' : 'بایگانی سند سازمانی جدید'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.6, mt: 1 }}>
-          <TextField fullWidth size="small" label="ط¹ظ†ظˆط§ظ† ط³ظ†ط¯ *" required value={form.title}
+          <TextField fullWidth size="small" label="عنوان سند *" required value={form.title}
             onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
           <FormControl fullWidth size="small">
-            <InputLabel>ط¯ط³طھظ‡â€Œط¨ظ†ط¯غŒ</InputLabel>
-            <Select value={form.category} label="ط¯ط³طھظ‡â€Œط¨ظ†ط¯غŒ" onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
+            <InputLabel>دسته‌بندی</InputLabel>
+            <Select value={form.category} label="دسته‌بندی" onChange={e => setForm(p => ({ ...p, category: e.target.value }))}>
               {CATEGORIES.map(c => <MenuItem key={c.value} value={c.value}>{c.label}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl fullWidth size="small">
-            <InputLabel>ظ¾ط±ط³ظ†ظ„ ظ…ط±طھط¨ط· (ط§ط®طھغŒط§ط±غŒ)</InputLabel>
-            <Select value={form.employee || ''} label="ظ¾ط±ط³ظ†ظ„ ظ…ط±طھط¨ط· (ط§ط®طھغŒط§ط±غŒ)"
+            <InputLabel>پرسنل مرتبط (اختیاری)</InputLabel>
+            <Select value={form.employee || ''} label="پرسنل مرتبط (اختیاری)"
               onChange={e => setForm(p => ({ ...p, employee: e.target.value }))}>
-              <MenuItem value="">â€” ط¨ط¯ظˆظ† ظ¾ط±ط³ظ†ظ„ â€”</MenuItem>
+              <MenuItem value="">— بدون پرسنل —</MenuItem>
               {empList.map(emp => <MenuItem key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField fullWidth size="small" label="ط´ظ…ط§ط±ظ‡ ط«ط¨طھ/ظ…ط±ط¬ط¹" value={form.reference_number}
+          <TextField fullWidth size="small" label="شماره ثبت/مرجع" value={form.reference_number}
             onChange={e => setForm(p => ({ ...p, reference_number: e.target.value }))} />
 
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® طµط¯ظˆط± (ط´ظ…ط³غŒ)" value={form.issue_date}
+          <JalaliDatePicker fullWidth label="تاریخ صدور (شمسی)" value={form.issue_date}
             onChange={g => setForm(p => ({ ...p, issue_date: g }))} />
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط§ظ†ظ‚ط¶ط§ (ط´ظ…ط³غŒ)" value={form.expiry_date}
+          <JalaliDatePicker fullWidth label="تاریخ انقضا (شمسی)" value={form.expiry_date}
             onChange={g => setForm(p => ({ ...p, expiry_date: g }))} />
 
-          <TextField fullWidth size="small" label="ط¨ط±ع†ط³ط¨â€Œظ‡ط§ (ط¨ط§ ظˆغŒط±ع¯ظˆظ„)" value={form.tags}
+          <TextField fullWidth size="small" label="برچسب‌ها (با ویرگول)" value={form.tags}
             onChange={e => setForm(p => ({ ...p, tags: e.target.value }))} />
-          <TextField fullWidth size="small" label="طھظˆط¶غŒط­ط§طھ" multiline rows={2} value={form.description}
+          <TextField fullWidth size="small" label="توضیحات" multiline rows={2} value={form.description}
             onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
 
           <Button component="label" variant="outlined" startIcon={<CloudUploadIcon />}
             sx={{ borderColor: '#f59e0b55', color: '#b45309' }}>
-            {form.file ? `ظپط§غŒظ„: ${form.file.name}` : (editing ? 'ط§ظ†طھط®ط§ط¨ ظپط§غŒظ„ ط¬ط¯غŒط¯ (ط§ط®طھغŒط§ط±غŒ)' : 'ط§ظ†طھط®ط§ط¨ ظپط§غŒظ„ (PDF, طھطµظˆغŒط±, DOCX, XLSX) *')}
+            {form.file ? `فایل: ${form.file.name}` : (editing ? 'انتخاب فایل جدید (اختیاری)' : 'انتخاب فایل (PDF, تصویر, DOCX, XLSX) *')}
             <input type="file" hidden onChange={e => { const f = e.target.files?.[0]; if (f) setForm(p => ({ ...p, file: f })); }} />
           </Button>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpen(false)}>انصراف</Button>
           <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)' }}
             disabled={!form.title || (!editing && !form.file)}
             onClick={() => saveMutation.mutate(form)}>
-            {editing ? 'ط°ط®غŒط±ظ‡ طھط؛غŒغŒط±ط§طھ' : 'ط¨ط§غŒع¯ط§ظ†غŒ ط³ظ†ط¯'}
+            {editing ? 'ذخیره تغییرات' : 'بایگانی سند'}
           </Button>
         </DialogActions>
       </Dialog>

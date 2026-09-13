@@ -7,41 +7,41 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../core/context/ThemeContext';
 
 /* =========================================================================
- * ط¸ط§ظ‡ط± ظˆ ظ¾ظˆط³طھظ‡ (2026)
- *  - ط§ظ†طھط®ط§ط¨ state visual (طھظ…) ط¨ط§ ظ¾غŒط´â€Œظ†ظ…ط§غŒط´ ط²ظ†ط¯ظ‡ + طھظˆط¶غŒط­
- *  - ط§ظ†طھط®ط§ط¨ ط±ظ†ع¯ ظ†ط¦ظˆظ† ط¨ط±ط§غŒ F ظ…ظˆط¯
- *  - ط°ط®غŒط±ظ‡ظ” ط®ظˆط¯ع©ط§ط± (localStorage ط§ط² ThemeContext)
+ * ظاهر و پوسته (2026)
+ *  - انتخاب state visual (تم) با پیش‌نمایش زنده + توضیح
+ *  - انتخاب رنگ نئون برای F مود
+ *  - ذخیرهٔ خودکار (localStorage از ThemeContext)
  * ========================================================================= */
 
 const MODE_DESC = {
   light: {
-    title: 'ط±ظˆط´ظ†',
-    desc: 'طھظ… ط±ظˆط´ظ† ظˆ ط´ظپط§ظپ ط¨ط±ط§غŒ ظ…ط­غŒط· ع©ط§ط± ط±ظˆط²ط§ظ†ظ‡ط› ع©ظ…طھط±غŒظ† ط®ط³طھع¯غŒ ع†ط´ظ… ظˆ ط­ط¯ط§ع©ط«ط± ط®ظˆط§ظ†ط§غŒغŒ.',
-    tagline: 'ط¨ظ‡طھط±غŒظ† ط§ظ†طھط®ط§ط¨ ط¨ط±ط§غŒ ط§ط³طھظپط§ط¯ظ‡ ط¯ط± ط±ظˆط²',
+    title: 'روشن',
+    desc: 'تم روشن و شفاف برای محیط کار روزانه؛ کمترین خستگی چشم و حداکثر خوانایی.',
+    tagline: 'بهترین انتخاب برای استفاده در روز',
     swatch: ['#f8fafc', '#ffffff', '#6366f1', '#ec4899'],
   },
   dark: {
-    title: 'طھط§ط±غŒع©',
-    desc: 'طھظ… طھغŒط±ظ‡ ظˆ ط¢ط±ط§ظ… ط¨ط±ط§غŒ ع©ط§ط± ط¯ط± ط´ط¨ ظˆ ع©ط§ظ‡ط´ ظ†ظˆط± ط¢ط¨غŒط› ظ…ظ†ط§ط³ط¨ طھظ…ط±ع©ط² ط¯ط± ظ…ط­غŒط· ع©ظ…â€Œظ†ظˆط±.',
-    tagline: 'ظ…ظ†ط§ط³ط¨ ع©ط§ط± ط¯ط± ط´ط¨',
+    title: 'تاریک',
+    desc: 'تم تیره و آرام برای کار در شب و کاهش نور آبی؛ مناسب تمرکز در محیط کم‌نور.',
+    tagline: 'مناسب کار در شب',
     swatch: ['#0f172a', '#1e293b', '#818cf8', '#f472b6'],
   },
   fmode: {
-    title: 'F ظ…ظˆط¯',
-    desc: 'ط¸ط§ظ‡ط± ط³غŒط§ظ‡â€Œظˆط³ظپغŒط¯ ط¨ط§ طھط§غŒظ¾ظˆع¯ط±ط§ظپغŒ ظ†ط¦ظˆظ†غŒ â€” طھط±ع©غŒط¨ ط³ط¨ع© طھط±ظ…غŒظ†ط§ظ„ ظˆ ظ…ط¯ط±ظ† ط¨ط±ط§غŒ ط¹ظ„ط§ظ‚ظ‡â€Œظ…ظ†ط¯ط§ظ† ط¨ظ‡ ط±ط§ط¨ط·â€Œظ‡ط§غŒ ط³ط§غŒط¨ط±غŒ.',
-    tagline: 'ط³ط¨ع© ظ†ط¦ظˆظ†غŒ ط³ط§غŒط¨ط±غŒ',
+    title: 'F مود',
+    desc: 'ظاهر سیاه‌وسفید با تایپوگرافی نئونی — ترکیب سبک ترمینال و مدرن برای علاقه‌مندان به رابط‌های سایبری.',
+    tagline: 'سبک نئونی سایبری',
     swatch: ['#050505', '#0d0d0d', '#39ff14', '#00ffff'],
   },
   fmode_light: {
-    title: 'F ظ…ظˆط¯ ط±ظˆط´ظ†',
-    desc: 'ظ†ط³ط®ظ‡ظ” ط±ظˆط´ظ† F ظ…ظˆط¯ط› ظ¾ط³â€Œط²ظ…غŒظ†ظ‡ظ” ط±ظˆط´ظ† ط¨ط§ ظ‡ظ…ط§ظ† ط±ظ†ع¯â€Œظ‡ط§غŒ ظ†ط¦ظˆظ†غŒ â€” ط­ط³ طھط§ط²ع¯غŒ ط¨ط§ ظˆط¶ظˆط­ ط¨ط§ظ„ط§.',
-    tagline: 'ظ†ط¦ظˆظ†غŒ ط±ظˆغŒ ط²ظ…غŒظ†ظ‡ ط±ظˆط´ظ†',
+    title: 'F مود روشن',
+    desc: 'نسخهٔ روشن F مود؛ پس‌زمینهٔ روشن با همان رنگ‌های نئونی — حس تازگی با وضوح بالا.',
+    tagline: 'نئونی روی زمینه روشن',
     swatch: ['#f1fdf7', '#ffffff', '#00c853', '#00bfa5'],
   },
   kurosawa: {
-    title: 'ع©ظˆط±ط§ط³ط§ظˆط§',
-    desc: 'طھظ… ظ…ظˆظ†ظˆع©ط±ظˆظ… طھع©â€Œط±ظ†ع¯ (ط³غŒط§ظ‡/ط³ظپغŒط¯/ط®ط§ع©ط³طھط±غŒ) ط¨ط§ ط§ظ„ظ‡ط§ظ… ط§ط² ط³غŒظ†ظ…ط§غŒ ط¢ع©غŒط±ط§ ع©ظˆط±ظˆط³ط§ظˆط§ط› ط¨ط±ط§غŒ ط²غŒط¨ط§غŒغŒ ظ…غŒظ†غŒظ…ط§ظ„ ظˆ ط¨غŒâ€Œظ†ظ‚ط·ظ‡ظ” ط­ظˆط§ط³â€Œظ¾ط±طھغŒ.',
-    tagline: 'ظ…غŒظ†غŒظ…ط§ظ„ ظˆ ط³غŒظ†ظ…ط§غŒغŒ',
+    title: 'کوراساوا',
+    desc: 'تم مونوکروم تک‌رنگ (سیاه/سفید/خاکستری) با الهام از سینمای آکیرا کوروساوا؛ برای زیبایی مینیمال و بی‌نقطهٔ حواس‌پرتی.',
+    tagline: 'مینیمال و سینمایی',
     swatch: ['#f3f4f6', '#ffffff', '#111827', '#4b5563'],
   },
 };
@@ -101,7 +101,7 @@ const LivePreview = ({ mode, neonColor }) => {
         </Box>
       </Box>
       <Typography variant="caption" sx={{ color: text, mt: 0.5, display: 'block', opacity: 0.7 }}>
-        ظ¾غŒط´â€Œظ†ظ…ط§غŒط´ طھظ… {MODE_DESC[mode]?.title || 'â€”'}
+        پیش‌نمایش تم {MODE_DESC[mode]?.title || '—'}
       </Typography>
     </Box>
   );
@@ -127,17 +127,17 @@ const AppearancePage = () => {
           <PaletteIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box>
-          <Typography variant="h6" fontWeight={800}>ط¸ط§ظ‡ط± ظˆ ظ¾ظˆط³طھظ‡</Typography>
+          <Typography variant="h6" fontWeight={800}>ظاهر و پوسته</Typography>
           <Typography variant="body2" color="textSecondary">
-            ط§ظ†طھط®ط§ط¨ طھظ…طŒ ظ¾غŒط´â€Œظ†ظ…ط§غŒط´ ط²ظ†ط¯ظ‡ ظˆ ط´ط®طµغŒâ€Œط³ط§ط²غŒ ط±ظ†ع¯ ظ†ط¦ظˆظ† ط¨ط±ظ†ط§ظ…ظ‡
+            انتخاب تم، پیش‌نمایش زنده و شخصی‌سازی رنگ نئون برنامه
           </Typography>
         </Box>
       </Paper>
 
       {/* Theme cards with live preview */}
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>طھظ… ظ†ظ…ط§غŒط´</Typography>
+      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>تم نمایش</Typography>
       <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-        غŒع© طھظ… ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯ â€” طھط؛غŒغŒط±ط§طھ ط¨ظ„ط§ظپط§طµظ„ظ‡ ط¯ط± ع©ظ„ ط¨ط±ظ†ط§ظ…ظ‡ ط§ط¹ظ…ط§ظ„ ظˆ ط¯ط± ظ…ط±ظˆط±ع¯ط± ط°ط®غŒط±ظ‡ ظ…غŒâ€Œط´ظˆط¯.
+        یک تم انتخاب کنید — تغییرات بلافاصله در کل برنامه اعمال و در مرورگر ذخیره می‌شود.
       </Typography>
 
       <Grid container spacing={2}>
@@ -177,13 +177,13 @@ const AppearancePage = () => {
         })}
       </Grid>
 
-      {/* Neon color picker â€” only for Neon modes */}
+      {/* Neon color picker — only for Neon modes */}
       {['fmode', 'fmode_light'].includes(mode) && (
         <>
           <Divider sx={{ my: 3 }} />
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>ط±ظ†ع¯ ظ†ط¦ظˆظ†</Typography>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>رنگ نئون</Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            ط±ظ†ع¯ ظ†ط¦ظˆظ†غŒ طھظ… ط³ط¨ط² ظ…ظˆط±ط¯ ظ†ط¸ط± ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯ â€” ط¨ظ„ط§ظپط§طµظ„ظ‡ ط¯ط± ط³ط±ط§ط³ط± ط¨ط±ظ†ط§ظ…ظ‡ ط§ط¹ظ…ط§ظ„ ظ…غŒâ€Œط´ظˆط¯.
+            رنگ نئونی تم سبز مورد نظر را انتخاب کنید — بلافاصله در سراسر برنامه اعمال می‌شود.
           </Typography>
           <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
             {NEON_COLOR_OPTIONS.map(c => (
@@ -203,7 +203,7 @@ const AppearancePage = () => {
             ))}
           </Stack>
           <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2">ط±ظ†ع¯ ظپط¹ظ„غŒ:</Typography>
+            <Typography variant="body2">رنگ فعلی:</Typography>
             <Box sx={{ width: 34, height: 34, borderRadius: '50%', background: neonColor, boxShadow: `0 0 16px ${neonColor}` }} />
             <Typography variant="caption" color="textSecondary">{neonColor}</Typography>
           </Box>
@@ -211,7 +211,7 @@ const AppearancePage = () => {
       )}
 
       <Alert severity="info" sx={{ mt: 3 }}>
-        طھظ†ط¸غŒظ…ط§طھ ط¸ط§ظ‡ط± ط¨ظ‡â€Œطµظˆط±طھ ط®ظˆط¯ع©ط§ط± ط°ط®غŒط±ظ‡ ظ…غŒâ€Œط´ظˆط¯ ظˆ ط¯ط± ط¯ظپط¹ط§طھ ط¨ط¹ط¯غŒ ظˆط±ظˆط¯ ط¨ظ‡ ظ‡ظ…ط§ظ† ط´ع©ظ„ ط¨ط§ظ‚غŒ ظ…غŒâ€Œظ…ط§ظ†ط¯.
+        تنظیمات ظاهر به‌صورت خودکار ذخیره می‌شود و در دفعات بعدی ورود به همان شکل باقی می‌ماند.
       </Alert>
     </Box>
   );

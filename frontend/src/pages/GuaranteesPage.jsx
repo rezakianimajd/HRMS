@@ -21,18 +21,18 @@ import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const TYPE_LABELS = {
-  performance: 'ط¶ظ…ط§ظ†طھ ط­ط³ظ† ط§ظ†ط¬ط§ظ… ع©ط§ط±',
-  advance: 'ط¶ظ…ط§ظ†طھ ظ¾غŒط´â€Œظ¾ط±ط¯ط§ط®طھ',
-  bid: 'ط¶ظ…ط§ظ†طھ ط´ط±ع©طھ ط¯ط± ظ…ظ†ط§ظ‚طµظ‡',
-  other: 'ط³ط§غŒط±',
+  performance: 'ضمانت حسن انجام کار',
+  advance: 'ضمانت پیش‌پرداخت',
+  bid: 'ضمانت شرکت در مناقصه',
+  other: 'سایر',
 };
 
 const INSTRUMENT_LABELS = {
-  check: 'ع†ع©',
-  promissory: 'ط³ظپطھظ‡',
-  bank_guarantee: 'ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡ ط¨ط§ظ†ع©غŒ',
-  check_and_guarantee: 'ع†ع© + ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡',
-  promissory_and_guarantee: 'ط³ظپطھظ‡ + ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡',
+  check: 'چک',
+  promissory: 'سفته',
+  bank_guarantee: 'ضمانت‌نامه بانکی',
+  check_and_guarantee: 'چک + ضمانت‌نامه',
+  promissory_and_guarantee: 'سفته + ضمانت‌نامه',
 };
 
 const INSTRUMENT_COLORS = {
@@ -44,10 +44,10 @@ const INSTRUMENT_COLORS = {
 };
 
 const ACTION_LABELS = {
-  returned: 'ط§ط³طھط±ط¯ط§ط¯',
-  executed: 'ط§ط¬ط±ط§ / ط¶ط¨ط·',
-  canceled: 'ط§ط¨ط·ط§ظ„',
-  extended: 'طھظ…ط¯غŒط¯',
+  returned: 'استرداد',
+  executed: 'اجرا / ضبط',
+  canceled: 'ابطال',
+  extended: 'تمدید',
 };
 
 const ACTION_COLORS = {
@@ -138,7 +138,7 @@ const GuaranteesPage = () => {
     if (instrumentType === 'bank_guarantee') {
       return ['canceled', 'extended', 'executed'];
     }
-    // طھط±ع©غŒط¨غŒ: ظ‡ظ…ظ‡ظ” ط§ظ‚ط¯ط§ظ…ط§طھ
+    // ترکیبی: همهٔ اقدامات
     return ['returned', 'executed', 'canceled', 'extended'];
   };
 
@@ -158,18 +158,18 @@ const GuaranteesPage = () => {
           <LockIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#1d4ed8">طھط¶ط§ظ…غŒظ† ظˆ ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡â€Œظ‡ط§</Typography>
-          <Typography variant="body2" color="textSecondary">ظ…ط¯غŒط±غŒطھ ع†ع©طŒ ط³ظپطھظ‡ ظˆ ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡ ط¨ط§ ع†ط±ط®ظ‡ظ” ط¹ظ…ط± ع©ط§ظ…ظ„</Typography>
+          <Typography variant="h6" fontWeight={800} color="#1d4ed8">تضامین و ضمانت‌نامه‌ها</Typography>
+          <Typography variant="body2" color="textSecondary">مدیریت چک، سفته و ضمانت‌نامه با چرخهٔ عمر کامل</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px' }}>
-          طھط¶ظ…غŒظ† ط¬ط¯غŒط¯
+          تضمین جدید
         </Button>
       </Paper>
 
       {/* Search */}
       <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
-        <TextField size="small" placeholder="ط¬ط³طھط¬ظˆ: ط´ظ…ط§ط±ظ‡طŒ ط¨ط§ظ†ع©طŒ ظ‚ط±ط§ط±ط¯ط§ط¯طŒ ط´ظ…ط§ط±ظ‡ ع†ع©..." value={search}
+        <TextField size="small" placeholder="جستجو: شماره، بانک، قرارداد، شماره چک..." value={search}
           onChange={e => setSearch(e.target.value)} fullWidth
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
       </Paper>
@@ -178,7 +178,7 @@ const GuaranteesPage = () => {
       {filtered.length === 0 ? (
         <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
           <LockIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-          <Typography variant="body2" color="textSecondary">طھط¶ظ…غŒظ†غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
+          <Typography variant="body2" color="textSecondary">تضمینی ثبت نشده است.</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -195,35 +195,35 @@ const GuaranteesPage = () => {
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body2" fontWeight={800}>
-                        {INSTRUMENT_LABELS[g.instrument_type] || 'â€”'} آ· {TYPE_LABELS[g.guarantee_type]}
+                        {INSTRUMENT_LABELS[g.instrument_type] || '—'} · {TYPE_LABELS[g.guarantee_type]}
                       </Typography>
-                      <Typography variant="caption" color="textSecondary">{g.number || 'ط¨ط¯ظˆظ† ط´ظ…ط§ط±ظ‡'}</Typography>
+                      <Typography variant="caption" color="textSecondary">{g.number || 'بدون شماره'}</Typography>
                     </Box>
                     {g.last_action === 'returned' ? (
-                      <Chip size="small" color="success" icon={<CheckCircleIcon />} label="ط§ط³طھط±ط¯ط§ط¯ ط´ط¯ظ‡" />
+                      <Chip size="small" color="success" icon={<CheckCircleIcon />} label="استرداد شده" />
                     ) : g.last_action === 'executed' ? (
-                      <Chip size="small" color="error" icon={<GavelIcon />} label="ط§ط¬ط±ط§ / ط¶ط¨ط· ط´ط¯ظ‡" />
+                      <Chip size="small" color="error" icon={<GavelIcon />} label="اجرا / ضبط شده" />
                     ) : g.last_action === 'canceled' ? (
-                      <Chip size="small" color="warning" icon={<BlockIcon />} label="ط§ط¨ط·ط§ظ„ ط´ط¯ظ‡" />
+                      <Chip size="small" color="warning" icon={<BlockIcon />} label="ابطال شده" />
                     ) : expired ? (
-                      <Chip size="small" color="error" icon={<ScheduleIcon />} label="ظ…ظ†ظ‚ط¶غŒ" />
+                      <Chip size="small" color="error" icon={<ScheduleIcon />} label="منقضی" />
                     ) : (
-                      <Chip size="small" color="primary" icon={<LockIcon />} label="ظ…ط¹طھط¨ط±" />
+                      <Chip size="small" color="primary" icon={<LockIcon />} label="معتبر" />
                     )}
                   </Box>
 
                   <Stack spacing={0.5}>
-                    <Typography variant="body2"><strong>ظ…ط¨ظ„ط؛:</strong> {formatPersianNumber(g.amount || 0)} ط±غŒط§ظ„</Typography>
-                    <Typography variant="body2"><strong>ظ‚ط±ط§ط±ط¯ط§ط¯:</strong> {g.contract_subject || 'â€”'}</Typography>
-                    {g.check_number && <Typography variant="body2"><strong>ط´ظ…ط§ط±ظ‡ ع†ع©:</strong> {g.check_number} آ· ط¨ط§ظ†ع©: {g.check_bank || 'â€”'}</Typography>}
-                    {g.promissory_number && <Typography variant="body2"><strong>ط´ظ…ط§ط±ظ‡ ط³ظپطھظ‡:</strong> {g.promissory_number}</Typography>}
-                    {g.guarantee_number && <Typography variant="body2"><strong>ط´ظ…ط§ط±ظ‡ ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡:</strong> {g.guarantee_number}</Typography>}
+                    <Typography variant="body2"><strong>مبلغ:</strong> {formatPersianNumber(g.amount || 0)} ریال</Typography>
+                    <Typography variant="body2"><strong>قرارداد:</strong> {g.contract_subject || '—'}</Typography>
+                    {g.check_number && <Typography variant="body2"><strong>شماره چک:</strong> {g.check_number} · بانک: {g.check_bank || '—'}</Typography>}
+                    {g.promissory_number && <Typography variant="body2"><strong>شماره سفته:</strong> {g.promissory_number}</Typography>}
+                    {g.guarantee_number && <Typography variant="body2"><strong>شماره ضمانت‌نامه:</strong> {g.guarantee_number}</Typography>}
                     <Typography variant="caption" color="textSecondary">
-                      طµط¯ظˆط±: {toJalali(g.issue_date)} آ· ط§ظ†ظ‚ط¶ط§/ط³ط±ط±ط³غŒط¯: {toJalali(g.guarantee_expiry_date || g.check_due_date || g.promissory_due_date || g.expiry_date)}
+                      صدور: {toJalali(g.issue_date)} · انقضا/سررسید: {toJalali(g.guarantee_expiry_date || g.check_due_date || g.promissory_due_date || g.expiry_date)}
                     </Typography>
                     {g.last_action && (
                       <Typography variant="caption" color="textSecondary">
-                        ط¢ط®ط±غŒظ† ط§ظ‚ط¯ط§ظ…: {ACTION_LABELS[g.last_action]} ({toJalali(g.last_action_date)})
+                        آخرین اقدام: {ACTION_LABELS[g.last_action]} ({toJalali(g.last_action_date)})
                       </Typography>
                     )}
                   </Stack>
@@ -247,8 +247,8 @@ const GuaranteesPage = () => {
                         </Button>
                       ))
                     )}
-                    <Button size="small" variant="outlined" onClick={() => { setForm({ ...g }); setDialog(true); }}>ظˆغŒط±ط§غŒط´</Button>
-                    <Button size="small" color="error" variant="outlined" onClick={() => { if (window.confirm('ط­ط°ظپ ط§غŒظ† طھط¶ظ…غŒظ†طں')) remove.mutate(g.id); }}>ط­ط°ظپ</Button>
+                    <Button size="small" variant="outlined" onClick={() => { setForm({ ...g }); setDialog(true); }}>ویرایش</Button>
+                    <Button size="small" color="error" variant="outlined" onClick={() => { if (window.confirm('حذف این تضمین؟')) remove.mutate(g.id); }}>حذف</Button>
                   </Box>
                 </Paper>
               </Grid>
@@ -259,96 +259,96 @@ const GuaranteesPage = () => {
 
       {/* Add/Edit dialog with dynamic fields */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{form.id ? 'ظˆغŒط±ط§غŒط´ طھط¶ظ…غŒظ†' : 'طھط¶ظ…غŒظ† ط¬ط¯غŒط¯'}</DialogTitle>
+        <DialogTitle>{form.id ? 'ویرایش تضمین' : 'تضمین جدید'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <Grid container spacing={1.5}>
             <Grid item xs={12} md={6}>
               <FormControl size="small" fullWidth>
-                <InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯ ظ…ط±طھط¨ط·</InputLabel>
-                <Select value={form.contract || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯ ظ…ط±طھط¨ط·" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
+                <InputLabel>قرارداد مرتبط</InputLabel>
+                <Select value={form.contract || ''} label="قرارداد مرتبط" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
                   {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
               <FormControl size="small" fullWidth>
-                <InputLabel>ظ†ظˆط¹ طھط¶ظ…غŒظ†</InputLabel>
-                <Select value={form.guarantee_type} label="ظ†ظˆط¹ طھط¶ظ…غŒظ†" onChange={e => setForm(p => ({ ...p, guarantee_type: e.target.value }))}>
+                <InputLabel>نوع تضمین</InputLabel>
+                <Select value={form.guarantee_type} label="نوع تضمین" onChange={e => setForm(p => ({ ...p, guarantee_type: e.target.value }))}>
                   {Object.entries(TYPE_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={12}>
               <FormControl size="small" fullWidth>
-                <InputLabel>ظ†ظˆط¹ ط§ط¨ط²ط§ط± طھط¶ظ…غŒظ†</InputLabel>
-                <Select value={form.instrument_type} label="ظ†ظˆط¹ ط§ط¨ط²ط§ط± طھط¶ظ…غŒظ†" onChange={e => setForm(p => ({ ...p, instrument_type: e.target.value }))}>
+                <InputLabel>نوع ابزار تضمین</InputLabel>
+                <Select value={form.instrument_type} label="نوع ابزار تضمین" onChange={e => setForm(p => ({ ...p, instrument_type: e.target.value }))}>
                   {Object.entries(INSTRUMENT_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ظ…ط¨ظ„ط؛ (ط±غŒط§ظ„)" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="طھط§ط±غŒط® طµط¯ظˆط±" value={form.issue_date} onChange={(g) => setForm(p => ({ ...p, issue_date: g }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ط¨ط§ظ†ع© طµط§ط¯ط±ع©ظ†ظ†ط¯ظ‡" value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" fullWidth label="مبلغ (ریال)" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ صدور" value={form.issue_date} onChange={(g) => setForm(p => ({ ...p, issue_date: g }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک صادرکننده" value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} /></Grid>
           </Grid>
 
           {needsInstrument(form.instrument_type) && (
             <>
-              <Typography variant="caption" color="primary" fontWeight={700}>ط§ط·ظ„ط§ط¹ط§طھ ع†ع©</Typography>
+              <Typography variant="caption" color="primary" fontWeight={700}>اطلاعات چک</Typography>
               <Grid container spacing={1.5}>
-                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ط´ظ…ط§ط±ظ‡ ع†ع©" value={form.check_number} onChange={e => setForm(p => ({ ...p, check_number: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ط¨ط§ظ†ع© ع†ع©" value={form.check_bank} onChange={e => setForm(p => ({ ...p, check_bank: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط³ط±ط±ط³غŒط¯ ع†ع©" value={form.check_due_date} onChange={(g) => setForm(p => ({ ...p, check_due_date: g }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره چک" value={form.check_number} onChange={e => setForm(p => ({ ...p, check_number: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک چک" value={form.check_bank} onChange={e => setForm(p => ({ ...p, check_bank: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ سررسید چک" value={form.check_due_date} onChange={(g) => setForm(p => ({ ...p, check_due_date: g }))} /></Grid>
               </Grid>
             </>
           )}
 
           {needsPromissory(form.instrument_type) && (
             <>
-              <Typography variant="caption" color="secondary" fontWeight={700}>ط§ط·ظ„ط§ط¹ط§طھ ط³ظپطھظ‡</Typography>
+              <Typography variant="caption" color="secondary" fontWeight={700}>اطلاعات سفته</Typography>
               <Grid container spacing={1.5}>
-                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط´ظ…ط§ط±ظ‡ ط³ظپطھظ‡" value={form.promissory_number} onChange={e => setForm(p => ({ ...p, promissory_number: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط³ط±ط±ط³غŒط¯ ط³ظپطھظ‡" value={form.promissory_due_date} onChange={(g) => setForm(p => ({ ...p, promissory_due_date: g }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره سفته" value={form.promissory_number} onChange={e => setForm(p => ({ ...p, promissory_number: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ سررسید سفته" value={form.promissory_due_date} onChange={(g) => setForm(p => ({ ...p, promissory_due_date: g }))} /></Grid>
               </Grid>
             </>
           )}
 
           {needsGuarantee(form.instrument_type) && (
             <>
-              <Typography variant="caption" color="success" fontWeight={700}>ط§ط·ظ„ط§ط¹ط§طھ ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡</Typography>
+              <Typography variant="caption" color="success" fontWeight={700}>اطلاعات ضمانت‌نامه</Typography>
               <Grid container spacing={1.5}>
-                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط´ظ…ط§ط±ظ‡ ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡" value={form.guarantee_number} onChange={e => setForm(p => ({ ...p, guarantee_number: e.target.value }))} /></Grid>
-                <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط§ظ†ظ‚ط¶ط§غŒ ط¶ظ…ط§ظ†طھâ€Œظ†ط§ظ…ظ‡" value={form.guarantee_expiry_date} onChange={(g) => setForm(p => ({ ...p, guarantee_expiry_date: g }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره ضمانت‌نامه" value={form.guarantee_number} onChange={e => setForm(p => ({ ...p, guarantee_number: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ انقضای ضمانت‌نامه" value={form.guarantee_expiry_date} onChange={(g) => setForm(p => ({ ...p, guarantee_expiry_date: g }))} /></Grid>
               </Grid>
             </>
           )}
 
-          <TextField size="small" label="غŒط§ط¯ط¯ط§ط´طھ" multiline rows={2} value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+          <TextField size="small" label="یادداشت" multiline rows={2} value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.guarantee_type}
             onClick={() => save.mutate({ ...form, amount: Number(form.amount) || 0 })}
-            sx={{ background: 'linear-gradient(135deg,#3b82f6,#10b981)' }}>ط°ط®غŒط±ظ‡</Button>
+            sx={{ background: 'linear-gradient(135deg,#3b82f6,#10b981)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
 
       {/* Lifecycle action dialog */}
       <Dialog open={!!actionDialog} onClose={() => { setActionDialog(null); setNewExpiry(''); }} maxWidth="xs" fullWidth>
-        <DialogTitle>{ACTION_LABELS[actionDialog?.action] || 'ط§ظ‚ط¯ط§ظ…'}</DialogTitle>
+        <DialogTitle>{ACTION_LABELS[actionDialog?.action] || 'اقدام'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           {actionDialog?.action === 'extended' && (
-            <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط§ظ†ظ‚ط¶ط§غŒ ط¬ط¯غŒط¯" value={newExpiry} onChange={setNewExpiry} />
+            <JalaliDatePicker fullWidth label="تاریخ انقضای جدید" value={newExpiry} onChange={setNewExpiry} />
           )}
           <Typography variant="body2" color="textSecondary">
-            ط§غŒظ† ط§ظ‚ط¯ط§ظ… ط¨ط± ظˆط¶ط¹غŒطھ طھط¶ظ…غŒظ† ط«ط¨طھ ط®ظˆط§ظ‡ط¯ ط´ط¯.
+            این اقدام بر وضعیت تضمین ثبت خواهد شد.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setActionDialog(null); setNewExpiry(''); }}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => { setActionDialog(null); setNewExpiry(''); }}>انصراف</Button>
           <Button variant="contained"
             onClick={() => applyLifecycle.mutate({ id: actionDialog.id, action: actionDialog.action, new_expiry_date: newExpiry || null })}
             sx={{ background: `linear-gradient(135deg, ${ACTION_COLORS[actionDialog?.action] || '#3b82f6'}, ${ACTION_COLORS[actionDialog?.action] || '#3b82f6'}cc)` }}>
-            طھط£غŒغŒط¯
+            تأیید
           </Button>
         </DialogActions>
       </Dialog>

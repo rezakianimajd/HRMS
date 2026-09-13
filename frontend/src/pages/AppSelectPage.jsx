@@ -46,9 +46,9 @@ const AppSelectPage = () => {
     }}>
       <Container maxWidth="md">
         <Box sx={{ textAlign: 'center', mb: 4 }}>
-          <Typography variant="h4" fontWeight={900} color="#fff">ط§ظ†طھط®ط§ط¨ ط³ط§ظ…ط§ظ†ظ‡</Typography>
+          <Typography variant="h4" fontWeight={900} color="#fff">انتخاب سامانه</Typography>
           <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 1 }}>
-            ط³ط§ظ…ط§ظ†ظ‡ظ” ظ…ظˆط±ط¯ ظ†ط¸ط± ط®ظˆط¯ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯ â€” ط¨ط¹ط¯ط§ظ‹ ط§ط² ظ†ظˆط§ط± ط¨ط§ظ„ط§ ظ‡ظ… ظ‚ط§ط¨ظ„ ط¬ط§ط¨ظ‡â€Œط¬ط§غŒغŒ ط§ط³طھ.
+            سامانهٔ مورد نظر خود را انتخاب کنید — بعداً از نوار بالا هم قابل جابه‌جایی است.
           </Typography>
         </Box>
 
@@ -56,7 +56,7 @@ const AppSelectPage = () => {
           <Box sx={{ textAlign: 'center' }}>
             <CircularProgress size={30} sx={{ color: '#fff' }} />
             <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.7)', mt: 2 }}>
-              ط¯ط± ط­ط§ظ„ ط¨ط§ط±ع¯ط°ط§ط±غŒ ط³ط§ظ…ط§ظ†ظ‡â€Œظ‡ط§â€¦
+              در حال بارگذاری سامانه‌ها…
             </Typography>
           </Box>
         ) : (

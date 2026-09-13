@@ -90,7 +90,7 @@ const EmployeeListPage = () => {
           </Avatar>
           <Box>
             <Typography variant="h5" fontWeight={800}>{t('employees.title')}</Typography>
-            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} ظ¾ط±ط³ظ†ظ„</Typography>
+            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} پرسنل</Typography>
           </Box>
         </Box>
         <Button variant="contained" onClick={() => navigate('/employees/new')}>

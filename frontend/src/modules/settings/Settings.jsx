@@ -36,45 +36,45 @@ const BackupTab = () => {
 
   const handleCreate = async () => {
     setCreating(true); setMessage('');
-    try { await axiosInstance.post('/backup/create/'); setMessage('âœ… ط¨ع©ط§ظ¾ ط¨ط§ ظ…ظˆظپظ‚غŒطھ ط³ط§ط®طھظ‡ ط´ط¯'); load(); }
-    catch (e) { setMessage('â‌Œ ' + (e.response?.data?.error || 'ط®ط·ط§ ط¯ط± طھظ‡غŒظ‡ ط¨ع©ط§ظ¾')); }
+    try { await axiosInstance.post('/backup/create/'); setMessage('✅ بکاپ با موفقیت ساخته شد'); load(); }
+    catch (e) { setMessage('❌ ' + (e.response?.data?.error || 'خطا در تهیه بکاپ')); }
     finally { setCreating(false); }
   };
 
   const handleRestore = async (filename) => {
-    if (!window.confirm(`ط¢غŒط§ ط§ط² ط¨ط§ط²غŒط§ط¨غŒ ط¨ع©ط§ظ¾ آ«${filename}آ» ظ…ط·ظ…ط¦ظ† ظ‡ط³طھغŒط¯طں`)) return;
+    if (!window.confirm(`آیا از بازیابی بکاپ «${filename}» مطمئن هستید؟`)) return;
     setMessage('');
-    try { await axiosInstance.post(`/backup/restore/${filename}/`); setMessage('âœ… ط¨ع©ط§ظ¾ ط¨ط§ ظ…ظˆظپظ‚غŒطھ ط¨ط§ط²غŒط§ط¨غŒ ط´ط¯'); }
-    catch (e) { setMessage('â‌Œ ' + (e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط¨ط§ط²غŒط§ط¨غŒ ط¨ع©ط§ظ¾')); }
+    try { await axiosInstance.post(`/backup/restore/${filename}/`); setMessage('✅ بکاپ با موفقیت بازیابی شد'); }
+    catch (e) { setMessage('❌ ' + (e.response?.data?.error || 'خطا در بازیابی بکاپ')); }
   };
 
   return (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexWrap: 'wrap', gap: 1 }}>
         <Typography variant="body2" color="textSecondary" sx={{ maxWidth: 520 }}>
-          طھظ‡غŒظ‡ ط¨ع©ط§ظ¾ ط¨ط±ط§غŒ ظ‡ظ…ظ‡ ع©ط§ط±ط¨ط±ط§ظ† ظ…ط¬ط§ط² ط§ط³طھط› ط§ظ…ط§ ط¨ط§ط²غŒط§ط¨غŒ ظپظ‚ط· ط¨ط±ط§غŒ ظ…ط¯غŒط± ط§ط±ط´ط¯ ط³غŒط³طھظ… ط§ظ…ع©ط§ظ†ظ¾ط°غŒط± ط§ط³طھ.
+          تهیه بکاپ برای همه کاربران مجاز است؛ اما بازیابی فقط برای مدیر ارشد سیستم امکانپذیر است.
         </Typography>
         <Button variant="contained" startIcon={<BackupIcon />} size="small" onClick={handleCreate} disabled={creating}>
-          {creating ? <CircularProgress size={20} /> : 'طھظ‡غŒظ‡ ط¨ع©ط§ظ¾ ط¬ط¯غŒط¯'}
+          {creating ? <CircularProgress size={20} /> : 'تهیه بکاپ جدید'}
         </Button>
       </Box>
 
-      {message && <Alert severity={message.startsWith('âœ…') ? 'success' : 'error'} sx={{ mb: 2 }}>{message}</Alert>}
+      {message && <Alert severity={message.startsWith('✅') ? 'success' : 'error'} sx={{ mb: 2 }}>{message}</Alert>}
 
       <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '10px' }}>
         {isLoading ? (
           <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={24} /></Box>
         ) : backupsArr.length === 0 ? (
           <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="body2" color="textSecondary">ظ‡ظ†ظˆط² ط¨ع©ط§ظ¾غŒ ط³ط§ط®طھظ‡ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
+            <Typography variant="body2" color="textSecondary">هنوز بکاپی ساخته نشده است.</Typography>
           </Box>
         ) : (
           <Table size="small">
             <TableHead>
               <TableRow>
-                <TableCell sx={{ fontWeight: 700 }}>طھط§ط±غŒط®</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>ط­ط¬ظ…</TableCell>
-                <TableCell width={120} sx={{ fontWeight: 700 }}>ط¹ظ…ظ„غŒط§طھ</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>تاریخ</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>حجم</TableCell>
+                <TableCell width={120} sx={{ fontWeight: 700 }}>عملیات</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -92,7 +92,7 @@ const BackupTab = () => {
                   <TableCell>
                     <Button size="small" color="warning" variant="outlined" startIcon={<RestoreIcon />}
                       onClick={() => handleRestore(b.filename)}>
-                      ط¨ط§ط²غŒط§ط¨غŒ
+                      بازیابی
                     </Button>
                   </TableCell>
                 </TableRow>
@@ -110,10 +110,10 @@ const Settings = () => {
   const [tabIndex, setTabIndex] = useState(0);
 
   const tabs = [
-    { label: 'طھظ†ط¸غŒظ…ط§طھ ط¹ظ…ظˆظ…غŒ', icon: <TuneIcon />, key: 'general', color: '#6366f1', desc: 'ظ¾غŒع©ط±ط¨ظ†ط¯غŒ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒطŒ ظ‡ط´ط¯ط§ط±ظ‡ط§ ظˆ طھظ†ط¸غŒظ…ط§طھ ظ¾ط§غŒظ‡ ط³غŒط³طھظ…' },
-    { label: 'طھظ†ط¸غŒظ…ط§طھ ظ…ط¯غŒط±غŒطھغŒ', icon: <AdminPanelSettingsIcon />, key: 'management', color: '#f97316', desc: 'طµط§ط­ط¨ط§ظ† ط§ظ…ط¶ط§ + ظ…ط³غŒط±ظ‡ط§غŒ ط°ط®غŒط±ظ‡â€Œط³ط§ط²غŒ ظپط§غŒظ„â€Œظ‡ط§ â€” ظپظ‚ط· ظ…ط¯غŒط± ط³غŒط³طھظ…/HR' },
-    { label: 'ط§ط·ظ„ط§ط¹â€Œط±ط³ط§ظ†غŒ', icon: <NotificationsActiveIcon />, key: 'notifications', color: '#10b981', desc: 'ط§ط±ط³ط§ظ„ ط§ط¹ظ„ط§ظ†â€Œظ‡ط§ ط§ط² ط·ط±غŒظ‚ ط§غŒظ…غŒظ„ ظˆ ظ¾غŒط§ظ…â€Œط±ط³ط§ظ† ط¨ظ„ظ‡' },
-    { label: 'ظ¾ط´طھغŒط¨ط§ظ†â€Œع¯غŒط±غŒ', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'طھظ‡غŒظ‡طŒ ظ…ط´ط§ظ‡ط¯ظ‡ ظˆ ط¨ط§ط²غŒط§ط¨غŒ ظ†ط³ط®ظ‡â€Œظ‡ط§غŒ ظ¾ط´طھغŒط¨ط§ظ† ط¯ط§ط¯ظ‡' },
+    { label: 'تنظیمات عمومی', icon: <TuneIcon />, key: 'general', color: '#6366f1', desc: 'پیکربندی ذخیره‌سازی، هشدارها و تنظیمات پایه سیستم' },
+    { label: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, key: 'management', color: '#f97316', desc: 'صاحبان امضا + مسیرهای ذخیره‌سازی فایل‌ها — فقط مدیر سیستم/HR' },
+    { label: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, key: 'notifications', color: '#10b981', desc: 'ارسال اعلان‌ها از طریق ایمیل و پیام‌رسان بله' },
+    { label: 'پشتیبان‌گیری', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'تهیه، مشاهده و بازیابی نسخه‌های پشتیبان داده' },
   ];
 
   const active = tabs[tabIndex];
@@ -138,7 +138,7 @@ const Settings = () => {
         </Avatar>
         <Box>
           <Typography variant="h5" fontWeight={800}>{t('nav.settings')}</Typography>
-          <Typography variant="body2" color="textSecondary">طھظ†ط¸غŒظ…ط§طھ ط¹ظ…ظˆظ…غŒ ظˆ ط§ط¨ط²ط§ط±ظ‡ط§غŒ ظ†ع¯ظ‡ط¯ط§ط±غŒ ط³غŒط³طھظ…</Typography>
+          <Typography variant="body2" color="textSecondary">تنظیمات عمومی و ابزارهای نگهداری سیستم</Typography>
         </Box>
       </Paper>
 

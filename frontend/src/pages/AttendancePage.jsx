@@ -33,11 +33,11 @@ const emptyForm = {
   note: '',
 };
 
-// Note: ظ…ط±ط®طµغŒ ظˆ ظ…ط£ظ…ظˆط±غŒطھ ط§ط² طµظپط­ظ‡ظ” ط®ظˆط¯ط´ط§ظ† (ظ…ط±ط®طµغŒ ظˆ ظ…ط£ظ…ظˆط±غŒطھ) ط«ط¨طھ ظ…غŒط´ظˆظ†ط¯.
+// Note: مرخصی و مأموریت از صفحهٔ خودشان (مرخصی و مأموریت) ثبت میشوند.
 const STATUS_META = {
-  present: { label: 'ط­ط¶ظˆط±', color: '#10b981', icon: <CheckCircleIcon fontSize="small" /> },
-  absent: { label: 'ط؛غŒط¨طھ', color: '#ef4444', icon: <EventBusyIcon fontSize="small" /> },
-  holiday: { label: 'طھط¹ط·غŒظ„', color: '#94a3b8', icon: <HolidayVillageIcon fontSize="small" /> },
+  present: { label: 'حضور', color: '#10b981', icon: <CheckCircleIcon fontSize="small" /> },
+  absent: { label: 'غیبت', color: '#ef4444', icon: <EventBusyIcon fontSize="small" /> },
+  holiday: { label: 'تعطیل', color: '#94a3b8', icon: <HolidayVillageIcon fontSize="small" /> },
 };
 
 const AttendancePage = () => {
@@ -78,7 +78,7 @@ const AttendancePage = () => {
       queryClient.invalidateQueries({ queryKey: ['attendance-month-summary'] });
       setOpen(false); setError('');
     },
-    onError: (e) => setError(e.response?.data?.detail || e.response?.data?.non_field_errors?.[0] || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡'),
+    onError: (e) => setError(e.response?.data?.detail || e.response?.data?.non_field_errors?.[0] || 'خطا در ذخیره'),
   });
 
   const deleteMutation = useMutation({
@@ -113,7 +113,7 @@ const AttendancePage = () => {
     setOpen(true);
   };
 
-  const empName = (id) => empList.find(x => String(x.id) === String(id))?.full_name || 'â€”';
+  const empName = (id) => empList.find(x => String(x.id) === String(id))?.full_name || '—';
   const empCode = (id) => empList.find(x => String(x.id) === String(id))?.employee_id || '';
 
   const stat = (label, value, color, icon) => (
@@ -152,15 +152,15 @@ const AttendancePage = () => {
               <AccessTimeIcon sx={{ color: '#fff', fontSize: 28 }} />
             </Avatar>
             <Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: '#0369a1' }}>ط­ط¶ظˆط± ظˆ ط؛غŒط§ط¨</Typography>
+              <Typography variant="h6" fontWeight={800} sx={{ color: '#0369a1' }}>حضور و غیاب</Typography>
               <Typography variant="body2" color="textSecondary">
-                ط«ط¨طھ ظˆط¶ط¹غŒطھ ط±ظˆط²ط§ظ†ظ‡طŒ ظ¾غŒع¯غŒط±غŒ ع©ط§ط±ع©ط±ط¯ ظˆ ط®ظ„ط§طµظ‡ ظ…ط§ظ‡ط§ظ†ظ‡ ع©ط§ط±ع©ظ†ط§ظ†
+                ثبت وضعیت روزانه، پیگیری کارکرد و خلاصه ماهانه کارکنان
               </Typography>
             </Box>
           </Box>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
             sx={{ background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)', borderRadius: '10px', px: 3 }}>
-            ط«ط¨طھ ط±ع©ظˆط±ط¯ ط­ط¶ظˆط±
+            ثبت رکورد حضور
           </Button>
         </Box>
       </Paper>
@@ -168,9 +168,9 @@ const AttendancePage = () => {
       {/* Monthly summary */}
       {summary && (
         <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
-          {stat('ط±ظˆط²ظ‡ط§غŒ ط­ط¶ظˆط±', summary.present_days, '#10b981', <CheckCircleIcon />)}
-          {stat('ط؛غŒط¨طھ', summary.absent_days, '#ef4444', <EventBusyIcon />)}
-          {stat('طھط¹ط·غŒظ„', summary.holiday_days ?? summary.by_status?.holiday ?? 0, '#94a3b8', <HolidayVillageIcon />)}
+          {stat('روزهای حضور', summary.present_days, '#10b981', <CheckCircleIcon />)}
+          {stat('غیبت', summary.absent_days, '#ef4444', <EventBusyIcon />)}
+          {stat('تعطیل', summary.holiday_days ?? summary.by_status?.holiday ?? 0, '#94a3b8', <HolidayVillageIcon />)}
           <Grid item xs={12} md={3}>
             <Paper sx={{
               p: 2, borderRadius: '10px', height: '100%',
@@ -178,13 +178,13 @@ const AttendancePage = () => {
               border: '1px solid #3b82f61e',
             }}>
               <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>
-                ظ…ط¬ظ…ظˆط¹ ع©ط§ط±ع©ط±ط¯ ظ…ط§ظ‡ (ط³ط§ط¹طھ)
+                مجموع کارکرد ماه (ساعت)
               </Typography>
               <Typography variant="h5" fontWeight={800} color="#2563eb">
-                {formatPersianNumber(summary.total_work_hours)} ط³ط§ط¹طھ
+                {formatPersianNumber(summary.total_work_hours)} ساعت
               </Typography>
               <Typography variant="caption" color="textSecondary">
-                ط§ط¶ط§ظپظ‡â€Œع©ط§ط±: {formatPersianNumber(summary.total_overtime_hours)} ط³ط§ط¹طھ
+                اضافه‌کار: {formatPersianNumber(summary.total_overtime_hours)} ساعت
               </Typography>
             </Paper>
           </Grid>
@@ -195,16 +195,16 @@ const AttendancePage = () => {
       <Paper sx={{ p: 2, mb: 2.5, borderRadius: '10px', border: '1px solid rgba(0,0,0,0.06)', background: 'rgba(255,255,255,0.6)' }}>
         <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
           <FormControl sx={{ minWidth: { xs: '100%', md: 240 } }} size="small">
-            <InputLabel>ظ¾ط±ط³ظ†ظ„</InputLabel>
-            <Select value={employeeFilter} label="ظ¾ط±ط³ظ†ظ„" onChange={e => setEmployeeFilter(e.target.value)}>
-              <MenuItem value="">ظ‡ظ…ظ‡ ظ¾ط±ط³ظ†ظ„</MenuItem>
+            <InputLabel>پرسنل</InputLabel>
+            <Select value={employeeFilter} label="پرسنل" onChange={e => setEmployeeFilter(e.target.value)}>
+              <MenuItem value="">همه پرسنل</MenuItem>
               {empList.map(e => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl sx={{ minWidth: { xs: '100%', md: 160 } }} size="small">
-            <InputLabel>ظˆط¶ط¹غŒطھ</InputLabel>
-            <Select value={statusFilter} label="ظˆط¶ط¹غŒطھ" onChange={e => setStatusFilter(e.target.value)}>
-              <MenuItem value="">ظ‡ظ…ظ‡</MenuItem>
+            <InputLabel>وضعیت</InputLabel>
+            <Select value={statusFilter} label="وضعیت" onChange={e => setStatusFilter(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
               {Object.entries(STATUS_META).map(([key, m]) => <MenuItem key={key} value={key}>{m.label}</MenuItem>)}
             </Select>
           </FormControl>
@@ -219,14 +219,14 @@ const AttendancePage = () => {
           <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
         ) : items.length === 0 ? (
           <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography color="textSecondary">ط±ع©ظˆط±ط¯غŒ ط¨ط±ط§غŒ ظ†ظ…ط§غŒط´ ظˆط¬ظˆط¯ ظ†ط¯ط§ط±ط¯ â€” ط§ظˆظ„غŒظ† ط±ع©ظˆط±ط¯ ط­ط¶ظˆط± ط±ط§ ط«ط¨طھ ع©ظ†غŒط¯</Typography>
+            <Typography color="textSecondary">رکوردی برای نمایش وجود ندارد — اولین رکورد حضور را ثبت کنید</Typography>
           </Box>
         ) : (
           <Box sx={{ overflowX: 'auto' }}>
             <table dir="rtl" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 700 }}>
               <thead>
                 <tr style={{ textAlign: 'right', background: 'rgba(14,165,233,0.06)' }}>
-                  {['ظ¾ط±ط³ظ†ظ„', 'طھط§ط±غŒط®', 'ظˆط¶ط¹غŒطھ', 'ظˆط±ظˆط¯', 'ط®ط±ظˆط¬', 'ط³ط§ط¹طھ ع©ط§ط±غŒ', 'ط§ط¶ط§ظپظ‡â€Œع©ط§ط±', 'غŒط§ط¯ط¯ط§ط´طھ', 'ط¹ظ…ظ„غŒط§طھ'].map(h => (
+                  {['پرسنل', 'تاریخ', 'وضعیت', 'ورود', 'خروج', 'ساعت کاری', 'اضافه‌کار', 'یادداشت', 'عملیات'].map(h => (
                     <th key={h} style={{ padding: '10px 14px', fontSize: '0.78rem', fontWeight: 700, color: '#64748b' }}>{h}</th>
                   ))}
                 </tr>
@@ -240,7 +240,7 @@ const AttendancePage = () => {
                       onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
                       <td style={{ padding: '10px 14px' }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Avatar sx={{ width: 28, height: 28, bgcolor: '#0ea5e9', fontSize: 12 }}>{(rec.employee_name || 'طں').charAt(0)}</Avatar>
+                          <Avatar sx={{ width: 28, height: 28, bgcolor: '#0ea5e9', fontSize: 12 }}>{(rec.employee_name || '؟').charAt(0)}</Avatar>
                           <Box>
                             <Typography variant="body2" fontWeight={600}>{rec.employee_name || empName(rec.employee)}</Typography>
                             <Typography variant="caption" color="textSecondary">{formatPersianNumber(rec.employee_code || empCode(rec.employee))}</Typography>
@@ -252,20 +252,20 @@ const AttendancePage = () => {
                         <Chip size="small" label={rec.status_display || sm.label} icon={sm.icon}
                           sx={{ bgcolor: `${sm.color}15`, color: sm.color, border: `1px solid ${sm.color}30`, fontWeight: 700 }} />
                       </td>
-                      <td style={{ padding: '10px 14px' }}><span dir="ltr">{rec.check_in || 'â€”'}</span></td>
-                      <td style={{ padding: '10px 14px' }}><span dir="ltr">{rec.check_out || 'â€”'}</span></td>
-                      <td style={{ padding: '10px 14px' }}>{rec.work_hours ? formatPersianNumber(rec.work_hours) : 'â€”'}</td>
-                      <td style={{ padding: '10px 14px' }}>{rec.overtime_hours ? formatPersianNumber(rec.overtime_hours) : 'â€”'}</td>
+                      <td style={{ padding: '10px 14px' }}><span dir="ltr">{rec.check_in || '—'}</span></td>
+                      <td style={{ padding: '10px 14px' }}><span dir="ltr">{rec.check_out || '—'}</span></td>
+                      <td style={{ padding: '10px 14px' }}>{rec.work_hours ? formatPersianNumber(rec.work_hours) : '—'}</td>
+                      <td style={{ padding: '10px 14px' }}>{rec.overtime_hours ? formatPersianNumber(rec.overtime_hours) : '—'}</td>
                       <td style={{ padding: '10px 14px', maxWidth: 180 }}>
                         <Typography variant="caption" color="textSecondary" noWrap sx={{ display: 'block', maxWidth: 180 }}>{rec.note || ''}</Typography>
                       </td>
                       <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
-                        <Tooltip title="ظˆغŒط±ط§غŒط´">
+                        <Tooltip title="ویرایش">
                           <IconButton size="small" color="primary" onClick={() => openEdit(rec)}><EditIcon fontSize="small" /></IconButton>
                         </Tooltip>
-                        <Tooltip title="ط­ط°ظپ">
+                        <Tooltip title="حذف">
                           <IconButton size="small" color="error"
-                            onClick={() => { if (window.confirm('ط­ط°ظپ ط§غŒظ† ط±ع©ظˆط±ط¯ ط­ط¶ظˆط±طں')) deleteMutation.mutate(rec.id); }}>
+                            onClick={() => { if (window.confirm('حذف این رکورد حضور؟')) deleteMutation.mutate(rec.id); }}>
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
@@ -281,22 +281,22 @@ const AttendancePage = () => {
 
       {/* Add / Edit dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#0369a1' }}>{editing ? 'ظˆغŒط±ط§غŒط´ ط±ع©ظˆط±ط¯ ط­ط¶ظˆط±' : 'ط«ط¨طھ ط±ع©ظˆط±ط¯ ط­ط¶ظˆط±'}</DialogTitle>
+        <DialogTitle sx={{ color: '#0369a1' }}>{editing ? 'ویرایش رکورد حضور' : 'ثبت رکورد حضور'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.6, mt: 1 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>ظ¾ط±ط³ظ†ظ„ *</InputLabel>
-            <Select value={form.employee || ''} label="ظ¾ط±ط³ظ†ظ„ *"
+            <InputLabel>پرسنل *</InputLabel>
+            <Select value={form.employee || ''} label="پرسنل *"
               onChange={e => setForm(p => ({ ...p, employee: e.target.value }))}>
               {empList.map(e => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
 
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط®" value={form.date}
+          <JalaliDatePicker fullWidth label="تاریخ" value={form.date}
             onChange={g => setForm(p => ({ ...p, date: g }))} />
 
           <FormControl fullWidth size="small">
-            <InputLabel>ظˆط¶ط¹غŒطھ</InputLabel>
-            <Select value={form.status} label="ظˆط¶ط¹غŒطھ" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+            <InputLabel>وضعیت</InputLabel>
+            <Select value={form.status} label="وضعیت" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
               {Object.entries(STATUS_META).map(([key, m]) => <MenuItem key={key} value={key}>{m.label}</MenuItem>)}
             </Select>
           </FormControl>
@@ -305,12 +305,12 @@ const AttendancePage = () => {
             <>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
                 <TextField
-                  fullWidth size="small" label="ط³ط§ط¹طھ ظˆط±ظˆط¯"
-                  placeholder="غ°غ¸:غ°غ°"
-                  helperText="ظپط±ظ…طھ غ²غ´ ط³ط§ط¹طھظ‡طŒ ظ…ط«ط§ظ„ غ°غ¸:غ°غ° غŒط§ غ±غ´:غ³غ°"
+                  fullWidth size="small" label="ساعت ورود"
+                  placeholder="۰۸:۰۰"
+                  helperText="فرمت ۲۴ ساعته، مثال ۰۸:۰۰ یا ۱۴:۳۰"
                   value={form.check_in || ''}
                   onChange={e => {
-                    // ظ‡ظ…â€Œط±ظˆط´ ظپط±ظ… ظ¾ط±ط³ظ†ظ„غŒ: ظپظ‚ط· ط§ط±ظ‚ط§ظ…/ط¯ظˆâ€Œظ†ظ‚ط·ظ‡ط› ط¨ط¹ط¯ ط§ط² ط¯ظˆ ط±ظ‚ظ… ط®ظˆط¯ع©ط§ط± آ«:آ» ط§ط¶ط§ظپظ‡ ظ…غŒâ€Œط´ظˆط¯
+                    // هم‌روش فرم پرسنلی: فقط ارقام/دو‌نقطه؛ بعد از دو رقم خودکار «:» اضافه می‌شود
                     let v = e.target.value.replace(/[^\d:]/g, '');
                     if (v.length === 2 && !v.includes(':') && e.target.value.length > 2) v = v + ':';
                     setForm(p => ({ ...p, check_in: v.slice(0, 5) }));
@@ -318,9 +318,9 @@ const AttendancePage = () => {
                   inputProps={{ maxLength: 5, inputMode: 'numeric', style: { direction: 'ltr' } }}
                 />
                 <TextField
-                  fullWidth size="small" label="ط³ط§ط¹طھ ط®ط±ظˆط¬"
-                  placeholder="غ±غ¶:غ³غ°"
-                  helperText="ظپط±ظ…طھ غ²غ´ ط³ط§ط¹طھظ‡طŒ ظ…ط«ط§ظ„ غ°غ¸:غ°غ° غŒط§ غ±غ´:غ³غ°"
+                  fullWidth size="small" label="ساعت خروج"
+                  placeholder="۱۶:۳۰"
+                  helperText="فرمت ۲۴ ساعته، مثال ۰۸:۰۰ یا ۱۴:۳۰"
                   value={form.check_out || ''}
                   onChange={e => {
                     let v = e.target.value.replace(/[^\d:]/g, '');
@@ -331,27 +331,27 @@ const AttendancePage = () => {
                 />
               </Stack>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-                <TextField fullWidth size="small" label="ط³ط§ط¹طھ ع©ط§ط±غŒ" type="number" value={form.work_hours}
+                <TextField fullWidth size="small" label="ساعت کاری" type="number" value={form.work_hours}
                   onChange={e => setForm(p => ({ ...p, work_hours: Number(e.target.value) }))} />
-                <TextField fullWidth size="small" label="ط§ط¶ط§ظپظ‡â€Œع©ط§ط±" type="number" value={form.overtime_hours}
+                <TextField fullWidth size="small" label="اضافه‌کار" type="number" value={form.overtime_hours}
                   onChange={e => setForm(p => ({ ...p, overtime_hours: Number(e.target.value) }))} />
               </Stack>
             </>
           )}
 
           {form.status === 'holiday' && (
-            <Typography variant="caption" color="textSecondary">ط¨ط±ط§غŒ ط±ظˆط²ظ‡ط§غŒ طھط¹ط·غŒظ„ ظ†غŒط§ط²غŒ ط¨ظ‡ ط³ط§ط¹طھ ع©ط§ط±غŒ ظ†غŒط³طھ.</Typography>
+            <Typography variant="caption" color="textSecondary">برای روزهای تعطیل نیازی به ساعت کاری نیست.</Typography>
           )}
 
-          <TextField fullWidth size="small" label="غŒط§ط¯ط¯ط§ط´طھ" multiline rows={2} value={form.note}
+          <TextField fullWidth size="small" label="یادداشت" multiline rows={2} value={form.note}
             onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpen(false)}>انصراف</Button>
           <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)' }}
             disabled={!form.employee || !form.date}
             onClick={() => saveMutation.mutate(form)}>
-            {editing ? 'ط°ط®غŒط±ظ‡ طھط؛غŒغŒط±ط§طھ' : 'ط«ط¨طھ ط±ع©ظˆط±ط¯'}
+            {editing ? 'ذخیره تغییرات' : 'ثبت رکورد'}
           </Button>
         </DialogActions>
       </Dialog>

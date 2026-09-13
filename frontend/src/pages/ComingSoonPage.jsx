@@ -17,7 +17,7 @@ const ComingSoonPage = () => {
   const { pathname, state } = useLocation();
   const navigate = useNavigate();
 
-  let activeTitle = state?.title || 'ط§غŒظ† ط¨ط®ط´';
+  let activeTitle = state?.title || 'این بخش';
   const menus = [menuConfig, getMenuForApp('contracts')];
   menus.forEach((menu) => {
     menu.forEach((group) => {
@@ -60,7 +60,7 @@ const ComingSoonPage = () => {
 
         <Chip
           icon={<RocketLaunchIcon sx={{ fontSize: 16 }} />}
-          label="ط¨ظ‡â€Œط²ظˆط¯غŒ"
+          label="به‌زودی"
           size="small"
           sx={{
             mb: 2,
@@ -75,8 +75,8 @@ const ComingSoonPage = () => {
           {activeTitle}
         </Typography>
         <Typography variant="body1" color="textSecondary" sx={{ mb: 4, lineHeight: 2 }}>
-          ط§غŒظ† ط¨ط®ط´ ط¯ط± ط­ط§ظ„ طھظˆط³ط¹ظ‡ ط§ط³طھ. طھغŒظ… ظ…ط­طµظˆظ„ ط¯ط± ط­ط§ظ„ طھع©ظ…غŒظ„ ط§ظ…ع©ط§ظ†ط§طھ ط­ط±ظپظ‡â€Œط§غŒ ط¢ظ†
-          ظ…ط·ط§ط¨ظ‚ ط¨ط§ ظ†غŒط§ط²ظ‡ط§غŒ ط³ط§ط²ظ…ط§ظ†غŒ ظ…غŒâ€Œط¨ط§ط´ط¯ ظˆ ط¨ظ‡â€Œط²ظˆط¯غŒ ط¯ط± ط¯ط³طھط±ط³ ط´ظ…ط§ ظ‚ط±ط§ط± ط®ظˆط§ظ‡ط¯ ع¯ط±ظپطھ.
+          این بخش در حال توسعه است. تیم محصول در حال تکمیل امکانات حرفه‌ای آن
+          مطابق با نیازهای سازمانی می‌باشد و به‌زودی در دسترس شما قرار خواهد گرفت.
         </Typography>
 
         <Button
@@ -91,7 +91,7 @@ const ComingSoonPage = () => {
             boxShadow: '0 6px 20px rgba(99,102,241,0.3)',
           }}
         >
-          ط¨ط§ط²ع¯ط´طھ ط¨ظ‡ ط¯ط§ط´ط¨ظˆط±ط¯
+          بازگشت به داشبورد
         </Button>
       </Paper>
     </Box>

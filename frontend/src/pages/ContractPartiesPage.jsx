@@ -25,10 +25,10 @@ import BlockIcon from '@mui/icons-material/Block';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 
 const PARTY_TYPES = {
-  contractor: { label: 'ظ¾غŒظ…ط§ظ†ع©ط§ط±', color: '#f97316' },
-  supplier: { label: 'ظپط±ظˆط´ظ†ط¯ظ‡ / طھط£ظ…غŒظ†â€Œع©ظ†ظ†ط¯ظ‡', color: '#10b981' },
-  consultant: { label: 'ظ…ط´ط§ظˆط±', color: '#6366f1' },
-  other: { label: 'ط³ط§غŒط±', color: '#64748b' },
+  contractor: { label: 'پیمانکار', color: '#f97316' },
+  supplier: { label: 'فروشنده / تأمین‌کننده', color: '#10b981' },
+  consultant: { label: 'مشاور', color: '#6366f1' },
+  other: { label: 'سایر', color: '#64748b' },
 };
 
 const EMPTY_FORM = {
@@ -116,22 +116,22 @@ const ContractPartiesPage = () => {
           <StorefrontIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#0369a1">ظ¾غŒظ…ط§ظ†ع©ط§ط±ط§ظ† ظˆ ظپط±ظˆط´ظ†ط¯ع¯ط§ظ†</Typography>
-          <Typography variant="body2" color="textSecondary">ظ¾ط±ظˆظ†ط¯ظ‡ظ” ع©ط§ظ…ظ„ ط·ط±ظپâ€Œظ‡ط§غŒ ظ‚ط±ط§ط±ط¯ط§ط¯ ط¨ط§ ط¬ط²ط¦غŒط§طھ ط­ظ‚ظˆظ‚غŒطŒ ط¨ط§ظ†ع©غŒ ظˆ ط³ظˆط§ط¨ظ‚</Typography>
+          <Typography variant="h6" fontWeight={800} color="#0369a1">پیمانکاران و فروشندگان</Typography>
+          <Typography variant="body2" color="textSecondary">پروندهٔ کامل طرف‌های قرارداد با جزئیات حقوقی، بانکی و سوابق</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY_FORM); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', borderRadius: '10px' }}>
-          ط§ظپط²ظˆط¯ظ† ط·ط±ظپ
+          افزودن طرف
         </Button>
       </Paper>
 
       {/* Filters */}
       <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', display: 'flex', gap: 1, flexWrap: 'wrap', background: 'rgba(255,255,255,0.6)' }}>
-        <TextField size="small" placeholder="ط¬ط³طھط¬ظˆ: ظ†ط§ظ…طŒ ع©ط¯طŒ ظ…ظˆط¨ط§غŒظ„..." value={search}
+        <TextField size="small" placeholder="جستجو: نام، کد، موبایل..." value={search}
           onChange={e => setSearch(e.target.value)} sx={{ minWidth: 240 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
         <Stack direction="row" spacing={0.5}>
-          <Chip label="ظ‡ظ…ظ‡" variant={typeFilter === '' ? 'filled' : 'outlined'} color="primary" onClick={() => setTypeFilter('')} />
+          <Chip label="همه" variant={typeFilter === '' ? 'filled' : 'outlined'} color="primary" onClick={() => setTypeFilter('')} />
           {Object.entries(PARTY_TYPES).map(([k, v]) => (
             <Chip key={k} label={v.label} variant={typeFilter === k ? 'filled' : 'outlined'}
               sx={{ color: typeFilter === k ? '#fff' : v.color, bgcolor: typeFilter === k ? v.color : 'transparent', borderColor: v.color }}
@@ -145,7 +145,7 @@ const ContractPartiesPage = () => {
         <Grid item xs={12} md={7}>
           <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.65)' }}>
             {filtered.length === 0 ? (
-              <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
+              <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>طرف قراردادی ثبت نشده است.</Typography>
             ) : (
               <Stack spacing={1.25}>
                 {filtered.map(p => {
@@ -166,10 +166,10 @@ const ContractPartiesPage = () => {
                         <Avatar sx={{ width: 42, height: 42, background: type.color }}><StorefrontIcon sx={{ color: '#fff' }} /></Avatar>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography variant="body2" fontWeight={700} noWrap>{p.name}</Typography>
-                          <Typography variant="caption" color="textSecondary">{type.label}{p.contact_person ? ` آ· ${p.contact_person}` : ''}</Typography>
+                          <Typography variant="caption" color="textSecondary">{type.label}{p.contact_person ? ` · ${p.contact_person}` : ''}</Typography>
                         </Box>
-                        <Chip size="small" label={p.is_active !== false ? 'ظپط¹ط§ظ„' : 'ط؛غŒط±ظپط¹ط§ظ„'} color={p.is_active !== false ? 'success' : 'default'} variant="outlined" />
-                        <Typography variant="caption" fontWeight={800}>{p.contracts_count || 0} ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
+                        <Chip size="small" label={p.is_active !== false ? 'فعال' : 'غیرفعال'} color={p.is_active !== false ? 'success' : 'default'} variant="outlined" />
+                        <Typography variant="caption" fontWeight={800}>{p.contracts_count || 0} قرارداد</Typography>
                       </Box>
                     </Paper>
                   );
@@ -185,7 +185,7 @@ const ContractPartiesPage = () => {
             {!selected ? (
               <Box sx={{ textAlign: 'center', py: 6 }}>
                 <StorefrontIcon sx={{ fontSize: 50, color: 'text.disabled', mb: 1 }} />
-                <Typography variant="body2" color="textSecondary">غŒع© ط·ط±ظپ ط±ط§ ط¨ط±ط§غŒ ظ…ط´ط§ظ‡ط¯ظ‡ظ” ط¬ط²ط¦غŒط§طھ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯.</Typography>
+                <Typography variant="body2" color="textSecondary">یک طرف را برای مشاهدهٔ جزئیات انتخاب کنید.</Typography>
               </Box>
             ) : (
               <>
@@ -200,7 +200,7 @@ const ContractPartiesPage = () => {
                       onClick={() => toggle.mutate(selected.id)}>
                       {selected.is_active !== false ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
                     </IconButton>
-                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپ ط§غŒظ† ط·ط±ظپطں')) remove.mutate(selected.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف این طرف؟')) remove.mutate(selected.id); }}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
 
@@ -208,24 +208,24 @@ const ContractPartiesPage = () => {
 
                 {/* Financial summary */}
                 <Grid container spacing={1.5} sx={{ mb: 2 }}>
-                  <Grid item xs={6}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(14,165,233,0.06)' }}><Typography variant="h6" fontWeight={800} color="#0ea5e9">{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§</Typography></Paper></Grid>
-                  <Grid item xs={6}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(16,185,129,0.06)' }}><Typography variant="h6" fontWeight={800} color="#10b981">{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">ظ‚ط±ط§ط±ط¯ط§ط¯ ظپط¹ط§ظ„</Typography></Paper></Grid>
-                  <Grid item xs={12}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(139,92,246,0.06)' }}><Typography variant="body2" fontWeight={800} color="#8b5cf6">{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ط±غŒط§ظ„`}</Typography><Typography variant="caption" color="textSecondary">ط¬ظ…ط¹ ظ…ط¨ط§ظ„ط؛ ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(14,165,233,0.06)' }}><Typography variant="h6" fontWeight={800} color="#0ea5e9">{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(16,185,129,0.06)' }}><Typography variant="h6" fontWeight={800} color="#10b981">{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
+                  <Grid item xs={12}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(139,92,246,0.06)' }}><Typography variant="body2" fontWeight={800} color="#8b5cf6">{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ریال`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
                 </Grid>
 
-                <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>ط§ط·ظ„ط§ط¹ط§طھ طھظ…ط§ط³ ظˆ ط­ظ‚ظˆظ‚غŒ</Typography>
+                <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>اطلاعات تماس و حقوقی</Typography>
                 <Stack spacing={0.5}>
-                  {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'طھظ„ظپظ†', toPersianDigits(selected.phone))}
-                  {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'ظ…ظˆط¨ط§غŒظ„', toPersianDigits(selected.mobile))}
-                  {infoItem(<EmailIcon fontSize="small" color="primary" />, 'ط§غŒظ…غŒظ„', selected.email)}
-                  {infoItem(<PersonIcon fontSize="small" color="primary" />, 'ط´ط®طµ ط±ط§ط¨ط·', selected.contact_person)}
-                  {infoItem(<LocationOnIcon fontSize="small" color="primary" />, 'ط¢ط¯ط±ط³', selected.address)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'ط´ظ†ط§ط³ظ‡ ظ…ظ„غŒ', selected.national_id)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'ع©ط¯ ط§ظ‚طھطµط§ط¯غŒ', selected.economic_code)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'ط´ظ…ط§ط±ظ‡ ط«ط¨طھ', selected.registration_number)}
-                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'ط¨ط§ظ†ع©', selected.bank_name)}
-                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'ط´ظ…ط§ط±ظ‡ ط­ط³ط§ط¨', selected.account_number)}
-                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'ط´ط¨ط§', selected.sheba_number)}
+                  {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'تلفن', toPersianDigits(selected.phone))}
+                  {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'موبایل', toPersianDigits(selected.mobile))}
+                  {infoItem(<EmailIcon fontSize="small" color="primary" />, 'ایمیل', selected.email)}
+                  {infoItem(<PersonIcon fontSize="small" color="primary" />, 'شخص رابط', selected.contact_person)}
+                  {infoItem(<LocationOnIcon fontSize="small" color="primary" />, 'آدرس', selected.address)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شناسه ملی', selected.national_id)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'کد اقتصادی', selected.economic_code)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شماره ثبت', selected.registration_number)}
+                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'بانک', selected.bank_name)}
+                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'شماره حساب', selected.account_number)}
+                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'شبا', selected.sheba_number)}
                 </Stack>
               </>
             )}
@@ -235,38 +235,38 @@ const ContractPartiesPage = () => {
 
       {/* Party dialog */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{form.id ? 'ظˆغŒط±ط§غŒط´ ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯' : 'ط§ظپط²ظˆط¯ظ† ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯'}</DialogTitle>
+        <DialogTitle>{form.id ? 'ویرایش طرف قرارداد' : 'افزودن طرف قرارداد'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <Grid container spacing={1.5}>
-            <Grid item xs={12} md={7}><TextField size="small" fullWidth label="ظ†ط§ظ… / ط¹ظ†ظˆط§ظ† *" value={form.name}
+            <Grid item xs={12} md={7}><TextField size="small" fullWidth label="نام / عنوان *" value={form.name}
               onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></Grid>
             <Grid item xs={12} md={5}>
               <FormControl size="small" fullWidth>
-                <InputLabel>ظ†ظˆط¹ ط·ط±ظپ</InputLabel>
-                <Select value={form.party_type} label="ظ†ظˆط¹ ط·ط±ظپ" onChange={e => setForm(p => ({ ...p, party_type: e.target.value }))}>
+                <InputLabel>نوع طرف</InputLabel>
+                <Select value={form.party_type} label="نوع طرف" onChange={e => setForm(p => ({ ...p, party_type: e.target.value }))}>
                   {Object.entries(PARTY_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="ط´ظ†ط§ط³ظ‡ ظ…ظ„غŒ / ع©ط¯ ط«ط¨طھ" value={form.national_id} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="ع©ط¯ ط§ظ‚طھطµط§ط¯غŒ" value={form.economic_code} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="ط´ظ…ط§ط±ظ‡ ط«ط¨طھ" value={form.registration_number} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="طھظ„ظپظ†" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="ظ…ظˆط¨ط§غŒظ„" value={form.mobile} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField size="small" label="ط§غŒظ…غŒظ„" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField size="small" label="ط¢ط¯ط±ط³" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="ط´ط®طµ ط±ط§ط¨ط·" value={form.contact_person} onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="ط¨ط§ظ†ع©" value={form.bank_name} onChange={e => setForm(p => ({ ...p, bank_name: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="ط´ظ…ط§ط±ظ‡ ط­ط³ط§ط¨" value={form.account_number} onChange={e => setForm(p => ({ ...p, account_number: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="ط´ظ…ط§ط±ظ‡ ط´ط¨ط§" value={form.sheba_number} onChange={e => setForm(p => ({ ...p, sheba_number: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="طھظˆط¶غŒط­ط§طھ" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" label="شناسه ملی / کد ثبت" value={form.national_id} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" label="کد اقتصادی" value={form.economic_code} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" label="شماره ثبت" value={form.registration_number} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" label="تلفن" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" label="موبایل" value={form.mobile} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></Grid>
+            <Grid item xs={12}><TextField size="small" label="ایمیل" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
+            <Grid item xs={12}><TextField size="small" label="آدرس" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" label="شخص رابط" value={form.contact_person} onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" label="بانک" value={form.bank_name} onChange={e => setForm(p => ({ ...p, bank_name: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={4}><TextField size="small" label="شماره حساب" value={form.account_number} onChange={e => setForm(p => ({ ...p, account_number: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" label="شماره شبا" value={form.sheba_number} onChange={e => setForm(p => ({ ...p, sheba_number: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" label="توضیحات" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
           </Grid>
           {save.isLoading && <LinearProgress sx={{ borderRadius: '10px' }} />}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.name} onClick={() => save.mutate(form)}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' }}>ط°ط®غŒط±ظ‡</Button>
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Box>

@@ -18,19 +18,19 @@ import { useEmployees } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 
 const TYPE_META = {
-  laptop: { label: 'ظ„ظ¾â€Œطھط§ظ¾', icon: <LaptopIcon fontSize="small" />, color: '#6366f1' },
-  phone: { label: 'ظ…ظˆط¨ط§غŒظ„', icon: <PhoneAndroidIcon fontSize="small" />, color: '#10b981' },
-  desk: { label: 'ظ…غŒط² ع©ط§ط±', icon: <DesktopAccessDisabledIcon fontSize="small" />, color: '#f59e0b' },
-  monitor: { label: 'ظ…ط§ظ†غŒطھظˆط±', icon: <Inventory2Icon fontSize="small" />, color: '#3b82f6' },
-  key: { label: 'ع©ظ„غŒط¯', icon: <KeyIcon fontSize="small" />, color: '#8b5cf6' },
-  other: { label: 'ط³ط§غŒط±', icon: <Inventory2Icon fontSize="small" />, color: '#94a3b8' },
+  laptop: { label: 'لپ‌تاپ', icon: <LaptopIcon fontSize="small" />, color: '#6366f1' },
+  phone: { label: 'موبایل', icon: <PhoneAndroidIcon fontSize="small" />, color: '#10b981' },
+  desk: { label: 'میز کار', icon: <DesktopAccessDisabledIcon fontSize="small" />, color: '#f59e0b' },
+  monitor: { label: 'مانیتور', icon: <Inventory2Icon fontSize="small" />, color: '#3b82f6' },
+  key: { label: 'کلید', icon: <KeyIcon fontSize="small" />, color: '#8b5cf6' },
+  other: { label: 'سایر', icon: <Inventory2Icon fontSize="small" />, color: '#94a3b8' },
 };
 
 const STATUS_META = {
-  assigned: { label: 'ظˆط§ع¯ط°ط§ط±ط´ط¯ظ‡', color: '#10b981' },
-  returned: { label: 'طھط­ظˆغŒظ„â€Œط´ط¯ظ‡', color: '#64748b' },
-  lost: { label: 'ظ…ظپظ‚ظˆط¯', color: '#ef4444' },
-  damaged: { label: 'ط¢ط³غŒط¨â€Œط¯غŒط¯ظ‡', color: '#f59e0b' },
+  assigned: { label: 'واگذارشده', color: '#10b981' },
+  returned: { label: 'تحویل‌شده', color: '#64748b' },
+  lost: { label: 'مفقود', color: '#ef4444' },
+  damaged: { label: 'آسیب‌دیده', color: '#f59e0b' },
 };
 
 const emptyForm = {
@@ -74,23 +74,23 @@ const AssetsPage = () => {
           <Inventory2Icon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#047857">ط§ظ…ظˆط§ظ„ ظˆ طھط¬ظ‡غŒط²ط§طھ</Typography>
+          <Typography variant="h6" fontWeight={800} color="#047857">اموال و تجهیزات</Typography>
           <Typography variant="body2" color="textSecondary">
-            {formatPersianNumber(countAssigned)} طھط¬ظ‡غŒط² ط¯ط± ط­ط§ظ„ ظˆط§ع¯ط°ط§ط±غŒ آ· {formatPersianNumber(items.length)} ظ…ط¬ظ…ظˆط¹
+            {formatPersianNumber(countAssigned)} تجهیز در حال واگذاری · {formatPersianNumber(items.length)} مجموع
           </Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
           sx={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', borderRadius: '10px', px: 2.5 }}>
-          ط«ط¨طھ طھط¬ظ‡غŒط²
+          ثبت تجهیز
         </Button>
       </Paper>
 
       {/* Filter */}
       <Paper sx={{ p: 2, mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
         <FormControl sx={{ minWidth: { xs: '100%', md: 280 } }} size="small">
-          <InputLabel>ظپغŒظ„طھط± ط¨ط± ط§ط³ط§ط³ ظ¾ط±ط³ظ†ظ„</InputLabel>
-          <Select value={filter || ''} label="ظپغŒظ„طھط± ط¨ط± ط§ط³ط§ط³ ظ¾ط±ط³ظ†ظ„" onChange={(e) => setFilter(e.target.value)}>
-            <MenuItem value="">ظ‡ظ…ظ‡</MenuItem>
+          <InputLabel>فیلتر بر اساس پرسنل</InputLabel>
+          <Select value={filter || ''} label="فیلتر بر اساس پرسنل" onChange={(e) => setFilter(e.target.value)}>
+            <MenuItem value="">همه</MenuItem>
             {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
           </Select>
         </FormControl>
@@ -102,20 +102,20 @@ const AssetsPage = () => {
           <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
         ) : filtered.length === 0 ? (
           <Box sx={{ py: 6, textAlign: 'center' }}>
-            <Typography color="textSecondary">طھط¬ظ‡غŒط²غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+            <Typography color="textSecondary">تجهیزی ثبت نشده است</Typography>
           </Box>
         ) : (
           <Box sx={{ overflowX: 'auto' }}>
             <table dir="rtl" style={{ width: '100%', borderCollapse: 'collapse', minWidth: 800 }}>
               <thead>
                 <tr style={{ textAlign: 'right', background: 'rgba(16,185,129,0.06)', color: '#475569', fontSize: '0.78rem' }}>
-                  <th style={{ padding: '10px 14px' }}>طھط¬ظ‡غŒط²</th>
-                  <th style={{ padding: '10px 14px' }}>ظ†ظˆط¹</th>
-                  <th style={{ padding: '10px 14px' }}>ط³ط±غŒط§ظ„</th>
-                  <th style={{ padding: '10px 14px' }}>ظ¾ط±ط³ظ†ظ„</th>
-                  <th style={{ padding: '10px 14px' }}>ظˆط§ع¯ط°ط§ط±غŒ</th>
-                  <th style={{ padding: '10px 14px' }}>ظˆط¶ط¹غŒطھ</th>
-                  <th style={{ padding: '10px 14px' }}>ط§ظ‚ط¯ط§ظ…</th>
+                  <th style={{ padding: '10px 14px' }}>تجهیز</th>
+                  <th style={{ padding: '10px 14px' }}>نوع</th>
+                  <th style={{ padding: '10px 14px' }}>سریال</th>
+                  <th style={{ padding: '10px 14px' }}>پرسنل</th>
+                  <th style={{ padding: '10px 14px' }}>واگذاری</th>
+                  <th style={{ padding: '10px 14px' }}>وضعیت</th>
+                  <th style={{ padding: '10px 14px' }}>اقدام</th>
                 </tr>
               </thead>
               <tbody>
@@ -134,18 +134,18 @@ const AssetsPage = () => {
                         <Chip size="small" label={a.asset_type_display || tm.label}
                           sx={{ bgcolor: `${tm.color}15`, color: tm.color, fontWeight: 700 }} />
                       </td>
-                      <td style={{ padding: '10px 14px' }}>{a.serial_number || 'â€”'}</td>
+                      <td style={{ padding: '10px 14px' }}>{a.serial_number || '—'}</td>
                       <td style={{ padding: '10px 14px' }}>
-                        <Typography variant="body2">{a.employee_name || 'â€”'}</Typography>
+                        <Typography variant="body2">{a.employee_name || '—'}</Typography>
                       </td>
-                      <td style={{ padding: '10px 14px' }}>{a.assigned_date ? toPersianDigits(a.assigned_date) : 'â€”'}</td>
+                      <td style={{ padding: '10px 14px' }}>{a.assigned_date ? toPersianDigits(a.assigned_date) : '—'}</td>
                       <td style={{ padding: '10px 14px' }}>
                         <Chip size="small" label={a.status_display || sm.label}
                           sx={{ bgcolor: `${sm.color}15`, color: sm.color, fontWeight: 700 }} />
                       </td>
                       <td style={{ padding: '10px 14px', whiteSpace: 'nowrap' }}>
                         {a.status !== 'returned' && (
-                          <Tooltip title="طھط­ظˆغŒظ„">
+                          <Tooltip title="تحویل">
                             <IconButton size="small" color="success" onClick={() => returnMutation.mutate(a.id)}>
                               <UndoIcon fontSize="small" />
                             </IconButton>
@@ -163,37 +163,37 @@ const AssetsPage = () => {
 
       {/* Add dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#047857' }}>ط«ط¨طھ طھط¬ظ‡غŒط²</DialogTitle>
+        <DialogTitle sx={{ color: '#047857' }}>ثبت تجهیز</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="ظ†ط§ظ… طھط¬ظ‡غŒط² *" value={form.name}
+          <TextField fullWidth size="small" label="نام تجهیز *" value={form.name}
             onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
           <FormControl fullWidth size="small">
-            <InputLabel>ظ†ظˆط¹</InputLabel>
-            <Select value={form.asset_type} label="ظ†ظˆط¹" onChange={(e) => setForm((p) => ({ ...p, asset_type: e.target.value }))}>
+            <InputLabel>نوع</InputLabel>
+            <Select value={form.asset_type} label="نوع" onChange={(e) => setForm((p) => ({ ...p, asset_type: e.target.value }))}>
               {Object.entries(TYPE_META).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField fullWidth size="small" label="ط³ط±غŒط§ظ„ / ط´ظ†ط§ط³ظ‡" value={form.serial_number}
+          <TextField fullWidth size="small" label="سریال / شناسه" value={form.serial_number}
             onChange={(e) => setForm((p) => ({ ...p, serial_number: e.target.value }))} />
           <FormControl fullWidth size="small">
-            <InputLabel>ظ¾ط±ط³ظ†ظ„ ظˆط§ع¯ط°ط§ط±ط´ط¯ظ‡</InputLabel>
-            <Select value={form.employee || ''} label="ظ¾ط±ط³ظ†ظ„ ظˆط§ع¯ط°ط§ط±ط´ط¯ظ‡" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
-              <MenuItem value="">ط¨ط¯ظˆظ† ظ¾ط±ط³ظ†ظ„</MenuItem>
+            <InputLabel>پرسنل واگذارشده</InputLabel>
+            <Select value={form.employee || ''} label="پرسنل واگذارشده" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
+              <MenuItem value="">بدون پرسنل</MenuItem>
               {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name}</MenuItem>)}
             </Select>
           </FormControl>
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ظˆط§ع¯ط°ط§ط±غŒ" value={form.assigned_date}
+          <JalaliDatePicker fullWidth label="تاریخ واگذاری" value={form.assigned_date}
             onChange={(g) => setForm((p) => ({ ...p, assigned_date: g }))} />
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط¨ط§ط²ع¯ط´طھ ظ…ظˆط±ط¯ ط§ظ†طھط¸ط§ط±" value={form.return_due_date}
+          <JalaliDatePicker fullWidth label="تاریخ بازگشت مورد انتظار" value={form.return_due_date}
             onChange={(g) => setForm((p) => ({ ...p, return_due_date: g }))} />
-          <TextField fullWidth size="small" label="غŒط§ط¯ط¯ط§ط´طھ" multiline rows={2} value={form.notes}
+          <TextField fullWidth size="small" label="یادداشت" multiline rows={2} value={form.notes}
             onChange={(e) => setForm((p) => ({ ...p, notes: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpen(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.name} onClick={doCreate}
             sx={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}>
-            ط«ط¨طھ
+            ثبت
           </Button>
         </DialogActions>
       </Dialog>

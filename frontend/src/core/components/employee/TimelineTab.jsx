@@ -18,21 +18,21 @@ import { getJalaliParts, toJalali } from '../../utils/dateUtils';
 import { toPersianDigits } from '../../utils/numberUtils';
 
 const TYPE_META = {
-  hire: { color: '#10b981', label: 'ط§ط³طھط®ط¯ط§ظ…', icon: <BadgeIcon fontSize="small" /> },
-  employment_change: { color: '#6366f1', label: 'طھط؛غŒغŒط± ط´ط؛ظ„غŒ', icon: <HistoryIcon fontSize="small" /> },
-  work_experience: { color: '#8b5cf6', label: 'ط³ط§ط¨ظ‚ظ‡ ظ‚ط¨ظ„غŒ', icon: <WorkIcon fontSize="small" /> },
-  contract: { color: '#f59e0b', label: 'ظ‚ط±ط§ط±ط¯ط§ط¯', icon: <AssignmentIcon fontSize="small" /> },
-  leave: { color: '#3b82f6', label: 'ظ…ط±ط®طµغŒ', icon: <EventBusyIcon fontSize="small" /> },
-  document: { color: '#14b8a6', label: 'ظ…ط¯ط±ع©', icon: <DescriptionIcon fontSize="small" /> },
-  penalty: { color: '#ef4444', label: 'ط¬ط±غŒظ…ظ‡', icon: <AccountBalanceWalletIcon fontSize="small" /> },
-  incoming_letter: { color: '#06b6d4', label: 'ظ†ط§ظ…ظ‡ ظˆط§ط±ط¯ظ‡', icon: <MailIcon fontSize="small" /> },
-  outgoing_letter: { color: '#0ea5e9', label: 'ظ†ط§ظ…ظ‡ طµط§ط¯ط±ظ‡', icon: <MailIcon fontSize="small" /> },
-  announcement: { color: '#ec4899', label: 'ط§ط¨ظ„ط§ط؛', icon: <CampaignIcon fontSize="small" /> },
+  hire: { color: '#10b981', label: 'استخدام', icon: <BadgeIcon fontSize="small" /> },
+  employment_change: { color: '#6366f1', label: 'تغییر شغلی', icon: <HistoryIcon fontSize="small" /> },
+  work_experience: { color: '#8b5cf6', label: 'سابقه قبلی', icon: <WorkIcon fontSize="small" /> },
+  contract: { color: '#f59e0b', label: 'قرارداد', icon: <AssignmentIcon fontSize="small" /> },
+  leave: { color: '#3b82f6', label: 'مرخصی', icon: <EventBusyIcon fontSize="small" /> },
+  document: { color: '#14b8a6', label: 'مدرک', icon: <DescriptionIcon fontSize="small" /> },
+  penalty: { color: '#ef4444', label: 'جریمه', icon: <AccountBalanceWalletIcon fontSize="small" /> },
+  incoming_letter: { color: '#06b6d4', label: 'نامه وارده', icon: <MailIcon fontSize="small" /> },
+  outgoing_letter: { color: '#0ea5e9', label: 'نامه صادره', icon: <MailIcon fontSize="small" /> },
+  announcement: { color: '#ec4899', label: 'ابلاغ', icon: <CampaignIcon fontSize="small" /> },
 };
 
 const JALALI_MONTHS = [
-  'ظپط±ظˆط±ط¯غŒظ†', 'ط§ط±ط¯غŒط¨ظ‡ط´طھ', 'ط®ط±ط¯ط§ط¯', 'طھغŒط±', 'ظ…ط±ط¯ط§ط¯', 'ط´ظ‡ط±غŒظˆط±',
-  'ظ…ظ‡ط±', 'ط¢ط¨ط§ظ†', 'ط¢ط°ط±', 'ط¯غŒ', 'ط¨ظ‡ظ…ظ†', 'ط§ط³ظپظ†ط¯',
+  'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+  'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
 ];
 
 const monthKey = (parts) => {
@@ -68,14 +68,14 @@ const TimelineTab = ({ employeeId }) => {
     return (
       <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', py: 6, gap: 2 }}>
         <CircularProgress size={36} thickness={4} />
-        <Typography variant="body2" color="textSecondary">ط¯ط± ط­ط§ظ„ ط¨ط§ط±ع¯ط°ط§ط±غŒ ظ¾ط±ظˆظ†ط¯ظ‡ظ” ط²ظ…ط§ظ†غŒâ€¦</Typography>
+        <Typography variant="body2" color="textSecondary">در حال بارگذاری پروندهٔ زمانی…</Typography>
       </Box>
     );
   }
   if (isError || !data) {
     return (
       <Paper sx={{ p: 4, textAlign: 'center', background: 'rgba(239,68,68,0.06)', border: '1px solid rgba(239,68,68,0.18)' }}>
-        <Typography color="error" fontWeight={700}>ط®ط·ط§ ط¯ط± ط¯ط±غŒط§ظپطھ طھط§غŒظ…ظ„ط§غŒظ†</Typography>
+        <Typography color="error" fontWeight={700}>خطا در دریافت تایملاین</Typography>
       </Paper>
     );
   }
@@ -84,7 +84,7 @@ const TimelineTab = ({ employeeId }) => {
     return (
       <Paper sx={{ p: 6, textAlign: 'center', background: 'rgba(99,102,241,0.04)', border: '1px dashed rgba(99,102,241,0.25)' }}>
         <BusinessIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-        <Typography variant="body2" color="textSecondary">ظ‡ظ†ظˆط² ط±ظˆغŒط¯ط§ط¯غŒ ط¯ط± ظ¾ط±ظˆظ†ط¯ظ‡ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+        <Typography variant="body2" color="textSecondary">هنوز رویدادی در پرونده ثبت نشده است</Typography>
       </Paper>
     );
   }
@@ -94,13 +94,13 @@ const TimelineTab = ({ employeeId }) => {
       {/* Header */}
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3, flexWrap: 'wrap', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-          <Typography variant="subtitle1" fontWeight={800}>طھط§غŒظ…ظ„ط§غŒظ† غ³غ¶غ°آ°</Typography>
+          <Typography variant="subtitle1" fontWeight={800}>تایملاین ۳۶۰°</Typography>
           <Chip size="small" sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', fontWeight: 700 }}>
-            {toPersianDigits(data.total)} ط±ظˆغŒط¯ط§ط¯
+            {toPersianDigits(data.total)} رویداد
           </Chip>
         </Box>
         <Typography variant="caption" color="textSecondary">
-          ظ†ظ…ط§غŒظ‡ظ” غŒع©ظ¾ط§ط±ع†ظ‡ظ” ط³ظˆط§ط¨ظ‚: ط§ط³طھط®ط¯ط§ظ…طŒ طھط؛غŒغŒط±ط§طھطŒ ظ…ط±ط®طµغŒطŒ ظ…ط¯ط§ط±ع© ظˆ ظ…ع©ط§طھط¨ط§طھ
+          نمایهٔ یکپارچهٔ سوابق: استخدام، تغییرات، مرخصی، مدارک و مکاتبات
         </Typography>
       </Box>
 

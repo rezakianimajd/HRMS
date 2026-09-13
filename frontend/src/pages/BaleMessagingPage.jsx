@@ -25,17 +25,17 @@ const BaleMessagingPage = () => {
           <ChatIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#047857">ط§ط·ظ„ط§ط¹â€Œط±ط³ط§ظ†غŒ ظˆ ط§ط±ط³ط§ظ„ ظ¾غŒط§ظ… ط¨ظ„ظ‡</Typography>
-          <Typography variant="body2" color="textSecondary">ظ‚ط§ظ„ط¨â€Œظ‡ط§غŒ ظ¾غŒط§ظ…طŒ ظ…ط®ط§ط·ط¨ط§ظ† ع¯ط±ظˆظ‡غŒطŒ ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ ظˆ طھط§ط±غŒط®ع†ظ‡ظ” ط§ط±ط³ط§ظ„</Typography>
+          <Typography variant="h6" fontWeight={800} color="#047857">اطلاع‌رسانی و ارسال پیام بله</Typography>
+          <Typography variant="body2" color="textSecondary">قالب‌های پیام، مخاطبان گروهی، زمان‌بندی و تاریخچهٔ ارسال</Typography>
         </Box>
       </Paper>
 
       {/* Tabs */}
       <Paper sx={{ mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto">
-          <Tab icon={<SendIcon />} iconPosition="start" label="ط§ط±ط³ط§ظ„ ظˆ ظ‚ط§ظ„ط¨â€Œظ‡ط§" />
-          <Tab icon={<ScheduleIcon />} iconPosition="start" label="ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ" />
-          <Tab icon={<HistoryIcon />} iconPosition="start" label="طھط§ط±غŒط®ع†ظ‡" />
+          <Tab icon={<SendIcon />} iconPosition="start" label="ارسال و قالب‌ها" />
+          <Tab icon={<ScheduleIcon />} iconPosition="start" label="زمان‌بندی" />
+          <Tab icon={<HistoryIcon />} iconPosition="start" label="تاریخچه" />
         </Tabs>
       </Paper>
 

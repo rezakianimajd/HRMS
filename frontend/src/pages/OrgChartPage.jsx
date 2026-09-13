@@ -20,7 +20,7 @@ import { keyframes } from '@mui/system';
 const fadeIn = keyframes`from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); }`;
 const depthColors = ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#3b82f6', '#8b5cf6'];
 
-/* Pure-CSS tree connectors â€” reliable, always connected, no breaks.
+/* Pure-CSS tree connectors — reliable, always connected, no breaks.
  * The tree renders LTR (canonical org-chart geometry) while card text stays RTL. */
 const treeCss = `
   .org-tree, .org-tree ul { margin:0; padding:0; list-style:none; }
@@ -290,10 +290,10 @@ const OrgChartPage = () => {
 
           {editMode && (
             <Box sx={{ direction: 'ltr', mt: 0.75, pt: 0.5, borderTop: `1px solid ${color}18`, display: 'flex', justifyContent: 'center', gap: 0.25 }}>
-              <Tooltip title="ط§ظپط²ظˆط¯ظ† ط²غŒط±ظ…ط¬ظ…ظˆط¹ظ‡"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => openAddChild(node)}><AddIcon sx={{ fontSize: 16 }} color="success" /></IconButton></Tooltip>
-              <Tooltip title="ظˆغŒط±ط§غŒط´ ط¬ط§غŒع¯ط§ظ‡"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => openEdit(node)}><EditIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
-              <Tooltip title="ط§ظپط²ظˆط¯ظ† ظ¾ط±ط³ظ†ظ„"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => openOccupants(node)}><GroupAddIcon sx={{ fontSize: 15 }} color="primary" /></IconButton></Tooltip>
-              <Tooltip title="ط­ط°ظپ ط¬ط§غŒع¯ط§ظ‡"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => deletePosMutation.mutate(node.id)}><DeleteIcon sx={{ fontSize: 14 }} color="error" /></IconButton></Tooltip>
+              <Tooltip title="افزودن زیرمجموعه"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => openAddChild(node)}><AddIcon sx={{ fontSize: 16 }} color="success" /></IconButton></Tooltip>
+              <Tooltip title="ویرایش جایگاه"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => openEdit(node)}><EditIcon sx={{ fontSize: 14 }} /></IconButton></Tooltip>
+              <Tooltip title="افزودن پرسنل"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => openOccupants(node)}><GroupAddIcon sx={{ fontSize: 15 }} color="primary" /></IconButton></Tooltip>
+              <Tooltip title="حذف جایگاه"><IconButton size="small" sx={{ p: 0.5 }} onClick={() => deletePosMutation.mutate(node.id)}><DeleteIcon sx={{ fontSize: 14 }} color="error" /></IconButton></Tooltip>
             </Box>
           )}
         </Box>
@@ -326,16 +326,16 @@ const OrgChartPage = () => {
           </Avatar>
           <Box>
             <Typography variant="h5" fontWeight={800}>{t('orgchart.title')}</Typography>
-            <Typography variant="body2" color="textSecondary">ظ†ظ…ظˆط¯ط§ط± ط³ط§ط®طھط§ط± ط³ط§ط²ظ…ط§ظ†غŒ</Typography>
+            <Typography variant="body2" color="textSecondary">نمودار ساختار سازمانی</Typography>
           </Box>
         </Box>
 
         <Box sx={{ display: 'flex', gap: 1, alignItems: 'center', flexWrap: 'wrap' }}>
           {!editMode && (
             <FormControl size="small" sx={{ minWidth: 170 }}>
-              <InputLabel>طھظ…ط±ع©ط² ط¨ط± ط´ط§ط®ظ‡</InputLabel>
-              <Select value={focusId} label="طھظ…ط±ع©ط² ط¨ط± ط´ط§ط®ظ‡" onChange={e => setFocusId(e.target.value)}>
-                <MenuItem value="">ظ†ظ…ط§غŒط´ ع©ط§ظ…ظ„ ع†ط§ط±طھ</MenuItem>
+              <InputLabel>تمرکز بر شاخه</InputLabel>
+              <Select value={focusId} label="تمرکز بر شاخه" onChange={e => setFocusId(e.target.value)}>
+                <MenuItem value="">نمایش کامل چارت</MenuItem>
                 {(flatPositions || []).map(p => (
                   <MenuItem key={p.id} value={p.id}>{p.title}</MenuItem>
                 ))}
@@ -345,15 +345,15 @@ const OrgChartPage = () => {
 
           {editMode ? (
             <>
-              <Button variant="outlined" startIcon={<AddIcon />} onClick={openAdd}>ط§ظپط²ظˆط¯ظ† ط¬ط§غŒع¯ط§ظ‡</Button>
+              <Button variant="outlined" startIcon={<AddIcon />} onClick={openAdd}>افزودن جایگاه</Button>
               <Button variant="contained" color="success" startIcon={<DoneIcon />} onClick={() => setEditMode(false)}>
-                ط°ط®غŒط±ظ‡ ظˆ ط®ط±ظˆط¬
+                ذخیره و خروج
               </Button>
             </>
           ) : (
             <>
-              <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditMode(true)}>ظˆغŒط±ط§غŒط´ ع†ط§ط±طھ</Button>
-              <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>ع†ط§ظ¾ / PDF</Button>
+              <Button variant="outlined" startIcon={<EditIcon />} onClick={() => setEditMode(true)}>ویرایش چارت</Button>
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={handlePrint}>چاپ / PDF</Button>
             </>
           )}
         </Box>
@@ -378,7 +378,7 @@ const OrgChartPage = () => {
           <Box sx={{ textAlign: 'center', p: 8 }}><CircularProgress /></Box>
         ) : error ? (
           <Alert severity="error" sx={{ borderRadius: '10px' }}>
-            ط®ط·ط§ ط¯ط± ط¯ط±غŒط§ظپطھ ع†ط§ط±طھ. ط¯ط³طھظˆط± ط²غŒط± ط±ط§ ط§ط¬ط±ط§ ع©ظ†غŒط¯:
+            خطا در دریافت چارت. دستور زیر را اجرا کنید:
             <Box component="code" sx={{ display: 'block', mt: 1, p: 1, bgcolor: 'rgba(0,0,0,0.05)', borderRadius: '10px' }}>
               python manage.py setup_dev
             </Box>
@@ -386,8 +386,8 @@ const OrgChartPage = () => {
         ) : !tree || tree.length === 0 ? (
           <Box sx={{ textAlign: 'center', p: 8 }}>
             <AccountTreeIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 2 }} />
-            <Typography variant="h6" color="textSecondary" gutterBottom>ع†ط§ط±طھ ط³ط§ط²ظ…ط§ظ†غŒ ط®ط§ظ„غŒ ط§ط³طھ</Typography>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>ط§ظپط²ظˆط¯ظ† ط§ظˆظ„غŒظ† ط¬ط§غŒع¯ط§ظ‡</Button>
+            <Typography variant="h6" color="textSecondary" gutterBottom>چارت سازمانی خالی است</Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>افزودن اولین جایگاه</Button>
           </Box>
         ) : (
           <Box className="orgchart-print-root" sx={{ display: 'flex', justifyContent: 'flex-start', gap: 6, pb: 4, minWidth: 'fit-content', minHeight: 'max-content' }}>
@@ -402,23 +402,23 @@ const OrgChartPage = () => {
 
       {/* Add/Edit Position Dialog */}
       <Dialog open={posDialog} onClose={() => setPosDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editingPos ? 'ظˆغŒط±ط§غŒط´ ط¬ط§غŒع¯ط§ظ‡' : 'ط§ظپط²ظˆط¯ظ† ط¬ط§غŒع¯ط§ظ‡ ط¬ط¯غŒط¯'}</DialogTitle>
+        <DialogTitle>{editingPos ? 'ویرایش جایگاه' : 'افزودن جایگاه جدید'}</DialogTitle>
         <DialogContent>
-          <TextField fullWidth size="small" label="ط¹ظ†ظˆط§ظ† ط¬ط§غŒع¯ط§ظ‡" value={posForm.title || ''}
+          <TextField fullWidth size="small" label="عنوان جایگاه" value={posForm.title || ''}
             onChange={e => setPosForm(p => ({ ...p, title: e.target.value }))} sx={{ mt: 1.5 }} required />
-          <TextField fullWidth size="small" label="ع©ط¯" value={posForm.code || ''}
+          <TextField fullWidth size="small" label="کد" value={posForm.code || ''}
             onChange={e => setPosForm(p => ({ ...p, code: e.target.value }))} sx={{ mt: 1.5 }} required />
           <Grid container spacing={1.5} sx={{ mt: 0.5 }}>
             <Grid item xs={6}>
-              <TextField fullWidth size="small" label="ط³ط·ط­" type="number" value={posForm.level || 1}
+              <TextField fullWidth size="small" label="سطح" type="number" value={posForm.level || 1}
                 onChange={e => setPosForm(p => ({ ...p, level: Number(e.target.value) }))} />
             </Grid>
             <Grid item xs={6}>
               <FormControl fullWidth size="small">
-                <InputLabel>ط¬ط§غŒع¯ط§ظ‡ ط¨ط§ظ„ط§ط¯ط³طھغŒ</InputLabel>
-                <Select value={posForm.parent || ''} label="ط¬ط§غŒع¯ط§ظ‡ ط¨ط§ظ„ط§ط¯ط³طھغŒ"
+                <InputLabel>جایگاه بالادستی</InputLabel>
+                <Select value={posForm.parent || ''} label="جایگاه بالادستی"
                   onChange={e => setPosForm(p => ({ ...p, parent: e.target.value }))}>
-                  <MenuItem value="">â€” ط¨ط¯ظˆظ† ط¨ط§ظ„ط§ط¯ط³طھغŒ (ط±غŒط´ظ‡) â€”</MenuItem>
+                  <MenuItem value="">— بدون بالادستی (ریشه) —</MenuItem>
                   {(flatPositions || []).filter(p => p.id !== editingPos?.id).map(p => (
                     <MenuItem key={p.id} value={p.id}>{p.title}</MenuItem>
                   ))}
@@ -427,10 +427,10 @@ const OrgChartPage = () => {
             </Grid>
           </Grid>
           <FormControl fullWidth size="small" sx={{ mt: 1.5 }}>
-            <InputLabel>ط¯ظ¾ط§ط±طھظ…ط§ظ†</InputLabel>
-            <Select value={posForm.department || ''} label="ط¯ظ¾ط§ط±طھظ…ط§ظ†"
+            <InputLabel>دپارتمان</InputLabel>
+            <Select value={posForm.department || ''} label="دپارتمان"
               onChange={e => setPosForm(p => ({ ...p, department: e.target.value }))}>
-              <MenuItem value="">â€” ط¨ط¯ظˆظ† ط¯ظ¾ط§ط±طھظ…ط§ظ† â€”</MenuItem>
+              <MenuItem value="">— بدون دپارتمان —</MenuItem>
               {Array.isArray(departments) && departments.map(d => (
                 <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>
               ))}
@@ -438,9 +438,9 @@ const OrgChartPage = () => {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setPosDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setPosDialog(false)}>انصراف</Button>
           <Button variant="contained" onClick={() => savePosMutation.mutate(posForm)} disabled={savePosMutation.isLoading}>
-            {savePosMutation.isLoading ? <CircularProgress size={20} /> : 'ط°ط®غŒط±ظ‡'}
+            {savePosMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیره'}
           </Button>
         </DialogActions>
       </Dialog>
@@ -460,18 +460,18 @@ const OrgChartPage = () => {
 
       {/* Occupants Dialog */}
       <Dialog open={!!occupantPos} onClose={() => setOccupantPos(null)} maxWidth="sm" fullWidth>
-        <DialogTitle>ظ†ظپط±ط§طھ ظ…ط³طھظ‚ط± ط¯ط± آ«{occupantPos?.title}آ»</DialogTitle>
+        <DialogTitle>نفرات مستقر در «{occupantPos?.title}»</DialogTitle>
         <DialogContent>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5 }}>
-            ط§ط² ظ„غŒط³طھ ط²غŒط±طŒ ظ¾ط±ط³ظ†ظ„ ظ…ط³طھظ‚ط± ط¯ط± ط§غŒظ† ط¬ط§غŒع¯ط§ظ‡ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯.
+            از لیست زیر، پرسنل مستقر در این جایگاه را انتخاب کنید.
           </Typography>
           <FormControl fullWidth size="small">
-            <InputLabel>ط§ظ†طھط®ط§ط¨ ظ¾ط±ط³ظ†ظ„</InputLabel>
+            <InputLabel>انتخاب پرسنل</InputLabel>
             <Select
               multiple
               value={selectedOccupants}
               onChange={e => setSelectedOccupants(e.target.value)}
-              input={<OutlinedInput label="ط§ظ†طھط®ط§ط¨ ظ¾ط±ط³ظ†ظ„" />}
+              input={<OutlinedInput label="انتخاب پرسنل" />}
               renderValue={(selected) => (
                 <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
                   {selected.map(id => {
@@ -491,9 +491,9 @@ const OrgChartPage = () => {
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOccupantPos(null)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOccupantPos(null)}>انصراف</Button>
           <Button variant="contained" onClick={() => setOccupantsMutation.mutate({ id: occupantPos.id, occupant_ids: selectedOccupants })} disabled={setOccupantsMutation.isLoading}>
-            {setOccupantsMutation.isLoading ? <CircularProgress size={20} /> : 'ط°ط®غŒط±ظ‡ ظ†ظپط±ط§طھ'}
+            {setOccupantsMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیره نفرات'}
           </Button>
         </DialogActions>
       </Dialog>

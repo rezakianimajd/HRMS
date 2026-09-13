@@ -76,12 +76,12 @@ const AppraisalPage = () => {
           <AssessmentOutlinedIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#1d4ed8">ط§ط±ط²غŒط§ط¨غŒ ط¹ظ…ظ„ع©ط±ط¯ ط¯ظˆط±ظ‡ط§غŒ</Typography>
-          <Typography variant="body2" color="textSecondary">ط¯ظˆط±ظ‡ظ‡ط§غŒ ط§ط±ط²غŒط§ط¨غŒ + ط³ط§ط¨ظ‚ظ‡ ط§ظ…طھغŒط§ط² ظˆ ط§ظ‡ط¯ط§ظپ (OKR)</Typography>
+          <Typography variant="h6" fontWeight={800} color="#1d4ed8">ارزیابی عملکرد دورهای</Typography>
+          <Typography variant="body2" color="textSecondary">دورههای ارزیابی + سابقه امتیاز و اهداف (OKR)</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenCycle(true)}
           sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px', px: 2.5 }}>
-          ط¯ظˆط±ظ‡ ط§ط±ط²غŒط§ط¨غŒ ط¬ط¯غŒط¯
+          دوره ارزیابی جدید
         </Button>
       </Paper>
 
@@ -89,7 +89,7 @@ const AppraisalPage = () => {
         {/* Cycles list */}
         <Grid item xs={12} md={4}>
           <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
-            <Typography variant="subtitle1" fontWeight={800} gutterBottom>ط¯ظˆط±ظ‡ظ‡ط§غŒ ط§ط±ط²غŒط§ط¨غŒ</Typography>
+            <Typography variant="subtitle1" fontWeight={800} gutterBottom>دورههای ارزیابی</Typography>
             <Stack spacing={1}>
               {cycleList.map(c => (
                 <Paper
@@ -103,14 +103,14 @@ const AppraisalPage = () => {
                 >
                   <Typography variant="body2" fontWeight={700}>{c.title}</Typography>
                   <Typography variant="caption" color="textSecondary" display="block">
-                    {toJalali(c.start_date)} طھط§ {toJalali(c.end_date)}
+                    {toJalali(c.start_date)} تا {toJalali(c.end_date)}
                   </Typography>
                   <Chip size="small" label={c.status_display} color={c.status === 'active' ? 'success' : 'default'} variant="outlined" sx={{ mt: 0.5 }} />
                 </Paper>
               ))}
               {cycleList.length === 0 && (
                 <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 3 }}>
-                  ظ‡ظ†ظˆط² ط¯ظˆط±ظ‡ط§غŒ طھط¹ط±غŒظپ ظ†ط´ط¯ظ‡ ط§ط³طھ.
+                  هنوز دورهای تعریف نشده است.
                 </Typography>
               )}
             </Stack>
@@ -122,26 +122,26 @@ const AppraisalPage = () => {
           <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="subtitle1" fontWeight={800}>
-                {activeCycle ? `ط³ظˆط§ط¨ظ‚ ط¯ظˆط±ظ‡ظ” آ«${activeCycle.title}آ»` : 'ط§ظ†طھط®ط§ط¨ ط¯ظˆط±ظ‡ ط¨ط±ط§غŒ ظ…ط´ط§ظ‡ط¯ظ‡ ط³ظˆط§ط¨ظ‚'}
+                {activeCycle ? `سوابق دورهٔ «${activeCycle.title}»` : 'انتخاب دوره برای مشاهده سوابق'}
               </Typography>
               {cycle && (
                 <Button size="small" variant="contained" startIcon={<AddIcon />} disabled={!cycle}
                   onClick={() => { setRecordForm(p => ({ ...p, cycle })); setOpenRecord(true); }}
                   sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>
-                  ط«ط¨طھ ط§ط±ط²غŒط§ط¨غŒ
+                  ثبت ارزیابی
                 </Button>
               )}
             </Box>
 
             {!cycle ? (
               <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>
-                غŒع© ط¯ظˆط±ظ‡ ط§ط±ط²غŒط§ط¨غŒ ط±ط§ ط§ط² ظ„غŒط³طھ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯.
+                یک دوره ارزیابی را از لیست انتخاب کنید.
               </Typography>
             ) : recLoading ? (
               <Box sx={{ py: 4, textAlign: 'center' }}><CircularProgress size={24} /></Box>
             ) : recordList.length === 0 ? (
               <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>
-                ظ‡ظ†ظˆط² ط§ط±ط²غŒط§ط¨غŒغŒ ط¨ط±ط§غŒ ط§غŒظ† ط¯ظˆط±ظ‡ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ.
+                هنوز ارزیابیی برای این دوره ثبت نشده است.
               </Typography>
             ) : (
               <Stack spacing={1.25}>
@@ -151,7 +151,7 @@ const AppraisalPage = () => {
                       <EmployeeAvatar employee={{ id: r.employee, full_name: r.employee_name }} size={38} />
                       <Box sx={{ flex: 1, minWidth: 160 }}>
                         <Typography variant="body2" fontWeight={700}>{r.employee_name}</Typography>
-                        <Typography variant="caption" color="textSecondary">{r.department} â€” {r.job_title}</Typography>
+                        <Typography variant="caption" color="textSecondary">{r.department} — {r.job_title}</Typography>
                       </Box>
                       <Box sx={{ width: 140 }}>
                         <LinearProgress
@@ -159,7 +159,7 @@ const AppraisalPage = () => {
                           sx={{ height: 7, borderRadius: '10px', bgcolor: 'rgba(0,0,0,0.06)',
                             '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg,#3b82f6,#10b981)', borderRadius: '10px' } }}
                         />
-                        <Typography variant="caption" fontWeight={800}>ط§ظ…طھغŒط§ط²: {formatPersianNumber(r.total_score)} ط§ط² غ±غ°غ°</Typography>
+                        <Typography variant="caption" fontWeight={800}>امتیاز: {formatPersianNumber(r.total_score)} از ۱۰۰</Typography>
                       </Box>
                     </Box>
                     {r.goals && r.goals.length > 0 && (
@@ -177,56 +177,56 @@ const AppraisalPage = () => {
 
       {/* Cycle dialog */}
       <Dialog open={openCycle} onClose={() => setOpenCycle(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#1d4ed8' }}>ط¯ظˆط±ظ‡ ط§ط±ط²غŒط§ط¨غŒ ط¬ط¯غŒط¯</DialogTitle>
+        <DialogTitle sx={{ color: '#1d4ed8' }}>دوره ارزیابی جدید</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="ط¹ظ†ظˆط§ظ† ط¯ظˆط±ظ‡ *" value={cycleForm.title}
+          <TextField fullWidth size="small" label="عنوان دوره *" value={cycleForm.title}
             onChange={e => setCycleForm(p => ({ ...p, title: e.target.value }))} />
-          <TextField fullWidth size="small" label="ظ†ظˆط¹ ط¯ظˆط±ظ‡" value={cycleForm.cycle_type}
+          <TextField fullWidth size="small" label="نوع دوره" value={cycleForm.cycle_type}
             onChange={e => setCycleForm(p => ({ ...p, cycle_type: e.target.value }))} />
-          <TextField fullWidth size="small" label="طھط§ط±غŒط® ط´ط±ظˆط¹" type="date" InputLabelProps={{ shrink: true }} value={cycleForm.start_date}
+          <TextField fullWidth size="small" label="تاریخ شروع" type="date" InputLabelProps={{ shrink: true }} value={cycleForm.start_date}
             onChange={e => setCycleForm(p => ({ ...p, start_date: e.target.value }))} />
-          <TextField fullWidth size="small" label="طھط§ط±غŒط® ظ¾ط§غŒط§ظ†" type="date" InputLabelProps={{ shrink: true }} value={cycleForm.end_date}
+          <TextField fullWidth size="small" label="تاریخ پایان" type="date" InputLabelProps={{ shrink: true }} value={cycleForm.end_date}
             onChange={e => setCycleForm(p => ({ ...p, end_date: e.target.value }))} />
-          <TextField fullWidth size="small" label="طھظˆط¶غŒط­ط§طھ" multiline rows={2} value={cycleForm.description}
+          <TextField fullWidth size="small" label="توضیحات" multiline rows={2} value={cycleForm.description}
             onChange={e => setCycleForm(p => ({ ...p, description: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenCycle(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpenCycle(false)}>انصراف</Button>
           <Button variant="contained" disabled={!cycleForm.title} onClick={() => createCycle.mutate(cycleForm)}
-            sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>ط«ط¨طھ</Button>
+            sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>ثبت</Button>
         </DialogActions>
       </Dialog>
 
       {/* Record dialog */}
       <Dialog open={openRecord} onClose={() => setOpenRecord(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ color: '#1d4ed8' }}>ط«ط¨طھ ط§ط±ط²غŒط§ط¨غŒ</DialogTitle>
+        <DialogTitle sx={{ color: '#1d4ed8' }}>ثبت ارزیابی</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>ظ¾ط±ط³ظ†ظ„ *</InputLabel>
-            <Select value={recordForm.employee || ''} label="ظ¾ط±ط³ظ†ظ„ *"
+            <InputLabel>پرسنل *</InputLabel>
+            <Select value={recordForm.employee || ''} label="پرسنل *"
               onChange={e => setRecordForm(p => ({ ...p, employee: e.target.value }))}>
               {empList.map(e => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
           <Grid container spacing={1.5}>
-            <Grid item xs={4}><TextField size="small" label="ط§ظ…طھغŒط§ط² ظ†ظ‡ط§غŒغŒ (غ°-غ±غ°غ°)" type="number" value={recordForm.total_score} onChange={e => setRecordForm(p => ({ ...p, total_score: e.target.value }))} /></Grid>
-            <Grid item xs={4}><TextField size="small" label="ط§ظ…طھغŒط§ط² ظ…ط¯غŒط±" type="number" value={recordForm.manager_score} onChange={e => setRecordForm(p => ({ ...p, manager_score: e.target.value }))} /></Grid>
-            <Grid item xs={4}><TextField size="small" label="ط®ظˆط¯ط§ط±ط²غŒط§ط¨غŒ" type="number" value={recordForm.self_score} onChange={e => setRecordForm(p => ({ ...p, self_score: e.target.value }))} /></Grid>
+            <Grid item xs={4}><TextField size="small" label="امتیاز نهایی (۰-۱۰۰)" type="number" value={recordForm.total_score} onChange={e => setRecordForm(p => ({ ...p, total_score: e.target.value }))} /></Grid>
+            <Grid item xs={4}><TextField size="small" label="امتیاز مدیر" type="number" value={recordForm.manager_score} onChange={e => setRecordForm(p => ({ ...p, manager_score: e.target.value }))} /></Grid>
+            <Grid item xs={4}><TextField size="small" label="خودارزیابی" type="number" value={recordForm.self_score} onChange={e => setRecordForm(p => ({ ...p, self_score: e.target.value }))} /></Grid>
           </Grid>
-          <TextField fullWidth size="small" label="ظ†ظ‚ط§ط· ظ‚ظˆطھ" multiline rows={2} value={recordForm.strengths}
+          <TextField fullWidth size="small" label="نقاط قوت" multiline rows={2} value={recordForm.strengths}
             onChange={e => setRecordForm(p => ({ ...p, strengths: e.target.value }))} />
-          <TextField fullWidth size="small" label="ظ†ظ‚ط§ط· ط¨ظ‡ط¨ظˆط¯" multiline rows={2} value={recordForm.improvements}
+          <TextField fullWidth size="small" label="نقاط بهبود" multiline rows={2} value={recordForm.improvements}
             onChange={e => setRecordForm(p => ({ ...p, improvements: e.target.value }))} />
-          <TextField fullWidth size="small" label="ظ†ط¸ط± ظ†ظ‡ط§غŒغŒ" multiline rows={2} value={recordForm.comments}
+          <TextField fullWidth size="small" label="نظر نهایی" multiline rows={2} value={recordForm.comments}
             onChange={e => setRecordForm(p => ({ ...p, comments: e.target.value }))} />
-          <TextField fullWidth size="small" label="ط§ط±ط²غŒط§ط¨" value={recordForm.reviewed_by}
+          <TextField fullWidth size="small" label="ارزیاب" value={recordForm.reviewed_by}
             onChange={e => setRecordForm(p => ({ ...p, reviewed_by: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenRecord(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpenRecord(false)}>انصراف</Button>
           <Button variant="contained" disabled={!recordForm.employee || !recordForm.total_score}
             onClick={() => createRecord.mutate({ ...recordForm, total_score: Number(recordForm.total_score) })}
-            sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>ط«ط¨طھ</Button>
+            sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>ثبت</Button>
         </DialogActions>
       </Dialog>
     </Box>

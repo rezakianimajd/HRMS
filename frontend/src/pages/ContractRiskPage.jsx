@@ -24,23 +24,23 @@ const glassPaper = {
 };
 
 const DISPUTE_TYPES = {
-  financial: 'ظ…ط§ظ„غŒ', technical: 'ظپظ†غŒ', timeline: 'ط²ظ…ط§ظ†â€Œط¨ظ†ط¯غŒ / طھط£ط®غŒط±',
-  quality: 'ع©غŒظپغŒطھ', legal: 'ط­ظ‚ظˆظ‚غŒ', other: 'ط³ط§غŒط±',
+  financial: 'مالی', technical: 'فنی', timeline: 'زمان‌بندی / تأخیر',
+  quality: 'کیفیت', legal: 'حقوقی', other: 'سایر',
 };
 
 const DISPUTE_STATUS = {
-  open: { label: 'ط¨ط§ط²', color: '#ef4444' },
-  under_review: { label: 'ط¯ط± ط­ط§ظ„ ط¨ط±ط±ط³غŒ', color: '#f59e0b' },
-  resolved: { label: 'ط­ظ„â€Œط´ط¯ظ‡', color: '#10b981' },
-  escalated: { label: 'ط§ط±ط¬ط§ط¹ ط¨ط§ظ„ط§طھط±', color: '#8b5cf6' },
-  closed: { label: 'ط¨ط³طھظ‡', color: '#64748b' },
+  open: { label: 'باز', color: '#ef4444' },
+  under_review: { label: 'در حال بررسی', color: '#f59e0b' },
+  resolved: { label: 'حل‌شده', color: '#10b981' },
+  escalated: { label: 'ارجاع بالاتر', color: '#8b5cf6' },
+  closed: { label: 'بسته', color: '#64748b' },
 };
 
 const SEVERITY = {
-  low: { label: 'ع©ظ…', color: '#10b981' },
-  medium: { label: 'ظ…طھظˆط³ط·', color: '#f59e0b' },
-  high: { label: 'ط²غŒط§ط¯', color: '#f97316' },
-  critical: { label: 'ط¨ط­ط±ط§ظ†غŒ', color: '#ef4444' },
+  low: { label: 'کم', color: '#10b981' },
+  medium: { label: 'متوسط', color: '#f59e0b' },
+  high: { label: 'زیاد', color: '#f97316' },
+  critical: { label: 'بحرانی', color: '#ef4444' },
 };
 
 const ContractRiskPage = () => {
@@ -54,13 +54,13 @@ const ContractRiskPage = () => {
           <WarningIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b91c1c">ظ…ط¯غŒط±غŒطھ ط±غŒط³ع© ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
-          <Typography variant="body2" color="textSecondary">ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§غŒ ط±ظˆ ط¨ظ‡ ط§ظ†ظ‚ط¶ط§طŒ ظ‡ط´ط¯ط§ط±ظ‡ط§ ظˆ ط§ط®طھظ„ط§ظپط§طھ/ط¯ط¹ط§ظˆغŒ</Typography>
+          <Typography variant="h6" fontWeight={800} color="#b91c1c">مدیریت ریسک قرارداد</Typography>
+          <Typography variant="body2" color="textSecondary">قراردادهای رو به انقضا، هشدارها و اختلافات/دعاوی</Typography>
         </Box>
       </Paper>
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab icon={<NotificationsActiveIcon />} label="ط±ظˆ ط¨ظ‡ ط§ظ†ظ‚ط¶ط§" />
-        <Tab icon={<GavelIcon />} label="ط§ط®طھظ„ط§ظپط§طھ ظˆ ط¯ط¹ط§ظˆغŒ" />
+        <Tab icon={<NotificationsActiveIcon />} label="رو به انقضا" />
+        <Tab icon={<GavelIcon />} label="اختلافات و دعاوی" />
       </Tabs>
       {tab === 0 && <ExpiringContracts />}
       {tab === 1 && <DisputesManager />}
@@ -90,7 +90,7 @@ const ExpiringContracts = () => {
         <Typography variant="subtitle2" fontWeight={800}>{title}</Typography>
         <Chip size="small" label={formatPersianNumber(items.length)} sx={{ bgcolor: `${color}22`, color }} />
       </Box>
-      {items.length === 0 ? <Typography variant="caption" color="textSecondary">ظ…ظˆط±ط¯غŒ ظ†غŒط³طھ</Typography> : (
+      {items.length === 0 ? <Typography variant="caption" color="textSecondary">موردی نیست</Typography> : (
         <Stack spacing={0.75}>
           {items.map(c => {
             const d = Math.ceil((new Date(c.end_date) - new Date()) / 86400000);
@@ -100,8 +100,8 @@ const ExpiringContracts = () => {
                   <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
                   <Typography variant="caption" color="textSecondary">{c.party_name}</Typography>
                 </Box>
-                <Typography variant="caption" color="textSecondary">ظ¾ط§غŒط§ظ†: {toJalali(c.end_date)}</Typography>
-                <Chip size="small" label={d < 0 ? `${formatPersianNumber(Math.abs(d))} ط±ظˆط² ع¯ط°ط´طھظ‡` : `${formatPersianNumber(d)} ط±ظˆط² ظ…ط§ظ†ط¯ظ‡`} sx={{ bgcolor: `${color}22`, color }} />
+                <Typography variant="caption" color="textSecondary">پایان: {toJalali(c.end_date)}</Typography>
+                <Chip size="small" label={d < 0 ? `${formatPersianNumber(Math.abs(d))} روز گذشته` : `${formatPersianNumber(d)} روز مانده`} sx={{ bgcolor: `${color}22`, color }} />
               </Paper>
             );
           })}
@@ -111,10 +111,10 @@ const ExpiringContracts = () => {
   );
   return (
     <Box>
-      <Section title="ظ…ظ†ظ‚ط¶غŒâ€Œط´ط¯ظ‡" color="#ef4444" items={buckets.expired} />
-      <Section title="ط§ظ†ظ‚ط¶ط§ طھط§ غ³غ° ط±ظˆط²" color="#f97316" items={buckets.soon30} />
-      <Section title="ط§ظ†ظ‚ط¶ط§ طھط§ غ¶غ° ط±ظˆط²" color="#f59e0b" items={buckets.soon60} />
-      <Section title="ط§ظ†ظ‚ط¶ط§ طھط§ غ¹غ° ط±ظˆط²" color="#eab308" items={buckets.soon90} />
+      <Section title="منقضی‌شده" color="#ef4444" items={buckets.expired} />
+      <Section title="انقضا تا ۳۰ روز" color="#f97316" items={buckets.soon30} />
+      <Section title="انقضا تا ۶۰ روز" color="#f59e0b" items={buckets.soon60} />
+      <Section title="انقضا تا ۹۰ روز" color="#eab308" items={buckets.soon90} />
     </Box>
   );
 };
@@ -133,10 +133,10 @@ const DisputesManager = () => {
   return (
     <Paper sx={{ ...glassPaper, p: 2 }}>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1.5 }}>
-        <Typography variant="subtitle2" fontWeight={800}>ط§ط®طھظ„ط§ظپط§طھ ظˆ ط¯ط¹ط§ظˆغŒ</Typography>
-        <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => { setForm({}); setDialog(true); }}>ط§ظپط²ظˆط¯ظ†</Button>
+        <Typography variant="subtitle2" fontWeight={800}>اختلافات و دعاوی</Typography>
+        <Button size="small" startIcon={<AddIcon />} variant="outlined" onClick={() => { setForm({}); setDialog(true); }}>افزودن</Button>
       </Box>
-      {list.length === 0 ? <Typography variant="caption" color="textSecondary" textAlign="center">ط§ط®طھظ„ط§ظپغŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography> : (
+      {list.length === 0 ? <Typography variant="caption" color="textSecondary" textAlign="center">اختلافی ثبت نشده است</Typography> : (
         <Grid container spacing={2}>
           {list.map(d => (
             <Grid item xs={12} md={6} key={d.id}>
@@ -151,12 +151,12 @@ const DisputesManager = () => {
                   <Chip size="small" label={SEVERITY[d.severity]?.label} sx={{ bgcolor: `${SEVERITY[d.severity]?.color}22`, color: SEVERITY[d.severity]?.color }} />
                 </Box>
                 <Stack spacing={0.25}>
-                  <Typography variant="caption" color="textSecondary">ظ†ظˆط¹: {DISPUTE_TYPES[d.dispute_type]} آ· طھط§ط±غŒط®: {toJalali(d.opened_date)}</Typography>
-                  {d.claim_amount ? <Typography variant="caption">ظ…ط¨ظ„ط؛ ط§ط¯ط¹ط§: {formatPersianNumber(d.claim_amount)} ط±غŒط§ظ„</Typography> : null}
+                  <Typography variant="caption" color="textSecondary">نوع: {DISPUTE_TYPES[d.dispute_type]} · تاریخ: {toJalali(d.opened_date)}</Typography>
+                  {d.claim_amount ? <Typography variant="caption">مبلغ ادعا: {formatPersianNumber(d.claim_amount)} ریال</Typography> : null}
                 </Stack>
                 <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
                   <IconButton size="small" onClick={() => { setForm({ ...d }); setDialog(true); }}><EditNoteIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) del.mutate(d.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(d.id); }}><DeleteIcon fontSize="small" /></IconButton>
                 </Box>
               </Paper>
             </Grid>
@@ -164,45 +164,45 @@ const DisputesManager = () => {
         </Grid>
       )}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{form.id ? 'ظˆغŒط±ط§غŒط´ ط§ط®طھظ„ط§ظپ' : 'ط§ط®طھظ„ط§ظپ ط¬ط¯غŒط¯'}</DialogTitle>
+        <DialogTitle>{form.id ? 'ویرایش اختلاف' : 'اختلاف جدید'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl size="small" fullWidth><InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯ *</InputLabel>
-            <Select value={form.contract || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯ *" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
+          <FormControl size="small" fullWidth><InputLabel>قرارداد *</InputLabel>
+            <Select value={form.contract || ''} label="قرارداد *" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
               {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField size="small" label="ظ…ظˆط¶ظˆط¹ *" value={form.title || ''} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
+          <TextField size="small" label="موضوع *" value={form.title || ''} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
           <Grid container spacing={1.5}>
             <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>ظ†ظˆط¹</InputLabel>
-                <Select value={form.dispute_type || 'other'} label="ظ†ظˆط¹" onChange={e => setForm(p => ({ ...p, dispute_type: e.target.value }))}>
+              <FormControl size="small" fullWidth><InputLabel>نوع</InputLabel>
+                <Select value={form.dispute_type || 'other'} label="نوع" onChange={e => setForm(p => ({ ...p, dispute_type: e.target.value }))}>
                   {Object.entries(DISPUTE_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>ط´ط¯طھ</InputLabel>
-                <Select value={form.severity || 'medium'} label="ط´ط¯طھ" onChange={e => setForm(p => ({ ...p, severity: e.target.value }))}>
+              <FormControl size="small" fullWidth><InputLabel>شدت</InputLabel>
+                <Select value={form.severity || 'medium'} label="شدت" onChange={e => setForm(p => ({ ...p, severity: e.target.value }))}>
                   {Object.entries(SEVERITY).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
             <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>ظˆط¶ط¹غŒطھ</InputLabel>
-                <Select value={form.status || 'open'} label="ظˆط¶ط¹غŒطھ" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+              <FormControl size="small" fullWidth><InputLabel>وضعیت</InputLabel>
+                <Select value={form.status || 'open'} label="وضعیت" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
                   {Object.entries(DISPUTE_STATUS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}><TextField size="small" label="ظ…ط¨ظ„ط؛ ط§ط¯ط¹ط§" type="number" value={form.claim_amount ?? ''} onChange={e => setForm(p => ({ ...p, claim_amount: e.target.value }))} /></Grid>
+            <Grid item xs={6}><TextField size="small" label="مبلغ ادعا" type="number" value={form.claim_amount ?? ''} onChange={e => setForm(p => ({ ...p, claim_amount: e.target.value }))} /></Grid>
           </Grid>
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط·ط±ط­" value={form.opened_date} onChange={(g) => setForm(p => ({ ...p, opened_date: g }))} />
-          <TextField size="small" label="ط´ط±ط­" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-          <TextField size="small" label="ط§ظ‚ط¯ط§ظ… / ظ†طھغŒط¬ظ‡" multiline rows={2} value={form.resolution || ''} onChange={e => setForm(p => ({ ...p, resolution: e.target.value }))} />
+          <JalaliDatePicker fullWidth label="تاریخ طرح" value={form.opened_date} onChange={(g) => setForm(p => ({ ...p, opened_date: g }))} />
+          <TextField size="small" label="شرح" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          <TextField size="small" label="اقدام / نتیجه" multiline rows={2} value={form.resolution || ''} onChange={e => setForm(p => ({ ...p, resolution: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
-          <Button variant="contained" disabled={!form.title || !form.contract} onClick={() => save.mutate({ ...form, claim_amount: Number(form.claim_amount) || null })} sx={{ background: 'linear-gradient(135deg,#ef4444,#f59e0b)' }}>ط°ط®غŒط±ظ‡</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
+          <Button variant="contained" disabled={!form.title || !form.contract} onClick={() => save.mutate({ ...form, claim_amount: Number(form.claim_amount) || null })} sx={{ background: 'linear-gradient(135deg,#ef4444,#f59e0b)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Paper>

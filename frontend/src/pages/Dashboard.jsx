@@ -50,7 +50,7 @@ const Dashboard = () => {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        {t('dashboard.welcome')}طŒ {user?.first_name || user?.username}
+        {t('dashboard.welcome')}، {user?.first_name || user?.username}
       </Typography>
       <Typography variant="body1" color="textSecondary" paragraph>
         {currentCompany?.name && `${t('company.current')}: ${currentCompany.name}`}

@@ -16,22 +16,22 @@ import { useEmployees } from '../core/hooks/useEmployees';
 import { toPersianDigits } from '../core/utils/numberUtils';
 
 const KIND_META = {
-  onboarding: { label: 'ظˆط±ظˆط¯ / ط®ظˆط´â€Œط¢ظ…ط¯ع¯ظˆغŒغŒ', color: '#10b981', icon: <PersonAddAlt1Icon fontSize="small" /> },
-  offboarding: { label: 'ط®ط±ظˆط¬ / طھط³ظˆغŒظ‡', color: '#ef4444', icon: <LogoutIcon fontSize="small" /> },
+  onboarding: { label: 'ورود / خوش‌آمدگویی', color: '#10b981', icon: <PersonAddAlt1Icon fontSize="small" /> },
+  offboarding: { label: 'خروج / تسویه', color: '#ef4444', icon: <LogoutIcon fontSize="small" /> },
 };
 
 const DEFAULT_ONBOARDING_ITEMS = [
-  'طھع©ظ…غŒظ„ ظ…ط¯ط§ط±ع© ظ‡ظˆغŒطھغŒ ظˆ ظ‚ط±ط§ط±ط¯ط§ط¯',
-  'طھط­ظˆغŒظ„ طھط¬ظ‡غŒط²ط§طھ (ظ„ظ¾â€Œطھط§ظ¾ / ظ…ظˆط¨ط§غŒظ„ / ظ…غŒط²)',
-  'طھط¹ط±غŒظپ ط¯ط³طھط±ط³غŒ ظ†ط±ظ…â€Œط§ظپط²ط§ط±ظ‡ط§',
-  'ظ…ط¹ط±ظپغŒ ط¨ظ‡ طھغŒظ… ظˆ ط³ط±ظ¾ط±ط³طھ',
+  'تکمیل مدارک هویتی و قرارداد',
+  'تحویل تجهیزات (لپ‌تاپ / موبایل / میز)',
+  'تعریف دسترسی نرم‌افزارها',
+  'معرفی به تیم و سرپرست',
 ];
 
 const DEFAULT_OFFBOARDING_ITEMS = [
-  'طھط­ظˆغŒظ„ ط§ظ…ظˆط§ظ„ ظˆ طھط¬ظ‡غŒط²ط§طھ',
-  'طھط³ظˆغŒظ‡ ظ…ط§ظ„غŒ (ط­ظ‚ظˆظ‚طŒ ظˆط§ظ…طŒ ظ…ط³ط§ط¹ط¯ظ‡)',
-  'طھط³ظˆغŒظ‡ ظ…ط±ط®طµغŒ ظ…ط§ظ†ط¯ظ‡',
-  'ط؛غŒط±ظپط¹ط§ظ„â€Œط³ط§ط²غŒ ط¯ط³طھط±ط³غŒâ€Œظ‡ط§',
+  'تحویل اموال و تجهیزات',
+  'تسویه مالی (حقوق، وام، مساعده)',
+  'تسویه مرخصی مانده',
+  'غیرفعال‌سازی دسترسی‌ها',
 ];
 
 const LifecyclePage = () => {
@@ -95,12 +95,12 @@ const LifecyclePage = () => {
           <PlaylistAddCheckIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#6d28d9">ط¢ظ†â€Œط¨ظˆط±ط¯غŒظ†ع¯ ظˆ ط¢ظپâ€Œط¨ظˆط±ط¯غŒظ†ع¯</Typography>
-          <Typography variant="body2" color="textSecondary">ع†ع©â€Œظ„غŒط³طھ ظˆط±ظˆط¯ ظˆ ط®ط±ظˆط¬ ع©ط§ط±ع©ظ†ط§ظ† ط¨ظ‡â€Œطµظˆط±طھ ع¯ط±ط¯ط´â€Œع©ط§ط± ط§ط³طھط§ظ†ط¯ط§ط±ط¯</Typography>
+          <Typography variant="h6" fontWeight={800} color="#6d28d9">آن‌بوردینگ و آف‌بوردینگ</Typography>
+          <Typography variant="body2" color="textSecondary">چک‌لیست ورود و خروج کارکنان به‌صورت گردش‌کار استاندارد</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
           sx={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', borderRadius: '10px', px: 2.5 }}>
-          ع†ع©â€Œظ„غŒط³طھ ط¬ط¯غŒط¯
+          چک‌لیست جدید
         </Button>
       </Paper>
 
@@ -126,7 +126,7 @@ const LifecyclePage = () => {
         <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
       ) : items.length === 0 ? (
         <Paper sx={{ py: 6, textAlign: 'center', borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
-          <Typography color="textSecondary">ع†ع©â€Œظ„غŒط³طھغŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+          <Typography color="textSecondary">چک‌لیستی ثبت نشده است</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -141,10 +141,10 @@ const LifecyclePage = () => {
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                     <Avatar sx={{ width: 36, height: 36, bgcolor: km.color }}>{km.icon}</Avatar>
                     <Box sx={{ flex: 1 }}>
-                      <Typography variant="body1" fontWeight={700}>{c.employee_name || `ظ¾ط±ط³ظ†ظ„ #${c.employee}`}</Typography>
+                      <Typography variant="body1" fontWeight={700}>{c.employee_name || `پرسنل #${c.employee}`}</Typography>
                       <Typography variant="caption" color="textSecondary">{c.kind_display}</Typography>
                     </Box>
-                    <Chip size="small" color={pct === 100 ? 'success' : 'primary'} label={`${toPersianDigits(pct)}ظھ`} />
+                    <Chip size="small" color={pct === 100 ? 'success' : 'primary'} label={`${toPersianDigits(pct)}٪`} />
                   </Box>
 
                   <LinearProgress variant="determinate" value={pct} sx={{ height: 6, borderRadius: '10px', mb: 1.5, bgcolor: `${km.color}15`, '& .MuiLinearProgress-bar': { bgcolor: km.color } }} />
@@ -179,23 +179,23 @@ const LifecyclePage = () => {
 
       {/* Add dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#6d28d9' }}>ع†ع©â€Œظ„غŒط³طھ ط¬ط¯غŒط¯</DialogTitle>
+        <DialogTitle sx={{ color: '#6d28d9' }}>چک‌لیست جدید</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>ظ†ظˆط¹</InputLabel>
-            <Select value={form.kind} label="ظ†ظˆط¹" onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value }))}>
+            <InputLabel>نوع</InputLabel>
+            <Select value={form.kind} label="نوع" onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value }))}>
               {Object.entries(KIND_META).map(([k, m]) => <MenuItem key={k} value={k}>{m.label}</MenuItem>)}
             </Select>
           </FormControl>
           <FormControl fullWidth size="small">
-            <InputLabel>ظ¾ط±ط³ظ†ظ„ *</InputLabel>
-            <Select value={form.employee || ''} label="ظ¾ط±ط³ظ†ظ„ *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
+            <InputLabel>پرسنل *</InputLabel>
+            <Select value={form.employee || ''} label="پرسنل *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
               {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
 
           <Typography variant="caption" color="textSecondary">
-            ط§ظ‚ظ„ط§ظ… ظ¾غŒط´â€Œظپط±ط¶ (ط¨ط±ط§غŒ طھغŒع©â€Œع©ط±ط¯ظ† غŒع© ظ…ظˆط±ط¯ ط§ط®طھغŒط§ط±غŒ ع©ظ„غŒع© ع©ظ†غŒط¯):
+            اقلام پیش‌فرض (برای تیک‌کردن یک مورد اختیاری کلیک کنید):
           </Typography>
           <Stack spacing={0.5}>
             {(form.kind === 'onboarding' ? DEFAULT_ONBOARDING_ITEMS : DEFAULT_OFFBOARDING_ITEMS).map((item) => (
@@ -207,10 +207,10 @@ const LifecyclePage = () => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpen(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.employee} onClick={doCreate}
             sx={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
-            ط§غŒط¬ط§ط¯ ع†ع©â€Œظ„غŒط³طھ
+            ایجاد چک‌لیست
           </Button>
         </DialogActions>
       </Dialog>

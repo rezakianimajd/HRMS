@@ -83,7 +83,7 @@ const PhonebookPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                   <WorkIcon sx={{ fontSize: 13, color: '#ec4899' }} />
                   <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center' }}>
-                    {emp.department} â€” {emp.job_title}
+                    {emp.department} — {emp.job_title}
                   </Typography>
                 </Box>
 
@@ -162,7 +162,7 @@ const PhonebookPage = () => {
                 <Box sx={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
                   <Typography variant="body2" fontWeight={700}>{emp.full_name}</Typography>
                   <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center' }}>
-                    {emp.department} â€” {emp.job_title}
+                    {emp.department} — {emp.job_title}
                   </Typography>
                 </Box>
                 <Chip icon={<SmartphoneIcon sx={{ fontSize: 14 }} />} label={toPersianDigits(emp.mobile)} size="small" variant="outlined"
@@ -201,7 +201,7 @@ const PhonebookPage = () => {
           </Avatar>
           <Box>
             <Typography variant="h5" fontWeight={800}>{t('phonebook.title')}</Typography>
-            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} ظ…ط®ط§ط·ط¨</Typography>
+            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} مخاطب</Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -222,7 +222,7 @@ const PhonebookPage = () => {
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField
             size="small"
-            placeholder="ط¬ط³طھط¬ظˆ ط¯ط± ط¯ظپطھط±ع†ظ‡ طھظ„ظپظ†..."
+            placeholder="جستجو در دفترچه تلفن..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
             InputProps={{
@@ -253,7 +253,7 @@ const PhonebookPage = () => {
               </Select>
             </FormControl>
             <Button size="small" onClick={() => { setDepartment(''); setSearch(''); setPage(0); }}>
-              ظ¾ط§ع©â€Œط³ط§ط²غŒ ظپغŒظ„طھط±ظ‡ط§
+              پاک‌سازی فیلترها
             </Button>
           </Box>
         </Collapse>
@@ -282,7 +282,7 @@ const PhonebookPage = () => {
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={e => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
             rowsPerPageOptions={[12, 24, 48, 72]}
-            labelRowsPerPage="طھط¹ط¯ط§ط¯ ط¯ط± طµظپط­ظ‡:"
+            labelRowsPerPage="تعداد در صفحه:"
           />
         </Box>
       )}

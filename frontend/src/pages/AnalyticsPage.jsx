@@ -55,12 +55,12 @@ const AnalyticsPage = () => {
           <InsightsIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#4338ca">ع¯ط²ط§ط±ط´ ظˆ ع©ظ†طھط±ظ„ ظ¾ط±ظˆعکظ‡</Typography>
-          <Typography variant="body2" color="textSecondary">ظپط§ط² غ³ â€” ط¨ظˆط¯ط¬ظ‡ ط¯ط± ط¨ط±ط§ط¨ط± ظˆط§ظ‚ط¹غŒطŒ طھط¹ظ‡ط¯طŒ ظ¾غŒط´ط±ظپطھ ظˆ طھط­ظ„غŒظ„ WBS/CBS</Typography>
+          <Typography variant="h6" fontWeight={800} color="#4338ca">گزارش و کنترل پروژه</Typography>
+          <Typography variant="body2" color="textSecondary">فاز ۳ — بودجه در برابر واقعی، تعهد، پیشرفت و تحلیل WBS/CBS</Typography>
         </Box>
         <FormControl size="small" sx={{ minWidth: 240 }}>
-          <InputLabel>ظ¾ط±ظˆعکظ‡</InputLabel>
-          <Select value={projectId || ''} label="ظ¾ط±ظˆعکظ‡" onChange={e => setProjectId(e.target.value)}>
+          <InputLabel>پروژه</InputLabel>
+          <Select value={projectId || ''} label="پروژه" onChange={e => setProjectId(e.target.value)}>
             {projectList.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
           </Select>
         </FormControl>
@@ -68,7 +68,7 @@ const AnalyticsPage = () => {
 
       {!projectId ? (
         <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
-          <Typography variant="body2" color="textSecondary">ظ¾ط±ظˆعکظ‡ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯.</Typography>
+          <Typography variant="body2" color="textSecondary">پروژه انتخاب کنید.</Typography>
         </Paper>
       ) : summaryLoading ? (
         <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
@@ -79,35 +79,35 @@ const AnalyticsPage = () => {
             <Grid item xs={6} md={2.4}>
               <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                 <AccountBalanceWalletIcon color="primary" />
-                <Typography variant="caption" color="textSecondary">ط¨ظˆط¯ط¬ظ‡</Typography>
+                <Typography variant="caption" color="textSecondary">بودجه</Typography>
                 <Typography variant="h6" fontWeight={800}>{formatPersianNumber(summary.budget)}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={6} md={2.4}>
               <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                 <LockIcon color="secondary" />
-                <Typography variant="caption" color="textSecondary">طھط¹ظ‡ط¯</Typography>
+                <Typography variant="caption" color="textSecondary">تعهد</Typography>
                 <Typography variant="h6" fontWeight={800}>{formatPersianNumber(summary.committed)}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={6} md={2.4}>
               <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                 <ReceiptIcon color="error" />
-                <Typography variant="caption" color="textSecondary">ظ‡ط²غŒظ†ظ‡ ظˆط§ظ‚ط¹غŒ</Typography>
+                <Typography variant="caption" color="textSecondary">هزینه واقعی</Typography>
                 <Typography variant="h6" fontWeight={800} color="error">{formatPersianNumber(summary.actual)}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={6} md={2.4}>
               <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                 <TrendingUpIcon color="success" />
-                <Typography variant="caption" color="textSecondary">ظ¾غŒط´â€Œط¨غŒظ†غŒ</Typography>
+                <Typography variant="caption" color="textSecondary">پیش‌بینی</Typography>
                 <Typography variant="h6" fontWeight={800}>{formatPersianNumber(summary.forecast)}</Typography>
               </Paper>
             </Grid>
             <Grid item xs={6} md={2.4}>
               <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                 <InsightsIcon color="warning" />
-                <Typography variant="caption" color="textSecondary">ط§ظ†ط­ط±ط§ظپ</Typography>
+                <Typography variant="caption" color="textSecondary">انحراف</Typography>
                 <Typography variant="h6" fontWeight={800} color={summary.variance >= 0 ? 'success.main' : 'error.main'}>
                   {formatPersianNumber(summary.variance)}
                 </Typography>
@@ -117,16 +117,16 @@ const AnalyticsPage = () => {
 
           {/* WBS breakdown */}
           <Paper sx={{ ...glassPaper, p: 2, mb: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>طھط­ظ„غŒظ„ ط¨ط± ط§ط³ط§ط³ WBS</Typography>
+            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>تحلیل بر اساس WBS</Typography>
             {wbsRows.length === 0 ? (
-              <Typography variant="caption" color="textSecondary">ع¯ط±ظ‡ WBS طھط¹ط±غŒظپ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
+              <Typography variant="caption" color="textSecondary">گره WBS تعریف نشده است.</Typography>
             ) : (
               <Stack spacing={1}>
                 {wbsRows.map(w => (
                   <Box key={w.wbs_id}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                       <Typography variant="body2" fontWeight={700}>{w.code} - {w.name}</Typography>
-                      <Typography variant="caption">ط¨ظˆط¯ط¬ظ‡: {formatPersianNumber(w.budget)} آ· ظˆط§ظ‚ط¹غŒ: {formatPersianNumber(w.actual)}</Typography>
+                      <Typography variant="caption">بودجه: {formatPersianNumber(w.budget)} · واقعی: {formatPersianNumber(w.actual)}</Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
@@ -142,15 +142,15 @@ const AnalyticsPage = () => {
 
           {/* CBS breakdown */}
           <Paper sx={{ ...glassPaper, p: 2 }}>
-            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>طھط­ظ„غŒظ„ ط¨ط± ط§ط³ط§ط³ CBS</Typography>
+            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>تحلیل بر اساس CBS</Typography>
             {cbsRows.length === 0 ? (
-              <Typography variant="caption" color="textSecondary">ع¯ط±ظ‡ CBS طھط¹ط±غŒظپ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
+              <Typography variant="caption" color="textSecondary">گره CBS تعریف نشده است.</Typography>
             ) : (
               <Stack spacing={1}>
                 {cbsRows.map(c => (
                   <Box key={c.cbs_id}>
                     <Typography variant="body2" fontWeight={700}>{c.code} - {c.name}</Typography>
-                    <Typography variant="caption">ظ‡ط²غŒظ†ظ‡: {formatPersianNumber(c.actual)}</Typography>
+                    <Typography variant="caption">هزینه: {formatPersianNumber(c.actual)}</Typography>
                   </Box>
                 ))}
               </Stack>

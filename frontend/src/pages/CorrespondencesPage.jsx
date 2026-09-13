@@ -12,11 +12,11 @@ import Forms from '../modules/correspondences/Forms';
 import Organizations from '../modules/correspondences/Organizations';
 
 const TABS = [
-  { key: 'incoming', label: 'ظ†ط§ظ…ظ‡â€Œظ‡ط§غŒ ظˆط§ط±ط¯ظ‡', icon: <MailIcon />, color: '#6366f1' },
-  { key: 'outgoing', label: 'ظ†ط§ظ…ظ‡â€Œظ‡ط§غŒ طµط§ط¯ط±ظ‡', icon: <SendIcon />, color: '#10b981' },
-  { key: 'announcements', label: 'ط§ط¨ظ„ط§ط؛â€Œظ‡ط§', icon: <CampaignIcon />, color: '#f59e0b' },
-  { key: 'forms', label: 'ظپط±ظ…â€Œظ‡ط§', icon: <DescriptionIcon />, color: '#8b5cf6' },
-  { key: 'organizations', label: 'ط³ط§ط²ظ…ط§ظ†غŒ', icon: <BusinessIcon />, color: '#14b8a6' },
+  { key: 'incoming', label: 'نامه‌های وارده', icon: <MailIcon />, color: '#6366f1' },
+  { key: 'outgoing', label: 'نامه‌های صادره', icon: <SendIcon />, color: '#10b981' },
+  { key: 'announcements', label: 'ابلاغ‌ها', icon: <CampaignIcon />, color: '#f59e0b' },
+  { key: 'forms', label: 'فرم‌ها', icon: <DescriptionIcon />, color: '#8b5cf6' },
+  { key: 'organizations', label: 'سازمانی', icon: <BusinessIcon />, color: '#14b8a6' },
 ];
 
 const CorrespondencesPage = () => {
@@ -41,8 +41,8 @@ const CorrespondencesPage = () => {
           <MailIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box>
-          <Typography variant="h5" fontWeight={800}>ظ…ع©ط§طھط¨ط§طھ</Typography>
-          <Typography variant="body2" color="textSecondary">ظ†ط§ظ…ظ‡â€Œظ‡ط§غŒ ظˆط§ط±ط¯ظ‡طŒ طµط§ط¯ط±ظ‡طŒ ط§ط¨ظ„ط§ط؛â€Œظ‡ط§ ظˆ ظپط±ظ…â€Œظ‡ط§</Typography>
+          <Typography variant="h5" fontWeight={800}>مکاتبات</Typography>
+          <Typography variant="body2" color="textSecondary">نامه‌های وارده، صادره، ابلاغ‌ها و فرم‌ها</Typography>
         </Box>
       </Paper>
 

@@ -3,7 +3,7 @@ import { Box, Paper, Typography, Avatar, Tabs, Tab } from '@mui/material';
 import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import DeductionForm from '../modules/dataEntry/DeductionForm';
 
-/* ظ…ط§ظ„غŒ â†گ ع©ط³ظˆط±ط§طھ: ط«ط¨طھ ع©ط³ظˆط±ط§طھ (ظ…ط§ظ„غŒط§طھطŒ ط¨غŒظ…ظ‡طŒ ط§ظ‚ط³ط§ط· ظˆط§ظ… ظˆ ...) */
+/* مالی ← کسورات: ثبت کسورات (مالیات، بیمه، اقساط وام و ...) */
 const DeductionsPage = () => (
   <Box>
     <Paper sx={{
@@ -16,8 +16,8 @@ const DeductionsPage = () => (
         <MoneyOffIcon sx={{ color: '#fff', fontSize: 28 }} />
       </Avatar>
       <Box>
-        <Typography variant="h6" fontWeight={800}>ع©ط³ظˆط±ط§طھ</Typography>
-        <Typography variant="body2" color="textSecondary">ط«ط¨طھ ع©ط³ظˆط±ط§طھ ط­ظ‚ظˆظ‚غŒ: ظ…ط§ظ„غŒط§طھطŒ ط¨غŒظ…ظ‡طŒ ط§ظ‚ط³ط§ط· ظˆط§ظ…طŒ ظ…ط³ط§ط¹ط¯ظ‡ ظˆ ط¬ط±غŒظ…ظ‡</Typography>
+        <Typography variant="h6" fontWeight={800}>کسورات</Typography>
+        <Typography variant="body2" color="textSecondary">ثبت کسورات حقوقی: مالیات، بیمه، اقساط وام، مساعده و جریمه</Typography>
       </Box>
     </Paper>
     <DeductionForm />

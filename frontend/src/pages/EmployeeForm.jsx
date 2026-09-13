@@ -100,7 +100,7 @@ const timeField = (label, field, value, onChange) => (
   <Grid item xs={12} sm={6} md={4}>
     <TextField
       fullWidth size="small" label={label}
-      placeholder="غ°غ¸:غ°غ°"
+      placeholder="۰۸:۰۰"
       value={value || ''}
       onChange={e => {
         let v = e.target.value.replace(/[^\d:]/g, '');
@@ -108,7 +108,7 @@ const timeField = (label, field, value, onChange) => (
         onChange(field, v.slice(0, 5));
       }}
       inputProps={{ maxLength: 5, inputMode: 'numeric' }}
-      helperText="ظپط±ظ…طھ غ²غ´ ط³ط§ط¹طھظ‡طŒ ظ…ط«ط§ظ„ غ°غ¸:غ°غ° غŒط§ غ±غ´:غ³غ°"
+      helperText="فرمت ۲۴ ساعته، مثال ۰۸:۰۰ یا ۱۴:۳۰"
     />
   </Grid>
 );
@@ -285,8 +285,8 @@ const EmployeeForm = () => {
     return (
       <Box sx={{ textAlign: 'center', p: 8 }}>
         <CheckCircleIcon sx={{ fontSize: 72, color: 'success.main', mb: 2 }} />
-        <Typography variant="h4" color="success.main" fontWeight={800}>âœ… {t('employees.save_success')}</Typography>
-        <Typography color="textSecondary">ط¯ط± ط­ط§ظ„ ط§ظ†طھظ‚ط§ظ„ ط¨ظ‡ ظ¾ط±ظˆظ†ط¯ظ‡ ظ¾ط±ط³ظ†ظ„غŒ...</Typography>
+        <Typography variant="h4" color="success.main" fontWeight={800}>✅ {t('employees.save_success')}</Typography>
+        <Typography color="textSecondary">در حال انتقال به پرونده پرسنلی...</Typography>
       </Box>
     );
   }
@@ -301,24 +301,24 @@ const EmployeeForm = () => {
 
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '10px' }}>{error}</Alert>}
 
-      <SectionCard title="ط§ط·ظ„ط§ط¹ط§طھ ظپط±ط¯غŒ ظˆ ظ‡ظˆغŒطھغŒ" icon={<PersonIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#6366f1">
+      <SectionCard title="اطلاعات فردی و هویتی" icon={<PersonIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#6366f1">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 2, bgcolor: 'rgba(99,102,241,0.04)', borderRadius: '10px' }}>
           <Avatar src={photoPreview || form.photo_url || undefined} sx={{
             width: 80, height: 80, fontSize: 32, fontWeight: 800,
             background: 'linear-gradient(135deg, #6366f1, #ec4899)',
             boxShadow: '0 4px 16px rgba(99,102,241,0.3)',
           }}>
-            {!photoPreview && !form.photo_url && (form.first_name?.charAt(0) || 'طں')}
+            {!photoPreview && !form.photo_url && (form.first_name?.charAt(0) || '؟')}
           </Avatar>
           <Box>
-            <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>ط¹ع©ط³ ظ¾ط±ط³ظ†ظ„غŒ</Typography>
+            <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>عکس پرسنلی</Typography>
             <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
-              ط¹ع©ط³ ط¯ط± ظ¾ط±ظˆظ†ط¯ظ‡طŒ ظ„غŒط³طھ ظ¾ط±ط³ظ†ظ„ ظˆ ط¯ظپطھط±ع†ظ‡ طھظ„ظپظ† ظ†ظ…ط§غŒط´ ط¯ط§ط¯ظ‡ ظ…غŒâ€Œط´ظˆط¯.
+              عکس در پرونده، لیست پرسنل و دفترچه تلفن نمایش داده می‌شود.
             </Typography>
             <input id="employee-photo-input" type="file" accept="image/*" hidden onChange={handlePhotoChange} />
             <Button variant="outlined" size="small" startIcon={<CloudUploadIcon />}
               onClick={() => document.getElementById('employee-photo-input').click()}>
-              {photoPreview || form.photo_url ? 'طھط؛غŒغŒط± ط¹ع©ط³' : 'ط¢ظ¾ظ„ظˆط¯ ط¹ع©ط³'}
+              {photoPreview || form.photo_url ? 'تغییر عکس' : 'آپلود عکس'}
             </Button>
           </Box>
         </Box>
@@ -329,37 +329,37 @@ const EmployeeForm = () => {
           {textField(t('employees.national_id'), 'national_id', form.national_id, handleChange, true)}
           {dateField(t('employees.birth_date'), 'birth_date', form.birth_date, handleChange)}
           {textField(t('employees.birth_place'), 'birth_place', form.birth_place, handleChange)}
-          {selectField('ظ…غŒط²ط§ظ† طھط­طµغŒظ„ط§طھ', 'education_level', form.education_level, handleChange, [
-            { value: 'under_diploma', label: 'ط²غŒط± ط¯غŒظ¾ظ„ظ…' },
-            { value: 'diploma', label: 'ط¯غŒظ¾ظ„ظ…' },
-            { value: 'associate', label: 'ع©ط§ط±ط¯ط§ظ†غŒ' },
-            { value: 'bachelor', label: 'ع©ط§ط±ط´ظ†ط§ط³غŒ' },
-            { value: 'master', label: 'ع©ط§ط±ط´ظ†ط§ط³غŒ ط§ط±ط´ط¯' },
-            { value: 'phd', label: 'ط¯ع©طھط±غŒ' },
+          {selectField('میزان تحصیلات', 'education_level', form.education_level, handleChange, [
+            { value: 'under_diploma', label: 'زیر دیپلم' },
+            { value: 'diploma', label: 'دیپلم' },
+            { value: 'associate', label: 'کاردانی' },
+            { value: 'bachelor', label: 'کارشناسی' },
+            { value: 'master', label: 'کارشناسی ارشد' },
+            { value: 'phd', label: 'دکتری' },
           ])}
-          {textField('ط±ط´طھظ‡ / ظ…ط¯ط±ع© طھط­طµغŒظ„غŒ', 'education_field', form.education_field, handleChange)}
+          {textField('رشته / مدرک تحصیلی', 'education_field', form.education_field, handleChange)}
           {selectField(t('employees.gender'), 'gender', form.gender, handleChange, GENDERS)}
           {selectField(t('employees.marital_status'), 'marital_status', form.marital_status, handleChange, MARITAL)}
           {textField(t('employees.children_count'), 'children_count', form.children_count, handleChange, false, 'number')}
           {textField(t('employees.spouse_name'), 'spouse_name', form.spouse_name, handleChange)}
-          {textField('ظ†ط§ظ… ظ¾ط¯ط±', 'father_name', form.father_name, handleChange)}
-          {textField('ط´ظ…ط§ط±ظ‡ ط´ظ†ط§ط³ظ†ط§ظ…ظ‡', 'birth_certificate_number', form.birth_certificate_number, handleChange)}
+          {textField('نام پدر', 'father_name', form.father_name, handleChange)}
+          {textField('شماره شناسنامه', 'birth_certificate_number', form.birth_certificate_number, handleChange)}
           {textField(t('employees.national_id_serial'), 'national_id_serial', form.national_id_serial, handleChange)}
           {textField(t('employees.national_id_place'), 'national_id_place', form.national_id_place, handleChange)}
           {dateField(t('employees.national_id_date'), 'national_id_date', form.national_id_date, handleChange)}
-          {textField('ظ…ط­ظ„ ط§ط®ط° ظ…ط¯ط±ع© طھط­طµغŒظ„غŒ', 'education_place', form.education_place, handleChange)}
-          {selectField('ظ†ظˆط¹ ط¯ط§ظ†ط´ع¯ط§ظ‡', 'university_type', form.university_type, handleChange, [
-            { value: 'state', label: 'ط¯ظˆظ„طھغŒ' },
-            { value: 'azad', label: 'ط¢ط²ط§ط¯' },
-            { value: 'payam_noor', label: 'ظ¾غŒط§ظ… ظ†ظˆط±' },
-            { value: 'nonprofit', label: 'ط؛غŒط±ط§ظ†طھظپط§ط¹غŒ' },
-            { value: 'technical', label: 'ظپظ†غŒ ظˆ ط­ط±ظپظ‡â€Œط§غŒ' },
-            { value: 'other', label: 'ط³ط§غŒط±' },
+          {textField('محل اخذ مدرک تحصیلی', 'education_place', form.education_place, handleChange)}
+          {selectField('نوع دانشگاه', 'university_type', form.university_type, handleChange, [
+            { value: 'state', label: 'دولتی' },
+            { value: 'azad', label: 'آزاد' },
+            { value: 'payam_noor', label: 'پیام نور' },
+            { value: 'nonprofit', label: 'غیرانتفاعی' },
+            { value: 'technical', label: 'فنی و حرفه‌ای' },
+            { value: 'other', label: 'سایر' },
           ])}
         </Grid>
       </SectionCard>
 
-      <SectionCard title="ط§ط·ظ„ط§ط¹ط§طھ طھظ…ط§ط³ ظˆ ط¢ط¯ط±ط³" icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#10b981">
+      <SectionCard title="اطلاعات تماس و آدرس" icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#10b981">
         <Grid container spacing={2}>
           {textField(t('employees.mobile'), 'mobile', form.mobile, handleChange, true)}
           {textField(t('employees.phone'), 'phone', form.phone, handleChange)}
@@ -368,14 +368,14 @@ const EmployeeForm = () => {
             <TextField fullWidth size="small" label={t('employees.address')} value={form.address || ''}
               onChange={e => handleChange('address', e.target.value)} multiline rows={2} />
           </Grid>
-          {textField('ط´ظ‡ط±', 'city', form.city, handleChange)}
+          {textField('شهر', 'city', form.city, handleChange)}
           {textField(t('employees.postal_code'), 'postal_code', form.postal_code, handleChange)}
           {textField(t('employees.emergency_contact_name'), 'emergency_contact_name', form.emergency_contact_name, handleChange)}
           {textField(t('employees.emergency_contact_phone'), 'emergency_contact_phone', form.emergency_contact_phone, handleChange)}
         </Grid>
       </SectionCard>
 
-      <SectionCard title="ط§ط·ظ„ط§ط¹ط§طھ ط´ط؛ظ„غŒ ظˆ ط§ط³طھط®ط¯ط§ظ…" icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#f59e0b">
+      <SectionCard title="اطلاعات شغلی و استخدام" icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#f59e0b">
         <Grid container spacing={2}>
           {textField(t('employees.employee_id'), 'employee_id', form.employee_id, handleChange, true)}
           {dateField(t('employees.hire_date'), 'hire_date', form.hire_date, handleChange)}
@@ -385,15 +385,15 @@ const EmployeeForm = () => {
           {selectField(t('employees.job_title'), 'job_title', form.job_title, handleChange, mapOpts(jobTitles))}
           {selectField(t('employees.work_location'), 'work_location', form.work_location, handleChange, mapOpts(workLocations))}
           {selectField(t('employees.insurance_list'), 'insurance_list', form.insurance_list, handleChange, mapOpts(insuranceLists))}
-          {textField('ط´ظ…ط§ط±ظ‡ ط¨غŒظ…ظ‡', 'insurance_number', form.insurance_number, handleChange)}
+          {textField('شماره بیمه', 'insurance_number', form.insurance_number, handleChange)}
           {selectField(t('employees.contract_type'), 'contract_type', form.contract_type, handleChange, CONTRACT)}
           {dateField(t('employees.contract_start_date'), 'contract_start_date', form.contract_start_date, handleChange)}
           {dateField(t('employees.contract_end_date'), 'contract_end_date', form.contract_end_date, handleChange)}
           {selectField(t('employees.status'), 'status', form.status, handleChange, STATUSES)}
           {dateField(t('employees.status_change_date'), 'status_change_date', form.status_change_date, handleChange)}
           {selectField(t('employees.work_shift'), 'work_shift', form.work_shift, handleChange, SHIFTS)}
-          {timeField('ط³ط§ط¹طھ ط´ط±ظˆط¹ ع©ط§ط±', 'work_start_time', form.work_start_time, handleChange)}
-          {timeField('ط³ط§ط¹طھ ظ¾ط§غŒط§ظ† ع©ط§ط±', 'work_end_time', form.work_end_time, handleChange)}
+          {timeField('ساعت شروع کار', 'work_start_time', form.work_start_time, handleChange)}
+          {timeField('ساعت پایان کار', 'work_end_time', form.work_end_time, handleChange)}
           <Grid item xs={12}>
             <TextField fullWidth size="small" label={t('employees.description')} multiline rows={3}
               value={form.description || ''} onChange={e => handleChange('description', e.target.value)} />
@@ -401,35 +401,35 @@ const EmployeeForm = () => {
         </Grid>
       </SectionCard>
 
-      <SectionCard title="ط§ط±ط²غŒط§ط¨غŒ ظˆ ط§ظ…طھغŒط§ط²ط¯ظ‡غŒ" icon={<AssessmentIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#3b82f6">
+      <SectionCard title="ارزیابی و امتیازدهی" icon={<AssessmentIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#3b82f6">
         <Grid container spacing={2}>
-          {textField('ظ…ط³ط§ظپطھ ط®ط§ظ†ظ‡ طھط§ ظ…ط­ظ„ ع©ط§ط± (ع©غŒظ„ظˆظ…طھط±)', 'distance_to_work_km', form.distance_to_work_km, handleChange, false, 'number')}
-          {selectField('ظ†ظˆط¹ ظ…ط³ع©ظ†', 'housing_type', form.housing_type, handleChange, [
-            { value: 'owned', label: 'ط´ط®طµغŒ' },
-            { value: 'mortgage', label: 'ط±ظ‡ظ†' },
-            { value: 'rental', label: 'ط§ط¬ط§ط±ظ‡' },
+          {textField('مسافت خانه تا محل کار (کیلومتر)', 'distance_to_work_km', form.distance_to_work_km, handleChange, false, 'number')}
+          {selectField('نوع مسکن', 'housing_type', form.housing_type, handleChange, [
+            { value: 'owned', label: 'شخصی' },
+            { value: 'mortgage', label: 'رهن' },
+            { value: 'rental', label: 'اجاره' },
           ])}
-          {selectField('ط®ظˆط¯ط±ظˆغŒ ط´ط®طµغŒ', 'has_car', form.has_car ? 'true' : 'false', (f, v) => handleChange(f, v === 'true'), [
-            { value: 'true', label: 'ط¯ط§ط±ط¯' },
-            { value: 'false', label: 'ظ†ط¯ط§ط±ط¯' },
+          {selectField('خودروی شخصی', 'has_car', form.has_car ? 'true' : 'false', (f, v) => handleChange(f, v === 'true'), [
+            { value: 'true', label: 'دارد' },
+            { value: 'false', label: 'ندارد' },
           ])}
-          {textField('ظ†ظ…ط±ظ‡ ط¹ظ…ظ„ع©ط±ط¯ (غ°-غ±غ°غ°)', 'performance_score', form.performance_score, handleChange, false, 'number')}
-          {textField('ظ†ظ…ط±ظ‡ ط±ط¶ط§غŒطھ ط´ط؛ظ„غŒ (غ°-غ±غ°غ°)', 'satisfaction_score', form.satisfaction_score, handleChange, false, 'number')}
+          {textField('نمره عملکرد (۰-۱۰۰)', 'performance_score', form.performance_score, handleChange, false, 'number')}
+          {textField('نمره رضایت شغلی (۰-۱۰۰)', 'satisfaction_score', form.satisfaction_score, handleChange, false, 'number')}
         </Grid>
       </SectionCard>
 
-      <SectionCard title="ط§ط·ظ„ط§ط¹ط§طھ ط¨ط§ظ†ع©غŒ" icon={<AccountBalanceIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#0ea5e9">
+      <SectionCard title="اطلاعات بانکی" icon={<AccountBalanceIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#0ea5e9">
         <Grid container spacing={2}>
-          {textField('ط¨ط§ظ†ع©', 'bank_name', form.bank_name, handleChange)}
-          {textField('ط´ظ…ط§ط±ظ‡ ط­ط³ط§ط¨', 'account_number', form.account_number, handleChange)}
-          {textField('ط´ظ…ط§ط±ظ‡ ط´ط¨ط§', 'sheba_number', form.sheba_number, handleChange)}
+          {textField('بانک', 'bank_name', form.bank_name, handleChange)}
+          {textField('شماره حساب', 'account_number', form.account_number, handleChange)}
+          {textField('شماره شبا', 'sheba_number', form.sheba_number, handleChange)}
         </Grid>
       </SectionCard>
 
-      <SectionCard title="ط³ظˆط§ط¨ظ‚ ع©ط§ط±غŒ ظ¾غŒط´غŒظ†" icon={<WorkHistoryIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#14b8a6">
+      <SectionCard title="سوابق کاری پیشین" icon={<WorkHistoryIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#14b8a6">
         <Box sx={{ mb: 2 }}>
           {workExperiences.length === 0 ? (
-            <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>ط³ط§ط¨ظ‚ظ‡ ع©ط§ط±غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+            <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>سابقه کاری ثبت نشده است</Typography>
           ) : (
             <Stack spacing={1} sx={{ mb: 2 }}>
               {workExperiences.map((exp, i) => (
@@ -440,7 +440,7 @@ const EmployeeForm = () => {
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="body2" fontWeight={700}>{exp.company_name}</Typography>
                     <Typography variant="caption" color="textSecondary" display="block">
-                      {exp.job_title || 'â€”'}
+                      {exp.job_title || '—'}
                     </Typography>
                   </Box>
                   <IconButton
@@ -455,7 +455,7 @@ const EmployeeForm = () => {
                   <IconButton
                     size="small" color="error"
                     onClick={async () => {
-                      if (exp.id && window.confirm('ط­ط°ظپ ط§غŒظ† ط³ط§ط¨ظ‚ظ‡ ع©ط§ط±غŒطں')) {
+                      if (exp.id && window.confirm('حذف این سابقه کاری؟')) {
                         await axiosInstance.delete(`/work-experiences/${exp.id}/`);
                       }
                       setWorkExperiences(prev => prev.filter(x => (x.id || x) !== (exp.id || exp)));
@@ -468,15 +468,15 @@ const EmployeeForm = () => {
             </Stack>
           )}
           <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={() => { setExpDialogOpen(true); setExpForm({ company_name: '', job_title: '', start_date: '', end_date: '', description: '' }); }}>
-            ط§ظپط²ظˆط¯ظ† ط³ط§ط¨ظ‚ظ‡ ع©ط§ط±غŒ
+            افزودن سابقه کاری
           </Button>
         </Box>
       </SectionCard>
 
-      <SectionCard title="ظ…ط¯ط§ط±ع© ظ¾ط±ط³ظ†ظ„غŒ" icon={<DescriptionIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#ec4899">
+      <SectionCard title="مدارک پرسنلی" icon={<DescriptionIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#ec4899">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 1.5, bgcolor: 'rgba(236,72,153,0.05)', borderRadius: '10px' }}>
           <Typography variant="body2">
-            {filledDocTypes} ط§ط² {totalDocTypes} ظ…ط¯ط±ع© ط¨ط§ط±ع¯ط°ط§ط±غŒ ط´ط¯ظ‡
+            {filledDocTypes} از {totalDocTypes} مدرک بارگذاری شده
           </Typography>
           <Box sx={{ flex: 1, height: 6, bgcolor: 'rgba(236,72,153,0.15)', borderRadius: '10px' }}>
             <Box sx={{ width: `${totalDocTypes ? (filledDocTypes / totalDocTypes) * 100 : 0}%`, height: 6, bgcolor: '#ec4899', borderRadius: '10px', transition: 'width 0.3s' }} />
@@ -501,7 +501,7 @@ const EmployeeForm = () => {
                   }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
                       <Typography variant="subtitle2" fontWeight={700}>{dt.name}</Typography>
-                      <Chip size="small" label={hasAny ? 'ط¨ط§ط±ع¯ط°ط§ط±غŒ ط´ط¯ظ‡' : 'ط¯ط± ط§ظ†طھط¸ط§ط±'}
+                      <Chip size="small" label={hasAny ? 'بارگذاری شده' : 'در انتظار'}
                         icon={hasAny ? <CheckCircleIcon /> : <RadioButtonUncheckedIcon />}
                         color={hasAny ? 'success' : 'default'} variant="outlined" />
                     </Box>
@@ -524,7 +524,7 @@ const EmployeeForm = () => {
 
                     <Button size="small" variant="outlined" startIcon={<CloudUploadIcon />}
                       onClick={() => document.getElementById(`doc-type-${dt.id}`).click()} sx={{ mt: 1 }}>
-                      {hasAny ? 'طھط؛غŒغŒط± ظ…ط¯ط±ع©' : 'ط¨ط§ط±ع¯ط°ط§ط±غŒ ظ…ط¯ط±ع©'}
+                      {hasAny ? 'تغییر مدرک' : 'بارگذاری مدرک'}
                     </Button>
                     <input id={`doc-type-${dt.id}`} type="file" hidden
                       onChange={e => {
@@ -540,7 +540,7 @@ const EmployeeForm = () => {
             <Grid item xs={12}>
               <Paper variant="outlined" sx={{ p: 4, textAlign: 'center' }}>
                 <Typography variant="body2" color="textSecondary">
-                  ظ‡ظ†ظˆط² ط§ظ†ظˆط§ط¹ ظ…ط¯ط±ع©غŒ طھط¹ط±غŒظپ ظ†ط´ط¯ظ‡ ط§ط³طھ. ط§ط¨طھط¯ط§ ط¯ط± آ«طھط¹ط§ط±غŒظپ ط§ظˆظ„غŒظ‡ â†’ ط§ظ†ظˆط§ط¹ ظ…ط¯ط§ط±ع©آ» طھط¹ط±غŒظپ ع©ظ†غŒط¯.
+                  هنوز انواع مدرکی تعریف نشده است. ابتدا در «تعاریف اولیه → انواع مدارک» تعریف کنید.
                 </Typography>
               </Paper>
             </Grid>
@@ -557,21 +557,21 @@ const EmployeeForm = () => {
       </Box>
 
       <Dialog open={expDialogOpen} onClose={() => setExpDialogOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#14b8a6' }}>{expForm.id ? 'ظˆغŒط±ط§غŒط´ ط³ط§ط¨ظ‚ظ‡ ع©ط§ط±غŒ' : 'ط§ظپط²ظˆط¯ظ† ط³ط§ط¨ظ‚ظ‡ ع©ط§ط±غŒ'}</DialogTitle>
+        <DialogTitle sx={{ color: '#14b8a6' }}>{expForm.id ? 'ویرایش سابقه کاری' : 'افزودن سابقه کاری'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="ظ†ط§ظ… ط´ط±ع©طھ / ط³ط§ط²ظ…ط§ظ†" value={expForm.company_name || ''}
+          <TextField fullWidth size="small" label="نام شرکت / سازمان" value={expForm.company_name || ''}
             onChange={e => setExpForm(p => ({ ...p, company_name: e.target.value }))} required />
-          <TextField fullWidth size="small" label="ط¹ظ†ظˆط§ظ† ط´ط؛ظ„غŒ" value={expForm.job_title || ''}
+          <TextField fullWidth size="small" label="عنوان شغلی" value={expForm.job_title || ''}
             onChange={e => setExpForm(p => ({ ...p, job_title: e.target.value }))} />
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط´ط±ظˆط¹" value={expForm.start_date}
+          <JalaliDatePicker fullWidth label="تاریخ شروع" value={expForm.start_date}
             onChange={g => setExpForm(p => ({ ...p, start_date: g }))} />
-          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ظ¾ط§غŒط§ظ† (ط®ط§ظ„غŒ = طھط§ع©ظ†ظˆظ†/ظ‚ط¨ظ„ ط§ط² ط§ط³طھط®ط¯ط§ظ…)" value={expForm.end_date}
+          <JalaliDatePicker fullWidth label="تاریخ پایان (خالی = تاکنون/قبل از استخدام)" value={expForm.end_date}
             onChange={g => setExpForm(p => ({ ...p, end_date: g }))} />
-          <TextField fullWidth size="small" label="ط´ط±ط­ ظˆط¸ط§غŒظپ" multiline rows={2} value={expForm.description || ''}
+          <TextField fullWidth size="small" label="شرح وظایف" multiline rows={2} value={expForm.description || ''}
             onChange={e => setExpForm(p => ({ ...p, description: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setExpDialogOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setExpDialogOpen(false)}>انصراف</Button>
           <Button variant="contained" sx={{ background: '#14b8a6' }}
             onClick={() => {
               if (!expForm.company_name || !expForm.start_date) return;
@@ -582,7 +582,7 @@ const EmployeeForm = () => {
               }
               setExpDialogOpen(false);
             }}>
-            {expForm.id ? 'ط°ط®غŒط±ظ‡ طھط؛غŒغŒط±ط§طھ' : 'ط§ظپط²ظˆط¯ظ†'}
+            {expForm.id ? 'ذخیره تغییرات' : 'افزودن'}
           </Button>
         </DialogActions>
       </Dialog>

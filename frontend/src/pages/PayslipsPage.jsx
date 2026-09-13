@@ -3,7 +3,7 @@ import { Box, Paper, Typography, Avatar, Divider } from '@mui/material';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import SalaryTab from '../modules/dataEntry/SalaryTab';
 
-/* P4: ظپغŒط´ ط­ظ‚ظˆظ‚ â€” ظ¾ط§غŒظ‡ ط§ط² SalaryTab (ظ„غŒط³طھ + ط¯ط±ظˆظ†ط±غŒط²غŒ ط§ع©ط³ظ„) */
+/* P4: فیش حقوق — پایه از SalaryTab (لیست + درونریزی اکسل) */
 const PayslipsPage = () => (
   <Box>
     <Paper sx={{
@@ -16,9 +16,9 @@ const PayslipsPage = () => (
         <PaymentsIcon sx={{ color: '#fff', fontSize: 28 }} />
       </Avatar>
       <Box>
-        <Typography variant="h6" fontWeight={800}>ظپغŒط´ ط­ظ‚ظˆظ‚</Typography>
+        <Typography variant="h6" fontWeight={800}>فیش حقوق</Typography>
         <Typography variant="body2" color="textSecondary">
-          ظ…ط´ط§ظ‡ط¯ظ‡طŒ ط«ط¨طھ ظˆ ط¯ط±ظˆظ†ط±غŒط²غŒ ع¯ط±ظˆظ‡غŒ ظپغŒط´ظ‡ط§غŒ ط­ظ‚ظˆظ‚غŒ ظ…ط§ظ‡ط§ظ†ظ‡
+          مشاهده، ثبت و درونریزی گروهی فیشهای حقوقی ماهانه
         </Typography>
       </Box>
     </Paper>

@@ -35,16 +35,16 @@ const CommercialPage = () => {
           <HistoryEduIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">ط³ط§ط®طھط§ط± طھط¬ط§ط±غŒ ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
-          <Typography variant="body2" color="textSecondary">ظپط§ط² غ± â€” ط±ط¯غŒظپ ظ‚ط±ط§ط±ط¯ط§ط¯ (BOQ)طŒ ظ†ع¯ط§ط´طھ WBSطŒ ظ…ط¨ظ†ط§غŒ ظ‚غŒظ…طھ ظˆ ط±ط¯غŒظپ ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§</Typography>
+          <Typography variant="h6" fontWeight={800} color="#b45309">ساختار تجاری قرارداد</Typography>
+          <Typography variant="body2" color="textSecondary">فاز ۱ — ردیف قرارداد (BOQ)، نگاشت WBS، مبنای قیمت و ردیف فهرست‌بها</Typography>
         </Box>
       </Paper>
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>
-        <Tab label="ط±ط¯غŒظپ ظ‚ط±ط§ط±ط¯ط§ط¯ (BOQ)" />
-        <Tab label="ظ†ع¯ط§ط´طھ WBS" />
-        <Tab label="ظ…ط¨ظ†ط§غŒ ظ‚غŒظ…طھ" />
-        <Tab label="ط±ط¯غŒظپ ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§" />
+        <Tab label="ردیف قرارداد (BOQ)" />
+        <Tab label="نگاشت WBS" />
+        <Tab label="مبنای قیمت" />
+        <Tab label="ردیف فهرست‌بها" />
       </Tabs>
 
       {tab === 0 && <ContractItemsManager />}
@@ -85,47 +85,47 @@ const ContractItemsManager = () => {
       <Paper sx={{ ...glassPaper, p: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
           <FormControl size="small" sx={{ minWidth: 260 }}>
-            <InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯</InputLabel>
-            <Select value={contractId || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯" onChange={e => setContractId(e.target.value)}>
+            <InputLabel>قرارداد</InputLabel>
+            <Select value={contractId || ''} label="قرارداد" onChange={e => setContractId(e.target.value)}>
               {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
             </Select>
           </FormControl>
           <Button size="small" startIcon={<AddIcon />} variant="outlined" disabled={!contractId}
-            onClick={() => { setForm({ contract: contractId }); setDialog(true); }}>ط§ظپط²ظˆط¯ظ† ط±ط¯غŒظپ</Button>
+            onClick={() => { setForm({ contract: contractId }); setDialog(true); }}>افزودن ردیف</Button>
         </Stack>
 
         <Stack spacing={0.75}>
           {itemList.map(it => (
             <Paper key={it.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1 }}>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={700}>{it.code} â€” {it.description}</Typography>
+                <Typography variant="body2" fontWeight={700}>{it.code} — {it.description}</Typography>
                 <Typography variant="caption" color="textSecondary">
-                  {formatPersianNumber(it.quantity)} {it.unit} أ— {formatPersianNumber(it.unit_price)} = {formatPersianNumber(it.amount)}
+                  {formatPersianNumber(it.quantity)} {it.unit} × {formatPersianNumber(it.unit_price)} = {formatPersianNumber(it.amount)}
                 </Typography>
               </Box>
               <IconButton size="small" onClick={() => { setForm({ ...it }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-              <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) remove.mutate(it.id); }}><DeleteIcon fontSize="small" /></IconButton>
+              <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) remove.mutate(it.id); }}><DeleteIcon fontSize="small" /></IconButton>
             </Paper>
           ))}
-          {itemList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ط±ط¯غŒظپغŒ ظ†غŒط³طھ</Typography>}
+          {itemList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ردیفی نیست</Typography>}
         </Stack>
       </Paper>
 
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>ط±ط¯غŒظپ ظ‚ط±ط§ط±ط¯ط§ط¯</DialogTitle>
+        <DialogTitle>ردیف قرارداد</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField size="small" label="ع©ط¯" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
-          <TextField size="small" label="ط´ط±ط­" value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          <TextField size="small" label="کد" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
+          <TextField size="small" label="شرح" value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
           <Grid container spacing={1.5}>
-            <Grid item xs={4}><TextField size="small" label="ظ…ظ‚ط¯ط§ط±" type="number" value={form.quantity ?? ''} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} /></Grid>
-            <Grid item xs={4}><TextField size="small" label="ظˆط§ط­ط¯" value={form.unit || ''} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} /></Grid>
-            <Grid item xs={4}><TextField size="small" label="ظ†ط±ط® ظˆط§ط­ط¯" type="number" value={form.unit_price ?? ''} onChange={e => setForm(p => ({ ...p, unit_price: e.target.value }))} /></Grid>
+            <Grid item xs={4}><TextField size="small" label="مقدار" type="number" value={form.quantity ?? ''} onChange={e => setForm(p => ({ ...p, quantity: e.target.value }))} /></Grid>
+            <Grid item xs={4}><TextField size="small" label="واحد" value={form.unit || ''} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} /></Grid>
+            <Grid item xs={4}><TextField size="small" label="نرخ واحد" type="number" value={form.unit_price ?? ''} onChange={e => setForm(p => ({ ...p, unit_price: e.target.value }))} /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" onClick={() => save.mutate({ ...form, quantity: num(form.quantity), unit_price: num(form.unit_price), amount: (num(form.quantity) || 0) * (num(form.unit_price) || 0) })}
-            sx={{ background: 'linear-gradient(135deg,#f59e0b,#8b5cf6)' }}>ط°ط®غŒط±ظ‡</Button>
+            sx={{ background: 'linear-gradient(135deg,#f59e0b,#8b5cf6)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Box>
@@ -170,13 +170,13 @@ const ContractWBSManager = () => {
     <Paper sx={{ ...glassPaper, p: 2 }}>
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
         <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯</InputLabel>
-          <Select value={contractId || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯" onChange={e => setContractId(e.target.value)}>
+          <InputLabel>قرارداد</InputLabel>
+          <Select value={contractId || ''} label="قرارداد" onChange={e => setContractId(e.target.value)}>
             {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
           </Select>
         </FormControl>
         <Button size="small" startIcon={<AddIcon />} variant="outlined" disabled={!contractId}
-          onClick={() => { setForm({ contract: contractId }); setDialog(true); }}>ط§ظپط²ظˆط¯ظ† ظ†ع¯ط§ط´طھ</Button>
+          onClick={() => { setForm({ contract: contractId }); setDialog(true); }}>افزودن نگاشت</Button>
       </Stack>
 
       <Stack spacing={0.75}>
@@ -184,30 +184,30 @@ const ContractWBSManager = () => {
           <Paper key={l.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1 }}>
             <AccountTreeIcon fontSize="small" color="primary" />
             <Typography variant="body2" sx={{ flex: 1 }}>{l.wbs_name || `WBS #${l.wbs}`}</Typography>
-            <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) remove.mutate(l.id); }}><DeleteIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) remove.mutate(l.id); }}><DeleteIcon fontSize="small" /></IconButton>
           </Paper>
         ))}
-        {linkList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ظ†ع¯ط§ط´طھغŒ ظ†غŒط³طھ</Typography>}
+        {linkList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">نگاشتی نیست</Typography>}
       </Stack>
 
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>ظ†ع¯ط§ط´طھ ظ‚ط±ط§ط±ط¯ط§ط¯-WBS</DialogTitle>
+        <DialogTitle>نگاشت قرارداد-WBS</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl size="small" fullWidth><InputLabel>ظ¾ط±ظˆعکظ‡</InputLabel>
-            <Select value={projectId || ''} label="ظ¾ط±ظˆعکظ‡" onChange={e => setProjectId(e.target.value)}>
+          <FormControl size="small" fullWidth><InputLabel>پروژه</InputLabel>
+            <Select value={projectId || ''} label="پروژه" onChange={e => setProjectId(e.target.value)}>
               {projectList.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <FormControl size="small" fullWidth><InputLabel>ع¯ط±ظ‡ WBS</InputLabel>
-            <Select value={form.wbs || ''} label="ع¯ط±ظ‡ WBS" onChange={e => setForm(p => ({ ...p, wbs: e.target.value }))}>
+          <FormControl size="small" fullWidth><InputLabel>گره WBS</InputLabel>
+            <Select value={form.wbs || ''} label="گره WBS" onChange={e => setForm(p => ({ ...p, wbs: e.target.value }))}>
               {wbsList.map(w => <MenuItem key={w.id} value={w.id}>{w.code} - {w.name}</MenuItem>)}
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.wbs} onClick={() => save.mutate({ contract: contractId, wbs: form.wbs })}
-            sx={{ background: 'linear-gradient(135deg,#8b5cf6,#3b82f6)' }}>ط°ط®غŒط±ظ‡</Button>
+            sx={{ background: 'linear-gradient(135deg,#8b5cf6,#3b82f6)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Paper>
@@ -251,13 +251,13 @@ const ContractPriceBasisManager = () => {
     <Paper sx={{ ...glassPaper, p: 2 }}>
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
         <FormControl size="small" sx={{ minWidth: 220 }}>
-          <InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯</InputLabel>
-          <Select value={contractId || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯" onChange={e => setContractId(e.target.value)}>
+          <InputLabel>قرارداد</InputLabel>
+          <Select value={contractId || ''} label="قرارداد" onChange={e => setContractId(e.target.value)}>
             {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
           </Select>
         </FormControl>
         <Button size="small" startIcon={<AddIcon />} variant="outlined" disabled={!contractId}
-          onClick={() => { setForm({ contract: contractId }); setDialog(true); }}>ط§ظپط²ظˆط¯ظ† ظ…ط¨ظ†ط§غŒ ظ‚غŒظ…طھ</Button>
+          onClick={() => { setForm({ contract: contractId }); setDialog(true); }}>افزودن مبنای قیمت</Button>
       </Stack>
 
       <Stack spacing={0.75}>
@@ -265,36 +265,36 @@ const ContractPriceBasisManager = () => {
           <Paper key={b.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1 }}>
             <ReceiptLongIcon fontSize="small" color="warning" />
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" fontWeight={700}>{b.price_list_name || 'ط¨ط¯ظˆظ† ظپظ‡ط±ط³طھ'} {b.version_label ? `آ· ظ†ط³ط®ظ‡ ${b.version_label}` : ''}</Typography>
-              {b.pricing_method && <Typography variant="caption" color="textSecondary">ط±ظˆط´: {b.pricing_method}</Typography>}
+              <Typography variant="body2" fontWeight={700}>{b.price_list_name || 'بدون فهرست'} {b.version_label ? `· نسخه ${b.version_label}` : ''}</Typography>
+              {b.pricing_method && <Typography variant="caption" color="textSecondary">روش: {b.pricing_method}</Typography>}
             </Box>
-            <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) remove.mutate(b.id); }}><DeleteIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) remove.mutate(b.id); }}><DeleteIcon fontSize="small" /></IconButton>
           </Paper>
         ))}
-        {baseList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ظ…ط¨ظ†ط§غŒغŒ ظ†غŒط³طھ</Typography>}
+        {baseList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">مبنایی نیست</Typography>}
       </Stack>
 
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>ظ…ط¨ظ†ط§غŒ ظ‚غŒظ…طھ ظ‚ط±ط§ط±ط¯ط§ط¯</DialogTitle>
+        <DialogTitle>مبنای قیمت قرارداد</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl size="small" fullWidth><InputLabel>ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§</InputLabel>
-            <Select value={form.price_list || ''} label="ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§" onChange={e => setForm(p => ({ ...p, price_list: e.target.value, price_list_version: '' }))}>
-              <MenuItem value="">â€”</MenuItem>
+          <FormControl size="small" fullWidth><InputLabel>فهرست‌بها</InputLabel>
+            <Select value={form.price_list || ''} label="فهرست‌بها" onChange={e => setForm(p => ({ ...p, price_list: e.target.value, price_list_version: '' }))}>
+              <MenuItem value="">—</MenuItem>
               {priceLists.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <FormControl size="small" fullWidth><InputLabel>ظ†ط³ط®ظ‡</InputLabel>
-            <Select value={form.price_list_version || ''} label="ظ†ط³ط®ظ‡" onChange={e => setForm(p => ({ ...p, price_list_version: e.target.value }))}>
-              <MenuItem value="">â€”</MenuItem>
+          <FormControl size="small" fullWidth><InputLabel>نسخه</InputLabel>
+            <Select value={form.price_list_version || ''} label="نسخه" onChange={e => setForm(p => ({ ...p, price_list_version: e.target.value }))}>
+              <MenuItem value="">—</MenuItem>
               {versionList.map(v => <MenuItem key={v.id} value={v.id}>{v.version}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField size="small" label="ط±ظˆط´ ظ‚غŒظ…طھâ€Œع¯ط°ط§ط±غŒ" value={form.pricing_method || ''} onChange={e => setForm(p => ({ ...p, pricing_method: e.target.value }))} />
+          <TextField size="small" label="روش قیمت‌گذاری" value={form.pricing_method || ''} onChange={e => setForm(p => ({ ...p, pricing_method: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" onClick={() => save.mutate({ contract: contractId, ...form })}
-            sx={{ background: 'linear-gradient(135deg,#f59e0b,#8b5cf6)' }}>ط°ط®غŒط±ظ‡</Button>
+            sx={{ background: 'linear-gradient(135deg,#f59e0b,#8b5cf6)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Paper>
@@ -331,52 +331,52 @@ const PriceItemManager = () => {
   return (
     <Paper sx={{ ...glassPaper, p: 2 }}>
       <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2, flexWrap: 'wrap' }}>
-        <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§</InputLabel>
-          <Select value={priceListId || ''} label="ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§" onChange={e => { setPriceListId(e.target.value); setVersionId(''); setChapterId(''); }}>
+        <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>فهرست‌بها</InputLabel>
+          <Select value={priceListId || ''} label="فهرست‌بها" onChange={e => { setPriceListId(e.target.value); setVersionId(''); setChapterId(''); }}>
             {priceLists.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
           </Select>
         </FormControl>
-        <FormControl size="small" sx={{ minWidth: 140 }}><InputLabel>ظ†ط³ط®ظ‡</InputLabel>
-          <Select value={versionId || ''} label="ظ†ط³ط®ظ‡" onChange={e => { setVersionId(e.target.value); setChapterId(''); }}>
+        <FormControl size="small" sx={{ minWidth: 140 }}><InputLabel>نسخه</InputLabel>
+          <Select value={versionId || ''} label="نسخه" onChange={e => { setVersionId(e.target.value); setChapterId(''); }}>
             {versionList.map(v => <MenuItem key={v.id} value={v.id}>{v.version}</MenuItem>)}
           </Select>
         </FormControl>
-        <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>ظپطµظ„</InputLabel>
-          <Select value={chapterId || ''} label="ظپطµظ„" onChange={e => setChapterId(e.target.value)}>
+        <FormControl size="small" sx={{ minWidth: 160 }}><InputLabel>فصل</InputLabel>
+          <Select value={chapterId || ''} label="فصل" onChange={e => setChapterId(e.target.value)}>
             {chapterList.map(ch => <MenuItem key={ch.id} value={ch.id}>{ch.code} - {ch.name}</MenuItem>)}
           </Select>
         </FormControl>
         <Button size="small" startIcon={<AddIcon />} variant="outlined" disabled={!chapterId}
-          onClick={() => { setForm({ chapter: chapterId }); setDialog(true); }}>ط§ظپط²ظˆط¯ظ† ط±ط¯غŒظپ</Button>
+          onClick={() => { setForm({ chapter: chapterId }); setDialog(true); }}>افزودن ردیف</Button>
       </Stack>
 
       <Stack spacing={0.75}>
         {itemList.map(it => (
           <Paper key={it.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box sx={{ flex: 1 }}>
-              <Typography variant="body2" fontWeight={700}>{it.code} â€” {it.description}</Typography>
-              <Typography variant="caption" color="textSecondary">{formatPersianNumber(it.price)} / {it.unit || 'â€”'}</Typography>
+              <Typography variant="body2" fontWeight={700}>{it.code} — {it.description}</Typography>
+              <Typography variant="caption" color="textSecondary">{formatPersianNumber(it.price)} / {it.unit || '—'}</Typography>
             </Box>
-            <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) remove.mutate(it.id); }}><DeleteIcon fontSize="small" /></IconButton>
+            <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) remove.mutate(it.id); }}><DeleteIcon fontSize="small" /></IconButton>
           </Paper>
         ))}
-        {itemList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ط±ط¯غŒظپغŒ ظ†غŒط³طھ</Typography>}
+        {itemList.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">ردیفی نیست</Typography>}
       </Stack>
 
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>ط±ط¯غŒظپ ظپظ‡ط±ط³طھâ€Œط¨ظ‡ط§</DialogTitle>
+        <DialogTitle>ردیف فهرست‌بها</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField size="small" label="ع©ط¯" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
-          <TextField size="small" label="ط´ط±ط­" value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          <TextField size="small" label="کد" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} />
+          <TextField size="small" label="شرح" value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
           <Grid container spacing={1.5}>
-            <Grid item xs={6}><TextField size="small" label="ظˆط§ط­ط¯" value={form.unit || ''} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} /></Grid>
-            <Grid item xs={6}><TextField size="small" label="ظ†ط±ط®" type="number" value={form.price ?? ''} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} /></Grid>
+            <Grid item xs={6}><TextField size="small" label="واحد" value={form.unit || ''} onChange={e => setForm(p => ({ ...p, unit: e.target.value }))} /></Grid>
+            <Grid item xs={6}><TextField size="small" label="نرخ" type="number" value={form.price ?? ''} onChange={e => setForm(p => ({ ...p, price: e.target.value }))} /></Grid>
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" onClick={() => save.mutate({ ...form, price: Number(form.price) || 0 })}
-            sx={{ background: 'linear-gradient(135deg,#f59e0b,#8b5cf6)' }}>ط°ط®غŒط±ظ‡</Button>
+            sx={{ background: 'linear-gradient(135deg,#f59e0b,#8b5cf6)' }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Paper>

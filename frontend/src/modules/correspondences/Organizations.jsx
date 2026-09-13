@@ -18,14 +18,14 @@ import { PRIORITIES, PRIORITY_LABELS, PRIORITY_COLORS } from './config';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
 
 const LETTER_TYPES = [
-  { value: 'notice', label: 'ط§ط·ظ„ط§ط¹ ط±ط³ط§ظ†غŒ' },
-  { value: 'edict', label: 'ط§ط¨ظ„ط§ط؛' },
-  { value: 'seizure', label: 'ط¨ط§ط²ط¯ط§ط´طھ ظ†ط§ظ…ظ‡' },
-  { value: 'summons', label: 'ط§ط­ط¶ط§ط±غŒظ‡' },
-  { value: 'warning', label: 'ظ‡ط´ط¯ط§ط± / طھط°ع©ط±' },
-  { value: 'request', label: 'ط¯ط±ط®ظˆط§ط³طھ' },
-  { value: 'response', label: 'ظ¾ط§ط³ط®' },
-  { value: 'other', label: 'ط³ط§غŒط±' },
+  { value: 'notice', label: 'اطلاع رسانی' },
+  { value: 'edict', label: 'ابلاغ' },
+  { value: 'seizure', label: 'بازداشت نامه' },
+  { value: 'summons', label: 'احضاریه' },
+  { value: 'warning', label: 'هشدار / تذکر' },
+  { value: 'request', label: 'درخواست' },
+  { value: 'response', label: 'پاسخ' },
+  { value: 'other', label: 'سایر' },
 ];
 const LETTER_TYPE_LABELS = LETTER_TYPES.reduce((a, t) => { a[t.value] = t.label; return a; }, {});
 const LETTER_TYPE_COLORS = {
@@ -68,7 +68,7 @@ const Organizations = () => {
       queryClient.invalidateQueries({ queryKey: ['organizational-letters'] });
       setOpen(false); setEditing(null); setForm({}); setFile(null); setError('');
     },
-    onError: (e) => setError(e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡'),
+    onError: (e) => setError(e.response?.data?.error || 'خطا در ذخیره'),
   });
 
   const deleteMutation = useMutation({
@@ -89,12 +89,12 @@ const Organizations = () => {
         background: `linear-gradient(135deg, ${color}0d, ${color}04)`,
         border: `1px solid ${color}20`, backdropFilter: 'blur(14px)', borderRadius: '10px',
       }}>
-        <TextField size="small" placeholder="ط¬ط³طھط¬ظˆغŒ ظ…ع©ط§طھط¨ظ‡ ط³ط§ط²ظ…ط§ظ†غŒ..." value={search} onChange={e => setSearch(e.target.value)}
+        <TextField size="small" placeholder="جستجوی مکاتبه سازمانی..." value={search} onChange={e => setSearch(e.target.value)}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
           sx={{ flex: 1, minWidth: 220 }} />
         <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
           sx={{ background: `linear-gradient(135deg, ${color}, ${color}90)` }}>
-          ط§ظپط²ظˆط¯ظ† ظ…ع©ط§طھط¨ظ‡
+          افزودن مکاتبه
         </Button>
       </Paper>
 
@@ -103,7 +103,7 @@ const Organizations = () => {
         <Box sx={{ p: 6, textAlign: 'center' }}><CircularProgress size={24} /></Box>
       ) : filtered.length === 0 ? (
         <Paper sx={{ p: 5, textAlign: 'center', background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', borderRadius: '10px' }}>
-          <Typography color="textSecondary">ظ…ع©ط§طھط¨ظ‡ ط³ط§ط²ظ…ط§ظ†غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
+          <Typography color="textSecondary">مکاتبه سازمانی ثبت نشده است</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -123,7 +123,7 @@ const Organizations = () => {
                   </Avatar>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="subtitle1" fontWeight={700} noWrap>{l.subject}</Typography>
-                    <Typography variant="caption" color="textSecondary" display="block">{l.organization_name || 'â€”'}</Typography>
+                    <Typography variant="caption" color="textSecondary" display="block">{l.organization_name || '—'}</Typography>
                   </Box>
                 </Box>
 
@@ -135,13 +135,13 @@ const Organizations = () => {
                 </Box>
 
                 <Typography variant="caption" color="textSecondary" display="block">
-                  ط´ظ…ط§ط±ظ‡: {toPersianDigits(l.number)} آ· طھط§ط±غŒط®: {toJalali(l.date)}
+                  شماره: {toPersianDigits(l.number)} · تاریخ: {toJalali(l.date)}
                 </Typography>
 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1, pt: 1, borderTop: `1px solid ${color}18` }}>
                   {l.file ? (
-                    <Tooltip title="ط¨ط§ط² ع©ط±ط¯ظ† ظ¾غŒظˆط³طھ"><Chip size="small" label="ظ¾غŒظˆط³طھ ط¯ط§ط±ط¯" variant="outlined" component="a" href={l.file} target="_blank" clickable sx={{ color, borderColor: `${color}55` }} /></Tooltip>
-                  ) : <Typography variant="caption" color="textSecondary">ط¨ط¯ظˆظ† ظ¾غŒظˆط³طھ</Typography>}
+                    <Tooltip title="باز کردن پیوست"><Chip size="small" label="پیوست دارد" variant="outlined" component="a" href={l.file} target="_blank" clickable sx={{ color, borderColor: `${color}55` }} /></Tooltip>
+                  ) : <Typography variant="caption" color="textSecondary">بدون پیوست</Typography>}
                   <Box sx={{ display: 'flex', gap: 0.25 }}>
                     <IconButton size="small" onClick={() => openEdit(l)}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => deleteMutation.mutate(l.id)}><DeleteIcon fontSize="small" /></IconButton>
@@ -156,48 +156,48 @@ const Organizations = () => {
       {/* Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color, background: `linear-gradient(135deg, ${color}10, transparent)` }}>
-          {editing ? 'ظˆغŒط±ط§غŒط´ ظ…ع©ط§طھط¨ظ‡ ط³ط§ط²ظ…ط§ظ†غŒ' : 'ط§ظپط²ظˆط¯ظ† ظ…ع©ط§طھط¨ظ‡ ط³ط§ط²ظ…ط§ظ†غŒ'}
+          {editing ? 'ویرایش مکاتبه سازمانی' : 'افزودن مکاتبه سازمانی'}
         </DialogTitle>
         <DialogContent>
           {error && <Typography color="error" variant="body2" sx={{ mb: 1 }}>{error}</Typography>}
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-            <TextField fullWidth size="small" label="ط´ظ…ط§ط±ظ‡ ظ†ط§ظ…ظ‡" value={form.number || ''} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} required />
-            <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ظ†ط§ظ…ظ‡" value={form.date} onChange={g => setForm(p => ({ ...p, date: g }))} />
+            <TextField fullWidth size="small" label="شماره نامه" value={form.number || ''} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} required />
+            <JalaliDatePicker fullWidth label="تاریخ نامه" value={form.date} onChange={g => setForm(p => ({ ...p, date: g }))} />
             <FormControl fullWidth size="small">
-              <InputLabel>ط³ط§ط²ظ…ط§ظ†</InputLabel>
-              <Select value={form.organization || ''} label="ط³ط§ط²ظ…ط§ظ†" onChange={e => setForm(p => ({ ...p, organization: e.target.value }))}>
+              <InputLabel>سازمان</InputLabel>
+              <Select value={form.organization || ''} label="سازمان" onChange={e => setForm(p => ({ ...p, organization: e.target.value }))}>
                 {(orgs || []).map(o => <MenuItem key={o.id} value={o.id}>{o.name}</MenuItem>)}
               </Select>
             </FormControl>
             <FormControl fullWidth size="small">
-              <InputLabel>ظ†ظˆط¹ ظ…ع©ط§طھط¨ظ‡</InputLabel>
-              <Select value={form.letter_type || 'notice'} label="ظ†ظˆط¹ ظ…ع©ط§طھط¨ظ‡" onChange={e => setForm(p => ({ ...p, letter_type: e.target.value }))}>
+              <InputLabel>نوع مکاتبه</InputLabel>
+              <Select value={form.letter_type || 'notice'} label="نوع مکاتبه" onChange={e => setForm(p => ({ ...p, letter_type: e.target.value }))}>
                 {LETTER_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
               </Select>
             </FormControl>
-            <TextField fullWidth size="small" label="ظ…ظˆط¶ظˆط¹" value={form.subject || ''} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} required />
+            <TextField fullWidth size="small" label="موضوع" value={form.subject || ''} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} required />
             <FormControl fullWidth size="small">
-              <InputLabel>ط§ظˆظ„ظˆغŒطھ</InputLabel>
-              <Select value={form.priority || 'normal'} label="ط§ظˆظ„ظˆغŒطھ" onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
+              <InputLabel>اولویت</InputLabel>
+              <Select value={form.priority || 'normal'} label="اولویت" onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}>
                 {PRIORITIES.map(p => <MenuItem key={p.value} value={p.value}>{p.label}</MenuItem>)}
               </Select>
             </FormControl>
-            <TextField fullWidth size="small" label="طھظˆط¶غŒط­ط§طھ" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+            <TextField fullWidth size="small" label="توضیحات" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
             <Box>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>ظپط§غŒظ„ ظ¾غŒظˆط³طھ (ط§ط®طھغŒط§ط±غŒ)</Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 0.5 }}>فایل پیوست (اختیاری)</Typography>
               <input id="org-letter-file" type="file" hidden onChange={e => setFile(e.target.files[0] || null)} />
               <Button variant="outlined" size="small" onClick={() => document.getElementById('org-letter-file').click()}>
-                {file ? file.name : (editing?.file ? 'طھط¹ظˆغŒط¶ ظپط§غŒظ„ ظ¾غŒظˆط³طھ' : 'ط§ظ†طھط®ط§ط¨ ظپط§غŒظ„ ظ¾غŒظˆط³طھ')}
+                {file ? file.name : (editing?.file ? 'تعویض فایل پیوست' : 'انتخاب فایل پیوست')}
               </Button>
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
+          <Button onClick={() => setOpen(false)}>انصراف</Button>
           <Button variant="contained" onClick={() => saveMutation.mutate(form)}
             sx={{ background: `linear-gradient(135deg, ${color}, ${color}90)` }}
             disabled={saveMutation.isLoading}>
-            {saveMutation.isLoading ? <CircularProgress size={20} /> : 'ط°ط®غŒط±ظ‡'}
+            {saveMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیره'}
           </Button>
         </DialogActions>
       </Dialog>
