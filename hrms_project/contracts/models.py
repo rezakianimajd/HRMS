@@ -147,7 +147,35 @@ class Statement(BaseModel):
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='statements', verbose_name=_('قرارداد'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره صورت‌وضعیت'))
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
-    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
+    # «مبلغ» = مبلغ تجمعی این صورت‌وضعیت (کارکرد کل تا این دوره)
+    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ تجمعی این صورت‌وضعیت (ریال)'))
+    # --- تفکیک کامل مالی صورت‌وضعیت ---
+    cumulative_previous_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('مبلغ تجمعی صورت‌وضعیت قبلی (ریال)'),
+    )
+    work_done = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('کارکرد دوره (ریال)'),
+    )
+    value_added_tax = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('اضافات - ارزش افزوده (ریال)'),
+    )
+    other_additions = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('سایر اضافات (ریال)'),
+    )
+    # کسورات به‌صورت آیتم‌های [{"title": "بیمه", "amount": 1000000, "note": ""}]
+    deductions = models.JSONField(default=list, blank=True, verbose_name=_('کسورات'))
+    deductions_total = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('جمع کسورات (ریال)'),
+    )
+    net_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('مبلغ قابل پرداخت (ریال)'),
+    )
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 

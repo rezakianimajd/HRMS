@@ -69,9 +69,19 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 
 class StatementSerializer(serializers.ModelSerializer):
+    contract_number = serializers.CharField(source='contract.number', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+
     class Meta:
         model = Statement
-        fields = ['id', 'contract', 'number', 'date', 'amount', 'is_approved', 'description']
+        fields = [
+            'id', 'contract', 'contract_number', 'contract_subject',
+            'number', 'date', 'amount',
+            'cumulative_previous_amount', 'work_done',
+            'value_added_tax', 'other_additions',
+            'deductions', 'deductions_total', 'net_amount',
+            'is_approved', 'description',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
