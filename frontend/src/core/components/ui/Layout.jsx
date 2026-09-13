@@ -364,8 +364,8 @@ const Layout = ({ children }) => {
         }}
       >
         <Box sx={{ p: { xs: 2, md: 3 } }}>
-          <WorkspaceTabs />
           {children}
+          <WorkspaceTabs />
         </Box>
       </Box>
     </Box>

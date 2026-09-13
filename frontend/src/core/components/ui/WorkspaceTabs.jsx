@@ -25,7 +25,7 @@ const WorkspaceTabs = () => {
         gap: 0.75,
         px: 2,
         py: 1,
-        mb: 2,
+        mt: 2,
         overflowX: 'auto',
         background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.28))',
         backdropFilter: 'blur(18px)',
