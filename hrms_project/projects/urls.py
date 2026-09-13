@@ -4,6 +4,9 @@ from projects.views import (
     ProjectTypeViewSet, ProjectViewSet, ProjectPhaseViewSet, WBSNodeViewSet,
     WBSTemplateViewSet, CBSNodeViewSet, ResourceCategoryViewSet, ResourceViewSet,
     CostSourceViewSet, OBSNodeViewSet,
+    PriceListViewSet, PriceListVersionViewSet, PriceListChapterViewSet,
+    PriceListItemViewSet, ContractItemViewSet, ContractWBSViewSet,
+    ContractPriceBasisViewSet,
 )
 
 router = DefaultRouter()
@@ -17,6 +20,13 @@ router.register(r'resource-categories', ResourceCategoryViewSet, basename='resou
 router.register(r'resources', ResourceViewSet, basename='resource')
 router.register(r'cost-sources', CostSourceViewSet, basename='cost-source')
 router.register(r'obs-nodes', OBSNodeViewSet, basename='obs-node')
+router.register(r'price-lists', PriceListViewSet, basename='price-list')
+router.register(r'price-list-versions', PriceListVersionViewSet, basename='price-list-version')
+router.register(r'price-list-chapters', PriceListChapterViewSet, basename='price-list-chapter')
+router.register(r'price-list-items', PriceListItemViewSet, basename='price-list-item')
+router.register(r'contract-items', ContractItemViewSet, basename='contract-item')
+router.register(r'contract-wbs', ContractWBSViewSet, basename='contract-wbs')
+router.register(r'contract-price-bases', ContractPriceBasisViewSet, basename='contract-price-basis')
 
 urlpatterns = [
     path('', include(router.urls)),

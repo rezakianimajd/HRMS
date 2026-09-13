@@ -68,6 +68,140 @@ class Project(BaseModel):
         return f'{self.code} - {self.name}'
 
 
+# =============================================================================
+# Phase 1 — Commercial structure: Price Lists + Contract items & mappings.
+#
+# NOTE: Amendment & Guarantee already exist in `contracts` as `Addendum` and
+# `Guarantee`. To avoid duplicate models they are intentionally NOT recreated
+# here; they will be linked/reused in later phases.
+# =============================================================================
+
+class PriceList(BaseModel):
+    """A reference price basis (NOT a WBS, NOT a contract)."""
+    name = models.CharField(max_length=200, verbose_name=_('نام فهرست‌بها'))
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    discipline = models.CharField(max_length=100, blank=True, verbose_name=_('رشته / دیسیپلین'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('فهرست‌بها')
+        verbose_name_plural = _('فهرست‌بهاها')
+        unique_together = [('company', 'code')]
+        ordering = ['code']
+
+    def __str__(self):
+        return f'{self.code} - {self.name}'
+
+
+class PriceListVersion(BaseModel):
+    """Year/version of a price list."""
+    price_list = models.ForeignKey(PriceList, on_delete=models.CASCADE, related_name='versions', verbose_name=_('فهرست‌بها'))
+    version = models.CharField(max_length=50, verbose_name=_('نسخه'))
+    year = models.PositiveIntegerField(blank=True, null=True, verbose_name=_('سال'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('نسخه فهرست‌بها')
+        verbose_name_plural = _('نسخه‌های فهرست‌بها')
+        unique_together = [('price_list', 'version')]
+        ordering = ['price_list', '-year', 'version']
+
+    def __str__(self):
+        return f'{self.price_list.code} - {self.version}'
+
+
+class PriceListChapter(BaseModel):
+    """A chapter/group inside a price list version."""
+    version = models.ForeignKey(PriceListVersion, on_delete=models.CASCADE, related_name='chapters', verbose_name=_('نسخه'))
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    name = models.CharField(max_length=200, verbose_name=_('عنوان'))
+
+    class Meta:
+        verbose_name = _('فصل فهرست‌بها')
+        verbose_name_plural = _('فصل‌های فهرست‌بها')
+        unique_together = [('version', 'code')]
+        ordering = ['version', 'code']
+
+    def __str__(self):
+        return f'{self.version} :: {self.code} {self.name}'
+
+
+class PriceListItem(BaseModel):
+    """A single priced item in a price list chapter."""
+    chapter = models.ForeignKey(PriceListChapter, on_delete=models.CASCADE, related_name='items', verbose_name=_('فصل'))
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    description = models.TextField(blank=True, verbose_name=_('شرح'))
+    unit = models.CharField(max_length=30, blank=True, verbose_name=_('واحد'))
+    price = models.DecimalField(max_digits=18, decimal_places=4, default=0, verbose_name=_('نرخ'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('ردیف فهرست‌بها')
+        verbose_name_plural = _('ردیف‌های فهرست‌بها')
+        unique_together = [('chapter', 'code')]
+        ordering = ['chapter', 'code']
+
+    def __str__(self):
+        return f'{self.code} - {self.description[:50]}'
+
+
+class ContractItem(BaseModel):
+    """An item / BOQ line under an existing contracts.Contract."""
+    contract = models.ForeignKey(
+        'contracts.Contract', on_delete=models.CASCADE, related_name='project_items',
+        verbose_name=_('قرارداد'),
+    )
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    description = models.TextField(blank=True, verbose_name=_('شرح'))
+    unit = models.CharField(max_length=30, blank=True, verbose_name=_('واحد'))
+    quantity = models.DecimalField(max_digits=18, decimal_places=4, default=0, verbose_name=_('مقدار'))
+    unit_price = models.DecimalField(max_digits=18, decimal_places=4, default=0, verbose_name=_('نرخ واحد'))
+    amount = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('مبلغ'))
+
+    class Meta:
+        verbose_name = _('ردیف قرارداد / BOQ')
+        verbose_name_plural = _('ردیف‌های قرارداد / BOQ')
+        unique_together = [('contract', 'code')]
+        ordering = ['contract', 'code']
+
+    def __str__(self):
+        return f'{self.contract_id} / {self.code}'
+
+
+class ContractWBS(BaseModel):
+    """M2M mapping linking a Contract to WBS nodes (a contract may span multiple WBS)."""
+    contract = models.ForeignKey(
+        'contracts.Contract', on_delete=models.CASCADE, related_name='wbs_links', verbose_name=_('قرارداد'),
+    )
+    wbs = models.ForeignKey('projects.WBSNode', on_delete=models.CASCADE, related_name='contract_links', verbose_name=_('گره WBS'))
+
+    class Meta:
+        verbose_name = _('نگاشت قرارداد-WBS')
+        verbose_name_plural = _('نگاشت‌های قرارداد-WBS')
+        unique_together = [('contract', 'wbs')]
+
+    def __str__(self):
+        return f'{self.contract_id} ↔ {self.wbs_id}'
+
+
+class ContractPriceBasis(BaseModel):
+    """M2M intermediary linking a Contract to a Price List / Pricing Method."""
+    contract = models.ForeignKey(
+        'contracts.Contract', on_delete=models.CASCADE, related_name='price_bases', verbose_name=_('قرارداد'),
+    )
+    price_list = models.ForeignKey(PriceList, on_delete=models.PROTECT, null=True, blank=True, related_name='contract_bases', verbose_name=_('فهرست‌بها'))
+    price_list_version = models.ForeignKey(PriceListVersion, on_delete=models.SET_NULL, null=True, blank=True, related_name='contract_bases', verbose_name=_('نسخه فهرست‌بها'))
+    pricing_method = models.CharField(max_length=50, blank=True, verbose_name=_('روش قیمت‌گذاری'))
+
+    class Meta:
+        verbose_name = _('مبنای قیمت قرارداد')
+        verbose_name_plural = _('مبناهای قیمت قرارداد')
+        ordering = ['contract']
+
+    def __str__(self):
+        return f'{self.contract_id} → {self.price_list or self.pricing_method}'
+
+
 class ProjectPhase(BaseModel):
     """Lifecycle phase of a project (initiation, design, tender, ...)."""
     project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name='phases', verbose_name=_('پروژه'))

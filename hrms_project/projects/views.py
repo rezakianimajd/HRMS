@@ -5,12 +5,17 @@ from rest_framework.response import Response
 from projects.models import (
     ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, CBSNode,
     ResourceCategory, Resource, CostSource, OBSNode,
+    PriceList, PriceListVersion, PriceListChapter, PriceListItem,
+    ContractItem, ContractWBS, ContractPriceBasis,
 )
 from projects.serializers import (
     ProjectTypeSerializer, ProjectSerializer, ProjectPhaseSerializer,
     WBSNodeSerializer, WBSTemplateSerializer, CBSNodeSerializer,
     ResourceCategorySerializer, ResourceSerializer, CostSourceSerializer,
     OBSNodeSerializer,
+    PriceListSerializer, PriceListVersionSerializer, PriceListChapterSerializer,
+    PriceListItemSerializer, ContractItemSerializer, ContractWBSSerializer,
+    ContractPriceBasisSerializer,
 )
 
 
@@ -163,3 +168,90 @@ class OBSNodeViewSet(BaseProjectViewSet):
         if project_id:
             roots = roots.filter(project_id=project_id)
         return Response(OBSNodeSerializer(roots, many=True).data)
+
+
+# =============================================================================
+# Phase 1 — Commercial structure view sets
+# =============================================================================
+
+class PriceListViewSet(BaseProjectViewSet):
+    serializer_class = PriceListSerializer
+    queryset = PriceList.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code', 'name', 'discipline']
+    ordering = ['code']
+
+
+class PriceListVersionViewSet(BaseProjectViewSet):
+    serializer_class = PriceListVersionSerializer
+    queryset = PriceListVersion.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('price_list')
+        price_list_id = self.request.query_params.get('price_list')
+        if price_list_id:
+            qs = qs.filter(price_list_id=price_list_id)
+        return qs
+
+
+class PriceListChapterViewSet(BaseProjectViewSet):
+    serializer_class = PriceListChapterSerializer
+    queryset = PriceListChapter.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().prefetch_related('items')
+        version_id = self.request.query_params.get('version')
+        if version_id:
+            qs = qs.filter(version_id=version_id)
+        return qs
+
+
+class PriceListItemViewSet(BaseProjectViewSet):
+    serializer_class = PriceListItemSerializer
+    queryset = PriceListItem.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        chapter_id = self.request.query_params.get('chapter')
+        if chapter_id:
+            qs = qs.filter(chapter_id=chapter_id)
+        return qs
+
+
+class ContractItemViewSet(BaseProjectViewSet):
+    serializer_class = ContractItemSerializer
+    queryset = ContractItem.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code', 'description']
+    ordering = ['contract', 'code']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('contract')
+        contract_id = self.request.query_params.get('contract')
+        if contract_id:
+            qs = qs.filter(contract_id=contract_id)
+        return qs
+
+
+class ContractWBSViewSet(BaseProjectViewSet):
+    serializer_class = ContractWBSSerializer
+    queryset = ContractWBS.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('wbs')
+        contract_id = self.request.query_params.get('contract')
+        if contract_id:
+            qs = qs.filter(contract_id=contract_id)
+        return qs
+
+
+class ContractPriceBasisViewSet(BaseProjectViewSet):
+    serializer_class = ContractPriceBasisSerializer
+    queryset = ContractPriceBasis.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('price_list', 'price_list_version')
+        contract_id = self.request.query_params.get('contract')
+        if contract_id:
+            qs = qs.filter(contract_id=contract_id)
+        return qs
