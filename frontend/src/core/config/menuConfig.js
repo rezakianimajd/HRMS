@@ -224,6 +224,57 @@ const settingsMenu = [
   },
 ];
 
+const projectsMenu = [
+  {
+    id: 'projects-home',
+    title: 'خانه',
+    color: '#8b5cf6',
+    items: [
+      { id: 'projects', title: 'پروژه‌ها', icon: <AccountTreeIcon />, path: '/projects', color: '#8b5cf6', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'projects-structure',
+    title: 'ساختارها',
+    color: '#3b82f6',
+    items: [
+      comingSoon('/projects/wbs', 'projects-wbs', 'WBS', <AccountTreeIcon />, '#8b5cf6'),
+      comingSoon('/projects/cbs', 'projects-cbs', 'CBS', <CategoryIcon />, '#0ea5e9'),
+      comingSoon('/projects/obs', 'projects-obs', 'OBS', <AdminPanelSettingsIcon />, '#ef4444'),
+      comingSoon('/projects/rbs', 'projects-rbs', 'RBS / منابع', <Inventory2Icon />, '#10b981'),
+    ],
+  },
+  {
+    id: 'projects-commercial',
+    title: 'تجاری و قراردادها',
+    color: '#f59e0b',
+    items: [
+      comingSoon('/projects/price-lists', 'projects-price-lists', 'فهرست‌بها', <ReceiptLongIcon />, '#f59e0b'),
+      comingSoon('/projects/contracts', 'projects-contracts', 'قراردادها', <HistoryEduIcon />, '#f97316'),
+      comingSoon('/projects/progress', 'projects-progress', 'صورت‌وضعیت‌ها', <BarChartOutlinedIcon />, '#6366f1'),
+    ],
+  },
+  {
+    id: 'projects-cost',
+    title: 'بهای تمام‌شده',
+    color: '#ef4444',
+    items: [
+      comingSoon('/projects/cost-sources', 'projects-cost-sources', 'منشأ هزینه', <PaymentsIcon />, '#f59e0b'),
+      comingSoon('/projects/cost-transactions', 'projects-cost-transactions', 'تراکنش‌های هزینه', <ReceiptIcon />, '#ef4444'),
+      comingSoon('/projects/commitments', 'projects-commitments', 'تعهدات', <LockIcon />, '#8b5cf6'),
+    ],
+  },
+  {
+    id: 'projects-control',
+    title: 'کنترل پروژه',
+    color: '#10b981',
+    items: [
+      comingSoon('/projects/budget', 'projects-budget', 'بودجه', <AssessmentIcon />, '#10b981'),
+      comingSoon('/projects/reports', 'projects-reports', 'گزارش‌ها', <InsightsIcon />, '#6366f1'),
+    ],
+  },
+];
+
 const contractsMenu = [
   {
     id: 'home',
@@ -298,6 +349,7 @@ const contractsMenu = [
 export function getMenuForApp(appSlug) {
   if (appSlug === 'contracts') return contractsMenu;
   if (appSlug === 'settings') return settingsMenu;
+  if (appSlug === 'projects') return projectsMenu;
   return menuConfig;
 }
 
