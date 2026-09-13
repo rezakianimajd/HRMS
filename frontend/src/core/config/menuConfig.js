@@ -259,7 +259,7 @@ const projectsMenu = [
     title: 'بهای تمام‌شده',
     color: '#ef4444',
     items: [
-      comingSoon('/projects/cost-sources', 'projects-cost-sources', 'منشأ هزینه', <PaymentsIcon />, '#f59e0b'),
+      { id: 'projects-cost-dashboard', title: 'کنترل هزینه', icon: <ReceiptIcon />, path: '/projects/cost', color: '#ef4444', primary: false, ready: true },
       comingSoon('/projects/cost-transactions', 'projects-cost-transactions', 'تراکنش‌های هزینه', <ReceiptIcon />, '#ef4444'),
       comingSoon('/projects/commitments', 'projects-commitments', 'تعهدات', <LockIcon />, '#8b5cf6'),
     ],

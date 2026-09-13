@@ -49,6 +49,7 @@ import GuaranteesPage from './pages/GuaranteesPage';
 import ProjectsPage from './pages/ProjectsPage';
 import PriceListPage from './pages/PriceListPage';
 import CommercialPage from './pages/CommercialPage';
+import CostDashboardPage from './pages/CostDashboardPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -132,6 +133,7 @@ const AppRoutes = () => {
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
       <Route path="/projects/price-lists" element={<ProtectedLayout><PriceListPage /></ProtectedLayout>} />
       <Route path="/projects/commercial" element={<ProtectedLayout><CommercialPage /></ProtectedLayout>} />
+      <Route path="/projects/cost" element={<ProtectedLayout><CostDashboardPage /></ProtectedLayout>} />
       <Route path="/management-analytics" element={<ProtectedLayout><ManagementAnalyticsPage /></ProtectedLayout>} />
       <Route path="/bale-messaging" element={<ProtectedLayout><BaleMessagingPage /></ProtectedLayout>} />
       <Route path="/recruitment" element={<ProtectedLayout><RecruitmentPage /></ProtectedLayout>} />
