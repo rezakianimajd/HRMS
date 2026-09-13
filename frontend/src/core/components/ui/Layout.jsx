@@ -19,8 +19,10 @@ import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
 import NotificationBell from './NotificationBell';
 import AppSwitcher from './AppSwitcher';
+import WorkspaceTabs from './WorkspaceTabs';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
 import { useApplication } from '../../context/ApplicationContext';
+import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 
 const DRAWER_WIDTH = 290;
 const MINI_WIDTH = 82;
@@ -32,11 +34,11 @@ const Layout = ({ children }) => {
   const { user, logout } = useAuth();
   const { currentCompany } = useCompany();
   const { currentApp } = useApplication();
+  const { openTab } = useWorkspaceTabs();
   const menu = getMenuForApp(currentApp?.slug);
   const [collapsed, setCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState(() => {
-    // Auto-open the group of the active route on first render
     const path = window.location.pathname;
     const init = {};
     menu.forEach((g) => {
@@ -45,14 +47,12 @@ const Layout = ({ children }) => {
     return init;
   });
 
-  // Fetch company profile for logo & name
   const { data: profile } = useQuery({
     queryKey: ['company-profile-layout'],
     queryFn: () => axiosInstance.get('/settings/company-profile/').then(r => r.data).catch(() => null),
     staleTime: 0,
   });
 
-  // Exclusive accordion toggle: opening one group closes the others.
   const toggleGroup = (id) => {
     setExpandedGroups((prev) => {
       const currentlyOpen = !!prev[id];
@@ -65,7 +65,6 @@ const Layout = ({ children }) => {
   };
 
   useEffect(() => {
-    // Keep a single group open that matches the active route (exclusive).
     let activeGroupId = null;
     menu.forEach((g) => {
       const isActive = g.items.some(
@@ -100,9 +99,32 @@ const Layout = ({ children }) => {
   const isActive = (path) =>
     location.pathname === path || location.pathname.startsWith(`${path}/`);
 
+  const findMenuMeta = (path) => {
+    const allMenus = [menu, menuConfig];
+    for (const m of allMenus) {
+      for (const g of m) {
+        for (const it of g.items) {
+          if (it.path === path) return { title: it.title, color: it.color };
+        }
+      }
+    }
+    return { title: path, color: '#6366f1' };
+  };
+
+  const goTo = (path) => {
+    const meta = findMenuMeta(path);
+    openTab({ path, title: meta.title, color: meta.color });
+    navigate(path);
+  };
+
+  useEffect(() => {
+    if (!location.pathname || location.pathname === '/coming-soon') return;
+    const meta = findMenuMeta(location.pathname);
+    openTab({ path: location.pathname, title: meta.title, color: meta.color });
+  }, [location.pathname]);
+
   const drawerContent = (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* Company header */}
       <Box sx={{
         p: 2,
         borderBottom: '1px solid rgba(99,102,241,0.12)',
@@ -135,7 +157,6 @@ const Layout = ({ children }) => {
         )}
       </Box>
 
-      {/* Navigation — grouped work spaces */}
       <List sx={{ flex: 1, overflowY: 'auto', py: 1, px: 1 }}>
         {menu.map((group) => {
           const groupActive = group.items.some((i) => isActive(i.path));
@@ -144,7 +165,6 @@ const Layout = ({ children }) => {
 
           return (
             <Box key={group.id} sx={{ mb: 0.5 }}>
-              {/* Section header */}
               <Box
                 onClick={() => !collapsed && toggleGroup(group.id)}
                 sx={{
@@ -156,7 +176,6 @@ const Layout = ({ children }) => {
                   '&:hover': { bgcolor: collapsed ? 'transparent' : `${iconColor}14` },
                 }}
               >
-                {/* Colored accent bar */}
                 {!collapsed && (
                   <Box
                     sx={{
@@ -192,7 +211,6 @@ const Layout = ({ children }) => {
                 )}
               </Box>
 
-              {/* Items */}
               {(collapsed || open) && group.items.map((item) => {
                 const active = isActive(item.path);
                 const isPlaceholder = item.ready === false;
@@ -205,7 +223,7 @@ const Layout = ({ children }) => {
                           if (item.ready === false) {
                             navigate('/coming-soon', { state: { title: item.title } });
                           } else {
-                            navigate(item.path);
+                            goTo(item.path);
                           }
                         }}
                         sx={{
@@ -265,7 +283,6 @@ const Layout = ({ children }) => {
         })}
       </List>
 
-      {/* Bottom: user + collapse */}
       <Box sx={{ borderTop: '1px solid rgba(99,102,241,0.1)', p: collapsed ? 1 : 1.5 }}>
         <Box sx={{
           display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
@@ -302,8 +319,7 @@ const Layout = ({ children }) => {
   );
 
   return (
-    <Box sx={{ display: 'flex' }}>
-      {/* Mobile drawer */}
+    <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
       <Drawer
         variant="temporary"
         anchor="right"
@@ -318,7 +334,6 @@ const Layout = ({ children }) => {
         {drawerContent}
       </Drawer>
 
-      {/* Desktop collapsible drawer */}
       <Drawer
         variant="permanent"
         anchor="right"
@@ -338,9 +353,20 @@ const Layout = ({ children }) => {
         {drawerContent}
       </Drawer>
 
-      {/* Main content */}
-      <Box component="main" sx={{ flexGrow: 1, p: { xs: 2, md: 3 }, minWidth: 0 }}>
-        {children}
+      <Box
+        component="main"
+        sx={{
+          flexGrow: 1,
+          minWidth: 0,
+          height: '100vh',
+          overflowY: 'auto',
+          overflowX: 'hidden',
+        }}
+      >
+        <Box sx={{ p: { xs: 2, md: 3 } }}>
+          <WorkspaceTabs />
+          {children}
+        </Box>
       </Box>
     </Box>
   );
