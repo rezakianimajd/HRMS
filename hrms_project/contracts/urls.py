@@ -4,6 +4,7 @@ from contracts.views import (
     ContractPartyViewSet, ContractViewSet, ContractDocumentViewSet,
     InvoiceViewSet, StatementViewSet, AddendumViewSet, GuaranteeViewSet,
     PaymentViewSet, ContractDisputeViewSet,
+    ContractTypeMasterViewSet, SupplierEvaluationViewSet,
 )
 
 router = DefaultRouter()
@@ -16,6 +17,8 @@ router.register(r'contract-addendums', AddendumViewSet, basename='contract-adden
 router.register(r'contract-guarantees', GuaranteeViewSet, basename='contract-guarantee')
 router.register(r'contract-payments', PaymentViewSet, basename='contract-payment')
 router.register(r'contract-disputes', ContractDisputeViewSet, basename='contract-dispute')
+router.register(r'contract-types-master', ContractTypeMasterViewSet, basename='contract-type-master')
+router.register(r'supplier-evaluations', SupplierEvaluationViewSet, basename='supplier-evaluation')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1,7 +1,7 @@
 from django.contrib import admin
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement, Addendum, Guarantee,
-    Payment, ContractDispute,
+    Payment, ContractDispute, ContractTypeMaster, SupplierEvaluation,
 )
 
 
@@ -66,3 +66,16 @@ class ContractDisputeAdmin(admin.ModelAdmin):
     list_display = ['title', 'contract', 'dispute_type', 'severity', 'status', 'claim_amount', 'opened_date']
     list_filter = ['dispute_type', 'severity', 'status']
     search_fields = ['title', 'description']
+
+
+@admin.register(ContractTypeMaster)
+class ContractTypeMasterAdmin(admin.ModelAdmin):
+    list_display = ['name', 'code', 'is_active']
+    search_fields = ['name', 'code']
+
+
+@admin.register(SupplierEvaluation)
+class SupplierEvaluationAdmin(admin.ModelAdmin):
+    list_display = ['party', 'evaluation_date', 'period', 'recommendation', 'evaluator']
+    list_filter = ['recommendation']
+    search_fields = ['party__name', 'period']

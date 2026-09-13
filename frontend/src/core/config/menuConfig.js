@@ -314,7 +314,7 @@ const contractsMenu = [
     color: '#0ea5e9',
     items: [
       { id: 'contract-parties-list', title: 'پیمانکاران و فروشندگان', icon: <StorefrontIcon />, path: '/contract-parties', color: '#0ea5e9', primary: false, ready: true },
-      comingSoon('/contract-parties-eval', 'contract-parties-eval', 'ارزیابی تأمین‌کنندگان', <AssessmentIcon />, '#f97316'),
+      { id: 'contract-parties-eval', title: 'ارزیابی تأمین‌کنندگان', icon: <AssessmentIcon />, path: '/contracts-settings', color: '#f97316', primary: false, ready: true },
     ],
   },
   {
@@ -332,8 +332,8 @@ const contractsMenu = [
     title: 'پیکربندی',
     color: '#64748b',
     items: [
+      { id: 'contracts-settings', title: 'انواع قرارداد و ارزیابی', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
       comingSoon('/contracts-workflow', 'contracts-workflow', 'گردشکار تأیید', <SwapHorizIcon />, '#6366f1'),
-      comingSoon('/contracts-types', 'contracts-types', 'انواع قرارداد', <CategoryIcon />, '#14b8a6'),
     ],
   },
   {

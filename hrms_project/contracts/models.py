@@ -301,3 +301,65 @@ class ContractDispute(BaseModel):
 
     def __str__(self):
         return f'{self.get_dispute_type_display()} - {self.title}'
+
+
+class ContractTypeMaster(BaseModel):
+    """Master data: contract type (independent of pricing method)."""
+    name = models.CharField(max_length=150, verbose_name=_('عنوان'))
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('نوع قرارداد')
+        verbose_name_plural = _('انواع قرارداد')
+        unique_together = [('company', 'code')]
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class SupplierEvaluation(BaseModel):
+    """ارزیابی تأمین‌کننده/پیمانکار بر اساس معیارها و امتیاز."""
+
+    class Recommendation(models.TextChoices):
+        APPROVED = 'approved', _('تأییدشده')
+        CONDITIONAL = 'conditional', _('تأیید مشروط')
+        SUSPENDED = 'suspended', _('تعلیق')
+        BLACKLISTED = 'blacklisted', _('لیست سیاه')
+
+    party = models.ForeignKey(
+        ContractParty, on_delete=models.CASCADE, related_name='evaluations', verbose_name=_('طرف قرارداد'),
+    )
+    contract = models.ForeignKey(
+        Contract, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='evaluations', verbose_name=_('قرارداد مرتبط'),
+    )
+    evaluation_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ ارزیابی'))
+    period = models.CharField(max_length=100, blank=True, verbose_name=_('دوره ارزیابی'))
+
+    # Score criteria (0-100)
+    quality_score = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('کیفیت (۰-۱۰۰)'))
+    delivery_score = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('تحویل به‌موقع (۰-۱۰۰)'))
+    price_score = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('قیمت (۰-۱۰۰)'))
+    cooperation_score = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('همکاری (۰-۱۰۰)'))
+    safety_score = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('ایمنی/HSE (۰-۱۰۰)'))
+
+    recommendation = models.CharField(max_length=20, choices=Recommendation.choices, default=Recommendation.APPROVED, verbose_name=_('نتیجه ارزیابی'))
+    strengths = models.TextField(blank=True, verbose_name=_('نقاط قوت'))
+    weaknesses = models.TextField(blank=True, verbose_name=_('نقاط ضعف'))
+    evaluator = models.CharField(max_length=200, blank=True, verbose_name=_('ارزیاب'))
+
+    class Meta:
+        verbose_name = _('ارزیابی تأمین‌کننده')
+        verbose_name_plural = _('ارزیابی‌های تأمین‌کننده')
+        ordering = ['-evaluation_date', '-created_at']
+
+    @property
+    def total_score(self):
+        scores = [self.quality_score, self.delivery_score, self.price_score, self.cooperation_score, self.safety_score]
+        return sum(float(s or 0) for s in scores) / len(scores)
+
+    def __str__(self):
+        return f'{self.party.name} - {self.evaluation_date}'

@@ -3,7 +3,31 @@ from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
     Addendum, Guarantee, Payment, ContractDispute,
+    ContractTypeMaster, SupplierEvaluation,
 )
+
+
+class ContractTypeMasterSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractTypeMaster
+        fields = ['id', 'name', 'code', 'description', 'is_active']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class SupplierEvaluationSerializer(serializers.ModelSerializer):
+    recommendation_display = serializers.CharField(source='get_recommendation_display', read_only=True)
+    party_name = serializers.CharField(source='party.name', read_only=True)
+    total_score = serializers.ReadOnlyField()
+
+    class Meta:
+        model = SupplierEvaluation
+        fields = [
+            'id', 'party', 'party_name', 'contract', 'evaluation_date', 'period',
+            'quality_score', 'delivery_score', 'price_score', 'cooperation_score',
+            'safety_score', 'total_score', 'recommendation', 'recommendation_display',
+            'strengths', 'weaknesses', 'evaluator',
+        ]
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
 class ContractDisputeSerializer(serializers.ModelSerializer):

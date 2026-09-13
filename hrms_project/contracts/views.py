@@ -5,11 +5,13 @@ from rest_framework.response import Response
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
     Addendum, Guarantee, Payment, ContractDispute,
+    ContractTypeMaster, SupplierEvaluation,
 )
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
     InvoiceSerializer, StatementSerializer, AddendumSerializer,
     GuaranteeSerializer, PaymentSerializer, ContractDisputeSerializer,
+    ContractTypeMasterSerializer, SupplierEvaluationSerializer,
 )
 
 
@@ -89,6 +91,29 @@ class ContractViewSet(BaseContractViewSet):
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
+        return qs
+
+
+class ContractTypeMasterViewSet(BaseContractViewSet):
+    serializer_class = ContractTypeMasterSerializer
+    queryset = ContractTypeMaster.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'code']
+    ordering = ['name']
+
+
+class SupplierEvaluationViewSet(BaseContractViewSet):
+    serializer_class = SupplierEvaluationSerializer
+    queryset = SupplierEvaluation.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['party__name', 'period', 'evaluator']
+    ordering = ['-evaluation_date']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('party', 'contract')
+        party_id = self.request.query_params.get('party')
+        if party_id:
+            qs = qs.filter(party_id=party_id)
         return qs
 
 
