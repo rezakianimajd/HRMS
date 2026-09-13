@@ -114,6 +114,13 @@ const endpoints = {
     costSources: `${API_BASE}/cost-sources/`,
     obs: `${API_BASE}/obs-nodes/`,
     obsTree: (projectId) => `${API_BASE}/obs-nodes/tree/?project=${projectId}`,
+    priceLists: `${API_BASE}/price-lists/`,
+    priceListVersions: `${API_BASE}/price-list-versions/`,
+    priceListChapters: `${API_BASE}/price-list-chapters/`,
+    priceListItems: `${API_BASE}/price-list-items/`,
+    contractItems: `${API_BASE}/contract-items/`,
+    contractWbs: `${API_BASE}/contract-wbs/`,
+    contractPriceBases: `${API_BASE}/contract-price-bases/`,
   },
   baleSchedules: {
     list: `${API_BASE}/bale-schedules/`,

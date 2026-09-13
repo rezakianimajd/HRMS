@@ -47,6 +47,7 @@ import ContractNewPage from './pages/ContractNewPage';
 import ContractProfilePage from './pages/ContractProfilePage';
 import GuaranteesPage from './pages/GuaranteesPage';
 import ProjectsPage from './pages/ProjectsPage';
+import PriceListPage from './pages/PriceListPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -128,6 +129,7 @@ const AppRoutes = () => {
       <Route path="/external-contracts/:id" element={<ProtectedLayout><ContractProfilePage /></ProtectedLayout>} />
       <Route path="/contracts-guarantees" element={<ProtectedLayout><GuaranteesPage /></ProtectedLayout>} />
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
+      <Route path="/projects/price-lists" element={<ProtectedLayout><PriceListPage /></ProtectedLayout>} />
       <Route path="/management-analytics" element={<ProtectedLayout><ManagementAnalyticsPage /></ProtectedLayout>} />
       <Route path="/bale-messaging" element={<ProtectedLayout><BaleMessagingPage /></ProtectedLayout>} />
       <Route path="/recruitment" element={<ProtectedLayout><RecruitmentPage /></ProtectedLayout>} />

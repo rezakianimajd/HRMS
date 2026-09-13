@@ -249,7 +249,7 @@ const projectsMenu = [
     title: 'تجاری و قراردادها',
     color: '#f59e0b',
     items: [
-      comingSoon('/projects/price-lists', 'projects-price-lists', 'فهرست‌بها', <ReceiptLongIcon />, '#f59e0b'),
+      { id: 'projects-price-lists', title: 'فهرست‌بها', icon: <ReceiptLongIcon />, path: '/projects/price-lists', color: '#f59e0b', primary: false, ready: true },
       comingSoon('/projects/contracts', 'projects-contracts', 'قراردادها', <HistoryEduIcon />, '#f97316'),
       comingSoon('/projects/progress', 'projects-progress', 'صورت‌وضعیت‌ها', <BarChartOutlinedIcon />, '#6366f1'),
     ],
