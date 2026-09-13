@@ -51,6 +51,8 @@ export const ContractStatementsPage = () => (
       queryKey: 'statements-sub',
       addLabel: 'صورت‌وضعیت جدید',
       editLabel: 'ویرایش صورت‌وضعیت',
+      splitPreview: true,
+      previewTitle: 'پیش‌نمایش صورت‌وضعیت',
       listColumns: [
         { key: 'number', label: 'شماره' },
         { key: 'date', label: 'تاریخ', render: (v) => toJalali(v) },
