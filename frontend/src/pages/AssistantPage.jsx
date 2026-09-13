@@ -12,7 +12,7 @@ const AssistantPage = () => (
       background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.05))',
       border: '1px solid rgba(99,102,241,0.2)',
       backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-      borderRadius: 3,
+      borderRadius: '10px',
     }}>
       <Avatar sx={{
         width: 56, height: 56,
@@ -22,8 +22,8 @@ const AssistantPage = () => (
         <SmartToyIcon sx={{ fontSize: 28, color: '#fff' }} />
       </Avatar>
       <Box>
-        <Typography variant="h5" fontWeight={800}>دستیار</Typography>
-        <Typography variant="body2" color="textSecondary">دستیار هوشمند منابع انسانی — پاسخ فوری و آفلاین</Typography>
+        <Typography variant="h5" fontWeight={800}>ط¯ط³طھغŒط§ط±</Typography>
+        <Typography variant="body2" color="textSecondary">ط¯ط³طھغŒط§ط± ظ‡ظˆط´ظ…ظ†ط¯ ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ â€” ظ¾ط§ط³ط® ظپظˆط±غŒ ظˆ ط¢ظپظ„ط§غŒظ†</Typography>
       </Box>
     </Paper>
 

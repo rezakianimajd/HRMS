@@ -25,7 +25,7 @@ const SectionHeader = ({ title, icon, color }) => (
 );
 
 const InfoCard = ({ fieldName, label, value }) => {
-  let display = value || '—';
+  let display = value || 'â€”';
   if (DATE_FIELDS.includes(fieldName)) {
     display = toJalali(value);
   } else if (fieldName === 'employee_id') {
@@ -38,7 +38,7 @@ const InfoCard = ({ fieldName, label, value }) => {
         background: 'rgba(255,255,255,0.5)',
         backdropFilter: 'blur(8px)',
         border: '1px solid rgba(255,255,255,0.5)',
-        borderRadius: 2,
+        borderRadius: '10px',
       }}>
         <Typography variant="caption" color="textSecondary" display="block">{label}</Typography>
         <Typography variant="body2" fontWeight={600}>{display}</Typography>
@@ -92,7 +92,7 @@ const EmploymentTab = ({ employee }) => {
           <Paper sx={{
             px: 1.5, py: 1,
             background: 'rgba(255,255,255,0.5)',
-            borderRadius: 2,
+            borderRadius: '10px',
           }}>
             <Typography variant="caption" color="textSecondary" display="block">{t('employees.status')}</Typography>
             <Box sx={{ mt: 0.5 }}><StatusBadge status={e.status} /></Box>
@@ -102,25 +102,25 @@ const EmploymentTab = ({ employee }) => {
         <InfoCard label={t('employees.work_shift')} value={e.work_shift_display} />
       </Grid>
 
-      {/* ساعات کاری */}
+      {/* ط³ط§ط¹ط§طھ ع©ط§ط±غŒ */}
       <Box sx={{ mt: 3 }}>
-        <SectionHeader title="ساعات کاری" icon={<AccessTimeIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#06b6d4" />
+        <SectionHeader title="ط³ط§ط¹ط§طھ ع©ط§ط±غŒ" icon={<AccessTimeIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#06b6d4" />
       </Box>
       <Divider sx={{ mb: 2 }} />
       <Grid container spacing={1.5}>
-        <InfoCard fieldName="work_start_time" label="ساعت شروع کار" value={e.work_start_time} />
-        <InfoCard fieldName="work_end_time" label="ساعت پایان کار" value={e.work_end_time} />
+        <InfoCard fieldName="work_start_time" label="ط³ط§ط¹طھ ط´ط±ظˆط¹ ع©ط§ط±" value={e.work_start_time} />
+        <InfoCard fieldName="work_end_time" label="ط³ط§ط¹طھ ظ¾ط§غŒط§ظ† ع©ط§ط±" value={e.work_end_time} />
       </Grid>
 
-      {/* ارزیابی */}
+      {/* ط§ط±ط²غŒط§ط¨غŒ */}
       <Box sx={{ mt: 3 }}>
-        <SectionHeader title="ارزیابی و عملکرد" icon={<AssessmentIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#3b82f6" />
+        <SectionHeader title="ط§ط±ط²غŒط§ط¨غŒ ظˆ ط¹ظ…ظ„ع©ط±ط¯" icon={<AssessmentIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#3b82f6" />
       </Box>
       <Divider sx={{ mb: 2 }} />
       <Grid container spacing={1.5}>
-        <InfoCard label="مسافت تا محل کار" value={`${e.distance_to_work_km || '—'} کیلومتر`} />
-        <InfoCard label="نمره عملکرد" value={e.performance_score != null ? `${e.performance_score} از ۱۰۰` : '—'} />
-        <InfoCard label="نمره رضایت شغلی" value={e.satisfaction_score != null ? `${e.satisfaction_score} از ۱۰۰` : '—'} />
+        <InfoCard label="ظ…ط³ط§ظپطھ طھط§ ظ…ط­ظ„ ع©ط§ط±" value={`${e.distance_to_work_km || 'â€”'} ع©غŒظ„ظˆظ…طھط±`} />
+        <InfoCard label="ظ†ظ…ط±ظ‡ ط¹ظ…ظ„ع©ط±ط¯" value={e.performance_score != null ? `${e.performance_score} ط§ط² غ±غ°غ°` : 'â€”'} />
+        <InfoCard label="ظ†ظ…ط±ظ‡ ط±ط¶ط§غŒطھ ط´ط؛ظ„غŒ" value={e.satisfaction_score != null ? `${e.satisfaction_score} ط§ط² غ±غ°غ°` : 'â€”'} />
       </Grid>
 
       {e.description && (

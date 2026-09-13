@@ -24,8 +24,8 @@ const EmployeeMultiSelect = ({ value, onChange }) => {
   const selected = Array.isArray(value) ? value : (value ? String(value).split(',').filter(Boolean) : []);
   return (
     <FormControl fullWidth size="small">
-      <InputLabel>پرسنل مرتبط</InputLabel>
-      <Select multiple value={selected.map(String)} label="پرسنل مرتبط"
+      <InputLabel>ظ¾ط±ط³ظ†ظ„ ظ…ط±طھط¨ط·</InputLabel>
+      <Select multiple value={selected.map(String)} label="ظ¾ط±ط³ظ†ظ„ ظ…ط±طھط¨ط·"
         renderValue={(sel) => (
           <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
             {sel.map(id => {
@@ -102,9 +102,9 @@ export const CorrespondenceCRUD = ({
     if (col.key === 'number' || col.key === 'code') return toPersianDigits(v);
     if (col.key === 'employee_names') {
       const names = Array.isArray(v) ? v : [];
-      return names.length ? names.join('، ') : '—';
+      return names.length ? names.join('طŒ ') : 'â€”';
     }
-    return v || '—';
+    return v || 'â€”';
   };
 
   const renderField = (f) => {
@@ -135,7 +135,7 @@ export const CorrespondenceCRUD = ({
         background: `linear-gradient(135deg, ${color}0d, ${color}04)`,
         border: `1px solid ${color}20`,
         backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         <TextField
           size="small" placeholder={searchPlaceholder}
@@ -145,7 +145,7 @@ export const CorrespondenceCRUD = ({
         />
         <Button variant="contained" onClick={openNew}
           sx={{ background: `linear-gradient(135deg, ${color}, ${color}90)`, '&:hover': { background: color } }}>
-          افزودن
+          ط§ظپط²ظˆط¯ظ†
         </Button>
       </Paper>
 
@@ -155,9 +155,9 @@ export const CorrespondenceCRUD = ({
       ) : filtered.length === 0 ? (
         <Paper sx={{
           p: 5, textAlign: 'center',
-          background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', borderRadius: 3,
+          background: 'rgba(255,255,255,0.5)', backdropFilter: 'blur(10px)', borderRadius: '10px',
         }}>
-          <Typography color="textSecondary">موردی یافت نشد</Typography>
+          <Typography color="textSecondary">ظ…ظˆط±ط¯غŒ غŒط§ظپطھ ظ†ط´ط¯</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -168,7 +168,7 @@ export const CorrespondenceCRUD = ({
                 background: `linear-gradient(160deg, ${color}0a, rgba(255,255,255,0.4))`,
                 border: `1px solid ${color}20`,
                 backdropFilter: 'blur(14px)', WebkitBackdropFilter: 'blur(14px)',
-                borderRadius: 3,
+                borderRadius: '10px',
                 transition: 'all 0.25s ease',
                 '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 12px 28px ${color}22` },
               }}>
@@ -209,7 +209,7 @@ export const CorrespondenceCRUD = ({
                   {it.file ? (
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                       <Chip
-                        label="پیوست دارد"
+                        label="ظ¾غŒظˆط³طھ ط¯ط§ط±ط¯"
                         size="small"
                         variant="outlined"
                         component="a"
@@ -221,11 +221,11 @@ export const CorrespondenceCRUD = ({
                       />
                     </Box>
                   ) : (
-                    <Typography variant="caption" color="textSecondary">بدون پیوست</Typography>
+                    <Typography variant="caption" color="textSecondary">ط¨ط¯ظˆظ† ظ¾غŒظˆط³طھ</Typography>
                   )}
                   <Box sx={{ display: 'flex', gap: 0.25 }}>
                     {it.file && (
-                      <Tooltip title="باز کردن پیوست" placement="top">
+                      <Tooltip title="ط¨ط§ط² ع©ط±ط¯ظ† ظ¾غŒظˆط³طھ" placement="top">
                         <IconButton size="small" component="a" href={it.file} target="_blank" rel="noreferrer">
                           <OpenInNewIcon fontSize="small" />
                         </IconButton>
@@ -244,27 +244,27 @@ export const CorrespondenceCRUD = ({
       {/* Dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color, background: `linear-gradient(135deg, ${color}10, transparent)` }}>
-          {editing ? `ویرایش ${title}` : `افزودن ${title}`}
+          {editing ? `ظˆغŒط±ط§غŒط´ ${title}` : `ط§ظپط²ظˆط¯ظ† ${title}`}
         </DialogTitle>
         <DialogContent>
           <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
             {fields.map(renderField)}
             <Box>
               <Typography variant="caption" color="textSecondary" sx={{ mb: 0.5, display: 'block' }}>
-                فایل پیوست (اختیاری)
+                ظپط§غŒظ„ ظ¾غŒظˆط³طھ (ط§ط®طھغŒط§ط±غŒ)
               </Typography>
               <input id={`file-${endpoint}`} type="file" hidden onChange={e => setFile(e.target.files[0] || null)} />
               <Button variant="outlined" size="small" onClick={() => document.getElementById(`file-${endpoint}`).click()}>
-                {file ? file.name : (editing?.file ? 'تعویض فایل پیوست' : 'انتخاب فایل پیوست')}
+                {file ? file.name : (editing?.file ? 'طھط¹ظˆغŒط¶ ظپط§غŒظ„ ظ¾غŒظˆط³طھ' : 'ط§ظ†طھط®ط§ط¨ ظپط§غŒظ„ ظ¾غŒظˆط³طھ')}
               </Button>
             </Box>
           </Box>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>انصراف</Button>
+          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" onClick={() => saveMutation.mutate(form)} disabled={saveMutation.isLoading}
             sx={{ background: `linear-gradient(135deg, ${color}, ${color}90)` }}>
-            {saveMutation.isLoading ? <CircularProgress size={20} /> : 'ذخیره'}
+            {saveMutation.isLoading ? <CircularProgress size={20} /> : 'ط°ط®غŒط±ظ‡'}
           </Button>
         </DialogActions>
       </Dialog>

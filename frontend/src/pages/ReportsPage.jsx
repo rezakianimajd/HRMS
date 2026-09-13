@@ -49,7 +49,7 @@ const glassCard = (from) => ({
   border: `1px solid ${from}1e`,
   backdropFilter: 'blur(16px)',
   WebkitBackdropFilter: 'blur(16px)',
-  borderRadius: 3,
+  borderRadius: '10px',
   transition: 'all 0.25s ease',
   '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 12px 32px ${from}16` },
 });
@@ -69,7 +69,7 @@ const SectionHeader = ({ title, color, icon, subtitle }) => (
 /* Small numeric stat tile */
 const StatTile = ({ label, value, color }) => (
   <Box sx={{
-    p: 1.5, borderRadius: 2,
+    p: 1.5, borderRadius: '10px',
     background: `linear-gradient(135deg, ${color}10, ${color}04)`,
     border: `1px solid ${color}15`,
   }}>
@@ -152,10 +152,10 @@ const ReportsPage = () => {
         {/* Top 4 KPI cards */}
         <Grid item xs={6} md={3}>
           <KpiCard
-            label="نرخ ورود"
+            label="ظ†ط±ط® ظˆط±ظˆط¯"
             value={hireRate}
-            unit="٪"
-            subtitle={`${formatPersianNumber(hiresTotal)} نفر در ۱۲ ماه اخیر`}
+            unit="ظھ"
+            subtitle={`${formatPersianNumber(hiresTotal)} ظ†ظپط± ط¯ط± غ±غ² ظ…ط§ظ‡ ط§ط®غŒط±`}
             color="#3b82f6"
             icon={<PersonAddIcon sx={{ color: '#fff', fontSize: 28 }} />}
           />
@@ -163,10 +163,10 @@ const ReportsPage = () => {
 
         <Grid item xs={6} md={3}>
           <KpiCard
-            label="تعداد پرسنل"
+            label="طھط¹ط¯ط§ط¯ ظ¾ط±ط³ظ†ظ„"
             value={totalEmployees}
-            unit="نفر"
-            subtitle="پرسنل فعال سازمان"
+            unit="ظ†ظپط±"
+            subtitle="ظ¾ط±ط³ظ†ظ„ ظپط¹ط§ظ„ ط³ط§ط²ظ…ط§ظ†"
             color="#6366f1"
             icon={<PeopleIcon sx={{ color: '#fff', fontSize: 28 }} />}
           />
@@ -174,10 +174,10 @@ const ReportsPage = () => {
 
         <Grid item xs={6} md={3}>
           <KpiCard
-            label="میانگین سنی"
+            label="ظ…غŒط§ظ†ع¯غŒظ† ط³ظ†غŒ"
             value={avgAgeOverall}
-            unit="سال"
-            subtitle="میانگین سن پرسنل فعال"
+            unit="ط³ط§ظ„"
+            subtitle="ظ…غŒط§ظ†ع¯غŒظ† ط³ظ† ظ¾ط±ط³ظ†ظ„ ظپط¹ط§ظ„"
             color="#8b5cf6"
             icon={<CakeIcon sx={{ color: '#fff', fontSize: 28 }} />}
           />
@@ -185,10 +185,10 @@ const ReportsPage = () => {
 
         <Grid item xs={6} md={3}>
           <KpiCard
-            label="نرخ خروج"
+            label="ظ†ط±ط® ط®ط±ظˆط¬"
             value={turnover?.rate ?? 0}
-            unit="٪"
-            subtitle={`${formatPersianNumber(turnover?.terminated_count ?? 0)} خروج ثبت‌شده`}
+            unit="ظھ"
+            subtitle={`${formatPersianNumber(turnover?.terminated_count ?? 0)} ط®ط±ظˆط¬ ط«ط¨طھâ€Œط´ط¯ظ‡`}
             color="#ef4444"
             icon={<TrendingDownIcon sx={{ color: '#fff', fontSize: 28 }} />}
           />
@@ -198,22 +198,22 @@ const ReportsPage = () => {
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={glassCard(sectionColors.gender)}>
             <SectionHeader title={t('reports.employees_by_gender')} color={sectionColors.gender} icon={<PeopleIcon />} />
-            <DonutChart data={genderData} centerLabel="نفر" />
+            <DonutChart data={genderData} centerLabel="ظ†ظپط±" />
           </Paper>
         </Grid>
 
         {/* Contract Type Donut */}
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={glassCard(sectionColors.contracts)}>
-            <SectionHeader title="انواع قرارداد" color={sectionColors.contracts} icon={<WorkIcon />} />
-            <DonutChart data={contractData} size={150} centerLabel="قرارداد" />
+            <SectionHeader title="ط§ظ†ظˆط§ط¹ ظ‚ط±ط§ط±ط¯ط§ط¯" color={sectionColors.contracts} icon={<WorkIcon />} />
+            <DonutChart data={contractData} size={150} centerLabel="ظ‚ط±ط§ط±ط¯ط§ط¯" />
           </Paper>
         </Grid>
 
         {/* Marital Status */}
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={glassCard(sectionColors.marital)}>
-            <SectionHeader title="وضعیت تأهل" color={sectionColors.marital} icon={<FavoriteIcon />} />
+            <SectionHeader title="ظˆط¶ط¹غŒطھ طھط£ظ‡ظ„" color={sectionColors.marital} icon={<FavoriteIcon />} />
             <BarChart data={maritalData} color={sectionColors.marital} />
           </Paper>
         </Grid>
@@ -237,7 +237,7 @@ const ReportsPage = () => {
         {/* Monthly Hires Trend */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard(sectionColors.hire)}>
-            <SectionHeader title="روند استخدام ماهانه" color={sectionColors.hire} icon={<BadgeIcon />} subtitle="۱۲ ماه اخیر" />
+            <SectionHeader title="ط±ظˆظ†ط¯ ط§ط³طھط®ط¯ط§ظ… ظ…ط§ظ‡ط§ظ†ظ‡" color={sectionColors.hire} icon={<BadgeIcon />} subtitle="غ±غ² ظ…ط§ظ‡ ط§ط®غŒط±" />
             <LineChart data={hiresData} labels={hiresLabels} color={sectionColors.hire} height={200} />
           </Paper>
         </Grid>
@@ -245,7 +245,7 @@ const ReportsPage = () => {
         {/* Age Group */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard(sectionColors.age)}>
-            <SectionHeader title="توزیع سنی کارکنان" color={sectionColors.age} icon={<CakeIcon />} />
+            <SectionHeader title="طھظˆط²غŒط¹ ط³ظ†غŒ ع©ط§ط±ع©ظ†ط§ظ†" color={sectionColors.age} icon={<CakeIcon />} />
             <ColumnChart data={ageGroupData} color={sectionColors.age} height={200} />
           </Paper>
         </Grid>
@@ -253,7 +253,7 @@ const ReportsPage = () => {
         {/* Monthly Salary Cost Trend */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard('#f59e0b')}>
-            <SectionHeader title="روند هزینه حقوق ماهانه" color="#f59e0b" icon={<PaymentsIcon />} subtitle="۱۲ ماه اخیر (خالص پرداختی)" />
+            <SectionHeader title="ط±ظˆظ†ط¯ ظ‡ط²غŒظ†ظ‡ ط­ظ‚ظˆظ‚ ظ…ط§ظ‡ط§ظ†ظ‡" color="#f59e0b" icon={<PaymentsIcon />} subtitle="غ±غ² ظ…ط§ظ‡ ط§ط®غŒط± (ط®ط§ظ„طµ ظ¾ط±ط¯ط§ط®طھغŒ)" />
             <LineChart data={salaryCostData} labels={salaryCostLabels} color="#f59e0b" height={200} />
           </Paper>
         </Grid>
@@ -261,7 +261,7 @@ const ReportsPage = () => {
         {/* Attendance / Absence Monthly Rate */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard(sectionColors.turnover)}>
-            <SectionHeader title="نرخ حضور / غیبت ماهانه" color={sectionColors.turnover} icon={<AccessTimeIcon />} subtitle="۱۲ ماه اخیر" />
+            <SectionHeader title="ظ†ط±ط® ط­ط¶ظˆط± / ط؛غŒط¨طھ ظ…ط§ظ‡ط§ظ†ظ‡" color={sectionColors.turnover} icon={<AccessTimeIcon />} subtitle="غ±غ² ظ…ط§ظ‡ ط§ط®غŒط±" />
             <LineChart
               data={attendanceMonths.map((m) => m.present_rate)}
               labels={attendanceMonths.map((m) => m.label)}
@@ -269,9 +269,9 @@ const ReportsPage = () => {
               height={200}
             />
             <Box sx={{ mt: 1.5, display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-              <Chip size="small" label={`حضور: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.present, 0))}`} sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#3b82f6' }} />
-              <Chip size="small" label={`غیبت: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.absent, 0))}`} sx={{ bgcolor: 'rgba(239,68,68,0.1)', color: '#ef4444' }} />
-              <Chip size="small" label={`مرخصی: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.leave, 0))}`} sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b' }} />
+              <Chip size="small" label={`ط­ط¶ظˆط±: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.present, 0))}`} sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#3b82f6' }} />
+              <Chip size="small" label={`ط؛غŒط¨طھ: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.absent, 0))}`} sx={{ bgcolor: 'rgba(239,68,68,0.1)', color: '#ef4444' }} />
+              <Chip size="small" label={`ظ…ط±ط®طµغŒ: ${formatPersianNumber(attendanceMonths.reduce((s, m) => s + m.leave, 0))}`} sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#f59e0b' }} />
             </Box>
           </Paper>
         </Grid>
@@ -279,7 +279,7 @@ const ReportsPage = () => {
         {/* Work Shift */}
         <Grid item xs={12} md={6} lg={4}>
           <Paper sx={glassCard(sectionColors.shift)}>
-            <SectionHeader title="نوبت کاری" color={sectionColors.shift} icon={<AccessTimeIcon />} />
+            <SectionHeader title="ظ†ظˆط¨طھ ع©ط§ط±غŒ" color={sectionColors.shift} icon={<AccessTimeIcon />} />
             <BarChart data={(byShift || []).map((d, i) => ({ label: d.name, value: d.count, color: PALETTE[i % PALETTE.length] }))} color={sectionColors.shift} />
           </Paper>
         </Grid>
@@ -303,9 +303,9 @@ const ReportsPage = () => {
         {/* Transaction Summary */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard('#8b5cf6')}>
-            <SectionHeader title="تراکنش‌های پرسنلی" color="#8b5cf6" icon={<WorkIcon />} subtitle="مرخصی، غیبت، مزایا، حقوق و کسورات" />
+            <SectionHeader title="طھط±ط§ع©ظ†ط´â€Œظ‡ط§غŒ ظ¾ط±ط³ظ†ظ„غŒ" color="#8b5cf6" icon={<WorkIcon />} subtitle="ظ…ط±ط®طµغŒطŒ ط؛غŒط¨طھطŒ ظ…ط²ط§غŒط§طŒ ط­ظ‚ظˆظ‚ ظˆ ع©ط³ظˆط±ط§طھ" />
             {txSummaryData.length === 0 ? (
-              <Typography color="textSecondary" variant="body2" sx={{ p: 2, textAlign: 'center' }}>تراکنشی ثبت نشده است</Typography>
+              <Typography color="textSecondary" variant="body2" sx={{ p: 2, textAlign: 'center' }}>طھط±ط§ع©ظ†ط´غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
             ) : (
               <BarChart data={txSummaryData} color="#8b5cf6" />
             )}
@@ -315,8 +315,8 @@ const ReportsPage = () => {
                   <Box key={i} sx={{ display: 'flex', justifyContent: 'space-between', py: 0.5 }}>
                     <Typography variant="body2">{s.transaction_type_display}</Typography>
                     <Typography variant="body2" fontWeight={600}>
-                      {s.total_amount > 0 && `${formatPersianNumber(s.total_amount)} ریال`}
-                      {' '}{s.total_quantity > 0 && `${formatPersianNumber(s.total_quantity)} روز/تعداد`}
+                      {s.total_amount > 0 && `${formatPersianNumber(s.total_amount)} ط±غŒط§ظ„`}
+                      {' '}{s.total_quantity > 0 && `${formatPersianNumber(s.total_quantity)} ط±ظˆط²/طھط¹ط¯ط§ط¯`}
                     </Typography>
                   </Box>
                 ))}
@@ -328,20 +328,20 @@ const ReportsPage = () => {
         {/* Salary & Benefits Summary */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard('#6366f1')}>
-            <SectionHeader title="خلاصه حقوق و مزایا" color="#6366f1" icon={<PaymentsIcon />} />
+            <SectionHeader title="ط®ظ„ط§طµظ‡ ط­ظ‚ظˆظ‚ ظˆ ظ…ط²ط§غŒط§" color="#6366f1" icon={<PaymentsIcon />} />
             <Grid container spacing={1.5}>
-              <Grid item xs={6}><StatTile label="جمع حقوق پرداختی" value={salaryBenefit?.total_salaries} color="#6366f1" /></Grid>
-              <Grid item xs={6}><StatTile label="جمع مزایا" value={salaryBenefit?.total_benefits} color="#10b981" /></Grid>
-              <Grid item xs={6}><StatTile label="جمع کسورات" value={salaryBenefit?.total_deductions} color="#ef4444" /></Grid>
-              <Grid item xs={6}><StatTile label="جمع مزایای رفاهی" value={salaryBenefit?.benefits_total_paid} color="#f59e0b" /></Grid>
+              <Grid item xs={6}><StatTile label="ط¬ظ…ط¹ ط­ظ‚ظˆظ‚ ظ¾ط±ط¯ط§ط®طھغŒ" value={salaryBenefit?.total_salaries} color="#6366f1" /></Grid>
+              <Grid item xs={6}><StatTile label="ط¬ظ…ط¹ ظ…ط²ط§غŒط§" value={salaryBenefit?.total_benefits} color="#10b981" /></Grid>
+              <Grid item xs={6}><StatTile label="ط¬ظ…ط¹ ع©ط³ظˆط±ط§طھ" value={salaryBenefit?.total_deductions} color="#ef4444" /></Grid>
+              <Grid item xs={6}><StatTile label="ط¬ظ…ط¹ ظ…ط²ط§غŒط§غŒ ط±ظپط§ظ‡غŒ" value={salaryBenefit?.benefits_total_paid} color="#f59e0b" /></Grid>
             </Grid>
             <Divider sx={{ my: 1.5 }} />
             <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-              <Typography variant="body2" color="textSecondary">تعداد فیش حقوقی</Typography>
+              <Typography variant="body2" color="textSecondary">طھط¹ط¯ط§ط¯ ظپغŒط´ ط­ظ‚ظˆظ‚غŒ</Typography>
               <Typography variant="body2" fontWeight={700}>{formatPersianNumber(salaryBenefit?.salary_records)}</Typography>
             </Box>
             <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
-              <Typography variant="body2" color="textSecondary">تعداد مزایا</Typography>
+              <Typography variant="body2" color="textSecondary">طھط¹ط¯ط§ط¯ ظ…ط²ط§غŒط§</Typography>
               <Typography variant="body2" fontWeight={700}>{formatPersianNumber(salaryBenefit?.benefit_records)}</Typography>
             </Box>
           </Paper>
@@ -350,20 +350,20 @@ const ReportsPage = () => {
         {/* Upcoming Birthdays */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard('#ec4899')}>
-            <SectionHeader title="تولدهای ۷ روز آینده" color="#ec4899" icon={<CakeIcon />} subtitle="بر اساس تاریخ شمسی" />
+            <SectionHeader title="طھظˆظ„ط¯ظ‡ط§غŒ غ· ط±ظˆط² ط¢غŒظ†ط¯ظ‡" color="#ec4899" icon={<CakeIcon />} subtitle="ط¨ط± ط§ط³ط§ط³ طھط§ط±غŒط® ط´ظ…ط³غŒ" />
             {(!birthdays || birthdays.length === 0) ? (
-              <Typography color="textSecondary" variant="body2" sx={{ p: 2, textAlign: 'center' }}>در ۷ روز آینده تولدی نیست</Typography>
+              <Typography color="textSecondary" variant="body2" sx={{ p: 2, textAlign: 'center' }}>ط¯ط± غ· ط±ظˆط² ط¢غŒظ†ط¯ظ‡ طھظˆظ„ط¯غŒ ظ†غŒط³طھ</Typography>
             ) : (
               <Stack spacing={1}>
                 {birthdays.map(b => (
-                  <Box key={b.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, borderRadius: 2, background: b.is_today ? 'rgba(236,72,153,0.1)' : 'rgba(236,72,153,0.04)', border: '1px solid rgba(236,72,153,0.12)' }}>
+                  <Box key={b.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.25, borderRadius: '10px', background: b.is_today ? 'rgba(236,72,153,0.1)' : 'rgba(236,72,153,0.04)', border: '1px solid rgba(236,72,153,0.12)' }}>
                     <Avatar sx={{ width: 36, height: 36, background: 'linear-gradient(135deg, #ec4899, #f472b6)', fontSize: 14 }}>{b.full_name?.charAt(0)}</Avatar>
                     <Box sx={{ flex: 1 }}>
                       <Typography variant="body2" fontWeight={600}>{b.full_name}</Typography>
                       <Typography variant="caption" color="textSecondary">{b.department_name}</Typography>
                     </Box>
                     <Chip size="small" color={b.is_today ? 'secondary' : 'default'}
-                      label={b.is_today ? 'امروز 🎂' : `${toPersianDigits(b.days_until)} روز دیگر`} />
+                      label={b.is_today ? 'ط§ظ…ط±ظˆط² ًںژ‚' : `${toPersianDigits(b.days_until)} ط±ظˆط² ط¯غŒع¯ط±`} />
                   </Box>
                 ))}
               </Stack>
@@ -374,12 +374,12 @@ const ReportsPage = () => {
         {/* Correspondences Summary */}
         <Grid item xs={12} md={6}>
           <Paper sx={glassCard('#14b8a6')}>
-            <SectionHeader title="خلاصه مکاتبات" color="#14b8a6" icon={<MailIcon />} />
+            <SectionHeader title="ط®ظ„ط§طµظ‡ ظ…ع©ط§طھط¨ط§طھ" color="#14b8a6" icon={<MailIcon />} />
             <Grid container spacing={1.5}>
-              <Grid item xs={6}><StatTile label="نامه‌های وارده" value={corrSummary?.incoming_letters} color="#6366f1" /></Grid>
-              <Grid item xs={6}><StatTile label="نامه‌های صادره" value={corrSummary?.outgoing_letters} color="#10b981" /></Grid>
-              <Grid item xs={6}><StatTile label="ابلاغ‌ها" value={corrSummary?.announcements} color="#f59e0b" /></Grid>
-              <Grid item xs={6}><StatTile label="فرم‌ها" value={corrSummary?.forms} color="#8b5cf6" /></Grid>
+              <Grid item xs={6}><StatTile label="ظ†ط§ظ…ظ‡â€Œظ‡ط§غŒ ظˆط§ط±ط¯ظ‡" value={corrSummary?.incoming_letters} color="#6366f1" /></Grid>
+              <Grid item xs={6}><StatTile label="ظ†ط§ظ…ظ‡â€Œظ‡ط§غŒ طµط§ط¯ط±ظ‡" value={corrSummary?.outgoing_letters} color="#10b981" /></Grid>
+              <Grid item xs={6}><StatTile label="ط§ط¨ظ„ط§ط؛â€Œظ‡ط§" value={corrSummary?.announcements} color="#f59e0b" /></Grid>
+              <Grid item xs={6}><StatTile label="ظپط±ظ…â€Œظ‡ط§" value={corrSummary?.forms} color="#8b5cf6" /></Grid>
             </Grid>
           </Paper>
         </Grid>
@@ -387,10 +387,10 @@ const ReportsPage = () => {
         {/* Expiring Contracts */}
         <Grid item xs={12}>
           <Paper sx={glassCard(sectionColors.contracts)}>
-            <SectionHeader title={t('reports.contracts_expiring')} color={sectionColors.contracts} icon={<AssignmentIcon />} subtitle="قراردادهایی که در ۹۰ روز آینده منقضی می‌شوند" />
+            <SectionHeader title={t('reports.contracts_expiring')} color={sectionColors.contracts} icon={<AssignmentIcon />} subtitle="ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§غŒغŒ ع©ظ‡ ط¯ط± غ¹غ° ط±ظˆط² ط¢غŒظ†ط¯ظ‡ ظ…ظ†ظ‚ط¶غŒ ظ…غŒâ€Œط´ظˆظ†ط¯" />
             {(!contracts || contracts.length === 0) ? (
               <Box sx={{ textAlign: 'center', p: 3 }}>
-                <Typography variant="body2" color="textSecondary">هیچ قراردادی در ۹۰ روز آینده منقضی نمی‌شود</Typography>
+                <Typography variant="body2" color="textSecondary">ظ‡غŒع† ظ‚ط±ط§ط±ط¯ط§ط¯غŒ ط¯ط± غ¹غ° ط±ظˆط² ط¢غŒظ†ط¯ظ‡ ظ…ظ†ظ‚ط¶غŒ ظ†ظ…غŒâ€Œط´ظˆط¯</Typography>
               </Box>
             ) : (
               <Grid container spacing={1.5}>
@@ -404,7 +404,7 @@ const ReportsPage = () => {
                         <Box>
                           <Typography variant="body2" fontWeight={600}>{c.full_name}</Typography>
                           <Typography variant="caption" color="textSecondary">
-                            {toPersianDigits(c.employee_id)} · انقضا: {toJalali(c.contract_end_date)}
+                            {toPersianDigits(c.employee_id)} آ· ط§ظ†ظ‚ط¶ط§: {toJalali(c.contract_end_date)}
                           </Typography>
                         </Box>
                       </CardContent>
@@ -421,19 +421,19 @@ const ReportsPage = () => {
           <Paper sx={glassCard(sectionColors.age)}>
             <SectionHeader title={t('reports.average_age_experience')} color={sectionColors.age} icon={<CakeIcon />} />
             <Box sx={{ display: 'flex', px: 2, py: 1, borderBottom: '1px solid #eef2f7' }}>
-              <Typography variant="caption" fontWeight={700} sx={{ flex: 1 }}>دپارتمان</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ width: 130, textAlign: 'center' }}>میانگین سن</Typography>
-              <Typography variant="caption" fontWeight={700} sx={{ width: 130, textAlign: 'center' }}>میانگین سابقه</Typography>
+              <Typography variant="caption" fontWeight={700} sx={{ flex: 1 }}>ط¯ظ¾ط§ط±طھظ…ط§ظ†</Typography>
+              <Typography variant="caption" fontWeight={700} sx={{ width: 130, textAlign: 'center' }}>ظ…غŒط§ظ†ع¯غŒظ† ط³ظ†</Typography>
+              <Typography variant="caption" fontWeight={700} sx={{ width: 130, textAlign: 'center' }}>ظ…غŒط§ظ†ع¯غŒظ† ط³ط§ط¨ظ‚ظ‡</Typography>
             </Box>
             {(avgAge || []).map((a, i) => (
-              <Box key={i} sx={{ display: 'flex', px: 2, py: 1, '&:hover': { bgcolor: 'rgba(139,92,246,0.05)' }, borderRadius: 1 }}>
+              <Box key={i} sx={{ display: 'flex', px: 2, py: 1, '&:hover': { bgcolor: 'rgba(139,92,246,0.05)' }, borderRadius: '10px' }}>
                 <Typography variant="body2" sx={{ flex: 1 }}>{a.department}</Typography>
-                <Typography variant="body2" sx={{ width: 130, textAlign: 'center' }}>{formatPersianNumber(a.avg_age)} سال</Typography>
-                <Typography variant="body2" sx={{ width: 130, textAlign: 'center' }}>{formatPersianNumber(a.avg_experience_years)} سال</Typography>
+                <Typography variant="body2" sx={{ width: 130, textAlign: 'center' }}>{formatPersianNumber(a.avg_age)} ط³ط§ظ„</Typography>
+                <Typography variant="body2" sx={{ width: 130, textAlign: 'center' }}>{formatPersianNumber(a.avg_experience_years)} ط³ط§ظ„</Typography>
               </Box>
             ))}
             {(!avgAge || avgAge.length === 0) && (
-              <Typography color="textSecondary" variant="body2" sx={{ p: 2, textAlign: 'center' }}>داده‌ای موجود نیست</Typography>
+              <Typography color="textSecondary" variant="body2" sx={{ p: 2, textAlign: 'center' }}>ط¯ط§ط¯ظ‡â€Œط§غŒ ظ…ظˆط¬ظˆط¯ ظ†غŒط³طھ</Typography>
             )}
           </Paper>
         </Grid>

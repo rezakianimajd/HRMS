@@ -60,7 +60,7 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
         <Box
           sx={{
             border: `2px dashed ${dragOver ? '#1976d2' : '#ccc'}`,
-            borderRadius: 2, p: 4, textAlign: 'center', mb: 2, cursor: 'pointer',
+            borderRadius: '10px', p: 4, textAlign: 'center', mb: 2, cursor: 'pointer',
             backgroundColor: dragOver ? '#e3f2fd' : '#fafafa',
           }}
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}

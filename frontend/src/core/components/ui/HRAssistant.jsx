@@ -8,17 +8,17 @@ import SmartToyIcon from '@mui/icons-material/SmartToy';
 import axiosInstance from '../../api/axiosConfig';
 
 /**
- * دستیار HR — ترکیبی (Hybrid):
- *   - Intent + Entity + SQL برای پاسخ‌های دقیق
- *   - RAG سبک (بازیابی معنایی) برای اسناد
- *   - امتیازدهی ریسک استعفا + نمودار SVG
- * همه‌چیز آفلاین؛ بدون مدل زبانی سنگین و بدون اینترنت.
+ * ط¯ط³طھغŒط§ط± HR â€” طھط±ع©غŒط¨غŒ (Hybrid):
+ *   - Intent + Entity + SQL ط¨ط±ط§غŒ ظ¾ط§ط³ط®â€Œظ‡ط§غŒ ط¯ظ‚غŒظ‚
+ *   - RAG ط³ط¨ع© (ط¨ط§ط²غŒط§ط¨غŒ ظ…ط¹ظ†ط§غŒغŒ) ط¨ط±ط§غŒ ط§ط³ظ†ط§ط¯
+ *   - ط§ظ…طھغŒط§ط²ط¯ظ‡غŒ ط±غŒط³ع© ط§ط³طھط¹ظپط§ + ظ†ظ…ظˆط¯ط§ط± SVG
+ * ظ‡ظ…ظ‡â€Œع†غŒط² ط¢ظپظ„ط§غŒظ†ط› ط¨ط¯ظˆظ† ظ…ط¯ظ„ ط²ط¨ط§ظ†غŒ ط³ظ†ع¯غŒظ† ظˆ ط¨ط¯ظˆظ† ط§غŒظ†طھط±ظ†طھ.
  */
 const HRAssistant = () => {
   const [messages, setMessages] = useState([
     {
       from: 'bot',
-      text: 'سلام! 👋 من دستیار منابع انسانی هستم.\nمی‌توانید درباره هر پرسنل، تاریخ استخدام، آدرس، مدارک، کارکرد، حقوق، مرخصی، جرائم و حتی «احتمال استعفا» و «نمودار» بپرسید.',
+      text: 'ط³ظ„ط§ظ…! ًں‘‹ ظ…ظ† ط¯ط³طھغŒط§ط± ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ ظ‡ط³طھظ….\nظ…غŒâ€Œطھظˆط§ظ†غŒط¯ ط¯ط±ط¨ط§ط±ظ‡ ظ‡ط± ظ¾ط±ط³ظ†ظ„طŒ طھط§ط±غŒط® ط§ط³طھط®ط¯ط§ظ…طŒ ط¢ط¯ط±ط³طŒ ظ…ط¯ط§ط±ع©طŒ ع©ط§ط±ع©ط±ط¯طŒ ط­ظ‚ظˆظ‚طŒ ظ…ط±ط®طµغŒطŒ ط¬ط±ط§ط¦ظ… ظˆ ط­طھغŒ آ«ط§ط­طھظ…ط§ظ„ ط§ط³طھط¹ظپط§آ» ظˆ آ«ظ†ظ…ظˆط¯ط§ط±آ» ط¨ظ¾ط±ط³غŒط¯.',
     },
   ]);
   const [input, setInput] = useState('');
@@ -33,11 +33,11 @@ const HRAssistant = () => {
     setLoading(true);
     try {
       const res = await axiosInstance.post('/assistant/query/', { question: text });
-      const answer = res.data?.answer || 'متأسفانه پاسخی پیدا نکردم.';
+      const answer = res.data?.answer || 'ظ…طھط£ط³ظپط§ظ†ظ‡ ظ¾ط§ط³ط®غŒ ظ¾غŒط¯ط§ ظ†ع©ط±ط¯ظ….';
       const chartUrl = res.data?.chart_url || null;
       setMessages(prev => [...prev, { from: 'bot', text: answer, chartUrl }]);
     } catch {
-      setMessages(prev => [...prev, { from: 'bot', text: 'خطا در دریافت پاسخ. لطفاً دوباره تلاش کنید.', chartUrl: null }]);
+      setMessages(prev => [...prev, { from: 'bot', text: 'ط®ط·ط§ ط¯ط± ط¯ط±غŒط§ظپطھ ظ¾ط§ط³ط®. ظ„ط·ظپط§ظ‹ ط¯ظˆط¨ط§ط±ظ‡ طھظ„ط§ط´ ع©ظ†غŒط¯.', chartUrl: null }]);
     } finally {
       setLoading(false);
     }
@@ -52,14 +52,14 @@ const HRAssistant = () => {
   };
 
   const suggestions = [
-    'تاریخ استخدام علی محمدی کی بوده؟',
-    'آدرس رضا احمدی رو بگو',
-    'کارکرد ماه گذشته مریم حسینی چقدر بوده؟',
-    'مدارک سارا کریمی چیا هستن؟',
-    'مرخصی رضا محمدی چقدر مونده؟',
-    'جرائم مریم حسینی چی بوده؟',
-    'چه کسانی احتمال استعفا دارند؟',
-    'نمودار دپارتمان‌ها رو نشون بده',
+    'طھط§ط±غŒط® ط§ط³طھط®ط¯ط§ظ… ط¹ظ„غŒ ظ…ط­ظ…ط¯غŒ ع©غŒ ط¨ظˆط¯ظ‡طں',
+    'ط¢ط¯ط±ط³ ط±ط¶ط§ ط§ط­ظ…ط¯غŒ ط±ظˆ ط¨ع¯ظˆ',
+    'ع©ط§ط±ع©ط±ط¯ ظ…ط§ظ‡ ع¯ط°ط´طھظ‡ ظ…ط±غŒظ… ط­ط³غŒظ†غŒ ع†ظ‚ط¯ط± ط¨ظˆط¯ظ‡طں',
+    'ظ…ط¯ط§ط±ع© ط³ط§ط±ط§ ع©ط±غŒظ…غŒ ع†غŒط§ ظ‡ط³طھظ†طں',
+    'ظ…ط±ط®طµغŒ ط±ط¶ط§ ظ…ط­ظ…ط¯غŒ ع†ظ‚ط¯ط± ظ…ظˆظ†ط¯ظ‡طں',
+    'ط¬ط±ط§ط¦ظ… ظ…ط±غŒظ… ط­ط³غŒظ†غŒ ع†غŒ ط¨ظˆط¯ظ‡طں',
+    'ع†ظ‡ ع©ط³ط§ظ†غŒ ط§ط­طھظ…ط§ظ„ ط§ط³طھط¹ظپط§ ط¯ط§ط±ظ†ط¯طں',
+    'ظ†ظ…ظˆط¯ط§ط± ط¯ظ¾ط§ط±طھظ…ط§ظ†â€Œظ‡ط§ ط±ظˆ ظ†ط´ظˆظ† ط¨ط¯ظ‡',
   ];
 
   return (
@@ -70,7 +70,7 @@ const HRAssistant = () => {
       background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(236,72,153,0.04))',
       border: '1px solid rgba(99,102,241,0.2)',
       backdropFilter: 'blur(18px)', WebkitBackdropFilter: 'blur(18px)',
-      borderRadius: 3,
+      borderRadius: '10px',
     }}>
       {/* Header */}
       <Box sx={{
@@ -83,8 +83,8 @@ const HRAssistant = () => {
           <SmartToyIcon sx={{ color: '#fff', fontSize: 22 }} />
         </Avatar>
         <Box>
-          <Typography variant="subtitle1" fontWeight={700}>دستیار منابع انسانی</Typography>
-          <Typography variant="caption" color="textSecondary">هوشمند، آفلاین و سریع — پاسخ از داده‌های واقعی سازمان</Typography>
+          <Typography variant="subtitle1" fontWeight={700}>ط¯ط³طھغŒط§ط± ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ</Typography>
+          <Typography variant="caption" color="textSecondary">ظ‡ظˆط´ظ…ظ†ط¯طŒ ط¢ظپظ„ط§غŒظ† ظˆ ط³ط±غŒط¹ â€” ظ¾ط§ط³ط® ط§ط² ط¯ط§ط¯ظ‡â€Œظ‡ط§غŒ ظˆط§ظ‚ط¹غŒ ط³ط§ط²ظ…ط§ظ†</Typography>
         </Box>
       </Box>
 
@@ -108,8 +108,8 @@ const HRAssistant = () => {
                     <Box
                       component="img"
                       src={axiosInstance.defaults.baseURL + m.chartUrl}
-                      alt="نمودار"
-                      sx={{ maxWidth: '100%', borderRadius: 1.5, display: 'block' }}
+                      alt="ظ†ظ…ظˆط¯ط§ط±"
+                      sx={{ maxWidth: '100%', borderRadius: '10px', display: 'block' }}
                     />
                   </Box>
                 )}
@@ -142,7 +142,7 @@ const HRAssistant = () => {
         <TextField
           fullWidth
           size="small"
-          placeholder="مثلاً: کارکرد ماه گذشته رضا محمدی چقدر بوده؟"
+          placeholder="ظ…ط«ظ„ط§ظ‹: ع©ط§ط±ع©ط±ط¯ ظ…ط§ظ‡ ع¯ط°ط´طھظ‡ ط±ط¶ط§ ظ…ط­ظ…ط¯غŒ ع†ظ‚ط¯ط± ط¨ظˆط¯ظ‡طں"
           value={input}
           onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') send(); }}

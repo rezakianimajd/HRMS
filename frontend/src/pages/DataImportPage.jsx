@@ -24,7 +24,7 @@ import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
-/* آیکن‌های اختصاصی برای هر نوع */
+/* ط¢غŒع©ظ†â€Œظ‡ط§غŒ ط§ط®طھطµط§طµغŒ ط¨ط±ط§غŒ ظ‡ط± ظ†ظˆط¹ */
 const ICONS = {
   employees: <PeopleIcon />,
   departments: <AccountTreeIcon />,
@@ -75,7 +75,7 @@ const DataImportPage = () => {
   const selected = list.find(t => t.key === importType);
 
   const handleDownload = async () => {
-    if (!importType) { setError('نوع درون‌ریزی را انتخاب کنید'); return; }
+    if (!importType) { setError('ظ†ظˆط¹ ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯'); return; }
     setError('');
     try {
       const res = await axiosInstance.get(`/import/template/${importType}/`, { responseType: 'blob' });
@@ -85,12 +85,12 @@ const DataImportPage = () => {
       a.setAttribute('download', `template_${importType}.xlsx`);
       document.body.appendChild(a); a.click(); a.remove();
       window.URL.revokeObjectURL(url);
-    } catch { setError('خطا در دانلود نمونه فایل'); }
+    } catch { setError('ط®ط·ط§ ط¯ط± ط¯ط§ظ†ظ„ظˆط¯ ظ†ظ…ظˆظ†ظ‡ ظپط§غŒظ„'); }
   };
 
   const handleUpload = async () => {
-    if (!importType) { setError('ابتدا نوع درون‌ریزی را انتخاب کنید'); return; }
-    if (!file) { setError('فایل اکسل را انتخاب کنید'); return; }
+    if (!importType) { setError('ط§ط¨طھط¯ط§ ظ†ظˆط¹ ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯'); return; }
+    if (!file) { setError('ظپط§غŒظ„ ط§ع©ط³ظ„ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯'); return; }
     setUploading(true); setError(''); setResult(null);
     const fd = new FormData();
     fd.append('import_type', importType);
@@ -103,7 +103,7 @@ const DataImportPage = () => {
         qc.invalidateQueries({ queryKey: [k] }));
     } catch (e) {
       const d = e.response?.data;
-      setError(d?.error || 'خطا در درون‌ریزی');
+      setError(d?.error || 'ط®ط·ط§ ط¯ط± ط¯ط±ظˆظ†â€Œط±غŒط²غŒ');
       if (d) setResult(d);
     } finally { setUploading(false); }
   };
@@ -125,17 +125,17 @@ const DataImportPage = () => {
       <Paper sx={{
         p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
         background: 'linear-gradient(120deg, rgba(99,102,241,0.10), rgba(49,46,129,0.04), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(99,102,241,0.16)', borderRadius: 3,
+        border: '1px solid rgba(99,102,241,0.16)', borderRadius: '10px',
       }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
           <UploadFileIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#4338ca">درون‌ریزی داده از اکسل</Typography>
-          <Typography variant="body2" color="textSecondary">نوع را انتخاب، نمونه را دانلود، فایل را بارگذاری کنید — همه‌چیز یکجا</Typography>
+          <Typography variant="h6" fontWeight={800} color="#4338ca">ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ط¯ط§ط¯ظ‡ ط§ط² ط§ع©ط³ظ„</Typography>
+          <Typography variant="body2" color="textSecondary">ظ†ظˆط¹ ط±ط§ ط§ظ†طھط®ط§ط¨طŒ ظ†ظ…ظˆظ†ظ‡ ط±ط§ ط¯ط§ظ†ظ„ظˆط¯طŒ ظپط§غŒظ„ ط±ط§ ط¨ط§ط±ع¯ط°ط§ط±غŒ ع©ظ†غŒط¯ â€” ظ‡ظ…ظ‡â€Œع†غŒط² غŒع©ط¬ط§</Typography>
         </Box>
         <Button variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => setHelpOpen(true)}>
-          راهنمای ستون‌ها
+          ط±ط§ظ‡ظ†ظ…ط§غŒ ط³طھظˆظ†â€Œظ‡ط§
         </Button>
       </Paper>
 
@@ -144,29 +144,29 @@ const DataImportPage = () => {
       {result?.imported_count !== undefined && step === 2 && (
         <Alert severity={result.imported_count > 0 ? 'success' : 'warning'} sx={{ mb: 2 }} onClose={() => setResult(null)}>
           {result.imported_count > 0
-            ? `✅ ${result.message || 'درون‌ریزی موفق'} — ${result.imported_count} ردیف ثبت شد${result.skipped_count ? `، ${result.skipped_count} رد شد` : ''}`
+            ? `âœ… ${result.message || 'ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ظ…ظˆظپظ‚'} â€” ${result.imported_count} ط±ط¯غŒظپ ط«ط¨طھ ط´ط¯${result.skipped_count ? `طŒ ${result.skipped_count} ط±ط¯ ط´ط¯` : ''}`
             : (result.validation_errors?.length
-                ? `⚠️ ${result.validation_errors.length} ردیف خطای اعتبارسنجی دارد`
-                : `⚠️ ${result.error || 'خطا'}`)}
+                ? `âڑ ï¸ڈ ${result.validation_errors.length} ط±ط¯غŒظپ ط®ط·ط§غŒ ط§ط¹طھط¨ط§ط±ط³ظ†ط¬غŒ ط¯ط§ط±ط¯`
+                : `âڑ ï¸ڈ ${result.error || 'ط®ط·ط§'}`)}
         </Alert>
       )}
       {result?.validation_errors?.length > 0 && (
         <Paper sx={{ mb: 2, p: 1.5, maxHeight: 130, overflow: 'auto', fontSize: '0.72rem' }}>
           {result.validation_errors.slice(0, 10).map((v, i) => (
             <Typography key={i} variant="caption" color="error" display="block">
-              ردیف {v.row}: {v.errors.join(' — ')}
+              ط±ط¯غŒظپ {v.row}: {v.errors.join(' â€” ')}
             </Typography>
           ))}
         </Paper>
       )}
       {result?.skipped?.length > 0 && (
         <Paper sx={{ mb: 2, p: 1.5, maxHeight: 100, overflow: 'auto' }}>
-          <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>رد شده‌ها: </Typography>
-          <Typography variant="caption">{result.skipped.slice(0, 10).join(' — ')}</Typography>
+          <Typography variant="caption" color="warning.main" sx={{ fontWeight: 700 }}>ط±ط¯ ط´ط¯ظ‡â€Œظ‡ط§: </Typography>
+          <Typography variant="caption">{result.skipped.slice(0, 10).join(' â€” ')}</Typography>
         </Paper>
       )}
 
-      {/* STEP 0: انتخاب نوع */}
+      {/* STEP 0: ط§ظ†طھط®ط§ط¨ ظ†ظˆط¹ */}
       {step === 0 && (
         isLoading ? (
           <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
@@ -181,7 +181,7 @@ const DataImportPage = () => {
                     <Paper
                       onClick={() => { setImportType(t.key); setResult(null); setError(''); setFile(null); }}
                       sx={{
-                        p: 2, borderRadius: 3, cursor: 'pointer', height: '100%',
+                        p: 2, borderRadius: '10px', cursor: 'pointer', height: '100%',
                         transition: 'all 0.18s ease',
                         border: active ? `2px solid ${color}` : '1px solid rgba(0,0,0,0.08)',
                         background: active ? `${color}12` : 'rgba(255,255,255,0.6)',
@@ -198,7 +198,7 @@ const DataImportPage = () => {
                         {t.description || ''}
                       </Typography>
                       {t.required?.length > 0 && (
-                        <Chip size="small" label={`${t.required.length} فیلد الزامی`}
+                        <Chip size="small" label={`${t.required.length} ظپغŒظ„ط¯ ط§ظ„ط²ط§ظ…غŒ`}
                           sx={{ mt: 1, bgcolor: `${color}15`, color, fontWeight: 700 }} />
                       )}
                     </Paper>
@@ -214,7 +214,7 @@ const DataImportPage = () => {
                   onClick={() => setStep(1)}
                   sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}
                 >
-                  ادامه
+                  ط§ط¯ط§ظ…ظ‡
                 </Button>
               </Box>
             )}
@@ -222,13 +222,13 @@ const DataImportPage = () => {
         )
       )}
 
-      {/* STEP 1: بارگذاری */}
+      {/* STEP 1: ط¨ط§ط±ع¯ط°ط§ط±غŒ */}
       {step === 1 && selected && (
-        <Paper sx={{ p: 3, borderRadius: 3, border: '1px dashed rgba(99,102,241,0.4)' }}>
+        <Paper sx={{ p: 3, borderRadius: '10px', border: '1px dashed rgba(99,102,241,0.4)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1, mb: 2 }}>
-            <Typography variant="subtitle1" fontWeight={800}>درون‌ریزی: {selected.label}</Typography>
+            <Typography variant="subtitle1" fontWeight={800}>ط¯ط±ظˆظ†â€Œط±غŒط²غŒ: {selected.label}</Typography>
             <Button size="small" variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}>
-              دانلود نمونه
+              ط¯ط§ظ†ظ„ظˆط¯ ظ†ظ…ظˆظ†ظ‡
             </Button>
           </Box>
 
@@ -238,7 +238,7 @@ const DataImportPage = () => {
             onDragLeave={() => setDragOver(false)}
             onDrop={onDrop}
             sx={{
-              py: 5, textAlign: 'center', cursor: 'pointer', borderRadius: 3,
+              py: 5, textAlign: 'center', cursor: 'pointer', borderRadius: '10px',
               border: dragOver ? '2px dashed #6366f1' : '2px dashed rgba(100,116,139,0.3)',
               background: dragOver ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.4)',
               transition: 'all 0.15s ease',
@@ -246,10 +246,10 @@ const DataImportPage = () => {
           >
             <CloudUploadIcon sx={{ fontSize: 48, color: '#6366f1', mb: 1 }} />
             <Typography variant="body1" fontWeight={700}>
-              {file ? file.name : 'فایل اکسل را اینجا رها کنید'}
+              {file ? file.name : 'ظپط§غŒظ„ ط§ع©ط³ظ„ ط±ط§ ط§غŒظ†ط¬ط§ ط±ظ‡ط§ ع©ظ†غŒط¯'}
             </Typography>
             <Typography variant="caption" color="textSecondary">
-              یا کلیک کنید تا انتخاب شود (.xlsx / .xls)
+              غŒط§ ع©ظ„غŒع© ع©ظ†غŒط¯ طھط§ ط§ظ†طھط®ط§ط¨ ط´ظˆط¯ (.xlsx / .xls)
             </Typography>
             <input
               ref={fileInputRef}
@@ -259,22 +259,22 @@ const DataImportPage = () => {
           </Box>
 
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} sx={{ mt: 2 }}>
-            <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => setStep(0)}>بازگشت</Button>
+            <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => setStep(0)}>ط¨ط§ط²ع¯ط´طھ</Button>
             <Button
               variant="contained" disabled={!file || uploading}
               onClick={handleUpload}
               sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', flex: 1 }}
             >
-              {uploading ? <CircularProgress size={18} color="inherit" /> : 'شروع درون‌ریزی'}
+              {uploading ? <CircularProgress size={18} color="inherit" /> : 'ط´ط±ظˆط¹ ط¯ط±ظˆظ†â€Œط±غŒط²غŒ'}
             </Button>
           </Stack>
-          {uploading && <LinearProgress sx={{ mt: 2, borderRadius: 2 }} />}
+          {uploading && <LinearProgress sx={{ mt: 2, borderRadius: '10px' }} />}
         </Paper>
       )}
 
-      {/* STEP 2: نتیجه */}
+      {/* STEP 2: ظ†طھغŒط¬ظ‡ */}
       {step === 2 && result && (
-        <Paper sx={{ p: 3, borderRadius: 3, textAlign: 'center', background: 'rgba(255,255,255,0.6)' }}>
+        <Paper sx={{ p: 3, borderRadius: '10px', textAlign: 'center', background: 'rgba(255,255,255,0.6)' }}>
           <Avatar sx={{
             width: 72, height: 72, mx: 'auto', mb: 1.5,
             background: result.imported_count > 0
@@ -284,10 +284,10 @@ const DataImportPage = () => {
             {result.imported_count > 0 ? <CloudUploadIcon sx={{ color: '#fff', fontSize: 36 }} /> : <InfoOutlinedIcon sx={{ color: '#fff', fontSize: 36 }} />}
           </Avatar>
           <Typography variant="h6" fontWeight={800}>
-            {result.imported_count > 0 ? 'درون‌ریزی موفق بود' : 'درون‌ریزی با هشدار'}
+            {result.imported_count > 0 ? 'ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ظ…ظˆظپظ‚ ط¨ظˆط¯' : 'ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ط¨ط§ ظ‡ط´ط¯ط§ط±'}
           </Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            {result.imported_count} ردیف ثبت شد · {result.skipped_count || 0} ردیف رد شد
+            {result.imported_count} ط±ط¯غŒظپ ط«ط¨طھ ط´ط¯ آ· {result.skipped_count || 0} ط±ط¯غŒظپ ط±ط¯ ط´ط¯
           </Typography>
           {result.skipped?.length > 0 && (
             <Paper sx={{ p: 1.5, maxHeight: 120, overflow: 'auto', textAlign: 'right', mb: 2 }}>
@@ -298,18 +298,18 @@ const DataImportPage = () => {
           )}
           <Button variant="contained" startIcon={<ArrowBackIcon />} onClick={reset}
             sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
-            درون‌ریزی جدید
+            ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ط¬ط¯غŒط¯
           </Button>
         </Paper>
       )}
 
       {/* Help dialog */}
       <Dialog open={helpOpen} onClose={() => setHelpOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#4338ca' }}>راهنمای ستون‌های فایل اکسل</DialogTitle>
+        <DialogTitle sx={{ color: '#4338ca' }}>ط±ط§ظ‡ظ†ظ…ط§غŒ ط³طھظˆظ†â€Œظ‡ط§غŒ ظپط§غŒظ„ ط§ع©ط³ظ„</DialogTitle>
         <DialogContent dividers>
           {(selected || {}).persian_headers && (
             <>
-              <Typography variant="subtitle2" fontWeight={700}>ستون‌ها (به ترتیب):</Typography>
+              <Typography variant="subtitle2" fontWeight={700}>ط³طھظˆظ†â€Œظ‡ط§ (ط¨ظ‡ طھط±طھغŒط¨):</Typography>
               <Stack direction="row" spacing={0.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
                 {selected.persian_headers.map((h, idx) => (
                   <Chip key={idx} size="small" label={h} sx={{
@@ -320,12 +320,12 @@ const DataImportPage = () => {
                 ))}
               </Stack>
               <Alert severity="info" sx={{ mt: 2 }}>
-                فیلدهای با پس‌زمینه بنفش الزامی‌اند. تاریخ‌ها را می‌توانید شمسی (مثال ۱۴۰۴/۰۶/۱۵) یا میلادی بنویسید.
+                ظپغŒظ„ط¯ظ‡ط§غŒ ط¨ط§ ظ¾ط³â€Œط²ظ…غŒظ†ظ‡ ط¨ظ†ظپط´ ط§ظ„ط²ط§ظ…غŒâ€Œط§ظ†ط¯. طھط§ط±غŒط®â€Œظ‡ط§ ط±ط§ ظ…غŒâ€Œطھظˆط§ظ†غŒط¯ ط´ظ…ط³غŒ (ظ…ط«ط§ظ„ غ±غ´غ°غ´/غ°غ¶/غ±غµ) غŒط§ ظ…غŒظ„ط§ط¯غŒ ط¨ظ†ظˆغŒط³غŒط¯.
               </Alert>
             </>
           )}
         </DialogContent>
-        <DialogActions><Button onClick={() => setHelpOpen(false)}>بستن</Button></DialogActions>
+        <DialogActions><Button onClick={() => setHelpOpen(false)}>ط¨ط³طھظ†</Button></DialogActions>
       </Dialog>
     </Box>
   );

@@ -15,13 +15,13 @@ import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils'
 import { toJalali } from '../core/utils/dateUtils';
 
 const STAGE_LABELS = {
-  applied: 'دریافت رزومه',
-  screening: 'غربالگری',
-  interview: 'مصاحبه',
-  assessment: 'ارزیابی فنی',
-  offer: 'پیشنهاد همکاری',
-  hired: 'استخدام شده',
-  rejected: 'رد شده',
+  applied: 'ط¯ط±غŒط§ظپطھ ط±ط²ظˆظ…ظ‡',
+  screening: 'ط؛ط±ط¨ط§ظ„ع¯ط±غŒ',
+  interview: 'ظ…طµط§ط­ط¨ظ‡',
+  assessment: 'ط§ط±ط²غŒط§ط¨غŒ ظپظ†غŒ',
+  offer: 'ظ¾غŒط´ظ†ظ‡ط§ط¯ ظ‡ظ…ع©ط§ط±غŒ',
+  hired: 'ط§ط³طھط®ط¯ط§ظ… ط´ط¯ظ‡',
+  rejected: 'ط±ط¯ ط´ط¯ظ‡',
 };
 
 const STAGE_COLORS = {
@@ -74,37 +74,37 @@ const RecruitmentPage = () => {
       <Paper sx={{
         p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
         background: 'linear-gradient(120deg, rgba(14,165,233,0.10), rgba(139,92,246,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(14,165,233,0.16)', borderRadius: 3,
+        border: '1px solid rgba(14,165,233,0.16)', borderRadius: '10px',
       }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', boxShadow: '0 8px 24px rgba(14,165,233,0.35)' }}>
           <WorkOutlineIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#0369a1">جذب و استخدام</Typography>
-          <Typography variant="body2" color="textSecondary">درخواست استخدام ← کاندید ← مصاحبه ← استخدام (پایپلاین کامل)</Typography>
+          <Typography variant="h6" fontWeight={800} color="#0369a1">ط¬ط°ط¨ ظˆ ط§ط³طھط®ط¯ط§ظ…</Typography>
+          <Typography variant="body2" color="textSecondary">ط¯ط±ط®ظˆط§ط³طھ ط§ط³طھط®ط¯ط§ظ… â†گ ع©ط§ظ†ط¯غŒط¯ â†گ ظ…طµط§ط­ط¨ظ‡ â†گ ط§ط³طھط®ط¯ط§ظ… (ظ¾ط§غŒظ¾ظ„ط§غŒظ† ع©ط§ظ…ظ„)</Typography>
         </Box>
         <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setOpenReq(true)}
-          sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: 2, px: 2.5 }}>
-          درخواست استخدام جدید
+          sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', px: 2.5 }}>
+          ط¯ط±ط®ظˆط§ط³طھ ط§ط³طھط®ط¯ط§ظ… ط¬ط¯غŒط¯
         </Button>
       </Paper>
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2 }}>
-        <Tab label={`درخواست‌های استخدام (${toPersianDigits(requisitions.length)})`} />
-        <Tab label={`کانبان کاندیدها (${toPersianDigits(candList.length)})`} />
+        <Tab label={`ط¯ط±ط®ظˆط§ط³طھâ€Œظ‡ط§غŒ ط§ط³طھط®ط¯ط§ظ… (${toPersianDigits(requisitions.length)})`} />
+        <Tab label={`ع©ط§ظ†ط¨ط§ظ† ع©ط§ظ†ط¯غŒط¯ظ‡ط§ (${toPersianDigits(candList.length)})`} />
       </Tabs>
 
       {tab === 0 && (
         <Grid container spacing={2}>
           {requisitions.map(r => (
             <Grid item xs={12} md={6} key={r.id}>
-              <Paper sx={{ p: 2, borderRadius: 3, background: 'rgba(255,255,255,0.6)' }}>
+              <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
                   <Typography variant="subtitle1" fontWeight={800}>{r.title}</Typography>
                   <Chip size="small" label={r.status_display} color={r.status === 'open' ? 'success' : 'default'} variant="outlined" />
                 </Box>
                 <Typography variant="caption" color="textSecondary" display="block">
-                  {r.department_name || '—'} · نیاز: {formatPersianNumber(r.headcount)} نفر · کاندید: {formatPersianNumber(r.candidates_count || 0)}
+                  {r.department_name || 'â€”'} آ· ظ†غŒط§ط²: {formatPersianNumber(r.headcount)} ظ†ظپط± آ· ع©ط§ظ†ط¯غŒط¯: {formatPersianNumber(r.candidates_count || 0)}
                 </Typography>
                 {r.reason && <Typography variant="body2" sx={{ mt: 1 }}>{r.reason}</Typography>}
               </Paper>
@@ -115,7 +115,7 @@ const RecruitmentPage = () => {
 
       {tab === 1 && (
         <Box>
-          <Paper sx={{ p: 1.5, mb: 2, borderRadius: 2.5, display: 'flex', gap: 1, flexWrap: 'wrap', background: 'rgba(255,255,255,0.6)' }}>
+          <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', display: 'flex', gap: 1, flexWrap: 'wrap', background: 'rgba(255,255,255,0.6)' }}>
             {stageCounts.map(s => (
               <Chip key={s.stage} label={`${STAGE_LABELS[s.stage]}: ${formatPersianNumber(s.count)}`}
                 sx={{ bgcolor: `${STAGE_COLORS[s.stage]}18`, color: STAGE_COLORS[s.stage], fontWeight: 700 }} />
@@ -127,15 +127,15 @@ const RecruitmentPage = () => {
               const inStage = candList.filter(c => c.stage === stage);
               return (
                 <Grid item xs={12} sm={6} md={4} lg={2.4} key={stage}>
-                  <Paper sx={{ p: 1.25, borderRadius: 2.5, minHeight: 200, background: 'rgba(255,255,255,0.55)' }}>
+                  <Paper sx={{ p: 1.25, borderRadius: '10px', minHeight: 200, background: 'rgba(255,255,255,0.55)' }}>
                     <Typography variant="caption" fontWeight={800} sx={{ color: STAGE_COLORS[stage], mb: 1, display: 'block' }}>
                       {STAGE_LABELS[stage]}
                     </Typography>
                     <Stack spacing={1}>
                       {inStage.map(c => (
-                        <Paper key={c.id} variant="outlined" sx={{ p: 1, borderRadius: 2, borderColor: `${STAGE_COLORS[stage]}44` }}>
+                        <Paper key={c.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', borderColor: `${STAGE_COLORS[stage]}44` }}>
                           <Typography variant="body2" fontWeight={700} noWrap>{c.full_name}</Typography>
-                          {c.rating > 0 && <Typography variant="caption" color="textSecondary">امتیاز: {formatPersianNumber(c.rating)}</Typography>}
+                          {c.rating > 0 && <Typography variant="caption" color="textSecondary">ط§ظ…طھغŒط§ط²: {formatPersianNumber(c.rating)}</Typography>}
                           <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
                             {stage !== 'hired' && stage !== 'rejected' && (
                               <IconButton size="small" color="primary" onClick={() => {
@@ -154,7 +154,7 @@ const RecruitmentPage = () => {
                         </Paper>
                       ))}
                       {inStage.length === 0 && (
-                        <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>—</Typography>
+                        <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center', py: 2 }}>â€”</Typography>
                       )}
                     </Stack>
                   </Paper>
@@ -167,19 +167,19 @@ const RecruitmentPage = () => {
 
       {/* New requisition dialog */}
       <Dialog open={openReq} onClose={() => setOpenReq(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#0369a1' }}>درخواست استخدام جدید</DialogTitle>
+        <DialogTitle sx={{ color: '#0369a1' }}>ط¯ط±ط®ظˆط§ط³طھ ط§ط³طھط®ط¯ط§ظ… ط¬ط¯غŒط¯</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="عنوان شغلی *" value={reqForm.title}
+          <TextField fullWidth size="small" label="ط¹ظ†ظˆط§ظ† ط´ط؛ظ„غŒ *" value={reqForm.title}
             onChange={e => setReqForm(p => ({ ...p, title: e.target.value }))} />
-          <TextField fullWidth size="small" label="تعداد نیرو" type="number" value={reqForm.headcount}
+          <TextField fullWidth size="small" label="طھط¹ط¯ط§ط¯ ظ†غŒط±ظˆ" type="number" value={reqForm.headcount}
             onChange={e => setReqForm(p => ({ ...p, headcount: e.target.value }))} />
-          <TextField fullWidth size="small" label="دلیل استخدام" multiline rows={2} value={reqForm.reason}
+          <TextField fullWidth size="small" label="ط¯ظ„غŒظ„ ط§ط³طھط®ط¯ط§ظ…" multiline rows={2} value={reqForm.reason}
             onChange={e => setReqForm(p => ({ ...p, reason: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenReq(false)}>انصراف</Button>
+          <Button onClick={() => setOpenReq(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" disabled={!reqForm.title} onClick={() => createReq.mutate(reqForm)}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)' }}>ثبت</Button>
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)' }}>ط«ط¨طھ</Button>
         </DialogActions>
       </Dialog>
     </Box>

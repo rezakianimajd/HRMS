@@ -30,11 +30,11 @@ const emptyForm = {
 };
 
 const LOAN_TYPES = [
-  { value: 'qarz', label: 'وام قرض‌الحسنه' },
-  { value: 'car', label: 'وام خودرو' },
-  { value: 'housing', label: 'وام مسکن' },
-  { value: 'urgent', label: 'وام ضروری' },
-  { value: 'other', label: 'سایر' },
+  { value: 'qarz', label: 'ظˆط§ظ… ظ‚ط±ط¶â€Œط§ظ„ط­ط³ظ†ظ‡' },
+  { value: 'car', label: 'ظˆط§ظ… ط®ظˆط¯ط±ظˆ' },
+  { value: 'housing', label: 'ظˆط§ظ… ظ…ط³ع©ظ†' },
+  { value: 'urgent', label: 'ظˆط§ظ… ط¶ط±ظˆط±غŒ' },
+  { value: 'other', label: 'ط³ط§غŒط±' },
 ];
 
 const STATUS_COLORS = {
@@ -69,7 +69,7 @@ const LoansPage = () => {
       queryClient.invalidateQueries({ queryKey: ['loans'] });
       setOpen(false); setError('');
     },
-    onError: (e) => setError(e.response?.data?.detail || 'خطا در ذخیره'),
+    onError: (e) => setError(e.response?.data?.detail || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡'),
   });
 
   const deleteMutation = useMutation({
@@ -103,17 +103,17 @@ const LoansPage = () => {
   };
 
   const statusValue = (item) => {
-    if (item.status === 'paid') return 'تسویه‌شده';
-    if (item.status === 'cancelled') return 'لغو شده';
-    if (item.loan_type === 'active') return 'فعال';
-    return item.status_display || '—';
+    if (item.status === 'paid') return 'طھط³ظˆغŒظ‡â€Œط´ط¯ظ‡';
+    if (item.status === 'cancelled') return 'ظ„ط؛ظˆ ط´ط¯ظ‡';
+    if (item.loan_type === 'active') return 'ظپط¹ط§ظ„';
+    return item.status_display || 'â€”';
   };
 
   const loanTypeLabel = (v) => (LOAN_TYPES.find(x => x.value === v)?.label || v);
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2, borderRadius: 3, border: '1px solid rgba(16,185,129,0.18)',
+      <Paper sx={{ p: 2.5, mb: 2, borderRadius: '10px', border: '1px solid rgba(16,185,129,0.18)',
         background: 'linear-gradient(120deg, rgba(16,185,129,0.07), rgba(255,255,255,0.3))' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -121,40 +121,40 @@ const LoansPage = () => {
               <AccountBalanceWalletIcon sx={{ color: '#fff' }} />
             </Avatar>
             <Box>
-              <Typography variant="h6" fontWeight={800} color="#10b981">وام و تسهیلات</Typography>
+              <Typography variant="h6" fontWeight={800} color="#10b981">ظˆط§ظ… ظˆ طھط³ظ‡غŒظ„ط§طھ</Typography>
               <Typography variant="body2" color="textSecondary">
-                مدیریت وامهای پرداخت‌شده به پرسنل — مبلغ، اقساط، سررسید و وضعیت
+                ظ…ط¯غŒط±غŒطھ ظˆط§ظ…ظ‡ط§غŒ ظ¾ط±ط¯ط§ط®طھâ€Œط´ط¯ظ‡ ط¨ظ‡ ظ¾ط±ط³ظ†ظ„ â€” ظ…ط¨ظ„ط؛طŒ ط§ظ‚ط³ط§ط·طŒ ط³ط±ط±ط³غŒط¯ ظˆ ظˆط¶ط¹غŒطھ
               </Typography>
             </Box>
           </Box>
           <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
-            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: 2 }}>
-            ثبت وام جدید
+            sx={{ background: 'linear-gradient(135deg, #10b981, #059669)', borderRadius: '10px' }}>
+            ط«ط¨طھ ظˆط§ظ… ط¬ط¯غŒط¯
           </Button>
         </Box>
       </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '10px' }}>
         {isLoading ? (
           <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
         ) : items.length === 0 ? (
           <Box sx={{ p: 5, textAlign: 'center' }}>
-            <Typography color="textSecondary">وام یا تسهیلاتی ثبت نشده است</Typography>
+            <Typography color="textSecondary">ظˆط§ظ… غŒط§ طھط³ظ‡غŒظ„ط§طھغŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
           </Box>
         ) : (
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'rgba(16,185,129,0.06)' }}>
-                <TableCell sx={{ fontWeight: 700 }}>پرسنل</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>نوع وام</TableCell>
-                <TableCell align="left" sx={{ fontWeight: 700 }}>مبلغ کل</TableCell>
-                <TableCell align="left" sx={{ fontWeight: 700 }}>اقساط</TableCell>
-                <TableCell align="left" sx={{ fontWeight: 700 }}>مبلغ قسط</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>تاریخ اعطا</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>وضعیت</TableCell>
-                <TableCell align="left" width={100} sx={{ fontWeight: 700 }}>اقدامات</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ظ¾ط±ط³ظ†ظ„</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ظ†ظˆط¹ ظˆط§ظ…</TableCell>
+                <TableCell align="left" sx={{ fontWeight: 700 }}>ظ…ط¨ظ„ط؛ ع©ظ„</TableCell>
+                <TableCell align="left" sx={{ fontWeight: 700 }}>ط§ظ‚ط³ط§ط·</TableCell>
+                <TableCell align="left" sx={{ fontWeight: 700 }}>ظ…ط¨ظ„ط؛ ظ‚ط³ط·</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>طھط§ط±غŒط® ط§ط¹ط·ط§</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ظˆط¶ط¹غŒطھ</TableCell>
+                <TableCell align="left" width={100} sx={{ fontWeight: 700 }}>ط§ظ‚ط¯ط§ظ…ط§طھ</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -163,7 +163,7 @@ const LoansPage = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ width: 28, height: 28, bgcolor: '#10b981', fontSize: 12 }}>
-                        {(loan.employee_name || '؟').charAt(0)}
+                        {(loan.employee_name || 'طں').charAt(0)}
                       </Avatar>
                       <Box>
                         <Typography variant="body2" fontWeight={600}>{loan.employee_name}</Typography>
@@ -186,9 +186,9 @@ const LoansPage = () => {
                   <TableCell align="left">
                     <Typography variant="body2" fontWeight={600}>{formatPersianNumber(loan.amount)}</Typography>
                   </TableCell>
-                  <TableCell align="left">{toPersianDigits(loan.installment_count)} قسط</TableCell>
+                  <TableCell align="left">{toPersianDigits(loan.installment_count)} ظ‚ط³ط·</TableCell>
                   <TableCell align="left">{formatPersianNumber(loan.installment_amount)}</TableCell>
-                  <TableCell><Typography variant="body2">{loan.grant_date || '—'}</Typography></TableCell>
+                  <TableCell><Typography variant="body2">{loan.grant_date || 'â€”'}</Typography></TableCell>
                   <TableCell>
                     <Chip size="small"
                       label={loan.status_display || statusValue(loan)}
@@ -203,7 +203,7 @@ const LoansPage = () => {
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small" color="error"
-                      onClick={() => { if (window.confirm('حذف این وام؟')) deleteMutation.mutate(loan.id); }}>
+                      onClick={() => { if (window.confirm('ط­ط°ظپ ط§غŒظ† ظˆط§ظ…طں')) deleteMutation.mutate(loan.id); }}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -217,63 +217,63 @@ const LoansPage = () => {
       {/* Add / Edit dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color: '#10b981' }}>
-          {editing ? 'ویرایش وام' : 'ثبت وام جدید'}
+          {editing ? 'ظˆغŒط±ط§غŒط´ ظˆط§ظ…' : 'ط«ط¨طھ ظˆط§ظ… ط¬ط¯غŒط¯'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>پرسنل *</InputLabel>
-            <Select value={form.employee || ''} label="پرسنل *"
+            <InputLabel>ظ¾ط±ط³ظ†ظ„ *</InputLabel>
+            <Select value={form.employee || ''} label="ظ¾ط±ط³ظ†ظ„ *"
               onChange={e => setForm(p => ({ ...p, employee: e.target.value }))}>
               {empList.map(e => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
 
           <FormControl fullWidth size="small">
-            <InputLabel>نوع وام</InputLabel>
-            <Select value={form.loan_type} label="نوع وام"
+            <InputLabel>ظ†ظˆط¹ ظˆط§ظ…</InputLabel>
+            <Select value={form.loan_type} label="ظ†ظˆط¹ ظˆط§ظ…"
               onChange={e => setForm(p => ({ ...p, loan_type: e.target.value }))}>
               {LOAN_TYPES.map(lt => <MenuItem key={lt.value} value={lt.value}>{lt.label}</MenuItem>)}
             </Select>
           </FormControl>
 
-          <TextField fullWidth size="small" label="مبلغ کل وام (ریال) *" type="number" required
+          <TextField fullWidth size="small" label="ظ…ط¨ظ„ط؛ ع©ظ„ ظˆط§ظ… (ط±غŒط§ظ„) *" type="number" required
             value={form.amount}
             onChange={e => setForm(p => ({ ...p, amount: Number(e.target.value) }))} />
 
           <Box sx={{ display: 'flex', gap: 1.5 }}>
-            <TextField fullWidth size="small" label="تعداد اقساط" type="number"
+            <TextField fullWidth size="small" label="طھط¹ط¯ط§ط¯ ط§ظ‚ط³ط§ط·" type="number"
               value={form.installment_count}
               onChange={e => setForm(p => ({ ...p, installment_count: Number(e.target.value) }))} />
-            <TextField fullWidth size="small" label="مبلغ هر قسط (ریال)" type="number"
+            <TextField fullWidth size="small" label="ظ…ط¨ظ„ط؛ ظ‡ط± ظ‚ط³ط· (ط±غŒط§ظ„)" type="number"
               value={form.installment_amount}
               onChange={e => setForm(p => ({ ...p, installment_amount: Number(e.target.value) }))} />
           </Box>
 
-          <JalaliDatePicker fullWidth label="تاریخ اعطای وام" value={form.grant_date}
+          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط§ط¹ط·ط§غŒ ظˆط§ظ…" value={form.grant_date}
             onChange={g => setForm(p => ({ ...p, grant_date: g }))} />
-          <JalaliDatePicker fullWidth label="تاریخ سررسید (اختیاری)" value={form.due_date}
+          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط³ط±ط±ط³غŒط¯ (ط§ط®طھغŒط§ط±غŒ)" value={form.due_date}
             onChange={g => setForm(p => ({ ...p, due_date: g }))} />
 
           <FormControl fullWidth size="small">
-            <InputLabel>وضعیت</InputLabel>
-            <Select value={form.status} label="وضعیت"
+            <InputLabel>ظˆط¶ط¹غŒطھ</InputLabel>
+            <Select value={form.status} label="ظˆط¶ط¹غŒطھ"
               onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
-              <MenuItem value="active">فعال</MenuItem>
-              <MenuItem value="paid">تسویه‌شده</MenuItem>
-              <MenuItem value="cancelled">لغو شده</MenuItem>
+              <MenuItem value="active">ظپط¹ط§ظ„</MenuItem>
+              <MenuItem value="paid">طھط³ظˆغŒظ‡â€Œط´ط¯ظ‡</MenuItem>
+              <MenuItem value="cancelled">ظ„ط؛ظˆ ط´ط¯ظ‡</MenuItem>
             </Select>
           </FormControl>
 
-          <TextField fullWidth size="small" label="شرح / کاربری" multiline rows={2}
+          <TextField fullWidth size="small" label="ط´ط±ط­ / ع©ط§ط±ط¨ط±غŒ" multiline rows={2}
             value={form.description}
             onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>انصراف</Button>
+          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" sx={{ background: '#10b981' }}
             disabled={!form.employee || !form.amount}
             onClick={() => saveMutation.mutate({ ...form, employee: Number(form.employee) })}>
-            {editing ? 'ذخیره تغییرات' : 'ثبت وام'}
+            {editing ? 'ط°ط®غŒط±ظ‡ طھط؛غŒغŒط±ط§طھ' : 'ط«ط¨طھ ظˆط§ظ…'}
           </Button>
         </DialogActions>
       </Dialog>

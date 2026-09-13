@@ -17,7 +17,7 @@ const ComingSoonPage = () => {
   const { pathname, state } = useLocation();
   const navigate = useNavigate();
 
-  let activeTitle = state?.title || 'این بخش';
+  let activeTitle = state?.title || 'ط§غŒظ† ط¨ط®ط´';
   const menus = [menuConfig, getMenuForApp('contracts')];
   menus.forEach((menu) => {
     menu.forEach((group) => {
@@ -39,7 +39,7 @@ const ComingSoonPage = () => {
           mx: 4,
           textAlign: 'center',
           p: { xs: 4, md: 7 },
-          borderRadius: 4,
+          borderRadius: '10px',
           border: '1px solid rgba(99,102,241,0.15)',
           background:
             'linear-gradient(160deg, rgba(99,102,241,0.05), rgba(236,72,153,0.03), rgba(255,255,255,0.6))',
@@ -60,7 +60,7 @@ const ComingSoonPage = () => {
 
         <Chip
           icon={<RocketLaunchIcon sx={{ fontSize: 16 }} />}
-          label="به‌زودی"
+          label="ط¨ظ‡â€Œط²ظˆط¯غŒ"
           size="small"
           sx={{
             mb: 2,
@@ -75,8 +75,8 @@ const ComingSoonPage = () => {
           {activeTitle}
         </Typography>
         <Typography variant="body1" color="textSecondary" sx={{ mb: 4, lineHeight: 2 }}>
-          این بخش در حال توسعه است. تیم محصول در حال تکمیل امکانات حرفه‌ای آن
-          مطابق با نیازهای سازمانی می‌باشد و به‌زودی در دسترس شما قرار خواهد گرفت.
+          ط§غŒظ† ط¨ط®ط´ ط¯ط± ط­ط§ظ„ طھظˆط³ط¹ظ‡ ط§ط³طھ. طھغŒظ… ظ…ط­طµظˆظ„ ط¯ط± ط­ط§ظ„ طھع©ظ…غŒظ„ ط§ظ…ع©ط§ظ†ط§طھ ط­ط±ظپظ‡â€Œط§غŒ ط¢ظ†
+          ظ…ط·ط§ط¨ظ‚ ط¨ط§ ظ†غŒط§ط²ظ‡ط§غŒ ط³ط§ط²ظ…ط§ظ†غŒ ظ…غŒâ€Œط¨ط§ط´ط¯ ظˆ ط¨ظ‡â€Œط²ظˆط¯غŒ ط¯ط± ط¯ط³طھط±ط³ ط´ظ…ط§ ظ‚ط±ط§ط± ط®ظˆط§ظ‡ط¯ ع¯ط±ظپطھ.
         </Typography>
 
         <Button
@@ -87,11 +87,11 @@ const ComingSoonPage = () => {
             background: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
             px: 4,
             py: 1.2,
-            borderRadius: 2,
+            borderRadius: '10px',
             boxShadow: '0 6px 20px rgba(99,102,241,0.3)',
           }}
         >
-          بازگشت به داشبورد
+          ط¨ط§ط²ع¯ط´طھ ط¨ظ‡ ط¯ط§ط´ط¨ظˆط±ط¯
         </Button>
       </Paper>
     </Box>

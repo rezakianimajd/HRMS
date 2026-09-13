@@ -135,7 +135,7 @@ const Layout = ({ children }) => {
         )}
       </Box>
 
-      {/* Navigation — grouped work spaces */}
+      {/* Navigation â€” grouped work spaces */}
       <List sx={{ flex: 1, overflowY: 'auto', py: 1, px: 1 }}>
         {menu.map((group) => {
           const groupActive = group.items.some((i) => isActive(i.path));
@@ -151,7 +151,7 @@ const Layout = ({ children }) => {
                   display: 'flex', alignItems: 'center',
                   px: 1.5, py: 0.9, mb: 0.25, mt: 0.75,
                   cursor: collapsed ? 'default' : 'pointer',
-                  borderRadius: 1.5,
+                  borderRadius: '10px',
                   ...(groupActive && { bgcolor: `${iconColor}0d` }),
                   '&:hover': { bgcolor: collapsed ? 'transparent' : `${iconColor}14` },
                 }}
@@ -162,7 +162,7 @@ const Layout = ({ children }) => {
                     sx={{
                       width: 4,
                       height: 18,
-                      borderRadius: 2,
+                      borderRadius: '10px',
                       mr: 1.2,
                       ml: 0.3,
                       background: `linear-gradient(180deg, ${iconColor}, ${iconColor}55)`,
@@ -183,7 +183,7 @@ const Layout = ({ children }) => {
                     textOverflow: 'ellipsis',
                   }}
                 >
-                  {collapsed ? '··' : group.title}
+                  {collapsed ? 'آ·آ·' : group.title}
                 </Typography>
                 {!collapsed && (
                   <IconButton size="small" sx={{ p: 0.3, color: groupActive ? iconColor : 'text.secondary', opacity: 0.7 }}>
@@ -212,7 +212,7 @@ const Layout = ({ children }) => {
                           justifyContent: collapsed ? 'center' : 'flex-start',
                           px: collapsed ? 1.5 : 1.5,
                           py: 0.7,
-                          borderRadius: 2,
+                          borderRadius: '10px',
                           minHeight: 36,
                           ...(active
                             ? {
@@ -249,7 +249,7 @@ const Layout = ({ children }) => {
                               }}
                             />
                             {isPlaceholder && (
-                              <Tooltip title="در حال توسعه" placement="left">
+                              <Tooltip title="ط¯ط± ط­ط§ظ„ طھظˆط³ط¹ظ‡" placement="left">
                                 <ConstructionIcon sx={{ fontSize: 15, color: 'text.disabled', ml: 0.5 }} />
                               </Tooltip>
                             )}
@@ -291,7 +291,7 @@ const Layout = ({ children }) => {
         </Box>
         <Divider sx={{ mb: 0.5 }} />
         <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Tooltip title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'} placement="left">
+          <Tooltip title={collapsed ? 'ط¨ط§ط² ع©ط±ط¯ظ† ظ…ظ†ظˆ' : 'ط¬ظ…ط¹ ع©ط±ط¯ظ† ظ…ظ†ظˆ'} placement="left">
             <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ color: 'text.secondary' }}>
               {collapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}
             </IconButton>

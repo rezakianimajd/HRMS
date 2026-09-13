@@ -15,11 +15,11 @@ import PersonIcon from '@mui/icons-material/Person';
 import SaveIcon from '@mui/icons-material/Save';
 
 const ROLE_LABELS = {
-  super_admin: 'مدیر ارشد سیستم',
-  hr_manager: 'مدیر منابع انسانی',
-  hr_specialist: 'کارشناس منابع انسانی',
-  department_head: 'مدیر دپارتمان',
-  employee: 'کارمند',
+  super_admin: 'ظ…ط¯غŒط± ط§ط±ط´ط¯ ط³غŒط³طھظ…',
+  hr_manager: 'ظ…ط¯غŒط± ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ',
+  hr_specialist: 'ع©ط§ط±ط´ظ†ط§ط³ ظ…ظ†ط§ط¨ط¹ ط§ظ†ط³ط§ظ†غŒ',
+  department_head: 'ظ…ط¯غŒط± ط¯ظ¾ط§ط±طھظ…ط§ظ†',
+  employee: 'ع©ط§ط±ظ…ظ†ط¯',
 };
 const ROLE_COLORS = {
   super_admin: '#7c3aed',
@@ -30,19 +30,19 @@ const ROLE_COLORS = {
 };
 
 const PERM_LABELS = {
-  can_view_all_employees: 'مشاهده همه پرسنل',
-  can_add_employee: 'افزودن پرسنل',
-  can_change_employee: 'ویرایش پرسنل',
-  can_delete_employee: 'حذف پرسنل',
-  can_view_sensitive_data: 'مشاهده اطلاعات حساس',
-  can_manage_documents: 'مدیریت مدارک',
-  can_delete_documents: 'حذف مدارک',
-  can_approve_leaves: 'تأیید مرخصی',
-  can_edit_settings: 'ویرایش تنظیمات',
-  can_manage_users: 'مدیریت کاربران',
-  can_manage_roles: 'مدیریت نقش‌ها',
-  can_manage_companies: 'مدیریت شرکت‌ها',
-  can_view_audit_logs: 'مشاهده لاگ فعالیت',
+  can_view_all_employees: 'ظ…ط´ط§ظ‡ط¯ظ‡ ظ‡ظ…ظ‡ ظ¾ط±ط³ظ†ظ„',
+  can_add_employee: 'ط§ظپط²ظˆط¯ظ† ظ¾ط±ط³ظ†ظ„',
+  can_change_employee: 'ظˆغŒط±ط§غŒط´ ظ¾ط±ط³ظ†ظ„',
+  can_delete_employee: 'ط­ط°ظپ ظ¾ط±ط³ظ†ظ„',
+  can_view_sensitive_data: 'ظ…ط´ط§ظ‡ط¯ظ‡ ط§ط·ظ„ط§ط¹ط§طھ ط­ط³ط§ط³',
+  can_manage_documents: 'ظ…ط¯غŒط±غŒطھ ظ…ط¯ط§ط±ع©',
+  can_delete_documents: 'ط­ط°ظپ ظ…ط¯ط§ط±ع©',
+  can_approve_leaves: 'طھط£غŒغŒط¯ ظ…ط±ط®طµغŒ',
+  can_edit_settings: 'ظˆغŒط±ط§غŒط´ طھظ†ط¸غŒظ…ط§طھ',
+  can_manage_users: 'ظ…ط¯غŒط±غŒطھ ع©ط§ط±ط¨ط±ط§ظ†',
+  can_manage_roles: 'ظ…ط¯غŒط±غŒطھ ظ†ظ‚ط´â€Œظ‡ط§',
+  can_manage_companies: 'ظ…ط¯غŒط±غŒطھ ط´ط±ع©طھâ€Œظ‡ط§',
+  can_view_audit_logs: 'ظ…ط´ط§ظ‡ط¯ظ‡ ظ„ط§ع¯ ظپط¹ط§ظ„غŒطھ',
 };
 const ROLE_KEYS = Object.keys(ROLE_LABELS);
 
@@ -70,16 +70,16 @@ const UsersPage = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users-list'] });
     },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در تغییر نقش'),
+    onError: (e) => setErr(e.response?.data?.error || 'ط®ط·ط§ ط¯ط± طھط؛غŒغŒط± ظ†ظ‚ط´'),
   });
   const deleteMutation = useMutation({
     mutationFn: (id) => axiosInstance.post(`/users/${id}/delete/`),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users-list'] });
-      setMsg('کاربر غیرفعال شد.');
+      setMsg('ع©ط§ط±ط¨ط± ط؛غŒط±ظپط¹ط§ظ„ ط´ط¯.');
       setTimeout(() => setMsg(''), 2500);
     },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در حذف کاربر'),
+    onError: (e) => setErr(e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط­ط°ظپ ع©ط§ط±ط¨ط±'),
   });
   const createMutation = useMutation({
     mutationFn: (body) => axiosInstance.post('/users/create/', body),
@@ -87,10 +87,10 @@ const UsersPage = () => {
       qc.invalidateQueries({ queryKey: ['users-list'] });
       setOpenAdd(false);
       setDraft({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'employee' });
-      setMsg('کاربر ساخته شد.');
+      setMsg('ع©ط§ط±ط¨ط± ط³ط§ط®طھظ‡ ط´ط¯.');
       setTimeout(() => setMsg(''), 2500);
     },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در ساخت کاربر'),
+    onError: (e) => setErr(e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط³ط§ط®طھ ع©ط§ط±ط¨ط±'),
   });
 
   // role local editable permission maps
@@ -100,7 +100,7 @@ const UsersPage = () => {
     <Box>
       {/* Page header */}
       <Paper sx={{
-        p: 3, mb: 2.5, borderRadius: 3,
+        p: 3, mb: 2.5, borderRadius: '10px',
         background: 'linear-gradient(120deg, rgba(100,116,139,0.10), rgba(100,116,139,0.02), rgba(255,255,255,0.3))',
         border: '1px solid rgba(100,116,139,0.18)',
       }}>
@@ -109,9 +109,9 @@ const UsersPage = () => {
             <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: 28 }} />
           </Avatar>
           <Box>
-            <Typography variant="h6" fontWeight={800}>کاربران و نقش‌ها</Typography>
+            <Typography variant="h6" fontWeight={800}>ع©ط§ط±ط¨ط±ط§ظ† ظˆ ظ†ظ‚ط´â€Œظ‡ط§</Typography>
             <Typography variant="body2" color="textSecondary">
-              مدیریت کاربران، تخصیص نقش و سفارشی‌سازی مجوزهای هر نقش
+              ظ…ط¯غŒط±غŒطھ ع©ط§ط±ط¨ط±ط§ظ†طŒ طھط®طµغŒطµ ظ†ظ‚ط´ ظˆ ط³ظپط§ط±ط´غŒâ€Œط³ط§ط²غŒ ظ…ط¬ظˆط²ظ‡ط§غŒ ظ‡ط± ظ†ظ‚ط´
             </Typography>
           </Box>
         </Box>
@@ -124,8 +124,8 @@ const UsersPage = () => {
       )}
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Tab icon={<PersonIcon />} iconPosition="start" label="کاربران" />
-        <Tab icon={<SecurityIcon />} iconPosition="start" label="نقش‌ها و مجوزها" />
+        <Tab icon={<PersonIcon />} iconPosition="start" label="ع©ط§ط±ط¨ط±ط§ظ†" />
+        <Tab icon={<SecurityIcon />} iconPosition="start" label="ظ†ظ‚ط´â€Œظ‡ط§ ظˆ ظ…ط¬ظˆط²ظ‡ط§" />
       </Tabs>
 
       {/* ---------- TAB USERS ---------- */}
@@ -133,26 +133,26 @@ const UsersPage = () => {
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setErr(''); setOpenAdd(true); }}
-              sx={{ background: 'linear-gradient(135deg, #64748b, #475569)', borderRadius: 2 }}>
-              افزودن کاربر
+              sx={{ background: 'linear-gradient(135deg, #64748b, #475569)', borderRadius: '10px' }}>
+              ط§ظپط²ظˆط¯ظ† ع©ط§ط±ط¨ط±
             </Button>
           </Box>
-          <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+          <Paper variant="outlined" sx={{ borderRadius: '10px', overflow: 'hidden' }}>
             {isLoading ? (
               <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
             ) : userList.length === 0 ? (
-              <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">کاربری یافت نشد</Typography></Box>
+              <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">ع©ط§ط±ط¨ط±غŒ غŒط§ظپطھ ظ†ط´ط¯</Typography></Box>
             ) : (
               <TableContainer>
                 <Table size="small">
                   <TableHead>
                     <TableRow sx={{ bgcolor: 'rgba(100,116,139,0.06)' }}>
-                      <TableCell sx={{ fontWeight: 700 }}>کاربر</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>نام کاربری</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>ایمیل</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>سوپر یوزر</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>نقش (در این ستون قابل تغییر)</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>ع©ط§ط±ط¨ط±</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>ظ†ط§ظ… ع©ط§ط±ط¨ط±غŒ</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>ط§غŒظ…غŒظ„</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>ط³ظˆظ¾ط± غŒظˆط²ط±</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>ظ†ظ‚ط´ (ط¯ط± ط§غŒظ† ط³طھظˆظ† ظ‚ط§ط¨ظ„ طھط؛غŒغŒط±)</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>ط¹ظ…ظ„غŒط§طھ</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -170,14 +170,14 @@ const UsersPage = () => {
                           </Stack>
                         </TableCell>
                         <TableCell>{u.username}</TableCell>
-                        <TableCell>{u.email || '—'}</TableCell>
-                        <TableCell>{u.is_superuser ? <Chip size="small" color="secondary" label="بله" /> : '—'}</TableCell>
+                        <TableCell>{u.email || 'â€”'}</TableCell>
+                        <TableCell>{u.is_superuser ? <Chip size="small" color="secondary" label="ط¨ظ„ظ‡" /> : 'â€”'}</TableCell>
                         <TableCell sx={{ minWidth: 180 }}>
                           <FormControl fullWidth size="small">
-                            <InputLabel>نقش</InputLabel>
+                            <InputLabel>ظ†ظ‚ط´</InputLabel>
                             <Select
                               value={u.role}
-                              label="نقش"
+                              label="ظ†ظ‚ط´"
                               onChange={e => setRoleMutation.mutate({ id: u.id, role: e.target.value })}
                             >
                               {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
@@ -185,9 +185,9 @@ const UsersPage = () => {
                           </FormControl>
                         </TableCell>
                         <TableCell>
-                          <Tooltip title="غیرفعال کردن">
+                          <Tooltip title="ط؛غŒط±ظپط¹ط§ظ„ ع©ط±ط¯ظ†">
                             <IconButton size="small" color="error" onClick={() => {
-                              if (window.confirm(`کاربر «${u.username}» غیرفعال شود؟`)) deleteMutation.mutate(u.id);
+                              if (window.confirm(`ع©ط§ط±ط¨ط± آ«${u.username}آ» ط؛غŒط±ظپط¹ط§ظ„ ط´ظˆط¯طں`)) deleteMutation.mutate(u.id);
                             }}>
                               <DeleteIcon fontSize="small" />
                             </IconButton>
@@ -211,7 +211,7 @@ const UsersPage = () => {
           ) : (
             <Stack spacing={2}>
               {roleList.map(role => (
-                <Paper key={role.role} variant="outlined" sx={{ p: 2, borderRadius: 2.5,
+                <Paper key={role.role} variant="outlined" sx={{ p: 2, borderRadius: '10px',
                   border: `1px solid ${(ROLE_COLORS[role.role] || '#64748b')}22`,
                   background: `linear-gradient(160deg, ${(ROLE_COLORS[role.role] || '#64748b')}0a, rgba(255,255,255,0.4))`,
                 }}>
@@ -227,11 +227,11 @@ const UsersPage = () => {
                           ? permEdits[role.role] : role.permissions;
                         axiosInstance.post(`/users/roles/${role.role}/save/`, { permissions: perms }).then(() => {
                           qc.invalidateQueries({ queryKey: ['users-roles'] });
-                          setMsg('مجوزها ذخیره شد.');
+                          setMsg('ظ…ط¬ظˆط²ظ‡ط§ ط°ط®غŒط±ظ‡ ط´ط¯.');
                           setTimeout(() => setMsg(''), 2500);
-                        }).catch(e => setErr(e.response?.data?.error || 'خطا در ذخیره مجوزها'));
+                        }).catch(e => setErr(e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡ ظ…ط¬ظˆط²ظ‡ط§'));
                       }}>
-                      ذخیره
+                      ط°ط®غŒط±ظ‡
                     </Button>
                   </Box>
                   <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 1 }}>
@@ -257,33 +257,33 @@ const UsersPage = () => {
 
       {/* Dialog add user */}
       <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#475569' }}>افزودن کاربر جدید</DialogTitle>
+        <DialogTitle sx={{ color: '#475569' }}>ط§ظپط²ظˆط¯ظ† ع©ط§ط±ط¨ط± ط¬ط¯غŒط¯</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="نام کاربری *" value={draft.username}
+          <TextField fullWidth size="small" label="ظ†ط§ظ… ع©ط§ط±ط¨ط±غŒ *" value={draft.username}
             onChange={e => setDraft(p => ({ ...p, username: e.target.value }))} />
-          <TextField fullWidth size="small" label="ایمیل" value={draft.email}
+          <TextField fullWidth size="small" label="ط§غŒظ…غŒظ„" value={draft.email}
             onChange={e => setDraft(p => ({ ...p, email: e.target.value }))} />
-          <TextField fullWidth size="small" label="رمز عبور *" type="password" value={draft.password}
+          <TextField fullWidth size="small" label="ط±ظ…ط² ط¹ط¨ظˆط± *" type="password" value={draft.password}
             onChange={e => setDraft(p => ({ ...p, password: e.target.value }))} />
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="نام" value={draft.first_name}
+            <TextField fullWidth size="small" label="ظ†ط§ظ…" value={draft.first_name}
               onChange={e => setDraft(p => ({ ...p, first_name: e.target.value }))} />
-            <TextField fullWidth size="small" label="نام خانوادگی" value={draft.last_name}
+            <TextField fullWidth size="small" label="ظ†ط§ظ… ط®ط§ظ†ظˆط§ط¯ع¯غŒ" value={draft.last_name}
               onChange={e => setDraft(p => ({ ...p, last_name: e.target.value }))} />
           </Stack>
           <FormControl fullWidth size="small">
-            <InputLabel>نقش</InputLabel>
-            <Select value={draft.role} label="نقش" onChange={e => setDraft(p => ({ ...p, role: e.target.value }))}>
+            <InputLabel>ظ†ظ‚ط´</InputLabel>
+            <Select value={draft.role} label="ظ†ظ‚ط´" onChange={e => setDraft(p => ({ ...p, role: e.target.value }))}>
               {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpenAdd(false)}>انصراف</Button>
+          <Button onClick={() => setOpenAdd(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #64748b, #475569)' }}
             disabled={!draft.username || !draft.password}
             onClick={() => createMutation.mutate(draft)}>
-            ساخت کاربر
+            ط³ط§ط®طھ ع©ط§ط±ط¨ط±
           </Button>
         </DialogActions>
       </Dialog>

@@ -18,7 +18,7 @@ const StatCard = ({ title, value, icon, color }) => (
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
           <Box sx={{
             backgroundColor: `${color}20`,
-            borderRadius: 2,
+            borderRadius: '10px',
             p: 1,
             mr: 2,
             display: 'flex',
@@ -50,7 +50,7 @@ const Dashboard = () => {
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
-        {t('dashboard.welcome')}، {user?.first_name || user?.username}
+        {t('dashboard.welcome')}طŒ {user?.first_name || user?.username}
       </Typography>
       <Typography variant="body1" color="textSecondary" paragraph>
         {currentCompany?.name && `${t('company.current')}: ${currentCompany.name}`}

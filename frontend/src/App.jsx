@@ -63,7 +63,7 @@ const getPalettes = (mode, neonColor) => {
   }
 
   if (mode === 'fmode_light') {
-    // F مود روشن: سبز نئونی روی پس‌زمینه روشن
+    // F ظ…ظˆط¯ ط±ظˆط´ظ†: ط³ط¨ط² ظ†ط¦ظˆظ†غŒ ط±ظˆغŒ ظ¾ط³â€Œط²ظ…غŒظ†ظ‡ ط±ظˆط´ظ†
     return {
       mode: 'light',
       primary: { main: '#00c853', light: '#69f0ae', dark: '#00a844' },
@@ -77,7 +77,7 @@ const getPalettes = (mode, neonColor) => {
   }
 
   if (mode === 'kurosawa') {
-    // کوراساوا مود: سیاه‌وسفید — هیچ رنگی، فقط طیف خاکستری
+    // ع©ظˆط±ط§ط³ط§ظˆط§ ظ…ظˆط¯: ط³غŒط§ظ‡â€Œظˆط³ظپغŒط¯ â€” ظ‡غŒع† ط±ظ†ع¯غŒطŒ ظپظ‚ط· ط·غŒظپ ط®ط§ع©ط³طھط±غŒ
     return {
       mode: 'light',
       primary: { main: '#111827', light: '#374151', dark: '#000000' },
@@ -127,7 +127,7 @@ const getComponents = (mode, neonColor) => {
             WebkitBackdropFilter: 'blur(20px)',
             border: `1px solid ${neonColor}4d`,
             boxShadow: `0 0 24px ${neonColor}1f`,
-            borderRadius: 10,
+            borderRadius: '10px',
           },
         },
       },
@@ -138,7 +138,7 @@ const getComponents = (mode, neonColor) => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: `1px solid ${neonColor}40`,
-            borderRadius: 10,
+            borderRadius: '10px',
             transition: 'all 0.3s ease',
             '&:hover': { transform: 'translateY(-4px)', boxShadow: `0 0 32px ${neonColor}30` },
           },
@@ -158,7 +158,7 @@ const getComponents = (mode, neonColor) => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 10,
+              borderRadius: '10px',
               background: 'rgba(0,255,255,0.03)',
               border: `1px solid ${neonColor}33`,
               '&:hover': { border: `1px solid ${neonColor}66` },
@@ -184,7 +184,7 @@ const getComponents = (mode, neonColor) => {
   }
 
   if (mode === 'kurosawa') {
-    // کوراساوا مود: مونوکروم (سیاه/سفید/خاکستری) — بدون هیچ رنگ
+    // ع©ظˆط±ط§ط³ط§ظˆط§ ظ…ظˆط¯: ظ…ظˆظ†ظˆع©ط±ظˆظ… (ط³غŒط§ظ‡/ط³ظپغŒط¯/ط®ط§ع©ط³طھط±غŒ) â€” ط¨ط¯ظˆظ† ظ‡غŒع† ط±ظ†ع¯
     return {
       MuiCssBaseline: {
         styleOverrides: {
@@ -199,7 +199,7 @@ const getComponents = (mode, neonColor) => {
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid rgba(0,0,0,0.08)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.12)',
-            borderRadius: 10,
+            borderRadius: '10px',
           },
         },
       },
@@ -210,7 +210,7 @@ const getComponents = (mode, neonColor) => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(0,0,0,0.1)',
-            borderRadius: 10,
+            borderRadius: '10px',
             transition: 'all 0.3s ease',
             '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.18)' },
           },
@@ -230,7 +230,7 @@ const getComponents = (mode, neonColor) => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 10,
+              borderRadius: '10px',
               background: 'rgba(255,255,255,0.6)',
               border: '1px solid rgba(0,0,0,0.12)',
               '&:hover': { background: 'rgba(255,255,255,0.85)' },
@@ -266,7 +266,7 @@ const getComponents = (mode, neonColor) => {
             WebkitBackdropFilter: 'blur(20px)',
             border: '1px solid rgba(148,163,184,0.12)',
             boxShadow: '0 8px 32px rgba(0,0,0,0.3)',
-            borderRadius: 10,
+            borderRadius: '10px',
           },
         },
       },
@@ -277,7 +277,7 @@ const getComponents = (mode, neonColor) => {
             backdropFilter: 'blur(16px)',
             WebkitBackdropFilter: 'blur(16px)',
             border: '1px solid rgba(148,163,184,0.12)',
-            borderRadius: 10,
+            borderRadius: '10px',
             transition: 'all 0.3s ease',
             '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' },
           },
@@ -297,7 +297,7 @@ const getComponents = (mode, neonColor) => {
         styleOverrides: {
           root: {
             '& .MuiOutlinedInput-root': {
-              borderRadius: 10,
+              borderRadius: '10px',
               background: 'rgba(15,23,42,0.5)',
               '&:hover': { background: 'rgba(15,23,42,0.8)' },
               '&.Mui-focused': { background: 'rgba(15,23,42,0.9)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' },
@@ -332,7 +332,7 @@ const getComponents = (mode, neonColor) => {
           WebkitBackdropFilter: 'blur(20px)',
           border: '1px solid rgba(255,255,255,0.5)',
           boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
-          borderRadius: 10,
+          borderRadius: '10px',
         },
       },
     },
@@ -343,7 +343,7 @@ const getComponents = (mode, neonColor) => {
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',
           border: '1px solid rgba(255,255,255,0.4)',
-          borderRadius: 10,
+          borderRadius: '10px',
           transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
           '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(99,102,241,0.15)' },
         },
@@ -363,7 +363,7 @@ const getComponents = (mode, neonColor) => {
       styleOverrides: {
         root: {
           '& .MuiOutlinedInput-root': {
-            borderRadius: 10,
+            borderRadius: '10px',
             background: 'rgba(255,255,255,0.5)',
             '&:hover': { background: 'rgba(255,255,255,0.8)' },
             '&.Mui-focused': { background: 'rgba(255,255,255,0.9)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' },
@@ -383,8 +383,8 @@ const ThemedApp = () => {
     document.documentElement.lang = 'fa';
   }, [direction]);
 
-  // کوراساوا مود: اعمال فیلتر خاکستری سراسری تا هیچ رنگی باقی نماند.
-  // F مود روشن: کلاس «پاستیلی/آب‌نباتی» برای همه آیکن‌ها.
+  // ع©ظˆط±ط§ط³ط§ظˆط§ ظ…ظˆط¯: ط§ط¹ظ…ط§ظ„ ظپغŒظ„طھط± ط®ط§ع©ط³طھط±غŒ ط³ط±ط§ط³ط±غŒ طھط§ ظ‡غŒع† ط±ظ†ع¯غŒ ط¨ط§ظ‚غŒ ظ†ظ…ط§ظ†ط¯.
+  // F ظ…ظˆط¯ ط±ظˆط´ظ†: ع©ظ„ط§ط³ آ«ظ¾ط§ط³طھغŒظ„غŒ/ط¢ط¨â€Œظ†ط¨ط§طھغŒآ» ط¨ط±ط§غŒ ظ‡ظ…ظ‡ ط¢غŒع©ظ†â€Œظ‡ط§.
   React.useEffect(() => {
     const root = document.getElementById('root');
     if (root) {
@@ -407,7 +407,7 @@ const ThemedApp = () => {
       body1: { fontWeight: 400 },
       body2: { fontWeight: 400 },
     },
-    shape: { borderRadius: 10 },
+    shape: { borderRadius: 1 },
     components: {
       ...components,
       MuiButton: {
@@ -415,7 +415,7 @@ const ThemedApp = () => {
           root: {
             textTransform: 'none',
             fontWeight: 600,
-            borderRadius: 10,
+            borderRadius: '10px',
             padding: '8px 20px',
             transition: 'all 0.2s ease',
             // Remove all button icons app-wide (text-only buttons)
@@ -430,7 +430,7 @@ const ThemedApp = () => {
                 ? { background: 'linear-gradient(135deg, #111827, #4b5563)', color: '#fff', '&:hover': { background: 'linear-gradient(135deg, #000000, #374151)' } }
                 : { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' } }),
           },
-          // Text buttons have no border by default (e.g. "بازگشت"). Add one.
+          // Text buttons have no border by default (e.g. "ط¨ط§ط²ع¯ط´طھ"). Add one.
           text: {
             border: '1px solid currentColor',
             '&:hover': {
@@ -442,11 +442,11 @@ const ThemedApp = () => {
       },
       MuiInputBase: { styleOverrides: { input: { textAlign: 'right' } } },
       MuiSelect: { styleOverrides: { select: { textAlign: 'right' } } },
-      MuiChip: { styleOverrides: { root: { borderRadius: 10, fontWeight: 500 } } },
+      MuiChip: { styleOverrides: { root: { borderRadius: '10px', fontWeight: 500 } } },
       MuiListItemButton: {
         styleOverrides: {
           root: {
-            borderRadius: 10,
+            borderRadius: '10px',
             margin: '2px 8px',
             transition: 'all 0.2s ease',
             '&.Mui-selected': {

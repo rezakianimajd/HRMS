@@ -25,10 +25,10 @@ export const ENDPOINTS = {
 };
 
 export const FIELD_LABELS = {
-  name: 'نام',
-  code: 'کد',
-  description: 'توضیحات',
-  level: 'سطح',
+  name: 'ظ†ط§ظ…',
+  code: 'ع©ط¯',
+  description: 'طھظˆط¶غŒط­ط§طھ',
+  level: 'ط³ط·ط­',
 };
 
 export const fieldLabel = (f) => FIELD_LABELS[f] || f;
@@ -56,7 +56,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
       queryClient.invalidateQueries({ queryKey: [endpoint] });
       setOpen(false); setEditing(null); setForm({}); setError('');
     },
-    onError: (e) => setError(e.response?.data?.detail || 'خطا در ذخیره'),
+    onError: (e) => setError(e.response?.data?.detail || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡'),
   });
 
   const deleteMutation = useMutation({
@@ -77,14 +77,14 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <Typography variant="body2" color="textSecondary">{title}</Typography>
-        <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => handleOpen()}>افزودن</Button>
+        <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => handleOpen()}>ط§ظپط²ظˆط¯ظ†</Button>
       </Box>
 
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 2 }}>
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '10px' }}>
         {isLoading ? (
           <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress size={24} /></Box>
         ) : items.length === 0 ? (
-          <Box sx={{ p: 4, textAlign: 'center' }}><Typography color="textSecondary">داده‌ای وجود ندارد</Typography></Box>
+          <Box sx={{ p: 4, textAlign: 'center' }}><Typography color="textSecondary">ط¯ط§ط¯ظ‡â€Œط§غŒ ظˆط¬ظˆط¯ ظ†ط¯ط§ط±ط¯</Typography></Box>
         ) : (
           <Table size="small">
             <TableHead>
@@ -106,7 +106,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                     <TableCell key={f}>
                       {f === 'level' ? (
                         <Chip size="small" label={
-                          item[f] === 'executive' ? 'مدیریتی' : item[f] === 'expert' ? 'کارشناسی' : item[f] === 'operational' ? 'عملیاتی' : item[f]
+                          item[f] === 'executive' ? 'ظ…ط¯غŒط±غŒطھغŒ' : item[f] === 'expert' ? 'ع©ط§ط±ط´ظ†ط§ط³غŒ' : item[f] === 'operational' ? 'ط¹ظ…ظ„غŒط§طھغŒ' : item[f]
                         } />
                       ) : item[f]}
                     </TableCell>
@@ -123,7 +123,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
       </TableContainer>
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{editing ? 'ویرایش' : 'افزودن'}</DialogTitle>
+        <DialogTitle>{editing ? 'ظˆغŒط±ط§غŒط´' : 'ط§ظپط²ظˆط¯ظ†'}</DialogTitle>
         <DialogContent>
           {error && <Alert severity="error" sx={{ mb: 1 }}>{error}</Alert>}
           {fields.map(f => (
@@ -149,9 +149,9 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                 <FormControl key={f} fullWidth size="small" sx={{ mt: 1.5 }}>
                   <InputLabel>{label}</InputLabel>
                   <Select value={form[f] || ''} label={label} onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))}>
-                    <MenuItem value="executive">مدیریتی</MenuItem>
-                    <MenuItem value="expert">کارشناسی</MenuItem>
-                    <MenuItem value="operational">عملیاتی</MenuItem>
+                    <MenuItem value="executive">ظ…ط¯غŒط±غŒطھغŒ</MenuItem>
+                    <MenuItem value="expert">ع©ط§ط±ط´ظ†ط§ط³غŒ</MenuItem>
+                    <MenuItem value="operational">ط¹ظ…ظ„غŒط§طھغŒ</MenuItem>
                   </Select>
                 </FormControl>
               );
@@ -233,10 +233,10 @@ export const CompanyProfileTab = () => {
 
   return (
     <Box>
-      {saved && <Alert severity="success" sx={{ mb: 2 }}>مشخصات شرکت با موفقیت ذخیره شد</Alert>}
+      {saved && <Alert severity="success" sx={{ mb: 2 }}>ظ…ط´ط®طµط§طھ ط´ط±ع©طھ ط¨ط§ ظ…ظˆظپظ‚غŒطھ ط°ط®غŒط±ظ‡ ط´ط¯</Alert>}
 
       {/* Logo upload section */}
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, p: 2, bgcolor: 'rgba(99,102,241,0.04)', borderRadius: 2 }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3, p: 2, bgcolor: 'rgba(99,102,241,0.04)', borderRadius: '10px' }}>
         {form.logo_url ? (
           <Avatar src={form.logo_url} sx={{ width: 72, height: 72, boxShadow: '0 4px 16px rgba(99,102,241,0.25)' }} />
         ) : (
@@ -245,7 +245,7 @@ export const CompanyProfileTab = () => {
           </Avatar>
         )}
         <Box>
-          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>لوگوی شرکت</Typography>
+          <Typography variant="body2" fontWeight={600} sx={{ mb: 0.5 }}>ظ„ظˆع¯ظˆغŒ ط´ط±ع©طھ</Typography>
           <input
             id="company-logo-input"
             type="file"
@@ -258,27 +258,27 @@ export const CompanyProfileTab = () => {
             onClick={() => document.getElementById('company-logo-input').click()}
             disabled={uploadingLogo}
           >
-            {uploadingLogo ? <CircularProgress size={16} /> : (form.logo_url ? 'تغییر لوگو' : 'آپلود لوگو')}
+            {uploadingLogo ? <CircularProgress size={16} /> : (form.logo_url ? 'طھط؛غŒغŒط± ظ„ظˆع¯ظˆ' : 'ط¢ظ¾ظ„ظˆط¯ ظ„ظˆع¯ظˆ')}
           </Button>
         </Box>
       </Box>
 
       <Grid container spacing={2}>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="نام حقوقی شرکت" value={form.legal_name || ''} onChange={e => setForm(p => ({ ...p, legal_name: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="شماره ثبت" value={form.registration_number || ''} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="شناسه ملی" value={form.national_id || ''} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="کد اقتصادی" value={form.economic_code || ''} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="شناسه مالیاتی" value={form.tax_id || ''} onChange={e => setForm(p => ({ ...p, tax_id: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="تاریخ تأسیس" type="date" InputLabelProps={{ shrink: true }} value={form.established_date || ''} onChange={e => setForm(p => ({ ...p, established_date: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="تلفن" value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ایمیل" value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="وب‌سایت" value={form.website || ''} onChange={e => setForm(p => ({ ...p, website: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="کد پستی" value={form.postal_code || ''} onChange={e => setForm(p => ({ ...p, postal_code: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="نام نماینده حقوقی / مدیرعامل" value={form.employer_rep_name || ''} onChange={e => setForm(p => ({ ...p, employer_rep_name: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="سمت نماینده" value={form.employer_rep_title || ''} onChange={e => setForm(p => ({ ...p, employer_rep_title: e.target.value }))} /></Grid>
-        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="کد ملی نماینده" value={form.employer_rep_national_id || ''} onChange={e => setForm(p => ({ ...p, employer_rep_national_id: e.target.value }))} /></Grid>
-        <Grid item xs={12}><TextField fullWidth size="small" label="آدرس" multiline rows={2} value={form.address || ''} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
-        <Grid item xs={12}><TextField fullWidth size="small" label="توضیحات" multiline rows={3} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ظ†ط§ظ… ط­ظ‚ظˆظ‚غŒ ط´ط±ع©طھ" value={form.legal_name || ''} onChange={e => setForm(p => ({ ...p, legal_name: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ط´ظ…ط§ط±ظ‡ ط«ط¨طھ" value={form.registration_number || ''} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ط´ظ†ط§ط³ظ‡ ظ…ظ„غŒ" value={form.national_id || ''} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ع©ط¯ ط§ظ‚طھطµط§ط¯غŒ" value={form.economic_code || ''} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ط´ظ†ط§ط³ظ‡ ظ…ط§ظ„غŒط§طھغŒ" value={form.tax_id || ''} onChange={e => setForm(p => ({ ...p, tax_id: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="طھط§ط±غŒط® طھط£ط³غŒط³" type="date" InputLabelProps={{ shrink: true }} value={form.established_date || ''} onChange={e => setForm(p => ({ ...p, established_date: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="طھظ„ظپظ†" value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ط§غŒظ…غŒظ„" value={form.email || ''} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ظˆط¨â€Œط³ط§غŒطھ" value={form.website || ''} onChange={e => setForm(p => ({ ...p, website: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ع©ط¯ ظ¾ط³طھغŒ" value={form.postal_code || ''} onChange={e => setForm(p => ({ ...p, postal_code: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ظ†ط§ظ… ظ†ظ…ط§غŒظ†ط¯ظ‡ ط­ظ‚ظˆظ‚غŒ / ظ…ط¯غŒط±ط¹ط§ظ…ظ„" value={form.employer_rep_name || ''} onChange={e => setForm(p => ({ ...p, employer_rep_name: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ط³ظ…طھ ظ†ظ…ط§غŒظ†ط¯ظ‡" value={form.employer_rep_title || ''} onChange={e => setForm(p => ({ ...p, employer_rep_title: e.target.value }))} /></Grid>
+        <Grid item xs={12} sm={6}><TextField fullWidth size="small" label="ع©ط¯ ظ…ظ„غŒ ظ†ظ…ط§غŒظ†ط¯ظ‡" value={form.employer_rep_national_id || ''} onChange={e => setForm(p => ({ ...p, employer_rep_national_id: e.target.value }))} /></Grid>
+        <Grid item xs={12}><TextField fullWidth size="small" label="ط¢ط¯ط±ط³" multiline rows={2} value={form.address || ''} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
+        <Grid item xs={12}><TextField fullWidth size="small" label="طھظˆط¶غŒط­ط§طھ" multiline rows={3} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
       </Grid>
       <Box sx={{ mt: 2 }}>
         <Button variant="contained" onClick={() => updateMutation.mutate(form)}>

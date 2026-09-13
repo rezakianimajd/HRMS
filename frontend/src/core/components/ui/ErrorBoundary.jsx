@@ -24,20 +24,20 @@ class ErrorBoundary extends React.Component {
       return (
         <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh', p: 4 }}>
           <Paper sx={{
-            p: 4, maxWidth: 520, borderRadius: 3, textAlign: 'center',
+            p: 4, maxWidth: 520, borderRadius: '10px', textAlign: 'center',
             border: '1px solid rgba(239,68,68,0.3)',
             background: 'linear-gradient(160deg, rgba(239,68,68,0.08), rgba(255,255,255,0.4))',
           }}>
             <ReportIcon sx={{ fontSize: 54, color: '#ef4444', mb: 1 }} />
             <Typography variant="h6" fontWeight={800} sx={{ mb: 1 }}>
-              خطایی در نمایش رخ داد
+              ط®ط·ط§غŒغŒ ط¯ط± ظ†ظ…ط§غŒط´ ط±ط® ط¯ط§ط¯
             </Typography>
             <Typography variant="body2" color="textSecondary" sx={{ mb: 3 }} dir="ltr">
               {this.state.message}
             </Typography>
             <Button variant="contained" color="error"
               onClick={() => window.location.reload()}>
-              بارگذاری مجدد صفحه
+              ط¨ط§ط±ع¯ط°ط§ط±غŒ ظ…ط¬ط¯ط¯ طµظپط­ظ‡
             </Button>
           </Paper>
         </Box>

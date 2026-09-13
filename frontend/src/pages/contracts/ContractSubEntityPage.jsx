@@ -18,7 +18,7 @@ const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
   backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
   border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: 10,
+  boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: '10px',
 };
 
 /**
@@ -94,7 +94,7 @@ const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
         <FormControl size="small" fullWidth>
           <InputLabel>{f.label}</InputLabel>
           <Select value={value || ''} label={f.label} onChange={e => onChange(e.target.value)}>
-            <MenuItem value="">—</MenuItem>
+            <MenuItem value="">â€”</MenuItem>
             {opts.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
           </Select>
         </FormControl>
@@ -109,7 +109,7 @@ const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
     <Box>
       <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
         background: `linear-gradient(120deg, ${config.color}1a, rgba(255,255,255,0.3))`,
-        border: `1px solid ${config.color}2e`, borderRadius: 10 }}>
+        border: `1px solid ${config.color}2e`, borderRadius: '10px' }}>
         <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${config.color},${config.color}99)`, boxShadow: `0 8px 24px ${config.color}66` }}>
           {config.icon}
         </Avatar>
@@ -118,10 +118,10 @@ const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
           <Typography variant="body2" color="textSecondary">{config.subtitle}</Typography>
         </Box>
         {mode === 'form' ? (
-          <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => { setMode('list'); setForm({}); }}>بازگشت به لیست</Button>
+          <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => { setMode('list'); setForm({}); }}>ط¨ط§ط²ع¯ط´طھ ط¨ظ‡ ظ„غŒط³طھ</Button>
         ) : (
           <Button startIcon={<AddIcon />} variant="contained" disabled={!contractId} onClick={openNew}
-            sx={{ background: `linear-gradient(135deg,${config.color},${config.color}cc)`, borderRadius: 10 }}>
+            sx={{ background: `linear-gradient(135deg,${config.color},${config.color}cc)`, borderRadius: '10px' }}>
             {config.addLabel}
           </Button>
         )}
@@ -138,44 +138,44 @@ const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
           <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
             <Button variant="contained" onClick={submit} disabled={save.isLoading}
               sx={{ background: `linear-gradient(135deg,${config.color},${config.color}cc)`, px: 4 }}>
-              {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره'}
+              {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ط°ط®غŒط±ظ‡'}
             </Button>
-            <Button variant="outlined" onClick={() => { setMode('list'); setForm({}); }}>انصراف</Button>
+            <Button variant="outlined" onClick={() => { setMode('list'); setForm({}); }}>ط§ظ†طµط±ط§ظپ</Button>
           </Stack>
         </Paper>
       ) : (
         <Paper sx={{ ...glassPaper, p: 2 }}>
           <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
             <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>قرارداد</InputLabel>
-              <Select value={contractId || ''} label="قرارداد" onChange={e => setContractId(e.target.value)}>
+              <InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯</InputLabel>
+              <Select value={contractId || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯" onChange={e => setContractId(e.target.value)}>
                 {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
               </Select>
             </FormControl>
           </Stack>
 
           {!contractId ? (
-            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>برای مشاهدهٔ لیست، یک قرارداد انتخاب کنید.</Typography>
+            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>ط¨ط±ط§غŒ ظ…ط´ط§ظ‡ط¯ظ‡ظ” ظ„غŒط³طھطŒ غŒع© ظ‚ط±ط§ط±ط¯ط§ط¯ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯.</Typography>
           ) : isLoading ? (
             <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
           ) : list.length === 0 ? (
-            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>موردی ثبت نشده است.</Typography>
+            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>ظ…ظˆط±ط¯غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
           ) : (
             <Stack spacing={1}>
               {list.map(row => (
-                <Paper key={row.id} variant="outlined" sx={{ p: 1.5, borderRadius: 10, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                <Paper key={row.id} variant="outlined" sx={{ p: 1.5, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   <Box sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                     {config.listColumns.map(col => (
                       <Box key={col.key}>
                         <Typography variant="caption" color="textSecondary" display="block">{col.label}</Typography>
                         <Typography variant="body2" fontWeight={700}>
-                          {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                          {col.render ? col.render(row[col.key], row) : (row[col.key] ?? 'â€”')}
                         </Typography>
                       </Box>
                     ))}
                   </Box>
                   <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپطں')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
                 </Paper>
               ))}
             </Stack>

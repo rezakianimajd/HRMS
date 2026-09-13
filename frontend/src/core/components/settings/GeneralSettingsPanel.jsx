@@ -13,24 +13,24 @@ import AccessTimeFilledOutlinedIcon from '@mui/icons-material/AccessTimeFilledOu
 import PublicIcon from '@mui/icons-material/Public';
 
 const SETTING_META = {
-  BASE_FILE_STORAGE_PATH: { label: 'مسیر ذخیرهسازی فایلها', desc: 'محل پیشفرض ذخیره اسناد روی سرور', group: 'storage', type: 'text' },
-  MAX_FILE_SIZE: { label: 'حداکثر حجم فایل (MB)', desc: 'تعیین سقف بارگذاری هر مدرک', group: 'storage', type: 'number', unit: 'MB' },
-  ALLOWED_FILE_EXTENSIONS: { label: 'فرمتهای مجاز فایل', desc: 'لیست پسوند قابل بارگذاری', group: 'storage', type: 'chips' },
-  EXPIRY_ALERT_DAYS: { label: 'هشدار انقضای مدرک (روز)', desc: 'چند روز قبل از انقضا هشدار داده شود', group: 'alerts', type: 'number', unit: 'روز' },
-  CONTRACT_ALERT_DAYS: { label: 'هشدار پایان قرارداد (روز)', desc: 'چند روز قبل از پایان قرارداد هشدار', group: 'alerts', type: 'number', unit: 'روز' },
-  LEAVE_DEFAULT_TOTAL_DAYS: { label: 'مرخصی استحقاقی سالانه', desc: 'سهم سالانه هر نفر — در «مانده مرخصی» واقعاً اعمال میشود', group: 'leaves', type: 'number', unit: 'روز' },
-  LEAVE_CALCULATE_WEEKENDS: { label: 'لحاظ تعطیل در مرخصی', desc: 'آیا روزهای تعطیل از مدت مرخصی کسر شود', group: 'leaves', type: 'boolean' },
-  ATTENDANCE_WORK_DAYS_PER_MONTH: { label: 'روز کاری ماهانه', desc: 'مبنای محاسبات کارکرد حضور', group: 'attendance', type: 'number', unit: 'روز' },
-  DATE_FORMAT: { label: 'فرمت نمایش تاریخ', desc: 'ترتیب نمایش تاریخهای شمسی', group: 'regional', type: 'select', options: ['Y/m/d', 'm/d/Y', 'd/m/Y', 'Y - m - d'] },
-  CURRENCY_SYMBOL: { label: 'نماد واحد پول', desc: 'نماد نمایش ریال در صفحات مالی', group: 'regional', type: 'text', unit: 'نماد' },
+  BASE_FILE_STORAGE_PATH: { label: 'ظ…ط³غŒط± ط°ط®غŒط±ظ‡ط³ط§ط²غŒ ظپط§غŒظ„ظ‡ط§', desc: 'ظ…ط­ظ„ ظ¾غŒط´ظپط±ط¶ ط°ط®غŒط±ظ‡ ط§ط³ظ†ط§ط¯ ط±ظˆغŒ ط³ط±ظˆط±', group: 'storage', type: 'text' },
+  MAX_FILE_SIZE: { label: 'ط­ط¯ط§ع©ط«ط± ط­ط¬ظ… ظپط§غŒظ„ (MB)', desc: 'طھط¹غŒغŒظ† ط³ظ‚ظپ ط¨ط§ط±ع¯ط°ط§ط±غŒ ظ‡ط± ظ…ط¯ط±ع©', group: 'storage', type: 'number', unit: 'MB' },
+  ALLOWED_FILE_EXTENSIONS: { label: 'ظپط±ظ…طھظ‡ط§غŒ ظ…ط¬ط§ط² ظپط§غŒظ„', desc: 'ظ„غŒط³طھ ظ¾ط³ظˆظ†ط¯ ظ‚ط§ط¨ظ„ ط¨ط§ط±ع¯ط°ط§ط±غŒ', group: 'storage', type: 'chips' },
+  EXPIRY_ALERT_DAYS: { label: 'ظ‡ط´ط¯ط§ط± ط§ظ†ظ‚ط¶ط§غŒ ظ…ط¯ط±ع© (ط±ظˆط²)', desc: 'ع†ظ†ط¯ ط±ظˆط² ظ‚ط¨ظ„ ط§ط² ط§ظ†ظ‚ط¶ط§ ظ‡ط´ط¯ط§ط± ط¯ط§ط¯ظ‡ ط´ظˆط¯', group: 'alerts', type: 'number', unit: 'ط±ظˆط²' },
+  CONTRACT_ALERT_DAYS: { label: 'ظ‡ط´ط¯ط§ط± ظ¾ط§غŒط§ظ† ظ‚ط±ط§ط±ط¯ط§ط¯ (ط±ظˆط²)', desc: 'ع†ظ†ط¯ ط±ظˆط² ظ‚ط¨ظ„ ط§ط² ظ¾ط§غŒط§ظ† ظ‚ط±ط§ط±ط¯ط§ط¯ ظ‡ط´ط¯ط§ط±', group: 'alerts', type: 'number', unit: 'ط±ظˆط²' },
+  LEAVE_DEFAULT_TOTAL_DAYS: { label: 'ظ…ط±ط®طµغŒ ط§ط³طھط­ظ‚ط§ظ‚غŒ ط³ط§ظ„ط§ظ†ظ‡', desc: 'ط³ظ‡ظ… ط³ط§ظ„ط§ظ†ظ‡ ظ‡ط± ظ†ظپط± â€” ط¯ط± آ«ظ…ط§ظ†ط¯ظ‡ ظ…ط±ط®طµغŒآ» ظˆط§ظ‚ط¹ط§ظ‹ ط§ط¹ظ…ط§ظ„ ظ…غŒط´ظˆط¯', group: 'leaves', type: 'number', unit: 'ط±ظˆط²' },
+  LEAVE_CALCULATE_WEEKENDS: { label: 'ظ„ط­ط§ط¸ طھط¹ط·غŒظ„ ط¯ط± ظ…ط±ط®طµغŒ', desc: 'ط¢غŒط§ ط±ظˆط²ظ‡ط§غŒ طھط¹ط·غŒظ„ ط§ط² ظ…ط¯طھ ظ…ط±ط®طµغŒ ع©ط³ط± ط´ظˆط¯', group: 'leaves', type: 'boolean' },
+  ATTENDANCE_WORK_DAYS_PER_MONTH: { label: 'ط±ظˆط² ع©ط§ط±غŒ ظ…ط§ظ‡ط§ظ†ظ‡', desc: 'ظ…ط¨ظ†ط§غŒ ظ…ط­ط§ط³ط¨ط§طھ ع©ط§ط±ع©ط±ط¯ ط­ط¶ظˆط±', group: 'attendance', type: 'number', unit: 'ط±ظˆط²' },
+  DATE_FORMAT: { label: 'ظپط±ظ…طھ ظ†ظ…ط§غŒط´ طھط§ط±غŒط®', desc: 'طھط±طھغŒط¨ ظ†ظ…ط§غŒط´ طھط§ط±غŒط®ظ‡ط§غŒ ط´ظ…ط³غŒ', group: 'regional', type: 'select', options: ['Y/m/d', 'm/d/Y', 'd/m/Y', 'Y - m - d'] },
+  CURRENCY_SYMBOL: { label: 'ظ†ظ…ط§ط¯ ظˆط§ط­ط¯ ظ¾ظˆظ„', desc: 'ظ†ظ…ط§ط¯ ظ†ظ…ط§غŒط´ ط±غŒط§ظ„ ط¯ط± طµظپط­ط§طھ ظ…ط§ظ„غŒ', group: 'regional', type: 'text', unit: 'ظ†ظ…ط§ط¯' },
 };
 
 const GROUP_META = {
-  storage:    { title: 'ذخیرهسازی و فایلها', color: '#6366f1', icon: <CloudOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  alerts:     { title: 'هشدارها و اعلانها',  color: '#f59e0b', icon: <NotificationsNoneIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  leaves:     { title: 'سیاست مرخصی',         color: '#10b981', icon: <BeachAccessOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  attendance: { title: 'حضور و کارکرد',       color: '#3b82f6', icon: <AccessTimeFilledOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  regional:   { title: 'نمایش و واحدها',       color: '#8b5cf6', icon: <PublicIcon sx={{ fontSize: 20, color: '#fff' }} /> },
+  storage:    { title: 'ط°ط®غŒط±ظ‡ط³ط§ط²غŒ ظˆ ظپط§غŒظ„ظ‡ط§', color: '#6366f1', icon: <CloudOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
+  alerts:     { title: 'ظ‡ط´ط¯ط§ط±ظ‡ط§ ظˆ ط§ط¹ظ„ط§ظ†ظ‡ط§',  color: '#f59e0b', icon: <NotificationsNoneIcon sx={{ fontSize: 20, color: '#fff' }} /> },
+  leaves:     { title: 'ط³غŒط§ط³طھ ظ…ط±ط®طµغŒ',         color: '#10b981', icon: <BeachAccessOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
+  attendance: { title: 'ط­ط¶ظˆط± ظˆ ع©ط§ط±ع©ط±ط¯',       color: '#3b82f6', icon: <AccessTimeFilledOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
+  regional:   { title: 'ظ†ظ…ط§غŒط´ ظˆ ظˆط§ط­ط¯ظ‡ط§',       color: '#8b5cf6', icon: <PublicIcon sx={{ fontSize: 20, color: '#fff' }} /> },
 };
 
 const SettingRow = ({ meta, value, onSave }) => {
@@ -49,7 +49,7 @@ const SettingRow = ({ meta, value, onSave }) => {
           <Typography variant="caption" color="textSecondary">{meta.desc}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          {savedTick && <Chip size="small" label="ثبت شد ✓" color="success" />}
+          {savedTick && <Chip size="small" label="ط«ط¨طھ ط´ط¯ âœ“" color="success" />}
           <Switch checked={Boolean(value)} onChange={e => handle(e.target.checked)} />
         </Box>
       </Box>
@@ -90,7 +90,7 @@ const SettingRow = ({ meta, value, onSave }) => {
           onBlur={e => { handle(meta.type === 'number' ? Number(e.target.value || 0) : e.target.value); }}
           InputProps={{ endAdornment: meta.unit ? <Typography variant="caption" sx={{ ml: 0.5 }}>{meta.unit}</Typography> : undefined }}
         />
-        {savedTick && <Chip size="small" label="✓" color="success" />}
+        {savedTick && <Chip size="small" label="âœ“" color="success" />}
       </Stack>
     </Box>
   );
@@ -111,10 +111,10 @@ const GeneralSettingsPanel = () => {
       // clear effective-settings cache used by backend
       qc.invalidateQueries({ queryKey: ['leave-balance'] });
     },
-    onError: () => setError('خطا در ذخیره تنظیم.'),
+    onError: () => setError('ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡ طھظ†ط¸غŒظ….'),
   });
 
-  if (isLoading) return <Box sx={{ p: 4, textAlign: 'center' }}>در حال بارگذاری…</Box>;
+  if (isLoading) return <Box sx={{ p: 4, textAlign: 'center' }}>ط¯ط± ط­ط§ظ„ ط¨ط§ط±ع¯ط°ط§ط±غŒâ€¦</Box>;
 
   const keys = Object.keys(SETTING_META);
   const grouped = {};
@@ -126,9 +126,9 @@ const GeneralSettingsPanel = () => {
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {/* info banner */}
-      <Paper sx={{ p: 1.5, borderRadius: 2, bgcolor: 'rgba(99,102,241,0.05)', border: '1px dashed #6366f133' }}>
+      <Paper sx={{ p: 1.5, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.05)', border: '1px dashed #6366f133' }}>
         <Typography variant="body2" color="text.secondary">
-          💡 تنظیمات ذخیرهشده در این صفحه بهصورت **واقعی** در سرور اعمال میشود؛ مثلاً «سهم مرخصی سالانه» در محاسبه مانده مرخصی هر پرسنل استفاده میگردد.
+          ًں’، طھظ†ط¸غŒظ…ط§طھ ط°ط®غŒط±ظ‡ط´ط¯ظ‡ ط¯ط± ط§غŒظ† طµظپط­ظ‡ ط¨ظ‡طµظˆط±طھ **ظˆط§ظ‚ط¹غŒ** ط¯ط± ط³ط±ظˆط± ط§ط¹ظ…ط§ظ„ ظ…غŒط´ظˆط¯ط› ظ…ط«ظ„ط§ظ‹ آ«ط³ظ‡ظ… ظ…ط±ط®طµغŒ ط³ط§ظ„ط§ظ†ظ‡آ» ط¯ط± ظ…ط­ط§ط³ط¨ظ‡ ظ…ط§ظ†ط¯ظ‡ ظ…ط±ط®طµغŒ ظ‡ط± ظ¾ط±ط³ظ†ظ„ ط§ط³طھظپط§ط¯ظ‡ ظ…غŒع¯ط±ط¯ط¯.
         </Typography>
       </Paper>
 
@@ -137,7 +137,7 @@ const GeneralSettingsPanel = () => {
       {Object.entries(grouped).map(([g, gKeys]) => {
         const gm = GROUP_META[g] || { title: g, color: '#6366f1', icon: null };
         return (
-          <Paper key={g} sx={{ p: 2.5, borderRadius: 3, background: `linear-gradient(135deg, ${gm.color}08, rgba(255,255,255,0.3))`, border: `1px solid ${gm.color}1c` }}>
+          <Paper key={g} sx={{ p: 2.5, borderRadius: '10px', background: `linear-gradient(135deg, ${gm.color}08, rgba(255,255,255,0.3))`, border: `1px solid ${gm.color}1c` }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
               <Avatar sx={{ width: 34, height: 34, bgcolor: gm.color, boxShadow: `0 4px 14px ${gm.color}40` }}>{gm.icon}</Avatar>
               <Typography variant="subtitle1" fontWeight={700} sx={{ color: gm.color }}>{gm.title}</Typography>

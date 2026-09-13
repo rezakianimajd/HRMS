@@ -71,7 +71,7 @@ const PhonebookPage = () => {
               WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid rgba(255,255,255,0.5)',
               boxShadow: '0 8px 28px rgba(15,23,42,0.08)',
-              borderRadius: 3,
+              borderRadius: '10px',
               transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
               '&:hover': { transform: 'translateY(-6px)', boxShadow: '0 20px 44px rgba(99,102,241,0.16)', border: '1px solid rgba(99,102,241,0.2)' },
             }}>
@@ -83,7 +83,7 @@ const PhonebookPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
                   <WorkIcon sx={{ fontSize: 13, color: '#ec4899' }} />
                   <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center' }}>
-                    {emp.department} — {emp.job_title}
+                    {emp.department} â€” {emp.job_title}
                   </Typography>
                 </Box>
 
@@ -155,14 +155,14 @@ const PhonebookPage = () => {
             <Card variant="outlined" sx={{
               background: 'linear-gradient(160deg, rgba(255,255,255,0.7), rgba(255,255,255,0.35))',
               backdropFilter: 'blur(12px)',
-              borderRadius: 2,
+              borderRadius: '10px',
             }}>
               <CardContent sx={{ py: 1.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
                 <EmployeeAvatar employee={emp} size={40} />
                 <Box sx={{ flex: 1, minWidth: 140, textAlign: 'center' }}>
                   <Typography variant="body2" fontWeight={700}>{emp.full_name}</Typography>
                   <Typography variant="caption" color="textSecondary" sx={{ textAlign: 'center' }}>
-                    {emp.department} — {emp.job_title}
+                    {emp.department} â€” {emp.job_title}
                   </Typography>
                 </Box>
                 <Chip icon={<SmartphoneIcon sx={{ fontSize: 14 }} />} label={toPersianDigits(emp.mobile)} size="small" variant="outlined"
@@ -189,7 +189,7 @@ const PhonebookPage = () => {
         background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(99,102,241,0.06))',
         border: '1px solid rgba(16,185,129,0.2)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{
@@ -201,7 +201,7 @@ const PhonebookPage = () => {
           </Avatar>
           <Box>
             <Typography variant="h5" fontWeight={800}>{t('phonebook.title')}</Typography>
-            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} مخاطب</Typography>
+            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} ظ…ط®ط§ط·ط¨</Typography>
           </Box>
         </Box>
         <Box sx={{ display: 'flex', gap: 1 }}>
@@ -218,11 +218,11 @@ const PhonebookPage = () => {
       </Paper>
 
       {/* Search & Filter Bar */}
-      <Paper sx={{ p: 2, mb: 3, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: 3 }}>
+      <Paper sx={{ p: 2, mb: 3, background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(12px)', borderRadius: '10px' }}>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField
             size="small"
-            placeholder="جستجو در دفترچه تلفن..."
+            placeholder="ط¬ط³طھط¬ظˆ ط¯ط± ط¯ظپطھط±ع†ظ‡ طھظ„ظپظ†..."
             value={search}
             onChange={e => { setSearch(e.target.value); setPage(0); }}
             InputProps={{
@@ -253,7 +253,7 @@ const PhonebookPage = () => {
               </Select>
             </FormControl>
             <Button size="small" onClick={() => { setDepartment(''); setSearch(''); setPage(0); }}>
-              پاک‌سازی فیلترها
+              ظ¾ط§ع©â€Œط³ط§ط²غŒ ظپغŒظ„طھط±ظ‡ط§
             </Button>
           </Box>
         </Collapse>
@@ -282,7 +282,7 @@ const PhonebookPage = () => {
             rowsPerPage={rowsPerPage}
             onRowsPerPageChange={e => { setRowsPerPage(Number(e.target.value)); setPage(0); }}
             rowsPerPageOptions={[12, 24, 48, 72]}
-            labelRowsPerPage="تعداد در صفحه:"
+            labelRowsPerPage="طھط¹ط¯ط§ط¯ ط¯ط± طµظپط­ظ‡:"
           />
         </Box>
       )}

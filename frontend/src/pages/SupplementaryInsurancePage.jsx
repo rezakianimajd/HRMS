@@ -72,7 +72,7 @@ const SupplementaryInsurancePage = () => {
       queryClient.invalidateQueries({ queryKey: ['all-supplementary-insurances'] });
       setOpen(false); setError('');
     },
-    onError: (e) => setError(e.response?.data?.detail || 'خطا در ذخیره'),
+    onError: (e) => setError(e.response?.data?.detail || 'ط®ط·ط§ ط¯ط± ط°ط®غŒط±ظ‡'),
   });
 
   const deleteMutation = useMutation({
@@ -112,12 +112,12 @@ const SupplementaryInsurancePage = () => {
 
   const employeeName = (id) => {
     const e = empList.find(x => x.id === id);
-    return e?.full_name || '—';
+    return e?.full_name || 'â€”';
   };
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2, borderRadius: 3, border: '1px solid rgba(139,92,246,0.18)',
+      <Paper sx={{ p: 2.5, mb: 2, borderRadius: '10px', border: '1px solid rgba(139,92,246,0.18)',
         background: 'linear-gradient(120deg, rgba(139,92,246,0.07), rgba(255,255,255,0.3))' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
@@ -125,40 +125,40 @@ const SupplementaryInsurancePage = () => {
               <HealthAndSafetyIcon sx={{ color: '#fff' }} />
             </Avatar>
             <Box>
-              <Typography variant="h6" fontWeight={800} color="#8b5cf6">بیمه تکمیلی</Typography>
+              <Typography variant="h6" fontWeight={800} color="#8b5cf6">ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ</Typography>
               <Typography variant="body2" color="textSecondary">
-                مدیریت بیمههای تکمیلی کلیه پرسنل — افزودن، ویرایش، افراد تحت تکفل
+                ظ…ط¯غŒط±غŒطھ ط¨غŒظ…ظ‡ظ‡ط§غŒ طھع©ظ…غŒظ„غŒ ع©ظ„غŒظ‡ ظ¾ط±ط³ظ†ظ„ â€” ط§ظپط²ظˆط¯ظ†طŒ ظˆغŒط±ط§غŒط´طŒ ط§ظپط±ط§ط¯ طھط­طھ طھع©ظپظ„
               </Typography>
             </Box>
           </Box>
           <Button variant="contained" startIcon={<AddIcon />}
             onClick={openAdd}
-            sx={{ background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)', borderRadius: 2 }}>
-            افزودن بیمه تکمیلی
+            sx={{ background: 'linear-gradient(135deg, #8b5cf6, #a78bfa)', borderRadius: '10px' }}>
+            ط§ظپط²ظˆط¯ظ† ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ
           </Button>
         </Box>
       </Paper>
 
       {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: 3 }}>
+      <TableContainer component={Paper} variant="outlined" sx={{ borderRadius: '10px' }}>
         {isLoading ? (
           <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
         ) : items.length === 0 ? (
           <Box sx={{ p: 5, textAlign: 'center' }}>
-            <Typography color="textSecondary">بیمه تکمیلی ثبت نشده است</Typography>
+            <Typography color="textSecondary">ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography>
           </Box>
         ) : (
           <Table size="small">
             <TableHead>
               <TableRow sx={{ bgcolor: 'rgba(139,92,246,0.06)' }}>
-                <TableCell sx={{ fontWeight: 700 }}>پرسنل</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>بیمه</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>طرح</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>از</TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>تا</TableCell>
-                <TableCell align="left" sx={{ fontWeight: 700 }}>تحت تکفل</TableCell>
-                <TableCell align="left" width={100} sx={{ fontWeight: 700 }}>اقدامات</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ظ¾ط±ط³ظ†ظ„</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ط¨غŒظ…ظ‡</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ط·ط±ط­</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>ط§ط²</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>طھط§</TableCell>
+                <TableCell align="left" sx={{ fontWeight: 700 }}>طھط­طھ طھع©ظپظ„</TableCell>
+                <TableCell align="left" width={100} sx={{ fontWeight: 700 }}>ط§ظ‚ط¯ط§ظ…ط§طھ</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
@@ -167,7 +167,7 @@ const SupplementaryInsurancePage = () => {
                   <TableCell>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Avatar sx={{ width: 28, height: 28, bgcolor: '#8b5cf6', fontSize: 12 }}>
-                        {(ins.employee_name || '؟').charAt(0)}
+                        {(ins.employee_name || 'طں').charAt(0)}
                       </Avatar>
                       <Box>
                         <Typography variant="body2" fontWeight={600}>{ins.employee_name}</Typography>
@@ -179,16 +179,16 @@ const SupplementaryInsurancePage = () => {
                   </TableCell>
                   <TableCell><Typography variant="body2">{ins.insurance_name}</Typography></TableCell>
                   <TableCell>
-                    <Chip size="small" label={ins.plan || ins.insurance_type || '—'} variant="outlined"
+                    <Chip size="small" label={ins.plan || ins.insurance_type || 'â€”'} variant="outlined"
                       sx={{ color: '#8b5cf6', borderColor: '#8b5cf6' }} />
                   </TableCell>
-                  <TableCell><Typography variant="body2">{ins.start_date || '—'}</Typography></TableCell>
-                  <TableCell><Typography variant="body2">{ins.end_date || '—'}</Typography></TableCell>
+                  <TableCell><Typography variant="body2">{ins.start_date || 'â€”'}</Typography></TableCell>
+                  <TableCell><Typography variant="body2">{ins.end_date || 'â€”'}</Typography></TableCell>
                   <TableCell>
                     <Typography variant="body2" color="textSecondary">
                       {(ins.dependents || []).length > 0
-                        ? ins.dependents.map(d => `${d.first_name} ${d.last_name}`).join('، ')
-                        : '—'}
+                        ? ins.dependents.map(d => `${d.first_name} ${d.last_name}`).join('طŒ ')
+                        : 'â€”'}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -196,7 +196,7 @@ const SupplementaryInsurancePage = () => {
                       <EditIcon fontSize="small" />
                     </IconButton>
                     <IconButton size="small" color="error"
-                      onClick={() => { if (window.confirm('حذف این بیمه تکمیلی؟')) deleteMutation.mutate(ins.id); }}>
+                      onClick={() => { if (window.confirm('ط­ط°ظپ ط§غŒظ† ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒطں')) deleteMutation.mutate(ins.id); }}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </TableCell>
@@ -210,41 +210,41 @@ const SupplementaryInsurancePage = () => {
       {/* Add / Edit dialog */}
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color: '#8b5cf6' }}>
-          {editing ? 'ویرایش بیمه تکمیلی' : 'افزودن بیمه تکمیلی'}
+          {editing ? 'ظˆغŒط±ط§غŒط´ ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ' : 'ط§ظپط²ظˆط¯ظ† ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ'}
         </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <FormControl fullWidth size="small">
-            <InputLabel>پرسنل *</InputLabel>
+            <InputLabel>ظ¾ط±ط³ظ†ظ„ *</InputLabel>
             <Select
               value={form.employee || ''}
-              label="پرسنل *"
+              label="ظ¾ط±ط³ظ†ظ„ *"
               onChange={e => setForm(p => ({ ...p, employee: e.target.value }))}
             >
               {empList.map(e => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField fullWidth size="small" label="نام بیمه تکمیلی *" required
+          <TextField fullWidth size="small" label="ظ†ط§ظ… ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ *" required
             value={form.insurance_name}
             onChange={e => setForm(p => ({ ...p, insurance_name: e.target.value }))} />
-          <TextField fullWidth size="small" label="نوع بیمه" value={form.insurance_type}
+          <TextField fullWidth size="small" label="ظ†ظˆط¹ ط¨غŒظ…ظ‡" value={form.insurance_type}
             onChange={e => setForm(p => ({ ...p, insurance_type: e.target.value }))} />
-          <TextField fullWidth size="small" label="طرح انتخابی" value={form.plan}
+          <TextField fullWidth size="small" label="ط·ط±ط­ ط§ظ†طھط®ط§ط¨غŒ" value={form.plan}
             onChange={e => setForm(p => ({ ...p, plan: e.target.value }))} />
-          <JalaliDatePicker fullWidth label="تاریخ شروع" value={form.start_date}
+          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط´ط±ظˆط¹" value={form.start_date}
             onChange={g => setForm(p => ({ ...p, start_date: g }))} />
-          <JalaliDatePicker fullWidth label="تاریخ خاتمه" value={form.end_date}
+          <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط®ط§طھظ…ظ‡" value={form.end_date}
             onChange={g => setForm(p => ({ ...p, end_date: g }))} />
-          <TextField fullWidth size="small" label="مبلغ ماهانه (ریال)" type="number" value={form.monthly_amount}
+          <TextField fullWidth size="small" label="ظ…ط¨ظ„ط؛ ظ…ط§ظ‡ط§ظ†ظ‡ (ط±غŒط§ظ„)" type="number" value={form.monthly_amount}
             onChange={e => setForm(p => ({ ...p, monthly_amount: Number(e.target.value) }))} />
-          <TextField fullWidth size="small" label="مبلغ کل (ریال)" type="number" value={form.total_amount}
+          <TextField fullWidth size="small" label="ظ…ط¨ظ„ط؛ ع©ظ„ (ط±غŒط§ظ„)" type="number" value={form.total_amount}
             onChange={e => setForm(p => ({ ...p, total_amount: Number(e.target.value) }))} />
 
           <Divider />
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="subtitle2" color="#8b5cf6">افراد تحت تکفل</Typography>
+            <Typography variant="subtitle2" color="#8b5cf6">ط§ظپط±ط§ط¯ طھط­طھ طھع©ظپظ„</Typography>
             <Button size="small" startIcon={<AddIcon />}
               onClick={() => { setDepForm({ first_name: '', last_name: '', relation: 'spouse' }); setDepDialog(true); }}>
-              افزودن فرد
+              ط§ظپط²ظˆط¯ظ† ظپط±ط¯
             </Button>
           </Box>
           {(form.dependents || []).map((dep, i) => (
@@ -260,43 +260,43 @@ const SupplementaryInsurancePage = () => {
           ))}
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setOpen(false)}>انصراف</Button>
+          <Button onClick={() => setOpen(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" sx={{ background: '#8b5cf6' }}
             disabled={!form.employee || !form.insurance_name}
             onClick={() => saveMutation.mutate({ ...form, employee: Number(form.employee), dependents: (form.dependents || []) })}>
-            {editing ? 'ذخیره تغییرات' : 'افزودن'}
+            {editing ? 'ط°ط®غŒط±ظ‡ طھط؛غŒغŒط±ط§طھ' : 'ط§ظپط²ظˆط¯ظ†'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Dependent dialog */}
       <Dialog open={depDialog} onClose={() => setDepDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle sx={{ color: '#8b5cf6' }}>فرد تحت تکفل</DialogTitle>
+        <DialogTitle sx={{ color: '#8b5cf6' }}>ظپط±ط¯ طھط­طھ طھع©ظپظ„</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="نام" value={depForm.first_name}
+          <TextField fullWidth size="small" label="ظ†ط§ظ…" value={depForm.first_name}
             onChange={e => setDepForm(p => ({ ...p, first_name: e.target.value }))} />
-          <TextField fullWidth size="small" label="نام خانوادگی" value={depForm.last_name}
+          <TextField fullWidth size="small" label="ظ†ط§ظ… ط®ط§ظ†ظˆط§ط¯ع¯غŒ" value={depForm.last_name}
             onChange={e => setDepForm(p => ({ ...p, last_name: e.target.value }))} />
           <FormControl fullWidth size="small">
-            <InputLabel>نسبت</InputLabel>
-            <Select value={depForm.relation} label="نسبت" onChange={e => setDepForm(p => ({ ...p, relation: e.target.value }))}>
-              <MenuItem value="spouse">همسر</MenuItem>
-              <MenuItem value="child">فرزند</MenuItem>
-              <MenuItem value="father">پدر</MenuItem>
-              <MenuItem value="mother">مادر</MenuItem>
-              <MenuItem value="other">سایر</MenuItem>
+            <InputLabel>ظ†ط³ط¨طھ</InputLabel>
+            <Select value={depForm.relation} label="ظ†ط³ط¨طھ" onChange={e => setDepForm(p => ({ ...p, relation: e.target.value }))}>
+              <MenuItem value="spouse">ظ‡ظ…ط³ط±</MenuItem>
+              <MenuItem value="child">ظپط±ط²ظ†ط¯</MenuItem>
+              <MenuItem value="father">ظ¾ط¯ط±</MenuItem>
+              <MenuItem value="mother">ظ…ط§ط¯ط±</MenuItem>
+              <MenuItem value="other">ط³ط§غŒط±</MenuItem>
             </Select>
           </FormControl>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDepDialog(false)}>انصراف</Button>
+          <Button onClick={() => setDepDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" sx={{ background: '#8b5cf6' }}
             onClick={() => {
               if (!depForm.first_name || !depForm.last_name) return;
               setForm(p => ({ ...p, dependents: [...(p.dependents || []), depForm] }));
               setDepDialog(false);
             }}>
-            افزودن
+            ط§ظپط²ظˆط¯ظ†
           </Button>
         </DialogActions>
       </Dialog>

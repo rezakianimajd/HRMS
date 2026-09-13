@@ -16,12 +16,12 @@ import { useGlobalSearch } from '../core/hooks/useGlobalSearch';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 
 const SECTIONS = [
-  { key: 'employees', label: 'پرسنل', icon: <PersonIcon fontSize="small" />, color: '#6366f1' },
-  { key: 'documents', label: 'مدارک', icon: <DescriptionIcon fontSize="small" />, color: '#14b8a6' },
-  { key: 'letters', label: 'نامه‌ها', icon: <MailIcon fontSize="small" />, color: '#06b6d4' },
-  { key: 'hr_requests', label: 'درخواست‌های اداری', icon: <AssignmentIcon fontSize="small" />, color: '#8b5cf6' },
-  { key: 'leave_requests', label: 'مرخصی‌ها', icon: <EventBusyIcon fontSize="small" />, color: '#f59e0b' },
-  { key: 'salary_records', label: 'فیش‌های حقوقی', icon: <PaymentsIcon fontSize="small" />, color: '#10b981' },
+  { key: 'employees', label: 'ظ¾ط±ط³ظ†ظ„', icon: <PersonIcon fontSize="small" />, color: '#6366f1' },
+  { key: 'documents', label: 'ظ…ط¯ط§ط±ع©', icon: <DescriptionIcon fontSize="small" />, color: '#14b8a6' },
+  { key: 'letters', label: 'ظ†ط§ظ…ظ‡â€Œظ‡ط§', icon: <MailIcon fontSize="small" />, color: '#06b6d4' },
+  { key: 'hr_requests', label: 'ط¯ط±ط®ظˆط§ط³طھâ€Œظ‡ط§غŒ ط§ط¯ط§ط±غŒ', icon: <AssignmentIcon fontSize="small" />, color: '#8b5cf6' },
+  { key: 'leave_requests', label: 'ظ…ط±ط®طµغŒâ€Œظ‡ط§', icon: <EventBusyIcon fontSize="small" />, color: '#f59e0b' },
+  { key: 'salary_records', label: 'ظپغŒط´â€Œظ‡ط§غŒ ط­ظ‚ظˆظ‚غŒ', icon: <PaymentsIcon fontSize="small" />, color: '#10b981' },
 ];
 
 const avatarColors = [
@@ -49,12 +49,12 @@ function resultTitle(section, r) {
 
 function resultSubtitle(section, r) {
   switch (section) {
-    case 'employees': return `${r.department_name || ''}${r.job_title_name ? ' — ' + r.job_title_name : ''}`;
-    case 'documents': return `${r.document_type_name || ''}${r.employee_name ? ' · ' + r.employee_name : ''}`;
-    case 'letters': return `${r.kind === 'incoming' ? 'از' : 'به'}: ${r.counterparty || ''} · ${r.number || ''}`;
-    case 'hr_requests': return `${r.request_type || ''} · ${r.status || ''}`;
-    case 'leave_requests': return `${r.leave_type || ''} · ${r.days ? toPersianDigits(r.days) + ' روز' : ''}`;
-    case 'salary_records': return `دوره ${r.period || ''} · ${formatPersianNumber(r.net_payable)} ریال`;
+    case 'employees': return `${r.department_name || ''}${r.job_title_name ? ' â€” ' + r.job_title_name : ''}`;
+    case 'documents': return `${r.document_type_name || ''}${r.employee_name ? ' آ· ' + r.employee_name : ''}`;
+    case 'letters': return `${r.kind === 'incoming' ? 'ط§ط²' : 'ط¨ظ‡'}: ${r.counterparty || ''} آ· ${r.number || ''}`;
+    case 'hr_requests': return `${r.request_type || ''} آ· ${r.status || ''}`;
+    case 'leave_requests': return `${r.leave_type || ''} آ· ${r.days ? toPersianDigits(r.days) + ' ط±ظˆط²' : ''}`;
+    case 'salary_records': return `ط¯ظˆط±ظ‡ ${r.period || ''} آ· ${formatPersianNumber(r.net_payable)} ط±غŒط§ظ„`;
     default: return '';
   }
 }
@@ -105,7 +105,7 @@ const AdvancedSearchPage = () => {
         background: 'linear-gradient(135deg, rgba(99,102,241,0.14), rgba(236,72,153,0.07))',
         border: '1px solid rgba(99,102,241,0.18)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 4,
+        borderRadius: '10px',
       }}>
         <Avatar sx={{
           width: 56, height: 56,
@@ -115,9 +115,9 @@ const AdvancedSearchPage = () => {
           <SearchIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box>
-          <Typography variant="h5" fontWeight={800}>جستجوی سراسری</Typography>
+          <Typography variant="h5" fontWeight={800}>ط¬ط³طھط¬ظˆغŒ ط³ط±ط§ط³ط±غŒ</Typography>
           <Typography variant="body2" color="textSecondary" sx={{ mt: 0.25 }}>
-            پرسنل، مدارک، نامه‌ها، درخواست‌ها، مرخصی‌ها و فیش‌های حقوقی را یکجا جستجو کنید
+            ظ¾ط±ط³ظ†ظ„طŒ ظ…ط¯ط§ط±ع©طŒ ظ†ط§ظ…ظ‡â€Œظ‡ط§طŒ ط¯ط±ط®ظˆط§ط³طھâ€Œظ‡ط§طŒ ظ…ط±ط®طµغŒâ€Œظ‡ط§ ظˆ ظپغŒط´â€Œظ‡ط§غŒ ط­ظ‚ظˆظ‚غŒ ط±ط§ غŒع©ط¬ط§ ط¬ط³طھط¬ظˆ ع©ظ†غŒط¯
           </Typography>
         </Box>
       </Paper>
@@ -128,12 +128,12 @@ const AdvancedSearchPage = () => {
         background: 'rgba(255,255,255,0.55)',
         backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
         border: '1px solid rgba(255,255,255,0.5)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         <TextField
           fullWidth
           inputRef={inputRef}
-          placeholder="تایپ کنید… (حداقل ۲ حرف)"
+          placeholder="طھط§غŒظ¾ ع©ظ†غŒط¯â€¦ (ط­ط¯ط§ظ‚ظ„ غ² ط­ط±ظپ)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
           InputProps={{
@@ -152,25 +152,25 @@ const AdvancedSearchPage = () => {
       {!hasQuery ? (
         <Paper sx={{
           p: 5, textAlign: 'center',
-          background: 'rgba(99,102,241,0.03)', border: '1px dashed rgba(99,102,241,0.25)', borderRadius: 3,
+          background: 'rgba(99,102,241,0.03)', border: '1px dashed rgba(99,102,241,0.25)', borderRadius: '10px',
         }}>
           <SearchIcon sx={{ fontSize: 52, color: 'text.disabled', mb: 1 }} />
-          <Typography color="textSecondary">برای شروع جستجو حداقل ۲ حرف وارد کنید</Typography>
+          <Typography color="textSecondary">ط¨ط±ط§غŒ ط´ط±ظˆط¹ ط¬ط³طھط¬ظˆ ط­ط¯ط§ظ‚ظ„ غ² ط­ط±ظپ ظˆط§ط±ط¯ ع©ظ†غŒط¯</Typography>
         </Paper>
       ) : isLoading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', p: 6 }}><CircularProgress /></Box>
       ) : total === 0 ? (
         <Paper sx={{
           p: 5, textAlign: 'center',
-          background: 'rgba(239,68,68,0.04)', border: '1px dashed rgba(239,68,68,0.25)', borderRadius: 3,
+          background: 'rgba(239,68,68,0.04)', border: '1px dashed rgba(239,68,68,0.25)', borderRadius: '10px',
         }}>
-          <Typography color="textSecondary">نتیجه‌ای برای «{debounced}» یافت نشد</Typography>
+          <Typography color="textSecondary">ظ†طھغŒط¬ظ‡â€Œط§غŒ ط¨ط±ط§غŒ آ«{debounced}آ» غŒط§ظپطھ ظ†ط´ط¯</Typography>
         </Paper>
       ) : (
         <Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-            <Typography variant="h6" fontWeight={800}>نتایج</Typography>
-            <Chip label={`${toPersianDigits(total)} مورد`} color="primary" size="small" />
+            <Typography variant="h6" fontWeight={800}>ظ†طھط§غŒط¬</Typography>
+            <Chip label={`${toPersianDigits(total)} ظ…ظˆط±ط¯`} color="primary" size="small" />
           </Box>
 
           <Stack spacing={2.5}>
@@ -182,7 +182,7 @@ const AdvancedSearchPage = () => {
                   p: 2,
                   background: `linear-gradient(135deg, ${sec.color}0d, ${sec.color}05)`,
                   border: `1px solid ${sec.color}20`,
-                  borderRadius: 3,
+                  borderRadius: '10px',
                 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
                     <Avatar sx={{ width: 30, height: 30, background: `linear-gradient(135deg, ${sec.color}, ${sec.color}99)`, color: '#fff' }}>
@@ -203,7 +203,7 @@ const AdvancedSearchPage = () => {
                             cursor: 'pointer', height: '100%',
                             background: 'rgba(255,255,255,0.5)',
                             border: `1px solid ${sec.color}18`,
-                            borderRadius: 2.5,
+                            borderRadius: '10px',
                             transition: 'all 0.2s ease',
                             '&:hover': {
                               transform: 'translateY(-2px)',

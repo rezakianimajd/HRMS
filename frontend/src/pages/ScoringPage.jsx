@@ -13,39 +13,39 @@ import { formatPersianNumber } from '../core/utils/numberUtils';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 
 const CRITERIA_LABELS = {
-  performance: 'عملکرد',
-  satisfaction: 'رضایت شغلی',
-  education: 'تحصیلات',
-  experience: 'سابقه و تجربه',
-  attendance: 'حضور و کارکرد',
-  punctuality: 'وقت‌شناسی (ورود به‌موقع)',
-  discipline: 'انضباط (بدون جریمه)',
-  financial_behavior: 'رفتار مالی (وام‌ها)',
-  insurance: 'بیمه تکمیلی',
-  benefits: 'مزایای دریافتی',
-  mission: 'مأموریت',
-  contract: 'قرارداد',
-  shift: 'نوبت کاری',
-  distance: 'مسافت',
-  salary_growth: 'رشد حقوق',
+  performance: 'ط¹ظ…ظ„ع©ط±ط¯',
+  satisfaction: 'ط±ط¶ط§غŒطھ ط´ط؛ظ„غŒ',
+  education: 'طھط­طµغŒظ„ط§طھ',
+  experience: 'ط³ط§ط¨ظ‚ظ‡ ظˆ طھط¬ط±ط¨ظ‡',
+  attendance: 'ط­ط¶ظˆط± ظˆ ع©ط§ط±ع©ط±ط¯',
+  punctuality: 'ظˆظ‚طھâ€Œط´ظ†ط§ط³غŒ (ظˆط±ظˆط¯ ط¨ظ‡â€Œظ…ظˆظ‚ط¹)',
+  discipline: 'ط§ظ†ط¶ط¨ط§ط· (ط¨ط¯ظˆظ† ط¬ط±غŒظ…ظ‡)',
+  financial_behavior: 'ط±ظپطھط§ط± ظ…ط§ظ„غŒ (ظˆط§ظ…â€Œظ‡ط§)',
+  insurance: 'ط¨غŒظ…ظ‡ طھع©ظ…غŒظ„غŒ',
+  benefits: 'ظ…ط²ط§غŒط§غŒ ط¯ط±غŒط§ظپطھغŒ',
+  mission: 'ظ…ط£ظ…ظˆط±غŒطھ',
+  contract: 'ظ‚ط±ط§ط±ط¯ط§ط¯',
+  shift: 'ظ†ظˆط¨طھ ع©ط§ط±غŒ',
+  distance: 'ظ…ط³ط§ظپطھ',
+  salary_growth: 'ط±ط´ط¯ ط­ظ‚ظˆظ‚',
 };
 
 const CRITERIA_ICONS = {
-  performance: '🏆',
-  satisfaction: '😊',
-  education: '🎓',
-  experience: '⏳',
-  attendance: '📅',
-  punctuality: '⏰',
-  discipline: '⚖️',
-  financial_behavior: '💳',
-  insurance: '🛡️',
-  benefits: '🎁',
-  mission: '✈️',
-  contract: '📄',
-  shift: '🕒',
-  distance: '📍',
-  salary_growth: '📈',
+  performance: 'ًںڈ†',
+  satisfaction: 'ًںکٹ',
+  education: 'ًںژ“',
+  experience: 'âڈ³',
+  attendance: 'ًں“…',
+  punctuality: 'âڈ°',
+  discipline: 'âڑ–ï¸ڈ',
+  financial_behavior: 'ًں’³',
+  insurance: 'ًں›،ï¸ڈ',
+  benefits: 'ًںژپ',
+  mission: 'âœˆï¸ڈ',
+  contract: 'ًں“„',
+  shift: 'ًں•’',
+  distance: 'ًں“چ',
+  salary_growth: 'ًں“ˆ',
 };
 
 const ScoringPage = () => {
@@ -77,26 +77,26 @@ const ScoringPage = () => {
         background: 'linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,92,246,0.07), rgba(255,255,255,0.3))',
         border: '1px solid rgba(59,130,246,0.2)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 6px 20px rgba(59,130,246,0.4)' }}>
             <AssessmentIcon sx={{ fontSize: 28, color: '#fff' }} />
           </Avatar>
           <Box>
-            <Typography variant="h5" fontWeight={800}>ارزیابی و امتیازدهی کارکنان</Typography>
+            <Typography variant="h5" fontWeight={800}>ط§ط±ط²غŒط§ط¨غŒ ظˆ ط§ظ…طھغŒط§ط²ط¯ظ‡غŒ ع©ط§ط±ع©ظ†ط§ظ†</Typography>
             <Typography variant="body2" color="textSecondary">
-              همهٔ معیارها از ۱۰۰ محاسبه شده و امتیاز نهایی وزن‌دار از ۱۰۰ است.
+              ظ‡ظ…ظ‡ظ” ظ…ط¹غŒط§ط±ظ‡ط§ ط§ط² غ±غ°غ° ظ…ط­ط§ط³ط¨ظ‡ ط´ط¯ظ‡ ظˆ ط§ظ…طھغŒط§ط² ظ†ظ‡ط§غŒغŒ ظˆط²ظ†â€Œط¯ط§ط± ط§ط² غ±غ°غ° ط§ط³طھ.
             </Typography>
           </Box>
         </Box>
 
         {/* Stats */}
         <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Chip icon={<GroupsIcon />} label={`${formatPersianNumber(stats.count)} نفر`} variant="outlined" sx={{ bgcolor: 'rgba(255,255,255,0.5)' }} />
-          <Chip icon={<TrendingUpIcon />} label={`میانگین ${formatPersianNumber(stats.avg)}`} color="primary" />
-          <Chip label={`بالاترین ${formatPersianNumber(stats.max)}`} color="success" variant="outlined" />
-          <Chip label={`پایین‌ترین ${formatPersianNumber(stats.min)}`} color="warning" variant="outlined" />
+          <Chip icon={<GroupsIcon />} label={`${formatPersianNumber(stats.count)} ظ†ظپط±`} variant="outlined" sx={{ bgcolor: 'rgba(255,255,255,0.5)' }} />
+          <Chip icon={<TrendingUpIcon />} label={`ظ…غŒط§ظ†ع¯غŒظ† ${formatPersianNumber(stats.avg)}`} color="primary" />
+          <Chip label={`ط¨ط§ظ„ط§طھط±غŒظ† ${formatPersianNumber(stats.max)}`} color="success" variant="outlined" />
+          <Chip label={`ظ¾ط§غŒغŒظ†â€Œطھط±غŒظ† ${formatPersianNumber(stats.min)}`} color="warning" variant="outlined" />
         </Stack>
       </Paper>
 
@@ -107,9 +107,9 @@ const ScoringPage = () => {
             p: 2,
             background: 'linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4))',
             backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3,
+            border: '1px solid rgba(255,255,255,0.4)', borderRadius: '10px',
           }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>🏅 رتبه‌بندی کارکنان</Typography>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>ًںڈ… ط±طھط¨ظ‡â€Œط¨ظ†ط¯غŒ ع©ط§ط±ع©ظ†ط§ظ†</Typography>
             <Stack spacing={1.25}>
               {scores.map((s, i) => (
                 <Paper
@@ -124,7 +124,7 @@ const ScoringPage = () => {
                     border: selected?.employee_id === s.employee_id
                       ? `1.5px solid ${s.grade.color}`
                       : '1px solid rgba(0,0,0,0.06)',
-                    borderRadius: 2.5,
+                    borderRadius: '10px',
                     transition: 'all 0.2s ease',
                     '&:hover': { transform: 'translateX(-3px)', borderColor: s.grade.color },
                   }}
@@ -143,7 +143,7 @@ const ScoringPage = () => {
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography variant="body2" fontWeight={700} noWrap>{s.full_name}</Typography>
                     <Typography variant="caption" color="textSecondary" noWrap display="block">
-                      {s.department} — {s.job_title}
+                      {s.department} â€” {s.job_title}
                     </Typography>
                   </Box>
 
@@ -151,16 +151,16 @@ const ScoringPage = () => {
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.25 }}>
                       <Typography variant="caption" fontWeight={700} sx={{ color: s.grade.color }}>{s.grade.label}</Typography>
                       <Typography variant="caption" fontWeight={800}>
-                        {formatPersianNumber(s.total_score)} از ۱۰۰
+                        {formatPersianNumber(s.total_score)} ط§ط² غ±غ°غ°
                       </Typography>
                     </Box>
                     <LinearProgress
                       variant="determinate"
                       value={s.total_score}
                       sx={{
-                        height: 7, borderRadius: 4,
+                        height: 7, borderRadius: '10px',
                         bgcolor: 'rgba(0,0,0,0.06)',
-                        '& .MuiLinearProgress-bar': { background: `linear-gradient(90deg, ${s.grade.color}, ${s.grade.color}bb)`, borderRadius: 4 },
+                        '& .MuiLinearProgress-bar': { background: `linear-gradient(90deg, ${s.grade.color}, ${s.grade.color}bb)`, borderRadius: '10px' },
                       }}
                     />
                   </Box>
@@ -176,7 +176,7 @@ const ScoringPage = () => {
             p: 2, position: 'sticky', top: 24,
             background: 'linear-gradient(135deg, rgba(255,255,255,0.7), rgba(255,255,255,0.4))',
             backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
-            border: '1px solid rgba(255,255,255,0.4)', borderRadius: 3,
+            border: '1px solid rgba(255,255,255,0.4)', borderRadius: '10px',
           }}>
             {selected ? (
               <>
@@ -186,7 +186,7 @@ const ScoringPage = () => {
                     <Typography variant="subtitle1" fontWeight={800}>{selected.full_name}</Typography>
                     <Chip
                       size="small"
-                      label={`${selected.grade.label} — ${formatPersianNumber(selected.total_score)} از ۱۰۰`}
+                      label={`${selected.grade.label} â€” ${formatPersianNumber(selected.total_score)} ط§ط² غ±غ°غ°`}
                       sx={{ color: selected.grade.color, borderColor: selected.grade.color, mt: 0.5 }}
                       variant="outlined"
                     />
@@ -195,7 +195,7 @@ const ScoringPage = () => {
 
                 <Divider sx={{ mb: 1.5 }} />
                 <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5 }}>
-                  تفکیک امتیاز (هر معیار از ۱۰۰) + وزن:
+                  طھظپع©غŒع© ط§ظ…طھغŒط§ط² (ظ‡ط± ظ…ط¹غŒط§ط± ط§ط² غ±غ°غ°) + ظˆط²ظ†:
                 </Typography>
                 <Stack spacing={1.2}>
                   {Object.entries(selected.breakdown || {}).map(([k, v]) => {
@@ -204,9 +204,9 @@ const ScoringPage = () => {
                       <Box key={k}>
                         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.25 }}>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-                            <Typography component="span" sx={{ fontSize: 15 }}>{CRITERIA_ICONS[k] || '•'}</Typography>
+                            <Typography component="span" sx={{ fontSize: 15 }}>{CRITERIA_ICONS[k] || 'â€¢'}</Typography>
                             <Typography variant="caption" color="textSecondary">{CRITERIA_LABELS[k] || k}</Typography>
-                            <Chip size="small" label={`وزن ${formatPersianNumber(weight)}٪`} sx={{ height: 16, fontSize: 10 }} />
+                            <Chip size="small" label={`ظˆط²ظ† ${formatPersianNumber(weight)}ظھ`} sx={{ height: 16, fontSize: 10 }} />
                           </Box>
                           <Typography variant="caption" fontWeight={800}>{formatPersianNumber(v)}</Typography>
                         </Box>
@@ -214,9 +214,9 @@ const ScoringPage = () => {
                           variant="determinate"
                           value={Math.min(100, v)}
                           sx={{
-                            height: 6, borderRadius: 3,
+                            height: 6, borderRadius: '10px',
                             bgcolor: 'rgba(0,0,0,0.05)',
-                            '& .MuiLinearProgress-bar': { background: selected.grade.color, borderRadius: 3 },
+                            '& .MuiLinearProgress-bar': { background: selected.grade.color, borderRadius: '10px' },
                           }}
                         />
                       </Box>
@@ -226,11 +226,11 @@ const ScoringPage = () => {
 
                 {selected.reasons && selected.reasons.length > 0 && (
                   <Box sx={{ mt: 2 }}>
-                    <Typography variant="caption" fontWeight={700} color="textSecondary">نکات تحلیل:</Typography>
-                    <Paper variant="outlined" sx={{ p: 1.25, mt: 0.5, borderRadius: 2, bgcolor: 'rgba(0,0,0,0.02)' }}>
+                    <Typography variant="caption" fontWeight={700} color="textSecondary">ظ†ع©ط§طھ طھط­ظ„غŒظ„:</Typography>
+                    <Paper variant="outlined" sx={{ p: 1.25, mt: 0.5, borderRadius: '10px', bgcolor: 'rgba(0,0,0,0.02)' }}>
                       <Stack spacing={0.5}>
                         {selected.reasons.map((r, i) => (
-                          <Typography key={i} variant="caption" color="textSecondary">• {r}</Typography>
+                          <Typography key={i} variant="caption" color="textSecondary">â€¢ {r}</Typography>
                         ))}
                       </Stack>
                     </Paper>
@@ -241,7 +241,7 @@ const ScoringPage = () => {
               <Box sx={{ textAlign: 'center', py: 8 }}>
                 <AssessmentIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} />
                 <Typography variant="body2" color="textSecondary">
-                  برای مشاهدهٔ جزئیات امتیاز، روی یک کارمند کلیک کنید.
+                  ط¨ط±ط§غŒ ظ…ط´ط§ظ‡ط¯ظ‡ظ” ط¬ط²ط¦غŒط§طھ ط§ظ…طھغŒط§ط²طŒ ط±ظˆغŒ غŒع© ع©ط§ط±ظ…ظ†ط¯ ع©ظ„غŒع© ع©ظ†غŒط¯.
                 </Typography>
               </Box>
             )}

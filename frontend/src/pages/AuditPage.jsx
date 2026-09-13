@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
 
-/* P5: دفترچه فعالیت — نمایش لاگهای سیستم فعلی (Audit) */
+/* P5: ط¯ظپطھط±ع†ظ‡ ظپط¹ط§ظ„غŒطھ â€” ظ†ظ…ط§غŒط´ ظ„ط§ع¯ظ‡ط§غŒ ط³غŒط³طھظ… ظپط¹ظ„غŒ (Audit) */
 const AuditPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs'],
@@ -18,7 +18,7 @@ const AuditPage = () => {
   return (
     <Box>
       <Paper sx={{
-        p: 3, mb: 2.5, borderRadius: 3,
+        p: 3, mb: 2.5, borderRadius: '10px',
         background: 'linear-gradient(120deg, rgba(139,92,246,0.10), rgba(139,92,246,0.02), rgba(255,255,255,0.3))',
         border: '1px solid rgba(139,92,246,0.18)',
         display: 'flex', alignItems: 'center', gap: 2,
@@ -27,40 +27,40 @@ const AuditPage = () => {
           <HistoryIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box>
-          <Typography variant="h6" fontWeight={800}>دفترچه فعالیت (Audit)</Typography>
+          <Typography variant="h6" fontWeight={800}>ط¯ظپطھط±ع†ظ‡ ظپط¹ط§ظ„غŒطھ (Audit)</Typography>
           <Typography variant="body2" color="textSecondary">
-            پیگیری لاگ اقدامات کاربران در سیستم
+            ظ¾غŒع¯غŒط±غŒ ظ„ط§ع¯ ط§ظ‚ط¯ط§ظ…ط§طھ ع©ط§ط±ط¨ط±ط§ظ† ط¯ط± ط³غŒط³طھظ…
           </Typography>
         </Box>
       </Paper>
 
-      <Paper variant="outlined" sx={{ borderRadius: 3, overflow: 'hidden' }}>
+      <Paper variant="outlined" sx={{ borderRadius: '10px', overflow: 'hidden' }}>
         {isLoading ? (
           <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
         ) : logs.length === 0 ? (
-          <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">فعالیتی ثبت نشده است</Typography></Box>
+          <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">ظپط¹ط§ظ„غŒطھغŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ</Typography></Box>
         ) : (
           <TableContainer>
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ bgcolor: 'rgba(139,92,246,0.06)' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>کاربر</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>اقدام</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>مدل</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>شرح</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>تاریخ</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>ع©ط§ط±ط¨ط±</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>ط§ظ‚ط¯ط§ظ…</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>ظ…ط¯ظ„</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>ط´ط±ط­</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>طھط§ط±غŒط®</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {logs.map((l, i) => (
                   <TableRow key={l.id || i} hover>
-                    <TableCell>{l.user || '—'}</TableCell>
-                    <TableCell><Chip size="small" label={l.action || '—'} variant="outlined" /></TableCell>
-                    <TableCell>{l.model_name || '—'}</TableCell>
+                    <TableCell>{l.user || 'â€”'}</TableCell>
+                    <TableCell><Chip size="small" label={l.action || 'â€”'} variant="outlined" /></TableCell>
+                    <TableCell>{l.model_name || 'â€”'}</TableCell>
                     <TableCell sx={{ maxWidth: 340 }}>
                       <Typography variant="body2" noWrap>{l.description || ''}</Typography>
                     </TableCell>
-                    <TableCell>{l.timestamp ? String(l.timestamp).slice(0, 16) : '—'}</TableCell>
+                    <TableCell>{l.timestamp ? String(l.timestamp).slice(0, 16) : 'â€”'}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

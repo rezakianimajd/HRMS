@@ -36,7 +36,7 @@ export const DonutChart = ({ data, size = 160, thickness = 28, centerLabel }) =>
         </svg>
         <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
           <Typography variant="h5" fontWeight={800}>{toPersianDigits(total)}</Typography>
-          <Typography variant="caption" color="textSecondary">{centerLabel || 'مجموع'}</Typography>
+          <Typography variant="caption" color="textSecondary">{centerLabel || 'ظ…ط¬ظ…ظˆط¹'}</Typography>
         </Box>
       </Box>
       <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75, flex: 1, minWidth: 140 }}>
@@ -46,7 +46,7 @@ export const DonutChart = ({ data, size = 160, thickness = 28, centerLabel }) =>
             <Typography variant="body2" sx={{ flex: 1 }}>{d.label}</Typography>
             <Typography variant="body2" fontWeight={600}>{toPersianDigits(d.value)}</Typography>
             <Typography variant="caption" color="textSecondary" sx={{ width: 40, textAlign: 'left' }}>
-              {toPersianDigits(Math.round((d.value / total) * 100))}٪
+              {toPersianDigits(Math.round((d.value / total) * 100))}ظھ
             </Typography>
           </Box>
         ))}
@@ -68,12 +68,12 @@ export const BarChart = ({ data, color = '#6366f1', height = 220, showValues = t
           <Typography variant="body2" sx={{ width: 120, flexShrink: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {d.label}
           </Typography>
-          <Box sx={{ flex: 1, height: 20, bgcolor: '#eef2f7', borderRadius: 2, overflow: 'hidden' }}>
+          <Box sx={{ flex: 1, height: 20, bgcolor: '#eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
             <Box sx={{
               width: `${(d.value / max) * 100}%`,
               height: '100%',
               background: d.color || `linear-gradient(90deg, ${color}, ${color}90)`,
-              borderRadius: 2,
+              borderRadius: '10px',
               transition: 'width 0.6s ease',
             }} />
           </Box>
@@ -183,7 +183,7 @@ export const LineChart = ({ data, color = '#3b82f6', height = 200, labels }) => 
 
   return (
     <Box>
-      <Box sx={{ height, position: 'relative', bgcolor: 'rgba(0,0,0,0.01)', borderRadius: 2, px: 1 }}>
+      <Box sx={{ height, position: 'relative', bgcolor: 'rgba(0,0,0,0.01)', borderRadius: '10px', px: 1 }}>
         <svg viewBox="0 0 100 100" preserveAspectRatio="none" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0 }}>
           {/* Grid lines */}
           {[0, 25, 50, 75, 100].map((y) => (

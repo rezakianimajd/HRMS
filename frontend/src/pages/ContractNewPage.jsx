@@ -14,20 +14,20 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { toJalali } from '../core/utils/dateUtils';
 
 const TYPE_LABELS = {
-  construction: 'پیمانکاری / اجرا',
-  purchase: 'خرید',
-  tender: 'مناقصه',
-  consulting: 'مشاوره',
-  service: 'خدمات',
-  other: 'سایر',
+  construction: 'ظ¾غŒظ…ط§ظ†ع©ط§ط±غŒ / ط§ط¬ط±ط§',
+  purchase: 'ط®ط±غŒط¯',
+  tender: 'ظ…ظ†ط§ظ‚طµظ‡',
+  consulting: 'ظ…ط´ط§ظˆط±ظ‡',
+  service: 'ط®ط¯ظ…ط§طھ',
+  other: 'ط³ط§غŒط±',
 };
 
 const STATUS_LABELS = {
-  draft: 'پیش‌نویس',
-  active: 'در حال اجرا',
-  suspended: 'متوقف',
-  completed: 'تکمیل شده',
-  terminated: 'فسخ شده',
+  draft: 'ظ¾غŒط´â€Œظ†ظˆغŒط³',
+  active: 'ط¯ط± ط­ط§ظ„ ط§ط¬ط±ط§',
+  suspended: 'ظ…طھظˆظ‚ظپ',
+  completed: 'طھع©ظ…غŒظ„ ط´ط¯ظ‡',
+  terminated: 'ظپط³ط® ط´ط¯ظ‡',
 };
 
 const EMPTY = {
@@ -94,11 +94,11 @@ const ContractNewPage = () => {
         ? axiosInstance.patch(`/external-contracts/${id}/`, payload)
         : axiosInstance.post('/external-contracts/', payload),
     onSuccess: () => {
-      setMessage({ ok: true, text: isEdit ? 'قرارداد با موفقیت ویرایش شد ✓' : 'قرارداد با موفقیت ثبت شد ✓' });
+      setMessage({ ok: true, text: isEdit ? 'ظ‚ط±ط§ط±ط¯ط§ط¯ ط¨ط§ ظ…ظˆظپظ‚غŒطھ ظˆغŒط±ط§غŒط´ ط´ط¯ âœ“' : 'ظ‚ط±ط§ط±ط¯ط§ط¯ ط¨ط§ ظ…ظˆظپظ‚غŒطھ ط«ط¨طھ ط´ط¯ âœ“' });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
       setTimeout(() => navigate(isEdit ? `/external-contracts/${id}` : '/external-contracts'), 1200);
     },
-    onError: (e) => setMessage({ ok: false, text: e.response?.data?.error || 'خطا در ثبت قرارداد' }),
+    onError: (e) => setMessage({ ok: false, text: e.response?.data?.error || 'ط®ط·ط§ ط¯ط± ط«ط¨طھ ظ‚ط±ط§ط±ط¯ط§ط¯' }),
   });
 
   const num = (v) => (v === '' || v == null ? null : Number(v));
@@ -142,111 +142,111 @@ const ContractNewPage = () => {
       {/* Header */}
       <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
         background: 'linear-gradient(120deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.18)', borderRadius: 3 }}>
+        border: '1px solid rgba(245,158,11,0.18)', borderRadius: '10px' }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
           <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">{isEdit ? 'ویرایش قرارداد' : 'قرارداد جدید'}</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت کامل قرارداد با جزئیات حقوقی، مالی و اجرایی — تاریخ‌ها شمسی</Typography>
+          <Typography variant="h6" fontWeight={800} color="#b45309">{isEdit ? 'ظˆغŒط±ط§غŒط´ ظ‚ط±ط§ط±ط¯ط§ط¯' : 'ظ‚ط±ط§ط±ط¯ط§ط¯ ط¬ط¯غŒط¯'}</Typography>
+          <Typography variant="body2" color="textSecondary">ط«ط¨طھ ع©ط§ظ…ظ„ ظ‚ط±ط§ط±ط¯ط§ط¯ ط¨ط§ ط¬ط²ط¦غŒط§طھ ط­ظ‚ظˆظ‚غŒطŒ ظ…ط§ظ„غŒ ظˆ ط§ط¬ط±ط§غŒغŒ â€” طھط§ط±غŒط®â€Œظ‡ط§ ط´ظ…ط³غŒ</Typography>
         </Box>
-        <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
+        <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>ط¨ط§ط²ع¯ط´طھ</Button>
         <Button variant="contained" startIcon={<SaveIcon />} disabled={!form.subject || !form.party || create.isLoading}
           onClick={() => create.mutate(payload())}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: 2, px: 3 }}>
-          ذخیره قرارداد
+          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 3 }}>
+          ط°ط®غŒط±ظ‡ ظ‚ط±ط§ط±ط¯ط§ط¯
         </Button>
       </Paper>
 
       {message && <Alert severity={message.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert>}
-      {create.isLoading && <LinearProgress sx={{ mb: 2, borderRadius: 2 }} />}
+      {create.isLoading && <LinearProgress sx={{ mb: 2, borderRadius: '10px' }} />}
 
-      <Paper sx={{ p: 3, borderRadius: 3, background: 'rgba(255,255,255,0.65)' }}>
-        {/* اطلاعات پایه */}
-        <Typography variant="subtitle1" fontWeight={800} color="#b45309">اطلاعات پایه</Typography>
+      <Paper sx={{ p: 3, borderRadius: '10px', background: 'rgba(255,255,255,0.65)' }}>
+        {/* ط§ط·ظ„ط§ط¹ط§طھ ظ¾ط§غŒظ‡ */}
+        <Typography variant="subtitle1" fontWeight={800} color="#b45309">ط§ط·ظ„ط§ط¹ط§طھ ظ¾ط§غŒظ‡</Typography>
         <Grid container spacing={1.5}>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره قرارداد" value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={8}><TextField size="small" fullWidth label="موضوع قرارداد *" value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ط´ظ…ط§ط±ظ‡ ظ‚ط±ط§ط±ط¯ط§ط¯" value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={8}><TextField size="small" fullWidth label="ظ…ظˆط¶ظˆط¹ ظ‚ط±ط§ط±ط¯ط§ط¯ *" value={form.subject} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
           <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth><InputLabel>طرف قرارداد *</InputLabel>
-              <Select value={form.party} label="طرف قرارداد *" onChange={e => setForm(p => ({ ...p, party: e.target.value }))}>
+            <FormControl size="small" fullWidth><InputLabel>ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯ *</InputLabel>
+              <Select value={form.party} label="ط·ط±ظپ ظ‚ط±ط§ط±ط¯ط§ط¯ *" onChange={e => setForm(p => ({ ...p, party: e.target.value }))}>
                 {partyList.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth><InputLabel>نوع قرارداد</InputLabel>
-              <Select value={form.contract_type} label="نوع قرارداد" onChange={e => setForm(p => ({ ...p, contract_type: e.target.value }))}>
+            <FormControl size="small" fullWidth><InputLabel>ظ†ظˆط¹ ظ‚ط±ط§ط±ط¯ط§ط¯</InputLabel>
+              <Select value={form.contract_type} label="ظ†ظˆط¹ ظ‚ط±ط§ط±ط¯ط§ط¯" onChange={e => setForm(p => ({ ...p, contract_type: e.target.value }))}>
                 {Object.entries(TYPE_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth><InputLabel>وضعیت</InputLabel>
-              <Select value={form.status} label="وضعیت" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
+            <FormControl size="small" fullWidth><InputLabel>ظˆط¶ط¹غŒطھ</InputLabel>
+              <Select value={form.status} label="ظˆط¶ط¹غŒطھ" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
                 {Object.entries(STATUS_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
         </Grid>
 
-        {/* اطلاعات پروژه و دسته‌بندی */}
+        {/* ط§ط·ظ„ط§ط¹ط§طھ ظ¾ط±ظˆعکظ‡ ظˆ ط¯ط³طھظ‡â€Œط¨ظ†ط¯غŒ */}
         <Grid container spacing={1.5} sx={{ mt: 1 }}>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="طبقه‌بندی قرارداد" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="نام پروژه / طرح" value={form.project_name} onChange={e => setForm(p => ({ ...p, project_name: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="محل اجرا / تحویل" value={form.project_location} onChange={e => setForm(p => ({ ...p, project_location: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره مناقصه / استعلام" value={form.tender_number} onChange={e => setForm(p => ({ ...p, tender_number: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ط·ط¨ظ‚ظ‡â€Œط¨ظ†ط¯غŒ ظ‚ط±ط§ط±ط¯ط§ط¯" value={form.category} onChange={e => setForm(p => ({ ...p, category: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ظ†ط§ظ… ظ¾ط±ظˆعکظ‡ / ط·ط±ط­" value={form.project_name} onChange={e => setForm(p => ({ ...p, project_name: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ظ…ط­ظ„ ط§ط¬ط±ط§ / طھط­ظˆغŒظ„" value={form.project_location} onChange={e => setForm(p => ({ ...p, project_location: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="ط´ظ…ط§ط±ظ‡ ظ…ظ†ط§ظ‚طµظ‡ / ط§ط³طھط¹ظ„ط§ظ…" value={form.tender_number} onChange={e => setForm(p => ({ ...p, tender_number: e.target.value }))} /></Grid>
         </Grid>
 
-        {/* تاریخ‌ها — شمسی */}
+        {/* طھط§ط±غŒط®â€Œظ‡ط§ â€” ط´ظ…ط³غŒ */}
         <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle1" fontWeight={800} color="#b45309">تاریخ‌ها (شمسی)</Typography>
+          <Typography variant="subtitle1" fontWeight={800} color="#b45309">طھط§ط±غŒط®â€Œظ‡ط§ (ط´ظ…ط³غŒ)</Typography>
           <Grid container spacing={1.5}>
             <Grid item xs={12} md={4}>
-              <JalaliDatePicker fullWidth label="تاریخ شروع" value={form.start_date} onChange={(g) => setForm(p => ({ ...p, start_date: g }))} />
+              <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط´ط±ظˆط¹" value={form.start_date} onChange={(g) => setForm(p => ({ ...p, start_date: g }))} />
             </Grid>
             <Grid item xs={12} md={4}>
-              <JalaliDatePicker fullWidth label="تاریخ پایان" value={form.end_date} onChange={(g) => setForm(p => ({ ...p, end_date: g }))} />
+              <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ظ¾ط§غŒط§ظ†" value={form.end_date} onChange={(g) => setForm(p => ({ ...p, end_date: g }))} />
             </Grid>
             <Grid item xs={12} md={4}>
-              <JalaliDatePicker fullWidth label="تاریخ امضا" value={form.signing_date} onChange={(g) => setForm(p => ({ ...p, signing_date: g }))} />
+              <JalaliDatePicker fullWidth label="طھط§ط±غŒط® ط§ظ…ط¶ط§" value={form.signing_date} onChange={(g) => setForm(p => ({ ...p, signing_date: g }))} />
             </Grid>
           </Grid>
         </Box>
 
-        {/* مبالغ و تضمین */}
+        {/* ظ…ط¨ط§ظ„ط؛ ظˆ طھط¶ظ…غŒظ† */}
         <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle1" fontWeight={800} color="#b45309">مبالغ مالی و تضمین‌ها</Typography>
+          <Typography variant="subtitle1" fontWeight={800} color="#b45309">ظ…ط¨ط§ظ„ط؛ ظ…ط§ظ„غŒ ظˆ طھط¶ظ…غŒظ†â€Œظ‡ط§</Typography>
           <Grid container spacing={1.5}>
-            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="مبلغ قرارداد (ریال)" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="پیش‌پرداخت (ریال)" type="number" value={form.advance_payment} onChange={e => setForm(p => ({ ...p, advance_payment: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="درصد حسن انجام کار" type="number" value={form.retention_percent} onChange={e => setForm(p => ({ ...p, retention_percent: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="مبلغ تضمین (ریال)" type="number" value={form.guarantee_amount} onChange={e => setForm(p => ({ ...p, guarantee_amount: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="ظ…ط¨ظ„ط؛ ظ‚ط±ط§ط±ط¯ط§ط¯ (ط±غŒط§ظ„)" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="ظ¾غŒط´â€Œظ¾ط±ط¯ط§ط®طھ (ط±غŒط§ظ„)" type="number" value={form.advance_payment} onChange={e => setForm(p => ({ ...p, advance_payment: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="ط¯ط±طµط¯ ط­ط³ظ† ط§ظ†ط¬ط§ظ… ع©ط§ط±" type="number" value={form.retention_percent} onChange={e => setForm(p => ({ ...p, retention_percent: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="ظ…ط¨ظ„ط؛ طھط¶ظ…غŒظ† (ط±غŒط§ظ„)" type="number" value={form.guarantee_amount} onChange={e => setForm(p => ({ ...p, guarantee_amount: e.target.value }))} /></Grid>
           </Grid>
         </Box>
 
-        {/* امضاکننده و کیفیت */}
+        {/* ط§ظ…ط¶ط§ع©ظ†ظ†ط¯ظ‡ ظˆ ع©غŒظپغŒطھ */}
         <Grid container spacing={1.5} sx={{ mt: 1 }}>
           <Grid item xs={12} md={6}>
-            <FormControl size="small" fullWidth><InputLabel>امضاکنندهٔ مجاز</InputLabel>
-              <Select value={form.signatory} label="امضاکنندهٔ مجاز" onChange={e => setForm(p => ({ ...p, signatory: e.target.value }))}>
-                <MenuItem value="">—</MenuItem>
-                {signatoryList.map(s => <MenuItem key={s.id} value={s.id}>{s.full_name}{s.position ? ` — ${s.position}` : ''}</MenuItem>)}
+            <FormControl size="small" fullWidth><InputLabel>ط§ظ…ط¶ط§ع©ظ†ظ†ط¯ظ‡ظ” ظ…ط¬ط§ط²</InputLabel>
+              <Select value={form.signatory} label="ط§ظ…ط¶ط§ع©ظ†ظ†ط¯ظ‡ظ” ظ…ط¬ط§ط²" onChange={e => setForm(p => ({ ...p, signatory: e.target.value }))}>
+                <MenuItem value="">â€”</MenuItem>
+                {signatoryList.map(s => <MenuItem key={s.id} value={s.id}>{s.full_name}{s.position ? ` â€” ${s.position}` : ''}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={6}><TextField size="small" fullWidth label="دوره گارانتی / تضمین کیفیت" value={form.warranty_period} onChange={e => setForm(p => ({ ...p, warranty_period: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط¯ظˆط±ظ‡ ع¯ط§ط±ط§ظ†طھغŒ / طھط¶ظ…غŒظ† ع©غŒظپغŒطھ" value={form.warranty_period} onChange={e => setForm(p => ({ ...p, warranty_period: e.target.value }))} /></Grid>
         </Grid>
 
-        {/* شرایط و بندها */}
+        {/* ط´ط±ط§غŒط· ظˆ ط¨ظ†ط¯ظ‡ط§ */}
         <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle1" fontWeight={800} color="#b45309">شرایط و بندهای قرارداد</Typography>
+          <Typography variant="subtitle1" fontWeight={800} color="#b45309">ط´ط±ط§غŒط· ظˆ ط¨ظ†ط¯ظ‡ط§غŒ ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
           <Grid container spacing={1.5}>
-            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شرایط و نحوه پرداخت" multiline rows={3} value={form.payment_terms} onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شرایط تحویل" multiline rows={3} value={form.delivery_terms} onChange={e => setForm(p => ({ ...p, delivery_terms: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شرایط وجه التزام / جریمه تأخیر" multiline rows={3} value={form.penalty_terms} onChange={e => setForm(p => ({ ...p, penalty_terms: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شرایط بیمه" multiline rows={3} value={form.insurance_terms} onChange={e => setForm(p => ({ ...p, insurance_terms: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField size="small" fullWidth label="توضیحات تکمیلی" multiline rows={3} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط´ط±ط§غŒط· ظˆ ظ†ط­ظˆظ‡ ظ¾ط±ط¯ط§ط®طھ" multiline rows={3} value={form.payment_terms} onChange={e => setForm(p => ({ ...p, payment_terms: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط´ط±ط§غŒط· طھط­ظˆغŒظ„" multiline rows={3} value={form.delivery_terms} onChange={e => setForm(p => ({ ...p, delivery_terms: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط´ط±ط§غŒط· ظˆط¬ظ‡ ط§ظ„طھط²ط§ظ… / ط¬ط±غŒظ…ظ‡ طھط£ط®غŒط±" multiline rows={3} value={form.penalty_terms} onChange={e => setForm(p => ({ ...p, penalty_terms: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ط´ط±ط§غŒط· ط¨غŒظ…ظ‡" multiline rows={3} value={form.insurance_terms} onChange={e => setForm(p => ({ ...p, insurance_terms: e.target.value }))} /></Grid>
+            <Grid item xs={12}><TextField size="small" fullWidth label="طھظˆط¶غŒط­ط§طھ طھع©ظ…غŒظ„غŒ" multiline rows={3} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
           </Grid>
         </Box>
       </Paper>

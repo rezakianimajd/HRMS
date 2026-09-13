@@ -13,20 +13,20 @@ import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
 const STATUS_LABELS = {
-  draft: 'پیش‌نویس',
-  active: 'در حال اجرا',
-  suspended: 'متوقف',
-  completed: 'تکمیل شده',
-  terminated: 'فسخ شده',
+  draft: 'ظ¾غŒط´â€Œظ†ظˆغŒط³',
+  active: 'ط¯ط± ط­ط§ظ„ ط§ط¬ط±ط§',
+  suspended: 'ظ…طھظˆظ‚ظپ',
+  completed: 'طھع©ظ…غŒظ„ ط´ط¯ظ‡',
+  terminated: 'ظپط³ط® ط´ط¯ظ‡',
 };
 
 const TYPE_LABELS = {
-  construction: 'پیمانکاری / اجرا',
-  purchase: 'خرید',
-  tender: 'مناقصه',
-  consulting: 'مشاوره',
-  service: 'خدمات',
-  other: 'سایر',
+  construction: 'ظ¾غŒظ…ط§ظ†ع©ط§ط±غŒ / ط§ط¬ط±ط§',
+  purchase: 'ط®ط±غŒط¯',
+  tender: 'ظ…ظ†ط§ظ‚طµظ‡',
+  consulting: 'ظ…ط´ط§ظˆط±ظ‡',
+  service: 'ط®ط¯ظ…ط§طھ',
+  other: 'ط³ط§غŒط±',
 };
 
 const ContractsDashboardPage = () => {
@@ -53,7 +53,7 @@ const ContractsDashboardPage = () => {
   if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
 
   const card = (title, value, color, icon, suffix) => (
-    <Paper sx={{ p: 2.5, borderRadius: 10, background: 'rgba(255,255,255,0.65)', border: `1px solid ${color}22` }}>
+    <Paper sx={{ p: 2.5, borderRadius: '10px', background: 'rgba(255,255,255,0.65)', border: `1px solid ${color}22` }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
         <Avatar sx={{ width: 52, height: 52, background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
           {icon}
@@ -72,50 +72,50 @@ const ContractsDashboardPage = () => {
       <Paper sx={{
         p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
         background: 'linear-gradient(120deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.18)', borderRadius: 10,
+        border: '1px solid rgba(245,158,11,0.18)', borderRadius: '10px',
       }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
           <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">مدیریت قراردادها</Typography>
-          <Typography variant="body2" color="textSecondary">داشبورد وضعیت قراردادهای پیمانکاری، خرید و مناقصه</Typography>
+          <Typography variant="h6" fontWeight={800} color="#b45309">ظ…ط¯غŒط±غŒطھ ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§</Typography>
+          <Typography variant="body2" color="textSecondary">ط¯ط§ط´ط¨ظˆط±ط¯ ظˆط¶ط¹غŒطھ ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§غŒ ظ¾غŒظ…ط§ظ†ع©ط§ط±غŒطŒ ط®ط±غŒط¯ ظˆ ظ…ظ†ط§ظ‚طµظ‡</Typography>
         </Box>
         <Button variant="contained" onClick={() => navigate('/external-contracts')}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: 10 }}>
-          مشاهده قراردادها
+          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px' }}>
+          ظ…ط´ط§ظ‡ط¯ظ‡ ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§
         </Button>
       </Paper>
 
       {/* KPI cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
-          {card('کل قراردادها', stats.total, '#f59e0b', <HandshakeIcon sx={{ color: '#fff' }} />)}
+          {card('ع©ظ„ ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§', stats.total, '#f59e0b', <HandshakeIcon sx={{ color: '#fff' }} />)}
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          {card('در حال اجرا', stats.active, '#10b981', <PlayCircleIcon sx={{ color: '#fff' }} />)}
+          {card('ط¯ط± ط­ط§ظ„ ط§ط¬ط±ط§', stats.active, '#10b981', <PlayCircleIcon sx={{ color: '#fff' }} />)}
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          {card('تکمیل شده', stats.completed, '#3b82f6', <CheckCircleIcon sx={{ color: '#fff' }} />)}
+          {card('طھع©ظ…غŒظ„ ط´ط¯ظ‡', stats.completed, '#3b82f6', <CheckCircleIcon sx={{ color: '#fff' }} />)}
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          {card('رو به انقضا (۶۰ روز)', stats.expiring.length, '#ef4444', <WarningIcon sx={{ color: '#fff' }} />)}
+          {card('ط±ظˆ ط¨ظ‡ ط§ظ†ظ‚ط¶ط§ (غ¶غ° ط±ظˆط²)', stats.expiring.length, '#ef4444', <WarningIcon sx={{ color: '#fff' }} />)}
         </Grid>
       </Grid>
 
       {/* Expiring alerts */}
       {stats.expiring.length > 0 && (
-        <Paper sx={{ p: 2, mb: 3, borderRadius: 10, background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.25)' }}>
+        <Paper sx={{ p: 2, mb: 3, borderRadius: '10px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.25)' }}>
           <Typography variant="subtitle1" fontWeight={800} color="error" sx={{ mb: 1 }}>
-            ⚠️ قراردادهای رو به انقضا
+            âڑ ï¸ڈ ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§غŒ ط±ظˆ ط¨ظ‡ ط§ظ†ظ‚ط¶ط§
           </Typography>
           <Stack spacing={1}>
             {stats.expiring.slice(0, 10).map(c => (
               <Box key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                 <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
                 <Typography variant="caption" color="textSecondary">{c.party_name}</Typography>
-                <Chip size="small" color="warning" label={`تا ${toJalali(c.end_date)}`} />
-                <Typography variant="caption" fontWeight={700}>{formatPersianNumber(c.amount || 0)} ریال</Typography>
+                <Chip size="small" color="warning" label={`طھط§ ${toJalali(c.end_date)}`} />
+                <Typography variant="caption" fontWeight={700}>{formatPersianNumber(c.amount || 0)} ط±غŒط§ظ„</Typography>
               </Box>
             ))}
           </Stack>
@@ -123,25 +123,25 @@ const ContractsDashboardPage = () => {
       )}
 
       {/* Recent contracts */}
-      <Paper sx={{ p: 2, borderRadius: 10, background: 'rgba(255,255,255,0.65)' }}>
-        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>آخرین قراردادها</Typography>
+      <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.65)' }}>
+        <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 1.5 }}>ط¢ط®ط±غŒظ† ظ‚ط±ط§ط±ط¯ط§ط¯ظ‡ط§</Typography>
         {items.length === 0 ? (
           <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 3 }}>
-            قراردادی ثبت نشده است.
+            ظ‚ط±ط§ط±ط¯ط§ط¯غŒ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ.
           </Typography>
         ) : (
           <Stack spacing={1}>
             {items.slice(0, 8).map(c => (
-              <Paper key={c.id} variant="outlined" sx={{ p: 1.5, borderRadius: 10, background: 'rgba(255,255,255,0.4)' }}>
+              <Paper key={c.id} variant="outlined" sx={{ p: 1.5, borderRadius: '10px', background: 'rgba(255,255,255,0.4)' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                   <Box sx={{ flex: 1, minWidth: 160 }}>
                     <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
                     <Typography variant="caption" color="textSecondary">
-                      {c.party_name} · {TYPE_LABELS[c.contract_type] || ''}
+                      {c.party_name} آ· {TYPE_LABELS[c.contract_type] || ''}
                     </Typography>
                   </Box>
                   <Chip size="small" label={STATUS_LABELS[c.status] || c.status} color={c.status === 'active' ? 'success' : 'default'} variant="outlined" />
-                  <Typography variant="caption" fontWeight={800}>{formatPersianNumber(c.amount || 0)} ریال</Typography>
+                  <Typography variant="caption" fontWeight={800}>{formatPersianNumber(c.amount || 0)} ط±غŒط§ظ„</Typography>
                 </Box>
               </Paper>
             ))}

@@ -16,7 +16,7 @@ const ContractPdf = ({ textValue, companyLogo, profile }) => {
         m: 'auto',
         maxWidth: 820,
         background: '#fff',
-        borderRadius: 2,
+        borderRadius: '10px',
         boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
       }}
     >

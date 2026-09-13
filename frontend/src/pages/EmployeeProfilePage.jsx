@@ -38,7 +38,7 @@ const glassPaper = {
   WebkitBackdropFilter: 'blur(20px)',
   border: '1px solid rgba(255,255,255,0.5)',
   boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
-  borderRadius: 3,
+  borderRadius: '10px',
 };
 
 const InfoItem = ({ icon, color, label, value }) => (
@@ -49,7 +49,7 @@ const InfoItem = ({ icon, color, label, value }) => (
       border: `1px solid ${color}28`,
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
-      borderRadius: 2.5,
+      borderRadius: '10px',
       transition: 'all 0.2s ease',
       '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 20px ${color}20` },
     }}>
@@ -134,12 +134,12 @@ const EmployeeProfilePage = () => {
               </Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                 {/* Identity chips WITHOUT icons */}
-                <Chip label={`کد پرسنلی: ${toPersianDigits(e.employee_id)}`} size="small" color="primary" variant="filled" />
-                <Chip label={`کد ملی: ${toPersianDigits(e.national_id)}`} size="small" variant="outlined" />
+                <Chip label={`ع©ط¯ ظ¾ط±ط³ظ†ظ„غŒ: ${toPersianDigits(e.employee_id)}`} size="small" color="primary" variant="filled" />
+                <Chip label={`ع©ط¯ ظ…ظ„غŒ: ${toPersianDigits(e.national_id)}`} size="small" variant="outlined" />
                 <StatusBadge status={e.status} size="medium" />
               </Box>
               <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
-                {toPersianDigits(docs.length)} مدرک بارگذاری شده
+                {toPersianDigits(docs.length)} ظ…ط¯ط±ع© ط¨ط§ط±ع¯ط°ط§ط±غŒ ط´ط¯ظ‡
               </Typography>
             </Box>
           </Box>
@@ -147,12 +147,12 @@ const EmployeeProfilePage = () => {
           {/* Detail info grid */}
           <Divider sx={{ my: 2 }} />
           <Grid container spacing={1.5}>
-            <InfoItem icon={<AccountTreeIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="دپارتمان" value={e.department_detail?.name || '—'} />
-            <InfoItem icon={<WorkIcon sx={{ fontSize: 18 }} />} color="#ec4899" label="عنوان شغلی" value={e.job_title_detail?.name || '—'} />
-            <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#10b981" label="محل استقرار" value={e.work_location_detail?.name || '—'} />
-            <InfoItem icon={<PhoneIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="موبایل" value={toPersianDigits(e.mobile)} />
-            <InfoItem icon={<EmailIcon sx={{ fontSize: 18 }} />} color="#3b82f6" label="ایمیل" value={e.email || '—'} />
-            <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="تاریخ استخدام" value={toJalali(e.hire_date)} />
+            <InfoItem icon={<AccountTreeIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="ط¯ظ¾ط§ط±طھظ…ط§ظ†" value={e.department_detail?.name || 'â€”'} />
+            <InfoItem icon={<WorkIcon sx={{ fontSize: 18 }} />} color="#ec4899" label="ط¹ظ†ظˆط§ظ† ط´ط؛ظ„غŒ" value={e.job_title_detail?.name || 'â€”'} />
+            <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#10b981" label="ظ…ط­ظ„ ط§ط³طھظ‚ط±ط§ط±" value={e.work_location_detail?.name || 'â€”'} />
+            <InfoItem icon={<PhoneIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="ظ…ظˆط¨ط§غŒظ„" value={toPersianDigits(e.mobile)} />
+            <InfoItem icon={<EmailIcon sx={{ fontSize: 18 }} />} color="#3b82f6" label="ط§غŒظ…غŒظ„" value={e.email || 'â€”'} />
+            <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="طھط§ط±غŒط® ط§ط³طھط®ط¯ط§ظ…" value={toJalali(e.hire_date)} />
           </Grid>
 
           {/* Uploaded documents summary */}
@@ -160,7 +160,7 @@ const EmployeeProfilePage = () => {
             <>
               <Divider sx={{ my: 2 }} />
               <Box>
-                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>مدارک بارگذاری شده</Typography>
+                <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 1 }}>ظ…ط¯ط§ط±ع© ط¨ط§ط±ع¯ط°ط§ط±غŒ ط´ط¯ظ‡</Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                   {docsByType.map(d => (
                     <Chip key={d.id} label={`${d.name} (${toPersianDigits(d.count)})`} size="small" variant="outlined" color="success" />
@@ -181,14 +181,14 @@ const EmployeeProfilePage = () => {
           scrollButtons="auto"
           sx={{ borderBottom: 1, borderColor: 'divider', px: 2 }}
         >
-          <Tab label="نمای کلی" />
-          <Tab label="تایملاین" />
-          <Tab label="اطلاعات فردی" />
-          <Tab label="اطلاعات شغلی" />
-          <Tab label="دریافتی‌ها" />
-          <Tab label="کارکرد" />
-          <Tab label="تغییرات" />
-          <Tab label="مدارک" />
+          <Tab label="ظ†ظ…ط§غŒ ع©ظ„غŒ" />
+          <Tab label="طھط§غŒظ…ظ„ط§غŒظ†" />
+          <Tab label="ط§ط·ظ„ط§ط¹ط§طھ ظپط±ط¯غŒ" />
+          <Tab label="ط§ط·ظ„ط§ط¹ط§طھ ط´ط؛ظ„غŒ" />
+          <Tab label="ط¯ط±غŒط§ظپطھغŒâ€Œظ‡ط§" />
+          <Tab label="ع©ط§ط±ع©ط±ط¯" />
+          <Tab label="طھط؛غŒغŒط±ط§طھ" />
+          <Tab label="ظ…ط¯ط§ط±ع©" />
         </Tabs>
         <Box sx={{ p: 3 }}>
           {tabIndex === 0 && <OverviewTab employeeId={e.id} />}

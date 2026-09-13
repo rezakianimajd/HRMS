@@ -82,7 +82,7 @@ const EmployeeListPage = () => {
         background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(99,102,241,0.06))',
         border: '1px solid rgba(236,72,153,0.2)',
         backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
           <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #ec4899, #6366f1)', boxShadow: '0 6px 20px rgba(236,72,153,0.4)' }}>
@@ -90,7 +90,7 @@ const EmployeeListPage = () => {
           </Avatar>
           <Box>
             <Typography variant="h5" fontWeight={800}>{t('employees.title')}</Typography>
-            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} پرسنل</Typography>
+            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} ظ¾ط±ط³ظ†ظ„</Typography>
           </Box>
         </Box>
         <Button variant="contained" onClick={() => navigate('/employees/new')}>
@@ -104,7 +104,7 @@ const EmployeeListPage = () => {
         background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.3))',
         backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
         border: '1px solid rgba(255,255,255,0.4)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', flexWrap: 'wrap' }}>
           <TextField
@@ -169,7 +169,7 @@ const EmployeeListPage = () => {
         background: 'linear-gradient(135deg, rgba(255,255,255,0.55), rgba(255,255,255,0.3))',
         backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)',
         border: '1px solid rgba(255,255,255,0.4)',
-        borderRadius: 3,
+        borderRadius: '10px',
       }}>
         {isLoading ? (
           <Box sx={{ p: 4, textAlign: 'center' }}><CircularProgress /></Box>

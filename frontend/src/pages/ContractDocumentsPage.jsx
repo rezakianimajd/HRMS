@@ -20,7 +20,7 @@ const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
   backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
   border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: 10,
+  boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: '10px',
 };
 
 const fileIcon = (name = '') => {
@@ -31,7 +31,7 @@ const fileIcon = (name = '') => {
 };
 
 const formatSize = (bytes) => {
-  if (!bytes) return '—';
+  if (!bytes) return 'â€”';
   const kb = bytes / 1024;
   if (kb < 1024) return `${kb.toFixed(1)} KB`;
   return `${(kb / 1024).toFixed(2)} MB`;
@@ -93,36 +93,36 @@ const ContractDocumentsPage = () => {
     <Box>
       <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
         background: 'linear-gradient(120deg, rgba(6,182,212,0.10), rgba(59,130,246,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(6,182,212,0.18)', borderRadius: 10 }}>
+        border: '1px solid rgba(6,182,212,0.18)', borderRadius: '10px' }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg,#06b6d4,#3b82f6)', boxShadow: '0 8px 24px rgba(6,182,212,0.4)' }}>
           <FolderSharedIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#0e7490">بایگانی اسناد قرارداد</Typography>
-          <Typography variant="body2" color="textSecondary">آپلود، مشاهده و مدیریت اسناد پیوست هر قرارداد</Typography>
+          <Typography variant="h6" fontWeight={800} color="#0e7490">ط¨ط§غŒع¯ط§ظ†غŒ ط§ط³ظ†ط§ط¯ ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
+          <Typography variant="body2" color="textSecondary">ط¢ظ¾ظ„ظˆط¯طŒ ظ…ط´ط§ظ‡ط¯ظ‡ ظˆ ظ…ط¯غŒط±غŒطھ ط§ط³ظ†ط§ط¯ ظ¾غŒظˆط³طھ ظ‡ط± ظ‚ط±ط§ط±ط¯ط§ط¯</Typography>
         </Box>
         <FormControl size="small" sx={{ minWidth: 260 }}>
-          <InputLabel>قرارداد</InputLabel>
-          <Select value={contractId || ''} label="قرارداد" onChange={e => setContractId(e.target.value)}>
+          <InputLabel>ظ‚ط±ط§ط±ط¯ط§ط¯</InputLabel>
+          <Select value={contractId || ''} label="ظ‚ط±ط§ط±ط¯ط§ط¯" onChange={e => setContractId(e.target.value)}>
             {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
           </Select>
         </FormControl>
         <Button variant="contained" startIcon={<AddIcon />} disabled={!contractId} onClick={() => setDialog(true)}
-          sx={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)', borderRadius: 10 }}>
-          افزودن سند
+          sx={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)', borderRadius: '10px' }}>
+          ط§ظپط²ظˆط¯ظ† ط³ظ†ط¯
         </Button>
       </Paper>
 
       {!contractId ? (
         <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
           <FolderSharedIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-          <Typography variant="body2" color="textSecondary">برای مشاهدهٔ اسناد، یک قرارداد انتخاب کنید.</Typography>
+          <Typography variant="body2" color="textSecondary">ط¨ط±ط§غŒ ظ…ط´ط§ظ‡ط¯ظ‡ظ” ط§ط³ظ†ط§ط¯طŒ غŒع© ظ‚ط±ط§ط±ط¯ط§ط¯ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯.</Typography>
         </Paper>
       ) : isLoading ? (
         <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
       ) : docList.length === 0 ? (
         <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
-          <Typography variant="body2" color="textSecondary">سندی برای این قرارداد ثبت نشده است.</Typography>
+          <Typography variant="body2" color="textSecondary">ط³ظ†ط¯غŒ ط¨ط±ط§غŒ ط§غŒظ† ظ‚ط±ط§ط±ط¯ط§ط¯ ط«ط¨طھ ظ†ط´ط¯ظ‡ ط§ط³طھ.</Typography>
         </Paper>
       ) : (
         <Grid container spacing={2}>
@@ -139,13 +139,13 @@ const ContractDocumentsPage = () => {
                   </Box>
                 </Box>
                 <Stack direction="row" spacing={1} justifyContent="flex-end">
-                  <Tooltip title="دانلود">
+                  <Tooltip title="ط¯ط§ظ†ظ„ظˆط¯">
                     <IconButton size="small" color="primary" component="a" href={d.file_url} target="_blank" rel="noreferrer">
                       <DownloadIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
-                  <Tooltip title="حذف">
-                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف سند؟')) remove.mutate(d.id); }}>
+                  <Tooltip title="ط­ط°ظپ">
+                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('ط­ط°ظپ ط³ظ†ط¯طں')) remove.mutate(d.id); }}>
                       <DeleteIcon fontSize="small" />
                     </IconButton>
                   </Tooltip>
@@ -158,17 +158,17 @@ const ContractDocumentsPage = () => {
 
       {/* Upload dialog with drag & drop */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>افزودن سند به قرارداد</DialogTitle>
+        <DialogTitle>ط§ظپط²ظˆط¯ظ† ط³ظ†ط¯ ط¨ظ‡ ظ‚ط±ط§ط±ط¯ط§ط¯</DialogTitle>
         <DialogContent>
           <Stack spacing={2} sx={{ mt: 1 }}>
-            <TextField size="small" label="عنوان سند *" value={title} onChange={e => setTitle(e.target.value)} />
+            <TextField size="small" label="ط¹ظ†ظˆط§ظ† ط³ظ†ط¯ *" value={title} onChange={e => setTitle(e.target.value)} />
             <Box
               onDragOver={(e) => { e.preventDefault(); setDragActive(true); }}
               onDragLeave={() => setDragActive(false)}
               onDrop={handleDrop}
               onClick={() => inputRef.current?.click()}
               sx={{
-                p: 3, textAlign: 'center', cursor: 'pointer', borderRadius: 10,
+                p: 3, textAlign: 'center', cursor: 'pointer', borderRadius: '10px',
                 border: `2px dashed ${dragActive ? '#06b6d4' : 'rgba(99,102,241,0.3)'}`,
                 background: dragActive ? 'rgba(6,182,212,0.06)' : 'rgba(99,102,241,0.03)',
                 transition: 'all 0.2s',
@@ -176,7 +176,7 @@ const ContractDocumentsPage = () => {
             >
               <CloudUploadIcon sx={{ fontSize: 44, color: '#06b6d4', mb: 1 }} />
               <Typography variant="body2" fontWeight={600}>
-                {file ? file.name : 'فایل را اینجا رها کنید یا کلیک کنید'}
+                {file ? file.name : 'ظپط§غŒظ„ ط±ط§ ط§غŒظ†ط¬ط§ ط±ظ‡ط§ ع©ظ†غŒط¯ غŒط§ ع©ظ„غŒع© ع©ظ†غŒط¯'}
               </Typography>
               {file && <Chip size="small" label={formatSize(file.size)} sx={{ mt: 1 }} />}
               <input ref={inputRef} type="file" hidden onChange={(e) => {
@@ -186,10 +186,10 @@ const ContractDocumentsPage = () => {
           </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>انصراف</Button>
+          <Button onClick={() => setDialog(false)}>ط§ظ†طµط±ط§ظپ</Button>
           <Button variant="contained" disabled={!file || !title || upload.isLoading} onClick={submit}
             sx={{ background: 'linear-gradient(135deg,#06b6d4,#3b82f6)' }}>
-            {upload.isLoading ? <CircularProgress size={20} color="inherit" /> : 'آپلود'}
+            {upload.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ط¢ظ¾ظ„ظˆط¯'}
           </Button>
         </DialogActions>
       </Dialog>

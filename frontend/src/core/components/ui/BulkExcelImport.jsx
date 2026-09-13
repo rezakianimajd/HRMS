@@ -19,8 +19,8 @@ import ErrorIcon from '@mui/icons-material/Error';
  */
 const BulkExcelImport = ({
   importType,
-  title = 'درون‌ریزی گروهی اکسل',
-  description = 'فایل نمونه را دانلود، تکمیل و بارگذاری کنید.',
+  title = 'ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ع¯ط±ظˆظ‡غŒ ط§ع©ط³ظ„',
+  description = 'ظپط§غŒظ„ ظ†ظ…ظˆظ†ظ‡ ط±ط§ ط¯ط§ظ†ظ„ظˆط¯طŒ طھع©ظ…غŒظ„ ظˆ ط¨ط§ط±ع¯ط°ط§ط±غŒ ع©ظ†غŒط¯.',
   accent = '#0ea5e9',
   invalidateKeys = [],
 }) => {
@@ -44,12 +44,12 @@ const BulkExcelImport = ({
       link.remove();
       window.URL.revokeObjectURL(url);
     } catch (e) {
-      setError('خطا در دانلود نمونه فایل');
+      setError('ط®ط·ط§ ط¯ط± ط¯ط§ظ†ظ„ظˆط¯ ظ†ظ…ظˆظ†ظ‡ ظپط§غŒظ„');
     }
   };
 
   const handleUpload = async () => {
-    if (!file) { setError('فایل را انتخاب کنید'); return; }
+    if (!file) { setError('ظپط§غŒظ„ ط±ط§ ط§ظ†طھط®ط§ط¨ ع©ظ†غŒط¯'); return; }
     setUploading(true); setError(''); setResult(null);
     try {
       const fd = new FormData();
@@ -64,13 +64,13 @@ const BulkExcelImport = ({
       const data = err.response?.data;
       if (data?.validation_errors?.length) {
         setResult({
-          error: data?.error || 'خطا',
+          error: data?.error || 'ط®ط·ط§',
           imported_count: 0,
           total_rows: data?.total_rows || 0,
           validation_errors: data?.validation_errors || [],
         });
       } else {
-        setError(data?.error || 'خطا در درون‌ریزی');
+        setError(data?.error || 'ط®ط·ط§ ط¯ط± ط¯ط±ظˆظ†â€Œط±غŒط²غŒ');
       }
     } finally {
       setUploading(false);
@@ -81,7 +81,7 @@ const BulkExcelImport = ({
 
   return (
     <Paper sx={{
-      p: 2.5, mt: 3, borderRadius: 2.5, mb: 2,
+      p: 2.5, mt: 3, borderRadius: '10px', mb: 2,
       background: `linear-gradient(120deg, ${accent}0a, rgba(255,255,255,0.5))`,
       border: `1px solid ${accent}22`,
     }}>
@@ -92,21 +92,21 @@ const BulkExcelImport = ({
 
       {result && result.imported_count > 0 && (
         <Alert icon={<CheckCircleIcon />} severity="success" sx={{ mb: 1.5 }}>
-          درون‌ریزی موفق: {result.imported_count} ردیف ثبت شد
-          {result.skipped_count > 0 && ` — ${result.skipped_count} ردیف رد شد`}
+          ط¯ط±ظˆظ†â€Œط±غŒط²غŒ ظ…ظˆظپظ‚: {result.imported_count} ط±ط¯غŒظپ ط«ط¨طھ ط´ط¯
+          {result.skipped_count > 0 && ` â€” ${result.skipped_count} ط±ط¯غŒظپ ط±ط¯ ط´ط¯`}
         </Alert>
       )}
       {previewErrorCount > 0 && (
         <Alert severity="warning" sx={{ mb: 1.5 }}>
-          <b>{result?.error || 'برخی ردیف‌ها خطا دارند'}</b>
-          {' '}({previewErrorCount} ردیف)
+          <b>{result?.error || 'ط¨ط±ط®غŒ ط±ط¯غŒظپâ€Œظ‡ط§ ط®ط·ط§ ط¯ط§ط±ظ†ط¯'}</b>
+          {' '}({previewErrorCount} ط±ط¯غŒظپ)
         </Alert>
       )}
       {result?.validation_errors?.length > 0 && (
-        <Box sx={{ maxHeight: 140, overflow: 'auto', mb: 1.5, p: 1, bgcolor: 'rgba(255,255,255,0.6)', borderRadius: 1, fontSize: '0.75rem' }}>
+        <Box sx={{ maxHeight: 140, overflow: 'auto', mb: 1.5, p: 1, bgcolor: 'rgba(255,255,255,0.6)', borderRadius: '10px', fontSize: '0.75rem' }}>
           {result.validation_errors.slice(0, 10).map((v, i) => (
             <Typography key={i} variant="caption" display="block" color="error" sx={{ py: 0.25 }}>
-              ردیف {v.row}: {v.errors.join('، ')}
+              ط±ط¯غŒظپ {v.row}: {v.errors.join('طŒ ')}
             </Typography>
           ))}
         </Box>
@@ -118,14 +118,14 @@ const BulkExcelImport = ({
           onClick={handleDownloadTemplate}
           sx={{ color: accent, borderColor: `${accent}66` }}
         >
-          دانلود نمونه فایل
+          ط¯ط§ظ†ظ„ظˆط¯ ظ†ظ…ظˆظ†ظ‡ ظپط§غŒظ„
         </Button>
 
         <Button
           component="label" variant="outlined" size="small" startIcon={<CloudUploadIcon />}
           sx={{ color: accent, borderColor: `${accent}66` }}
         >
-          {file ? `انتخاب شده: ${file.name}` : 'انتخاب فایل اکسل'}
+          {file ? `ط§ظ†طھط®ط§ط¨ ط´ط¯ظ‡: ${file.name}` : 'ط§ظ†طھط®ط§ط¨ ظپط§غŒظ„ ط§ع©ط³ظ„'}
           <input type="file" hidden accept=".xlsx,.xls" onChange={e => {
             setFile(e.target.files?.[0] || null);
             setResult(null); setError('');
@@ -137,7 +137,7 @@ const BulkExcelImport = ({
           onClick={handleUpload}
           sx={{ background: `linear-gradient(135deg, ${accent}, ${accent}aa)` }}
         >
-          {uploading ? <CircularProgress size={18} color="inherit" /> : 'درون‌ریزی'}
+          {uploading ? <CircularProgress size={18} color="inherit" /> : 'ط¯ط±ظˆظ†â€Œط±غŒط²غŒ'}
         </Button>
       </Stack>
     </Paper>
