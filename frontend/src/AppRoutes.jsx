@@ -55,6 +55,7 @@ import ContractFinancePage from './pages/ContractFinancePage';
 import ContractDocumentsPage from './pages/ContractDocumentsPage';
 import ContractRiskPage from './pages/ContractRiskPage';
 import ContractSettingsPage from './pages/ContractSettingsPage';
+import { ContractInvoicesPage, ContractStatementsPage, ContractPaymentsPage, ContractAddendumsPage } from './pages/contracts/contractSubPages';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -136,6 +137,10 @@ const AppRoutes = () => {
       <Route path="/external-contracts/:id" element={<ProtectedLayout><ContractProfilePage /></ProtectedLayout>} />
       <Route path="/contracts-guarantees" element={<ProtectedLayout><GuaranteesPage /></ProtectedLayout>} />
       <Route path="/contracts-finance" element={<ProtectedLayout><ContractFinancePage /></ProtectedLayout>} />
+      <Route path="/contracts-invoices" element={<ProtectedLayout><ContractInvoicesPage /></ProtectedLayout>} />
+      <Route path="/contracts-statements" element={<ProtectedLayout><ContractStatementsPage /></ProtectedLayout>} />
+      <Route path="/contracts-payments" element={<ProtectedLayout><ContractPaymentsPage /></ProtectedLayout>} />
+      <Route path="/contracts-addendums" element={<ProtectedLayout><ContractAddendumsPage /></ProtectedLayout>} />
       <Route path="/contracts-documents" element={<ProtectedLayout><ContractDocumentsPage /></ProtectedLayout>} />
       <Route path="/contracts-risk" element={<ProtectedLayout><ContractRiskPage /></ProtectedLayout>} />
       <Route path="/contracts-settings" element={<ProtectedLayout><ContractSettingsPage /></ProtectedLayout>} />
