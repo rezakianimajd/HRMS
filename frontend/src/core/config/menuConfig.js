@@ -136,38 +136,93 @@ const menuConfig = [
   },
 ];
 
+const comingSoon = (path, id, title, icon, color, primary = false) => ({
+  id, title, icon, path, color, primary, ready: false,
+});
+
 /* ---------------------------------------------------------------------------
- * تنظیمات و تعاریف — یک ماژول متمرکز برای همهٔ تنظیمات پلتفرم.
- * هیچ تنظیمی نباید داخل ماژول HR یا قراردادها بماند؛ همه از اینجا است.
+ * ماژول متمرکز «تنظیمات و تعاریف»
+ * ساختار EBP: خانه (داشبورد) → هر ماژول → در پایان تنظیمات عمومی.
  * ------------------------------------------------------------------------- */
 const settingsMenu = [
   {
-    id: 'settings-system',
-    title: 'تنظیمات سیستم',
-    color: '#64748b',
+    id: 'settings-home',
+    title: 'خانه',
+    color: '#6366f1',
     items: [
-      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: true, ready: true },
-      { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: false, ready: true },
-      { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
-      { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'audit', title: 'دفترچه فعالیت (Audit)', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
+      comingSoon('/settings/dashboard', 'settings-dashboard', 'داشبورد', <DashboardIcon />, '#6366f1', true),
     ],
   },
   {
-    id: 'settings-maintenance',
-    title: 'نگهداری و امنیت',
+    id: 'settings-projects',
+    title: 'مدیریت پروژه',
+    color: '#8b5cf6',
+    items: [comingSoon('/modules/projects', 'mod-projects', 'مدیریت پروژه', <InsightsIcon />, '#8b5cf6')],
+  },
+  {
+    id: 'settings-inventory',
+    title: 'انبار و موجودی',
+    color: '#10b981',
+    items: [comingSoon('/modules/inventory', 'mod-inventory', 'انبار و موجودی', <Inventory2Icon />, '#10b981')],
+  },
+  {
+    id: 'settings-accounting',
+    title: 'حسابداری',
+    color: '#0ea5e9',
+    items: [comingSoon('/modules/accounting', 'mod-accounting', 'حسابداری', <ReceiptLongIcon />, '#0ea5e9')],
+  },
+  {
+    id: 'settings-assets',
+    title: 'اموال و دارایی',
+    color: '#f97316',
+    items: [comingSoon('/modules/assets', 'mod-assets', 'اموال و دارایی', <AssessmentIcon />, '#f97316')],
+  },
+  {
+    id: 'settings-treasury',
+    title: 'خزانه‌داری',
+    color: '#14b8a6',
+    items: [comingSoon('/modules/treasury', 'mod-treasury', 'خزانه‌داری', <PaymentsIcon />, '#14b8a6')],
+  },
+  {
+    id: 'settings-crm',
+    title: 'CRM',
+    color: '#ec4899',
+    items: [comingSoon('/modules/crm', 'mod-crm', 'مدیریت ارتباط با مشتری', <PeopleIcon />, '#ec4899')],
+  },
+  {
+    id: 'settings-procurement',
+    title: 'خرید و تدارکات',
     color: '#3b82f6',
+    items: [comingSoon('/modules/procurement', 'mod-procurement', 'خرید و تدارکات', <CategoryIcon />, '#3b82f6')],
+  },
+  {
+    id: 'settings-sales',
+    title: 'فروش',
+    color: '#22c55e',
+    items: [comingSoon('/modules/sales', 'mod-sales', 'فروش', <ReceiptIcon />, '#22c55e')],
+  },
+  {
+    id: 'settings-production',
+    title: 'تولید و برنامه‌ریزی',
+    color: '#a855f7',
+    items: [comingSoon('/modules/production', 'mod-production', 'تولید و برنامه‌ریزی', <PlaylistAddCheckIcon />, '#a855f7')],
+  },
+  {
+    id: 'settings-general',
+    title: 'تنظیمات عمومی',
+    color: '#64748b',
     items: [
+      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
+      { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: false, ready: true },
+      { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
+      { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'audit', title: 'دفترچه فعالیت', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
       { id: 'settings-backup', title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, path: '/settings?tab=backup', color: '#3b82f6', primary: false, ready: true },
       { id: 'settings-management', title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, path: '/settings?tab=management', color: '#f97316', primary: false, ready: true },
       { id: 'settings-notifications', title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, path: '/settings?tab=notifications', color: '#10b981', primary: false, ready: true },
     ],
   },
 ];
-
-const comingSoon = (path, id, title, icon, color, primary = false) => ({
-  id, title, icon, path, color, primary, ready: false,
-});
 
 const contractsMenu = [
   {
