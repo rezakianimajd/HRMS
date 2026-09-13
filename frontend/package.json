@@ -6,29 +6,29 @@
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
-    "@mui/material": "5.18.0",
     "@mui/icons-material": "5.18.0",
-    "@mui/utils": "5.17.1",
-    "@mui/system": "5.18.0",
+    "@mui/material": "5.18.0",
     "@mui/private-theming": "5.17.1",
+    "@mui/system": "5.18.0",
+    "@mui/utils": "5.17.1",
     "@mui/x-date-pickers": "6.20.2",
     "@tanstack/react-query": "^5.12.0",
     "axios": "^1.6.2",
     "framer-motion": "^10.16.0",
+    "html2canvas": "^1.4.1",
     "i18next": "^23.7.0",
     "i18next-browser-languagedetector": "^7.2.0",
+    "jspdf": "^2.5.1",
     "react": "^18.2.0",
+    "react-dnd": "^16.0.1",
+    "react-dnd-html5-backend": "^16.0.1",
     "react-dom": "^18.2.0",
-    "typescript": "4.9.5",
     "react-i18next": "^13.5.0",
     "react-router-dom": "^6.21.0",
     "react-scripts": "5.0.1",
-    "web-vitals": "^2.1.4",
-    "react-dnd": "^16.0.1",
-    "react-dnd-html5-backend": "^16.0.1",
-    "html2canvas": "^1.4.1",
-    "jspdf": "^2.5.1",
-    "recharts": "^2.10.0"
+    "recharts": "^2.10.0",
+    "typescript": "4.9.5",
+    "web-vitals": "^2.1.4"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -37,7 +37,15 @@
     "eject": "react-scripts eject"
   },
   "browserslist": {
-    "production": [">0.2%", "not dead", "not op_mini all"],
-    "development": ["last 1 chrome version", "last 1 firefox version", "last 1 safari version"]
+    "production": [
+      ">0.2%",
+      "not dead",
+      "not op_mini all"
+    ],
+    "development": [
+      "last 1 chrome version",
+      "last 1 firefox version",
+      "last 1 safari version"
+    ]
   }
 }
