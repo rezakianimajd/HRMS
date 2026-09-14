@@ -1,0 +1,84 @@
+from django.db import migrations, models
+import django.db.models.deletion
+
+
+class Migration(migrations.Migration):
+
+    initial = True
+
+    dependencies = [
+        ('core', '0008_enable_projects_module'),
+        ('employees', '0015_contractversion_signature_image'),
+    ]
+
+    operations = [
+        migrations.CreateModel(
+            name='PettyCashCategory',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')),
+                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='تاریخ به\u200cروزرسانی')),
+                ('is_active', models.BooleanField(default=True, help_text='وضعیت فعال بودن رکورد', verbose_name='فعال')),
+                ('name', models.CharField(max_length=200, verbose_name='عنوان دسته\u200cبندی')),
+                ('code', models.CharField(max_length=50, verbose_name='کد')),
+                ('company', models.ForeignKey(db_constraint=False, help_text='شرکت مربوطه', on_delete=django.db.models.deletion.CASCADE, related_name='%(class)s_records', to='core.company', verbose_name='شرکت')),
+            ],
+            options={
+                'verbose_name': 'دسته\u200cبندی تنخواه',
+                'verbose_name_plural': 'دسته\u200cبندی\u200cهای تنخواه',
+                'ordering': ['name'],
+                'unique_together': {('company', 'code')},
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
+            name='PettyCashFund',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')),
+                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='تاریخ به\u200cروزرسانی')),
+                ('is_active', models.BooleanField(default=True, help_text='وضعیت فعال بودن رکورد', verbose_name='فعال')),
+                ('code', models.CharField(max_length=50, verbose_name='کد تنخواه')),
+                ('title', models.CharField(max_length=200, verbose_name='عنوان تنخواه')),
+                ('opening_balance', models.DecimalField(decimal_places=0, default=0, max_digits=18, verbose_name='اعتبار اولیه (ریال)')),
+                ('limit', models.DecimalField(blank=True, decimal_places=0, help_text='حداکثر ماندهٔ تنخواه', max_digits=18, null=True, verbose_name='سقف تنخواه (ریال)')),
+                ('status', models.CharField(choices=[('active', 'فعال'), ('archived', 'بایگانی\u200cشده'), ('suspended', 'معلق')], default='active', max_length=20, verbose_name='وضعیت')),
+                ('archived_at', models.DateTimeField(blank=True, null=True, verbose_name='تاریخ بایگانی')),
+                ('description', models.TextField(blank=True, verbose_name='توضیحات')),
+                ('company', models.ForeignKey(db_constraint=False, help_text='شرکت مربوطه', on_delete=django.db.models.deletion.CASCADE, related_name='%(class)s_records', to='core.company', verbose_name='شرکت')),
+                ('custodian', models.ForeignKey(on_delete=django.db.models.deletion.PROTECT, related_name='petty_cash_funds', to='employees.employee', verbose_name='تنخواه\u200cدار')),
+            ],
+            options={
+                'verbose_name': 'تنخواه',
+                'verbose_name_plural': 'تنخواه\u200cها',
+                'ordering': ['-created_at'],
+                'abstract': False,
+            },
+        ),
+        migrations.CreateModel(
+            name='PettyCashTransaction',
+            fields=[
+                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
+                ('created_at', models.DateTimeField(auto_now_add=True, verbose_name='تاریخ ایجاد')),
+                ('updated_at', models.DateTimeField(auto_now=True, verbose_name='تاریخ به\u200cروزرسانی')),
+                ('is_active', models.BooleanField(default=True, help_text='وضعیت فعال بودن رکورد', verbose_name='فعال')),
+                ('entry_type', models.CharField(choices=[('credit', 'دریافت / شارژ'), ('debit', 'هزینه / پرداخت')], max_length=10, verbose_name='نوع تراکنش')),
+                ('amount', models.DecimalField(decimal_places=0, max_digits=18, verbose_name='مبلغ (ریال)')),
+                ('title', models.CharField(max_length=200, verbose_name='عنوان')),
+                ('date', models.DateField(verbose_name='تاریخ')),
+                ('receipt', models.FileField(blank=True, null=True, upload_to='petty_cash/receipts/', verbose_name='تصویر رسید')),
+                ('description', models.TextField(blank=True, verbose_name='توضیحات')),
+                ('is_archived', models.BooleanField(default=False, verbose_name='بایگانی\u200cشده')),
+                ('archived_at', models.DateTimeField(blank=True, null=True, verbose_name='تاریخ بایگانی')),
+                ('category', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='transactions', to='pettycash.pettycashcategory', verbose_name='دسته\u200cبندی')),
+                ('company', models.ForeignKey(db_constraint=False, help_text='شرکت مربوطه', on_delete=django.db.models.deletion.CASCADE, related_name='%(class)s_records', to='core.company', verbose_name='شرکت')),
+                ('fund', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='transactions', to='pettycash.pettycashfund', verbose_name='تنخواه')),
+            ],
+            options={
+                'verbose_name': 'تراکنش تنخواه',
+                'verbose_name_plural': 'تراکنش\u200cهای تنخواه',
+                'ordering': ['-date', '-created_at'],
+                'abstract': False,
+            },
+        ),
+    ]

@@ -46,6 +46,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import WarningIcon from '@mui/icons-material/Warning';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 
 /**
  * Central navigation model for the HRMS.
@@ -104,6 +105,18 @@ const menuConfig = [
       { id: 'benefit-payments', title: 'پرداخت مزایا', icon: <CardGiftcardIcon />, path: '/benefit-payments', color: '#14b8a6', primary: false, ready: true },
       { id: 'deductions', title: 'کسورات', icon: <PaymentsIcon />, path: '/deductions', color: '#8b5cf6', primary: false, ready: true },
       { id: 'finance-reports', title: 'گزارش مالی', icon: <BarChartOutlinedIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'pettycash',
+    title: 'تنخواه',
+    color: '#f59e0b',
+    items: [
+      { id: 'petty-cash', title: 'تنخواه', icon: <AccountBalanceWalletIcon />, path: '/petty-cash', color: '#f59e0b', primary: true, ready: true },
+      comingSoon('/petty-cash/ledger', 'petty-cash-ledger', 'دفتر حساب', <ReceiptLongIcon />, '#f59e0b'),
+      comingSoon('/petty-cash/archive', 'petty-cash-archive', 'بایگانی', <FolderSharedIcon />, '#f59e0b'),
+      comingSoon('/petty-cash/reports', 'petty-cash-reports', 'گزارش‌ها', <BarChartOutlinedIcon />, '#f59e0b'),
+      comingSoon('/petty-cash/settings', 'petty-cash-settings', 'تنظیمات', <SettingsIcon />, '#f59e0b'),
     ],
   },
   {
