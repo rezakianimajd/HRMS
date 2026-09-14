@@ -192,6 +192,29 @@ class BenefitRecordViewSet(viewsets.ModelViewSet):
         return Response(BenefitRecordSerializer(qs, many=True).data)
 
     @action(detail=False, methods=['get'])
+    def payment_sheet(self, request):
+        """لیست پرداخت مزایا: همهٔ پرسنل فعال با مشخصات کامل پرونده برای ورود مزایا."""
+        from employees.models import Employee
+        company = _get_company(request)
+        qs = Employee.objects.filter(is_active=True).select_related('department')
+        if company:
+            qs = qs.filter(company=company)
+        benefit_type = request.query_params.get('benefit_type')
+        qs = qs.order_by('employee_id')
+        data = [{
+            'id': e.id,
+            'employee_id': e.employee_id,
+            'full_name': e.full_name,
+            'national_id': e.national_id,
+            'birth_date': e.birth_date,
+            'mobile': e.mobile,
+            'card_number': e.card_number,
+            'card_expiry_date': e.card_expiry_date,
+            'benefit_type': benefit_type or '',
+        } for e in qs]
+        return Response(data)
+
+    @action(detail=False, methods=['get'])
     def years(self, request):
         company = _get_company(request)
         qs = BenefitRecord.objects.all()

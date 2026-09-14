@@ -58,6 +58,7 @@ import ContractSettingsPage from './pages/ContractSettingsPage';
 import { ContractInvoicesPage, ContractPaymentsPage, ContractAddendumsPage } from './pages/contracts/contractSubPages';
 import StatementEditorPage from './pages/contracts/StatementEditorPage';
 import ContractDefinitionsPage from './pages/ContractDefinitionsPage';
+import BenefitPaymentPage from './pages/BenefitPaymentPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -129,6 +130,7 @@ const AppRoutes = () => {
       <Route path="/assets" element={<ProtectedLayout><AssetsPage /></ProtectedLayout>} />
       <Route path="/lifecycle" element={<ProtectedLayout><LifecyclePage /></ProtectedLayout>} />
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
+      <Route path="/benefit-payments" element={<ProtectedLayout><BenefitPaymentPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
       <Route path="/contracts-dashboard" element={<ProtectedLayout><ContractsDashboardPage /></ProtectedLayout>} />

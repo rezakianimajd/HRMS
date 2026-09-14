@@ -74,6 +74,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'status', 'status_display',
             'gender', 'gender_display',
             'hire_date', 'birth_date', 'is_active', 'created_at',
+            'card_number', 'card_expiry_date',
             'is_record_complete', 'completeness_percent',
         ]
         read_only_fields = ['id', 'full_name', 'created_at', 'birth_date']

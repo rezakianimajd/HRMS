@@ -100,6 +100,7 @@ const menuConfig = [
     items: [
       { id: 'payslips', title: 'فیش حقوق', icon: <ReceiptLongIcon />, path: '/payslips', color: '#3b82f6', primary: true, ready: true },
       { id: 'benefits', title: 'مزایا و کارانه', icon: <CardGiftcardIcon />, path: '/benefits', color: '#10b981', primary: false, ready: true },
+      { id: 'benefit-payments', title: 'پرداخت مزایا', icon: <CardGiftcardIcon />, path: '/benefit-payments', color: '#14b8a6', primary: false, ready: true },
       { id: 'deductions', title: 'کسورات', icon: <PaymentsIcon />, path: '/deductions', color: '#8b5cf6', primary: false, ready: true },
       { id: 'finance-reports', title: 'گزارش مالی', icon: <BarChartOutlinedIcon />, path: '/finance-reports', color: '#6366f1', primary: false, ready: true },
     ],
