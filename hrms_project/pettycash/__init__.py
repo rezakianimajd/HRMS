@@ -1,3 +1,1 @@
-</｜｜DSML｜｜ parameter>
-</｜｜DSML｜｜ invoke>
-</｜｜DSML｜｜ calls>
+"""Petty Cash (تنخواه) module."""
