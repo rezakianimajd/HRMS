@@ -113,10 +113,10 @@ const menuConfig = [
     color: '#f59e0b',
     items: [
       { id: 'petty-cash', title: 'تنخواه', icon: <AccountBalanceWalletIcon />, path: '/petty-cash', color: '#f59e0b', primary: true, ready: true },
-      comingSoon('/petty-cash/ledger', 'petty-cash-ledger', 'دفتر حساب', <ReceiptLongIcon />, '#f59e0b'),
-      comingSoon('/petty-cash/archive', 'petty-cash-archive', 'بایگانی', <FolderSharedIcon />, '#f59e0b'),
-      comingSoon('/petty-cash/reports', 'petty-cash-reports', 'گزارش‌ها', <BarChartOutlinedIcon />, '#f59e0b'),
-      comingSoon('/petty-cash/settings', 'petty-cash-settings', 'تنظیمات', <SettingsIcon />, '#f59e0b'),
+      { id: 'petty-cash-ledger', title: 'دفتر حساب', icon: <ReceiptLongIcon />, path: '/petty-cash/ledger', color: '#f59e0b', primary: false, ready: false },
+      { id: 'petty-cash-archive', title: 'بایگانی', icon: <FolderSharedIcon />, path: '/petty-cash/archive', color: '#f59e0b', primary: false, ready: false },
+      { id: 'petty-cash-reports', title: 'گزارش‌ها', icon: <BarChartOutlinedIcon />, path: '/petty-cash/reports', color: '#f59e0b', primary: false, ready: false },
+      { id: 'petty-cash-settings', title: 'تنظیمات', icon: <SettingsIcon />, path: '/petty-cash/settings', color: '#f59e0b', primary: false, ready: false },
     ],
   },
   {
