@@ -548,6 +548,26 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('شماره شبا'),
     )
+    # بن‌کارت (بانک صادرکننده + شماره ۱۶ رقمی + تاریخ انقضا)
+    card_bank_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_('بانک (بن‌کارت)'),
+        help_text=_('نام بانک صادرکنندهٔ بن‌کارت'),
+    )
+    card_number = models.CharField(
+        max_length=19,
+        blank=True,
+        null=True,
+        verbose_name=_('شماره بن‌کارت'),
+        help_text=_('۱۶ رقم — با خط تیره به‌صورت ۴ رقم ۴ رقم نمایش داده می‌شود'),
+    )
+    card_expiry_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name=_('تاریخ انقضای بن‌کارت'),
+    )
     # Bale messenger chat_id (robot must be started by the employee first).
     bale_chat_id = models.CharField(
         max_length=100,

@@ -140,6 +140,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
             'bank_name', 'account_number', 'sheba_number',
+            'card_bank_name', 'card_number', 'card_expiry_date',
             'supplementary_insurances',
             'bale_chat_id',
             'is_active', 'created_at', 'updated_at',
@@ -192,6 +193,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'distance_to_work_km', 'housing_type', 'has_car',
             'performance_score', 'satisfaction_score',
             'bank_name', 'account_number', 'sheba_number',
+            'card_bank_name', 'card_number', 'card_expiry_date',
             'bale_chat_id',
         ]
 

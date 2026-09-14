@@ -50,6 +50,7 @@ const EMPTY_FORM = {
   housing_type: '', has_car: false,
   performance_score: '', satisfaction_score: '',
   bank_name: '', account_number: '', sheba_number: '',
+  card_bank_name: '', card_number: '', card_expiry_date: '',
 };
 
 const SectionCard = ({ title, icon, color, children }) => (
@@ -112,6 +113,25 @@ const timeField = (label, field, value, onChange) => (
     />
   </Grid>
 );
+
+const cardNumberField = (label, field, value, onChange) => {
+  const format = (v) => v.replace(/[^0-9۰-۹٠-٩]/g, '')
+    .replace(/[۰-۹٠-٩]/g, (d) => String('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩'.indexOf(d)))
+    .slice(0, 16)
+    .replace(/(\d{4})(?=\d)/g, '$1-');
+  return (
+    <Grid item xs={12} sm={6} md={4}>
+      <TextField
+        fullWidth size="small" label={label}
+        value={value || ''}
+        onChange={e => onChange(field, format(e.target.value))}
+        inputProps={{ maxLength: 19, inputMode: 'numeric' }}
+        helperText="۱۶ رقم — خودکار به‌صورت ۴ رقم ۴ رقم جدا می‌شود"
+        dir="ltr"
+      />
+    </Grid>
+  );
+};
 
 const dateField = (label, field, value, onChange) => (
   <Grid item xs={12} sm={6} md={4}>
@@ -423,6 +443,9 @@ const EmployeeForm = () => {
           {textField('بانک', 'bank_name', form.bank_name, handleChange)}
           {textField('شماره حساب', 'account_number', form.account_number, handleChange)}
           {textField('شماره شبا', 'sheba_number', form.sheba_number, handleChange)}
+          {textField('بانک (بن‌کارت)', 'card_bank_name', form.card_bank_name, handleChange)}
+          {cardNumberField('شماره بن‌کارت', 'card_number', form.card_number, handleChange)}
+          {dateField('تاریخ انقضای بن‌کارت', 'card_expiry_date', form.card_expiry_date, handleChange)}
         </Grid>
       </SectionCard>
 

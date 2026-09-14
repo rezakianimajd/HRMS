@@ -16,10 +16,10 @@ const DIGIT_FIELDS = [
   'national_id', 'mobile', 'phone', 'postal_code',
   'children_count', 'emergency_contact_phone', 'national_id_serial',
   'birth_certificate_number', 'insurance_number',
-  'account_number', 'sheba_number',
+  'account_number', 'sheba_number', 'card_number',
 ];
 
-const DATE_FIELDS = ['birth_date', 'national_id_date'];
+const DATE_FIELDS = ['birth_date', 'national_id_date', 'card_expiry_date'];
 
 const SectionHeader = ({ title, icon, color }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
@@ -107,6 +107,9 @@ const BasicInfoTab = ({ employee }) => {
         <InfoCard label="بانک" value={e.bank_name} />
         <InfoCard fieldName="account_number" label="شماره حساب" value={e.account_number} />
         <InfoCard fieldName="sheba_number" label="شماره شبا" value={e.sheba_number} />
+        <InfoCard label="بانک (بن‌کارت)" value={e.card_bank_name} />
+        <InfoCard fieldName="card_number" label="شماره بن‌کارت" value={e.card_number} />
+        <InfoCard fieldName="card_expiry_date" label="تاریخ انقضای بن‌کارت" value={e.card_expiry_date} />
       </Grid>
 
       {/* بیمه تکمیلی */}
