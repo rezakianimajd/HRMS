@@ -6,11 +6,22 @@ import BusinessIcon from '@mui/icons-material/Business';
 import DescriptionIcon from '@mui/icons-material/Description';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import { useApplication } from '../../context/ApplicationContext';
 
 const ICON_MAP = {
   hrms: <BusinessIcon sx={{ fontSize: 20, color: '#fff' }} />,
   contracts: <DescriptionIcon sx={{ fontSize: 20, color: '#fff' }} />,
+  pettycash: <AccountBalanceWalletIcon sx={{ fontSize: 20, color: '#fff' }} />,
+};
+
+// مسیر ورودی هر ماژول (هنگام انتخاب).
+const LANDING_PATH = {
+  hrms: '/dashboard',
+  contracts: '/contracts-dashboard',
+  settings: '/settings',
+  projects: '/projects',
+  pettycash: '/petty-cash',
 };
 
 const AppSwitcher = () => {
@@ -29,7 +40,7 @@ const AppSwitcher = () => {
     if (app.is_coming_soon) return;
     setAnchor(null);
     await switchApplication(app);
-    navigate('/dashboard');
+    navigate(LANDING_PATH[app.slug] || '/dashboard');
   };
 
   if (applications.length <= 1) return null;

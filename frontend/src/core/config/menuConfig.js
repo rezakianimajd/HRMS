@@ -108,18 +108,6 @@ const menuConfig = [
     ],
   },
   {
-    id: 'pettycash',
-    title: 'تنخواه',
-    color: '#f59e0b',
-    items: [
-      { id: 'petty-cash', title: 'تنخواه', icon: <AccountBalanceWalletIcon />, path: '/petty-cash', color: '#f59e0b', primary: true, ready: true },
-      { id: 'petty-cash-ledger', title: 'دفتر حساب', icon: <ReceiptLongIcon />, path: '/petty-cash/ledger', color: '#f59e0b', primary: false, ready: false },
-      { id: 'petty-cash-archive', title: 'بایگانی', icon: <FolderSharedIcon />, path: '/petty-cash/archive', color: '#f59e0b', primary: false, ready: false },
-      { id: 'petty-cash-reports', title: 'گزارش‌ها', icon: <BarChartOutlinedIcon />, path: '/petty-cash/reports', color: '#f59e0b', primary: false, ready: false },
-      { id: 'petty-cash-settings', title: 'تنظیمات', icon: <SettingsIcon />, path: '/petty-cash/settings', color: '#f59e0b', primary: false, ready: false },
-    ],
-  },
-  {
     id: 'welfare',
     title: 'رفاهی و تسهیلات',
     color: '#10b981',
@@ -256,6 +244,35 @@ const settingsMenu = [
   },
 ];
 
+const pettycashMenu = [
+  {
+    id: 'pettycash-home',
+    title: 'خانه',
+    color: '#f59e0b',
+    items: [
+      { id: 'petty-cash', title: 'تنخواه', icon: <AccountBalanceWalletIcon />, path: '/petty-cash', color: '#f59e0b', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'pettycash-ledger',
+    title: 'عملیات',
+    color: '#f59e0b',
+    items: [
+      comingSoon('/petty-cash/ledger', 'petty-cash-ledger', 'دفتر حساب', <ReceiptLongIcon />, '#f59e0b'),
+      comingSoon('/petty-cash/archive', 'petty-cash-archive', 'بایگانی', <FolderSharedIcon />, '#f59e0b'),
+      comingSoon('/petty-cash/reports', 'petty-cash-reports', 'گزارش‌ها', <BarChartOutlinedIcon />, '#f59e0b'),
+    ],
+  },
+  {
+    id: 'pettycash-config',
+    title: 'پیکربندی',
+    color: '#64748b',
+    items: [
+      comingSoon('/petty-cash/settings', 'petty-cash-settings', 'تنظیمات', <SettingsIcon />, '#64748b'),
+    ],
+  },
+];
+
 const projectsMenu = [
   {
     id: 'projects-home',
@@ -384,6 +401,7 @@ export function getMenuForApp(appSlug) {
   if (appSlug === 'contracts') return contractsMenu;
   if (appSlug === 'settings') return settingsMenu;
   if (appSlug === 'projects') return projectsMenu;
+  if (appSlug === 'pettycash') return pettycashMenu;
   return menuConfig;
 }
 
