@@ -59,6 +59,7 @@ import { ContractInvoicesPage, ContractPaymentsPage, ContractAddendumsPage } fro
 import StatementEditorPage from './pages/contracts/StatementEditorPage';
 import ContractDefinitionsPage from './pages/ContractDefinitionsPage';
 import BenefitPaymentPage from './pages/BenefitPaymentPage';
+import CompanyProfilePage from './pages/CompanyProfilePage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -108,6 +109,7 @@ const AppRoutes = () => {
       <Route path="/finance-reports" element={<ProtectedLayout><FinanceReportsPage /></ProtectedLayout>} />
       <Route path="/org-chart" element={<ProtectedLayout><OrgChartPage /></ProtectedLayout>} />
       <Route path="/definitions" element={<ProtectedLayout><DefinitionsPage /></ProtectedLayout>} />
+      <Route path="/company-profile" element={<ProtectedLayout><CompanyProfilePage /></ProtectedLayout>} />
       <Route path="/data-entry" element={<Navigate to="/payslips" replace />} />
       <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
       <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />

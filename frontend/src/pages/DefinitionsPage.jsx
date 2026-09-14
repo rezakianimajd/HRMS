@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Box, Typography, Paper, Tabs, Tab, Avatar } from '@mui/material';
-import BusinessIcon from '@mui/icons-material/Business';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -9,7 +8,7 @@ import ShieldIcon from '@mui/icons-material/Shield';
 import DescriptionIcon from '@mui/icons-material/Description';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import CategoryIcon from '@mui/icons-material/Category';
-import { EntityManager, CompanyProfileTab, ENDPOINTS } from '../core/components/settings/shared';
+import { EntityManager, ENDPOINTS } from '../core/components/settings/shared';
 
 const ORG_TYPES = [
   { value: 'tax', label: 'اداره مالیات' },
@@ -22,7 +21,6 @@ const ORG_TYPES = [
 ];
 
 const TABS = [
-  { key: 'profile', label: 'مشخصات شرکت', icon: <BusinessIcon />, color: '#6366f1', desc: 'اطلاعات حقوقی، تماس و لوگوی شرکت' },
   { key: 'departments', label: 'دپارتمان‌ها', icon: <AccountTreeIcon />, color: '#14b8a6', desc: 'ساختار واحدهای سازمانی' },
   { key: 'jobTitles', label: 'عناوین شغلی', icon: <WorkIcon />, color: '#ec4899', desc: 'سمت‌های سازمانی با سطح' },
   { key: 'locations', label: 'محل‌های استقرار', icon: <LocationOnIcon />, color: '#10b981', desc: 'شعب و محل‌های کاری' },
@@ -100,14 +98,13 @@ const DefinitionsPage = () => {
             <Typography variant="body2" sx={{ color: active.color, fontWeight: 600 }}>{active.desc}</Typography>
           </Paper>
 
-          {tabIndex === 0 && <CompanyProfileTab />}
-          {tabIndex === 1 && <EntityManager endpoint={ENDPOINTS.departments} fields={['name', 'code']} title="مدیریت دپارتمان‌های سازمان" />}
-          {tabIndex === 2 && <EntityManager endpoint={ENDPOINTS.jobTitles} fields={['name', 'code']} extraFields={{ level: 'سطح' }} defaultForm={{ level: 'expert' }} title="مدیریت عناوین شغلی" />}
-          {tabIndex === 3 && <EntityManager endpoint={ENDPOINTS.workLocations} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت محل‌های استقرار" />}
-          {tabIndex === 4 && <EntityManager endpoint={ENDPOINTS.insuranceLists} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت لیست‌های بیمه" />}
-          {tabIndex === 5 && <EntityManager endpoint={ENDPOINTS.documentTypes} fields={['name', 'code']} title="مدیریت انواع مدارک" />}
-          {tabIndex === 6 && <EntityManager endpoint={ENDPOINTS.contractTypes} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت انواع قرارداد" />}
-          {tabIndex === 7 && (
+          {tabIndex === 0 && <EntityManager endpoint={ENDPOINTS.departments} fields={['name', 'code']} title="مدیریت دپارتمان‌های سازمان" />}
+          {tabIndex === 1 && <EntityManager endpoint={ENDPOINTS.jobTitles} fields={['name', 'code']} extraFields={{ level: 'سطح' }} defaultForm={{ level: 'expert' }} title="مدیریت عناوین شغلی" />}
+          {tabIndex === 2 && <EntityManager endpoint={ENDPOINTS.workLocations} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت محل‌های استقرار" />}
+          {tabIndex === 3 && <EntityManager endpoint={ENDPOINTS.insuranceLists} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت لیست‌های بیمه" />}
+          {tabIndex === 4 && <EntityManager endpoint={ENDPOINTS.documentTypes} fields={['name', 'code']} title="مدیریت انواع مدارک" />}
+          {tabIndex === 5 && <EntityManager endpoint={ENDPOINTS.contractTypes} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت انواع قرارداد" />}
+          {tabIndex === 6 && (
             <EntityManager
               endpoint={ENDPOINTS.organizations}
               fields={['name', 'code']}

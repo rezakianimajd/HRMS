@@ -1,6 +1,7 @@
 import React from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import PeopleIcon from '@mui/icons-material/People';
+import BusinessIcon from '@mui/icons-material/Business';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import PhoneInTalkIcon from '@mui/icons-material/PhoneInTalk';
 import ManageSearchIcon from '@mui/icons-material/ManageSearch';
@@ -209,6 +210,14 @@ const settingsMenu = [
     items: [comingSoon('/modules/production', 'mod-production', 'تولید و برنامه‌ریزی', <PlaylistAddCheckIcon />, '#a855f7')],
   },
   {
+    id: 'settings-hr',
+    title: 'مدیریت منابع انسانی',
+    color: '#ec4899',
+    items: [
+      { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#ec4899', primary: true, ready: true },
+    ],
+  },
+  {
     id: 'settings-contracts',
     title: 'مدیریت قراردادها',
     color: '#f59e0b',
@@ -223,7 +232,7 @@ const settingsMenu = [
     color: '#64748b',
     items: [
       { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
-      { id: 'definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/definitions', color: '#14b8a6', primary: false, ready: true },
+      { id: 'company-profile', title: 'مشخصات شرکت', icon: <BusinessIcon />, path: '/company-profile', color: '#6366f1', primary: false, ready: true },
       { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
       { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
       { id: 'audit', title: 'دفترچه فعالیت', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
