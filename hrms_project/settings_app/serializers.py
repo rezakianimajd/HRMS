@@ -1,6 +1,9 @@
 """Serializers for the Settings module."""
 from rest_framework import serializers
-from settings_app.models import SystemSetting, CompanyProfile, BaleContact, Signatory
+from settings_app.models import (
+    SystemSetting, CompanyProfile, BaleContact, Signatory,
+    Addition, Deduction, Currency,
+)
 
 
 class SystemSettingSerializer(serializers.ModelSerializer):
@@ -37,6 +40,27 @@ class SignatorySerializer(serializers.ModelSerializer):
                 return request.build_absolute_uri(obj.signature_image.url)
             return obj.signature_image.url
         return None
+
+
+class AdditionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Addition
+        fields = ['id', 'code', 'description', 'default_percent', 'is_active', 'created_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class DeductionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Deduction
+        fields = ['id', 'code', 'description', 'default_percent', 'is_active', 'created_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class CurrencySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Currency
+        fields = ['id', 'code', 'name', 'symbol', 'country_code', 'is_active', 'created_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
 class CompanyProfileSerializer(serializers.ModelSerializer):

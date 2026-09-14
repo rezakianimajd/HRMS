@@ -57,6 +57,7 @@ import ContractRiskPage from './pages/ContractRiskPage';
 import ContractSettingsPage from './pages/ContractSettingsPage';
 import { ContractInvoicesPage, ContractPaymentsPage, ContractAddendumsPage } from './pages/contracts/contractSubPages';
 import StatementEditorPage from './pages/contracts/StatementEditorPage';
+import ContractDefinitionsPage from './pages/ContractDefinitionsPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -145,6 +146,7 @@ const AppRoutes = () => {
       <Route path="/contracts-documents" element={<ProtectedLayout><ContractDocumentsPage /></ProtectedLayout>} />
       <Route path="/contracts-risk" element={<ProtectedLayout><ContractRiskPage /></ProtectedLayout>} />
       <Route path="/contracts-settings" element={<ProtectedLayout><ContractSettingsPage /></ProtectedLayout>} />
+      <Route path="/contracts-definitions" element={<ProtectedLayout><ContractDefinitionsPage /></ProtectedLayout>} />
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
       <Route path="/projects/price-lists" element={<ProtectedLayout><PriceListPage /></ProtectedLayout>} />
       <Route path="/projects/commercial" element={<ProtectedLayout><CommercialPage /></ProtectedLayout>} />

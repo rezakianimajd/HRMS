@@ -208,6 +208,15 @@ const settingsMenu = [
     items: [comingSoon('/modules/production', 'mod-production', 'تولید و برنامه‌ریزی', <PlaylistAddCheckIcon />, '#a855f7')],
   },
   {
+    id: 'settings-contracts',
+    title: 'مدیریت قراردادها',
+    color: '#f59e0b',
+    items: [
+      { id: 'contracts-definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/contracts-definitions', color: '#f59e0b', primary: true, ready: true },
+      { id: 'contracts-settings-menu', title: 'انواع قرارداد و ارزیابی', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
+    ],
+  },
+  {
     id: 'settings-general',
     title: 'تنظیمات عمومی',
     color: '#64748b',

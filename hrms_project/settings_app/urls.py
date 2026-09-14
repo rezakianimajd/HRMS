@@ -6,10 +6,14 @@ from settings_app import import_views
 from settings_app import backup_views
 from settings_app.bale_views import BaleContactViewSet
 from settings_app.signatory_views import SignatoryViewSet
+from settings_app.definition_views import AdditionViewSet, DeductionViewSet, CurrencyViewSet
 
 router = DefaultRouter()
 router.register(r'bale-contacts', BaleContactViewSet, basename='bale-contact')
 router.register(r'signatories', SignatoryViewSet, basename='signatory')
+router.register(r'additions', AdditionViewSet, basename='addition')
+router.register(r'deductions', DeductionViewSet, basename='deduction')
+router.register(r'currencies', CurrencyViewSet, basename='currency')
 
 urlpatterns = [
     path('', include(router.urls)),

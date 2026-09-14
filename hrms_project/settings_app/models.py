@@ -157,3 +157,60 @@ class BaleContact(BaseModel):
 
     def __str__(self):
         return f'{self.name} ({self.chat_id})'
+
+
+class Addition(BaseModel):
+    """اقلام افزودنی روی صورت‌وضعیت (مثلاً ارزش افزوده، سایر اضافات)."""
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    description = models.CharField(max_length=200, verbose_name=_('شرح'))
+    default_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        verbose_name=_('درصد پیش‌فرض'),
+    )
+
+    class Meta:
+        verbose_name = _('اضافه')
+        verbose_name_plural = _('اضافات')
+        ordering = ['code']
+
+    def __str__(self):
+        return f'{self.code} - {self.description}'
+
+
+class Deduction(BaseModel):
+    """اقلام کسورات صورت‌وضعیت (بیمه، حسن انجام کار، ...)."""
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    description = models.CharField(max_length=200, verbose_name=_('شرح'))
+    default_percent = models.DecimalField(
+        max_digits=5, decimal_places=2, default=0,
+        verbose_name=_('درصد پیش‌فرض'),
+    )
+
+    class Meta:
+        verbose_name = _('کسور')
+        verbose_name_plural = _('کسورات')
+        ordering = ['code']
+
+    def __str__(self):
+        return f'{self.code} - {self.description}'
+
+
+class Currency(BaseModel):
+    """ارزهای قابل انتخاب برای صورت‌وضعیت / قرارداد."""
+    code = models.CharField(max_length=10, verbose_name=_('کد ارز'))
+    name = models.CharField(max_length=100, verbose_name=_('نام ارز'))
+    symbol = models.CharField(max_length=20, verbose_name=_('نماد'))
+    country_code = models.CharField(
+        max_length=10, blank=True,
+        verbose_name=_('کد کشور'),
+        help_text=_('ISO-3166 alpha-2 برای نمایش پرچم (مثلاً IR، US، EU)'),
+    )
+
+    class Meta:
+        verbose_name = _('ارز')
+        verbose_name_plural = _('ارزها')
+        ordering = ['code']
+        unique_together = [('company', 'code')]
+
+    def __str__(self):
+        return f'{self.code} - {self.name}'

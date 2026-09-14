@@ -196,6 +196,17 @@ const StatementEditorPage = () => {
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
 
+  // لوگو و عنوان شرکت از «تعاریف اولیه» (CompanyProfile) خوانده می‌شود.
+  const { data: companyProfile } = useQuery({
+    queryKey: ['company-profile'],
+    queryFn: () => axiosInstance.get('/settings/company-profile/').then((r) => r.data),
+  });
+  const company = {
+    name: companyProfile?.company_name || companyProfile?.legal_name || currentCompany?.name || '',
+    code: currentCompany?.code || '',
+    logo_url: companyProfile?.logo_url || currentCompany?.logo_url || null,
+  };
+
   const { data: contracts } = useQuery({
     queryKey: ['external-contracts', 'statement-editor'],
     queryFn: () => axiosInstance.get('/external-contracts/').then((r) => r.data),
@@ -425,7 +436,7 @@ const StatementEditorPage = () => {
               <StatementPreview
                 form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, deductions }}
                 contract={currentContract}
-                company={currentCompany}
+                company={company}
               />
             </Box>
           </Grid>
