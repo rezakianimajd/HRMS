@@ -166,6 +166,26 @@ class InsuranceList(BaseModel):
         return f"{self.name} ({self.code})"
 
 
+# فیلدهایی که برای محاسبهٔ «درصد تکمیل پرونده» در نظر گرفته می‌شوند.
+COMPLETENESS_FIELDS = [
+    'first_name', 'last_name', 'national_id', 'birth_date', 'birth_place', 'gender',
+    'marital_status', 'father_name', 'birth_certificate_number',
+    'national_id_serial', 'national_id_place', 'national_id_date',
+    'phone', 'mobile', 'email', 'address', 'city', 'postal_code',
+    'emergency_contact_name', 'emergency_contact_phone',
+    'employee_id', 'hire_date', 'probation_end_date', 'official_date',
+    'department_id', 'job_title_id', 'work_location_id', 'insurance_list_id',
+    'insurance_number', 'contract_type_id', 'contract_start_date', 'contract_end_date',
+    'status', 'work_shift', 'work_start_time', 'work_end_time',
+    'education_level', 'education_field', 'education_place', 'university_type',
+    'distance_to_work_km', 'housing_type',
+    'performance_score', 'satisfaction_score',
+    'bank_name', 'account_number', 'sheba_number',
+    'card_bank_name', 'card_number', 'card_expiry_date',
+    'bale_chat_id',
+]
+
+
 class Employee(BaseModel):
     """
     Main Employee model with full personal, contact, and employment information.
@@ -568,6 +588,12 @@ class Employee(BaseModel):
         null=True,
         verbose_name=_('تاریخ انقضای بن‌کارت'),
     )
+    # نشانگر دستی «پرونده کامل» — اگر تیک بخورد، درصد محاسبه نمی‌شود.
+    is_record_complete = models.BooleanField(
+        default=False,
+        verbose_name=_('پرونده کامل'),
+        help_text=_('در صورت فعال بودن، به‌جای درصد تکمیل، عنوان «پرونده کامل» نمایش داده می‌شود'),
+    )
     # Bale messenger chat_id (robot must be started by the employee first).
     bale_chat_id = models.CharField(
         max_length=100,
@@ -610,6 +636,39 @@ class Employee(BaseModel):
     @property
     def full_name(self):
         return f"{self.first_name} {self.last_name}"
+
+    @property
+    def completeness_percent(self):
+        """درصد تکمیل پرونده بر اساس فیلدهای پر و مدارک بارگذاری‌شده (۰ تا ۱۰۰)."""
+        # --- بخش فیلدها ---
+        filled = 0
+        for field_name in COMPLETENESS_FIELDS:
+            try:
+                val = getattr(self, field_name)
+            except AttributeError:
+                continue
+            if val not in (None, '', False):
+                filled += 1
+        field_ratio = filled / len(COMPLETENESS_FIELDS) if COMPLETENESS_FIELDS else 1
+
+        # --- بخش مدارک (نسبت به انواع مدارک در تعاریف اولیه) ---
+        try:
+            from documents.models import DocumentType, Document
+            doc_type_total = DocumentType.objects.filter(company_id=self.company_id).count()
+            if self.pk:
+                uploaded_distinct = Document.objects.filter(
+                    employee_id=self.pk,
+                    is_active=True,
+                ).values('document_type_id').distinct().count()
+            else:
+                uploaded_distinct = 0
+            doc_ratio = (uploaded_distinct / doc_type_total) if doc_type_total else 1
+        except Exception:
+            doc_ratio = 1
+
+        # میانهٔ ساده: نیمی وزن فیلدها، نیمی وزن مدارک
+        ratio = (field_ratio * 0.5) + (doc_ratio * 0.5)
+        return max(0, min(100, int(round(ratio * 100))))
 
 
 class WorkExperience(BaseModel):

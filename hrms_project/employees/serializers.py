@@ -61,6 +61,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     gender_display = serializers.CharField(source='get_gender_display', read_only=True)
     photo_url = serializers.SerializerMethodField()
+    completeness_percent = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Employee
@@ -73,6 +74,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'status', 'status_display',
             'gender', 'gender_display',
             'hire_date', 'birth_date', 'is_active', 'created_at',
+            'is_record_complete', 'completeness_percent',
         ]
         read_only_fields = ['id', 'full_name', 'created_at', 'birth_date']
 
@@ -110,6 +112,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
     university_type_display = serializers.CharField(source='get_university_type_display', read_only=True)
     supplementary_insurances = serializers.SerializerMethodField()
     photo_url = serializers.SerializerMethodField()
+    completeness_percent = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Employee
@@ -143,6 +146,7 @@ class EmployeeSerializer(serializers.ModelSerializer):
             'card_bank_name', 'card_number', 'card_expiry_date',
             'supplementary_insurances',
             'bale_chat_id',
+            'is_record_complete', 'completeness_percent',
             'is_active', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'full_name', 'created_at', 'updated_at']
@@ -194,6 +198,7 @@ class EmployeeCreateSerializer(serializers.ModelSerializer):
             'performance_score', 'satisfaction_score',
             'bank_name', 'account_number', 'sheba_number',
             'card_bank_name', 'card_number', 'card_expiry_date',
+            'is_record_complete',
             'bale_chat_id',
         ]
 

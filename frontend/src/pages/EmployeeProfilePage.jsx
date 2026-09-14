@@ -132,11 +132,25 @@ const EmployeeProfilePage = () => {
               <Typography variant="h4" fontWeight={800} sx={{ mb: 1 }}>
                 {e.full_name}
               </Typography>
-              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+              <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', mb: 1 }}>
                 {/* Identity chips WITHOUT icons */}
                 <Chip label={`کد پرسنلی: ${toPersianDigits(e.employee_id)}`} size="small" color="primary" variant="filled" />
                 <Chip label={`کد ملی: ${toPersianDigits(e.national_id)}`} size="small" variant="outlined" />
                 <StatusBadge status={e.status} size="medium" />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, maxWidth: 360, mb: 1 }}>
+                {e.is_record_complete ? (
+                  <Chip label="پرونده کامل" size="small" color="success" />
+                ) : (
+                  <>
+                    <Box sx={{ flex: 1, height: 8, bgcolor: 'rgba(99,102,241,0.15)', borderRadius: '10px' }}>
+                      <Box sx={{ width: `${e.completeness_percent ?? 0}%`, height: 8, bgcolor: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '10px', transition: 'width 0.3s' }} />
+                    </Box>
+                    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap' }}>
+                      {toPersianDigits(e.completeness_percent ?? 0)}٪ تکمیل پرونده
+                    </Typography>
+                  </>
+                )}
               </Box>
               <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
                 {toPersianDigits(docs.length)} مدرک بارگذاری شده

@@ -6,6 +6,7 @@ import {
   Box, Typography, Button, Grid, CircularProgress, Alert, Paper,
   FormControl, InputLabel, Select, MenuItem, TextField, Chip,
   IconButton, Avatar, Dialog, DialogTitle, DialogContent, DialogActions, Stack,
+  FormControlLabel, Switch,
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
 import AddIcon from '@mui/icons-material/Add';
@@ -320,6 +321,25 @@ const EmployeeForm = () => {
       </Box>
 
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '10px' }}>{error}</Alert>}
+
+      <Paper sx={{
+        mb: 2, p: 2,
+        background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.35))',
+        border: '1px solid rgba(16,185,129,0.3)',
+        borderRadius: '10px',
+        display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
+      }}>
+        <Box sx={{ flex: 1, minWidth: 240 }}>
+          <Typography variant="subtitle1" fontWeight={700} sx={{ color: '#059669' }}>پرونده کامل</Typography>
+          <Typography variant="body2" color="textSecondary">
+            اگر این تیک فعال شود، به‌جای محاسبهٔ درصد تکمیل، در پرونده و لیست پرسنل «پرونده کامل» نمایش داده می‌شود.
+          </Typography>
+        </Box>
+        <FormControlLabel
+          control={<Switch checked={!!form.is_record_complete} onChange={(e) => handleChange('is_record_complete', e.target.checked)} color="success" />}
+          label="فعال"
+        />
+      </Paper>
 
       <SectionCard title="اطلاعات فردی و هویتی" icon={<PersonIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#6366f1">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 2, bgcolor: 'rgba(99,102,241,0.04)', borderRadius: '10px' }}>

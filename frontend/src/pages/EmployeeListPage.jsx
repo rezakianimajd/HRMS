@@ -5,7 +5,7 @@ import {
   Box, Typography, Button, TextField, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton,
   Tooltip, TablePagination, Collapse, Grid, FormControl, InputLabel,
-  Select, MenuItem, InputAdornment, CircularProgress, Avatar,
+  Select, MenuItem, InputAdornment, CircularProgress, Avatar, Chip,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -179,6 +179,7 @@ const EmployeeListPage = () => {
               <TableRow>
                 <TableCell>{t('table.row')}</TableCell>
                 <TableCell>{t('employees.full_name')}</TableCell>
+                <TableCell>وضعیت پرونده</TableCell>
                 <TableCell>{t('employees.employee_id')}</TableCell>
                 <TableCell>{t('employees.department')}</TableCell>
                 <TableCell>{t('employees.job_title')}</TableCell>
@@ -189,7 +190,7 @@ const EmployeeListPage = () => {
             </TableHead>
             <TableBody>
               {employees.length === 0 ? (
-                <TableRow><TableCell colSpan={8} align="center">{t('table.no_results')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} align="center">{t('table.no_results')}</TableCell></TableRow>
               ) : (
                 employees.map((emp, index) => (
                   <TableRow key={emp.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.id}`)}>
@@ -199,6 +200,18 @@ const EmployeeListPage = () => {
                         <EmployeeAvatar employee={emp} size={34} />
                         <Typography variant="body2" fontWeight={600}>{emp.full_name}</Typography>
                       </Box>
+                    </TableCell>
+                    <TableCell>
+                      {emp.is_record_complete ? (
+                        <Chip label="پرونده کامل" size="small" color="success" />
+                      ) : (
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ flex: 1, minWidth: 60, height: 6, bgcolor: 'rgba(99,102,241,0.15)', borderRadius: '10px' }}>
+                            <Box sx={{ width: `${emp.completeness_percent || 0}%`, height: 6, bgcolor: '#6366f1', borderRadius: '10px' }} />
+                          </Box>
+                          <Typography variant="caption" color="textSecondary">{toPersianDigits(emp.completeness_percent ?? 0)}٪</Typography>
+                        </Box>
+                      )}
                     </TableCell>
                     <TableCell>{toPersianDigits(emp.employee_id)}</TableCell>
                     <TableCell>{emp.department_name}</TableCell>
