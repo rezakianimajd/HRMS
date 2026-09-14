@@ -42,12 +42,21 @@ const fieldSx = {
   },
 };
 
+const readonlyFieldSx = {
+  '& .MuiOutlinedInput-root': {
+    borderRadius: '12px',
+    background: 'rgba(99,102,241,0.07)',
+    '& .MuiOutlinedInput-input': { fontWeight: 800, color: COLOR_DARK },
+    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(99,102,241,0.25)' },
+  },
+};
+
 const labelSx = { fontWeight: 700, color: COLOR_DARK, mb: 0.5, display: 'block', fontSize: 12 };
 
 const num = (v) => Math.max(0, Number(v) || 0);
 
 /* ------------------------------------------------------------------ */
-/* Live A4-style statement preview                                     */
+/* A4-style statement preview                                          */
 /* ------------------------------------------------------------------ */
 const StatementPreview = ({ form, contract, company }) => {
   const addendums = contract?.addendums || [];
@@ -63,63 +72,70 @@ const StatementPreview = ({ form, contract, company }) => {
   const deductionsTotal = deductions.reduce((s, d) => s + num(d?.amount), 0);
   const cumulativeThis = num(form.amount);
   const cumulativePrev = num(form.cumulative_previous_amount);
-  const workDone = num(form.work_done);
+  const workDone = cumulativeThis - cumulativePrev;
   const vat = num(form.value_added_tax);
   const otherAdd = num(form.other_additions);
-  const netAmount = num(form.net_amount);
+  const netAmount = workDone + vat + otherAdd - deductionsTotal;
 
   return (
     <Box dir="rtl" sx={{
-      background: '#fff', borderRadius: '14px', p: 3, minHeight: 620,
-      boxShadow: '0 20px 54px rgba(15,23,42,0.18)', border: '1px solid rgba(15,23,42,0.06)',
+      background: '#ffffff', borderRadius: '16px', p: 3, minHeight: 620,
+      boxShadow: '0 20px 54px rgba(15,23,42,0.16)', border: '1px solid rgba(15,23,42,0.06)',
       position: 'relative', overflow: 'hidden',
-      '&::before': { content: '""', position: 'absolute', inset: 0, background: `radial-gradient(circle at 90% 4%, ${COLOR}14, transparent 45%)`, pointerEvents: 'none' },
+      '&::before': { content: '""', position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% -10%, ${COLOR}1f, transparent 55%)`, pointerEvents: 'none' },
     }}>
-      {/* Header: logo + company name */}
-      <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1.5 }}>
-        <Stack direction="row" spacing={1.4} alignItems="center">
-          {company?.logo_url ? (
-            <Box component="img" src={company.logo_url} alt="logo"
-              sx={{ width: 46, height: 46, borderRadius: '10px', objectFit: 'contain', border: `1px solid ${COLOR}33`, background: '#fff' }} />
-          ) : (
-            <Box sx={{ width: 46, height: 46, borderRadius: '10px', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 20px ${COLOR}55` }}>
-              <Typography fontWeight={900} color="#fff" fontSize={20}>{company?.name?.[0] || 'ش'}</Typography>
-            </Box>
-          )}
-          <Box>
-            <Typography variant="subtitle1" fontWeight={900} sx={{ color: '#1e293b', lineHeight: 1.1 }}>{company?.name || 'نام شرکت'}</Typography>
-            <Typography variant="caption" color="textSecondary">{company?.code || ''}</Typography>
+      {/* Top-centered logo + company title (from primary definitions) */}
+      <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 1.5 }}>
+        {company?.logo_url ? (
+          <Box component="img" src={company.logo_url} alt="logo"
+            sx={{ width: 72, height: 72, borderRadius: '16px', objectFit: 'contain', background: '#fff', border: `1px solid ${COLOR}22`, boxShadow: `0 8px 20px ${COLOR}1f` }} />
+        ) : (
+          <Box sx={{ width: 72, height: 72, borderRadius: '16px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 22px ${COLOR}55` }}>
+            <Typography fontWeight={900} color="#fff" fontSize={32}>{company?.name?.[0] || 'ش'}</Typography>
           </Box>
-        </Stack>
-        <Box sx={{ textAlign: 'left' }}>
-          <Chip size="small" label="صورت‌وضعیت" sx={{ fontWeight: 800, bgcolor: `${COLOR}18`, color: COLOR_DARK, border: `1px solid ${COLOR}33` }} />
-          <Typography variant="caption" color="textSecondary" display="block" sx={{ mt: 0.5 }}>شماره: {form.number || '—'}</Typography>
-        </Box>
-      </Stack>
+        )}
+        <Typography variant="h6" fontWeight={900} sx={{ color: '#1e293b', mt: 0.8, textAlign: 'center' }}>
+          {company?.name || 'نام شرکت'}
+        </Typography>
+      </Box>
 
-      <Divider sx={{ my: 1.5, borderColor: `${COLOR}22` }} />
+      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
 
-      {/* Contract info */}
-      <Grid container spacing={1.2}>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">پیمانکار</Typography><Typography variant="body2" fontWeight={700}>{contract?.party_name || '—'}</Typography></Grid>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">شماره قرارداد</Typography><Typography variant="body2" fontWeight={700}>{contract?.number || '—'}</Typography></Grid>
-        <Grid item xs={12}><Typography variant="caption" color="textSecondary">موضوع قرارداد</Typography><Typography variant="body2" fontWeight={700}>{contract?.subject || '—'}</Typography></Grid>
-        <Grid item xs={4}><Typography variant="caption" color="textSecondary">تاریخ شروع</Typography><Typography variant="body2">{contract?.start_date ? toJalali(contract.start_date) : '—'}</Typography></Grid>
-        <Grid item xs={4}><Typography variant="caption" color="textSecondary">تاریخ پایان (با الحاقیه)</Typography><Typography variant="body2">{endDateWithAddendum ? toJalali(endDateWithAddendum) : '—'}</Typography></Grid>
-        <Grid item xs={4}><Typography variant="caption" color="textSecondary">آخرین الحاقیه</Typography><Typography variant="body2">{lastAddendum?.date ? toJalali(lastAddendum.date) : '—'}</Typography></Grid>
-        <Grid item xs={12}>
-          <Typography variant="caption" color="textSecondary">مبلغ قرارداد (با آخرین الحاقیه)</Typography>
-          <Typography variant="h6" fontWeight={900} sx={{ color: COLOR_DARK }}>{formatPersianNumber(contractAmount)} <Typography component="span" variant="caption" color="textSecondary">ریال</Typography></Typography>
+      {/* Section 1: statement number + date */}
+      <Grid container spacing={1.5}>
+        <Grid item xs={6}>
+          <Typography variant="caption" color="textSecondary">شماره صورت‌وضعیت</Typography>
+          <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{form.number || '—'}</Typography>
+        </Grid>
+        <Grid item xs={6}>
+          <Typography variant="caption" color="textSecondary">تاریخ</Typography>
+          <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{form.date ? toJalali(form.date) : '—'}</Typography>
         </Grid>
       </Grid>
 
-      <Divider sx={{ my: 1.5, borderStyle: 'dashed', borderColor: `${COLOR}33` }} />
+      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
 
-      {/* Financial breakdown */}
+      {/* Section 2: contract / party info */}
+      <Grid container spacing={1.5}>
+        <Grid item xs={6}><Typography variant="caption" color="textSecondary">نام پیمانکار</Typography><Typography variant="body2" fontWeight={700}>{contract?.party_name || '—'}</Typography></Grid>
+        <Grid item xs={6}><Typography variant="caption" color="textSecondary">شماره قرارداد</Typography><Typography variant="body2" fontWeight={700}>{contract?.number || '—'}</Typography></Grid>
+        <Grid item xs={12}><Typography variant="caption" color="textSecondary">موضوع قرارداد</Typography><Typography variant="body2" fontWeight={700}>{contract?.subject || '—'}</Typography></Grid>
+        <Grid item xs={6}><Typography variant="caption" color="textSecondary">تاریخ شروع</Typography><Typography variant="body2">{contract?.start_date ? toJalali(contract.start_date) : '—'}</Typography></Grid>
+        <Grid item xs={6}><Typography variant="caption" color="textSecondary">تاریخ پایان (با الحاقیه)</Typography><Typography variant="body2">{endDateWithAddendum ? toJalali(endDateWithAddendum) : '—'}</Typography></Grid>
+        <Grid item xs={6}><Typography variant="caption" color="textSecondary">آخرین الحاقیه</Typography><Typography variant="body2">{lastAddendum?.date ? toJalali(lastAddendum.date) : '—'}</Typography></Grid>
+        <Grid item xs={6}>
+          <Typography variant="caption" color="textSecondary">مبلغ قرارداد (با آخرین الحاقیه)</Typography>
+          <Typography variant="body2" fontWeight={900} sx={{ color: COLOR_DARK }}>{formatPersianNumber(contractAmount)} ریال</Typography>
+        </Grid>
+      </Grid>
+
+      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
+
+      {/* Section 3: financial breakdown */}
       <Box sx={{ borderRadius: '12px', p: 2, background: `linear-gradient(135deg, ${COLOR}0e, ${COLOR}05)`, border: `1px solid ${COLOR}22` }}>
         <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong />
         <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} />
-        <Row label="کارکرد دوره" value={workDone} />
+        <Row label="کارکرد دوره" value={workDone} highlight />
         <Row label="اضافات (ارزش افزوده)" value={vat} />
         {otherAdd > 0 && <Row label="سایر اضافات" value={otherAdd} />}
       </Box>
@@ -130,16 +146,14 @@ const StatementPreview = ({ form, contract, company }) => {
         {deductions.length === 0 ? (
           <Typography variant="caption" color="textSecondary">کسوری ثبت نشده</Typography>
         ) : (
-          deductions.map((d, i) => (
-            <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} />
-          ))
+          deductions.map((d, i) => <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} />)
         )}
         <Box sx={{ borderTop: `1px solid #fca5a533`, mt: 0.5, pt: 0.5 }}>
           <Row label="جمع کسورات" value={deductionsTotal} red strong />
         </Box>
       </Box>
 
-      <Divider sx={{ my: 1.5, borderStyle: 'dashed', borderColor: `${COLOR}33` }} />
+      <Divider sx={{ my: 1.5, borderStyle: 'dashed', borderColor: `${COLOR}44` }} />
 
       {/* Net payable */}
       <Box sx={{ borderRadius: '12px', p: 2, background: '#10b98114', border: '1px solid #10b98133', textAlign: 'center' }}>
@@ -162,11 +176,11 @@ const StatementPreview = ({ form, contract, company }) => {
   );
 };
 
-const Row = ({ label, value, strong, red }) => (
+const Row = ({ label, value, strong, red, highlight }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 2, py: 0.45 }}>
     <Typography variant="caption" color="textSecondary">{label}</Typography>
-    <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong ? 900 : 700}
-      sx={{ direction: 'rtl', color: red ? '#b91c1c' : strong ? COLOR_DARK : 'text.primary' }}>
+    <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong || highlight ? 900 : 700}
+      sx={{ direction: 'rtl', color: red ? '#b91c1c' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
       {formatPersianNumber(value)}
     </Typography>
   </Box>
@@ -212,22 +226,20 @@ const StatementEditorPage = () => {
 
   const deductions = Array.isArray(form.deductions) ? form.deductions : [];
   const deductionsTotal = deductions.reduce((s, d) => s + num(d?.amount), 0);
-  const cumulativePrev = form.cumulative_previous_amount !== undefined && form.cumulative_previous_amount !== null && form.cumulative_previous_amount !== ''
-    ? num(form.cumulative_previous_amount)
-    : 0;
-  const workDone = num(form.work_done);
+  const cumulativePrev = num(form.cumulative_previous_amount);
+  const cumulativeThis = num(form.amount);
+  // کارکرد دوره = تجمعی این صورت‌وضعیت − تجمعی صورت‌وضعیت قبلی
+  const workDone = cumulativeThis - cumulativePrev;
   const vat = num(form.value_added_tax);
   const otherAdd = num(form.other_additions);
-  // cumulative this = prev + work + vat + other - deductions
-  const cumulativeThis = cumulativePrev + workDone + vat + otherAdd - deductionsTotal;
   const netAmount = workDone + vat + otherAdd - deductionsTotal;
 
   const openNew = () => {
     setForm({
       contract: contractId,
       is_approved: false,
+      amount: 0,
       cumulative_previous_amount: prevStatement ? Number(prevStatement.amount || 0) : 0,
-      work_done: 0,
       value_added_tax: 0,
       other_additions: 0,
       deductions: [],
@@ -238,6 +250,8 @@ const StatementEditorPage = () => {
     setForm({
       ...row,
       is_approved: !!row.is_approved,
+      amount: Number(row.amount || 0),
+      cumulative_previous_amount: Number(row.cumulative_previous_amount || 0),
       deductions: Array.isArray(row.deductions) ? row.deductions : [],
     });
     setMode('form');
@@ -249,6 +263,8 @@ const StatementEditorPage = () => {
       ...form,
       contract: contractId,
       amount: cumulativeThis,
+      cumulative_previous_amount: cumulativePrev,
+      work_done: workDone,
       deductions_total: deductionsTotal,
       net_amount: netAmount,
     };
@@ -347,16 +363,23 @@ const StatementEditorPage = () => {
                   <JalaliDatePicker fullWidth value={form.date || ''} onChange={(v) => setField('date', v)} />
                 </Grid>
 
-                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="مبالغ" /></Divider></Grid>
+                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="کارکرد" /></Divider></Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>مبلغ تجمعی صورت‌وضعیت قبلی</Typography>
-                  <TextField type="number" size="small" fullWidth value={form.cumulative_previous_amount ?? 0} onChange={(e) => setField('cumulative_previous_amount', e.target.value)} sx={fieldSx} />
+                  <Typography variant="caption" sx={labelSx}>مبلغ تجمعی این صورت‌وضعیت</Typography>
+                  <TextField type="number" size="small" fullWidth value={form.amount ?? 0} onChange={(e) => setField('amount', e.target.value)} sx={fieldSx} />
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>کارکرد دوره</Typography>
-                  <TextField type="number" size="small" fullWidth value={form.work_done ?? 0} onChange={(e) => setField('work_done', e.target.value)} sx={fieldSx} />
+                  <Typography variant="caption" sx={labelSx}>مبلغ تجمعی صورت‌وضعیت قبلی</Typography>
+                  <TextField type="number" size="small" fullWidth value={cumulativePrev} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
                 </Grid>
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={labelSx}>کارکرد دوره (محاسبهٔ خودکار)</Typography>
+                  <TextField type="number" size="small" fullWidth value={workDone} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
+                </Grid>
+
+                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="اضافات و کسورات" /></Divider></Grid>
+
                 <Grid item xs={12} md={6}>
                   <Typography variant="caption" sx={labelSx}>اضافات (ارزش افزوده)</Typography>
                   <TextField type="number" size="small" fullWidth value={form.value_added_tax ?? 0} onChange={(e) => setField('value_added_tax', e.target.value)} sx={fieldSx} />
@@ -366,9 +389,8 @@ const StatementEditorPage = () => {
                   <TextField type="number" size="small" fullWidth value={form.other_additions ?? 0} onChange={(e) => setField('other_additions', e.target.value)} sx={fieldSx} />
                 </Grid>
 
-                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="کسورات" sx={{ color: '#b91c1c' }} /></Divider></Grid>
-
                 <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ ...labelSx, color: '#b91c1c' }}>کسورات</Typography>
                   {deductions.map((d, i) => (
                     <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                       <TextField size="small" placeholder="عنوان کسور" value={d.title || ''} onChange={(e) => updateDeduction(i, 'title', e.target.value)} sx={{ flex: 1, ...fieldSx }} />
@@ -397,15 +419,11 @@ const StatementEditorPage = () => {
             </Paper>
           </Grid>
 
-          {/* LEFT: live preview */}
+          {/* LEFT: live preview (no heading — aligned with the form) */}
           <Grid item xs={12} md={6}>
             <Box sx={{ position: { md: 'sticky' }, top: { md: 16 } }}>
-              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1.5 }}>
-                <DescriptionIcon sx={{ color: COLOR_DARK, fontSize: 20 }} />
-                <Typography variant="subtitle1" fontWeight={800} sx={{ color: COLOR_DARK }}>پیش‌نمایش زنده</Typography>
-              </Stack>
               <StatementPreview
-                form={{ ...form, amount: cumulativeThis, deductions_total: deductionsTotal, net_amount: netAmount, deductions }}
+                form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, deductions }}
                 contract={currentContract}
                 company={currentCompany}
               />
