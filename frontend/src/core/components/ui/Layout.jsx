@@ -127,33 +127,37 @@ const Layout = ({ children }) => {
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
       <Box sx={{
         p: 2,
+        pb: 1.5,
         borderBottom: '1px solid rgba(99,102,241,0.12)',
-        display: 'flex', alignItems: 'center', gap: 1.5,
-        justifyContent: collapsed ? 'center' : 'flex-start',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
       }}>
         <Box sx={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
           {companyLogo ? (
-            <Avatar src={companyLogo} sx={{ width: 46, height: 46, boxShadow: '0 4px 16px rgba(99,102,241,0.35)', border: '2px solid rgba(255,255,255,0.6)' }} />
+            <Avatar src={companyLogo} sx={{ width: 68, height: 68, boxShadow: '0 8px 24px rgba(99,102,241,0.35)', border: '2px solid rgba(255,255,255,0.7)' }} />
           ) : (
             <Avatar sx={{
-              width: 46, height: 46,
+              width: 68, height: 68,
               background: 'linear-gradient(135deg, #6366f1, #ec4899)',
-              boxShadow: '0 4px 16px rgba(99,102,241,0.4)',
+              boxShadow: '0 8px 24px rgba(99,102,241,0.4)',
             }}>
-              <BusinessIcon sx={{ fontSize: 24, color: '#fff' }} />
+              <BusinessIcon sx={{ fontSize: 34, color: '#fff' }} />
             </Avatar>
           )}
         </Box>
         {!collapsed && (
-          <Box sx={{ minWidth: 0 }}>
-            <Typography variant="subtitle1" fontWeight={800} noWrap sx={{ letterSpacing: '-0.2px' }}>{companyName}</Typography>
-            <Box sx={{ mt: 0.25 }}>
+          <>
+            <Typography variant="body2" fontWeight={700} noWrap sx={{ mt: 1, mb: 0.25, fontSize: 13, opacity: 0.85, maxWidth: '100%', letterSpacing: '-0.1px' }}>
+              {companyName}
+            </Typography>
+            <Box sx={{ mt: 0.75, width: '100%' }}>
               <CompanySwitcher />
             </Box>
-            <Box sx={{ mt: 0.5 }}>
+            <Box sx={{ mt: 0.5, width: '100%' }}>
               <AppSwitcher />
             </Box>
-          </Box>
+          </>
         )}
       </Box>
 
