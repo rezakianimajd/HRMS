@@ -58,7 +58,7 @@ const num = (v) => Math.max(0, Number(v) || 0);
 /* ------------------------------------------------------------------ */
 /* A4-style statement preview                                          */
 /* ------------------------------------------------------------------ */
-const StatementPreview = ({ form, contract, company }) => {
+const StatementPreview = ({ form, contract, company, currencies }) => {
   const addendums = contract?.addendums || [];
   const baseAmount = num(contract?.amount);
   const totalAddendumChange = addendums.reduce((s, a) => s + num(a.amount_change), 0);
@@ -68,14 +68,16 @@ const StatementPreview = ({ form, contract, company }) => {
     : null;
   const endDateWithAddendum = lastAddendum?.new_end_date || contract?.end_date;
 
+  const additions = Array.isArray(form.additions) ? form.additions : [];
   const deductions = Array.isArray(form.deductions) ? form.deductions : [];
+  const additionsTotal = additions.reduce((s, a) => s + num(a.amount), 0);
   const deductionsTotal = deductions.reduce((s, d) => s + num(d?.amount), 0);
   const cumulativeThis = num(form.amount);
   const cumulativePrev = num(form.cumulative_previous_amount);
   const workDone = cumulativeThis - cumulativePrev;
-  const vat = num(form.value_added_tax);
-  const otherAdd = num(form.other_additions);
-  const netAmount = workDone + vat + otherAdd - deductionsTotal;
+  const netAmount = workDone + additionsTotal - deductionsTotal;
+
+  const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
 
   return (
     <Box dir="rtl" sx={{
@@ -101,15 +103,19 @@ const StatementPreview = ({ form, contract, company }) => {
 
       <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
 
-      {/* Section 1: statement number + date */}
+      {/* Section 1: statement number + date + currency */}
       <Grid container spacing={1.5}>
-        <Grid item xs={6}>
+        <Grid item xs={4}>
           <Typography variant="caption" color="textSecondary">شماره صورت‌وضعیت</Typography>
           <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{form.number || '—'}</Typography>
         </Grid>
-        <Grid item xs={6}>
+        <Grid item xs={4}>
           <Typography variant="caption" color="textSecondary">تاریخ</Typography>
           <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{form.date ? toJalali(form.date) : '—'}</Typography>
+        </Grid>
+        <Grid item xs={4}>
+          <Typography variant="caption" color="textSecondary">واحد ارز</Typography>
+          <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{cur?.name || '—'}</Typography>
         </Grid>
       </Grid>
 
@@ -124,8 +130,8 @@ const StatementPreview = ({ form, contract, company }) => {
         <Grid item xs={6}><Typography variant="caption" color="textSecondary">تاریخ پایان (با الحاقیه)</Typography><Typography variant="body2">{endDateWithAddendum ? toJalali(endDateWithAddendum) : '—'}</Typography></Grid>
         <Grid item xs={6}><Typography variant="caption" color="textSecondary">آخرین الحاقیه</Typography><Typography variant="body2">{lastAddendum?.date ? toJalali(lastAddendum.date) : '—'}</Typography></Grid>
         <Grid item xs={6}>
-          <Typography variant="caption" color="textSecondary">مبلغ قرارداد (با آخرین الحاقیه)</Typography>
-          <Typography variant="body2" fontWeight={900} sx={{ color: COLOR_DARK }}>{formatPersianNumber(contractAmount)} ریال</Typography>
+          <Typography variant="caption" color="textSecondary">مبلغ قرارداد (با الحاقیه)</Typography>
+          <Typography variant="body2" fontWeight={900} sx={{ color: COLOR_DARK }}>{formatPersianNumber(contractAmount)} {cur?.symbol || 'ریال'}</Typography>
         </Grid>
       </Grid>
 
@@ -136,8 +142,19 @@ const StatementPreview = ({ form, contract, company }) => {
         <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong />
         <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} />
         <Row label="کارکرد دوره" value={workDone} highlight />
-        <Row label="اضافات (ارزش افزوده)" value={vat} />
-        {otherAdd > 0 && <Row label="سایر اضافات" value={otherAdd} />}
+      </Box>
+
+      {/* Additions */}
+      <Box sx={{ mt: 2 }}>
+        <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#059669', mb: 0.5 }}>اضافات</Typography>
+        {additions.length === 0 ? (
+          <Typography variant="caption" color="textSecondary">افزودنی ثبت نشده</Typography>
+        ) : (
+          additions.map((a, i) => <Row key={i} label={a.description || 'اضافه'} value={num(a.amount)} />)
+        )}
+        <Box sx={{ borderTop: '1px solid #34d39933', mt: 0.5, pt: 0.5 }}>
+          <Row label="جمع اضافات" value={additionsTotal} green strong />
+        </Box>
       </Box>
 
       {/* Deductions */}
@@ -148,7 +165,7 @@ const StatementPreview = ({ form, contract, company }) => {
         ) : (
           deductions.map((d, i) => <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} />)
         )}
-        <Box sx={{ borderTop: `1px solid #fca5a533`, mt: 0.5, pt: 0.5 }}>
+        <Box sx={{ borderTop: '1px solid #fca5a533', mt: 0.5, pt: 0.5 }}>
           <Row label="جمع کسورات" value={deductionsTotal} red strong />
         </Box>
       </Box>
@@ -158,7 +175,7 @@ const StatementPreview = ({ form, contract, company }) => {
       {/* Net payable */}
       <Box sx={{ borderRadius: '12px', p: 2, background: '#10b98114', border: '1px solid #10b98133', textAlign: 'center' }}>
         <Typography variant="caption" color="textSecondary">مبلغ قابل پرداخت این دوره</Typography>
-        <Typography variant="h5" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>{formatPersianNumber(netAmount)} <Typography component="span" variant="caption" color="textSecondary">ریال</Typography></Typography>
+        <Typography variant="h5" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>{formatPersianNumber(netAmount)} <Typography component="span" variant="caption" color="textSecondary">{cur?.symbol || 'ریال'}</Typography></Typography>
       </Box>
 
       {/* Signatures */}
@@ -176,11 +193,11 @@ const StatementPreview = ({ form, contract, company }) => {
   );
 };
 
-const Row = ({ label, value, strong, red, highlight }) => (
+const Row = ({ label, value, strong, red, green, highlight }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 2, py: 0.45 }}>
     <Typography variant="caption" color="textSecondary">{label}</Typography>
     <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong || highlight ? 900 : 700}
-      sx={{ direction: 'rtl', color: red ? '#b91c1c' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
+      sx={{ direction: 'rtl', color: red ? '#b91c1c' : green ? '#059669' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
       {formatPersianNumber(value)}
     </Typography>
   </Box>
@@ -196,7 +213,6 @@ const StatementEditorPage = () => {
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
 
-  // لوگو و عنوان شرکت از «تعاریف اولیه» (CompanyProfile) خوانده می‌شود.
   const { data: companyProfile } = useQuery({
     queryKey: ['company-profile'],
     queryFn: () => axiosInstance.get('/settings/company-profile/').then((r) => r.data),
@@ -213,6 +229,14 @@ const StatementEditorPage = () => {
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
   const currentContract = contractList.find((c) => String(c.id) === String(contractId));
+
+  // تعاریف اولیه: اضافات، کسورات، ارزها
+  const { data: additionsDef } = useQuery({ queryKey: ['additions'], queryFn: () => axiosInstance.get('/additions/').then((r) => r.data) });
+  const { data: deductionsDef } = useQuery({ queryKey: ['deductions'], queryFn: () => axiosInstance.get('/deductions/').then((r) => r.data) });
+  const { data: currencies } = useQuery({ queryKey: ['currencies'], queryFn: () => axiosInstance.get('/currencies/').then((r) => r.data) });
+  const additionList = Array.isArray(additionsDef) ? additionsDef : additionsDef?.results || [];
+  const deductionList = Array.isArray(deductionsDef) ? deductionsDef : deductionsDef?.results || [];
+  const currencyList = Array.isArray(currencies) ? currencies : currencies?.results || [];
 
   const { data, isLoading } = useQuery({
     queryKey: ['statements', contractId],
@@ -235,15 +259,18 @@ const StatementEditorPage = () => {
 
   const setField = (key, value) => setForm((p) => ({ ...p, [key]: value }));
 
+  const additions = Array.isArray(form.additions) ? form.additions : [];
   const deductions = Array.isArray(form.deductions) ? form.deductions : [];
+  const additionsTotal = additions.reduce((s, a) => s + num(a.amount), 0);
   const deductionsTotal = deductions.reduce((s, d) => s + num(d?.amount), 0);
   const cumulativePrev = num(form.cumulative_previous_amount);
   const cumulativeThis = num(form.amount);
-  // کارکرد دوره = تجمعی این صورت‌وضعیت − تجمعی صورت‌وضعیت قبلی
   const workDone = cumulativeThis - cumulativePrev;
-  const vat = num(form.value_added_tax);
-  const otherAdd = num(form.other_additions);
-  const netAmount = workDone + vat + otherAdd - deductionsTotal;
+  const netAmount = workDone + additionsTotal - deductionsTotal;
+
+  // نرخ ارز انتخاب‌شده
+  const selCurrency = currencyList.find((c) => String(c.id) === String(form.currency)) || null;
+  const rate = num(selCurrency?.exchange_rate || 1);
 
   const openNew = () => {
     setForm({
@@ -251,8 +278,8 @@ const StatementEditorPage = () => {
       is_approved: false,
       amount: 0,
       cumulative_previous_amount: prevStatement ? Number(prevStatement.amount || 0) : 0,
-      value_added_tax: 0,
-      other_additions: 0,
+      currency: currentContract?.currency || '',
+      additions: [],
       deductions: [],
     });
     setMode('form');
@@ -263,6 +290,7 @@ const StatementEditorPage = () => {
       is_approved: !!row.is_approved,
       amount: Number(row.amount || 0),
       cumulative_previous_amount: Number(row.cumulative_previous_amount || 0),
+      additions: Array.isArray(row.additions) ? row.additions : [],
       deductions: Array.isArray(row.deductions) ? row.deductions : [],
     });
     setMode('form');
@@ -276,17 +304,36 @@ const StatementEditorPage = () => {
       amount: cumulativeThis,
       cumulative_previous_amount: cumulativePrev,
       work_done: workDone,
+      additions: additions,
+      additions_total: additionsTotal,
+      deductions: deductions,
       deductions_total: deductionsTotal,
       net_amount: netAmount,
     };
     save.mutate(payload);
   };
 
-  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0 }]);
+  /* کسورات */
+  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, percent: 0 }]);
   const removeDeduction = (i) => setField('deductions', deductions.filter((_, idx) => idx !== i));
   const updateDeduction = (i, key, val) => {
     const next = deductions.map((d, idx) => (idx === i ? { ...d, [key]: val } : d));
     setField('deductions', next);
+  };
+  const chooseDeduction = (def) => {
+    const item = { title: def.description || def.code, percent: Number(def.default_percent || 0), amount: Math.round((cumulativeThis * num(def.default_percent)) / 100) };
+    setField('deductions', [...deductions, item]);
+  };
+
+  /* اضافات */
+  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0 }]);
+  const removeAddition = (i) => setField('additions', additions.filter((_, idx) => idx !== i));
+  const updateAddition = (i, key, val) => {
+    const next = additions.map((a, idx) => (idx === i ? { ...a, [key]: val } : a));
+    setField('additions', next);
+  };
+  const chooseAddition = (def) => {
+    setField('additions', [...additions, { code: def.code, description: def.description, percent: Number(def.default_percent || 0), amount: Math.round((cumulativeThis * num(def.default_percent)) / 100) }]);
   };
 
   if (mode === 'list') {
@@ -344,7 +391,6 @@ const StatementEditorPage = () => {
 
   return (
     <Box sx={{ position: 'relative' }}>
-      {/* decorative gradient backdrop for glass effect */}
       <Box aria-hidden sx={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `radial-gradient(60% 50% at 85% 10%, ${COLOR}26, transparent 60%), radial-gradient(50% 45% at 12% 88%, ${COLOR}1f, transparent 60%), linear-gradient(135deg, #f6f8ff, #eef1ff)` }} />
 
       <Box sx={{ position: 'relative', zIndex: 1 }}>
@@ -374,6 +420,19 @@ const StatementEditorPage = () => {
                   <JalaliDatePicker fullWidth value={form.date || ''} onChange={(v) => setField('date', v)} />
                 </Grid>
 
+                <Grid item xs={12} md={6}>
+                  <Typography variant="caption" sx={labelSx}>واحد ارز</Typography>
+                  <FormControl size="small" fullWidth>
+                    <Select value={form.currency || ''} onChange={(e) => setField('currency', e.target.value)} sx={{ borderRadius: '12px', background: 'rgba(255,255,255,0.55)' }}>
+                      {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code}) — {c.symbol}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <Typography variant="caption" sx={labelSx}>نرخ تبدیل به ریال</Typography>
+                  <TextField size="small" fullWidth value={formatPersianNumber(rate)} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
+                </Grid>
+
                 <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="کارکرد" /></Divider></Grid>
 
                 <Grid item xs={12} md={6}>
@@ -389,26 +448,52 @@ const StatementEditorPage = () => {
                   <TextField type="number" size="small" fullWidth value={workDone} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
                 </Grid>
 
-                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="اضافات و کسورات" /></Divider></Grid>
-
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>اضافات (ارزش افزوده)</Typography>
-                  <TextField type="number" size="small" fullWidth value={form.value_added_tax ?? 0} onChange={(e) => setField('value_added_tax', e.target.value)} sx={fieldSx} />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>سایر اضافات</Typography>
-                  <TextField type="number" size="small" fullWidth value={form.other_additions ?? 0} onChange={(e) => setField('other_additions', e.target.value)} sx={fieldSx} />
+                  <Typography variant="caption" sx={labelSx}>معادل ریال (کارکرد)</Typography>
+                  <TextField type="number" size="small" fullWidth value={workDone * rate} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
                 </Grid>
 
+                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="اضافات و کسورات (از تعاریف اولیه)" /></Divider></Grid>
+
+                {/* اضافات */}
+                <Grid item xs={12}>
+                  <Typography variant="caption" sx={{ ...labelSx, color: '#059669' }}>اضافات</Typography>
+                  {additions.map((a, i) => (
+                    <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
+                      <TextField size="small" placeholder="شرح" value={a.description || ''} onChange={(e) => updateAddition(i, 'description', e.target.value)} sx={{ flex: 1, ...fieldSx }} />
+                      <TextField size="small" type="number" placeholder="٪" value={a.percent ?? 0} onChange={(e) => updateAddition(i, 'percent', e.target.value)} sx={{ width: 80, ...fieldSx }} />
+                      <TextField size="small" type="number" placeholder="مبلغ" value={a.amount ?? 0} onChange={(e) => updateAddition(i, 'amount', e.target.value)} sx={{ width: 130, ...fieldSx }} />
+                      <IconButton size="small" color="error" onClick={() => removeAddition(i)}><RemoveCircleIcon /></IconButton>
+                    </Stack>
+                  ))}
+                  {additionList.length > 0 && (
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                      {additionList.map((d) => (
+                        <Chip key={d.id} size="small" label={d.description} onClick={() => chooseAddition(d)} sx={{ bgcolor: '#10b98118', color: '#059669' }} />
+                      ))}
+                    </Stack>
+                  )}
+                  <Button size="small" startIcon={<AddCircleIcon />} onClick={addAddition} sx={{ color: '#059669' }}>افزودن اضافه</Button>
+                </Grid>
+
+                {/* کسورات */}
                 <Grid item xs={12}>
                   <Typography variant="caption" sx={{ ...labelSx, color: '#b91c1c' }}>کسورات</Typography>
                   {deductions.map((d, i) => (
                     <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
                       <TextField size="small" placeholder="عنوان کسور" value={d.title || ''} onChange={(e) => updateDeduction(i, 'title', e.target.value)} sx={{ flex: 1, ...fieldSx }} />
+                      <TextField size="small" type="number" placeholder="٪" value={d.percent ?? 0} onChange={(e) => updateDeduction(i, 'percent', e.target.value)} sx={{ width: 80, ...fieldSx }} />
                       <TextField size="small" type="number" placeholder="مبلغ" value={d.amount ?? 0} onChange={(e) => updateDeduction(i, 'amount', e.target.value)} sx={{ width: 130, ...fieldSx }} />
                       <IconButton size="small" color="error" onClick={() => removeDeduction(i)}><RemoveCircleIcon /></IconButton>
                     </Stack>
                   ))}
+                  {deductionList.length > 0 && (
+                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+                      {deductionList.map((d) => (
+                        <Chip key={d.id} size="small" label={d.description} onClick={() => chooseDeduction(d)} sx={{ bgcolor: '#ef444418', color: '#b91c1c' }} />
+                      ))}
+                    </Stack>
+                  )}
                   <Button size="small" startIcon={<AddCircleIcon />} onClick={addDeduction} sx={{ color: '#b91c1c' }}>افزودن کسور</Button>
                 </Grid>
 
@@ -430,13 +515,14 @@ const StatementEditorPage = () => {
             </Paper>
           </Grid>
 
-          {/* LEFT: live preview (no heading — aligned with the form) */}
+          {/* LEFT: live preview */}
           <Grid item xs={12} md={6}>
             <Box sx={{ position: { md: 'sticky' }, top: { md: 16 } }}>
               <StatementPreview
-                form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, deductions }}
+                form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions, deductions }}
                 contract={currentContract}
                 company={company}
+                currencies={currencyList}
               />
             </Box>
           </Grid>

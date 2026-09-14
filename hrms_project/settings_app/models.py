@@ -205,6 +205,11 @@ class Currency(BaseModel):
         verbose_name=_('کد کشور'),
         help_text=_('ISO-3166 alpha-2 برای نمایش پرچم (مثلاً IR، US، EU)'),
     )
+    exchange_rate = models.DecimalField(
+        max_digits=18, decimal_places=6, default=1,
+        verbose_name=_('نرخ تبدیل به ریال'),
+        help_text=_('مقدار ریال به ازای هر واحد این ارز (ریال ایران = ۱)'),
+    )
 
     class Meta:
         verbose_name = _('ارز')

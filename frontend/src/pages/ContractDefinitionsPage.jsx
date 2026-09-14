@@ -164,6 +164,10 @@ const CurrencyCard = () => {
     mutationFn: () => axiosInstance.post('/currencies/seed_defaults/'),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['currencies'] }),
   });
+  const updateRate = useMutation({
+    mutationFn: ({ id, exchange_rate }) => axiosInstance.patch(`/currencies/${id}/`, { exchange_rate }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['currencies'] }),
+  });
 
   const available = PRESET_CURRENCIES.filter((c) => !existingCodes.includes(c.code));
 
@@ -195,6 +199,12 @@ const CurrencyCard = () => {
                 </Stack>
                 <Typography variant="caption" color="textSecondary">نماد: {c.symbol}</Typography>
               </Box>
+              <TextField
+                size="small" type="number" label="نرخ به ریال"
+                defaultValue={c.exchange_rate}
+                onBlur={(e) => { const v = Number(e.target.value); if (v && v !== Number(c.exchange_rate)) updateRate.mutate({ id: c.id, exchange_rate: v }); }}
+                sx={{ width: 140 }}
+              />
               <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(c.id); }}><DeleteIcon fontSize="small" /></IconButton>
             </Box>
           ))}

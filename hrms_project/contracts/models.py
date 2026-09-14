@@ -68,6 +68,10 @@ class Contract(BaseModel):
     contract_type = models.CharField(max_length=20, choices=ContractType.choices, default=ContractType.PURCHASE, verbose_name=_('نوع قرارداد'))
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ قرارداد (ریال)'))
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='external_contracts', verbose_name=_('واحد ارز'),
+    )
     start_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ شروع'))
     end_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ پایان'))
     signing_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ امضا'))
@@ -166,6 +170,12 @@ class Statement(BaseModel):
         max_digits=18, decimal_places=0, default=0,
         verbose_name=_('سایر اضافات (ریال)'),
     )
+    # اضافات به‌صورت آیتم‌های [{"code","description","percent","amount"}] (از تعاریف اولیه)
+    additions = models.JSONField(default=list, blank=True, verbose_name=_('اضافات'))
+    additions_total = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('جمع اضافات (ریال)'),
+    )
     # کسورات به‌صورت آیتم‌های [{"title": "بیمه", "amount": 1000000, "note": ""}]
     deductions = models.JSONField(default=list, blank=True, verbose_name=_('کسورات'))
     deductions_total = models.DecimalField(
@@ -175,6 +185,10 @@ class Statement(BaseModel):
     net_amount = models.DecimalField(
         max_digits=18, decimal_places=0, default=0,
         verbose_name=_('مبلغ قابل پرداخت (ریال)'),
+    )
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='statements', verbose_name=_('واحد ارز'),
     )
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))

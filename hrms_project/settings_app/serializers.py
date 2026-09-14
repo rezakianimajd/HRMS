@@ -59,7 +59,7 @@ class DeductionSerializer(serializers.ModelSerializer):
 class CurrencySerializer(serializers.ModelSerializer):
     class Meta:
         model = Currency
-        fields = ['id', 'code', 'name', 'symbol', 'country_code', 'is_active', 'created_at']
+        fields = ['id', 'code', 'name', 'symbol', 'country_code', 'exchange_rate', 'is_active', 'created_at']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 

@@ -71,6 +71,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
 class StatementSerializer(serializers.ModelSerializer):
     contract_number = serializers.CharField(source='contract.number', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
+    exchange_rate = serializers.DecimalField(source='currency.exchange_rate', max_digits=18, decimal_places=6, read_only=True)
 
     class Meta:
         model = Statement
@@ -79,7 +82,9 @@ class StatementSerializer(serializers.ModelSerializer):
             'number', 'date', 'amount',
             'cumulative_previous_amount', 'work_done',
             'value_added_tax', 'other_additions',
+            'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
+            'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'is_approved', 'description',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
@@ -140,6 +145,9 @@ class ContractSerializer(serializers.ModelSerializer):
     party_name = serializers.CharField(source='party.name', read_only=True)
     signatory_name = serializers.CharField(source='signatory.full_name', read_only=True)
     project_name = serializers.CharField(source='project.name', read_only=True)
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
+    exchange_rate = serializers.DecimalField(source='currency.exchange_rate', max_digits=18, decimal_places=6, read_only=True)
 
     documents = ContractDocumentSerializer(many=True, read_only=True)
     invoices = InvoiceSerializer(many=True, read_only=True)
@@ -153,6 +161,7 @@ class ContractSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'number', 'subject', 'party', 'party_name', 'contract_type',
             'contract_type_display', 'status', 'status_display', 'amount',
+            'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
             'guarantee_amount', 'project', 'project_name', 'project_location', 'tender_number',
             'advance_payment', 'retention_percent', 'warranty_period',

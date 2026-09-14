@@ -32,7 +32,7 @@ const STATUS_LABELS = {
 
 const EMPTY = {
   number: '', subject: '', party: '', contract_type: 'purchase', status: 'draft',
-  amount: '', start_date: '', end_date: '', signing_date: '', signatory: '',
+  amount: '', currency: '', start_date: '', end_date: '', signing_date: '', signatory: '',
   guarantee_amount: '', category: '', project_name: '', project_location: '',
   tender_number: '', advance_payment: '', retention_percent: '', warranty_period: '',
   payment_terms: '', delivery_terms: '', penalty_terms: '', insurance_terms: '', description: '',
@@ -61,6 +61,7 @@ const ContractNewPage = () => {
         contract_type: existing.contract_type || 'purchase',
         status: existing.status || 'draft',
         amount: existing.amount ?? '',
+        currency: existing.currency || '',
         start_date: existing.start_date || '',
         end_date: existing.end_date || '',
         signing_date: existing.signing_date || '',
@@ -88,6 +89,9 @@ const ContractNewPage = () => {
   const { data: signatories } = useQuery({ queryKey: ['signatories'], queryFn: () => axiosInstance.get('/signatories/').then(r => r.data) });
   const signatoryList = Array.isArray(signatories) ? signatories : signatories?.results || [];
 
+  const { data: currencies } = useQuery({ queryKey: ['currencies'], queryFn: () => axiosInstance.get('/currencies/').then(r => r.data) });
+  const currencyList = Array.isArray(currencies) ? currencies : currencies?.results || [];
+
   const create = useMutation({
     mutationFn: (payload) =>
       isEdit
@@ -110,6 +114,7 @@ const ContractNewPage = () => {
     contract_type: form.contract_type,
     status: form.status,
     amount: num(form.amount),
+    currency: form.currency || null,
     start_date: form.start_date || null,
     end_date: form.end_date || null,
     signing_date: form.signing_date || null,
@@ -218,7 +223,15 @@ const ContractNewPage = () => {
         <Box sx={{ mt: 3 }}>
           <Typography variant="subtitle1" fontWeight={800} color="#b45309">مبالغ مالی و تضمین‌ها</Typography>
           <Grid container spacing={1.5}>
-            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="مبلغ قرارداد (ریال)" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={3}><TextField size="small" fullWidth label="مبلغ قرارداد" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
+            <Grid item xs={12} md={3}>
+              <FormControl size="small" fullWidth><InputLabel>واحد ارز</InputLabel>
+                <Select value={form.currency} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
+                  <MenuItem value="">—</MenuItem>
+                  {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
             <Grid item xs={12} md={3}><TextField size="small" fullWidth label="پیش‌پرداخت (ریال)" type="number" value={form.advance_payment} onChange={e => setForm(p => ({ ...p, advance_payment: e.target.value }))} /></Grid>
             <Grid item xs={12} md={3}><TextField size="small" fullWidth label="درصد حسن انجام کار" type="number" value={form.retention_percent} onChange={e => setForm(p => ({ ...p, retention_percent: e.target.value }))} /></Grid>
             <Grid item xs={12} md={3}><TextField size="small" fullWidth label="مبلغ تضمین (ریال)" type="number" value={form.guarantee_amount} onChange={e => setForm(p => ({ ...p, guarantee_amount: e.target.value }))} /></Grid>

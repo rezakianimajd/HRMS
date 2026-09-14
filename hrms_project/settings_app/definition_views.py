@@ -7,36 +7,36 @@ from settings_app.serializers import (
     AdditionSerializer, DeductionSerializer, CurrencySerializer,
 )
 
-# ~24 major traded currencies (code, name(FA), symbol, country_code for flag).
+# ~24 major traded currencies (code, name(FA), symbol, country_code, exchange_rate to IRR).
 DEFAULT_CURRENCIES = [
-    ('IRR', 'ریال ایران', '﷼', 'IR'),
-    ('USD', 'دلار آمریکا', '$', 'US'),
-    ('EUR', 'یورو', '€', 'EU'),
-    ('GBP', 'پوند بریتانیا', '£', 'GB'),
-    ('JPY', 'ین ژاپن', '¥', 'JP'),
-    ('CNY', 'یوآن چین', '¥', 'CN'),
-    ('CHF', 'فرانک سوئیس', 'CHF', 'CH'),
-    ('CAD', 'دلار کانادا', 'C$', 'CA'),
-    ('AUD', 'دلار استرالیا', 'A$', 'AU'),
-    ('NZD', 'دلار نیوزیلند', 'NZ$', 'NZ'),
-    ('AED', 'درهم امارات', 'د.إ', 'AE'),
-    ('SAR', 'ریال عربستان', '﷼', 'SA'),
-    ('TRY', 'لیر ترکیه', '₺', 'TR'),
-    ('RUB', 'روبل روسیه', '₽', 'RU'),
-    ('INR', 'روپیه هند', '₹', 'IN'),
-    ('PKR', 'روپیه پاکستان', '₨', 'PK'),
-    ('AFN', 'افغانی', '؋', 'AF'),
-    ('IQD', 'دینار عراق', 'ع.د', 'IQ'),
-    ('KWD', 'دینار کویت', 'د.ك', 'KW'),
-    ('QAR', 'ریال قطر', '﷼', 'QA'),
-    ('OMR', 'ریال عمان', '﷼', 'OM'),
-    ('BHD', 'دینار بحرین', 'د.ب', 'BH'),
-    ('MYR', 'رینگیت مالزی', 'RM', 'MY'),
-    ('SGD', 'دلار سنگاپور', 'S$', 'SG'),
-    ('KRW', 'وون کرهٔ جنوبی', '₩', 'KR'),
-    ('HKD', 'دلار هنگ‌کنگ', 'HK$', 'HK'),
-    ('SEK', 'کرون سوئد', 'kr', 'SE'),
-    ('NOK', 'کرون نروژ', 'kr', 'NO'),
+    ('IRR', 'ریال ایران', '﷼', 'IR', 1),
+    ('USD', 'دلار آمریکا', '$', 'US', 420000),
+    ('EUR', 'یورو', '€', 'EU', 450000),
+    ('GBP', 'پوند بریتانیا', '£', 'GB', 530000),
+    ('JPY', 'ین ژاپن', '¥', 'JP', 2800),
+    ('CNY', 'یوآن چین', '¥', 'CN', 58000),
+    ('CHF', 'فرانک سوئیس', 'CHF', 'CH', 470000),
+    ('CAD', 'دلار کانادا', 'C$', 'CA', 310000),
+    ('AUD', 'دلار استرالیا', 'A$', 'AU', 280000),
+    ('NZD', 'دلار نیوزیلند', 'NZ$', 'NZ', 255000),
+    ('AED', 'درهم امارات', 'د.إ', 'AE', 115000),
+    ('SAR', 'ریال عربستان', '﷼', 'SA', 112000),
+    ('TRY', 'لیر ترکیه', '₺', 'TR', 12000),
+    ('RUB', 'روبل روسیه', '₽', 'RU', 4500),
+    ('INR', 'روپیه هند', '₹', 'IN', 5000),
+    ('PKR', 'روپیه پاکستان', '₨', 'PK', 1500),
+    ('AFN', 'افغانی', '؋', 'AF', 5000),
+    ('IQD', 'دینار عراق', 'ع.د', 'IQ', 320),
+    ('KWD', 'دینار کویت', 'د.ك', 'KW', 1380000),
+    ('QAR', 'ریال قطر', '﷼', 'QA', 115000),
+    ('OMR', 'ریال عمان', '﷼', 'OM', 1090000),
+    ('BHD', 'دینار بحرین', 'د.ب', 'BH', 1110000),
+    ('MYR', 'رینگیت مالزی', 'RM', 'MY', 88000),
+    ('SGD', 'دلار سنگاپور', 'S$', 'SG', 310000),
+    ('KRW', 'وون کرهٔ جنوبی', '₩', 'KR', 300),
+    ('HKD', 'دلار هنگ‌کنگ', 'HK$', 'HK', 54000),
+    ('SEK', 'کرون سوئد', 'kr', 'SE', 39000),
+    ('NOK', 'کرون نروژ', 'kr', 'NO', 39000),
 ]
 
 
@@ -85,11 +85,12 @@ class CurrencyViewSet(_CompanyScopedViewSet):
             return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
         existing = set(Currency.objects.filter(company=company).values_list('code', flat=True))
         created = 0
-        for code, name, symbol, cc in DEFAULT_CURRENCIES:
+        for code, name, symbol, cc, rate in DEFAULT_CURRENCIES:
             if code in existing:
                 continue
             Currency.objects.create(
                 company=company, code=code, name=name, symbol=symbol, country_code=cc,
+                exchange_rate=rate,
             )
             created += 1
         return Response({'created': created, 'total': Currency.objects.filter(company=company).count()})
