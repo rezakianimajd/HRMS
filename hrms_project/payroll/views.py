@@ -181,7 +181,13 @@ class BenefitRecordViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         company = _get_company(self.request)
-        serializer.save(company=company)
+        obj = serializer.save(company=company)
+        try:
+            from accounting.integrations import enqueue_benefit_record
+            enqueue_benefit_record(company, obj)
+        except Exception:
+            pass
+        return obj
 
     @action(detail=False, methods=['get'])
     def by_employee(self, request):

@@ -243,6 +243,15 @@ class PaymentViewSet(BaseContractViewSet):
             qs = qs.filter(contract_id=contract_id)
         return qs
 
+    def perform_create(self, serializer):
+        obj = serializer.save(company=_company(self.request))
+        try:
+            from accounting.integrations import enqueue_contract_payment
+            enqueue_contract_payment(_company(self.request), obj)
+        except Exception:
+            pass
+        return obj
+
 
 class ContractDisputeViewSet(BaseContractViewSet):
     serializer_class = ContractDisputeSerializer

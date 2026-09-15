@@ -81,6 +81,15 @@ class PettyCashTransactionViewSet(BaseViewSet):
     search_fields = ['title', 'description']
     ordering = ['-date', '-created_at']
 
+    def perform_create(self, serializer):
+        obj = serializer.save(company=_company(self.request))
+        try:
+            from accounting.integrations import enqueue_pettycash_transaction
+            enqueue_pettycash_transaction(_company(self.request), obj)
+        except Exception:
+            pass
+        return obj
+
     def get_queryset(self):
         qs = super().get_queryset().select_related('fund', 'category')
         fund_id = self.request.query_params.get('fund')
