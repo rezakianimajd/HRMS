@@ -239,6 +239,11 @@ class AuxiliaryAccount(BaseModel):
     name = models.CharField(max_length=200, verbose_name=_('نام تفصیلی'))
     aux_type = models.CharField(max_length=20, choices=AuxType.choices, default=AuxType.OTHER, verbose_name=_('نوع تفصیلی'))
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='auxiliaries', verbose_name=_('حساب مرتبط'))
+    parent = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='children', verbose_name=_('تفصیلی بالادستی'),
+    )
+    aux_level = models.PositiveSmallIntegerField(default=1, verbose_name=_('سطح تفصیلی (۱ تا ۳)'))
 
     # مرجع اختیاری به موجودیت‌های ماژول‌های دیگر (بدون تکرار مدل‌ها):
     party = models.ForeignKey('contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliary_accounts', verbose_name=_('طرف قرارداد'))
@@ -252,7 +257,7 @@ class AuxiliaryAccount(BaseModel):
         verbose_name_plural = _('حساب‌های تفصیلی')
         unique_together = [('company', 'code')]
         ordering = ['code']
-        indexes = [models.Index(fields=['account', 'aux_type'])]
+        indexes = [models.Index(fields=['account', 'aux_type']), models.Index(fields=['parent', 'aux_level'])]
 
     def __str__(self):
         return f'{self.code} - {self.name}'

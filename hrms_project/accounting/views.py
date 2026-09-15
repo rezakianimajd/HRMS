@@ -100,6 +100,12 @@ class AccountTypeViewSet(CompanyScopedViewSet):
     search_fields = ['code', 'name']
     ordering = ['code']
 
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.accounts.exists() or obj.groups.exists():
+            return Response({'error': 'این نوع حساب، حساب/گروه دارد و قابل حذف نیست.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
+
 
 class AccountGroupViewSet(CompanyScopedViewSet):
     serializer_class = AccountGroupSerializer
@@ -107,21 +113,57 @@ class AccountGroupViewSet(CompanyScopedViewSet):
     search_fields = ['code', 'name']
     ordering = ['code']
 
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.accounts.exists():
+            return Response({'error': 'این گروه حساب، حساب دارد و قابل حذف نیست.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
 
-class AccountViewSet(CompanyScopedViewSet):
+
+class _NoDeleteWithLinesMixin:
+    use_lines_rel = 'lines'
+    use_template_lines_rel = 'posting_template_lines'
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if getattr(obj, self.use_lines_rel).exists():
+            return Response({'error': 'این کد در سند حسابداری استفاده شده و قابل حذف نیست.'}, status=400)
+        if getattr(obj, self.use_template_lines_rel).exists():
+            return Response({'error': 'این کد در قالب ثبت استفاده شده و قابل حذف نیست.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
+
+
+class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
     serializer_class = AccountSerializer
     queryset = Account.objects.select_related('account_type', 'group', 'parent')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['code', 'name']
     ordering = ['code']
 
+    def get_queryset(self):
+        qs = super().get_queryset()
+        kind = self.request.query_params.get('kind')
+        if kind == 'general':
+            qs = qs.filter(parent__isnull=True)
+        elif kind == 'subsidiary':
+            qs = qs.filter(parent__isnull=False)
+        return qs
+
 
 class AuxiliaryAccountViewSet(CompanyScopedViewSet):
     serializer_class = AuxiliaryAccountSerializer
-    queryset = AuxiliaryAccount.objects.select_related('account')
+    queryset = AuxiliaryAccount.objects.select_related('account', 'parent')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['code', 'name']
     ordering = ['code']
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.lines.exists():
+            return Response({'error': 'این تفصیلی در سند استفاده شده و قابل حذف نیست.'}, status=400)
+        if obj.children.exists():
+            return Response({'error': 'این تفصیلی، تفصیلی زیرمجموعه دارد و قابل حذف نیست.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
 
 
 class AccountingDimensionViewSet(CompanyScopedViewSet):
@@ -143,6 +185,14 @@ class CostCenterViewSet(CompanyScopedViewSet):
     queryset = CostCenter.objects.select_related('parent', 'branch')
     search_fields = ['code', 'name']
     ordering = ['code']
+
+    def destroy(self, request, *args, **kwargs):
+        obj = self.get_object()
+        if obj.lines.exists():
+            return Response({'error': 'این مرکز هزینه در سند استفاده شده و قابل حذف نیست.'}, status=400)
+        if obj.children.exists():
+            return Response({'error': 'این مرکز هزینه، زیرمجموعه دارد و قابل حذف نیست.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
 
 
 class JournalViewSet(CompanyScopedViewSet):
