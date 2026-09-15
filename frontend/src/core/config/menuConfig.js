@@ -329,9 +329,9 @@ const accountingMenu = [
     title: 'گزارش‌ها',
     color: '#8b5cf6',
     items: [
-      comingSoon('/accounting/reports/general-ledger', 'acc-gl', 'دفتر کل', <ReceiptLongIcon />, '#8b5cf6'),
-      comingSoon('/accounting/reports/trial-balance', 'acc-tb', 'تراز آزمایشی', <BarChartOutlinedIcon />, '#6366f1'),
+      { id: 'accounting-reports', title: 'گزارش‌های مالی', icon: <AssessmentIcon />, path: '/accounting/reports', color: '#8b5cf6', primary: false, ready: true },
       comingSoon('/accounting/reports/balance-sheet', 'acc-bs', 'ترازنامه', <AssessmentIcon />, '#10b981'),
+      comingSoon('/accounting/reports/cash-flow', 'acc-cf', 'جریان نقدی', <PaymentsIcon />, '#0ea5e9'),
     ],
   },
 ];

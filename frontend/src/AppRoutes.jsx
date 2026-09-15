@@ -64,6 +64,7 @@ import PettyCashPage from './pages/PettyCashPage';
 import AccountingPage from './pages/AccountingPage';
 import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
 import AccountingIntegrationPage from './pages/AccountingIntegrationPage';
+import AccountingReportsPage from './pages/AccountingReportsPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -140,6 +141,7 @@ const AppRoutes = () => {
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />
       <Route path="/accounting/integration" element={<ProtectedLayout><AccountingIntegrationPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports" element={<ProtectedLayout><AccountingReportsPage /></ProtectedLayout>} />
       <Route path="/accounting/*" element={<ProtectedLayout><AccountingPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />

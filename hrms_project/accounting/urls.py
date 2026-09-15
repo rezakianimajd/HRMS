@@ -1,5 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
+from accounting import report_views
 from accounting.views import (
     BranchViewSet, FiscalYearViewSet, FiscalPeriodViewSet, AccountingBookViewSet,
     AccountTypeViewSet, AccountGroupViewSet, AccountViewSet,
@@ -30,4 +31,8 @@ router.register(r'settings', AccountingSettingsViewSet, basename='accounting-set
 
 urlpatterns = [
     path('', include(router.urls)),
+    path('reports/general-ledger/', report_views.general_ledger, name='report-general-ledger'),
+    path('reports/account-ledger/<int:account_id>/', report_views.account_ledger, name='report-account-ledger'),
+    path('reports/trial-balance/', report_views.trial_balance, name='report-trial-balance'),
+    path('reports/income-statement/', report_views.income_statement, name='report-income-statement'),
 ]
