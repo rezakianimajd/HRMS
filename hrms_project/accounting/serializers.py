@@ -113,6 +113,7 @@ class AccountingDocumentLineSerializer(BaseModelSerializer):
             'line_no', 'description', 'debit', 'credit', 'currency', 'exchange_rate',
             'base_amount', 'reference', 'cost_center', 'project', 'contract', 'employee',
         ]
+        extra_kwargs = {'document': {'read_only': True}}
 
 
 class AccountingDocumentSerializer(BaseModelSerializer):
@@ -120,12 +121,38 @@ class AccountingDocumentSerializer(BaseModelSerializer):
     total_debit = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
     total_credit = serializers.DecimalField(max_digits=18, decimal_places=2, read_only=True)
     is_balanced = serializers.BooleanField(read_only=True)
-    lines = AccountingDocumentLineSerializer(many=True, read_only=True)
+    lines = AccountingDocumentLineSerializer(many=True, required=False)
+    journal_name = serializers.CharField(source='journal.name', read_only=True)
+    period_code = serializers.CharField(source='period.code', read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = AccountingDocument
         fields = '__all__'
 
+    def create(self, validated_data):
+        lines = validated_data.pop('lines', [])
+        company = validated_data.pop('company', None)
+        doc = AccountingDocument.objects.create(company=company, **validated_data)
+        for i, line in enumerate(lines, start=1):
+            line.pop('document', None)
+            line.pop('company', None)
+            AccountingDocumentLine.objects.create(document=doc, company=company, line_no=line.get('line_no', i), **line)
+        return doc
+
+    def update(self, instance, validated_data):
+        lines = validated_data.pop('lines', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if lines is not None:
+            instance.lines.all().delete()
+            for i, line in enumerate(lines, start=1):
+                line.pop('document', None)
+                line.pop('company', None)
+                AccountingDocumentLine.objects.create(
+                    document=instance, company=instance.company_id, line_no=line.get('line_no', i), **line,
+                )
+        return instance
 
 class AccountingSequenceSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):

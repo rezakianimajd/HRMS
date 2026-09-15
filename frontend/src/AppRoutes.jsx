@@ -62,6 +62,7 @@ import BenefitPaymentPage from './pages/BenefitPaymentPage';
 import CompanyProfilePage from './pages/CompanyProfilePage';
 import PettyCashPage from './pages/PettyCashPage';
 import AccountingPage from './pages/AccountingPage';
+import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -136,6 +137,7 @@ const AppRoutes = () => {
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
       <Route path="/benefit-payments" element={<ProtectedLayout><BenefitPaymentPage /></ProtectedLayout>} />
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
+      <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />
       <Route path="/accounting/*" element={<ProtectedLayout><AccountingPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
