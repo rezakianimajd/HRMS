@@ -7,12 +7,14 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import CalculateIcon from '@mui/icons-material/Calculate';
 import { useApplication } from '../../context/ApplicationContext';
 
 const ICON_MAP = {
   hrms: <BusinessIcon sx={{ fontSize: 20, color: '#fff' }} />,
   contracts: <DescriptionIcon sx={{ fontSize: 20, color: '#fff' }} />,
   pettycash: <AccountBalanceWalletIcon sx={{ fontSize: 20, color: '#fff' }} />,
+  accounting: <CalculateIcon sx={{ fontSize: 20, color: '#fff' }} />,
 };
 
 // مسیر ورودی هر ماژول (هنگام انتخاب).
@@ -22,6 +24,7 @@ const LANDING_PATH = {
   settings: '/settings',
   projects: '/projects',
   pettycash: '/petty-cash',
+  accounting: '/accounting',
 };
 
 const AppSwitcher = () => {

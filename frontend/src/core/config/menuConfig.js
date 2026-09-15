@@ -47,6 +47,7 @@ import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import WarningIcon from '@mui/icons-material/Warning';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import CalculateIcon from '@mui/icons-material/Calculate';
 
 /**
  * Central navigation model for the HRMS.
@@ -273,6 +274,58 @@ const pettycashMenu = [
   },
 ];
 
+const accountingMenu = [
+  {
+    id: 'accounting-home',
+    title: 'خانه',
+    color: '#3b82f6',
+    items: [
+      { id: 'accounting-dashboard', title: 'داشبورد', icon: <DashboardIcon />, path: '/accounting', color: '#3b82f6', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'accounting-definitions',
+    title: 'تعاریف حسابداری',
+    color: '#3b82f6',
+    items: [
+      { id: 'accounting-chart', title: 'سرفصل حساب‌ها', icon: <AccountTreeIcon />, path: '/accounting/chart', color: '#6366f1', primary: false, ready: true },
+      { id: 'accounting-accounts', title: 'حساب‌ها', icon: <ReceiptLongIcon />, path: '/accounting/accounts', color: '#10b981', primary: false, ready: true },
+      { id: 'accounting-auxiliary', title: 'حساب‌های تفصیلی', icon: <CategoryIcon />, path: '/accounting/auxiliary', color: '#f59e0b', primary: false, ready: true },
+      { id: 'accounting-cost-centers', title: 'مراکز هزینه', icon: <CalculateIcon />, path: '/accounting/cost-centers', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'accounting-dimensions', title: 'ابعاد مالی', icon: <AssessmentIcon />, path: '/accounting/dimensions', color: '#0ea5e9', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'accounting-operations',
+    title: 'عملیات',
+    color: '#10b981',
+    items: [
+      comingSoon('/accounting/documents', 'accounting-documents', 'اسناد حسابداری', <DescriptionIcon />, '#10b981'),
+      comingSoon('/accounting/documents/new', 'accounting-document-new', 'سند جدید', <PostAddIcon />, '#6366f1'),
+    ],
+  },
+  {
+    id: 'accounting-fiscal',
+    title: 'دوره مالی',
+    color: '#0ea5e9',
+    items: [
+      { id: 'accounting-fiscal-years', title: 'سال‌های مالی', icon: <CalendarMonthIcon />, path: '/accounting/fiscal-years', color: '#0ea5e9', primary: false, ready: true },
+      comingSoon('/accounting/periods', 'accounting-periods', 'دوره‌ها', <HistoryIcon />, '#6366f1'),
+      comingSoon('/accounting/closing', 'accounting-closing', 'بستن دوره', <LockIcon />, '#ef4444'),
+    ],
+  },
+  {
+    id: 'accounting-reports',
+    title: 'گزارش‌ها',
+    color: '#8b5cf6',
+    items: [
+      comingSoon('/accounting/reports/general-ledger', 'acc-gl', 'دفتر کل', <ReceiptLongIcon />, '#8b5cf6'),
+      comingSoon('/accounting/reports/trial-balance', 'acc-tb', 'تراز آزمایشی', <BarChartOutlinedIcon />, '#6366f1'),
+      comingSoon('/accounting/reports/balance-sheet', 'acc-bs', 'ترازنامه', <AssessmentIcon />, '#10b981'),
+    ],
+  },
+];
+
 const projectsMenu = [
   {
     id: 'projects-home',
@@ -402,6 +455,7 @@ export function getMenuForApp(appSlug) {
   if (appSlug === 'settings') return settingsMenu;
   if (appSlug === 'projects') return projectsMenu;
   if (appSlug === 'pettycash') return pettycashMenu;
+  if (appSlug === 'accounting') return accountingMenu;
   return menuConfig;
 }
 
