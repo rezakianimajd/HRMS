@@ -4,8 +4,8 @@ import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Chip, Stack,
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton, Tooltip,
-  Dialog, DialogTitle, DialogContent, DialogActions, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Dialog, DialogTitle, DialogContent, DialogActions, Alert, Autocomplete,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Divider,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
@@ -61,10 +61,18 @@ const AccountingDocumentsPage = () => {
   const { data: journals } = useQuery({ queryKey: ['accounting-journals'], queryFn: () => axiosInstance.get('/accounting/journals/').then(r => r.data) });
   const { data: years } = useQuery({ queryKey: ['accounting-fy'], queryFn: () => axiosInstance.get('/accounting/fiscal-years/').then(r => r.data) });
   const { data: accounts } = useQuery({ queryKey: ['accounting-accounts'], queryFn: () => axiosInstance.get('/accounting/accounts/').then(r => r.data) });
+  const { data: auxiliaries } = useQuery({ queryKey: ['accounting-auxiliary'], queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data) });
+  const { data: costCenters } = useQuery({ queryKey: ['accounting-cost-centers'], queryFn: () => axiosInstance.get('/accounting/cost-centers/').then(r => r.data) });
+  const { data: projects } = useQuery({ queryKey: ['acc-projects'], queryFn: () => axiosInstance.get('/projects/').then(r => r.data) });
+  const { data: contracts } = useQuery({ queryKey: ['acc-contracts'], queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data) });
 
   const journalList = Array.isArray(journals) ? journals : journals?.results || [];
   const yearList = Array.isArray(years) ? years : years?.results || [];
   const accountList = Array.isArray(accounts) ? accounts : accounts?.results || [];
+  const auxiliaryList = Array.isArray(auxiliaries) ? auxiliaries : auxiliaries?.results || [];
+  const costCenterList = Array.isArray(costCenters) ? costCenters : costCenters?.results || [];
+  const projectList = Array.isArray(projects) ? projects : projects?.results || [];
+  const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
   const save = useMutation({
     mutationFn: (payload) => editing
@@ -97,7 +105,7 @@ const AccountingDocumentsPage = () => {
     lines[i] = { ...lines[i], [k]: v };
     return { ...p, lines };
   });
-  const addLine = () => setDoc(p => ({ ...p, lines: [...(p.lines || []), { account: '', description: '', debit: '', credit: '' }] }));
+  const addLine = () => setDoc(p => ({ ...p, lines: [...(p.lines || []), { account: '', description: '', debit: '', credit: '', auxiliary: '', cost_center: '', project: '', contract: '' }] }));
   const removeLine = (i) => setDoc(p => ({ ...p, lines: p.lines.filter((_, idx) => idx !== i) }));
 
   const totalDebit = (doc.lines || []).reduce((s, l) => s + num(l.debit), 0);
@@ -107,7 +115,11 @@ const AccountingDocumentsPage = () => {
   const openNew = () => { setEditing(null); setDoc({ lines: [] }); setOpen(true); };
   const openEdit = (row) => {
     setEditing(row);
-    setDoc({ ...row, lines: Array.isArray(row.lines) ? row.lines.map(l => ({ account: l.account, description: l.description, debit: l.debit, credit: l.credit })) : [] });
+    setDoc({ ...row, lines: Array.isArray(row.lines) ? row.lines.map(l => ({
+      account: l.account, auxiliary: l.auxiliary, description: l.description,
+      debit: l.debit, credit: l.credit, cost_center: l.cost_center,
+      project: l.project, contract: l.contract, reference: l.reference,
+    })) : [] });
     setOpen(true);
   };
 
@@ -122,9 +134,14 @@ const AccountingDocumentsPage = () => {
       description: doc.description || '',
       lines: (doc.lines || []).map((l, i) => ({
         account: l.account,
+        auxiliary: l.auxiliary || null,
         description: l.description || '',
         debit: num(l.debit),
         credit: num(l.credit),
+        cost_center: l.cost_center || null,
+        project: l.project || null,
+        contract: l.contract || null,
+        reference: l.reference || '',
         line_no: i + 1,
       })),
     };
@@ -234,20 +251,62 @@ const AccountingDocumentsPage = () => {
               </TableHead>
               <TableBody>
                 {(doc.lines || []).map((l, i) => (
-                  <TableRow key={i}>
-                    <TableCell>
-                      <FormControl size="small" fullWidth>
-                        <Select value={l.account || ''} onChange={e => setLine(i, 'account', e.target.value)} displayEmpty>
-                          <MenuItem value="" disabled>انتخاب حساب</MenuItem>
-                          {accountList.map(a => <MenuItem key={a.id} value={a.id}>{a.code} - {a.name}</MenuItem>)}
-                        </Select>
-                      </FormControl>
-                    </TableCell>
-                    <TableCell><TextField size="small" fullWidth value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} /></TableCell>
-                    <TableCell><TextField size="small" type="number" value={l.debit || ''} onChange={e => setLine(i, 'debit', e.target.value)} sx={{ width: 110 }} /></TableCell>
-                    <TableCell><TextField size="small" type="number" value={l.credit || ''} onChange={e => setLine(i, 'credit', e.target.value)} sx={{ width: 110 }} /></TableCell>
-                    <TableCell><IconButton size="small" color="error" onClick={() => removeLine(i)}><RemoveCircleIcon fontSize="small" /></IconButton></TableCell>
-                  </TableRow>
+                  <React.Fragment key={i}>
+                    <TableRow>
+                      <TableCell sx={{ minWidth: 220 }}>
+                        <Autocomplete
+                          size="small"
+                          options={accountList}
+                          getOptionLabel={(o) => `${o.code} - ${o.name}`}
+                          value={accountList.find(a => a.id === l.account) || null}
+                          onChange={(e, v) => setLine(i, 'account', v ? v.id : '')}
+                          renderInput={(params) => <TextField {...params} placeholder="جستجوی حساب" />}
+                        />
+                      </TableCell>
+                      <TableCell><TextField size="small" fullWidth value={l.description || ''} onChange={e => setLine(i, 'description', e.target.value)} /></TableCell>
+                      <TableCell><TextField size="small" type="number" value={l.debit || ''} onChange={e => setLine(i, 'debit', e.target.value)} sx={{ width: 110 }} /></TableCell>
+                      <TableCell><TextField size="small" type="number" value={l.credit || ''} onChange={e => setLine(i, 'credit', e.target.value)} sx={{ width: 110 }} /></TableCell>
+                      <TableCell><IconButton size="small" color="error" onClick={() => removeLine(i)}><RemoveCircleIcon fontSize="small" /></IconButton></TableCell>
+                    </TableRow>
+                    <TableRow sx={{ '& td': { borderBottom: '2px dashed rgba(59,130,246,0.2)' } }}>
+                      <TableCell colSpan={5}>
+                        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+                          <Autocomplete
+                            size="small" sx={{ minWidth: 180 }}
+                            options={auxiliaryList}
+                            getOptionLabel={(o) => `${o.code} - ${o.name}`}
+                            value={auxiliaryList.find(a => a.id === l.auxiliary) || null}
+                            onChange={(e, v) => setLine(i, 'auxiliary', v ? v.id : '')}
+                            renderInput={(params) => <TextField {...params} label="تفصیلی" />}
+                          />
+                          <Autocomplete
+                            size="small" sx={{ minWidth: 170 }}
+                            options={costCenterList}
+                            getOptionLabel={(o) => `${o.code} - ${o.name}`}
+                            value={costCenterList.find(a => a.id === l.cost_center) || null}
+                            onChange={(e, v) => setLine(i, 'cost_center', v ? v.id : '')}
+                            renderInput={(params) => <TextField {...params} label="مرکز هزینه" />}
+                          />
+                          <Autocomplete
+                            size="small" sx={{ minWidth: 180 }}
+                            options={projectList}
+                            getOptionLabel={(o) => `${o.code || ''} ${o.name}`}
+                            value={projectList.find(a => a.id === l.project) || null}
+                            onChange={(e, v) => setLine(i, 'project', v ? v.id : '')}
+                            renderInput={(params) => <TextField {...params} label="پروژه" />}
+                          />
+                          <Autocomplete
+                            size="small" sx={{ minWidth: 200 }}
+                            options={contractList}
+                            getOptionLabel={(o) => `${o.number || ''} - ${o.subject || o.name || ''}`}
+                            value={contractList.find(a => a.id === l.contract) || null}
+                            onChange={(e, v) => setLine(i, 'contract', v ? v.id : '')}
+                            renderInput={(params) => <TextField {...params} label="قرارداد" />}
+                          />
+                        </Stack>
+                      </TableCell>
+                    </TableRow>
+                  </React.Fragment>
                 ))}
               </TableBody>
             </Table>
