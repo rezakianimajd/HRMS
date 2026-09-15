@@ -48,6 +48,7 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import WarningIcon from '@mui/icons-material/Warning';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CalculateIcon from '@mui/icons-material/Calculate';
+import HubIcon from '@mui/icons-material/Hub';
 
 /**
  * Central navigation model for the HRMS.
@@ -302,6 +303,15 @@ const accountingMenu = [
     items: [
       { id: 'accounting-documents', title: 'اسناد حسابداری', icon: <DescriptionIcon />, path: '/accounting/documents', color: '#10b981', primary: false, ready: true },
       comingSoon('/accounting/documents/new', 'accounting-document-new', 'سند جدید', <PostAddIcon />, '#6366f1'),
+    ],
+  },
+  {
+    id: 'accounting-integration',
+    title: 'ارتباط با ماژول‌ها',
+    color: '#14b8a6',
+    items: [
+      { id: 'accounting-integration', title: 'قالب‌ها و صف ثبت', icon: <HubIcon />, path: '/accounting/integration', color: '#14b8a6', primary: false, ready: true },
+      comingSoon('/accounting/integration/monitor', 'accounting-integration-monitor', 'مانیتور ثبت', <InsightsIcon />, '#0ea5e9'),
     ],
   },
   {

@@ -166,10 +166,50 @@ class SourceTransactionSerializer(BaseModelSerializer):
         fields = '__all__'
 
 
+class PostingTemplateLineSerializer(BaseModelSerializer):
+    account_code = serializers.CharField(source='account.code', read_only=True)
+    account_name = serializers.CharField(source='account.name', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = PostingTemplateLine
+        fields = [
+            'id', 'template', 'account', 'account_code', 'account_name', 'side',
+            'amount_expression', 'default_dimension', 'line_no',
+        ]
+        extra_kwargs = {'template': {'read_only': True}}
+
+
 class PostingTemplateSerializer(BaseModelSerializer):
+    lines = PostingTemplateLineSerializer(many=True, required=False)
+
     class Meta(BaseModelSerializer.Meta):
         model = PostingTemplate
         fields = '__all__'
+
+    def create(self, validated_data):
+        lines = validated_data.pop('lines', [])
+        company = validated_data.pop('company', None)
+        tpl = PostingTemplate.objects.create(company=company, **validated_data)
+        for i, line in enumerate(lines, start=1):
+            line.pop('template', None)
+            line.pop('company', None)
+            PostingTemplateLine.objects.create(template=tpl, company=company, line_no=line.get('line_no', i), **line)
+        return tpl
+
+    def update(self, instance, validated_data):
+        lines = validated_data.pop('lines', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if lines is not None:
+            instance.lines.all().delete()
+            for i, line in enumerate(lines, start=1):
+                line.pop('template', None)
+                line.pop('company', None)
+                PostingTemplateLine.objects.create(
+                    template=instance, company=instance.company_id, line_no=line.get('line_no', i), **line,
+                )
+        return instance
 
 
 class AccountingSettingsSerializer(BaseModelSerializer):

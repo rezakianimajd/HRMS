@@ -25,7 +25,7 @@ from accounting.serializers import (
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
 )
-from accounting.services import PostingService, AccountingError
+from accounting.services import PostingService, SourcePostingService, AccountingError
 
 
 def _company(request):
@@ -224,6 +224,37 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['source_module', 'source_type', 'source_id']
     ordering = ['-created_at']
+
+    @action(detail=True, methods=['get'])
+    def preview(self, request, pk=None):
+        """پیش‌نمایش سند حاصل از قالب ثبت برای یک تراکنش منبع."""
+        source = self.get_object()
+        template_id = request.query_params.get('template_id')
+        template = PostingTemplate.objects.filter(id=template_id).first() if template_id else None
+        if not template:
+            return Response({'error': 'template_id الزامی است'}, status=400)
+        svc = SourcePostingService(source, template, None, None, user=request.user)
+        return Response(svc.preview())
+
+    @action(detail=True, methods=['post'])
+    def post_from_template(self, request, pk=None):
+        """ثبت سند حسابداری از تراکنش منبع با قالب ثبت (idempotent)."""
+        source = self.get_object()
+        template_id = request.data.get('template_id')
+        template = PostingTemplate.objects.filter(id=template_id).first() if template_id else None
+        if not template:
+            return Response({'error': 'template_id الزامی است'}, status=400)
+        year_id = request.data.get('fiscal_year')
+        period_id = request.data.get('period')
+        year = FiscalYear.objects.filter(id=year_id).first() if year_id else None
+        period = FiscalPeriod.objects.filter(id=period_id).first() if period_id else None
+        if not year or not period:
+            return Response({'error': 'سال مالی و دورهٔ معتبر الزامی است'}, status=400)
+        try:
+            doc = SourcePostingService(source, template, year, period, user=request.user).post()
+        except AccountingError as e:
+            return Response({'error': str(e)}, status=400)
+        return Response(AccountingDocumentSerializer(doc).data)
 
 
 class PostingTemplateViewSet(CompanyScopedViewSet):
