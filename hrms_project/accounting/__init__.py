@@ -1,0 +1,1 @@
+"""KIAN EBP — Accounting module (central financial posting engine)."""
