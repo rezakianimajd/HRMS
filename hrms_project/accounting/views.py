@@ -94,11 +94,36 @@ class AccountingBookViewSet(CompanyScopedViewSet):
     ordering = ['code']
 
 
+DEFAULT_ACCOUNT_TYPES = [
+    ('asset', 'دارایی', 'asset', 'debit'),
+    ('liability', 'بدهی', 'liability', 'credit'),
+    ('equity', 'حقوق مالکانه', 'equity', 'credit'),
+    ('revenue', 'درآمد', 'revenue', 'credit'),
+    ('cost_of_sales', 'بهای تمام‌شده', 'cost_of_sales', 'debit'),
+    ('expense', 'هزینه', 'expense', 'debit'),
+    ('memorandum', 'خارج از تراز', 'memorandum', 'debit'),
+]
+
+
 class AccountTypeViewSet(CompanyScopedViewSet):
     serializer_class = AccountTypeSerializer
     queryset = AccountType.objects.all()
     search_fields = ['code', 'name']
     ordering = ['code']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company = _company(self.request)
+        # بار اول که هیچ نوع حسابی نیست، انواع استاندارد ساخته می‌شوند
+        if company and not qs.exists():
+            for code, name, category, nature in DEFAULT_ACCOUNT_TYPES:
+                AccountType.objects.get_or_create(
+                    company=company,
+                    code=code,
+                    defaults={'name': name, 'category': category, 'default_nature': nature},
+                )
+            qs = super().get_queryset()
+        return qs
 
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
