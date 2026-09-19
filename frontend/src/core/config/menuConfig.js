@@ -294,7 +294,7 @@ const accountingMenu = [
       { id: 'acc-subsidiary', title: 'حساب‌های معین', icon: <ReceiptLongIcon />, path: '/accounting/codings/subsidiary', color: '#0ea5e9', primary: false, ready: true },
       { id: 'acc-auxiliary', title: 'حساب‌های تفصیلی', icon: <CategoryIcon />, path: '/accounting/codings/auxiliary', color: '#f59e0b', primary: false, ready: true },
       { id: 'acc-cost-centers', title: 'مراکز هزینه', icon: <CalculateIcon />, path: '/accounting/codings/costcenters', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'accounting-dimensions', title: 'ابعاد مالی', icon: <AssessmentIcon />, path: '/accounting/dimensions', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'accounting-dimensions', title: 'ابعاد مالی', icon: <AssessmentIcon />, path: '/accounting/codings/dimensions', color: '#0ea5e9', primary: false, ready: true },
     ],
   },
   {
@@ -320,7 +320,7 @@ const accountingMenu = [
     title: 'دوره مالی',
     color: '#0ea5e9',
     items: [
-      { id: 'accounting-fiscal-years', title: 'سال‌های مالی', icon: <CalendarMonthIcon />, path: '/accounting/fiscal-years', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'accounting-fiscal-years', title: 'سال‌های مالی', icon: <CalendarMonthIcon />, path: '/accounting/codings/fiscalyears', color: '#0ea5e9', primary: false, ready: true },
       comingSoon('/accounting/periods', 'accounting-periods', 'دوره‌ها', <HistoryIcon />, '#6366f1'),
       comingSoon('/accounting/closing', 'accounting-closing', 'بستن دوره', <LockIcon />, '#ef4444'),
     ],

@@ -15,6 +15,8 @@ import SaveIcon from '@mui/icons-material/Save';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CategoryIcon from '@mui/icons-material/Category';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import { toJalali } from '../core/utils/dateUtils';
+import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
@@ -112,6 +114,8 @@ const CodingsPanel = ({
               renderInput={p => <TextField {...p} label={f.label} />} />
           ) : f.type === 'number' ? (
             <TextField key={f.key} fullWidth size="small" type="number" label={f.label} value={form[f.key] ?? ''} onChange={e => set(f.key, e.target.value)} />
+          ) : f.type === 'date' ? (
+            <JalaliDatePicker key={f.key} fullWidth label={f.label} value={form[f.key] || ''} onChange={v => set(f.key, v)} />
           ) : (
             <TextField key={f.key} fullWidth size="small" label={f.label} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)} />
           ))}
@@ -197,6 +201,31 @@ const AccountingCodingsPage = () => {
       endpoint: '/accounting/cost-centers/',
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام مرکز هزینه' }],
       fields: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام مرکز هزینه' }],
+    },
+    dimensions: {
+      title: 'ابعاد مالی', icon: <CategoryIcon sx={{ color: '#fff', fontSize: 22 }} />,
+      endpoint: '/accounting/dimensions/',
+      columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام بُعد مالی' }],
+      fields: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام بُعد مالی' }],
+    },
+    fiscalyears: {
+      title: 'سال‌های مالی', icon: <CategoryIcon sx={{ color: '#fff', fontSize: 22 }} />,
+      endpoint: '/accounting/fiscal-years/',
+      columns: [
+        { key: 'name', label: 'عنوان' },
+        { key: 'start_date', label: 'شروع', render: r => toJalali(r.start_date) },
+        { key: 'end_date', label: 'پایان', render: r => toJalali(r.end_date) },
+        { key: 'status_display', label: 'وضعیت', render: r => r.status_display || r.status },
+      ],
+      fields: [
+        { key: 'name', label: 'عنوان سال مالی' },
+        { key: 'start_date', label: 'تاریخ شروع', type: 'date' },
+        { key: 'end_date', label: 'تاریخ پایان', type: 'date' },
+        { key: 'status', label: 'وضعیت', type: 'select', options: [
+          { value: 'draft', label: 'پیش‌نویس' }, { value: 'open', label: 'باز' },
+          { value: 'closed', label: 'بسته' }, { value: 'locked', label: 'قفل‌شده' },
+        ] },
+      ],
     },
   };
 
