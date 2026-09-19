@@ -129,18 +129,20 @@ class AccountType(BaseModel):
     class Nature(models.TextChoices):
         DEBIT = 'debit', _('بدهکار')
         CREDIT = 'credit', _('بستانکار')
+        NONE = 'none', _('مهم نیست')
 
     code = models.CharField(max_length=10, verbose_name=_('کد'))
     name = models.CharField(max_length=100, verbose_name=_('عنوان'))
     category = models.CharField(max_length=20, choices=Category.choices, verbose_name=_('طبقه'))
-    default_nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.DEBIT, verbose_name=_('ماهیت پیش‌فرض'))
+    default_nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.NONE, verbose_name=_('ماهیت پیش‌فرض'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب نمایش'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
         verbose_name = _('نوع حساب')
         verbose_name_plural = _('انواع حساب')
         unique_together = [('company', 'code')]
-        ordering = ['code']
+        ordering = ['sort_order', 'code']
 
     def __str__(self):
         return self.name
@@ -151,11 +153,12 @@ class AccountGroup(BaseModel):
     class Nature(models.TextChoices):
         DEBIT = 'debit', _('بدهکار')
         CREDIT = 'credit', _('بستانکار')
+        NONE = 'none', _('مهم نیست')
 
     account_type = models.ForeignKey(AccountType, on_delete=models.PROTECT, related_name='groups', verbose_name=_('نوع حساب'))
     code = models.CharField(max_length=20, verbose_name=_('کد'))
     name = models.CharField(max_length=150, verbose_name=_('عنوان'))
-    nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.DEBIT, verbose_name=_('ماهیت'))
+    nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.NONE, verbose_name=_('ماهیت'))
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='children', verbose_name=_('گروه بالادستی'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 

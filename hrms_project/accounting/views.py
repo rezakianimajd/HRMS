@@ -95,13 +95,13 @@ class AccountingBookViewSet(CompanyScopedViewSet):
 
 
 DEFAULT_ACCOUNT_TYPES = [
-    ('asset', 'دارایی', 'asset', 'debit'),
-    ('liability', 'بدهی', 'liability', 'credit'),
-    ('equity', 'حقوق مالکانه', 'equity', 'credit'),
-    ('revenue', 'درآمد', 'revenue', 'credit'),
-    ('expense', 'هزینه', 'expense', 'debit'),
-    ('cost_of_sales', 'بهای تمام‌شده', 'cost_of_sales', 'debit'),
-    ('memorandum', 'حساب‌های انتظامی', 'memorandum', 'debit'),
+    ('asset', 'دارایی', 'asset', 'debit', 1),
+    ('liability', 'بدهی', 'liability', 'credit', 2),
+    ('equity', 'حقوق مالکانه', 'equity', 'credit', 3),
+    ('revenue', 'درآمد', 'revenue', 'credit', 4),
+    ('expense', 'هزینه', 'expense', 'none', 5),
+    ('cost_of_sales', 'بهای تمام‌شده', 'cost_of_sales', 'debit', 6),
+    ('memorandum', 'حساب‌های انتظامی', 'memorandum', 'none', 7),
 ]
 
 
@@ -114,18 +114,14 @@ class AccountTypeViewSet(CompanyScopedViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company = _company(self.request)
-        # بار اول که هیچ نوع حسابی نیست، انواع استاندارد ساخته می‌شوند
-        if company and not qs.exists():
-            for code, name, category, nature in DEFAULT_ACCOUNT_TYPES:
-                AccountType.objects.get_or_create(
+        if company:
+            # همیشه سید را همگام کن (upsert) تا لیست استاندارد دقیقاً مطابق تعریف باشد
+            for code, name, category, nature, order in DEFAULT_ACCOUNT_TYPES:
+                AccountType.objects.update_or_create(
                     company=company,
                     code=code,
-                    defaults={'name': name, 'category': category, 'default_nature': nature},
+                    defaults={'name': name, 'category': category, 'default_nature': nature, 'sort_order': order},
                 )
-            qs = super().get_queryset()
-        # مهاجرت برچسب قدیمی «خارج از تراز» به «حساب‌های انتظامی»
-        if company:
-            AccountType.objects.filter(company=company, code='memorandum', name='خارج از تراز').update(name='حساب‌های انتظامی')
             qs = super().get_queryset()
         return qs
 

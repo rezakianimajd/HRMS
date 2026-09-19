@@ -27,7 +27,12 @@ const glass = {
 const NATURE_OPTS = [
   { value: 'debit', label: 'بدهکار' },
   { value: 'credit', label: 'بستانکار' },
+  { value: 'none', label: 'مهم نیست' },
 ];
+
+const natureLabel = (n) => NATURE_OPTS.find(o => o.value === n)?.label || 'مهم نیست';
+const natureColor = (n) => n === 'credit' ? '#dc2626' : n === 'debit' ? '#059669' : '#777';
+const natureBg = (n) => n === 'credit' ? 'rgba(239,68,68,0.1)' : n === 'debit' ? 'rgba(16,185,129,0.1)' : 'rgba(100,116,139,0.12)';
 
 const AccountGroupsPage = () => {
   const qc = useQueryClient();
@@ -59,7 +64,7 @@ const AccountGroupsPage = () => {
     return list.filter(g => !q || `${g.code} ${g.name}`.includes(q));
   }, [list, search]);
 
-  const openNew = () => { setEditing(null); setForm({ nature: 'debit' }); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ nature: 'none' }); setOpen(true); };
   const openEdit = (row) => { setEditing(row); setForm(row); setOpen(true); };
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -115,8 +120,8 @@ const AccountGroupsPage = () => {
                       <TableCell><Typography variant="body2" fontWeight={700}>{g.name}</Typography></TableCell>
                       <TableCell>{type?.name || '—'}</TableCell>
                       <TableCell>
-                        <Chip size="small" label={g.nature === 'credit' ? 'بستانکار' : 'بدهکار'}
-                          sx={{ bgcolor: g.nature === 'credit' ? 'rgba(239,68,68,0.1)' : 'rgba(16,185,129,0.1)', color: g.nature === 'credit' ? '#dc2626' : '#059669' }} />
+                        <Chip size="small" label={natureLabel(g.nature)}
+                          sx={{ bgcolor: natureBg(g.nature), color: natureColor(g.nature), fontWeight: 700 }} />
                       </TableCell>
                       <TableCell>
                         <IconButton size="small" onClick={() => openEdit(g)}><EditIcon fontSize="small" /></IconButton>
@@ -144,9 +149,10 @@ const AccountGroupsPage = () => {
           />
           <FormControl fullWidth size="small">
             <InputLabel>ماهیت</InputLabel>
-            <Select value={form.nature || 'debit'} label="ماهیت" onChange={e => set('nature', e.target.value)}>
+            <Select value={form.nature || 'none'} label="ماهیت" onChange={e => set('nature', e.target.value)}>
               <MenuItem value="debit">بدهکار</MenuItem>
               <MenuItem value="credit">بستانکار</MenuItem>
+              <MenuItem value="none">مهم نیست</MenuItem>
             </Select>
           </FormControl>
         </DialogContent>
