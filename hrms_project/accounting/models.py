@@ -124,7 +124,7 @@ class AccountType(BaseModel):
         REVENUE = 'revenue', _('درآمد')
         COST_OF_SALES = 'cost_of_sales', _('بهای تمام‌شده')
         EXPENSE = 'expense', _('هزینه')
-        MEMORANDUM = 'memorandum', _('خارج از تراز')
+        MEMORANDUM = 'memorandum', _('حساب‌های انتظامی')
 
     class Nature(models.TextChoices):
         DEBIT = 'debit', _('بدهکار')
@@ -148,9 +148,14 @@ class AccountType(BaseModel):
 
 class AccountGroup(BaseModel):
     """گروه حساب — سطح میانی چارت حساب بین نوع و سرحساب."""
+    class Nature(models.TextChoices):
+        DEBIT = 'debit', _('بدهکار')
+        CREDIT = 'credit', _('بستانکار')
+
     account_type = models.ForeignKey(AccountType, on_delete=models.PROTECT, related_name='groups', verbose_name=_('نوع حساب'))
     code = models.CharField(max_length=20, verbose_name=_('کد'))
     name = models.CharField(max_length=150, verbose_name=_('عنوان'))
+    nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.DEBIT, verbose_name=_('ماهیت'))
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='children', verbose_name=_('گروه بالادستی'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 

@@ -99,9 +99,9 @@ DEFAULT_ACCOUNT_TYPES = [
     ('liability', 'بدهی', 'liability', 'credit'),
     ('equity', 'حقوق مالکانه', 'equity', 'credit'),
     ('revenue', 'درآمد', 'revenue', 'credit'),
-    ('cost_of_sales', 'بهای تمام‌شده', 'cost_of_sales', 'debit'),
     ('expense', 'هزینه', 'expense', 'debit'),
-    ('memorandum', 'خارج از تراز', 'memorandum', 'debit'),
+    ('cost_of_sales', 'بهای تمام‌شده', 'cost_of_sales', 'debit'),
+    ('memorandum', 'حساب‌های انتظامی', 'memorandum', 'debit'),
 ]
 
 
@@ -122,6 +122,10 @@ class AccountTypeViewSet(CompanyScopedViewSet):
                     code=code,
                     defaults={'name': name, 'category': category, 'default_nature': nature},
                 )
+            qs = super().get_queryset()
+        # مهاجرت برچسب قدیمی «خارج از تراز» به «حساب‌های انتظامی»
+        if company:
+            AccountType.objects.filter(company=company, code='memorandum', name='خارج از تراز').update(name='حساب‌های انتظامی')
             qs = super().get_queryset()
         return qs
 
