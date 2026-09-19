@@ -142,6 +142,8 @@ class AccountGroupViewSet(CompanyScopedViewSet):
         obj = self.get_object()
         if obj.accounts.exists():
             return Response({'error': 'این گروه حساب، حساب دارد و قابل حذف نیست.'}, status=400)
+        if obj.children.exists():
+            return Response({'error': 'این گروه حساب، زیرگروه دارد و قابل حذف نیست.'}, status=400)
         return super().destroy(request, *args, **kwargs)
 
 

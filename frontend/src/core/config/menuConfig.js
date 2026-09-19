@@ -289,7 +289,7 @@ const accountingMenu = [
     title: 'تعاریف حسابداری',
     color: '#3b82f6',
     items: [
-      { id: 'acc-groups', title: 'گروه حساب‌ها', icon: <CategoryIcon />, path: '/accounting/codings/groups', color: '#6366f1', primary: false, ready: true },
+      { id: 'acc-groups', title: 'گروه حساب‌ها', icon: <CategoryIcon />, path: '/accounting/groups', color: '#6366f1', primary: false, ready: true },
       { id: 'acc-general', title: 'حساب‌های کل', icon: <AccountTreeIcon />, path: '/accounting/codings/general', color: '#10b981', primary: false, ready: true },
       { id: 'acc-subsidiary', title: 'حساب‌های معین', icon: <ReceiptLongIcon />, path: '/accounting/codings/subsidiary', color: '#0ea5e9', primary: false, ready: true },
       { id: 'acc-auxiliary', title: 'حساب‌های تفصیلی', icon: <CategoryIcon />, path: '/accounting/codings/auxiliary', color: '#f59e0b', primary: false, ready: true },
