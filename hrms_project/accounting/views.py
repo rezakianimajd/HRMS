@@ -115,14 +115,17 @@ class AccountTypeViewSet(CompanyScopedViewSet):
         qs = super().get_queryset()
         company = _company(self.request)
         if company:
-            # همیشه سید را همگام کن (upsert) تا لیست استاندارد دقیقاً مطابق تعریف باشد
-            for code, name, category, nature, order in DEFAULT_ACCOUNT_TYPES:
-                AccountType.objects.update_or_create(
-                    company=company,
-                    code=code,
-                    defaults={'name': name, 'category': category, 'default_nature': nature, 'sort_order': order},
-                )
-            qs = super().get_queryset()
+            # سید استاندارد را فقط بار اول بساز؛ هرگز نباید خطای سید باعث ۵۰۰ شود.
+            try:
+                if not AccountType.objects.filter(company=company).exists():
+                    for code, name, category, nature, order in DEFAULT_ACCOUNT_TYPES:
+                        AccountType.objects.get_or_create(
+                            company=company,
+                            code=code,
+                            defaults={'name': name, 'category': category, 'default_nature': nature, 'sort_order': order},
+                        )
+            except Exception:
+                pass
         return qs
 
     def destroy(self, request, *args, **kwargs):
