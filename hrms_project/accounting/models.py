@@ -131,7 +131,7 @@ class AccountType(BaseModel):
         CREDIT = 'credit', _('بستانکار')
         NONE = 'none', _('مهم نیست')
 
-    code = models.CharField(max_length=10, verbose_name=_('کد'))
+    code = models.CharField(max_length=20, verbose_name=_('کد'))
     name = models.CharField(max_length=100, verbose_name=_('عنوان'))
     category = models.CharField(max_length=20, choices=Category.choices, verbose_name=_('طبقه'))
     default_nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.NONE, verbose_name=_('ماهیت پیش‌فرض'))
