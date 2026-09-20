@@ -7,7 +7,7 @@ from accounting.views import (
     AuxiliaryAccountViewSet, AccountingDimensionViewSet, DimensionValueViewSet,
     CostCenterViewSet, JournalViewSet, AccountingDocumentViewSet,
     AccountingSequenceViewSet, SourceTransactionViewSet,
-    PostingTemplateViewSet, AccountingSettingsViewSet,
+    PostingTemplateViewSet, AccountingSettingsViewSet, CodingConfigViewSet,
 )
 
 router = DefaultRouter()
@@ -28,6 +28,7 @@ router.register(r'sequences', AccountingSequenceViewSet, basename='accounting-se
 router.register(r'source-transactions', SourceTransactionViewSet, basename='source-transaction')
 router.register(r'posting-templates', PostingTemplateViewSet, basename='posting-template')
 router.register(r'settings', AccountingSettingsViewSet, basename='accounting-settings')
+router.register(r'coding-configs', CodingConfigViewSet, basename='coding-config')
 
 urlpatterns = [
     path('', include(router.urls)),

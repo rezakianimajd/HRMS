@@ -573,6 +573,39 @@ class PostingTemplateLine(BaseModel):
 # =============================================================================
 # Accounting settings (per company, singleton)
 # =============================================================================
+class CodingConfig(BaseModel):
+    """پیکربندی کدینگ — بازهٔ عددی برای هر سطح کدینگ.
+
+    هر سطح (نوع حساب، گروه، کل، معین، تفصیلی، مرکز هزینه) می‌تواند پیشوند
+    دلخواه و بازهٔ شروع/پایان و حداقل طول داشته باشد تا کد بعدی داخل همان
+    بازه پیشنهاد شود.
+    """
+    class Level(models.TextChoices):
+        ACCOUNT_TYPE = 'account_type', _('نوع حساب')
+        GROUP = 'group', _('گروه حساب')
+        GENERAL = 'general', _('حساب کل')
+        SUBSIDIARY = 'subsidiary', _('حساب معین')
+        AUXILIARY = 'auxiliary', _('حساب تفصیلی')
+        COST_CENTER = 'cost_center', _('مرکز هزینه')
+
+    level = models.CharField(max_length=20, choices=Level.choices, verbose_name=_('سطح کدینگ'))
+    prefix = models.CharField(max_length=20, blank=True, verbose_name=_('پیشوند کد'))
+    start_number = models.PositiveIntegerField(default=1, verbose_name=_('شروع از'))
+    end_number = models.PositiveIntegerField(default=99, verbose_name=_('پایان تا'))
+    min_length = models.PositiveSmallIntegerField(default=1, verbose_name=_('حداقل طول'))
+    max_length = models.PositiveSmallIntegerField(default=10, verbose_name=_('حداکثر طول'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('پیکربندی کدینگ')
+        verbose_name_plural = _('پیکربندی کدینگ')
+        unique_together = [('company', 'level')]
+        ordering = ['level']
+
+    def __str__(self):
+        return f'{self.get_level_display()} ({self.prefix}{self.start_number}..{self.prefix}{self.end_number})'
+
+
 class AccountingSettings(BaseModel):
     """تنظیمات حسابداری (یک رکورد به ازای هر شرکت)."""
     base_currency = models.ForeignKey(

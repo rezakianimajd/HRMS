@@ -7,7 +7,7 @@ from accounting.models import (
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
-    AccountingSettings,
+    AccountingSettings, CodingConfig,
 )
 
 
@@ -216,3 +216,14 @@ class AccountingSettingsSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = AccountingSettings
         fields = '__all__'
+
+
+class CodingConfigSerializer(BaseModelSerializer):
+    level_display = serializers.CharField(source='get_level_display', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = CodingConfig
+        fields = [
+            'id', 'level', 'level_display', 'prefix', 'start_number',
+            'end_number', 'min_length', 'max_length', 'is_active',
+        ]

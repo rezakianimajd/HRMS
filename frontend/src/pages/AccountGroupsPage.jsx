@@ -7,6 +7,7 @@ import {
   Grid, FormControl, InputLabel, Select, MenuItem, Divider,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import BoltIcon from '@mui/icons-material/Bolt';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ClearIcon from '@mui/icons-material/Clear';
@@ -53,6 +54,7 @@ const AccountGroupsPage = () => {
 
   const { data, isLoading } = useQuery({ queryKey: ['account-groups'], queryFn: () => axiosInstance.get('/accounting/account-groups/').then(r => r.data) });
   const { data: types } = useQuery({ queryKey: ['acc-types'], queryFn: () => axiosInstance.get('/accounting/account-types/').then(r => r.data) });
+  const { data: suggested } = useQuery({ queryKey: ['suggest-code-group'], queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level: 'group' } }).then(r => r.data) });
 
   const list = Array.isArray(data) ? data : data?.results || [];
   const typeList = Array.isArray(types) ? types : types?.results || [];
@@ -73,7 +75,7 @@ const AccountGroupsPage = () => {
     onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' }),
   });
 
-  const resetForm = () => { setEditing(null); setForm({ code: '', name: '', account_type: '', nature: 'none' }); setMsg(null); };
+  const resetForm = () => { setEditing(null); setForm({ code: suggested?.code || '', name: '', account_type: '', nature: 'none' }); setMsg(null); };
   const edit = (g) => {
     setEditing(g);
     setForm({ code: g.code, name: g.name, account_type: g.account_type, nature: g.nature || 'none' });
@@ -128,7 +130,16 @@ const AccountGroupsPage = () => {
             </Stack>
 
             <Stack spacing={1.5}>
-              <TextField size="small" fullWidth label="کد گروه" value={form.code} onChange={e => set('code', e.target.value)} sx={fieldSx} />
+              <TextField
+                size="small" fullWidth label="کد گروه" value={form.code} onChange={e => set('code', e.target.value)} sx={fieldSx}
+                InputProps={{
+                  endAdornment: (
+                    <InputAdornment position="end">
+                      <Tooltip title="پیشنهاد کد بعدی"><IconButton size="small" onClick={() => set('code', suggested?.code || '')}><BoltIcon fontSize="small" color="primary" /></IconButton></Tooltip>
+                    </InputAdornment>
+                  ),
+                }}
+              />
               <TextField size="small" fullWidth label="عنوان گروه حساب" value={form.name} onChange={e => set('name', e.target.value)} sx={fieldSx} />
 
               <Autocomplete

@@ -335,6 +335,14 @@ const accountingMenu = [
       comingSoon('/accounting/reports/cash-flow', 'acc-cf', 'جریان نقدی', <PaymentsIcon />, '#0ea5e9'),
     ],
   },
+  {
+    id: 'accounting-settings',
+    title: 'تنظیمات',
+    color: '#64748b',
+    items: [
+      { id: 'accounting-settings', title: 'تعاریف اولیه', icon: <SettingsIcon />, path: '/accounting/settings', color: '#64748b', primary: false, ready: true },
+    ],
+  },
 ];
 
 const projectsMenu = [

@@ -6,9 +6,10 @@ import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, Autocomplete, IconButton, Tooltip, Dialog, DialogTitle,
   DialogContent, DialogActions, Alert, FormControl, InputLabel, Select, MenuItem,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
+import BoltIcon from '@mui/icons-material/Bolt';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
@@ -30,7 +31,7 @@ const glass = {
 };
 
 const CodingsPanel = ({
-  title, icon, endpoint, columns, fields, transformList, buildPayload, warnDelete,
+  title, icon, endpoint, level, columns, fields, transformList, buildPayload, warnDelete,
 }) => {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
@@ -39,6 +40,11 @@ const CodingsPanel = ({
   const [msg, setMsg] = useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: [endpoint], queryFn: () => axiosInstance.get(endpoint).then(r => r.data) });
+  const { data: suggested } = useQuery({
+    queryKey: ['suggest-code', level],
+    queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level } }).then(r => r.data),
+    enabled: !!level,
+  });
   const raw = Array.isArray(data) ? data : data?.results || [];
   const list = transformList ? transformList(raw) : raw;
 
@@ -53,7 +59,7 @@ const CodingsPanel = ({
     onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' }),
   });
 
-  const openNew = () => { setEditing(null); setForm({}); setOpen(true); };
+  const openNew = () => { setEditing(null); setForm({ code: suggested?.code || '' }); setOpen(true); };
   const openEdit = (row) => { setEditing(row); setForm(row); setOpen(true); };
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -117,7 +123,16 @@ const CodingsPanel = ({
           ) : f.type === 'date' ? (
             <JalaliDatePicker key={f.key} fullWidth label={f.label} value={form[f.key] || ''} onChange={v => set(f.key, v)} />
           ) : (
-            <TextField key={f.key} fullWidth size="small" label={f.label} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)} />
+            <TextField
+              key={f.key} fullWidth size="small" label={f.label} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)}
+              InputProps={f.key === 'code' ? {
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <Tooltip title="پیشنهاد کد بعدی"><IconButton size="small" onClick={() => set('code', suggested?.code || '')}><BoltIcon fontSize="small" color="primary" /></IconButton></Tooltip>
+                  </InputAdornment>
+                ),
+              } : undefined}
+            />
           ))}
         </DialogContent>
         <DialogActions>
@@ -161,6 +176,7 @@ const AccountingCodingsPage = () => {
     general: {
       title: 'حساب‌های کل', icon: <AccountTreeIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/accounts/',
+      level: 'general',
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب کل' }, { key: 'nature', label: 'ماهیت' }],
       fields: [
         { key: 'account_type', label: 'نوع حساب', type: 'autocomplete', options: typeList, getLabel: o => o.name },
@@ -172,6 +188,7 @@ const AccountingCodingsPage = () => {
     subsidiary: {
       title: 'حساب‌های معین', icon: <AccountTreeIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/accounts/',
+      level: 'subsidiary',
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' }, { key: 'parent_code', label: 'حساب کل' }],
       fields: [
         { key: 'parent', label: 'حساب کل', type: 'autocomplete', options: generalList, getLabel: o => `${o.code} - ${o.name}` },
@@ -188,6 +205,7 @@ const AccountingCodingsPage = () => {
     auxiliary: {
       title: 'حساب‌های تفصیلی', icon: <CategoryIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/auxiliary-accounts/',
+      level: 'auxiliary',
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام تفصیلی' }, { key: 'aux_level', label: 'سطح' }],
       fields: [
         { key: 'account', label: 'حساب معین', type: 'autocomplete', options: subsidiaryList, getLabel: o => `${o.code} - ${o.name}` },
@@ -199,6 +217,7 @@ const AccountingCodingsPage = () => {
     costcenters: {
       title: 'مراکز هزینه', icon: <CategoryIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/cost-centers/',
+      level: 'cost_center',
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام مرکز هزینه' }],
       fields: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام مرکز هزینه' }],
     },

@@ -15,7 +15,7 @@ from accounting.models import (
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
-    AccountingSettings,
+    AccountingSettings, CodingConfig,
 )
 from accounting.serializers import (
     BranchSerializer, FiscalYearSerializer, FiscalPeriodSerializer,
@@ -24,8 +24,10 @@ from accounting.serializers import (
     DimensionValueSerializer, CostCenterSerializer, JournalSerializer,
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
+    CodingConfigSerializer,
 )
 from accounting.services import PostingService, SourcePostingService, AccountingError
+from accounting import coding
 
 
 def _company(request):
@@ -348,3 +350,41 @@ class PostingTemplateViewSet(CompanyScopedViewSet):
 class AccountingSettingsViewSet(CompanyScopedViewSet):
     serializer_class = AccountingSettingsSerializer
     queryset = AccountingSettings.objects.select_related('base_currency', 'default_branch')
+
+
+DEFAULT_CODING_CONFIGS = {
+    'account_type': {'prefix': '', 'start_number': 1, 'end_number': 99, 'min_length': 1, 'max_length': 20},
+    'group': {'prefix': '', 'start_number': 100, 'end_number': 999, 'min_length': 3, 'max_length': 20},
+    'general': {'prefix': '', 'start_number': 1000, 'end_number': 9999, 'min_length': 4, 'max_length': 20},
+    'subsidiary': {'prefix': '', 'start_number': 10000, 'end_number': 99999, 'min_length': 5, 'max_length': 20},
+    'auxiliary': {'prefix': '', 'start_number': 100, 'end_number': 999, 'min_length': 3, 'max_length': 20},
+    'cost_center': {'prefix': 'C', 'start_number': 1, 'end_number': 99, 'min_length': 2, 'max_length': 20},
+}
+
+
+class CodingConfigViewSet(CompanyScopedViewSet):
+    serializer_class = CodingConfigSerializer
+    queryset = CodingConfig.objects.all()
+    ordering = ['level']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company = _company(self.request)
+        if company:
+            try:
+                if not CodingConfig.objects.filter(company=company).exists():
+                    for level, defaults in DEFAULT_CODING_CONFIGS.items():
+                        CodingConfig.objects.get_or_create(company=company, level=level, defaults=defaults)
+            except Exception:
+                pass
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def suggest(self, request):
+        """پیشنهاد کد بعدی برای یک سطح کدینگ مشخص."""
+        level = request.query_params.get('level')
+        if not level:
+            return Response({'error': 'level الزامی است'}, status=400)
+        company = _company(request)
+        code = coding.suggest_code(company, level)
+        return Response({'code': code})
