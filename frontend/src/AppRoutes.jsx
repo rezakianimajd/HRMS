@@ -61,6 +61,8 @@ import ContractDefinitionsPage from './pages/ContractDefinitionsPage';
 import BenefitPaymentPage from './pages/BenefitPaymentPage';
 import CompanyProfilePage from './pages/CompanyProfilePage';
 import PettyCashPage from './pages/PettyCashPage';
+import PettyCashExpensesPage from './pages/PettyCashExpensesPage';
+import PettyCashExpenseNewPage from './pages/PettyCashExpenseNewPage';
 import AccountingPage from './pages/AccountingPage';
 import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
 import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
@@ -144,6 +146,8 @@ const AppRoutes = () => {
       <Route path="/lifecycle" element={<ProtectedLayout><LifecyclePage /></ProtectedLayout>} />
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
       <Route path="/benefit-payments" element={<ProtectedLayout><BenefitPaymentPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/expenses" element={<ProtectedLayout><PettyCashExpensesPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/expenses/new" element={<ProtectedLayout><PettyCashExpenseNewPage /></ProtectedLayout>} />
       <Route path="/petty-cash/:tab" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />
