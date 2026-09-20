@@ -44,20 +44,22 @@ const CodingPanel = () => {
   const configs = Array.isArray(data) ? data : data?.results || [];
 
   // local editable state (per level), initialized once quota loads
-  const [draft, setDraft] = useState({});
-  const [initialized, setInitialized] = useState(false);
+  const [draft, setDraft] = useState(null);
+  const [initializedFor, setInitializedFor] = useState(null);
 
   useEffect(() => {
-    if (!initialized && configs.length >= 0) {
-      const map = {};
-      LEVELS.forEach(l => {
-        const found = configs.find(c => c.level === l.value);
-        map[l.value] = found ? { ...found } : { level: l.value, ...DEFAULTS };
-      });
-      setDraft(map);
-      setInitialized(true);
-    }
-  }, [configs, initialized]);
+    // فقط بعد از لود کامل داده‌ها مقداردهی می‌کنیم تا id رکوردهای موجود حفظ شود
+    // و ذخیره به‌صورت PATCH انجام شود (نه POST تکراری).
+    if (isLoading) return;
+    if (initializedFor === data) return;
+    const map = {};
+    LEVELS.forEach(l => {
+      const found = configs.find(c => c.level === l.value);
+      map[l.value] = found ? { ...found } : { level: l.value, ...DEFAULTS };
+    });
+    setDraft(map);
+    setInitializedFor(data);
+  }, [isLoading, configs, data]);
 
   const save = useMutation({
     mutationFn: (cfg) => cfg.id
@@ -76,7 +78,7 @@ const CodingPanel = () => {
     save.mutate(cfg);
   };
 
-  if (isLoading || !initialized) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
+  if (isLoading || !draft) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
 
   return (
     <Stack spacing={2}>

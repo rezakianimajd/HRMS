@@ -367,6 +367,18 @@ class CodingConfigViewSet(CompanyScopedViewSet):
     queryset = CodingConfig.objects.all()
     ordering = ['level']
 
+    def create(self, request, *args, **kwargs):
+        """Upsert: اگر برای این سطح رکوردی هست، به‌جای خطای duplicate آن را آپدیت کن."""
+        company = _company(request)
+        level = request.data.get('level')
+        existing = CodingConfig.objects.filter(company=company, level=level).first() if (company and level) else None
+        if existing:
+            serializer = self.get_serializer(existing, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            return Response(serializer.data)
+        return super().create(request, *args, **kwargs)
+
     def get_queryset(self):
         qs = super().get_queryset()
         company = _company(self.request)
