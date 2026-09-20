@@ -204,6 +204,10 @@ class Account(BaseModel):
     requires_contract = models.BooleanField(default=False, verbose_name=_('نیازمند قرارداد'))
     requires_party = models.BooleanField(default=False, verbose_name=_('نیازمند طرف حساب'))
     requires_employee = models.BooleanField(default=False, verbose_name=_('نیازمند پرسنل'))
+    auxiliary_categories = models.ManyToManyField(
+        'AuxiliaryCategory', blank=True, related_name='accounts',
+        verbose_name=_('دسته‌بندی‌های تفصیلی مجاز'),
+    )
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
@@ -230,6 +234,33 @@ class Account(BaseModel):
 # =============================================================================
 # Auxiliary / Detailed account engine
 # =============================================================================
+class AuxiliaryCategory(BaseModel):
+    """دسته‌بندی حساب تفصیلی (شناور): پرسنل، اشخاص حقیقی/حقوقی، پروژه، قرارداد، بانک، صندوق و ..."""
+    class Source(models.TextChoices):
+        MANUAL = 'manual', _('دستی')
+        EMPLOYEE = 'employee', _('پرسنل')
+        PARTY = 'party', _('طرف حساب')
+        PROJECT = 'project', _('پروژه')
+        CONTRACT = 'contract', _('قرارداد')
+        BANK = 'bank', _('بانک')
+        CASH = 'cash', _('صندوق')
+
+    code = models.CharField(max_length=30, verbose_name=_('کد دسته'))
+    name = models.CharField(max_length=150, verbose_name=_('عنوان دسته'))
+    source = models.CharField(max_length=20, choices=Source.choices, default=Source.MANUAL, verbose_name=_('منبع داده'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب'))
+
+    class Meta:
+        verbose_name = _('دسته‌بندی تفصیلی')
+        verbose_name_plural = _('دسته‌بندی‌های تفصیلی')
+        unique_together = [('company', 'code')]
+        ordering = ['sort_order', 'code']
+
+    def __str__(self):
+        return self.name
+
+
 class AuxiliaryAccount(BaseModel):
     """حساب تفصیلی — موجودیت تحلیلی (مشتری/تأمین‌کننده/پرسنل/پروژه/قرارداد/بانک/صندوق/سایر)."""
     class AuxType(models.TextChoices):
@@ -247,6 +278,7 @@ class AuxiliaryAccount(BaseModel):
     code = models.CharField(max_length=50, verbose_name=_('کد تفصیلی'))
     name = models.CharField(max_length=200, verbose_name=_('نام تفصیلی'))
     aux_type = models.CharField(max_length=20, choices=AuxType.choices, default=AuxType.OTHER, verbose_name=_('نوع تفصیلی'))
+    category = models.ForeignKey(AuxiliaryCategory, on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliaries', verbose_name=_('دسته‌بندی'))
     account = models.ForeignKey(Account, on_delete=models.CASCADE, related_name='auxiliaries', verbose_name=_('حساب مرتبط'))
     parent = models.ForeignKey(
         'self', on_delete=models.SET_NULL, null=True, blank=True,

@@ -4,7 +4,8 @@ from accounting import report_views
 from accounting.views import (
     BranchViewSet, FiscalYearViewSet, FiscalPeriodViewSet, AccountingBookViewSet,
     AccountTypeViewSet, AccountGroupViewSet, AccountViewSet,
-    AuxiliaryAccountViewSet, AccountingDimensionViewSet, DimensionValueViewSet,
+    AuxiliaryAccountViewSet, AuxiliaryCategoryViewSet,
+    AccountingDimensionViewSet, DimensionValueViewSet,
     CostCenterViewSet, JournalViewSet, AccountingDocumentViewSet,
     AccountingSequenceViewSet, SourceTransactionViewSet,
     PostingTemplateViewSet, AccountingSettingsViewSet, CodingConfigViewSet,
@@ -19,6 +20,7 @@ router.register(r'account-types', AccountTypeViewSet, basename='account-type')
 router.register(r'account-groups', AccountGroupViewSet, basename='account-group')
 router.register(r'accounts', AccountViewSet, basename='account')
 router.register(r'auxiliary-accounts', AuxiliaryAccountViewSet, basename='auxiliary-account')
+router.register(r'auxiliary-categories', AuxiliaryCategoryViewSet, basename='auxiliary-category')
 router.register(r'dimensions', AccountingDimensionViewSet, basename='accounting-dimension')
 router.register(r'dimension-values', DimensionValueViewSet, basename='dimension-value')
 router.register(r'cost-centers', CostCenterViewSet, basename='cost-center')

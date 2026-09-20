@@ -5,7 +5,7 @@ from accounting.models import (
     AccountingDimension, DimensionValue, CostCenter,
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingSequence, SourceTransaction, PostingTemplate, AccountingSettings,
-    CodingConfig,
+    CodingConfig, AuxiliaryCategory,
 )
 
 
@@ -28,3 +28,4 @@ admin.site.register(SourceTransaction)
 admin.site.register(PostingTemplate)
 admin.site.register(AccountingSettings)
 admin.site.register(CodingConfig)
+admin.site.register(AuxiliaryCategory)

@@ -10,7 +10,7 @@ from rest_framework.response import Response
 
 from accounting.models import (
     Branch, FiscalYear, FiscalPeriod, AccountingBook,
-    AccountType, AccountGroup, Account, AuxiliaryAccount,
+    AccountType, AccountGroup, Account, AuxiliaryAccount, AuxiliaryCategory,
     AccountingDimension, DimensionValue, CostCenter,
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
@@ -20,7 +20,8 @@ from accounting.models import (
 from accounting.serializers import (
     BranchSerializer, FiscalYearSerializer, FiscalPeriodSerializer,
     AccountingBookSerializer, AccountTypeSerializer, AccountGroupSerializer,
-    AccountSerializer, AuxiliaryAccountSerializer, AccountingDimensionSerializer,
+    AccountSerializer, AuxiliaryAccountSerializer, AuxiliaryCategorySerializer,
+    AccountingDimensionSerializer,
     DimensionValueSerializer, CostCenterSerializer, JournalSerializer,
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
@@ -135,6 +136,40 @@ class AccountTypeViewSet(CompanyScopedViewSet):
         if obj.accounts.exists() or obj.groups.exists():
             return Response({'error': 'این نوع حساب، حساب/گروه دارد و قابل حذف نیست.'}, status=400)
         return super().destroy(request, *args, **kwargs)
+
+
+DEFAULT_AUXILIARY_CATEGORIES = [
+    ('employee', 'پرسنل', 'employee', 1),
+    ('natural_person', 'اشخاص حقیقی', 'party', 2),
+    ('legal_person', 'اشخاص حقوقی', 'party', 3),
+    ('project', 'پروژه‌ها', 'project', 4),
+    ('contract', 'قراردادها', 'contract', 5),
+    ('bank', 'بانک', 'bank', 6),
+    ('cash', 'صندوق', 'cash', 7),
+    ('other', 'سایر', 'manual', 8),
+]
+
+
+class AuxiliaryCategoryViewSet(CompanyScopedViewSet):
+    serializer_class = AuxiliaryCategorySerializer
+    queryset = AuxiliaryCategory.objects.all()
+    search_fields = ['code', 'name']
+    ordering = ['sort_order', 'code']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        company = _company(self.request)
+        if company:
+            try:
+                if not AuxiliaryCategory.objects.filter(company=company).exists():
+                    for code, name, source, order in DEFAULT_AUXILIARY_CATEGORIES:
+                        AuxiliaryCategory.objects.get_or_create(
+                            company=company, code=code,
+                            defaults={'name': name, 'source': source, 'sort_order': order},
+                        )
+            except Exception:
+                pass
+        return qs
 
 
 class AccountGroupViewSet(CompanyScopedViewSet):

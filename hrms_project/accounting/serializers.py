@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from accounting.models import (
     Branch, FiscalYear, FiscalPeriod, AccountingBook,
-    AccountType, AccountGroup, Account, AuxiliaryAccount,
+    AccountType, AccountGroup, Account, AuxiliaryAccount, AuxiliaryCategory,
     AccountingDimension, DimensionValue, CostCenter,
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
@@ -72,9 +72,39 @@ class AccountSerializer(BaseModelSerializer):
             'account_type': {'required': False},
         }
 
+    def create(self, validated_data):
+        cats = validated_data.pop('auxiliary_categories', [])
+        company = validated_data.pop('company', None)
+        account = Account.objects.create(company=company, **validated_data)
+        if cats:
+            account.auxiliary_categories.set(cats)
+        return account
+
+    def update(self, instance, validated_data):
+        cats = validated_data.pop('auxiliary_categories', None)
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+        if cats is not None:
+            instance.auxiliary_categories.set(cats)
+        return instance
+
+
+class AuxiliaryCategorySerializer(BaseModelSerializer):
+    source_display = serializers.CharField(source='get_source_display', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = AuxiliaryCategory
+        fields = ['id', 'code', 'name', 'source', 'source_display', 'is_active', 'sort_order']
+
 
 class AuxiliaryAccountSerializer(BaseModelSerializer):
     aux_type_display = serializers.CharField(source='get_aux_type_display', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True)
+    project_name = serializers.CharField(source='project.name', read_only=True)
+    contract_name = serializers.CharField(source='contract.subject', read_only=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    party_name = serializers.CharField(source='party.name', read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = AuxiliaryAccount
