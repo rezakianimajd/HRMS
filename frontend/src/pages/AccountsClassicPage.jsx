@@ -46,7 +46,7 @@ const AccountsClassicPage = () => {
 
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: 'debit' });
+  const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_categories: [] });
   const [msg, setMsg] = useState(null);
 
   const endpoint = '/accounting/accounts/';
@@ -60,10 +60,12 @@ const AccountsClassicPage = () => {
     queryKey: ['suggest-code', kind],
     queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level: kind } }).then(r => r.data),
   });
+  const { data: auxCategories } = useQuery({ queryKey: ['aux-categories'], queryFn: () => axiosInstance.get('/accounting/auxiliary-categories/').then(r => r.data) });
 
   const list = Array.isArray(data) ? data : data?.results || [];
   const groupList = Array.isArray(groups) ? groups : groups?.results || [];
   const generalList = Array.isArray(generals) ? generals : generals?.results || [];
+  const auxCategoryList = Array.isArray(auxCategories) ? auxCategories : auxCategories?.results || [];
 
   const saveCredit = async (payload) => {
     if (editing) return axiosInstance.patch(`${endpoint}${editing.id}/`, payload);
@@ -72,7 +74,7 @@ const AccountsClassicPage = () => {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ code: suggested?.code || '', name: '', group: '', parent: '', account_type: '', nature: 'debit' });
+    setForm({ code: suggested?.code || '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_categories: [] });
     setMsg(null);
   };
 
@@ -106,7 +108,10 @@ const AccountsClassicPage = () => {
       nature: effectiveNature || 'debit',
       account_type: effectiveType || null,
       level: isGeneral ? 1 : 2,
-      ...(isGeneral ? { group: form.group || null, parent: null } : { parent: form.parent || null }),
+      ...(isGeneral ? { group: form.group || null, parent: null } : {
+        parent: form.parent || null,
+        auxiliary_categories: form.auxiliary_categories || [],
+      }),
     };
     try {
       await saveCredit(payload);
@@ -216,6 +221,16 @@ const AccountsClassicPage = () => {
                 </Select>
               </FormControl>
 
+              {/* دسته‌بندی‌های تفصیلی مجاز (فقط برای حساب معین) */}
+              {!isGeneral && (
+                <Autocomplete
+                  multiple size="small" options={auxCategoryList} getOptionLabel={o => o.name}
+                  value={auxCategoryList.filter(c => (form.auxiliary_categories || []).includes(c.id))}
+                  onChange={(e, v) => set('auxiliary_categories', v.map(x => x.id))}
+                  renderInput={p => <TextField {...p} label="دسته‌بندی‌های تفصیلی مجاز" sx={fieldSx} />}
+                />
+              )}
+
               <Button
                 fullWidth variant="contained" startIcon={isLoading ? <CircularProgress size={18} /> : <AddIcon />}
                 onClick={submit} disabled={!form.code || !form.name || (isGeneral ? !form.group : !form.parent)}
@@ -238,7 +253,10 @@ const AccountsClassicPage = () => {
                     const parentName = a.parent_code || a.group_name || '';
                     return (
                       <Paper key={a.id}
-                        onClick={() => { setEditing(a); setForm({ code: a.code, name: a.name, group: a.group, parent: a.parent, account_type: a.account_type, nature: a.nature || '' }); }}
+                        onClick={() => {
+                          setEditing(a);
+                          setForm({ code: a.code, name: a.name, group: a.group, parent: a.parent, account_type: a.account_type, nature: a.nature || '', auxiliary_categories: (a.auxiliary_categories || []).map(x => typeof x === 'object' ? x.id : x) });
+                        }}
                         sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: '14px', cursor: 'pointer',
                           background: active ? 'rgba(59,130,246,0.10)' : 'rgba(255,255,255,0.55)', border: active ? `1px solid ${COLOR}66` : '1px solid rgba(255,255,255,0.8)',
                           transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 10px 26px rgba(59,130,246,0.12)' } }}>
