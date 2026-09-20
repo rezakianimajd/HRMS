@@ -130,6 +130,7 @@ class AccountingDocumentLineSerializer(BaseModelSerializer):
         model = AccountingDocumentLine
         fields = [
             'id', 'document', 'account', 'account_code', 'account_name', 'auxiliary',
+            'auxiliary_1', 'auxiliary_2', 'auxiliary_3', 'maturity_date',
             'line_no', 'description', 'debit', 'credit', 'currency', 'exchange_rate',
             'base_amount', 'reference', 'cost_center', 'project', 'contract', 'employee',
         ]

@@ -63,6 +63,7 @@ import CompanyProfilePage from './pages/CompanyProfilePage';
 import PettyCashPage from './pages/PettyCashPage';
 import AccountingPage from './pages/AccountingPage';
 import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
+import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
 import AccountingIntegrationPage from './pages/AccountingIntegrationPage';
 import AccountingReportsPage from './pages/AccountingReportsPage';
 import AccountingSettingsPage from './pages/AccountingSettingsPage';
@@ -145,6 +146,7 @@ const AppRoutes = () => {
       <Route path="/benefit-payments" element={<ProtectedLayout><BenefitPaymentPage /></ProtectedLayout>} />
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />
+      <Route path="/accounting/documents/new" element={<ProtectedLayout><AccountingDocumentNewPage /></ProtectedLayout>} />
       <Route path="/accounting/integration" element={<ProtectedLayout><AccountingIntegrationPage /></ProtectedLayout>} />
       <Route path="/accounting/reports" element={<ProtectedLayout><AccountingReportsPage /></ProtectedLayout>} />
       <Route path="/accounting/settings" element={<ProtectedLayout><AccountingSettingsPage /></ProtectedLayout>} />

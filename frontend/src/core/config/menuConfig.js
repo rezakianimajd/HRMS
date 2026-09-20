@@ -303,7 +303,7 @@ const accountingMenu = [
     color: '#10b981',
     items: [
       { id: 'accounting-documents', title: 'اسناد حسابداری', icon: <DescriptionIcon />, path: '/accounting/documents', color: '#10b981', primary: false, ready: true },
-      comingSoon('/accounting/documents/new', 'accounting-document-new', 'سند جدید', <PostAddIcon />, '#6366f1'),
+      { id: 'accounting-document-new', title: 'سند جدید', icon: <PostAddIcon />, path: '/accounting/documents/new', color: '#6366f1', primary: false, ready: true },
     ],
   },
   {
