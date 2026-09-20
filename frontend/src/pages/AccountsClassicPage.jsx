@@ -46,7 +46,7 @@ const AccountsClassicPage = () => {
 
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_categories: [] });
+  const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
   const [msg, setMsg] = useState(null);
 
   const endpoint = '/accounting/accounts/';
@@ -74,7 +74,7 @@ const AccountsClassicPage = () => {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ code: suggested?.code || '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_categories: [] });
+    setForm({ code: suggested?.code || '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
     setMsg(null);
   };
 
@@ -110,7 +110,9 @@ const AccountsClassicPage = () => {
       level: isGeneral ? 1 : 2,
       ...(isGeneral ? { group: form.group || null, parent: null } : {
         parent: form.parent || null,
-        auxiliary_categories: form.auxiliary_categories || [],
+        auxiliary_category_1: form.auxiliary_category_1 || null,
+        auxiliary_category_2: form.auxiliary_category_2 || null,
+        auxiliary_category_3: form.auxiliary_category_3 || null,
       }),
     };
     try {
@@ -221,14 +223,22 @@ const AccountsClassicPage = () => {
                 </Select>
               </FormControl>
 
-              {/* دسته‌بندی‌های تفصیلی مجاز (فقط برای حساب معین) */}
+              {/* ارتباط با تفصیل‌ها (فقط برای حساب معین) */}
               {!isGeneral && (
-                <Autocomplete
-                  multiple size="small" options={auxCategoryList} getOptionLabel={o => o.name}
-                  value={auxCategoryList.filter(c => (form.auxiliary_categories || []).includes(c.id))}
-                  onChange={(e, v) => set('auxiliary_categories', v.map(x => x.id))}
-                  renderInput={p => <TextField {...p} label="دسته‌بندی‌های تفصیلی مجاز" sx={fieldSx} />}
-                />
+                <>
+                  <Autocomplete size="small" options={auxCategoryList} getOptionLabel={o => o.name}
+                    value={auxCategoryList.find(c => c.id === form.auxiliary_category_1) || null}
+                    onChange={(e, v) => set('auxiliary_category_1', v ? v.id : '')}
+                    renderInput={p => <TextField {...p} label="ارتباط با تفصیل یک" sx={fieldSx} />} />
+                  <Autocomplete size="small" options={auxCategoryList} getOptionLabel={o => o.name}
+                    value={auxCategoryList.find(c => c.id === form.auxiliary_category_2) || null}
+                    onChange={(e, v) => set('auxiliary_category_2', v ? v.id : '')}
+                    renderInput={p => <TextField {...p} label="ارتباط با تفصیل دو" sx={fieldSx} />} />
+                  <Autocomplete size="small" options={auxCategoryList} getOptionLabel={o => o.name}
+                    value={auxCategoryList.find(c => c.id === form.auxiliary_category_3) || null}
+                    onChange={(e, v) => set('auxiliary_category_3', v ? v.id : '')}
+                    renderInput={p => <TextField {...p} label="ارتباط با تفصیل سه" sx={fieldSx} />} />
+                </>
               )}
 
               <Button
@@ -255,7 +265,7 @@ const AccountsClassicPage = () => {
                       <Paper key={a.id}
                         onClick={() => {
                           setEditing(a);
-                          setForm({ code: a.code, name: a.name, group: a.group, parent: a.parent, account_type: a.account_type, nature: a.nature || '', auxiliary_categories: (a.auxiliary_categories || []).map(x => typeof x === 'object' ? x.id : x) });
+                          setForm({ code: a.code, name: a.name, group: a.group, parent: a.parent, account_type: a.account_type, nature: a.nature || '', auxiliary_category_1: a.auxiliary_category_1 || '', auxiliary_category_2: a.auxiliary_category_2 || '', auxiliary_category_3: a.auxiliary_category_3 || '' });
                         }}
                         sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: '14px', cursor: 'pointer',
                           background: active ? 'rgba(59,130,246,0.10)' : 'rgba(255,255,255,0.55)', border: active ? `1px solid ${COLOR}66` : '1px solid rgba(255,255,255,0.8)',

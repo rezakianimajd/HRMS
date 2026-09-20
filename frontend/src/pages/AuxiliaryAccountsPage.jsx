@@ -38,12 +38,11 @@ const AuxiliaryAccountsPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ code: '', name: '', category: '', account: '', project: '', contract: '', employee: '', party: '', aux_level: 1 });
+  const [form, setForm] = useState({ code: '', name: '', category: '', project: '', contract: '', employee: '', party: '' });
   const [msg, setMsg] = useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: ['auxiliary-accounts'], queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data) });
   const { data: categories } = useQuery({ queryKey: ['aux-categories'], queryFn: () => axiosInstance.get('/accounting/auxiliary-categories/').then(r => r.data) });
-  const { data: subsidiaries } = useQuery({ queryKey: ['acc-subsidiary'], queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'subsidiary' } }).then(r => r.data) });
   const { data: projects } = useQuery({ queryKey: ['acc-projects'], queryFn: () => axiosInstance.get('/projects/').then(r => r.data) });
   const { data: contracts } = useQuery({ queryKey: ['acc-contracts'], queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data) });
   const { data: employees } = useQuery({ queryKey: ['acc-employees'], queryFn: () => axiosInstance.get('/employees/').then(r => r.data) });
@@ -51,7 +50,6 @@ const AuxiliaryAccountsPage = () => {
 
   const list = Array.isArray(data) ? data : data?.results || [];
   const categoryList = Array.isArray(categories) ? categories : categories?.results || [];
-  const subsidiaryList = Array.isArray(subsidiaries) ? subsidiaries : subsidiaries?.results || [];
   const projectList = Array.isArray(projects) ? projects : projects?.results || [];
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
   const employeeList = Array.isArray(employees) ? employees : employees?.results || [];
@@ -65,7 +63,7 @@ const AuxiliaryAccountsPage = () => {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ code: suggested?.code || '', name: '', category: '', account: '', project: '', contract: '', employee: '', party: '', aux_level: 1 });
+    setForm({ code: suggested?.code || '', name: '', category: '', project: '', contract: '', employee: '', party: '' });
     setMsg(null);
   };
 
@@ -77,8 +75,6 @@ const AuxiliaryAccountsPage = () => {
       code: form.code,
       name: form.name,
       category: form.category || null,
-      account: form.account || null,
-      aux_level: Number(form.aux_level) || 1,
       project: form.project || null,
       contract: form.contract || null,
       employee: form.employee || null,
@@ -142,11 +138,6 @@ const AuxiliaryAccountsPage = () => {
                 onChange={(e, v) => set('category', v ? v.id : '')}
                 renderInput={p => <TextField {...p} label="دسته‌بندی" sx={fieldSx} />} />
 
-              <Autocomplete size="small" options={subsidiaryList} getOptionLabel={o => `${o.code} - ${o.name}`}
-                value={subsidiaryList.find(a => a.id === form.account) || null}
-                onChange={(e, v) => set('account', v ? v.id : '')}
-                renderInput={p => <TextField {...p} label="حساب معین" sx={fieldSx} />} />
-
               {/* منبع داده بر اساس دسته */}
               {source === 'project' && (
                 <Autocomplete size="small" options={projectList} getOptionLabel={o => `${o.code || ''} ${o.name}`}
@@ -167,8 +158,6 @@ const AuxiliaryAccountsPage = () => {
                   renderInput={p => <TextField {...p} label="پرسنل" sx={fieldSx} />} />
               )}
 
-              <TextField size="small" fullWidth type="number" label="سطح تفصیل (۱ تا ۳)" value={form.aux_level} onChange={e => set('aux_level', e.target.value)} sx={fieldSx} />
-
               <Button fullWidth variant="contained" startIcon={<AddIcon />} onClick={submit} disabled={!form.code || !form.name}
                 sx={{ mt: 0.5, py: 1.1, borderRadius: '14px', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 24px ${COLOR}44` }}>
                 {editing ? 'ذخیره تغییرات' : 'افزودن تفصیلی'}
@@ -187,7 +176,7 @@ const AuxiliaryAccountsPage = () => {
                     const catName = a.category_name || '';
                     const refName = a.project_name || a.contract_name || a.employee_name || a.party_name || '';
                     return (
-                      <Paper key={a.id} onClick={() => { setEditing(a); setForm({ code: a.code, name: a.name, category: a.category, account: a.account, project: a.project, contract: a.contract, employee: a.employee, party: a.party, aux_level: a.aux_level || 1 }); }}
+                      <Paper key={a.id} onClick={() => { setEditing(a); setForm({ code: a.code, name: a.name, category: a.category, project: a.project, contract: a.contract, employee: a.employee, party: a.party }); }}
                         sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: '14px', cursor: 'pointer',
                           background: active ? 'rgba(245,158,11,0.10)' : 'rgba(255,255,255,0.55)', border: active ? `1px solid ${COLOR}66` : '1px solid rgba(255,255,255,0.8)',
                           transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 10px 26px rgba(245,158,11,0.12)' } }}>
@@ -201,7 +190,6 @@ const AuxiliaryAccountsPage = () => {
                           </Stack>
                           <Typography variant="caption" color="textSecondary">{catName}{refName ? ` · ${refName}` : ''}</Typography>
                         </Box>
-                        <Chip size="small" label={`سطح ${a.aux_level || 1}`} sx={{ fontWeight: 700, flexShrink: 0 }} />
                         <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این تفصیل؟')) del(a.id); }} title="حذف">
                           <DeleteIcon fontSize="small" />
                         </IconButton>

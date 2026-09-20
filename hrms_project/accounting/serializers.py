@@ -70,25 +70,10 @@ class AccountSerializer(BaseModelSerializer):
         fields = '__all__'
         extra_kwargs = {
             'account_type': {'required': False},
+            'auxiliary_category_1': {'required': False},
+            'auxiliary_category_2': {'required': False},
+            'auxiliary_category_3': {'required': False},
         }
-
-    def create(self, validated_data):
-        cats = validated_data.pop('auxiliary_categories', [])
-        company = validated_data.pop('company', None)
-        account = Account.objects.create(company=company, **validated_data)
-        if cats:
-            account.auxiliary_categories.set(cats)
-        return account
-
-    def update(self, instance, validated_data):
-        cats = validated_data.pop('auxiliary_categories', None)
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
-        instance.save()
-        if cats is not None:
-            instance.auxiliary_categories.set(cats)
-        return instance
-
 
 class AuxiliaryCategorySerializer(BaseModelSerializer):
     source_display = serializers.CharField(source='get_source_display', read_only=True)
