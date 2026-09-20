@@ -87,7 +87,7 @@ const AccountsClassicPage = () => {
 
   // وقتی «حساب کل» انتخاب شد، نوع حساب و ماهیت از آن ارث می‌برند
   const selectedParent = generalList.find(a => a.id === form.parent);
-  const inheritedType = selectedParent?.account_type_name || selectedParent?.account_type;
+  const inheritedType = selectedParent?.account_type;
   const inheritedNature = selectedParent?.nature;
 
   // وقتی «گروه» انتخاب شد، نوع و ماهیت از گروه ارث می‌برند (حساب کل)

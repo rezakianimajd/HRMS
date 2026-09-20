@@ -177,6 +177,7 @@ class Account(BaseModel):
     class Nature(models.TextChoices):
         DEBIT = 'debit', _('بدهکار')
         CREDIT = 'credit', _('بستانکار')
+        NONE = 'none', _('مهم نیست')
 
     class CurrencyBehavior(models.TextChoices):
         BASE = 'base', _('فقط ارز پایه')

@@ -187,14 +187,14 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         group = data.get('group')
 
         # وراثت: اگر پدر داشته باشد از پدر ارث می‌برد؛ وگرنه از گروه.
-        if parent and 'account_type' not in data:
+        if parent and not data.get('account_type'):
             data['account_type'] = parent.account_type
-        if parent and 'nature' not in data:
+        if parent and not data.get('nature'):
             data['nature'] = parent.nature
 
-        if not parent and group and 'account_type' not in data:
+        if not parent and group and not data.get('account_type'):
             data['account_type'] = group.account_type
-        if not parent and group and 'nature' not in data:
+        if not parent and group and not data.get('nature'):
             data['nature'] = group.nature
 
         serializer.save(company=_company(self.request))
