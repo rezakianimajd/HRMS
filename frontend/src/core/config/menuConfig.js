@@ -260,8 +260,10 @@ const pettycashMenu = [
     title: 'عملیات',
     color: '#f59e0b',
     items: [
+      { id: 'petty-cash-custodians', title: 'تنخواه‌داران', icon: <PeopleIcon />, path: '/petty-cash/custodians', color: '#0ea5e9', primary: false, ready: true },
       { id: 'petty-cash-funds', title: 'تنخواه‌ها', icon: <AccountBalanceWalletIcon />, path: '/petty-cash/funds', color: '#f59e0b', primary: false, ready: true },
-      { id: 'petty-cash-transactions', title: 'تراکنش‌ها', icon: <ReceiptLongIcon />, path: '/petty-cash/transactions', color: '#10b981', primary: false, ready: true },
+      { id: 'petty-cash-expenses', title: 'صورت هزینه‌ها', icon: <ReceiptLongIcon />, path: '/petty-cash/expenses', color: '#10b981', primary: false, ready: true },
+      { id: 'petty-cash-expense-new', title: 'صورت هزینه جدید', icon: <PostAddIcon />, path: '/petty-cash/expenses/new', color: '#6366f1', primary: false, ready: true },
       { id: 'petty-cash-categories', title: 'دسته‌بندی‌ها', icon: <CategoryIcon />, path: '/petty-cash/categories', color: '#f59e0b', primary: false, ready: true },
     ],
   },
