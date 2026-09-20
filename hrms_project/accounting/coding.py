@@ -9,6 +9,23 @@ from accounting.models import (
     CodingConfig,
 )
 
+DEFAULT_CODING_CONFIGS = {
+    'account_type': {'prefix': '', 'start_number': 1, 'end_number': 99, 'min_length': 1, 'max_length': 20},
+    'group': {'prefix': '', 'start_number': 100, 'end_number': 999, 'min_length': 3, 'max_length': 20},
+    'general': {'prefix': '', 'start_number': 1000, 'end_number': 9999, 'min_length': 4, 'max_length': 20},
+    'subsidiary': {'prefix': '', 'start_number': 10000, 'end_number': 99999, 'min_length': 5, 'max_length': 20},
+    'auxiliary': {'prefix': '', 'start_number': 100, 'end_number': 999, 'min_length': 3, 'max_length': 20},
+    'cost_center': {'prefix': 'C', 'start_number': 1, 'end_number': 99, 'min_length': 2, 'max_length': 20},
+}
+
+
+def ensure_configs(company):
+    """ساخت تنظیمات پیش‌فرض کدینگ در صورت نبود.*"""
+    if not company:
+        return
+    for level, defaults in DEFAULT_CODING_CONFIGS.items():
+        CodingConfig.objects.get_or_create(company=company, level=level, defaults=defaults)
+
 
 def _existing_codes(company, level):
     """کدهای استفاده‌شدهٔ یک سطح کدینگ خاص."""
@@ -38,6 +55,7 @@ def suggest_code(company, level):
     """
     if not company:
         return None
+    ensure_configs(company)
     cfg = CodingConfig.objects.filter(company=company, level=level, is_active=True).first()
     if not cfg:
         return None

@@ -1,11 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, Tabs, Tab, Button, CircularProgress,
-  Stack, TextField, Chip, Alert, Switch, FormControlLabel, Divider,
+  Box, Typography, Paper, Avatar, Tabs, Tab, CircularProgress,
+  Stack, TextField, Chip, Switch, FormControlLabel,
 } from '@mui/material';
-import CategoryIcon from '@mui/icons-material/Category';
 import TuneIcon from '@mui/icons-material/Tune';
 import SaveIcon from '@mui/icons-material/Save';
 
@@ -37,10 +36,28 @@ const LEVELS = [
   { value: 'cost_center', label: 'مرکز هزینه' },
 ];
 
+const DEFAULTS = { prefix: '', start_number: 1, end_number: 99, min_length: 1, max_length: 10, is_active: true };
+
 const CodingPanel = () => {
   const qc = useQueryClient();
   const { data, isLoading } = useQuery({ queryKey: ['coding-configs'], queryFn: () => axiosInstance.get('/accounting/coding-configs/').then(r => r.data) });
   const configs = Array.isArray(data) ? data : data?.results || [];
+
+  // local editable state (per level), initialized once quota loads
+  const [draft, setDraft] = useState({});
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (!initialized && configs.length >= 0) {
+      const map = {};
+      LEVELS.forEach(l => {
+        const found = configs.find(c => c.level === l.value);
+        map[l.value] = found ? { ...found } : { level: l.value, ...DEFAULTS };
+      });
+      setDraft(map);
+      setInitialized(true);
+    }
+  }, [configs, initialized]);
 
   const save = useMutation({
     mutationFn: (cfg) => cfg.id
@@ -49,36 +66,40 @@ const CodingPanel = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['coding-configs'] }),
   });
 
-  const get = (level) => configs.find(c => c.level === level);
-
-  const upsert = (level, patch) => {
-    const existing = get(level);
-    if (existing) {
-      save.mutate({ ...existing, ...patch });
-    } else {
-      save.mutate({ level, prefix: '', start_number: 1, end_number: 99, min_length: 1, max_length: 10, is_active: true, ...patch });
-    }
+  const setField = (level, key, value) => {
+    setDraft(p => ({ ...p, [level]: { ...p[level], [key]: value } }));
   };
 
-  if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
+  const commit = (level, override) => {
+    const cfg = override || draft[level];
+    if (!cfg) return;
+    save.mutate(cfg);
+  };
+
+  if (isLoading || !initialized) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
 
   return (
     <Stack spacing={2}>
       {LEVELS.map(level => {
-        const c = get(level);
+        const c = draft[level.value] || {};
         return (
           <Paper key={level.value} sx={{ ...glass, p: 2 }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
               <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK}>{level.label}</Typography>
-              <Chip size="small" label={c?.is_active ? 'فعال' : 'غیرفعال'} color={c?.is_active ? 'success' : 'default'} />
+              <Stack direction="row" spacing={1} alignItems="center">
+                <FormControlLabel
+                  control={<Switch size="small" checked={!!c.is_active} onChange={e => { const next = e.target.checked; setField(level.value, 'is_active', next); commit(level.value, { ...draft[level.value], is_active: next }); }} />}
+                  label={c.is_active ? 'فعال' : 'غیرفعال'}
+                />
+                <Chip size="small" label="ذخیره خودکار" icon={<SaveIcon fontSize="small" />} sx={{ display: { xs: 'none', sm: 'flex' } }} />
+              </Stack>
             </Stack>
             <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-              <TextField size="small" label="پیشوند" value={c?.prefix || ''} onChange={e => upsert(level.value, { prefix: e.target.value })} sx={{ width: 110, ...fieldSx }} />
-              <TextField size="small" label="شروع از" type="number" value={c?.start_number ?? 1} onChange={e => upsert(level.value, { start_number: Number(e.target.value) || 1 })} sx={{ width: 100, ...fieldSx }} />
-              <TextField size="small" label="پایان تا" type="number" value={c?.end_number ?? 99} onChange={e => upsert(level.value, { end_number: Number(e.target.value) || 99 })} sx={{ width: 100, ...fieldSx }} />
-              <TextField size="small" label="حداقل طول" type="number" value={c?.min_length ?? 1} onChange={e => upsert(level.value, { min_length: Number(e.target.value) || 1 })} sx={{ width: 100, ...fieldSx }} />
-              <TextField size="small" label="حداکثر طول" type="number" value={c?.max_length ?? 10} onChange={e => upsert(level.value, { max_length: Number(e.target.value) || 10 })} sx={{ width: 100, ...fieldSx }} />
-              <FormControlLabel control={<Switch size="small" checked={c?.is_active ?? true} onChange={e => upsert(level.value, { is_active: e.target.checked })} />} label="" />
+              <TextField size="small" label="پیشوند" value={c.prefix || ''} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'prefix', e.target.value)} sx={{ width: 110, ...fieldSx }} />
+              <TextField size="small" label="شروع از" type="number" value={c.start_number ?? 1} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'start_number', Number(e.target.value) || 1)} sx={{ width: 100, ...fieldSx }} />
+              <TextField size="small" label="پایان تا" type="number" value={c.end_number ?? 99} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'end_number', Number(e.target.value) || 99)} sx={{ width: 100, ...fieldSx }} />
+              <TextField size="small" label="حداقل طول" type="number" value={c.min_length ?? 1} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'min_length', Number(e.target.value) || 1)} sx={{ width: 100, ...fieldSx }} />
+              <TextField size="small" label="حداکثر طول" type="number" value={c.max_length ?? 10} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'max_length', Number(e.target.value) || 10)} sx={{ width: 100, ...fieldSx }} />
             </Stack>
           </Paper>
         );
@@ -104,7 +125,7 @@ const AccountingSettingsPage = () => {
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ borderBottom: '1px solid rgba(255,255,255,0.5)', px: 2 }}>
-          <Tab icon={<CategoryIcon />} iconPosition="start" label="کدینگ" sx={{ fontWeight: 700, color: tab === 0 ? COLOR_DARK : undefined }} />
+          <Tab label="کدینگ" sx={{ fontWeight: 700, color: tab === 0 ? COLOR_DARK : undefined }} />
         </Tabs>
       </Paper>
 
