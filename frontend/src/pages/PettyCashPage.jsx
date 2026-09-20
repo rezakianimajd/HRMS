@@ -39,7 +39,7 @@ const fieldSx = {
   },
 };
 
-/* ------------------------------- dashboard ------------------------------- */
+/* ------------------------------- dashboard (نمای کلی) ------------------------------- */
 const DashboardTab = () => {
   const { data: funds, isLoading } = useQuery({
     queryKey: ['petty-cash-funds'],
@@ -53,7 +53,7 @@ const DashboardTab = () => {
 
   return (
     <Box>
-      <Grid container spacing={2} sx={{ mb: 2 }}>
+      <Grid container spacing={2}>
         <Grid item xs={12} sm={4}>
           <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
             <Typography variant="caption" color="textSecondary">تعداد تنخواه فعال</Typography>
@@ -74,31 +74,13 @@ const DashboardTab = () => {
         </Grid>
       </Grid>
 
-      {list.length === 0 ? (
-        <Paper sx={{ ...glass, p: 4, textAlign: 'center' }}>
-          <AccountBalanceWalletIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} />
-          <Typography color="textSecondary">هنوز تنخواهی ثبت نشده است.</Typography>
-        </Paper>
-      ) : (
-        <Stack spacing={1.25}>
-          {list.map(f => (
-            <Paper key={f.id} sx={{ ...glass, p: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-              <Avatar sx={{ bgcolor: f.status === 'active' ? '#059669' : '#64748b' }}>
-                <AccountBalanceWalletIcon />
-              </Avatar>
-              <Box sx={{ flex: 1, minWidth: 160 }}>
-                <Typography variant="subtitle2" fontWeight={800}>{f.title}</Typography>
-                <Typography variant="caption" color="textSecondary">{f.code} · {f.custodian_name}</Typography>
-              </Box>
-              <Box>
-                <Typography variant="caption" color="textSecondary" display="block">مانده</Typography>
-                <Typography variant="body1" fontWeight={800} color={COLOR_DARK}>{formatPersianNumber(f.balance || 0)} ریال</Typography>
-              </Box>
-              <Chip size="small" label={f.status_display} sx={{ bgcolor: f.status === 'active' ? '#10b98118' : '#64748b22', color: f.status === 'active' ? '#059669' : '#64748b' }} />
-            </Paper>
-          ))}
-        </Stack>
-      )}
+      <Paper sx={{ ...glass, p: 4, mt: 2, textAlign: 'center' }}>
+        <AccountBalanceWalletIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} />
+        <Typography variant="body1" fontWeight={700} color={COLOR_DARK}>مدیریت تنخواه</Typography>
+        <Typography variant="body2" color="textSecondary" mt={0.5}>
+          ثبت و بایگانی تنخواه‌ها، تراکنش‌ها و دسته‌بندی‌ها از تب‌های «تنخواه‌ها»، «تراکنش‌ها» و «دسته‌بندی‌ها» انجام می‌شود.
+        </Typography>
+      </Paper>
     </Box>
   );
 };
