@@ -3,9 +3,13 @@ from django.utils import timezone
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from pettycash.models import PettyCashFund, PettyCashTransaction, PettyCashCategory
+from pettycash.models import (
+    PettyCashFund, PettyCashTransaction, PettyCashCategory,
+    PettyCashExpenseStatement,
+)
 from pettycash.serializers import (
     PettyCashFundSerializer, PettyCashTransactionSerializer, PettyCashCategorySerializer,
+    PettyCashExpenseStatementSerializer,
 )
 
 
@@ -71,6 +75,64 @@ class PettyCashFundViewSet(BaseViewSet):
             'balance': obj.balance,
             'transactions': PettyCashTransactionSerializer(txs, many=True, context={'request': request}).data,
         })
+
+
+class PettyCashExpenseStatementViewSet(BaseViewSet):
+    """صورت ریز هزینهٔ تنخواه با چرخهٔ ارسال/برگشت/ثبت."""
+    serializer_class = PettyCashExpenseStatementSerializer
+    queryset = PettyCashExpenseStatement.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('fund', 'custodian').prefetch_related('lines__account')
+        # امنیت: اگر کاربر تنخواه‌دار باشد فقط صورت‌های خودش را ببیند
+        user = self.request.user
+        fund_id = self.request.query_params.get('fund')
+        if fund_id:
+            qs = qs.filter(fund_id=fund_id)
+        return qs
+
+    def perform_create(self, serializer):
+        company = _company(self.request)
+        fund = serializer.validated_data['fund']
+        serializer.save(company=company, custodian=fund.custodian)
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        st = self.get_object()
+        st.status = 'submitted'
+        st.save(update_fields=['status', 'updated_at'])
+        st.history = [*st.history, {'step': 'submitted', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        st.save(update_fields=['history'])
+        # ثبت در صف حسابداری
+        try:
+            from accounting.integrations import enqueue
+            src = enqueue(company=_company(request), source_module='pettycash', source_type='expense_statement', source_id=str(st.pk), payload={'total': str(st.total)})
+            st.source_transaction = src
+            st.save(update_fields=['source_transaction'])
+        except Exception:
+            pass
+        return Response(PettyCashExpenseStatementSerializer(st).data)
+
+    @action(detail=True, methods=['post'])
+    def mark_status(self, request, pk=None):
+        """به‌روزرسانی وضعیت از سمت حسابداری (approved/rejected/edited/posted)."""
+        st = self.get_object()
+        new_status = request.data.get('status')
+        note = request.data.get('note', '')
+        if new_status not in ['approved', 'rejected', 'edited', 'posted']:
+            return Response({'error': 'وضعیت نامعتبر'}, status=400)
+        st.status = new_status
+        st.save(update_fields=['status', 'updated_at'])
+        st.history = [*st.history, {'step': new_status, 'by': request.user.username, 'note': note, 'at': timezone.now().isoformat()}]
+        st.save(update_fields=['history'])
+        # اگر ثبت نهایی شد، هزینهٔ تنخواه را کم کن (تراکنش debit)
+        if new_status == 'posted':
+            PettyCashTransaction.objects.get_or_create(
+                company=st.company_id, fund=st.fund, entry_type='debit',
+                amount=st.total, title=f'صورت هزینه {st.number or st.pk}', date=st.date,
+                defaults={'description': st.description},
+            )
+        return Response(PettyCashExpenseStatementSerializer(st).data)
 
 
 class PettyCashTransactionViewSet(BaseViewSet):
