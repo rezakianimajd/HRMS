@@ -181,6 +181,24 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
             qs = qs.filter(parent__isnull=False)
         return qs
 
+    def perform_create(self, serializer):
+        data = serializer.validated_data
+        parent = data.get('parent')
+        group = data.get('group')
+
+        # وراثت: اگر پدر داشته باشد از پدر ارث می‌برد؛ وگرنه از گروه.
+        if parent and 'account_type' not in data:
+            data['account_type'] = parent.account_type
+        if parent and 'nature' not in data:
+            data['nature'] = parent.nature
+
+        if not parent and group and 'account_type' not in data:
+            data['account_type'] = group.account_type
+        if not parent and group and 'nature' not in data:
+            data['nature'] = group.nature
+
+        serializer.save(company=_company(self.request))
+
 
 class AuxiliaryAccountViewSet(CompanyScopedViewSet):
     serializer_class = AuxiliaryAccountSerializer

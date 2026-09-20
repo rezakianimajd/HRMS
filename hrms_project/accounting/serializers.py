@@ -62,10 +62,15 @@ class AccountGroupSerializer(BaseModelSerializer):
 class AccountSerializer(BaseModelSerializer):
     nature_display = serializers.CharField(source='get_nature_display', read_only=True)
     full_code = serializers.CharField(read_only=True)
+    account_type_name = serializers.CharField(source='account_type.name', read_only=True)
+    group_name = serializers.CharField(source='group.name', read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = Account
         fields = '__all__'
+        extra_kwargs = {
+            'account_type': {'required': False},
+        }
 
 
 class AuxiliaryAccountSerializer(BaseModelSerializer):
