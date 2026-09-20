@@ -409,9 +409,9 @@ class AccountingDocument(BaseModel):
         REVERSED = 'reversed', _('برگشت‌خورده')
 
     branch = models.ForeignKey(Branch, on_delete=models.PROTECT, null=True, blank=True, related_name='documents', verbose_name=_('شعبه'))
-    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, related_name='documents', verbose_name=_('دفتر روزنامه'))
-    fiscal_year = models.ForeignKey(FiscalYear, on_delete=models.PROTECT, related_name='documents', verbose_name=_('سال مالی'))
-    period = models.ForeignKey(FiscalPeriod, on_delete=models.PROTECT, related_name='documents', verbose_name=_('دوره'))
+    journal = models.ForeignKey(Journal, on_delete=models.PROTECT, null=True, blank=True, related_name='documents', verbose_name=_('دفتر روزنامه'))
+    fiscal_year = models.ForeignKey(FiscalYear, on_delete=models.PROTECT, null=True, blank=True, related_name='documents', verbose_name=_('سال مالی'))
+    period = models.ForeignKey(FiscalPeriod, on_delete=models.PROTECT, null=True, blank=True, related_name='documents', verbose_name=_('دوره'))
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره سند'))
     date = models.DateField(verbose_name=_('تاریخ سند'))
     description = models.TextField(blank=True, verbose_name=_('شرح سند'))
