@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -77,24 +77,22 @@ const AccountingDocumentNewPage = () => {
   const addRow = () => setLines(p => [...p, empty(today())]);
   const removeRow = (i) => setLines(p => p.length > ROWS ? p.filter((_, idx) => idx !== i) : p.map((r, idx) => idx === i ? empty(today()) : r));
 
-  // auto-fill description with account name when a code is selected
+  // انتخاب کد → فقط کد در جدول؛ شرح فقط در نوار زیر
   const onAccountPick = (i, acc) => {
-    setLine(i, 'account', acc ? acc.id : '');
-    if (acc && !lines[i].desc) setLine(i, 'desc', acc.name);
+    if (!acc) { setLine(i, 'account', ''); return; }
+    setLine(i, 'account', acc.id);
   };
 
   const totalDebit = lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
   const totalCredit = lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
   const diff = totalDebit - totalCredit;
 
+  // ردیف فعال برای نوار شرح
   const active = lines[activeRow] || {};
   const activeAccount = accountList.find(a => a.id === active.account);
-  const activeDescChain = [
-    activeAccount ? `معین: ${activeAccount.code} - ${activeAccount.name}` : '',
-    active.aux1 ? `تفصیل ۱: ${auxList.find(a => a.id === active.aux1)?.name || ''}` : '',
-    active.aux2 ? `تفصیل ۲: ${auxList.find(a => a.id === active.aux2)?.name || ''}` : '',
-    active.aux3 ? `تفصیل ۳: ${auxList.find(a => a.id === active.aux3)?.name || ''}` : '',
-  ].filter(Boolean).join('  •  ');
+  const activeAuxs = ['aux1', 'aux2', 'aux3'].map(k => auxList.find(a => a.id === active[k]));
+
+  const totalBalanceOk = Math.abs(diff) < 0.001;
 
   const submit = async () => {
     setMsg(null);
@@ -113,7 +111,7 @@ const AccountingDocumentNewPage = () => {
       }));
 
     if (payloadLines.length === 0) { setMsg({ ok: false, text: 'حداقل یک آرتیکل وارد کنید' }); return; }
-    if (Math.abs(diff) > 0.001) { setMsg({ ok: false, text: 'سند توازن ندارد (اختلاف بدهکار/بستانکار)' }); return; }
+    if (!totalBalanceOk) { setMsg({ ok: false, text: 'سند توازن ندارد (اختلاف بدهکار/بستانکار)' }); return; }
 
     const payload = {
       number: header.number || null,
@@ -168,57 +166,89 @@ const AccountingDocumentNewPage = () => {
 
       {/* جدول */}
       <Paper sx={{ ...glass, overflow: 'auto', mb: 1.5 }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: '44px 1.3fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', minWidth: 1180 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '44px 0.9fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', minWidth: 1180 }}>
           {['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شرح آرتیکل', 'شماره چک/مقدار', 'تاریخ', 'بدهکار', 'بستانکار'].map((h, i) => (
             <Box key={i} sx={{ px: 1.5, py: 1.4, fontWeight: 800, fontSize: 12.5, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none', bgcolor: 'rgba(16,185,129,0.05)' }}>{h}</Box>
           ))}
         </Box>
 
-        {lines.map((l, i) => (
-          <Box key={i} onClick={() => setActiveRow(i)}
-            sx={{ display: 'grid', gridTemplateColumns: '44px 1.3fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', borderBottom: '1px solid rgba(0,0,0,0.05)', bgcolor: activeRow === i ? 'rgba(16,185,129,0.05)' : 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 1 }}><Typography variant="body2" color="textSecondary">{i + 1}</Typography></Box>
+        {lines.map((l, i) => {
+          const selectedAccount = accountList.find(a => a.id === l.account);
+          // سه شکاف تفصیل بر اساس دسته‌های مرتبط با معین
+          const slots = [
+            { key: 'aux1', catId: selectedAccount?.auxiliary_category_1 },
+            { key: 'aux2', catId: selectedAccount?.auxiliary_category_2 },
+            { key: 'aux3', catId: selectedAccount?.auxiliary_category_3 },
+          ];
+          return (
+            <Box key={i} onClick={() => setActiveRow(i)}
+              sx={{ display: 'grid', gridTemplateColumns: '44px 0.9fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', borderBottom: '1px solid rgba(0,0,0,0.05)', bgcolor: activeRow === i ? 'rgba(16,185,129,0.05)' : 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 1 }}><Typography variant="body2" color="textSecondary">{i + 1}</Typography></Box>
 
-            <Box sx={{ p: 0.5 }}>
-              <Autocomplete size="small" options={accountList} getOptionLabel={o => `${o.code} - ${o.name}`} filterOptions={(opts, { inputValue }) => opts.filter(o => o.code.includes(inputValue) || o.name.includes(inputValue))}
-                value={accountList.find(a => a.id === l.account) || null}
-                onChange={(e, v) => onAccountPick(i, v)}
-                renderInput={p => <TextField {...p} variant="standard" placeholder="جستجوی کد یا نام" />} />
-            </Box>
-
-            {[['aux1'], ['aux2'], ['aux3']].map(([key]) => (
-              <Box key={key} sx={{ p: 0.5 }}>
-                <Autocomplete size="small" options={auxList} getOptionLabel={o => `${o.code} - ${o.name}`}
-                  value={auxList.find(a => a.id === l[key]) || null}
-                  onChange={(e, v) => setLine(i, key, v ? v.id : '')}
-                  renderInput={p => <TextField {...p} variant="standard" placeholder="—" />} />
+              {/* کد معین: فقط کد نمایش، جستجو با نام در dropdown */}
+              <Box sx={{ p: 0.5 }}>
+                <Autocomplete size="small" options={accountList}
+                  getOptionLabel={o => o.code}
+                  filterOptions={(opts, { inputValue }) => opts.filter(o => o.code.includes(inputValue) || o.name.includes(inputValue))}
+                  renderOption={(props, o) => <li {...props}><span style={{ fontWeight: 700, marginInlineEnd: 8 }}>{o.code}</span>{o.name}</li>}
+                  value={accountList.find(a => a.id === l.account) || null}
+                  onChange={(e, v) => onAccountPick(i, v)}
+                  renderInput={p => <TextField {...p} variant="standard" placeholder="جستجو" />} />
               </Box>
-            ))}
 
-            <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" /></Box>
-            <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.ref} onChange={e => setLine(i, 'ref', e.target.value)} placeholder="—" /></Box>
-            <Box sx={{ p: 0.5 }}><JalaliDatePicker noHelper value={l.date} onChange={v => setLine(i, 'date', v)} /></Box>
-            <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} /></Box>
-            <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.credit} onChange={e => setLine(i, 'credit', e.target.value)} /></Box>
-          </Box>
-        ))}
+              {/* تفصیل‌ها: فقط دسته‌های مرتبط */}
+              {slots.map((slot) => {
+                const options = slot.catId ? auxList.filter(a => a.category === slot.catId) : [];
+                const disabled = !slot.catId;
+                return (
+                  <Box key={slot.key} sx={{ p: 0.5 }}>
+                    <Autocomplete size="small" options={options}
+                      getOptionLabel={o => o.code}
+                      renderOption={(props, o) => <li {...props}><span style={{ fontWeight: 700, marginInlineEnd: 8 }}>{o.code}</span>{o.name}</li>}
+                      value={auxList.find(a => a.id === l[slot.key]) || null}
+                      onChange={(e, v) => setLine(i, slot.key, v ? v.id : '')}
+                      disabled={disabled}
+                      renderInput={p => <TextField {...p} variant="standard" placeholder={disabled ? '—' : 'جستجو'} />} />
+                  </Box>
+                );
+              })}
+
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.ref} onChange={e => setLine(i, 'ref', e.target.value)} placeholder="—" /></Box>
+              <Box sx={{ p: 0.5 }}><JalaliDatePicker noHelper value={l.date} onChange={v => setLine(i, 'date', v)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.credit} onChange={e => setLine(i, 'credit', e.target.value)} /></Box>
+            </Box>
+          );
+        })}
 
         {/* جمع */}
-        <Box sx={{ display: 'grid', gridTemplateColumns: '44px 1.3fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', borderTop: '2px solid rgba(16,185,129,0.3)', bgcolor: 'rgba(16,185,129,0.06)', fontWeight: 800 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: '44px 0.9fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', borderTop: '2px solid rgba(16,185,129,0.3)', bgcolor: 'rgba(16,185,129,0.06)', fontWeight: 800 }}>
           <Box sx={{ p: 1.5 }} />
           <Box sx={{ p: 1.5, color: COLOR_DARK }}>جمع کل</Box>
           <Box /><Box /><Box />
-          <Box sx={{ p: 1.5, color: Math.abs(diff) < 0.001 ? COLOR_DARK : '#ef4444' }}>{Math.abs(diff) < 0.001 ? 'متوازن ✓' : `مغایرت ${formatPersianNumber(diff)}`}</Box>
+          <Box sx={{ p: 1.5, color: totalBalanceOk ? COLOR_DARK : '#ef4444' }}>{totalBalanceOk ? 'متوازن ✓' : `مغایرت ${formatPersianNumber(diff)}`}</Box>
           <Box /><Box />
           <Box sx={{ p: 1.5, color: '#2563eb' }}>{formatPersianNumber(totalDebit)}</Box>
           <Box sx={{ p: 1.5, color: '#2563eb' }}>{formatPersianNumber(totalCredit)}</Box>
         </Box>
       </Paper>
 
-      {/* نوار شرح کد */}
-      <Paper sx={{ ...glass, p: 1.5, mb: 1.5, bgcolor: 'rgba(255,255,255,0.6)' }}>
-        <Typography variant="caption" color={COLOR_DARK} fontWeight={700}>شرح کدها:</Typography>
-        <Typography variant="body2" color="textSecondary" sx={{ mt: 0.5 }}>{activeDescChain || 'هنوز کدی انتخاب نشده است'}</Typography>
+      {/* نوار شرح کدها — چارچوب‌بندی‌شده و تفکیک‌شده */}
+      <Paper sx={{ ...glass, p: 1.5, mb: 1.5 }}>
+        <Typography variant="caption" color={COLOR_DARK} fontWeight={800}>شرح کدهای ردیف انتخاب‌شده</Typography>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
+          <Paper sx={{ px: 2, py: 1, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(16,185,129,0.2)', minWidth: 160 }}>
+            <Typography variant="caption" color="textSecondary">معین</Typography>
+            <Typography variant="body2" fontWeight={700}>{activeAccount ? `${activeAccount.code} - ${activeAccount.name}` : '—'}</Typography>
+          </Paper>
+          {['تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳'].map((label, idx) => (
+            <Paper key={label} sx={{ px: 2, py: 1, borderRadius: '10px', bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(16,185,129,0.2)', minWidth: 150 }}>
+              <Typography variant="caption" color="textSecondary">{label}</Typography>
+              <Typography variant="body2" fontWeight={700}>{activeAuxs[idx] ? `${activeAuxs[idx].code} - ${activeAuxs[idx].name}` : '—'}</Typography>
+            </Paper>
+          ))}
+        </Stack>
       </Paper>
 
       {/* کنترل */}
@@ -230,7 +260,7 @@ const AccountingDocumentNewPage = () => {
       {/* دکمه‌ها */}
       <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ mt: 2.5 }}>
         <Button startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '12px' }}>خروج</Button>
-        <Button startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || Math.abs(diff) > 0.001}
+        <Button startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
           sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3, boxShadow: `0 10px 24px ${COLOR}44` }}>
           {saving ? <CircularProgress size={20} /> : 'ذخیره سند'}
         </Button>
