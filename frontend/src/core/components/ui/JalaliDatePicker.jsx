@@ -12,7 +12,7 @@ import { toGregorian, toJalali } from '../../utils/dateUtils';
  *   label: TextField label
  *   ...rest: passed to TextField
  */
-const JalaliDatePicker = ({ value, onChange, label, ...rest }) => {
+const JalaliDatePicker = ({ value, onChange, label, noHelper, ...rest }) => {
   const [displayValue, setDisplayValue] = useState('');
   const [error, setError] = useState('');
   const focusedRef = useRef(false);
@@ -79,7 +79,7 @@ const JalaliDatePicker = ({ value, onChange, label, ...rest }) => {
       onFocus={() => { focusedRef.current = true; }}
       onBlur={handleBlur}
       placeholder="1403/06/15"
-      helperText={error || 'مثال: 1403/06/15'}
+      helperText={noHelper ? (error || '') : (error || 'مثال: 1403/06/15')}
       error={!!error}
       InputLabelProps={{ shrink: true }}
       inputProps={{
