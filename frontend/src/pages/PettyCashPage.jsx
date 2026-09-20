@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -323,12 +324,14 @@ const CategoriesTab = () => {
 };
 
 const PettyCashPage = () => {
-  const [tab, setTab] = useState(0);
+  const { tab } = useParams(); // dashboard | funds | transactions | categories
+  const navigate = useNavigate();
+  const tabIndex = { dashboard: 0, funds: 1, transactions: 2, categories: 3 }[tab] ?? 0;
   const tabs = [
-    { label: 'نمای کلی', icon: <DashboardIcon /> },
-    { label: 'تنخواه‌ها', icon: <AccountBalanceWalletIcon /> },
-    { label: 'تراکنش‌ها', icon: <ReceiptLongIcon /> },
-    { label: 'دسته‌بندی‌ها', icon: <CategoryIcon /> },
+    { key: 'dashboard', label: 'نمای کلی', icon: <DashboardIcon /> },
+    { key: 'funds', label: 'تنخواه‌ها', icon: <AccountBalanceWalletIcon /> },
+    { key: 'transactions', label: 'تراکنش‌ها', icon: <ReceiptLongIcon /> },
+    { key: 'categories', label: 'دسته‌بندی‌ها', icon: <CategoryIcon /> },
   ];
 
   return (
@@ -348,19 +351,23 @@ const PettyCashPage = () => {
       </Paper>
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
-        <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto"
-          sx={{ borderBottom: '1px solid rgba(225,225,225,0.5)', px: 2 }}>
+        <Tabs
+          value={tabIndex}
+          onChange={(e, v) => navigate(`/petty-cash/${tabs[v].key}`)}
+          variant="scrollable" scrollButtons="auto"
+          sx={{ borderBottom: '1px solid rgba(225,225,225,0.5)', px: 2 }}
+        >
           {tabs.map((t, i) => (
             <Tab key={i} icon={t.icon} iconPosition="start" label={t.label}
-              sx={{ fontWeight: 600, minHeight: 48, color: tab === i ? COLOR_DARK : undefined }} />
+              sx={{ fontWeight: 600, minHeight: 48, color: tabIndex === i ? COLOR_DARK : undefined }} />
           ))}
         </Tabs>
       </Paper>
 
-      {tab === 0 && <DashboardTab />}
-      {tab === 1 && <FundsTab />}
-      {tab === 2 && <TransactionsTab />}
-      {tab === 3 && <CategoriesTab />}
+      {tabIndex === 0 && <DashboardTab />}
+      {tabIndex === 1 && <FundsTab />}
+      {tabIndex === 2 && <TransactionsTab />}
+      {tabIndex === 3 && <CategoriesTab />}
     </Box>
   );
 };

@@ -23,7 +23,7 @@ const LANDING_PATH = {
   contracts: '/contracts-dashboard',
   settings: '/settings',
   projects: '/projects',
-  pettycash: '/petty-cash',
+  pettycash: '/petty-cash/dashboard',
   accounting: '/accounting',
 };
 

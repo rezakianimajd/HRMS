@@ -144,6 +144,7 @@ const AppRoutes = () => {
       <Route path="/lifecycle" element={<ProtectedLayout><LifecyclePage /></ProtectedLayout>} />
       <Route path="/benefits" element={<ProtectedLayout><BenefitsPage /></ProtectedLayout>} />
       <Route path="/benefit-payments" element={<ProtectedLayout><BenefitPaymentPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/:tab" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />
       <Route path="/accounting/documents/new" element={<ProtectedLayout><AccountingDocumentNewPage /></ProtectedLayout>} />
