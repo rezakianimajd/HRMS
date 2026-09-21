@@ -224,6 +224,7 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
     """صورت ریز هزینهٔ تنخواه با چرخهٔ ارسال/برگشت/ثبت."""
     serializer_class = PettyCashExpenseStatementSerializer
     queryset = PettyCashExpenseStatement.objects.all()
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('fund', 'custodian').prefetch_related('lines__account')
