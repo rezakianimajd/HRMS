@@ -361,6 +361,92 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
     ordering = ['-created_at']
 
     @action(detail=True, methods=['get'])
+    def detail(self, request, pk=None):
+        """جزئیات کامل تراکنش منبع + دادهٔ صورت (برای کارتابل)."""
+        source = self.get_object()
+        data = SourceTransactionSerializer(source).data
+        # اگر منبع صورت هزینهٔ تنخواه بود، سطرها را هم اضافه کن
+        if source.source_module == 'pettycash' and source.source_type == 'expense_statement':
+            from pettycash.models import PettyCashExpenseStatement
+            st = PettyCashExpenseStatement.objects.filter(pk=source.source_id).first()
+            if st:
+                from pettycash.serializers import PettyCashExpenseStatementSerializer
+                data['statement'] = PettyCashExpenseStatementSerializer(st).data
+        return Response(data)
+
+    @action(detail=True, methods=['post'])
+    def decide(self, request, pk=None):
+        """تصمیم روی صورت (تأیید/برگشت/ویرایش/ثبت نهایی)."""
+        source = self.get_object()
+        decision = request.data.get('decision')  # approve | reject | edit | post
+        note = request.data.get('note', '')
+        if source.source_module != 'pettycash' or source.source_type != 'expense_statement':
+            return Response({'error': 'این تراکنش از جنس صورت هزینه نیست'}, status=400)
+
+        from pettycash.models import PettyCashExpenseStatement
+        st = PettyCashExpenseStatement.objects.filter(pk=source.source_id).first()
+        if not st:
+            return Response({'error': 'صورت هزینه یافت نشد'}, status=404)
+
+        mapping = {
+            'approve': 'approved',
+            'reject': 'rejected',
+            'edit': 'edited',
+            'post': 'posted',
+        }
+        if decision not in mapping:
+            return Response({'error': 'تصمیم نامعتبر'}, status=400)
+
+        st.status = mapping[decision]
+        st.history = [*st.history, {'step': mapping[decision], 'by': request.user.username, 'note': note, 'at': timezone.now().isoformat()}]
+        st.save()
+
+        # ثبت سند نهایی به‌صورت یک سند قابل ویرایش
+        if decision == 'post':
+            from accounting.models import AccountingDocument, AccountingDocumentLine
+            doc = AccountingDocument.objects.filter(
+                company_id=source.company_id,
+                source_module='pettycash', source_type='expense_statement', source_id=source.source_id,
+            ).first()
+            if not doc:
+                from django.db import transaction
+                with transaction.atomic():
+                    doc = AccountingDocument.objects.create(
+                        company_id=source.company_id,
+                        date=st.date,
+                        description=st.description or st.fund.title,
+                        status='draft',
+                        source_module='pettycash',
+                        source_type='expense_statement',
+                        source_id=source.source_id,
+                        is_locked=False,
+                        created_by=request.user,
+                    )
+                    for line in st.lines.all():
+                        AccountingDocumentLine.objects.create(
+                            document=doc, company_id=source.company_id,
+                            account_id=line.account_id,
+                            auxiliary_1_id=line.auxiliary_1_id,
+                            auxiliary_2_id=line.auxiliary_2_id,
+                            auxiliary_3_id=line.auxiliary_3_id,
+                            description=line.description,
+                            debit=line.debit,
+                            credit=0,
+                            line_no=line.line_no,
+                        )
+                # از تنخواه کسر کن
+                from pettycash.models import PettyCashTransaction
+                PettyCashTransaction.objects.get_or_create(
+                    company_id=st.company_id, fund_id=st.fund_id, entry_type='debit',
+                    amount=st.total, title=f'صورت هزینه {st.number or st.pk}', date=st.date,
+                    defaults={'description': st.description},
+                )
+            source.status = 'processed'
+            source.save(update_fields=['status'])
+            return Response({'status': 'posted', 'document_id': doc.id})
+        return Response({'status': mapping[decision]})
+
+    @action(detail=True, methods=['get'])
     def preview(self, request, pk=None):
         """پیش‌نمایش سند حاصل از قالب ثبت برای یک تراکنش منبع."""
         source = self.get_object()

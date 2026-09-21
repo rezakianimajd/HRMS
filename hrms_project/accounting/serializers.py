@@ -203,6 +203,7 @@ class PostingTemplateLineSerializer(BaseModelSerializer):
 
 class PostingTemplateSerializer(BaseModelSerializer):
     lines = PostingTemplateLineSerializer(many=True, required=False)
+    description_template = serializers.JSONField(required=False)
 
     class Meta(BaseModelSerializer.Meta):
         model = PostingTemplate

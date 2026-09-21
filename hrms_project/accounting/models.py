@@ -585,6 +585,21 @@ class PostingTemplate(BaseModel):
     source_module = models.CharField(max_length=50, verbose_name=_('ماژول منبع'))
     source_type = models.CharField(max_length=50, blank=True, verbose_name=_('نوع منبع'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+    description_template = models.JSONField(default=list, blank=True, verbose_name=_('الگوی شرح سند'))
+
+    DESCRIPTION_TOKENS = [
+        ('invoice_number', 'شماره فاکتور'),
+        ('supplier', 'فروشنده'),
+        ('expense_date', 'تاریخ هزینه'),
+        ('description', 'شرح هزینه'),
+        ('account_code', 'کد معین'),
+        ('account_name', 'نام معین'),
+        ('aux1', 'تفصیل ۱'),
+        ('aux2', 'تفصیل ۲'),
+        ('aux3', 'تفصیل ۳'),
+        ('fund', 'نام تنخواه'),
+        ('custodian', 'تنخواه‌دار'),
+    ]
 
     class Meta:
         verbose_name = _('قالب ثبت')
