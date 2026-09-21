@@ -35,6 +35,25 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
+def _find_petty_template(company_id):
+    """قالب ثبت مرتبط با تنخواه را پیدا کن؛ قالب دارای الگوی شرح در اولویت است."""
+    qs = PostingTemplate.objects.filter(company_id=company_id, is_active=True)
+    # اولویت ۱: ماژول تنخواه + دارای الگوی شرح
+    tpl = qs.filter(source_module__in=['pettycash', 'petty', 'تنخواه']).exclude(description_template=[]).order_by('-updated_at').first()
+    if tpl:
+        return tpl
+    # اولویت ۲: هر ماژول + دارای الگوی شرح (جدیدترین)
+    tpl = qs.exclude(description_template=[]).order_by('-updated_at').first()
+    if tpl:
+        return tpl
+    # اولویت ۳: ماژول تنخواه بدون الگو
+    tpl = qs.filter(source_module__in=['pettycash', 'petty', 'تنخواه']).order_by('-updated_at').first()
+    if tpl:
+        return tpl
+    # اولویت ۴: هر قالب فعال
+    return qs.order_by('-updated_at').first()
+
+
 def _render_description(segments, ctx):
     """اجرای الگوی ماژولار شرح: segments=[{type:'text'|'token', value}] -> str."""
     out = []
@@ -400,7 +419,7 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                 from decimal import Decimal
                 data['statement'] = PettyCashExpenseStatementSerializer(st).data
                 # پیش‌نمایش سند حسابداری (دوطرفه) بر اساس صورت
-                template = PostingTemplate.objects.filter(company_id=source.company_id, source_module='pettycash', is_active=True).first()
+                template = _find_petty_template(source.company_id)
                 lines = []
                 for line in st.lines.all():
                     ctx = {
@@ -474,7 +493,7 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
 
             from accounting.models import AccountingDocument, AccountingDocumentLine
             # قالب ثبت تنخواه (برای الگوی شرح)
-            template = PostingTemplate.objects.filter(company_id=source.company_id, source_module='pettycash', is_active=True).first()
+            template = _find_petty_template(source.company_id)
             doc = AccountingDocument.objects.filter(
                 company_id=source.company_id,
                 source_module='pettycash', source_type='expense_statement', source_id=source.source_id,
