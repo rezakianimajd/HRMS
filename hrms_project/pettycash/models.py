@@ -35,6 +35,11 @@ class PettyCashFund(BaseModel):
         related_name='petty_cash_funds',
         verbose_name=_('تنخواه‌دار'),
     )
+    account = models.ForeignKey(
+        'accounting.Account', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='petty_cash_funds', verbose_name=_('حساب تنخواه (بستانکار)'),
+        help_text=_('حساب معینی که هنگام ثبت سند، طرف بستانکار تنخواه قرار می‌گیرد.'),
+    )
     opening_balance = models.DecimalField(
         max_digits=18, decimal_places=0, default=0,
         verbose_name=_('اعتبار اولیه (ریال)'),

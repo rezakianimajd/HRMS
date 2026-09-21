@@ -365,13 +365,35 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
         """جزئیات کامل تراکنش منبع + دادهٔ صورت (برای کارتابل)."""
         source = self.get_object()
         data = SourceTransactionSerializer(source).data
-        # اگر منبع صورت هزینهٔ تنخواه بود، سطرها را هم اضافه کن
         if source.source_module == 'pettycash' and source.source_type == 'expense_statement':
             from pettycash.models import PettyCashExpenseStatement
             st = PettyCashExpenseStatement.objects.filter(pk=source.source_id).first()
             if st:
                 from pettycash.serializers import PettyCashExpenseStatementSerializer
+                from decimal import Decimal
                 data['statement'] = PettyCashExpenseStatementSerializer(st).data
+                # پیش‌نمایش سند حسابداری (دوطرفه) بر اساس صورت
+                lines = []
+                for line in st.lines.all():
+                    lines.append({
+                        'account_code': line.account.code,
+                        'account_name': line.account.name,
+                        'description': line.description,
+                        'debit': line.debit,
+                        'credit': 0,
+                    })
+                if st.fund.account:
+                    lines.append({
+                        'account_code': st.fund.account.code,
+                        'account_name': st.fund.account.name,
+                        'description': f'تنخواه {st.fund.title}',
+                        'debit': 0,
+                        'credit': Decimal(st.total),
+                    })
+                    balanced = True
+                else:
+                    balanced = False
+                data['document_preview'] = {'lines': lines, 'balanced': balanced, 'total': Decimal(st.total), 'has_account': bool(st.fund.account_id)}
         return Response(data)
 
     @action(detail=True, methods=['post'])
@@ -401,8 +423,14 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
         st.history = [*st.history, {'step': mapping[decision], 'by': request.user.username, 'note': note, 'at': timezone.now().isoformat()}]
         st.save()
 
-        # ثبت سند نهایی به‌صورت یک سند قابل ویرایش
+        # ثبت سند نهایی به‌صورت یک سند قابل ویرایش (دوطرفه)
         if decision == 'post':
+            # تنخواه باید حساب طرف بستانکار داشته باشد
+            if not st.fund.account_id:
+                return Response({
+                    'error': 'تنخواه حساب (معین) بستانکار ندارد؛ ابتدا برای این تنخواه یک حساب تعریف کنید.',
+                }, status=400)
+
             from accounting.models import AccountingDocument, AccountingDocumentLine
             doc = AccountingDocument.objects.filter(
                 company_id=source.company_id,
@@ -410,6 +438,7 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
             ).first()
             if not doc:
                 from django.db import transaction
+                from decimal import Decimal
                 with transaction.atomic():
                     doc = AccountingDocument.objects.create(
                         company_id=source.company_id,
@@ -422,7 +451,9 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                         is_locked=False,
                         created_by=request.user,
                     )
+                    line_no = 0
                     for line in st.lines.all():
+                        line_no += 1
                         AccountingDocumentLine.objects.create(
                             document=doc, company_id=source.company_id,
                             account_id=line.account_id,
@@ -432,8 +463,18 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                             description=line.description,
                             debit=line.debit,
                             credit=0,
-                            line_no=line.line_no,
+                            line_no=line_no,
                         )
+                    # طرف بستانکار = حساب تنخواه
+                    line_no += 1
+                    AccountingDocumentLine.objects.create(
+                        document=doc, company_id=source.company_id,
+                        account_id=st.fund.account_id,
+                        description=f'تنخواه {st.fund.title}',
+                        debit=0,
+                        credit=Decimal(st.total),
+                        line_no=line_no,
+                    )
                 # از تنخواه کسر کن
                 from pettycash.models import PettyCashTransaction
                 PettyCashTransaction.objects.get_or_create(
