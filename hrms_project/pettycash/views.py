@@ -1,15 +1,17 @@
 """Views for the Petty Cash module."""
 from django.utils import timezone
+from django.db.models import Sum, Count
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from pettycash.models import (
     PettyCashFund, PettyCashTransaction, PettyCashCategory,
-    PettyCashExpenseStatement,
+    PettyCashExpenseStatement, PettyCashApprovalPolicy, PettyCashApprovalStep,
 )
 from pettycash.serializers import (
     PettyCashFundSerializer, PettyCashTransactionSerializer, PettyCashCategorySerializer,
-    PettyCashExpenseStatementSerializer,
+    PettyCashExpenseStatementSerializer, PettyCashApprovalPolicySerializer,
+    PettyCashApprovalStepSerializer,
 )
 
 
@@ -35,6 +37,39 @@ class PettyCashCategoryViewSet(BaseViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'code']
     ordering = ['name']
+
+
+class PettyCashApprovalPolicyViewSet(BaseViewSet):
+    serializer_class = PettyCashApprovalPolicySerializer
+    queryset = PettyCashApprovalPolicy.objects.all()
+    ordering = ['id']
+
+
+class PettyCashApprovalStepViewSet(BaseViewSet):
+    serializer_class = PettyCashApprovalStepSerializer
+    queryset = PettyCashApprovalStep.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('approver')
+        statement_id = self.request.query_params.get('statement')
+        if statement_id:
+            qs = qs.filter(statement_id=statement_id)
+        return qs
+
+    def perform_create(self, serializer):
+        obj = serializer.save(company=_company(self.request))
+        # به‌روزرسانی وضعیت صورت بر اساس تصمیم
+        st = obj.statement
+        if obj.decision == PettyCashApprovalStep.Decision.APPROVED:
+            nxt = st.approval_steps.filter(decision=PettyCashApprovalStep.Decision.PENDING).order_by('step_no').first()
+            if not nxt:
+                st.status = PettyCashExpenseStatement.Status.APPROVED
+                st.approved_by = obj.approver
+                st.approved_at = timezone.now()
+        elif obj.decision == PettyCashApprovalStep.Decision.REJECTED:
+            st.status = PettyCashExpenseStatement.Status.REJECTED
+        st.save()
+        return obj
 
 
 class PettyCashFundViewSet(BaseViewSet):
@@ -83,6 +118,71 @@ class PettyCashFundViewSet(BaseViewSet):
         obj.save(update_fields=['status', 'archived_at', 'updated_at'])
         return Response(PettyCashFundSerializer(obj).data)
 
+    @action(detail=True, methods=['post'])
+    def reconcile(self, request, pk=None):
+        """مغایرت‌گیری تنخواه."""
+        obj = self.get_object()
+        obj.is_reconciled = True
+        obj.reconciled_at = timezone.now()
+        obj.reconciled_by = request.user
+        obj.save(update_fields=['is_reconciled', 'reconciled_at', 'reconciled_by', 'updated_at'])
+        return Response(PettyCashFundSerializer(obj).data)
+
+    @action(detail=False, methods=['get'])
+    def dashboard(self, request):
+        """داشبورد تحلیلی تنخواه."""
+        company = _company(request)
+        funds = PettyCashFund.objects.filter(company=company).select_related('custodian')
+        stmts = PettyCashExpenseStatement.objects.filter(company=company)
+        txns = PettyCashTransaction.objects.filter(company=company)
+
+        from django.db.models import Sum
+        total_balance = sum(f.balance for f in funds)
+        active_funds = funds.filter(status='active').count()
+        pending_total = stmts.filter(status='submitted').aggregate(s=Sum('total_debit'))['s'] or 0
+        monthly_spend = txns.filter(entry_type='debit', date__month=timezone.now().month, date__year=timezone.now().year).aggregate(s=Sum('amount'))['s'] or 0
+
+        # مصرف بر اساس دسته
+        by_category = []
+        cat_rows = (
+            txns.filter(entry_type='debit')
+            .values('category__name')
+            .annotate(total=Sum('amount'))
+            .order_by('-total')
+        )
+        for row in cat_rows:
+            by_category.append({'category': row['category__name'] or 'نامشخص', 'total': float(row['total'])})
+
+        # مصرف بر اساس تنخواه‌دار
+        by_custodian = []
+        cust_rows = (
+            txns.filter(entry_type='debit')
+            .values('fund__custodian__first_name', 'fund__custodian__last_name')
+            .annotate(total=Sum('amount'))
+            .order_by('-total')
+        )
+        for row in cust_rows:
+            by_custodian.append({
+                'name': f"{row['fund__custodian__first_name'] or ''} {row['fund__custodian__last_name'] or ''}".strip(),
+                'total': float(row['total']),
+            })
+
+        # وضعیت‌ها
+        status_counts = {}
+        for st in stmts.values('status').annotate(c=Count('id')):
+            status_counts[st['status']] = st['c']
+
+        return Response({
+            'total_balance': float(total_balance),
+            'active_funds': active_funds,
+            'pending_total': float(pending_total),
+            'monthly_spend': float(monthly_spend),
+            'by_category': by_category,
+            'by_custodian': by_custodian,
+            'status_counts': status_counts,
+            'total_statements': stmts.count(),
+        })
+
     @action(detail=True, methods=['get'])
     def ledger(self, request, pk=None):
         """دفتر حساب: خلاصهٔ تراکنش‌ها و مانده."""
@@ -127,7 +227,9 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
     def submit(self, request, pk=None):
         st = self.get_object()
         st.status = 'submitted'
-        st.save(update_fields=['status', 'updated_at'])
+        st.submitted_by = request.user
+        st.submitted_at = timezone.now()
+        st.save(update_fields=['status', 'submitted_by', 'submitted_at', 'updated_at'])
         st.history = [*st.history, {'step': 'submitted', 'by': request.user.username, 'at': timezone.now().isoformat()}]
         st.save(update_fields=['history'])
         # ثبت در صف حسابداری

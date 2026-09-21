@@ -8,6 +8,7 @@ class PettyCashCategory(BaseModel):
     """دسته‌بندی هزینه/دریافت تنخواه (سفر، خرید، پذیرایی و ...)."""
     name = models.CharField(max_length=200, verbose_name=_('عنوان دسته‌بندی'))
     code = models.CharField(max_length=50, verbose_name=_('کد'))
+    budget_monthly = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('بودجه ماهانه (ریال)'))
 
     class Meta:
         verbose_name = _('دسته‌بندی تنخواه')
@@ -70,6 +71,10 @@ class PettyCashFund(BaseModel):
         max_length=20, choices=Status.choices, default=Status.ACTIVE,
         verbose_name=_('وضعیت'),
     )
+    budget_monthly = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('بودجه ماهانه (ریال)'))
+    is_reconciled = models.BooleanField(default=False, verbose_name=_('مغایرت‌گیری‌شده'))
+    reconciled_at = models.DateTimeField(null=True, blank=True, verbose_name=_('تاریخ مغایرت‌گیری'))
+    reconciled_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('مغایرت‌گیرنده'))
     archived_at = models.DateTimeField(null=True, blank=True, verbose_name=_('تاریخ بایگانی'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 
@@ -139,6 +144,43 @@ class PettyCashTransaction(BaseModel):
         return f'{self.get_entry_type_display()} - {self.amount} ({self.date})'
 
 
+class PettyCashApprovalPolicy(BaseModel):
+    """سیاست گردشکار تأیید — چندمرحله‌ای بر اساس سقف مبلغ."""
+    name = models.CharField(max_length=100, verbose_name=_('عنوان سیاست'))
+    single_level_limit = models.DecimalField(max_digits=18, decimal_places=0, default=50000000, verbose_name=_('سقف تأیید تک‌مرحله (ریال)'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('سیاست تأیید تنخواه')
+        verbose_name_plural = _('سیاست‌های تأیید تنخواه')
+
+    def __str__(self):
+        return self.name
+
+
+class PettyCashApprovalStep(BaseModel):
+    """یک مرحلهٔ تأیید در گردشکار صورت هزینه."""
+    class Decision(models.TextChoices):
+        PENDING = 'pending', _('در انتظار')
+        APPROVED = 'approved', _('تأیید')
+        REJECTED = 'rejected', _('رد')
+
+    statement = models.ForeignKey('PettyCashExpenseStatement', on_delete=models.CASCADE, related_name='approval_steps', verbose_name=_('صورت هزینه'))
+    approver = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
+    step_no = models.PositiveIntegerField(default=1, verbose_name=_('مرحله'))
+    decision = models.CharField(max_length=10, choices=Decision.choices, default=Decision.PENDING, verbose_name=_('تصمیم'))
+    comment = models.TextField(blank=True, verbose_name=_('نظر'))
+    decided_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان تصمیم'))
+
+    class Meta:
+        verbose_name = _('مرحلهٔ تأیید تنخواه')
+        verbose_name_plural = _('مراحل تأیید تنخواه')
+        ordering = ['step_no']
+
+    def __str__(self):
+        return f'{self.statement_id} / مرحله {self.step_no} - {self.get_decision_display()}'
+
+
 class PettyCashExpenseStatement(BaseModel):
     """صورت ریز هزینهٔ تنخواه — ثبت کدینگ هزینه و شارژ به تنخواه‌دار.
 
@@ -165,6 +207,10 @@ class PettyCashExpenseStatement(BaseModel):
     description = models.TextField(blank=True, verbose_name=_('شرح صورت'))
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
+    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ارسال‌کننده'))
+    submitted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ارسال'))
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
+    approved_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان تأیید'))
     source_transaction = models.OneToOneField(
         'accounting.SourceTransaction', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='petty_statement', verbose_name=_('تراکنش منبع حسابداری'),
@@ -199,6 +245,7 @@ class PettyCashExpenseStatementLine(BaseModel):
     supplier = models.CharField(max_length=200, blank=True, verbose_name=_('فروشنده'))
     expense_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ هزینه'))
     description = models.TextField(blank=True, verbose_name=_('شرح هزینه'))
+    attachment = models.FileField(upload_to='petty_cash/expense_attachments/%Y/%m/', blank=True, null=True, verbose_name=_('فاکتور / رسید'))
     debit = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
 
     class Meta:

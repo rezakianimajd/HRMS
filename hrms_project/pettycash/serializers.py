@@ -3,13 +3,14 @@ from rest_framework import serializers
 from pettycash.models import (
     PettyCashFund, PettyCashTransaction, PettyCashCategory,
     PettyCashExpenseStatement, PettyCashExpenseStatementLine,
+    PettyCashApprovalPolicy, PettyCashApprovalStep,
 )
 
 
 class PettyCashCategorySerializer(serializers.ModelSerializer):
     class Meta:
         model = PettyCashCategory
-        fields = ['id', 'name', 'code', 'is_active', 'created_at']
+        fields = ['id', 'name', 'code', 'budget_monthly', 'is_active', 'created_at']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
@@ -35,18 +36,43 @@ class PettyCashTransactionSerializer(serializers.ModelSerializer):
         return None
 
 
+class PettyCashApprovalStepSerializer(serializers.ModelSerializer):
+    decision_display = serializers.CharField(source='get_decision_display', read_only=True)
+    approver_name = serializers.CharField(source='approver.username', read_only=True)
+
+    class Meta:
+        model = PettyCashApprovalStep
+        fields = ['id', 'statement', 'approver', 'approver_name', 'step_no', 'decision', 'decision_display', 'comment', 'decided_at']
+        extra_kwargs = {'statement': {'read_only': True}}
+
+
+class PettyCashApprovalPolicySerializer(serializers.ModelSerializer):
+    class Meta:
+        model = PettyCashApprovalPolicy
+        fields = ['id', 'name', 'single_level_limit', 'is_active']
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+
 class PettyCashExpenseStatementLineSerializer(serializers.ModelSerializer):
     account_code = serializers.CharField(source='account.code', read_only=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
+    attachment_url = serializers.SerializerMethodField()
 
     class Meta:
         model = PettyCashExpenseStatementLine
         fields = [
             'id', 'statement', 'line_no', 'account', 'account_code', 'account_name',
             'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
-            'invoice_number', 'supplier', 'expense_date', 'description', 'debit',
+            'invoice_number', 'supplier', 'expense_date', 'description',
+            'attachment', 'attachment_url', 'debit',
         ]
         extra_kwargs = {'statement': {'read_only': True}}
+
+    def get_attachment_url(self, obj):
+        if obj.attachment:
+            request = self.context.get('request')
+            return request.build_absolute_uri(obj.attachment.url) if request else obj.attachment.url
+        return None
 
 
 class PettyCashExpenseStatementSerializer(serializers.ModelSerializer):
@@ -55,12 +81,18 @@ class PettyCashExpenseStatementSerializer(serializers.ModelSerializer):
     custodian_name = serializers.CharField(source='custodian.full_name', read_only=True)
     total = serializers.DecimalField(max_digits=18, decimal_places=0, read_only=True)
     lines = PettyCashExpenseStatementLineSerializer(many=True, required=False)
+    approval_steps = PettyCashApprovalStepSerializer(many=True, read_only=True)
+    submitted_by_name = serializers.CharField(source='submitted_by.username', read_only=True)
+    approved_by_name = serializers.CharField(source='approved_by.username', read_only=True)
 
     class Meta:
         model = PettyCashExpenseStatement
         fields = [
             'id', 'fund', 'fund_title', 'custodian', 'custodian_name', 'number',
-            'date', 'description', 'status', 'status_display', 'history', 'total', 'lines', 'created_at',
+            'date', 'description', 'status', 'status_display', 'history', 'total', 'lines',
+            'submitted_by', 'submitted_by_name', 'submitted_at',
+            'approved_by', 'approved_by_name', 'approved_at',
+            'approval_steps', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at', 'custodian', 'status', 'history']
 
@@ -71,7 +103,11 @@ class PettyCashExpenseStatementSerializer(serializers.ModelSerializer):
         for i, line in enumerate(lines, start=1):
             line.pop('statement', None)
             line.pop('company', None)
-            PettyCashExpenseStatementLine.objects.create(statement=st, company=company, line_no=i, **line)
+            attachment = line.pop('attachment', None)
+            ln = PettyCashExpenseStatementLine.objects.create(statement=st, company=company, line_no=i, **line)
+            if attachment:
+                ln.attachment = attachment
+                ln.save(update_fields=['attachment'])
         return st
 
 
@@ -87,6 +123,7 @@ class PettyCashFundSerializer(serializers.ModelSerializer):
             'id', 'code', 'title', 'custodian', 'custodian_name', 'custodian_code',
             'general_account', 'account', 'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
             'opening_balance', 'limit', 'status', 'status_display', 'balance',
+            'budget_monthly', 'is_reconciled', 'reconciled_at',
             'archived_at', 'description', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at', 'balance']
