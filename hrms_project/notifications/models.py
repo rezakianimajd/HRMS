@@ -22,6 +22,7 @@ class Notification(BaseModel):
         CONTRACT_EXPIRY = 'contract_expiry', _('انقضای قرارداد')
         DOCUMENT_EXPIRY = 'document_expiry', _('انقضای مدرک')
         LEAVE_BALANCE = 'leave_balance', _('پایان مانده مرخصی')
+        PETTY_CASH = 'petty_cash', _('تنخواه')
 
     class Priority(models.TextChoices):
         LOW = 'low', _('کم')

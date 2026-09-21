@@ -19,6 +19,25 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
+def _notify(company, title, body, user_id=None, entity_type='petty_statement', entity_id=None, priority='normal'):
+    """ایجاد اعلان برای کاربر."""
+    try:
+        from notifications.models import Notification
+        Notification.objects.create(
+            company=company,
+            user_id=user_id,
+            category=Notification.Category.PETTY_CASH,
+            priority=priority,
+            title=title,
+            body=body,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            dedup_key=f'petty:{entity_id}:{title}' if entity_id else None,
+        )
+    except Exception:
+        pass
+
+
 class BaseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
@@ -232,6 +251,8 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
         st.save(update_fields=['status', 'submitted_by', 'submitted_at', 'updated_at'])
         st.history = [*st.history, {'step': 'submitted', 'by': request.user.username, 'at': timezone.now().isoformat()}]
         st.save(update_fields=['history'])
+        # اعلان به حسابداری/مدیران (user_id=None = سراسری)
+        _notify(st.company, 'صورت هزینهٔ تنخواه ارسال شد', f'{st.custodian.full_name if st.custodian else ""} صورت {st.number or st.pk} را به حسابداری ارسال کرد.', entity_id=st.pk, priority='high')
         # ثبت در صف حسابداری
         try:
             from accounting.integrations import enqueue
@@ -251,9 +272,17 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
         if new_status not in ['approved', 'rejected', 'edited', 'posted']:
             return Response({'error': 'وضعیت نامعتبر'}, status=400)
         st.status = new_status
-        st.save(update_fields=['status', 'updated_at'])
+        if new_status in ('approved', 'posted'):
+            st.approved_by = request.user
+            st.approved_at = timezone.now()
+        st.save(update_fields=['status', 'approved_by', 'approved_at', 'updated_at'])
         st.history = [*st.history, {'step': new_status, 'by': request.user.username, 'note': note, 'at': timezone.now().isoformat()}]
         st.save(update_fields=['history'])
+        # اعلان به تنخواه‌دار
+        custodian_user = None
+        if st.submitted_by:
+            custodian_user = st.submitted_by_id
+        _notify(st.company, f'صورت هزینهٔ تنخواه {st.get_status_display()}', f'وضعیت صورت {st.number or st.pk} تغییر کرد: {st.get_status_display()}', user_id=custodian_user, entity_id=st.pk)
         # اگر ثبت نهایی شد، هزینهٔ تنخواه را کم کن (تراکنش debit)
         if new_status == 'posted':
             PettyCashTransaction.objects.get_or_create(

@@ -11,6 +11,7 @@ import {
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AddIcon from '@mui/icons-material/Add';
 import ArchiveIcon from '@mui/icons-material/Archive';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CategoryIcon from '@mui/icons-material/Category';
@@ -189,6 +190,10 @@ const FundsTab = () => {
     mutationFn: (id) => axiosInstance.post(`/petty-cash-funds/${id}/archive/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['petty-cash-funds'] }),
   });
+  const reconcile = useMutation({
+    mutationFn: (id) => axiosInstance.post(`/petty-cash-funds/${id}/reconcile/`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['petty-cash-funds'] }),
+  });
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/petty-cash-funds/${id}/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['petty-cash-funds'] }),
@@ -215,6 +220,7 @@ const FundsTab = () => {
           </Grid>
           <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="اعتبار اولیه" type="number" value={form.opening_balance || ''} onChange={e => set('opening_balance', e.target.value)} /></Grid>
           <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="سقف (اختیاری)" type="number" value={form.limit || ''} onChange={e => set('limit', e.target.value)} /></Grid>
+          <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="بودجه ماهانه" type="number" value={form.budget_monthly || ''} onChange={e => set('budget_monthly', e.target.value)} /></Grid>
           <Grid item xs={12} md={6}><TextField size="small" fullWidth sx={fieldSx} label="توضیحات" value={form.description || ''} onChange={e => set('description', e.target.value)} /></Grid>
           <Grid item xs={12} md={3}>
             <FormControl size="small" fullWidth>
@@ -247,7 +253,7 @@ const FundsTab = () => {
           ))}
           <Grid item xs={12}>
             <Stack direction="row" spacing={2}>
-              <Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, opening_balance: Number(form.opening_balance) || 0, limit: form.limit ? Number(form.limit) : null })} disabled={save.isLoading} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
+              <Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, opening_balance: Number(form.opening_balance) || 0, limit: form.limit ? Number(form.limit) : null, budget_monthly: Number(form.budget_monthly) || 0 })} disabled={save.isLoading} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
                 {save.isLoading ? <CircularProgress size={20} /> : 'ذخیره'}
               </Button>
               {editing && <Button variant="outlined" onClick={() => { setEditing(null); setForm({}); }}>انصراف</Button>}
@@ -266,6 +272,7 @@ const FundsTab = () => {
               </Box>
               <Typography variant="body2" fontWeight={800} color={COLOR_DARK}>{formatPersianNumber(f.balance || 0)} ریال</Typography>
               <Chip size="small" label={f.status_display} />
+              <Tooltip title={f.is_reconciled ? 'مغایرت‌گیری‌شده' : 'مغایرت‌گیری'}><IconButton size="small" color={f.is_reconciled ? 'success' : 'inherit'} onClick={() => !f.is_reconciled && reconcile.mutate(f.id)}><CheckCircleIcon fontSize="small" /></IconButton></Tooltip>
               <IconButton size="small" onClick={() => { setEditing(f); setForm(f); }}><EditIcon fontSize="small" /></IconButton>
               {f.status !== 'archived' && (
                 <Tooltip title="بایگانی"><IconButton size="small" color="warning" onClick={() => archive.mutate(f.id)}><ArchiveIcon fontSize="small" /></IconButton></Tooltip>
@@ -412,8 +419,9 @@ const CategoriesTab = () => {
         <Typography variant="subtitle1" fontWeight={800} sx={{ color: COLOR_DARK, mb: 2 }}>ثبت دسته‌بندی</Typography>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد" value={form.code || ''} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={6}><TextField size="small" fullWidth sx={fieldSx} label="عنوان دسته‌بندی" value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={2}><Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate(form)} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>افزودن</Button></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="عنوان دسته‌بندی" value={form.name || ''} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={3}><TextField size="small" fullWidth sx={fieldSx} label="بودجه ماهانه" type="number" value={form.budget_monthly || ''} onChange={e => setForm(p => ({ ...p, budget_monthly: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={2}><Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, budget_monthly: Number(form.budget_monthly) || 0 })} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>افزودن</Button></Grid>
         </Grid>
       </Paper>
 
