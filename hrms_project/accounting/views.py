@@ -35,6 +35,17 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
+def _render_description(segments, ctx):
+    """اجرای الگوی ماژولار شرح: segments=[{type:'text'|'token', value}] -> str."""
+    out = []
+    for seg in (segments or []):
+        if seg.get('type') == 'text':
+            out.append(str(seg.get('value', '')))
+        else:
+            out.append(str(ctx.get(seg.get('value'), '')) if ctx.get(seg.get('value')) is not None else '')
+    return ' '.join(x for x in out if x).strip()
+
+
 class CompanyScopedViewSet(viewsets.ModelViewSet):
     """Base class: filters by tenant company and assigns it on create."""
     def get_queryset(self):
@@ -389,12 +400,26 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                 from decimal import Decimal
                 data['statement'] = PettyCashExpenseStatementSerializer(st).data
                 # پیش‌نمایش سند حسابداری (دوطرفه) بر اساس صورت
+                template = PostingTemplate.objects.filter(company_id=source.company_id, source_module='pettycash', is_active=True).first()
                 lines = []
                 for line in st.lines.all():
+                    ctx = {
+                        'invoice_number': line.invoice_number or '',
+                        'supplier': line.supplier or '',
+                        'expense_date': line.expense_date.isoformat() if line.expense_date else '',
+                        'description': line.description or '',
+                        'account_code': line.account.code,
+                        'account_name': line.account.name,
+                        'aux1': line.auxiliary_1.name if line.auxiliary_1 else '',
+                        'aux2': line.auxiliary_2.name if line.auxiliary_2 else '',
+                        'aux3': line.auxiliary_3.name if line.auxiliary_3 else '',
+                        'fund': st.fund.title,
+                        'custodian': st.fund.custodian.full_name if st.fund.custodian else '',
+                    }
                     lines.append({
                         'account_code': line.account.code,
                         'account_name': line.account.name,
-                        'description': line.description,
+                        'description': _render_description(template.description_template if template else [], ctx) or line.description or '',
                         'debit': line.debit,
                         'credit': 0,
                     })
@@ -448,6 +473,8 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                 }, status=400)
 
             from accounting.models import AccountingDocument, AccountingDocumentLine
+            # قالب ثبت تنخواه (برای الگوی شرح)
+            template = PostingTemplate.objects.filter(company_id=source.company_id, source_module='pettycash', is_active=True).first()
             doc = AccountingDocument.objects.filter(
                 company_id=source.company_id,
                 source_module='pettycash', source_type='expense_statement', source_id=source.source_id,
@@ -470,13 +497,27 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                     line_no = 0
                     for line in st.lines.all():
                         line_no += 1
+                        ctx = {
+                            'invoice_number': line.invoice_number or '',
+                            'supplier': line.supplier or '',
+                            'expense_date': line.expense_date.isoformat() if line.expense_date else '',
+                            'description': line.description or '',
+                            'account_code': line.account.code,
+                            'account_name': line.account.name,
+                            'aux1': line.auxiliary_1.name if line.auxiliary_1 else '',
+                            'aux2': line.auxiliary_2.name if line.auxiliary_2 else '',
+                            'aux3': line.auxiliary_3.name if line.auxiliary_3 else '',
+                            'fund': st.fund.title,
+                            'custodian': st.fund.custodian.full_name if st.fund.custodian else '',
+                        }
+                        line_desc = _render_description(template.description_template if template else [], ctx) or line.description or ''
                         AccountingDocumentLine.objects.create(
                             document=doc, company_id=source.company_id,
                             account_id=line.account_id,
                             auxiliary_1_id=line.auxiliary_1_id,
                             auxiliary_2_id=line.auxiliary_2_id,
                             auxiliary_3_id=line.auxiliary_3_id,
-                            description=line.description,
+                            description=line_desc,
                             debit=line.debit,
                             credit=0,
                             line_no=line_no,

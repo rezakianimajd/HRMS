@@ -5,11 +5,14 @@ import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, IconButton, Tooltip, Alert, Autocomplete, InputAdornment, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Dialog, DialogTitle, DialogContent,
 } from '@mui/material';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import SendIcon from '@mui/icons-material/Send';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import HistoryIcon from '@mui/icons-material/History';
+import Timeline from '../core/components/ui/Timeline';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
@@ -37,6 +40,7 @@ const PettyCashExpensesPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = React.useState('');
   const [msg, setMsg] = React.useState(null);
+  const [timeline, setTimeline] = React.useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: ['petty-expenses'], queryFn: () => axiosInstance.get('/petty-cash-expense-statements/').then(r => r.data) });
   const list = Array.isArray(data) ? data : data?.results || [];
@@ -48,6 +52,11 @@ const PettyCashExpensesPage = () => {
   });
 
   const filtered = list.filter(s => !search || `${s.number} ${s.fund_title} ${s.description}`.includes(search));
+
+  const openTimeline = (s) => {
+    axiosInstance.get(`/petty-cash-expense-statements/${s.id}/`)
+      .then(r => setTimeline(r.data)).catch(e => setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }));
+  };
 
   return (
     <Box>
@@ -93,6 +102,7 @@ const PettyCashExpensesPage = () => {
                     <TableCell><Chip size="small" label={STATUS[s.status]?.label || s.status} sx={{ bgcolor: `${STATUS[s.status]?.color || '#64748b'}18`, color: STATUS[s.status]?.color || '#64748b', fontWeight: 700 }} /></TableCell>
                     <TableCell>
                       {s.status === 'draft' && <Tooltip title="ارسال به حسابداری"><IconButton size="small" color="primary" onClick={() => submit.mutate(s.id)}><SendIcon fontSize="small" /></IconButton></Tooltip>}
+                      <Tooltip title="تایم‌لاین"><IconButton size="small" color="info" onClick={() => openTimeline(s)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -101,6 +111,12 @@ const PettyCashExpensesPage = () => {
           </TableContainer>
         )}
       </Paper>
+
+      <Dialog open={!!timeline} onClose={() => setTimeline(null)} fullWidth maxWidth="sm"
+        slotProps={{ paper: { sx: { borderRadius: '20px', background: 'linear-gradient(150deg, #fff, #f8fafc)' } } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK }}>تایم‌لاین صورت {timeline?.number || `#${timeline?.id}`}</DialogTitle>
+        <DialogContent><Timeline events={timeline?.history} /></DialogContent>
+      </Dialog>
     </Box>
   );
 };

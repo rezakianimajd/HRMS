@@ -6,6 +6,7 @@ import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Chip,
   IconButton, Tooltip, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Dialog, DialogTitle, DialogContent,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
@@ -16,8 +17,10 @@ import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
 import UndoIcon from '@mui/icons-material/Undo';
+import HistoryIcon from '@mui/icons-material/History';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import Timeline from '../core/components/ui/Timeline';
 
 const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
@@ -43,6 +46,7 @@ const AccountingDocumentsPage = () => {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const [actionMsg, setActionMsg] = useState(null);
+  const [timeline, setTimeline] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['accounting-documents'],
@@ -67,6 +71,11 @@ const AccountingDocumentsPage = () => {
     mutationFn: (id) => axiosInstance.delete(`/accounting/documents/${id}/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['accounting-documents'] }),
   });
+
+  const openTimeline = (row) => {
+    axiosInstance.get(`/accounting/documents/${row.id}/`)
+      .then(r => setTimeline(r.data)).catch(e => setActionMsg({ ok: false, text: e.response?.data?.error || 'خطا' }));
+  };
 
   return (
     <Box>
@@ -126,6 +135,7 @@ const AccountingDocumentsPage = () => {
                       {(row.status === 'approved' || row.status === 'submitted') && <Tooltip title="ثبت نهایی"><IconButton size="small" color="info" onClick={() => action.mutate({ id: row.id, act: 'post_document' })}><LockIcon fontSize="small" /></IconButton></Tooltip>}
                       {(row.status === 'posted' || row.status === 'locked') && <Tooltip title="برگشت"><IconButton size="small" color="warning" onClick={() => action.mutate({ id: row.id, act: 'reverse' })}><UndoIcon fontSize="small" /></IconButton></Tooltip>}
                       {row.status === 'draft' && <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
+                      <Tooltip title="تایم‌لاین"><IconButton size="small" color="primary" onClick={() => openTimeline(row)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -134,6 +144,12 @@ const AccountingDocumentsPage = () => {
           </TableContainer>
         )}
       </Paper>
+
+      <Dialog open={!!timeline} onClose={() => setTimeline(null)} fullWidth maxWidth="sm"
+        slotProps={{ paper: { sx: { borderRadius: '20px', background: 'linear-gradient(150deg, #fff, #f8fafc)' } } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK }}>تایم‌لاین سند {timeline?.number || `#${timeline?.id}`}</DialogTitle>
+        <DialogContent><Timeline events={timeline?.history} /></DialogContent>
+      </Dialog>
     </Box>
   );
 };
