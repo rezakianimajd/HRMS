@@ -172,7 +172,7 @@ class AccountingDocumentSerializer(BaseModelSerializer):
                 line.pop('document', None)
                 line.pop('company', None)
                 AccountingDocumentLine.objects.create(
-                    document=instance, company=instance.company_id, line_no=line.get('line_no', i), **line,
+                    document=instance, company=instance.company, line_no=line.get('line_no', i), **line,
                 )
         return instance
 
@@ -230,7 +230,7 @@ class PostingTemplateSerializer(BaseModelSerializer):
                 line.pop('template', None)
                 line.pop('company', None)
                 PostingTemplateLine.objects.create(
-                    template=instance, company=instance.company_id, line_no=line.get('line_no', i), **line,
+                    template=instance, company=instance.company, line_no=line.get('line_no', i), **line,
                 )
         return instance
 
