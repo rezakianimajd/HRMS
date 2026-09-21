@@ -158,7 +158,7 @@ class PettyCashFundViewSet(BaseViewSet):
         from django.db.models import Sum
         total_balance = sum(f.balance for f in funds)
         active_funds = funds.filter(status='active').count()
-        pending_total = stmts.filter(status='submitted').aggregate(s=Sum('total_debit'))['s'] or 0
+        pending_total = stmts.filter(status='submitted').aggregate(s=Sum('lines__debit'))['s'] or 0
         monthly_spend = txns.filter(entry_type='debit', date__month=timezone.now().month, date__year=timezone.now().year).aggregate(s=Sum('amount'))['s'] or 0
 
         # مصرف بر اساس دسته

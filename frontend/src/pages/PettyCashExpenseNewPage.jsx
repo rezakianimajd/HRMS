@@ -4,9 +4,10 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Alert,
-  TextField, Autocomplete, Chip,
+  TextField, Autocomplete, Chip, IconButton, Tooltip,
 } from '@mui/material';
 import ReceiptIcon from '@mui/icons-material/Receipt';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import SaveIcon from '@mui/icons-material/Save';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -26,7 +27,7 @@ const glass = {
 };
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-const empty = () => ({ account: '', aux1: '', aux2: '', aux3: '', invoice: '', supplier: '', date: today(), desc: '', debit: '' });
+const empty = () => ({ account: '', aux1: '', aux2: '', aux3: '', invoice: '', supplier: '', date: today(), desc: '', debit: '', attachment: null });
 
 const PettyCashExpenseNewPage = () => {
   const navigate = useNavigate();
@@ -64,22 +65,37 @@ const PettyCashExpenseNewPage = () => {
   };
 
   const submit = async () => {
-    const payloadLines = lines.filter(l => l.account || l.debit || l.desc || l.invoice || l.supplier).map(l => ({
-      account: l.account || null, auxiliary_1: l.aux1 || null, auxiliary_2: l.aux2 || null,
-      auxiliary_3: l.aux3 || null, invoice_number: l.invoice || '', supplier: l.supplier || '',
-      expense_date: l.date || null, description: l.desc || '', debit: Number(l.debit) || 0,
-    }));
-    if (!fund || payloadLines.length === 0 || total <= 0) { setMsg({ ok: false, text: 'تنخواه و حداقل یک سطر با مبلغ معتبر وارد کنید' }); return; }
+    const activeLines = lines.filter(l => l.account || l.debit || l.desc || l.invoice || l.supplier || l.attachment);
+    if (!fund || activeLines.length === 0 || total <= 0) { setMsg({ ok: false, text: 'تنخواه و حداقل یک سطر با مبلغ معتبر وارد کنید' }); return; }
+
+    // استفاده از FormData برای ارسال فایل پیوست
+    const fd = new FormData();
+    fd.append('fund', fund);
+    fd.append('date', date);
+    fd.append('description', desc);
+    activeLines.forEach((l, idx) => {
+      fd.append(`lines[${idx}].account`, l.account || '');
+      fd.append(`lines[${idx}].auxiliary_1`, l.aux1 || '');
+      fd.append(`lines[${idx}].auxiliary_2`, l.aux2 || '');
+      fd.append(`lines[${idx}].auxiliary_3`, l.aux3 || '');
+      fd.append(`lines[${idx}].invoice_number`, l.invoice || '');
+      fd.append(`lines[${idx}].supplier`, l.supplier || '');
+      fd.append(`lines[${idx}].expense_date`, l.date || '');
+      fd.append(`lines[${idx}].description`, l.desc || '');
+      fd.append(`lines[${idx}].debit`, Number(l.debit) || 0);
+      if (l.attachment) fd.append(`lines[${idx}].attachment`, l.attachment);
+    });
+
     setSaving(true);
     try {
-      await axiosInstance.post('/petty-cash-expense-statements/', { fund, date, description: desc, lines: payloadLines });
+      await axiosInstance.post('/petty-cash-expense-statements/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
       qc.invalidateQueries({ queryKey: ['petty-expenses'] });
       navigate('/petty-cash/expenses');
     } catch (e) { setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }); setSaving(false); }
   };
 
-  const header = ['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شماره فاکتور', 'تاریخ', 'فروشنده', 'شرح هزینه', 'مبلغ (ریال)'];
-  const cols = '44px 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 1fr 1.4fr 1fr';
+  const header = ['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شماره فاکتور', 'تاریخ', 'فروشنده', 'شرح هزینه', 'مبلغ (ریال)', 'پیوست'];
+  const cols = '44px 0.9fr 0.9fr 0.9fr 0.9fr 0.9fr 0.8fr 0.9fr 1.3fr 0.9fr 44px';
 
   return (
     <Box>
@@ -130,6 +146,14 @@ const PettyCashExpenseNewPage = () => {
               <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.supplier} onChange={e => setLine(i, 'supplier', e.target.value)} /></Box>
               <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} /></Box>
               <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} /></Box>
+              <Box sx={{ p: 0.5, display: 'flex', alignItems: 'center' }}>
+                <input type="file" id={`attach-${i}`} hidden onChange={e => setLine(i, 'attachment', e.target.files[0])} />
+                <Tooltip title={l.attachment ? l.attachment.name : 'پیوست فاکتور/رسید'}>
+                  <IconButton size="small" color={l.attachment ? 'success' : 'inherit'} component="label" htmlFor={`attach-${i}`}>
+                    <AttachFileIcon fontSize="small" />
+                  </IconButton>
+                </Tooltip>
+              </Box>
             </Box>
           );
         })}
