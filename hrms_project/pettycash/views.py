@@ -263,6 +263,20 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
             pass
         return Response(PettyCashExpenseStatementSerializer(st).data)
 
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """خروجی CSV صورت‌های هزینهٔ تنخواه."""
+        import csv
+        from django.http import HttpResponse
+        qs = self.get_queryset().prefetch_related('lines')
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="petty_cash_expenses.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['شماره', 'تاریخ', 'تنخواه', 'تنخواه‌دار', 'وضعیت', 'مبلغ', 'شرح'])
+        for st in qs:
+            writer.writerow([st.number or st.pk, st.date.isoformat(), st.fund.title, st.custodian.full_name if st.custodian else '', st.status, st.total, st.description])
+        return response
+
     @action(detail=True, methods=['post'])
     def mark_status(self, request, pk=None):
         """به‌روزرسانی وضعیت از سمت حسابداری (approved/rejected/edited/posted)."""
