@@ -49,7 +49,31 @@ class PettyCashFundViewSet(BaseViewSet):
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
+        # تنخواه‌دار فقط تنخواه خودش را ببیند
+        if self.request.query_params.get('mine') == '1':
+            emp_id = getattr(getattr(self.request.user, 'profile', None), 'employee_id', None)
+            if emp_id:
+                qs = qs.filter(custodian_id=emp_id)
         return qs
+
+    @action(detail=False, methods=['get'])
+    def custodians(self, request):
+        """لیست تنخواه‌داران (پرسنلی که تنخواه دارند) به همراه خلاصهٔ تنخواه."""
+        qs = self.get_queryset().select_related('custodian')
+        by_emp = {}
+        for f in qs:
+            e = f.custodian
+            if e.id not in by_emp:
+                by_emp[e.id] = {
+                    'id': e.id, 'name': e.full_name, 'employee_id': e.employee_id,
+                    'department': e.department.name if e.department else '',
+                    'funds': [], 'total_balance': 0,
+                }
+            by_emp[e.id]['funds'].append({'id': f.id, 'title': f.title, 'code': f.code, 'balance': float(f.balance)})
+            by_emp[e.id]['total_balance'] += float(f.balance)
+        data = list(by_emp.values())
+        data.sort(key=lambda x: x['name'])
+        return Response(data)
 
     @action(detail=True, methods=['post'])
     def archive(self, request, pk=None):
@@ -84,11 +108,14 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('fund', 'custodian').prefetch_related('lines__account')
-        # امنیت: اگر کاربر تنخواه‌دار باشد فقط صورت‌های خودش را ببیند
-        user = self.request.user
         fund_id = self.request.query_params.get('fund')
         if fund_id:
             qs = qs.filter(fund_id=fund_id)
+        # تنخواه‌دار فقط صورت‌های خودش را ببیند
+        if self.request.query_params.get('mine') == '1':
+            emp_id = getattr(getattr(self.request.user, 'profile', None), 'employee_id', None)
+            if emp_id:
+                qs = qs.filter(custodian_id=emp_id)
         return qs
 
     def perform_create(self, serializer):
