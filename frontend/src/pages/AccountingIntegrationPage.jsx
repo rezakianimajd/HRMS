@@ -120,6 +120,7 @@ const TemplatesPanel = () => {
   const qc = useQueryClient();
   const [form, setForm] = useState({ lines: [], description_template: [] });
   const [editing, setEditing] = useState(null);
+  const [showForm, setShowForm] = useState(false);
 
   const { data, isLoading } = useQuery({ queryKey: ['posting-templates'], queryFn: () => axiosInstance.get('/accounting/posting-templates/').then(r => r.data) });
   const { data: journals } = useQuery({ queryKey: ['pt-journals'], queryFn: () => axiosInstance.get('/accounting/journals/').then(r => r.data) });
@@ -131,7 +132,7 @@ const TemplatesPanel = () => {
 
   const save = useMutation({
     mutationFn: (p) => editing ? axiosInstance.patch(`/accounting/posting-templates/${editing.id}/`, p) : axiosInstance.post('/accounting/posting-templates/', p),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['posting-templates'] }); setForm({ lines: [], description_template: [] }); setEditing(null); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['posting-templates'] }); setForm({ lines: [], description_template: [] }); setEditing(null); setShowForm(false); },
   });
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/accounting/posting-templates/${id}/`),
@@ -151,8 +152,8 @@ const TemplatesPanel = () => {
     save.mutate(payload);
   };
 
-  const openNew = () => { setEditing(null); setForm({ lines: [], description_template: [] }); };
-  const openEdit = (t) => { setEditing(t); setForm({ ...t, lines: Array.isArray(t.lines) ? t.lines : [], description_template: Array.isArray(t.description_template) ? t.description_template : [] }); };
+  const openNew = () => { setEditing(null); setForm({ lines: [], description_template: [] }); setShowForm(true); };
+  const openEdit = (t) => { setEditing(t); setForm({ ...t, lines: Array.isArray(t.lines) ? t.lines : [], description_template: Array.isArray(t.description_template) ? t.description_template : [] }); setShowForm(true); };
 
   return (
     <Paper sx={{ ...glass, p: 2.5 }}>
@@ -180,7 +181,7 @@ const TemplatesPanel = () => {
         </Table>
       )}
 
-      {!editing && form.name === undefined && form.code === undefined ? null : (
+      {!showForm ? null : (
         <Box sx={{ mt: 3, borderTop: '1px dashed rgba(16,185,129,0.3)', pt: 2 }}>
           <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap sx={{ mb: 2 }}>
             <TextField size="small" label="کد قالب" value={form.code || ''} onChange={e => set('code', e.target.value)} sx={{ width: 140 }} />
@@ -248,7 +249,7 @@ const SourceTransactionsPanel = () => {
   });
 
   const openDetail = (tx) => {
-    axiosInstance.get(`/accounting/source-transactions/${tx.id}/detail/`)
+    axiosInstance.get(`/accounting/source-transactions/${tx.id}/inbox/`)
       .then(r => setDetail(r.data)).catch(e => setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }));
   };
 

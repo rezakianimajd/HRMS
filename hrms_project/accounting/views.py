@@ -360,8 +360,8 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
     search_fields = ['source_module', 'source_type', 'source_id']
     ordering = ['-created_at']
 
-    @action(detail=True, methods=['get'])
-    def detail(self, request, pk=None):
+    @action(detail=True, methods=['get'], url_path='inbox')
+    def inbox(self, request, pk=None):
         """جزئیات کامل تراکنش منبع + دادهٔ صورت (برای کارتابل)."""
         source = self.get_object()
         data = SourceTransactionSerializer(source).data
