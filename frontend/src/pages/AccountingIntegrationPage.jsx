@@ -328,12 +328,36 @@ const SourceTransactionsPanel = () => {
               )}
             </Box>
           )}
+
+          {/* پیش‌نمایش سند حسابداری */}
+          {detail?.document_preview && (
+            <Box sx={{ mt: 2, borderTop: '1px dashed rgba(16,185,129,0.4)', pt: 2 }}>
+              <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1}>پیش‌نمایش سند حسابداری</Typography>
+              {!detail.document_preview.has_account && (
+                <Alert severity="warning" sx={{ mb: 1.5 }}>تنخواه حساب بستانکار ندارد؛ ابتدا یک حساب برای تنخواه تعریف کنید.</Alert>
+              )}
+              <Table size="small">
+                <TableHead><TableRow><TableCell>کد</TableCell><TableCell>حساب</TableCell><TableCell>شرح</TableCell><TableCell>بدهکار</TableCell><TableCell>بستانکار</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {detail.document_preview.lines.map((l, i) => (
+                    <TableRow key={i}>
+                      <TableCell sx={{ fontWeight: 700 }}>{l.account_code}</TableCell>
+                      <TableCell>{l.account_name}</TableCell>
+                      <TableCell>{l.description}</TableCell>
+                      <TableCell sx={{ color: l.debit ? '#059669' : undefined }}>{formatPersianNumber(l.debit)}</TableCell>
+                      <TableCell sx={{ color: l.credit ? '#dc2626' : undefined }}>{formatPersianNumber(l.credit)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          )}
         </DialogContent>
         <DialogActions>
           <Button startIcon={<UndoIcon />} color="error" onClick={() => decide.mutate({ id: detail.id, decision: 'reject', note: 'برگشت برای اصلاح' })}>برگشت برای اصلاح</Button>
           <Button startIcon={<EditIcon />} color="warning" onClick={() => decide.mutate({ id: detail.id, decision: 'edit', note: 'نیاز به ویرایش' })}>علامت ویرایش</Button>
           <Button startIcon={<CheckCircleIcon />} color="success" onClick={() => decide.mutate({ id: detail.id, decision: 'approve' })}>تأیید</Button>
-          <Button startIcon={<PostAddIcon />} variant="contained" onClick={() => decide.mutate({ id: detail.id, decision: 'post' })}
+          <Button startIcon={<PostAddIcon />} variant="contained" disabled={detail?.document_preview?.has_account === false} onClick={() => decide.mutate({ id: detail.id, decision: 'post' })}
             sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})` }}>ثبت در سند</Button>
         </DialogActions>
       </Dialog>

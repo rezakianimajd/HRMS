@@ -99,7 +99,12 @@ const FundsTab = () => {
     queryKey: ['emp-dropdown'],
     queryFn: () => axiosInstance.get('/employees/', { params: { page_size: 500 } }).then(r => r.data.results || r.data),
   });
+  const { data: accounts } = useQuery({
+    queryKey: ['fund-accounts'],
+    queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'general' } }).then(r => r.data),
+  });
   const list = Array.isArray(funds) ? funds : funds?.results || [];
+  const accountList = Array.isArray(accounts) ? accounts : accounts?.results || [];
 
   const save = useMutation({
     mutationFn: (p) => editing
@@ -138,6 +143,15 @@ const FundsTab = () => {
           <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="اعتبار اولیه" type="number" value={form.opening_balance || ''} onChange={e => set('opening_balance', e.target.value)} /></Grid>
           <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="سقف (اختیاری)" type="number" value={form.limit || ''} onChange={e => set('limit', e.target.value)} /></Grid>
           <Grid item xs={12} md={6}><TextField size="small" fullWidth sx={fieldSx} label="توضیحات" value={form.description || ''} onChange={e => set('description', e.target.value)} /></Grid>
+          <Grid item xs={12} md={6}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>حساب تنخواه (طرف بستانکار)</InputLabel>
+              <Select value={form.account || ''} label="حساب تنخواه (طرف بستانکار)" onChange={e => set('account', e.target.value)} sx={{ borderRadius: '12px' }}>
+                <MenuItem value="">—</MenuItem>
+                {accountList.map(a => <MenuItem key={a.id} value={a.id}>{a.code} - {a.name}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Grid>
           <Grid item xs={12}>
             <Stack direction="row" spacing={2}>
               <Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, opening_balance: Number(form.opening_balance) || 0, limit: form.limit ? Number(form.limit) : null })} disabled={save.isLoading} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
