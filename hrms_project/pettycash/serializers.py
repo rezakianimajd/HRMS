@@ -43,7 +43,8 @@ class PettyCashExpenseStatementLineSerializer(serializers.ModelSerializer):
         model = PettyCashExpenseStatementLine
         fields = [
             'id', 'statement', 'line_no', 'account', 'account_code', 'account_name',
-            'auxiliary_1', 'auxiliary_2', 'auxiliary_3', 'description', 'debit',
+            'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
+            'invoice_number', 'supplier', 'expense_date', 'description', 'debit',
         ]
         extra_kwargs = {'statement': {'read_only': True}}
 

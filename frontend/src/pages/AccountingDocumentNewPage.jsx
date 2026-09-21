@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack,
-  TextField, IconButton, Tooltip, Alert, Autocomplete,
+  TextField, IconButton, Tooltip, Alert, Autocomplete, Chip,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -14,6 +14,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import BoltIcon from '@mui/icons-material/Bolt';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
@@ -51,6 +52,7 @@ const AccountingDocumentNewPage = () => {
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
   const [activeRow, setActiveRow] = useState(0);
+  const [picker, setPicker] = useState(null);
 
   const { data: journals } = useQuery({ queryKey: ['doc-journals'], queryFn: () => axiosInstance.get('/accounting/journals/').then(r => r.data) });
   const { data: years } = useQuery({ queryKey: ['doc-years'], queryFn: () => axiosInstance.get('/accounting/fiscal-years/').then(r => r.data) });
@@ -77,10 +79,14 @@ const AccountingDocumentNewPage = () => {
   const addRow = () => setLines(p => [...p, empty(today())]);
   const removeRow = (i) => setLines(p => p.length > ROWS ? p.filter((_, idx) => idx !== i) : p.map((r, idx) => idx === i ? empty(today()) : r));
 
-  // انتخاب کد → فقط کد در جدول؛ شرح فقط در نوار زیر
-  const onAccountPick = (i, acc) => {
-    if (!acc) { setLine(i, 'account', ''); return; }
-    setLine(i, 'account', acc.id);
+  const openPicker = (row, slot) => setPicker({ row, slot });
+  const pickerOptions = () => {
+    if (!picker) return [];
+    if (picker.slot === 'account') return accountList;
+    const acc = accountList.find(a => a.id === lines[picker.row].account);
+    const catKey = { aux1: 'auxiliary_category_1', aux2: 'auxiliary_category_2', aux3: 'auxiliary_category_3' }[picker.slot];
+    const catId = acc ? acc[catKey] : null;
+    return catId ? auxList.filter(a => a.category === catId) : [];
   };
 
   const totalDebit = lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
@@ -185,30 +191,17 @@ const AccountingDocumentNewPage = () => {
               sx={{ display: 'grid', gridTemplateColumns: '44px 0.9fr 1fr 1fr 1fr 1.6fr 0.9fr 0.8fr 1fr 1fr', borderBottom: '1px solid rgba(0,0,0,0.05)', bgcolor: activeRow === i ? 'rgba(16,185,129,0.05)' : 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' } }}>
               <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', py: 1 }}><Typography variant="body2" color="textSecondary">{i + 1}</Typography></Box>
 
-              {/* کد معین: فقط کد نمایش، جستجو با نام در dropdown */}
+              {/* کد معین */}
               <Box sx={{ p: 0.5 }}>
-                <Autocomplete size="small" options={accountList}
-                  getOptionLabel={o => o.code}
-                  filterOptions={(opts, { inputValue }) => opts.filter(o => o.code.includes(inputValue) || o.name.includes(inputValue))}
-                  renderOption={(props, o) => <li {...props}><span style={{ fontWeight: 700, marginInlineEnd: 8 }}>{o.code}</span>{o.name}</li>}
-                  value={accountList.find(a => a.id === l.account) || null}
-                  onChange={(e, v) => onAccountPick(i, v)}
-                  renderInput={p => <TextField {...p} variant="standard" placeholder="جستجو" />} />
+                <CodeCell label={selectedAccount?.code || ''} onClick={() => openPicker(i, 'account')} />
               </Box>
 
-              {/* تفصیل‌ها: فقط دسته‌های مرتبط */}
+              {/* تفصیل‌ها */}
               {slots.map((slot) => {
-                const options = slot.catId ? auxList.filter(a => a.category === slot.catId) : [];
-                const disabled = !slot.catId;
+                const aux = auxList.find(a => a.id === l[slot.key]);
                 return (
                   <Box key={slot.key} sx={{ p: 0.5 }}>
-                    <Autocomplete size="small" options={options}
-                      getOptionLabel={o => o.code}
-                      renderOption={(props, o) => <li {...props}><span style={{ fontWeight: 700, marginInlineEnd: 8 }}>{o.code}</span>{o.name}</li>}
-                      value={auxList.find(a => a.id === l[slot.key]) || null}
-                      onChange={(e, v) => setLine(i, slot.key, v ? v.id : '')}
-                      disabled={disabled}
-                      renderInput={p => <TextField {...p} variant="standard" placeholder={disabled ? '—' : 'جستجو'} />} />
+                    <CodeCell label={aux?.code || ''} onClick={() => slot.catId && openPicker(i, slot.key)} disabled={!slot.catId} />
                   </Box>
                 );
               })}
@@ -257,6 +250,15 @@ const AccountingDocumentNewPage = () => {
         <Button startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} variant="outlined" color="error" sx={{ borderRadius: '12px' }}>حذف ردیف</Button>
       </Stack>
 
+      <CodePickerDialog
+        open={!!picker}
+        title={picker?.slot === 'account' ? 'انتخاب کد معین' : 'انتخاب تفصیل'}
+        options={pickerOptions()}
+        color={COLOR_DARK}
+        onClose={() => setPicker(null)}
+        onSelect={(o) => { if (picker) setLine(picker.row, picker.slot, o.id); }}
+      />
+
       {/* دکمه‌ها */}
       <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ mt: 2.5 }}>
         <Button startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '12px' }}>خروج</Button>
@@ -268,5 +270,15 @@ const AccountingDocumentNewPage = () => {
     </Box>
   );
 };
+
+const CodeCell = ({ label, onClick, disabled }) => (
+  <Box sx={{ p: 0.5 }}>
+    <Button
+      fullWidth variant="text" size="small" onClick={onClick} disabled={disabled}
+      sx={{ justifyContent: 'flex-start', color: label ? 'text.primary' : 'text.disabled', textTransform: 'none', borderRadius: '8px', '&:hover': { background: 'rgba(16,185,129,0.08)' } }}>
+      <Chip size="small" label={label || 'جستجو'} sx={{ fontWeight: 700, bgcolor: label ? 'rgba(16,185,129,0.12)' : 'transparent', color: label ? COLOR_DARK : 'text.disabled' }} />
+    </Button>
+  </Box>
+);
 
 export default AccountingDocumentNewPage;

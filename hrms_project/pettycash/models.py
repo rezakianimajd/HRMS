@@ -173,8 +173,11 @@ class PettyCashExpenseStatementLine(BaseModel):
     auxiliary_1 = models.ForeignKey('accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تفصیل یک'))
     auxiliary_2 = models.ForeignKey('accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تفصیل دو'))
     auxiliary_3 = models.ForeignKey('accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تفصیل سه'))
-    description = models.TextField(blank=True, verbose_name=_('شرح آرتیکل'))
-    debit = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ هزینه (ریال)'))
+    invoice_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره فاکتور'))
+    supplier = models.CharField(max_length=200, blank=True, verbose_name=_('فروشنده'))
+    expense_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ هزینه'))
+    description = models.TextField(blank=True, verbose_name=_('شرح هزینه'))
+    debit = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
 
     class Meta:
         verbose_name = _('سطر صورت هزینهٔ تنخواه')

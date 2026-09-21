@@ -4,7 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Alert,
-  TextField, IconButton, Tooltip, Autocomplete, Grid, InputAdornment,
+  TextField, Autocomplete, Chip,
 } from '@mui/material';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -12,20 +12,21 @@ import SaveIcon from '@mui/icons-material/Save';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
 const ROWS = 5;
+const ALLOWED_CATEGORIES = ['asset', 'expense', 'cost_of_sales'];
 
 const glass = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.34))',
   backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 14px 40px rgba(16,185,129,0.12)', borderRadius: '16px',
+  border: '1px solid rgba(255,255,255,0.6)', boxShadow: '0 14px 40px rgba(16,185,129,0.12)', borderRadius: '16px',
 };
 
 const today = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; };
-const empty = () => ({ account: '', aux1: '', aux2: '', aux3: '', desc: '', debit: '' });
+const empty = () => ({ account: '', aux1: '', aux2: '', aux3: '', invoice: '', supplier: '', date: today(), desc: '', debit: '' });
 
 const PettyCashExpenseNewPage = () => {
   const navigate = useNavigate();
@@ -37,22 +38,36 @@ const PettyCashExpenseNewPage = () => {
   const [msg, setMsg] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // پیکر انتخاب کد
+  const [picker, setPicker] = useState(null); // { row, slot }
+
   const { data: funds } = useQuery({ queryKey: ['pc-funds'], queryFn: () => axiosInstance.get('/petty-cash-funds/').then(r => r.data) });
   const { data: accounts } = useQuery({ queryKey: ['pc-accounts'], queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'subsidiary' } }).then(r => r.data) });
   const { data: auxs } = useQuery({ queryKey: ['pc-aux'], queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data) });
 
   const fundList = Array.isArray(funds) ? funds : funds?.results || [];
-  const accList = Array.isArray(accounts) ? accounts : accounts?.results || [];
+  const accList = (Array.isArray(accounts) ? accounts : accounts?.results || []).filter(a => ALLOWED_CATEGORIES.includes(a.account_type_category));
   const auxList = Array.isArray(auxs) ? auxs : auxs?.results || [];
 
   const setLine = (i, k, v) => setLines(p => { const l = [...p]; l[i] = { ...l[i], [k]: v }; return l; });
   const addRow = () => setLines(p => [...p, empty()]);
   const total = lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
 
+  const openPicker = (row, slot) => setPicker({ row, slot });
+  const pickerOptions = () => {
+    if (!picker) return [];
+    if (picker.slot === 'account') return accList;
+    const acc = accList.find(a => a.id === lines[picker.row].account);
+    const catKey = { aux1: 'auxiliary_category_1', aux2: 'auxiliary_category_2', aux3: 'auxiliary_category_3' }[picker.slot];
+    const catId = acc ? acc[catKey] : null;
+    return catId ? auxList.filter(a => a.category === catId) : [];
+  };
+
   const submit = async () => {
-    const payloadLines = lines.filter(l => l.account || l.debit || l.desc).map(l => ({
+    const payloadLines = lines.filter(l => l.account || l.debit || l.desc || l.invoice || l.supplier).map(l => ({
       account: l.account || null, auxiliary_1: l.aux1 || null, auxiliary_2: l.aux2 || null,
-      auxiliary_3: l.aux3 || null, description: l.desc || '', debit: Number(l.debit) || 0,
+      auxiliary_3: l.aux3 || null, invoice_number: l.invoice || '', supplier: l.supplier || '',
+      expense_date: l.date || null, description: l.desc || '', debit: Number(l.debit) || 0,
     }));
     if (!fund || payloadLines.length === 0 || total <= 0) { setMsg({ ok: false, text: 'تنخواه و حداقل یک سطر با مبلغ معتبر وارد کنید' }); return; }
     setSaving(true);
@@ -62,6 +77,9 @@ const PettyCashExpenseNewPage = () => {
       navigate('/petty-cash/expenses');
     } catch (e) { setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }); setSaving(false); }
   };
+
+  const header = ['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شماره فاکتور', 'تاریخ', 'فروشنده', 'شرح هزینه', 'مبلغ (ریال)'];
+  const cols = '44px 0.9fr 0.9fr 0.9fr 0.9fr 1fr 0.9fr 1fr 1.4fr 1fr';
 
   return (
     <Box>
@@ -80,38 +98,41 @@ const PettyCashExpenseNewPage = () => {
         <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
           <Autocomplete size="small" options={fundList} getOptionLabel={o => `${o.code} - ${o.title}`}
             value={fundList.find(f => f.id === fund) || null} onChange={(e, v) => setFund(v ? v.id : '')}
-            renderInput={p => <TextField {...p} label="تنخواه" />} sx={{ minWidth: 220 }} />
+            renderInput={p => <TextField {...p} label="تنخواه" />} sx={{ minWidth: 240 }} />
           <JalaliDatePicker noHelper label="تاریخ" value={date} onChange={setDate} sx={{ width: 150 }} />
           <TextField size="small" label="شرح صورت" value={desc} onChange={e => setDesc(e.target.value)} sx={{ flex: 1, minWidth: 240 }} />
         </Stack>
       </Paper>
 
       <Paper sx={{ ...glass, overflow: 'auto', mb: 1.5 }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: '44px 1.2fr 1fr 1fr 1fr 1.6fr 1fr', minWidth: 900, bgcolor: 'rgba(16,185,129,0.06)' }}>
-          {['ردیف', 'کد معین', 'تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳', 'شرح', 'مبلغ (ریال)'].map((h, i) => (
-            <Box key={i} sx={{ p: 1.4, fontWeight: 800, fontSize: 12.5, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>{h}</Box>
+        <Box sx={{ display: 'grid', gridTemplateColumns: cols, minWidth: 1050, bgcolor: 'rgba(16,185,129,0.06)' }}>
+          {header.map((h, i) => (
+            <Box key={i} sx={{ p: 1.2, fontWeight: 800, fontSize: 12, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none' }}>{h}</Box>
           ))}
         </Box>
-        {lines.map((l, i) => (
-          <Box key={i} sx={{ display: 'grid', gridTemplateColumns: '44px 1.2fr 1fr 1fr 1fr 1.6fr 1fr', borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</Box>
-            <Box sx={{ p: 0.5 }}>
-              <Autocomplete size="small" options={accList} getOptionLabel={o => o.code} filterOptions={(opts, { inputValue }) => opts.filter(o => o.code.includes(inputValue) || o.name.includes(inputValue))}
-                renderOption={(props, o) => <li {...props}><b style={{ marginInlineEnd: 8 }}>{o.code}</b>{o.name}</li>}
-                value={accList.find(a => a.id === l.account) || null} onChange={(e, v) => setLine(i, 'account', v ? v.id : '')}
-                renderInput={p => <TextField {...p} variant="standard" placeholder="جستجو" />} />
+        {lines.map((l, i) => {
+          const acc = accList.find(a => a.id === l.account);
+          const slots = [
+            { key: 'aux1', cat: acc?.auxiliary_category_1 },
+            { key: 'aux2', cat: acc?.auxiliary_category_2 },
+            { key: 'aux3', cat: acc?.auxiliary_category_3 },
+          ];
+          return (
+            <Box key={i} sx={{ display: 'grid', gridTemplateColumns: cols, borderBottom: '1px solid rgba(0,0,0,0.05)' }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{i + 1}</Box>
+              <CellPicker label={acc ? acc.code : ''} onClick={() => openPicker(i, 'account')} placeholder="جستجو" />
+              {slots.map(s => {
+                const aux = auxList.find(a => a.id === l[s.key]);
+                return <CellPicker key={s.key} label={aux ? aux.code : ''} onClick={() => s.cat && openPicker(i, s.key)} disabled={!s.cat} placeholder={s.cat ? 'جستجو' : '—'} />;
+              })}
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.invoice} onChange={e => setLine(i, 'invoice', e.target.value)} /></Box>
+              <Box sx={{ p: 0.5 }}><JalaliDatePicker noHelper value={l.date} onChange={v => setLine(i, 'date', v)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.supplier} onChange={e => setLine(i, 'supplier', e.target.value)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} /></Box>
             </Box>
-            {['aux1', 'aux2', 'aux3'].map(k => (
-              <Box key={k} sx={{ p: 0.5 }}>
-                <Autocomplete size="small" options={auxList} getOptionLabel={o => o.code}
-                  value={auxList.find(a => a.id === l[k]) || null} onChange={(e, v) => setLine(i, k, v ? v.id : '')}
-                  renderInput={p => <TextField {...p} variant="standard" placeholder="—" />} />
-              </Box>
-            ))}
-            <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} /></Box>
-            <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} /></Box>
-          </Box>
-        ))}
+          );
+        })}
         <Box sx={{ p: 1.5, fontWeight: 800, color: COLOR_DARK, bgcolor: 'rgba(16,185,129,0.06)', borderTop: '2px solid rgba(16,185,129,0.3)' }}>
           جمع کل: {formatPersianNumber(total)} ریال
         </Box>
@@ -126,8 +147,27 @@ const PettyCashExpenseNewPage = () => {
           {saving ? <CircularProgress size={20} /> : 'ذخیره صورت'}
         </Button>
       </Stack>
+
+      <CodePickerDialog
+        open={!!picker}
+        title={picker?.slot === 'account' ? 'انتخاب کد معین' : 'انتخاب تفصیل'}
+        options={pickerOptions()}
+        color={COLOR_DARK}
+        onClose={() => setPicker(null)}
+        onSelect={(o) => { if (picker) setLine(picker.row, picker.slot === 'account' ? 'account' : picker.slot, o.id); }}
+      />
     </Box>
   );
 };
+
+const CellPicker = ({ label, onClick, disabled, placeholder }) => (
+  <Box sx={{ p: 0.5 }}>
+    <Button
+      fullWidth variant="text" size="small" onClick={onClick} disabled={disabled}
+      sx={{ justifyContent: 'flex-start', color: label ? 'text.primary' : 'text.disabled', textTransform: 'none', borderRadius: '8px', '&:hover': { background: 'rgba(16,185,129,0.08)' } }}>
+      <Chip size="small" label={label || placeholder} sx={{ fontWeight: 700, bgcolor: label ? 'rgba(16,185,129,0.12)' : 'transparent', color: label ? COLOR_DARK : 'text.disabled' }} />
+    </Button>
+  </Box>
+);
 
 export default PettyCashExpenseNewPage;

@@ -350,20 +350,6 @@ const PettyCashPage = () => {
         </Box>
       </Paper>
 
-      <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
-        <Tabs
-          value={tabIndex}
-          onChange={(e, v) => navigate(`/petty-cash/${tabs[v].key}`)}
-          variant="scrollable" scrollButtons="auto"
-          sx={{ borderBottom: '1px solid rgba(225,225,225,0.5)', px: 2 }}
-        >
-          {tabs.map((t, i) => (
-            <Tab key={i} icon={t.icon} iconPosition="start" label={t.label}
-              sx={{ fontWeight: 600, minHeight: 48, color: tabIndex === i ? COLOR_DARK : undefined }} />
-          ))}
-        </Tabs>
-      </Paper>
-
       {tabIndex === 0 && <DashboardTab />}
       {tabIndex === 1 && <FundsTab />}
       {tabIndex === 2 && <TransactionsTab />}
