@@ -152,9 +152,13 @@ class AccountingDocumentSerializer(BaseModelSerializer):
         fields = '__all__'
 
     def create(self, validated_data):
+        from django.utils import timezone
         lines = validated_data.pop('lines', [])
         company = validated_data.pop('company', None)
+        user = self.context['request'].user if 'request' in self.context else None
         doc = AccountingDocument.objects.create(company=company, **validated_data)
+        doc.history = [{'step': 'created', 'by': user.username if user else '', 'note': 'ایجاد سند', 'at': timezone.now().isoformat()}]
+        doc.save(update_fields=['history'])
         for i, line in enumerate(lines, start=1):
             line.pop('document', None)
             line.pop('company', None)
@@ -162,9 +166,14 @@ class AccountingDocumentSerializer(BaseModelSerializer):
         return doc
 
     def update(self, instance, validated_data):
+        from django.utils import timezone
         lines = validated_data.pop('lines', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+        user = self.context['request'].user if 'request' in self.context else None
+        hist = list(instance.history or [])
+        hist.append({'step': 'edited', 'by': user.username if user else '', 'note': 'ویرایش سند', 'at': timezone.now().isoformat()})
+        instance.history = hist
         instance.save()
         if lines is not None:
             instance.lines.all().delete()

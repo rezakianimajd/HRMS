@@ -420,6 +420,7 @@ class AccountingDocument(BaseModel):
     source_type = models.CharField(max_length=50, blank=True, verbose_name=_('نوع منبع'))
     source_id = models.CharField(max_length=64, blank=True, verbose_name=_('شناسهٔ منبع'))
     is_locked = models.BooleanField(default=False, verbose_name=_('قفل ویرایش'))
+    history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
     # Who / when
     created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ایجادکننده'))
     submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ارسال‌کننده'))

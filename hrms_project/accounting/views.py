@@ -306,44 +306,60 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
     def _service(self, obj):
         return PostingService(obj, user=self.request.user)
 
+    def _log(self, obj, step, note=''):
+        hist = list(obj.history or [])
+        hist.append({'step': step, 'by': self.request.user.username, 'note': note, 'at': timezone.now().isoformat()})
+        obj.history = hist
+        obj.save(update_fields=['history', 'updated_at'])
+
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
+        obj = self.get_object()
         try:
-            self._service(self.get_object()).submit()
+            self._service(obj).submit()
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
-        return Response(AccountingDocumentSerializer(self.get_object()).data)
+        self._log(obj, 'submitted', 'ارسال برای تأیید')
+        return Response(AccountingDocumentSerializer(obj).data)
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
+        obj = self.get_object()
         try:
-            self._service(self.get_object()).approve()
+            self._service(obj).approve()
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
-        return Response(AccountingDocumentSerializer(self.get_object()).data)
+        self._log(obj, 'approved', 'تأیید شد')
+        return Response(AccountingDocumentSerializer(obj).data)
 
     @action(detail=True, methods=['post'])
     def post_document(self, request, pk=None):
+        obj = self.get_object()
         try:
-            self._service(self.get_object()).post()
+            self._service(obj).post()
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
-        return Response(AccountingDocumentSerializer(self.get_object()).data)
+        self._log(obj, 'posted', 'ثبت نهایی شد')
+        return Response(AccountingDocumentSerializer(obj).data)
 
     @action(detail=True, methods=['post'])
     def lock(self, request, pk=None):
+        obj = self.get_object()
         try:
-            self._service(self.get_object()).lock()
+            self._service(obj).lock()
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
-        return Response(AccountingDocumentSerializer(self.get_object()).data)
+        self._log(obj, 'locked', 'قفل شد')
+        return Response(AccountingDocumentSerializer(obj).data)
 
     @action(detail=True, methods=['post'])
     def reverse(self, request, pk=None):
+        obj = self.get_object()
         try:
-            reversal = self._service(self.get_object()).reverse()
+            reversal = self._service(obj).reverse()
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
+        self._log(obj, 'reversed', 'برگشت خورد')
         return Response(AccountingDocumentSerializer(reversal).data)
 
 
