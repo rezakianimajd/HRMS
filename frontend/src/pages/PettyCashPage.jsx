@@ -41,47 +41,99 @@ const fieldSx = {
 };
 
 /* ------------------------------- dashboard (نمای کلی) ------------------------------- */
+const HorizontalBar = ({ label, value, max, color }) => (
+  <Box sx={{ display: 'grid', gridTemplateColumns: '110px 1fr 90px', gap: 1, alignItems: 'center', py: 0.5 }}>
+    <Typography variant="caption" color="textSecondary" noWrap>{label}</Typography>
+    <Box sx={{ height: 8, borderRadius: 4, background: 'rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+      <Box sx={{ height: '100%', width: `${max ? Math.min(100, (value / max) * 100) : 0}%`, borderRadius: 4, background: `linear-gradient(90deg, ${color}, ${color}99)` }} />
+    </Box>
+    <Typography variant="caption" fontWeight={700} sx={{ textAlign: 'left' }}>{formatPersianNumber(value)}</Typography>
+  </Box>
+);
+
+const STATUS_COLORS = {
+  draft: '#64748b', submitted: '#f59e0b', approved: '#10b981', posted: '#3b82f6',
+  rejected: '#ef4444', edited: '#8b5cf6',
+};
+
 const DashboardTab = () => {
-  const { data: funds, isLoading } = useQuery({
-    queryKey: ['petty-cash-funds'],
-    queryFn: () => axiosInstance.get('/petty-cash-funds/').then(r => r.data),
+  const { data, isLoading } = useQuery({
+    queryKey: ['petty-analytics'],
+    queryFn: () => axiosInstance.get('/petty-cash-funds/dashboard/').then(r => r.data),
   });
-  const list = Array.isArray(funds) ? funds : funds?.results || [];
-  const active = list.filter(f => f.status === 'active');
-  const totalBalance = active.reduce((s, f) => s + Number(f.balance || 0), 0);
+  const d = data || {};
 
   if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
 
+  const catMax = Math.max(1, ...(d.by_category || []).map(x => x.total));
+  const custMax = Math.max(1, ...(d.by_custodian || []).map(x => x.total));
+  const totalStatus = (d.total_statements || 0) || 1;
+
   return (
     <Box>
-      <Grid container spacing={2}>
-        <Grid item xs={12} sm={4}>
-          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">تعداد تنخواه فعال</Typography>
-            <Typography variant="h5" fontWeight={900} color={COLOR_DARK}>{toPersianDigits(active.length)}</Typography>
-          </Paper>
-        </Grid>
-        <Grid item xs={12} sm={4}>
+      <Grid container spacing={2} sx={{ mb: 2.5 }}>
+        <Grid item xs={6} md={3}>
           <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
             <Typography variant="caption" color="textSecondary">مجموع ماندهٔ تنخواه‌ها</Typography>
-            <Typography variant="h5" fontWeight={900} color={COLOR_DARK}>{formatPersianNumber(totalBalance)}</Typography>
+            <Typography variant="h5" fontWeight={900} color={COLOR_DARK}>{formatPersianNumber(d.total_balance || 0)}</Typography>
           </Paper>
         </Grid>
-        <Grid item xs={12} sm={4}>
+        <Grid item xs={6} md={3}>
           <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">کل تنخواه‌ها</Typography>
-            <Typography variant="h5" fontWeight={900}>{toPersianDigits(list.length)}</Typography>
+            <Typography variant="caption" color="textSecondary">تنخواه فعال</Typography>
+            <Typography variant="h5" fontWeight={900}>{toPersianDigits(d.active_funds || 0)}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
+            <Typography variant="caption" color="textSecondary">مبلغ در انتظار تأیید</Typography>
+            <Typography variant="h5" fontWeight={900} color="#f59e0b">{formatPersianNumber(d.pending_total || 0)}</Typography>
+          </Paper>
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
+            <Typography variant="caption" color="textSecondary">مصرف این ماه</Typography>
+            <Typography variant="h5" fontWeight={900} color="#3b82f6">{formatPersianNumber(d.monthly_spend || 0)}</Typography>
           </Paper>
         </Grid>
       </Grid>
 
-      <Paper sx={{ ...glass, p: 4, mt: 2, textAlign: 'center' }}>
-        <AccountBalanceWalletIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} />
-        <Typography variant="body1" fontWeight={700} color={COLOR_DARK}>مدیریت تنخواه</Typography>
-        <Typography variant="body2" color="textSecondary" mt={0.5}>
-          ثبت و بایگانی تنخواه‌ها، تراکنش‌ها و دسته‌بندی‌ها از تب‌های «تنخواه‌ها»، «تراکنش‌ها» و «دسته‌بندی‌ها» انجام می‌شود.
-        </Typography>
-      </Paper>
+      <Grid container spacing={2.5}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ ...glass, p: 2 }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>مصرف بر اساس دسته‌بندی</Typography>
+            {(d.by_category || []).length === 0
+              ? <Typography variant="body2" color="textSecondary" textAlign="center" py={2}>داده‌ای ثبت نشده</Typography>
+              : (d.by_category || []).map((c, i) => (
+                <HorizontalBar key={i} label={c.category} value={c.total} max={catMax} color="#10b981" />
+              ))}
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ ...glass, p: 2 }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>مصرف بر اساس تنخواه‌دار</Typography>
+            {(d.by_custodian || []).length === 0
+              ? <Typography variant="body2" color="textSecondary" textAlign="center" py={2}>داده‌ای ثبت نشده</Typography>
+              : (d.by_custodian || []).map((c, i) => (
+                <HorizontalBar key={i} label={c.name} value={c.total} max={custMax} color="#f59e0b" />
+              ))}
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper sx={{ ...glass, p: 2 }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>وضعیت صورت‌ها</Typography>
+            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+              {Object.entries(d.status_counts || {}).map(([k, v]) => (
+                <Chip
+                  key={k}
+                  label={`${({ draft: 'پیش‌نویس', submitted: 'در انتظار', approved: 'تأیید', posted: 'ثبت', rejected: 'برگشت', edited: 'ویرایش' })[k] || k}: ${toPersianDigits(v)}`}
+                  sx={{ bgcolor: `${STATUS_COLORS[k] || '#64748b'}18`, color: STATUS_COLORS[k] || '#64748b', fontWeight: 700 }}
+                />
+              ))}
+            </Stack>
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 };
