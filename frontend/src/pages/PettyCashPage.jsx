@@ -99,12 +99,33 @@ const FundsTab = () => {
     queryKey: ['emp-dropdown'],
     queryFn: () => axiosInstance.get('/employees/', { params: { page_size: 500 } }).then(r => r.data.results || r.data),
   });
-  const { data: accounts } = useQuery({
-    queryKey: ['fund-accounts'],
+  const { data: generalAccounts } = useQuery({
+    queryKey: ['fund-general-accounts'],
     queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'general' } }).then(r => r.data),
   });
+  const { data: subsidiaryAccounts } = useQuery({
+    queryKey: ['fund-subsidiary-accounts'],
+    queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'subsidiary' } }).then(r => r.data),
+  });
+  const { data: auxiliaries } = useQuery({
+    queryKey: ['fund-auxiliaries'],
+    queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data),
+  });
   const list = Array.isArray(funds) ? funds : funds?.results || [];
-  const accountList = Array.isArray(accounts) ? accounts : accounts?.results || [];
+  const generalList = Array.isArray(generalAccounts) ? generalAccounts : generalAccounts?.results || [];
+  const subsidiaryList = Array.isArray(subsidiaryAccounts) ? subsidiaryAccounts : subsidiaryAccounts?.results || [];
+  const auxList = Array.isArray(auxiliaries) ? auxiliaries : auxiliaries?.results || [];
+
+  const selectedGeneral = generalList.find(a => a.id === form.general_account);
+  const selectedSubsidiary = subsidiaryList.find(a => a.id === form.account);
+  // معینها فیلتر بر اساس کل انتخاب‌شده
+  const filteredSubsidiaries = form.general_account ? subsidiaryList.filter(a => a.parent === form.general_account) : subsidiaryList;
+  // تفصیلها فیلتر بر اساس دسته‌های مرتبط با معین
+  const auxSlots = [
+    { key: 'auxiliary_1', cat: selectedSubsidiary?.auxiliary_category_1 },
+    { key: 'auxiliary_2', cat: selectedSubsidiary?.auxiliary_category_2 },
+    { key: 'auxiliary_3', cat: selectedSubsidiary?.auxiliary_category_3 },
+  ];
 
   const save = useMutation({
     mutationFn: (p) => editing
@@ -143,15 +164,35 @@ const FundsTab = () => {
           <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="اعتبار اولیه" type="number" value={form.opening_balance || ''} onChange={e => set('opening_balance', e.target.value)} /></Grid>
           <Grid item xs={6} md={3}><TextField size="small" fullWidth sx={fieldSx} label="سقف (اختیاری)" type="number" value={form.limit || ''} onChange={e => set('limit', e.target.value)} /></Grid>
           <Grid item xs={12} md={6}><TextField size="small" fullWidth sx={fieldSx} label="توضیحات" value={form.description || ''} onChange={e => set('description', e.target.value)} /></Grid>
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={3}>
             <FormControl size="small" fullWidth>
-              <InputLabel>حساب تنخواه (طرف بستانکار)</InputLabel>
-              <Select value={form.account || ''} label="حساب تنخواه (طرف بستانکار)" onChange={e => set('account', e.target.value)} sx={{ borderRadius: '12px' }}>
+              <InputLabel>حساب کل</InputLabel>
+              <Select value={form.general_account || ''} label="حساب کل" onChange={e => { set('general_account', e.target.value); set('account', ''); set('auxiliary_1', ''); set('auxiliary_2', ''); set('auxiliary_3', ''); }} sx={{ borderRadius: '12px' }}>
                 <MenuItem value="">—</MenuItem>
-                {accountList.map(a => <MenuItem key={a.id} value={a.id}>{a.code} - {a.name}</MenuItem>)}
+                {generalList.map(a => <MenuItem key={a.id} value={a.id}>{a.code} - {a.name}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={12} md={3}>
+            <FormControl size="small" fullWidth>
+              <InputLabel>حساب معین (بستانکار)</InputLabel>
+              <Select value={form.account || ''} label="حساب معین (بستانکار)" onChange={e => { set('account', e.target.value); set('auxiliary_1', ''); set('auxiliary_2', ''); set('auxiliary_3', ''); }} sx={{ borderRadius: '12px' }}>
+                <MenuItem value="">—</MenuItem>
+                {filteredSubsidiaries.map(a => <MenuItem key={a.id} value={a.id}>{a.code} - {a.name}</MenuItem>)}
+              </Select>
+            </FormControl>
+          </Grid>
+          {auxSlots.map(slot => (
+            <Grid item xs={12} md={3} key={slot.key}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>{slot.key === 'auxiliary_1' ? 'تفصیل ۱' : slot.key === 'auxiliary_2' ? 'تفصیل ۲' : 'تفصیل ۳'}</InputLabel>
+                <Select value={form[slot.key] || ''} label={slot.key} onChange={e => set(slot.key, e.target.value)} disabled={!slot.cat} sx={{ borderRadius: '12px' }}>
+                  <MenuItem value="">—</MenuItem>
+                  {(slot.cat ? auxList.filter(a => a.category === slot.cat) : []).map(a => <MenuItem key={a.id} value={a.id}>{a.code} - {a.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Grid>
+          ))}
           <Grid item xs={12}>
             <Stack direction="row" spacing={2}>
               <Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, opening_balance: Number(form.opening_balance) || 0, limit: form.limit ? Number(form.limit) : null })} disabled={save.isLoading} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>

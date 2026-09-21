@@ -35,10 +35,27 @@ class PettyCashFund(BaseModel):
         related_name='petty_cash_funds',
         verbose_name=_('تنخواه‌دار'),
     )
+    general_account = models.ForeignKey(
+        'accounting.Account', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='petty_cash_funds_general', verbose_name=_('حساب کل'),
+        help_text=_('حساب کل (سطح ۱) که تنخواه به آن متصل است.'),
+    )
     account = models.ForeignKey(
         'accounting.Account', on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='petty_cash_funds', verbose_name=_('حساب تنخواه (بستانکار)'),
+        related_name='petty_cash_funds', verbose_name=_('حساب معین'),
         help_text=_('حساب معینی که هنگام ثبت سند، طرف بستانکار تنخواه قرار می‌گیرد.'),
+    )
+    auxiliary_1 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('تفصیل یک'),
+    )
+    auxiliary_2 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('تفصیل دو'),
+    )
+    auxiliary_3 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('تفصیل سه'),
     )
     opening_balance = models.DecimalField(
         max_digits=18, decimal_places=0, default=0,

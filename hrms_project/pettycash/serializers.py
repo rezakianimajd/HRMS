@@ -85,7 +85,8 @@ class PettyCashFundSerializer(serializers.ModelSerializer):
         model = PettyCashFund
         fields = [
             'id', 'code', 'title', 'custodian', 'custodian_name', 'custodian_code',
-            'account', 'opening_balance', 'limit', 'status', 'status_display', 'balance',
+            'general_account', 'account', 'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
+            'opening_balance', 'limit', 'status', 'status_display', 'balance',
             'archived_at', 'description', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at', 'balance']

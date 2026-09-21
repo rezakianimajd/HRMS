@@ -465,11 +465,14 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                             credit=0,
                             line_no=line_no,
                         )
-                    # طرف بستانکار = حساب تنخواه
+                    # طرف بستانکار = حساب تنخواه (معین + تفصیلها)
                     line_no += 1
                     AccountingDocumentLine.objects.create(
                         document=doc, company_id=source.company_id,
                         account_id=st.fund.account_id,
+                        auxiliary_1_id=st.fund.auxiliary_1_id,
+                        auxiliary_2_id=st.fund.auxiliary_2_id,
+                        auxiliary_3_id=st.fund.auxiliary_3_id,
                         description=f'تنخواه {st.fund.title}',
                         debit=0,
                         credit=Decimal(st.total),
