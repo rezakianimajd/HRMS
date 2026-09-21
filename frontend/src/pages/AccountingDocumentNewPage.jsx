@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -46,6 +46,8 @@ const empty = (date) => ({ account: '', aux1: '', aux2: '', aux3: '', desc: '', 
 
 const AccountingDocumentNewPage = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
+  const isEdit = Boolean(id);
   const qc = useQueryClient();
   const [header, setHeader] = useState({ number: '', ref_no: '', date: today(), description: '', journal: '', fiscal_year: '' });
   const [lines, setLines] = useState(() => Array.from({ length: ROWS }, () => empty(today())));
@@ -59,6 +61,11 @@ const AccountingDocumentNewPage = () => {
   const { data: accounts } = useQuery({ queryKey: ['doc-accounts'], queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'subsidiary' } }).then(r => r.data) });
   const { data: auxiliaries } = useQuery({ queryKey: ['doc-aux'], queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data) });
   const { data: docs } = useQuery({ queryKey: ['doc-list-number'], queryFn: () => axiosInstance.get('/accounting/documents/').then(r => r.data) });
+  const { data: existingDoc } = useQuery({
+    queryKey: ['accounting-document', id],
+    queryFn: () => axiosInstance.get(`/accounting/documents/${id}/`).then(r => r.data),
+    enabled: isEdit,
+  });
 
   const journalList = Array.isArray(journals) ? journals : journals?.results || [];
   const yearList = Array.isArray(years) ? years : years?.results || [];
@@ -68,11 +75,38 @@ const AccountingDocumentNewPage = () => {
 
   // auto suggested document number
   useEffect(() => {
-    if (header.number) return;
+    if (isEdit || header.number) return;
     const nums = docList.map(d => parseInt(d.number) || d.id || 0).filter(n => n);
     const next = (Math.max(0, ...nums) + 1);
     setHeader(p => ({ ...p, number: String(next).padStart(5, '0') }));
-  }, [docList]);
+  }, [docList, isEdit]);
+
+  // بارگذاری سند موجود در حالت ویرایش
+  useEffect(() => {
+    if (existingDoc) {
+      setHeader({
+        number: existingDoc.number || '',
+        ref_no: existingDoc.reference || '',
+        date: existingDoc.date,
+        description: existingDoc.description || '',
+        journal: existingDoc.journal || '',
+        fiscal_year: existingDoc.fiscal_year || '',
+      });
+      const loaded = (existingDoc.lines || []).map(l => ({
+        account: l.account || '',
+        aux1: l.auxiliary_1 || '',
+        aux2: l.auxiliary_2 || '',
+        aux3: l.auxiliary_3 || '',
+        desc: l.description || '',
+        ref: l.reference || '',
+        date: l.maturity_date || existingDoc.date,
+        debit: l.debit,
+        credit: l.credit,
+      }));
+      setLines(loaded.length ? loaded : Array.from({ length: ROWS }, () => empty(today())));
+      setActiveRow(0);
+    }
+  }, [existingDoc]);
 
   const setHeaderField = (k, v) => setHeader(p => ({ ...p, [k]: v }));
   const setLine = (i, k, v) => setLines(p => { const l = [...p]; l[i] = { ...l[i], [k]: v }; return l; });
@@ -132,7 +166,11 @@ const AccountingDocumentNewPage = () => {
 
     setSaving(true);
     try {
-      await axiosInstance.post('/accounting/documents/', payload);
+      if (isEdit) {
+        await axiosInstance.patch(`/accounting/documents/${id}/`, payload);
+      } else {
+        await axiosInstance.post('/accounting/documents/', payload);
+      }
       qc.invalidateQueries({ queryKey: ['accounting-documents'] });
       navigate('/accounting/documents');
     } catch (e) {
@@ -150,7 +188,7 @@ const AccountingDocumentNewPage = () => {
           <DescriptionIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>سند جدید</Typography>
+          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>{isEdit ? 'ویرایش سند' : 'سند جدید'}</Typography>
           <Typography variant="body2" color="textSecondary">ثبت آرتیکل به آرتیکل با توازن خودکار</Typography>
         </Box>
       </Paper>
@@ -264,7 +302,7 @@ const AccountingDocumentNewPage = () => {
         <Button startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '12px' }}>خروج</Button>
         <Button startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
           sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3, boxShadow: `0 10px 24px ${COLOR}44` }}>
-          {saving ? <CircularProgress size={20} /> : 'ذخیره سند'}
+          {saving ? <CircularProgress size={20} /> : (isEdit ? 'به‌روزرسانی سند' : 'ذخیره سند')}
         </Button>
       </Stack>
     </Box>
