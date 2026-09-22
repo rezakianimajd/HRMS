@@ -225,18 +225,70 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
     serializer_class = PettyCashExpenseStatementSerializer
     queryset = PettyCashExpenseStatement.objects.all()
     parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    search_fields = ['number', 'description', 'fund__title', 'custodian__first_name', 'custodian__last_name']
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    ordering = ['-date', '-created_at']
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('fund', 'custodian').prefetch_related('lines__account')
+        # حذف نرم: به‌طور پیش‌فرض حذف‌شده‌ها نمایش داده نشوند
+        if self.request.query_params.get('include_deleted') != '1':
+            qs = qs.filter(is_deleted=False)
         fund_id = self.request.query_params.get('fund')
         if fund_id:
             qs = qs.filter(fund_id=fund_id)
+        status_q = self.request.query_params.get('status')
+        if status_q:
+            qs = qs.filter(status=status_q)
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+        custodian_id = self.request.query_params.get('custodian')
+        if custodian_id:
+            qs = qs.filter(custodian_id=custodian_id)
         # تنخواه‌دار فقط صورت‌های خودش را ببیند
         if self.request.query_params.get('mine') == '1':
             emp_id = getattr(getattr(self.request.user, 'profile', None), 'employee_id', None)
             if emp_id:
                 qs = qs.filter(custodian_id=emp_id)
         return qs
+
+    @action(detail=False, methods=['post'])
+    def bulk_action(self, request):
+        """اکشن انبوه: submit/approve/return روی چند صورت."""
+        ids = request.data.get('ids', [])
+        act = request.data.get('action')
+        qs = self.get_queryset().filter(id__in=ids)
+        status_map = {'submit': 'submitted', 'approve': 'approved', 'return': 'rejected'}
+        if act not in status_map:
+            return Response({'error': 'اکشن نامعتبر'}, status=400)
+        for st in qs:
+            st.status = status_map[act]
+            st.save(update_fields=['status', 'updated_at'])
+            st.history = [*st.history, {'step': status_map[act], 'by': request.user.username, 'at': timezone.now().isoformat()}]
+            st.save(update_fields=['history'])
+        return Response({'count': qs.count()})
+
+    @action(detail=True, methods=['post'])
+    def soft_delete(self, request, pk=None):
+        """حذف نرم (قابل بازیابی)."""
+        obj = self.get_object()
+        obj.is_deleted = True
+        obj.deleted_at = timezone.now()
+        obj.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+        return Response({'status': 'deleted'})
+
+    @action(detail=True, methods=['post'])
+    def restore(self, request, pk=None):
+        """بازیابی از سطل بازیافت."""
+        obj = self.get_object()
+        obj.is_deleted = False
+        obj.deleted_at = None
+        obj.save(update_fields=['is_deleted', 'deleted_at', 'updated_at'])
+        return Response({'status': 'restored'})
 
     def perform_create(self, serializer):
         company = _company(self.request)
@@ -246,6 +298,7 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         st = self.get_object()
+        # تفکیک وظایف: ثبت‌کننده نتواند خودش تأیید کند (فقط در approve اعمال می‌شود)
         st.status = 'submitted'
         st.submitted_by = request.user
         st.submitted_at = timezone.now()
@@ -286,6 +339,9 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
         note = request.data.get('note', '')
         if new_status not in ['approved', 'rejected', 'edited', 'posted']:
             return Response({'error': 'وضعیت نامعتبر'}, status=400)
+        # تفکیک وظایف (SoD): ثبت‌کننده/ارسال‌کننده خودش نتواند تأیید/ثبت کند
+        if new_status in ('approved', 'posted') and st.submitted_by_id == request.user.id:
+            return Response({'error': 'تفکیک وظایف: ارسال‌کننده نمی‌تواند خودش تأیید/ثبت نهایی کند.'}, status=400)
         st.status = new_status
         if new_status in ('approved', 'posted'):
             st.approved_by = request.user

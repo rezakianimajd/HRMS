@@ -92,7 +92,7 @@ class PettyCashExpenseStatementSerializer(serializers.ModelSerializer):
             'date', 'description', 'status', 'status_display', 'history', 'total', 'lines',
             'submitted_by', 'submitted_by_name', 'submitted_at',
             'approved_by', 'approved_by_name', 'approved_at',
-            'approval_steps', 'created_at',
+            'approval_steps', 'is_deleted', 'deleted_at', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at', 'custodian', 'status', 'history']
 

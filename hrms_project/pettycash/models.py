@@ -215,6 +215,8 @@ class PettyCashExpenseStatement(BaseModel):
         'accounting.SourceTransaction', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='petty_statement', verbose_name=_('تراکنش منبع حسابداری'),
     )
+    is_deleted = models.BooleanField(default=False, verbose_name=_('حذف نرم'))
+    deleted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان حذف'))
 
     class Meta:
         verbose_name = _('صورت ریز هزینهٔ تنخواه')
