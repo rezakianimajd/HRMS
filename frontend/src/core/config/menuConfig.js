@@ -272,6 +272,7 @@ const pettycashMenu = [
     title: 'پیکربندی',
     color: '#64748b',
     items: [
+      { id: 'petty-cash-policies', title: 'سیاست تأیید', icon: <RuleIcon />, path: '/petty-cash/policies', color: '#8b5cf6', primary: false, ready: true },
       comingSoon('/petty-cash/settings', 'petty-cash-settings', 'تنظیمات', <SettingsIcon />, '#64748b'),
     ],
   },
