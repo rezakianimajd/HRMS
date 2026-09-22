@@ -62,7 +62,12 @@ const DashboardTab = () => {
     queryKey: ['petty-analytics'],
     queryFn: () => axiosInstance.get('/petty-cash-funds/dashboard/').then(r => r.data),
   });
+  const { data: reminders } = useQuery({
+    queryKey: ['petty-reminders'],
+    queryFn: () => axiosInstance.get('/petty-cash-expense-statements/reminders/').then(r => r.data),
+  });
   const d = data || {};
+  const rem = reminders || {};
 
   if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
 
@@ -72,6 +77,14 @@ const DashboardTab = () => {
 
   return (
     <Box>
+      {(rem.draft_count || rem.submitted_count) ? (
+        <Paper sx={{ ...glass, p: 1.5, mb: 2, display: 'flex', gap: 1.5, flexWrap: 'wrap', alignItems: 'center', borderColor: '#f59e0b66' }}>
+          <Typography variant="body2" fontWeight={700} color="#b45309">یادآور:</Typography>
+          {rem.draft_count > 0 && <Chip size="small" color="warning" label={`${rem.draft_count} پیش‌نویس معطل`} />}
+          {rem.submitted_count > 0 && <Chip size="small" color="error" label={`${rem.submitted_count} در انتظار تأیید معطل`} />}
+        </Paper>
+      ) : null}
+
       <Grid container spacing={2} sx={{ mb: 2.5 }}>
         <Grid item xs={6} md={3}>
           <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>

@@ -65,6 +65,8 @@ import PettyCashExpensesPage from './pages/PettyCashExpensesPage';
 import PettyCashExpenseNewPage from './pages/PettyCashExpenseNewPage';
 import PettyCashCustodiansPage from './pages/PettyCashCustodiansPage';
 import PettyCashPolicyPage from './pages/PettyCashPolicyPage';
+import PettyCashLedgerPage from './pages/PettyCashLedgerPage';
+import PettyCashCalendarPage from './pages/PettyCashCalendarPage';
 import AccountingPage from './pages/AccountingPage';
 import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
 import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
@@ -150,6 +152,8 @@ const AppRoutes = () => {
       <Route path="/benefit-payments" element={<ProtectedLayout><BenefitPaymentPage /></ProtectedLayout>} />
       <Route path="/petty-cash/custodians" element={<ProtectedLayout><PettyCashCustodiansPage /></ProtectedLayout>} />
       <Route path="/petty-cash/policies" element={<ProtectedLayout><PettyCashPolicyPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/ledger" element={<ProtectedLayout><PettyCashLedgerPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/calendar" element={<ProtectedLayout><PettyCashCalendarPage /></ProtectedLayout>} />
       <Route path="/petty-cash/expenses" element={<ProtectedLayout><PettyCashExpensesPage /></ProtectedLayout>} />
       <Route path="/petty-cash/expenses/new" element={<ProtectedLayout><PettyCashExpenseNewPage /></ProtectedLayout>} />
       <Route path="/petty-cash/:tab" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />

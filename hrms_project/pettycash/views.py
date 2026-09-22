@@ -313,6 +313,32 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
         fund = serializer.validated_data['fund']
         serializer.save(company=company, custodian=fund.custodian)
 
+    @action(detail=False, methods=['get'])
+    def calendar(self, request):
+        """تقویم هزینه‌ها بر اساس تاریخ صورت."""
+        qs = self.get_queryset().filter(is_deleted=False).select_related('fund', 'custodian')
+        events = []
+        for st in qs:
+            events.append({
+                'id': st.id,
+                'date': st.date.isoformat(),
+                'title': st.fund.title,
+                'number': st.number or st.pk,
+                'status': st.status,
+                'total': float(st.total),
+            })
+        return Response(events)
+
+    @action(detail=True, methods=['post'])
+    def sign(self, request, pk=None):
+        """امضای دیجیتال نهایی‌سازی صورت."""
+        st = self.get_object()
+        if st.status != 'posted':
+            return Response({'error': 'فقط صورت ثبت‌شده قابلیت امضا دارد.'}, status=400)
+        st.history = [*st.history, {'step': 'signed', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        st.save(update_fields=['history', 'updated_at'])
+        return Response(PettyCashExpenseStatementSerializer(st).data)
+
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
         st = self.get_object()
