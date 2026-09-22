@@ -1,6 +1,7 @@
 """Views for the Petty Cash module."""
 from django.utils import timezone
 from django.db.models import Sum, Count
+from django.template.loader import render_to_string
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -191,6 +192,22 @@ class PettyCashFundViewSet(BaseViewSet):
         for st in stmts.values('status').annotate(c=Count('id')):
             status_counts[st['status']] = st['c']
 
+        # روند ۶ ماه اخیر
+        monthly_trend = []
+        import datetime
+        months = []
+        now = timezone.now()
+        for i in range(5, -1, -1):
+            y = now.year
+            m = now.month - i
+            while m <= 0:
+                m += 12
+                y -= 1
+            months.append((y, m))
+        for y, m in months:
+            total = txns.filter(entry_type='debit', date__year=y, date__month=m).aggregate(s=Sum('amount'))['s'] or 0
+            monthly_trend.append({'year': y, 'month': m, 'total': float(total)})
+
         return Response({
             'total_balance': float(total_balance),
             'active_funds': active_funds,
@@ -199,6 +216,7 @@ class PettyCashFundViewSet(BaseViewSet):
             'by_category': by_category,
             'by_custodian': by_custodian,
             'status_counts': status_counts,
+            'monthly_trend': monthly_trend,
             'total_statements': stmts.count(),
         })
 
@@ -317,6 +335,20 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
             pass
         return Response(PettyCashExpenseStatementSerializer(st).data)
 
+    @action(detail=True, methods=['get'], url_path='pdf')
+    def pdf(self, request, pk=None):
+        """گزارش چاپی PDF صورت هزینهٔ تنخواه (HTML چاپی)."""
+        from django.http import HttpResponse
+        st = self.get_object()
+        html = render_to_string('pettycash/statement_pdf.html', {
+            'statement': st,
+            'lines': st.lines.all().select_related('account').order_by('line_no'),
+            'total': st.total,
+        })
+        response = HttpResponse(html, content_type='text/html; charset=utf-8')
+        response['Content-Disposition'] = f'inline; filename="statement-{st.pk}.html"'
+        return response
+
     @action(detail=False, methods=['get'])
     def export(self, request):
         """خروجی CSV صورت‌های هزینهٔ تنخواه."""
@@ -330,6 +362,20 @@ class PettyCashExpenseStatementViewSet(BaseViewSet):
         for st in qs:
             writer.writerow([st.number or st.pk, st.date.isoformat(), st.fund.title, st.custodian.full_name if st.custodian else '', st.status, st.total, st.description])
         return response
+
+    @action(detail=False, methods=['get'])
+    def reminders(self, request):
+        """یادآورها: صورت‌های draft/در انتظار که معطل مانده‌اند."""
+        days = int(request.query_params.get('days', 3))
+        cutoff = timezone.now() - timezone.timedelta(days=days)
+        drafts = self.get_queryset().filter(status='draft', is_deleted=False, updated_at__lte=cutoff)
+        submitted = self.get_queryset().filter(status='submitted', is_deleted=False, submitted_at__lte=cutoff)
+        return Response({
+            'drafts': PettyCashExpenseStatementSerializer(drafts, many=True).data,
+            'submitted': PettyCashExpenseStatementSerializer(submitted, many=True).data,
+            'draft_count': drafts.count(),
+            'submitted_count': submitted.count(),
+        })
 
     @action(detail=True, methods=['post'])
     def mark_status(self, request, pk=None):

@@ -120,7 +120,7 @@ const DashboardTab = () => {
               ))}
           </Paper>
         </Grid>
-        <Grid item xs={12}>
+        <Grid item xs={12} md={5}>
           <Paper sx={{ ...glass, p: 2 }}>
             <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>وضعیت صورت‌ها</Typography>
             <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
@@ -132,6 +132,25 @@ const DashboardTab = () => {
                 />
               ))}
             </Stack>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={7}>
+          <Paper sx={{ ...glass, p: 2 }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>روند مصرف (۶ ماه اخیر)</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 160 }}>
+              {(d.monthly_trend || []).map((m, i) => {
+                const max = Math.max(1, ...(d.monthly_trend || []).map(x => x.total));
+                const h = `${Math.max(3, (m.total / max) * 130)}px`;
+                return (
+                  <Box key={i} sx={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5 }}>
+                    <Typography variant="caption">{formatPersianNumber(m.total)}</Typography>
+                    <Box sx={{ width: '100%', maxWidth: 40, height: h, borderRadius: '6px 6px 0 0', background: 'linear-gradient(180deg, #10b981, #05966999)' }} />
+                    <Typography variant="caption" color="textSecondary">{`${m.month}/${String(m.year).slice(-2)}`}</Typography>
+                  </Box>
+                );
+              })}
+            </Box>
           </Paper>
         </Grid>
       </Grid>

@@ -14,6 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import HistoryIcon from '@mui/icons-material/History';
 import DownloadIcon from '@mui/icons-material/Download';
+import PrinterIcon from '@mui/icons-material/Print';
 import DeleteIcon from '@mui/icons-material/Delete';
 import RestoreIcon from '@mui/icons-material/Restore';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -166,6 +167,7 @@ const PettyCashExpensesPage = () => {
                       ) : (
                         <>
                           {s.status === 'draft' && <Tooltip title="ارسال به حسابداری"><IconButton size="small" color="primary" onClick={() => submit.mutate(s.id)}><SendIcon fontSize="small" /></IconButton></Tooltip>}
+                          <Tooltip title="گزارش چاپی PDF"><IconButton size="small" color="secondary" onClick={() => window.open(`/api/petty-cash-expense-statements/${s.id}/pdf/`, '_blank')}><PrinterIcon fontSize="small" /></IconButton></Tooltip>
                           {s.status === 'draft' && <Tooltip title="حذف (نرم)"><IconButton size="small" color="error" onClick={() => softDelete.mutate(s.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
                           <Tooltip title="تایم‌لاین"><IconButton size="small" color="info" onClick={() => openTimeline(s)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
                         </>

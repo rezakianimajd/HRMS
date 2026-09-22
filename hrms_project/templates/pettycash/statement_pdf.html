@@ -1,0 +1,61 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="utf-8">
+<title>صورت هزینهٔ تنخواه</title>
+<style>
+  body { font-family: Tahoma, Arial, sans-serif; direction: rtl; color: #1e293b; margin: 20px; }
+  .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #10b981; padding-bottom: 8px; }
+  .title { font-size: 20px; font-weight: 800; color: #059669; }
+  .meta { margin: 14px 0; display: flex; flex-wrap: wrap; gap: 16px; }
+  .meta div { min-width: 160px; }
+  .label { font-size: 11px; color: #64748b; }
+  .value { font-weight: 700; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+  th, td { border: 1px solid #e2e8f0; padding: 8px 10px; font-size: 12px; text-align: right; }
+  th { background: #f0fdf4; color: #059669; }
+  .total-row td { font-weight: 800; background: #f0fdf4; }
+  .signatures { display: flex; justify-content: space-between; margin-top: 40px; }
+  .sig { width: 200px; text-align: center; border-top: 1px dashed #94a3b8; padding-top: 6px; font-size: 12px; color: #64748b; }
+</style>
+</head>
+<body>
+  <div class="header">
+    <div class="title">صورت ریز هزینهٔ تنخواه</div>
+    <div class="value">{{ statement.number }}</div>
+  </div>
+
+  <div class="meta">
+    <div><div class="label">تاریخ</div><div class="value">{{ statement.date }}</div></div>
+    <div><div class="label">تنخواه</div><div class="value">{{ statement.fund.title }}</div></div>
+    <div><div class="label">تنخواه‌دار</div><div class="value">{{ statement.custodian.full_name }}</div></div>
+    <div><div class="label">وضعیت</div><div class="value">{{ statement.get_status_display }}</div></div>
+  </div>
+  {% if statement.description %}<div class="label">شرح صورت: {{ statement.description }}</div>{% endif %}
+
+  <table>
+    <thead><tr><th>ردیف</th><th>کد معین</th><th>شرح معین</th><th>شماره فاکتور</th><th>فروشنده</th><th>شرح هزینه</th><th>مبلغ (ریال)</th></tr></thead>
+    <tbody>
+    {% for line in lines %}
+      <tr>
+        <td>{{ line.line_no }}</td>
+        <td>{{ line.account.code }}</td>
+        <td>{{ line.account.name }}</td>
+        <td>{{ line.invoice_number }}</td>
+        <td>{{ line.supplier }}</td>
+        <td>{{ line.description }}</td>
+        <td>{{ line.debit }}</td>
+      </tr>
+    {% endfor %}
+      <tr class="total-row"><td colspan="6">جمع کل</td><td>{{ total }}</td></tr>
+    </tbody>
+  </table>
+
+  <div class="signatures">
+    <div class="sig">تنخواه‌دار</div>
+    <div class="sig">تأییدکننده</div>
+    <div class="sig">حسابدار</div>
+  </div>
+</body>
+</html>
