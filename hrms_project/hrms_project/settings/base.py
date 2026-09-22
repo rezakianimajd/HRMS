@@ -32,6 +32,7 @@ ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '*').split(',')
 # django_tenants MUST come before django.contrib.admin
 SHARED_APPS = [
     'django_tenants',                  # Multi-tenancy support
+    'jazzmin',                         # Admin theme (must precede admin)
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
@@ -333,3 +334,67 @@ def _fixed_basecontext_copy(self):
 
 
 django.template.context.BaseContext.__copy__ = _fixed_basecontext_copy
+
+# =============================================================================
+# Jazzmin (admin theme)
+# =============================================================================
+JAZZMIN_SETTINGS = {
+    'site_title': 'سامانه جامع HRMS',
+    'site_header': 'HRMS — مدیریت منابع انسانی',
+    'site_brand': 'HRMS',
+    'welcome_sign': 'خوش آمدید',
+    'copyright': 'HRMS',
+    'site_logo': None,
+    'login_logo': None,
+    'theme': 'cyborg',
+    'dark_mode_theme': 'cyborg',
+    'show_sidebar': True,
+    'navigation_expanded': True,
+    'related_modal_active': True,
+    'icons': {
+        'auth.user': 'fas fa-user',
+        'auth.group': 'fas fa-users',
+        'core.company': 'fas fa-building',
+        'core.domain': 'fas fa-globe',
+        'employees.employee': 'fas fa-id-card',
+        'accounting.account': 'fas fa-book',
+        'accounting.accountingdocument': 'fas fa-file-invoice',
+        'pettycash.pettycashfund': 'fas fa-wallet',
+        'pettycash.pettycashexpensestatement': 'fas fa-receipt',
+        'payroll.salaryrecord': 'fas fa-money-bill-wave',
+        'attendance.attendance': 'fas fa-clock',
+        'leaves.leaverequest': 'fas fa-umbrella-beach',
+    },
+    'custom_css': 'css/admin_custom.css',
+}
+JAZZMIN_UI_TWEAKS = {
+    'navbar_small_text': False,
+    'footer_small_text': False,
+    'body_small_text': False,
+    'brand_small_text': False,
+    'brand_colour': 'navbar-dark',
+    'accent': 'accent-primary',
+    'navbar': 'navbar-dark',
+    'no_navbar_border': True,
+    'navbar_fixed': True,
+    'layout_boxed': False,
+    'footer_fixed': False,
+    'sidebar_fixed': True,
+    'sidebar': 'sidebar-dark-primary',
+    'sidebar_nav_small_text': False,
+    'sidebar_disable_expand': False,
+    'sidebar_nav_child_indent': False,
+    'sidebar_nav_compact_style': False,
+    'sidebar_nav_legacy_style': False,
+    'sidebar_nav_flat_style': True,
+    'theme': 'cyborg',
+    'dark_mode_theme': 'cyborg',
+    'button_classes': {
+        'primary': 'btn-primary',
+        'secondary': 'btn-secondary',
+        'info': 'btn-info',
+        'warning': 'btn-warning',
+        'danger': 'btn-danger',
+        'success': 'btn-success',
+    },
+}
