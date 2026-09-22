@@ -1,161 +1,80 @@
 /* =============================================================================
-   HRMS — Jazzmin Custom CSS (زیبا، مدرن و بهینه)
+   HRMS — Jazzmin Custom CSS (ساده، ایمن و بدون شکستن چیدمان)
+   فقط رنگ و پس‌زمینه؛ بدون دستکاری عرض/موقعیت سایدبار.
    ============================================================================= */
 
 :root {
   --hrms-primary: #6366f1;
   --hrms-primary-dark: #4f46e5;
   --hrms-accent: #10b981;
-  --hrms-gold: #f59e0b;
-  --hrms-surface: rgba(17, 24, 39, 0.75);
-  --hrms-radius: 14px;
 }
 
-/* ---------- پس‌زمینه و تایپوگرافی ---------- */
+/* اطمینان از RTL صحیح برای فارسی */
+html[lang="fa"] body,
 body {
-  font-family: 'Vazirmatn', 'Segoe UI', Tahoma, sans-serif;
-  background:
-    radial-gradient(circle at 20% 10%, rgba(99, 102, 241, 0.12), transparent 40%),
-    radial-gradient(circle at 80% 90%, rgba(16, 185, 129, 0.10), transparent 45%),
-    #0f172a !important;
+  direction: rtl;
+}
+
+/* پس‌زمینهٔ ملایم بدنه */
+body {
+  background-color: #0f172a;
   color: #e2e8f0;
 }
 
-/* ---------- سایدبار ---------- */
-.main-sidebar {
-  background: linear-gradient(180deg, #111827 0%, #0b1220 100%) !important;
-  border-inline-end: 1px solid rgba(148, 163, 184, 0.12) !important;
-}
-
+/* برند سایدبار */
 .main-sidebar .brand-link {
-  background: linear-gradient(135deg, #4f46e5, #312e81) !important;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background-image: linear-gradient(135deg, #4f46e5, #312e81);
+  color: #fff;
 }
 
-.main-sidebar .nav-sidebar > .nav-item > .nav-link {
-  border-radius: 10px;
-  margin: 2px 10px;
-  transition: all 0.18s ease;
+/* آیتم فعال/هاور منو — فقط رنگ */
+.nav-sidebar .nav-link.active {
+  background-color: rgba(99, 102, 241, 0.28);
+  color: #ffffff;
 }
 
-.main-sidebar .nav-sidebar > .nav-item > .nav-link:hover {
-  background: rgba(99, 102, 241, 0.18) !important;
+.nav-sidebar .nav-link:hover {
+  background-color: rgba(99, 102, 241, 0.14);
+  color: #ffffff;
 }
 
-.main-sidebar .nav-sidebar > .nav-item.menu-open > .nav-link,
-.main-sidebar .nav-sidebar > .nav-item > .nav-link.active {
-  background: linear-gradient(90deg, rgba(99, 102, 241, 0.35), rgba(99, 102, 241, 0.12)) !important;
-  color: #fff !important;
-  box-shadow: inset 0 0 0 1px rgba(99, 102, 241, 0.4);
-}
-
-/* ---------- نوار بالا ---------- */
-.main-header {
-  background: rgba(15, 23, 42, 0.85) !important;
-  backdrop-filter: blur(14px);
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
-}
-
-/* ---------- کارت‌ها و باکس‌ها ---------- */
+/* کارت‌ها */
 .card {
-  background: rgba(17, 24, 39, 0.72) !important;
-  border: 1px solid rgba(148, 163, 184, 0.14) !important;
-  border-radius: var(--hrms-radius) !important;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.28) !important;
-  backdrop-filter: blur(12px);
+  border-radius: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.16);
 }
 
-.card-header {
-  background: rgba(99, 102, 241, 0.08) !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.12) !important;
-  border-radius: var(--hrms-radius) var(--hrms-radius) 0 0 !important;
+.card-primary.card-outline {
+  border-top: 3px solid #6366f1;
 }
 
-.card-title {
-  color: #c7d2fe !important;
-  font-weight: 700;
-}
-
-/* ---------- جدول‌ها ---------- */
-.table {
-  color: #e2e8f0;
-}
-
-.table thead th {
-  background: rgba(99, 102, 241, 0.10) !important;
-  color: #a5b4fc !important;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.15) !important;
-}
-
-.table-hover tbody tr:hover {
-  background: rgba(99, 102, 241, 0.08) !important;
-}
-
-/* ---------- فرم‌ها ---------- */
-.form-control {
-  background: rgba(15, 23, 42, 0.7) !important;
-  border: 1px solid rgba(148, 163, 184, 0.2) !important;
-  color: #e2e8f0 !important;
-  border-radius: 10px !important;
-}
-
-.form-control:focus {
-  border-color: var(--hrms-primary) !important;
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25) !important;
-}
-
-/* ---------- دکمه‌ها ---------- */
+/* دکمه‌های اصلی */
 .btn-primary {
-  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
-  border: none !important;
-  border-radius: 10px !important;
-  box-shadow: 0 6px 16px rgba(79, 70, 229, 0.35) !important;
+  background-color: #6366f1;
+  border-color: #6366f1;
 }
 
-.btn-success {
-  background: linear-gradient(135deg, #10b981, #059669) !important;
-  border: none !important;
-  border-radius: 10px !important;
+.btn-primary:hover {
+  background-color: #4f46e5;
+  border-color: #4f46e5;
 }
 
-/* ---------- صفحهٔ ورود ---------- */
+/* صفحهٔ ورود */
 .login-page {
-  background:
-    radial-gradient(circle at 50% 20%, rgba(99, 102, 241, 0.25), transparent 55%),
-    linear-gradient(160deg, #0f172a, #1e1b4b) !important;
+  background-image: linear-gradient(160deg, #0f172a, #1e1b4b);
 }
 
-.login-card-body {
-  background: rgba(17, 24, 39, 0.85) !important;
-  border-radius: var(--hrms-radius) !important;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5) !important;
+/* اسکرول‌بار زیبا */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
 }
 
-/* ---------- لینک‌ها ---------- */
-a {
-  color: #a5b4fc;
+::-webkit-scrollbar-track {
+  background: #0f172a;
 }
 
-a:hover {
-  color: #c7d2fe;
-}
-
-/* ---------- اسکرول‌بار ---------- */
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: #0f172a; }
 ::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #6366f1, #4f46e5);
+  background: #4f46e5;
   border-radius: 999px;
-}
-
-/* ---------- نوار صفحه‌بندی ---------- */
-.pagination > li > a {
-  background: rgba(17, 24, 39, 0.8) !important;
-  border-color: rgba(148, 163, 184, 0.2) !important;
-  color: #e2e8f0 !important;
-}
-
-.pagination > .active > a {
-  background: linear-gradient(135deg, #6366f1, #4f46e5) !important;
-  border-color: transparent !important;
 }
