@@ -40,4 +40,5 @@ urlpatterns = [
     path('reports/income-statement/', report_views.income_statement, name='report-income-statement'),
     path('reports/balance-sheet/', report_views.balance_sheet, name='report-balance-sheet'),
     path('reports/cash-flow/', report_views.cash_flow, name='report-cash-flow'),
+    path('reports/dashboard/', report_views.dashboard, name='report-dashboard'),
 ]

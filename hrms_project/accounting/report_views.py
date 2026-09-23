@@ -29,6 +29,57 @@ def _posted_lines(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def dashboard(request):
+    """داشبورد KPI حسابداری."""
+    from django.utils import timezone
+    company = _company(request)
+
+    docs = AccountingDocument.objects.filter(company=company)
+    lines = _posted_lines(request).select_related('account__account_type')
+
+    assets = liabilities = equity = 0
+    revenue_month = expense_month = 0
+    now = timezone.now()
+
+    for line in lines:
+        cat = line.account.account_type.category
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        if cat == 'asset':
+            assets += debit - credit
+        elif cat == 'liability':
+            liabilities += credit - debit
+        elif cat == 'equity':
+            equity += credit - debit
+
+    month_lines = lines.filter(document__date__year=now.year, document__date__month=now.month)
+    for line in month_lines:
+        cat = line.account.account_type.category
+        if cat == 'revenue':
+            revenue_month += float(line.credit or 0) - float(line.debit or 0)
+        elif cat in ('expense', 'cost_of_sales'):
+            expense_month += float(line.debit or 0) - float(line.credit or 0)
+
+    status_counts = {}
+    for d in docs.values('status').annotate(c=Count('id')):
+        status_counts[d['status']] = d['c']
+
+    return Response({
+        'total_assets': assets,
+        'total_liabilities': liabilities,
+        'total_equity': equity,
+        'revenue_month': revenue_month,
+        'expense_month': expense_month,
+        'net_profit_month': revenue_month - expense_month,
+        'pending_documents': status_counts.get('submitted', 0),
+        'total_documents': docs.count(),
+        'posted_documents': status_counts.get('posted', 0) + status_counts.get('locked', 0),
+        'status_counts': status_counts,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def general_ledger(request):
     """دفتر کل: گردش همهٔ حساب‌ها در سندهای ثبت‌شده."""
     from_account = request.query_params.get('account')
