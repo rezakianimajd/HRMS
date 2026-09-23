@@ -325,7 +325,7 @@ const accountingMenu = [
     title: 'دوره مالی',
     color: '#0ea5e9',
     items: [
-      { id: 'accounting-fiscal-years', title: 'سال‌های مالی', icon: <CalendarMonthIcon />, path: '/accounting/codings/fiscalyears', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'accounting-fiscal', title: 'دوره مالی', icon: <CalendarMonthIcon />, path: '/accounting/fiscal', color: '#0ea5e9', primary: false, ready: true },
       comingSoon('/accounting/periods', 'accounting-periods', 'دوره‌ها', <HistoryIcon />, '#6366f1'),
       comingSoon('/accounting/closing', 'accounting-closing', 'بستن دوره', <LockIcon />, '#ef4444'),
     ],

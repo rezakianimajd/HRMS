@@ -99,6 +99,55 @@ class FiscalYearViewSet(CompanyScopedViewSet):
         self.get_object().save(update_fields=['is_current', 'updated_at'])
         return Response(FiscalYearSerializer(self.get_object()).data)
 
+    @action(detail=True, methods=['post'])
+    def open(self, request, pk=None):
+        obj = self.get_object()
+        obj.status = FiscalYear.Status.OPEN
+        obj.save(update_fields=['status', 'updated_at'])
+        return Response(FiscalYearSerializer(obj).data)
+
+    @action(detail=True, methods=['post'])
+    def close(self, request, pk=None):
+        """بستن سال مالی: همهٔ دوره‌ها باید بسته باشند."""
+        obj = self.get_object()
+        open_periods = obj.periods.exclude(status='closed').count()
+        if open_periods:
+            return Response({'error': f'{open_periods} دورهٔ باز وجود دارد؛ ابتدا دوره‌ها را ببندید.'}, status=400)
+        obj.status = FiscalYear.Status.CLOSED
+        obj.is_current = False
+        obj.save(update_fields=['status', 'is_current', 'updated_at'])
+        return Response(FiscalYearSerializer(obj).data)
+
+    @action(detail=True, methods=['post'])
+    def lock(self, request, pk=None):
+        obj = self.get_object()
+        obj.status = FiscalYear.Status.LOCKED
+        obj.save(update_fields=['status', 'updated_at'])
+        return Response(FiscalYearSerializer(obj).data)
+
+    @action(detail=False, methods=['post'])
+    def next(self, request):
+        """ایجاد سال مالی بعدی بر اساس سال جاری."""
+        current = FiscalYear.objects.filter(company=_company(request), is_current=True).order_by('-start_date').first()
+        if not current:
+            return Response({'error': 'سال جاری تعیین نشده است.'}, status=400)
+        import datetime
+        next_start = current.end_date + datetime.timedelta(days=1)
+        next_end = current.end_date.replace(year=current.end_date.year + 1)
+        name = f'سال مالی {next_start.year}'
+        exists = FiscalYear.objects.filter(company=_company(request), start_date=next_start).first()
+        if exists:
+            return Response(FiscalYearSerializer(exists).data)
+        obj = FiscalYear.objects.create(
+            company=_company(request),
+            name=name,
+            start_date=next_start,
+            end_date=next_end,
+            status=FiscalYear.Status.DRAFT,
+            is_current=False,
+        )
+        return Response(FiscalYearSerializer(obj).data, status=201)
+
 
 class FiscalPeriodViewSet(CompanyScopedViewSet):
     serializer_class = FiscalPeriodSerializer

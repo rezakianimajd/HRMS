@@ -73,6 +73,7 @@ import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
 import AccountingIntegrationPage from './pages/AccountingIntegrationPage';
 import AccountingReportsPage from './pages/AccountingReportsPage';
 import AccountingSettingsPage from './pages/AccountingSettingsPage';
+import AccountingFiscalPage from './pages/AccountingFiscalPage';
 import AccountingCodingsPage from './pages/AccountingCodingsPage';
 import AccountGroupsPage from './pages/AccountGroupsPage';
 import AccountsClassicPage from './pages/AccountsClassicPage';
@@ -164,6 +165,7 @@ const AppRoutes = () => {
       <Route path="/accounting/integration" element={<ProtectedLayout><AccountingIntegrationPage /></ProtectedLayout>} />
       <Route path="/accounting/reports" element={<ProtectedLayout><AccountingReportsPage /></ProtectedLayout>} />
       <Route path="/accounting/settings" element={<ProtectedLayout><AccountingSettingsPage /></ProtectedLayout>} />
+      <Route path="/accounting/fiscal" element={<ProtectedLayout><AccountingFiscalPage /></ProtectedLayout>} />
       <Route path="/accounting/codings/:kind" element={<ProtectedLayout><AccountingCodingsPage /></ProtectedLayout>} />
       <Route path="/accounting/groups" element={<ProtectedLayout><AccountGroupsPage /></ProtectedLayout>} />
       <Route path="/accounting/accounts/:kind" element={<ProtectedLayout><AccountsClassicPage /></ProtectedLayout>} />
