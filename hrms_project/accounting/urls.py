@@ -38,4 +38,6 @@ urlpatterns = [
     path('reports/account-ledger/<int:account_id>/', report_views.account_ledger, name='report-account-ledger'),
     path('reports/trial-balance/', report_views.trial_balance, name='report-trial-balance'),
     path('reports/income-statement/', report_views.income_statement, name='report-income-statement'),
+    path('reports/balance-sheet/', report_views.balance_sheet, name='report-balance-sheet'),
+    path('reports/cash-flow/', report_views.cash_flow, name='report-cash-flow'),
 ]

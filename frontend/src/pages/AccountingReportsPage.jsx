@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Tabs, Tab, CircularProgress, Stack,
-  Autocomplete, TextField, Grid, Chip,
+  Autocomplete, TextField, Grid, Chip, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -163,9 +163,86 @@ const IncomeStatement = () => {
   );
 };
 
+const BalanceSheet = () => {
+  const { data, isLoading } = useQuery({ queryKey: ['acc-report-bs'], queryFn: () => axiosInstance.get('/accounting/reports/balance-sheet/').then(r => r.data) });
+  if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
+
+  const Section = ({ title, rows, total, color }) => (
+    <Paper sx={{ ...glass, p: 2, mb: 2 }}>
+      <Typography variant="subtitle2" fontWeight={800} sx={{ color: color || COLOR_DARK, mb: 1 }}>{title}</Typography>
+      <TableContainer>
+        <Table size="small">
+          <TableHead><TableRow><TableCell>کد</TableCell><TableCell>حساب</TableCell><TableCell>مانده</TableCell></TableRow></TableHead>
+          <TableBody>
+            {(rows || []).map((r, i) => (
+              <TableRow key={i} hover>
+                <TableCell>{r.code}</TableCell>
+                <TableCell>{r.name}</TableCell>
+                <TableCell sx={{ fontWeight: 700 }}>{formatPersianNumber(r.balance)}</TableCell>
+              </TableRow>
+            ))}
+            <TableRow><TableCell colSpan={2} sx={{ fontWeight: 800 }}>جمع</TableCell><TableCell sx={{ fontWeight: 900, color: color || COLOR_DARK }}>{formatPersianNumber(total)}</TableCell></TableRow>
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
+  );
+
+  return (
+    <Box>
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} sm={4}><StatCard label="جمع دارایی‌ها" value={data?.total_assets || 0} color="#2563eb" /></Grid>
+        <Grid item xs={12} sm={4}><StatCard label="جمع بدهی‌ها" value={data?.total_liabilities || 0} color="#ef4444" /></Grid>
+        <Grid item xs={12} sm={4}><StatCard label="حقوق مالکانه" value={data?.total_equity || 0} color="#059669" /></Grid>
+      </Grid>
+      <Section title="دارایی‌ها" rows={data?.assets} total={data?.total_assets} color="#2563eb" />
+      <Section title="بدهی‌ها" rows={data?.liabilities} total={data?.total_liabilities} color="#ef4444" />
+      <Section title="حقوق مالکانه" rows={data?.equity} total={data?.total_equity} color="#059669" />
+      <Paper sx={{ ...glass, p: 2, display: 'flex', justifyContent: 'space-between' }}>
+        <Typography variant="body2" fontWeight={700}>بدهی + حقوق مالکانه</Typography>
+        <Typography variant="body2" fontWeight={900} color={COLOR_DARK}>{formatPersianNumber(data?.total_liabilities_equity || 0)}</Typography>
+      </Paper>
+    </Box>
+  );
+};
+
+const CashFlow = () => {
+  const { data, isLoading } = useQuery({ queryKey: ['acc-report-cf'], queryFn: () => axiosInstance.get('/accounting/reports/cash-flow/').then(r => r.data) });
+  if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
+
+  const op = data?.operating || {};
+  return (
+    <Box>
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} sm={4}><StatCard label="جریان عملیاتی" value={op.net || 0} color="#059669" /></Grid>
+        <Grid item xs={12} sm={4}><StatCard label="سرمایه‌گذاری" value={data?.investing || 0} color="#f59e0b" /></Grid>
+        <Grid item xs={12} sm={4}><StatCard label="تأمین مالی" value={data?.financing || 0} color="#2563eb" /></Grid>
+      </Grid>
+
+      <Paper sx={{ ...glass, p: 2, mb: 2 }}>
+        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1}>فعالیت‌های عملیاتی</Typography>
+        <Stack spacing={1}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">ورودی</Typography><Typography variant="body2" fontWeight={700} color="green">{formatPersianNumber(op.inflows || 0)}</Typography></Box>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2">خروجی</Typography><Typography variant="body2" fontWeight={700} color="red">{formatPersianNumber(op.outflows || 0)}</Typography></Box>
+          <Divider />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}><Typography variant="body2" fontWeight={800}>خالص عملیاتی</Typography><Typography variant="body2" fontWeight={900} color={COLOR_DARK}>{formatPersianNumber(op.net || 0)}</Typography></Box>
+        </Stack>
+      </Paper>
+
+      <Paper sx={{ ...glass, p: 2 }}>
+        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1}>خالص تغییر وجه نقد</Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+          <Typography variant="body2">جمع کل</Typography>
+          <Typography variant="h6" fontWeight={900} color={COLOR_DARK}>{formatPersianNumber(data?.net_change || 0)}</Typography>
+        </Box>
+      </Paper>
+    </Box>
+  );
+};
+
 const AccountingReportsPage = () => {
   const [tab, setTab] = useState(0);
-  const tabs = ['دفتر کل', 'دفتر معین', 'تراز آزمایشی', 'سود و زیان'];
+  const tabs = ['دفتر کل', 'دفتر معین', 'تراز آزمایشی', 'سود و زیان', 'ترازنامه', 'جریان نقدی'];
   return (
     <Box>
       <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
@@ -190,6 +267,8 @@ const AccountingReportsPage = () => {
       {tab === 1 && <AccountLedger />}
       {tab === 2 && <TrialBalance />}
       {tab === 3 && <IncomeStatement />}
+      {tab === 4 && <BalanceSheet />}
+      {tab === 5 && <CashFlow />}
     </Box>
   );
 };
