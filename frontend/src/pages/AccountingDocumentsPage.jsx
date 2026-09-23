@@ -4,12 +4,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Chip,
-  IconButton, Tooltip, Alert,
+  IconButton, Tooltip, Alert, TextField, InputAdornment, Stack,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Dialog, DialogTitle, DialogContent,
+  Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import DownloadIcon from '@mui/icons-material/Download';
+import ClearIcon from '@mui/icons-material/Clear';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -21,6 +24,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
+import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
@@ -48,10 +52,22 @@ const AccountingDocumentsPage = () => {
   const [actionMsg, setActionMsg] = useState(null);
   const [timeline, setTimeline] = useState(null);
 
+  // فیلترها
+  const [q, setQ] = useState('');
+  const [status, setStatus] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [journal, setJournal] = useState('');
+
   const { data, isLoading } = useQuery({
-    queryKey: ['accounting-documents'],
-    queryFn: () => axiosInstance.get('/accounting/documents/').then(r => r.data),
+    queryKey: ['accounting-documents', q, status, dateFrom, dateTo, journal],
+    queryFn: () => axiosInstance.get('/accounting/documents/', {
+      params: { q, status: status || undefined, date_from: dateFrom || undefined, date_to: dateTo || undefined, journal: journal || undefined },
+    }).then(r => r.data),
   });
+
+  const { data: journals } = useQuery({ queryKey: ['doc-journals'], queryFn: () => axiosInstance.get('/accounting/journals/').then(r => r.data) });
+  const journalList = Array.isArray(journals) ? journals : journals?.results || [];
   const list = Array.isArray(data) ? data : data?.results || [];
 
   const action = useMutation({
@@ -95,6 +111,35 @@ const AccountingDocumentsPage = () => {
       </Paper>
 
       {actionMsg && <Alert severity={actionMsg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setActionMsg(null)}>{actionMsg.text}</Alert>}
+
+      {/* فیلترها */}
+      <Paper sx={{ ...glass, p: 1.5, mb: 2 }}>
+        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
+          <TextField size="small" placeholder="جستجوی شماره/شرح…" value={q} onChange={e => setQ(e.target.value)} sx={{ minWidth: 220, flex: 1 }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+          <FormControl size="small" sx={{ minWidth: 150 }}>
+            <InputLabel>وضعیت</InputLabel>
+            <Select value={status} label="وضعیت" onChange={e => setStatus(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {Object.entries(STATUS_META).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <InputLabel>روزنامه</InputLabel>
+            <Select value={journal} label="روزنامه" onChange={e => setJournal(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {journalList.map(j => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: 140 }} />
+          <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: 140 }} />
+          <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={() => { setQ(''); setStatus(''); setDateFrom(''); setDateTo(''); setJournal(''); }}>پاک کردن</Button>
+          <Button size="small" variant="outlined" startIcon={<DownloadIcon />}
+            onClick={() => window.open(`/api/accounting/documents/export/?q=${q}&status=${status}&date_from=${dateFrom}&date_to=${dateTo}&journal=${journal}`, '_blank')}>
+            خروجی CSV
+          </Button>
+        </Stack>
+      </Paper>
 
       <Paper sx={{ ...glass, p: 2 }}>
         {isLoading ? <Box textAlign="center" py={4}><CircularProgress /></Box> : (

@@ -377,10 +377,31 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        # فیلترهای پیشرفته
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
-        return qs
+        date_from = self.request.query_params.get('date_from')
+        date_to = self.request.query_params.get('date_to')
+        if date_from:
+            qs = qs.filter(date__gte=date_from)
+        if date_to:
+            qs = qs.filter(date__lte=date_to)
+        journal_id = self.request.query_params.get('journal')
+        if journal_id:
+            qs = qs.filter(journal_id=journal_id)
+        account_id = self.request.query_params.get('account')
+        if account_id:
+            qs = qs.filter(lines__account_id=account_id)
+        min_amount = self.request.query_params.get('min_amount')
+        if min_amount:
+            from django.db.models import Max
+            qs = qs.annotate(_max_line=Max('lines__debit')).filter(_max_line__gte=min_amount)
+        q = self.request.query_params.get('q')
+        if q:
+            from django.db.models import Q
+            qs = qs.filter(Q(description__icontains=q) | Q(number__icontains=q))
+        return qs.distinct()
 
     def perform_create(self, serializer):
         from accounting.services import allocate_document_number
@@ -404,6 +425,28 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         hist.append({'step': step, 'by': self.request.user.username, 'note': note, 'at': timezone.now().isoformat()})
         obj.history = hist
         obj.save(update_fields=['history', 'updated_at'])
+
+    @action(detail=False, methods=['get'])
+    def export(self, request):
+        """خروجی CSV اسناد حسابداری (با فیلترهای اعمال‌شده)."""
+        import csv
+        from django.http import HttpResponse
+        qs = self.get_queryset().select_related('journal')
+        response = HttpResponse(content_type='text/csv; charset=utf-8')
+        response['Content-Disposition'] = 'attachment; filename="accounting_documents.csv"'
+        writer = csv.writer(response)
+        writer.writerow(['شماره', 'تاریخ', 'روزنامه', 'وضعیت', 'بدهکار', 'بستانکار', 'شرح'])
+        for doc in qs:
+            writer.writerow([
+                doc.number or doc.pk,
+                doc.date.isoformat() if doc.date else '',
+                doc.journal.name if doc.journal else '',
+                doc.get_status_display(),
+                float(doc.total_debit),
+                float(doc.total_credit),
+                doc.description,
+            ])
+        return response
 
     @action(detail=True, methods=['post'])
     def submit(self, request, pk=None):
