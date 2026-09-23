@@ -91,9 +91,11 @@ def general_ledger(request):
     for line in lines:
         rows.append({
             'date': line.document.date.isoformat() if line.document.date else None,
+            'document_id': line.document_id,
             'document_number': line.document.number or line.document_id,
             'description': line.description or line.document.description,
             'account_code': line.account.code,
+            'account_id': line.account_id,
             'account_name': line.account.name,
             'debit': float(line.debit or 0),
             'credit': float(line.credit or 0),
@@ -123,6 +125,7 @@ def account_ledger(request, account_id):
             balance += credit - debit
         rows.append({
             'date': line.document.date.isoformat() if line.document.date else None,
+            'document_id': line.document_id,
             'document_number': line.document.number or line.document_id,
             'description': line.description or line.document.description,
             'debit': debit,
@@ -148,6 +151,7 @@ def trial_balance(request):
     aggregates = {}
     for line in lines:
         agg = aggregates.setdefault(line.account_id, {
+            'account_id': line.account_id,
             'account_code': line.account.code,
             'account_name': line.account.name,
             'nature': line.account.nature,
@@ -241,6 +245,7 @@ def balance_sheet(request):
         else:
             continue
         rec = target.setdefault(line.account_id, {
+            'id': line.account_id,
             'code': line.account.code,
             'name': line.account.name,
             'balance': 0,

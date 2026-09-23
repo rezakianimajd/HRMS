@@ -5,8 +5,10 @@ import {
   Box, Typography, Paper, Avatar, Tabs, Tab, CircularProgress, Stack,
   Autocomplete, TextField, Grid, Chip, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Dialog, DialogTitle, DialogContent, IconButton, Tooltip,
 } from '@mui/material';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
@@ -29,7 +31,13 @@ const StatCard = ({ label, value, color }) => (
 );
 
 const GeneralLedger = () => {
+  const [drill, setDrill] = React.useState(null);
   const { data, isLoading } = useQuery({ queryKey: ['acc-report-gl'], queryFn: () => axiosInstance.get('/accounting/reports/general-ledger/').then(r => r.data) });
+  const { data: drillDoc, isLoading: drillLoading } = useQuery({
+    queryKey: ['drill-doc', drill],
+    queryFn: () => axiosInstance.get(`/accounting/documents/${drill}/`).then(r => r.data),
+    enabled: !!drill,
+  });
   if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
   const rows = data?.rows || [];
   return (
@@ -46,9 +54,11 @@ const GeneralLedger = () => {
             <TableBody>
               {rows.length === 0 ? <TableRow><TableCell colSpan={6} align="center" sx={{ color: 'text.secondary' }}>گردشی ثبت نشده است</TableCell></TableRow> :
                 rows.map((r, i) => (
-                  <TableRow key={i} hover>
+                  <TableRow key={i} hover sx={{ cursor: 'pointer' }} onClick={() => setDrill(r.document_id)}>
                     <TableCell>{toJalali(r.date)}</TableCell>
-                    <TableCell>{r.document_number}</TableCell>
+                    <TableCell>
+                      <Tooltip title="مشاهده سند"><Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: COLOR_DARK, fontWeight: 700 }}>{r.document_number} <OpenInNewIcon sx={{ fontSize: 13 }} /></Box></Tooltip>
+                    </TableCell>
                     <TableCell>{r.account_code} - {r.account_name}</TableCell>
                     <TableCell>{r.description}</TableCell>
                     <TableCell>{formatPersianNumber(r.debit)}</TableCell>
@@ -59,6 +69,32 @@ const GeneralLedger = () => {
           </Table>
         </TableContainer>
       </Paper>
+
+      {/* Drill-down dialog */}
+      <Dialog open={!!drill} onClose={() => setDrill(null)} fullWidth maxWidth="md"
+        slotProps={{ paper: { sx: { borderRadius: '20px', background: 'linear-gradient(150deg, #fff, #f8fafc)' } } }}>
+        <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK }}>سند {drillDoc?.number || `#${drill}`}</DialogTitle>
+        <DialogContent>
+          {drillLoading ? <CircularProgress /> : (
+            <>
+              {drillDoc?.description && <Typography variant="body2" color="textSecondary" mb={1.5}>{drillDoc.description}</Typography>}
+              <Table size="small">
+                <TableHead><TableRow><TableCell>حساب</TableCell><TableCell>شرح</TableCell><TableCell>بدهکار</TableCell><TableCell>بستانکار</TableCell></TableRow></TableHead>
+                <TableBody>
+                  {(drillDoc?.lines || []).map((l, i) => (
+                    <TableRow key={i}>
+                      <TableCell>{l.account_code} - {l.account_name}</TableCell>
+                      <TableCell>{l.description}</TableCell>
+                      <TableCell>{formatPersianNumber(l.debit)}</TableCell>
+                      <TableCell>{formatPersianNumber(l.credit)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </Box>
   );
 };
