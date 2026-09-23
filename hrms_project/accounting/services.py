@@ -22,6 +22,33 @@ def _dec(v):
     return Decimal(str(v or 0))
 
 
+def allocate_document_number(*, company, journal=None, fiscal_year=None, branch=None):
+    """شمارهٔ بعدی سند را بر اساس AccountingSequence تخصیص می‌دهد (و افزایش می‌دهد).
+
+    اگر Sequence برای ترکیب (journal, fiscal_year, branch) وجود نداشته باشد،
+    یک Sequence پیش‌فرض با padding=5 و next_number=1 ساخته می‌شود.
+    قالب خروجی: ``{prefix}{number بر اساس padding}``
+    """
+    from accounting.models import AccountingSequence
+
+    seq, _ = AccountingSequence.objects.get_or_create(
+        company=company,
+        journal=journal,
+        fiscal_year=fiscal_year,
+        branch=branch,
+        defaults={'prefix': '', 'next_number': 1, 'padding': 5},
+    )
+
+    n = seq.next_number
+    prefix = seq.prefix or ''
+    padding = seq.padding or 5
+    number = f'{prefix}{str(n).zfill(padding)}'
+
+    seq.next_number = n + 1
+    seq.save(update_fields=['next_number', 'updated_at'])
+    return number
+
+
 class DocumentValidator:
     """Validates an AccountingDocument before submit/post."""
 

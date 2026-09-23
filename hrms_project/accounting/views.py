@@ -382,6 +382,20 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             qs = qs.filter(status=status)
         return qs
 
+    def perform_create(self, serializer):
+        from accounting.services import allocate_document_number
+        data = serializer.validated_data
+        # اگر شماره دستی وارد نشده، شمارهٔ خودکار بر اساس Sequence اختصاص بده
+        if not data.get('number'):
+            company = _company(self.request)
+            data['number'] = allocate_document_number(
+                company=company,
+                journal=data.get('journal'),
+                fiscal_year=data.get('fiscal_year'),
+                branch=data.get('branch'),
+            )
+        serializer.save(company=_company(self.request))
+
     def _service(self, obj):
         return PostingService(obj, user=self.request.user)
 
