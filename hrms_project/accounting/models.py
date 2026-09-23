@@ -631,6 +631,49 @@ class PostingTemplateLine(BaseModel):
 
 
 # =============================================================================
+# Approval workflow (گردشکار تأیید چندمرحله‌ای)
+# =============================================================================
+class ApprovalPolicy(BaseModel):
+    """سیاست تأیید سند با سقف مبلغی برای چندمرحله‌ای شدن."""
+    name = models.CharField(max_length=100, verbose_name=_('عنوان سیاست'))
+    single_level_limit = models.DecimalField(max_digits=18, decimal_places=0, default=50000000, verbose_name=_('سقف تأیید تک‌مرحله (ریال)'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('سیاست تأیید اسناد')
+        verbose_name_plural = _('سیاست‌های تأیید اسناد')
+
+    def __str__(self):
+        return self.name
+
+
+class ApprovalStep(BaseModel):
+    """یک مرحلهٔ تأیید در گردشکار سند."""
+    class Decision(models.TextChoices):
+        PENDING = 'pending', _('در انتظار')
+        APPROVED = 'approved', _('تأیید')
+        REJECTED = 'rejected', _('رد')
+
+    document = models.ForeignKey(
+        AccountingDocument, on_delete=models.CASCADE, related_name='approval_steps',
+        verbose_name=_('سند'),
+    )
+    approver = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
+    step_no = models.PositiveIntegerField(default=1, verbose_name=_('مرحله'))
+    decision = models.CharField(max_length=10, choices=Decision.choices, default=Decision.PENDING, verbose_name=_('تصمیم'))
+    comment = models.TextField(blank=True, verbose_name=_('نظر'))
+    decided_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان تصمیم'))
+
+    class Meta:
+        verbose_name = _('مرحلهٔ تأیید سند')
+        verbose_name_plural = _('مراحل تأیید اسناد')
+        ordering = ['step_no']
+
+    def __str__(self):
+        return f'{self.document_id} / مرحله {self.step_no} - {self.get_decision_display()}'
+
+
+# =============================================================================
 # Bank statement & reconciliation
 # =============================================================================
 class BankStatement(BaseModel):

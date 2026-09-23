@@ -16,6 +16,7 @@ from accounting.models import (
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
+    ApprovalPolicy, ApprovalStep,
 )
 from accounting.serializers import (
     BranchSerializer, FiscalYearSerializer, FiscalPeriodSerializer,
@@ -26,6 +27,7 @@ from accounting.serializers import (
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
     CodingConfigSerializer, BankStatementSerializer, BankStatementLineSerializer, BankReconciliationSerializer,
+    ApprovalPolicySerializer, ApprovalStepSerializer,
 )
 from accounting.services import PostingService, SourcePostingService, AccountingError
 from accounting import coding
@@ -366,6 +368,38 @@ class JournalViewSet(CompanyScopedViewSet):
     ordering = ['code']
 
 
+class ApprovalPolicyViewSet(CompanyScopedViewSet):
+    serializer_class = ApprovalPolicySerializer
+    queryset = ApprovalPolicy.objects.all()
+    ordering = ['id']
+
+
+class ApprovalStepViewSet(CompanyScopedViewSet):
+    serializer_class = ApprovalStepSerializer
+    queryset = ApprovalStep.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('approver')
+        doc_id = self.request.query_params.get('document')
+        if doc_id:
+            qs = qs.filter(document_id=doc_id)
+        return qs
+
+    def perform_create(self, serializer):
+        obj = serializer.save(company=_company(self.request))
+        doc = obj.document
+        if obj.decision == ApprovalStep.Decision.APPROVED:
+            nxt = doc.approval_steps.filter(decision=ApprovalStep.Decision.PENDING).order_by('step_no').first()
+            if not nxt:
+                doc.status = AccountingDocument.Status.APPROVED
+                doc.approved_by = obj.approver
+                doc.save(update_fields=['status', 'approved_by', 'updated_at'])
+        elif obj.decision == ApprovalStep.Decision.REJECTED:
+            doc.status = AccountingDocument.Status.SUBMITTED
+            doc.save(update_fields=['status', 'updated_at'])
+        return obj
+
+
 class AccountingDocumentViewSet(CompanyScopedViewSet):
     serializer_class = AccountingDocumentSerializer
     queryset = AccountingDocument.objects.select_related(
@@ -456,7 +490,27 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
         self._log(obj, 'submitted', 'ارسال برای تأیید')
+        try:
+            self._build_approval_steps(obj)
+        except Exception:
+            pass
         return Response(AccountingDocumentSerializer(obj).data)
+
+    def _build_approval_steps(self, doc):
+        """بر اساس سقف سیاست فعال، مراحل تأیید (۱ یا ۲ مرحله) بساز."""
+        from decimal import Decimal
+        policy = ApprovalPolicy.objects.filter(company=doc.company, is_active=True).order_by('-updated_at').first()
+        limit = policy.single_level_limit if policy else Decimal('50000000')
+        if doc.approval_steps.exists():
+            return
+        steps = 2 if doc.total_debit >= limit else 1
+        for i in range(1, steps + 1):
+            ApprovalStep.objects.create(
+                company=doc.company,
+                document=doc,
+                step_no=i,
+                decision=ApprovalStep.Decision.PENDING,
+            )
 
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):

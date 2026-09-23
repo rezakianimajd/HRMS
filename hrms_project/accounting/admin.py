@@ -6,6 +6,7 @@ from accounting.models import (
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingSequence, SourceTransaction, PostingTemplate, AccountingSettings,
     CodingConfig, AuxiliaryCategory, BankStatement, BankStatementLine, BankReconciliation,
+    ApprovalPolicy, ApprovalStep,
 )
 
 
@@ -32,3 +33,5 @@ admin.site.register(AuxiliaryCategory)
 admin.site.register(BankStatement)
 admin.site.register(BankStatementLine)
 admin.site.register(BankReconciliation)
+admin.site.register(ApprovalPolicy)
+admin.site.register(ApprovalStep)

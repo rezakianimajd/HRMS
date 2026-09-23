@@ -8,6 +8,7 @@ from accounting.models import (
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
+    ApprovalPolicy, ApprovalStep,
 )
 
 
@@ -273,6 +274,22 @@ class BankStatementSerializer(BaseModelSerializer):
             line.pop('statement', None)
             BankStatementLine.objects.create(statement=st, **line)
         return st
+
+
+class ApprovalStepSerializer(BaseModelSerializer):
+    decision_display = serializers.CharField(source='get_decision_display', read_only=True)
+    approver_name = serializers.CharField(source='approver.username', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = ApprovalStep
+        fields = ['id', 'document', 'approver', 'approver_name', 'step_no', 'decision', 'decision_display', 'comment', 'decided_at']
+        extra_kwargs = {'document': {'read_only': True}}
+
+
+class ApprovalPolicySerializer(BaseModelSerializer):
+    class Meta(BaseModelSerializer.Meta):
+        model = ApprovalPolicy
+        fields = ['id', 'name', 'single_level_limit', 'is_active']
 
 
 class BankReconciliationSerializer(BaseModelSerializer):
