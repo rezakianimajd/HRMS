@@ -552,6 +552,64 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         self._log(obj, 'reversed', 'برگشت خورد')
         return Response(AccountingDocumentSerializer(reversal).data)
 
+    @action(detail=False, methods=['post'])
+    def bulk_post(self, request):
+        """قطعی کردن گروهی: ثبت نهایی چند سند تأییدشده/ارسال‌شده."""
+        ids = request.data.get('ids') or []
+        docs = self.get_queryset().filter(id__in=ids)
+        posted = 0
+        errors = []
+        for doc in docs:
+            try:
+                PostingService(doc, user=request.user).post()
+                self._log(doc, 'posted', 'ثبت نهایی گروهی')
+                posted += 1
+            except AccountingError as e:
+                errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': str(e)})
+        return Response({'posted': posted, 'errors': errors})
+
+    @action(detail=False, methods=['get'])
+    def control(self, request):
+        """کنترل اسناد: اسناد نامتوازن، در انتظار، آمادهٔ ثبت، قطعی و برگشتی."""
+        qs = self.get_queryset()
+
+        def _doc(d):
+            return {
+                'id': d.id,
+                'number': d.number or d.pk,
+                'date': d.date.isoformat() if d.date else None,
+                'description': d.description,
+                'status': d.status,
+                'status_display': d.get_status_display(),
+                'total_debit': float(d.total_debit),
+                'total_credit': float(d.total_credit),
+                'journal_name': d.journal.name if d.journal else None,
+            }
+
+        unbalanced = [
+            _doc(d) for d in qs.filter(status__in=['draft', 'submitted', 'approved'])
+            if d.total_debit != d.total_credit
+        ]
+        pending = qs.filter(status='submitted')
+        ready = qs.filter(status='approved')
+        posted = qs.filter(status__in=['posted', 'locked'])
+        reversed_docs = qs.filter(status='reversed')
+
+        return Response({
+            'unbalanced': unbalanced,
+            'pending': [_doc(d) for d in pending[:100]],
+            'ready_to_post': [_doc(d) for d in ready[:100]],
+            'posted': [_doc(d) for d in posted[:100]],
+            'reversed': [_doc(d) for d in reversed_docs[:100]],
+            'counts': {
+                'unbalanced': len(unbalanced),
+                'pending': pending.count(),
+                'ready_to_post': ready.count(),
+                'posted': posted.count(),
+                'reversed': reversed_docs.count(),
+            },
+        })
+
 
 class BankStatementViewSet(CompanyScopedViewSet):
     serializer_class = BankStatementSerializer

@@ -308,9 +308,19 @@ const accountingMenu = [
     title: 'عملیات',
     color: '#10b981',
     items: [
-      { id: 'accounting-documents', title: 'اسناد حسابداری', icon: <DescriptionIcon />, path: '/accounting/documents', color: '#10b981', primary: false, ready: true },
       { id: 'accounting-document-new', title: 'سند جدید', icon: <PostAddIcon />, path: '/accounting/documents/new', color: '#6366f1', primary: false, ready: true },
-      { id: 'accounting-sequences', title: 'شماره‌گذاری اسناد', icon: <NumbersIcon />, path: '/accounting/sequences', color: '#6366f1', primary: false, ready: true },
+      { id: 'accounting-documents', title: 'اسناد حسابداری', icon: <DescriptionIcon />, path: '/accounting/documents', color: '#10b981', primary: false, ready: true },
+      { id: 'accounting-document-search', title: 'جستجو در اسناد', icon: <ManageSearchIcon />, path: '/accounting/documents/search', color: '#6366f1', primary: false, ready: true },
+      { id: 'accounting-sequences', title: 'شماره‌گذاری اسناد', icon: <NumbersIcon />, path: '/accounting/sequences', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'accounting-document-finalize', title: 'قطعی کردن اسناد', icon: <LockIcon />, path: '/accounting/documents/finalize', color: '#f97316', primary: false, ready: true },
+      { id: 'accounting-document-control', title: 'کنترل اسناد', icon: <FactCheckIcon />, path: '/accounting/documents/control', color: '#14b8a6', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'accounting-tools',
+    title: 'ابزارهای مالی',
+    color: '#64748b',
+    items: [
       { id: 'accounting-reconciliation', title: 'مغایرت‌گیری بانکی', icon: <CompareArrowsIcon />, path: '/accounting/reconciliation', color: '#14b8a6', primary: false, ready: true },
       { id: 'accounting-approval-policies', title: 'سیاست تأیید اسناد', icon: <RuleIcon />, path: '/accounting/approval-policies', color: '#8b5cf6', primary: false, ready: true },
     ],

@@ -77,6 +77,9 @@ import AccountingFiscalPage from './pages/AccountingFiscalPage';
 import AccountingSequencesPage from './pages/AccountingSequencesPage';
 import AccountingReconciliationPage from './pages/AccountingReconciliationPage';
 import AccountingApprovalPolicyPage from './pages/AccountingApprovalPolicyPage';
+import AccountingDocumentSearchPage from './pages/AccountingDocumentSearchPage';
+import AccountingFinalizePage from './pages/AccountingFinalizePage';
+import AccountingControlPage from './pages/AccountingControlPage';
 import AccountingCodingsPage from './pages/AccountingCodingsPage';
 import AccountGroupsPage from './pages/AccountGroupsPage';
 import AccountsClassicPage from './pages/AccountsClassicPage';
@@ -172,6 +175,9 @@ const AppRoutes = () => {
       <Route path="/accounting/sequences" element={<ProtectedLayout><AccountingSequencesPage /></ProtectedLayout>} />
       <Route path="/accounting/reconciliation" element={<ProtectedLayout><AccountingReconciliationPage /></ProtectedLayout>} />
       <Route path="/accounting/approval-policies" element={<ProtectedLayout><AccountingApprovalPolicyPage /></ProtectedLayout>} />
+      <Route path="/accounting/documents/search" element={<ProtectedLayout><AccountingDocumentSearchPage /></ProtectedLayout>} />
+      <Route path="/accounting/documents/finalize" element={<ProtectedLayout><AccountingFinalizePage /></ProtectedLayout>} />
+      <Route path="/accounting/documents/control" element={<ProtectedLayout><AccountingControlPage /></ProtectedLayout>} />
       <Route path="/accounting/codings/:kind" element={<ProtectedLayout><AccountingCodingsPage /></ProtectedLayout>} />
       <Route path="/accounting/groups" element={<ProtectedLayout><AccountGroupsPage /></ProtectedLayout>} />
       <Route path="/accounting/accounts/:kind" element={<ProtectedLayout><AccountsClassicPage /></ProtectedLayout>} />
