@@ -311,6 +311,7 @@ const accountingMenu = [
       { id: 'accounting-documents', title: 'اسناد حسابداری', icon: <DescriptionIcon />, path: '/accounting/documents', color: '#10b981', primary: false, ready: true },
       { id: 'accounting-document-new', title: 'سند جدید', icon: <PostAddIcon />, path: '/accounting/documents/new', color: '#6366f1', primary: false, ready: true },
       { id: 'accounting-sequences', title: 'شماره‌گذاری اسناد', icon: <NumbersIcon />, path: '/accounting/sequences', color: '#6366f1', primary: false, ready: true },
+      { id: 'accounting-reconciliation', title: 'مغایرت‌گیری بانکی', icon: <CompareArrowsIcon />, path: '/accounting/reconciliation', color: '#14b8a6', primary: false, ready: true },
     ],
   },
   {

@@ -7,6 +7,7 @@ from accounting.views import (
     AuxiliaryAccountViewSet, AuxiliaryCategoryViewSet,
     AccountingDimensionViewSet, DimensionValueViewSet,
     CostCenterViewSet, JournalViewSet, AccountingDocumentViewSet,
+    BankStatementViewSet, BankStatementLineViewSet, BankReconciliationViewSet,
     AccountingSequenceViewSet, SourceTransactionViewSet,
     PostingTemplateViewSet, AccountingSettingsViewSet, CodingConfigViewSet,
 )
@@ -26,6 +27,9 @@ router.register(r'dimension-values', DimensionValueViewSet, basename='dimension-
 router.register(r'cost-centers', CostCenterViewSet, basename='cost-center')
 router.register(r'journals', JournalViewSet, basename='journal')
 router.register(r'documents', AccountingDocumentViewSet, basename='accounting-document')
+router.register(r'bank-statements', BankStatementViewSet, basename='bank-statement')
+router.register(r'bank-statement-lines', BankStatementLineViewSet, basename='bank-statement-line')
+router.register(r'bank-reconciliations', BankReconciliationViewSet, basename='bank-reconciliation')
 router.register(r'sequences', AccountingSequenceViewSet, basename='accounting-sequence')
 router.register(r'source-transactions', SourceTransactionViewSet, basename='source-transaction')
 router.register(r'posting-templates', PostingTemplateViewSet, basename='posting-template')

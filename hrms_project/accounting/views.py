@@ -15,7 +15,7 @@ from accounting.models import (
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
-    AccountingSettings, CodingConfig,
+    AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
 )
 from accounting.serializers import (
     BranchSerializer, FiscalYearSerializer, FiscalPeriodSerializer,
@@ -25,7 +25,7 @@ from accounting.serializers import (
     DimensionValueSerializer, CostCenterSerializer, JournalSerializer,
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
-    CodingConfigSerializer,
+    CodingConfigSerializer, BankStatementSerializer, BankStatementLineSerializer, BankReconciliationSerializer,
 )
 from accounting.services import PostingService, SourcePostingService, AccountingError
 from accounting import coding
@@ -497,6 +497,64 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             return Response({'error': str(e)}, status=400)
         self._log(obj, 'reversed', 'برگشت خورد')
         return Response(AccountingDocumentSerializer(reversal).data)
+
+
+class BankStatementViewSet(CompanyScopedViewSet):
+    serializer_class = BankStatementSerializer
+    queryset = BankStatement.objects.select_related('account').prefetch_related('lines')
+    ordering = ['-statement_date']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        account_id = self.request.query_params.get('account')
+        if account_id:
+            qs = qs.filter(account_id=account_id)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(company=_company(self.request))
+
+    @action(detail=True, methods=['post'])
+    def match_line(self, request, pk=None):
+        line_id = request.data.get('line_id')
+        line = BankStatementLine.objects.filter(id=line_id, statement=self.get_object()).first()
+        if not line:
+            return Response({'error': 'ردیف یافت نشد'}, status=404)
+        line.matched = not line.matched
+        line.save(update_fields=['matched', 'updated_at'])
+        return Response(BankStatementLineSerializer(line).data)
+
+
+class BankStatementLineViewSet(CompanyScopedViewSet):
+    serializer_class = BankStatementLineSerializer
+    queryset = BankStatementLine.objects.select_related('statement')
+    ordering = ['date']
+
+
+class BankReconciliationViewSet(CompanyScopedViewSet):
+    serializer_class = BankReconciliationSerializer
+    queryset = BankReconciliation.objects.select_related('account')
+    ordering = ['-as_of']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        account_id = self.request.query_params.get('account')
+        if account_id:
+            qs = qs.filter(account_id=account_id)
+        return qs
+
+    def perform_create(self, serializer):
+        from django.db.models import Sum
+        account_id = serializer.validated_data['account_id']
+        debit = AccountingDocumentLine.objects.filter(account_id=account_id).aggregate(s=Sum('debit'))['s'] or 0
+        credit = AccountingDocumentLine.objects.filter(account_id=account_id).aggregate(s=Sum('credit'))['s'] or 0
+        book_balance = float(debit) - float(credit)
+        statement_balance = float(serializer.validated_data.get('statement_balance', 0))
+        serializer.save(
+            company=_company(self.request),
+            book_balance=book_balance,
+            difference=statement_balance - book_balance,
+        )
 
 
 class AccountingSequenceViewSet(CompanyScopedViewSet):

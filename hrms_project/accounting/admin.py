@@ -5,7 +5,7 @@ from accounting.models import (
     AccountingDimension, DimensionValue, CostCenter,
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingSequence, SourceTransaction, PostingTemplate, AccountingSettings,
-    CodingConfig, AuxiliaryCategory,
+    CodingConfig, AuxiliaryCategory, BankStatement, BankStatementLine, BankReconciliation,
 )
 
 
@@ -29,3 +29,6 @@ admin.site.register(PostingTemplate)
 admin.site.register(AccountingSettings)
 admin.site.register(CodingConfig)
 admin.site.register(AuxiliaryCategory)
+admin.site.register(BankStatement)
+admin.site.register(BankStatementLine)
+admin.site.register(BankReconciliation)

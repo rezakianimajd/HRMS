@@ -7,7 +7,7 @@ from accounting.models import (
     Journal, AccountingDocument, AccountingDocumentLine,
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
-    AccountingSettings, CodingConfig,
+    AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
 )
 
 
@@ -248,6 +248,40 @@ class AccountingSettingsSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = AccountingSettings
         fields = '__all__'
+
+
+class BankStatementLineSerializer(BaseModelSerializer):
+    class Meta(BaseModelSerializer.Meta):
+        model = BankStatementLine
+        fields = ['id', 'statement', 'date', 'description', 'amount', 'currency', 'matched']
+        extra_kwargs = {'statement': {'read_only': True}}
+
+
+class BankStatementSerializer(BaseModelSerializer):
+    account_code = serializers.CharField(source='account.code', read_only=True)
+    account_name = serializers.CharField(source='account.name', read_only=True)
+    lines = BankStatementLineSerializer(many=True, required=False)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = BankStatement
+        fields = ['id', 'account', 'account_code', 'account_name', 'statement_date', 'reference', 'opening_balance', 'closing_balance', 'lines']
+
+    def create(self, validated_data):
+        lines = validated_data.pop('lines', [])
+        st = BankStatement.objects.create(**validated_data)
+        for line in lines:
+            line.pop('statement', None)
+            BankStatementLine.objects.create(statement=st, **line)
+        return st
+
+
+class BankReconciliationSerializer(BaseModelSerializer):
+    account_code = serializers.CharField(source='account.code', read_only=True)
+    account_name = serializers.CharField(source='account.name', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = BankReconciliation
+        fields = ['id', 'account', 'account_code', 'account_name', 'as_of', 'statement_balance', 'book_balance', 'difference']
 
 
 class CodingConfigSerializer(BaseModelSerializer):

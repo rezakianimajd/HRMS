@@ -631,6 +631,70 @@ class PostingTemplateLine(BaseModel):
 
 
 # =============================================================================
+# Bank statement & reconciliation
+# =============================================================================
+class BankStatement(BaseModel):
+    """صورتحساب بانکی واردشده برای مغایرت‌گیری."""
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name='bank_statements',
+        verbose_name=_('حساب بانکی/صندوق'),
+    )
+    statement_date = models.DateField(verbose_name=_('تاریخ صورتحساب'))
+    reference = models.CharField(max_length=100, blank=True, verbose_name=_('شماره صورتحساب'))
+    opening_balance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('ماندهٔ ابتدای دوره'))
+    closing_balance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('ماندهٔ انتهای دوره'))
+
+    class Meta:
+        verbose_name = _('صورتحساب بانکی')
+        verbose_name_plural = _('صورتحساب‌های بانکی')
+        ordering = ['-statement_date']
+
+    def __str__(self):
+        return f'{self.account.code} - {self.statement_date}'
+
+
+class BankStatementLine(BaseModel):
+    """یک ردیف صورتحساب بانکی (برای تطبیق با سطرهای ثبت‌شده)."""
+    statement = models.ForeignKey(
+        BankStatement, on_delete=models.CASCADE, related_name='lines',
+        verbose_name=_('صورتحساب'),
+    )
+    date = models.DateField(verbose_name=_('تاریخ'))
+    description = models.CharField(max_length=300, blank=True, verbose_name=_('شرح'))
+    amount = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('مبلغ'))
+    currency = models.CharField(max_length=10, choices=[('debit', 'برداشت'), ('credit', 'واریز')], default='debit', verbose_name=_('جهت'))
+    matched = models.BooleanField(default=False, verbose_name=_('تطبیق‌شده'))
+
+    class Meta:
+        verbose_name = _('ردیف صورتحساب بانکی')
+        verbose_name_plural = _('ردیف‌های صورتحساب بانکی')
+        ordering = ['date']
+
+    def __str__(self):
+        return f'{self.date} - {self.description}'
+
+
+class BankReconciliation(BaseModel):
+    """تطبیق یک حساب بانکی در یک تاریخ مشخص."""
+    account = models.ForeignKey(
+        Account, on_delete=models.CASCADE, related_name='reconciliations',
+        verbose_name=_('حساب بانکی/صندوق'),
+    )
+    as_of = models.DateField(verbose_name=_('تاریخ مغایرت‌گیری'))
+    statement_balance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('ماندهٔ نظام بانکی'))
+    book_balance = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('ماندهٔ دفتری'))
+    difference = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('اختلاف'))
+
+    class Meta:
+        verbose_name = _('مغایرت‌گیری بانکی')
+        verbose_name_plural = _('مغایرت‌گیری‌های بانکی')
+        ordering = ['-as_of']
+
+    def __str__(self):
+        return f'{self.account.code} - {self.as_of}'
+
+
+# =============================================================================
 # Accounting settings (per company, singleton)
 # =============================================================================
 class CodingConfig(BaseModel):
