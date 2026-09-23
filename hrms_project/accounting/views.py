@@ -410,31 +410,82 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
     ordering = ['-date', '-created_at']
 
     def get_queryset(self):
+        from django.db.models import Q
         qs = super().get_queryset()
-        # فیلترهای پیشرفته
-        status = self.request.query_params.get('status')
+        p = self.request.query_params
+
+        # وضعیت و روزنامه
+        status = p.get('status')
         if status:
             qs = qs.filter(status=status)
-        date_from = self.request.query_params.get('date_from')
-        date_to = self.request.query_params.get('date_to')
-        if date_from:
-            qs = qs.filter(date__gte=date_from)
-        if date_to:
-            qs = qs.filter(date__lte=date_to)
-        journal_id = self.request.query_params.get('journal')
-        if journal_id:
-            qs = qs.filter(journal_id=journal_id)
-        account_id = self.request.query_params.get('account')
-        if account_id:
-            qs = qs.filter(lines__account_id=account_id)
-        min_amount = self.request.query_params.get('min_amount')
-        if min_amount:
-            from django.db.models import Max
-            qs = qs.annotate(_max_line=Max('lines__debit')).filter(_max_line__gte=min_amount)
-        q = self.request.query_params.get('q')
+        journal = p.get('journal')
+        if journal:
+            qs = qs.filter(journal_id=journal)
+
+        # سال مالی (از/تا)
+        year_from = p.get('year_from'); year_to = p.get('year_to')
+        if year_from: qs = qs.filter(fiscal_year_id__gte=year_from)
+        if year_to: qs = qs.filter(fiscal_year_id__lte=year_to)
+
+        # شماره سند (از/تا)
+        num_from = p.get('number_from'); num_to = p.get('number_to')
+        if num_from: qs = qs.filter(number__gte=num_from)
+        if num_to: qs = qs.filter(number__lte=num_to)
+
+        # تاریخ سند (از/تا)
+        date_from = p.get('date_from'); date_to = p.get('date_to')
+        if date_from: qs = qs.filter(date__gte=date_from)
+        if date_to: qs = qs.filter(date__lte=date_to)
+
+        # شرح سند
+        description = p.get('description')
+        if description:
+            qs = qs.filter(Q(description__icontains=description) | Q(lines__description__icontains=description))
+
+        # حساب کل (از/تا) — روی والد حسابِ سطر
+        general_from = p.get('general_from'); general_to = p.get('general_to')
+        if general_from: qs = qs.filter(lines__account__parent_id__gte=general_from)
+        if general_to: qs = qs.filter(lines__account__parent_id__lte=general_to)
+
+        # حساب معین (از/تا) — روی خود حساب سطر
+        sub_from = p.get('subsidiary_from'); sub_to = p.get('subsidiary_to')
+        if sub_from: qs = qs.filter(lines__account_id__gte=sub_from)
+        if sub_to: qs = qs.filter(lines__account_id__lte=sub_to)
+
+        # سه تفصیل (از/تا)
+        for i in (1, 2, 3):
+            f = p.get(f'aux{i}_from'); t = p.get(f'aux{i}_to')
+            if f: qs = qs.filter(**{f'lines__auxiliary_{i}__code__gte': f})
+            if t: qs = qs.filter(**{f'lines__auxiliary_{i}__code__lte': t})
+
+        # شماره چک/ارجاع (از/تا)
+        ref_from = p.get('reference_from'); ref_to = p.get('reference_to')
+        if ref_from: qs = qs.filter(lines__reference__gte=ref_from)
+        if ref_to: qs = qs.filter(lines__reference__lte=ref_to)
+
+        # مبلغ بدهکار (از/تا)
+        debit_from = p.get('debit_from'); debit_to = p.get('debit_to')
+        if debit_from: qs = qs.filter(lines__debit__gte=debit_from)
+        if debit_to: qs = qs.filter(lines__debit__lte=debit_to)
+
+        # مبلغ بستانکار (از/تا)
+        credit_from = p.get('credit_from'); credit_to = p.get('credit_to')
+        if credit_from: qs = qs.filter(lines__credit__gte=credit_from)
+        if credit_to: qs = qs.filter(lines__credit__lte=credit_to)
+
+        # مبلغ (هر دو: بدهکار یا بستانکار) (از/تا)
+        amt_from = p.get('amount_from'); amt_to = p.get('amount_to')
+        if amt_from or amt_to:
+            cond = Q()
+            if amt_from: cond &= (Q(lines__debit__gte=amt_from) | Q(lines__credit__gte=amt_from))
+            if amt_to: cond &= (Q(lines__debit__lte=amt_to) | Q(lines__credit__lte=amt_to))
+            qs = qs.filter(cond)
+
+        # جستجوی آزاد (شماره/شرح)
+        q = p.get('q')
         if q:
-            from django.db.models import Q
-            qs = qs.filter(Q(description__icontains=q) | Q(number__icontains=q))
+            qs = qs.filter(Q(number__icontains=q) | Q(description__icontains=q))
+
         return qs.distinct()
 
     def perform_create(self, serializer):
