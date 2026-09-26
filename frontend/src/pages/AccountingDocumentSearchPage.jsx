@@ -34,7 +34,7 @@ const STATUS_META = {
   reversed: { label: 'برگشت‌خورده', color: '#ef4444' },
 };
 
-const fieldSx = { minWidth: 110, flex: 1 };
+const fieldSx = { flex: 1, minWidth: 0 };
 
 // یک جفت «از / تا»
 const Range = ({ children }) => (
@@ -46,13 +46,13 @@ const Range = ({ children }) => (
   </Stack>
 );
 
-const labelSx = { fontWeight: 700, fontSize: 13, color: COLOR_DARK, textAlign: 'right' };
+const labelSx = { minWidth: '88px', flexShrink: 0, fontWeight: 700, fontSize: 13, color: COLOR_DARK, textAlign: 'right' };
 
 const FilterCell = ({ label, children, full }) => (
   <Grid item xs={12} sm={6} md={full ? 12 : 4}>
-    <Stack spacing={1} sx={{ width: '100%' }}>
+    <Stack direction="row" spacing={1} alignItems="center" sx={{ width: '100%', flexWrap: 'wrap' }}>
       <Typography sx={labelSx}>{label}</Typography>
-      <Box>{children}</Box>
+      <Box sx={{ flex: 1, minWidth: 170 }}>{children}</Box>
     </Stack>
   </Grid>
 );
@@ -170,7 +170,7 @@ const AccountingDocumentSearchPage = () => {
         background: 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,247,255,0.96))',
         backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
         borderTop: `2px solid ${COLOR}44`, borderBottom: 'none',
-        p: 1.5, maxHeight: '44vh', overflowY: 'auto',
+        px: 2, py: 1.5, maxHeight: '44vh', overflowY: 'auto',
       }}>
         <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
           <FilterAltIcon sx={{ color: COLOR_DARK }} />
@@ -183,7 +183,7 @@ const AccountingDocumentSearchPage = () => {
           </Button>
         </Stack>
 
-        <Grid container spacing={1.5}>
+        <Grid container spacing={2}>
           <FilterCell label="سال مالی">
             <Range>
               <TextField size="small" select sx={fieldSx} value={yearFrom} onChange={e => setYearFrom(e.target.value)} SelectProps={{ native: true }}>
