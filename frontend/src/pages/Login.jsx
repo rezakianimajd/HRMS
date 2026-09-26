@@ -13,6 +13,18 @@ import LockIcon from '@mui/icons-material/Lock';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AppsIcon from '@mui/icons-material/Apps';
 import PersonIcon from '@mui/icons-material/Person';
+import GroupsIcon from '@mui/icons-material/Groups';
+import DescriptionIcon from '@mui/icons-material/Description';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import DevicesIcon from '@mui/icons-material/Devices';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import SupportAgentIcon from '@mui/icons-material/SupportAgent';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import SellIcon from '@mui/icons-material/Sell';
+import FactoryIcon from '@mui/icons-material/Factory';
+import SettingsIcon from '@mui/icons-material/Settings';
 import useAuth from '../core/hooks/useAuth';
 import useCompany from '../core/hooks/useCompany';
 import { useApplication } from '../core/context/ApplicationContext';
@@ -25,6 +37,27 @@ const COLOR_3 = '#67e8f9';
 const INK = '#111318';
 const MUTED = '#6b7280';
 const GRAY = '#c2c7d1';
+
+// Modern icon set keyed by application slug.
+const MODULE_ICONS = {
+  hrms: GroupsIcon,
+  contracts: DescriptionIcon,
+  projects: TimelineIcon,
+  inventory: Inventory2Icon,
+  accounting: ReceiptLongIcon,
+  assets: DevicesIcon,
+  treasury: AccountBalanceIcon,
+  crm: SupportAgentIcon,
+  procurement: ShoppingCartIcon,
+  sales: SellIcon,
+  production: FactoryIcon,
+  settings: SettingsIcon,
+};
+
+const ModuleIcon = ({ slug, ...rest }) => {
+  const Icon = MODULE_ICONS[slug] || AppsIcon;
+  return <Icon {...rest} />;
+};
 
 const Login = () => {
   const { t } = useTranslation();
@@ -185,28 +218,13 @@ const Login = () => {
               <Typography variant="caption" sx={{ display: 'block', color: MUTED, fontWeight: 600, letterSpacing: 2, mb: 1, fontSize: 11 }}>
                 {step === 'application' ? 'انتخاب ماژول' : 'سامانه یکپارچه مدیریت کسب و کار'}
               </Typography>
-              <Typography
-                variant="h5"
-                component="h1"
-                fontWeight={800}
-                letterSpacing="-1px"
-                sx={{ color: INK, mb: 1 }}
-              >
-                {step === 'application' ? (
-                  <>سامانه{' '}
-                    <Box component="span" sx={{
-                      background: `linear-gradient(120deg, ${COLOR}, ${COLOR_2} 40%, ${COLOR_3} 100%)`,
-                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900,
-                    }}>کیان</Box>
-                  </>
-                ) : (
-                  <>سامانه{' '}
-                    <Box component="span" sx={{
-                      background: `linear-gradient(120deg, ${COLOR}, ${COLOR_2} 40%, ${COLOR_3} 100%)`,
-                      WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', fontWeight: 900,
-                    }}>کیان</Box>
-                  </>
-                )}
+              <Typography variant="h4" component="h1" fontWeight={900} letterSpacing="-1.5px" sx={{ mb: 1 }}>
+                <Box component="span" sx={{
+                  background: `linear-gradient(120deg, ${COLOR}, ${COLOR_2} 40%, ${COLOR_3} 100%)`,
+                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                }}>
+                  کیان
+                </Box>
               </Typography>
               <Typography variant="caption" sx={{ color: MUTED, letterSpacing: 2, fontSize: 10.5 }}>
                 KIANI EBP · ENTERPRISE BUSINESS PLATFORM
@@ -405,12 +423,13 @@ const Login = () => {
                                 } : {},
                               }}
                             >
-                              <Avatar sx={{ width: 44, height: 44, borderRadius: '12px', background: disabled ? GRAY : (app.color || COLOR), boxShadow: disabled ? 'none' : `0 6px 16px -6px ${app.color || COLOR}99`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                {app.icon ? (
-                                  <Typography fontSize={20}>{app.icon}</Typography>
-                                ) : (
-                                  <AppsIcon sx={{ color: '#fff' }} />
-                                )}
+                              <Avatar sx={{
+                                width: 46, height: 46, borderRadius: '14px',
+                                background: disabled ? `linear-gradient(135deg, ${GRAY}, ${GRAY}cc)` : `linear-gradient(135deg, ${app.color || COLOR}, ${app.color || COLOR}cc)`,
+                                boxShadow: disabled ? 'none' : `0 8px 18px -8px ${app.color || COLOR}b0, inset 0 1px 0 rgba(255,255,255,0.35)`,
+                                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              }}>
+                                <ModuleIcon slug={app.slug} sx={{ color: '#fff', fontSize: 26 }} />
                               </Avatar>
                               <Typography variant="subtitle2" fontWeight={800} sx={{ color: INK, lineHeight: 1.3 }}>{app.title}</Typography>
                               {app.description && (
