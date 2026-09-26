@@ -502,6 +502,13 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             )
         serializer.save(company=_company(self.request))
 
+    def destroy(self, request, *args, **kwargs):
+        """اسناد ثبت/قفل‌شده قابل حذف نیستند (ماندگاری)؛ فقط برگشت مجاز است."""
+        obj = self.get_object()
+        if obj.status in ('posted', 'locked'):
+            return Response({'error': 'سند ثبت/قفل‌شده قابل حذف نیست؛ از برگشت سند استفاده کنید.'}, status=400)
+        return super().destroy(request, *args, **kwargs)
+
     def _service(self, obj):
         return PostingService(obj, user=self.request.user)
 
@@ -979,10 +986,15 @@ class CodingConfigViewSet(CompanyScopedViewSet):
 
     @action(detail=False, methods=['get'])
     def suggest(self, request):
-        """پیشنهاد کد بعدی برای یک سطح کدینگ مشخص."""
+        """پیشنهاد کد بعدی برای یک سطح کدینگ مشخص.
+
+        برای سطح `subsidiary` می‌توان `parent_code` (کد کل) را ارسال کرد تا کد
+        معین به‌صورت ترکیبی (کدکل + پسوند) تولید شود.
+        """
         level = request.query_params.get('level')
         if not level:
             return Response({'error': 'level الزامی است'}, status=400)
         company = _company(request)
-        code = coding.suggest_code(company, level)
+        parent_code = request.query_params.get('parent_code')
+        code = coding.suggest_code(company, level, parent_code)
         return Response({'code': code})

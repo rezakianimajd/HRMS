@@ -46,12 +46,14 @@ def _existing_codes(company, level):
     return set(qs.values_list('code', flat=True))
 
 
-def suggest_code(company, level):
+def suggest_code(company, level, parent_code=None):
     """اولین کد آزاد در بازهٔ تعریف‌شده برای یک سطح کدینگ.
 
-    کد به صورت `prefix + number` ساخته می‌شود و number به `min_length` ارقام
-    چپ‌چین (zero-padded) می‌شود؛ مگر اینکه طول نهایی از `max_length` عبور کند
-    که در آن حالت padding حذف می‌شود.
+    - عمومی: کد = پیشوند + شماره.
+    - حساب معین (subsidiary): اگر `parent_code` (کد کل) داده شود، کد به‌صورت
+      ترکیبی `parent_code + suffix` ساخته می‌شود تا سلسله‌مراتب کد برقرار باشد.
+    - حساب تفصیلی (auxiliary) عمداً شناور می‌ماند: کد مستقل از معین تولید
+      می‌شود (مطابق نیاز کاربر).
     """
     if not company:
         return None
@@ -61,6 +63,18 @@ def suggest_code(company, level):
         return None
 
     used = _existing_codes(company, level)
+
+    if level == 'subsidiary' and parent_code:
+        parent_code = str(parent_code)
+        for n in range(cfg.start_number, cfg.end_number + 1):
+            digits = str(n).zfill(cfg.min_length)
+            code = f'{parent_code}{digits}'
+            if len(code) > cfg.max_length:
+                code = f'{parent_code}{n}'
+            if code not in used:
+                return code
+        return None
+
     for n in range(cfg.start_number, cfg.end_number + 1):
         digits = str(n).zfill(cfg.min_length)
         code = f'{cfg.prefix}{digits}'
