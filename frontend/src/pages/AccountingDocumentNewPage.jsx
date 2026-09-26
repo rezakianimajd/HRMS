@@ -4,8 +4,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack,
-  TextField, IconButton, Tooltip, Alert, Autocomplete, Chip, FormControlLabel, Switch,
-  Select, MenuItem, FormControl,
+  TextField, IconButton, Tooltip, Alert, Autocomplete, Chip, Checkbox,
 } from '@mui/material';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -22,7 +21,6 @@ import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
 const ROWS = 10;
-const VAT_RATE = 10;
 
 const glass = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.36))',
@@ -49,8 +47,7 @@ const today = () => {
 const empty = (date) => ({
   account: '', aux1: '', aux2: '', aux3: '',
   invoice_number: '', vat_amount: '', desc: '', date, debit: '', credit: '',
-  invoice_type: 'none', vat_rate: '',
-  party_tax_id: '', party_national_id: '', party_postal_code: '', season_flag: false,
+  season_flag: false,
 });
 
 const AccountingDocumentNewPage = () => {
@@ -111,11 +108,6 @@ const AccountingDocumentNewPage = () => {
         date: l.maturity_date || existingDoc.date,
         debit: l.debit,
         credit: l.credit,
-        invoice_type: l.invoice_type || 'none',
-        vat_rate: l.vat_rate || '',
-        party_tax_id: l.party_tax_id || '',
-        party_national_id: l.party_national_id || '',
-        party_postal_code: l.party_postal_code || '',
         season_flag: !!l.season_flag,
       }));
       setLines(loaded.length ? loaded : Array.from({ length: ROWS }, () => empty(today())));
@@ -138,8 +130,24 @@ const AccountingDocumentNewPage = () => {
     return catId ? auxList.filter(a => a.category === catId) : [];
   };
 
-  const totalDebit = lines.reduce((s, l) => s + (Number(l.debit) || 0), 0);
-  const totalCredit = lines.reduce((s, l) => s + (Number(l.credit) || 0), 0);
+  // توازن: ارزش افزوده با بدهکار یا بستانکار جمع می‌شود
+  let totalDebit = 0;
+  let totalCredit = 0;
+  lines.forEach((l, i) => {
+    const d = Number(l.debit) || 0;
+    const c = Number(l.credit) || 0;
+    const v = Number(l.vat_amount) || 0;
+    if (d && !c) {
+      // خرید: ارزش افزوده با بدهکار جمع می‌شود
+      totalDebit += d + v;
+    } else if (c && !d) {
+      // فروش: ارزش افزوده با بستانکار جمع می‌شود
+      totalCredit += c + v;
+    } else {
+      totalDebit += d;
+      totalCredit += c;
+    }
+  });
   const diff = totalDebit - totalCredit;
   const totalBalanceOk = Math.abs(diff) < 0.001;
 
@@ -147,24 +155,18 @@ const AccountingDocumentNewPage = () => {
   const activeAccount = accountList.find(a => a.id === active.account);
   const activeAuxs = ['aux1', 'aux2', 'aux3'].map(k => auxList.find(a => a.id === active[k]));
 
-  const autoVat = (i) => {
-    const l = lines[i];
-    const baseVal = Math.abs(Number(l.debit) || 0) || Math.abs(Number(l.credit) || 0);
-    const rate = Number(l.vat_rate) || VAT_RATE;
-    const vat = baseVal * rate / 100;
-    setLine(i, 'vat_amount', vat ? String(Math.round(vat)) : '');
-  };
-
   const fillBalance = () => {
     const i = activeRow;
-    const othersDebit = lines.filter((_, idx) => idx !== i).reduce((s, x) => s + (Number(x.debit) || 0), 0);
-    const othersCredit = lines.filter((_, idx) => idx !== i).reduce((s, x) => s + (Number(x.credit) || 0), 0);
+    const othersDebit = lines.filter((_, idx) => idx !== i).reduce((s, x) => s + (Number(x.debit) || 0) + (Number(x.debit) && !Number(x.credit) ? (Number(x.vat_amount) || 0) : 0), 0);
+    const othersCredit = lines.filter((_, idx) => idx !== i).reduce((s, x) => s + (Number(x.credit) || 0) + (Number(x.credit) && !Number(x.debit) ? (Number(x.vat_amount) || 0) : 0), 0);
     if (othersDebit > othersCredit) {
       setLine(i, 'credit', String(othersDebit - othersCredit));
       setLine(i, 'debit', '');
+      setLine(i, 'vat_amount', '');
     } else {
       setLine(i, 'debit', String(othersCredit - othersDebit));
       setLine(i, 'credit', '');
+      setLine(i, 'vat_amount', '');
     }
   };
 
@@ -200,7 +202,7 @@ const AccountingDocumentNewPage = () => {
   const submit = async () => {
     setMsg(null);
     const payloadLines = lines
-      .filter(l => l.account || l.desc || l.debit || l.credit || l.aux1 || l.aux2 || l.aux3 || l.invoice_number || l.vat_amount || l.party_tax_id)
+      .filter(l => l.account || l.desc || l.debit || l.credit || l.aux1 || l.aux2 || l.aux3 || l.invoice_number || l.vat_amount)
       .map(l => ({
         account: l.account || null,
         auxiliary_1: l.aux1 || null,
@@ -210,13 +212,8 @@ const AccountingDocumentNewPage = () => {
         maturity_date: l.date || null,
         debit: Number(l.debit) || 0,
         credit: Number(l.credit) || 0,
-        invoice_type: l.invoice_type || 'none',
         invoice_number: l.invoice_number || '',
-        vat_rate: Number(l.vat_rate) || 0,
         vat_amount: Number(l.vat_amount) || 0,
-        party_tax_id: l.party_tax_id || '',
-        party_national_id: l.party_national_id || '',
-        party_postal_code: l.party_postal_code || '',
         season_flag: !!l.season_flag,
       }));
 
@@ -249,10 +246,12 @@ const AccountingDocumentNewPage = () => {
     }
   };
 
-  const gridCols = '44px 1fr 0.85fr 0.85fr 0.85fr 1fr 0.9fr 1.6fr 0.9fr 0.9fr';
+  // ستون‌ها: ردیف | شمول | معین | تفصیل۱ | تفصیل۲ | تفصیل۳ | شماره فاکتور | شرح | بدهکار | ارزش افزوده | بستانکار
+  const gridCols = '44px 36px 1fr 0.85fr 0.85fr 0.85fr 1fr 1.4fr 0.9fr 0.9fr 0.9fr';
 
   return (
     <Box>
+      {/* هدر + دکمه‌های خروج/ذخیره */}
       <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
         background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '20px' }}>
         <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 28px ${COLOR}55` }}>
@@ -260,13 +259,19 @@ const AccountingDocumentNewPage = () => {
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
           <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>{isEdit ? 'ویرایش سند' : 'سند جدید'}</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت آرتیکل با توازن خودکار، مالیات و تفصیلی‌های شناور</Typography>
+          <Typography variant="body2" color="textSecondary">ثبت آرتیکل با توازن خودکار، ارزش افزوده و تفصیلی‌های شناور</Typography>
         </Box>
         <Chip size="small" label="F2 معین · F3 تفصیل · F9 توازن · Ctrl+D کپی ردیف" sx={{ bgcolor: 'rgba(16,185,129,0.08)', color: COLOR_DARK, fontWeight: 700 }} />
+        <Button startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '12px' }}>خروج</Button>
+        <Button startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
+          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3, boxShadow: `0 10px 24px ${COLOR}44` }}>
+          {saving ? <CircularProgress size={20} /> : (isEdit ? 'به‌روزرسانی سند' : 'ذخیره سند')}
+        </Button>
       </Paper>
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
+      {/* هدر سند */}
       <Paper sx={{ ...glass, p: 2, mb: 2 }}>
         <Stack direction="row" spacing={2} flexWrap="wrap" useFlexGap>
           <TextField size="small" label="شماره سند" value={header.number} onChange={e => setHeaderField('number', e.target.value)} sx={{ width: 130, ...fieldSx }}
@@ -279,10 +284,11 @@ const AccountingDocumentNewPage = () => {
         </Stack>
       </Paper>
 
+      {/* جدول */}
       <Paper sx={{ ...glass, overflow: 'auto', mb: 1.5 }}>
         <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 1150 }}>
-          {['ردیف', 'معین', 'تفصیل۱', 'تفصیل۲', 'تفصیل۳', 'شماره فاکتور', 'ارزش افزوده', 'شرح', 'بدهکار', 'بستانکار'].map((h, i) => (
-            <Box key={i} sx={{ px: 1, py: 1.2, fontWeight: 800, fontSize: 11.5, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none', bgcolor: 'rgba(16,185,129,0.05)', whiteSpace: 'nowrap' }}>{h}</Box>
+          {['ردیف', 'شمول', 'معین', 'تفصیل۱', 'تفصیل۲', 'تفصیل۳', 'شماره فاکتور', 'شرح', 'بدهکار', 'ارزش افزوده', 'بستانکار'].map((h, i) => (
+            <Box key={i} sx={{ px: 1, py: 1.2, fontWeight: 800, fontSize: 11.5, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none', bgcolor: 'rgba(16,185,129,0.05)', whiteSpace: 'nowrap', textAlign: i === 1 ? 'center' : 'right' }}>{h}</Box>
           ))}
         </Box>
 
@@ -301,49 +307,34 @@ const AccountingDocumentNewPage = () => {
                 <Typography variant="body2" color="textSecondary">{toPersianDigits(i + 1)}</Typography>
                 {warns.length > 0 && <Tooltip title={warns.join('، ')}><Chip size="small" label="!" sx={{ height: 16, width: 16, fontSize: 10, color: '#b45309', bgcolor: 'rgba(245,158,11,0.15)' }} /></Tooltip>}
               </Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <Tooltip title="شامل معاملات فصلی و ارزش افزوده">
+                  <Checkbox size="small" checked={l.season_flag} onChange={e => setLine(i, 'season_flag', e.target.checked)} />
+                </Tooltip>
+              </Box>
               <Box sx={{ p: 0.5 }}><CodeCell label={selectedAccount?.code || ''} onClick={() => openPicker(i, 'account')} /></Box>
               {slots.map((slot) => {
                 const aux = auxList.find(a => a.id === l[slot.key]);
                 return <Box key={slot.key} sx={{ p: 0.5 }}><CodeCell label={aux?.code || ''} onClick={() => slot.catId && openPicker(i, slot.key)} disabled={!slot.catId} /></Box>;
               })}
               <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.invoice_number} onChange={e => setLine(i, 'invoice_number', e.target.value)} placeholder="—" /></Box>
-              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.vat_amount} onChange={e => setLine(i, 'vat_amount', e.target.value)} onBlur={() => autoVat(i)} placeholder="0" /></Box>
               <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" /></Box>
-              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} onBlur={() => autoVat(i)} /></Box>
-              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.credit} onChange={e => setLine(i, 'credit', e.target.value)} onBlur={() => autoVat(i)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.vat_amount} onChange={e => setLine(i, 'vat_amount', e.target.value)} placeholder="0" /></Box>
+              <Box sx={{ p: 0.5 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.credit} onChange={e => setLine(i, 'credit', e.target.value)} /></Box>
             </Box>
           );
         })}
 
         <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, borderTop: '2px solid rgba(16,185,129,0.3)', bgcolor: 'rgba(16,185,129,0.06)', fontWeight: 800 }}>
           <Box sx={{ p: 1.4 }} />
+          <Box />
           <Box sx={{ p: 1.4, color: COLOR_DARK }}>جمع</Box>
-          {Array.from({ length: 6 }).map((_, k) => <Box key={k} />)}
+          {Array.from({ length: 5 }).map((_, k) => <Box key={k} />)}
           <Box sx={{ p: 1.4, color: '#2563eb' }}>{formatPersianNumber(totalDebit)}</Box>
+          <Box />
           <Box sx={{ p: 1.4, color: '#2563eb' }}>{formatPersianNumber(totalCredit)}</Box>
         </Box>
-      </Paper>
-
-      {/* جزئیات مالیاتی ردیف فعال */}
-      <Paper sx={{ ...glass, p: 1.5, mb: 1.5 }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography variant="caption" color={COLOR_DARK} fontWeight={800}>جزئیات مالیاتی ردیف {toPersianDigits(activeRow + 1)}</Typography>
-          <FormControl size="small" sx={{ width: 120 }}>
-            <Select value={active.invoice_type} onChange={e => setLine(activeRow, 'invoice_type', e.target.value)} sx={{ fontSize: 12 }}>
-              <MenuItem value="none">—</MenuItem>
-              <MenuItem value="sale">فروش</MenuItem>
-              <MenuItem value="purchase">خرید</MenuItem>
-              <MenuItem value="import">واردات</MenuItem>
-              <MenuItem value="export">صادرات</MenuItem>
-              <MenuItem value="service">خدمت</MenuItem>
-            </Select>
-          </FormControl>
-          <TextField size="small" label="نرخ مالیات (٪)" type="number" value={active.vat_rate} onChange={e => setLine(activeRow, 'vat_rate', e.target.value)} onBlur={() => autoVat(activeRow)} sx={{ width: 110, ...fieldSx }} />
-          <TextField size="small" label="شماره اقتصادی طرف" value={active.party_tax_id} onChange={e => setLine(activeRow, 'party_tax_id', e.target.value)} sx={{ width: 160, ...fieldSx }} />
-          <TextField size="small" label="شناسه ملی طرف" value={active.party_national_id} onChange={e => setLine(activeRow, 'party_national_id', e.target.value)} sx={{ width: 150, ...fieldSx }} />
-          <TextField size="small" label="کد پستی طرف" value={active.party_postal_code} onChange={e => setLine(activeRow, 'party_postal_code', e.target.value)} sx={{ width: 130, ...fieldSx }} />
-          <FormControlLabel control={<Switch size="small" checked={active.season_flag} onChange={e => setLine(activeRow, 'season_flag', e.target.checked)} />} label="مشمول معاملات فصلی" />
-        </Stack>
       </Paper>
 
       {/* نوار شرح کدها */}
@@ -381,14 +372,6 @@ const AccountingDocumentNewPage = () => {
         onClose={() => setPicker(null)}
         onSelect={(o) => { if (picker) setLine(picker.row, picker.slot, o.id); }}
       />
-
-      <Stack direction="row" spacing={1.5} justifyContent="flex-end" sx={{ mt: 2.5 }}>
-        <Button startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '12px' }}>خروج</Button>
-        <Button startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3, boxShadow: `0 10px 24px ${COLOR}44` }}>
-          {saving ? <CircularProgress size={20} /> : (isEdit ? 'به‌روزرسانی سند' : 'ذخیره سند')}
-        </Button>
-      </Stack>
     </Box>
   );
 };

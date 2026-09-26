@@ -30,8 +30,11 @@ def _lines(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def vat_ledger(request):
-    """گزارش ارزش افزوده: جمع معاملات و مالیات به تفکیک نرخ و نوع (خرید/فروش)."""
-    lines = _lines(request)
+    """گزارش ارزش افزوده: جمع معاملات و مالیات به تفکیک نرخ و نوع (خرید/فروش).
+
+    فقط ردیف‌هایی که «شمول معاملات فصلی/ارزش افزوده» علامت خورده‌اند لحاظ می‌شوند.
+    """
+    lines = _lines(request).filter(season_flag=True)
     by_rate = {}
     total_sale_net = total_sale_vat = 0.0
     total_purchase_net = total_purchase_vat = 0.0
@@ -78,7 +81,7 @@ def seasonal_report(request):
     """
     from contracts.models import ContractParty
 
-    lines = _lines(request).exclude(invoice_type='none')
+    lines = _lines(request).filter(season_flag=True)
 
     # پیش‌بارگذاری مشخصات طرف از مدیریت قراردادها برای تفصیلی‌های مرتبط
     party_cache = {}
