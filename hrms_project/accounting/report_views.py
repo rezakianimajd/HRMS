@@ -186,14 +186,13 @@ def income_statement(request):
         account__account_type__category__in=['revenue', 'expense', 'cost_of_sales'],
     ).select_related('account__account_type')
 
-    # تجمیع به تفکیک طبقه
     buckets = {'revenue': 0, 'cost_of_sales': 0, 'expense': 0}
     expense_by_group = {}
     for line in lines:
         category = line.account.account_type.category
         net = float(line.credit or 0) - float(line.debit or 0)
         if category == 'cost_of_sales':
-            net = -net  # هزینه با بدهکار افزایش می‌یابد
+            net = -net
         buckets[category] += net
         if category == 'expense':
             group = line.account.group.name if line.account.group else 'سایر'
@@ -201,13 +200,11 @@ def income_statement(request):
 
     revenue = buckets['revenue']
     cost_of_sales = buckets['cost_of_sales']
-    expense = -buckets['expense']  # expense عدد منفی شد → مثبت کنیم
+    expense = -buckets['expense']
     gross_profit = revenue - cost_of_sales
     net_profit = gross_profit - expense
 
-    expense_details = [
-        {'group': g, 'amount': expense_by_group[g]} for g in expense_by_group
-    ]
+    expense_details = [{'group': g, 'amount': expense_by_group[g]} for g in expense_by_group]
     expense_details.sort(key=lambda x: -x['amount'])
 
     return Response({
@@ -291,7 +288,6 @@ def cash_flow(request):
         elif category in ('expense', 'cost_of_sales'):
             operating_out += debit - credit
         elif category == 'asset':
-            # سرمایه‌گذاری: تغییر خالص دارایی‌های ثابت (نقد غیر بانکی)
             if line.account.is_bank_cash:
                 continue
             investing += credit - debit
@@ -309,4 +305,289 @@ def cash_flow(request):
         'investing': investing,
         'financing': financing,
         'net_change': net_change,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def tree_trial_balance(request):
+    """تراز درختی حساب‌ها: سلسله‌مراتب حساب با جمع‌شوندگی فرزندان به والد."""
+    lines = _posted_lines(request)
+
+    direct = {}
+    for line in lines:
+        rec = direct.setdefault(line.account_id, {'debit': 0.0, 'credit': 0.0})
+        rec['debit'] += float(line.debit or 0)
+        rec['credit'] += float(line.credit or 0)
+
+    accounts = list(Account.objects.filter(company=_company(request), is_active=True).order_by('code'))
+    nodes = {}
+    for a in accounts:
+        d = direct.get(a.id, {'debit': 0.0, 'credit': 0.0})
+        bal = (d['credit'] - d['debit']) if a.nature == 'credit' else (d['debit'] - d['credit'])
+        nodes[a.id] = {
+            'id': a.id,
+            'code': a.code,
+            'name': a.name,
+            'level': a.level or 1,
+            'parent_id': a.parent_id,
+            'nature': a.nature,
+            'debit': d['debit'],
+            'credit': d['credit'],
+            'balance': bal,
+            'children': [],
+        }
+
+    roots = []
+    for a in accounts:
+        node = nodes[a.id]
+        if node['parent_id'] and node['parent_id'] in nodes:
+            nodes[node['parent_id']]['children'].append(node)
+        else:
+            roots.append(node)
+
+    def rollup(node):
+        for child in node['children']:
+            rollup(child)
+            node['debit'] += child['debit']
+            node['credit'] += child['credit']
+            node['balance'] += child['balance']
+
+    for r in roots:
+        rollup(r)
+
+    def prune(node):
+        keep = abs(node['debit']) > 1e-9 or abs(node['credit']) > 1e-9 or abs(node['balance']) > 1e-9
+        kept_children = []
+        for c in node['children']:
+            pruned = prune(c)
+            if pruned is not None:
+                kept_children.append(pruned)
+        node['children'] = kept_children
+        return node if (keep or kept_children) else None
+
+    pruned_roots = [p for p in (prune(r) for r in roots) if p is not None]
+
+    return Response({
+        'tree': pruned_roots,
+        'total_debit': sum(r['debit'] for r in pruned_roots),
+        'total_credit': sum(r['credit'] for r in pruned_roots),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def matrix_report(request):
+    """گزارش مرور ترکیبی (ماتریس): حساب‌ها در ردیف، مراکز هزینه در ستون."""
+    lines = _posted_lines(request).select_related('account', 'cost_center')
+
+    accounts = {}
+    cost_centers = {}
+    cells = {}
+
+    for line in lines:
+        a = line.account_id
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+
+        acc = accounts.setdefault(a, {
+            'id': a,
+            'code': line.account.code,
+            'name': line.account.name,
+            'nature': line.account.nature,
+            'debit': 0.0,
+            'credit': 0.0,
+        })
+        acc['debit'] += debit
+        acc['credit'] += credit
+
+        c = line.cost_center_id
+        if c:
+            cc = cost_centers.setdefault(c, {
+                'id': c,
+                'code': line.cost_center.code,
+                'name': line.cost_center.name,
+                'debit': 0.0,
+                'credit': 0.0,
+            })
+            cc['debit'] += debit
+            cc['credit'] += credit
+            key = f"{a}:{c}"
+            cell = cells.setdefault(key, {'debit': 0.0, 'credit': 0.0})
+            cell['debit'] += debit
+            cell['credit'] += credit
+
+    account_rows = sorted(accounts.values(), key=lambda x: x['code'])
+    cost_cols = sorted(cost_centers.values(), key=lambda x: x['code'])
+
+    return Response({
+        'accounts': account_rows,
+        'cost_centers': cost_cols,
+        'cells': cells,
+        'total_debit': sum(a['debit'] for a in account_rows),
+        'total_credit': sum(a['credit'] for a in account_rows),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def ledger_review(request):
+    """مرور پله‌ای دفاتر: گردش دفتر به دفتر با ماندهٔ تجمعی (پله‌ای)."""
+    from accounting.models import Journal
+
+    docs = (
+        AccountingDocument.objects
+        .filter(company=_company(request), status__in=['posted', 'locked'])
+        .select_related('journal')
+        .order_by('date', 'id')
+    )
+    journals = list(Journal.objects.filter(company=_company(request)).order_by('code'))
+
+    buckets = {j.id: {'journal': j, 'docs': []} for j in journals}
+    buckets[None] = {'journal': None, 'docs': []}
+    for d in docs:
+        buckets[d.journal_id]['docs'].append(d)
+
+    result = []
+    for j in journals + [None]:
+        bucket = buckets[j.id if j else None]
+        steps = []
+        running = 0.0
+        total_debit = 0.0
+        total_credit = 0.0
+        for d in bucket['docs']:
+            td = float(d.total_debit or 0)
+            tc = float(d.total_credit or 0)
+            running += td - tc
+            total_debit += td
+            total_credit += tc
+            steps.append({
+                'document_id': d.id,
+                'number': d.number or str(d.id),
+                'date': d.date.isoformat() if d.date else None,
+                'description': d.description,
+                'debit': td,
+                'credit': tc,
+                'running': running,
+            })
+        result.append({
+            'journal_id': j.id if j else None,
+            'code': j.code if j else 'GENERAL',
+            'name': j.name if j else 'عمومی / بدون دفتر',
+            'steps': steps,
+            'opening': 0.0,
+            'total_debit': total_debit,
+            'total_credit': total_credit,
+            'closing': running,
+        })
+
+    return Response({'journals': result})
+
+
+def _safe_ratio(num, den):
+    if not den:
+        return None
+    return round(num / den, 4)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def financial_statements(request):
+    """صورت‌های مالی یکپارچه: ترازنامه + سود و زیان + جریان نقدی + نسبت‌ها."""
+    lines = _posted_lines(request).select_related('account__account_type')
+
+    assets, liabilities, equity = {}, {}, {}
+    for line in lines:
+        category = line.account.account_type.category
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        if category == 'asset':
+            balance, target = debit - credit, assets
+        elif category == 'liability':
+            balance, target = credit - debit, liabilities
+        elif category == 'equity':
+            balance, target = credit - debit, equity
+        else:
+            continue
+        rec = target.setdefault(line.account_id, {
+            'id': line.account_id, 'code': line.account.code,
+            'name': line.account.name, 'balance': 0.0,
+        })
+        rec['balance'] += balance
+
+    def to_rows(target):
+        rows = sorted(target.values(), key=lambda x: x['code'])
+        return rows, sum(r['balance'] for r in rows)
+
+    asset_rows, total_assets = to_rows(assets)
+    liability_rows, total_liabilities = to_rows(liabilities)
+    equity_rows, total_equity = to_rows(equity)
+
+    buckets = {'revenue': 0.0, 'cost_of_sales': 0.0, 'expense': 0.0}
+    expense_by_group = {}
+    for line in lines:
+        category = line.account.account_type.category
+        net = float(line.credit or 0) - float(line.debit or 0)
+        if category == 'cost_of_sales':
+            net = -net
+        buckets[category] += net
+        if category == 'expense':
+            group = line.account.group.name if line.account.group else 'سایر'
+            expense_by_group[group] = expense_by_group.get(group, 0.0) + (-net if net < 0 else -net)
+
+    revenue = buckets['revenue']
+    cost_of_sales = buckets['cost_of_sales']
+    expense = -buckets['expense']
+    gross_profit = revenue - cost_of_sales
+    net_profit = gross_profit - expense
+
+    operating_in = operating_out = investing = financing = 0.0
+    for line in lines:
+        category = line.account.account_type.category
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        if category == 'revenue':
+            operating_in += credit - debit
+        elif category in ('expense', 'cost_of_sales'):
+            operating_out += debit - credit
+        elif category == 'asset':
+            if line.account.is_bank_cash:
+                continue
+            investing += credit - debit
+        elif category in ('liability', 'equity'):
+            financing += credit - debit
+    operating = operating_in - operating_out
+    net_change = operating + investing + financing
+
+    return Response({
+        'balance_sheet': {
+            'assets': asset_rows, 'total_assets': total_assets,
+            'liabilities': liability_rows, 'total_liabilities': total_liabilities,
+            'equity': equity_rows, 'total_equity': total_equity,
+            'total_liabilities_equity': total_liabilities + total_equity,
+        },
+        'income_statement': {
+            'revenue': revenue,
+            'cost_of_sales': cost_of_sales,
+            'gross_profit': gross_profit,
+            'expenses': expense,
+            'expense_details': [{'group': g, 'amount': v} for g, v in expense_by_group.items()],
+            'net_profit': net_profit,
+        },
+        'cash_flow': {
+            'operating': operating,
+            'operating_in': operating_in,
+            'operating_out': operating_out,
+            'investing': investing,
+            'financing': financing,
+            'net_change': net_change,
+        },
+        'ratios': {
+            'debt_ratio': _safe_ratio(total_liabilities, total_assets),
+            'equity_ratio': _safe_ratio(total_equity, total_assets),
+            'gross_margin': _safe_ratio(gross_profit, revenue),
+            'net_margin': _safe_ratio(net_profit, revenue),
+            'return_on_equity': _safe_ratio(net_profit, total_equity),
+            'return_on_assets': _safe_ratio(net_profit, total_assets),
+        },
     })

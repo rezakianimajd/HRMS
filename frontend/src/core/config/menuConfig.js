@@ -50,17 +50,11 @@ import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import HubIcon from '@mui/icons-material/Hub';
 import NumbersIcon from '@mui/icons-material/Numbers';
+import GridViewIcon from '@mui/icons-material/GridView';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
-/**
- * Central navigation model for the HRMS.
- *
- * A professional SaaS menu is grouped into work-spaces that follow the
- * employee life-cycle:
- *   خانه → پرسنل → چرخه عملیات → مالی → مدارک/مکاتبات → بینش و هوش → سیستم
- *
- * `ready: false` items point to placeholder routes that show "در حال توسعه".
- * `primary: true` items are highlighted when the drawer is in collapsed mode.
- */
 const menuConfig = [
   {
     id: 'home',
@@ -146,10 +140,6 @@ const comingSoon = (path, id, title, icon, color, primary = false) => ({
   id, title, icon, path, color, primary, ready: false,
 });
 
-/* ---------------------------------------------------------------------------
- * ماژول متمرکز «تنظیمات و تعاریف»
- * ساختار EBP: خانه (داشبورد) → هر ماژول → در پایان تنظیمات عمومی.
- * ------------------------------------------------------------------------- */
 const settingsMenu = [
   {
     id: 'settings-home',
@@ -349,9 +339,13 @@ const accountingMenu = [
     title: 'گزارش‌ها',
     color: '#8b5cf6',
     items: [
-      { id: 'accounting-reports', title: 'گزارش‌های مالی', icon: <AssessmentIcon />, path: '/accounting/reports', color: '#8b5cf6', primary: false, ready: true },
-      comingSoon('/accounting/reports/balance-sheet', 'acc-bs', 'ترازنامه', <AssessmentIcon />, '#10b981'),
-      comingSoon('/accounting/reports/cash-flow', 'acc-cf', 'جریان نقدی', <PaymentsIcon />, '#0ea5e9'),
+      { id: 'acc-report-matrix', title: 'مرور ترکیبی (ماتریس)', icon: <GridViewIcon />, path: '/accounting/reports/matrix', color: '#06b6d4', primary: false, ready: true },
+      { id: 'acc-report-tree-tb', title: 'تراز درختی حساب‌ها', icon: <AccountTreeIcon />, path: '/accounting/reports/tree-trial-balance', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'acc-report-ledger-review', title: 'مرور پله‌ای دفاتر', icon: <MenuBookIcon />, path: '/accounting/reports/ledger-review', color: '#f59e0b', primary: false, ready: true },
+      { id: 'acc-report-balance-sheet', title: 'ترازنامه', icon: <AccountBalanceIcon />, path: '/accounting/reports/balance-sheet', color: '#3b82f6', primary: false, ready: true },
+      { id: 'acc-report-income-statement', title: 'سود و زیان', icon: <TrendingUpIcon />, path: '/accounting/reports/income-statement', color: '#10b981', primary: false, ready: true },
+      { id: 'acc-report-cash-flow', title: 'جریان وجوه نقد', icon: <AccountBalanceWalletIcon />, path: '/accounting/reports/cash-flow', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'acc-report-financial-statements', title: 'صورت‌های مالی', icon: <DescriptionIcon />, path: '/accounting/reports/financial-statements', color: '#ec4899', primary: false, ready: true },
     ],
   },
   {

@@ -73,6 +73,13 @@ import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
 import AccountingIntegrationPage from './pages/AccountingIntegrationPage';
 import AccountingReportsPage from './pages/AccountingReportsPage';
 import AccountingSettingsPage from './pages/AccountingSettingsPage';
+import MatrixReportPage from './pages/accounting/reports/MatrixReportPage';
+import TreeTrialBalancePage from './pages/accounting/reports/TreeTrialBalancePage';
+import LedgerReviewPage from './pages/accounting/reports/LedgerReviewPage';
+import BalanceSheetPage from './pages/accounting/reports/BalanceSheetPage';
+import IncomeStatementPage from './pages/accounting/reports/IncomeStatementPage';
+import CashFlowPage from './pages/accounting/reports/CashFlowPage';
+import FinancialStatementsPage from './pages/accounting/reports/FinancialStatementsPage';
 import AccountingFiscalPage from './pages/AccountingFiscalPage';
 import AccountingSequencesPage from './pages/AccountingSequencesPage';
 import AccountingReconciliationPage from './pages/AccountingReconciliationPage';
@@ -170,6 +177,13 @@ const AppRoutes = () => {
       <Route path="/accounting/documents/:id/edit" element={<ProtectedLayout><AccountingDocumentNewPage /></ProtectedLayout>} />
       <Route path="/accounting/integration" element={<ProtectedLayout><AccountingIntegrationPage /></ProtectedLayout>} />
       <Route path="/accounting/reports" element={<ProtectedLayout><AccountingReportsPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/matrix" element={<ProtectedLayout><MatrixReportPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/tree-trial-balance" element={<ProtectedLayout><TreeTrialBalancePage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/ledger-review" element={<ProtectedLayout><LedgerReviewPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/balance-sheet" element={<ProtectedLayout><BalanceSheetPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/income-statement" element={<ProtectedLayout><IncomeStatementPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/cash-flow" element={<ProtectedLayout><CashFlowPage /></ProtectedLayout>} />
+      <Route path="/accounting/reports/financial-statements" element={<ProtectedLayout><FinancialStatementsPage /></ProtectedLayout>} />
       <Route path="/accounting/settings" element={<ProtectedLayout><AccountingSettingsPage /></ProtectedLayout>} />
       <Route path="/accounting/fiscal" element={<ProtectedLayout><AccountingFiscalPage /></ProtectedLayout>} />
       <Route path="/accounting/sequences" element={<ProtectedLayout><AccountingSequencesPage /></ProtectedLayout>} />
