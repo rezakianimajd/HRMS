@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   Box, Container, TextField, Button, Typography, Paper, Alert,
-  CircularProgress, InputAdornment, IconButton, Avatar, Stack, Fade,
+  CircularProgress, InputAdornment, IconButton, Avatar, Stack, Fade, Grid, Chip,
 } from '@mui/material';
 import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
@@ -11,7 +11,6 @@ import BusinessIcon from '@mui/icons-material/Business';
 import PersonIcon from '@mui/icons-material/Person';
 import LockIcon from '@mui/icons-material/Lock';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
-import GroupsIcon from '@mui/icons-material/Groups';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AppsIcon from '@mui/icons-material/Apps';
 import useAuth from '../core/hooks/useAuth';
@@ -19,7 +18,12 @@ import useCompany from '../core/hooks/useCompany';
 import { useApplication } from '../core/context/ApplicationContext';
 import CompanyEngine from '../core/engines/companyEngine';
 
-const R = '10px';
+const COLOR = '#6a5cf5';
+const COLOR_2 = '#a78bfa';
+const COLOR_3 = '#67e8f9';
+const INK = '#111318';
+const MUTED = '#6b7280';
+const R = 16;
 
 const Login = () => {
   const { t } = useTranslation();
@@ -121,7 +125,7 @@ const Login = () => {
       setStep('credentials');
       setSelectedCompany(null);
     } else if (step === 'application') {
-      setStep('company');
+      setStep(availableCompanies.length > 1 ? 'company' : 'credentials');
       setSelectedApp(null);
     }
     setError('');
@@ -139,66 +143,92 @@ const Login = () => {
         justifyContent: 'center',
         position: 'relative',
         overflow: 'hidden',
-        background: 'linear-gradient(-45deg, #0f172a 0%, #312e81 25%, #7c3aed 50%, #0ea5e9 75%, #0f172a 100%)',
-        backgroundSize: '400% 400%',
-        animation: 'loginGradient 16s ease infinite',
+        background:
+          'radial-gradient(900px 700px at 14% 6%, rgba(167,139,250,0.22), transparent 62%),' +
+          'radial-gradient(900px 700px at 92% 10%, rgba(103,232,249,0.20), transparent 62%),' +
+          'radial-gradient(1200px 900px at 50% 108%, rgba(240,171,252,0.18), transparent 60%),' +
+          'linear-gradient(180deg, #f3f5fb 0%, #e9ecf3 100%)',
       }}
     >
-      <Box sx={{ position: 'absolute', width: 420, height: 420, borderRadius: '50%', filter: 'blur(100px)', background: 'rgba(99,102,241,0.35)', top: '-8%', left: '-6%', animation: 'floatOrb 10s ease-in-out infinite' }} />
-      <Box sx={{ position: 'absolute', width: 360, height: 360, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(236,72,153,0.3)', bottom: '-6%', right: '-4%', animation: 'floatOrb 12s ease-in-out infinite reverse' }} />
-      <Box sx={{ position: 'absolute', width: 280, height: 280, borderRadius: '50%', filter: 'blur(90px)', background: 'rgba(14,165,233,0.3)', bottom: '20%', left: '30%', animation: 'floatOrb 14s ease-in-out infinite' }} />
+      {/* ambient blobs */}
+      <Box sx={{ position: 'absolute', width: 520, height: 520, borderRadius: '50%', filter: 'blur(120px)', background: 'rgba(167,139,250,0.35)', top: '-10%', left: '-8%', animation: 'floatOrb 12s ease-in-out infinite' }} />
+      <Box sx={{ position: 'absolute', width: 460, height: 460, borderRadius: '50%', filter: 'blur(120px)', background: 'rgba(103,232,249,0.30)', bottom: '-8%', right: '-6%', animation: 'floatOrb 14s ease-in-out infinite reverse' }} />
+      <Box sx={{ position: 'absolute', width: 380, height: 380, borderRadius: '50%', filter: 'blur(120px)', background: 'rgba(240,171,252,0.28)', top: '35%', left: '38%', animation: 'floatOrb 16s ease-in-out infinite' }} />
 
       <Container maxWidth="xs" sx={{ position: 'relative', zIndex: 1 }}>
         <Fade in timeout={700}>
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 3, sm: 4 },
-              borderRadius: R,
-              minHeight: 480,
+              p: { xs: 3, sm: 4.5 },
+              width: 'min(460px, 100%)',
+              margin: '0 auto',
+              borderRadius: '32px',
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'center',
-              background: 'rgba(255,255,255,0.06)',
-              backdropFilter: 'blur(24px)',
-              WebkitBackdropFilter: 'blur(24px)',
-              border: '1px solid rgba(255,255,255,0.18)',
-              boxShadow: '0 30px 70px rgba(0,0,0,0.45), inset 0 1px 0 rgba(255,255,255,0.1)',
+              background: 'linear-gradient(160deg, rgba(255,255,255,0.85), rgba(255,255,255,0.62))',
+              backdropFilter: 'blur(48px) saturate(180%)',
+              WebkitBackdropFilter: 'blur(48px) saturate(180%)',
+              border: '1px solid rgba(255,255,255,0.85)',
+              boxShadow:
+                '0 60px 120px -50px rgba(106,92,245,0.32),' +
+                '0 30px 60px -30px rgba(103,232,249,0.18),' +
+                '0 12px 30px -14px rgba(17,19,24,0.12),' +
+                'inset 0 1.5px 1px -1px rgba(255,255,255,1),' +
+                'inset 1.5px 0 0 rgba(255,90,180,0.10),' +
+                'inset -1.5px 0 0 rgba(90,220,255,0.10)',
             }}
           >
-            {/* Brand header — logo centered + title under it */}
-            <Box sx={{ textAlign: 'center', mb: 3 }}>
+            {/* Brand header */}
+            <Box sx={{ textAlign: 'center', mb: 3.5 }}>
               <Avatar
                 sx={{
-                  width: 72,
-                  height: 72,
+                  width: 68,
+                  height: 68,
                   mx: 'auto',
-                  mb: 1.5,
-                  borderRadius: R,
-                  background: 'linear-gradient(135deg, #818cf8, #ec4899)',
-                  boxShadow: '0 10px 30px rgba(129,140,248,0.5)',
+                  mb: 2.5,
+                  borderRadius: '20px',
+                  background: `linear-gradient(135deg, ${COLOR}, ${COLOR_2} 45%, ${COLOR_3} 100%)`,
+                  boxShadow: `0 16px 34px -10px ${COLOR}8c`,
+                  transform: 'rotate(-3deg)',
                 }}
               >
-                <GroupsIcon sx={{ fontSize: 38, color: '#fff' }} />
+                <svg viewBox="0 0 64 64" width="40" height="40" fill="none">
+                  <path d="M32 8 L52 20 L52 44 L32 56 L12 44 L12 20 Z" stroke="rgba(255,255,255,0.35)" strokeWidth="1" strokeLinejoin="round" />
+                  <g stroke="#fff" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M22 17 L22 47" />
+                    <path d="M23 32 L43 17" />
+                    <path d="M23 32 L43 47" />
+                  </g>
+                </svg>
               </Avatar>
+              <Typography variant="caption" sx={{ display: 'block', color: MUTED, fontWeight: 600, letterSpacing: 3, mb: 1, fontSize: 11 }}>
+                سامانه سازمانی
+              </Typography>
               <Typography
                 variant="h5"
                 component="h1"
-                fontWeight={900}
-                sx={{
-                  background: 'linear-gradient(90deg, #e0e7ff, #fbcfe8, #bae6fd)',
+                fontWeight={800}
+                letterSpacing="-1px"
+                sx={{ color: INK, mb: 1 }}
+              >
+                سامانه{' '}
+                <Box component="span" sx={{
+                  background: `linear-gradient(120deg, ${COLOR}, ${COLOR_2} 40%, ${COLOR_3} 100%)`,
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
-                }}
-              >
-                کیان
+                  fontWeight: 900,
+                }}>
+                  کیان
+                </Box>
               </Typography>
-              <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.65)', mt: 0.5 }}>
-                پلتفرم جامع مدیریت و عملیات کیان
+              <Typography variant="caption" sx={{ color: MUTED, letterSpacing: 2, fontSize: 10.5 }}>
+                ENTERPRISE RESOURCE PLATFORM
               </Typography>
             </Box>
 
-            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: R }}>{error}</Alert>}
+            {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px', fontSize: 13 }}>{error}</Alert>}
 
             {/* STEP 1: credentials */}
             {step === 'credentials' && (
@@ -215,7 +245,7 @@ const Login = () => {
                     sx={glassField}
                     InputProps={{
                       startAdornment: (
-                        <InputAdornment position="start"><PersonIcon sx={{ color: 'rgba(255,255,255,0.5)' }} /></InputAdornment>
+                        <InputAdornment position="start"><PersonIcon sx={{ color: MUTED, opacity: 0.6, fontSize: 20 }} /></InputAdornment>
                       ),
                     }}
                   />
@@ -230,17 +260,23 @@ const Login = () => {
                     sx={glassField}
                     InputProps={{
                       startAdornment: (
-                        <InputAdornment position="start"><LockIcon sx={{ color: 'rgba(255,255,255,0.5)' }} /></InputAdornment>
+                        <InputAdornment position="start"><LockIcon sx={{ color: MUTED, opacity: 0.6, fontSize: 20 }} /></InputAdornment>
                       ),
                       endAdornment: (
                         <InputAdornment position="end">
-                          <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: 'rgba(255,255,255,0.6)' }}>
+                          <IconButton onClick={() => setShowPassword(!showPassword)} edge="end" sx={{ color: MUTED, opacity: 0.6 }}>
                             {showPassword ? <VisibilityOff /> : <Visibility />}
                           </IconButton>
                         </InputAdornment>
                       ),
                     }}
                   />
+
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: MUTED, fontSize: 13, px: 0.5 }}>
+                    <Box component="span" sx={{ width: 6, height: 6, borderRadius: '50%', background: COLOR, display: 'inline-block' }} />
+                    ۲۴ ساعت وارد بمان
+                  </Box>
+
                   <Button
                     type="submit"
                     fullWidth
@@ -248,15 +284,21 @@ const Login = () => {
                     variant="contained"
                     disabled={loading}
                     sx={{
-                      py: 1.4,
-                      borderRadius: R,
+                      py: 1.55,
+                      borderRadius: '16px',
                       fontWeight: 700,
-                      background: 'linear-gradient(90deg, #6366f1, #a855f7)',
-                      boxShadow: '0 10px 25px rgba(99,102,241,0.4)',
-                      '&:hover': { background: 'linear-gradient(90deg, #4f46e5, #9333ea)' },
+                      fontSize: 15,
+                      color: '#fff',
+                      background: `linear-gradient(180deg, #22242e 0%, ${INK} 100%)`,
+                      boxShadow: `0 20px 40px -14px rgba(17,19,24,0.5), 0 8px 20px -8px ${COLOR}66`,
+                      textTransform: 'none',
+                      '&:hover': {
+                        transform: 'translateY(-2px)',
+                        background: `linear-gradient(180deg, #2a2d3a 0%, #171920 100%)`,
+                      },
                     }}
                   >
-                    {loading ? <CircularProgress size={24} color="inherit" /> : 'ورود'}
+                    {loading ? <CircularProgress size={24} sx={{ color: '#fff' }} /> : 'ورود به سامانه'}
                   </Button>
                 </Stack>
               </form>
@@ -265,10 +307,11 @@ const Login = () => {
             {/* STEP 2: company */}
             {step === 'company' && (
               <Stack spacing={2}>
-                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                  شرکت مورد نظر را انتخاب کنید:
-                </Typography>
-                <Stack spacing={1.5}>
+                <Box>
+                  <Typography variant="body2" fontWeight={800} sx={{ color: INK }}>انتخاب شرکت</Typography>
+                  <Typography variant="caption" sx={{ color: MUTED }}>شرکت مورد نظر را انتخاب کنید</Typography>
+                </Box>
+                <Stack spacing={1.25}>
                   {availableCompanies.map((c) => {
                     const isSelected = selectedCompany?.id === c.id;
                     return (
@@ -281,29 +324,30 @@ const Login = () => {
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'space-between',
-                          borderRadius: R,
-                          background: isSelected ? 'rgba(99,102,241,0.22)' : 'rgba(255,255,255,0.04)',
-                          border: `1px solid ${isSelected ? 'rgba(129,140,248,0.8)' : 'rgba(255,255,255,0.14)'}`,
+                          borderRadius: '16px',
+                          background: isSelected ? `linear-gradient(135deg, ${COLOR}22, rgba(255,255,255,0.6))` : 'rgba(255,255,255,0.55)',
+                          border: `1px solid ${isSelected ? COLOR : 'rgba(17,19,24,0.08)'}`,
+                          boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
                           transition: 'all 0.2s',
-                          '&:hover': { borderColor: 'rgba(129,140,248,0.6)', background: 'rgba(99,102,241,0.14)' },
+                          '&:hover': { borderColor: COLOR_2, background: `linear-gradient(135deg, ${COLOR}18, rgba(255,255,255,0.6))` },
                         }}
                       >
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                          <Avatar sx={{ width: 40, height: 40, borderRadius: R, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)' }}>
-                            <BusinessIcon sx={{ color: '#c7d2fe' }} />
+                          <Avatar sx={{ width: 42, height: 42, borderRadius: '12px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_2})`, boxShadow: `0 6px 16px -6px ${COLOR}99` }}>
+                            <BusinessIcon sx={{ color: '#fff' }} />
                           </Avatar>
                           <Box>
-                            <Typography variant="body1" fontWeight={700} sx={{ color: '#fff' }}>{c.name}</Typography>
-                            <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.55)' }}>{c.code}</Typography>
+                            <Typography variant="body1" fontWeight={700} sx={{ color: INK }}>{c.name}</Typography>
+                            {c.code && <Typography variant="caption" sx={{ color: MUTED }}>{c.code}</Typography>}
                           </Box>
                         </Box>
-                        {isSelected && <CheckCircleIcon sx={{ color: '#818cf8' }} />}
+                        {isSelected && <CheckCircleIcon sx={{ color: COLOR }} />}
                       </Paper>
                     );
                   })}
                 </Stack>
                 <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
-                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, borderRadius: R, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
+                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, borderRadius: '12px', color: INK, borderColor: 'rgba(17,19,24,0.15)', textTransform: 'none' }}>
                     بازگشت
                   </Button>
                   <Button
@@ -311,9 +355,9 @@ const Login = () => {
                     onClick={handleCompanySelect}
                     disabled={loading || !selectedCompany}
                     endIcon={<ArrowForwardIcon />}
-                    sx={{ flex: 1, fontWeight: 700, borderRadius: R, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
+                    sx={{ flex: 1, fontWeight: 700, borderRadius: '12px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_2})`, boxShadow: `0 8px 20px -6px ${COLOR}99`, textTransform: 'none' }}
                   >
-                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ادامه'}
+                    {loading ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'ادامه'}
                   </Button>
                 </Stack>
               </Stack>
@@ -322,90 +366,81 @@ const Login = () => {
             {/* STEP 3: application */}
             {step === 'application' && (
               <Stack spacing={2}>
-                <Typography variant="subtitle2" sx={{ color: 'rgba(255,255,255,0.7)', fontWeight: 600 }}>
-                  یک ماژول را برای ورود انتخاب کنید:
-                </Typography>
+                <Box>
+                  <Typography variant="body2" fontWeight={800} sx={{ color: INK }}>انتخاب ماژول</Typography>
+                  <Typography variant="caption" sx={{ color: MUTED }}>یک ماژول را برای ورود انتخاب کنید</Typography>
+                </Box>
 
                 {activeApps.length === 0 ? (
-                  <Typography variant="body2" sx={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', py: 2 }}>
+                  <Typography variant="body2" sx={{ color: MUTED, textAlign: 'center', py: 2 }}>
                     ماژولی در دسترس نیست.
                   </Typography>
                 ) : (
-                  <Stack spacing={1.5}>
+                  <Grid container spacing={1.25}>
                     {activeApps.map((app) => {
                       const isSelected = selectedApp?.id === app.id;
                       return (
-                        <Paper
-                          key={app.id}
-                          onClick={() => setSelectedApp(app)}
-                          sx={{
-                            p: 1.75,
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 1.5,
-                            borderRadius: R,
-                            background: isSelected
-                              ? `linear-gradient(135deg, ${app.color}33, rgba(255,255,255,0.08))`
-                              : 'rgba(255,255,255,0.04)',
-                            border: `1px solid ${isSelected ? app.color : 'rgba(255,255,255,0.14)'}`,
-                            transition: 'all 0.2s',
-                            '&:hover': { borderColor: app.color, background: `${app.color}22` },
-                          }}
-                        >
-                          <Avatar sx={{ width: 40, height: 40, borderRadius: R, background: app.color, boxShadow: `0 4px 14px ${app.color}55`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {app.icon ? (
-                              <Typography fontSize={18}>{app.icon}</Typography>
-                            ) : (
-                              <AppsIcon sx={{ color: '#fff' }} />
+                        <Grid item xs={6} key={app.id}>
+                          <Paper
+                            onClick={() => setSelectedApp(app)}
+                            sx={{
+                              p: 1.75,
+                              height: '100%',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              textAlign: 'center',
+                              gap: 1,
+                              borderRadius: '16px',
+                              background: isSelected ? `linear-gradient(160deg, ${app.color || COLOR}22, rgba(255,255,255,0.6))` : 'rgba(255,255,255,0.55)',
+                              border: `1px solid ${isSelected ? (app.color || COLOR) : 'rgba(17,19,24,0.08)'}`,
+                              boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.9)',
+                              transition: 'all 0.2s',
+                              '&:hover': { borderColor: app.color || COLOR, background: `${app.color || COLOR}14` },
+                            }}
+                          >
+                            <Avatar sx={{ width: 40, height: 40, borderRadius: '12px', background: app.color || COLOR, boxShadow: `0 6px 16px -6px ${app.color || COLOR}99`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                              {app.icon ? (
+                                <Typography fontSize={18}>{app.icon}</Typography>
+                              ) : (
+                                <AppsIcon sx={{ color: '#fff' }} />
+                              )}
+                            </Avatar>
+                            <Typography variant="body2" fontWeight={700} sx={{ color: INK, lineHeight: 1.3 }}>{app.title}</Typography>
+                            {app.description && (
+                              <Typography variant="caption" noWrap sx={{ color: MUTED, display: 'block', maxWidth: '100%' }}>
+                                {app.description}
+                              </Typography>
                             )}
-                          </Avatar>
-                          <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography variant="body1" fontWeight={700} sx={{ color: '#fff' }}>{app.title}</Typography>
-                            <Typography variant="caption" noWrap sx={{ color: 'rgba(255,255,255,0.55)', display: 'block' }}>
-                              {app.description}
-                            </Typography>
-                          </Box>
-                          {isSelected && <CheckCircleIcon sx={{ color: app.color }} />}
-                        </Paper>
+                          </Paper>
+                        </Grid>
                       );
                     })}
-                  </Stack>
+                  </Grid>
                 )}
 
                 {comingSoonApps.length > 0 && (
                   <Box>
-                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.4)', mb: 0.5, display: 'block' }}>
-                      در حال بهسازی — به‌زودی
+                    <Typography variant="caption" sx={{ color: MUTED, display: 'block', mb: 0.5 }}>
+                      به‌زودی
                     </Typography>
                     <Stack direction="row" spacing={0.75} flexWrap="wrap">
                       {comingSoonApps.map((app) => (
-                        <Paper
+                        <Chip
                           key={app.id}
-                          variant="outlined"
-                          sx={{
-                            px: 1,
-                            py: 0.5,
-                            borderRadius: R,
-                            display: 'flex',
-                            alignItems: 'center',
-                            gap: 0.5,
-                            bgcolor: 'rgba(255,255,255,0.04)',
-                            borderColor: 'rgba(255,255,255,0.1)',
-                          }}
-                        >
-                          <Box sx={{ width: 16, height: 16, borderRadius: R, background: app.color, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff' }}>
-                            {app.icon}
-                          </Box>
-                          <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.45)' }}>{app.title}</Typography>
-                        </Paper>
+                          label={app.title}
+                          size="small"
+                          sx={{ borderRadius: '10px', color: MUTED, bgcolor: 'rgba(17,19,24,0.04)', fontWeight: 600, fontSize: 11 }}
+                        />
                       ))}
                     </Stack>
                   </Box>
                 )}
 
                 <Stack direction="row" spacing={1.5} sx={{ mt: 1 }}>
-                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, borderRadius: R, color: '#fff', borderColor: 'rgba(255,255,255,0.3)' }}>
+                  <Button variant="outlined" onClick={handleBack} sx={{ flex: 1, borderRadius: '12px', color: INK, borderColor: 'rgba(17,19,24,0.15)', textTransform: 'none' }}>
                     بازگشت
                   </Button>
                   <Button
@@ -413,12 +448,27 @@ const Login = () => {
                     onClick={handleAppSelect}
                     disabled={loading || !selectedApp}
                     endIcon={<ArrowForwardIcon />}
-                    sx={{ flex: 1, fontWeight: 700, borderRadius: R, background: 'linear-gradient(90deg, #6366f1, #a855f7)' }}
+                    sx={{ flex: 1, fontWeight: 700, borderRadius: '12px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_2})`, boxShadow: `0 8px 20px -6px ${COLOR}99`, textTransform: 'none' }}
                   >
-                    {loading ? <CircularProgress size={22} color="inherit" /> : 'ورود'}
+                    {loading ? <CircularProgress size={22} sx={{ color: '#fff' }} /> : 'ورود'}
                   </Button>
                 </Stack>
               </Stack>
+            )}
+
+            {/* trust footer */}
+            {step === 'credentials' && (
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 3, color: MUTED, fontSize: 9.5, letterSpacing: 0.4 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, color: '#059669' }}>
+                    <Box component="span" sx={{ width: 5, height: 5, borderRadius: '50%', background: '#10b981', boxShadow: '0 0 6px #10b981' }} />
+                    امن
+                  </Box>
+                  <span>·</span>
+                  <span>رمزنگاری‌شده</span>
+                </Box>
+                <span>v.26</span>
+              </Box>
             )}
           </Paper>
         </Fade>
@@ -436,15 +486,17 @@ const Login = () => {
 
 const glassField = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: R,
-    color: '#fff',
-    background: 'rgba(255,255,255,0.04)',
-    '& fieldset': { borderColor: 'rgba(255,255,255,0.18)' },
-    '&:hover fieldset': { borderColor: 'rgba(255,255,255,0.35)' },
-    '&.Mui-focused fieldset': { borderColor: '#818cf8' },
+    borderRadius: '16px',
+    color: INK,
+    background: 'rgba(255,255,255,0.55)',
+    '& fieldset': { borderColor: 'rgba(17,19,24,0.1)' },
+    '&:hover fieldset': { borderColor: 'rgba(17,19,24,0.22)' },
+    '&.Mui-focused fieldset': { borderColor: COLOR, borderWidth: '1.5px' },
   },
-  '& .MuiInputLabel-root': { color: 'rgba(255,255,255,0.6)' },
-  '& .MuiInputLabel-root.Mui-focused': { color: '#c7d2fe' },
+  '& .MuiInputBase-root': { boxShadow: '0 1px 2px rgba(17,19,24,0.04), inset 0 1px 0 rgba(255,255,255,0.95)' },
+  '& .MuiInputLabel-root': { color: MUTED },
+  '& .MuiInputLabel-root.Mui-focused': { color: COLOR },
+  '& .MuiInputBase-input': { fontWeight: 600 },
 };
 
 export default Login;
