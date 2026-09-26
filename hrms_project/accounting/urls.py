@@ -2,6 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from accounting import report_views
 from accounting import annual_views
+from accounting import tax_views
 from accounting.views import (
     BranchViewSet, FiscalYearViewSet, FiscalPeriodViewSet, AccountingBookViewSet,
     AccountTypeViewSet, AccountGroupViewSet, AccountViewSet,
@@ -57,4 +58,8 @@ urlpatterns = [
     path('annual/close-accounts/', annual_views.close_accounts, name='annual-close-accounts'),
     path('annual/closing-document/', annual_views.closing_document, name='annual-closing-document'),
     path('annual/legal-books/', annual_views.legal_books, name='annual-legal-books'),
+    path('tax/vat-ledger/', tax_views.vat_ledger, name='tax-vat-ledger'),
+    path('tax/seasonal/', tax_views.seasonal_report, name='tax-seasonal'),
+    path('tax/official-ledger/', tax_views.official_ledger, name='tax-official-ledger'),
+    path('tax/bi-dashboard/', tax_views.bi_dashboard, name='tax-bi-dashboard'),
 ]

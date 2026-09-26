@@ -55,6 +55,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
+import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 
 const menuConfig = [
   {
@@ -358,6 +359,17 @@ const accountingMenu = [
       { id: 'acc-report-income-statement', title: 'سود و زیان', icon: <TrendingUpIcon />, path: '/accounting/reports/income-statement', color: '#10b981', primary: false, ready: true },
       { id: 'acc-report-cash-flow', title: 'جریان وجوه نقد', icon: <AccountBalanceWalletIcon />, path: '/accounting/reports/cash-flow', color: '#0ea5e9', primary: false, ready: true },
       { id: 'acc-report-financial-statements', title: 'صورت‌های مالی', icon: <DescriptionIcon />, path: '/accounting/reports/financial-statements', color: '#ec4899', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'accounting-tax',
+    title: 'مالیات و اظهارنامه',
+    color: '#d97706',
+    items: [
+      { id: 'acc-tax-vat', title: 'گزارش ارزش افزوده', icon: <ReceiptIcon />, path: '/accounting/tax/vat-ledger', color: '#d97706', primary: false, ready: true },
+      { id: 'acc-tax-seasonal', title: 'صورت معاملات فصلی', icon: <CalendarViewMonthIcon />, path: '/accounting/tax/seasonal', color: '#f59e0b', primary: false, ready: true },
+      { id: 'acc-tax-official', title: 'دفاتر رسمی مالیاتی', icon: <MenuBookIcon />, path: '/accounting/tax/official-ledger', color: '#10b981', primary: false, ready: true },
+      { id: 'acc-tax-bi', title: 'داشبورد هوش مالی', icon: <InsightsIcon />, path: '/accounting/tax/bi-dashboard', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {

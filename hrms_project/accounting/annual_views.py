@@ -64,6 +64,13 @@ def _target_account(company):
     return Account.objects.filter(company=company, is_active=True, account_type__category='equity').order_by('code').first()
 
 
+def _retained_account(company):
+    settings = AccountingSettings.objects.filter(company=company).select_related('retained_earnings_account').first()
+    if settings and settings.retained_earnings_account_id:
+        return settings.retained_earnings_account
+    return _target_account(company)
+
+
 def _journal(company, jtype, name):
     j = Journal.objects.filter(company=company, journal_type=jtype).first()
     if not j:
@@ -219,16 +226,16 @@ def close_accounts(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def closing_document(request):
-    """سند اختتامیه: صفر کردن حساب‌های ترازنامه‌ای به حساب هدف."""
+    """سند اختتامیه: صفر کردن حساب‌های ترازنامه‌ای به حساب سود/زیان انباشته."""
     company = _company(request)
     year_id = request.data.get('fiscal_year')
     year = FiscalYear.objects.filter(id=year_id, company=company).first()
     if not year:
         return Response({'error': 'سال مالی معتبر انتخاب کنید.'}, status=400)
 
-    target = _target_account(company)
+    target = _retained_account(company)
     if not target:
-        return Response({'error': 'حساب سود و زیان/حقوق تعیین نشده است.'}, status=400)
+        return Response({'error': 'حساب سود/زیان انباشته تعیین نشده است.'}, status=400)
 
     existing = AccountingDocument.objects.filter(
         company=company, source_module='annual', source_type='closing', source_id=f'closing-{year.id}',

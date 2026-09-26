@@ -484,6 +484,27 @@ class AccountingDocumentLine(BaseModel):
     base_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('مبلغ ارز پایه'))
     reference = models.CharField(max_length=100, blank=True, verbose_name=_('ارجاع'))
 
+    # --- ارزش افزوده و صورت معاملات فصلی (ماده 169 مکرر) ---
+    vat_rate = models.DecimalField(max_digits=5, decimal_places=2, default=0, verbose_name=_('نرخ ارزش افزوده (٪)'))
+    vat_amount = models.DecimalField(max_digits=18, decimal_places=2, default=0, verbose_name=_('مبلغ ارزش افزوده'))
+    invoice_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره فاکتور'))
+    invoice_type = models.CharField(
+        max_length=20,
+        choices=[
+            ('sale', 'فروش کالا / خدمات'),
+            ('purchase', 'خرید کالا / خدمات'),
+            ('import', 'واردات'),
+            ('export', 'صادرات'),
+            ('service', 'قرارداد خدمت'),
+            ('none', 'نامشخص'),
+        ],
+        default='none', verbose_name=_('نوع معامله'),
+    )
+    party_tax_id = models.CharField(max_length=20, blank=True, verbose_name=_('شماره اقتصادی طرف معامله'))
+    party_national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ملی طرف'))
+    party_postal_code = models.CharField(max_length=10, blank=True, verbose_name=_('کد پستی طرف'))
+    season_flag = models.BooleanField(default=False, verbose_name=_('مشمول معاملات فصلی'))
+
     # ابعاد تحلیلی (FK به موجودیت‌های واقعی، بدون تکرار مدل):
     cost_center = models.ForeignKey(CostCenter, on_delete=models.SET_NULL, null=True, blank=True, related_name='lines', verbose_name=_('مرکز هزینه'))
     project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='accounting_lines', verbose_name=_('پروژه'))
@@ -782,7 +803,8 @@ class AccountingSettings(BaseModel):
     default_branch = models.ForeignKey(Branch, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('شعبهٔ پیش‌فرض'))
     requires_approval = models.BooleanField(default=True, verbose_name=_('نیازمند تأیید قبل از ثبت'))
     allow_edit_posted = models.BooleanField(default=False, verbose_name=_('اجازهٔ ویرایش سند ثبت‌شده'))
-    profit_loss_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('حساب سود و زیان جاری'))
+    profit_loss_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('حساب خلاصه سود و زیان'))
+    retained_earnings_account = models.ForeignKey(Account, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('حساب سود/زیان انباشته'))
 
     class Meta:
         verbose_name = _('تنظیمات حسابداری')

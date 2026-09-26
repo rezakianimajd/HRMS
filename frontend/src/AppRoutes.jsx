@@ -84,6 +84,10 @@ import OpeningDocumentPage from './pages/accounting/annual/OpeningDocumentPage';
 import CloseAccountsPage from './pages/accounting/annual/CloseAccountsPage';
 import ClosingDocumentPage from './pages/accounting/annual/ClosingDocumentPage';
 import LegalBooksPage from './pages/accounting/annual/LegalBooksPage';
+import VatLedgerPage from './pages/accounting/tax/VatLedgerPage';
+import SeasonalReportPage from './pages/accounting/tax/SeasonalReportPage';
+import OfficialLedgerPage from './pages/accounting/tax/OfficialLedgerPage';
+import BiDashboardPage from './pages/accounting/tax/BiDashboardPage';
 import AccountingFiscalPage from './pages/AccountingFiscalPage';
 import AccountingSequencesPage from './pages/AccountingSequencesPage';
 import AccountingReconciliationPage from './pages/AccountingReconciliationPage';
@@ -192,6 +196,10 @@ const AppRoutes = () => {
       <Route path="/accounting/annual/close-accounts" element={<ProtectedLayout><CloseAccountsPage /></ProtectedLayout>} />
       <Route path="/accounting/annual/closing-document" element={<ProtectedLayout><ClosingDocumentPage /></ProtectedLayout>} />
       <Route path="/accounting/annual/legal-books" element={<ProtectedLayout><LegalBooksPage /></ProtectedLayout>} />
+      <Route path="/accounting/tax/vat-ledger" element={<ProtectedLayout><VatLedgerPage /></ProtectedLayout>} />
+      <Route path="/accounting/tax/seasonal" element={<ProtectedLayout><SeasonalReportPage /></ProtectedLayout>} />
+      <Route path="/accounting/tax/official-ledger" element={<ProtectedLayout><OfficialLedgerPage /></ProtectedLayout>} />
+      <Route path="/accounting/tax/bi-dashboard" element={<ProtectedLayout><BiDashboardPage /></ProtectedLayout>} />
       <Route path="/accounting/settings" element={<ProtectedLayout><AccountingSettingsPage /></ProtectedLayout>} />
       <Route path="/accounting/fiscal" element={<ProtectedLayout><AccountingFiscalPage /></ProtectedLayout>} />
       <Route path="/accounting/sequences" element={<ProtectedLayout><AccountingSequencesPage /></ProtectedLayout>} />

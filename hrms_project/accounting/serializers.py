@@ -128,13 +128,18 @@ class AccountingDocumentLineSerializer(BaseModelSerializer):
     account_code = serializers.CharField(source='account.code', read_only=True)
     account_name = serializers.CharField(source='account.name', read_only=True)
 
+    invoice_type_display = serializers.CharField(source='get_invoice_type_display', read_only=True)
+
     class Meta(BaseModelSerializer.Meta):
         model = AccountingDocumentLine
         fields = [
             'id', 'document', 'account', 'account_code', 'account_name', 'auxiliary',
             'auxiliary_1', 'auxiliary_2', 'auxiliary_3', 'maturity_date',
             'line_no', 'description', 'debit', 'credit', 'currency', 'exchange_rate',
-            'base_amount', 'reference', 'cost_center', 'project', 'contract', 'employee',
+            'base_amount', 'reference',
+            'vat_rate', 'vat_amount', 'invoice_number', 'invoice_type', 'invoice_type_display',
+            'party_tax_id', 'party_national_id', 'party_postal_code', 'season_flag',
+            'cost_center', 'project', 'contract', 'employee',
         ]
         extra_kwargs = {'document': {'read_only': True}}
 
