@@ -181,7 +181,8 @@ const AppRoutes = () => {
       <Route path="/petty-cash/:tab" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />
-      <Route path="/accounting/documents/new" element={<ProtectedLayout><AccountingDocumentNewPage /></ProtectedLayout>} />
+      <Route path="/accounting/document-new" element={<ProtectedLayout><AccountingDocumentNewPage /></ProtectedLayout>} />
+      <Route path="/accounting/documents/new" element={<Navigate to="/accounting/document-new" replace />} />
       <Route path="/accounting/documents/:id/edit" element={<ProtectedLayout><AccountingDocumentNewPage /></ProtectedLayout>} />
       <Route path="/accounting/integration" element={<ProtectedLayout><AccountingIntegrationPage /></ProtectedLayout>} />
       <Route path="/accounting/reports" element={<ProtectedLayout><AccountingReportsPage /></ProtectedLayout>} />

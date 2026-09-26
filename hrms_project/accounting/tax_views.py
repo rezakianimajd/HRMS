@@ -71,22 +71,47 @@ def vat_ledger(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def seasonal_report(request):
-    """صورت معاملات فصلی (ماده 169 مکرر) — تجمیع به تفکیک طرف معامله."""
+    """صورت معاملات فصلی (ماده 169 مکرر) — تجمیع به تفکیک طرف معامله.
+
+    مشخصات طرف (کد اقتصادی/شناسه ملی/کد پستی) در صورت پرنبودن، از مدیریت قراردادها
+    (ContractParty مرتبط با تفصیلی طرف) بارگذاری می‌شود.
+    """
+    from contracts.models import ContractParty
+
     lines = _lines(request).exclude(invoice_type='none')
+
+    # پیش‌بارگذاری مشخصات طرف از مدیریت قراردادها برای تفصیلی‌های مرتبط
+    party_cache = {}
+    for line in lines:
+        aux = line.auxiliary_1 or line.auxiliary
+        if not aux or not aux.party_id:
+            continue
+        party = ContractParty.objects.filter(id=aux.party_id).first()
+        if party:
+            party_cache[aux.id] = party
 
     parties = {}
     for line in lines:
-        key = line.party_tax_id or line.party_national_id or (f'aux-{line.auxiliary_1_id}' if line.auxiliary_1_id else None) or f'inv-{line.invoice_number}'
+        aux = line.auxiliary_1 or line.auxiliary
+        pobj = party_cache.get(aux.id) if aux else None
+        key = (
+            line.party_tax_id
+            or line.party_national_id
+            or (pobj.economic_code if pobj else None)
+            or (pobj.national_id if pobj else None)
+            or (f'aux-{aux.id}' if aux else None)
+            or f'inv-{line.invoice_number}'
+        )
         if not key:
             continue
         key = str(key)
         p = parties.get(key)
         if p is None:
             p = parties[key] = {
-                'tax_id': line.party_tax_id,
-                'national_id': line.party_national_id,
-                'postal_code': line.party_postal_code,
-                'name': line.auxiliary_1.name if line.auxiliary_1 else (line.auxiliary.name if line.auxiliary else ''),
+                'tax_id': line.party_tax_id or (pobj.economic_code if pobj else ''),
+                'national_id': line.party_national_id or (pobj.national_id if pobj else ''),
+                'postal_code': line.party_postal_code or '',
+                'name': (aux.name if aux else '') or (pobj.name if pobj else ''),
                 'sale_count': 0, 'sale_amount': 0.0,
                 'purchase_count': 0, 'purchase_amount': 0.0,
                 'service_count': 0, 'service_amount': 0.0,
