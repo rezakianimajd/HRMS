@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, CircularProgress, Stack, TextField,
+  Box, Grid, Typography, Paper, Avatar, CircularProgress, Stack, TextField,
   Autocomplete, Button, Chip, IconButton, Tooltip, Divider,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
@@ -46,13 +46,15 @@ const Range = ({ children }) => (
   </Stack>
 );
 
-const labelSx = { minWidth: 95, fontWeight: 700, fontSize: 13, color: COLOR_DARK, textAlign: 'right' };
+const labelSx = { fontWeight: 700, fontSize: 13, color: COLOR_DARK, textAlign: 'right' };
 
-const FilterRow = ({ label, children }) => (
-  <Stack direction="row" spacing={1.5} alignItems="center" sx={{ width: '100%', flexWrap: 'wrap' }}>
-    <Typography sx={labelSx}>{label}</Typography>
-    <Box sx={{ flex: 1, minWidth: 260 }}>{children}</Box>
-  </Stack>
+const FilterCell = ({ label, children, full }) => (
+  <Grid item xs={12} sm={6} md={full ? 12 : 4}>
+    <Stack spacing={1} sx={{ width: '100%' }}>
+      <Typography sx={labelSx}>{label}</Typography>
+      <Box>{children}</Box>
+    </Stack>
+  </Grid>
 );
 
 const AccountingDocumentSearchPage = () => {
@@ -162,9 +164,9 @@ const AccountingDocumentSearchPage = () => {
         )}
       </Paper>
 
-      {/* باکس فیلتر ثابت پایین */}
+      {/* باکس فیلتر چسبان پایین (درون عرض کانتنت) */}
       <Paper elevation={6} sx={{
-        position: 'fixed', bottom: 0, left: 0, right: 0, zIndex: 1200,
+        position: 'sticky', bottom: 0, zIndex: 1200, mt: 2,
         background: 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,247,255,0.96))',
         backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
         borderTop: `2px solid ${COLOR}44`, borderBottom: 'none',
@@ -181,8 +183,8 @@ const AccountingDocumentSearchPage = () => {
           </Button>
         </Stack>
 
-        <Stack spacing={1}>
-          <FilterRow label="سال مالی">
+        <Grid container spacing={1.5}>
+          <FilterCell label="سال مالی">
             <Range>
               <TextField size="small" select sx={fieldSx} value={yearFrom} onChange={e => setYearFrom(e.target.value)} SelectProps={{ native: true }}>
                 <option value="">—</option>
@@ -193,70 +195,70 @@ const AccountingDocumentSearchPage = () => {
                 {yearList.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
               </TextField>
             </Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="شماره سند">
+          <FilterCell label="شماره سند">
             <Range>
               <TextField size="small" sx={fieldSx} value={numberFrom} onChange={e => setNumberFrom(e.target.value)} />
               <TextField size="small" sx={fieldSx} value={numberTo} onChange={e => setNumberTo(e.target.value)} />
             </Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="تاریخ">
+          <FilterCell label="تاریخ">
             <Range>
               <JalaliDatePicker noHelper sx={fieldSx} value={dateFrom} onChange={setDateFrom} />
               <JalaliDatePicker noHelper sx={fieldSx} value={dateTo} onChange={setDateTo} />
             </Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="شرح سند">
+          <FilterCell label="شرح سند" full>
             <TextField size="small" fullWidth placeholder="جستجو در شرح سند…" value={description} onChange={e => setDescription(e.target.value)} />
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="حساب کل">
+          <FilterCell label="حساب کل">
             <Range>
               <Autocomplete size="small" sx={fieldSx} options={generalList} getOptionLabel={accountOpt}
                 value={generalFrom} onChange={(e, v) => setGeneralFrom(v)} renderInput={p => <TextField {...p} placeholder="از حساب کل" />} />
               <Autocomplete size="small" sx={fieldSx} options={generalList} getOptionLabel={accountOpt}
                 value={generalTo} onChange={(e, v) => setGeneralTo(v)} renderInput={p => <TextField {...p} placeholder="تا حساب کل" />} />
             </Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="حساب معین">
+          <FilterCell label="حساب معین">
             <Range>
               <Autocomplete size="small" sx={fieldSx} options={subsidiaryList} getOptionLabel={accountOpt}
                 value={subsidiaryFrom} onChange={(e, v) => setSubsidiaryFrom(v)} renderInput={p => <TextField {...p} placeholder="از حساب معین" />} />
               <Autocomplete size="small" sx={fieldSx} options={subsidiaryList} getOptionLabel={accountOpt}
                 value={subsidiaryTo} onChange={(e, v) => setSubsidiaryTo(v)} renderInput={p => <TextField {...p} placeholder="تا حساب معین" />} />
             </Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="تفصیل ۱">
+          <FilterCell label="تفصیل ۱">
             <Range><TextField size="small" sx={fieldSx} value={aux1From} onChange={e => setAux1From(e.target.value)} /><TextField size="small" sx={fieldSx} value={aux1To} onChange={e => setAux1To(e.target.value)} /></Range>
-          </FilterRow>
-          <FilterRow label="تفصیل ۲">
+          </FilterCell>
+          <FilterCell label="تفصیل ۲">
             <Range><TextField size="small" sx={fieldSx} value={aux2From} onChange={e => setAux2From(e.target.value)} /><TextField size="small" sx={fieldSx} value={aux2To} onChange={e => setAux2To(e.target.value)} /></Range>
-          </FilterRow>
-          <FilterRow label="تفصیل ۳">
+          </FilterCell>
+          <FilterCell label="تفصیل ۳">
             <Range><TextField size="small" sx={fieldSx} value={aux3From} onChange={e => setAux3From(e.target.value)} /><TextField size="small" sx={fieldSx} value={aux3To} onChange={e => setAux3To(e.target.value)} /></Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="چک / ارجاع">
+          <FilterCell label="چک / ارجاع">
             <Range><TextField size="small" sx={fieldSx} value={refFrom} onChange={e => setRefFrom(e.target.value)} /><TextField size="small" sx={fieldSx} value={refTo} onChange={e => setRefTo(e.target.value)} /></Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="مبلغ بدهکار">
+          <FilterCell label="مبلغ بدهکار">
             <Range><TextField size="small" type="number" sx={fieldSx} value={debitFrom} onChange={e => setDebitFrom(e.target.value)} /><TextField size="small" type="number" sx={fieldSx} value={debitTo} onChange={e => setDebitTo(e.target.value)} /></Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="مبلغ بستانکار">
+          <FilterCell label="مبلغ بستانکار">
             <Range><TextField size="small" type="number" sx={fieldSx} value={creditFrom} onChange={e => setCreditFrom(e.target.value)} /><TextField size="small" type="number" sx={fieldSx} value={creditTo} onChange={e => setCreditTo(e.target.value)} /></Range>
-          </FilterRow>
+          </FilterCell>
 
-          <FilterRow label="مبلغ (هر دو)">
+          <FilterCell label="مبلغ (هر دو)">
             <Range><TextField size="small" type="number" sx={fieldSx} value={amountFrom} onChange={e => setAmountFrom(e.target.value)} /><TextField size="small" type="number" sx={fieldSx} value={amountTo} onChange={e => setAmountTo(e.target.value)} /></Range>
-          </FilterRow>
-        </Stack>
+          </FilterCell>
+        </Grid>
       </Paper>
     </Box>
   );
