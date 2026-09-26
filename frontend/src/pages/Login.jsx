@@ -193,7 +193,7 @@ const Login = () => {
             }}
           >
             {/* Brand header */}
-            <Box sx={{ textAlign: 'center', mb: 3.5 }}>
+            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', mb: 3.5, width: '100%' }}>
               <Avatar
                 sx={{
                   width: 64,
@@ -215,18 +215,19 @@ const Login = () => {
                   </g>
                 </svg>
               </Avatar>
-              <Typography variant="caption" sx={{ display: 'block', color: MUTED, fontWeight: 600, letterSpacing: 2, mb: 1, fontSize: 11 }}>
+              <Typography variant="caption" style={{ display: 'block', textAlign: 'center', color: MUTED, fontWeight: 600, letterSpacing: 2, marginBottom: 8, fontSize: 11 }}>
                 {step === 'application' ? 'انتخاب ماژول' : 'سامانه یکپارچه مدیریت کسب و کار'}
               </Typography>
-              <Typography variant="h4" component="h1" fontWeight={900} letterSpacing="-1.5px" sx={{ mb: 1 }}>
-                <Box component="span" sx={{
+              <Typography variant="h4" component="h1" fontWeight={900} letterSpacing="-1.5px" style={{ textAlign: 'center', width: '100%', marginBottom: 8 }}>
+                <span style={{
                   background: `linear-gradient(120deg, ${COLOR}, ${COLOR_2} 40%, ${COLOR_3} 100%)`,
-                  WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
+                  WebkitBackgroundClip: 'text', backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
                 }}>
                   کیان
-                </Box>
+                </span>
               </Typography>
-              <Typography variant="caption" sx={{ color: MUTED, letterSpacing: 2, fontSize: 10.5 }}>
+              <Typography variant="caption" style={{ display: 'block', textAlign: 'center', color: MUTED, letterSpacing: 2, fontSize: 10.5 }}>
                 KIANI EBP · ENTERPRISE BUSINESS PLATFORM
               </Typography>
             </Box>
