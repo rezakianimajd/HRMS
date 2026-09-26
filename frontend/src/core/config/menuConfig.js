@@ -54,6 +54,7 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 
 const menuConfig = [
   {
@@ -332,6 +333,17 @@ const accountingMenu = [
       { id: 'accounting-fiscal', title: 'دوره مالی', icon: <CalendarMonthIcon />, path: '/accounting/fiscal', color: '#0ea5e9', primary: false, ready: true },
       comingSoon('/accounting/periods', 'accounting-periods', 'دوره‌ها', <HistoryIcon />, '#6366f1'),
       comingSoon('/accounting/closing', 'accounting-closing', 'بستن دوره', <LockIcon />, '#ef4444'),
+    ],
+  },
+  {
+    id: 'accounting-annual',
+    title: 'عملیات سالانه',
+    color: '#0ea5e9',
+    items: [
+      { id: 'acc-annual-opening', title: 'سند افتتاحیه', icon: <PostAddIcon />, path: '/accounting/annual/opening-document', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'acc-annual-close-accounts', title: 'بستن حساب‌ها', icon: <LockIcon />, path: '/accounting/annual/close-accounts', color: '#f59e0b', primary: false, ready: true },
+      { id: 'acc-annual-closing', title: 'سند اختتامیه', icon: <LockIcon />, path: '/accounting/annual/closing-document', color: '#ef4444', primary: false, ready: true },
+      { id: 'acc-annual-legal-books', title: 'ساخت دفاتر قانونی', icon: <MenuBookIcon />, path: '/accounting/annual/legal-books', color: '#10b981', primary: false, ready: true },
     ],
   },
   {
