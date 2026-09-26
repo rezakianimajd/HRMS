@@ -96,6 +96,35 @@ def me_view(request):
     return Response(UserSerializer(user).data)
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def login_users_view(request):
+    """Public list of usernames (with display names) for the login page."""
+    users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')
+    data = []
+    for u in users:
+        full_name = ' '.join([p for p in [u.first_name, u.last_name] if p]).strip()
+        data.append({
+            'id': u.id,
+            'username': u.username,
+            'first_name': u.first_name,
+            'last_name': u.last_name,
+            'full_name': full_name or u.username,
+        })
+    return Response(data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def login_companies_view(request):
+    """Public list of active companies for the login page."""
+    companies = Company.objects.filter(is_active=True).order_by('name')
+    return Response([
+        {'id': c.id, 'name': c.name, 'code': c.code}
+        for c in companies
+    ])
+
+
 # =============================================================================
 # Company (Tenant) Views
 # =============================================================================

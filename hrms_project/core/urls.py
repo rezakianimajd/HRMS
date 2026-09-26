@@ -11,6 +11,10 @@ urlpatterns = [
     path('auth/logout/', views.logout_view, name='api-logout'),
     path('auth/me/', views.me_view, name='api-me'),
 
+    # Public login helpers (list users & companies for the login screen)
+    path('auth/login-users/', views.login_users_view, name='api-login-users'),
+    path('auth/login-companies/', views.login_companies_view, name='api-login-companies'),
+
     # Companies
     path('companies/', views.company_list_view, name='api-company-list'),
     path('companies/<int:company_id>/', views.company_detail_view, name='api-company-detail'),

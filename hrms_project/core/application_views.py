@@ -17,14 +17,23 @@ def _profile(user):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def applications_view(request):
-    """List applications the current user is allowed to access."""
-    profile = _profile(request.user)
+    """List applications the current user is allowed to access.
 
-    # Superusers can access all active apps.
-    if request.user.is_superuser or (profile and profile.is_super_admin):
-        apps = Application.objects.filter(is_active=True)
+    Returns the full catalogue (including coming-soon / not-yet-built apps) so the
+    UI can render a complete grid. Each entry carries an ``accessible`` flag
+    indicating whether the current user may actually switch to it.
+    """
+    profile = _profile(request.user)
+    is_admin = request.user.is_superuser or (profile and profile.is_super_admin)
+
+    if is_admin:
+        allowed = Application.objects.filter(is_active=True)
     else:
-        apps = profile.applications.filter(is_active=True) if profile else Application.objects.none()
+        allowed = profile.applications.filter(is_active=True) if profile else Application.objects.none()
+
+    allowed_ids = set(allowed.values_list('id', flat=True))
+    # Full catalogue of active apps for display purposes.
+    catalogue = Application.objects.filter(is_active=True).order_by('order', 'title')
 
     data = [{
         'id': a.id,
@@ -35,7 +44,8 @@ def applications_view(request):
         'color': a.color,
         'order': a.order,
         'is_coming_soon': a.is_coming_soon,
-    } for a in apps.order_by('order', 'title')]
+        'accessible': a.id in allowed_ids,
+    } for a in catalogue]
 
     current = getattr(profile, 'current_application', None) if profile else None
     return Response({
