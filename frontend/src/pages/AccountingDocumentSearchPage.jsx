@@ -10,7 +10,6 @@ import {
 import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -124,6 +123,7 @@ const AccountingDocumentSearchPage = () => {
 
   return (
     <Box sx={{ pb: 10 }}>
+      {/* هدر + دکمه‌ها */}
       <Paper sx={{ p: 2.5, mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
         background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
         <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
@@ -134,55 +134,21 @@ const AccountingDocumentSearchPage = () => {
           <Typography variant="body2" color="textSecondary">جستجوی پیشرفتهٔ بازه‌ای روی همهٔ فیلدهای سند</Typography>
         </Box>
         <Chip label={`${toPersianDigits(list.length)} سند`} color="primary" variant="outlined" />
+        <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={clear}>پاک کردن</Button>
+        <Button size="small" variant="contained" startIcon={<SearchIcon />} onClick={doSearch}
+          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px', px: 3 }}>
+          جستجو
+        </Button>
       </Paper>
 
-      {/* نتایج */}
-      <Paper sx={{ ...glass, p: 2 }}>
-        {isLoading ? <Box textAlign="center" py={4}><CircularProgress /></Box> : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead><TableRow>
-                <TableCell>شماره</TableCell><TableCell>تاریخ</TableCell><TableCell>شرح</TableCell>
-                <TableCell>بدهکار</TableCell><TableCell>بستانکار</TableCell><TableCell>وضعیت</TableCell><TableCell></TableCell>
-              </TableRow></TableHead>
-              <TableBody>
-                {list.length === 0 ? <TableRow><TableCell colSpan={7} align="center" sx={{ color: 'text.secondary' }}>سندی یافت نشد</TableCell></TableRow> :
-                list.map(r => (
-                  <TableRow key={r.id} hover>
-                    <TableCell>{r.number || `#${r.id}`}</TableCell>
-                    <TableCell>{toJalali(r.date)}</TableCell>
-                    <TableCell sx={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.description}</TableCell>
-                    <TableCell>{formatPersianNumber(r.total_debit)}</TableCell>
-                    <TableCell>{formatPersianNumber(r.total_credit)}</TableCell>
-                    <TableCell><Chip size="small" label={STATUS_META[r.status]?.label || r.status} sx={{ bgcolor: `${STATUS_META[r.status]?.color || '#64748b'}18`, color: STATUS_META[r.status]?.color, fontWeight: 700 }} /></TableCell>
-                    <TableCell><Tooltip title="مشاهده/ویرایش"><IconButton size="small" onClick={() => navigate(`/accounting/documents/${r.id}/edit`)}><OpenInNewIcon fontSize="small" /></IconButton></Tooltip></TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Paper>
-
-      {/* باکس فیلتر چسبان پایین (درون عرض کانتنت) */}
-      <Paper elevation={6} sx={{
-        position: 'sticky', bottom: 0, zIndex: 1200, mt: 2,
+      {/* باکس فیلتر */}
+      <Paper elevation={3} sx={{
+        mb: 2,
         background: 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,247,255,0.96))',
         backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-        borderTop: `2px solid ${COLOR}44`, borderBottom: 'none',
-        px: 2, py: 1.5, maxHeight: '44vh', overflowY: 'auto',
+        border: '1px solid rgba(99,102,241,0.12)', borderRadius: '16px',
+        px: 2, py: 1.5,
       }}>
-        <Stack direction="row" spacing={1.5} alignItems="center" mb={1}>
-          <FilterAltIcon sx={{ color: COLOR_DARK }} />
-          <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK}>فیلترهای جستجو</Typography>
-          <Box sx={{ flex: 1 }} />
-          <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={clear}>پاک کردن</Button>
-          <Button size="small" variant="contained" startIcon={<SearchIcon />} onClick={doSearch}
-            sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px', px: 3 }}>
-            جستجو
-          </Button>
-        </Stack>
-
         <Grid container spacing={2}>
           <FilterCell label="سال مالی">
             <Range>
@@ -259,6 +225,34 @@ const AccountingDocumentSearchPage = () => {
             <Range><TextField size="small" type="number" sx={fieldSx} value={amountFrom} onChange={e => setAmountFrom(e.target.value)} /><TextField size="small" type="number" sx={fieldSx} value={amountTo} onChange={e => setAmountTo(e.target.value)} /></Range>
           </FilterCell>
         </Grid>
+      </Paper>
+
+      {/* نتایج */}
+      <Paper sx={{ ...glass, p: 2 }}>
+        {isLoading ? <Box textAlign="center" py={4}><CircularProgress /></Box> : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead><TableRow>
+                <TableCell>شماره</TableCell><TableCell>تاریخ</TableCell><TableCell>شرح</TableCell>
+                <TableCell>بدهکار</TableCell><TableCell>بستانکار</TableCell><TableCell>وضعیت</TableCell><TableCell></TableCell>
+              </TableRow></TableHead>
+              <TableBody>
+                {list.length === 0 ? <TableRow><TableCell colSpan={7} align="center" sx={{ color: 'text.secondary' }}>سندی یافت نشد</TableCell></TableRow> :
+                list.map(r => (
+                  <TableRow key={r.id} hover>
+                    <TableCell>{r.number || `#${r.id}`}</TableCell>
+                    <TableCell>{toJalali(r.date)}</TableCell>
+                    <TableCell sx={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.description}</TableCell>
+                    <TableCell>{formatPersianNumber(r.total_debit)}</TableCell>
+                    <TableCell>{formatPersianNumber(r.total_credit)}</TableCell>
+                    <TableCell><Chip size="small" label={STATUS_META[r.status]?.label || r.status} sx={{ bgcolor: `${STATUS_META[r.status]?.color || '#64748b'}18`, color: STATUS_META[r.status]?.color, fontWeight: 700 }} /></TableCell>
+                    <TableCell><Tooltip title="مشاهده/ویرایش"><IconButton size="small" onClick={() => navigate(`/accounting/documents/${r.id}/edit`)}><OpenInNewIcon fontSize="small" /></IconButton></Tooltip></TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
       </Paper>
     </Box>
   );
