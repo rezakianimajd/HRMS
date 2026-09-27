@@ -50,6 +50,7 @@ urlpatterns = [
     path('reports/balance-sheet/', report_views.balance_sheet, name='report-balance-sheet'),
     path('reports/cash-flow/', report_views.cash_flow, name='report-cash-flow'),
     path('reports/dashboard/', report_views.dashboard, name='report-dashboard'),
+    path('reports/dashboard-rich/', report_views.dashboard_rich, name='report-dashboard-rich'),
     path('reports/tree-trial-balance/', report_views.tree_trial_balance, name='report-tree-trial-balance'),
     path('reports/matrix/', report_views.matrix_report, name='report-matrix'),
     path('reports/ledger-review/', report_views.ledger_review, name='report-ledger-review'),

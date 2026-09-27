@@ -80,6 +80,202 @@ def dashboard(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def dashboard_rich(request):
+    """داشبورد غنی: KPI + روند ماهانه + ترکیب طبقات + وضعیت اسناد + معادلهٔ حسابداری.
+
+    داده‌ها یکجا برگردانده می‌شوند تا فرانت بتواند داشبورد تعاملی/گرافیکی بسازد.
+    """
+    from django.utils import timezone
+    import calendar
+
+    company = _company(request)
+    qs = _posted_lines(request).select_related('account__account_type', 'document')
+
+    year_id = request.query_params.get('fiscal_year')
+    if year_id:
+        qs = qs.filter(document__fiscal_year_id=year_id)
+
+    now = timezone.now()
+
+    totals = {
+        'asset': 0.0, 'liability': 0.0, 'equity': 0.0,
+        'revenue': 0.0, 'expense': 0.0, 'cost_of_sales': 0.0,
+    }
+    monthly = {}
+    account_turnover = {}
+
+    def cat_net(line):
+        cat = line.account.account_type.category
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        if cat in ('asset', 'expense', 'cost_of_sales'):
+            return cat, debit - credit
+        return cat, credit - debit
+
+    for line in qs:
+        cat, net = cat_net(line)
+        if cat in totals:
+            totals[cat] += net
+
+        # روند ماهانه
+        if line.document.date:
+            month = line.document.date.strftime('%Y-%m')
+            m = monthly.setdefault(month, {'month': month, 'revenue': 0.0, 'expense': 0.0})
+            if cat == 'revenue':
+                m['revenue'] += net
+            elif cat in ('expense', 'cost_of_sales'):
+                m['expense'] += net
+
+        # گردش حساب برای Top accounts
+        turnover = float(line.debit or 0) + float(line.credit or 0)
+        account_turnover[line.account_id] = account_turnover.get(line.account_id, 0.0) + turnover
+
+    # روند ماهانه مرتب + net
+    monthly_rows = []
+    for month in sorted(monthly.keys()):
+        rec = monthly[month]
+        monthly_rows.append({
+            'month': rec['month'],
+            'revenue': round(rec['revenue'], 2),
+            'expense': round(rec['expense'], 2),
+            'net': round(rec['revenue'] - rec['expense'], 2),
+        })
+    last_months = monthly_rows[-12:]
+
+    # دلتا (آخرین ماه کامل vs ماه قبل)
+    def delta(key):
+        if len(monthly_rows) < 2:
+            return None
+        prev = monthly_rows[-2][key]
+        cur = monthly_rows[-1][key]
+        if prev == 0:
+            return None if cur == 0 else 100.0
+        return round((cur - prev) / abs(prev) * 100, 1)
+
+    # ماه جاری (ریال)
+    cur_month_key = now.strftime('%Y-%m')
+    cm = next((m for m in monthly_rows if m['month'] == cur_month_key), None)
+    revenue_month = cm['revenue'] if cm else 0.0
+    expense_month = cm['expense'] if cm else 0.0
+    net_month = revenue_month - expense_month
+
+    # ترکیب طبقات
+    category_labels = {
+        'asset': 'دارایی', 'liability': 'بدهی', 'equity': 'حقوق مالکانه',
+        'revenue': 'درآمد', 'expense': 'هزینه', 'cost_of_sales': 'بهای تمام‌شده',
+        'memorandum': 'انتظامی',
+    }
+    category_breakdown = [
+        {'key': k, 'label': category_labels.get(k, k), 'value': round(v, 2)}
+        for k, v in totals.items()
+    ]
+
+    # وضعیت اسناد
+    docs = AccountingDocument.objects.filter(company=company)
+    if year_id:
+        docs = docs.filter(fiscal_year_id=year_id)
+    status_counts = {}
+    for d in docs.values('status').annotate(c=Count('id')):
+        status_counts[d['status']] = d['c']
+
+    total_documents = docs.count()
+    posted_documents = status_counts.get('posted', 0) + status_counts.get('locked', 0)
+    pending_documents = status_counts.get('submitted', 0)
+
+    # معادلهٔ حسابداری
+    liabilities_equity = totals['liability'] + totals['equity']
+    difference = totals['asset'] - liabilities_equity
+    balanced = abs(difference) < 0.01
+
+    # Top accounts (۵ حساب با بیشترین گردش)
+    top_account_ids = sorted(account_turnover.items(), key=lambda x: -x[1])[:5]
+    top_accounts = []
+    for aid, turnover in top_account_ids:
+        acc = Account.objects.filter(id=aid).only('code', 'name').first()
+        if acc:
+            top_accounts.append({'id': aid, 'code': acc.code, 'name': acc.name, 'turnover': round(turnover, 2)})
+
+    # ارزش افزوده (فقط مشمول)
+    vat_payable = 0.0
+    vat_receivable = 0.0
+    for line in qs.filter(season_flag=True):
+        vat = float(line.vat_amount or 0)
+        if line.invoice_type in ('sale', 'export'):
+            vat_payable += vat
+        elif line.invoice_type in ('purchase', 'import'):
+            vat_receivable += vat
+
+    # کهنگی مانده (Aging) بر اساس سررسید
+    aging = {
+        'receivable': {'current': 0.0, 'd30': 0.0, 'd60': 0.0, 'd90': 0.0, 'total': 0.0},
+        'payable': {'current': 0.0, 'd30': 0.0, 'd60': 0.0, 'd90': 0.0, 'total': 0.0},
+    }
+    for line in qs.filter(maturity_date__isnull=False):
+        cat = line.account.account_type.category
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        if cat == 'asset' and debit > credit:
+            bucket = aging['receivable']
+            amount = debit - credit
+        elif cat == 'liability' and credit > debit:
+            bucket = aging['payable']
+            amount = credit - debit
+        else:
+            continue
+        days = (line.maturity_date - now.date()).days
+        if days < 0:
+            key = 'd90'
+        elif days <= 30:
+            key = 'current'
+        elif days <= 60:
+            key = 'd30'
+        elif days <= 90:
+            key = 'd60'
+        else:
+            key = 'd90'
+        bucket[key] += amount
+        bucket['total'] += amount
+
+    return Response({
+        'kpis': {
+            'total_assets': round(totals['asset'], 2),
+            'total_liabilities': round(totals['liability'], 2),
+            'total_equity': round(totals['equity'], 2),
+            'revenue_month': round(revenue_month, 2),
+            'expense_month': round(expense_month, 2),
+            'net_profit_month': round(net_month, 2),
+            'vat_payable': round(vat_payable, 2),
+            'vat_receivable': round(vat_receivable, 2),
+            'total_documents': total_documents,
+            'posted_documents': posted_documents,
+            'pending_documents': pending_documents,
+        },
+        'deltas': {
+            'revenue': delta('revenue'),
+            'expense': delta('expense'),
+            'net': delta('net'),
+        },
+        'monthly_trend': last_months,
+        'category_breakdown': category_breakdown,
+        'status_counts': status_counts,
+        'accounting_equation': {
+            'assets': round(totals['asset'], 2),
+            'liabilities_equity': round(liabilities_equity, 2),
+            'difference': round(difference, 2),
+            'balanced': balanced,
+        },
+        'top_accounts': top_accounts,
+        'aging': aging,
+        'vat_summary': {
+            'payable': round(vat_payable, 2),
+            'receivable': round(vat_receivable, 2),
+            'net': round(vat_payable - vat_receivable, 2),
+        },
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def general_ledger(request):
     """دفتر کل: گردش همهٔ حساب‌ها در سندهای ثبت‌شده."""
     from_account = request.query_params.get('account')
