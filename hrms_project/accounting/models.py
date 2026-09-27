@@ -413,6 +413,7 @@ class AccountingDocument(BaseModel):
     fiscal_year = models.ForeignKey(FiscalYear, on_delete=models.PROTECT, null=True, blank=True, related_name='documents', verbose_name=_('سال مالی'))
     period = models.ForeignKey(FiscalPeriod, on_delete=models.PROTECT, null=True, blank=True, related_name='documents', verbose_name=_('دوره'))
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره سند'))
+    reference = models.CharField(max_length=100, blank=True, verbose_name=_('شماره عطف'))
     date = models.DateField(verbose_name=_('تاریخ سند'))
     description = models.TextField(blank=True, verbose_name=_('شرح سند'))
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
