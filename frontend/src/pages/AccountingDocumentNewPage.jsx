@@ -12,7 +12,6 @@ import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import SaveIcon from '@mui/icons-material/Save';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BoltIcon from '@mui/icons-material/Bolt';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
@@ -20,6 +19,7 @@ import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
 const ROWS = 8;
+const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const glass = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.48))',
@@ -50,26 +50,48 @@ const empty = (date) => ({
   season_flag: false,
 });
 
-// سلول با وسط‌چین عمودی
 const Cell = ({ children, center = false }) => (
   <Box sx={{ px: 0.25, py: 0.25, display: 'flex', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', minWidth: 0 }}>
     {children}
   </Box>
 );
 
-// فیلد فارسی: نمایش ارقام فارسی، ذخیره انگلیسی، فونت وزیر
+const faSep = (v) => {
+  if (v == null || v === '') return '';
+  const num = String(v);
+  const neg = num.startsWith('-');
+  const [int, dec] = num.replace('-', '').split('.');
+  const withSep = int.replace(/\B(?=(\d{3})+(?!\d))/g, '٬');
+  return toPersianDigits((neg ? '-' : '') + withSep + (dec != null ? '.' + dec : ''));
+};
+
 const FaField = ({ value, onChange, placeholder = '', numeric = false, center = false }) => (
   <TextField
     size="small" fullWidth type="text" inputMode={numeric ? 'decimal' : 'text'} variant="standard"
-    value={toPersianDigits(value == null ? '' : String(value))}
+    value={numeric ? faSep(value) : toPersianDigits(value == null ? '' : String(value))}
     onChange={(e) => {
       const eng = toEnglishDigits(e.target.value);
       onChange(numeric ? eng.replace(/[^0-9.-]/g, '') : eng);
     }}
     placeholder={placeholder}
-    InputProps={{ disableUnderline: true, sx: { fontSize: 12.5, fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }}
-    inputProps={{ style: { textAlign: center ? 'center' : 'right', fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }}
+    InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }}
+    inputProps={{ style: { textAlign: center ? 'center' : 'right', fontFamily: FONT } }}
   />
+);
+
+const CodeCell = ({ label, onClick }) => (
+  <Box
+    onClick={onClick}
+    sx={{
+      px: 0.25, textAlign: 'center', fontSize: 13.5, fontFamily: FONT,
+      color: (label === '…' || label === '—') ? 'text.disabled' : 'text.primary',
+      cursor: onClick ? 'pointer' : 'default',
+      whiteSpace: 'nowrap', minWidth: 0, lineHeight: 1.2,
+      '&:hover': onClick ? { color: COLOR_DARK } : {},
+    }}
+  >
+    {toPersianDigits(label || '…')}
+  </Box>
 );
 
 const AccountingDocumentNewPage = () => {
@@ -272,32 +294,30 @@ const AccountingDocumentNewPage = () => {
     }
   };
 
-  const gridCols = '40px 40px 1.1fr 0.85fr 0.85fr 0.85fr 1fr 1.4fr 1fr 0.9fr 1fr';
+  const gridCols = '36px 36px 0.7fr 0.6fr 0.6fr 0.6fr 0.9fr 1.8fr 0.9fr 0.9fr 0.9fr';
   const HEADERS = ['ردیف', 'شمول', 'معین', 'تفصیل۱', 'تفصیل۲', 'تفصیل۳', 'شماره فاکتور', 'شرح', 'بدهکار', 'ارزش افزوده', 'بستانکار'];
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      {/* هدر اصلی */}
       <Paper sx={{ p: 1.5, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', flexShrink: 0,
         background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
         <Avatar sx={{ width: 44, height: 44, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 20px ${COLOR}55` }}>
           <DescriptionIcon sx={{ fontSize: 24, color: '#fff' }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 140 }}>
-          <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK}>{isEdit ? 'ویرایش سند' : 'سند جدید'}</Typography>
+          <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>{isEdit ? 'ویرایش سند' : 'سند جدید'}</Typography>
         </Box>
-        <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} variant="outlined" color="primary" sx={{ borderRadius: '10px' }}>افزودن ردیف</Button>
-        <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} variant="outlined" color="error" sx={{ borderRadius: '10px' }}>حذف ردیف</Button>
-        <Button size="small" startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '10px' }}>خروج</Button>
+        <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} variant="outlined" color="primary" sx={{ borderRadius: '10px', fontFamily: FONT }}>افزودن ردیف</Button>
+        <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} variant="outlined" color="error" sx={{ borderRadius: '10px', fontFamily: FONT }}>حذف ردیف</Button>
+        <Button size="small" startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '10px', fontFamily: FONT }}>خروج</Button>
         <Button size="small" startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px', px: 2.5, boxShadow: `0 8px 20px ${COLOR}44` }}>
+          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px', px: 2.5, boxShadow: `0 8px 20px ${COLOR}44`, fontFamily: FONT }}>
           {saving ? <CircularProgress size={16} /> : (isEdit ? 'به‌روزرسانی' : 'ذخیره سند')}
         </Button>
       </Paper>
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)} sx={{ mb: 1, borderRadius: '10px', fontSize: 13, flexShrink: 0 }}>{msg.text}</Alert>}
 
-      {/* هدر سند */}
       <Paper sx={{ ...glass, p: 1.5, mb: 1.5, flexShrink: 0 }}>
         <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
           <TextField size="small" label="شماره سند" value={header.number} onChange={e => setHeaderField('number', e.target.value)} sx={{ width: 120, ...fieldSx }}
@@ -310,31 +330,29 @@ const AccountingDocumentNewPage = () => {
         </Stack>
       </Paper>
 
-      {/* وضعیت توازن + جمع */}
       <Paper sx={{ ...glass, p: 1, mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, flexWrap: 'wrap', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: totalBalanceOk ? COLOR : '#ef4444', boxShadow: `0 0 8px ${totalBalanceOk ? COLOR : '#ef4444'}` }} />
-          <Typography variant="body2" fontWeight={800} sx={{ color: totalBalanceOk ? COLOR_DARK : '#ef4444' }}>
+          <Typography variant="body2" fontWeight={800} sx={{ color: totalBalanceOk ? COLOR_DARK : '#ef4444', fontFamily: FONT }}>
             {totalBalanceOk ? 'سند متوازن است' : `مغایرت: ${formatPersianNumber(diff)}`}
           </Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, border: `1px solid ${COLOR}30`, borderRadius: '10px', px: 1.5, py: 0.5, bgcolor: 'rgba(16,185,129,0.06)' }}>
-            <Typography variant="caption" color="textSecondary">جمع بدهکار</Typography>
-            <Typography variant="body2" fontWeight={900} sx={{ color: '#2563eb' }}>{formatPersianNumber(totalDebit)}</Typography>
+            <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>جمع بدهکار</Typography>
+            <Typography variant="body2" fontWeight={900} sx={{ color: '#2563eb', fontFamily: FONT }}>{formatPersianNumber(totalDebit)}</Typography>
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, border: `1px solid ${COLOR}30`, borderRadius: '10px', px: 1.5, py: 0.5, bgcolor: 'rgba(16,185,129,0.06)' }}>
-            <Typography variant="caption" color="textSecondary">جمع بستانکار</Typography>
-            <Typography variant="body2" fontWeight={900} sx={{ color: '#059669' }}>{formatPersianNumber(totalCredit)}</Typography>
+            <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>جمع بستانکار</Typography>
+            <Typography variant="body2" fontWeight={900} sx={{ color: '#059669', fontFamily: FONT }}>{formatPersianNumber(totalCredit)}</Typography>
           </Box>
         </Box>
       </Paper>
 
-      {/* جدول — فقط این بخش اسکرول دارد */}
       <Paper sx={{ ...glass, overflow: 'hidden', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 1050, flexShrink: 0 }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, minWidth: 1000, flexShrink: 0 }}>
           {HEADERS.map((h, i) => (
-            <Box key={i} sx={{ px: 1, py: 0.8, fontWeight: 700, fontSize: 11.5, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none', bgcolor: 'rgba(16,185,129,0.06)', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{h}</Box>
+            <Box key={i} sx={{ px: 1, py: 0.8, fontWeight: 700, fontSize: 11.5, color: COLOR_DARK, borderBottom: '1px solid rgba(16,185,129,0.15)', borderLeft: i ? '1px solid rgba(0,0,0,0.04)' : 'none', bgcolor: 'rgba(16,185,129,0.05)', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{h}</Box>
           ))}
         </Box>
 
@@ -349,22 +367,23 @@ const AccountingDocumentNewPage = () => {
             const warns = rowWarnings(i);
             return (
               <Box key={i} onClick={() => setActiveRow(i)}
-                sx={{ display: 'grid', gridTemplateColumns: gridCols, borderBottom: '1px solid rgba(0,0,0,0.05)', bgcolor: activeRow === i ? 'rgba(16,185,129,0.06)' : 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }, minHeight: 38 }}>
+                sx={{ display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center', borderBottom: '1px solid rgba(0,0,0,0.05)', bgcolor: activeRow === i ? 'rgba(16,185,129,0.06)' : 'transparent', '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }, minHeight: 48 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                  <Typography variant="caption" color="textSecondary">{toPersianDigits(i + 1)}</Typography>
+                  <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{toPersianDigits(i + 1)}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Tooltip title="شامل معاملات فصلی و ارزش افزوده">
-                    <Checkbox size="small" sx={{ p: 0.3 }} checked={l.season_flag} onChange={e => setLine(i, 'season_flag', e.target.checked)} />
+                    <Checkbox size="small" sx={{ p: 0.15, '& .MuiSvgIcon-root': { fontSize: 15 } }} checked={l.season_flag} onChange={e => setLine(i, 'season_flag', e.target.checked)} />
                   </Tooltip>
                 </Box>
-                <Cell><CodeCell label={selectedAccount?.code || ''} onClick={() => openPicker(i, 'account')} /></Cell>
+                <Cell><CodeCell label={selectedAccount?.code || '…'} onClick={() => openPicker(i, 'account')} /></Cell>
                 {slots.map((slot) => {
                   const aux = auxList.find(a => a.id === l[slot.key]);
-                  return <Cell key={slot.key}><CodeCell label={aux?.code || ''} onClick={() => slot.catId && openPicker(i, slot.key)} disabled={!slot.catId} /></Cell>;
+                  const label = aux ? aux.code : (l.account ? (slot.catId ? '…' : '—') : '…');
+                  return <Cell key={slot.key}><CodeCell label={label} onClick={slot.catId ? () => openPicker(i, slot.key) : undefined} /></Cell>;
                 })}
-                <Cell><FaField value={l.invoice_number} onChange={(v) => setLine(i, 'invoice_number', v)} placeholder="—" /></Cell>
-                <Cell><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" InputProps={{ disableUnderline: true, sx: { fontSize: 12.5, fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }} inputProps={{ style: { textAlign: 'right', fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }} /></Cell>
+                <Cell center><FaField center value={l.invoice_number} onChange={(v) => setLine(i, 'invoice_number', v)} /></Cell>
+                <Cell><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }} inputProps={{ style: { textAlign: 'right', fontFamily: FONT } }} /></Cell>
                 <Cell center><FaField numeric center value={l.debit} onChange={(v) => setLine(i, 'debit', v)} /></Cell>
                 <Cell center><FaField numeric center value={l.vat_amount} onChange={(v) => setLine(i, 'vat_amount', v)} /></Cell>
                 <Cell center><FaField numeric center value={l.credit} onChange={(v) => setLine(i, 'credit', v)} /></Cell>
@@ -374,16 +393,15 @@ const AccountingDocumentNewPage = () => {
         </Box>
       </Paper>
 
-      {/* نوار شرح کدها — بدون عنوان، کارت‌های inline */}
       <Paper sx={{ ...glass, p: 1, mt: 1.5, flexShrink: 0, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', px: 1.5, py: 0.5 }}>
-          <Typography variant="caption" sx={{ color: COLOR_DARK, fontWeight: 800 }}>معین:</Typography>
-          <Typography variant="body2" fontWeight={700}>{activeAccount ? `${activeAccount.code} - ${activeAccount.name}` : '—'}</Typography>
+          <Typography variant="caption" sx={{ color: COLOR_DARK, fontWeight: 800, fontFamily: FONT }}>معین:</Typography>
+          <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{activeAccount ? `${activeAccount.code} - ${activeAccount.name}` : '—'}</Typography>
         </Box>
         {['تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳'].map((label, idx) => (
           <Box key={label} sx={{ display: 'flex', alignItems: 'center', gap: 0.5, bgcolor: 'rgba(255,255,255,0.7)', border: '1px solid rgba(16,185,129,0.2)', borderRadius: '8px', px: 1.5, py: 0.5 }}>
-            <Typography variant="caption" sx={{ color: COLOR_DARK, fontWeight: 800 }}>{label}:</Typography>
-            <Typography variant="body2" fontWeight={700}>{activeAuxs[idx] ? `${activeAuxs[idx].code} - ${activeAuxs[idx].name}` : '—'}</Typography>
+            <Typography variant="caption" sx={{ color: COLOR_DARK, fontWeight: 800, fontFamily: FONT }}>{label}:</Typography>
+            <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{activeAuxs[idx] ? `${activeAuxs[idx].code} - ${activeAuxs[idx].name}` : '—'}</Typography>
           </Box>
         ))}
       </Paper>
@@ -399,15 +417,5 @@ const AccountingDocumentNewPage = () => {
     </Box>
   );
 };
-
-const CodeCell = ({ label, onClick, disabled }) => (
-  <Box sx={{ px: 0.25 }}>
-    <Button
-      fullWidth variant="text" size="small" onClick={onClick} disabled={disabled}
-      sx={{ justifyContent: 'center', minWidth: 0, px: 0.5, py: 0, color: label ? 'text.primary' : 'text.disabled', textTransform: 'none', borderRadius: '6px', fontSize: 12.5, '&:hover': { background: 'rgba(16,185,129,0.08)' } }}>
-      {toPersianDigits(label || '…')}
-    </Button>
-  </Box>
-);
 
 export default AccountingDocumentNewPage;
