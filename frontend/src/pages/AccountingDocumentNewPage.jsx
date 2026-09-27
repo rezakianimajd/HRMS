@@ -13,7 +13,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BoltIcon from '@mui/icons-material/Bolt';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 
@@ -49,6 +49,28 @@ const empty = (date) => ({
   invoice_number: '', vat_amount: '', desc: '', date, debit: '', credit: '',
   season_flag: false,
 });
+
+// سلول با وسط‌چین عمودی
+const Cell = ({ children, center = false }) => (
+  <Box sx={{ px: 0.25, py: 0.25, display: 'flex', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', minWidth: 0 }}>
+    {children}
+  </Box>
+);
+
+// فیلد فارسی: نمایش ارقام فارسی، ذخیره انگلیسی، فونت وزیر
+const FaField = ({ value, onChange, placeholder = '', numeric = false, center = false }) => (
+  <TextField
+    size="small" fullWidth type="text" inputMode={numeric ? 'decimal' : 'text'} variant="standard"
+    value={toPersianDigits(value == null ? '' : String(value))}
+    onChange={(e) => {
+      const eng = toEnglishDigits(e.target.value);
+      onChange(numeric ? eng.replace(/[^0-9.-]/g, '') : eng);
+    }}
+    placeholder={placeholder}
+    InputProps={{ disableUnderline: true, sx: { fontSize: 12.5, fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }}
+    inputProps={{ style: { textAlign: center ? 'center' : 'right', fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }}
+  />
+);
 
 const AccountingDocumentNewPage = () => {
   const navigate = useNavigate();
@@ -336,16 +358,16 @@ const AccountingDocumentNewPage = () => {
                     <Checkbox size="small" sx={{ p: 0.3 }} checked={l.season_flag} onChange={e => setLine(i, 'season_flag', e.target.checked)} />
                   </Tooltip>
                 </Box>
-                <Box sx={{ p: 0.25 }}><CodeCell label={selectedAccount?.code || ''} onClick={() => openPicker(i, 'account')} /></Box>
+                <Cell><CodeCell label={selectedAccount?.code || ''} onClick={() => openPicker(i, 'account')} /></Cell>
                 {slots.map((slot) => {
                   const aux = auxList.find(a => a.id === l[slot.key]);
-                  return <Box key={slot.key} sx={{ p: 0.25 }}><CodeCell label={aux?.code || ''} onClick={() => slot.catId && openPicker(i, slot.key)} disabled={!slot.catId} /></Box>;
+                  return <Cell key={slot.key}><CodeCell label={aux?.code || ''} onClick={() => slot.catId && openPicker(i, slot.key)} disabled={!slot.catId} /></Cell>;
                 })}
-                <Box sx={{ p: 0.25 }}><TextField size="small" fullWidth variant="standard" value={l.invoice_number} onChange={e => setLine(i, 'invoice_number', e.target.value)} placeholder="—" InputProps={{ disableUnderline: true, sx: { fontSize: 12.5 } }} /></Box>
-                <Box sx={{ p: 0.25 }}><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" InputProps={{ disableUnderline: true, sx: { fontSize: 12.5 } }} /></Box>
-                <Box sx={{ p: 0.25 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.debit} onChange={e => setLine(i, 'debit', e.target.value)} InputProps={{ disableUnderline: true, sx: { fontSize: 13 } }} inputProps={{ style: { textAlign: 'center' } }} /></Box>
-                <Box sx={{ p: 0.25 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.vat_amount} onChange={e => setLine(i, 'vat_amount', e.target.value)} placeholder="0" InputProps={{ disableUnderline: true, sx: { fontSize: 13 } }} inputProps={{ style: { textAlign: 'center' } }} /></Box>
-                <Box sx={{ p: 0.25 }}><TextField size="small" fullWidth type="number" variant="standard" value={l.credit} onChange={e => setLine(i, 'credit', e.target.value)} InputProps={{ disableUnderline: true, sx: { fontSize: 13 } }} inputProps={{ style: { textAlign: 'center' } }} /></Box>
+                <Cell><FaField value={l.invoice_number} onChange={(v) => setLine(i, 'invoice_number', v)} placeholder="—" /></Cell>
+                <Cell><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" InputProps={{ disableUnderline: true, sx: { fontSize: 12.5, fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }} inputProps={{ style: { textAlign: 'right', fontFamily: 'Vazirmatn, IRANSans, sans-serif' } }} /></Cell>
+                <Cell center><FaField numeric center value={l.debit} onChange={(v) => setLine(i, 'debit', v)} /></Cell>
+                <Cell center><FaField numeric center value={l.vat_amount} onChange={(v) => setLine(i, 'vat_amount', v)} /></Cell>
+                <Cell center><FaField numeric center value={l.credit} onChange={(v) => setLine(i, 'credit', v)} /></Cell>
               </Box>
             );
           })}
@@ -383,7 +405,7 @@ const CodeCell = ({ label, onClick, disabled }) => (
     <Button
       fullWidth variant="text" size="small" onClick={onClick} disabled={disabled}
       sx={{ justifyContent: 'center', minWidth: 0, px: 0.5, py: 0, color: label ? 'text.primary' : 'text.disabled', textTransform: 'none', borderRadius: '6px', fontSize: 12.5, '&:hover': { background: 'rgba(16,185,129,0.08)' } }}>
-      {label || '…'}
+      {toPersianDigits(label || '…')}
     </Button>
   </Box>
 );
