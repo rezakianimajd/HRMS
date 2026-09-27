@@ -79,20 +79,35 @@ const FaField = ({ value, onChange, placeholder = '', numeric = false, center = 
   />
 );
 
-const CodeCell = ({ label, onClick }) => (
-  <Box
-    onClick={onClick}
-    sx={{
-      px: 0.25, textAlign: 'center', fontSize: 13.5, fontFamily: FONT,
-      color: (label === '…' || label === '—') ? 'text.disabled' : 'text.primary',
-      cursor: onClick ? 'pointer' : 'default',
-      whiteSpace: 'nowrap', minWidth: 0, lineHeight: 1.2,
-      '&:hover': onClick ? { color: COLOR_DARK } : {},
-    }}
-  >
-    {toPersianDigits(label || '…')}
-  </Box>
-);
+// سلول کد قابل تایپ دستی + باز کردن دیالوگ با Space
+const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…' }) => {
+  const [draft, setDraft] = useState('');
+  useEffect(() => { setDraft(code ? String(code) : ''); }, [code]);
+
+  const commit = () => {
+    const eng = toEnglishDigits(draft);
+    if (!eng) { setDraft(code ? String(code) : ''); return; }
+    const opt = options.find(o => String(o.code) === eng);
+    if (opt) onMatch(opt.id);
+    else setDraft(code ? String(code) : '');
+  };
+
+  return (
+    <TextField
+      size="small" fullWidth variant="standard"
+      value={toPersianDigits(draft)}
+      onChange={(e) => setDraft(toEnglishDigits(e.target.value))}
+      onKeyDown={(e) => {
+        if (e.key === ' ') { e.preventDefault(); onOpenPicker(); }
+        else if (e.key === 'Enter') { e.preventDefault(); commit(); e.target.blur(); }
+      }}
+      onBlur={commit}
+      placeholder={placeholder}
+      InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }}
+      inputProps={{ style: { textAlign: 'center', fontFamily: FONT } }}
+    />
+  );
+};
 
 const AccountingDocumentNewPage = () => {
   const navigate = useNavigate();
@@ -376,11 +391,28 @@ const AccountingDocumentNewPage = () => {
                     <Checkbox size="small" sx={{ p: 0.15, '& .MuiSvgIcon-root': { fontSize: 15 } }} checked={l.season_flag} onChange={e => setLine(i, 'season_flag', e.target.checked)} />
                   </Tooltip>
                 </Box>
-                <Cell><CodeCell label={selectedAccount?.code || '…'} onClick={() => openPicker(i, 'account')} /></Cell>
+                <Cell>
+                  <CodeInput
+                    code={selectedAccount?.code || ''}
+                    options={accountList}
+                    onMatch={(id) => setLine(i, 'account', id)}
+                    onOpenPicker={() => openPicker(i, 'account')}
+                  />
+                </Cell>
                 {slots.map((slot) => {
                   const aux = auxList.find(a => a.id === l[slot.key]);
-                  const label = aux ? aux.code : (l.account ? (slot.catId ? '…' : '—') : '…');
-                  return <Cell key={slot.key}><CodeCell label={label} onClick={slot.catId ? () => openPicker(i, slot.key) : undefined} /></Cell>;
+                  const auxOptions = slot.catId ? auxList.filter(a => a.category === slot.catId) : [];
+                  return (
+                    <Cell key={slot.key}>
+                      <CodeInput
+                        code={aux?.code || ''}
+                        options={auxOptions}
+                        onMatch={(id) => setLine(i, slot.key, id)}
+                        onOpenPicker={() => slot.catId && openPicker(i, slot.key)}
+                        placeholder={l.account ? (slot.catId ? '…' : '—') : '…'}
+                      />
+                    </Cell>
+                  );
                 })}
                 <Cell center><FaField center value={l.invoice_number} onChange={(v) => setLine(i, 'invoice_number', v)} /></Cell>
                 <Cell><TextField size="small" fullWidth variant="standard" value={l.desc} onChange={e => setLine(i, 'desc', e.target.value)} placeholder="" InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }} inputProps={{ style: { textAlign: 'right', fontFamily: FONT } }} /></Cell>
