@@ -241,7 +241,26 @@ const AccountingDocumentNewPage = () => {
       qc.invalidateQueries({ queryKey: ['accounting-documents'] });
       navigate('/accounting/documents');
     } catch (e) {
-      setMsg({ ok: false, text: e.response?.data?.error || e.response?.data?.detail || 'خطا در ذخیره سند' });
+      const d = e.response?.data;
+      let text = d?.error || d?.detail;
+      if (!text && d && typeof d === 'object') {
+        const parts = [];
+        const walk = (obj, path = '') => {
+          Object.entries(obj || {}).forEach(([k, v]) => {
+            const label = path ? `${path}.${k}` : k;
+            if (Array.isArray(v)) {
+              parts.push(`${label}: ${v.map(String).join('، ')}`);
+            } else if (v && typeof v === 'object') {
+              walk(v, label);
+            } else if (v !== null && v !== undefined && v !== '') {
+              parts.push(`${label}: ${v}`);
+            }
+          });
+        };
+        walk(d);
+        text = parts.join(' | ');
+      }
+      setMsg({ ok: false, text: text || 'خطا در ذخیره سند' });
       setSaving(false);
     }
   };
