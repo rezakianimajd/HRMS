@@ -187,6 +187,21 @@ def dashboard_rich(request):
     difference = totals['asset'] - liabilities_equity
     balanced = abs(difference) < 0.01
 
+    # اسناد اخیر (۱۰ سند آخر)
+    recent_documents = []
+    for doc in docs.select_related('journal').order_by('-created_at')[:10]:
+        recent_documents.append({
+            'id': doc.id,
+            'number': doc.number or str(doc.id),
+            'date': doc.date.isoformat() if doc.date else None,
+            'description': doc.description,
+            'status': doc.status,
+            'status_display': doc.get_status_display(),
+            'total_debit': float(doc.total_debit or 0),
+            'total_credit': float(doc.total_credit or 0),
+            'journal_name': doc.journal.name if doc.journal else None,
+        })
+
     # Top accounts (۵ حساب با بیشترین گردش)
     top_account_ids = sorted(account_turnover.items(), key=lambda x: -x[1])[:5]
     top_accounts = []
@@ -271,6 +286,7 @@ def dashboard_rich(request):
             'receivable': round(vat_receivable, 2),
             'net': round(vat_payable - vat_receivable, 2),
         },
+        'recent_documents': recent_documents,
     })
 
 

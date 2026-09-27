@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, CircularProgress, Grid, Button, Stack, Chip,
-  Autocomplete, TextField,
+  Autocomplete, TextField, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tooltip,
 } from '@mui/material';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,6 +13,10 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { toJalali } from '../core/utils/dateUtils';
 import { motion, useInView } from 'framer-motion';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
@@ -135,6 +139,7 @@ const AccountingPage = () => {
   const topAccounts = (data.top_accounts || []).map(a => ({ ...a, label: a.name }));
   const aging = data.aging || { receivable: {}, payable: {} };
   const vat = data.vat_summary || {};
+  const recentDocs = data.recent_documents || [];
 
   return (
     <Box>
@@ -153,6 +158,17 @@ const AccountingPage = () => {
           sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
           سند جدید
         </Button>
+      </Paper>
+
+      {/* ریبون اقدام سریع */}
+      <Paper sx={{ ...glass, p: 1.5, mb: 2.5, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+        <Typography variant="caption" fontWeight={800} color={COLOR_DARK} sx={{ pl: 1 }}>دسترسی سریع:</Typography>
+        <Chip icon={<AddIcon />} label="سند جدید" clickable color="primary" variant="outlined" onClick={() => navigate('/accounting/document-new')} />
+        <Chip icon={<AssessmentIcon />} label="تراز آزمایشی" clickable variant="outlined" onClick={() => navigate('/accounting/reports/tree-trial-balance')} />
+        <Chip icon={<AccountBalanceIcon />} label="ترازنامه" clickable variant="outlined" onClick={() => navigate('/accounting/reports/balance-sheet')} />
+        <Chip icon={<TrendingUpIcon />} label="سود و زیان" clickable variant="outlined" onClick={() => navigate('/accounting/reports/income-statement')} />
+        <Chip icon={<ReceiptLongIcon />} label="معاملات فصلی" clickable variant="outlined" onClick={() => navigate('/accounting/tax/seasonal')} />
+        <Chip icon={<MenuBookIcon />} label="جریان نقد" clickable variant="outlined" onClick={() => navigate('/accounting/reports/cash-flow')} />
       </Paper>
 
       <Grid container spacing={2} sx={{ mb: 2.5 }}>
@@ -328,6 +344,51 @@ const AccountingPage = () => {
           </Paper>
         </Grid>
       </Grid>
+
+      {/* فاز 3: اسناد اخیر */}
+      <Paper sx={{ ...glass, p: 2, mt: 2.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK}>اسناد اخیر</Typography>
+          <Box sx={{ flex: 1 }} />
+          <Button size="small" variant="text" endIcon={<OpenInNewIcon />} onClick={() => navigate('/accounting/documents')}
+            sx={{ color: COLOR_DARK, fontWeight: 700 }}>همهٔ اسناد</Button>
+        </Box>
+        <TableContainer>
+          <Table size="small">
+            <TableHead>
+              <TableRow>
+                <TableCell>شماره</TableCell><TableCell>تاریخ</TableCell><TableCell>شرح</TableCell>
+                <TableCell>روزنامه</TableCell><TableCell>بدهکار</TableCell><TableCell>بستانکار</TableCell><TableCell>وضعیت</TableCell><TableCell></TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {recentDocs.length === 0 ? (
+                <TableRow><TableCell colSpan={8} align="center" sx={{ color: 'text.secondary' }}>سندی ثبت نشده است.</TableCell></TableRow>
+              ) : recentDocs.map((d) => (
+                <TableRow key={d.id} hover>
+                  <TableCell sx={{ fontWeight: 700 }}>{d.number}</TableCell>
+                  <TableCell>{toJalali(d.date)}</TableCell>
+                  <TableCell sx={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.description}</TableCell>
+                  <TableCell>{d.journal_name || '—'}</TableCell>
+                  <TableCell sx={{ color: '#2563eb' }}>{formatPersianNumber(d.total_debit)}</TableCell>
+                  <TableCell sx={{ color: GREEN }}>{formatPersianNumber(d.total_credit)}</TableCell>
+                  <TableCell>
+                    <Chip size="small" label={d.status_display}
+                      sx={{ bgcolor: `${COLORS[d.status] || '#64748b'}18`, color: COLORS[d.status] || '#64748b', fontWeight: 700 }} />
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title="مشاهده/ویرایش">
+                      <span onClick={() => navigate(`/accounting/documents/${d.id}/edit`)} style={{ cursor: 'pointer' }}>
+                        <OpenInNewIcon fontSize="small" sx={{ color: COLOR_DARK }} />
+                      </span>
+                    </Tooltip>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      </Paper>
     </Box>
   );
 };
