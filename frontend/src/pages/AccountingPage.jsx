@@ -132,6 +132,9 @@ const AccountingPage = () => {
   const statusData = Object.entries(data.status_counts || {}).map(([key, value]) => ({ key, name: STATUS_LABELS[key] || key, value }));
   const categories = data.category_breakdown || [];
   const trendSpark = trend.map(t => ({ v: t.net }));
+  const topAccounts = (data.top_accounts || []).map(a => ({ ...a, label: a.name }));
+  const aging = data.aging || { receivable: {}, payable: {} };
+  const vat = data.vat_summary || {};
 
   return (
     <Box>
@@ -254,6 +257,77 @@ const AccountingPage = () => {
           </BarChart>
         </ResponsiveContainer>
       </Paper>
+
+      {/* فاز 2: Top حساب‌ها + مالیات + کهنگی مانده */}
+      <Grid container spacing={2} sx={{ mt: 2.5 }}>
+        <Grid item xs={12} md={5}>
+          <Paper sx={{ ...glass, p: 2, height: '100%' }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>حساب‌های پرگردش</Typography>
+            {topAccounts.length === 0 ? (
+              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>گردشی ثبت نشده است.</Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={260}>
+                <BarChart data={topAccounts} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
+                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
+                  <YAxis type="category" dataKey="label" width={130} tick={{ fontSize: 11 }} />
+                  <ReTooltip formatter={(v) => formatPersianNumber(v)} />
+                  <Bar dataKey="turnover" name="گردش" fill={VIOLET} radius={[0, 8, 8, 0]} barSize={18} onClick={(entry) => navigate('/accounting/accounts/subsidiary')} cursor="pointer" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={4}>
+          <Paper sx={{ ...glass, p: 2, height: '100%' }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>مالیات بر ارزش افزوده</Typography>
+            <Box sx={{ my: 1 }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1.25, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Typography variant="body2" color="textSecondary">قابل پرداخت (فروش)</Typography>
+                <Typography variant="body2" fontWeight={800} color={RED}>{formatPersianNumber(vat.payable)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1.25, borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                <Typography variant="body2" color="textSecondary">قابل استرداد (خرید)</Typography>
+                <Typography variant="body2" fontWeight={800} color={GREEN}>{formatPersianNumber(vat.receivable)}</Typography>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', py: 1.25 }}>
+                <Typography variant="body2" fontWeight={800} color={COLOR_DARK}>خالص مالیات</Typography>
+                <Typography variant="body2" fontWeight={900} color={vat.net >= 0 ? RED : GREEN}>{formatPersianNumber(vat.net)}</Typography>
+              </Box>
+            </Box>
+            <Box sx={{ bgcolor: 'rgba(139,92,246,0.06)', borderRadius: '10px', p: 1.5, mt: 1 }}>
+              <Typography variant="caption" color="textSecondary">بر اساس ردیف‌های «شمول معاملات فصلی» محاسبه شده است.</Typography>
+            </Box>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} sm={6} md={3}>
+          <Paper sx={{ ...glass, p: 2, height: '100%' }}>
+            <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>کهنگی مانده (Aging)</Typography>
+            {[
+              { label: 'دریافتنی‌ها', color: '#2563eb', data: aging.receivable || {} },
+              { label: 'پرداختنی‌ها', color: '#ef4444', data: aging.payable || {} },
+            ].map((sec) => (
+              <Box key={sec.label} sx={{ mb: 2 }}>
+                <Typography variant="caption" fontWeight={800} sx={{ color: sec.color }}>{sec.label}</Typography>
+                <Box sx={{ mt: 0.75, display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                  {[
+                    ['جاری', 'current'], ['۳۰–۱', 'd30'], ['۶۰–۳۱', 'd60'], ['+۹۰', 'd90'],
+                  ].map(([txt, key]) => (
+                    <Chip key={key} size="small" label={`${txt}: ${formatPersianNumber(sec.data[key] || 0)}`}
+                      sx={{ bgcolor: `${sec.color}12`, color: sec.color, fontWeight: 700 }} />
+                  ))}
+                </Box>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.75 }}>
+                  <Typography variant="caption" color="textSecondary">جمع</Typography>
+                  <Typography variant="caption" fontWeight={900} sx={{ color: sec.color }}>{formatPersianNumber(sec.data.total || 0)}</Typography>
+                </Box>
+              </Box>
+            ))}
+          </Paper>
+        </Grid>
+      </Grid>
     </Box>
   );
 };
