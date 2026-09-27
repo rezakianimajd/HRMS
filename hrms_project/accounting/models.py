@@ -417,9 +417,9 @@ class AccountingDocument(BaseModel):
     date = models.DateField(verbose_name=_('تاریخ سند'))
     description = models.TextField(blank=True, verbose_name=_('شرح سند'))
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
-    source_module = models.CharField(max_length=50, blank=True, verbose_name=_('ماژول منبع'))
-    source_type = models.CharField(max_length=50, blank=True, verbose_name=_('نوع منبع'))
-    source_id = models.CharField(max_length=64, blank=True, verbose_name=_('شناسهٔ منبع'))
+    source_module = models.CharField(max_length=50, blank=True, default='', verbose_name=_('ماژول منبع'))
+    source_type = models.CharField(max_length=50, blank=True, default='', verbose_name=_('نوع منبع'))
+    source_id = models.CharField(max_length=64, blank=True, default='', verbose_name=_('شناسهٔ منبع'))
     is_locked = models.BooleanField(default=False, verbose_name=_('قفل ویرایش'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
     # Who / when
