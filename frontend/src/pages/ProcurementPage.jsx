@@ -1,22 +1,21 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, Tabs, Tab, CircularProgress, Stack, Button,
-  IconButton, Chip, Table, TableBody, TableCell, TableContainer,
-  TableHead, TableRow, TextField, InputAdornment,
+  Box, Typography, Paper, Avatar, Grid, CircularProgress, Chip,
 } from '@mui/material';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import SearchIcon from '@mui/icons-material/Search';
-import AddIcon from '@mui/icons-material/Add';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SendIcon from '@mui/icons-material/Send';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import StorefrontIcon from '@mui/icons-material/Storefront';
+import Inventory2Icon from '@mui/icons-material/Inventory2';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PaymentsIcon from '@mui/icons-material/Payments';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
-import { toJalali } from '../core/utils/dateUtils';
 
-const COLOR = '#3b82f6';
-const COLOR_DARK = '#2563eb';
+const COLOR = '#f59e0b';
+const COLOR_DARK = '#b45309';
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const glass = {
@@ -24,33 +23,79 @@ const glass = {
   backdropFilter: 'blur(22px) saturate(180%)',
   WebkitBackdropFilter: 'blur(22px) saturate(180%)',
   border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 14px 40px rgba(59,130,246,0.12)',
+  boxShadow: '0 14px 40px rgba(245,158,11,0.12)',
   borderRadius: '16px',
 };
 
-const STATUS = {
-  draft: { label: 'پیش‌نویس', color: '#64748b' },
-  submitted: { label: 'در انتظار', color: '#f59e0b' },
-  approved: { label: 'تأییدشده', color: '#10b981' },
-  rejected: { label: 'رد شده', color: '#ef4444' },
-  ordered: { label: 'تبدیل به سفارش', color: '#3b82f6' },
-  sent: { label: 'ارسال شده', color: '#0ea5e9' },
-  partial: { label: 'تحویل جزئی', color: '#f59e0b' },
-  received: { label: 'تحویل کامل', color: '#10b981' },
-  invoiced: { label: 'صورتحساب شده', color: '#8b5cf6' },
-  closed: { label: 'بسته', color: '#64748b' },
-  paid: { label: 'پرداخت‌شده', color: '#10b981' },
-  cancelled: { label: 'لغو', color: '#ef4444' },
-  posted: { label: 'ثبت شده', color: '#10b981' },
-};
+const listOf = (r) => Array.isArray(r.data) ? r.data : r.data?.results || [];
 
-const StatusChip = ({ status }) => {
-  const meta = STATUS[status] || { label: status, color: '#64748b' };
-  return <Chip size="small" label={meta.label} sx={{ bgcolor: `${meta.color}18`, color: meta.color, fontWeight: 700, fontFamily: FONT }} />;
+const Kpi = ({ label, value, color }) => (
+  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
+    <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{label}</Typography>
+    <Typography variant="h5" fontWeight={900} sx={{ color: color || COLOR_DARK, fontFamily: FONT, mt: 0.5 }}>
+      {typeof value === 'number' ? toPersianDigits(value) : value}
+    </Typography>
+  </Paper>
+);
+
+const QuickLink = ({ icon, title, subtitle, path, color }) => {
+  const navigate = useNavigate();
+  return (
+    <Paper
+      onClick={() => navigate(path)}
+      sx={{
+        ...glass, p: 2, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 1.5,
+        transition: 'transform 0.2s, box-shadow 0.2s',
+        '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 18px 40px ${color || COLOR}33` },
+      }}
+    >
+      <Avatar sx={{ width: 46, height: 46, borderRadius: '13px', background: `linear-gradient(135deg, ${color || COLOR}, ${color || COLOR}cc)` }}>
+        {icon}
+      </Avatar>
+      <Box>
+        <Typography variant="body2" fontWeight={800} sx={{ fontFamily: FONT }}>{title}</Typography>
+        <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{subtitle}</Typography>
+      </Box>
+    </Paper>
+  );
 };
 
 const ProcurementPage = () => {
-  const [tab, setTab] = useState(0);
+  const [kpis, setKpis] = useState({ suppliers: 0, items: 0, requests: 0, orders: 0, invoices: 0, payable: 0 });
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const [suppliers, items, requests, orders, invoices] = await Promise.all([
+          axiosInstance.get('/procurement/suppliers/'),
+          axiosInstance.get('/procurement/items/'),
+          axiosInstance.get('/procurement/purchase-requests/'),
+          axiosInstance.get('/procurement/purchase-orders/'),
+          axiosInstance.get('/procurement/purchase-invoices/'),
+        ]);
+        const invs = listOf(invoices);
+        setKpis({
+          suppliers: listOf(suppliers).length,
+          items: listOf(items).length,
+          requests: listOf(requests).length,
+          orders: listOf(orders).length,
+          invoices: invs.length,
+          payable: invs.reduce((s, i) => s + (Number(i.balance) || 0), 0),
+        });
+      } catch (e) {
+        // keep silent
+      } finally {
+        setLoading(false);
+      }
+    };
+    load();
+  }, []);
+
+  if (loading) {
+    return <Box textAlign="center" py={8}><CircularProgress sx={{ color: COLOR }} /></Box>;
+  }
+
   return (
     <Box>
       <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
@@ -59,303 +104,34 @@ const ProcurementPage = () => {
           <ShoppingCartIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>خرید و تدارکات</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>چرخهٔ کامل تدارکات: درخواست → سفارش → رسید → صورتحساب → پرداخت</Typography>
+          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>داشبورد تدارکات</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>نمای کلی چرخهٔ تدارکات و دسترسی سریع به بخش‌ها</Typography>
         </Box>
+        <Chip label="Procure-to-Pay" sx={{ bgcolor: `${COLOR}14`, color: COLOR_DARK, fontWeight: 700, fontFamily: FONT }} />
       </Paper>
 
-      <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
-        <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto"
-          sx={{ borderBottom: '1px solid rgba(225,225,225,0.5)', px: 2, '& .MuiTab-root': { fontFamily: FONT } }}>
-          {['تأمین‌کنندگان', 'کالاها', 'درخواست‌ها', 'سفارش‌ها', 'رسید کالا', 'صورتحساب‌ها', 'پرداخت‌ها'].map((t, i) => (
-            <Tab key={t} label={t} />
-          ))}
-        </Tabs>
-      </Paper>
+      <Grid container spacing={2} sx={{ mb: 2.5 }}>
+        <Grid item xs={6} sm={4} md={2}><Kpi label="تأمین‌کنندگان" value={kpis.suppliers} color="#f59e0b" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><Kpi label="کالاها" value={kpis.items} color="#10b981" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><Kpi label="درخواست‌ها" value={kpis.requests} color="#3b82f6" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><Kpi label="سفارش‌ها" value={kpis.orders} color="#8b5cf6" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><Kpi label="صورتحساب‌ها" value={kpis.invoices} color="#ef4444" /></Grid>
+        <Grid item xs={6} sm={4} md={2}><Kpi label="مانده پرداختنی" value={formatPersianNumber(kpis.payable)} color="#b45309" /></Grid>
+      </Grid>
 
-      {tab === 0 && <SuppliersTab />}
-      {tab === 1 && <ItemsTab />}
-      {tab === 2 && <RequestsTab />}
-      {tab === 3 && <OrdersTab />}
-      {tab === 4 && <ReceiptsTab />}
-      {tab === 5 && <InvoicesTab />}
-      {tab === 6 && <PaymentsTab />}
+      <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT, mb: 1.5 }}>
+        دسترسی سریع
+      </Typography>
+      <Grid container spacing={2}>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<StorefrontIcon sx={{ color: '#fff' }} />} title="تأمین‌کنندگان" subtitle="مدیریت و ارزیابی تأمین‌کنندگان" path="/procurement/suppliers" color="#f59e0b" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<Inventory2Icon sx={{ color: '#fff' }} />} title="کالاها و خدمات" subtitle="کاتالوگ کالاها و خدمات" path="/procurement/items" color="#10b981" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<RequestQuoteIcon sx={{ color: '#fff' }} />} title="درخواست‌های خرید" subtitle="درخواست‌ها و گردشکار تأیید" path="/procurement/requests" color="#3b82f6" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<ShoppingCartOutlinedIcon sx={{ color: '#fff' }} />} title="سفارش‌های خرید" subtitle="سفارش‌ها و پیگیری تحویل" path="/procurement/orders" color="#8b5cf6" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<LocalShippingIcon sx={{ color: '#fff' }} />} title="رسید کالا" subtitle="قبض انبار و تحویل کالا" path="/procurement/receipts" color="#0ea5e9" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<ReceiptLongIcon sx={{ color: '#fff' }} />} title="صورتحساب‌ها" subtitle="صورتحساب تأمین‌کنندگان" path="/procurement/invoices" color="#ef4444" /></Grid>
+        <Grid item xs={12} sm={6} md={4}><QuickLink icon={<PaymentsIcon sx={{ color: '#fff' }} />} title="پرداخت‌ها" subtitle="پرداخت‌های انجام‌شده" path="/procurement/payments" color="#10b981" /></Grid>
+      </Grid>
     </Box>
-  );
-};
-
-const SuppliersTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [q, setQ] = useState('');
-  const load = () => axiosInstance.get('/procurement/suppliers/', { params: q ? { search: q } : {} }).then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, [q]);
-  const del = (id) => { if (!window.confirm('حذف تأمین‌کننده؟')) return; axiosInstance.delete(`/procurement/suppliers/${id}/`).then(load); };
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Stack direction="row" spacing={1.5} alignItems="center" mb={2}>
-        <TextField size="small" placeholder="جستجو…" value={q} onChange={e => setQ(e.target.value)} sx={{ width: 280, fontFamily: FONT }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>تأمین‌کننده جدید</Button>
-      </Stack>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>کد</TableCell><TableCell sx={{ fontFamily: FONT }}>نام</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>کد اقتصادی</TableCell><TableCell sx={{ fontFamily: FONT }}>امتیاز</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>وضعیت</TableCell><TableCell sx={{ fontFamily: FONT }}></TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(s => (
-                <TableRow key={s.id} hover>
-                  <TableCell sx={{ fontFamily: FONT }}>{s.code}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>{s.name}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{s.economic_code || '—'}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{toPersianDigits(s.rating)}</TableCell>
-                  <TableCell><StatusChip status={s.status} /></TableCell>
-                  <TableCell><IconButton size="small" onClick={() => del(s.id)}><DeleteIcon fontSize="small" color="error" /></IconButton></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
-  );
-};
-
-const ItemsTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => axiosInstance.get('/procurement/items/').then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Stack direction="row" alignItems="center" mb={2}>
-        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>کاتالوگ کالاها</Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>کالای جدید</Button>
-      </Stack>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>کد</TableCell><TableCell sx={{ fontFamily: FONT }}>نام</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>دسته</TableCell><TableCell sx={{ fontFamily: FONT }}>واحد</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>نوع</TableCell><TableCell sx={{ fontFamily: FONT }}>فعال</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(i => (
-                <TableRow key={i.id} hover>
-                  <TableCell sx={{ fontFamily: FONT }}>{i.code}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>{i.name}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{i.category_name || '—'}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{i.unit_name || '—'}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{i.nature_display}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{i.is_active ? '✓' : '—'}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
-  );
-};
-
-const RequestsTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => axiosInstance.get('/procurement/purchase-requests/').then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
-  const act = (id, action) => axiosInstance.post(`/procurement/purchase-requests/${id}/${action}/`).then(load);
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Stack direction="row" alignItems="center" mb={2}>
-        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>درخواست‌های خرید</Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>درخواست جدید</Button>
-      </Stack>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>شماره</TableCell><TableCell sx={{ fontFamily: FONT }}>تاریخ</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>واحد</TableCell><TableCell sx={{ fontFamily: FONT }}>جمع</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>وضعیت</TableCell><TableCell sx={{ fontFamily: FONT }}>عملیات</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(r => (
-                <TableRow key={r.id} hover>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>{r.number || `#${r.id}`}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{toJalali(r.date)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{r.department || '—'}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(r.total)}</TableCell>
-                  <TableCell><StatusChip status={r.status} /></TableCell>
-                  <TableCell>
-                    {r.status === 'draft' && <IconButton size="small" onClick={() => act(r.id, 'submit')}><SendIcon fontSize="small" /></IconButton>}
-                    {r.status === 'submitted' && (<><IconButton size="small" onClick={() => act(r.id, 'approve')}><CheckCircleIcon fontSize="small" color="success" /></IconButton><IconButton size="small" onClick={() => act(r.id, 'reject')}><DeleteIcon fontSize="small" color="error" /></IconButton></>)}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
-  );
-};
-
-const OrdersTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => axiosInstance.get('/procurement/purchase-orders/').then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
-  const act = (id, action) => axiosInstance.post(`/procurement/purchase-orders/${id}/${action}/`).then(load);
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Stack direction="row" alignItems="center" mb={2}>
-        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>سفارش‌های خرید</Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>سفارش جدید</Button>
-      </Stack>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>شماره</TableCell><TableCell sx={{ fontFamily: FONT }}>تأمین‌کننده</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>تاریخ</TableCell><TableCell sx={{ fontFamily: FONT }}>مبلغ</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>وضعیت</TableCell><TableCell sx={{ fontFamily: FONT }}>عملیات</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(o => (
-                <TableRow key={o.id} hover>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>{o.number || `#${o.id}`}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{o.supplier_name}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{toJalali(o.date)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(o.total)}</TableCell>
-                  <TableCell><StatusChip status={o.status} /></TableCell>
-                  <TableCell>
-                    {o.status === 'draft' && <IconButton size="small" onClick={() => act(o.id, 'submit')}><SendIcon fontSize="small" /></IconButton>}
-                    {o.status === 'submitted' && <IconButton size="small" onClick={() => act(o.id, 'approve')}><CheckCircleIcon fontSize="small" color="success" /></IconButton>}
-                    {o.status === 'approved' && <IconButton size="small" onClick={() => act(o.id, 'send')}><LocalShippingIcon fontSize="small" color="primary" /></IconButton>}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
-  );
-};
-
-const ReceiptsTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => axiosInstance.get('/procurement/good-receipts/').then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Stack direction="row" alignItems="center" mb={2}>
-        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>قبض انبار (رسید کالا)</Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>رسید جدید</Button>
-      </Stack>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>شماره</TableCell><TableCell sx={{ fontFamily: FONT }}>سفارش</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>تاریخ</TableCell><TableCell sx={{ fontFamily: FONT }}>وضعیت</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(g => (
-                <TableRow key={g.id} hover>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>{g.number || `#${g.id}`}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{g.order}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{toJalali(g.date)}</TableCell>
-                  <TableCell><StatusChip status={g.status} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
-  );
-};
-
-const InvoicesTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => axiosInstance.get('/procurement/purchase-invoices/').then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Stack direction="row" alignItems="center" mb={2}>
-        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>صورتحساب‌های خرید</Typography>
-        <Box sx={{ flex: 1 }} />
-        <Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>صورتحساب جدید</Button>
-      </Stack>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>شماره</TableCell><TableCell sx={{ fontFamily: FONT }}>تأمین‌کننده</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>مبلغ</TableCell><TableCell sx={{ fontFamily: FONT }}>پرداخت‌شده</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>مانده</TableCell><TableCell sx={{ fontFamily: FONT }}>وضعیت</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(inv => (
-                <TableRow key={inv.id} hover>
-                  <TableCell sx={{ fontFamily: FONT, fontWeight: 700 }}>{inv.number || `#${inv.id}`}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{inv.supplier_name}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(inv.total)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(inv.paid_amount)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT, color: '#ef4444', fontWeight: 700 }}>{formatPersianNumber(inv.balance)}</TableCell>
-                  <TableCell><StatusChip status={inv.status} /></TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
-  );
-};
-
-const PaymentsTab = () => {
-  const [rows, setRows] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const load = () => axiosInstance.get('/procurement/purchase-payments/').then(r => setRows(Array.isArray(r.data) ? r.data : r.data?.results || [])).finally(() => setLoading(false));
-  useEffect(() => { load(); }, []);
-  return (
-    <Paper sx={{ ...glass, p: 2 }}>
-      <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={2} sx={{ fontFamily: FONT }}>پرداخت‌های خرید</Typography>
-      {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>
-              <TableCell sx={{ fontFamily: FONT }}>صورتحساب</TableCell><TableCell sx={{ fontFamily: FONT }}>تاریخ</TableCell>
-              <TableCell sx={{ fontFamily: FONT }}>مبلغ</TableCell><TableCell sx={{ fontFamily: FONT }}>روش</TableCell>
-            </TableRow></TableHead>
-            <TableBody>
-              {rows.map(p => (
-                <TableRow key={p.id} hover>
-                  <TableCell sx={{ fontFamily: FONT }}>#{p.invoice}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{toJalali(p.date)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{formatPersianNumber(p.amount)}</TableCell>
-                  <TableCell sx={{ fontFamily: FONT }}>{p.method_display}</TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
-    </Paper>
   );
 };
 
