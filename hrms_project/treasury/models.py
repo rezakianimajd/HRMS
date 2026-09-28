@@ -8,6 +8,10 @@
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
+from treasury.payment_models import (
+    TreasuryPaymentType, TreasuryPaymentMethod,
+    PaymentCommitment, PaymentRequest, PaymentOrder,
+)
 
 
 class TreasuryEntity(BaseModel):

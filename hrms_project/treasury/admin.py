@@ -2,6 +2,8 @@ from django.contrib import admin
 from treasury.models import (
     TreasuryEntity, TreasuryTransaction, PayableItem,
     CheckBook, ReceivedCheck, IssuedCheck,
+    TreasuryPaymentType, TreasuryPaymentMethod,
+    PaymentCommitment, PaymentRequest, PaymentOrder,
 )
 
 
@@ -44,3 +46,33 @@ class IssuedCheckAdmin(admin.ModelAdmin):
     list_display = ('number', 'party', 'amount', 'due_date', 'status')
     list_filter = ('status',)
     search_fields = ('number', 'party', 'checkbook__bank_name')
+
+
+@admin.register(TreasuryPaymentType)
+class TreasuryPaymentTypeAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'requires_contract', 'requires_project', 'is_active')
+
+
+@admin.register(TreasuryPaymentMethod)
+class TreasuryPaymentMethodAdmin(admin.ModelAdmin):
+    list_display = ('code', 'name', 'target', 'is_active')
+
+
+@admin.register(PaymentCommitment)
+class PaymentCommitmentAdmin(admin.ModelAdmin):
+    list_display = ('number', 'title', 'party', 'amount', 'amount_paid', 'due_date', 'status')
+    list_filter = ('status',)
+    search_fields = ('number', 'title', 'party__name')
+
+
+@admin.register(PaymentRequest)
+class PaymentRequestAdmin(admin.ModelAdmin):
+    list_display = ('number', 'title', 'party', 'amount', 'status', 'requested_date')
+    list_filter = ('status', 'payment_type')
+    search_fields = ('number', 'title', 'party__name')
+
+
+@admin.register(PaymentOrder)
+class PaymentOrderAdmin(admin.ModelAdmin):
+    list_display = ('number', 'request', 'instrument', 'amount', 'status')
+    list_filter = ('status', 'instrument')

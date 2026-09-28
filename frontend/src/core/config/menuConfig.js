@@ -44,6 +44,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
 import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import StraightenIcon from '@mui/icons-material/Straighten';
 import RuleIcon from '@mui/icons-material/Rule';
 import HandshakeIcon from '@mui/icons-material/Handshake';
@@ -391,6 +392,15 @@ const treasuryMenu = [
       { id: 'treasury-entities', title: 'بانک‌ها و صندوق‌ها', icon: <AccountBalanceIcon />, path: '/treasury/entities', color: '#14b8a6', primary: false, ready: true },
       { id: 'treasury-transactions', title: 'تراکنش‌ها', icon: <SwapHorizIcon />, path: '/treasury/transactions', color: '#3b82f6', primary: false, ready: true },
       { id: 'treasury-payables', title: 'قابل‌پرداخت‌ها', icon: <ReceiptLongIcon />, path: '/treasury/payables', color: '#f59e0b', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'treasury-payments',
+    title: 'پرداخت‌ها',
+    color: '#3b82f6',
+    items: [
+      { id: 'treasury-payment-requests', title: 'درخواست‌های پرداخت', icon: <RequestQuoteIcon />, path: '/treasury/payment-requests', color: '#3b82f6', primary: false, ready: true },
+      { id: 'treasury-commitments', title: 'تعهدات نقدی', icon: <EventAvailableIcon />, path: '/treasury/payment-commitments', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {
