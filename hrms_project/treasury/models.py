@@ -12,6 +12,9 @@ from treasury.payment_models import (
     TreasuryPaymentType, TreasuryPaymentMethod,
     PaymentCommitment, PaymentRequest, PaymentOrder,
 )
+from treasury.operation_models import (
+    Receipt, AdvanceAccount, AdvanceSettlement, TreasuryTransfer, TreasuryGuarantee,
+)
 
 
 class TreasuryEntity(BaseModel):

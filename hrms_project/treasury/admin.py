@@ -4,6 +4,7 @@ from treasury.models import (
     CheckBook, ReceivedCheck, IssuedCheck,
     TreasuryPaymentType, TreasuryPaymentMethod,
     PaymentCommitment, PaymentRequest, PaymentOrder,
+    Receipt, AdvanceAccount, AdvanceSettlement, TreasuryTransfer, TreasuryGuarantee,
 )
 
 
@@ -76,3 +77,34 @@ class PaymentRequestAdmin(admin.ModelAdmin):
 class PaymentOrderAdmin(admin.ModelAdmin):
     list_display = ('number', 'request', 'instrument', 'amount', 'status')
     list_filter = ('status', 'instrument')
+
+
+@admin.register(Receipt)
+class ReceiptAdmin(admin.ModelAdmin):
+    list_display = ('number', 'party', 'method', 'amount', 'status')
+    list_filter = ('status', 'method')
+
+
+@admin.register(AdvanceAccount)
+class AdvanceAccountAdmin(admin.ModelAdmin):
+    list_display = ('number', 'party', 'amount', 'date', 'status')
+    list_filter = ('status',)
+    search_fields = ('number', 'party__name')
+
+
+@admin.register(AdvanceSettlement)
+class AdvanceSettlementAdmin(admin.ModelAdmin):
+    list_display = ('advance', 'amount', 'date')
+
+
+@admin.register(TreasuryTransfer)
+class TreasuryTransferAdmin(admin.ModelAdmin):
+    list_display = ('number', 'source', 'destination', 'amount', 'date', 'status')
+    list_filter = ('status',)
+
+
+@admin.register(TreasuryGuarantee)
+class TreasuryGuaranteeAdmin(admin.ModelAdmin):
+    list_display = ('number', 'kind', 'issuer', 'beneficiary', 'amount', 'expiry_date', 'status')
+    list_filter = ('kind', 'status')
+    search_fields = ('number', 'issuer', 'beneficiary', 'party__name')

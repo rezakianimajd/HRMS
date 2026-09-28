@@ -8,6 +8,10 @@ from treasury.payment_views import (
     TreasuryPaymentTypeViewSet, TreasuryPaymentMethodViewSet,
     PaymentCommitmentViewSet, PaymentRequestViewSet, PaymentOrderViewSet,
 )
+from treasury.operation_views import (
+    ReceiptViewSet, AdvanceAccountViewSet, AdvanceSettlementViewSet,
+    TreasuryTransferViewSet, TreasuryGuaranteeViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'treasury-entities', TreasuryEntityViewSet, basename='treasury-entity')
@@ -21,6 +25,11 @@ router.register(r'payment-methods', TreasuryPaymentMethodViewSet, basename='paym
 router.register(r'payment-commitments', PaymentCommitmentViewSet, basename='payment-commitment')
 router.register(r'payment-requests', PaymentRequestViewSet, basename='payment-request')
 router.register(r'payment-orders', PaymentOrderViewSet, basename='payment-order')
+router.register(r'receipts', ReceiptViewSet, basename='receipt')
+router.register(r'advance-accounts', AdvanceAccountViewSet, basename='advance-account')
+router.register(r'advance-settlements', AdvanceSettlementViewSet, basename='advance-settlement')
+router.register(r'treasury-transfers', TreasuryTransferViewSet, basename='treasury-transfer')
+router.register(r'guarantees', TreasuryGuaranteeViewSet, basename='guarantee')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -39,6 +39,8 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import ReceiptIcon from '@mui/icons-material/Receipt';
 import LockIcon from '@mui/icons-material/Lock';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import CallReceivedIcon from '@mui/icons-material/CallReceived';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import GavelIcon from '@mui/icons-material/Gavel';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -401,6 +403,24 @@ const treasuryMenu = [
     items: [
       { id: 'treasury-payment-requests', title: 'درخواست‌های پرداخت', icon: <RequestQuoteIcon />, path: '/treasury/payment-requests', color: '#3b82f6', primary: false, ready: true },
       { id: 'treasury-commitments', title: 'تعهدات نقدی', icon: <EventAvailableIcon />, path: '/treasury/payment-commitments', color: '#8b5cf6', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'treasury-receipts',
+    title: 'دریافت‌ها و انتقال',
+    color: '#0ea5e9',
+    items: [
+      { id: 'treasury-receipts', title: 'دریافت‌ها', icon: <CallReceivedIcon />, path: '/treasury/receipts', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'treasury-transfers', title: 'انتقال‌های وجه', icon: <SwapHorizIcon />, path: '/treasury/transfers', color: '#3b82f6', primary: false, ready: true },
+      { id: 'treasury-advances', title: 'علی‌الحساب‌ها', icon: <RequestQuoteIcon />, path: '/treasury/advances', color: '#f59e0b', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'treasury-guarantees',
+    title: 'سپرده و ضمانت',
+    color: '#8b5cf6',
+    items: [
+      { id: 'treasury-guarantees', title: 'سپرده‌ها و ضمانت‌نامه‌ها', icon: <VerifiedUserIcon />, path: '/treasury/guarantees', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {
