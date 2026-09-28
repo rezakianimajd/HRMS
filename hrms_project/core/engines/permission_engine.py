@@ -10,6 +10,12 @@ ALL_PERMISSIONS = [
     'can_delete_documents', 'can_approve_leaves', 'can_edit_settings',
     'can_manage_users', 'can_manage_roles', 'can_manage_companies',
     'can_view_audit_logs',
+    # خزانه‌داری
+    'treasury_view',
+    'treasury_request',
+    'treasury_execute',
+    'treasury_approve',
+    'treasury_manage_config',
 ]
 
 
