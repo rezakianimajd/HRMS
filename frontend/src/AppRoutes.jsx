@@ -107,6 +107,10 @@ import ProcurementOrdersPage from './pages/procurement/ProcurementOrdersPage';
 import ProcurementReceiptsPage from './pages/procurement/ProcurementReceiptsPage';
 import ProcurementInvoicesPage from './pages/procurement/ProcurementInvoicesPage';
 import ProcurementPaymentsPage from './pages/procurement/ProcurementPaymentsPage';
+import TreasuryPage from './pages/treasury/TreasuryPage';
+import TreasuryEntitiesPage from './pages/treasury/TreasuryEntitiesPage';
+import TreasuryTransactionsPage from './pages/treasury/TreasuryTransactionsPage';
+import TreasuryPayablesPage from './pages/treasury/TreasuryPayablesPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -230,6 +234,10 @@ const AppRoutes = () => {
       <Route path="/procurement/receipts" element={<ProtectedLayout><ProcurementReceiptsPage /></ProtectedLayout>} />
       <Route path="/procurement/invoices" element={<ProtectedLayout><ProcurementInvoicesPage /></ProtectedLayout>} />
       <Route path="/procurement/payments" element={<ProtectedLayout><ProcurementPaymentsPage /></ProtectedLayout>} />
+      <Route path="/treasury" element={<ProtectedLayout><TreasuryPage /></ProtectedLayout>} />
+      <Route path="/treasury/entities" element={<ProtectedLayout><TreasuryEntitiesPage /></ProtectedLayout>} />
+      <Route path="/treasury/transactions" element={<ProtectedLayout><TreasuryTransactionsPage /></ProtectedLayout>} />
+      <Route path="/treasury/payables" element={<ProtectedLayout><TreasuryPayablesPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
       <Route path="/contracts-dashboard" element={<ProtectedLayout><ContractsDashboardPage /></ProtectedLayout>} />

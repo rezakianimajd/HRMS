@@ -180,12 +180,6 @@ const settingsMenu = [
     items: [comingSoon('/modules/assets', 'mod-assets', 'اموال و دارایی', <AssessmentIcon />, '#f97316')],
   },
   {
-    id: 'settings-treasury',
-    title: 'خزانه‌داری',
-    color: '#14b8a6',
-    items: [comingSoon('/modules/treasury', 'mod-treasury', 'خزانه‌داری', <PaymentsIcon />, '#14b8a6')],
-  },
-  {
     id: 'settings-crm',
     title: 'CRM',
     color: '#ec4899',
@@ -380,6 +374,27 @@ const accountingMenu = [
   },
 ];
 
+const treasuryMenu = [
+  {
+    id: 'treasury-home',
+    title: 'خانه',
+    color: '#14b8a6',
+    items: [
+      { id: 'treasury', title: 'داشبورد خزانه', icon: <AccountBalanceWalletIcon />, path: '/treasury', color: '#14b8a6', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'treasury-operations',
+    title: 'عملیات',
+    color: '#14b8a6',
+    items: [
+      { id: 'treasury-entities', title: 'بانک‌ها و صندوق‌ها', icon: <AccountBalanceIcon />, path: '/treasury/entities', color: '#14b8a6', primary: false, ready: true },
+      { id: 'treasury-transactions', title: 'تراکنش‌ها', icon: <SwapHorizIcon />, path: '/treasury/transactions', color: '#3b82f6', primary: false, ready: true },
+      { id: 'treasury-payables', title: 'قابل‌پرداخت‌ها', icon: <ReceiptLongIcon />, path: '/treasury/payables', color: '#f59e0b', primary: false, ready: true },
+    ],
+  },
+];
+
 const procurementMenu = [
   {
     id: 'procurement-home',
@@ -543,6 +558,7 @@ export function getMenuForApp(appSlug) {
   if (appSlug === 'pettycash') return pettycashMenu;
   if (appSlug === 'accounting') return accountingMenu;
   if (appSlug === 'procurement') return procurementMenu;
+  if (appSlug === 'treasury') return treasuryMenu;
   return menuConfig;
 }
 

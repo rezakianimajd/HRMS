@@ -41,6 +41,7 @@ urlpatterns = [
     path('api/', include('pettycash.urls')),
     path('api/accounting/', include('accounting.urls')),
     path('api/', include('procurement.urls')),
+    path('api/', include('treasury.urls')),
 ]
 
 if settings.DEBUG:

@@ -71,6 +71,7 @@ TENANT_APPS = [
     'pettycash',                       # Petty Cash / Imprest (تنخواه)
     'accounting',                      # Accounting (central financial engine)
     'procurement',                     # Procurement / Purchase-to-Pay (خرید و تدارکات)
+    'treasury',                        # Treasury / Cash & payment management (خزانه‌داری)
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]
