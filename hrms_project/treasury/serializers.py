@@ -1,6 +1,9 @@
 """Serializers for the Treasury (خزانه‌داری) module."""
 from rest_framework import serializers
-from treasury.models import TreasuryEntity, TreasuryTransaction, PayableItem
+from treasury.models import (
+    TreasuryEntity, TreasuryTransaction, PayableItem,
+    CheckBook, ReceivedCheck, IssuedCheck,
+)
 
 
 class BaseModelSerializer(serializers.ModelSerializer):
@@ -34,4 +37,26 @@ class PayableItemSerializer(BaseModelSerializer):
 
     class Meta(BaseModelSerializer.Meta):
         model = PayableItem
+        fields = '__all__'
+
+
+class CheckBookSerializer(BaseModelSerializer):
+    class Meta(BaseModelSerializer.Meta):
+        model = CheckBook
+        fields = '__all__'
+
+
+class ReceivedCheckSerializer(BaseModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = ReceivedCheck
+        fields = '__all__'
+
+
+class IssuedCheckSerializer(BaseModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = IssuedCheck
         fields = '__all__'

@@ -6,9 +6,13 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 
-from treasury.models import TreasuryEntity, TreasuryTransaction, PayableItem
+from treasury.models import (
+    TreasuryEntity, TreasuryTransaction, PayableItem,
+    CheckBook, ReceivedCheck, IssuedCheck,
+)
 from treasury.serializers import (
     TreasuryEntitySerializer, TreasuryTransactionSerializer, PayableItemSerializer,
+    CheckBookSerializer, ReceivedCheckSerializer, IssuedCheckSerializer,
 )
 
 
@@ -193,3 +197,105 @@ class PayableItemViewSet(BaseViewSet):
             pass
 
         return Response({'imported': imported})
+
+
+class CheckBookViewSet(BaseViewSet):
+    serializer_class = CheckBookSerializer
+    queryset = CheckBook.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code', 'bank_name', 'account_number']
+    ordering = ['code']
+
+
+class ReceivedCheckViewSet(BaseViewSet):
+    serializer_class = ReceivedCheckSerializer
+    queryset = ReceivedCheck.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['number', 'bank_name', 'party']
+    ordering = ['-due_date', '-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def deposit(self, request, pk=None):
+        obj = self.get_object()
+        if obj.status != 'registered':
+            return Response({'error': 'فقط چک ثبت‌شده قابل واریز است.'}, status=400)
+        obj.status = 'deposited'
+        obj.history = [*obj.history, {'step': 'deposited', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        obj.save()
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=['post'])
+    def clear(self, request, pk=None):
+        obj = self.get_object()
+        if obj.status != 'deposited':
+            return Response({'error': 'ابتدا چک را واریز کنید.'}, status=400)
+        obj.status = 'cleared'
+        obj.history = [*obj.history, {'step': 'cleared', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        obj.save()
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=['post'])
+    def bounce(self, request, pk=None):
+        obj = self.get_object()
+        if obj.status not in ('deposited', 'cleared'):
+            return Response({'error': 'وضعیت چک قابل برگشت نیست.'}, status=400)
+        obj.status = 'bounced'
+        obj.history = [*obj.history, {'step': 'bounced', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        obj.save()
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=['post'])
+    def endorse(self, request, pk=None):
+        obj = self.get_object()
+        if obj.status not in ('registered', 'deposited'):
+            return Response({'error': 'وضعیت چک قابل ظهرنویسی نیست.'}, status=400)
+        obj.status = 'endorsed'
+        obj.endorsed_to = request.data.get('endorsed_to', obj.endorsed_to)
+        obj.history = [*obj.history, {'step': 'endorsed', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        obj.save()
+        return Response(self.get_serializer(obj).data)
+
+
+class IssuedCheckViewSet(BaseViewSet):
+    serializer_class = IssuedCheckSerializer
+    queryset = IssuedCheck.objects.select_related('checkbook')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['number', 'party', 'checkbook__bank_name']
+    ordering = ['-due_date', '-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def issue(self, request, pk=None):
+        obj = self.get_object()
+        if obj.status != 'draft':
+            return Response({'error': 'فقط چک پیش‌نویس قابل صدور است.'}, status=400)
+        obj.status = 'issued'
+        obj.history = [*obj.history, {'step': 'issued', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        obj.save()
+        if obj.checkbook:
+            obj.checkbook.used_leaves = (obj.checkbook.used_leaves or 0) + 1
+            obj.checkbook.save(update_fields=['used_leaves', 'updated_at'])
+        return Response(self.get_serializer(obj).data)
+
+    @action(detail=True, methods=['post'])
+    def clear(self, request, pk=None):
+        obj = self.get_object()
+        if obj.status != 'issued':
+            return Response({'error': 'فقط چک صادرشده قابل پاس است.'}, status=400)
+        obj.status = 'cleared'
+        obj.history = [*obj.history, {'step': 'cleared', 'by': request.user.username, 'at': timezone.now().isoformat()}]
+        obj.save()
+        return Response(self.get_serializer(obj).data)

@@ -111,6 +111,9 @@ import TreasuryPage from './pages/treasury/TreasuryPage';
 import TreasuryEntitiesPage from './pages/treasury/TreasuryEntitiesPage';
 import TreasuryTransactionsPage from './pages/treasury/TreasuryTransactionsPage';
 import TreasuryPayablesPage from './pages/treasury/TreasuryPayablesPage';
+import TreasuryCheckBooksPage from './pages/treasury/TreasuryCheckBooksPage';
+import TreasuryReceivedChecksPage from './pages/treasury/TreasuryReceivedChecksPage';
+import TreasuryIssuedChecksPage from './pages/treasury/TreasuryIssuedChecksPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -238,6 +241,9 @@ const AppRoutes = () => {
       <Route path="/treasury/entities" element={<ProtectedLayout><TreasuryEntitiesPage /></ProtectedLayout>} />
       <Route path="/treasury/transactions" element={<ProtectedLayout><TreasuryTransactionsPage /></ProtectedLayout>} />
       <Route path="/treasury/payables" element={<ProtectedLayout><TreasuryPayablesPage /></ProtectedLayout>} />
+      <Route path="/treasury/checkbooks" element={<ProtectedLayout><TreasuryCheckBooksPage /></ProtectedLayout>} />
+      <Route path="/treasury/received-checks" element={<ProtectedLayout><TreasuryReceivedChecksPage /></ProtectedLayout>} />
+      <Route path="/treasury/issued-checks" element={<ProtectedLayout><TreasuryIssuedChecksPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
       <Route path="/contracts-dashboard" element={<ProtectedLayout><ContractsDashboardPage /></ProtectedLayout>} />

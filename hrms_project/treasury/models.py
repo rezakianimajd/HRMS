@@ -109,3 +109,85 @@ class PayableItem(BaseModel):
     @property
     def balance(self):
         return float(self.amount) - float(self.paid)
+
+
+class CheckBook(BaseModel):
+    """دسته‌چک‌های صادرشده برای یک بانک."""
+    code = models.CharField(max_length=50, verbose_name=_('کد دسته‌چک'))
+    bank_name = models.CharField(max_length=200, verbose_name=_('نام بانک'))
+    account_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره حساب'))
+    entity = models.ForeignKey(TreasuryEntity, on_delete=models.PROTECT, null=True, blank=True, related_name='checkbooks', verbose_name=_('نهاد مرتبط'))
+    series_start = models.CharField(max_length=50, blank=True, verbose_name=_('شروع سری'))
+    series_end = models.CharField(max_length=50, blank=True, verbose_name=_('پایان سری'))
+    total_leaves = models.PositiveIntegerField(default=0, verbose_name=_('تعداد برگ'))
+    used_leaves = models.PositiveIntegerField(default=0, verbose_name=_('برگ مصرف‌شده'))
+    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
+
+    class Meta:
+        verbose_name = _('دسته‌چک')
+        verbose_name_plural = _('دسته‌چک‌ها')
+        unique_together = [('company', 'code')]
+        ordering = ['code']
+
+    def __str__(self):
+        return f'{self.code} - {self.bank_name}'
+
+
+class ReceivedCheck(BaseModel):
+    """چک دریافتی با چرخهٔ کامل پاس/ظهرنویسی/برگشت."""
+    class Status(models.TextChoices):
+        REGISTERED = 'registered', _('ثبت‌شده')
+        DEPOSITED = 'deposited', _('واریز به حساب')
+        CLEARED = 'cleared', _('پاس‌شده')
+        BOUNCED = 'bounced', _('برگشتی')
+        ENDORSED = 'endorsed', _('ظهرنویسی‌شده')
+        CANCELLED = 'cancelled', _('لغو')
+
+    number = models.CharField(max_length=50, verbose_name=_('شماره چک'))
+    bank_name = models.CharField(max_length=200, verbose_name=_('بانک صادرکننده'))
+    party = models.CharField(max_length=250, verbose_name=_('طرف حساب (صادرکننده)'))
+    amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ'))
+    issue_date = models.DateField(verbose_name=_('تاریخ صدور'))
+    due_date = models.DateField(verbose_name=_('تاریخ سررسید'))
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.REGISTERED, verbose_name=_('وضعیت'))
+    endorsed_to = models.CharField(max_length=250, blank=True, verbose_name=_('ظهرنویسی به'))
+    history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('چک دریافتی')
+        verbose_name_plural = _('چک‌های دریافتی')
+        ordering = ['-due_date', '-created_at']
+        indexes = [models.Index(fields=['company', 'status'])]
+
+    def __str__(self):
+        return f'{self.number} - {self.amount} ({self.bank_name})'
+
+
+class IssuedCheck(BaseModel):
+    """چک پرداختی صادرشده از دسته‌چک."""
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('پیش‌نویس')
+        ISSUED = 'issued', _('صادرشده')
+        CLEARED = 'cleared', _('پاس‌شده')
+        BOUNCED = 'bounced', _('برگشتی')
+        CANCELLED = 'cancelled', _('لغو')
+
+    checkbook = models.ForeignKey(CheckBook, on_delete=models.PROTECT, related_name='checks', verbose_name=_('دسته‌چک'))
+    number = models.CharField(max_length=50, verbose_name=_('شماره چک'))
+    party = models.CharField(max_length=250, verbose_name=_('ذینفع'))
+    amount = models.DecimalField(max_digits=18, decimal_places=2, verbose_name=_('مبلغ'))
+    issue_date = models.DateField(verbose_name=_('تاریخ صدور'))
+    due_date = models.DateField(verbose_name=_('تاریخ سررسید'))
+    status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
+    history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('چک پرداختی')
+        verbose_name_plural = _('چک‌های پرداختی')
+        ordering = ['-due_date', '-created_at']
+        indexes = [models.Index(fields=['company', 'status'])]
+
+    def __str__(self):
+        return f'{self.number} - {self.amount} ({self.party})'

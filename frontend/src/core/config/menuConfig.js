@@ -393,6 +393,16 @@ const treasuryMenu = [
       { id: 'treasury-payables', title: 'قابل‌پرداخت‌ها', icon: <ReceiptLongIcon />, path: '/treasury/payables', color: '#f59e0b', primary: false, ready: true },
     ],
   },
+  {
+    id: 'treasury-checks',
+    title: 'چک',
+    color: '#8b5cf6',
+    items: [
+      { id: 'treasury-checkbooks', title: 'دسته‌چک‌ها', icon: <MenuBookIcon />, path: '/treasury/checkbooks', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'treasury-received-checks', title: 'چک‌های دریافتی', icon: <ReceiptLongIcon />, path: '/treasury/received-checks', color: '#10b981', primary: false, ready: true },
+      { id: 'treasury-issued-checks', title: 'چک‌های پرداختی', icon: <PaymentsIcon />, path: '/treasury/issued-checks', color: '#ef4444', primary: false, ready: true },
+    ],
+  },
 ];
 
 const procurementMenu = [
