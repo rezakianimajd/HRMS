@@ -100,6 +100,13 @@ import AccountGroupsPage from './pages/AccountGroupsPage';
 import AccountsClassicPage from './pages/AccountsClassicPage';
 import AuxiliaryAccountsPage from './pages/AuxiliaryAccountsPage';
 import ProcurementPage from './pages/ProcurementPage';
+import ProcurementSuppliersPage from './pages/procurement/ProcurementSuppliersPage';
+import ProcurementItemsPage from './pages/procurement/ProcurementItemsPage';
+import ProcurementRequestsPage from './pages/procurement/ProcurementRequestsPage';
+import ProcurementOrdersPage from './pages/procurement/ProcurementOrdersPage';
+import ProcurementReceiptsPage from './pages/procurement/ProcurementReceiptsPage';
+import ProcurementInvoicesPage from './pages/procurement/ProcurementInvoicesPage';
+import ProcurementPaymentsPage from './pages/procurement/ProcurementPaymentsPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -216,6 +223,13 @@ const AppRoutes = () => {
       <Route path="/accounting/auxiliary" element={<ProtectedLayout><AuxiliaryAccountsPage /></ProtectedLayout>} />
       <Route path="/accounting/*" element={<ProtectedLayout><AccountingPage /></ProtectedLayout>} />
       <Route path="/procurement" element={<ProtectedLayout><ProcurementPage /></ProtectedLayout>} />
+      <Route path="/procurement/suppliers" element={<ProtectedLayout><ProcurementSuppliersPage /></ProtectedLayout>} />
+      <Route path="/procurement/items" element={<ProtectedLayout><ProcurementItemsPage /></ProtectedLayout>} />
+      <Route path="/procurement/requests" element={<ProtectedLayout><ProcurementRequestsPage /></ProtectedLayout>} />
+      <Route path="/procurement/orders" element={<ProtectedLayout><ProcurementOrdersPage /></ProtectedLayout>} />
+      <Route path="/procurement/receipts" element={<ProtectedLayout><ProcurementReceiptsPage /></ProtectedLayout>} />
+      <Route path="/procurement/invoices" element={<ProtectedLayout><ProcurementInvoicesPage /></ProtectedLayout>} />
+      <Route path="/procurement/payments" element={<ProtectedLayout><ProcurementPaymentsPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
       <Route path="/contracts-dashboard" element={<ProtectedLayout><ContractsDashboardPage /></ProtectedLayout>} />

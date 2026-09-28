@@ -41,6 +41,10 @@ import LockIcon from '@mui/icons-material/Lock';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import GavelIcon from '@mui/icons-material/Gavel';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import LocalShippingIcon from '@mui/icons-material/LocalShipping';
+import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
+import RequestQuoteIcon from '@mui/icons-material/RequestQuote';
+import StraightenIcon from '@mui/icons-material/Straighten';
 import RuleIcon from '@mui/icons-material/Rule';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
@@ -186,14 +190,6 @@ const settingsMenu = [
     title: 'CRM',
     color: '#ec4899',
     items: [comingSoon('/modules/crm', 'mod-crm', 'مدیریت ارتباط با مشتری', <PeopleIcon />, '#ec4899')],
-  },
-  {
-    id: 'settings-procurement',
-    title: 'خرید و تدارکات',
-    color: '#3b82f6',
-    items: [
-      { id: 'procurement', title: 'خرید و تدارکات', icon: <StorefrontIcon />, path: '/procurement', color: '#3b82f6', primary: true, ready: true },
-    ],
   },
   {
     id: 'settings-sales',
@@ -384,6 +380,38 @@ const accountingMenu = [
   },
 ];
 
+const procurementMenu = [
+  {
+    id: 'procurement-home',
+    title: 'خانه',
+    color: '#f59e0b',
+    items: [
+      { id: 'procurement', title: 'داشبورد تدارکات', icon: <ShoppingCartIcon />, path: '/procurement', color: '#f59e0b', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'procurement-master',
+    title: 'اطلاعات پایه',
+    color: '#f59e0b',
+    items: [
+      { id: 'procurement-suppliers', title: 'تأمین‌کنندگان', icon: <StorefrontIcon />, path: '/procurement/suppliers', color: '#f59e0b', primary: false, ready: true },
+      { id: 'procurement-items', title: 'کالاها و خدمات', icon: <Inventory2Icon />, path: '/procurement/items', color: '#10b981', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'procurement-operations',
+    title: 'چرخهٔ خرید',
+    color: '#3b82f6',
+    items: [
+      { id: 'procurement-requests', title: 'درخواست‌های خرید', icon: <RequestQuoteIcon />, path: '/procurement/requests', color: '#3b82f6', primary: false, ready: true },
+      { id: 'procurement-orders', title: 'سفارش‌های خرید', icon: <ShoppingCartIcon />, path: '/procurement/orders', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'procurement-receipts', title: 'رسید کالا', icon: <LocalShippingIcon />, path: '/procurement/receipts', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'procurement-invoices', title: 'صورتحساب‌ها', icon: <ReceiptLongIcon />, path: '/procurement/invoices', color: '#ef4444', primary: false, ready: true },
+      { id: 'procurement-payments', title: 'پرداخت‌ها', icon: <PaymentsIcon />, path: '/procurement/payments', color: '#10b981', primary: false, ready: true },
+    ],
+  },
+];
+
 const projectsMenu = [
   {
     id: 'projects-home',
@@ -514,6 +542,7 @@ export function getMenuForApp(appSlug) {
   if (appSlug === 'projects') return projectsMenu;
   if (appSlug === 'pettycash') return pettycashMenu;
   if (appSlug === 'accounting') return accountingMenu;
+  if (appSlug === 'procurement') return procurementMenu;
   return menuConfig;
 }
 
