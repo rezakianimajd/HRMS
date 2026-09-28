@@ -70,6 +70,7 @@ TENANT_APPS = [
     'projects',                        # Project Management & Cost Control (Phase 0)
     'pettycash',                       # Petty Cash / Imprest (تنخواه)
     'accounting',                      # Accounting (central financial engine)
+    'procurement',                     # Procurement / Purchase-to-Pay (خرید و تدارکات)
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]

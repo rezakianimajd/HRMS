@@ -99,6 +99,7 @@ import AccountingCodingsPage from './pages/AccountingCodingsPage';
 import AccountGroupsPage from './pages/AccountGroupsPage';
 import AccountsClassicPage from './pages/AccountsClassicPage';
 import AuxiliaryAccountsPage from './pages/AuxiliaryAccountsPage';
+import ProcurementPage from './pages/ProcurementPage';
 
 /**
  * Protected route wrapper - redirects to login if not authenticated.
@@ -214,6 +215,7 @@ const AppRoutes = () => {
       <Route path="/accounting/accounts/:kind" element={<ProtectedLayout><AccountsClassicPage /></ProtectedLayout>} />
       <Route path="/accounting/auxiliary" element={<ProtectedLayout><AuxiliaryAccountsPage /></ProtectedLayout>} />
       <Route path="/accounting/*" element={<ProtectedLayout><AccountingPage /></ProtectedLayout>} />
+      <Route path="/procurement" element={<ProtectedLayout><ProcurementPage /></ProtectedLayout>} />
       <Route path="/deductions" element={<ProtectedLayout><DeductionsPage /></ProtectedLayout>} />
       <Route path="/contracts" element={<ProtectedLayout><ContractsPage /></ProtectedLayout>} />
       <Route path="/contracts-dashboard" element={<ProtectedLayout><ContractsDashboardPage /></ProtectedLayout>} />

@@ -191,7 +191,9 @@ const settingsMenu = [
     id: 'settings-procurement',
     title: 'خرید و تدارکات',
     color: '#3b82f6',
-    items: [comingSoon('/modules/procurement', 'mod-procurement', 'خرید و تدارکات', <CategoryIcon />, '#3b82f6')],
+    items: [
+      { id: 'procurement', title: 'خرید و تدارکات', icon: <StorefrontIcon />, path: '/procurement', color: '#3b82f6', primary: true, ready: true },
+    ],
   },
   {
     id: 'settings-sales',
