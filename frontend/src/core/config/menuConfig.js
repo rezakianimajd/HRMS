@@ -397,6 +397,14 @@ const treasuryMenu = [
     ],
   },
   {
+    id: 'treasury-planning',
+    title: 'برنامه‌ریزی و کنترل',
+    color: '#14b8a6',
+    items: [
+      { id: 'treasury-forecast', title: 'نقدینگی و مغایرت', icon: <InsightsIcon />, path: '/treasury/forecast', color: '#14b8a6', primary: false, ready: true },
+    ],
+  },
+  {
     id: 'treasury-payments',
     title: 'پرداخت‌ها',
     color: '#3b82f6',

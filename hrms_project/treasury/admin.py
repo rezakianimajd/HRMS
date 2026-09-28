@@ -5,6 +5,7 @@ from treasury.models import (
     TreasuryPaymentType, TreasuryPaymentMethod,
     PaymentCommitment, PaymentRequest, PaymentOrder,
     Receipt, AdvanceAccount, AdvanceSettlement, TreasuryTransfer, TreasuryGuarantee,
+    TreasuryReconciliation,
 )
 
 
@@ -108,3 +109,10 @@ class TreasuryGuaranteeAdmin(admin.ModelAdmin):
     list_display = ('number', 'kind', 'issuer', 'beneficiary', 'amount', 'expiry_date', 'status')
     list_filter = ('kind', 'status')
     search_fields = ('number', 'issuer', 'beneficiary', 'party__name')
+
+
+@admin.register(TreasuryReconciliation)
+class TreasuryReconciliationAdmin(admin.ModelAdmin):
+    list_display = ('entity', 'as_of', 'statement_balance', 'book_balance', 'difference', 'status')
+    list_filter = ('status',)
+    search_fields = ('entity__name',)

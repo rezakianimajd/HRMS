@@ -15,6 +15,7 @@ from treasury.payment_models import (
 from treasury.operation_models import (
     Receipt, AdvanceAccount, AdvanceSettlement, TreasuryTransfer, TreasuryGuarantee,
 )
+from treasury.planning_models import TreasuryReconciliation
 
 
 class TreasuryEntity(BaseModel):
