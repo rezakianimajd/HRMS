@@ -77,7 +77,7 @@ export const PaymentRequestsSection = () => {
     <Box>
       <Header icon={<RequestQuoteIcon sx={{ fontSize: 28, color: '#fff' }} />} title="درخواست‌های پرداخت"
         subtitle="گردش کامل: درخواست → بررسی → تأیید → برنامه‌ریزی → دستور → پرداخت"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>درخواست جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>

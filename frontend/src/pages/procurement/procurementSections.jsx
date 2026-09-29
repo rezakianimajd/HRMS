@@ -84,7 +84,7 @@ export const SuppliersSection = () => {
   return (
     <Box>
       <SectionHeader icon={<StorefrontIcon sx={{ fontSize: 28, color: '#fff' }} />} title="تأمین‌کنندگان" subtitle="مدیریت تأمین‌کنندگان و ارزیابی آنها"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>تأمین‌کننده جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         <TextField size="small" placeholder="جستجو…" value={q} onChange={e => setQ(e.target.value)} sx={{ width: 280, fontFamily: FONT, mb: 2 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
@@ -117,7 +117,7 @@ export const ItemsSection = () => {
   return (
     <Box>
       <SectionHeader icon={<Inventory2Icon sx={{ fontSize: 28, color: '#fff' }} />} title="کالاها و خدمات" subtitle="کاتالوگ کالاها و خدمات قابل خرید"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>کالای جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -148,7 +148,7 @@ export const PurchaseRequestsSection = () => {
   return (
     <Box>
       <SectionHeader icon={<RequestQuoteIcon sx={{ fontSize: 28, color: '#fff' }} />} title="درخواست‌های خرید" subtitle="درخواست‌های خرید و گردشکار تأیید"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>درخواست جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -183,7 +183,7 @@ export const PurchaseOrdersSection = () => {
   return (
     <Box>
       <SectionHeader icon={<ShoppingCartIcon sx={{ fontSize: 28, color: '#fff' }} />} title="سفارش‌های خرید" subtitle="سفارش‌های صادرشده و پیگیری تحویل"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>سفارش جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -218,7 +218,7 @@ export const GoodsReceiptsSection = () => {
   return (
     <Box>
       <SectionHeader icon={<LocalShippingIcon sx={{ fontSize: 28, color: '#fff' }} />} title="رسید کالا (قبض انبار)" subtitle="ثبت و پیگیری رسید کالا"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>رسید جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -247,7 +247,7 @@ export const PurchaseInvoicesSection = () => {
   return (
     <Box>
       <SectionHeader icon={<ReceiptLongIcon sx={{ fontSize: 28, color: '#fff' }} />} title="صورتحساب‌های خرید" subtitle="صورتحساب‌های تأمین‌کننده و مانده پرداخت"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>صورتحساب جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>

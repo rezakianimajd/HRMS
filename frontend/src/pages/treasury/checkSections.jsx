@@ -66,7 +66,7 @@ export const CheckBooksSection = () => {
   return (
     <Box>
       <Header icon={<MenuBookIcon sx={{ fontSize: 28, color: '#fff' }} />} title="دسته‌چک‌ها" subtitle="دسته‌چک‌های بانکی و وضعیت مصرف برگ"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>دسته‌چک جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -97,7 +97,7 @@ export const ReceivedChecksSection = () => {
   return (
     <Box>
       <Header icon={<CallReceivedIcon sx={{ fontSize: 28, color: '#fff' }} />} title="چک‌های دریافتی" subtitle="چک‌های دریافتی و چرخهٔ پاس/برگشت/ظهرنویسی"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>چک دریافتی جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -134,7 +134,7 @@ export const IssuedChecksSection = () => {
   return (
     <Box>
       <Header icon={<CallMadeIcon sx={{ fontSize: 28, color: '#fff' }} />} title="چک‌های پرداختی" subtitle="چک‌های صادرشده از دسته‌چک"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>چک پرداختی جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">

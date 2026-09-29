@@ -50,7 +50,7 @@ export const EntitiesSection = () => {
   return (
     <Box>
       <SectionHeader icon={<AccountBalanceIcon sx={{ fontSize: 28, color: '#fff' }} />} title="بانک‌ها و صندوق‌ها" subtitle="نهادهای پولی خزانه و ماندهٔ آنها"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>نهاد جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -82,7 +82,7 @@ export const TransactionsSection = () => {
   return (
     <Box>
       <SectionHeader icon={<SwapHorizIcon sx={{ fontSize: 28, color: '#fff' }} />} title="تراکنش‌های خزانه" subtitle="دریافت‌ها و پرداخت‌ها"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>تراکنش جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>

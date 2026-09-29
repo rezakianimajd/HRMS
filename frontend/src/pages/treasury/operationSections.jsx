@@ -79,7 +79,7 @@ export const ReceiptsSection = () => {
     <Box>
       <Header icon={<CallReceivedIcon sx={{ fontSize: 28, color: '#fff' }} />} title="دریافت‌ها"
         subtitle="دریافت‌های بانکی/نقدی/چکی و چرخهٔ وصول"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>دریافت جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -113,7 +113,7 @@ export const AdvancesSection = () => {
     <Box>
       <Header icon={<RequestQuoteIcon sx={{ fontSize: 28, color: '#fff' }} />} title="علی‌الحساب‌ها"
         subtitle="پیش‌پرداخت‌ها و علی‌الحساب با ماندهٔ خودکار"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>علی‌الحساب جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -146,7 +146,7 @@ export const TransfersSection = () => {
     <Box>
       <Header icon={<SwapHorizIcon sx={{ fontSize: 28, color: '#fff' }} />} title="انتقال‌های وجه"
         subtitle="انتقال بین حساب‌های بانکی و صندوق‌ها"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>انتقال جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -178,7 +178,7 @@ export const GuaranteesSection = () => {
     <Box>
       <Header icon={<VerifiedUserIcon sx={{ fontSize: 28, color: '#fff' }} />} title="سپرده‌ها و ضمانت‌نامه‌ها"
         subtitle="سپرده حسن انجام کار، مناقصه، بیمه، مالیاتی و ضمانت‌نامه با هشدار سررسید"
-        extra={<Button size="small" variant="contained" startIcon={<AddIcon />} sx={{ bgcolor: COLOR_DARK, borderRadius: '10px', fontFamily: FONT }}>سپرده جدید</Button>} />
+      />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
