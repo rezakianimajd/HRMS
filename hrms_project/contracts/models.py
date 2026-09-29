@@ -18,7 +18,12 @@ class ContractParty(BaseModel):
         CONSULTANT = 'consultant', _('مشاور')
         OTHER = 'other', _('سایر')
 
+    class PersonType(models.TextChoices):
+        LEGAL = 'legal', _('شخص حقوقی')
+        NATURAL = 'natural', _('شخص حقیقی')
+
     name = models.CharField(max_length=250, verbose_name=_('نام / عنوان'))
+    person_type = models.CharField(max_length=10, choices=PersonType.choices, default=PersonType.LEGAL, verbose_name=_('نوع شخص'))
     party_type = models.CharField(max_length=20, choices=PartyType.choices, default=PartyType.CONTRACTOR, verbose_name=_('نوع طرف'))
     national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ثبت'))
     economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('کد اقتصادی'))

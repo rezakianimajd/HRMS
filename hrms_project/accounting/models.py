@@ -298,6 +298,9 @@ class AuxiliaryAccount(BaseModel):
     employee = models.ForeignKey('employees.Employee', on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliary_accounts', verbose_name=_('پرسنل'))
     project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliary_accounts', verbose_name=_('پروژه'))
     contract = models.ForeignKey('contracts.Contract', on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliary_accounts', verbose_name=_('قرارداد'))
+    supplier = models.ForeignKey('procurement.Supplier', on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliary_accounts', verbose_name=_('تأمین‌کننده'))
+    treasury_entity = models.ForeignKey('treasury.TreasuryEntity', on_delete=models.SET_NULL, null=True, blank=True, related_name='auxiliary_accounts', verbose_name=_('بانک/صندوق'))
+    person_type = models.CharField(max_length=10, choices=[('legal', _('شخص حقوقی')), ('natural', _('شخص حقیقی'))], null=True, blank=True, verbose_name=_('نوع شخص'))
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
