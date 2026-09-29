@@ -9,6 +9,7 @@ import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import { QuickCreateButton } from '../../core/components/ui/QuickCreateDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const COLOR = '#3b82f6';
@@ -77,7 +78,18 @@ export const PaymentRequestsSection = () => {
     <Box>
       <Header icon={<RequestQuoteIcon sx={{ fontSize: 28, color: '#fff' }} />} title="درخواست‌های پرداخت"
         subtitle="گردش کامل: درخواست → بررسی → تأیید → برنامه‌ریزی → دستور → پرداخت"
-      />
+        extra={<QuickCreateButton title="درخواست جدید" color={COLOR_DARK} endpoint="/treasury/payment-requests/"
+          onSaved={load}
+          fields={[
+            { name: 'title', label: 'عنوان', required: true },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'requested_date', label: 'تاریخ درخواست', type: 'date', required: true },
+            { name: 'due_date', label: 'تاریخ سررسید', type: 'date' },
+            { name: 'party', label: 'طرف حساب', type: 'remote', endpoint: '/contract-parties/', labelKey: 'name' },
+            { name: 'payment_type', label: 'نوع پرداخت', type: 'remote', endpoint: '/treasury/payment-types/', labelKey: 'name' },
+            { name: 'payment_method', label: 'روش پرداخت', type: 'remote', endpoint: '/treasury/payment-methods/', labelKey: 'name' },
+            { name: 'description', label: 'شرح' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>

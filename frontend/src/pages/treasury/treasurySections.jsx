@@ -11,6 +11,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import { QuickCreateButton } from '../../core/components/ui/QuickCreateDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const COLOR = '#14b8a6';
@@ -50,7 +51,16 @@ export const EntitiesSection = () => {
   return (
     <Box>
       <SectionHeader icon={<AccountBalanceIcon sx={{ fontSize: 28, color: '#fff' }} />} title="بانک‌ها و صندوق‌ها" subtitle="نهادهای پولی خزانه و ماندهٔ آنها"
-      />
+        extra={<QuickCreateButton title="نهاد جدید" color={COLOR_DARK} endpoint="/treasury/treasury-entities/"
+          onSaved={load}
+          fields={[
+            { name: 'code', label: 'کد', required: true },
+            { name: 'name', label: 'نام', required: true },
+            { name: 'entity_type', label: 'نوع', type: 'select', required: true, options: [{ value: 'bank', label: 'بانک' }, { value: 'cash', label: 'صندوق' }] },
+            { name: 'account_number', label: 'شماره حساب' },
+            { name: 'sheba_number', label: 'شماره شبا' },
+            { name: 'initial_balance', label: 'ماندهٔ ابتدایی', type: 'number' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -82,7 +92,16 @@ export const TransactionsSection = () => {
   return (
     <Box>
       <SectionHeader icon={<SwapHorizIcon sx={{ fontSize: 28, color: '#fff' }} />} title="تراکنش‌های خزانه" subtitle="دریافت‌ها و پرداخت‌ها"
-      />
+        extra={<QuickCreateButton title="تراکنش جدید" color={COLOR_DARK} endpoint="/treasury/treasury-transactions/"
+          onSaved={load}
+          fields={[
+            { name: 'entity', label: 'بانک/صندوق', type: 'remote', required: true, endpoint: '/treasury/treasury-entities/', labelKey: 'name' },
+            { name: 'direction', label: 'جهت', type: 'select', required: true, options: [{ value: 'receipt', label: 'دریافت' }, { value: 'payment', label: 'پرداخت' }] },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'date', label: 'تاریخ', type: 'date', required: true },
+            { name: 'party', label: 'طرف حساب' },
+            { name: 'description', label: 'شرح' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>

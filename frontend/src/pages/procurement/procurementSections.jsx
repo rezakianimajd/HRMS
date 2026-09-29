@@ -19,6 +19,7 @@ import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import { QuickCreateButton } from '../../core/components/ui/QuickCreateDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const COLOR = '#f59e0b';
@@ -84,7 +85,17 @@ export const SuppliersSection = () => {
   return (
     <Box>
       <SectionHeader icon={<StorefrontIcon sx={{ fontSize: 28, color: '#fff' }} />} title="تأمین‌کنندگان" subtitle="مدیریت تأمین‌کنندگان و ارزیابی آنها"
-      />
+        extra={<QuickCreateButton title="تأمین‌کننده جدید" color={COLOR_DARK} endpoint="/procurement/suppliers/"
+          onSaved={load}
+          fields={[
+            { name: 'name', label: 'نام / عنوان', required: true },
+            { name: 'code', label: 'کد', required: true },
+            { name: 'economic_code', label: 'کد اقتصادی' },
+            { name: 'national_id', label: 'شناسه ملی' },
+            { name: 'phone', label: 'تلفن' },
+            { name: 'email', label: 'ایمیل' },
+            { name: 'address', label: 'آدرس' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         <TextField size="small" placeholder="جستجو…" value={q} onChange={e => setQ(e.target.value)} sx={{ width: 280, fontFamily: FONT, mb: 2 }}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
@@ -117,7 +128,15 @@ export const ItemsSection = () => {
   return (
     <Box>
       <SectionHeader icon={<Inventory2Icon sx={{ fontSize: 28, color: '#fff' }} />} title="کالاها و خدمات" subtitle="کاتالوگ کالاها و خدمات قابل خرید"
-      />
+        extra={<QuickCreateButton title="کالای جدید" color={COLOR_DARK} endpoint="/procurement/items/"
+          onSaved={load}
+          fields={[
+            { name: 'name', label: 'نام کالا', required: true },
+            { name: 'code', label: 'کد', required: true },
+            { name: 'barcode', label: 'بارکد' },
+            { name: 'min_stock', label: 'حداقل موجودی', type: 'number' },
+            { name: 'max_stock', label: 'حداکثر موجودی', type: 'number' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -247,7 +266,17 @@ export const PurchaseInvoicesSection = () => {
   return (
     <Box>
       <SectionHeader icon={<ReceiptLongIcon sx={{ fontSize: 28, color: '#fff' }} />} title="صورتحساب‌های خرید" subtitle="صورتحساب‌های تأمین‌کننده و مانده پرداخت"
-      />
+        extra={<QuickCreateButton title="صورتحساب جدید" color={COLOR_DARK} endpoint="/procurement/purchase-invoices/"
+          onSaved={load}
+          fields={[
+            { name: 'supplier', label: 'تأمین‌کننده', type: 'remote', required: true, endpoint: '/procurement/suppliers/', labelKey: 'name' },
+            { name: 'number', label: 'شماره صورتحساب' },
+            { name: 'invoice_number', label: 'شماره فاکتور تأمین‌کننده' },
+            { name: 'date', label: 'تاریخ صدور', type: 'date', required: true },
+            { name: 'due_date', label: 'تاریخ سررسید', type: 'date' },
+            { name: 'total', label: 'مبلغ نهایی', type: 'number', required: true },
+            { name: 'description', label: 'شرح' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>
@@ -278,7 +307,18 @@ export const PurchasePaymentsSection = () => {
   useEffect(() => { load(); }, []);
   return (
     <Box>
-      <SectionHeader icon={<PaymentsIcon sx={{ fontSize: 28, color: '#fff' }} />} title="پرداخت‌های خرید" subtitle="پرداخت‌های انجام‌شده به تأمین‌کنندگان" />
+      <SectionHeader icon={<PaymentsIcon sx={{ fontSize: 28, color: '#fff' }} />} title="پرداخت‌های خرید" subtitle="پرداخت‌های انجام‌شده به تأمین‌کنندگان"
+        extra={<QuickCreateButton title="پرداخت جدید" color={COLOR_DARK} endpoint="/procurement/purchase-payments/"
+          onSaved={load}
+          fields={[
+            { name: 'invoice', label: 'صورتحساب', type: 'remote', required: true, endpoint: '/procurement/purchase-invoices/', labelKey: 'number' },
+            { name: 'date', label: 'تاریخ پرداخت', type: 'date', required: true },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'method', label: 'روش', type: 'select', required: true, options: [{ value: 'cash', label: 'نقد' }, { value: 'transfer', label: 'انتقال بانکی' }, { value: 'cheque', label: 'چک' }, { value: 'other', label: 'سایر' }] },
+            { name: 'reference', label: 'شماره مرجع / چک' },
+            { name: 'bank', label: 'بانک' },
+            { name: 'description', label: 'شرح' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer>

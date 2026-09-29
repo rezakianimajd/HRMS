@@ -10,6 +10,7 @@ import CallMadeIcon from '@mui/icons-material/CallMade';
 import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import { QuickCreateButton } from '../../core/components/ui/QuickCreateDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const COLOR = '#8b5cf6';
@@ -66,7 +67,16 @@ export const CheckBooksSection = () => {
   return (
     <Box>
       <Header icon={<MenuBookIcon sx={{ fontSize: 28, color: '#fff' }} />} title="دسته‌چک‌ها" subtitle="دسته‌چک‌های بانکی و وضعیت مصرف برگ"
-      />
+        extra={<QuickCreateButton title="دسته‌چک جدید" color={COLOR_DARK} endpoint="/treasury/check-books/"
+          onSaved={load}
+          fields={[
+            { name: 'code', label: 'کد', required: true },
+            { name: 'bank_name', label: 'نام بانک', required: true },
+            { name: 'account_number', label: 'شماره حساب' },
+            { name: 'series_start', label: 'شروع سری' },
+            { name: 'series_end', label: 'پایان سری' },
+            { name: 'total_leaves', label: 'تعداد برگ', type: 'number' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">

@@ -11,6 +11,7 @@ import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import { QuickCreateButton } from '../../core/components/ui/QuickCreateDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const COLOR = '#14b8a6';
@@ -79,7 +80,16 @@ export const ReceiptsSection = () => {
     <Box>
       <Header icon={<CallReceivedIcon sx={{ fontSize: 28, color: '#fff' }} />} title="دریافت‌ها"
         subtitle="دریافت‌های بانکی/نقدی/چکی و چرخهٔ وصول"
-      />
+        extra={<QuickCreateButton title="دریافت جدید" color={COLOR_DARK} endpoint="/treasury/receipts/"
+          onSaved={load}
+          fields={[
+            { name: 'party', label: 'طرف حساب', type: 'remote', required: true, endpoint: '/contract-parties/', labelKey: 'name' },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'entity', label: 'بانک/صندوق', type: 'remote', endpoint: '/treasury/treasury-entities/', labelKey: 'name' },
+            { name: 'method', label: 'روش', type: 'select', options: [{ value: 'bank', label: 'بانکی' }, { value: 'cash', label: 'نقدی' }, { value: 'cheque', label: 'چک' }] },
+            { name: 'expected_date', label: 'تاریخ مورد انتظار', type: 'date' },
+            { name: 'description', label: 'شرح' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -113,7 +123,14 @@ export const AdvancesSection = () => {
     <Box>
       <Header icon={<RequestQuoteIcon sx={{ fontSize: 28, color: '#fff' }} />} title="علی‌الحساب‌ها"
         subtitle="پیش‌پرداخت‌ها و علی‌الحساب با ماندهٔ خودکار"
-      />
+        extra={<QuickCreateButton title="علی‌الحساب جدید" color={COLOR_DARK} endpoint="/treasury/advance-accounts/"
+          onSaved={load}
+          fields={[
+            { name: 'party', label: 'طرف حساب', type: 'remote', required: true, endpoint: '/contract-parties/', labelKey: 'name' },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'date', label: 'تاریخ پرداخت', type: 'date', required: true },
+            { name: 'reason', label: 'علت' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -146,7 +163,15 @@ export const TransfersSection = () => {
     <Box>
       <Header icon={<SwapHorizIcon sx={{ fontSize: 28, color: '#fff' }} />} title="انتقال‌های وجه"
         subtitle="انتقال بین حساب‌های بانکی و صندوق‌ها"
-      />
+        extra={<QuickCreateButton title="انتقال جدید" color={COLOR_DARK} endpoint="/treasury/treasury-transfers/"
+          onSaved={load}
+          fields={[
+            { name: 'source', label: 'مبدأ', type: 'remote', required: true, endpoint: '/treasury/treasury-entities/', labelKey: 'name' },
+            { name: 'destination', label: 'مقصد', type: 'remote', required: true, endpoint: '/treasury/treasury-entities/', labelKey: 'name' },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'date', label: 'تاریخ', type: 'date', required: true },
+            { name: 'description', label: 'شرح' },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
@@ -178,7 +203,23 @@ export const GuaranteesSection = () => {
     <Box>
       <Header icon={<VerifiedUserIcon sx={{ fontSize: 28, color: '#fff' }} />} title="سپرده‌ها و ضمانت‌نامه‌ها"
         subtitle="سپرده حسن انجام کار، مناقصه، بیمه، مالیاتی و ضمانت‌نامه با هشدار سررسید"
-      />
+        extra={<QuickCreateButton title="سپرده جدید" color={COLOR_DARK} endpoint="/treasury/guarantees/"
+          onSaved={load}
+          fields={[
+            { name: 'kind', label: 'نوع', type: 'select', required: true, options: [
+              { value: 'good_performance', label: 'حسن انجام کار' },
+              { value: 'tender', label: 'شرکت در مناقصه' },
+              { value: 'insurance', label: 'سپرده بیمه' },
+              { value: 'tax', label: 'سپرده مالیاتی' },
+              { value: 'guarantee_received', label: 'ضمانت‌نامه دریافتی' },
+              { value: 'guarantee_issued', label: 'ضمانت‌نامه صادرشده' },
+            ]},
+            { name: 'issuer', label: 'صادرکننده' },
+            { name: 'beneficiary', label: 'ذی‌نفع' },
+            { name: 'amount', label: 'مبلغ', type: 'number', required: true },
+            { name: 'issue_date', label: 'تاریخ صدور', type: 'date', required: true },
+            { name: 'expiry_date', label: 'تاریخ انقضا', type: 'date', required: true },
+          ]} />} />
       <Paper sx={{ ...glass, p: 2 }}>
         {loading ? <CircularProgress sx={{ color: COLOR }} /> : (
           <TableContainer><Table size="small">
