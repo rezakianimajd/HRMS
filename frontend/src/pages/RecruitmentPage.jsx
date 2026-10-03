@@ -9,11 +9,12 @@ import {
 } from '@mui/material';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
-import PersonSearchIcon from '@mui/icons-material/PersonSearch';
-import GroupIcon from '@mui/icons-material/Group';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DescriptionIcon from '@mui/icons-material/Description';
+import BlockIcon from '@mui/icons-material/Block';
+import RestoreIcon from '@mui/icons-material/Restore';
 import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
@@ -64,6 +65,7 @@ const RecruitmentPage = () => {
   const [reqForm, setReqForm] = useState(emptyForm);
   const [openCand, setOpenCand] = useState(false);
   const [candForm, setCandForm] = useState(emptyCand);
+  const [resumeFile, setResumeFile] = useState(null);
   const [openInterview, setOpenInterview] = useState(false);
   const [interviewForm, setInterviewForm] = useState(emptyInterview);
   const [openHire, setOpenHire] = useState(null);
@@ -128,16 +130,35 @@ const RecruitmentPage = () => {
     createReq.mutate(p);
   };
   const createCand = useMutation({
-    mutationFn: (payload) => axiosInstance.post('/candidates/', payload),
+    mutationFn: (fd) => axiosInstance.post('/candidates/', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['candidates'] });
       setOpenCand(false);
       setCandForm(emptyCand);
+      setResumeFile(null);
       setMsg('کاندید ثبت شد.');
       setTimeout(() => setMsg(''), 2500);
     },
     onError: (e) => setErr(e.response?.data?.error || 'خطا در ثبت کاندید'),
   });
+
+  // Normalize candidate payload into FormData (for optional resume upload).
+  const submitCand = () => {
+    const fd = new FormData();
+    fd.append('requisition', candForm.requisition);
+    fd.append('first_name', candForm.first_name);
+    fd.append('last_name', candForm.last_name);
+    if (candForm.national_id) fd.append('national_id', candForm.national_id);
+    if (candForm.mobile) fd.append('mobile', candForm.mobile);
+    if (candForm.email) fd.append('email', candForm.email);
+    if (candForm.source) fd.append('source', candForm.source);
+    if (candForm.expected_salary) fd.append('expected_salary', candForm.expected_salary);
+    if (candForm.notes) fd.append('notes', candForm.notes);
+    fd.append('stage', candForm.stage || 'applied');
+    fd.append('rating', Number(candForm.rating) || 0);
+    if (resumeFile) fd.append('resume', resumeFile);
+    createCand.mutate(fd);
+  };
   const createInterview = useMutation({
     mutationFn: (payload) => axiosInstance.post('/interviews/', payload),
     onSuccess: () => {
@@ -169,7 +190,7 @@ const RecruitmentPage = () => {
   const isLoading = reqsLoading || candLoading || intLoading;
   if (isLoading) return <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>;
 
-  const stageCounts = STAGE_FLOW.map(s => ({ stage: s, count: candList.filter(c => c.stage === s).length }));
+  const stageCounts = [...STAGE_FLOW, 'rejected'].map(s => ({ stage: s, count: candList.filter(c => c.stage === s).length }));
 
   return (
     <Box>
@@ -193,9 +214,9 @@ const RecruitmentPage = () => {
       )}
 
       <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Tab icon={<WorkOutlineIcon />} iconPosition="start" label={`درخواست‌های استخدام (${toPersianDigits(requisitions.length)})`} />
-        <Tab icon={<GroupIcon />} iconPosition="start" label={`کانبان کاندیدها (${toPersianDigits(candList.length)})`} />
-        <Tab icon={<PersonSearchIcon />} iconPosition="start" label={`مصاحبه‌ها (${toPersianDigits(intList.length)})`} />
+        <Tab label={`درخواست‌های استخدام (${toPersianDigits(requisitions.length)})`} />
+        <Tab label={`وضعیت کاندیدها (${toPersianDigits(candList.length)})`} />
+        <Tab label={`مصاحبه‌ها (${toPersianDigits(intList.length)})`} />
       </Tabs>
 
       {/* ---------- TAB 0: Requisitions ---------- */}
@@ -263,32 +284,56 @@ const RecruitmentPage = () => {
           </Box>
 
           <Grid container spacing={1.5} sx={{ alignItems: 'flex-start' }}>
-            {STAGE_FLOW.map(stage => {
+            {[...STAGE_FLOW, 'rejected'].map(stage => {
               const inStage = candList.filter(c => c.stage === stage);
+              const isRejected = stage === 'rejected';
+              const idx = STAGE_FLOW.indexOf(stage);
+              const prevStage = idx > 0 ? STAGE_FLOW[idx - 1] : null;
+              const nextStage = idx >= 0 && idx < STAGE_FLOW.length - 1 ? STAGE_FLOW[idx + 1] : null;
               return (
                 <Grid item xs={12} sm={6} md={4} lg={2.4} key={stage}>
-                  <Paper sx={{ p: 1.25, borderRadius: '10px', minHeight: 200, background: 'rgba(255,255,255,0.55)' }}>
-                    <Typography variant="caption" fontWeight={800} sx={{ color: STAGE_COLORS[stage], mb: 1, display: 'block' }}>
-                      {STAGE_LABELS[stage]}
-                    </Typography>
+                  <Paper sx={{ p: 1.25, borderRadius: '12px', minHeight: 220, background: isRejected ? 'rgba(239,68,68,0.06)' : 'rgba(255,255,255,0.62)', borderTop: `3px solid ${STAGE_COLORS[stage]}`, border: isRejected ? '1px solid rgba(239,68,68,0.35)' : undefined }}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                      <Typography variant="caption" fontWeight={800} sx={{ color: STAGE_COLORS[stage] }}>
+                        {STAGE_LABELS[stage]}
+                      </Typography>
+                      <Chip size="small" label={toPersianDigits(inStage.length)}
+                        sx={{ bgcolor: `${STAGE_COLORS[stage]}18`, color: STAGE_COLORS[stage], fontWeight: 800, fontSize: 11, height: 20 }} />
+                    </Box>
                     <Stack spacing={1}>
                       {inStage.map(c => (
-                        <Paper key={c.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', borderColor: `${STAGE_COLORS[stage]}44` }}>
-                          <Typography variant="body2" fontWeight={700} noWrap>{c.full_name}</Typography>
-                          {c.mobile && <Typography variant="caption" color="textSecondary" display="block">{toPersianDigits(c.mobile)}</Typography>}
-                          {c.rating > 0 && <Typography variant="caption" color="textSecondary">امتیاز: {formatPersianNumber(c.rating)}</Typography>}
-                          <Box sx={{ mt: 0.5, display: 'flex', gap: 0.5 }}>
-                            {stage !== 'hired' && stage !== 'rejected' && (
-                              <Tooltip title="مرحله بعد">
-                                <IconButton size="small" color="primary" onClick={() => {
-                                  const idx = STAGE_FLOW.indexOf(stage);
-                                  if (idx < STAGE_FLOW.length - 1) moveStage.mutate({ id: c.id, stage: STAGE_FLOW[idx + 1] });
-                                }}>
+                        <Paper key={c.id} variant="outlined" sx={{ p: 1.25, borderRadius: '12px', borderColor: `${STAGE_COLORS[stage]}44`, background: isRejected ? 'rgba(239,68,68,0.04)' : '#fff', boxShadow: '0 2px 8px rgba(100,116,139,0.06)' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Avatar sx={{ width: 32, height: 32, bgcolor: STAGE_COLORS[stage], fontSize: 13, fontWeight: 700 }}>
+                              {c.full_name?.charAt(0) || '؟'}
+                            </Avatar>
+                            <Box sx={{ flex: 1, minWidth: 0 }}>
+                              <Typography variant="body2" fontWeight={700} noWrap sx={isRejected ? { textDecoration: 'line-through', color: '#b91c1c' } : undefined}>{c.full_name}</Typography>
+                              {c.source && <Typography variant="caption" color="textSecondary" display="block" noWrap>منبع: {c.source}</Typography>}
+                            </Box>
+                          </Box>
+                          <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 0.25 }}>
+                            {c.mobile && <Typography variant="caption" color="textSecondary">📞 {toPersianDigits(c.mobile)}</Typography>}
+                            {c.email && <Typography variant="caption" color="textSecondary" noWrap>✉️ {c.email}</Typography>}
+                            {c.expected_salary && <Typography variant="caption" color="textSecondary">💰 {formatPersianNumber(c.expected_salary)} ریال</Typography>}
+                            {c.rating > 0 && <Typography variant="caption" fontWeight={700} sx={{ color: '#f59e0b' }}>⭐ امتیاز: {formatPersianNumber(c.rating)}</Typography>}
+                          </Box>
+                          <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5, flexWrap: 'wrap' }}>
+                            {!isRejected && prevStage && (
+                              <Tooltip title={`برگشت به ${STAGE_LABELS[prevStage]}`}>
+                                <IconButton size="small" onClick={() => moveStage.mutate({ id: c.id, stage: prevStage })}>
+                                  <ArrowBackIcon fontSize="small" sx={{ color: 'text.disabled' }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {!isRejected && nextStage && (
+                              <Tooltip title={`انتقال به ${STAGE_LABELS[nextStage]}`}>
+                                <IconButton size="small" color="primary" onClick={() => moveStage.mutate({ id: c.id, stage: nextStage })}>
                                   <ArrowForwardIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
                             )}
-                            {stage !== 'rejected' && stage !== 'hired' && (
+                            {stage !== 'hired' && stage !== 'rejected' && (
                               <Tooltip title="استخدام">
                                 <IconButton size="small" color="success" onClick={() => { setOpenHire(c); setHireForm({ employee_id: '', hire_date: '', contract_type: '' }); }}>
                                   <CheckCircleIcon fontSize="small" />
@@ -298,7 +343,22 @@ const RecruitmentPage = () => {
                             {stage !== 'rejected' && stage !== 'hired' && (
                               <Tooltip title="رد">
                                 <IconButton size="small" color="error" onClick={() => moveStage.mutate({ id: c.id, stage: 'rejected' })}>
-                                  <DescriptionIcon fontSize="small" />
+                                  <BlockIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            {isRejected && (
+                              <Tooltip title="برگرداندن به مرحله ارزیابی">
+                                <IconButton size="small" onClick={() => moveStage.mutate({ id: c.id, stage: 'assessment' })}>
+                                  <RestoreIcon fontSize="small" sx={{ color: '#ef4444' }} />
+                                </IconButton>
+                              </Tooltip>
+                            )}
+                            <Box sx={{ flex: 1 }} />
+                            {c.resume_url && (
+                              <Tooltip title="مشاهده رزومه">
+                                <IconButton size="small" component="a" href={c.resume_url} target="_blank" rel="noreferrer">
+                                  <DescriptionIcon fontSize="small" sx={{ color: '#0ea5e9' }} />
                                 </IconButton>
                               </Tooltip>
                             )}
@@ -453,45 +513,98 @@ const RecruitmentPage = () => {
       </Dialog>
 
       {/* New candidate dialog */}
-      <Dialog open={openCand} onClose={() => setOpenCand(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#0369a1' }}>کاندید جدید</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl fullWidth size="small" sx={fieldSx}>
-            <InputLabel>درخواست استخدام *</InputLabel>
-            <Select value={candForm.requisition} label="درخواست استخدام *" onChange={e => setCandForm(p => ({ ...p, requisition: e.target.value }))}>
-              {requisitions.map(r => <MenuItem key={r.id} value={r.id}>{r.title}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="نام *" value={candForm.first_name} sx={fieldSx}
-              onChange={e => setCandForm(p => ({ ...p, first_name: e.target.value }))} />
-            <TextField fullWidth size="small" label="نام خانوادگی *" value={candForm.last_name} sx={fieldSx}
-              onChange={e => setCandForm(p => ({ ...p, last_name: e.target.value }))} />
+      <Dialog open={openCand} onClose={() => setOpenCand(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ color: '#0369a1', fontWeight: 800, borderBottom: '1px solid rgba(14,165,233,0.15)' }}>
+          کاندید جدید
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Stack spacing={2}>
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">مشخصات فردی</Typography>
+            <FormControl fullWidth size="small" sx={fieldSx}>
+              <InputLabel>درخواست استخدام *</InputLabel>
+              <Select value={candForm.requisition} label="درخواست استخدام *" onChange={e => setCandForm(p => ({ ...p, requisition: e.target.value }))}>
+                {requisitions.map(r => <MenuItem key={r.id} value={r.id}>{r.title}</MenuItem>)}
+              </Select>
+            </FormControl>
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="نام *" value={candForm.first_name} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, first_name: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="نام خانوادگی *" value={candForm.last_name} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, last_name: e.target.value }))} />
+              </Grid>
+            </Grid>
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="کد ملی" value={candForm.national_id} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, national_id: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="موبایل" value={candForm.mobile} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, mobile: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="ایمیل" value={candForm.email} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, email: e.target.value }))} />
+              </Grid>
+            </Grid>
+
+            <Divider />
+
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">اطلاعات شغلی</Typography>
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="منبع جذب" value={candForm.source} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, source: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="حقوق پیشنهادی (ریال)" type="number" value={candForm.expected_salary} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, expected_salary: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth size="small" sx={fieldSx}>
+                  <InputLabel>مرحله</InputLabel>
+                  <Select value={candForm.stage} label="مرحله" onChange={e => setCandForm(p => ({ ...p, stage: e.target.value }))}>
+                    {Object.keys(STAGE_LABELS).map(k => <MenuItem key={k} value={k}>{STAGE_LABELS[k]}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="امتیاز (۰-۱۰۰)" type="number" value={candForm.rating} sx={fieldSx}
+                  onChange={e => setCandForm(p => ({ ...p, rating: e.target.value }))} />
+              </Grid>
+            </Grid>
+
+            <Divider />
+
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">رزومه و یادداشت</Typography>
+            <Box>
+              <Button variant="outlined" component="label" startIcon={<DescriptionIcon />}
+                sx={{ borderRadius: '10px', textTransform: 'none', mb: resumeFile ? 1 : 0 }}>
+                {resumeFile ? 'تغییر فایل رزومه' : 'الصاق رزومه'}
+                <input type="file" hidden accept=".pdf,.doc,.docx,.jpg,.png,.jpeg"
+                  onChange={e => setResumeFile(e.target.files[0] || null)} />
+              </Button>
+              {resumeFile && (
+                <Chip size="small" label={resumeFile.name} onDelete={() => setResumeFile(null)}
+                  sx={{ fontWeight: 600, mt: 0.5 }} />
+              )}
+            </Box>
+            <TextField fullWidth size="small" label="یادداشت" multiline rows={3} value={candForm.notes} sx={fieldSx}
+              onChange={e => setCandForm(p => ({ ...p, notes: e.target.value }))} />
           </Stack>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="کد ملی" value={candForm.national_id} sx={fieldSx}
-              onChange={e => setCandForm(p => ({ ...p, national_id: e.target.value }))} />
-            <TextField fullWidth size="small" label="موبایل" value={candForm.mobile} sx={fieldSx}
-              onChange={e => setCandForm(p => ({ ...p, mobile: e.target.value }))} />
-          </Stack>
-          <TextField fullWidth size="small" label="ایمیل" value={candForm.email} sx={fieldSx}
-            onChange={e => setCandForm(p => ({ ...p, email: e.target.value }))} />
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="منبع جذب" value={candForm.source} sx={fieldSx}
-              onChange={e => setCandForm(p => ({ ...p, source: e.target.value }))} />
-            <TextField fullWidth size="small" label="حقوق پیشنهادی (ریال)" type="number" value={candForm.expected_salary} sx={fieldSx}
-              onChange={e => setCandForm(p => ({ ...p, expected_salary: e.target.value }))} />
-          </Stack>
-          <TextField fullWidth size="small" label="امتیاز (۰-۱۰۰)" type="number" value={candForm.rating} sx={fieldSx}
-            onChange={e => setCandForm(p => ({ ...p, rating: e.target.value }))} />
-          <TextField fullWidth size="small" label="یادداشت" multiline rows={2} value={candForm.notes} sx={fieldSx}
-            onChange={e => setCandForm(p => ({ ...p, notes: e.target.value }))} />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setOpenCand(false)}>انصراف</Button>
           <Button variant="contained" disabled={!candForm.requisition || !candForm.first_name || !candForm.last_name}
-            onClick={() => createCand.mutate(candForm)}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)' }}>ثبت</Button>
+            onClick={submitCand}
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', px: 3 }}>
+            ثبت کاندید
+          </Button>
         </DialogActions>
       </Dialog>
       {/* New interview dialog */}
