@@ -320,17 +320,31 @@ const RecruitmentPage = () => {
     <Box>
       {/* Header */}
       <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
+        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
         background: 'linear-gradient(120deg, rgba(14,165,233,0.10), rgba(139,92,246,0.05), rgba(255,255,255,0.3))',
         border: '1px solid rgba(14,165,233,0.16)', borderRadius: '10px',
       }}>
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', boxShadow: '0 8px 24px rgba(14,165,233,0.35)' }}>
           <WorkOutlineIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
-        <Box sx={{ flex: 1 }}>
+        <Box sx={{ flex: 1, minWidth: 220 }}>
           <Typography variant="h6" fontWeight={800} color="#0369a1">جذب و استخدام</Typography>
           <Typography variant="body2" color="textSecondary">درخواست استخدام ← کاندید ← مصاحبه ← استخدام (پایپلاین کامل)</Typography>
         </Box>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditReqId(null); setReqForm(emptyForm); setOpenReq(true); }}
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+            درخواست استخدام جدید
+          </Button>
+          <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setOpenCand(true)}
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+            کاندید جدید
+          </Button>
+          <Button variant="contained" startIcon={<CalendarMonthIcon />} onClick={() => { setEditInterviewId(null); setInterviewForm(emptyInterview); setOpenInterview(true); }}
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
+            مصاحبه جدید
+          </Button>
+        </Stack>
       </Paper>
 
       {(msg || err) && (
@@ -346,12 +360,6 @@ const RecruitmentPage = () => {
       {/* ---------- TAB 0: Requisitions ---------- */}
       {tab === 0 && (
         <>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditReqId(null); setReqForm(emptyForm); setOpenReq(true); }}
-              sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px' }}>
-              درخواست استخدام جدید
-            </Button>
-          </Box>
           <Paper variant="outlined" sx={{ borderRadius: '10px', overflow: 'hidden' }}>
             {requisitions.length === 0 ? (
               <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">درخواستی ثبت نشده است.</Typography></Box>
@@ -414,17 +422,13 @@ const RecruitmentPage = () => {
       {/* ---------- TAB 1: Candidates Kanban ---------- */}
       {tab === 1 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1 }}>
+          <Box sx={{ mb: 1.5 }}>
             <Paper sx={{ p: 1, borderRadius: '10px', display: 'flex', gap: 1, flexWrap: 'wrap', background: 'rgba(255,255,255,0.6)' }}>
               {stageCounts.map(s => (
                 <Chip key={s.stage} label={`${STAGE_LABELS[s.stage]}: ${formatPersianNumber(s.count)}`}
                   sx={{ bgcolor: `${STAGE_COLORS[s.stage]}18`, color: STAGE_COLORS[s.stage], fontWeight: 700 }} />
               ))}
             </Paper>
-            <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setOpenCand(true)}
-              sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
-              کاندید جدید
-            </Button>
           </Box>
 
           <Grid container spacing={1.5} sx={{ alignItems: 'flex-start' }}>
@@ -524,11 +528,7 @@ const RecruitmentPage = () => {
       {/* ---------- TAB 2: Interviews ---------- */}
       {tab === 2 && (
         <Box>
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5, gap: 1, flexWrap: 'wrap' }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditInterviewId(null); setInterviewForm(emptyInterview); setOpenInterview(true); }}
-              sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
-              مصاحبه جدید
-            </Button>
+          <Box sx={{ mb: 1.5 }}>
             <Paper sx={{ p: 1, borderRadius: '10px', display: 'flex', gap: 1, flexWrap: 'wrap', background: 'rgba(255,255,255,0.6)' }}>
               <Chip size="small" icon={<CalendarMonthIcon fontSize="small" />} label={`کل: ${formatPersianNumber(intList.length)}`} sx={{ fontWeight: 700 }} />
               <Chip size="small" label={`قبول: ${formatPersianNumber(intList.filter(i => i.outcome === 'pass').length)}`} sx={{ bgcolor: '#10b98118', color: '#10b981', fontWeight: 700 }} />
