@@ -1,6 +1,7 @@
 """
 Views for the core app - Authentication, Company management, Language switching.
 """
+import functools
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
@@ -20,6 +21,28 @@ from core.engines.authentication_engine import AuthenticationEngine
 from core.engines.company_engine import CompanyEngine
 from core.engines.language_engine import LanguageEngine
 
+# User / Company / Role models live on the PUBLIC (shared) schema. Wrap user-
+# management views so they always read/write the shared tables even when a
+# tenant schema is active (otherwise users get split across schemas and login
+# breaks).
+try:
+    from django_tenants.utils import schema_context
+except ImportError:  # pragma: no cover - non-tenant fallback
+    import contextlib
+
+    @contextlib.contextmanager
+    def schema_context(schema_name):
+        yield
+
+
+def _public_schema(view):
+    """Decorate a view to run on the shared (public) schema."""
+    @functools.wraps(view)
+    def _wrapped(request, *args, **kwargs):
+        with schema_context('public'):
+            return view(request, *args, **kwargs)
+    return _wrapped
+
 
 # =============================================================================
 # Authentication Views
@@ -27,6 +50,7 @@ from core.engines.language_engine import LanguageEngine
 
 @api_view(['POST'])
 @permission_classes([AllowAny])
+@_public_schema
 def login_view(request):
     """
     Authenticate user and return JWT tokens.
@@ -71,6 +95,7 @@ def login_view(request):
 
 
 @api_view(['POST'])
+@_public_schema
 def logout_view(request):
     """Logout user (client-side should discard tokens)."""
     if request.user and request.user.is_authenticated:
@@ -90,6 +115,7 @@ def logout_view(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def me_view(request):
     """Get current authenticated user's profile."""
     user = request.user
@@ -98,6 +124,7 @@ def me_view(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@_public_schema
 def login_users_view(request):
     """Public list of usernames (with display names) for the login page."""
     users = User.objects.filter(is_active=True).order_by('first_name', 'last_name', 'username')
@@ -116,6 +143,7 @@ def login_users_view(request):
 
 @api_view(['GET'])
 @permission_classes([AllowAny])
+@_public_schema
 def login_companies_view(request):
     """Public list of active companies for the login page."""
     companies = Company.objects.filter(is_active=True).order_by('name')
@@ -131,6 +159,7 @@ def login_companies_view(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def company_list_view(request):
     """Get list of companies accessible by the current user."""
     companies = AuthenticationEngine.get_user_companies(request.user)
@@ -140,6 +169,7 @@ def company_list_view(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def company_detail_view(request, company_id):
     """Get details of a specific company."""
     company = CompanyEngine.get_company_by_id(company_id)
@@ -162,6 +192,7 @@ def company_detail_view(request, company_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def current_company_view(request):
     """Get the current active company from the request context."""
     company = CompanyEngine.get_current_company(request)
@@ -182,6 +213,7 @@ def current_company_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def switch_company_view(request):
     """Switch the active company for the current user."""
     serializer = CompanySwitchSerializer(data=request.data)
@@ -270,6 +302,7 @@ def switch_language_view(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def audit_log_list_view(request):
     """Get audit logs for the current company."""
     company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
@@ -284,6 +317,7 @@ def audit_log_list_view(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def users_view(request):
     """List platform users (with role labels). Access: only for sysadmin/hr_manager."""
     from core.models.user import UserProfile
@@ -324,6 +358,7 @@ def users_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def user_set_role_view(request, user_id):
     """Set role for a user (sysadmin/hr_manager only)."""
     from core.models.user import UserProfile
@@ -366,6 +401,7 @@ def _can_admin(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def user_create_view(request):
     """Create a new Django user (sysadmin/hr_manager only)."""
     if not _can_admin(request):
@@ -418,6 +454,7 @@ def user_create_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def user_delete_view(request, user_id):
     """Soft-delete a user (is_active=False), sysadmin/hr_manager only."""
     if not _can_admin(request):
@@ -435,6 +472,7 @@ def user_delete_view(request, user_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def user_roles_view(request):
     """Return role definitions + effective permission map (defaults merged with overrides)."""
     if not _can_admin(request):
@@ -471,6 +509,7 @@ def user_roles_view(request):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@_public_schema
 def user_role_save_view(request, role):
     """Persist a role's custom permission map (sysadmin/hr_manager only)."""
     if not _can_admin(request):
