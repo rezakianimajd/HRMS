@@ -133,14 +133,14 @@ class PurchaseRequest(BaseModel):
         CANCELLED = 'cancelled', _('لغو شده')
 
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره درخواست'))
-    requester = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('درخواست‌دهنده'))
+    requester = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('درخواست‌دهنده'))
     department = models.CharField(max_length=200, blank=True, verbose_name=_('واحد درخواست'))
     date = models.DateField(verbose_name=_('تاریخ درخواست'))
     required_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ نیاز'))
     description = models.TextField(blank=True, verbose_name=_('شرح'))
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
-    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ارسال‌کننده'))
+    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ارسال‌کننده'))
     submitted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ارسال'))
 
     class Meta:

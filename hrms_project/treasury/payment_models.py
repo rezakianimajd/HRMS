@@ -115,7 +115,7 @@ class PaymentRequest(BaseModel):
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره درخواست'))
     title = models.CharField(max_length=250, verbose_name=_('عنوان درخواست'))
     description = models.TextField(blank=True, verbose_name=_('شرح'))
-    requester = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('درخواست‌کننده'))
+    requester = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('درخواست‌کننده'))
     department = models.CharField(max_length=200, blank=True, verbose_name=_('واحد درخواست'))
     party = models.ForeignKey('contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True, related_name='treasury_payment_requests', verbose_name=_('طرف حساب'))
     project = models.ForeignKey('projects.Project', on_delete=models.SET_NULL, null=True, blank=True, related_name='treasury_payment_requests', verbose_name=_('پروژه'))

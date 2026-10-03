@@ -426,10 +426,10 @@ class AccountingDocument(BaseModel):
     is_locked = models.BooleanField(default=False, verbose_name=_('قفل ویرایش'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
     # Who / when
-    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ایجادکننده'))
-    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ارسال‌کننده'))
-    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
-    posted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ثبت‌کننده'))
+    created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ایجادکننده'))
+    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ارسال‌کننده'))
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('تأییدکننده'))
+    posted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ثبت‌کننده'))
     submitted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ارسال'))
     posted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ثبت'))
     reversed_from = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='reversals', verbose_name=_('سند برگشتی از'))
@@ -683,7 +683,7 @@ class ApprovalStep(BaseModel):
         AccountingDocument, on_delete=models.CASCADE, related_name='approval_steps',
         verbose_name=_('سند'),
     )
-    approver = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
+    approver = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('تأییدکننده'))
     step_no = models.PositiveIntegerField(default=1, verbose_name=_('مرحله'))
     decision = models.CharField(max_length=10, choices=Decision.choices, default=Decision.PENDING, verbose_name=_('تصمیم'))
     comment = models.TextField(blank=True, verbose_name=_('نظر'))

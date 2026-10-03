@@ -74,7 +74,7 @@ class PettyCashFund(BaseModel):
     budget_monthly = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('بودجه ماهانه (ریال)'))
     is_reconciled = models.BooleanField(default=False, verbose_name=_('مغایرت‌گیری‌شده'))
     reconciled_at = models.DateTimeField(null=True, blank=True, verbose_name=_('تاریخ مغایرت‌گیری'))
-    reconciled_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('مغایرت‌گیرنده'))
+    reconciled_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('مغایرت‌گیرنده'))
     archived_at = models.DateTimeField(null=True, blank=True, verbose_name=_('تاریخ بایگانی'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 
@@ -166,7 +166,7 @@ class PettyCashApprovalStep(BaseModel):
         REJECTED = 'rejected', _('رد')
 
     statement = models.ForeignKey('PettyCashExpenseStatement', on_delete=models.CASCADE, related_name='approval_steps', verbose_name=_('صورت هزینه'))
-    approver = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
+    approver = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('تأییدکننده'))
     step_no = models.PositiveIntegerField(default=1, verbose_name=_('مرحله'))
     decision = models.CharField(max_length=10, choices=Decision.choices, default=Decision.PENDING, verbose_name=_('تصمیم'))
     comment = models.TextField(blank=True, verbose_name=_('نظر'))
@@ -207,9 +207,9 @@ class PettyCashExpenseStatement(BaseModel):
     description = models.TextField(blank=True, verbose_name=_('شرح صورت'))
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
-    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('ارسال‌کننده'))
+    submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ارسال‌کننده'))
     submitted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ارسال'))
-    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تأییدکننده'))
+    approved_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('تأییدکننده'))
     approved_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان تأیید'))
     source_transaction = models.OneToOneField(
         'accounting.SourceTransaction', on_delete=models.SET_NULL, null=True, blank=True,
