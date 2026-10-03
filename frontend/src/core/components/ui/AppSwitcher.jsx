@@ -36,7 +36,7 @@ const AppSwitcher = () => {
     loadApplications();
   }, []);
 
-  const activeApps = applications.filter((a) => !a.is_coming_soon);
+  const activeApps = applications.filter((a) => !a.is_coming_soon && a.accessible);
   const comingSoonApps = applications.filter((a) => a.is_coming_soon);
 
   const pick = async (app) => {

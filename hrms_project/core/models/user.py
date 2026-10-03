@@ -306,11 +306,12 @@ ROLE_PERMISSIONS = {
 
 # Module (Application) access granted by default per role.
 # A role maps to a set of application slugs. Super admin implicitly gets ALL
-# modules (handled separately in the access helpers).
+# modules (handled separately in the access helpers). Other roles have no
+# implicit module grants unless an admin explicitly assigns them in the UI.
 ROLE_APPLICATION_DEFAULTS = {
     'super_admin': '*',
-    'hr_manager': ['hrms', 'contracts', 'settings'],
-    'hr_specialist': ['hrms', 'contracts'],
-    'department_head': ['hrms'],
-    'employee': ['hrms'],
+    'hr_manager': [],
+    'hr_specialist': [],
+    'department_head': [],
+    'employee': [],
 }

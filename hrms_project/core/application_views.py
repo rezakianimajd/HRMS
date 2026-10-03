@@ -102,12 +102,9 @@ def switch_application_view(request):
     if not app_id:
         return Response({'error': 'application_id الزامی است.'}, status=400)
 
-    # Superusers can switch to any active app; otherwise only allowed apps.
-    qs = Application.objects.filter(id=app_id, is_active=True)
-    if not _is_admin(request.user, profile):
-        qs = qs.filter(users=profile)
-
-    app = qs.first()
+    # Only allowed apps (role + direct grants); admins can switch to any.
+    allowed_ids = _allowed_application_ids(request.user, profile)
+    app = Application.objects.filter(id=app_id, is_active=True, id__in=allowed_ids).first()
     if not app:
         return Response({'error': 'دسترسی به این سامانه مجاز نیست.'}, status=403)
 
