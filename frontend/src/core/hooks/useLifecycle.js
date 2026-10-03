@@ -25,6 +25,22 @@ export const useReturnAsset = () => {
   });
 };
 
+export const useUpdateAsset = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => axiosInstance.patch(endpoints.assets.detail(id), data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+};
+
+export const useDeleteAsset = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => axiosInstance.delete(endpoints.assets.detail(id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['assets'] }),
+  });
+};
+
 export const useChecklists = (params) =>
   useQuery({ queryKey: ['lifecycle-checklists', params], queryFn: () => fetchChecklists(params) });
 
