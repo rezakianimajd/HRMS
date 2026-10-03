@@ -197,6 +197,12 @@ class RolePermission(models.Model):
         default=dict,
         verbose_name=_('دسترسی‌ها'),
     )
+    applications = models.JSONField(
+        default=list,
+        blank=True,
+        verbose_name=_('سامانه‌های مجاز'),
+        help_text=_('لیست شناسه (slug) سامانه‌هایی که این نقش به آن‌ها دسترسی دارد. خالی یعنی استفاده از پیش‌فرض نقش.'),
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name=_('تاریخ ایجاد'))
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('تاریخ به‌روزرسانی'))
 
@@ -215,6 +221,23 @@ class RolePermission(models.Model):
             return {**defaults, **override.permissions}
         except cls.DoesNotExist:
             return defaults
+
+    @classmethod
+    def get_application_slugs(cls, role):
+        """Return the list of allowed application slugs for a role.
+
+        Uses the persisted override when present (even if empty list = deny all
+        modules), otherwise falls back to ROLE_APPLICATION_DEFAULTS.
+        """
+        try:
+            override = cls.objects.get(role=role)
+            return list(override.applications or [])
+        except cls.DoesNotExist:
+            pass
+        default = ROLE_APPLICATION_DEFAULTS.get(role, [])
+        if default == '*':
+            return '*'
+        return list(default)
 
 
 # Define RBAC permissions per role
@@ -279,4 +302,15 @@ ROLE_PERMISSIONS = {
         'can_approve_leaves': False,
         'can_view_audit_logs': False,
     },
+}
+
+# Module (Application) access granted by default per role.
+# A role maps to a set of application slugs. Super admin implicitly gets ALL
+# modules (handled separately in the access helpers).
+ROLE_APPLICATION_DEFAULTS = {
+    'super_admin': '*',
+    'hr_manager': ['hrms', 'contracts', 'settings'],
+    'hr_specialist': ['hrms', 'contracts'],
+    'department_head': ['hrms'],
+    'employee': ['hrms'],
 }

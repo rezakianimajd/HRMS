@@ -351,6 +351,7 @@ def users_view(request):
             'is_superuser': u.is_superuser,
             'role': p.role if p else '',
             'role_label': p.get_role_display() if p else '',
+            'applications': list(p.applications.values_list('id', flat=True)) if p else [],
             'companies': list(p.companies.values_list('id', flat=True)) if (p and company) else [],
         })
     return Response(data)
@@ -383,6 +384,38 @@ def user_set_role_view(request, user_id):
     p.save(update_fields=['role', 'updated_at'])
 
     return Response({'message': 'نقش کاربر به‌روزرسانی شد.', 'role': role, 'role_label': p.get_role_display()})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@_public_schema
+def user_set_applications_view(request, user_id):
+    """Set the list of modules (applications) a user may access."""
+    if not _can_admin(request):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+    from django.contrib.auth.models import User
+    from core.models.user import UserProfile
+    from core.models import Application
+
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        return Response({'error': 'کاربر یافت نشد'}, status=404)
+
+    ids = request.data.get('application_ids') or []
+    ids = [int(i) for i in ids if str(i).isdigit()]
+
+    p, _ = UserProfile.objects.get_or_create(user=user)
+    p.applications.set(Application.objects.filter(id__in=ids, is_active=True))
+
+    # If the current application is no longer allowed, clear it.
+    if p.current_application_id and p.current_application_id not in ids:
+        p.current_application = None
+        p.save(update_fields=['current_application', 'updated_at'])
+
+    return Response({
+        'message': 'دسترسی سامانه‌ها به‌روزرسانی شد.',
+        'applications': list(p.applications.values_list('id', flat=True)),
+    })
 
 
 # ---------------------------------------------------------------------------
@@ -441,6 +474,13 @@ def user_create_view(request):
         p.current_company = company
     p.save()
 
+    # Assign module access (if provided by admin)
+    app_ids = data.get('application_ids') or []
+    app_ids = [int(i) for i in app_ids if str(i).isdigit()]
+    if app_ids:
+        from core.models import Application
+        p.applications.set(Application.objects.filter(id__in=app_ids, is_active=True))
+
     return Response({
         'message': 'کاربر ساخته شد.',
         'user': {
@@ -448,6 +488,7 @@ def user_create_view(request):
             'first_name': u.first_name, 'last_name': u.last_name,
             'role': p.role, 'role_label': role_map.get(p.role, ''),
             'is_superuser': u.is_superuser,
+            'applications': list(p.applications.values_list('id', flat=True)),
         },
     }, status=201)
 
@@ -503,6 +544,7 @@ def user_roles_view(request):
             'role': role,
             'label': label,
             'permissions': {k: bool(eff.get(k)) for k in keys},
+            'applications': RolePermission.get_application_slugs(role),
         })
     return Response(config)
 
@@ -523,5 +565,20 @@ def user_role_save_view(request, role):
     raw = request.data.get('permissions') or {}
     # keep only bool values
     clean = {k: bool(v) for k, v in raw.items() if isinstance(v, bool)}
-    RolePermission.objects.update_or_create(role=role, defaults={'permissions': clean})
-    return Response({'message': f'مجوزهای نقش {role_map[role]} ذخیره شد.', 'role': role, 'permissions': clean})
+
+    raw_apps = request.data.get('applications')
+    clean_apps = None
+    if raw_apps is not None:
+        # '*' means all modules (super admin); otherwise a list of slugs.
+        clean_apps = raw_apps if raw_apps == '*' else [str(a) for a in raw_apps if isinstance(a, str)]
+
+    defaults = {'permissions': clean}
+    if clean_apps is not None:
+        defaults['applications'] = clean_apps
+    RolePermission.objects.update_or_create(role=role, defaults=defaults)
+    return Response({
+        'message': f'مجوزهای نقش {role_map[role]} ذخیره شد.',
+        'role': role,
+        'permissions': clean,
+        'applications': clean_apps,
+    })
