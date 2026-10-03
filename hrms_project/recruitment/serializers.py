@@ -5,14 +5,19 @@ from recruitment.models import JobRequisition, Candidate, Interview
 
 class InterviewSerializer(serializers.ModelSerializer):
     outcome_display = serializers.CharField(source='get_outcome_display', read_only=True)
+    candidate_full_name = serializers.SerializerMethodField()
 
     class Meta:
         model = Interview
         fields = [
-            'id', 'candidate', 'interviewer', 'interview_date',
+            'id', 'candidate', 'candidate_full_name', 'interviewer', 'interview_date',
             'outcome', 'outcome_display', 'score', 'comments', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_candidate_full_name(self, obj):
+        c = obj.candidate
+        return f'{c.first_name} {c.last_name}' if c else ''
 
 
 class CandidateSerializer(serializers.ModelSerializer):
