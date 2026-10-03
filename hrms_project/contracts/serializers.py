@@ -126,12 +126,13 @@ class PaymentSerializer(serializers.ModelSerializer):
 
 class ContractPartySerializer(serializers.ModelSerializer):
     party_type_display = serializers.CharField(source='get_party_type_display', read_only=True)
+    person_type_display = serializers.CharField(source='get_person_type_display', read_only=True)
     contracts_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = ContractParty
         fields = [
-            'id', 'name', 'party_type', 'party_type_display', 'national_id',
+            'id', 'name', 'person_type', 'person_type_display', 'party_type', 'party_type_display', 'national_id',
             'economic_code', 'registration_number', 'phone', 'mobile', 'email',
             'address', 'contact_person', 'bank_name', 'account_number',
             'sheba_number', 'description', 'contracts_count',

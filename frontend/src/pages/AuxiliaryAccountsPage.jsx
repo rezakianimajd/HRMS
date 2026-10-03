@@ -38,7 +38,7 @@ const AuxiliaryAccountsPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ code: '', name: '', category: '', project: '', contract: '', employee: '', party: '' });
+  const [form, setForm] = useState({ code: '', name: '', category: '', project: '', contract: '', employee: '', party: '', treasury_entity: '', person_type: '' });
   const [msg, setMsg] = useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: ['auxiliary-accounts'], queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data) });
@@ -46,6 +46,8 @@ const AuxiliaryAccountsPage = () => {
   const { data: projects } = useQuery({ queryKey: ['acc-projects'], queryFn: () => axiosInstance.get('/projects/').then(r => r.data) });
   const { data: contracts } = useQuery({ queryKey: ['acc-contracts'], queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data) });
   const { data: employees } = useQuery({ queryKey: ['acc-employees'], queryFn: () => axiosInstance.get('/employees/').then(r => r.data) });
+  const { data: parties } = useQuery({ queryKey: ['acc-parties'], queryFn: () => axiosInstance.get('/contract-parties/').then(r => r.data) });
+  const { data: entities } = useQuery({ queryKey: ['acc-entities'], queryFn: () => axiosInstance.get('/treasury/treasury-entities/').then(r => r.data) });
   const { data: suggested } = useQuery({ queryKey: ['suggest-aux'], queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level: 'auxiliary' } }).then(r => r.data) });
 
   const list = Array.isArray(data) ? data : data?.results || [];
@@ -53,6 +55,8 @@ const AuxiliaryAccountsPage = () => {
   const projectList = Array.isArray(projects) ? projects : projects?.results || [];
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
   const employeeList = Array.isArray(employees) ? employees : employees?.results || [];
+  const partyList = Array.isArray(parties) ? parties : parties?.results || [];
+  const entityList = Array.isArray(entities) ? entities : entities?.results || [];
 
   const selectedCategory = categoryList.find(c => c.id === form.category);
   const source = selectedCategory?.source;
@@ -63,7 +67,7 @@ const AuxiliaryAccountsPage = () => {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ code: suggested?.code || '', name: '', category: '', project: '', contract: '', employee: '', party: '' });
+    setForm({ code: suggested?.code || '', name: '', category: '', project: '', contract: '', employee: '', party: '', treasury_entity: '', person_type: '' });
     setMsg(null);
   };
 
@@ -79,6 +83,8 @@ const AuxiliaryAccountsPage = () => {
       contract: form.contract || null,
       employee: form.employee || null,
       party: form.party || null,
+      treasury_entity: form.treasury_entity || null,
+      person_type: form.person_type || null,
     };
     try {
       if (editing) await axiosInstance.patch(`/accounting/auxiliary-accounts/${editing.id}/`, payload);
@@ -157,6 +163,32 @@ const AuxiliaryAccountsPage = () => {
                   onChange={(e, v) => set('employee', v ? v.id : '')}
                   renderInput={p => <TextField {...p} label="پرسنل" sx={fieldSx} />} />
               )}
+              {source === 'party' && (
+                <>
+                  <Autocomplete size="small" options={partyList} getOptionLabel={o => `${o.name || ''}${o.person_type_display ? ` (${o.person_type_display})` : ''}`}
+                    value={partyList.find(p => p.id === form.party) || null}
+                    onChange={(e, v) => set('party', v ? v.id : '')}
+                    renderInput={p => <TextField {...p} label="طرف حساب (اشخاص حقیقی/حقوقی)" sx={fieldSx} />} />
+                  <Autocomplete size="small"
+                    options={[{ value: 'legal', label: 'شخص حقوقی' }, { value: 'natural', label: 'شخص حقیقی' }]}
+                    getOptionLabel={o => o.label}
+                    value={[{ value: 'legal', label: 'شخص حقوقی' }, { value: 'natural', label: 'شخص حقیقی' }].find(o => o.value === form.person_type) || null}
+                    onChange={(e, v) => set('person_type', v ? v.value : '')}
+                    renderInput={p => <TextField {...p} label="نوع شخص" sx={fieldSx} />} />
+                </>
+              )}
+              {source === 'bank' && (
+                <Autocomplete size="small" options={entityList.filter(e => e.entity_type === 'bank')} getOptionLabel={o => `${o.code || ''} ${o.name}`}
+                  value={entityList.find(e => e.id === form.treasury_entity) || null}
+                  onChange={(e, v) => set('treasury_entity', v ? v.id : '')}
+                  renderInput={p => <TextField {...p} label="بانک" sx={fieldSx} />} />
+              )}
+              {source === 'cash' && (
+                <Autocomplete size="small" options={entityList.filter(e => e.entity_type === 'cash')} getOptionLabel={o => `${o.code || ''} ${o.name}`}
+                  value={entityList.find(e => e.id === form.treasury_entity) || null}
+                  onChange={(e, v) => set('treasury_entity', v ? v.id : '')}
+                  renderInput={p => <TextField {...p} label="صندوق" sx={fieldSx} />} />
+              )}
 
               <Button fullWidth variant="contained" startIcon={<AddIcon />} onClick={submit} disabled={!form.code || !form.name}
                 sx={{ mt: 0.5, py: 1.1, borderRadius: '14px', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 24px ${COLOR}44` }}>
@@ -174,9 +206,9 @@ const AuxiliaryAccountsPage = () => {
                   {filtered.map(a => {
                     const active = editing?.id === a.id;
                     const catName = a.category_name || '';
-                    const refName = a.project_name || a.contract_name || a.employee_name || a.party_name || '';
+                    const refName = a.project_name || a.contract_name || a.employee_name || a.party_name || a.supplier_name || a.treasury_entity_name || '';
                     return (
-                      <Paper key={a.id} onClick={() => { setEditing(a); setForm({ code: a.code, name: a.name, category: a.category, project: a.project, contract: a.contract, employee: a.employee, party: a.party }); }}
+                      <Paper key={a.id} onClick={() => { setEditing(a); setForm({ code: a.code, name: a.name, category: a.category, project: a.project, contract: a.contract, employee: a.employee, party: a.party, treasury_entity: a.treasury_entity, person_type: a.person_type || '' }); }}
                         sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: '14px', cursor: 'pointer',
                           background: active ? 'rgba(245,158,11,0.10)' : 'rgba(255,255,255,0.55)', border: active ? `1px solid ${COLOR}66` : '1px solid rgba(255,255,255,0.8)',
                           transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 10px 26px rgba(245,158,11,0.12)' } }}>

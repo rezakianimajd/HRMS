@@ -92,6 +92,9 @@ class AuxiliaryAccountSerializer(BaseModelSerializer):
     contract_name = serializers.CharField(source='contract.subject', read_only=True)
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     party_name = serializers.CharField(source='party.name', read_only=True)
+    supplier_name = serializers.CharField(source='supplier.name', read_only=True)
+    treasury_entity_name = serializers.CharField(source='treasury_entity.name', read_only=True)
+    person_type_display = serializers.CharField(source='get_person_type_display', read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = AuxiliaryAccount
