@@ -17,6 +17,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const STAGE_LABELS = {
   applied: 'دریافت رزومه',
@@ -425,9 +426,8 @@ const RecruitmentPage = () => {
                   onChange={e => setReqForm(p => ({ ...p, requested_by: e.target.value }))} />
               </Grid>
               <Grid item xs={12} md={6}>
-                <TextField fullWidth size="small" label="تاریخ درخواست" type="date" value={reqForm.requested_date}
-                  sx={fieldSx} InputLabelProps={{ shrink: true }}
-                  onChange={e => setReqForm(p => ({ ...p, requested_date: e.target.value }))} />
+                <JalaliDatePicker fullWidth label="تاریخ درخواست" value={reqForm.requested_date}
+                  onChange={v => setReqForm(p => ({ ...p, requested_date: v }))} />
               </Grid>
             </Grid>
 
