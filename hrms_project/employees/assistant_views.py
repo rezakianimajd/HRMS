@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from django.db.models import Count, Sum
 from datetime import date, timedelta
-from employees.models import Employee
+from employees.models import Employee, AssistantKnowledge
 from documents.models import Document
 from correspondences.models import IncomingLetter, OutgoingLetter, Announcement, Form
 
@@ -252,3 +252,82 @@ def assistant_data(request):
         'salary': salary,
         'payroll': payroll,
     })
+
+
+# ---------------------------------------------------------------------------
+# Assistant knowledge base (custom, user-entered information)
+# ---------------------------------------------------------------------------
+def _knowledge_serialize(k):
+    return {
+        'id': k.id,
+        'title': k.title,
+        'content': k.content,
+        'category': k.category,
+        'category_display': k.get_category_display(),
+        'tags': k.tags,
+        'updated_at': k.updated_at.isoformat() if k.updated_at else None,
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def assistant_knowledge_list(request):
+    """لیست پایگاه دانش دستیار."""
+    company = _get_company(request)
+    qs = AssistantKnowledge.objects.filter(is_active=True)
+    if company:
+        qs = qs.filter(company=company)
+    return Response([_knowledge_serialize(k) for k in qs])
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def assistant_knowledge_create(request):
+    """افزودن ورودی به پایگاه دانش دستیار."""
+    company = _get_company(request)
+    data = request.data or {}
+    title = (data.get('title') or '').strip()
+    content = (data.get('content') or '').strip()
+    if not title or not content:
+        return Response({'error': 'عنوان و محتوا الزامی است'}, status=400)
+    k = AssistantKnowledge.objects.create(
+        company=company,
+        title=title,
+        content=content,
+        category=data.get('category') or 'general',
+        tags=(data.get('tags') or '').strip(),
+    )
+    return Response(_knowledge_serialize(k), status=201)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def assistant_knowledge_update(request, pk):
+    """ویرایش ورودی پایگاه دانش."""
+    company = _get_company(request)
+    k = AssistantKnowledge.objects.filter(id=pk, company=company).first()
+    if not k:
+        return Response({'error': 'یافت نشد'}, status=404)
+    data = request.data or {}
+    if 'title' in data:
+        k.title = (data.get('title') or '').strip()
+    if 'content' in data:
+        k.content = (data.get('content') or '').strip()
+    if 'category' in data:
+        k.category = data.get('category') or 'general'
+    if 'tags' in data:
+        k.tags = (data.get('tags') or '').strip()
+    k.save()
+    return Response(_knowledge_serialize(k))
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def assistant_knowledge_delete(request, pk):
+    """حذف ورودی پایگاه دانش."""
+    company = _get_company(request)
+    k = AssistantKnowledge.objects.filter(id=pk, company=company).first()
+    if not k:
+        return Response({'error': 'یافت نشد'}, status=404)
+    k.delete()
+    return Response({'ok': True})

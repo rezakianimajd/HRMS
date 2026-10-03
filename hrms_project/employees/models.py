@@ -1039,3 +1039,47 @@ class HRRequest(BaseModel):
 
     def __str__(self):
         return f'{self.employee.full_name} - {self.get_request_type_display()} ({self.get_status_display()})'
+
+
+class AssistantKnowledge(BaseModel):
+    """
+    پایگاه دانش سفارشی برای دستیار هوشمند.
+    کاربران می‌توانند آیین‌نامه‌ها، رویه‌ها و پرسش‌های متداول را وارد کنند
+    تا دستیار از آن‌ها در پاسخ‌های خود استفاده کند.
+    """
+
+    class Category(models.TextChoices):
+        HR_POLICY = 'hr_policy', _('آیین‌نامه و قوانین')
+        PROCEDURE = 'procedure', _('رویه‌ها و فرایندها')
+        FAQ = 'faq', _('پرسش متداول')
+        GENERAL = 'general', _('عمومی')
+
+    title = models.CharField(max_length=200, verbose_name=_('عنوان'))
+    content = models.TextField(verbose_name=_('محتوا'))
+    category = models.CharField(
+        max_length=30,
+        choices=Category.choices,
+        default=Category.GENERAL,
+        verbose_name=_('دسته‌بندی'),
+    )
+    tags = models.CharField(
+        max_length=300,
+        blank=True,
+        verbose_name=_('برچسب‌ها'),
+        help_text=_('برچسب‌ها را با ویرگول جدا کنید'),
+    )
+
+    class Meta:
+        verbose_name = _('دانش دستیار')
+        verbose_name_plural = _('دانش دستیار')
+        ordering = ['-updated_at']
+        indexes = [
+            models.Index(fields=['company', 'category']),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def search_text(self):
+        return f'{self.title} {self.content} {self.tags}'

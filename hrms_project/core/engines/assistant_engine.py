@@ -553,8 +553,32 @@ class AssistantEngine:
     @staticmethod
     def _rag_search(q, company):
         from documents.models import Document
-        from employees.models import Employee
+        from employees.models import Employee, AssistantKnowledge
 
+        # 1) Custom knowledge base (highest priority — user-entered information)
+        kb_qs = AssistantKnowledge.objects.filter(is_active=True)
+        if company:
+            kb_qs = kb_qs.filter(company=company)
+        kb = list(kb_qs)
+        if kb:
+            kb_corpus = [
+                {'id': f'kb-{k.id}', 'text': k.search_text, 'meta': {'title': k.title, 'category': k.get_category_display()}}
+                for k in kb
+            ]
+            kb_idx = SemanticIndex(kb_corpus)
+            kb_hits = kb_idx.search(q, top_k=2, threshold=0.04)
+            if kb_hits:
+                lines = ['📚 بر اساس دانش ثبت‌شده سازمان:']
+                for h in kb_hits:
+                    entry = next((k for k in kb if f'kb-{k.id}' == h['id']), None)
+                    if entry:
+                        lines.append(f'• {entry.title}:')
+                        lines.append(entry.content)
+                    else:
+                        lines.append(f'• {h["meta"]["title"]} ({h["meta"]["category"]})')
+                return '\n'.join(lines)
+
+        # 2) Documents fallback
         docs_qs = Document.objects.filter(is_active=True).select_related('employee', 'document_type')
         if company:
             docs_qs = docs_qs.filter(company=company)

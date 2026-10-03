@@ -70,6 +70,11 @@ urlpatterns = [
     path('assistant/query/', assistant_views.assistant_query),
     # Assistant chart (SVG, offline)
     path('assistant/chart/', assistant_views.assistant_chart),
+    # Assistant knowledge base (custom user-entered information)
+    path('assistant/knowledge/', assistant_views.assistant_knowledge_list),
+    path('assistant/knowledge/create/', assistant_views.assistant_knowledge_create),
+    path('assistant/knowledge/<int:pk>/', assistant_views.assistant_knowledge_update),
+    path('assistant/knowledge/<int:pk>/delete/', assistant_views.assistant_knowledge_delete),
 
     # Employee scoring (weighted multi-criteria evaluation)
     path('scoring/employees/', scoring_views.employee_scores),
