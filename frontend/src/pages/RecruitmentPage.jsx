@@ -16,6 +16,9 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import BlockIcon from '@mui/icons-material/Block';
 import RestoreIcon from '@mui/icons-material/Restore';
 import AddIcon from '@mui/icons-material/Add';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -63,6 +66,9 @@ const RecruitmentPage = () => {
   const [err, setErr] = useState('');
   const [openReq, setOpenReq] = useState(false);
   const [reqForm, setReqForm] = useState(emptyForm);
+  const [editReqId, setEditReqId] = useState(null);
+  const [viewReq, setViewReq] = useState(null);
+  const [deleteReqId, setDeleteReqId] = useState(null);
   const [openCand, setOpenCand] = useState(false);
   const [candForm, setCandForm] = useState(emptyCand);
   const [resumeFile, setResumeFile] = useState(null);
@@ -119,6 +125,31 @@ const RecruitmentPage = () => {
     onError: (e) => setErr(e.response?.data?.error || 'خطا در ثبت درخواست'),
   });
 
+  const updateReq = useMutation({
+    mutationFn: ({ id, payload }) => axiosInstance.patch(`/job-requisitions/${id}/`, payload),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job-requisitions'] });
+      setOpenReq(false);
+      setEditReqId(null);
+      setReqForm(emptyForm);
+      setMsg('درخواست استخدام ویرایش شد.');
+      setTimeout(() => setMsg(''), 2500);
+    },
+    onError: (e) => setErr(e.response?.data?.error || 'خطا در ویرایش درخواست'),
+  });
+
+  const deleteReq = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/job-requisitions/${id}/`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['job-requisitions'] });
+      qc.invalidateQueries({ queryKey: ['candidates'] });
+      setDeleteReqId(null);
+      setMsg('درخواست استخدام حذف شد.');
+      setTimeout(() => setMsg(''), 2500);
+    },
+    onError: (e) => setErr(e.response?.data?.error || 'خطا در حذف درخواست'),
+  });
+
   // Normalize requisition payload: empty FK -> null, numeric coercion.
   const submitReq = () => {
     const p = { ...reqForm };
@@ -127,7 +158,27 @@ const RecruitmentPage = () => {
     if (p.budget_salary === '' || p.budget_salary == null) p.budget_salary = null;
     else p.budget_salary = Number(p.budget_salary);
     if (p.requested_date === '') p.requested_date = null;
-    createReq.mutate(p);
+    if (editReqId) updateReq.mutate({ id: editReqId, payload: p });
+    else createReq.mutate(p);
+  };
+
+  const openEditReq = (r) => {
+    setEditReqId(r.id);
+    setReqForm({
+      title: r.title || '',
+      headcount: r.headcount ?? 1,
+      department: r.department ?? '',
+      job_title: r.job_title ?? '',
+      work_location: r.work_location ?? '',
+      reason: r.reason || '',
+      responsibilities: r.responsibilities || '',
+      requirements: r.requirements || '',
+      requested_by: r.requested_by || '',
+      requested_date: r.requested_date || '',
+      budget_salary: r.budget_salary ?? '',
+      status: r.status || 'open',
+    });
+    setOpenReq(true);
   };
   const createCand = useMutation({
     mutationFn: (fd) => axiosInstance.post('/candidates/', fd, { headers: { 'Content-Type': 'multipart/form-data' } }),
@@ -223,7 +274,7 @@ const RecruitmentPage = () => {
       {tab === 0 && (
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenReq(true)}
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditReqId(null); setReqForm(emptyForm); setOpenReq(true); }}
               sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px' }}>
               درخواست استخدام جدید
             </Button>
@@ -241,6 +292,7 @@ const RecruitmentPage = () => {
                       <TableCell sx={{ fontWeight: 700 }}>نیاز</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>وضعیت</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>کاندید</TableCell>
+                      <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -257,6 +309,25 @@ const RecruitmentPage = () => {
                             sx={{ bgcolor: `${REQ_STATUS_COLORS[r.status] || '#64748b'}18`, color: REQ_STATUS_COLORS[r.status] || '#64748b', fontWeight: 700, fontSize: 11 }} />
                         </TableCell>
                         <TableCell>{formatPersianNumber(r.candidates_count || 0)}</TableCell>
+                        <TableCell>
+                          <Box sx={{ display: 'flex', gap: 0.25 }}>
+                            <Tooltip title="مشاهده جزئیات">
+                              <IconButton size="small" color="info" onClick={() => setViewReq(r)}>
+                                <VisibilityIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="ویرایش">
+                              <IconButton size="small" color="primary" onClick={() => openEditReq(r)}>
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="حذف">
+                              <IconButton size="small" color="error" onClick={() => setDeleteReqId(r.id)}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Box>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -422,10 +493,10 @@ const RecruitmentPage = () => {
         </>
       )}
 
-      {/* New requisition dialog */}
-      <Dialog open={openReq} onClose={() => setOpenReq(false)} maxWidth="md" fullWidth>
+      {/* New/Edit requisition dialog */}
+      <Dialog open={openReq} onClose={() => { setOpenReq(false); setEditReqId(null); setReqForm(emptyForm); }} maxWidth="md" fullWidth>
         <DialogTitle sx={{ color: '#0369a1', fontWeight: 800, borderBottom: '1px solid rgba(14,165,233,0.15)' }}>
-          درخواست استخدام جدید
+          {editReqId ? 'ویرایش درخواست استخدام' : 'درخواست استخدام جدید'}
         </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
           <Stack spacing={2}>
@@ -504,11 +575,83 @@ const RecruitmentPage = () => {
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
-          <Button onClick={() => setOpenReq(false)}>انصراف</Button>
+          <Button onClick={() => { setOpenReq(false); setEditReqId(null); setReqForm(emptyForm); }}>انصراف</Button>
           <Button variant="contained" disabled={!reqForm.title} onClick={submitReq}
             sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', px: 3 }}>
-            ثبت درخواست
+            {editReqId ? 'ذخیره تغییرات' : 'ثبت درخواست'}
           </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* View requisition dialog */}
+      <Dialog open={!!viewReq} onClose={() => setViewReq(null)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ color: '#0369a1', fontWeight: 800, borderBottom: '1px solid rgba(14,165,233,0.15)' }}>
+          جزئیات درخواست استخدام
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          {viewReq && (
+            <Stack spacing={2.5}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                <Typography variant="h6" fontWeight={800} color="#0369a1">{viewReq.title}</Typography>
+                <Chip size="small" label={REQ_STATUS[viewReq.status] || viewReq.status}
+                  sx={{ bgcolor: `${REQ_STATUS_COLORS[viewReq.status] || '#64748b'}18`, color: REQ_STATUS_COLORS[viewReq.status] || '#64748b', fontWeight: 700, fontSize: 11 }} />
+                <Chip size="small" variant="outlined" label={`${formatPersianNumber(viewReq.candidates_count || 0)} کاندید`}
+                  sx={{ fontWeight: 700, fontSize: 11 }} />
+              </Box>
+              <Grid container spacing={1.5}>
+                {[
+                  { label: 'دپارتمان', value: viewReq.department_name || '—' },
+                  { label: 'عنوان سازمانی', value: viewReq.job_title_name || '—' },
+                  { label: 'محل خدمت', value: locList.find(l => l.id === viewReq.work_location)?.name || '—' },
+                  { label: 'تعداد نیرو', value: `${formatPersianNumber(viewReq.headcount)} نفر` },
+                  { label: 'سقف حقوق', value: viewReq.budget_salary ? `${formatPersianNumber(viewReq.budget_salary)} ریال` : '—' },
+                  { label: 'درخواست‌دهنده', value: viewReq.requested_by || '—' },
+                  { label: 'تاریخ درخواست', value: toJalali(viewReq.requested_date) },
+                ].map(f => (
+                  <Grid item xs={12} sm={6} key={f.label}>
+                    <Paper variant="outlined" sx={{ p: 1.25, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
+                      <Typography variant="caption" color="textSecondary" display="block">{f.label}</Typography>
+                      <Typography variant="body2" fontWeight={700}>{f.value}</Typography>
+                    </Paper>
+                  </Grid>
+                ))}
+              </Grid>
+              <Divider />
+              <Box>
+                <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={0.5}>دلیل استخدام</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{viewReq.reason || '—'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={0.5}>شرح وظایف</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{viewReq.responsibilities || '—'}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={0.5}>شرایط احراز</Typography>
+                <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{viewReq.requirements || '—'}</Typography>
+              </Box>
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button variant="contained" onClick={() => setViewReq(null)}
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', px: 3 }}>بستن</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Delete requisition confirm dialog */}
+      <Dialog open={!!deleteReqId} onClose={() => setDeleteReqId(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ color: '#b91c1c', fontWeight: 800 }}>حذف درخواست استخدام</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" sx={{ lineHeight: 1.8 }}>
+            آیا از حذف این درخواست استخدام اطمینان دارید؟
+            <Box component="span" sx={{ display: 'block', mt: 1, color: 'error.main', fontWeight: 700 }}>
+              توجه: کاندیدها و مصاحبه‌های مرتبط با این درخواست نیز حذف خواهند شد.
+            </Box>
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
+          <Button onClick={() => setDeleteReqId(null)}>انصراف</Button>
+          <Button variant="contained" color="error" onClick={() => deleteReq.mutate(deleteReqId)}>حذف</Button>
         </DialogActions>
       </Dialog>
 
