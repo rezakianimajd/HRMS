@@ -115,6 +115,17 @@ const RecruitmentPage = () => {
     },
     onError: (e) => setErr(e.response?.data?.error || 'خطا در ثبت درخواست'),
   });
+
+  // Normalize requisition payload: empty FK -> null, numeric coercion.
+  const submitReq = () => {
+    const p = { ...reqForm };
+    ['department', 'job_title', 'work_location'].forEach(k => { if (p[k] === '' || p[k] == null) p[k] = null; });
+    p.headcount = Number(p.headcount) || 1;
+    if (p.budget_salary === '' || p.budget_salary == null) p.budget_salary = null;
+    else p.budget_salary = Number(p.budget_salary);
+    if (p.requested_date === '') p.requested_date = null;
+    createReq.mutate(p);
+  };
   const createCand = useMutation({
     mutationFn: (payload) => axiosInstance.post('/candidates/', payload),
     onSuccess: () => {
@@ -351,48 +362,93 @@ const RecruitmentPage = () => {
       )}
 
       {/* New requisition dialog */}
-      <Dialog open={openReq} onClose={() => setOpenReq(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#0369a1' }}>درخواست استخدام جدید</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="عنوان شغلی *" value={reqForm.title} sx={fieldSx}
-            onChange={e => setReqForm(p => ({ ...p, title: e.target.value }))} />
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <FormControl fullWidth size="small" sx={fieldSx}>
-              <InputLabel>دپارتمان</InputLabel>
-              <Select value={reqForm.department} label="دپارتمان" onChange={e => setReqForm(p => ({ ...p, department: e.target.value }))}>
-                {depsList.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small" sx={fieldSx}>
-              <InputLabel>عنوان سازمانی</InputLabel>
-              <Select value={reqForm.job_title} label="عنوان سازمانی" onChange={e => setReqForm(p => ({ ...p, job_title: e.target.value }))}>
-                {titlesList.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
-              </Select>
-            </FormControl>
+      <Dialog open={openReq} onClose={() => setOpenReq(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ color: '#0369a1', fontWeight: 800, borderBottom: '1px solid rgba(14,165,233,0.15)' }}>
+          درخواست استخدام جدید
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Stack spacing={2}>
+            {/* اطلاعات پایه */}
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">اطلاعات پایه</Typography>
+            <TextField fullWidth size="small" label="عنوان شغلی *" value={reqForm.title} sx={fieldSx}
+              onChange={e => setReqForm(p => ({ ...p, title: e.target.value }))} />
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth size="small" sx={fieldSx}>
+                  <InputLabel>دپارتمان</InputLabel>
+                  <Select value={reqForm.department} label="دپارتمان" onChange={e => setReqForm(p => ({ ...p, department: e.target.value }))}>
+                    <MenuItem value=""><em>—</em></MenuItem>
+                    {depsList.map(d => <MenuItem key={d.id} value={d.id}>{d.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth size="small" sx={fieldSx}>
+                  <InputLabel>عنوان سازمانی</InputLabel>
+                  <Select value={reqForm.job_title} label="عنوان سازمانی" onChange={e => setReqForm(p => ({ ...p, job_title: e.target.value }))}>
+                    <MenuItem value=""><em>—</em></MenuItem>
+                    {titlesList.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth size="small" sx={fieldSx}>
+                  <InputLabel>محل خدمت</InputLabel>
+                  <Select value={reqForm.work_location} label="محل خدمت" onChange={e => setReqForm(p => ({ ...p, work_location: e.target.value }))}>
+                    <MenuItem value=""><em>—</em></MenuItem>
+                    {locList.map(l => <MenuItem key={l.id} value={l.id}>{l.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="تعداد نیرو *" type="number" value={reqForm.headcount} sx={fieldSx}
+                  onChange={e => setReqForm(p => ({ ...p, headcount: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <TextField fullWidth size="small" label="سقف حقوق (ریال)" type="number" value={reqForm.budget_salary} sx={fieldSx}
+                  onChange={e => setReqForm(p => ({ ...p, budget_salary: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth size="small" sx={fieldSx}>
+                  <InputLabel>وضعیت</InputLabel>
+                  <Select value={reqForm.status} label="وضعیت" onChange={e => setReqForm(p => ({ ...p, status: e.target.value }))}>
+                    {Object.keys(REQ_STATUS).map(k => <MenuItem key={k} value={k}>{REQ_STATUS[k]}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+            </Grid>
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="درخواست‌دهنده" value={reqForm.requested_by} sx={fieldSx}
+                  onChange={e => setReqForm(p => ({ ...p, requested_by: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="تاریخ درخواست" type="date" value={reqForm.requested_date}
+                  sx={fieldSx} InputLabelProps={{ shrink: true }}
+                  onChange={e => setReqForm(p => ({ ...p, requested_date: e.target.value }))} />
+              </Grid>
+            </Grid>
+
+            <Divider />
+
+            {/* توضیحات */}
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1">جزئیات شغل</Typography>
+            <TextField fullWidth size="small" label="دلیل استخدام" multiline rows={2} value={reqForm.reason} sx={fieldSx}
+              onChange={e => setReqForm(p => ({ ...p, reason: e.target.value }))} />
+            <TextField fullWidth size="small" label="شرح وظایف" multiline rows={3} value={reqForm.responsibilities} sx={fieldSx}
+              onChange={e => setReqForm(p => ({ ...p, responsibilities: e.target.value }))} />
+            <TextField fullWidth size="small" label="شرایط احراز" multiline rows={3} value={reqForm.requirements} sx={fieldSx}
+              onChange={e => setReqForm(p => ({ ...p, requirements: e.target.value }))} />
           </Stack>
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="تعداد نیرو" type="number" value={reqForm.headcount} sx={fieldSx}
-              onChange={e => setReqForm(p => ({ ...p, headcount: e.target.value }))} />
-            <TextField fullWidth size="small" label="سقف حقوق (ریال)" type="number" value={reqForm.budget_salary} sx={fieldSx}
-              onChange={e => setReqForm(p => ({ ...p, budget_salary: e.target.value }))} />
-          </Stack>
-          <FormControl fullWidth size="small" sx={fieldSx}>
-            <InputLabel>وضعیت</InputLabel>
-            <Select value={reqForm.status} label="وضعیت" onChange={e => setReqForm(p => ({ ...p, status: e.target.value }))}>
-              {Object.keys(REQ_STATUS).map(k => <MenuItem key={k} value={k}>{REQ_STATUS[k]}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField fullWidth size="small" label="دلیل استخدام" multiline rows={2} value={reqForm.reason} sx={fieldSx}
-            onChange={e => setReqForm(p => ({ ...p, reason: e.target.value }))} />
-          <TextField fullWidth size="small" label="شرح وظایف" multiline rows={2} value={reqForm.responsibilities} sx={fieldSx}
-            onChange={e => setReqForm(p => ({ ...p, responsibilities: e.target.value }))} />
-          <TextField fullWidth size="small" label="شرایط احراز" multiline rows={2} value={reqForm.requirements} sx={fieldSx}
-            onChange={e => setReqForm(p => ({ ...p, requirements: e.target.value }))} />
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setOpenReq(false)}>انصراف</Button>
-          <Button variant="contained" disabled={!reqForm.title} onClick={() => createReq.mutate(reqForm)}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)' }}>ثبت</Button>
+          <Button variant="contained" disabled={!reqForm.title} onClick={submitReq}
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', px: 3 }}>
+            ثبت درخواست
+          </Button>
         </DialogActions>
       </Dialog>
 
