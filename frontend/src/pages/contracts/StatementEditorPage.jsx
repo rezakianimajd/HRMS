@@ -59,30 +59,58 @@ const labelSx = { fontWeight: 700, color: COLOR_DARK, mb: 0.5, display: 'block',
 
 const num = (v) => Math.max(0, Number(v) || 0);
 
-/* Robust print: open a clean window with a full copy of the preview so the
-   whole A4 document prints (header + financials + signatures), regardless of
-   the app's fixed/sticky/overflow layout. */
+/* Robust print: render a full copy of the preview inside a hidden iframe that
+   shares the app's stylesheets (via base + head), so the printout matches the
+   on-screen preview exactly (grid, fonts, logo sizing). */
 const printStatement = () => {
   const node = document.getElementById('statement-print-area');
   if (!node) { window.print(); return; }
 
-  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((el) => el.outerHTML)
-    .join('\n');
+  let frame = document.getElementById('statement-print-frame');
+  if (!frame) {
+    frame = document.createElement('iframe');
+    frame.id = 'statement-print-frame';
+    frame.title = 'print';
+    frame.style.position = 'fixed';
+    frame.style.left = '0';
+    frame.style.top = '0';
+    frame.style.width = '794px';
+    frame.style.height = '1123px';
+    frame.style.border = '0';
+    frame.style.visibility = 'hidden';
+    frame.style.zIndex = '-1';
+    document.body.appendChild(frame);
+  }
 
-  const w = window.open('', '_blank', 'width=900,height=1200');
-  if (!w) { window.print(); return; }
-
-  w.document.write(
-    '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8">' +
-    '<title>صورت‌وضعیت</title>' + styles +
-    '<style>html,body{margin:0;padding:0;background:#fff} body{min-width:794px}' +
-    '@media print{ @page{size:A4;margin:12mm} body{min-width:0} }' +
-    '</style></head><body>' + node.outerHTML + '</body></html>'
+  const doc = frame.contentWindow.document;
+  doc.open();
+  doc.write(
+    '<!DOCTYPE html><html dir="rtl" lang="fa"><head>' +
+    '<base href="' + window.location.origin + '/">' +
+    '<meta charset="utf-8">' +
+    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
+    '<title>صورت‌وضعیت</title>' +
+    document.head.innerHTML +
+    '<style>' +
+    'html,body{margin:0;padding:0;background:#fff}' +
+    '@media print{' +
+    ' @page{size:A4;margin:12mm}' +
+    ' #statement-print-area{position:static !important;box-shadow:none !important;border:none !important;border-radius:0 !important;overflow:visible !important;min-height:0 !important}' +
+    '}' +
+    '</style>' +
+    '</head><body>' + node.outerHTML + '</body></html>'
   );
-  w.document.close();
-  w.focus();
-  setTimeout(() => { w.print(); }, 350);
+  doc.close();
+
+  // give the frame a moment to load shared stylesheets / images, then print
+  setTimeout(() => {
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch (e) {
+      window.print();
+    }
+  }, 550);
 };
 
 /* ------------------------------------------------------------------ */
