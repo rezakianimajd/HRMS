@@ -197,7 +197,7 @@ const ExternalContractsPage = () => {
                       <Chip size="small" label={TYPE_LABELS[c.contract_type] || c.contract_type}
                         sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309', fontWeight: 700, fontSize: 11 }} />
                     </TableCell>
-                    <TableCell>{c.amount ? formatPersianNumber(c.amount) + ' ریال' : '—'}</TableCell>
+                    <TableCell>{c.amount ? `${formatPersianNumber(c.amount)} ${c.currency_name || 'ریال'}` : '—'}</TableCell>
                     <TableCell>{c.start_date ? toJalali(c.start_date) : '—'}</TableCell>
                     <TableCell>{c.end_date ? toJalali(c.end_date) : '—'}</TableCell>
                     <TableCell>

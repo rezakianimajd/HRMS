@@ -19,6 +19,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import BadgeIcon from '@mui/icons-material/Badge';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import MoneyInput from '../core/components/ui/MoneyInput';
 
 const TYPE_LABELS = {
   construction: 'پیمانکاری / اجرا', purchase: 'خرید', tender: 'مناقصه',
@@ -275,7 +276,7 @@ const ContractNewPage = () => {
         {/* مبالغ مالی و تضمین */}
         <SectionHeader icon={<AttachMoneyIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#10b981" title="مبالغ مالی و تضمین" />
         <Grid container spacing={1.5}>
-          <Grid item xs={12} md={3}><TextField size="small" fullWidth label={`مبلغ قرارداد (${currencyLabel})`} type="number" value={form.amount} sx={fieldSx} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`مبلغ قرارداد (${currencyLabel})`} value={form.amount} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, amount: v }))} /></Grid>
           <Grid item xs={12} md={3}>
             <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>واحد ارز</InputLabel>
               <Select value={form.currency || ''} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
@@ -284,9 +285,9 @@ const ContractNewPage = () => {
               </Select>
             </FormControl>
           </Grid>
-          <Grid item xs={12} md={3}><TextField size="small" fullWidth label={`پیش‌پرداخت (${currencyLabel})`} type="number" value={form.advance_payment} sx={fieldSx} onChange={e => setForm(p => ({ ...p, advance_payment: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`پیش‌پرداخت (${currencyLabel})`} value={form.advance_payment} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, advance_payment: v }))} /></Grid>
           <Grid item xs={12} md={3}><TextField size="small" fullWidth label="درصد حسن انجام کار" type="number" value={form.retention_percent} sx={fieldSx} onChange={e => setForm(p => ({ ...p, retention_percent: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={3}><TextField size="small" fullWidth label={`مبلغ تضمین (${currencyLabel})`} type="number" value={form.guarantee_amount} sx={fieldSx} onChange={e => setForm(p => ({ ...p, guarantee_amount: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`مبلغ تضمین (${currencyLabel})`} value={form.guarantee_amount} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, guarantee_amount: v }))} /></Grid>
           <Grid item xs={12} md={3}>
             <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>نوع ضمانت</InputLabel>
               <Select value={form.guarantee_type || ''} label="نوع ضمانت" onChange={e => setForm(p => ({ ...p, guarantee_type: e.target.value }))}>
@@ -310,7 +311,7 @@ const ContractNewPage = () => {
               <Paper key={idx} variant="outlined" sx={{ p: 1, borderRadius: '10px', background: 'rgba(139,92,246,0.04)', borderColor: 'rgba(139,92,246,0.25)' }}>
                 <Grid container spacing={1} alignItems="center">
                   <Grid item xs={12} sm={3}><TextField size="small" fullWidth label="عنوان مرحله" value={ap.step} sx={fieldSx} onChange={e => updateAdvance(idx, 'step', e.target.value)} /></Grid>
-                  <Grid item xs={12} sm={3}><TextField size="small" fullWidth label={`مبلغ (${currencyLabel})`} type="number" value={ap.amount} sx={fieldSx} onChange={e => updateAdvance(idx, 'amount', e.target.value)} /></Grid>
+                  <Grid item xs={12} sm={3}><MoneyInput size="small" fullWidth label={`مبلغ (${currencyLabel})`} value={ap.amount} sx={fieldSx} onChange={(v) => updateAdvance(idx, 'amount', v)} /></Grid>
                   <Grid item xs={12} sm={3}><JalaliDatePicker fullWidth label="تاریخ سررسید" value={ap.due_date} onChange={(g) => updateAdvance(idx, 'due_date', g)} /></Grid>
                   <Grid item xs={12} sm={2.5}><TextField size="small" fullWidth label="یادداشت" value={ap.note} sx={fieldSx} onChange={e => updateAdvance(idx, 'note', e.target.value)} /></Grid>
                   <Grid item xs={12} sm={0.5}>

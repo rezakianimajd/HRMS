@@ -269,24 +269,28 @@ const ContractProfilePage = () => {
                   <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                     <Typography variant="caption" color="textSecondary">مبلغ قرارداد</Typography>
                     <Typography variant="h6" fontWeight={800} color="#f59e0b">{formatPersianNumber(c.amount || 0)}</Typography>
+                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                     <Typography variant="caption" color="textSecondary">جمع پرداخت‌ها</Typography>
                     <Typography variant="h6" fontWeight={800} color="#10b981">{formatPersianNumber(totalPaid)}</Typography>
+                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                     <Typography variant="caption" color="textSecondary">جمع فاکتورها</Typography>
                     <Typography variant="h6" fontWeight={800} color="#8b5cf6">{formatPersianNumber(totalInvoices)}</Typography>
+                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
                   </Paper>
                 </Grid>
                 <Grid item xs={12} sm={6} md={3}>
                   <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
                     <Typography variant="caption" color="textSecondary">باقی‌مانده</Typography>
                     <Typography variant="h6" fontWeight={800} color="#ef4444">{formatPersianNumber(remaining)}</Typography>
+                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
                   </Paper>
                 </Grid>
               </Grid>
