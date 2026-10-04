@@ -24,40 +24,7 @@ import StorefrontIcon from '@mui/icons-material/Storefront';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
-
-const TYPE_LABELS = {
-  construction: 'پیمانکاری / اجرا',
-  purchase: 'خرید',
-  tender: 'مناقصه',
-  consulting: 'مشاوره',
-  service: 'خدمات',
-  other: 'سایر',
-};
-
-const STATUS_LABELS = {
-  draft: 'پیش‌نویس',
-  active: 'در حال اجرا',
-  suspended: 'متوقف',
-  completed: 'تکمیل شده',
-  terminated: 'فسخ شده',
-};
-
-const STATUS_COLORS = {
-  draft: '#64748b',
-  active: '#10b981',
-  suspended: '#f59e0b',
-  completed: '#3b82f6',
-  terminated: '#ef4444',
-};
-
-const glassPaper = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
-  borderRadius: '10px',
-};
+import { glassPaper, CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS } from '../core/theme/tokens';
 
 const InfoItem = ({ icon, color, label, value }) => (
   <Grid item xs={6} sm={4} md={3}>

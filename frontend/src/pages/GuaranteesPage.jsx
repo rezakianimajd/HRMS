@@ -23,6 +23,7 @@ import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
+import { glassPaper } from '../core/theme/tokens';
 
 const TYPE_LABELS = {
   performance: 'ضمانت حسن انجام کار',
@@ -59,15 +60,6 @@ const ACTION_COLORS = {
   executed: '#ef4444',
   canceled: '#f59e0b',
   extended: '#3b82f6',
-};
-
-const glassPaper = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
-  borderRadius: '10px',
 };
 
 const EMPTY = {
