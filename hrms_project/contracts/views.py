@@ -97,6 +97,30 @@ class ContractViewSet(BaseContractViewSet):
             qs = qs.filter(status=status)
         return qs
 
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """Aggregated dashboard statistics for contracts (server-side)."""
+        from datetime import date, timedelta
+        from django.db.models import Count, Sum
+        qs = self.get_queryset()
+        status_counts = dict(
+            qs.values_list('status').annotate(c=Count('id')).values_list('status', 'c')
+        )
+        type_counts = dict(
+            qs.values_list('contract_type').annotate(c=Count('id')).values_list('contract_type', 'c')
+        )
+        total_amount = qs.aggregate(s=Sum('amount'))['s'] or 0
+        today = date.today()
+        in60 = today + timedelta(days=60)
+        expiring = qs.filter(end_date__isnull=False, end_date__gte=today, end_date__lte=in60).count()
+        return Response({
+            'total': qs.count(),
+            'status_counts': status_counts,
+            'type_counts': type_counts,
+            'total_amount': total_amount,
+            'expiring': expiring,
+        })
+
 
 class ContractTypeMasterViewSet(BaseContractViewSet):
     serializer_class = ContractTypeMasterSerializer

@@ -158,6 +158,26 @@ const ContractProfilePage = () => {
         </Box>
       </Box>
 
+      {/* Quick actions — 360° one-stop operations */}
+      <Paper sx={{ ...glassPaper, p: 1.5, mb: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+        <Typography variant="caption" fontWeight={800} color="textSecondary" sx={{ mr: 0.5 }}>عملیات سریع:</Typography>
+        {[
+          { label: 'فاکتور', path: '/contracts-invoices', icon: <ReceiptIcon fontSize="small" />, color: '#8b5cf6' },
+          { label: 'صورت‌وضعیت', path: '/contracts-statements', icon: <ReceiptLongIcon fontSize="small" />, color: '#6366f1' },
+          { label: 'پرداخت', path: '/contracts-payments', icon: <PaymentsIcon fontSize="small" />, color: '#10b981' },
+          { label: 'الحاقیه', path: '/contracts-addendums', icon: <EditNoteIcon fontSize="small" />, color: '#ec4899' },
+          { label: 'تضمین', path: '/contracts-guarantees', icon: <LockIcon fontSize="small" />, color: '#3b82f6' },
+          { label: 'اختلاف', path: '/contracts-disputes', icon: <GavelIcon fontSize="small" />, color: '#ef4444' },
+          { label: 'اسناد', path: '/contracts-documents', icon: <FolderOpenIcon fontSize="small" />, color: '#f97316' },
+        ].map(a => (
+          <Button key={a.label} size="small" variant="outlined" startIcon={a.icon}
+            onClick={() => navigate(`${a.path}?contract=${id}`)}
+            sx={{ color: a.color, borderColor: `${a.color}66`, borderRadius: '10px', textTransform: 'none' }}>
+            ثبت {a.label}
+          </Button>
+        ))}
+      </Paper>
+
       {/* Glass Hero Card */}
       <Paper sx={{ ...glassPaper, mb: 3, position: 'relative', overflow: 'hidden' }}>
         <Box sx={{
