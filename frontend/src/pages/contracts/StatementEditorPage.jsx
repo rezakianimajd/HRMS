@@ -102,7 +102,27 @@ const printStatement = async () => {
         backgroundColor: '#ffffff',
         logging: false,
       });
-      const imgData = canvas.toDataURL('image/png');
+
+      // Compose onto a fixed A4 canvas so the result is ALWAYS a single page,
+      // centered horizontally and top-aligned (white padding fills the rest).
+      const A4_W = 794;   // 210mm @ 96dpi
+      const A4_H = 1123;  // 297mm @ 96dpi
+      const RATIO = 2;
+      const a4 = document.createElement('canvas');
+      a4.width = A4_W * RATIO;
+      a4.height = A4_H * RATIO;
+      const ctx = a4.getContext('2d');
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, a4.width, a4.height);
+
+      const fit = Math.min(a4.width / canvas.width, a4.height / canvas.height);
+      const w = canvas.width * fit;
+      const h = canvas.height * fit;
+      const x = (a4.width - w) / 2;
+      const y = 0;
+      ctx.drawImage(canvas, x, y, w, h);
+
+      const imgData = a4.toDataURL('image/png');
 
       const doc = frame.contentWindow.document;
       doc.open();
@@ -110,8 +130,8 @@ const printStatement = async () => {
         '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>صورت‌وضعیت</title>' +
         '<style>' +
         '@page{size:A4;margin:0}' +
-        'html,body{margin:0;padding:0;width:210mm;height:297mm;background:#fff}' +
-        'img{width:210mm;height:297mm;object-fit:contain;object-position:top center;display:block}' +
+        'html,body{margin:0;padding:0;background:#fff}' +
+        'img{width:210mm;height:297mm;display:block}' +
         '</style></head><body>' +
         '<img src="' + imgData + '" />' +
         '</body></html>'
