@@ -77,16 +77,43 @@ const ContractPartiesPage = () => {
     enabled: !!selected?.id,
   });
 
+  const [error, setError] = useState('');
+
+  const sanitize = (p) => ({
+    ...p,
+    registered_capital: p.registered_capital === '' || p.registered_capital == null ? null : Number(p.registered_capital),
+    establishment_date: p.establishment_date || null,
+  });
+
   const save = useMutation({
-    mutationFn: (payload) =>
-      payload.id
-        ? axiosInstance.patch(`/contract-parties/${payload.id}/`, payload)
-        : axiosInstance.post('/contract-parties/', payload),
+    mutationFn: (payload) => {
+      const clean = sanitize(payload);
+      return clean.id
+        ? axiosInstance.patch(`/contract-parties/${clean.id}/`, clean)
+        : axiosInstance.post('/contract-parties/', clean);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['contract-parties'] });
       qc.invalidateQueries({ queryKey: ['contract-parties-summary'] });
       setDialog(false);
       setForm(EMPTY_FORM);
+      setError('');
+    },
+    onError: (e) => {
+      const data = e.response?.data;
+      let msg = 'خطا در ذخیره';
+      if (data) {
+        if (typeof data === 'string') msg = data;
+        else if (Array.isArray(data)) msg = data[0];
+        else if (data.detail) msg = data.detail;
+        else if (data.error) msg = data.error;
+        else if (data.non_field_errors) msg = data.non_field_errors[0];
+        else {
+          const first = Object.values(data).flat()[0];
+          if (first) msg = first;
+        }
+      }
+      setError(msg);
     },
   });
 
@@ -139,7 +166,7 @@ const ContractPartiesPage = () => {
           <Typography variant="h6" fontWeight={800} color="#0369a1">پیمانکاران و فروشندگان</Typography>
           <Typography variant="body2" color="textSecondary">پروندهٔ کامل طرف‌های قرارداد با جزئیات حقوقی، بانکی و سوابق</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY_FORM); setDialog(true); }}
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY_FORM); setError(''); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', borderRadius: '10px' }}>
           افزودن طرف
         </Button>
@@ -219,7 +246,7 @@ const ContractPartiesPage = () => {
                     </Typography>
                   </Box>
                   <Box>
-                    <IconButton size="small" color="primary" onClick={() => { setForm(selected); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="primary" onClick={() => { setForm(selected); setError(''); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color={selected.is_active !== false ? 'error' : 'success'}
                       onClick={() => toggle.mutate(selected.id)}>
                       {selected.is_active !== false ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
@@ -355,6 +382,7 @@ const ContractPartiesPage = () => {
             <TextField size="small" fullWidth label="توضیحات" multiline rows={2} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
           </Stack>
           {save.isLoading && <LinearProgress sx={{ borderRadius: '10px', mt: 1.5 }} />}
+          {error && <Alert severity="error" sx={{ mt: 1.5 }}>{error}</Alert>}
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDialog(false)}>انصراف</Button>
