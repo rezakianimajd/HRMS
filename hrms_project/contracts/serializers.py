@@ -147,11 +147,12 @@ class PaymentSerializer(serializers.ModelSerializer):
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     invoice_number = serializers.CharField(source='invoice.number', read_only=True)
+    statement_number = serializers.CharField(source='statement.number', read_only=True)
 
     class Meta:
         model = Payment
         fields = [
-            'id', 'contract', 'contract_subject', 'invoice', 'invoice_number',
+            'id', 'contract', 'contract_subject', 'invoice', 'invoice_number', 'statement', 'statement_number',
             'date', 'currency', 'currency_name', 'currency_symbol',
             'amount', 'reference', 'method', 'note',
         ]

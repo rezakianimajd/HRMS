@@ -23,7 +23,7 @@ import MoneyInput from '../core/components/ui/MoneyInput';
 import { glassPaper } from '../core/theme/tokens';
 
 const EMPTY = {
-  id: null, contract: '', invoice: '', date: '', currency: '',
+  id: null, contract: '', invoice: '', statement: '', date: '', currency: '',
   amount: '', reference: '', method: '', note: '',
 };
 
@@ -57,6 +57,13 @@ const ContractPaymentsPage = () => {
   });
   const invoiceList = Array.isArray(invoices) ? invoices : invoices?.results || [];
 
+  const { data: statements } = useQuery({
+    queryKey: ['statements-pay', contractId],
+    queryFn: () => axiosInstance.get('/contract-statements/', { params: { contract: contractId, page_size: 500 } }).then(r => r.data),
+    enabled: !!contractId,
+  });
+  const statementList = Array.isArray(statements) ? statements : statements?.results || [];
+
   const { data, isLoading } = useQuery({
     queryKey: ['contract-payments', contractId],
     queryFn: () => axiosInstance.get('/contract-payments/', { params: { contract: contractId, page_size: 500 } }).then(r => r.data),
@@ -81,6 +88,7 @@ const ContractPaymentsPage = () => {
     ...p,
     contract: p.contract || null,
     invoice: p.invoice || null,
+    statement: p.statement || null,
     amount: p.amount === '' || p.amount == null ? 0 : Number(p.amount),
     date: p.date || null,
     currency: p.currency || null,
@@ -186,6 +194,7 @@ const ContractPaymentsPage = () => {
                       {x.reference && <Chip size="small" icon={<AccountBalanceWalletIcon />} label={`مرجع: ${x.reference}`} sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#047857', fontWeight: 700 }} />}
                       {x.method && <Chip size="small" label={`روش: ${x.method}`} sx={{ bgcolor: 'rgba(20,184,166,0.1)', color: '#0f766e', fontWeight: 700 }} />}
                       {x.invoice_number && <Chip size="small" label={`فاکتور: ${x.invoice_number}`} sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: '#6d28d9', fontWeight: 700 }} />}
+                      {x.statement_number && <Chip size="small" label={`صورت‌وضعیت: ${x.statement_number}`} sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca', fontWeight: 700 }} />}
                     </Box>
 
                     {x.note && <Typography variant="body2" color="textSecondary">{x.note}</Typography>}
@@ -221,6 +230,15 @@ const ContractPaymentsPage = () => {
                   <Select value={form.invoice || ''} label="فاکتور مرتبط" onChange={e => setForm(p => ({ ...p, invoice: e.target.value }))}>
                     <MenuItem value="">—</MenuItem>
                     {invoiceList.map(inv => <MenuItem key={inv.id} value={inv.id}>{inv.number || inv.subject}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>صورت‌وضعیت مرتبط</InputLabel>
+                  <Select value={form.statement || ''} label="صورت‌وضعیت مرتبط" onChange={e => setForm(p => ({ ...p, statement: e.target.value }))}>
+                    <MenuItem value="">—</MenuItem>
+                    {statementList.map(st => <MenuItem key={st.id} value={st.id}>{st.number || 'صورت‌وضعیت'}</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>

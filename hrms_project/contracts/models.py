@@ -345,6 +345,7 @@ class Payment(BaseModel):
     """پرداخت done against a contract."""
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='payments', verbose_name=_('قرارداد'))
     invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments', verbose_name=_('فاکتور مرتبط'))
+    statement = models.ForeignKey(Statement, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments', verbose_name=_('صورت‌وضعیت مرتبط'))
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ پرداخت'))
     currency = models.ForeignKey(
         'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,

@@ -299,9 +299,9 @@ class GuaranteeViewSet(BaseContractViewSet):
 
 class PaymentViewSet(BaseContractViewSet):
     serializer_class = PaymentSerializer
-    queryset = Payment.objects.select_related('contract', 'currency', 'invoice')
+    queryset = Payment.objects.select_related('contract', 'currency', 'invoice', 'statement')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['reference', 'method', 'note', 'contract__subject', 'invoice__number']
+    search_fields = ['reference', 'method', 'note', 'contract__subject', 'invoice__number', 'statement__number']
     ordering = ['-date']
 
     def get_queryset(self):
