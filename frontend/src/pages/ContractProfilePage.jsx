@@ -200,11 +200,17 @@ const ContractProfilePage = () => {
           <Divider sx={{ my: 2 }} />
           <Grid container spacing={1.5}>
             <InfoItem icon={<StorefrontIcon sx={{ fontSize: 18 }} />} color="#0ea5e9" label="طرف قرارداد" value={c.party_name || '—'} />
-            <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="نوع قرارداد" value={TYPE_LABELS[c.contract_type] || '—'} />
+            <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="نوع قرارداد" value={c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—'} />
+            <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#3b82f6" label="پروژه" value={c.project_name || '—'} />
             <InfoItem icon={<AccountBalanceIcon sx={{ fontSize: 18 }} />} color="#10b981" label="مبلغ قرارداد" value={`${formatPersianNumber(c.amount || 0)} ریال`} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="تاریخ شروع" value={toJalali(c.start_date)} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="تاریخ پایان" value={toJalali(c.end_date)} />
+            <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ec4899" label="تاریخ امضا" value={toJalali(c.signing_date)} />
+            <InfoItem icon={<LockIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="نوع ضمانت" value={c.guarantee_type_display || '—'} />
             <InfoItem icon={<ScheduleIcon sx={{ fontSize: 18 }} />} color="#8b5cf6" label="باقی‌مانده" value={`${formatPersianNumber(remaining)} ریال`} />
+            {Array.isArray(c.advance_payments) && c.advance_payments.length > 0 && (
+              <InfoItem icon={<PaymentsIcon sx={{ fontSize: 18 }} />} color="#14b8a6" label="پیش‌پرداخت مرحله‌ای" value={`${toPersianDigits(c.advance_payments.length)} مرحله`} />
+            )}
           </Grid>
         </Box>
       </Paper>

@@ -65,12 +65,22 @@ class Contract(BaseModel):
         COMPLETED = 'completed', _('تکمیل شده')
         TERMINATED = 'terminated', _('فسخ شده')
 
+    class GuaranteeKind(models.TextChoices):
+        PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
+        ADVANCE = 'advance', _('ضمانت پیش‌پرداخت')
+        BID = 'bid', _('ضمانت شرکت در مناقصه')
+        OTHER = 'other', _('سایر')
+
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره قرارداد'))
     subject = models.CharField(max_length=300, verbose_name=_('موضوع قرارداد'))
     party = models.ForeignKey(
         ContractParty, on_delete=models.PROTECT, related_name='contracts', verbose_name=_('طرف قرارداد'),
     )
     contract_type = models.CharField(max_length=20, choices=ContractType.choices, default=ContractType.PURCHASE, verbose_name=_('نوع قرارداد'))
+    contract_type_master = models.ForeignKey(
+        'ContractTypeMaster', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contracts', verbose_name=_('نوع قرارداد (پیکربندی)'),
+    )
     status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ قرارداد (ریال)'))
     currency = models.ForeignKey(
@@ -85,6 +95,10 @@ class Contract(BaseModel):
         related_name='external_contracts', verbose_name=_('امضاکنندهٔ مجاز'),
     )
     guarantee_amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('مبلغ تضمین (ریال)'))
+    guarantee_type = models.CharField(
+        max_length=20, choices=GuaranteeKind.choices, null=True, blank=True,
+        verbose_name=_('نوع ضمانت'),
+    )
 
     # Link to Project Business Platform (nullable; a contract may or may not belong to a project)
     project = models.ForeignKey(
@@ -98,6 +112,10 @@ class Contract(BaseModel):
     project_location = models.CharField(max_length=300, blank=True, verbose_name=_('محل اجرا / تحویل'))
     tender_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مناقصه / استعلام'))
     advance_payment = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('پیش‌پرداخت (ریال)'))
+    advance_payments = models.JSONField(
+        default=list, blank=True, verbose_name=_('پیش‌پرداخت‌های مرحله‌ای'),
+        help_text=_('لیست مراحل پیش‌پرداخت: [{step, amount, due_date, note}]'),
+    )
     retention_percent = models.DecimalField(max_digits=5, decimal_places=2, null=True, blank=True, verbose_name=_('درصد حسن انجام کار'))
     warranty_period = models.CharField(max_length=100, blank=True, verbose_name=_('دوره گارانتی / تضمین کیفیت'))
     payment_terms = models.TextField(blank=True, verbose_name=_('شرایط و نحوه پرداخت'))

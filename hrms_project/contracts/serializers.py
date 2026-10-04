@@ -142,7 +142,9 @@ class ContractPartySerializer(serializers.ModelSerializer):
 
 class ContractSerializer(serializers.ModelSerializer):
     contract_type_display = serializers.CharField(source='get_contract_type_display', read_only=True)
+    contract_type_master_name = serializers.CharField(source='contract_type_master.name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    guarantee_type_display = serializers.CharField(source='get_guarantee_type_display', read_only=True)
     party_name = serializers.CharField(source='party.name', read_only=True)
     signatory_name = serializers.CharField(source='signatory.full_name', read_only=True)
     project_name = serializers.CharField(source='project.name', read_only=True)
@@ -161,11 +163,13 @@ class ContractSerializer(serializers.ModelSerializer):
         model = Contract
         fields = [
             'id', 'number', 'subject', 'party', 'party_name', 'contract_type',
-            'contract_type_display', 'status', 'status_display', 'amount',
+            'contract_type_display', 'contract_type_master', 'contract_type_master_name',
+            'status', 'status_display', 'amount',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
-            'guarantee_amount', 'project', 'project_name', 'project_location', 'tender_number',
-            'advance_payment', 'retention_percent', 'warranty_period',
+            'guarantee_amount', 'guarantee_type', 'guarantee_type_display',
+            'project', 'project_name', 'project_location', 'tender_number',
+            'advance_payment', 'advance_payments', 'retention_percent', 'warranty_period',
             'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
             'description',
             'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
