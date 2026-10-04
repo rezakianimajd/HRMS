@@ -547,6 +547,7 @@ const contractsMenu = [
       { id: 'contracts-templates', title: 'قالب‌ها و پیش‌نویس‌ها', icon: <DescriptionIcon />, path: '/contracts-templates', color: '#6366f1', primary: false, ready: true },
       { id: 'contracts-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/contracts-drafts', color: '#64748b', primary: false, ready: true },
       { id: 'contracts-approvals', title: 'در انتظار تأیید', icon: <RuleIcon />, path: '/contracts-approvals', color: '#f59e0b', primary: false, ready: true },
+      { id: 'contracts-calendar', title: 'تقویم قراردادها', icon: <CalendarMonthIcon />, path: '/contracts-calendar', color: '#10b981', primary: false, ready: true },
     ],
   },
   {

@@ -11,23 +11,8 @@ import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
-
-const STATUS_LABELS = {
-  draft: 'پیش‌نویس',
-  active: 'در حال اجرا',
-  suspended: 'متوقف',
-  completed: 'تکمیل شده',
-  terminated: 'فسخ شده',
-};
-
-const TYPE_LABELS = {
-  construction: 'پیمانکاری / اجرا',
-  purchase: 'خرید',
-  tender: 'مناقصه',
-  consulting: 'مشاوره',
-  service: 'خدمات',
-  other: 'سایر',
-};
+import { DonutChart, BarChart } from '../core/components/charts/Charts';
+import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS, currencyLabel } from '../core/theme/tokens';
 
 const ContractsDashboardPage = () => {
   const navigate = useNavigate();
@@ -48,6 +33,17 @@ const ContractsDashboardPage = () => {
     });
     const totalAmount = items.reduce((s, c) => s + Number(c.amount || 0), 0);
     return { total: items.length, active, completed, expiring, totalAmount };
+  }, [items]);
+
+  const charts = useMemo(() => {
+    const statusDist = Object.entries(STATUS_LABELS)
+      .map(([k, v]) => ({ label: v, value: items.filter(c => c.status === k).length, color: STATUS_COLORS[k] }))
+      .filter(d => d.value > 0);
+    const typeColors = { construction: '#f97316', purchase: '#10b981', tender: '#f59e0b', consulting: '#6366f1', service: '#0ea5e9', other: '#64748b' };
+    const typeDist = Object.entries(TYPE_LABELS)
+      .map(([k, v]) => ({ label: v, value: items.filter(c => c.contract_type === k).length, color: typeColors[k] || '#64748b' }))
+      .filter(d => d.value > 0);
+    return { statusDist, typeDist };
   }, [items]);
 
   if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
@@ -103,6 +99,30 @@ const ContractsDashboardPage = () => {
         </Grid>
       </Grid>
 
+      {/* Analytics charts */}
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid item xs={12} md={5}>
+          <Paper sx={{ p: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', height: '100%' }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>توزیع وضعیت قراردادها</Typography>
+            {charts.statusDist.length === 0 ? (
+              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
+            ) : (
+              <DonutChart data={charts.statusDist} size={160} centerLabel="قرارداد" />
+            )}
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={7}>
+          <Paper sx={{ p: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', height: '100%' }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>توزیع انواع قرارداد</Typography>
+            {charts.typeDist.length === 0 ? (
+              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
+            ) : (
+              <BarChart data={charts.typeDist} />
+            )}
+          </Paper>
+        </Grid>
+      </Grid>
+
       {/* Expiring alerts */}
       {stats.expiring.length > 0 && (
         <Paper sx={{ p: 2, mb: 3, borderRadius: '10px', background: 'rgba(239,68,68,0.05)', border: '1px solid rgba(239,68,68,0.25)' }}>
@@ -141,7 +161,7 @@ const ContractsDashboardPage = () => {
                     </Typography>
                   </Box>
                   <Chip size="small" label={STATUS_LABELS[c.status] || c.status} color={c.status === 'active' ? 'success' : 'default'} variant="outlined" />
-                  <Typography variant="caption" fontWeight={800}>{formatPersianNumber(c.amount || 0)} ریال</Typography>
+                  <Typography variant="caption" fontWeight={800}>{formatPersianNumber(c.amount || 0)} {currencyLabel(c)}</Typography>
                 </Box>
               </Paper>
             ))}
