@@ -34,7 +34,7 @@ const ContractsDashboardPage = () => {
 
   const { data, isLoading } = useQuery({
     queryKey: ['external-contracts'],
-    queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data),
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then(r => r.data),
   });
   const items = Array.isArray(data) ? data : data?.results || [];
 
@@ -115,7 +115,7 @@ const ContractsDashboardPage = () => {
                 <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
                 <Typography variant="caption" color="textSecondary">{c.party_name}</Typography>
                 <Chip size="small" color="warning" label={`تا ${toJalali(c.end_date)}`} />
-                <Typography variant="caption" fontWeight={700}>{formatPersianNumber(c.amount || 0)} ریال</Typography>
+                <Typography variant="caption" fontWeight={700}>{formatPersianNumber(c.amount || 0)} {c.currency_name || 'ریال'}</Typography>
               </Box>
             ))}
           </Stack>

@@ -17,13 +17,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import ContractPicker from '../core/components/ui/ContractPicker';
-
-const glassPaper = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: '12px',
-};
+import { glassPaper, currencyLabel } from '../core/theme/tokens';
 
 const ACTIONS = [
   { key: 'invoices', label: 'فاکتور', path: '/contracts-invoices', color: '#8b5cf6', icon: <ReceiptIcon sx={{ fontSize: 18 }} /> },
@@ -63,7 +57,6 @@ const ContractFinancePage = () => {
     addendums: addendums.reduce((s, x) => s + Number(x.amount_change || 0), 0),
   };
   const paidRatio = amount ? Math.min(100, (totals.payments / amount) * 100) : 0;
-  const currencyLabel = contract?.currency_name || 'ریال';
 
   const kpi = (label, value, color, icon) => (
     <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
@@ -125,7 +118,7 @@ const ContractFinancePage = () => {
                       شماره: {contract.number || '—'} · {contract.party_name || '—'}
                     </Typography>
                   </Box>
-                  <Chip label={`${formatPersianNumber(amount)} ${currencyLabel}`} color="warning" sx={{ fontWeight: 800 }} />
+                  <Chip label={`${formatPersianNumber(amount)} ${currencyLabel(contract)}`} color="warning" sx={{ fontWeight: 800 }} />
                 </Box>
 
                 <Divider sx={{ my: 1.5 }} />

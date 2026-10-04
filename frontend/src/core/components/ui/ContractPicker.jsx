@@ -6,23 +6,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import BusinessIcon from '@mui/icons-material/Business';
 import { formatPersianNumber } from '../../utils/numberUtils';
-
-const STATUS_LABELS = {
-  draft: 'پیش‌نویس', active: 'در حال اجرا', suspended: 'متوقف',
-  completed: 'تکمیل شده', terminated: 'فسخ شده',
-};
-
-const STATUS_COLORS = {
-  draft: '#64748b', active: '#10b981', suspended: '#f59e0b',
-  completed: '#3b82f6', terminated: '#ef4444',
-};
-
-const glassPaper = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: '12px',
-};
+import { glassPaper, CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, currencyLabel } from '../../theme/tokens';
 
 /**
  * Searchable, selectable contract list (search bar + rows with number,
@@ -84,7 +68,7 @@ const ContractPicker = ({ contracts = [], onSelect, selectedId, height = 460 }) 
               </Box>
               <Box sx={{ textAlign: 'left' }}>
                 <Typography variant="body2" fontWeight={800} color="#b45309">
-                  {formatPersianNumber(c.amount || 0)} <Typography component="span" variant="caption">{c.currency_name || 'ریال'}</Typography>
+                  {formatPersianNumber(c.amount || 0)} <Typography component="span" variant="caption">{currencyLabel(c)}</Typography>
                 </Typography>
               </Box>
               <Chip size="small" label={STATUS_LABELS[c.status] || c.status}
