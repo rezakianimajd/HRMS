@@ -1,18 +1,21 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, Avatar, CircularProgress, Stack, Grid,
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton, Chip,
-  FormControlLabel, Switch, Divider,
+  FormControlLabel, Switch, Divider, InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SearchIcon from '@mui/icons-material/Search';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
+import ContractPicker from '../../core/components/ui/ContractPicker';
 import StatementPreview from './StatementPreview';
 
 const glassPaper = {
@@ -57,7 +60,10 @@ const GlassBackdrop = ({ color }) => (
  */
 const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
   const qc = useQueryClient();
-  const [contractId, setContractId] = useState('');
+  const [searchParams] = useSearchParams();
+  const urlContract = searchParams.get('contract') || '';
+  const [contractId, setContractId] = useState(urlContract);
+  const [search, setSearch] = useState('');
   const [mode, setMode] = useState('list'); // list | form
   const [form, setForm] = useState({});
 
@@ -213,43 +219,68 @@ const ContractSubEntityPage = ({ config, extraOptions = {} }) => {
           </Paper>
         )
       ) : (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 2 }}>
-            <FormControl size="small" sx={{ minWidth: 280 }}>
-              <InputLabel>قرارداد</InputLabel>
-              <Select value={contractId || ''} label="قرارداد" onChange={e => setContractId(e.target.value)}>
-                {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
-              </Select>
-            </FormControl>
-          </Stack>
-
+        <Box>
           {!contractId ? (
-            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>برای مشاهدهٔ لیست، یک قرارداد انتخاب کنید.</Typography>
-          ) : isLoading ? (
-            <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : list.length === 0 ? (
-            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>موردی ثبت نشده است.</Typography>
+            <Paper sx={{ ...glassPaper, p: 2 }}>
+              <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
+                انتخاب قرارداد ({formatPersianNumber(contractList.length)})
+              </Typography>
+              <ContractPicker
+                contracts={contractList}
+                onSelect={(c) => setContractId(String(c.id))}
+                height={520}
+              />
+            </Paper>
           ) : (
-            <Stack spacing={1}>
-              {list.map(row => (
-                <Paper key={row.id} variant="outlined" sx={{ p: 1.5, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                  <Box sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
-                    {config.listColumns.map(col => (
-                      <Box key={col.key}>
-                        <Typography variant="caption" color="textSecondary" display="block">{col.label}</Typography>
-                        <Typography variant="body2" fontWeight={700}>
-                          {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
-                        </Typography>
+            <Paper sx={{ ...glassPaper, p: 2 }}>
+              <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
+                <Button size="small" startIcon={<ArrowBackIcon />} onClick={() => setContractId('')} variant="outlined">تغییر قرارداد</Button>
+                <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
+                  {contractList.find(c => String(c.id) === String(contractId))?.subject || 'قرارداد'}
+                </Typography>
+                <TextField size="small" placeholder="جستجو در لیست..." value={search} onChange={e => setSearch(e.target.value)} sx={{ minWidth: 200 }}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
+                  sx={{ background: `linear-gradient(135deg,${config.color},${config.color}cc)`, borderRadius: '10px' }}>
+                  {config.addLabel}
+                </Button>
+              </Stack>
+
+              {isLoading ? (
+                <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
+              ) : list.filter(row => {
+                  const s = search.trim().toLowerCase();
+                  if (!s) return true;
+                  return config.listColumns.some(col => String(row[col.key] ?? '').toLowerCase().includes(s));
+                }).length === 0 ? (
+                <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>موردی ثبت نشده است.</Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {list.filter(row => {
+                    const s = search.trim().toLowerCase();
+                    if (!s) return true;
+                    return config.listColumns.some(col => String(row[col.key] ?? '').toLowerCase().includes(s));
+                  }).map(row => (
+                    <Paper key={row.id} variant="outlined" sx={{ p: 1.5, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                      <Box sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
+                        {config.listColumns.map(col => (
+                          <Box key={col.key}>
+                            <Typography variant="caption" color="textSecondary" display="block">{col.label}</Typography>
+                            <Typography variant="body2" fontWeight={700}>
+                              {col.render ? col.render(row[col.key], row) : (row[col.key] ?? '—')}
+                            </Typography>
+                          </Box>
+                        ))}
                       </Box>
-                    ))}
-                  </Box>
-                  <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
-                </Paper>
-              ))}
-            </Stack>
+                      <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
+                      <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                    </Paper>
+                  ))}
+                </Stack>
+              )}
+            </Paper>
           )}
-        </Paper>
+        </Box>
       )}
     </Box>
   );

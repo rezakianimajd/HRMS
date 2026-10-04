@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
@@ -209,7 +210,9 @@ const Row = ({ label, value, strong, red, green, highlight }) => (
 const StatementEditorPage = () => {
   const qc = useQueryClient();
   const { currentCompany } = useCompany();
-  const [contractId, setContractId] = useState('');
+  const [searchParams] = useSearchParams();
+  const urlContract = searchParams.get('contract') || '';
+  const [contractId, setContractId] = useState(urlContract);
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
 

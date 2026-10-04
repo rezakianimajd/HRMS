@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -76,6 +77,8 @@ const EMPTY = {
 
 const GuaranteesPage = () => {
   const qc = useQueryClient();
+  const [searchParams] = useSearchParams();
+  const urlContract = searchParams.get('contract') || '';
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -124,12 +127,18 @@ const GuaranteesPage = () => {
   });
 
   const filtered = useMemo(() => {
-    if (!search) return list;
-    const s = search.trim();
-    return list.filter(g =>
-      (g.number || '').includes(s) || (g.bank || '').includes(s) ||
-      (g.contract_subject || '').includes(s) || (g.check_number || '').includes(s));
-  }, [list, search]);
+    let result = list;
+    if (urlContract) {
+      result = result.filter(g => String(g.contract) === String(urlContract));
+    }
+    if (search) {
+      const s = search.trim();
+      result = result.filter(g =>
+        (g.number || '').includes(s) || (g.bank || '').includes(s) ||
+        (g.contract_subject || '').includes(s) || (g.check_number || '').includes(s));
+    }
+    return result;
+  }, [list, search, urlContract]);
 
   const availableActions = (instrumentType) => {
     if (instrumentType === 'check' || instrumentType === 'promissory') {
@@ -161,7 +170,7 @@ const GuaranteesPage = () => {
           <Typography variant="h6" fontWeight={800} color="#1d4ed8">تضامین و ضمانت‌نامه‌ها</Typography>
           <Typography variant="body2" color="textSecondary">مدیریت چک، سفته و ضمانت‌نامه با چرخهٔ عمر کامل</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY); setDialog(true); }}
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm({ ...EMPTY, contract: urlContract || '' }); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px' }}>
           تضمین جدید
         </Button>
