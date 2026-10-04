@@ -130,8 +130,8 @@ const printStatement = async () => {
         '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>صورت‌وضعیت</title>' +
         '<style>' +
         '@page{size:A4;margin:0}' +
-        'html,body{margin:0;padding:0;background:#fff}' +
-        'img{width:210mm;height:297mm;display:block}' +
+        'html,body{margin:0;padding:0;width:210mm;height:297mm;overflow:hidden;background:#fff}' +
+        'img{position:fixed;top:0;left:0;width:210mm;height:297mm;display:block}' +
         '</style></head><body>' +
         '<img src="' + imgData + '" />' +
         '</body></html>'
