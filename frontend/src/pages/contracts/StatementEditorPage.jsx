@@ -59,6 +59,32 @@ const labelSx = { fontWeight: 700, color: COLOR_DARK, mb: 0.5, display: 'block',
 
 const num = (v) => Math.max(0, Number(v) || 0);
 
+/* Robust print: open a clean window with a full copy of the preview so the
+   whole A4 document prints (header + financials + signatures), regardless of
+   the app's fixed/sticky/overflow layout. */
+const printStatement = () => {
+  const node = document.getElementById('statement-print-area');
+  if (!node) { window.print(); return; }
+
+  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
+    .map((el) => el.outerHTML)
+    .join('\n');
+
+  const w = window.open('', '_blank', 'width=900,height=1200');
+  if (!w) { window.print(); return; }
+
+  w.document.write(
+    '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8">' +
+    '<title>صورت‌وضعیت</title>' + styles +
+    '<style>html,body{margin:0;padding:0;background:#fff} body{min-width:794px}' +
+    '@media print{ @page{size:A4;margin:12mm} body{min-width:0} }' +
+    '</style></head><body>' + node.outerHTML + '</body></html>'
+  );
+  w.document.close();
+  w.focus();
+  setTimeout(() => { w.print(); }, 350);
+};
+
 /* ------------------------------------------------------------------ */
 /* A4-style statement preview                                          */
 /* ------------------------------------------------------------------ */
@@ -179,16 +205,22 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
       <Divider sx={{ my: 1.5, borderStyle: 'dashed', borderColor: `${COLOR}44` }} />
 
       {/* Net payable */}
-      <Box sx={{ borderRadius: '12px', p: 2, background: '#10b98114', border: '1px solid #10b98133', textAlign: 'center' }}>
-        <Typography variant="caption" color="textSecondary">مبلغ قابل پرداخت این دوره</Typography>
-        <Typography variant="h5" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>
-          {formatPersianNumber(netAmount)} ریال
-        </Typography>
-        {fx(netAmount) != null && (
-          <Typography variant="h6" fontWeight={800} sx={{ color: '#4338ca', direction: 'rtl', mt: 0.5 }}>
-            {formatPersianNumber(fx(netAmount))} {cur?.symbol || ''}
-          </Typography>
-        )}
+      <Box sx={{ borderRadius: '14px', p: 2, background: 'linear-gradient(135deg,#10b98114,#0ea5e912)', border: '1px solid #10b98140' }}>
+        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 1 }}>مبلغ قابل پرداخت این دوره</Typography>
+        <Grid container spacing={1}>
+          <Grid item xs={6}>
+            <Box sx={{ borderRadius: '12px', p: 1.5, background: '#05966912', border: '1px solid #05966933', textAlign: 'center' }}>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>ریال</Typography>
+              <Typography variant="h6" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>{formatPersianNumber(netAmount)}</Typography>
+            </Box>
+          </Grid>
+          <Grid item xs={6}>
+            <Box sx={{ borderRadius: '12px', p: 1.5, background: '#4338ca0f', border: '1px solid #4338ca33', textAlign: 'center' }}>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>{cur?.symbol || 'ارز'}</Typography>
+              <Typography variant="h6" fontWeight={900} sx={{ color: '#4338ca', direction: 'rtl' }}>{fx(netAmount) != null ? formatPersianNumber(fx(netAmount)) : '—'}</Typography>
+            </Box>
+          </Grid>
+        </Grid>
       </Box>
 
       {/* Signatures */}
@@ -207,16 +239,16 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 };
 
 const Row = ({ label, value, strong, red, green, highlight, foreign, foreignSymbol }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 2, py: 0.45 }}>
-    <Typography variant="caption" color="textSecondary">{label}</Typography>
-    <Box sx={{ textAlign: 'left' }}>
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, py: 0.7, px: 1.2, mb: 0.5, borderRadius: '10px', background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(15,23,42,0.06)' }}>
+    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap' }}>{label}</Typography>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
       <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong || highlight ? 900 : 700}
         sx={{ direction: 'rtl', color: red ? '#b91c1c' : green ? '#059669' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
         {formatPersianNumber(value)}
       </Typography>
       {foreign != null && (
-        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', direction: 'rtl' }}>
-          {formatPersianNumber(foreign)} {foreignSymbol || ''}
+        <Typography variant="caption" color="textSecondary" sx={{ direction: 'rtl', whiteSpace: 'nowrap' }}>
+          <span style={{ color: '#94a3b8', marginInline: 4 }}>·</span>≈ {formatPersianNumber(foreign)} {foreignSymbol || ''}
         </Typography>
       )}
     </Box>
@@ -447,7 +479,7 @@ const StatementEditorPage = () => {
             <Typography variant="h6" fontWeight={800} sx={{ color: COLOR_DARK }}>{form.id ? 'ویرایش صورت‌وضعیت' : 'صورت‌وضعیت جدید'}</Typography>
             <Typography variant="body2" color="textSecondary">{currentContract?.subject || ''}</Typography>
           </Box>
-          <Button startIcon={<PrintIcon />} variant="contained" onClick={() => window.print()}
+          <Button startIcon={<PrintIcon />} variant="contained" onClick={printStatement}
             sx={{ background: `linear-gradient(135deg,#10b981,#14b8a6)`, borderRadius: '12px' }}>
             چاپ
           </Button>
