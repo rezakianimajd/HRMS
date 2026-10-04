@@ -58,7 +58,7 @@ const ContractTypesManager = () => {
   const qc = useQueryClient();
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState({});
-  const { data, isLoading } = useQuery({ queryKey: ['contract-types-master'], queryFn: () => axiosInstance.get('/contract-types-master/').then(r => r.data) });
+  const { data, isLoading } = useQuery({ queryKey: ['contract-types-master'], queryFn: () => axiosInstance.get('/contract-types-master/', { params: { page_size: 500 } }).then(r => r.data) });
   const list = Array.isArray(data) ? data : data?.results || [];
   const save = useMutation({ mutationFn: (p) => p.id ? axiosInstance.patch(`/contract-types-master/${p.id}/`, p) : axiosInstance.post('/contract-types-master/', p), onSuccess: () => { qc.invalidateQueries({ queryKey: ['contract-types-master'] }); setDialog(false); setForm({}); } });
   const del = useMutation({ mutationFn: (id) => axiosInstance.delete(`/contract-types-master/${id}/`), onSuccess: () => qc.invalidateQueries({ queryKey: ['contract-types-master'] }) });
@@ -99,9 +99,9 @@ const EvaluationsManager = () => {
   const qc = useQueryClient();
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState({});
-  const { data: parties } = useQuery({ queryKey: ['parties-eval'], queryFn: () => axiosInstance.get('/contract-parties/').then(r => r.data) });
+  const { data: parties } = useQuery({ queryKey: ['parties-eval'], queryFn: () => axiosInstance.get('/contract-parties/', { params: { page_size: 500 } }).then(r => r.data) });
   const partyList = Array.isArray(parties) ? parties : parties?.results || [];
-  const { data, isLoading } = useQuery({ queryKey: ['supplier-evaluations'], queryFn: () => axiosInstance.get('/supplier-evaluations/').then(r => r.data) });
+  const { data, isLoading } = useQuery({ queryKey: ['supplier-evaluations'], queryFn: () => axiosInstance.get('/supplier-evaluations/', { params: { page_size: 500 } }).then(r => r.data) });
   const list = Array.isArray(data) ? data : data?.results || [];
   const save = useMutation({ mutationFn: (p) => p.id ? axiosInstance.patch(`/supplier-evaluations/${p.id}/`, p) : axiosInstance.post('/supplier-evaluations/', p), onSuccess: () => { qc.invalidateQueries({ queryKey: ['supplier-evaluations'] }); setDialog(false); setForm({}); } });
   const del = useMutation({ mutationFn: (id) => axiosInstance.delete(`/supplier-evaluations/${id}/`), onSuccess: () => qc.invalidateQueries({ queryKey: ['supplier-evaluations'] }) });
