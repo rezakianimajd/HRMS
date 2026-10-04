@@ -183,61 +183,49 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
   return (
     <Box id="statement-print-area" dir="rtl" sx={{
-      background: '#ffffff', borderRadius: '16px', p: 3, minHeight: 620,
+      background: '#ffffff', borderRadius: '16px', p: 2,
       boxShadow: '0 20px 54px rgba(15,23,42,0.16)', border: '1px solid rgba(15,23,42,0.06)',
       position: 'relative', overflow: 'hidden',
       '&::before': { content: '""', position: 'absolute', inset: 0, background: `radial-gradient(circle at 50% -10%, ${COLOR}1f, transparent 55%)`, pointerEvents: 'none' },
     }}>
       {/* Top-centered logo + company title (from primary definitions) */}
-      <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 1.5 }}>
+      <Box sx={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', pb: 1 }}>
         {company?.logo_url ? (
           <Box component="img" src={company.logo_url} alt="logo"
-            sx={{ width: 72, height: 72, borderRadius: '16px', objectFit: 'contain', background: '#fff', border: `1px solid ${COLOR}22`, boxShadow: `0 8px 20px ${COLOR}1f` }} />
+            sx={{ width: 46, height: 46, borderRadius: '12px', objectFit: 'contain', background: '#fff', border: `1px solid ${COLOR}22`, boxShadow: `0 4px 12px ${COLOR}1f` }} />
         ) : (
-          <Box sx={{ width: 72, height: 72, borderRadius: '16px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 8px 22px ${COLOR}55` }}>
-            <Typography fontWeight={900} color="#fff" fontSize={32}>{company?.name?.[0] || 'ش'}</Typography>
+          <Box sx={{ width: 46, height: 46, borderRadius: '12px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 12px ${COLOR}55` }}>
+            <Typography fontWeight={900} color="#fff" fontSize={22}>{company?.name?.[0] || 'ش'}</Typography>
           </Box>
         )}
-        <Typography variant="h6" fontWeight={900} sx={{ color: '#1e293b', mt: 0.8, textAlign: 'center' }}>
+        <Typography variant="subtitle1" fontWeight={900} sx={{ color: '#1e293b', mt: 0.4, textAlign: 'center', fontSize: 15 }}>
           {company?.name || 'نام شرکت'}
         </Typography>
       </Box>
 
-      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
+      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1 }} />
 
       {/* Section 1: statement number + date + currency */}
       <Grid container spacing={1.5}>
-        <Grid item xs={4}>
-          <Typography variant="caption" color="textSecondary">شماره صورت‌وضعیت</Typography>
-          <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{form.number || '—'}</Typography>
-        </Grid>
-        <Grid item xs={4}>
-          <Typography variant="caption" color="textSecondary">تاریخ</Typography>
-          <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{form.date ? toJalali(form.date) : '—'}</Typography>
-        </Grid>
-        <Grid item xs={4}>
-          <Typography variant="caption" color="textSecondary">واحد ارز</Typography>
-          <Typography variant="body1" fontWeight={800} sx={{ color: '#1e293b' }}>{cur?.name || '—'}</Typography>
-        </Grid>
+        <Grid item xs={4}><Field label="شماره صورت‌وضعیت" value={form.number || '—'} /></Grid>
+        <Grid item xs={4}><Field label="تاریخ" value={form.date ? toJalali(form.date) : '—'} /></Grid>
+        <Grid item xs={4}><Field label="واحد ارز" value={cur?.name || '—'} /></Grid>
       </Grid>
 
-      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
+      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1 }} />
 
       {/* Section 2: contract / party info */}
       <Grid container spacing={1.5}>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">نام پیمانکار</Typography><Typography variant="body2" fontWeight={700}>{contract?.party_name || '—'}</Typography></Grid>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">شماره قرارداد</Typography><Typography variant="body2" fontWeight={700}>{contract?.number || '—'}</Typography></Grid>
-        <Grid item xs={12}><Typography variant="caption" color="textSecondary">موضوع قرارداد</Typography><Typography variant="body2" fontWeight={700}>{contract?.subject || '—'}</Typography></Grid>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">تاریخ شروع</Typography><Typography variant="body2">{contract?.start_date ? toJalali(contract.start_date) : '—'}</Typography></Grid>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">تاریخ پایان (با الحاقیه)</Typography><Typography variant="body2">{endDateWithAddendum ? toJalali(endDateWithAddendum) : '—'}</Typography></Grid>
-        <Grid item xs={6}><Typography variant="caption" color="textSecondary">آخرین الحاقیه</Typography><Typography variant="body2">{lastAddendum?.date ? toJalali(lastAddendum.date) : '—'}</Typography></Grid>
-        <Grid item xs={6}>
-          <Typography variant="caption" color="textSecondary">مبلغ قرارداد (با الحاقیه)</Typography>
-          <Typography variant="body2" fontWeight={900} sx={{ color: COLOR_DARK }}>{formatPersianNumber(contractAmount)} {cur?.symbol || 'ریال'}</Typography>
-        </Grid>
+        <Grid item xs={6}><Field label="نام پیمانکار" value={contract?.party_name || '—'} /></Grid>
+        <Grid item xs={6}><Field label="شماره قرارداد" value={contract?.number || '—'} /></Grid>
+        <Grid item xs={12}><Field label="موضوع قرارداد" value={contract?.subject || '—'} /></Grid>
+        <Grid item xs={6}><Field label="تاریخ شروع" value={contract?.start_date ? toJalali(contract.start_date) : '—'} /></Grid>
+        <Grid item xs={6}><Field label="تاریخ پایان" value={endDateWithAddendum ? toJalali(endDateWithAddendum) : '—'} /></Grid>
+        <Grid item xs={6}><Field label="آخرین الحاقیه" value={lastAddendum?.date ? toJalali(lastAddendum.date) : '—'} /></Grid>
+        <Grid item xs={6}><Field label="مبلغ قرارداد" value={`${formatPersianNumber(contractAmount)} ${cur?.symbol || 'ریال'}`} strong color={COLOR_DARK} /></Grid>
       </Grid>
 
-      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1.5 }} />
+      <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1 }} />
 
       {/* Section 3: financial breakdown */}
       <Box sx={{ borderRadius: '12px', p: 2, background: `linear-gradient(135deg, ${COLOR}0e, ${COLOR}05)`, border: `1px solid ${COLOR}22` }}>
@@ -272,33 +260,33 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
         </Box>
       </Box>
 
-      <Divider sx={{ my: 1.5, borderStyle: 'dashed', borderColor: `${COLOR}44` }} />
+      <Divider sx={{ my: 1, borderStyle: 'dashed', borderColor: `${COLOR}44` }} />
 
       {/* Net payable */}
-      <Box sx={{ borderRadius: '14px', p: 2, background: 'linear-gradient(135deg,#10b98114,#0ea5e912)', border: '1px solid #10b98140' }}>
-        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 1 }}>مبلغ قابل پرداخت این دوره</Typography>
+      <Box sx={{ borderRadius: '12px', p: 1.2, background: 'linear-gradient(135deg,#10b98114,#0ea5e912)', border: '1px solid #10b98140' }}>
+        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 0.8 }}>مبلغ قابل پرداخت این دوره</Typography>
         <Grid container spacing={1}>
           <Grid item xs={6}>
-            <Box sx={{ borderRadius: '12px', p: 1.5, background: '#05966912', border: '1px solid #05966933', textAlign: 'center' }}>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>ریال</Typography>
-              <Typography variant="h6" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>{formatPersianNumber(netAmount)}</Typography>
+            <Box sx={{ borderRadius: '10px', p: 1, background: '#05966912', border: '1px solid #05966933', textAlign: 'center' }}>
+              <Typography variant="caption" color="textSecondary">ریال</Typography>
+              <Typography variant="body1" fontWeight={900} sx={{ color: '#059669', direction: 'rtl', fontSize: 15 }}>{formatPersianNumber(netAmount)}</Typography>
             </Box>
           </Grid>
           <Grid item xs={6}>
-            <Box sx={{ borderRadius: '12px', p: 1.5, background: '#4338ca0f', border: '1px solid #4338ca33', textAlign: 'center' }}>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block' }}>{cur?.symbol || 'ارز'}</Typography>
-              <Typography variant="h6" fontWeight={900} sx={{ color: '#4338ca', direction: 'rtl' }}>{fx(netAmount) != null ? formatPersianNumber(fx(netAmount)) : '—'}</Typography>
+            <Box sx={{ borderRadius: '10px', p: 1, background: '#4338ca0f', border: '1px solid #4338ca33', textAlign: 'center' }}>
+              <Typography variant="caption" color="textSecondary">{cur?.symbol || 'ارز'}</Typography>
+              <Typography variant="body1" fontWeight={900} sx={{ color: '#4338ca', direction: 'rtl', fontSize: 15 }}>{fx(netAmount) != null ? formatPersianNumber(fx(netAmount)) : '—'}</Typography>
             </Box>
           </Grid>
         </Grid>
       </Box>
 
       {/* Signatures */}
-      <Grid container spacing={2} sx={{ mt: 3 }}>
+      <Grid container spacing={2} sx={{ mt: 1.5 }}>
         {['تهیه‌کننده', 'تأییدکننده', 'مدیر مالی'].map((s) => (
           <Grid item xs={4} key={s}>
             <Box sx={{ textAlign: 'center' }}>
-              <Box sx={{ height: 34, borderBottom: `1px dashed ${COLOR}55`, mb: 0.5 }} />
+              <Box sx={{ height: 26, borderBottom: `1px dashed ${COLOR}55`, mb: 0.5 }} />
               <Typography variant="caption" color="textSecondary">{s}</Typography>
             </Box>
           </Grid>
@@ -309,19 +297,26 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 };
 
 const Row = ({ label, value, strong, red, green, highlight, foreign, foreignSymbol }) => (
-  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1.5, py: 0.7, px: 1.2, mb: 0.5, borderRadius: '10px', background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(15,23,42,0.06)' }}>
-    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap' }}>{label}</Typography>
-    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
-      <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong || highlight ? 900 : 700}
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.35, px: 1, mb: 0.35, borderRadius: '8px', background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(15,23,42,0.05)' }}>
+    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>{label}</Typography>
+    <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
+      <Typography variant="body2" fontWeight={strong || highlight ? 800 : 700} fontSize={13}
         sx={{ direction: 'rtl', color: red ? '#b91c1c' : green ? '#059669' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
         {formatPersianNumber(value)}
       </Typography>
       {foreign != null && (
-        <Typography variant="caption" color="textSecondary" sx={{ direction: 'rtl', whiteSpace: 'nowrap' }}>
-          <span style={{ color: '#94a3b8', marginInline: 4 }}>·</span>≈ {formatPersianNumber(foreign)} {foreignSymbol || ''}
+        <Typography variant="caption" color="textSecondary" sx={{ direction: 'rtl', whiteSpace: 'nowrap', fontSize: 11 }}>
+          ≈ {formatPersianNumber(foreign)} {foreignSymbol || ''}
         </Typography>
       )}
     </Box>
+  </Box>
+);
+
+const Field = ({ label, value, strong, color }) => (
+  <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }}>
+    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>{label}:</Typography>
+    <Typography variant="body2" fontWeight={strong ? 800 : 700} sx={{ color: color || '#1e293b', fontSize: 13 }} noWrap>{value}</Typography>
   </Box>
 );
 
