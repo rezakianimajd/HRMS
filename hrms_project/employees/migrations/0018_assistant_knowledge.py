@@ -27,7 +27,7 @@ class Migration(migrations.Migration):
                 'verbose_name': 'دانش دستیار',
                 'verbose_name_plural': 'دانش دستیار',
                 'ordering': ['-updated_at'],
-                'indexes': [models.Index(fields=['company', 'category'], name='assist_company_category_idx')],
+                'indexes': [models.Index(fields=['company', 'category'], name='employees_a_company_61f274_idx')],
             },
         ),
     ]
