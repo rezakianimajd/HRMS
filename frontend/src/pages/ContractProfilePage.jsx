@@ -89,6 +89,27 @@ const InfoItem = ({ icon, color, label, value }) => (
   </Grid>
 );
 
+const AmountCard = ({ icon, color, label, value, currency }) => (
+  <Grid item xs={6} sm={4} md={3}>
+    <Paper sx={{
+      p: 2, height: '100%', textAlign: 'center',
+      background: `linear-gradient(160deg, ${color}1c, ${color}08)`,
+      border: `1px solid ${color}30`,
+      borderRadius: '14px',
+      display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 0.5,
+      transition: 'all 0.2s ease',
+      '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 12px 28px ${color}28` },
+    }}>
+      <Box sx={{ width: 42, height: 42, borderRadius: '50%', background: `linear-gradient(135deg, ${color}, ${color}99)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 3px 12px ${color}45`, mb: 0.5 }}>
+        {icon}
+      </Box>
+      <Typography variant="caption" color="textSecondary">{label}</Typography>
+      <Typography variant="h6" fontWeight={800} sx={{ color, lineHeight: 1.2 }}>{value}</Typography>
+      <Typography variant="caption" color="textSecondary">{currency}</Typography>
+    </Paper>
+  </Grid>
+);
+
 const SectionTitle = ({ color, icon, children }) => (
   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5, mt: 1 }}>
     <Box sx={{
@@ -141,6 +162,9 @@ const ContractProfilePage = () => {
   const totalPaid = (c.payments || []).reduce((s, x) => s + Number(x.amount || 0), 0);
   const totalInvoices = (c.invoices || []).reduce((s, x) => s + Number(x.total || 0), 0);
   const remaining = Math.max(0, Number(c.amount || 0) - totalPaid);
+
+  const currencyLabel = c.currency_name || 'ریال';
+  const currencySymbol = c.currency_symbol || '﷼';
 
   const timelineColor = {
     created: '#64748b', signing: '#10b981', start: '#3b82f6', end: '#ef4444',
@@ -198,16 +222,20 @@ const ContractProfilePage = () => {
           </Box>
 
           <Divider sx={{ my: 2 }} />
+          <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+            <AmountCard icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />} color="#10b981" label="مبلغ قرارداد" value={formatPersianNumber(c.amount || 0)} currency={currencyLabel} />
+            <AmountCard icon={<PaymentsIcon sx={{ fontSize: 20 }} />} color="#14b8a6" label="پیش‌پرداخت" value={formatPersianNumber(c.advance_payment || 0)} currency={currencyLabel} />
+            <AmountCard icon={<LockIcon sx={{ fontSize: 20 }} />} color="#f59e0b" label="مبلغ تضمین" value={formatPersianNumber(c.guarantee_amount || 0)} currency={currencyLabel} />
+            <AmountCard icon={<ScheduleIcon sx={{ fontSize: 20 }} />} color="#8b5cf6" label="باقی‌مانده" value={formatPersianNumber(remaining)} currency={currencyLabel} />
+          </Grid>
           <Grid container spacing={1.5}>
             <InfoItem icon={<StorefrontIcon sx={{ fontSize: 18 }} />} color="#0ea5e9" label="طرف قرارداد" value={c.party_name || '—'} />
             <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="نوع قرارداد" value={c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—'} />
             <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#3b82f6" label="پروژه" value={c.project_name || '—'} />
-            <InfoItem icon={<AccountBalanceIcon sx={{ fontSize: 18 }} />} color="#10b981" label="مبلغ قرارداد" value={`${formatPersianNumber(c.amount || 0)} ریال`} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="تاریخ شروع" value={toJalali(c.start_date)} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="تاریخ پایان" value={toJalali(c.end_date)} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ec4899" label="تاریخ امضا" value={toJalali(c.signing_date)} />
             <InfoItem icon={<LockIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="نوع ضمانت" value={c.guarantee_type_display || '—'} />
-            <InfoItem icon={<ScheduleIcon sx={{ fontSize: 18 }} />} color="#8b5cf6" label="باقی‌مانده" value={`${formatPersianNumber(remaining)} ریال`} />
             {Array.isArray(c.advance_payments) && c.advance_payments.length > 0 && (
               <InfoItem icon={<PaymentsIcon sx={{ fontSize: 18 }} />} color="#14b8a6" label="پیش‌پرداخت مرحله‌ای" value={`${toPersianDigits(c.advance_payments.length)} مرحله`} />
             )}
@@ -318,10 +346,10 @@ const ContractProfilePage = () => {
               <Grid container spacing={1.5} sx={{ mb: 2 }}>
                 <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="شماره مناقصه" value={c.tender_number || '—'} />
                 <InfoItem icon={<DescriptionIcon sx={{ fontSize: 18 }} />} color="#ec4899" label="طبقه‌بندی" value={c.category || '—'} />
-                <InfoItem icon={<PaymentsIcon sx={{ fontSize: 18 }} />} color="#10b981" label="پیش‌پرداخت" value={c.advance_payment ? `${formatPersianNumber(c.advance_payment)} ریال` : '—'} />
+                <InfoItem icon={<PaymentsIcon sx={{ fontSize: 18 }} />} color="#10b981" label="پیش‌پرداخت" value={c.advance_payment ? `${formatPersianNumber(c.advance_payment)} ${currencyLabel}` : '—'} />
                 <InfoItem icon={<LockIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="درصد حسن انجام کار" value={c.retention_percent ? `٪${toPersianDigits(c.retention_percent)}` : '—'} />
                 <InfoItem icon={<ScheduleIcon sx={{ fontSize: 18 }} />} color="#3b82f6" label="دوره گارانتی" value={c.warranty_period || '—'} />
-                <InfoItem icon={<AccountBalanceIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="مبلغ تضمین" value={c.guarantee_amount ? `${formatPersianNumber(c.guarantee_amount)} ریال` : '—'} />
+                <InfoItem icon={<AccountBalanceIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="مبلغ تضمین" value={c.guarantee_amount ? `${formatPersianNumber(c.guarantee_amount)} ${currencyLabel}` : '—'} />
               </Grid>
 
               <Grid container spacing={2}>
