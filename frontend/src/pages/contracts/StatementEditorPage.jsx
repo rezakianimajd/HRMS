@@ -13,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
+import PrintIcon from '@mui/icons-material/Print';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -83,7 +84,7 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
 
   return (
-    <Box dir="rtl" sx={{
+    <Box id="statement-print-area" dir="rtl" sx={{
       background: '#ffffff', borderRadius: '16px', p: 3, minHeight: 620,
       boxShadow: '0 20px 54px rgba(15,23,42,0.16)', border: '1px solid rgba(15,23,42,0.06)',
       position: 'relative', overflow: 'hidden',
@@ -218,6 +219,7 @@ const StatementEditorPage = () => {
   const [search, setSearch] = useState('');
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
+  const [rateOverride, setRateOverride] = useState('');
 
   const { data: companyProfile } = useQuery({
     queryKey: ['company-profile'],
@@ -274,9 +276,10 @@ const StatementEditorPage = () => {
   const workDone = cumulativeThis - cumulativePrev;
   const netAmount = workDone + additionsTotal - deductionsTotal;
 
-  // نرخ ارز انتخاب‌شده
+  // نرخ ارز انتخاب‌شده (قابل ویرایش توسط کاربر؛ پیش‌فرض از ارز قرارداد)
   const selCurrency = currencyList.find((c) => String(c.id) === String(form.currency)) || null;
-  const rate = num(selCurrency?.exchange_rate || 1);
+  const baseRate = num(selCurrency?.exchange_rate || 1);
+  const rate = rateOverride !== '' && rateOverride != null ? num(rateOverride) : baseRate;
 
   const openNew = () => {
     setForm({
@@ -288,6 +291,7 @@ const StatementEditorPage = () => {
       additions: [],
       deductions: [],
     });
+    setRateOverride('');
     setMode('form');
   };
   const openEdit = (row) => {
@@ -299,9 +303,10 @@ const StatementEditorPage = () => {
       additions: Array.isArray(row.additions) ? row.additions : [],
       deductions: Array.isArray(row.deductions) ? row.deductions : [],
     });
+    setRateOverride(row.exchange_rate != null && row.exchange_rate !== '' ? String(row.exchange_rate) : '');
     setMode('form');
   };
-  const closeForm = () => { setMode('list'); setForm({}); };
+  const closeForm = () => { setMode('list'); setForm({}); setRateOverride(''); };
 
   const submit = () => {
     const payload = {
@@ -315,6 +320,7 @@ const StatementEditorPage = () => {
       deductions: deductions,
       deductions_total: deductionsTotal,
       net_amount: netAmount,
+      exchange_rate: rate || null,
     };
     save.mutate(payload);
   };
@@ -425,6 +431,10 @@ const StatementEditorPage = () => {
             <Typography variant="h6" fontWeight={800} sx={{ color: COLOR_DARK }}>{form.id ? 'ویرایش صورت‌وضعیت' : 'صورت‌وضعیت جدید'}</Typography>
             <Typography variant="body2" color="textSecondary">{currentContract?.subject || ''}</Typography>
           </Box>
+          <Button startIcon={<PrintIcon />} variant="contained" onClick={() => window.print()}
+            sx={{ background: `linear-gradient(135deg,#10b981,#14b8a6)`, borderRadius: '12px' }}>
+            چاپ
+          </Button>
           <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={closeForm} sx={{ borderRadius: '12px' }}>بازگشت به لیست</Button>
         </Paper>
 
@@ -446,14 +456,16 @@ const StatementEditorPage = () => {
                 <Grid item xs={12} md={6}>
                   <Typography variant="caption" sx={labelSx}>واحد ارز</Typography>
                   <FormControl size="small" fullWidth>
-                    <Select value={form.currency || ''} onChange={(e) => setField('currency', e.target.value)} sx={{ borderRadius: '12px', background: 'rgba(255,255,255,0.55)' }}>
+                    <Select value={form.currency || ''} onChange={(e) => { setField('currency', e.target.value); setRateOverride(''); }} sx={{ borderRadius: '12px', background: 'rgba(255,255,255,0.55)' }}>
                       {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code}) — {c.symbol}</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>نرخ تبدیل به ریال</Typography>
-                  <TextField size="small" fullWidth value={formatPersianNumber(rate)} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
+                  <Typography variant="caption" sx={labelSx}>نرخ تبدیل به ریال (قابل ویرایش)</Typography>
+                  <TextField size="small" fullWidth type="number" value={rateOverride}
+                    placeholder={formatPersianNumber(baseRate)}
+                    onChange={(e) => setRateOverride(e.target.value)} sx={fieldSx} />
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="کارکرد" /></Divider></Grid>
@@ -474,6 +486,39 @@ const StatementEditorPage = () => {
                 <Grid item xs={12} md={6}>
                   <Typography variant="caption" sx={labelSx}>معادل ریال (کارکرد)</Typography>
                   <TextField type="number" size="small" fullWidth value={workDone * rate} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
+                </Grid>
+
+                {/* کادر جذاب نمایش ریالی + ارزی */}
+                <Grid item xs={12}>
+                  <Box sx={{
+                    borderRadius: '14px', p: 2,
+                    background: 'linear-gradient(135deg, rgba(16,185,129,0.10), rgba(99,102,241,0.08), rgba(255,255,255,0.5))',
+                    border: '1px solid rgba(16,185,129,0.25)',
+                    boxShadow: '0 8px 24px rgba(16,185,129,0.12)',
+                  }}>
+                    <Typography variant="caption" fontWeight={800} color="#047857" sx={{ mb: 1, display: 'block' }}>
+                      مبلغ قابل پرداخت این دوره
+                    </Typography>
+                    <Grid container spacing={1.5}>
+                      <Grid item xs={6}>
+                        <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
+                          <Typography variant="caption" color="textSecondary">مبلغ ریالی</Typography>
+                          <Typography variant="h6" fontWeight={900} color="#059669">{formatPersianNumber(netAmount)} ریال</Typography>
+                        </Box>
+                      </Grid>
+                      <Grid item xs={6}>
+                        <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
+                          <Typography variant="caption" color="textSecondary">مبلغ ارزی ({selCurrency?.symbol || ''})</Typography>
+                          <Typography variant="h6" fontWeight={900} color="#4338ca">
+                            {formatPersianNumber(rate > 0 ? netAmount / rate : 0)}
+                          </Typography>
+                        </Box>
+                      </Grid>
+                    </Grid>
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
+                      نرخ ارز: {formatPersianNumber(rate)} ریال به ازای هر {selCurrency?.name || 'واحد'}
+                    </Typography>
+                  </Box>
                 </Grid>
 
                 <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="اضافات و کسورات (از تعاریف اولیه)" /></Divider></Grid>

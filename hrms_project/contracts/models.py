@@ -239,6 +239,10 @@ class Statement(BaseModel):
         'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='statements', verbose_name=_('واحد ارز'),
     )
+    exchange_rate = models.DecimalField(
+        max_digits=18, decimal_places=6, null=True, blank=True,
+        verbose_name=_('نرخ ارز (به ریال)'),
+    )
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 

@@ -89,7 +89,7 @@ class StatementSerializer(serializers.ModelSerializer):
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
-    exchange_rate = serializers.DecimalField(source='currency.exchange_rate', max_digits=18, decimal_places=6, read_only=True)
+    exchange_rate = serializers.DecimalField(max_digits=18, decimal_places=6, required=False, allow_null=True)
 
     class Meta:
         model = Statement
