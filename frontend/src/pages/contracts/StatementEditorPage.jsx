@@ -60,11 +60,24 @@ const labelSx = { fontWeight: 700, color: COLOR_DARK, mb: 0.5, display: 'block',
 const num = (v) => Math.max(0, Number(v) || 0);
 
 /* Robust print: render a full copy of the preview inside a hidden iframe that
-   shares the app's stylesheets (via base + head), so the printout matches the
-   on-screen preview exactly (grid, fonts, logo sizing). */
+   receives ALL active CSS rules (including Emotion/MUI styles injected via the
+   CSSOM, which are not visible in head.innerHTML). */
 const printStatement = () => {
   const node = document.getElementById('statement-print-area');
   if (!node) { window.print(); return; }
+
+  // Collect every CSS rule from the live document. Emotion (MUI v5) injects
+  // styles through stylesheet.insertRule, so reading head.innerHTML alone
+  // misses them — this is why the grid/fonts were previously broken.
+  let css = '';
+  Array.from(document.styleSheets).forEach((sheet) => {
+    try {
+      const rules = sheet.cssRules || sheet.rules;
+      for (let i = 0; i < rules.length; i++) css += rules[i].cssText + '\n';
+    } catch (e) {
+      if (sheet.href) css += '@import url("' + sheet.href + '");\n';
+    }
+  });
 
   let frame = document.getElementById('statement-print-frame');
   if (!frame) {
@@ -90,7 +103,7 @@ const printStatement = () => {
     '<meta charset="utf-8">' +
     '<meta name="viewport" content="width=device-width, initial-scale=1">' +
     '<title>صورت‌وضعیت</title>' +
-    document.head.innerHTML +
+    '<style>' + css + '</style>' +
     '<style>' +
     'html,body{margin:0;padding:0;background:#fff}' +
     '@media print{' +
@@ -102,7 +115,7 @@ const printStatement = () => {
   );
   doc.close();
 
-  // give the frame a moment to load shared stylesheets / images, then print
+  // give the frame a moment to apply styles / load images, then print
   setTimeout(() => {
     try {
       frame.contentWindow.focus();
@@ -110,7 +123,7 @@ const printStatement = () => {
     } catch (e) {
       window.print();
     }
-  }, 550);
+  }, 650);
 };
 
 /* ------------------------------------------------------------------ */
