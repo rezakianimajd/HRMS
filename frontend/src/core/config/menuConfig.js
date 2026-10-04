@@ -481,18 +481,20 @@ const projectsMenu = [
     title: 'خانه',
     color: '#8b5cf6',
     items: [
-      { id: 'projects', title: 'پروژه‌ها', icon: <AccountTreeIcon />, path: '/projects', color: '#8b5cf6', primary: true, ready: true },
+      { id: 'projects-dashboard', title: 'داشبورد', icon: <DashboardIcon />, path: '/projects/dashboard', color: '#8b5cf6', primary: true, ready: true },
     ],
   },
   {
-    id: 'projects-structure',
-    title: 'ساختارها',
-    color: '#3b82f6',
+    id: 'projects-management',
+    title: 'مدیریت پروژه',
+    color: '#8b5cf6',
     items: [
-      comingSoon('/projects/wbs', 'projects-wbs', 'WBS', <AccountTreeIcon />, '#8b5cf6'),
-      comingSoon('/projects/cbs', 'projects-cbs', 'CBS', <CategoryIcon />, '#0ea5e9'),
-      comingSoon('/projects/obs', 'projects-obs', 'OBS', <AdminPanelSettingsIcon />, '#ef4444'),
-      comingSoon('/projects/rbs', 'projects-rbs', 'RBS / منابع', <Inventory2Icon />, '#10b981'),
+      { id: 'projects', title: 'پروژه‌ها', icon: <AccountTreeIcon />, path: '/projects', color: '#8b5cf6', primary: true, ready: true },
+      { id: 'projects-types', title: 'انواع پروژه', icon: <CategoryIcon />, path: '/projects/types', color: '#6366f1', primary: false, ready: true },
+      { id: 'projects-structure', title: 'ساختار (WBS / CBS)', icon: <AccountTreeIcon />, path: '/projects/structure', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'projects-resources', title: 'منابع (RBS)', icon: <Inventory2Icon />, path: '/projects/resources', color: '#10b981', primary: false, ready: true },
+      { id: 'projects-cost-sources', title: 'منشأ هزینه', icon: <NumbersIcon />, path: '/projects/cost-sources', color: '#f59e0b', primary: false, ready: true },
+      { id: 'projects-obs', title: 'OBS', icon: <AdminPanelSettingsIcon />, path: '/projects/obs', color: '#ef4444', primary: false, ready: true },
     ],
   },
   {

@@ -50,6 +50,13 @@ import ContractTemplatesPage from './pages/ContractTemplatesPage';
 import ContractDraftsPage from './pages/ContractDraftsPage';
 import ContractApprovalsPage from './pages/ContractApprovalsPage';
 import ProjectsPage from './pages/ProjectsPage';
+import ProjectsDashboardPage from './pages/ProjectsDashboardPage';
+import ProjectsStructurePage from './pages/ProjectsStructurePage';
+import ProjectsResourcesPage from './pages/ProjectsResourcesPage';
+import ProjectsCostSourcesPage from './pages/ProjectsCostSourcesPage';
+import ProjectsOBSPage from './pages/ProjectsOBSPage';
+import ProjectTypesPage from './pages/ProjectTypesPage';
+import ProjectProfilePage from './pages/ProjectProfilePage';
 import PriceListPage from './pages/PriceListPage';
 import CommercialPage from './pages/CommercialPage';
 import CostDashboardPage from './pages/CostDashboardPage';
@@ -283,6 +290,13 @@ const AppRoutes = () => {
       <Route path="/contracts-settings" element={<ProtectedLayout><ContractSettingsPage /></ProtectedLayout>} />
       <Route path="/contracts-definitions" element={<ProtectedLayout><ContractDefinitionsPage /></ProtectedLayout>} />
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
+      <Route path="/projects/dashboard" element={<ProtectedLayout><ProjectsDashboardPage /></ProtectedLayout>} />
+      <Route path="/projects/structure" element={<ProtectedLayout><ProjectsStructurePage /></ProtectedLayout>} />
+      <Route path="/projects/resources" element={<ProtectedLayout><ProjectsResourcesPage /></ProtectedLayout>} />
+      <Route path="/projects/cost-sources" element={<ProtectedLayout><ProjectsCostSourcesPage /></ProtectedLayout>} />
+      <Route path="/projects/obs" element={<ProtectedLayout><ProjectsOBSPage /></ProtectedLayout>} />
+      <Route path="/projects/types" element={<ProtectedLayout><ProjectTypesPage /></ProtectedLayout>} />
+      <Route path="/projects/:id" element={<ProtectedLayout><ProjectProfilePage /></ProtectedLayout>} />
       <Route path="/projects/price-lists" element={<ProtectedLayout><PriceListPage /></ProtectedLayout>} />
       <Route path="/projects/commercial" element={<ProtectedLayout><CommercialPage /></ProtectedLayout>} />
       <Route path="/projects/cost" element={<ProtectedLayout><CostDashboardPage /></ProtectedLayout>} />

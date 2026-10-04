@@ -4,132 +4,45 @@ import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, Chip, Avatar, Grid, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
-  InputLabel, Select, MenuItem, Tabs, Tab, IconButton, Tooltip,
+  InputLabel, Select, MenuItem, IconButton, Tooltip, InputAdornment, Pagination,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
-import InputAdornment from '@mui/material/InputAdornment';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import { useNavigate } from 'react-router-dom';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-
-const STATUS_LABELS = {
-  draft: 'پیش‌نویس',
-  active: 'فعال',
-  on_hold: 'متوقف',
-  completed: 'تکمیل‌شده',
-  closed: 'بسته',
-};
-
-const STATUS_COLORS = {
-  draft: '#64748b', active: '#10b981', on_hold: '#f59e0b',
-  completed: '#3b82f6', closed: '#64748b',
-};
+import { glassPaper, STATUS_LABELS, STATUS_COLORS } from './projects/ProjectsShared';
 
 const EMPTY_PROJECT = {
   id: null, code: '', name: '', project_type: '', manager: '',
   client: '', location: '', start_date: '', end_date: '', status: 'draft', description: '',
 };
 
-const glassPaper = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
-  borderRadius: '10px',
-};
-
-/* Generic simple entity manager (used for CBS / Resource / CostSource / ProjectType) */
-const SimpleEntityList = ({ queryKey, endpoint, title, color, icon, fields }) => {
-  const qc = useQueryClient();
-  const [dialog, setDialog] = useState(false);
-  const [form, setForm] = useState({ id: null });
-
-  const { data, isLoading } = useQuery({
-    queryKey: [queryKey],
-    queryFn: () => axiosInstance.get(endpoint).then(r => r.data),
-  });
-  const list = Array.isArray(data) ? data : data?.results || [];
-
-  const save = useMutation({
-    mutationFn: (payload) =>
-      payload.id
-        ? axiosInstance.patch(`${endpoint}${payload.id}/`, payload)
-        : axiosInstance.post(endpoint, payload),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: [queryKey] });
-      setDialog(false);
-      setForm({ id: null });
-    },
-  });
-
-  const remove = useMutation({
-    mutationFn: (id) => axiosInstance.delete(`${endpoint}${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: [queryKey] }),
-  });
-
-  if (isLoading) return <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={24} /></Box>;
-
-  const fieldDefs = fields || [{ key: 'name', label: 'نام' }, { key: 'code', label: 'کد' }];
-
-  return (
-    <Box>
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
-        <Typography variant="subtitle2" fontWeight={800} color={color}>{title}</Typography>
-        <Button size="small" startIcon={<AddIcon />} variant="outlined"
-          onClick={() => { setForm({ id: null }); setDialog(true); }}>افزودن</Button>
-      </Box>
-      <Stack spacing={0.75}>
-        {list.map(item => (
-          <Paper key={item.id} variant="outlined" sx={{ p: 1, borderRadius: '10px', display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Avatar sx={{ width: 26, height: 26, background: color }}>{icon}</Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="body2" fontWeight={700} noWrap>{item.name}</Typography>
-              {item.code && <Typography variant="caption" color="textSecondary">{item.code}</Typography>}
-            </Box>
-            <IconButton size="small" onClick={() => { setForm(item); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-            <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) remove.mutate(item.id); }}><DeleteIcon fontSize="small" /></IconButton>
-          </Paper>
-        ))}
-        {list.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">موردی نیست</Typography>}
-      </Stack>
-
-      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="xs" fullWidth>
-        <DialogTitle>{form.id ? 'ویرایش' : 'افزودن'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          {fieldDefs.map(f => (
-            <TextField key={f.key} size="small" label={f.label} value={form[f.key] || ''}
-              onChange={e => setForm(p => ({ ...p, [f.key]: e.target.value }))} />
-          ))}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialog(false)}>انصراف</Button>
-          <Button variant="contained" onClick={() => save.mutate(form)} sx={{ background: color }}>ذخیره</Button>
-        </DialogActions>
-      </Dialog>
-    </Box>
-  );
-};
-
 const ProjectsPage = () => {
   const qc = useQueryClient();
-  const [tab, setTab] = useState(0);
+  const navigate = useNavigate();
+  const [page, setPage] = useState(1);
+  const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY_PROJECT);
+  const PAGE_SIZE = 10;
 
   const { data, isLoading } = useQuery({
-    queryKey: ['projects'],
-    queryFn: () => axiosInstance.get('/projects/').then(r => r.data),
+    queryKey: ['projects', page, search],
+    queryFn: () => axiosInstance.get('/projects/', { params: { page, page_size: PAGE_SIZE, search: search || undefined } }).then(r => r.data),
   });
   const projects = Array.isArray(data) ? data : data?.results || [];
+  const total = data?.count || projects.length;
+  const pageCount = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   const { data: types } = useQuery({
     queryKey: ['project-types'],
-    queryFn: () => axiosInstance.get('/project-types/').then(r => r.data),
+    queryFn: () => axiosInstance.get('/project-types/', { params: { page_size: 500 } }).then(r => r.data),
   });
   const typeList = Array.isArray(types) ? types : types?.results || [];
 
@@ -161,8 +74,8 @@ const ProjectsPage = () => {
           <AccountTreeIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#7c3aed">مدیریت پروژه و بهای تمام‌شده</Typography>
-          <Typography variant="body2" color="textSecondary">فاز ۰ — زیرساخت پروژه، WBS، CBS، منابع، OBS و منشأ هزینه</Typography>
+          <Typography variant="h6" fontWeight={800} color="#7c3aed">پروژه‌ها ({formatPersianNumber(total)})</Typography>
+          <Typography variant="body2" color="textSecondary">مدیریت پروژه‌ها، ساختارها و منابع</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY_PROJECT); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg,#8b5cf6,#3b82f6)', borderRadius: '10px' }}>
@@ -170,98 +83,50 @@ const ProjectsPage = () => {
         </Button>
       </Paper>
 
-      <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto" sx={{ mb: 2 }}>
-        <Tab label={`پروژه‌ها (${formatPersianNumber(projects.length)})`} />
-        <Tab label="WBS / CBS" />
-        <Tab label="منابع (RBS)" />
-        <Tab label="منشأ هزینه" />
-        <Tab label="OBS" />
-        <Tab label="انواع پروژه" />
-      </Tabs>
+      <TextField size="small" fullWidth sx={{ mb: 2 }} placeholder="جستجوی پروژه (کد، نام، کارفرما)..."
+        value={search} onChange={e => { setSearch(e.target.value); setPage(1); }}
+        InputProps={{
+          startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+        }} />
 
-      {tab === 0 && (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
+      <Paper sx={{ ...glassPaper, p: 2 }}>
+        <Stack spacing={1.25}>
           {projects.length === 0 ? (
             <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>پروژه‌ای تعریف نشده است.</Typography>
           ) : (
-            <Stack spacing={1.25}>
-              {projects.map(p => (
-                <Paper key={p.id} variant="outlined" sx={{ p: 1.75, borderRadius: '10px', background: 'rgba(255,255,255,0.5)' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
-                    <Avatar sx={{ width: 42, height: 42, background: STATUS_COLORS[p.status] || '#64748b' }}>
-                      <AccountTreeIcon sx={{ color: '#fff' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 180 }}>
-                      <Typography variant="body2" fontWeight={800}>{p.name}</Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        کد: {p.code} · نوع: {p.project_type_name} · کارفرما: {p.client || '—'}
-                      </Typography>
-                    </Box>
-                    <Chip size="small" label={STATUS_LABELS[p.status]} sx={{ color: '#fff', bgcolor: STATUS_COLORS[p.status] }} />
+            projects.map(p => (
+              <Paper key={p.id} variant="outlined" sx={{ p: 1.75, borderRadius: '10px', background: 'rgba(255,255,255,0.5)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
+                  <Avatar sx={{ width: 42, height: 42, background: STATUS_COLORS[p.status] || '#64748b' }}>
+                    <AccountTreeIcon sx={{ color: '#fff' }} />
+                  </Avatar>
+                  <Box sx={{ flex: 1, minWidth: 180 }}>
+                    <Typography variant="body2" fontWeight={800}>{p.name}</Typography>
                     <Typography variant="caption" color="textSecondary">
-                      {toJalali(p.start_date)} تا {toJalali(p.end_date)}
+                      کد: {p.code} · نوع: {p.project_type_name || '—'} · کارفرما: {p.client || '—'}
                     </Typography>
-                    <IconButton size="small" onClick={() => { setForm({ ...p }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف پروژه؟')) remove.mutate(p.id); }}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
-                </Paper>
-              ))}
-            </Stack>
+                  <Chip size="small" label={STATUS_LABELS[p.status] || p.status} sx={{ color: '#fff', bgcolor: STATUS_COLORS[p.status] || '#64748b' }} />
+                  <Typography variant="caption" color="textSecondary">
+                    {toJalali(p.start_date)} تا {toJalali(p.end_date)}
+                  </Typography>
+                  <Tooltip title="پرونده پروژه">
+                    <IconButton size="small" color="primary" onClick={() => navigate(`/projects/${p.id}`)}><FolderOpenIcon fontSize="small" /></IconButton>
+                  </Tooltip>
+                  <IconButton size="small" onClick={() => { setForm({ ...p }); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
+                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف پروژه؟')) remove.mutate(p.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                </Box>
+              </Paper>
+            ))
           )}
-        </Paper>
-      )}
+        </Stack>
 
-      {tab === 1 && (
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ ...glassPaper, p: 2 }}>
-              <SimpleEntityList queryKey="cbs-tree" endpoint="/cbs-nodes/" title="ساختار شکست هزینه (CBS)"
-                color="#0ea5e9" icon={<span style={{ fontSize: 14, color: '#fff' }}>C</span>}
-                fields={[{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام' }]} />
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ ...glassPaper, p: 2 }}>
-              <Typography variant="subtitle2" fontWeight={800} color="#8b5cf6" sx={{ mb: 1.5 }}>WBS — ساختار شکست کار</Typography>
-              <Typography variant="body2" color="textSecondary">
-                WBS بهصورت Project-specific است. پس از انتخاب پروژه، گره‌های آن (در فازهای بعدی UI درختی) مدیریت می‌شوند.
-              </Typography>
-            </Paper>
-          </Grid>
-        </Grid>
-      )}
-
-      {tab === 2 && (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <SimpleEntityList queryKey="resource-categories" endpoint="/resource-categories/" title="دسته منابع"
-            color="#10b981" icon={<span style={{ fontSize: 14, color: '#fff' }}>R</span>}
-            fields={[{ key: 'code', label: 'کد' }, { key: 'name', label: 'عنوان' }]} />
-        </Paper>
-      )}
-
-      {tab === 3 && (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <SimpleEntityList queryKey="cost-sources" endpoint="/cost-sources/" title="منشأ هزینه"
-            color="#f59e0b" icon={<span style={{ fontSize: 14, color: '#fff' }}>$</span>}
-            fields={[{ key: 'code', label: 'کد' }, { key: 'name', label: 'عنوان' }]} />
-        </Paper>
-      )}
-
-      {tab === 4 && (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <SimpleEntityList queryKey="obs-nodes" endpoint="/obs-nodes/" title="ساختار شکست سازمانی (OBS)"
-            color="#ef4444" icon={<span style={{ fontSize: 14, color: '#fff' }}>O</span>}
-            fields={[{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام' }]} />
-        </Paper>
-      )}
-
-      {tab === 5 && (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <SimpleEntityList queryKey="project-types" endpoint="/project-types/" title="انواع پروژه"
-            color="#6366f1" icon={<span style={{ fontSize: 14, color: '#fff' }}>P</span>}
-            fields={[{ key: 'code', label: 'کد' }, { key: 'name', label: 'عنوان' }]} />
-        </Paper>
-      )}
+        {pageCount > 1 && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', mt: 2 }}>
+            <Pagination count={pageCount} page={page} onChange={(e, v) => setPage(v)} color="primary" />
+          </Box>
+        )}
+      </Paper>
 
       {/* Project dialog */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
