@@ -9,6 +9,7 @@ import {
 } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import AddIcon from '@mui/icons-material/Add';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SearchIcon from '@mui/icons-material/Search';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ScheduleIcon from '@mui/icons-material/Schedule';
@@ -20,6 +21,7 @@ import UpdateIcon from '@mui/icons-material/Update';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import ContractPicker from '../core/components/ui/ContractPicker';
 
 const TYPE_LABELS = {
   performance: 'ضمانت حسن انجام کار',
@@ -79,6 +81,7 @@ const GuaranteesPage = () => {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const urlContract = searchParams.get('contract') || '';
+  const [contractId, setContractId] = useState(urlContract);
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -128,8 +131,8 @@ const GuaranteesPage = () => {
 
   const filtered = useMemo(() => {
     let result = list;
-    if (urlContract) {
-      result = result.filter(g => String(g.contract) === String(urlContract));
+    if (contractId) {
+      result = result.filter(g => String(g.contract) === String(contractId));
     }
     if (search) {
       const s = search.trim();
@@ -138,7 +141,7 @@ const GuaranteesPage = () => {
         (g.contract_subject || '').includes(s) || (g.check_number || '').includes(s));
     }
     return result;
-  }, [list, search, urlContract]);
+  }, [list, search, contractId]);
 
   const availableActions = (instrumentType) => {
     if (instrumentType === 'check' || instrumentType === 'promissory') {
@@ -170,18 +173,35 @@ const GuaranteesPage = () => {
           <Typography variant="h6" fontWeight={800} color="#1d4ed8">تضامین و ضمانت‌نامه‌ها</Typography>
           <Typography variant="body2" color="textSecondary">مدیریت چک، سفته و ضمانت‌نامه با چرخهٔ عمر کامل</Typography>
         </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm({ ...EMPTY, contract: urlContract || '' }); setDialog(true); }}
+        <Button variant="contained" startIcon={<AddIcon />} disabled={!contractId}
+          onClick={() => { setForm({ ...EMPTY, contract: contractId || '' }); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px' }}>
           تضمین جدید
         </Button>
       </Paper>
 
-      {/* Search */}
-      <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
-        <TextField size="small" placeholder="جستجو: شماره، بانک، قرارداد، شماره چک..." value={search}
-          onChange={e => setSearch(e.target.value)} fullWidth
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-      </Paper>
+      {!contractId ? (
+        <Paper sx={{ ...glassPaper, p: 2 }}>
+          <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
+            انتخاب قرارداد ({formatPersianNumber(contractList.length)})
+          </Typography>
+          <ContractPicker
+            contracts={contractList}
+            onSelect={(c) => setContractId(String(c.id))}
+            height={520}
+          />
+        </Paper>
+      ) : (
+        <>
+          <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)', display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
+            <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
+              {contractList.find(c => String(c.id) === String(contractId))?.subject || 'قرارداد'}
+            </Typography>
+            <TextField size="small" placeholder="جستجو: شماره، بانک، شماره چک..." value={search}
+              onChange={e => setSearch(e.target.value)} sx={{ minWidth: 260 }}
+              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+          </Paper>
 
       {/* List */}
       {filtered.length === 0 ? (
@@ -361,6 +381,8 @@ const GuaranteesPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+        </>
+      )}
     </Box>
   );
 };

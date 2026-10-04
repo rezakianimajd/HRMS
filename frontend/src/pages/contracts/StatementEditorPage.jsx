@@ -5,13 +5,14 @@ import axiosInstance from '../../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, Avatar, CircularProgress, Stack, Grid,
   TextField, FormControl, InputLabel, Select, MenuItem, IconButton,
-  FormControlLabel, Switch, Chip, Divider,
+  FormControlLabel, Switch, Chip, Divider, InputAdornment,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveIcon from '@mui/icons-material/Save';
+import SearchIcon from '@mui/icons-material/Search';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
@@ -19,6 +20,7 @@ import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
+import ContractPicker from '../../core/components/ui/ContractPicker';
 import useCompany from '../../core/hooks/useCompany';
 
 const COLOR = '#6366f1';
@@ -213,6 +215,7 @@ const StatementEditorPage = () => {
   const [searchParams] = useSearchParams();
   const urlContract = searchParams.get('contract') || '';
   const [contractId, setContractId] = useState(urlContract);
+  const [search, setSearch] = useState('');
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
 
@@ -356,38 +359,55 @@ const StatementEditorPage = () => {
           </Button>
         </Paper>
 
-        <Paper sx={{ p: 2, ...glass }}>
-          <FormControl size="small" sx={{ minWidth: 300, mb: 2 }}>
-            <InputLabel>قرارداد</InputLabel>
-            <Select value={contractId || ''} label="قرارداد" onChange={(e) => setContractId(e.target.value)} sx={{ borderRadius: '12px' }}>
-              {contractList.map((c) => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
-            </Select>
-          </FormControl>
-
-          {!contractId ? (
-            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>برای مشاهدهٔ لیست، یک قرارداد انتخاب کنید.</Typography>
-          ) : isLoading ? (
-            <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : list.length === 0 ? (
-            <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>موردی ثبت نشده است.</Typography>
-          ) : (
-            <Stack spacing={1.25}>
-              {list.map((row) => (
-                <Paper key={row.id} variant="outlined" sx={{ p: 1.6, borderRadius: '14px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', background: 'rgba(255,255,255,0.55)' }}>
-                  <Box sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                    <Box><Typography variant="caption" color="textSecondary" display="block">شماره</Typography><Typography variant="body2" fontWeight={700}>{row.number || '—'}</Typography></Box>
-                    <Box><Typography variant="caption" color="textSecondary" display="block">تاریخ</Typography><Typography variant="body2" fontWeight={700}>{toJalali(row.date)}</Typography></Box>
-                    <Box><Typography variant="caption" color="textSecondary" display="block">کارکرد دوره</Typography><Typography variant="body2" fontWeight={700}>{formatPersianNumber(row.work_done || 0)}</Typography></Box>
-                    <Box><Typography variant="caption" color="textSecondary" display="block">قابل پرداخت</Typography><Typography variant="body2" fontWeight={700} sx={{ color: '#059669' }}>{formatPersianNumber(row.net_amount || 0)}</Typography></Box>
-                    <Box><Typography variant="caption" color="textSecondary" display="block">تأیید</Typography><Chip size="small" label={row.is_approved ? 'تأیید شده' : 'در انتظار'} sx={{ fontWeight: 700, bgcolor: row.is_approved ? '#10b98122' : '#f59e0b22', color: row.is_approved ? '#059669' : '#b45309' }} /></Box>
-                  </Box>
-                  <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
-                </Paper>
-              ))}
+        {!contractId ? (
+          <Paper sx={{ p: 2, ...glass }}>
+            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
+              انتخاب قرارداد ({formatPersianNumber(contractList.length)})
+            </Typography>
+            <ContractPicker
+              contracts={contractList}
+              onSelect={(c) => setContractId(String(c.id))}
+              height={520}
+            />
+          </Paper>
+        ) : (
+          <Paper sx={{ p: 2, ...glass }}>
+            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
+              <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
+              <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
+                {currentContract?.subject || 'قرارداد'}
+              </Typography>
+              <TextField size="small" placeholder="جستجو در صورت‌وضعیت‌ها..." value={search} onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 220 }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+              <Button startIcon={<AddIcon />} variant="contained" onClick={openNew}
+                sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
+                صورت‌وضعیت جدید
+              </Button>
             </Stack>
-          )}
-        </Paper>
+
+            {isLoading ? (
+              <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
+            ) : list.filter(row => !search || String(row.number || '').toLowerCase().includes(search.trim().toLowerCase())).length === 0 ? (
+              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>موردی ثبت نشده است.</Typography>
+            ) : (
+              <Stack spacing={1.25}>
+                {list.filter(row => !search || String(row.number || '').toLowerCase().includes(search.trim().toLowerCase())).map((row) => (
+                  <Paper key={row.id} variant="outlined" sx={{ p: 1.6, borderRadius: '14px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', background: 'rgba(255,255,255,0.55)' }}>
+                    <Box sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 3, flexWrap: 'wrap' }}>
+                      <Box><Typography variant="caption" color="textSecondary" display="block">شماره</Typography><Typography variant="body2" fontWeight={700}>{row.number || '—'}</Typography></Box>
+                      <Box><Typography variant="caption" color="textSecondary" display="block">تاریخ</Typography><Typography variant="body2" fontWeight={700}>{toJalali(row.date)}</Typography></Box>
+                      <Box><Typography variant="caption" color="textSecondary" display="block">کارکرد دوره</Typography><Typography variant="body2" fontWeight={700}>{formatPersianNumber(row.work_done || 0)}</Typography></Box>
+                      <Box><Typography variant="caption" color="textSecondary" display="block">قابل پرداخت</Typography><Typography variant="body2" fontWeight={700} sx={{ color: '#059669' }}>{formatPersianNumber(row.net_amount || 0)}</Typography></Box>
+                      <Box><Typography variant="caption" color="textSecondary" display="block">تأیید</Typography><Chip size="small" label={row.is_approved ? 'تأیید شده' : 'در انتظار'} sx={{ fontWeight: 700, bgcolor: row.is_approved ? '#10b98122' : '#f59e0b22', color: row.is_approved ? '#059669' : '#b45309' }} /></Box>
+                    </Box>
+                    <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                  </Paper>
+                ))}
+              </Stack>
+            )}
+          </Paper>
+        )}
       </Box>
     );
   }
