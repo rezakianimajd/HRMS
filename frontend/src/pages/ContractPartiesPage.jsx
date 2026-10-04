@@ -31,8 +31,13 @@ const PARTY_TYPES = {
   other: { label: 'سایر', color: '#64748b' },
 };
 
+const PERSON_TYPES = {
+  legal: { label: 'شخص حقوقی', color: '#0ea5e9' },
+  natural: { label: 'شخص حقیقی', color: '#8b5cf6' },
+};
+
 const EMPTY_FORM = {
-  id: null, name: '', party_type: 'contractor', national_id: '', economic_code: '',
+  id: null, name: '', person_type: 'legal', party_type: 'contractor', national_id: '', economic_code: '',
   registration_number: '', phone: '', mobile: '', email: '', address: '',
   contact_person: '', bank_name: '', account_number: '', sheba_number: '', description: '',
 };
@@ -166,7 +171,9 @@ const ContractPartiesPage = () => {
                         <Avatar sx={{ width: 42, height: 42, background: type.color }}><StorefrontIcon sx={{ color: '#fff' }} /></Avatar>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
                           <Typography variant="body2" fontWeight={700} noWrap>{p.name}</Typography>
-                          <Typography variant="caption" color="textSecondary">{type.label}{p.contact_person ? ` · ${p.contact_person}` : ''}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {type.label} · {PERSON_TYPES[p.person_type]?.label || '—'}{p.contact_person ? ` · ${p.contact_person}` : ''}
+                          </Typography>
                         </Box>
                         <Chip size="small" label={p.is_active !== false ? 'فعال' : 'غیرفعال'} color={p.is_active !== false ? 'success' : 'default'} variant="outlined" />
                         <Typography variant="caption" fontWeight={800}>{p.contracts_count || 0} قرارداد</Typography>
@@ -192,7 +199,9 @@ const ContractPartiesPage = () => {
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
                   <Box>
                     <Typography variant="h6" fontWeight={800}>{selected.name}</Typography>
-                    <Typography variant="caption" color="textSecondary">{PARTY_TYPES[selected.party_type]?.label}</Typography>
+                    <Typography variant="caption" color="textSecondary">
+                      {PARTY_TYPES[selected.party_type]?.label} · {PERSON_TYPES[selected.person_type]?.label || ''}
+                    </Typography>
                   </Box>
                   <Box>
                     <IconButton size="small" color="primary" onClick={() => { setForm(selected); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
@@ -235,38 +244,71 @@ const ContractPartiesPage = () => {
 
       {/* Party dialog */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{form.id ? 'ویرایش طرف قرارداد' : 'افزودن طرف قرارداد'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <Grid container spacing={1.5}>
-            <Grid item xs={12} md={7}><TextField size="small" fullWidth label="نام / عنوان *" value={form.name}
-              onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={5}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>نوع طرف</InputLabel>
-                <Select value={form.party_type} label="نوع طرف" onChange={e => setForm(p => ({ ...p, party_type: e.target.value }))}>
-                  {Object.entries(PARTY_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="شناسه ملی / کد ثبت" value={form.national_id} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="کد اقتصادی" value={form.economic_code} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="شماره ثبت" value={form.registration_number} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="تلفن" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="موبایل" value={form.mobile} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField size="small" label="ایمیل" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField size="small" label="آدرس" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="شخص رابط" value={form.contact_person} onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="بانک" value={form.bank_name} onChange={e => setForm(p => ({ ...p, bank_name: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" label="شماره حساب" value={form.account_number} onChange={e => setForm(p => ({ ...p, account_number: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="شماره شبا" value={form.sheba_number} onChange={e => setForm(p => ({ ...p, sheba_number: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" label="توضیحات" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} /></Grid>
-          </Grid>
-          {save.isLoading && <LinearProgress sx={{ borderRadius: '10px' }} />}
+        <DialogTitle sx={{ fontWeight: 800, color: '#0369a1', borderBottom: '1px solid rgba(14,165,233,0.15)' }}>
+          {form.id ? 'ویرایش طرف قرارداد' : 'افزودن طرف قرارداد'}
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <Stack spacing={2}>
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={1}>مشخصات پایه</Typography>
+              <Grid container spacing={1.5}>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="نام / عنوان *" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={3}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>نوع شخص</InputLabel>
+                    <Select value={form.person_type} label="نوع شخص" onChange={e => setForm(p => ({ ...p, person_type: e.target.value }))}>
+                      {Object.entries(PERSON_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={3}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>نوع طرف</InputLabel>
+                    <Select value={form.party_type} label="نوع طرف" onChange={e => setForm(p => ({ ...p, party_type: e.target.value }))}>
+                      {Object.entries(PARTY_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شناسه ملی / کد ثبت" value={form.national_id} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="کد اقتصادی" value={form.economic_code} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره ثبت" value={form.registration_number} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={1}>اطلاعات تماس</Typography>
+              <Grid container spacing={1.5}>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="تلفن" value={form.phone} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="موبایل" value={form.mobile} onChange={e => setForm(p => ({ ...p, mobile: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="ایمیل" value={form.email} onChange={e => setForm(p => ({ ...p, email: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شخص رابط" value={form.contact_person} onChange={e => setForm(p => ({ ...p, contact_person: e.target.value }))} /></Grid>
+                <Grid item xs={12}><TextField size="small" fullWidth label="آدرس" value={form.address} onChange={e => setForm(p => ({ ...p, address: e.target.value }))} /></Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={1}>اطلاعات بانکی</Typography>
+              <Grid container spacing={1.5}>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک" value={form.bank_name} onChange={e => setForm(p => ({ ...p, bank_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره حساب" value={form.account_number} onChange={e => setForm(p => ({ ...p, account_number: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره شبا" value={form.sheba_number} onChange={e => setForm(p => ({ ...p, sheba_number: e.target.value }))} /></Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            <TextField size="small" fullWidth label="توضیحات" multiline rows={2} value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+          </Stack>
+          {save.isLoading && <LinearProgress sx={{ borderRadius: '10px', mt: 1.5 }} />}
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.name} onClick={() => save.mutate(form)}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)' }}>ذخیره</Button>
+            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', borderRadius: '10px', px: 3 }}>ذخیره</Button>
         </DialogActions>
       </Dialog>
     </Box>
