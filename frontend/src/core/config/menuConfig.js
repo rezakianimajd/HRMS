@@ -542,9 +542,9 @@ const contractsMenu = [
     items: [
       { id: 'external-contracts', title: 'قراردادهای من', icon: <HistoryEduIcon />, path: '/external-contracts', color: '#f59e0b', primary: true, ready: true },
       { id: 'contracts-new', title: 'قرارداد جدید', icon: <PostAddIcon />, path: '/contracts/new', color: '#10b981', primary: false, ready: true },
-      comingSoon('/contracts-templates', 'contracts-templates', 'قالب‌ها و پیش‌نویس‌ها', <DescriptionIcon />, '#6366f1'),
-      comingSoon('/contracts-drafts', 'contracts-drafts', 'پیش‌نویس‌ها', <FactCheckIcon />, '#64748b'),
-      comingSoon('/contracts-approvals', 'contracts-approvals', 'در انتظار تأیید', <RuleIcon />, '#f59e0b'),
+      { id: 'contracts-templates', title: 'قالب‌ها و پیش‌نویس‌ها', icon: <DescriptionIcon />, path: '/contracts-templates', color: '#6366f1', primary: false, ready: true },
+      { id: 'contracts-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/contracts-drafts', color: '#64748b', primary: false, ready: true },
+      { id: 'contracts-approvals', title: 'در انتظار تأیید', icon: <RuleIcon />, path: '/contracts-approvals', color: '#f59e0b', primary: false, ready: true },
     ],
   },
   {

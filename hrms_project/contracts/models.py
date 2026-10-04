@@ -448,3 +448,81 @@ class SupplierEvaluation(BaseModel):
 
     def __str__(self):
         return f'{self.party.name} - {self.evaluation_date}'
+
+
+class ContractTemplate(BaseModel):
+    """قالب قرارداد — متن/ساختار آماده برای تولید پیش‌نویس قرارداد."""
+
+    name = models.CharField(max_length=200, verbose_name=_('عنوان قالب'))
+    contract_type_master = models.ForeignKey(
+        ContractTypeMaster, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='templates', verbose_name=_('نوع قرارداد'),
+    )
+    content = models.TextField(verbose_name=_('متن / ساختار قالب'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('قالب قرارداد')
+        verbose_name_plural = _('قالب‌ها و پیش‌نویس‌ها')
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class ContractDraft(BaseModel):
+    """پیش‌نویس قرارداد با وضعیت و گردش‌کار تأیید."""
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('پیش‌نویس')
+        PENDING = 'pending_approval', _('در انتظار تأیید')
+        APPROVED = 'approved', _('تأیید شده')
+        REJECTED = 'rejected', _('رد شده')
+
+    title = models.CharField(max_length=300, verbose_name=_('عنوان پیش‌نویس'))
+    template = models.ForeignKey(
+        ContractTemplate, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='drafts', verbose_name=_('قالب مبدأ'),
+    )
+    contract = models.ForeignKey(
+        Contract, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='drafts', verbose_name=_('قرارداد مرتبط'),
+    )
+    content = models.TextField(blank=True, verbose_name=_('متن پیش‌نویس'))
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
+    submitted_by = models.CharField(max_length=200, blank=True, verbose_name=_('ثبت‌کننده'))
+    submitted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ارسال برای تأیید'))
+
+    class Meta:
+        verbose_name = _('پیش‌نویس قرارداد')
+        verbose_name_plural = _('پیش‌نویس‌ها')
+        ordering = ['-updated_at']
+
+    def __str__(self):
+        return self.title
+
+
+class ContractApproval(BaseModel):
+    """یک مرحله از گردش‌کار تأیید پیش‌نویس قرارداد."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('در انتظار')
+        APPROVED = 'approved', _('تأیید شد')
+        REJECTED = 'rejected', _('رد شد')
+
+    draft = models.ForeignKey(
+        ContractDraft, on_delete=models.CASCADE, related_name='approvals', verbose_name=_('پیش‌نویس'),
+    )
+    step = models.PositiveSmallIntegerField(default=1, verbose_name=_('مرحله'))
+    approver = models.CharField(max_length=200, verbose_name=_('تأییدکننده'))
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING, verbose_name=_('وضعیت'))
+    comment = models.TextField(blank=True, verbose_name=_('نظر'))
+    acted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان اقدام'))
+
+    class Meta:
+        verbose_name = _('مرحله تأیید قرارداد')
+        verbose_name_plural = _('گردش‌کار تأیید')
+        ordering = ['step']
+
+    def __str__(self):
+        return f'{self.draft.title} - مرحله {self.step} ({self.get_status_display()})'

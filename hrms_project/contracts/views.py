@@ -6,12 +6,14 @@ from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
     Addendum, Guarantee, Payment, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
+    ContractTemplate, ContractDraft, ContractApproval,
 )
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
     InvoiceSerializer, StatementSerializer, AddendumSerializer,
     GuaranteeSerializer, PaymentSerializer, ContractDisputeSerializer,
     ContractTypeMasterSerializer, SupplierEvaluationSerializer,
+    ContractTemplateSerializer, ContractDraftSerializer, ContractApprovalSerializer,
 )
 
 
@@ -269,3 +271,96 @@ class ContractDisputeViewSet(BaseContractViewSet):
         if status:
             qs = qs.filter(status=status)
         return qs
+
+
+class ContractTemplateViewSet(BaseContractViewSet):
+    serializer_class = ContractTemplateSerializer
+    queryset = ContractTemplate.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description']
+    ordering = ['name']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        type_id = self.request.query_params.get('contract_type_master')
+        if type_id:
+            qs = qs.filter(contract_type_master_id=type_id)
+        return qs
+
+
+class ContractDraftViewSet(BaseContractViewSet):
+    serializer_class = ContractDraftSerializer
+    queryset = ContractDraft.objects.select_related('template', 'contract').prefetch_related('approvals')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'submitted_by']
+    ordering = ['-updated_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        """ارسال پیش‌نویس برای تأیید (ورود به گردش‌کار)."""
+        from django.utils import timezone
+        obj = self.get_object()
+        obj.status = ContractDraft.Status.PENDING
+        obj.submitted_at = timezone.now()
+        obj.submitted_by = request.data.get('submitted_by') or obj.submitted_by
+        obj.save(update_fields=['status', 'submitted_at', 'submitted_by', 'updated_at'])
+        return Response(ContractDraftSerializer(obj, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """تأیید نهایی پیش‌نویس."""
+        obj = self.get_object()
+        obj.status = ContractDraft.Status.APPROVED
+        obj.save(update_fields=['status', 'updated_at'])
+        return Response(ContractDraftSerializer(obj, context={'request': request}).data)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """رد پیش‌نویس."""
+        obj = self.get_object()
+        obj.status = ContractDraft.Status.REJECTED
+        obj.save(update_fields=['status', 'updated_at'])
+        return Response(ContractDraftSerializer(obj, context={'request': request}).data)
+
+
+class ContractApprovalViewSet(BaseContractViewSet):
+    serializer_class = ContractApprovalSerializer
+    queryset = ContractApproval.objects.select_related('draft')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['approver', 'draft__title']
+    ordering = ['draft', 'step']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        draft_id = self.request.query_params.get('draft')
+        if draft_id:
+            qs = qs.filter(draft_id=draft_id)
+        status = self.request.query_params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        return qs
+
+    @action(detail=True, methods=['post'])
+    def decide(self, request, pk=None):
+        """اقدام روی یک مرحله: تأیید یا رد."""
+        from django.utils import timezone
+        obj = self.get_object()
+        decision = request.data.get('decision')  # 'approve' | 'reject'
+        comment = request.data.get('comment') or obj.comment
+        if decision == 'approve':
+            obj.status = ContractApproval.Status.APPROVED
+        elif decision == 'reject':
+            obj.status = ContractApproval.Status.REJECTED
+        else:
+            return Response({'error': 'تصمیم نامعتبر است'}, status=400)
+        obj.comment = comment
+        obj.acted_at = timezone.now()
+        obj.save(update_fields=['status', 'comment', 'acted_at', 'updated_at'])
+        return Response(ContractApprovalSerializer(obj).data)

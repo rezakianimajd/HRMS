@@ -46,6 +46,9 @@ import ContractPartiesPage from './pages/ContractPartiesPage';
 import ContractNewPage from './pages/ContractNewPage';
 import ContractProfilePage from './pages/ContractProfilePage';
 import GuaranteesPage from './pages/GuaranteesPage';
+import ContractTemplatesPage from './pages/ContractTemplatesPage';
+import ContractDraftsPage from './pages/ContractDraftsPage';
+import ContractApprovalsPage from './pages/ContractApprovalsPage';
 import ProjectsPage from './pages/ProjectsPage';
 import PriceListPage from './pages/PriceListPage';
 import CommercialPage from './pages/CommercialPage';
@@ -267,6 +270,9 @@ const AppRoutes = () => {
       <Route path="/contracts/:id/edit" element={<ProtectedLayout><ContractNewPage /></ProtectedLayout>} />
       <Route path="/external-contracts/:id" element={<ProtectedLayout><ContractProfilePage /></ProtectedLayout>} />
       <Route path="/contracts-guarantees" element={<ProtectedLayout><GuaranteesPage /></ProtectedLayout>} />
+      <Route path="/contracts-templates" element={<ProtectedLayout><ContractTemplatesPage /></ProtectedLayout>} />
+      <Route path="/contracts-drafts" element={<ProtectedLayout><ContractDraftsPage /></ProtectedLayout>} />
+      <Route path="/contracts-approvals" element={<ProtectedLayout><ContractApprovalsPage /></ProtectedLayout>} />
       <Route path="/contracts-finance" element={<ProtectedLayout><ContractFinancePage /></ProtectedLayout>} />
       <Route path="/contracts-invoices" element={<ProtectedLayout><ContractInvoicesPage /></ProtectedLayout>} />
       <Route path="/contracts-statements" element={<ProtectedLayout><StatementEditorPage /></ProtectedLayout>} />

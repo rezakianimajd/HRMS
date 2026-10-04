@@ -4,6 +4,7 @@ from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
     Addendum, Guarantee, Payment, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
+    ContractTemplate, ContractDraft, ContractApproval,
 )
 
 
@@ -179,5 +180,39 @@ class ContractSerializer(serializers.ModelSerializer):
             'description',
             'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
             'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class ContractTemplateSerializer(serializers.ModelSerializer):
+    contract_type_name = serializers.CharField(source='contract_type_master.name', read_only=True)
+
+    class Meta:
+        model = ContractTemplate
+        fields = ['id', 'name', 'contract_type_master', 'contract_type_name', 'content', 'description', 'created_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class ContractApprovalSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = ContractApproval
+        fields = ['id', 'draft', 'step', 'approver', 'status', 'status_display', 'comment', 'acted_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class ContractDraftSerializer(serializers.ModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    template_name = serializers.CharField(source='template.name', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    approvals = ContractApprovalSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ContractDraft
+        fields = [
+            'id', 'title', 'template', 'template_name', 'contract', 'contract_subject',
+            'content', 'status', 'status_display', 'submitted_by', 'submitted_at',
+            'approvals', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
