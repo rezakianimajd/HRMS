@@ -115,11 +115,17 @@ const printStatement = async () => {
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(0, 0, a4.width, a4.height);
 
-      const fit = Math.min(a4.width / canvas.width, a4.height / canvas.height);
+      // Safe margins so nothing is clipped at the paper edge (printers can't
+      // print to the very edge), while keeping the content centered horizontally.
+      const PAD_X = 40;    // horizontal margin (20px @1x ≈ 5mm)
+      const PAD_TOP = 24;  // top margin (12px @1x ≈ 3mm)
+      const availW = a4.width - PAD_X * 2;
+      const availH = a4.height - PAD_TOP;
+      const fit = Math.min(availW / canvas.width, availH / canvas.height);
       const w = canvas.width * fit;
       const h = canvas.height * fit;
       const x = (a4.width - w) / 2;
-      const y = 0;
+      const y = PAD_TOP;
       ctx.drawImage(canvas, x, y, w, h);
 
       const imgData = a4.toDataURL('image/png');
