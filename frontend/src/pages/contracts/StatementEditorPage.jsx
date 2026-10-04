@@ -62,7 +62,8 @@ const num = (v) => Math.max(0, Number(v) || 0);
 /* ------------------------------------------------------------------ */
 /* A4-style statement preview                                          */
 /* ------------------------------------------------------------------ */
-const StatementPreview = ({ form, contract, company, currencies }) => {
+const StatementPreview = ({ form, contract, company, currencies, rate: rateProp }) => {
+  const rate = num(rateProp) || 1;
   const addendums = contract?.addendums || [];
   const baseAmount = num(contract?.amount);
   const totalAddendumChange = addendums.reduce((s, a) => s + num(a.amount_change), 0);
@@ -82,6 +83,7 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
   const netAmount = workDone + additionsTotal - deductionsTotal;
 
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
+  const fx = (v) => (rate > 1 ? v / rate : null);
 
   return (
     <Box id="statement-print-area" dir="rtl" sx={{
@@ -143,9 +145,9 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
 
       {/* Section 3: financial breakdown */}
       <Box sx={{ borderRadius: '12px', p: 2, background: `linear-gradient(135deg, ${COLOR}0e, ${COLOR}05)`, border: `1px solid ${COLOR}22` }}>
-        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong />
-        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} />
-        <Row label="کارکرد دوره" value={workDone} highlight />
+        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={fx(cumulativeThis)} foreignSymbol={cur?.symbol} />
+        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={fx(cumulativePrev)} foreignSymbol={cur?.symbol} />
+        <Row label="کارکرد دوره" value={workDone} highlight foreign={fx(workDone)} foreignSymbol={cur?.symbol} />
       </Box>
 
       {/* Additions */}
@@ -154,10 +156,10 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
         {additions.length === 0 ? (
           <Typography variant="caption" color="textSecondary">افزودنی ثبت نشده</Typography>
         ) : (
-          additions.map((a, i) => <Row key={i} label={a.description || 'اضافه'} value={num(a.amount)} />)
+          additions.map((a, i) => <Row key={i} label={a.description || 'اضافه'} value={num(a.amount)} foreign={fx(num(a.amount))} foreignSymbol={cur?.symbol} />)
         )}
         <Box sx={{ borderTop: '1px solid #34d39933', mt: 0.5, pt: 0.5 }}>
-          <Row label="جمع اضافات" value={additionsTotal} green strong />
+          <Row label="جمع اضافات" value={additionsTotal} green strong foreign={fx(additionsTotal)} foreignSymbol={cur?.symbol} />
         </Box>
       </Box>
 
@@ -167,10 +169,10 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
         {deductions.length === 0 ? (
           <Typography variant="caption" color="textSecondary">کسوری ثبت نشده</Typography>
         ) : (
-          deductions.map((d, i) => <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} />)
+          deductions.map((d, i) => <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} foreign={fx(num(d.amount))} foreignSymbol={cur?.symbol} />)
         )}
         <Box sx={{ borderTop: '1px solid #fca5a533', mt: 0.5, pt: 0.5 }}>
-          <Row label="جمع کسورات" value={deductionsTotal} red strong />
+          <Row label="جمع کسورات" value={deductionsTotal} red strong foreign={fx(deductionsTotal)} foreignSymbol={cur?.symbol} />
         </Box>
       </Box>
 
@@ -179,7 +181,14 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
       {/* Net payable */}
       <Box sx={{ borderRadius: '12px', p: 2, background: '#10b98114', border: '1px solid #10b98133', textAlign: 'center' }}>
         <Typography variant="caption" color="textSecondary">مبلغ قابل پرداخت این دوره</Typography>
-        <Typography variant="h5" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>{formatPersianNumber(netAmount)} <Typography component="span" variant="caption" color="textSecondary">{cur?.symbol || 'ریال'}</Typography></Typography>
+        <Typography variant="h5" fontWeight={900} sx={{ color: '#059669', direction: 'rtl' }}>
+          {formatPersianNumber(netAmount)} ریال
+        </Typography>
+        {fx(netAmount) != null && (
+          <Typography variant="h6" fontWeight={800} sx={{ color: '#4338ca', direction: 'rtl', mt: 0.5 }}>
+            {formatPersianNumber(fx(netAmount))} {cur?.symbol || ''}
+          </Typography>
+        )}
       </Box>
 
       {/* Signatures */}
@@ -197,13 +206,20 @@ const StatementPreview = ({ form, contract, company, currencies }) => {
   );
 };
 
-const Row = ({ label, value, strong, red, green, highlight }) => (
+const Row = ({ label, value, strong, red, green, highlight, foreign, foreignSymbol }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 2, py: 0.45 }}>
     <Typography variant="caption" color="textSecondary">{label}</Typography>
-    <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong || highlight ? 900 : 700}
-      sx={{ direction: 'rtl', color: red ? '#b91c1c' : green ? '#059669' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
-      {formatPersianNumber(value)}
-    </Typography>
+    <Box sx={{ textAlign: 'left' }}>
+      <Typography variant={strong ? 'body1' : 'body2'} fontWeight={strong || highlight ? 900 : 700}
+        sx={{ direction: 'rtl', color: red ? '#b91c1c' : green ? '#059669' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
+        {formatPersianNumber(value)}
+      </Typography>
+      {foreign != null && (
+        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', direction: 'rtl' }}>
+          {formatPersianNumber(foreign)} {foreignSymbol || ''}
+        </Typography>
+      )}
+    </Box>
   </Box>
 );
 
@@ -591,6 +607,7 @@ const StatementEditorPage = () => {
                 contract={currentContract}
                 company={company}
                 currencies={currencyList}
+                rate={rate}
               />
             </Box>
           </Grid>

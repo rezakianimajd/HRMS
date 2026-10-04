@@ -161,6 +161,10 @@ html {
 }
 /* Print styles for statement preview (before save) */
 @media print {
+  @page {
+    size: A4;
+    margin: 12mm;
+  }
   body * {
     visibility: hidden;
   }
@@ -170,12 +174,19 @@ html {
   }
   #statement-print-area {
     position: absolute;
-    inset: 0;
+    top: 0;
+    right: 0;
+    left: 0;
     width: 100%;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
     margin: 0;
     padding: 0;
     box-shadow: none !important;
     border: none !important;
+    border-radius: 0 !important;
+    background: #fff !important;
   }
 }
 
