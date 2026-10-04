@@ -2,6 +2,7 @@ from django.contrib import admin
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement, Addendum, Guarantee,
     Payment, ContractDispute, ContractTypeMaster, SupplierEvaluation,
+    ContractApprovalWorkflow, ContractApprovalStep,
 )
 
 
@@ -79,3 +80,19 @@ class SupplierEvaluationAdmin(admin.ModelAdmin):
     list_display = ['party', 'evaluation_date', 'period', 'recommendation', 'evaluator']
     list_filter = ['recommendation']
     search_fields = ['party__name', 'period']
+
+
+class ContractApprovalStepInline(admin.TabularInline):
+    model = ContractApprovalStep
+    extra = 0
+
+
+@admin.register(ContractApprovalWorkflow)
+class ContractApprovalWorkflowAdmin(admin.ModelAdmin):
+    list_display = ['name', 'contract_type', 'is_active']
+    list_filter = ['contract_type']
+    search_fields = ['name']
+    inlines = [ContractApprovalStepInline]
+
+
+admin.site.register(ContractApprovalStep)

@@ -5,14 +5,20 @@ from contracts.models import (
     Addendum, Guarantee, Payment, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
+    ContractApprovalWorkflow, ContractApprovalStep,
 )
 
 
 class ContractTypeMasterSerializer(serializers.ModelSerializer):
+    contracts_count = serializers.SerializerMethodField()
+
     class Meta:
         model = ContractTypeMaster
-        fields = ['id', 'name', 'code', 'description', 'is_active']
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+        fields = ['id', 'name', 'code', 'description', 'is_active', 'contracts_count']
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at', 'contracts_count']
+
+    def get_contracts_count(self, obj):
+        return obj.contracts.count() if hasattr(obj, 'contracts') else 0
 
 
 class SupplierEvaluationSerializer(serializers.ModelSerializer):
@@ -215,4 +221,19 @@ class ContractDraftSerializer(serializers.ModelSerializer):
             'content', 'status', 'status_display', 'submitted_by', 'submitted_at',
             'approvals', 'created_at', 'updated_at',
         ]
+class ContractApprovalStepSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ContractApprovalStep
+        fields = ['id', 'workflow', 'step', 'title', 'approver_role', 'min_amount', 'is_active']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class ContractApprovalWorkflowSerializer(serializers.ModelSerializer):
+    contract_type_name = serializers.CharField(source='contract_type.name', read_only=True)
+    steps = ContractApprovalStepSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ContractApprovalWorkflow
+        fields = ['id', 'name', 'contract_type', 'contract_type_name', 'description', 'is_active', 'steps']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']

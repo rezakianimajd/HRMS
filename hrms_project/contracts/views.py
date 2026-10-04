@@ -7,6 +7,7 @@ from contracts.models import (
     Addendum, Guarantee, Payment, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
+    ContractApprovalWorkflow, ContractApprovalStep,
 )
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
@@ -14,6 +15,7 @@ from contracts.serializers import (
     GuaranteeSerializer, PaymentSerializer, ContractDisputeSerializer,
     ContractTypeMasterSerializer, SupplierEvaluationSerializer,
     ContractTemplateSerializer, ContractDraftSerializer, ContractApprovalSerializer,
+    ContractApprovalWorkflowSerializer, ContractApprovalStepSerializer,
 )
 
 
@@ -98,7 +100,10 @@ class ContractViewSet(BaseContractViewSet):
 
 class ContractTypeMasterViewSet(BaseContractViewSet):
     serializer_class = ContractTypeMasterSerializer
-    queryset = ContractTypeMaster.objects.all()
+    queryset = ContractTypeMaster.objects.prefetch_related('contracts')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'code', 'description']
+    ordering = ['name']
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['name', 'code']
     ordering = ['name']
@@ -362,5 +367,33 @@ class ContractApprovalViewSet(BaseContractViewSet):
             return Response({'error': 'تصمیم نامعتبر است'}, status=400)
         obj.comment = comment
         obj.acted_at = timezone.now()
+class ContractApprovalWorkflowViewSet(BaseContractViewSet):
+    serializer_class = ContractApprovalWorkflowSerializer
+    queryset = ContractApprovalWorkflow.objects.select_related('contract_type').prefetch_related('steps')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['name', 'description', 'contract_type__name']
+    ordering = ['name']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        contract_type = self.request.query_params.get('contract_type')
+        if contract_type:
+            qs = qs.filter(contract_type_id=contract_type)
+        return qs
+
+
+class ContractApprovalStepViewSet(BaseContractViewSet):
+    serializer_class = ContractApprovalStepSerializer
+    queryset = ContractApprovalStep.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['title', 'approver_role']
+    ordering = ['workflow', 'step']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        workflow_id = self.request.query_params.get('workflow')
+        if workflow_id:
+            qs = qs.filter(workflow_id=workflow_id)
+        return qs
         obj.save(update_fields=['status', 'comment', 'acted_at', 'updated_at'])
         return Response(ContractApprovalSerializer(obj).data)

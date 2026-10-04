@@ -586,8 +586,9 @@ const contractsMenu = [
     title: 'پیکربندی',
     color: '#64748b',
     items: [
-      { id: 'contracts-settings', title: 'انواع قرارداد و ارزیابی', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
-      comingSoon('/contracts-workflow', 'contracts-workflow', 'گردشکار تأیید', <SwapHorizIcon />, '#6366f1'),
+      { id: 'contracts-types', title: 'انواع قرارداد', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
+      { id: 'contracts-evaluations', title: 'ارزیابی تأمین‌کنندگان', icon: <AssessmentIcon />, path: '/contracts-evaluations', color: '#f97316', primary: false, ready: true },
+      { id: 'contracts-workflow', title: 'گردشکار تأیید', icon: <SwapHorizIcon />, path: '/contracts-workflow', color: '#6366f1', primary: false, ready: true },
     ],
   },
   {

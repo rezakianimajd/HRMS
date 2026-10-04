@@ -64,7 +64,9 @@ import AnalyticsPage from './pages/AnalyticsPage';
 import ContractFinancePage from './pages/ContractFinancePage';
 import ContractDocumentsPage from './pages/ContractDocumentsPage';
 import ContractRiskPage from './pages/ContractRiskPage';
-import ContractSettingsPage from './pages/ContractSettingsPage';
+import ContractTypesPage from './pages/ContractTypesPage';
+import SupplierEvaluationsPage from './pages/SupplierEvaluationsPage';
+import ContractWorkflowPage from './pages/ContractWorkflowPage';
 import { ContractInvoicesPage, ContractPaymentsPage, ContractAddendumsPage } from './pages/contracts/contractSubPages';
 import StatementEditorPage from './pages/contracts/StatementEditorPage';
 import ContractDefinitionsPage from './pages/ContractDefinitionsPage';
@@ -287,7 +289,9 @@ const AppRoutes = () => {
       <Route path="/contracts-addendums" element={<ProtectedLayout><ContractAddendumsPage /></ProtectedLayout>} />
       <Route path="/contracts-documents" element={<ProtectedLayout><ContractDocumentsPage /></ProtectedLayout>} />
       <Route path="/contracts-risk" element={<ProtectedLayout><ContractRiskPage /></ProtectedLayout>} />
-      <Route path="/contracts-settings" element={<ProtectedLayout><ContractSettingsPage /></ProtectedLayout>} />
+      <Route path="/contracts-settings" element={<ProtectedLayout><ContractTypesPage /></ProtectedLayout>} />
+      <Route path="/contracts-evaluations" element={<ProtectedLayout><SupplierEvaluationsPage /></ProtectedLayout>} />
+      <Route path="/contracts-workflow" element={<ProtectedLayout><ContractWorkflowPage /></ProtectedLayout>} />
       <Route path="/contracts-definitions" element={<ProtectedLayout><ContractDefinitionsPage /></ProtectedLayout>} />
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
       <Route path="/projects/dashboard" element={<ProtectedLayout><ProjectsDashboardPage /></ProtectedLayout>} />
