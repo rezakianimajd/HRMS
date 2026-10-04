@@ -79,7 +79,7 @@ const JalaliDatePicker = ({ value, onChange, label, noHelper, ...rest }) => {
       onFocus={() => { focusedRef.current = true; }}
       onBlur={handleBlur}
       placeholder="1403/06/15"
-      helperText={noHelper ? (error || '') : (error || 'مثال: 1403/06/15')}
+      helperText={error || ''}
       error={!!error}
       InputLabelProps={{ shrink: true }}
       inputProps={{
