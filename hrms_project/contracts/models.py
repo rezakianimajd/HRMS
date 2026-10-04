@@ -538,7 +538,6 @@ class ContractApprovalWorkflow(BaseModel):
         related_name='approval_workflows', verbose_name=_('نوع قرارداد'),
     )
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
-    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
         verbose_name = _('گردش‌کار تأیید')
@@ -559,7 +558,6 @@ class ContractApprovalStep(BaseModel):
     title = models.CharField(max_length=200, verbose_name=_('عنوان مرحله'))
     approver_role = models.CharField(max_length=200, verbose_name=_('نقش / سمت تأییدکننده'))
     min_amount = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('آستانه مبلغ (ریال)'))
-    is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
         verbose_name = _('مرحله گردش‌کار تأیید')

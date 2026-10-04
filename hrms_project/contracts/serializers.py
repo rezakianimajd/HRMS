@@ -153,6 +153,15 @@ class ContractPartySerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
+class ContractAuditLogSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = ContractAuditLog
+        fields = ['id', 'contract', 'user', 'action', 'action_display', 'field', 'old_value', 'new_value', 'created_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
 class ContractSerializer(serializers.ModelSerializer):
     contract_type_display = serializers.CharField(source='get_contract_type_display', read_only=True)
     contract_type_master_name = serializers.CharField(source='contract_type_master.name', read_only=True)
@@ -237,12 +246,4 @@ class ContractApprovalWorkflowSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractApprovalWorkflow
         fields = ['id', 'name', 'contract_type', 'contract_type_name', 'description', 'is_active', 'steps']
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
-class ContractAuditLogSerializer(serializers.ModelSerializer):
-    action_display = serializers.CharField(source='get_action_display', read_only=True)
-
-    class Meta:
-        model = ContractAuditLog
-        fields = ['id', 'contract', 'user', 'action', 'action_display', 'field', 'old_value', 'new_value', 'created_at']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
