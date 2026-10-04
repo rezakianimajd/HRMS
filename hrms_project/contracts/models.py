@@ -569,3 +569,31 @@ class ContractApprovalStep(BaseModel):
 
     def __str__(self):
         return f'{self.workflow.name} - {self.step}. {self.title}'
+
+
+
+class ContractAuditLog(BaseModel):
+    """سابقه تغییرات قرارداد (audit trail) — چه کسی، چه چیزی، چه زمانی."""
+
+    class Action(models.TextChoices):
+        CREATE = 'create', _('ایجاد')
+        UPDATE = 'update', _('ویرایش')
+        DELETE = 'delete', _('حذف')
+        STATUS = 'status', _('تغییر وضعیت')
+
+    contract = models.ForeignKey(
+        Contract, on_delete=models.CASCADE, related_name='audit_logs', verbose_name=_('قرارداد'),
+    )
+    user = models.CharField(max_length=200, blank=True, verbose_name=_('کاربر'))
+    action = models.CharField(max_length=20, choices=Action.choices, verbose_name=_('اقدام'))
+    field = models.CharField(max_length=100, blank=True, verbose_name=_('فیلد'))
+    old_value = models.TextField(blank=True, verbose_name=_('مقدار قبلی'))
+    new_value = models.TextField(blank=True, verbose_name=_('مقدار جدید'))
+
+    class Meta:
+        verbose_name = _('سابقه تغییرات قرارداد')
+        verbose_name_plural = _('سوابق تغییرات قرارداد')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.contract_id} - {self.get_action_display()} - {self.field}'

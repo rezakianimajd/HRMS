@@ -8,6 +8,7 @@ from contracts.models import (
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
+    ContractAuditLog,
 )
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
@@ -16,6 +17,7 @@ from contracts.serializers import (
     ContractTypeMasterSerializer, SupplierEvaluationSerializer,
     ContractTemplateSerializer, ContractDraftSerializer, ContractApprovalSerializer,
     ContractApprovalWorkflowSerializer, ContractApprovalStepSerializer,
+    ContractAuditLogSerializer,
 )
 
 
@@ -84,7 +86,7 @@ class ContractViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('party', 'signatory').prefetch_related(
-            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
+            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments', 'audit_logs',
         )
         party_id = self.request.query_params.get('party')
         if party_id:
@@ -96,6 +98,34 @@ class ContractViewSet(BaseContractViewSet):
         if status:
             qs = qs.filter(status=status)
         return qs
+
+    def _audit(self, contract, action, field='', old='', new=''):
+        user = self.request.user.username if getattr(self.request, 'user', None) and getattr(self.request.user, 'is_authenticated', False) else ''
+        ContractAuditLog.objects.create(
+            company=_company(self.request), contract=contract, user=user,
+            action=action, field=field, old_value=str(old or ''), new_value=str(new or ''),
+        )
+
+    def perform_create(self, serializer):
+        company = _company(self.request)
+        instance = serializer.save(company=company)
+        self._audit(instance, 'create')
+
+    def perform_update(self, serializer):
+        company = _company(self.request)
+        old = self.get_object()
+        tracked = ['status', 'amount', 'end_date', 'guarantee_amount', 'subject']
+        instance = serializer.save(company=company)
+        for f in tracked:
+            old_v = getattr(old, f)
+            new_v = getattr(instance, f)
+            if str(old_v) != str(new_v):
+                action = 'status' if f == 'status' else 'update'
+                self._audit(instance, action, field=f, old=old_v, new=new_v)
+
+    def perform_destroy(self, instance):
+        self._audit(instance, 'delete')
+        instance.delete()
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

@@ -6,6 +6,7 @@ from contracts.models import (
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
+    ContractAuditLog,
 )
 
 
@@ -170,6 +171,7 @@ class ContractSerializer(serializers.ModelSerializer):
     addendums = AddendumSerializer(many=True, read_only=True)
     guarantees = GuaranteeSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
+    audit_logs = ContractAuditLogSerializer(many=True, read_only=True)
 
     class Meta:
         model = Contract
@@ -184,7 +186,7 @@ class ContractSerializer(serializers.ModelSerializer):
             'advance_payment', 'advance_payments', 'retention_percent', 'warranty_period',
             'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
             'description',
-            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
+            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments', 'audit_logs',
             'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
@@ -236,4 +238,11 @@ class ContractApprovalWorkflowSerializer(serializers.ModelSerializer):
         model = ContractApprovalWorkflow
         fields = ['id', 'name', 'contract_type', 'contract_type_name', 'description', 'is_active', 'steps']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+class ContractAuditLogSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = ContractAuditLog
+        fields = ['id', 'contract', 'user', 'action', 'action_display', 'field', 'old_value', 'new_value', 'created_at']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']

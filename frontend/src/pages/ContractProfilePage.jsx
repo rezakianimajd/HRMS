@@ -115,6 +115,7 @@ const ContractProfilePage = () => {
     (c.guarantees || []).forEach(x => push(x.expiry_date, 'guarantee-expiry', 'انقضای تضمین', x.number || ''));
     (c.payments || []).forEach(x => push(x.date, 'payment', 'پرداخت', `${formatPersianNumber(x.amount || 0)} ریال`));
     (c.documents || []).forEach(x => push(x.uploaded_at?.slice(0, 10), 'document', 'بارگذاری سند', x.title));
+    (c.audit_logs || []).forEach(x => push(x.created_at?.slice(0, 10), 'audit', `${x.action_display}${x.field ? ` · ${x.field}` : ''}`, x.user ? `توسط ${x.user}` : ''));
     return events.sort((a, b) => (a.date < b.date ? 1 : -1));
   }, [c]);
 
@@ -137,6 +138,7 @@ const ContractProfilePage = () => {
     created: '#64748b', signing: '#10b981', start: '#3b82f6', end: '#ef4444',
     invoice: '#8b5cf6', statement: '#6366f1', addendum: '#ec4899',
     guarantee: '#f59e0b', 'guarantee-expiry': '#ef4444', payment: '#10b981', document: '#06b6d4',
+    audit: '#94a3b8',
   };
 
   const renderMini = (list, empty, render) => (

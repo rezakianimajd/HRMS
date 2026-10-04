@@ -14,6 +14,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import DownloadIcon from '@mui/icons-material/Download';
 import BusinessIcon from '@mui/icons-material/Business';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
@@ -83,6 +84,24 @@ const ExternalContractsPage = () => {
     (!typeFilter || c.contract_type === typeFilter)
   );
 
+  const exportCsv = (rows) => {
+    const header = ['شماره', 'موضوع', 'طرف', 'نوع', 'مبلغ', 'ارز', 'شروع', 'پایان', 'وضعیت'];
+    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = rows.map(c => [
+      c.number, c.subject, c.party_name, TYPE_LABELS[c.contract_type] || c.contract_type,
+      c.amount, c.currency_name || 'ریال', toJalali(c.start_date), toJalali(c.end_date),
+      STATUS_LABELS[c.status] || c.status,
+    ].map(esc).join(','));
+    const csv = '\uFEFF' + [header.map(esc).join(','), ...lines].join('\r\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'contracts.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const counts = {
     total: contractList.length,
     active: contractList.filter(c => c.status === 'active').length,
@@ -106,6 +125,10 @@ const ExternalContractsPage = () => {
           <Typography variant="h6" fontWeight={800} color="#b45309">قراردادهای برون‌سازمانی</Typography>
           <Typography variant="body2" color="textSecondary">پیمانکاری، خرید، مناقصه + فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت</Typography>
         </Box>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportCsv(filtered)}
+          sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
+          خروجی CSV
+        </Button>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
           sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
           قرارداد جدید

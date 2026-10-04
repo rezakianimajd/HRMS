@@ -21,6 +21,7 @@ import CompanySwitcher from './CompanySwitcher';
 import NotificationBell from './NotificationBell';
 import AppSwitcher from './AppSwitcher';
 import WorkspaceTabs from './WorkspaceTabs';
+import CommandPalette from './CommandPalette';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
 import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
@@ -466,6 +467,7 @@ const Layout = ({ children }) => {
         </Box>
         <WorkspaceTabs />
       </Box>
+      <CommandPalette />
     </Box>
   );
 };
