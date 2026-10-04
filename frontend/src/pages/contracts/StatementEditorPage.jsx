@@ -84,36 +84,52 @@ const printStatement = async () => {
   }
 
   try {
-    const canvas = await html2canvas(node, {
-      scale: 2,
-      useCORS: true,
-      allowTaint: false,
-      backgroundColor: '#ffffff',
-      logging: false,
-    });
-    const imgData = canvas.toDataURL('image/png');
-
-    const doc = frame.contentWindow.document;
-    doc.open();
-    doc.write(
-      '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>صورت‌وضعیت</title>' +
-      '<style>' +
-      'html,body{margin:0;padding:0;background:#fff}' +
-      'img{width:100%;display:block}' +
-      '@media print{@page{size:A4;margin:0}}' +
-      '</style></head><body>' +
-      '<img src="' + imgData + '" />' +
-      '</body></html>'
-    );
-    doc.close();
-
-    const img = frame.contentWindow.document.querySelector('img');
-    const doPrint = () => {
-      try { frame.contentWindow.focus(); frame.contentWindow.print(); }
-      catch (e) { window.print(); }
+    // Temporarily strip shadow/border so the printout is clean & professional.
+    const prev = {
+      boxShadow: node.style.boxShadow,
+      border: node.style.border,
+      borderRadius: node.style.borderRadius,
     };
-    if (img && !img.complete) img.onload = doPrint;
-    else setTimeout(doPrint, 150);
+    node.style.boxShadow = 'none';
+    node.style.border = 'none';
+    node.style.borderRadius = '0';
+
+    try {
+      const canvas = await html2canvas(node, {
+        scale: 2,
+        useCORS: true,
+        allowTaint: false,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
+      const imgData = canvas.toDataURL('image/png');
+
+      const doc = frame.contentWindow.document;
+      doc.open();
+      doc.write(
+        '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>صورت‌وضعیت</title>' +
+        '<style>' +
+        '@page{size:A4;margin:0}' +
+        'html,body{margin:0;padding:0;width:210mm;height:297mm;background:#fff}' +
+        'img{width:210mm;height:297mm;object-fit:contain;object-position:top center;display:block}' +
+        '</style></head><body>' +
+        '<img src="' + imgData + '" />' +
+        '</body></html>'
+      );
+      doc.close();
+
+      const img = frame.contentWindow.document.querySelector('img');
+      const doPrint = () => {
+        try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+        catch (e) { window.print(); }
+      };
+      if (img && !img.complete) img.onload = doPrint;
+      else setTimeout(doPrint, 150);
+    } finally {
+      node.style.boxShadow = prev.boxShadow;
+      node.style.border = prev.border;
+      node.style.borderRadius = prev.borderRadius;
+    }
   } catch (e) {
     window.print();
   }
