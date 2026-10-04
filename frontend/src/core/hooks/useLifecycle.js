@@ -61,6 +61,38 @@ export const useToggleChecklistItem = () => {
   });
 };
 
+export const useUpdateChecklist = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, data }) => axiosInstance.patch(endpoints.lifecycleChecklists.detail(id), data),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['lifecycle-checklists'] }),
+  });
+};
+
+export const useDeleteChecklist = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (id) => axiosInstance.delete(endpoints.lifecycleChecklists.detail(id)),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['lifecycle-checklists'] }),
+  });
+};
+
+export const useAddChecklistItem = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ checklistId, title }) => axiosInstance.post(endpoints.checklistItems.list, { checklist: checklistId, title }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['lifecycle-checklists'] }),
+  });
+};
+
+export const useDeleteChecklistItem = () => {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (itemId) => axiosInstance.delete(`${endpoints.checklistItems.list}${itemId}/`),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['lifecycle-checklists'] }),
+  });
+};
+
 export const useCalendarFeed = (params) =>
   useQuery({ queryKey: ['calendar-feed', params], queryFn: () => fetchCalendarFeed(params) });
 

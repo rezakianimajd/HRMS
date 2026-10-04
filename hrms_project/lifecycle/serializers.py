@@ -28,13 +28,15 @@ class ChecklistItemSerializer(serializers.ModelSerializer):
 
 class LifecycleChecklistSerializer(serializers.ModelSerializer):
     kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
     items = ChecklistItemSerializer(many=True, read_only=True)
     progress = serializers.FloatField(read_only=True)
 
     class Meta:
         model = LifecycleChecklist
         fields = [
-            'id', 'employee', 'kind', 'kind_display', 'progress',
+            'id', 'employee', 'employee_name', 'employee_code', 'kind', 'kind_display', 'progress',
             'progress_note', 'items', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
