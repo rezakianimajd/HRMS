@@ -577,8 +577,8 @@ const contractsMenu = [
     color: '#ef4444',
     items: [
       { id: 'contracts-risk', title: 'ریسک، هشدار و دعاوی', icon: <WarningIcon />, path: '/contracts-risk', color: '#ef4444', primary: false, ready: true },
-      { id: 'contracts-expiring', title: 'قراردادهای رو به انقضا', icon: <NotificationsActiveIcon />, path: '/contracts-risk', color: '#f59e0b', primary: false, ready: true },
-      { id: 'contracts-disputes', title: 'اختلافات و دعاوی', icon: <GavelIcon />, path: '/contracts-risk', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'contracts-expiring', title: 'قراردادهای رو به انقضا', icon: <NotificationsActiveIcon />, path: '/contracts-expiring', color: '#f59e0b', primary: false, ready: true },
+      { id: 'contracts-disputes', title: 'اختلافات و دعاوی', icon: <GavelIcon />, path: '/contracts-disputes', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {
