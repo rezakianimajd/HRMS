@@ -23,6 +23,8 @@ import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import { toJalali } from '../core/utils/dateUtils';
 
 const PARTY_TYPES = {
   contractor: { label: 'پیمانکار', color: '#f97316' },
@@ -36,10 +38,23 @@ const PERSON_TYPES = {
   natural: { label: 'شخص حقیقی', color: '#8b5cf6' },
 };
 
+const COMPANY_TYPES = {
+  public_joint_stock: 'سهامی عام',
+  private_joint_stock: 'سهامی خاص',
+  llc: 'با مسئولیت محدود',
+  cooperative: 'تعاونی',
+  sole_proprietorship: 'مؤسسه انفرادی',
+  branch: 'شعبه / نمایندگی',
+  other: 'سایر',
+};
+
 const EMPTY_FORM = {
   id: null, name: '', person_type: 'legal', party_type: 'contractor', national_id: '', economic_code: '',
-  registration_number: '', phone: '', mobile: '', email: '', address: '',
+  registration_number: '', establishment_date: '', company_type: '', registered_capital: '',
+  phone: '', mobile: '', email: '', address: '',
   contact_person: '', bank_name: '', account_number: '', sheba_number: '', description: '',
+  ceo_name: '', ceo_phone: '', finance_manager_name: '', finance_manager_phone: '',
+  technical_contact_name: '', technical_contact_phone: '',
 };
 
 const ContractPartiesPage = () => {
@@ -224,14 +239,23 @@ const ContractPartiesPage = () => {
 
                 <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>اطلاعات تماس و حقوقی</Typography>
                 <Stack spacing={0.5}>
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شناسه ملی', selected.national_id)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'کد اقتصادی', selected.economic_code)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شماره ثبت', selected.registration_number)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'تاریخ تأسیس', toJalali(selected.establishment_date) !== '—' ? toJalali(selected.establishment_date) : null)}
+                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'نوع شرکت', selected.company_type_display)}
+                  {infoItem(<AttachMoneyIcon fontSize="small" color="warning" />, 'سرمایه ثبتی', selected.registered_capital ? `${formatPersianNumber(selected.registered_capital)} ریال` : null)}
                   {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'تلفن', toPersianDigits(selected.phone))}
                   {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'موبایل', toPersianDigits(selected.mobile))}
                   {infoItem(<EmailIcon fontSize="small" color="primary" />, 'ایمیل', selected.email)}
                   {infoItem(<PersonIcon fontSize="small" color="primary" />, 'شخص رابط', selected.contact_person)}
                   {infoItem(<LocationOnIcon fontSize="small" color="primary" />, 'آدرس', selected.address)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شناسه ملی', selected.national_id)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'کد اقتصادی', selected.economic_code)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شماره ثبت', selected.registration_number)}
+                  {infoItem(<PersonIcon fontSize="small" color="success" />, 'مدیر عامل', selected.ceo_name)}
+                  {infoItem(<PhoneIcon fontSize="small" color="success" />, 'تلفن مدیر عامل', selected.ceo_phone ? toPersianDigits(selected.ceo_phone) : null)}
+                  {infoItem(<PersonIcon fontSize="small" color="success" />, 'مدیر مالی', selected.finance_manager_name)}
+                  {infoItem(<PhoneIcon fontSize="small" color="success" />, 'تلفن مدیر مالی', selected.finance_manager_phone ? toPersianDigits(selected.finance_manager_phone) : null)}
+                  {infoItem(<PersonIcon fontSize="small" color="success" />, 'رابط فنی', selected.technical_contact_name)}
+                  {infoItem(<PhoneIcon fontSize="small" color="success" />, 'تلفن رابط فنی', selected.technical_contact_phone ? toPersianDigits(selected.technical_contact_phone) : null)}
                   {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'بانک', selected.bank_name)}
                   {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'شماره حساب', selected.account_number)}
                   {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'شبا', selected.sheba_number)}
@@ -272,6 +296,19 @@ const ContractPartiesPage = () => {
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شناسه ملی / کد ثبت" value={form.national_id} onChange={e => setForm(p => ({ ...p, national_id: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="کد اقتصادی" value={form.economic_code} onChange={e => setForm(p => ({ ...p, economic_code: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره ثبت" value={form.registration_number} onChange={e => setForm(p => ({ ...p, registration_number: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={4}>
+                  <JalaliDatePicker fullWidth label="تاریخ تأسیس" value={form.establishment_date} onChange={(g) => setForm(p => ({ ...p, establishment_date: g }))} />
+                </Grid>
+                <Grid item xs={12} md={4}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>نوع شرکت</InputLabel>
+                    <Select value={form.company_type || ''} label="نوع شرکت" onChange={e => setForm(p => ({ ...p, company_type: e.target.value }))}>
+                      <MenuItem value="">—</MenuItem>
+                      {Object.entries(COMPANY_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                <Grid item xs={12} md={4}><TextField size="small" fullWidth label="سرمایه ثبتی (ریال)" type="number" value={form.registered_capital} onChange={e => setForm(p => ({ ...p, registered_capital: e.target.value }))} /></Grid>
               </Grid>
             </Box>
 
@@ -296,6 +333,20 @@ const ContractPartiesPage = () => {
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک" value={form.bank_name} onChange={e => setForm(p => ({ ...p, bank_name: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره حساب" value={form.account_number} onChange={e => setForm(p => ({ ...p, account_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره شبا" value={form.sheba_number} onChange={e => setForm(p => ({ ...p, sheba_number: e.target.value }))} /></Grid>
+              </Grid>
+            </Box>
+
+            <Divider />
+
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} color="#0369a1" mb={1}>مدیریت و ارتباطات کلیدی</Typography>
+              <Grid container spacing={1.5}>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="مدیر عامل" value={form.ceo_name} onChange={e => setForm(p => ({ ...p, ceo_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره تماس مدیر عامل" value={form.ceo_phone} onChange={e => setForm(p => ({ ...p, ceo_phone: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="مدیر مالی" value={form.finance_manager_name} onChange={e => setForm(p => ({ ...p, finance_manager_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره تماس مدیر مالی" value={form.finance_manager_phone} onChange={e => setForm(p => ({ ...p, finance_manager_phone: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="رابط فنی و مهندسی" value={form.technical_contact_name} onChange={e => setForm(p => ({ ...p, technical_contact_name: e.target.value }))} /></Grid>
+                <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره تماس رابط فنی" value={form.technical_contact_phone} onChange={e => setForm(p => ({ ...p, technical_contact_phone: e.target.value }))} /></Grid>
               </Grid>
             </Box>
 

@@ -127,15 +127,20 @@ class PaymentSerializer(serializers.ModelSerializer):
 class ContractPartySerializer(serializers.ModelSerializer):
     party_type_display = serializers.CharField(source='get_party_type_display', read_only=True)
     person_type_display = serializers.CharField(source='get_person_type_display', read_only=True)
+    company_type_display = serializers.CharField(source='get_company_type_display', read_only=True)
     contracts_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = ContractParty
         fields = [
             'id', 'name', 'person_type', 'person_type_display', 'party_type', 'party_type_display', 'national_id',
-            'economic_code', 'registration_number', 'phone', 'mobile', 'email',
+            'economic_code', 'registration_number', 'establishment_date', 'company_type', 'company_type_display',
+            'registered_capital', 'phone', 'mobile', 'email',
             'address', 'contact_person', 'bank_name', 'account_number',
-            'sheba_number', 'description', 'contracts_count',
+            'sheba_number', 'description',
+            'ceo_name', 'ceo_phone', 'finance_manager_name', 'finance_manager_phone',
+            'technical_contact_name', 'technical_contact_phone',
+            'contracts_count',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 

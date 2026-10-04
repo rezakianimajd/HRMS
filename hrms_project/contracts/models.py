@@ -22,12 +22,24 @@ class ContractParty(BaseModel):
         LEGAL = 'legal', _('شخص حقوقی')
         NATURAL = 'natural', _('شخص حقیقی')
 
+    class CompanyType(models.TextChoices):
+        PUBLIC_JOINT_STOCK = 'public_joint_stock', _('سهامی عام')
+        PRIVATE_JOINT_STOCK = 'private_joint_stock', _('سهامی خاص')
+        LLC = 'llc', _('با مسئولیت محدود')
+        COOPERATIVE = 'cooperative', _('تعاونی')
+        SOLE_PROPRIETORSHIP = 'sole_proprietorship', _('مؤسسه انفرادی')
+        BRANCH = 'branch', _('شعبه / نمایندگی')
+        OTHER = 'other', _('سایر')
+
     name = models.CharField(max_length=250, verbose_name=_('نام / عنوان'))
     person_type = models.CharField(max_length=10, choices=PersonType.choices, default=PersonType.LEGAL, verbose_name=_('نوع شخص'))
     party_type = models.CharField(max_length=20, choices=PartyType.choices, default=PartyType.CONTRACTOR, verbose_name=_('نوع طرف'))
     national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ثبت'))
     economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('کد اقتصادی'))
     registration_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره ثبت'))
+    establishment_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ تأسیس'))
+    company_type = models.CharField(max_length=30, choices=CompanyType.choices, blank=True, verbose_name=_('نوع شرکت'))
+    registered_capital = models.DecimalField(max_digits=20, decimal_places=0, null=True, blank=True, verbose_name=_('سرمایه ثبتی (ریال)'))
     phone = models.CharField(max_length=20, blank=True, verbose_name=_('تلفن'))
     mobile = models.CharField(max_length=20, blank=True, verbose_name=_('موبایل'))
     email = models.EmailField(blank=True, verbose_name=_('ایمیل'))
@@ -37,6 +49,14 @@ class ContractParty(BaseModel):
     account_number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره حساب'))
     sheba_number = models.CharField(max_length=30, blank=True, verbose_name=_('شماره شبا'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    # مدیریت و ارتباطات کلیدی
+    ceo_name = models.CharField(max_length=200, blank=True, verbose_name=_('مدیر عامل'))
+    ceo_phone = models.CharField(max_length=20, blank=True, verbose_name=_('شماره تماس مدیر عامل'))
+    finance_manager_name = models.CharField(max_length=200, blank=True, verbose_name=_('مدیر مالی'))
+    finance_manager_phone = models.CharField(max_length=20, blank=True, verbose_name=_('شماره تماس مدیر مالی'))
+    technical_contact_name = models.CharField(max_length=200, blank=True, verbose_name=_('رابط فنی و مهندسی'))
+    technical_contact_phone = models.CharField(max_length=20, blank=True, verbose_name=_('شماره تماس رابط فنی'))
 
     class Meta:
         verbose_name = _('طرف قرارداد')
