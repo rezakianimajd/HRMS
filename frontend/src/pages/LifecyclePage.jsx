@@ -58,6 +58,7 @@ const LifecyclePage = () => {
   const [editChecklist, setEditChecklist] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [newItemTitle, setNewItemTitle] = useState('');
+  const [customInput, setCustomInput] = useState('');
   const [msg, setMsg] = useState('');
 
   const { data, isLoading } = useChecklists({ kind: tab });
@@ -80,7 +81,9 @@ const LifecyclePage = () => {
   };
 
   const openAdd = () => {
-    setForm({ employee: '', kind: tab, items: [] });
+    const defaults = tab === 'onboarding' ? DEFAULT_ONBOARDING_ITEMS : DEFAULT_OFFBOARDING_ITEMS;
+    setForm({ employee: '', kind: tab, items: [...defaults] });
+    setCustomInput('');
     setOpen(true);
   };
 
@@ -91,9 +94,19 @@ const LifecyclePage = () => {
     });
   };
 
+  const addCustomItem = () => {
+    const title = customInput.trim();
+    if (!title) return;
+    setForm(p => ({ ...p, items: [...p.items, title] }));
+    setCustomInput('');
+  };
+
+  const removeCustomItem = (item) => {
+    setForm(p => ({ ...p, items: p.items.filter(x => x !== item) }));
+  };
+
   const doCreate = () => {
-    const defaults = form.kind === 'onboarding' ? DEFAULT_ONBOARDING_ITEMS : DEFAULT_OFFBOARDING_ITEMS;
-    const finalItems = [...new Set([...defaults, ...form.items])];
+    const finalItems = [...form.items];
     createMutation.mutate(
       { employee: form.employee, kind: form.kind },
       {
@@ -277,46 +290,116 @@ const LifecyclePage = () => {
       )}
 
       {/* Create dialog */}
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ fontWeight: 800, color: '#6d28d9', borderBottom: '1px solid rgba(139,92,246,0.15)' }}>چک‌لیست جدید</DialogTitle>
+      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 800, color: '#6d28d9', borderBottom: '1px solid rgba(139,92,246,0.15)' }}>
+          چک‌لیست جدید
+        </DialogTitle>
         <DialogContent sx={{ mt: 2 }}>
-          <Stack spacing={2}>
-            <FormControl fullWidth size="small" sx={fieldSx}>
-              <InputLabel>نوع</InputLabel>
-              <Select value={form.kind} label="نوع" onChange={(e) => setForm((p) => ({ ...p, kind: e.target.value }))}>
-                {Object.entries(KIND_META).map(([k, m]) => <MenuItem key={k} value={k}>{m.label}</MenuItem>)}
-              </Select>
-            </FormControl>
-            <FormControl fullWidth size="small" sx={fieldSx}>
-              <InputLabel>پرسنل *</InputLabel>
-              <Select value={form.employee || ''} label="پرسنل *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
-                {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
-              </Select>
-            </FormControl>
+          <Stack spacing={2.5}>
+            {/* بخش ۱: نوع چک‌لیست */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} color="#6d28d9" mb={1}>نوع چک‌لیست</Typography>
+              <Grid container spacing={1.5}>
+                {Object.entries(KIND_META).map(([k, m]) => {
+                  const active = form.kind === k;
+                  return (
+                    <Grid item xs={12} sm={6} key={k}>
+                      <Paper onClick={() => setForm(p => ({ ...p, kind: k, items: k === 'onboarding' ? [...DEFAULT_ONBOARDING_ITEMS] : [...DEFAULT_OFFBOARDING_ITEMS] }))}
+                        sx={{
+                          p: 1.75, cursor: 'pointer', borderRadius: '12px',
+                          display: 'flex', alignItems: 'center', gap: 1.5,
+                          border: active ? `2px solid ${m.color}` : '1px solid rgba(100,116,139,0.2)',
+                          background: active ? `${m.color}14` : 'rgba(255,255,255,0.6)',
+                          boxShadow: active ? `0 6px 20px ${m.color}30` : 'none',
+                          transition: 'all 0.2s ease',
+                        }}>
+                        <Avatar sx={{ width: 40, height: 40, bgcolor: m.color }}>{m.icon}</Avatar>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography variant="body2" fontWeight={800} sx={{ color: active ? m.color : 'text.primary' }}>{m.label}</Typography>
+                          <Typography variant="caption" color="textSecondary">
+                            {k === 'onboarding' ? `${DEFAULT_ONBOARDING_ITEMS.length} مورد پیش‌فرض` : `${DEFAULT_OFFBOARDING_ITEMS.length} مورد پیش‌فرض`}
+                          </Typography>
+                        </Box>
+                        {active && <CheckCircleIcon sx={{ color: m.color }} />}
+                      </Paper>
+                    </Grid>
+                  );
+                })}
+              </Grid>
+            </Box>
 
             <Divider />
 
-            <Typography variant="caption" color="textSecondary">
-              اقلام پیش‌فرض (برای تیک‌کردن یک مورد اختیاری کلیک کنید):
-            </Typography>
-            <Stack spacing={0.5}>
-              {(form.kind === 'onboarding' ? DEFAULT_ONBOARDING_ITEMS : DEFAULT_OFFBOARDING_ITEMS).map((item) => (
-                <Box key={item} onClick={() => toggleDefaultItem(item)} sx={{ display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer' }}>
-                  <Checkbox size="small" checked={form.items.includes(item)} onChange={() => toggleDefaultItem(item)} />
-                  <Typography variant="body2">{item}</Typography>
+            {/* بخش ۲: پرسنل */}
+            <Box>
+              <Typography variant="subtitle2" fontWeight={800} color="#6d28d9" mb={1}>پرسنل</Typography>
+              <FormControl fullWidth size="small" sx={fieldSx}>
+                <InputLabel>پرسنل *</InputLabel>
+                <Select value={form.employee || ''} label="پرسنل *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
+                  {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Box>
+
+            <Divider />
+
+            {/* بخش ۳: اقلام چک‌لیست */}
+            <Box>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+                <Typography variant="subtitle2" fontWeight={800} color="#6d28d9">اقلام چک‌لیست</Typography>
+                <Chip size="small" label={`${toPersianDigits(form.items.length)} مورد`} sx={{ fontWeight: 800, bgcolor: 'rgba(139,92,246,0.1)', color: '#6d28d9' }} />
+              </Box>
+
+              {/* اقلام پیش‌فرض */}
+              <Stack spacing={0.25}>
+                {(form.kind === 'onboarding' ? DEFAULT_ONBOARDING_ITEMS : DEFAULT_OFFBOARDING_ITEMS).map((item) => {
+                  const checked = form.items.includes(item);
+                  return (
+                    <Box key={item} onClick={() => toggleDefaultItem(item)}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 1, py: 0.5, px: 0.5, cursor: 'pointer',
+                        borderRadius: '10px', '&:hover': { background: 'rgba(139,92,246,0.06)' },
+                      }}>
+                      <Checkbox size="small" checked={checked} color="primary" onChange={() => toggleDefaultItem(item)} />
+                      <Typography variant="body2" sx={{ textDecoration: !checked ? 'line-through' : 'none', color: checked ? 'text.primary' : 'text.disabled' }}>
+                        {item}
+                      </Typography>
+                    </Box>
+                  );
+                })}
+              </Stack>
+
+              {/* اقلام سفارشی اضافه‌شده */}
+              {form.items.filter(i => !(form.kind === 'onboarding' ? DEFAULT_ONBOARDING_ITEMS : DEFAULT_OFFBOARDING_ITEMS).includes(i)).map(item => (
+                <Box key={item} sx={{ display: 'flex', alignItems: 'center', gap: 1, py: 0.5, px: 0.5, borderRadius: '10px', background: 'rgba(236,72,153,0.05)', mt: 0.25 }}>
+                  <Checkbox size="small" checked color="primary" onChange={() => removeCustomItem(item)} />
+                  <Typography variant="body2" sx={{ flex: 1 }}>{item}</Typography>
+                  <Tooltip title="حذف مورد">
+                    <IconButton size="small" color="error" onClick={() => removeCustomItem(item)}><DeleteIcon fontSize="small" /></IconButton>
+                  </Tooltip>
                 </Box>
               ))}
-            </Stack>
+
+              {/* افزودن مورد سفارشی */}
+              <Box sx={{ display: 'flex', gap: 1, mt: 1 }}>
+                <TextField size="small" fullWidth label="افزودن مورد سفارشی" value={customInput} sx={fieldSx}
+                  onChange={(e) => setCustomInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addCustomItem(); } }} />
+                <Button variant="outlined" startIcon={<AddCircleIcon />} onClick={addCustomItem}
+                  sx={{ borderRadius: '10px', whiteSpace: 'nowrap', color: '#ec4899', borderColor: '#ec4899' }}>افزودن</Button>
+              </Box>
+            </Box>
           </Stack>
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => setOpen(false)}>انصراف</Button>
-          <Button variant="contained" disabled={!form.employee} onClick={doCreate}
+          <Button variant="contained" disabled={!form.employee || form.items.length === 0} onClick={doCreate}
             sx={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', borderRadius: '10px', px: 3 }}>
-            ایجاد چک‌لیست
+            ایجاد چک‌لیست ({toPersianDigits(form.items.length)} مورد)
           </Button>
         </DialogActions>
       </Dialog>
+
 
       {/* View dialog */}
       <Dialog open={!!viewChecklist} onClose={() => setViewChecklist(null)} maxWidth="sm" fullWidth>
