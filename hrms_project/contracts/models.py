@@ -247,12 +247,21 @@ class Statement(BaseModel):
 
 class Addendum(BaseModel):
     """الحاقیه / amendment to a contract."""
+
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='addendums', verbose_name=_('قرارداد'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره الحاقیه'))
+    subject = models.CharField(max_length=300, blank=True, verbose_name=_('موضوع الحاقیه'))
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
-    change_description = models.TextField(blank=True, verbose_name=_('شرح تغییرات'))
-    amount_change = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('تغییر مبلغ (ریال)'))
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='addendums', verbose_name=_('واحد ارز'),
+    )
+    amount_change = models.DecimalField(max_digits=18, decimal_places=0, null=True, blank=True, verbose_name=_('تغییر مبلغ'))
+    percent_change = models.DecimalField(max_digits=8, decimal_places=2, null=True, blank=True, verbose_name=_('درصد تغییر'))
     new_end_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ پایان جدید'))
+    change_description = models.TextField(blank=True, verbose_name=_('شرح تغییرات'))
+    # مفاد / بندهای الحاقیه: [{"title": "...", "text": "..."}]
+    provisions = models.JSONField(default=list, blank=True, verbose_name=_('مفاد / بندها'))
 
     class Meta:
         verbose_name = _('الحاقیه')

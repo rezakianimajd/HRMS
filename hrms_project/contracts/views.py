@@ -219,7 +219,10 @@ class StatementViewSet(BaseContractViewSet):
 
 class AddendumViewSet(BaseContractViewSet):
     serializer_class = AddendumSerializer
-    queryset = Addendum.objects.all()
+    queryset = Addendum.objects.select_related('contract', 'currency')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['number', 'subject', 'change_description', 'contract__subject']
+    ordering = ['-date']
 
     def get_queryset(self):
         qs = super().get_queryset()

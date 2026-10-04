@@ -99,9 +99,18 @@ class StatementSerializer(serializers.ModelSerializer):
 
 
 class AddendumSerializer(serializers.ModelSerializer):
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+
     class Meta:
         model = Addendum
-        fields = ['id', 'contract', 'number', 'date', 'change_description', 'amount_change', 'new_end_date']
+        fields = [
+            'id', 'contract', 'contract_subject', 'number', 'subject', 'date',
+            'currency', 'currency_name', 'currency_symbol',
+            'amount_change', 'percent_change', 'new_end_date',
+            'change_description', 'provisions',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
