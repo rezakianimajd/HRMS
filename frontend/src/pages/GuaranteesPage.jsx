@@ -22,6 +22,7 @@ import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
+import MoneyInput from '../core/components/ui/MoneyInput';
 
 const TYPE_LABELS = {
   performance: 'ضمانت حسن انجام کار',
@@ -87,6 +88,7 @@ const GuaranteesPage = () => {
   const [form, setForm] = useState(EMPTY);
   const [actionDialog, setActionDialog] = useState(null); // { id, action }
   const [newExpiry, setNewExpiry] = useState('');
+  const [error, setError] = useState('');
 
   const { data: raw, isLoading } = useQuery({
     queryKey: ['contract-guarantees'],
@@ -100,16 +102,47 @@ const GuaranteesPage = () => {
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
+  const sanitizeGuarantee = (p) => ({
+    ...p,
+    contract: p.contract || null,
+    amount: p.amount === '' || p.amount == null ? 0 : Number(p.amount),
+    issue_date: p.issue_date || null,
+    expiry_date: p.expiry_date || null,
+    check_due_date: p.check_due_date || null,
+    promissory_due_date: p.promissory_due_date || null,
+    guarantee_expiry_date: p.guarantee_expiry_date || null,
+    release_date: p.release_date || null,
+  });
+
   const save = useMutation({
-    mutationFn: (payload) =>
-      payload.id
-        ? axiosInstance.patch(`/contract-guarantees/${payload.id}/`, payload)
-        : axiosInstance.post('/contract-guarantees/', payload),
+    mutationFn: (payload) => {
+      const clean = sanitizeGuarantee(payload);
+      return clean.id
+        ? axiosInstance.patch(`/contract-guarantees/${clean.id}/`, clean)
+        : axiosInstance.post('/contract-guarantees/', clean);
+    },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['contract-guarantees'] });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
       setDialog(false);
       setForm(EMPTY);
+      setError('');
+    },
+    onError: (e) => {
+      const data = e.response?.data;
+      let msg = 'خطا در ذخیره';
+      if (data) {
+        if (typeof data === 'string') msg = data;
+        else if (Array.isArray(data)) msg = data[0];
+        else if (data.detail) msg = data.detail;
+        else if (data.error) msg = data.error;
+        else if (data.non_field_errors) msg = data.non_field_errors[0];
+        else {
+          const first = Object.values(data).flat()[0];
+          if (first) msg = first;
+        }
+      }
+      setError(msg);
     },
   });
 
@@ -174,7 +207,7 @@ const GuaranteesPage = () => {
           <Typography variant="body2" color="textSecondary">مدیریت چک، سفته و ضمانت‌نامه با چرخهٔ عمر کامل</Typography>
         </Box>
         <Button variant="contained" startIcon={<AddIcon />} disabled={!contractId}
-          onClick={() => { setForm({ ...EMPTY, contract: contractId || '' }); setDialog(true); }}
+          onClick={() => { setForm({ ...EMPTY, contract: contractId || '' }); setError(''); setDialog(true); }}
           sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px' }}>
           تضمین جدید
         </Button>
@@ -276,7 +309,7 @@ const GuaranteesPage = () => {
                         </Button>
                       ))
                     )}
-                    <Button size="small" variant="outlined" onClick={() => { setForm({ ...g }); setDialog(true); }}>ویرایش</Button>
+                    <Button size="small" variant="outlined" onClick={() => { setForm({ ...g }); setError(''); setDialog(true); }}>ویرایش</Button>
                     <Button size="small" color="error" variant="outlined" onClick={() => { if (window.confirm('حذف این تضمین؟')) remove.mutate(g.id); }}>حذف</Button>
                   </Box>
                 </Paper>
@@ -288,14 +321,27 @@ const GuaranteesPage = () => {
 
       {/* Add/Edit dialog with dynamic fields */}
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle>{form.id ? 'ویرایش تضمین' : 'تضمین جدید'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <Grid container spacing={1.5}>
+        <DialogTitle sx={{
+          display: 'flex', alignItems: 'center', gap: 1.5, px: 3, py: 2,
+          background: 'linear-gradient(120deg, rgba(59,130,246,0.12), rgba(16,185,129,0.08), rgba(255,255,255,0.4))',
+          borderBottom: '1px solid rgba(59,130,246,0.15)',
+        }}>
+          <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#3b82f6,#10b981)', boxShadow: '0 6px 18px rgba(59,130,246,0.4)' }}>
+            <LockIcon sx={{ color: '#fff' }} />
+          </Avatar>
+          <Box>
+            <Typography variant="h6" fontWeight={800}>{form.id ? 'ویرایش تضمین' : 'تضمین جدید'}</Typography>
+            <Typography variant="caption" color="textSecondary">ثبت چک، سفته یا ضمانت‌نامه بانکی</Typography>
+          </Box>
+        </DialogTitle>
+
+        <DialogContent sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
+          <Grid container spacing={2}>
             <Grid item xs={12} md={6}>
               <FormControl size="small" fullWidth>
-                <InputLabel>قرارداد مرتبط</InputLabel>
-                <Select value={form.contract || ''} label="قرارداد مرتبط" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
-                  {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject}</MenuItem>)}
+                <InputLabel>قرارداد مرتبط *</InputLabel>
+                <Select value={form.contract || ''} label="قرارداد مرتبط *" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
+                  {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
@@ -308,56 +354,83 @@ const GuaranteesPage = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>نوع ابزار تضمین</InputLabel>
-                <Select value={form.instrument_type} label="نوع ابزار تضمین" onChange={e => setForm(p => ({ ...p, instrument_type: e.target.value }))}>
-                  {Object.entries(INSTRUMENT_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
-                </Select>
-              </FormControl>
+              <Typography variant="caption" color="textSecondary" sx={{ mb: 0.75, display: 'block' }}>نوع ابزار تضمین</Typography>
+              <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
+                {Object.entries(INSTRUMENT_LABELS).map(([k, v]) => {
+                  const active = form.instrument_type === k;
+                  const color = INSTRUMENT_COLORS[k] || '#64748b';
+                  return (
+                    <Chip
+                      key={k}
+                      label={v}
+                      onClick={() => setForm(p => ({ ...p, instrument_type: k }))}
+                      sx={{
+                        cursor: 'pointer', borderRadius: '10px', fontWeight: 700,
+                        bgcolor: active ? color : `${color}14`, color: active ? '#fff' : color,
+                        border: `1px solid ${active ? color : `${color}44`}`,
+                        '&:hover': { bgcolor: active ? color : `${color}26` },
+                      }}
+                    />
+                  );
+                })}
+              </Box>
             </Grid>
-            <Grid item xs={12} md={4}><TextField size="small" fullWidth label="مبلغ (ریال)" type="number" value={form.amount} onChange={e => setForm(p => ({ ...p, amount: e.target.value }))} /></Grid>
-            <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ صدور" value={form.issue_date} onChange={(g) => setForm(p => ({ ...p, issue_date: g }))} /></Grid>
-            <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک صادرکننده" value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} /></Grid>
           </Grid>
 
+          <Box>
+            <Typography variant="caption" fontWeight={700} color="#1d4ed8" sx={{ mb: 1, display: 'block' }}>اطلاعات پایه</Typography>
+            <Grid container spacing={2}>
+              <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label="مبلغ (ریال)" value={form.amount} onChange={(v) => setForm(p => ({ ...p, amount: v }))} /></Grid>
+              <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ صدور" value={form.issue_date} onChange={(g) => setForm(p => ({ ...p, issue_date: g }))} /></Grid>
+              <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک صادرکننده" value={form.bank} onChange={e => setForm(p => ({ ...p, bank: e.target.value }))} /></Grid>
+              <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره / مرجع" value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
+              <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ انقضا / سررسید" value={form.expiry_date} onChange={(g) => setForm(p => ({ ...p, expiry_date: g }))} /></Grid>
+            </Grid>
+          </Box>
+
           {needsInstrument(form.instrument_type) && (
-            <>
-              <Typography variant="caption" color="primary" fontWeight={700}>اطلاعات چک</Typography>
-              <Grid container spacing={1.5}>
+            <Box sx={{ p: 2, borderRadius: '12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
+              <Typography variant="caption" fontWeight={800} color="#b45309" sx={{ mb: 1, display: 'block' }}>اطلاعات چک</Typography>
+              <Grid container spacing={2}>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره چک" value={form.check_number} onChange={e => setForm(p => ({ ...p, check_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک چک" value={form.check_bank} onChange={e => setForm(p => ({ ...p, check_bank: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ سررسید چک" value={form.check_due_date} onChange={(g) => setForm(p => ({ ...p, check_due_date: g }))} /></Grid>
               </Grid>
-            </>
+            </Box>
           )}
 
           {needsPromissory(form.instrument_type) && (
-            <>
-              <Typography variant="caption" color="secondary" fontWeight={700}>اطلاعات سفته</Typography>
-              <Grid container spacing={1.5}>
+            <Box sx={{ p: 2, borderRadius: '12px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
+              <Typography variant="caption" fontWeight={800} color="#7c3aed" sx={{ mb: 1, display: 'block' }}>اطلاعات سفته</Typography>
+              <Grid container spacing={2}>
                 <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره سفته" value={form.promissory_number} onChange={e => setForm(p => ({ ...p, promissory_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ سررسید سفته" value={form.promissory_due_date} onChange={(g) => setForm(p => ({ ...p, promissory_due_date: g }))} /></Grid>
               </Grid>
-            </>
+            </Box>
           )}
 
           {needsGuarantee(form.instrument_type) && (
-            <>
-              <Typography variant="caption" color="success" fontWeight={700}>اطلاعات ضمانت‌نامه</Typography>
-              <Grid container spacing={1.5}>
+            <Box sx={{ p: 2, borderRadius: '12px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
+              <Typography variant="caption" fontWeight={800} color="#047857" sx={{ mb: 1, display: 'block' }}>اطلاعات ضمانت‌نامه</Typography>
+              <Grid container spacing={2}>
                 <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره ضمانت‌نامه" value={form.guarantee_number} onChange={e => setForm(p => ({ ...p, guarantee_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ انقضای ضمانت‌نامه" value={form.guarantee_expiry_date} onChange={(g) => setForm(p => ({ ...p, guarantee_expiry_date: g }))} /></Grid>
               </Grid>
-            </>
+            </Box>
           )}
 
           <TextField size="small" label="یادداشت" multiline rows={2} value={form.note} onChange={e => setForm(p => ({ ...p, note: e.target.value }))} />
+
+          {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setDialog(false)}>انصراف</Button>
-          <Button variant="contained" disabled={!form.guarantee_type}
-            onClick={() => save.mutate({ ...form, amount: Number(form.amount) || 0 })}
-            sx={{ background: 'linear-gradient(135deg,#3b82f6,#10b981)' }}>ذخیره</Button>
+
+        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(59,130,246,0.12)' }}>
+          <Button onClick={() => setDialog(false)} sx={{ borderRadius: '10px' }}>انصراف</Button>
+          <Button variant="contained" disabled={!form.contract || !form.guarantee_type}
+            onClick={() => save.mutate(form)}
+            sx={{ background: 'linear-gradient(135deg,#3b82f6,#10b981)', borderRadius: '10px', px: 3, boxShadow: '0 8px 22px rgba(59,130,246,0.35)' }}>
+            {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره'}
+          </Button>
         </DialogActions>
       </Dialog>
 
