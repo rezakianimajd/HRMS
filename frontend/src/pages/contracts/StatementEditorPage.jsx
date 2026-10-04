@@ -73,7 +73,13 @@ const printStatement = () => {
   Array.from(document.styleSheets).forEach((sheet) => {
     try {
       const rules = sheet.cssRules || sheet.rules;
-      for (let i = 0; i < rules.length; i++) css += rules[i].cssText + '\n';
+      for (let i = 0; i < rules.length; i++) {
+        const rule = rules[i];
+        // Skip the app's print rules (they hide everything except the preview,
+        // which is wrong inside our dedicated print iframe).
+        if (rule.media && /print/i.test(rule.media.mediaText)) continue;
+        css += rule.cssText + '\n';
+      }
     } catch (e) {
       if (sheet.href) css += '@import url("' + sheet.href + '");\n';
     }
@@ -108,7 +114,14 @@ const printStatement = () => {
     'html,body{margin:0;padding:0;background:#fff}' +
     '@media print{' +
     ' @page{size:A4;margin:12mm}' +
+    ' html,body,body *,#statement-print-area,#statement-print-area *{visibility:visible !important}' +
     ' #statement-print-area{position:static !important;box-shadow:none !important;border:none !important;border-radius:0 !important;overflow:visible !important;min-height:0 !important}' +
+    ' .MuiGrid-container{display:flex !important;flex-wrap:wrap !important}' +
+    ' .MuiGrid-item{box-sizing:border-box !important}' +
+    ' .MuiGrid-grid-xs-12{flex-basis:100% !important;max-width:100% !important}' +
+    ' .MuiGrid-grid-xs-6{flex-basis:50% !important;max-width:50% !important}' +
+    ' .MuiGrid-grid-xs-4{flex-basis:33.333333% !important;max-width:33.333333% !important}' +
+    ' .MuiGrid-grid-xs-3{flex-basis:25% !important;max-width:25% !important}' +
     '}' +
     '</style>' +
     '</head><body>' + node.outerHTML + '</body></html>'
