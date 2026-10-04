@@ -128,7 +128,23 @@ const SalaryForm = ({ onSuccess }) => {
       setTimeout(() => setSaved(false), 2500);
       if (onSuccess) onSuccess();
     },
-    onError: (e) => setError(e.response?.data?.error || 'خطا در ذخیره'),
+    onError: (e) => {
+      // استخراج پیام خطای دقیق از پاسخ DRF (که می‌تواند object فیلدها باشد)
+      const data = e.response?.data;
+      let msg = 'خطا در ذخیره';
+      if (data) {
+        if (typeof data === 'string') msg = data;
+        else if (Array.isArray(data)) msg = data[0];
+        else if (data.error) msg = data.error;
+        else if (data.detail) msg = data.detail;
+        else if (data.non_field_errors) msg = data.non_field_errors[0];
+        else {
+          const first = Object.values(data).flat()[0];
+          if (first) msg = first;
+        }
+      }
+      setError(msg);
+    },
   });
 
   const set = (key, value) => setForm(p => ({ ...p, [key]: value }));

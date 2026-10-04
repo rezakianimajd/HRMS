@@ -118,6 +118,16 @@ class SalaryRecordViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         company = _get_company(self.request)
+        # جلوگیری از خطای 500 در ثبت تکراری (unique: company, employee, year, month)
+        from rest_framework.exceptions import ValidationError
+        employee = serializer.validated_data.get('employee')
+        year = serializer.validated_data.get('year')
+        month = serializer.validated_data.get('month')
+        if employee and year and month and SalaryRecord.objects.filter(
+            company=company, employee=employee, year=year, month=month
+        ).exists():
+            raise ValidationError({'error': 'برای این پرسنل در این سال/ماه قبلاً فیش حقوقی ثبت شده است.'})
+
         instance = serializer.save(company=company)
         # 2c: قسط وام فعال خودکار در فیش حقوق
         if not instance.employee_loan:
