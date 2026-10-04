@@ -193,9 +193,10 @@ class ContractDocumentViewSet(BaseContractViewSet):
 
 class InvoiceViewSet(BaseContractViewSet):
     serializer_class = InvoiceSerializer
-    queryset = Invoice.objects.all()
+    queryset = Invoice.objects.select_related('contract', 'currency')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['number']
+    search_fields = ['number', 'subject', 'description', 'contract__subject']
+    ordering = ['-date']
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -298,7 +299,10 @@ class GuaranteeViewSet(BaseContractViewSet):
 
 class PaymentViewSet(BaseContractViewSet):
     serializer_class = PaymentSerializer
-    queryset = Payment.objects.all()
+    queryset = Payment.objects.select_related('contract', 'currency', 'invoice')
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['reference', 'method', 'note', 'contract__subject', 'invoice__number']
+    ordering = ['-date']
 
     def get_queryset(self):
         qs = super().get_queryset()

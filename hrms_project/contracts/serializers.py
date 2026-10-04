@@ -70,9 +70,17 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
 
 
 class InvoiceSerializer(serializers.ModelSerializer):
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+
     class Meta:
         model = Invoice
-        fields = ['id', 'contract', 'number', 'date', 'amount', 'vat', 'total', 'is_paid', 'description']
+        fields = [
+            'id', 'contract', 'contract_subject', 'number', 'subject', 'date', 'due_date',
+            'currency', 'currency_name', 'currency_symbol',
+            'amount', 'vat', 'total', 'is_paid', 'description',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
@@ -135,9 +143,18 @@ class GuaranteeSerializer(serializers.ModelSerializer):
 
 
 class PaymentSerializer(serializers.ModelSerializer):
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    invoice_number = serializers.CharField(source='invoice.number', read_only=True)
+
     class Meta:
         model = Payment
-        fields = ['id', 'contract', 'invoice', 'date', 'amount', 'reference', 'method']
+        fields = [
+            'id', 'contract', 'contract_subject', 'invoice', 'invoice_number',
+            'date', 'currency', 'currency_name', 'currency_symbol',
+            'amount', 'reference', 'method', 'note',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 

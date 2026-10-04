@@ -173,10 +173,16 @@ class Invoice(BaseModel):
     """Invoice (فاکتور) issued against a contract."""
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='invoices', verbose_name=_('قرارداد'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره فاکتور'))
+    subject = models.CharField(max_length=300, blank=True, verbose_name=_('شرح فاکتور'))
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ فاکتور'))
-    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
-    vat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مالیات (ریال)'))
-    total = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ کل (ریال)'))
+    due_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ سررسید'))
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='invoices', verbose_name=_('واحد ارز'),
+    )
+    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ'))
+    vat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مالیات'))
+    total = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ کل'))
     is_paid = models.BooleanField(default=False, verbose_name=_('پرداخت شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 
@@ -340,9 +346,14 @@ class Payment(BaseModel):
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='payments', verbose_name=_('قرارداد'))
     invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments', verbose_name=_('فاکتور مرتبط'))
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ پرداخت'))
-    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='payments', verbose_name=_('واحد ارز'),
+    )
+    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ'))
     reference = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع / سند'))
     method = models.CharField(max_length=50, blank=True, verbose_name=_('روش پرداخت'))
+    note = models.TextField(blank=True, verbose_name=_('توضیحات'))
 
     class Meta:
         verbose_name = _('پرداخت')
