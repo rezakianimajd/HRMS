@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
@@ -18,6 +18,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
+import html2canvas from 'html2canvas';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
@@ -59,31 +60,12 @@ const labelSx = { fontWeight: 700, color: COLOR_DARK, mb: 0.5, display: 'block',
 
 const num = (v) => Math.max(0, Number(v) || 0);
 
-/* Robust print: render a full copy of the preview inside a hidden iframe that
-   receives ALL active CSS rules (including Emotion/MUI styles injected via the
-   CSSOM, which are not visible in head.innerHTML). */
-const printStatement = () => {
+/* Reliable print: rasterize the live preview with html2canvas (so the output is
+   pixel-identical to what the user sees) and print the resulting image on A4.
+   No dependency on the app's CSS @media print rules, so nothing gets hidden. */
+const printStatement = async () => {
   const node = document.getElementById('statement-print-area');
   if (!node) { window.print(); return; }
-
-  // Collect every CSS rule from the live document. Emotion (MUI v5) injects
-  // styles through stylesheet.insertRule, so reading head.innerHTML alone
-  // misses them — this is why the grid/fonts were previously broken.
-  let css = '';
-  Array.from(document.styleSheets).forEach((sheet) => {
-    try {
-      const rules = sheet.cssRules || sheet.rules;
-      for (let i = 0; i < rules.length; i++) {
-        const rule = rules[i];
-        // Skip the app's print rules (they hide everything except the preview,
-        // which is wrong inside our dedicated print iframe).
-        if (rule.media && /print/i.test(rule.media.mediaText)) continue;
-        css += rule.cssText + '\n';
-      }
-    } catch (e) {
-      if (sheet.href) css += '@import url("' + sheet.href + '");\n';
-    }
-  });
 
   let frame = document.getElementById('statement-print-frame');
   if (!frame) {
@@ -101,42 +83,40 @@ const printStatement = () => {
     document.body.appendChild(frame);
   }
 
-  const doc = frame.contentWindow.document;
-  doc.open();
-  doc.write(
-    '<!DOCTYPE html><html dir="rtl" lang="fa"><head>' +
-    '<base href="' + window.location.origin + '/">' +
-    '<meta charset="utf-8">' +
-    '<meta name="viewport" content="width=device-width, initial-scale=1">' +
-    '<title>صورت‌وضعیت</title>' +
-    '<style>' + css + '</style>' +
-    '<style>' +
-    'html,body{margin:0;padding:0;background:#fff}' +
-    '@media print{' +
-    ' @page{size:A4;margin:12mm}' +
-    ' html,body,body *,#statement-print-area,#statement-print-area *{visibility:visible !important}' +
-    ' #statement-print-area{position:static !important;box-shadow:none !important;border:none !important;border-radius:0 !important;overflow:visible !important;min-height:0 !important}' +
-    ' .MuiGrid-container{display:flex !important;flex-wrap:wrap !important}' +
-    ' .MuiGrid-item{box-sizing:border-box !important}' +
-    ' .MuiGrid-grid-xs-12{flex-basis:100% !important;max-width:100% !important}' +
-    ' .MuiGrid-grid-xs-6{flex-basis:50% !important;max-width:50% !important}' +
-    ' .MuiGrid-grid-xs-4{flex-basis:33.333333% !important;max-width:33.333333% !important}' +
-    ' .MuiGrid-grid-xs-3{flex-basis:25% !important;max-width:25% !important}' +
-    '}' +
-    '</style>' +
-    '</head><body>' + node.outerHTML + '</body></html>'
-  );
-  doc.close();
+  try {
+    const canvas = await html2canvas(node, {
+      scale: 2,
+      useCORS: true,
+      allowTaint: false,
+      backgroundColor: '#ffffff',
+      logging: false,
+    });
+    const imgData = canvas.toDataURL('image/png');
 
-  // give the frame a moment to apply styles / load images, then print
-  setTimeout(() => {
-    try {
-      frame.contentWindow.focus();
-      frame.contentWindow.print();
-    } catch (e) {
-      window.print();
-    }
-  }, 650);
+    const doc = frame.contentWindow.document;
+    doc.open();
+    doc.write(
+      '<!DOCTYPE html><html dir="rtl" lang="fa"><head><meta charset="utf-8"><title>صورت‌وضعیت</title>' +
+      '<style>' +
+      'html,body{margin:0;padding:0;background:#fff}' +
+      'img{width:100%;display:block}' +
+      '@media print{@page{size:A4;margin:0}}' +
+      '</style></head><body>' +
+      '<img src="' + imgData + '" />' +
+      '</body></html>'
+    );
+    doc.close();
+
+    const img = frame.contentWindow.document.querySelector('img');
+    const doPrint = () => {
+      try { frame.contentWindow.focus(); frame.contentWindow.print(); }
+      catch (e) { window.print(); }
+    };
+    if (img && !img.complete) img.onload = doPrint;
+    else setTimeout(doPrint, 150);
+  } catch (e) {
+    window.print();
+  }
 };
 
 /* ------------------------------------------------------------------ */
@@ -322,6 +302,7 @@ const StatementEditorPage = () => {
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
   const [rateOverride, setRateOverride] = useState('');
+  const [printPending, setPrintPending] = useState(false);
 
   const { data: companyProfile } = useQuery({
     queryKey: ['company-profile'],
@@ -409,6 +390,15 @@ const StatementEditorPage = () => {
     setMode('form');
   };
   const closeForm = () => { setMode('list'); setForm({}); setRateOverride(''); };
+
+  // After opening a saved row via the list "print" button, auto-print once the
+  // preview has rendered.
+  useEffect(() => {
+    if (mode === 'form' && printPending) {
+      const t = setTimeout(() => { printStatement(); setPrintPending(false); }, 300);
+      return () => clearTimeout(t);
+    }
+  }, [mode, printPending]);
 
   const submit = () => {
     const payload = {
@@ -508,7 +498,8 @@ const StatementEditorPage = () => {
                       <Box><Typography variant="caption" color="textSecondary" display="block">قابل پرداخت</Typography><Typography variant="body2" fontWeight={700} sx={{ color: '#059669' }}>{formatPersianNumber(row.net_amount || 0)}</Typography></Box>
                       <Box><Typography variant="caption" color="textSecondary" display="block">تأیید</Typography><Chip size="small" label={row.is_approved ? 'تأیید شده' : 'در انتظار'} sx={{ fontWeight: 700, bgcolor: row.is_approved ? '#10b98122' : '#f59e0b22', color: row.is_approved ? '#059669' : '#b45309' }} /></Box>
                     </Box>
-                    <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
+                    <IconButton size="small" onClick={() => { setPrintPending(true); openEdit(row); }} title="چاپ"><PrintIcon fontSize="small" color="primary" /></IconButton>
+                    <IconButton size="small" onClick={() => openEdit(row)} title="ویرایش"><EditIcon fontSize="small" /></IconButton>
                     <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
                   </Paper>
                 ))}
