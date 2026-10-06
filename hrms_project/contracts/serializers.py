@@ -201,6 +201,9 @@ class ContractSerializer(serializers.ModelSerializer):
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     exchange_rate = serializers.DecimalField(source='currency.exchange_rate', max_digits=18, decimal_places=6, read_only=True)
 
+    project_allocations_display = serializers.SerializerMethodField()
+    guarantee_items_display = serializers.SerializerMethodField()
+
     documents = ContractDocumentSerializer(many=True, read_only=True)
     invoices = InvoiceSerializer(many=True, read_only=True)
     statements = StatementSerializer(many=True, read_only=True)
@@ -217,8 +220,8 @@ class ContractSerializer(serializers.ModelSerializer):
             'status', 'status_display', 'amount',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
-            'guarantee_amount', 'guarantee_type', 'guarantee_type_display', 'guarantee_items',
-            'project', 'project_name', 'project_location', 'tender_number', 'project_allocations',
+            'guarantee_amount', 'guarantee_type', 'guarantee_type_display', 'guarantee_items', 'guarantee_items_display',
+            'project', 'project_name', 'project_location', 'tender_number', 'project_allocations', 'project_allocations_display',
             'advance_payment', 'advance_payments', 'retention_percent', 'warranty_period',
             'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
             'description',
@@ -226,6 +229,26 @@ class ContractSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_project_allocations_display(self, obj):
+        allocs = obj.project_allocations or []
+        if not allocs:
+            return []
+        from projects.models import Project
+        ids = [a.get('project') for a in allocs if isinstance(a, dict) and a.get('project')]
+        names = dict(Project.objects.filter(id__in=ids).values_list('id', 'name'))
+        return [
+            {**a, 'project_name': names.get(a.get('project'), f"پروژه #{a.get('project')}")}
+            for a in allocs if isinstance(a, dict)
+        ]
+
+    def get_guarantee_items_display(self, obj):
+        kind_labels = dict(Contract.GuaranteeKind.choices)
+        items = obj.guarantee_items or []
+        return [
+            {**g, 'type_label': kind_labels.get(g.get('type'), g.get('type', '—'))}
+            for g in items if isinstance(g, dict)
+        ]
 
 
 class ContractTemplateSerializer(serializers.ModelSerializer):

@@ -200,7 +200,7 @@ const ContractProfilePage = () => {
               <Typography variant="h4" fontWeight={800} sx={{ mb: 1 }}>{c.subject}</Typography>
               <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Chip label={`شماره: ${c.number || '—'}`} size="small" color="primary" variant="filled" />
-                <Chip label={TYPE_LABELS[c.contract_type] || '—'} size="small" variant="outlined" />
+                <Chip label={c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—'} size="small" variant="outlined" />
                 <Chip label={STATUS_LABELS[c.status]} size="small"
                   sx={{ color: '#fff', bgcolor: STATUS_COLORS[c.status] || '#64748b' }} />
               </Box>
@@ -220,14 +220,61 @@ const ContractProfilePage = () => {
           <Grid container spacing={1.5}>
             <InfoItem icon={<StorefrontIcon sx={{ fontSize: 18 }} />} color="#0ea5e9" label="طرف قرارداد" value={c.party_name || '—'} />
             <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#6366f1" label="نوع قرارداد" value={c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—'} />
-            <InfoItem icon={<BusinessIcon sx={{ fontSize: 18 }} />} color="#3b82f6" label="پروژه" value={c.project_name || '—'} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="تاریخ شروع" value={toJalali(c.start_date)} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ef4444" label="تاریخ پایان" value={toJalali(c.end_date)} />
             <InfoItem icon={<CalendarMonthIcon sx={{ fontSize: 18 }} />} color="#ec4899" label="تاریخ امضا" value={toJalali(c.signing_date)} />
-            <InfoItem icon={<LockIcon sx={{ fontSize: 18 }} />} color="#f59e0b" label="نوع ضمانت" value={c.guarantee_type_display || '—'} />
             {Array.isArray(c.advance_payments) && c.advance_payments.length > 0 && (
               <InfoItem icon={<PaymentsIcon sx={{ fontSize: 18 }} />} color="#14b8a6" label="پیش‌پرداخت مرحله‌ای" value={`${toPersianDigits(c.advance_payments.length)} مرحله`} />
             )}
+          </Grid>
+
+          {/* پروژه‌ها و ضمانت‌ها */}
+          <Grid container spacing={2} sx={{ mt: 0.5 }}>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, borderRadius: '14px', background: 'rgba(59,130,246,0.06)', border: '1px solid rgba(59,130,246,0.22)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+                  <BusinessIcon sx={{ color: '#3b82f6', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={800} color="#2563eb">پروژه‌ها و درصد تخصیص</Typography>
+                </Box>
+                {(c.project_allocations_display || []).length === 0 ? (
+                  <Typography variant="caption" color="textSecondary">{c.project_name ? `${c.project_name} (100٪)` : 'پروژه‌ای تخصیص نیافته است.'}</Typography>
+                ) : (
+                  <Stack spacing={0.75}>
+                    {c.project_allocations_display.map((pa, i) => (
+                      <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 1, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
+                        <Typography variant="body2" fontWeight={700} sx={{ wordBreak: 'break-word' }}>{pa.project_name}</Typography>
+                        <Chip size="small" label={`${formatPersianNumber(pa.percentage || 0)}٪`} sx={{ bgcolor: '#3b82f6', color: '#fff', fontWeight: 800, flexShrink: 0 }} />
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <Paper sx={{ p: 2, borderRadius: '14px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.22)' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.25 }}>
+                  <LockIcon sx={{ color: '#f59e0b', fontSize: 20 }} />
+                  <Typography variant="subtitle2" fontWeight={800} color="#b45309">ضمانت‌ها</Typography>
+                </Box>
+                {(c.guarantee_items_display || []).length === 0 ? (
+                  <Typography variant="caption" color="textSecondary">{c.guarantee_type_display ? `${c.guarantee_type_display} · ${formatPersianNumber(c.guarantee_amount || 0)} ریال` : 'ضمانتی تعریف نشده است.'}</Typography>
+                ) : (
+                  <Stack spacing={0.75}>
+                    {c.guarantee_items_display.map((g, i) => (
+                      <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 1, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={700}>{g.type_label}</Typography>
+                          {g.note && <Typography variant="caption" color="textSecondary">{g.note}</Typography>}
+                        </Box>
+                        <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309', flexShrink: 0 }}>
+                          {formatPersianNumber(g.amount || 0)} ریال{g.percent ? ` (${formatPersianNumber(g.percent)}٪)` : ''}
+                        </Typography>
+                      </Box>
+                    ))}
+                  </Stack>
+                )}
+              </Paper>
+            </Grid>
           </Grid>
         </Box>
       </Paper>
