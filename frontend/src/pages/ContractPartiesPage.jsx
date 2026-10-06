@@ -8,6 +8,7 @@ import {
   InputAdornment, Alert, LinearProgress,
 } from '@mui/material';
 import StorefrontIcon from '@mui/icons-material/Storefront';
+import HandshakeIcon from '@mui/icons-material/Handshake';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
@@ -89,6 +90,30 @@ const ContractPartiesPage = () => {
     queryFn: () => axiosInstance.get(`/contract-parties/${selected.id}/summary/`).then(r => r.data),
     enabled: !!selected?.id,
   });
+
+  const contractList = summary?.contracts || [];
+  const projectAgg = useMemo(() => {
+    const map = {};
+    contractList.forEach(ct => {
+      const allocs = ct.project_allocations_display || [];
+      if (allocs.length === 0) {
+        const key = ct.project_name || ct.project || 'بدون پروژه';
+        if (!map[key]) map[key] = { name: key, count: 0, percent: 0, amount: 0 };
+        map[key].count += 1;
+        map[key].percent += 100;
+        map[key].amount += Number(ct.amount || 0);
+      } else {
+        allocs.forEach(pa => {
+          const key = pa.project_name || `پروژه #${pa.project}`;
+          if (!map[key]) map[key] = { name: key, count: 0, percent: 0, amount: 0 };
+          map[key].count += 1;
+          map[key].percent += Number(pa.percentage || 0);
+          map[key].amount += Math.round((Number(ct.amount || 0) * Number(pa.percentage || 0)) / 100);
+        });
+      }
+    });
+    return Object.values(map).sort((a, b) => b.count - a.count);
+  }, [contractList]);
 
   const [error, setError] = useState('');
 
@@ -268,10 +293,55 @@ const ContractPartiesPage = () => {
 
                 {/* Financial summary */}
                 <Grid container spacing={1.5}>
-                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#0ea5e914,#0ea5e908)', border: '1px solid #0ea5e928' }}><Typography variant="h5" fontWeight={900} color="#0ea5e9">{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
-                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#10b98114,#10b98108)', border: '1px solid #10b98128' }}><Typography variant="h5" fontWeight={900} color="#10b981">{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
-                  <Grid item xs={12}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#8b5cf614,#8b5cf608)', border: '1px solid #8b5cf628' }}><Typography variant="h6" fontWeight={900} color="#8b5cf6">{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ریال`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#0ea5e914,#0ea5e908)', border: '1px solid #0ea5e928' }}><Typography variant="h5" fontWeight={900} color="#0ea5e9" sx={{ direction: 'ltr' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#10b98114,#10b98108)', border: '1px solid #10b98128' }}><Typography variant="h5" fontWeight={900} color="#10b981" sx={{ direction: 'ltr' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
+                  <Grid item xs={12}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#8b5cf614,#8b5cf608)', border: '1px solid #8b5cf628' }}><Typography variant="h6" fontWeight={900} color="#8b5cf6" sx={{ direction: 'ltr' }}>{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ریال`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
                 </Grid>
+
+                {/* پروژه‌ها — شماتیک */}
+                <InfoCard title="پروژه‌های قراردادها" color="#3b82f6" icon={BusinessIcon}>
+                  {projectAgg.length === 0 ? (
+                    <Typography variant="caption" color="textSecondary">پروژه‌ای ثبت نشده است.</Typography>
+                  ) : (
+                    <Stack spacing={0.75}>
+                      {projectAgg.map((p, i) => (
+                        <Box key={i} sx={{ p: 0.75, borderRadius: '10px', background: 'rgba(59,130,246,0.05)' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 0.4 }}>
+                            <Typography variant="body2" fontWeight={700} sx={{ wordBreak: 'break-word' }}>{p.name}</Typography>
+                            <Typography variant="caption" fontWeight={800} color="#2563eb" sx={{ flexShrink: 0 }}>{formatPersianNumber(p.count)} قرارداد</Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ flex: 1, height: 10, bgcolor: '#eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
+                              <Box sx={{ width: `${Math.min(100, p.percent)}%`, height: '100%', background: 'linear-gradient(90deg,#3b82f6,#60a5fa)', borderRadius: '10px' }} />
+                            </Box>
+                            <Typography variant="caption" fontWeight={700} sx={{ width: 44, textAlign: 'left', direction: 'ltr' }}>{formatPersianNumber(p.percent)}٪</Typography>
+                          </Box>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </InfoCard>
+
+                {/* قراردادها */}
+                <InfoCard title="قراردادهای طرف" color="#f59e0b" icon={HandshakeIcon}>
+                  {contractList.length === 0 ? (
+                    <Typography variant="caption" color="textSecondary">قراردادی ثبت نشده است.</Typography>
+                  ) : (
+                    <Stack spacing={0.75}>
+                      {contractList.map((ct, i) => (
+                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 0.9, borderRadius: '10px', background: 'rgba(245,158,11,0.05)' }}>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={700} noWrap>{ct.subject || ct.number || '—'}</Typography>
+                            <Typography variant="caption" color="textSecondary">{ct.contract_type_master_name || ct.contract_type_display || '—'}</Typography>
+                          </Box>
+                          <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309', flexShrink: 0, direction: 'ltr', textAlign: 'center' }}>
+                            {formatPersianNumber(ct.amount || 0)} {ct.currency_symbol || ct.currency_name || 'ریال'}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  )}
+                </InfoCard>
 
                 {/* Legal */}
                 <InfoCard title="اطلاعات حقوقی" color="#f97316" icon={BusinessIcon}>
