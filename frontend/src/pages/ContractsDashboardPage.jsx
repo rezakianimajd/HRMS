@@ -11,8 +11,29 @@ import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
-import { DonutChart, BarChart } from '../core/components/charts/Charts';
+import { DonutChart } from '../core/components/charts/Charts';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS, currencyLabel } from '../core/theme/tokens';
+
+const HBarList = ({ data }) => {
+  const maxV = Math.max(...data.map(x => x.value), 1);
+  return (
+    <Box>
+      {data.map((d, i) => (
+        <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.25 }}>
+          <Typography variant="body2" fontWeight={700} sx={{ width: '50%', textAlign: 'right', wordBreak: 'break-word' }}>
+            {d.label}
+          </Typography>
+          <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ flex: 1, height: 20, bgcolor: '#eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
+              <Box sx={{ width: `${(d.value / maxV) * 100}%`, height: '100%', background: d.color, borderRadius: '10px', transition: 'width 0.6s ease' }} />
+            </Box>
+            <Typography variant="body2" fontWeight={700} sx={{ minWidth: 28, textAlign: 'left' }}>{formatPersianNumber(d.value)}</Typography>
+          </Box>
+        </Box>
+      ))}
+    </Box>
+  );
+};
 
 const ContractsDashboardPage = () => {
   const navigate = useNavigate();
@@ -127,7 +148,7 @@ const ContractsDashboardPage = () => {
             {charts.typeDist.length === 0 ? (
               <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
             ) : (
-              <BarChart data={charts.typeDist} />
+              <HBarList data={charts.typeDist} />
             )}
           </Paper>
         </Grid>
@@ -137,24 +158,7 @@ const ContractsDashboardPage = () => {
             {charts.projectDist.length === 0 ? (
               <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
             ) : (
-              <Box>
-                {(() => {
-                  const maxV = Math.max(...charts.projectDist.map(x => x.value), 1);
-                  return charts.projectDist.map((d, i) => (
-                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.25 }}>
-                      <Typography variant="body2" fontWeight={700} sx={{ width: '50%', textAlign: 'right', wordBreak: 'break-word' }}>
-                        {d.label}
-                      </Typography>
-                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Box sx={{ flex: 1, height: 20, bgcolor: '#eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
-                          <Box sx={{ width: `${(d.value / maxV) * 100}%`, height: '100%', background: d.color, borderRadius: '10px', transition: 'width 0.6s ease' }} />
-                        </Box>
-                        <Typography variant="body2" fontWeight={700} sx={{ minWidth: 28, textAlign: 'left' }}>{formatPersianNumber(d.value)}</Typography>
-                      </Box>
-                    </Box>
-                  ));
-                })()}
-              </Box>
+              <HBarList data={charts.projectDist} />
             )}
           </Paper>
         </Grid>
