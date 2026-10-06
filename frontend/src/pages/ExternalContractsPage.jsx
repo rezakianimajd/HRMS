@@ -44,6 +44,15 @@ const STATUS_COLORS = {
   terminated: '#ef4444',
 };
 
+const TYPE_COLORS = {
+  construction: '#f97316',
+  purchase: '#10b981',
+  tender: '#f59e0b',
+  consulting: '#6366f1',
+  service: '#0ea5e9',
+  other: '#64748b',
+};
+
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: '12px',
@@ -68,6 +77,9 @@ const ExternalContractsPage = () => {
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
+  // نوع قرارداد از «نوع پیکربندی‌شده» خوانده می‌شود؛ اگر خالی بود، نوع ثابت.
+  const typeLabel = (c) => c.contract_type_master_name || TYPE_LABELS[c.contract_type] || c.contract_type || '—';
+
   const remove = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/external-contracts/${id}/`),
     onSuccess: () => {
@@ -88,7 +100,7 @@ const ExternalContractsPage = () => {
     const header = ['شماره', 'موضوع', 'طرف', 'نوع', 'مبلغ', 'ارز', 'شروع', 'پایان', 'وضعیت'];
     const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
     const lines = rows.map(c => [
-      c.number, c.subject, c.party_name, TYPE_LABELS[c.contract_type] || c.contract_type,
+      c.number, c.subject, c.party_name, typeLabel(c),
       c.amount, c.currency_name || 'ریال', toJalali(c.start_date), toJalali(c.end_date),
       STATUS_LABELS[c.status] || c.status,
     ].map(esc).join(','));
@@ -217,8 +229,8 @@ const ExternalContractsPage = () => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Chip size="small" label={TYPE_LABELS[c.contract_type] || c.contract_type}
-                        sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309', fontWeight: 700, fontSize: 11 }} />
+                      <Chip size="small" label={typeLabel(c)}
+                        sx={{ bgcolor: `${TYPE_COLORS[c.contract_type] || '#64748b'}18`, color: TYPE_COLORS[c.contract_type] || '#64748b', fontWeight: 700, fontSize: 11 }} />
                     </TableCell>
                     <TableCell>{c.amount ? `${formatPersianNumber(c.amount)} ${c.currency_name || 'ریال'}` : '—'}</TableCell>
                     <TableCell>{c.start_date ? toJalali(c.start_date) : '—'}</TableCell>

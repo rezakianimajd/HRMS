@@ -160,7 +160,7 @@ const ContractsDashboardPage = () => {
                   <Box sx={{ flex: 1, minWidth: 160 }}>
                     <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
                     <Typography variant="caption" color="textSecondary">
-                      {c.party_name} · {TYPE_LABELS[c.contract_type] || ''}
+                      {c.party_name} · {c.contract_type_master_name || TYPE_LABELS[c.contract_type] || ''}
                     </Typography>
                   </Box>
                   <Chip size="small" label={STATUS_LABELS[c.status] || c.status} color={c.status === 'active' ? 'success' : 'default'} variant="outlined" />
