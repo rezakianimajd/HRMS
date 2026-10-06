@@ -118,7 +118,7 @@ const ContractNewPage = () => {
     }
   }, [existing]);
 
-  const { data: parties } = useQuery({ queryKey: ['contract-parties'], queryFn: () => axiosInstance.get('/contract-parties/').then(r => r.data) });
+  const { data: parties } = useQuery({ queryKey: ['contract-parties'], queryFn: () => axiosInstance.get('/contract-parties/', { params: { page_size: 1000 } }).then(r => r.data) });
   const partyList = Array.isArray(parties) ? parties : parties?.results || [];
 
   const { data: signatories } = useQuery({ queryKey: ['signatories'], queryFn: () => axiosInstance.get('/signatories/').then(r => r.data) });

@@ -46,7 +46,7 @@ const AuxiliaryAccountsPage = () => {
   const { data: projects } = useQuery({ queryKey: ['acc-projects'], queryFn: () => axiosInstance.get('/projects/').then(r => r.data) });
   const { data: contracts } = useQuery({ queryKey: ['acc-contracts'], queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data) });
   const { data: employees } = useQuery({ queryKey: ['acc-employees'], queryFn: () => axiosInstance.get('/employees/').then(r => r.data) });
-  const { data: parties } = useQuery({ queryKey: ['acc-parties'], queryFn: () => axiosInstance.get('/contract-parties/').then(r => r.data) });
+  const { data: parties } = useQuery({ queryKey: ['acc-parties'], queryFn: () => axiosInstance.get('/contract-parties/', { params: { page_size: 1000 } }).then(r => r.data) });
   const { data: entities } = useQuery({ queryKey: ['acc-entities'], queryFn: () => axiosInstance.get('/treasury/treasury-entities/').then(r => r.data) });
   const { data: suggested } = useQuery({ queryKey: ['suggest-aux'], queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level: 'auxiliary' } }).then(r => r.data) });
 

@@ -4,8 +4,8 @@ import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, Chip, Avatar, Grid, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
-  InputLabel, Select, MenuItem, Tabs, Tab, Divider, IconButton, Tooltip,
-  InputAdornment, ListItemIcon, Alert, Switch, LinearProgress,
+  InputLabel, Select, MenuItem, Divider, IconButton,
+  InputAdornment, Alert, LinearProgress,
 } from '@mui/material';
 import StorefrontIcon from '@mui/icons-material/Storefront';
 import AddIcon from '@mui/icons-material/Add';
@@ -13,13 +13,9 @@ import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PhoneIcon from '@mui/icons-material/Phone';
-import EmailIcon from '@mui/icons-material/Email';
 import BusinessIcon from '@mui/icons-material/Business';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 import PersonIcon from '@mui/icons-material/Person';
-import LocationOnIcon from '@mui/icons-material/LocationOn';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
@@ -48,6 +44,24 @@ const COMPANY_TYPES = {
   other: 'سایر',
 };
 
+const InfoCard = ({ title, color, icon: Icon, children }) => (
+  <Box sx={{ borderRadius: '14px', overflow: 'hidden', border: `1px solid ${color}26`, background: '#fff', boxShadow: `0 6px 20px ${color}10` }}>
+    <Box sx={{ px: 1.75, py: 1, background: `linear-gradient(120deg, ${color}18, ${color}08)`, borderBottom: `1px solid ${color}20`, display: 'flex', alignItems: 'center', gap: 1 }}>
+      <Icon sx={{ color, fontSize: 18 }} />
+      <Typography variant="subtitle2" fontWeight={800} sx={{ color }}>{title}</Typography>
+    </Box>
+    <Box sx={{ p: 1.75 }}>{children}</Box>
+  </Box>
+);
+
+const InfoRow = ({ label, value, ltr }) => value ? (
+  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 1.5, py: 0.55, borderBottom: '1px dashed rgba(0,0,0,0.07)' }}>
+    <Typography variant="caption" color="textSecondary" sx={{ flexShrink: 0 }}>{label}</Typography>
+    <Typography variant="body2" fontWeight={700} sx={{ textAlign: 'left', direction: ltr ? 'ltr' : 'inherit' }}>{value}</Typography>
+  </Box>
+) : null;
+
+
 const EMPTY_FORM = {
   id: null, name: '', person_type: 'legal', party_type: 'contractor', national_id: '', economic_code: '',
   registration_number: '', establishment_date: '', company_type: '', registered_capital: '',
@@ -60,14 +74,13 @@ const EMPTY_FORM = {
 const ContractPartiesPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
   const [selected, setSelected] = useState(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['contract-parties'],
-    queryFn: () => axiosInstance.get('/contract-parties/').then(r => r.data),
+    queryFn: () => axiosInstance.get('/contract-parties/', { params: { page_size: 1000 } }).then(r => r.data),
   });
   const parties = Array.isArray(data) ? data : data?.results || [];
 
@@ -131,27 +144,16 @@ const ContractPartiesPage = () => {
   });
 
   const filtered = useMemo(() => {
-    let list = parties;
-    if (typeFilter) list = list.filter(p => p.party_type === typeFilter);
-    if (search) {
-      const s = search.trim();
-      list = list.filter(p =>
-        (p.name || '').includes(s) || (p.mobile || '').includes(s) ||
-        (p.national_id || '').includes(s) || (p.contact_person || '').includes(s)
-      );
-    }
-    return list;
-  }, [parties, search, typeFilter]);
+    if (!search) return parties;
+    const s = search.trim();
+    return parties.filter(p =>
+      (p.name || '').includes(s) || (p.mobile || '').includes(s) ||
+      (p.national_id || '').includes(s) || (p.contact_person || '').includes(s) ||
+      (p.economic_code || '').includes(s) || (p.registration_number || '').includes(s)
+    );
+  }, [parties, search]);
 
   if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
-
-  const infoItem = (icon, label, value) => value ? (
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-      <ListItemIcon sx={{ minWidth: 24 }}>{icon}</ListItemIcon>
-      <Typography variant="caption" color="textSecondary">{label}:</Typography>
-      <Typography variant="body2" fontWeight={600}>{value}</Typography>
-    </Box>
-  ) : null;
 
   return (
     <Box>
@@ -172,122 +174,141 @@ const ContractPartiesPage = () => {
         </Button>
       </Paper>
 
-      {/* Filters */}
-      <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', display: 'flex', gap: 1, flexWrap: 'wrap', background: 'rgba(255,255,255,0.6)' }}>
-        <TextField size="small" placeholder="جستجو: نام، کد، موبایل..." value={search}
-          onChange={e => setSearch(e.target.value)} sx={{ minWidth: 240 }}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-        <Stack direction="row" spacing={0.5}>
-          <Chip label="همه" variant={typeFilter === '' ? 'filled' : 'outlined'} color="primary" onClick={() => setTypeFilter('')} />
-          {Object.entries(PARTY_TYPES).map(([k, v]) => (
-            <Chip key={k} label={v.label} variant={typeFilter === k ? 'filled' : 'outlined'}
-              sx={{ color: typeFilter === k ? '#fff' : v.color, bgcolor: typeFilter === k ? v.color : 'transparent', borderColor: v.color }}
-              onClick={() => setTypeFilter(typeFilter === k ? '' : k)} />
-          ))}
-        </Stack>
+      {/* Search */}
+      <Paper sx={{ p: 1.5, mb: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.65)' }}>
+        <TextField size="small" fullWidth placeholder="جستجو: نام، شناسه ملی، کد اقتصادی، موبایل، شخص رابط..." value={search}
+          onChange={e => setSearch(e.target.value)}
+          InputProps={{
+            startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" sx={{ color: '#0ea5e9' }} /></InputAdornment>,
+            endAdornment: search ? <IconButton size="small" onClick={() => setSearch('')}><DeleteIcon fontSize="small" /></IconButton> : null,
+          }}
+          sx={{ '& .MuiOutlinedInput-root': { borderRadius: '12px', background: '#fff' } }} />
       </Paper>
 
-      <Grid container spacing={2.5}>
-        {/* List */}
-        <Grid item xs={12} md={7}>
-          <Paper sx={{ p: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.65)' }}>
-            {filtered.length === 0 ? (
-              <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>طرف قراردادی ثبت نشده است.</Typography>
-            ) : (
-              <Stack spacing={1.25}>
-                {filtered.map(p => {
-                  const type = PARTY_TYPES[p.party_type] || PARTY_TYPES.other;
-                  return (
-                    <Paper
-                      key={p.id}
-                      onClick={() => setSelected(p)}
-                      sx={{
-                        p: 1.75, cursor: 'pointer', borderRadius: '10px',
-                        border: selected?.id === p.id ? `1.5px solid ${type.color}` : '1px solid rgba(0,0,0,0.07)',
-                        background: selected?.id === p.id ? `${type.color}0f` : 'rgba(255,255,255,0.5)',
-                        '&:hover': { borderColor: type.color, transform: 'translateX(-3px)' },
-                        transition: 'all 0.2s ease',
-                      }}
-                    >
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Avatar sx={{ width: 42, height: 42, background: type.color }}><StorefrontIcon sx={{ color: '#fff' }} /></Avatar>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography variant="body2" fontWeight={700} noWrap>{p.name}</Typography>
-                          <Typography variant="caption" color="textSecondary">
-                            {type.label} · {PERSON_TYPES[p.person_type]?.label || '—'}{p.contact_person ? ` · ${p.contact_person}` : ''}
-                          </Typography>
+      <Grid container spacing={2.5} sx={{ alignItems: 'stretch' }}>
+        {/* List (right) — scrolls inside its own card */}
+        <Grid item xs={12} md={5}>
+          <Paper sx={{ p: 1.5, borderRadius: '14px', background: 'rgba(255,255,255,0.65)', height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Typography variant="subtitle2" fontWeight={800} color="#0369a1" sx={{ px: 1, pb: 1 }}>
+              طرف‌های قرارداد ({filtered.length})
+            </Typography>
+            <Box sx={{ flex: 1, overflowY: 'auto', maxHeight: 'calc(100vh - 260px)', pr: 0.5, '&::-webkit-scrollbar': { width: 8 }, '&::-webkit-scrollbar-thumb': { background: 'rgba(14,165,233,0.35)', borderRadius: 8 } }}>
+              {filtered.length === 0 ? (
+                <Typography variant="body2" color="textSecondary" sx={{ textAlign: 'center', py: 4 }}>طرف قراردادی ثبت نشده است.</Typography>
+              ) : (
+                <Stack spacing={1}>
+                  {filtered.map(p => {
+                    const type = PARTY_TYPES[p.party_type] || PARTY_TYPES.other;
+                    const active = p.is_active !== false;
+                    return (
+                      <Paper
+                        key={p.id}
+                        onClick={() => setSelected(p)}
+                        sx={{
+                          p: 1.5, cursor: 'pointer', borderRadius: '12px',
+                          border: selected?.id === p.id ? `1.5px solid ${type.color}` : '1px solid rgba(0,0,0,0.07)',
+                          background: selected?.id === p.id ? `${type.color}12` : 'rgba(255,255,255,0.7)',
+                          '&:hover': { borderColor: type.color, boxShadow: `0 6px 18px ${type.color}22` },
+                          transition: 'all 0.18s ease',
+                        }}
+                      >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
+                          <Avatar sx={{ width: 40, height: 40, background: `linear-gradient(135deg, ${type.color}, ${type.color}cc)`, flexShrink: 0 }}>
+                            <StorefrontIcon sx={{ color: '#fff', fontSize: 20 }} />
+                          </Avatar>
+                          <Box sx={{ flex: 1, minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={800} noWrap>{p.name}</Typography>
+                            <Typography variant="caption" color="textSecondary" noWrap>
+                              {type.label} · {PERSON_TYPES[p.person_type]?.label || '—'}
+                            </Typography>
+                            {p.mobile && <Typography variant="caption" color="textSecondary" noWrap>{toPersianDigits(p.mobile)}</Typography>}
+                          </Box>
+                          <Box sx={{ textAlign: 'left', flexShrink: 0 }}>
+                            <Chip size="small" label={active ? 'فعال' : 'غیرفعال'} color={active ? 'success' : 'default'} variant="outlined" sx={{ height: 20, fontSize: 10 }} />
+                            <Typography variant="caption" fontWeight={800} display="block" sx={{ mt: 0.5, fontSize: 10 }}>{p.contracts_count || 0} قرارداد</Typography>
+                          </Box>
                         </Box>
-                        <Chip size="small" label={p.is_active !== false ? 'فعال' : 'غیرفعال'} color={p.is_active !== false ? 'success' : 'default'} variant="outlined" />
-                        <Typography variant="caption" fontWeight={800}>{p.contracts_count || 0} قرارداد</Typography>
-                      </Box>
-                    </Paper>
-                  );
-                })}
-              </Stack>
-            )}
+                      </Paper>
+                    );
+                  })}
+                </Stack>
+              )}
+            </Box>
           </Paper>
         </Grid>
 
-        {/* Detail panel */}
-        <Grid item xs={12} md={5}>
-          <Paper sx={{ p: 2, position: 'sticky', top: 24, borderRadius: '10px', background: 'rgba(255,255,255,0.65)' }}>
+        {/* Detail panel (left) — colorful cards */}
+        <Grid item xs={12} md={7}>
+          <Paper sx={{ p: 2, borderRadius: '14px', background: 'rgba(255,255,255,0.65)', height: '100%', overflowY: 'auto', maxHeight: 'calc(100vh - 200px)' }}>
             {!selected ? (
-              <Box sx={{ textAlign: 'center', py: 6 }}>
-                <StorefrontIcon sx={{ fontSize: 50, color: 'text.disabled', mb: 1 }} />
-                <Typography variant="body2" color="textSecondary">یک طرف را برای مشاهدهٔ جزئیات انتخاب کنید.</Typography>
+              <Box sx={{ textAlign: 'center', py: 10 }}>
+                <StorefrontIcon sx={{ fontSize: 64, color: 'text.disabled', mb: 1.5 }} />
+                <Typography variant="body1" color="textSecondary">یک طرف را برای مشاهدهٔ جزئیات انتخاب کنید.</Typography>
               </Box>
             ) : (
-              <>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.5 }}>
-                  <Box>
-                    <Typography variant="h6" fontWeight={800}>{selected.name}</Typography>
-                    <Typography variant="caption" color="textSecondary">
-                      {PARTY_TYPES[selected.party_type]?.label} · {PERSON_TYPES[selected.person_type]?.label || ''}
-                    </Typography>
+              <Stack spacing={2}>
+                {/* Header */}
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1 }}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h6" fontWeight={900}>{selected.name}</Typography>
+                    <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+                      <Chip size="small" label={PARTY_TYPES[selected.party_type]?.label}
+                        sx={{ bgcolor: PARTY_TYPES[selected.party_type]?.color || '#64748b', color: '#fff', fontWeight: 800, height: 22 }} />
+                      <Chip size="small" label={PERSON_TYPES[selected.person_type]?.label} variant="outlined" sx={{ height: 22 }} />
+                    </Stack>
                   </Box>
-                  <Box>
+                  <Box sx={{ display: 'flex', flexShrink: 0 }}>
                     <IconButton size="small" color="primary" onClick={() => { setForm(selected); setError(''); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color={selected.is_active !== false ? 'error' : 'success'}
-                      onClick={() => toggle.mutate(selected.id)}>
+                    <IconButton size="small" color={selected.is_active !== false ? 'error' : 'success'} onClick={() => toggle.mutate(selected.id)}>
                       {selected.is_active !== false ? <BlockIcon fontSize="small" /> : <CheckCircleIcon fontSize="small" />}
                     </IconButton>
                     <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف این طرف؟')) remove.mutate(selected.id); }}><DeleteIcon fontSize="small" /></IconButton>
                   </Box>
                 </Box>
 
-                <Divider sx={{ mb: 1.5 }} />
-
                 {/* Financial summary */}
-                <Grid container spacing={1.5} sx={{ mb: 2 }}>
-                  <Grid item xs={6}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(14,165,233,0.06)' }}><Typography variant="h6" fontWeight={800} color="#0ea5e9">{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
-                  <Grid item xs={6}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(16,185,129,0.06)' }}><Typography variant="h6" fontWeight={800} color="#10b981">{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
-                  <Grid item xs={12}><Paper sx={{ p: 1, textAlign: 'center', background: 'rgba(139,92,246,0.06)' }}><Typography variant="body2" fontWeight={800} color="#8b5cf6">{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ریال`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
+                <Grid container spacing={1.5}>
+                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#0ea5e914,#0ea5e908)', border: '1px solid #0ea5e928' }}><Typography variant="h5" fontWeight={900} color="#0ea5e9">{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#10b98114,#10b98108)', border: '1px solid #10b98128' }}><Typography variant="h5" fontWeight={900} color="#10b981">{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
+                  <Grid item xs={12}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#8b5cf614,#8b5cf608)', border: '1px solid #8b5cf628' }}><Typography variant="h6" fontWeight={900} color="#8b5cf6">{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ریال`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
                 </Grid>
 
-                <Typography variant="caption" color="textSecondary" display="block" sx={{ mb: 1 }}>اطلاعات تماس و حقوقی</Typography>
-                <Stack spacing={0.5}>
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شناسه ملی', selected.national_id)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'کد اقتصادی', selected.economic_code)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'شماره ثبت', selected.registration_number)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'تاریخ تأسیس', toJalali(selected.establishment_date) !== '—' ? toJalali(selected.establishment_date) : null)}
-                  {infoItem(<BusinessIcon fontSize="small" color="warning" />, 'نوع شرکت', selected.company_type_display)}
-                  {infoItem(<AttachMoneyIcon fontSize="small" color="warning" />, 'سرمایه ثبتی', selected.registered_capital ? `${formatPersianNumber(selected.registered_capital)} ریال` : null)}
-                  {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'تلفن', toPersianDigits(selected.phone))}
-                  {infoItem(<PhoneIcon fontSize="small" color="primary" />, 'موبایل', toPersianDigits(selected.mobile))}
-                  {infoItem(<EmailIcon fontSize="small" color="primary" />, 'ایمیل', selected.email)}
-                  {infoItem(<PersonIcon fontSize="small" color="primary" />, 'شخص رابط', selected.contact_person)}
-                  {infoItem(<LocationOnIcon fontSize="small" color="primary" />, 'آدرس', selected.address)}
-                  {infoItem(<PersonIcon fontSize="small" color="success" />, 'مدیر عامل', selected.ceo_name)}
-                  {infoItem(<PhoneIcon fontSize="small" color="success" />, 'تلفن مدیر عامل', selected.ceo_phone ? toPersianDigits(selected.ceo_phone) : null)}
-                  {infoItem(<PersonIcon fontSize="small" color="success" />, 'مدیر مالی', selected.finance_manager_name)}
-                  {infoItem(<PhoneIcon fontSize="small" color="success" />, 'تلفن مدیر مالی', selected.finance_manager_phone ? toPersianDigits(selected.finance_manager_phone) : null)}
-                  {infoItem(<PersonIcon fontSize="small" color="success" />, 'رابط فنی', selected.technical_contact_name)}
-                  {infoItem(<PhoneIcon fontSize="small" color="success" />, 'تلفن رابط فنی', selected.technical_contact_phone ? toPersianDigits(selected.technical_contact_phone) : null)}
-                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'بانک', selected.bank_name)}
-                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'شماره حساب', selected.account_number)}
-                  {infoItem(<AccountBalanceIcon fontSize="small" color="info" />, 'شبا', selected.sheba_number)}
-                </Stack>
-              </>
+                {/* Legal */}
+                <InfoCard title="اطلاعات حقوقی" color="#f97316" icon={BusinessIcon}>
+                  <InfoRow label="شناسه ملی / کد ثبت" value={selected.national_id} ltr />
+                  <InfoRow label="کد اقتصادی" value={selected.economic_code} ltr />
+                  <InfoRow label="شماره ثبت" value={selected.registration_number} ltr />
+                  <InfoRow label="تاریخ تأسیس" value={selected.establishment_date ? toJalali(selected.establishment_date) : null} />
+                  <InfoRow label="نوع شرکت" value={selected.company_type_display} />
+                  <InfoRow label="سرمایه ثبتی" value={selected.registered_capital ? `${formatPersianNumber(selected.registered_capital)} ریال` : null} />
+                </InfoCard>
+
+                {/* Contact */}
+                <InfoCard title="اطلاعات تماس" color="#0ea5e9" icon={PhoneIcon}>
+                  <InfoRow label="تلفن" value={toPersianDigits(selected.phone)} ltr />
+                  <InfoRow label="موبایل" value={toPersianDigits(selected.mobile)} ltr />
+                  <InfoRow label="ایمیل" value={selected.email} ltr />
+                  <InfoRow label="شخص رابط" value={selected.contact_person} />
+                  <InfoRow label="آدرس" value={selected.address} />
+                </InfoCard>
+
+                {/* Management */}
+                <InfoCard title="مدیریت و ارتباطات کلیدی" color="#10b981" icon={PersonIcon}>
+                  <InfoRow label="مدیر عامل" value={selected.ceo_name} />
+                  <InfoRow label="تلفن مدیر عامل" value={selected.ceo_phone ? toPersianDigits(selected.ceo_phone) : null} ltr />
+                  <InfoRow label="مدیر مالی" value={selected.finance_manager_name} />
+                  <InfoRow label="تلفن مدیر مالی" value={selected.finance_manager_phone ? toPersianDigits(selected.finance_manager_phone) : null} ltr />
+                  <InfoRow label="رابط فنی" value={selected.technical_contact_name} />
+                  <InfoRow label="تلفن رابط فنی" value={selected.technical_contact_phone ? toPersianDigits(selected.technical_contact_phone) : null} ltr />
+                </InfoCard>
+
+                {/* Bank */}
+                <InfoCard title="اطلاعات بانکی" color="#8b5cf6" icon={AccountBalanceIcon}>
+                  <InfoRow label="بانک" value={selected.bank_name} />
+                  <InfoRow label="شماره حساب" value={selected.account_number} ltr />
+                  <InfoRow label="شماره شبا" value={selected.sheba_number} ltr />
+                </InfoCard>
+              </Stack>
             )}
           </Paper>
         </Grid>
