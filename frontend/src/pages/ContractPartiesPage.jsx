@@ -94,26 +94,32 @@ const ContractPartiesPage = () => {
   const contractList = summary?.contracts || [];
   const projectAgg = useMemo(() => {
     const map = {};
-    contractList.forEach(ct => {
+    const palette = ['#3b82f6', '#10b981', '#f59e0b', '#6366f1', '#ec4899', '#0ea5e9', '#8b5cf6', '#f97316', '#14b8a6', '#ef4444'];
+    contractList.forEach((ct, ci) => {
+      const color = palette[ci % palette.length];
       const allocs = ct.project_allocations_display || [];
+      const subject = ct.subject || ct.number || 'قرارداد';
       if (allocs.length === 0) {
         const key = ct.project_name || ct.project || 'بدون پروژه';
-        if (!map[key]) map[key] = { name: key, count: 0, percent: 0, amount: 0 };
+        if (!map[key]) map[key] = { name: key, count: 0, segments: [] };
         map[key].count += 1;
-        map[key].percent += 100;
-        map[key].amount += Number(ct.amount || 0);
+        map[key].segments.push({ subject, percent: 100, color });
       } else {
         allocs.forEach(pa => {
           const key = pa.project_name || `پروژه #${pa.project}`;
-          if (!map[key]) map[key] = { name: key, count: 0, percent: 0, amount: 0 };
+          if (!map[key]) map[key] = { name: key, count: 0, segments: [] };
           map[key].count += 1;
-          map[key].percent += Number(pa.percentage || 0);
-          map[key].amount += Math.round((Number(ct.amount || 0) * Number(pa.percentage || 0)) / 100);
+          map[key].segments.push({ subject, percent: Number(pa.percentage || 0), color });
         });
       }
     });
-    return Object.values(map).sort((a, b) => b.count - a.count);
+    return Object.values(map)
+      .map(p => ({ ...p, totalPercent: p.segments.reduce((s, sg) => s + sg.percent, 0) }))
+      .sort((a, b) => b.count - a.count);
   }, [contractList]);
+
+  const totalCurrencies = [...new Set(contractList.map(ct => ct.currency_symbol || ct.currency_name || 'ریال').filter(Boolean))];
+  const totalCurrencyLabel = totalCurrencies.length === 1 ? totalCurrencies[0] : (totalCurrencies.length > 1 ? 'چند ارز' : 'ریال');
 
   const [error, setError] = useState('');
 
@@ -293,28 +299,38 @@ const ContractPartiesPage = () => {
 
                 {/* Financial summary */}
                 <Grid container spacing={1.5}>
-                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#0ea5e914,#0ea5e908)', border: '1px solid #0ea5e928' }}><Typography variant="h5" fontWeight={900} color="#0ea5e9" sx={{ direction: 'ltr' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
-                  <Grid item xs={6}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#10b98114,#10b98108)', border: '1px solid #10b98128' }}><Typography variant="h5" fontWeight={900} color="#10b981" sx={{ direction: 'ltr' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
-                  <Grid item xs={12}><Paper sx={{ p: 1.5, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#8b5cf614,#8b5cf608)', border: '1px solid #8b5cf628' }}><Typography variant="h6" fontWeight={900} color="#8b5cf6" sx={{ direction: 'ltr' }}>{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ریال`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1.75, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#0ea5e914,#0ea5e908)', border: '1px solid #0ea5e928' }}><Typography variant="h5" fontWeight={900} color="#0ea5e9" sx={{ direction: 'ltr', textAlign: 'center', display: 'block' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
+                  <Grid item xs={6}><Paper sx={{ p: 1.75, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#10b98114,#10b98108)', border: '1px solid #10b98128' }}><Typography variant="h5" fontWeight={900} color="#10b981" sx={{ direction: 'ltr', textAlign: 'center', display: 'block' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
+                  <Grid item xs={12}><Paper sx={{ p: 1.75, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#8b5cf614,#8b5cf608)', border: '1px solid #8b5cf628' }}><Typography variant="h6" fontWeight={900} color="#8b5cf6" sx={{ direction: 'ltr', textAlign: 'center', display: 'block' }}>{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ${totalCurrencyLabel}`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
                 </Grid>
 
-                {/* پروژه‌ها — شماتیک */}
+                {/* پروژه‌ها — شماتیک رنگی */}
                 <InfoCard title="پروژه‌های قراردادها" color="#3b82f6" icon={BusinessIcon}>
                   {projectAgg.length === 0 ? (
                     <Typography variant="caption" color="textSecondary">پروژه‌ای ثبت نشده است.</Typography>
                   ) : (
-                    <Stack spacing={0.75}>
+                    <Stack spacing={1.25}>
                       {projectAgg.map((p, i) => (
-                        <Box key={i} sx={{ p: 0.75, borderRadius: '10px', background: 'rgba(59,130,246,0.05)' }}>
-                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 0.4 }}>
-                            <Typography variant="body2" fontWeight={700} sx={{ wordBreak: 'break-word' }}>{p.name}</Typography>
+                        <Box key={i} sx={{ p: 1, borderRadius: '12px', background: 'rgba(59,130,246,0.05)', border: '1px solid rgba(59,130,246,0.12)' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 0.6 }}>
+                            <Typography variant="body2" fontWeight={800} sx={{ wordBreak: 'break-word' }}>{p.name}</Typography>
                             <Typography variant="caption" fontWeight={800} color="#2563eb" sx={{ flexShrink: 0 }}>{formatPersianNumber(p.count)} قرارداد</Typography>
                           </Box>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                            <Box sx={{ flex: 1, height: 10, bgcolor: '#eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
-                              <Box sx={{ width: `${Math.min(100, p.percent)}%`, height: '100%', background: 'linear-gradient(90deg,#3b82f6,#60a5fa)', borderRadius: '10px' }} />
-                            </Box>
-                            <Typography variant="caption" fontWeight={700} sx={{ width: 44, textAlign: 'left', direction: 'ltr' }}>{formatPersianNumber(p.percent)}٪</Typography>
+                          {/* نوار تجمعی رنگی */}
+                          <Box sx={{ display: 'flex', height: 14, borderRadius: '10px', overflow: 'hidden', bgcolor: '#eef2f7' }}>
+                            {p.segments.map((sg, j) => (
+                              <Box key={j} title={`${sg.subject}: ${formatPersianNumber(sg.percent)}٪`}
+                                sx={{ width: `${(sg.percent / (p.totalPercent || 1)) * 100}%`, height: '100%', background: sg.color, transition: 'width 0.5s ease' }} />
+                            ))}
+                          </Box>
+                          {/* راهنمای رنگ */}
+                          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.75 }}>
+                            {p.segments.map((sg, j) => (
+                              <Box key={j} sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Box sx={{ width: 9, height: 9, borderRadius: '50%', background: sg.color, flexShrink: 0 }} />
+                                <Typography variant="caption" color="textSecondary">{sg.subject} · {formatPersianNumber(sg.percent)}٪</Typography>
+                              </Box>
+                            ))}
                           </Box>
                         </Box>
                       ))}
