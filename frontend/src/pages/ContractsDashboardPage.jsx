@@ -137,7 +137,24 @@ const ContractsDashboardPage = () => {
             {charts.projectDist.length === 0 ? (
               <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
             ) : (
-              <BarChart data={charts.projectDist} />
+              <Box>
+                {(() => {
+                  const maxV = Math.max(...charts.projectDist.map(x => x.value), 1);
+                  return charts.projectDist.map((d, i) => (
+                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1.25 }}>
+                      <Typography variant="body2" fontWeight={700} sx={{ width: '50%', textAlign: 'right', wordBreak: 'break-word' }}>
+                        {d.label}
+                      </Typography>
+                      <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Box sx={{ flex: 1, height: 20, bgcolor: '#eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
+                          <Box sx={{ width: `${(d.value / maxV) * 100}%`, height: '100%', background: d.color, borderRadius: '10px', transition: 'width 0.6s ease' }} />
+                        </Box>
+                        <Typography variant="body2" fontWeight={700} sx={{ minWidth: 28, textAlign: 'left' }}>{formatPersianNumber(d.value)}</Typography>
+                      </Box>
+                    </Box>
+                  ));
+                })()}
+              </Box>
             )}
           </Paper>
         </Grid>
