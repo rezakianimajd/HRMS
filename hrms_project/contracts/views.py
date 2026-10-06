@@ -136,9 +136,34 @@ class ContractViewSet(BaseContractViewSet):
         status_counts = dict(
             qs.values_list('status').annotate(c=Count('id')).values_list('status', 'c')
         )
-        type_counts = dict(
-            qs.values_list('contract_type').annotate(c=Count('id')).values_list('contract_type', 'c')
-        )
+        # نوع قرارداد: نام نوع پیکربندی‌شده در اولویت است؛ در غیر این صورت نوع ثابت
+        type_labels = dict(Contract.ContractType.choices)
+        type_counts = {}
+        for name, c in qs.filter(contract_type_master__isnull=False)\
+                .values_list('contract_type_master__name')\
+                .annotate(c=Count('id')).values_list('contract_type_master__name', 'c'):
+            key = name or 'سایر'
+            type_counts[key] = type_counts.get(key, 0) + c
+        for t, c in qs.filter(contract_type_master__isnull=True)\
+                .values_list('contract_type')\
+                .annotate(c=Count('id')).values_list('contract_type', 'c'):
+            key = type_labels.get(t, t or 'سایر')
+            type_counts[key] = type_counts.get(key, 0) + c
+        # پروژه‌ها: از تخصیص پروژه‌ها (project_allocations) و در صورت نبود، از پروژهٔ منفرد
+        project_counts = {}
+        for c in qs:
+            allocs = c.project_allocations or []
+            for pa in allocs:
+                pid = pa.get('project') if isinstance(pa, dict) else None
+                if pid:
+                    project_counts[str(pid)] = project_counts.get(str(pid), 0) + 1
+            if c.project_id and not allocs:
+                project_counts[str(c.project_id)] = project_counts.get(str(c.project_id), 0) + 1
+        if project_counts:
+            from projects.models import Project
+            ids = [int(k) for k in project_counts.keys() if str(k).isdigit()]
+            names = dict(Project.objects.filter(id__in=ids).values_list('id', 'name'))
+            project_counts = {names.get(int(k), f'پروژه #{k}'): v for k, v in project_counts.items()}
         total_amount = qs.aggregate(s=Sum('amount'))['s'] or 0
         today = date.today()
         in60 = today + timedelta(days=60)
@@ -147,6 +172,7 @@ class ContractViewSet(BaseContractViewSet):
             'total': qs.count(),
             'status_counts': status_counts,
             'type_counts': type_counts,
+            'project_counts': project_counts,
             'total_amount': total_amount,
             'expiring': expiring,
         })

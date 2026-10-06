@@ -31,6 +31,7 @@ const ContractsDashboardPage = () => {
   const s = statsData || {};
   const statusCounts = s.status_counts || {};
   const typeCounts = s.type_counts || {};
+  const projectCounts = s.project_counts || {};
 
   const expiringItems = useMemo(() => items.filter(c => {
     if (!c.end_date) return false;
@@ -42,12 +43,18 @@ const ContractsDashboardPage = () => {
     const statusDist = Object.entries(STATUS_LABELS)
       .map(([k, v]) => ({ label: v, value: Number(statusCounts[k] || 0), color: STATUS_COLORS[k] }))
       .filter(d => d.value > 0);
-    const typeColors = { construction: '#f97316', purchase: '#10b981', tender: '#f59e0b', consulting: '#6366f1', service: '#0ea5e9', other: '#64748b' };
-    const typeDist = Object.entries(TYPE_LABELS)
-      .map(([k, v]) => ({ label: v, value: Number(typeCounts[k] || 0), color: typeColors[k] || '#64748b' }))
-      .filter(d => d.value > 0);
-    return { statusDist, typeDist };
-  }, [statusCounts, typeCounts]);
+    const PALETTE = ['#f97316', '#10b981', '#f59e0b', '#6366f1', '#0ea5e9', '#ec4899', '#8b5cf6', '#14b8a6', '#ef4444', '#84cc16'];
+    // نوع‌ها با نام واقعی (پیکربندی‌شده) از سرور می‌آیند؛ رنگ به‌صورت چرخشی اختصاص می‌گیرد.
+    const typeDist = Object.entries(typeCounts || {})
+      .map(([label, value], i) => ({ label, value: Number(value), color: PALETTE[i % PALETTE.length] }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+    const projectDist = Object.entries(projectCounts || {})
+      .map(([label, value], i) => ({ label, value: Number(value), color: PALETTE[(i + 3) % PALETTE.length] }))
+      .filter(d => d.value > 0)
+      .sort((a, b) => b.value - a.value);
+    return { statusDist, typeDist, projectDist };
+  }, [statusCounts, typeCounts, projectCounts]);
 
   if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
 
@@ -121,6 +128,16 @@ const ContractsDashboardPage = () => {
               <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
             ) : (
               <BarChart data={charts.typeDist} />
+            )}
+          </Paper>
+        </Grid>
+        <Grid item xs={12}>
+          <Paper sx={{ p: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.65)' }}>
+            <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2 }}>تعداد قرارداد به تفکیک پروژه</Typography>
+            {charts.projectDist.length === 0 ? (
+              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>داده‌ای نیست</Typography>
+            ) : (
+              <BarChart data={charts.projectDist} />
             )}
           </Paper>
         </Grid>
