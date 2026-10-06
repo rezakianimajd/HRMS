@@ -35,6 +35,8 @@ const GUARANTEE_TYPES = {
   performance: 'ضمانت حسن انجام کار',
   advance: 'ضمانت پیش‌پرداخت',
   bid: 'ضمانت شرکت در مناقصه',
+  execution: 'ضمانت اجرای تعهدات',
+  insurance: 'سپرده حق بیمه',
   other: 'سایر',
 };
 
@@ -74,6 +76,8 @@ const ContractNewPage = () => {
   const { id } = useParams();
   const [form, setForm] = useState(EMPTY);
   const [advancePayments, setAdvancePayments] = useState([]);
+  const [projectAllocations, setProjectAllocations] = useState([]);
+  const [guaranteeItems, setGuaranteeItems] = useState([]);
   const [message, setMessage] = useState(null);
   const isEdit = Boolean(id);
 
@@ -115,6 +119,8 @@ const ContractNewPage = () => {
         description: existing.description || '',
       });
       setAdvancePayments(Array.isArray(existing.advance_payments) ? existing.advance_payments : []);
+      setProjectAllocations(Array.isArray(existing.project_allocations) ? existing.project_allocations : []);
+      setGuaranteeItems(Array.isArray(existing.guarantee_items) ? existing.guarantee_items : []);
     }
   }, [existing]);
 
@@ -163,8 +169,10 @@ const ContractNewPage = () => {
     signatory: form.signatory || null,
     guarantee_amount: num(form.guarantee_amount),
     guarantee_type: form.guarantee_type || null,
+    guarantee_items: guaranteeItems,
     category: form.category,
     project: form.project || null,
+    project_allocations: projectAllocations,
     project_name: form.project_name,
     project_location: form.project_location,
     tender_number: form.tender_number,
@@ -189,6 +197,26 @@ const ContractNewPage = () => {
 
   const removeAdvance = (idx) => {
     setAdvancePayments(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const addProjectAllocation = () => {
+    setProjectAllocations(prev => [...prev, { project: '', percentage: '' }]);
+  };
+  const updateProjectAllocation = (idx, key, value) => {
+    setProjectAllocations(prev => prev.map((a, i) => (i === idx ? { ...a, [key]: value } : a)));
+  };
+  const removeProjectAllocation = (idx) => {
+    setProjectAllocations(prev => prev.filter((_, i) => i !== idx));
+  };
+
+  const addGuaranteeItem = () => {
+    setGuaranteeItems(prev => [...prev, { type: 'performance', amount: '', percent: '', note: '' }]);
+  };
+  const updateGuaranteeItem = (idx, key, value) => {
+    setGuaranteeItems(prev => prev.map((g, i) => (i === idx ? { ...g, [key]: value } : g)));
+  };
+  const removeGuaranteeItem = (idx) => {
+    setGuaranteeItems(prev => prev.filter((_, i) => i !== idx));
   };
 
   const selCurrency = currencyList.find(c => String(c.id) === String(form.currency));
@@ -251,18 +279,40 @@ const ContractNewPage = () => {
         </Grid>
 
         {/* پروژه و محل */}
-        <SectionHeader icon={<BusinessIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#3b82f6" title="پروژه و محل اجرا" />
+        <SectionHeader icon={<BusinessIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#3b82f6" title="پروژه و محل اجرا">
+          <Button size="small" startIcon={<AddCircleIcon />} onClick={addProjectAllocation} sx={{ color: '#3b82f6', textTransform: 'none' }}>افزودن پروژه</Button>
+        </SectionHeader>
+        {projectAllocations.length === 0 ? (
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>پروژه‌ای تخصیص داده نشده است.</Typography>
+        ) : (
+          <Stack spacing={1} sx={{ mb: 1 }}>
+            {projectAllocations.map((pa, idx) => (
+              <Paper key={idx} variant="outlined" sx={{ p: 1, borderRadius: '10px', background: 'rgba(59,130,246,0.04)', borderColor: 'rgba(59,130,246,0.25)' }}>
+                <Grid container spacing={1} alignItems="center">
+                  <Grid item xs={12} sm={7}>
+                    <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>پروژه</InputLabel>
+                      <Select value={pa.project || ''} label="پروژه" onChange={e => updateProjectAllocation(idx, 'project', e.target.value)}>
+                        {projectList.map(pr => <MenuItem key={pr.id} value={pr.id}>{pr.name || pr.title || `پروژه #${pr.id}`}</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
+                    <TextField size="small" fullWidth label="درصد از قرارداد (%)" type="number" value={pa.percentage} sx={fieldSx} onChange={e => updateProjectAllocation(idx, 'percentage', e.target.value)} />
+                  </Grid>
+                  <Grid item xs={12} sm={1}>
+                    <Tooltip title="حذف پروژه"><IconButton size="small" color="error" onClick={() => removeProjectAllocation(idx)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                  </Grid>
+                </Grid>
+              </Paper>
+            ))}
+            <Typography variant="caption" fontWeight={700} color={projectAllocations.reduce((s, a) => s + (Number(a.percentage) || 0), 0) === 100 ? '#10b981' : '#f59e0b'}>
+              جمع درصد تخصیص: {formatPersianNumber(projectAllocations.reduce((s, a) => s + (Number(a.percentage) || 0), 0))}٪
+            </Typography>
+          </Stack>
+        )}
         <Grid container spacing={1.5}>
-          <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>پروژه (از مدیریت پروژه‌ها)</InputLabel>
-              <Select value={form.project || ''} label="پروژه (از مدیریت پروژه‌ها)" onChange={e => setForm(p => ({ ...p, project: e.target.value }))}>
-                <MenuItem value="">—</MenuItem>
-                {projectList.map(pr => <MenuItem key={pr.id} value={pr.id}>{pr.name || pr.title || `پروژه #${pr.id}`}</MenuItem>)}
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="نام پروژه / طرح" value={form.project_name} sx={fieldSx} onChange={e => setForm(p => ({ ...p, project_name: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth label="محل اجرا / تحویل" value={form.project_location} sx={fieldSx} onChange={e => setForm(p => ({ ...p, project_location: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={6}><TextField size="small" fullWidth label="نام پروژه / طرح" value={form.project_name} sx={fieldSx} onChange={e => setForm(p => ({ ...p, project_name: e.target.value }))} /></Grid>
+          <Grid item xs={12} md={6}><TextField size="small" fullWidth label="محل اجرا / تحویل" value={form.project_location} sx={fieldSx} onChange={e => setForm(p => ({ ...p, project_location: e.target.value }))} /></Grid>
         </Grid>
 
         {/* تاریخ‌ها */}
@@ -287,17 +337,52 @@ const ContractNewPage = () => {
           </Grid>
           <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`پیش‌پرداخت (${currencyLabel})`} value={form.advance_payment} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, advance_payment: v }))} /></Grid>
           <Grid item xs={12} md={3}><TextField size="small" fullWidth label="درصد حسن انجام کار" type="number" value={form.retention_percent} sx={fieldSx} onChange={e => setForm(p => ({ ...p, retention_percent: e.target.value }))} /></Grid>
-          <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`مبلغ تضمین (${currencyLabel})`} value={form.guarantee_amount} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, guarantee_amount: v }))} /></Grid>
-          <Grid item xs={12} md={3}>
-            <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>نوع ضمانت</InputLabel>
-              <Select value={form.guarantee_type || ''} label="نوع ضمانت" onChange={e => setForm(p => ({ ...p, guarantee_type: e.target.value }))}>
-                <MenuItem value="">—</MenuItem>
-                {Object.entries(GUARANTEE_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
-              </Select>
-            </FormControl>
-          </Grid>
           <Grid item xs={12} md={6}><TextField size="small" fullWidth label="دوره گارانتی / تضمین کیفیت" value={form.warranty_period} sx={fieldSx} onChange={e => setForm(p => ({ ...p, warranty_period: e.target.value }))} /></Grid>
         </Grid>
+
+        {/* ضمانت‌ها */}
+        <SectionHeader icon={<LockIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#f59e0b" title="ضمانت‌ها (حسن انجام کار، پیش‌پرداخت، مناقصه، اجرای تعهدات، حق بیمه و ...)">
+          <Button size="small" startIcon={<AddCircleIcon />} onClick={addGuaranteeItem} sx={{ color: '#f59e0b', textTransform: 'none' }}>افزودن ضمانت</Button>
+        </SectionHeader>
+        {guaranteeItems.length === 0 ? (
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>ضمانتی تعریف نشده است.</Typography>
+        ) : (
+          <Stack spacing={1} sx={{ mb: 1 }}>
+            {guaranteeItems.map((g, idx) => {
+              const gAmount = g.percent ? Math.round(((num(form.amount) || 0) * (Number(g.percent) || 0)) / 100) : (Number(g.amount) || 0);
+              return (
+                <Paper key={idx} variant="outlined" sx={{ p: 1, borderRadius: '10px', background: 'rgba(245,158,11,0.04)', borderColor: 'rgba(245,158,11,0.25)' }}>
+                  <Grid container spacing={1} alignItems="center">
+                    <Grid item xs={12} sm={3}>
+                      <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>نوع ضمانت</InputLabel>
+                        <Select value={g.type || 'performance'} label="نوع ضمانت" onChange={e => updateGuaranteeItem(idx, 'type', e.target.value)}>
+                          {Object.entries(GUARANTEE_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+                        </Select>
+                      </FormControl>
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <MoneyInput size="small" fullWidth label={`مبلغ (${currencyLabel})`} value={g.amount} sx={fieldSx} onChange={(v) => updateGuaranteeItem(idx, 'amount', v)} />
+                    </Grid>
+                    <Grid item xs={12} sm={2}>
+                      <TextField size="small" fullWidth label="درصد از قرارداد (%)" type="number" value={g.percent} sx={fieldSx} onChange={e => updateGuaranteeItem(idx, 'percent', e.target.value)} />
+                    </Grid>
+                    <Grid item xs={12} sm={3}>
+                      <TextField size="small" fullWidth label="یادداشت" value={g.note} sx={fieldSx} onChange={e => updateGuaranteeItem(idx, 'note', e.target.value)} />
+                    </Grid>
+                    <Grid item xs={12} sm={1}>
+                      <Tooltip title="حذف ضمانت"><IconButton size="small" color="error" onClick={() => removeGuaranteeItem(idx)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </Grid>
+                  </Grid>
+                  {(g.percent || g.amount) && (
+                    <Typography variant="caption" color="textSecondary" sx={{ mt: 0.5, display: 'block' }}>
+                      مبلغ تضمین: {formatPersianNumber(gAmount)} {currencyLabel}{g.percent ? ` (${formatPersianNumber(g.percent)}٪ از مبلغ قرارداد)` : ''}
+                    </Typography>
+                  )}
+                </Paper>
+              );
+            })}
+          </Stack>
+        )}
 
         {/* پیش‌پرداخت‌های مرحله‌ای */}
         <SectionHeader icon={<AddCircleIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#8b5cf6" title="پیش‌پرداخت‌های مرحله‌ای">

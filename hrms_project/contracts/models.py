@@ -89,6 +89,8 @@ class Contract(BaseModel):
         PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
         ADVANCE = 'advance', _('ضمانت پیش‌پرداخت')
         BID = 'bid', _('ضمانت شرکت در مناقصه')
+        EXECUTION = 'execution', _('ضمانت اجرای تعهدات')
+        INSURANCE = 'insurance', _('سپرده حق بیمه')
         OTHER = 'other', _('سایر')
 
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره قرارداد'))
@@ -119,11 +121,21 @@ class Contract(BaseModel):
         max_length=20, choices=GuaranteeKind.choices, null=True, blank=True,
         verbose_name=_('نوع ضمانت'),
     )
+    # ضمانت‌های متعدد: [{type, amount, percent, note}]
+    guarantee_items = models.JSONField(
+        default=list, blank=True, verbose_name=_('ضمانت‌ها'),
+        help_text=_('لیست ضمانت‌ها: [{type, amount, percent, note}]'),
+    )
 
     # Link to Project Business Platform (nullable; a contract may or may not belong to a project)
     project = models.ForeignKey(
         'projects.Project', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='external_contracts', verbose_name=_('پروژه'),
+    )
+    # پروژه‌های متعدد با درصد تخصیص: [{project, percentage}]
+    project_allocations = models.JSONField(
+        default=list, blank=True, verbose_name=_('تخصیص پروژه‌ها'),
+        help_text=_('لیست پروژه‌ها با درصد: [{project, percentage}]'),
     )
 
     # --- Extended / enterprise detail fields ---
@@ -296,6 +308,8 @@ class Guarantee(BaseModel):
         PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
         ADVANCE = 'advance', _('ضمانت پیش‌پرداخت')
         BID = 'bid', _('ضمانت شرکت در مناقصه')
+        EXECUTION = 'execution', _('ضمانت اجرای تعهدات')
+        INSURANCE = 'insurance', _('سپرده حق بیمه')
         OTHER = 'other', _('سایر')
 
     class InstrumentType(models.TextChoices):
