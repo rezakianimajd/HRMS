@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, IconButton, Chip, Avatar, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel,
@@ -51,6 +53,7 @@ const fieldSx = {
 };
 
 const LifecyclePage = () => {
+  const qc = useQueryClient();
   const [tab, setTab] = useState('onboarding');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ employee: '', kind: 'onboarding', items: [] });
@@ -105,27 +108,22 @@ const LifecyclePage = () => {
     setForm(p => ({ ...p, items: p.items.filter(x => x !== item) }));
   };
 
-  const doCreate = () => {
+  const doCreate = async () => {
     const finalItems = [...form.items];
-    createMutation.mutate(
-      { employee: form.employee, kind: form.kind },
-      {
-        onSuccess: (checklist) => {
-          const cid = checklist.id;
-          (async () => {
-            for (const title of finalItems) {
-              try {
-                const axios = (await import('../core/api/axiosConfig')).default;
-                await axios.post('/checklist-items/', { checklist: cid, title });
-              } catch (e) { /* ignore */ }
-            }
-          })();
-          setOpen(false);
-          setMsg('چک‌لیست ایجاد شد.');
-          setTimeout(() => setMsg(''), 2500);
-        },
+    try {
+      const checklist = await createMutation.mutateAsync({ employee: form.employee, kind: form.kind });
+      const cid = checklist.id;
+      for (const title of finalItems) {
+        await axiosInstance.post('/checklist-items/', { checklist: cid, title });
       }
-    );
+      qc.invalidateQueries({ queryKey: ['lifecycle-checklists'] });
+      setOpen(false);
+      setMsg('چک‌لیست ایجاد شد.');
+      setTimeout(() => setMsg(''), 2500);
+    } catch (e) {
+      setMsg('خطا در ایجاد چک‌لیست');
+      setTimeout(() => setMsg(''), 2500);
+    }
   };
 
   const doAddItem = () => {
@@ -187,12 +185,14 @@ const LifecyclePage = () => {
           { label: 'در حال انجام', value: counts.inProgress, color: '#f59e0b' },
         ].map(k => (
           <Grid item xs={6} sm={4} key={k.label}>
-            <Paper sx={{ p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)', display: 'flex', alignItems: 'center', gap: 1.25 }}>
-              <Avatar sx={{ width: 36, height: 36, bgcolor: `${k.color}18`, color: k.color }}><PlaylistAddCheckIcon sx={{ fontSize: 18 }} /></Avatar>
-              <Box>
-                <Typography variant="caption" color="textSecondary" display="block" noWrap>{k.label}</Typography>
-                <Typography variant="h6" fontWeight={800} color={k.color} noWrap>{toPersianDigits(k.value)}</Typography>
-              </Box>
+            <Paper sx={{
+              p: 2, borderRadius: '16px', textAlign: 'center',
+              background: `linear-gradient(160deg, ${k.color}16, rgba(255,255,255,0.7))`,
+              border: `1px solid ${k.color}26`, boxShadow: `0 4px 16px ${k.color}0d`,
+              transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 30px ${k.color}1f` },
+            }}>
+              <Typography variant="h4" fontWeight={900} sx={{ color: k.color, direction: 'ltr' }}>{toPersianDigits(k.value)}</Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700 }}>{k.label}</Typography>
             </Paper>
           </Grid>
         ))}
