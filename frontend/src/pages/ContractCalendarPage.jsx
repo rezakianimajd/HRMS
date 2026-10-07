@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Grid, CircularProgress, Stack, Chip, TextField,
-  InputAdornment, Button, IconButton, ToggleButton, ToggleButtonGroup,
+  InputAdornment, Button, IconButton,
 } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import SearchIcon from '@mui/icons-material/Search';
@@ -14,6 +14,10 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import FlagIcon from '@mui/icons-material/Flag';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ReceiptIcon from '@mui/icons-material/Receipt';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import LockIcon from '@mui/icons-material/Lock';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toGregorian, getJalaliParts } from '../core/utils/dateUtils';
 import { currencyLabel, CONTRACT_STATUS_COLORS } from '../core/theme/tokens';
@@ -26,6 +30,11 @@ const EVENTS = {
   signing: { label: 'امضا', color: '#10b981', icon: <EditNoteIcon sx={{ color: '#fff', fontSize: 16 }} /> },
   start: { label: 'شروع', color: '#3b82f6', icon: <PlayCircleIcon sx={{ color: '#fff', fontSize: 16 }} /> },
   end: { label: 'پایان / انقضا', color: '#ef4444', icon: <FlagIcon sx={{ color: '#fff', fontSize: 16 }} /> },
+  invoice: { label: 'فاکتور', color: '#8b5cf6', icon: <ReceiptIcon sx={{ color: '#fff', fontSize: 16 }} /> },
+  statement: { label: 'صورت‌وضعیت', color: '#6366f1', icon: <ReceiptLongIcon sx={{ color: '#fff', fontSize: 16 }} /> },
+  payment: { label: 'پرداخت', color: '#14b8a6', icon: <PaymentsIcon sx={{ color: '#fff', fontSize: 16 }} /> },
+  addendum: { label: 'الحاقیه', color: '#ec4899', icon: <EditNoteIcon sx={{ color: '#fff', fontSize: 16 }} /> },
+  guarantee: { label: 'تضمین', color: '#f59e0b', icon: <LockIcon sx={{ color: '#fff', fontSize: 16 }} /> },
 };
 
 function jalaliMonthInfo(jy, jm) {
@@ -53,7 +62,6 @@ const ContractCalendarPage = () => {
   const [curMonth, setCurMonth] = useState(todayParts[1]);
   const [selectedJ, setSelectedJ] = useState(todayJ);
   const [search, setSearch] = useState('');
-  const [type, setType] = useState('all');
 
   const { data, isLoading } = useQuery({
     queryKey: ['ext-contracts-cal'],
@@ -64,15 +72,31 @@ const ContractCalendarPage = () => {
   const events = useMemo(() => {
     const rows = [];
     const q = (search || '').trim().toLowerCase();
+    const push = (id, c, date, kind, title, subtitle, amount) => {
+      if (!date) return;
+      rows.push({ id, contract: c, date, kind, title, subtitle, amount });
+    };
     list.forEach(c => {
-      if (c.signing_date) rows.push({ id: `${c.id}-sign`, contract: c, date: c.signing_date, kind: 'signing' });
-      if (c.start_date) rows.push({ id: `${c.id}-start`, contract: c, date: c.start_date, kind: 'start' });
-      if (c.end_date) rows.push({ id: `${c.id}-end`, contract: c, date: c.end_date, kind: 'end' });
+      const base = c.subject || '—';
+      const party = `${c.party_name || '—'} · ${c.number || '—'}`;
+      push(`${c.id}-sign`, c, c.signing_date, 'signing', base, party, c.amount);
+      push(`${c.id}-start`, c, c.start_date, 'start', base, party, c.amount);
+      push(`${c.id}-end`, c, c.end_date, 'end', base, party, c.amount);
+      (c.invoices || []).forEach(x => push(`inv-${x.id}`, c, x.date, 'invoice', `فاکتور ${x.number || '—'}`, base, x.total));
+      (c.statements || []).forEach(x => push(`stmt-${x.id}`, c, x.date, 'statement', `صورت‌وضعیت ${x.number || '—'}`, base, x.net_amount));
+      (c.payments || []).forEach(x => push(`pay-${x.id}`, c, x.date, 'payment', 'پرداخت', `${base}${x.reference ? ` · ${x.reference}` : ''}`, x.amount));
+      (c.addendums || []).forEach(x => push(`add-${x.id}`, c, x.date, 'addendum', `الحاقیه ${x.number || '—'}`, base, null));
+      (c.guarantees || []).forEach(x => {
+        push(`guar-${x.id}`, c, x.issue_date, 'guarantee', `تضمین ${x.guarantee_type_display || ''}`, base, x.amount);
+        push(`guar-exp-${x.id}`, c, x.expiry_date, 'guarantee', `انقضای تضمین ${x.guarantee_type_display || ''}`, base, x.amount);
+      });
     });
-    return rows
-      .filter(r => !q || (r.contract.subject || '').toLowerCase().includes(q) || (r.contract.party_name || '').toLowerCase().includes(q))
-      .filter(r => type === 'all' || r.kind === type);
-  }, [list, search, type]);
+    return rows.filter(r => {
+      if (!q) return true;
+      const hay = `${r.title || ''} ${r.subtitle || ''} ${r.contract.subject || ''} ${r.contract.party_name || ''}`.toLowerCase();
+      return hay.includes(q);
+    });
+  }, [list, search]);
 
   const eventsByDate = useMemo(() => {
     const map = {};
@@ -116,15 +140,9 @@ const ContractCalendarPage = () => {
       </Paper>
 
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ mb: 2 }}>
-        <TextField size="small" fullWidth placeholder="جستجو (موضوع، طرف)..." value={search}
+        <TextField size="small" fullWidth placeholder="جستجو (موضوع، طرف، فاکتور، صورت‌وضعیت...)..." value={search}
           onChange={e => setSearch(e.target.value)}
           InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-        <ToggleButtonGroup size="small" value={type} exclusive onChange={(e, v) => v && setType(v)}>
-          <ToggleButton value="all">همه</ToggleButton>
-          <ToggleButton value="signing">امضا</ToggleButton>
-          <ToggleButton value="start">شروع</ToggleButton>
-          <ToggleButton value="end">پایان</ToggleButton>
-        </ToggleButtonGroup>
       </Stack>
 
       <Grid container spacing={2.5}>
@@ -198,10 +216,10 @@ const ContractCalendarPage = () => {
                         <Chip size="small" label={ev.contract.status}
                           sx={{ bgcolor: `${CONTRACT_STATUS_COLORS[ev.contract.status] || '#64748b'}18`, color: CONTRACT_STATUS_COLORS[ev.contract.status] || '#64748b', height: 18, fontSize: 10 }} />
                       </Box>
-                      <Typography variant="body2" fontWeight={800} sx={{ mt: 0.5 }}>{ev.contract.subject}</Typography>
-                      <Typography variant="caption" color="textSecondary">{ev.contract.party_name} · {ev.contract.number || '—'}</Typography>
+                      <Typography variant="body2" fontWeight={800} sx={{ mt: 0.5 }}>{ev.title}</Typography>
+                      <Typography variant="caption" color="textSecondary">{ev.subtitle}</Typography>
                       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mt: 0.5 }}>
-                        <Typography variant="caption" fontWeight={700} color="#b45309">{formatPersianNumber(ev.contract.amount || 0)} {currencyLabel(ev.contract)}</Typography>
+                        <Typography variant="caption" fontWeight={700} color="#b45309">{ev.amount != null ? `${formatPersianNumber(ev.amount)} ${currencyLabel(ev.contract)}` : ''}</Typography>
                         <Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => navigate(`/external-contracts/${ev.contract.id}`)}>پرونده</Button>
                       </Box>
                     </Box>
