@@ -30,17 +30,28 @@ const KIND_META = {
 };
 
 const DEFAULT_ONBOARDING_ITEMS = [
-  'تکمیل مدارک هویتی و قرارداد',
+  'تکمیل مدارک هویتی و پرسنلی',
+  'تنظیم و امضای قرارداد استخدام',
+  'تعریف در سیستم حقوق و دستمزد',
+  'تعریف در سیستم حضور و غیاب',
+  'ثبت بیمه و سوابق بیمه‌ای',
   'تحویل تجهیزات (لپ‌تاپ / موبایل / میز)',
-  'تعریف دسترسی نرم‌افزارها',
+  'ایجاد ایمیل سازمانی و دسترسی نرم‌افزارها',
+  'تعریف دسترسی‌های سیستمی (نقش‌ها)',
   'معرفی به تیم و سرپرست',
+  'برگزاری جلسه آشنایی با شرکت',
 ];
 
 const DEFAULT_OFFBOARDING_ITEMS = [
   'تحویل اموال و تجهیزات',
   'تسویه مالی (حقوق، وام، مساعده)',
   'تسویه مرخصی مانده',
-  'غیرفعال‌سازی دسترسی‌ها',
+  'غیرفعال‌سازی ایمیل و دسترسی نرم‌افزارها',
+  'حذف دسترسی‌های سیستمی (نقش‌ها)',
+  'قطع بیمه و تسویه سوابق بیمه‌ای',
+  'خروج از سیستم حقوق و حضور و غیاب',
+  'جمع‌آوری کارت‌های شناسایی',
+  'برگزاری جلسه خروج (مصاحبه پایانی)',
 ];
 
 const fieldSx = {
@@ -425,9 +436,16 @@ const LifecyclePage = () => {
                 <Divider />
                 <Stack spacing={0.5}>
                   {(viewChecklist.items || []).map(it => (
-                    <Box key={it.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {it.is_completed ? <CheckCircleIcon fontSize="small" sx={{ color: km.color }} /> : <CheckBoxOutlineBlankIcon fontSize="small" sx={{ color: 'text.disabled' }} />}
-                      <Typography variant="body2" sx={{ textDecoration: it.is_completed ? 'line-through' : 'none' }}>{it.title}</Typography>
+                    <Box key={it.id} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, py: 0.25 }}>
+                      {it.is_completed ? <CheckCircleIcon fontSize="small" sx={{ color: km.color, mt: 0.25 }} /> : <CheckBoxOutlineBlankIcon fontSize="small" sx={{ color: 'text.disabled', mt: 0.25 }} />}
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography variant="body2" sx={{ textDecoration: it.is_completed ? 'line-through' : 'none', color: it.is_completed ? 'text.secondary' : 'text.primary' }}>{it.title}</Typography>
+                        {it.is_completed && it.completed_at && (
+                          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', direction: 'ltr', textAlign: 'right', mt: 0.25 }}>
+                            {toPersianDigits(it.completed_at)}
+                          </Typography>
+                        )}
+                      </Box>
                     </Box>
                   ))}
                 </Stack>
