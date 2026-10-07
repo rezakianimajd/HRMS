@@ -51,6 +51,22 @@ const InfoRow = ({ label, value, ltr }) => value ? (
   </Box>
 ) : null;
 
+const StatCard = ({ icon, color, label, value, sub }) => (
+  <Paper sx={{
+    p: 1.75, borderRadius: '16px', textAlign: 'center', height: '100%',
+    background: `linear-gradient(160deg, ${color}16, rgba(255,255,255,0.7))`,
+    border: `1px solid ${color}24`, boxShadow: `0 4px 16px ${color}0d`,
+    transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 30px ${color}1f` },
+  }}>
+    <Box sx={{ width: 40, height: 40, borderRadius: '50%', mx: 'auto', mb: 0.75, background: `linear-gradient(135deg, ${color}, ${color}cc)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: `0 4px 12px ${color}40` }}>
+      {icon}
+    </Box>
+    <Typography variant="h5" fontWeight={900} sx={{ color, direction: 'ltr' }}>{value}</Typography>
+    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700 }}>{label}</Typography>
+    {sub && <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.25 }}>{sub}</Typography>}
+  </Paper>
+);
+
 const ContractProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
