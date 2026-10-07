@@ -396,38 +396,52 @@ const ContractProfilePage = () => {
             {relatedContracts.length === 0 ? (
               <Typography variant="caption" color="textSecondary">قرارداد مرتبطی در همین پروژه‌ها یافت نشد.</Typography>
             ) : (
-              <Box sx={{ width: '100%', overflowX: 'auto' }}>
-                <svg viewBox="0 0 340 300" style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block' }}>
-                  <defs>
-                    <linearGradient id="netGrad" x1="0" y1="0" x2="1" y2="1">
-                      <stop offset="0%" stopColor="#f59e0b" />
-                      <stop offset="100%" stopColor="#f97316" />
-                    </linearGradient>
-                    <filter id="netGlass" x="-30%" y="-30%" width="160%" height="160%">
-                      <feGaussianBlur in="SourceGraphic" stdDeviation="0.4" result="blur" />
-                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
-                    </filter>
-                  </defs>
+              <Box sx={{ position: 'relative', width: '100%', height: 380 }}>
+                <svg viewBox="0 0 340 340" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
                   {relatedContracts.map((rc, i) => {
                     const angle = (i / relatedContracts.length) * 2 * Math.PI - Math.PI / 2;
-                    const r = 115;
-                    const x = 170 + r * Math.cos(angle);
-                    const y = 150 + r * Math.sin(angle);
+                    const x = 170 + 132 * Math.cos(angle);
+                    const y = 170 + 132 * Math.sin(angle);
                     const color = ['#8b5cf6', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899', '#6366f1', '#14b8a6', '#f97316'][i % 8];
-                    const party = (rc.party_name || '—').slice(0, 14);
-                    return (
-                      <g key={rc.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/external-contracts/${rc.id}`)}>
-                        <line x1="170" y1="150" x2={x} y2={y} stroke={`${color}66`} strokeWidth="2" strokeDasharray="5 4" />
-                        <circle cx={x} cy={y} r="34" fill={`${color}1f`} stroke={color} strokeWidth="2.5" filter="url(#netGlass)" />
-                        <text x={x} y={y - 6} textAnchor="middle" fontSize="9" fill={color} fontWeight="900">{rc.number || '—'}</text>
-                        <text x={x} y={y + 9} textAnchor="middle" fontSize="7" fill="#475569" fontWeight="600">{party}</text>
-                      </g>
-                    );
+                    return <line key={rc.id} x1="170" y1="170" x2={x} y2={y} stroke={`${color}66`} strokeWidth="2" strokeDasharray="6 5" />;
                   })}
-                  <circle cx="170" cy="150" r="40" fill="url(#netGrad)" stroke="#ffffff" strokeWidth="3" filter="url(#netGlass)" />
-                  <text x="170" y="142" textAnchor="middle" fontSize="11" fill="#fff" fontWeight="900">{c.number || 'قرارداد'}</text>
-                  <text x="170" y="158" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="600">{(c.party_name || 'مرکزی').slice(0, 16)}</text>
                 </svg>
+
+                {/* مرکز */}
+                <Box sx={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 2, width: 150, textAlign: 'center' }}>
+                  <Box sx={{ width: 118, height: 118, mx: 'auto', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#f97316)', boxShadow: '0 12px 34px rgba(245,158,11,0.45)', border: '3px solid #fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', px: 1 }}>
+                    <Typography variant="body2" fontWeight={900} sx={{ color: '#fff' }}>{c.number || 'قرارداد'}</Typography>
+                    <Typography variant="caption" sx={{ fontSize: 8.5, lineHeight: 1.2, textAlign: 'center', color: 'rgba(255,255,255,0.9)' }}>{c.party_name || 'مرکزی'}</Typography>
+                  </Box>
+                </Box>
+
+                {/* مرتبط‌ها */}
+                {relatedContracts.map((rc, i) => {
+                  const angle = (i / relatedContracts.length) * 2 * Math.PI - Math.PI / 2;
+                  const x = 50 + 39 * Math.cos(angle);
+                  const y = 50 + 39 * Math.sin(angle);
+                  const color = ['#8b5cf6', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899', '#6366f1', '#14b8a6', '#f97316'][i % 8];
+                  return (
+                    <Box key={rc.id} onClick={() => navigate(`/external-contracts/${rc.id}`)}
+                      sx={{
+                        position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)',
+                        zIndex: 2, cursor: 'pointer', width: 128, textAlign: 'center',
+                        '&:hover .node': { boxShadow: `0 14px 30px ${color}55`, transform: 'scale(1.05)' },
+                      }}>
+                      <Box className="node" sx={{
+                        width: 100, height: 100, mx: 'auto', borderRadius: '50%',
+                        background: `linear-gradient(135deg, ${color}22, rgba(255,255,255,0.7))`,
+                        border: `2px solid ${color}`, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
+                        boxShadow: `0 6px 18px ${color}22`,
+                        display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: 1,
+                        transition: 'all 0.2s ease',
+                      }}>
+                        <Typography variant="body2" fontWeight={900} sx={{ color: '#1e293b' }}>{rc.number || '—'}</Typography>
+                        <Typography variant="caption" sx={{ fontSize: 8, lineHeight: 1.25, textAlign: 'center', color: '#475569' }}>{rc.party_name || '—'}</Typography>
+                      </Box>
+                    </Box>
+                  );
+                })}
               </Box>
             )}
           </InfoCard>
