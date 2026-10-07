@@ -14,6 +14,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
+import BusinessIcon from '@mui/icons-material/Business';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
@@ -112,68 +113,32 @@ const ExternalContractsPage = () => {
     URL.revokeObjectURL(url);
   };
 
-  const counts = {
-    total: contractList.length,
-    active: contractList.filter(c => c.status === 'active').length,
-    completed: contractList.filter(c => c.status === 'completed').length,
-    suspended: contractList.filter(c => c.status === 'suspended').length,
-    terminated: contractList.filter(c => c.status === 'terminated').length,
-  };
-
   return (
     <Box>
       {/* Header */}
       <Paper sx={{
-        p: 3, mb: 2.5, textAlign: 'center', position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.4))',
-        border: '1px solid rgba(245,158,11,0.18)', borderRadius: '18px',
+        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
+        background: 'linear-gradient(120deg, rgba(245,158,11,0.10), rgba(249,115,22,0.05), rgba(255,255,255,0.3))',
+        border: '1px solid rgba(245,158,11,0.16)', borderRadius: '12px',
       }}>
-        <Box sx={{ position: 'absolute', top: -70, left: '50%', transform: 'translateX(-50%)', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.18), transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
-        <Avatar sx={{ width: 60, height: 60, mx: 'auto', background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 10px 30px rgba(245,158,11,0.45)', position: 'relative', zIndex: 1 }}>
-          <HandshakeIcon sx={{ color: '#fff', fontSize: 30 }} />
+        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
+          <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
-        <Typography variant="h5" fontWeight={900} color="#b45309" sx={{ mt: 1.25, position: 'relative', zIndex: 1 }}>قراردادهای من</Typography>
-        <Typography variant="body2" color="textSecondary" sx={{ position: 'relative', zIndex: 1 }}>
-          مدیریت پیمانکاری، خرید و مناقصه با فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت
-        </Typography>
-        <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportCsv(filtered)}
-            sx={{ borderRadius: '12px', px: 2.5, whiteSpace: 'nowrap' }}>
-            خروجی CSV
-          </Button>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
-            sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '12px', px: 2.5, whiteSpace: 'nowrap', boxShadow: '0 8px 20px rgba(245,158,11,0.35)' }}>
-            قرارداد جدید
-          </Button>
+        <Box sx={{ flex: 1, minWidth: 220 }}>
+          <Typography variant="h6" fontWeight={800} color="#b45309">قراردادهای برون‌سازمانی</Typography>
+          <Typography variant="body2" color="textSecondary">پیمانکاری، خرید، مناقصه + فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت</Typography>
         </Box>
+        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportCsv(filtered)}
+          sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
+          خروجی CSV
+        </Button>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
+          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
+          قرارداد جدید
+        </Button>
       </Paper>
 
       {msg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
-
-      {/* KPI cards */}
-      <Grid container spacing={1.5} sx={{ mb: 2 }}>
-        {[
-          { label: 'کل قراردادها', value: counts.total, color: '#f59e0b' },
-          { label: 'در حال اجرا', value: counts.active, color: '#10b981' },
-          { label: 'تکمیل شده', value: counts.completed, color: '#3b82f6' },
-          { label: 'متوقف', value: counts.suspended, color: '#f59e0b' },
-          { label: 'فسخ شده', value: counts.terminated, color: '#ef4444' },
-        ].map(k => (
-          <Grid item xs={6} sm={4} md={2.4} key={k.label}>
-            <Paper sx={{
-              p: 1.75, borderRadius: '16px', textAlign: 'center', position: 'relative', overflow: 'hidden',
-              background: `linear-gradient(160deg, ${k.color}14, rgba(255,255,255,0.6))`,
-              border: `1px solid ${k.color}22`,
-              boxShadow: `0 4px 16px ${k.color}10`,
-              '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 30px ${k.color}22` },
-              transition: 'all 0.2s ease',
-            }}>
-              <Typography variant="h5" fontWeight={900} sx={{ color: k.color, direction: 'ltr' }}>{formatPersianNumber(k.value)}</Typography>
-              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700 }}>{k.label}</Typography>
-            </Paper>
-          </Grid>
-        ))}
-      </Grid>
 
       {/* Filters */}
       <Paper sx={{ p: 1.5, mb: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
@@ -226,14 +191,21 @@ const ExternalContractsPage = () => {
                     </Avatar>
                     <Box sx={{ flex: 1, minWidth: 220 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-                        <Typography variant="caption" fontWeight={800} color="textSecondary" sx={{ whiteSpace: 'nowrap' }}>#{toPersianDigits(c.number || '—')}</Typography>
+                        <Chip size="small" label={`#${toPersianDigits(c.number || '—')}`}
+                          sx={{ bgcolor: 'rgba(15,23,42,0.07)', color: '#334155', fontWeight: 800, height: 22, fontSize: 11, '& .MuiChip-label': { px: 0.5 } }} />
                         <Chip size="small" label={typeLabel(c)} sx={{ bgcolor: `${tColor}18`, color: tColor, fontWeight: 700, fontSize: 10, height: 20 }} />
                         <Chip size="small" label={STATUS_LABELS[c.status] || c.status} sx={{ bgcolor: `${STATUS_COLORS[c.status] || '#64748b'}18`, color: STATUS_COLORS[c.status] || '#64748b', fontWeight: 700, fontSize: 10, height: 20 }} />
                       </Box>
                       <Typography variant="body1" fontWeight={800} sx={{ mt: 0.5 }}>{c.subject}</Typography>
-                      <Typography variant="caption" color="textSecondary">
-                        {c.party_name || '—'} · {c.start_date ? toJalali(c.start_date) : '—'} تا {c.end_date ? toJalali(c.end_date) : '—'}
-                      </Typography>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mt: 0.25 }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                          <BusinessIcon sx={{ fontSize: 14, color: '#b45309' }} />
+                          <Typography variant="caption" fontWeight={700} color="#7c2d12">{c.party_name || '—'}</Typography>
+                        </Box>
+                        <Typography variant="caption" color="textSecondary">
+                          {c.start_date ? toJalali(c.start_date) : '—'} تا {c.end_date ? toJalali(c.end_date) : '—'}
+                        </Typography>
+                      </Box>
                     </Box>
                     <Box sx={{ textAlign: 'center', flexShrink: 0 }}>
                       <Typography variant="h6" fontWeight={900} sx={{ color: '#b45309', direction: 'ltr' }}>{formatPersianNumber(c.amount || 0)}</Typography>
