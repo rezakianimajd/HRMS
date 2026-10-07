@@ -76,6 +76,12 @@ const ExternalContractsPage = () => {
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
+  const { data: typeMasters } = useQuery({
+    queryKey: ['contract-types-master'],
+    queryFn: () => axiosInstance.get('/contract-types-master/').then(r => r.data),
+  });
+  const typeMasterList = Array.isArray(typeMasters) ? typeMasters : typeMasters?.results || [];
+
   // نوع قرارداد از «نوع پیکربندی‌شده» خوانده می‌شود؛ اگر خالی بود، نوع ثابت.
   const typeLabel = (c) => c.contract_type_master_name || TYPE_LABELS[c.contract_type] || c.contract_type || '—';
 
@@ -92,7 +98,7 @@ const ExternalContractsPage = () => {
   const filtered = contractList.filter(c =>
     (!search || (c.subject || '').includes(search) || (c.party_name || '').includes(search) || (c.number || '').includes(search)) &&
     (!statusFilter || c.status === statusFilter) &&
-    (!typeFilter || c.contract_type === typeFilter)
+    (!typeFilter || String(c.contract_type_master) === String(typeFilter))
   );
 
   const exportCsv = (rows) => {
@@ -156,7 +162,7 @@ const ExternalContractsPage = () => {
             <InputLabel>نوع</InputLabel>
             <Select value={typeFilter || ''} label="نوع" onChange={e => setTypeFilter(e.target.value)}>
               <MenuItem value="">همه</MenuItem>
-              {Object.entries(TYPE_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+              {typeMasterList.map(t => <MenuItem key={t.id} value={t.id}>{t.name}{t.code ? ` (${t.code})` : ''}</MenuItem>)}
             </Select>
           </FormControl>
         </Stack>
