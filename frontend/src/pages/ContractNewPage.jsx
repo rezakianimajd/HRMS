@@ -4,7 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, Chip, Avatar, Grid, CircularProgress, Stack,
-  TextField, FormControl, InputLabel, Select, MenuItem, Divider, Alert, IconButton, Tooltip,
+  TextField, FormControl, InputLabel, Select, MenuItem, Divider, Alert, IconButton, Tooltip, Autocomplete,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import SaveIcon from '@mui/icons-material/Save';
@@ -253,19 +253,26 @@ const ContractNewPage = () => {
           <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره قرارداد" value={form.number} sx={fieldSx} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
           <Grid item xs={12} md={8}><TextField size="small" fullWidth label="موضوع قرارداد *" value={form.subject} sx={fieldSx} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
           <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>طرف قرارداد *</InputLabel>
-              <Select value={form.party} label="طرف قرارداد *" onChange={e => setForm(p => ({ ...p, party: e.target.value }))}>
-                {partyList.map(p => <MenuItem key={p.id} value={p.id}>{p.name}</MenuItem>)}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="small" fullWidth
+              options={partyList}
+              getOptionLabel={(p) => p.name || ''}
+              value={partyList.find(p => p.id === form.party) || null}
+              onChange={(e, v) => setForm(p => ({ ...p, party: v ? v.id : '' }))}
+              isOptionEqualToValue={(opt, val) => opt.id === val.id}
+              renderInput={(params) => <TextField {...params} label="طرف قرارداد *" sx={fieldSx} />}
+            />
           </Grid>
           <Grid item xs={12} md={4}>
-            <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>نوع قرارداد (پیکربندی)</InputLabel>
-              <Select value={form.contract_type_master || ''} label="نوع قرارداد (پیکربندی)" onChange={e => setForm(p => ({ ...p, contract_type_master: e.target.value }))}>
-                <MenuItem value="">—</MenuItem>
-                {typeMasterList.map(t => <MenuItem key={t.id} value={t.id}>{t.name} {t.code ? `(${t.code})` : ''}</MenuItem>)}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="small" fullWidth
+              options={typeMasterList}
+              getOptionLabel={(t) => `${t.name}${t.code ? ` (${t.code})` : ''}`}
+              value={typeMasterList.find(t => t.id === form.contract_type_master) || null}
+              onChange={(e, v) => setForm(p => ({ ...p, contract_type_master: v ? v.id : '' }))}
+              isOptionEqualToValue={(opt, val) => opt.id === val.id}
+              renderInput={(params) => <TextField {...params} label="نوع قرارداد (پیکربندی)" sx={fieldSx} />}
+            />
           </Grid>
           <Grid item xs={12} md={4}>
             <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>وضعیت</InputLabel>
@@ -290,11 +297,15 @@ const ContractNewPage = () => {
               <Paper key={idx} variant="outlined" sx={{ p: 1, borderRadius: '10px', background: 'rgba(59,130,246,0.04)', borderColor: 'rgba(59,130,246,0.25)' }}>
                 <Grid container spacing={1} alignItems="center">
                   <Grid item xs={12} sm={7}>
-                    <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>پروژه</InputLabel>
-                      <Select value={pa.project || ''} label="پروژه" onChange={e => updateProjectAllocation(idx, 'project', e.target.value)}>
-                        {projectList.map(pr => <MenuItem key={pr.id} value={pr.id}>{pr.name || pr.title || `پروژه #${pr.id}`}</MenuItem>)}
-                      </Select>
-                    </FormControl>
+                    <Autocomplete
+                      size="small" fullWidth
+                      options={projectList}
+                      getOptionLabel={(pr) => pr.name || pr.title || `پروژه #${pr.id}`}
+                      value={projectList.find(pr => pr.id === pa.project) || null}
+                      onChange={(e, v) => updateProjectAllocation(idx, 'project', v ? v.id : '')}
+                      isOptionEqualToValue={(opt, val) => opt.id === val.id}
+                      renderInput={(params) => <TextField {...params} label="پروژه" sx={fieldSx} />}
+                    />
                   </Grid>
                   <Grid item xs={12} sm={4}>
                     <TextField size="small" fullWidth label="درصد از قرارداد (%)" type="number" value={pa.percentage} sx={fieldSx} onChange={e => updateProjectAllocation(idx, 'percentage', e.target.value)} />
@@ -328,12 +339,15 @@ const ContractNewPage = () => {
         <Grid container spacing={1.5}>
           <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`مبلغ قرارداد (${currencyLabel})`} value={form.amount} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, amount: v }))} /></Grid>
           <Grid item xs={12} md={3}>
-            <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>واحد ارز</InputLabel>
-              <Select value={form.currency || ''} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
-                <MenuItem value="">—</MenuItem>
-                {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="small" fullWidth
+              options={currencyList}
+              getOptionLabel={(c) => `${c.name} (${c.code})`}
+              value={currencyList.find(c => c.id === form.currency) || null}
+              onChange={(e, v) => setForm(p => ({ ...p, currency: v ? v.id : '' }))}
+              isOptionEqualToValue={(opt, val) => opt.id === val.id}
+              renderInput={(params) => <TextField {...params} label="واحد ارز" sx={fieldSx} />}
+            />
           </Grid>
           <Grid item xs={12} md={3}><MoneyInput size="small" fullWidth label={`پیش‌پرداخت (${currencyLabel})`} value={form.advance_payment} sx={fieldSx} onChange={(v) => setForm(p => ({ ...p, advance_payment: v }))} /></Grid>
           <Grid item xs={12} md={3}><TextField size="small" fullWidth label="درصد حسن انجام کار" type="number" value={form.retention_percent} sx={fieldSx} onChange={e => setForm(p => ({ ...p, retention_percent: e.target.value }))} /></Grid>
@@ -414,12 +428,15 @@ const ContractNewPage = () => {
         <SectionHeader icon={<BadgeIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#0ea5e9" title="امضاکننده مجاز" />
         <Grid container spacing={1.5}>
           <Grid item xs={12} md={6}>
-            <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>امضاکنندهٔ مجاز</InputLabel>
-              <Select value={form.signatory || ''} label="امضاکنندهٔ مجاز" onChange={e => setForm(p => ({ ...p, signatory: e.target.value }))}>
-                <MenuItem value="">—</MenuItem>
-                {signatoryList.map(s => <MenuItem key={s.id} value={s.id}>{s.full_name}{s.position ? ` — ${s.position}` : ''}</MenuItem>)}
-              </Select>
-            </FormControl>
+            <Autocomplete
+              size="small" fullWidth
+              options={signatoryList}
+              getOptionLabel={(s) => `${s.full_name}${s.position ? ` — ${s.position}` : ''}`}
+              value={signatoryList.find(s => s.id === form.signatory) || null}
+              onChange={(e, v) => setForm(p => ({ ...p, signatory: v ? v.id : '' }))}
+              isOptionEqualToValue={(opt, val) => opt.id === val.id}
+              renderInput={(params) => <TextField {...params} label="امضاکنندهٔ مجاز" sx={fieldSx} />}
+            />
           </Grid>
         </Grid>
 
