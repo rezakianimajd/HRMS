@@ -19,7 +19,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import LockIcon from '@mui/icons-material/Lock';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
-import { toGregorian, getJalaliParts } from '../core/utils/dateUtils';
+import { toGregorian, toJalali, getJalaliParts } from '../core/utils/dateUtils';
 import { currencyLabel, CONTRACT_STATUS_COLORS } from '../core/theme/tokens';
 
 const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
@@ -79,9 +79,14 @@ const ContractCalendarPage = () => {
     list.forEach(c => {
       const base = c.subject || '—';
       const party = `${c.party_name || '—'} · ${c.number || '—'}`;
+      const lastAdd = (c.addendums || []).length ? c.addendums.reduce((m, a) => (a.date > m.date ? a : m), c.addendums[0]) : null;
+      const newEnd = lastAdd?.new_end_date;
       push(`${c.id}-sign`, c, c.signing_date, 'signing', base, party, c.amount);
       push(`${c.id}-start`, c, c.start_date, 'start', base, party, c.amount);
-      push(`${c.id}-end`, c, c.end_date, 'end', base, party, c.amount);
+      push(`${c.id}-end`, c, c.end_date, 'end', base, newEnd && newEnd !== c.end_date ? `${party} · طی الحاقیه تمدید تا ${toJalali(newEnd)}` : party, c.amount);
+      if (newEnd && newEnd !== c.end_date) {
+        push(`${c.id}-end-addendum`, c, newEnd, 'end', base, `${party} · پایان با الحاقیه`, c.amount);
+      }
       (c.invoices || []).forEach(x => push(`inv-${x.id}`, c, x.date, 'invoice', `فاکتور ${x.number || '—'}`, base, x.total));
       (c.statements || []).forEach(x => push(`stmt-${x.id}`, c, x.date, 'statement', `صورت‌وضعیت ${x.number || '—'}`, base, x.net_amount));
       (c.payments || []).forEach(x => push(`pay-${x.id}`, c, x.date, 'payment', 'پرداخت', `${base}${x.reference ? ` · ${x.reference}` : ''}`, x.amount));

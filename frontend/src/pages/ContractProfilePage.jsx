@@ -119,16 +119,15 @@ const ContractProfilePage = () => {
 
   const totalPaid = (c.payments || []).reduce((s, x) => s + Number(x.amount || 0), 0);
   const totalInvoices = (c.invoices || []).reduce((s, x) => s + Number(x.total || 0), 0);
-  const remaining = Math.max(0, Number(c.amount || 0) - totalPaid);
-  const progressPercent = Number(c.amount) > 0 ? Math.min(100, Math.round((totalPaid / Number(c.amount)) * 100)) : 0;
-  const currencyLabel = c.currency_name || 'ریال';
-
   const addendumTotal = (c.addendums || []).reduce((s, x) => s + Number(x.amount_change || 0), 0);
   const amountWithAddendum = Number(c.amount || 0) + addendumTotal;
   const lastAddendum = (c.addendums || []).length
     ? c.addendums.reduce((m, a) => (a.date > m.date ? a : m), c.addendums[0])
     : null;
   const endDateWithAddendum = lastAddendum?.new_end_date || c.end_date;
+  const remaining = Math.max(0, amountWithAddendum - totalPaid);
+  const progressPercent = amountWithAddendum > 0 ? Math.min(100, Math.round((totalPaid / amountWithAddendum) * 100)) : 0;
+  const currencyLabel = c.currency_name || 'ریال';
 
   const timelineColor = {
     created: '#64748b', signing: '#10b981', start: '#3b82f6', end: '#ef4444',
@@ -186,7 +185,7 @@ const ContractProfilePage = () => {
             </Box>
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="caption" color="textSecondary" display="block">مبلغ قرارداد</Typography>
-              <Typography variant="h4" fontWeight={900} sx={{ color: '#b45309', direction: 'ltr' }}>{formatPersianNumber(c.amount || 0)}</Typography>
+              <Typography variant="h4" fontWeight={900} sx={{ color: '#b45309', direction: 'ltr' }}>{formatPersianNumber(amountWithAddendum)}</Typography>
               <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
             </Box>
           </Box>
@@ -219,7 +218,7 @@ const ContractProfilePage = () => {
       {/* Stats */}
       <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
         <Grid item xs={6} sm={4} md={2}>
-          <StatCard icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />} color="#f59e0b" label="مبلغ قرارداد" value={formatPersianNumber(c.amount || 0)} sub={currencyLabel} />
+          <StatCard icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />} color="#f59e0b" label="مبلغ قرارداد (با الحاقیه)" value={formatPersianNumber(amountWithAddendum)} sub={currencyLabel} />
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
           <StatCard icon={<PaymentsIcon sx={{ fontSize: 20 }} />} color="#10b981" label="پرداخت شده" value={formatPersianNumber(totalPaid)} sub={currencyLabel} />
