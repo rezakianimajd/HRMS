@@ -397,30 +397,36 @@ const ContractProfilePage = () => {
               <Typography variant="caption" color="textSecondary">قرارداد مرتبطی در همین پروژه‌ها یافت نشد.</Typography>
             ) : (
               <Box sx={{ width: '100%', overflowX: 'auto' }}>
-                <svg viewBox="0 0 300 260" style={{ width: '100%', maxWidth: 420, margin: '0 auto', display: 'block' }}>
-                  {relatedContracts.map((rc, i) => {
-                    const angle = (i / relatedContracts.length) * 2 * Math.PI - Math.PI / 2;
-                    const r = 95;
-                    const x = 150 + r * Math.cos(angle);
-                    const y = 130 + r * Math.sin(angle);
-                    return (
-                      <g key={rc.id}>
-                        <line x1="150" y1="130" x2={x} y2={y} stroke="#3b82f633" strokeWidth="1.5" strokeDasharray="4 3" />
-                        <circle cx={x} cy={y} r="26" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
-                        <text x={x} y={y - 4} textAnchor="middle" fontSize="9" fill="#3b82f6" fontWeight="700">{rc.number || '—'}</text>
-                        <text x={x} y={y + 8} textAnchor="middle" fontSize="7" fill="#64748b">{toPersianDigits(rc.amount ? (rc.amount / 1000000) : 0)} م</text>
-                      </g>
-                    );
-                  })}
-                  <circle cx="150" cy="130" r="34" fill="url(#netGrad)" stroke="#f59e0b" strokeWidth="3" />
-                  <text x="150" y="122" textAnchor="middle" fontSize="10" fill="#fff" fontWeight="900">{c.number || 'قرارداد'}</text>
-                  <text x="150" y="138" textAnchor="middle" fontSize="7" fill="#fff">مرکزی</text>
+                <svg viewBox="0 0 340 300" style={{ width: '100%', maxWidth: 560, margin: '0 auto', display: 'block' }}>
                   <defs>
                     <linearGradient id="netGrad" x1="0" y1="0" x2="1" y2="1">
                       <stop offset="0%" stopColor="#f59e0b" />
                       <stop offset="100%" stopColor="#f97316" />
                     </linearGradient>
+                    <filter id="netGlass" x="-30%" y="-30%" width="160%" height="160%">
+                      <feGaussianBlur in="SourceGraphic" stdDeviation="0.4" result="blur" />
+                      <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
                   </defs>
+                  {relatedContracts.map((rc, i) => {
+                    const angle = (i / relatedContracts.length) * 2 * Math.PI - Math.PI / 2;
+                    const r = 115;
+                    const x = 170 + r * Math.cos(angle);
+                    const y = 150 + r * Math.sin(angle);
+                    const color = ['#8b5cf6', '#10b981', '#f59e0b', '#0ea5e9', '#ec4899', '#6366f1', '#14b8a6', '#f97316'][i % 8];
+                    const party = (rc.party_name || '—').slice(0, 14);
+                    return (
+                      <g key={rc.id} style={{ cursor: 'pointer' }} onClick={() => navigate(`/external-contracts/${rc.id}`)}>
+                        <line x1="170" y1="150" x2={x} y2={y} stroke={`${color}66`} strokeWidth="2" strokeDasharray="5 4" />
+                        <circle cx={x} cy={y} r="34" fill={`${color}1f`} stroke={color} strokeWidth="2.5" filter="url(#netGlass)" />
+                        <text x={x} y={y - 6} textAnchor="middle" fontSize="9" fill={color} fontWeight="900">{rc.number || '—'}</text>
+                        <text x={x} y={y + 9} textAnchor="middle" fontSize="7" fill="#475569" fontWeight="600">{party}</text>
+                      </g>
+                    );
+                  })}
+                  <circle cx="170" cy="150" r="40" fill="url(#netGrad)" stroke="#ffffff" strokeWidth="3" filter="url(#netGlass)" />
+                  <text x="170" y="142" textAnchor="middle" fontSize="11" fill="#fff" fontWeight="900">{c.number || 'قرارداد'}</text>
+                  <text x="170" y="158" textAnchor="middle" fontSize="7" fill="#fff" fontWeight="600">{(c.party_name || 'مرکزی').slice(0, 16)}</text>
                 </svg>
               </Box>
             )}
