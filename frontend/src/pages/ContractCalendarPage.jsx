@@ -79,7 +79,8 @@ const ContractCalendarPage = () => {
     list.forEach(c => {
       const base = c.subject || '—';
       const party = `${c.party_name || '—'} · ${c.number || '—'}`;
-      const lastAdd = (c.addendums || []).length ? c.addendums.reduce((m, a) => (a.date > m.date ? a : m), c.addendums[0]) : null;
+      const addendumsWithEnd = (c.addendums || []).filter(a => a.new_end_date);
+      const lastAdd = addendumsWithEnd.length ? addendumsWithEnd.reduce((m, a) => (a.date > m.date ? a : m)) : null;
       const newEnd = lastAdd?.new_end_date;
       push(`${c.id}-sign`, c, c.signing_date, 'signing', base, party, c.amount);
       push(`${c.id}-start`, c, c.start_date, 'start', base, party, c.amount);

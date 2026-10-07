@@ -121,9 +121,8 @@ const ContractProfilePage = () => {
   const totalInvoices = (c.invoices || []).reduce((s, x) => s + Number(x.total || 0), 0);
   const addendumTotal = (c.addendums || []).reduce((s, x) => s + Number(x.amount_change || 0), 0);
   const amountWithAddendum = Number(c.amount || 0) + addendumTotal;
-  const lastAddendum = (c.addendums || []).length
-    ? c.addendums.reduce((m, a) => (a.date > m.date ? a : m), c.addendums[0])
-    : null;
+  const addendumsWithEnd = (c.addendums || []).filter(a => a.new_end_date);
+  const lastAddendum = addendumsWithEnd.length ? addendumsWithEnd.reduce((m, a) => (a.date > m.date ? a : m)) : null;
   const endDateWithAddendum = lastAddendum?.new_end_date || c.end_date;
   const remaining = Math.max(0, amountWithAddendum - totalPaid);
   const progressPercent = amountWithAddendum > 0 ? Math.min(100, Math.round((totalPaid / amountWithAddendum) * 100)) : 0;
