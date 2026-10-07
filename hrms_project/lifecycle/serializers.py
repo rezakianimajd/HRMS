@@ -26,11 +26,19 @@ class ChecklistItemSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
 
+class ChecklistItemWriteSerializer(serializers.ModelSerializer):
+    """Nested item serializer where ``checklist`` comes from the parent."""
+    class Meta:
+        model = ChecklistItem
+        fields = ['id', 'title', 'is_completed', 'completed_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
 class LifecycleChecklistSerializer(serializers.ModelSerializer):
     kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
     employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
-    items = ChecklistItemSerializer(many=True, read_only=True)
+    items = ChecklistItemWriteSerializer(many=True, required=False)
     progress = serializers.FloatField(read_only=True)
 
     class Meta:
@@ -40,6 +48,17 @@ class LifecycleChecklistSerializer(serializers.ModelSerializer):
             'progress_note', 'items', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def create(self, validated_data):
+        items_data = validated_data.pop('items', [])
+        checklist = LifecycleChecklist.objects.create(**validated_data)
+        for item_data in items_data:
+            ChecklistItem.objects.create(
+                checklist=checklist,
+                company=checklist.company,
+                title=item_data.get('title', ''),
+            )
+        return checklist
 
 
 class CalendarEventSerializer(serializers.ModelSerializer):

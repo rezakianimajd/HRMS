@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
-import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, IconButton, Chip, Avatar, Grid,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel,
@@ -64,7 +62,6 @@ const fieldSx = {
 };
 
 const LifecyclePage = () => {
-  const qc = useQueryClient();
   const [tab, setTab] = useState('onboarding');
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ employee: '', kind: 'onboarding', items: [] });
@@ -120,14 +117,12 @@ const LifecyclePage = () => {
   };
 
   const doCreate = async () => {
-    const finalItems = [...form.items];
     try {
-      const checklist = await createMutation.mutateAsync({ employee: form.employee, kind: form.kind });
-      const cid = checklist.id;
-      for (const title of finalItems) {
-        await axiosInstance.post('/checklist-items/', { checklist: cid, title });
-      }
-      qc.invalidateQueries({ queryKey: ['lifecycle-checklists'] });
+      await createMutation.mutateAsync({
+        employee: form.employee,
+        kind: form.kind,
+        items: form.items.map((title) => ({ title })),
+      });
       setOpen(false);
       setMsg('چک‌لیست ایجاد شد.');
       setTimeout(() => setMsg(''), 2500);
