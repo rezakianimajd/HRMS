@@ -14,6 +14,13 @@ import { toJalali } from '../core/utils/dateUtils';
 import { DonutChart } from '../core/components/charts/Charts';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS, currencyLabel } from '../core/theme/tokens';
 
+const effEnd = (c) => {
+  const withEnd = (c.addendums || []).filter(a => a.new_end_date);
+  const last = withEnd.length ? withEnd.reduce((m, a) => (a.date > m.date ? a : m)) : null;
+  return last?.new_end_date || c.end_date;
+};
+const effAmount = (c) => Number(c.amount || 0) + (c.addendums || []).reduce((s, a) => s + Number(a.amount_change || 0), 0);
+
 const HBarList = ({ data }) => {
   const maxV = Math.max(...data.map(x => x.value), 1);
   return (
@@ -55,8 +62,9 @@ const ContractsDashboardPage = () => {
   const projectCounts = s.project_counts || {};
 
   const expiringItems = useMemo(() => items.filter(c => {
-    if (!c.end_date) return false;
-    const days = Math.ceil((new Date(c.end_date) - new Date()) / 86400000);
+    const end = effEnd(c);
+    if (!end) return false;
+    const days = Math.ceil((new Date(end) - new Date()) / 86400000);
     return days >= 0 && days <= 60;
   }), [items]);
 
@@ -175,8 +183,8 @@ const ContractsDashboardPage = () => {
               <Box key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                 <Typography variant="body2" fontWeight={700}>{c.subject}</Typography>
                 <Typography variant="caption" color="textSecondary">{c.party_name}</Typography>
-                <Chip size="small" color="warning" label={`تا ${toJalali(c.end_date)}`} />
-                <Typography variant="caption" fontWeight={700}>{formatPersianNumber(c.amount || 0)} {currencyLabel(c)}</Typography>
+                <Chip size="small" color="warning" label={`تا ${toJalali(effEnd(c))}`} />
+                <Typography variant="caption" fontWeight={700}>{formatPersianNumber(effAmount(c))} {currencyLabel(c)}</Typography>
               </Box>
             ))}
           </Stack>
@@ -202,7 +210,7 @@ const ContractsDashboardPage = () => {
                     </Typography>
                   </Box>
                   <Chip size="small" label={STATUS_LABELS[c.status] || c.status} color={c.status === 'active' ? 'success' : 'default'} variant="outlined" />
-                  <Typography variant="caption" fontWeight={800}>{formatPersianNumber(c.amount || 0)} {currencyLabel(c)}</Typography>
+                  <Typography variant="caption" fontWeight={800}>{formatPersianNumber(effAmount(c))} {currencyLabel(c)}</Typography>
                 </Box>
               </Paper>
             ))}

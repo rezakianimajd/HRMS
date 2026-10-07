@@ -22,17 +22,25 @@ const ContractExpiringPage = () => {
   });
   const list = Array.isArray(data) ? data : data?.results || [];
 
+  // تاریخ پایان مؤثر (با در نظر گرفتن آخرین الحاقیه) و مبلغ مؤثر (با الحاقیه)
+  const effEnd = (c) => {
+    const withEnd = (c.addendums || []).filter(a => a.new_end_date);
+    const last = withEnd.length ? withEnd.reduce((m, a) => (a.date > m.date ? a : m)) : null;
+    return last?.new_end_date || c.end_date;
+  };
+  const effAmount = (c) => Number(c.amount || 0) + (c.addendums || []).reduce((s, a) => s + Number(a.amount_change || 0), 0);
+
   const buckets = useMemo(() => {
     const now = new Date();
     const days = (d) => Math.ceil((new Date(d) - now) / 86400000);
-    const withEnd = list.filter(c => c.end_date);
+    const withEnd = list.filter(c => effEnd(c));
     const q = (search || '').trim().toLowerCase();
     const matches = (c) => !q || (c.subject || '').toLowerCase().includes(q) || (c.party_name || '').toLowerCase().includes(q) || (c.number || '').toLowerCase().includes(q);
     return {
-      expired: withEnd.filter(c => days(c.end_date) < 0 && matches(c)),
-      soon30: withEnd.filter(c => days(c.end_date) >= 0 && days(c.end_date) <= 30 && matches(c)),
-      soon60: withEnd.filter(c => days(c.end_date) > 30 && days(c.end_date) <= 60 && matches(c)),
-      soon90: withEnd.filter(c => days(c.end_date) > 60 && days(c.end_date) <= 90 && matches(c)),
+      expired: withEnd.filter(c => days(effEnd(c)) < 0 && matches(c)),
+      soon30: withEnd.filter(c => days(effEnd(c)) >= 0 && days(effEnd(c)) <= 30 && matches(c)),
+      soon60: withEnd.filter(c => days(effEnd(c)) > 30 && days(effEnd(c)) <= 60 && matches(c)),
+      soon90: withEnd.filter(c => days(effEnd(c)) > 60 && days(effEnd(c)) <= 90 && matches(c)),
     };
   }, [list, search]);
 
@@ -52,7 +60,7 @@ const ContractExpiringPage = () => {
       ) : (
         <Stack spacing={0.75}>
           {items.map(c => {
-            const d = Math.ceil((new Date(c.end_date) - new Date()) / 86400000);
+            const d = Math.ceil((new Date(effEnd(c)) - new Date()) / 86400000);
             return (
               <Paper key={c.id} variant="outlined" sx={{ p: 1.25, borderRadius: '12px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', background: 'rgba(255,255,255,0.5)' }}>
                 <Avatar sx={{ width: 36, height: 36, background: CONTRACT_STATUS_COLORS[c.status] || '#64748b' }}>
@@ -62,8 +70,8 @@ const ContractExpiringPage = () => {
                   <Typography variant="body2" fontWeight={800}>{c.subject}</Typography>
                   <Typography variant="caption" color="textSecondary">{c.party_name} · {c.number || '—'}</Typography>
                 </Box>
-                <Typography variant="caption" fontWeight={700} color="#b45309">{formatPersianNumber(c.amount || 0)} {currencyLabel(c)}</Typography>
-                <Typography variant="caption" color="textSecondary">پایان: {toJalali(c.end_date)}</Typography>
+                <Typography variant="caption" fontWeight={700} color="#b45309">{formatPersianNumber(effAmount(c))} {currencyLabel(c)}</Typography>
+                <Typography variant="caption" color="textSecondary">پایان: {toJalali(effEnd(c))}</Typography>
                 <Chip size="small" label={d < 0 ? `${formatPersianNumber(Math.abs(d))} روز گذشته` : `${formatPersianNumber(d)} روز مانده`} sx={{ bgcolor: `${color}22`, color, fontWeight: 700 }} />
                 <Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => navigate(`/external-contracts/${c.id}`)}>پرونده</Button>
               </Paper>
