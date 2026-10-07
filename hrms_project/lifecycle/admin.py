@@ -4,9 +4,9 @@ from lifecycle.models import Asset, LifecycleChecklist, ChecklistItem, CalendarE
 
 @admin.register(Asset)
 class AssetAdmin(admin.ModelAdmin):
-    list_display = ('name', 'asset_type', 'employee', 'status', 'assigned_date', 'returned_date')
+    list_display = ('name', 'asset_type', 'asset_number', 'serial_number', 'employee', 'status', 'assigned_date', 'returned_date')
     list_filter = ('asset_type', 'status')
-    search_fields = ('name', 'serial_number', 'employee__first_name', 'employee__last_name')
+    search_fields = ('name', 'serial_number', 'asset_number', 'employee__first_name', 'employee__last_name')
 
 
 @admin.register(LifecycleChecklist)

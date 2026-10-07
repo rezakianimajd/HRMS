@@ -21,7 +21,7 @@ class AssetViewSet(viewsets.ModelViewSet):
     queryset = Asset.objects.select_related('employee')
     serializer_class = AssetSerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
-    search_fields = ['name', 'serial_number', 'employee__first_name', 'employee__last_name', 'employee__employee_id']
+    search_fields = ['name', 'serial_number', 'asset_number', 'employee__first_name', 'employee__last_name', 'employee__employee_id']
     ordering_fields = ['assigned_date', 'created_at', 'status']
     ordering = ['-created_at']
 

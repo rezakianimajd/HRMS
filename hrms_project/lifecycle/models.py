@@ -15,9 +15,18 @@ class Asset(BaseModel):
 
     class AssetType(models.TextChoices):
         LAPTOP = 'laptop', _('لپ‌تاپ')
+        COMPUTER = 'computer', _('سیستم رایانه‌ای')
         PHONE = 'phone', _('موبایل')
+        TELEPHONE = 'telephone', _('تلفن ثابت')
         DESK = 'desk', _('میز کار')
+        CHAIR = 'chair', _('صندلی')
         MONITOR = 'monitor', _('مانیتور')
+        SCANNER = 'scanner', _('اسکنر')
+        PRINTER = 'printer', _('پرینتر')
+        MONEY_COUNTER = 'money_counter', _('پول‌شمار')
+        OFFICE_SUPPLIES = 'office_supplies', _('لوازم اداری')
+        CABINET = 'cabinet', _('کمد')
+        WOODEN_FILES = 'wooden_files', _('فایل‌های چوبی')
         KEY = 'key', _('کلید')
         OTHER = 'other', _('سایر')
 
@@ -33,6 +42,7 @@ class Asset(BaseModel):
         verbose_name=_('نوع دارایی'),
     )
     serial_number = models.CharField(max_length=100, blank=True, verbose_name=_('سریال / شناسه'))
+    asset_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره اموال'))
     employee = models.ForeignKey(
         'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='assets', verbose_name=_('پرسنل واگذارشده'),

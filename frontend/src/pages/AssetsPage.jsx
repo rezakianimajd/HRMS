@@ -7,14 +7,27 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import LaptopIcon from '@mui/icons-material/Laptop';
+import DesktopWindowsIcon from '@mui/icons-material/DesktopWindows';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
-import DesktopAccessDisabledIcon from '@mui/icons-material/DesktopAccessDisabled';
+import PhoneIcon from '@mui/icons-material/Phone';
+import TableRestaurantIcon from '@mui/icons-material/TableRestaurant';
+import ChairIcon from '@mui/icons-material/Chair';
+import MonitorIcon from '@mui/icons-material/Monitor';
+import DocumentScannerIcon from '@mui/icons-material/DocumentScanner';
+import PrintIcon from '@mui/icons-material/Print';
+import PaidIcon from '@mui/icons-material/Paid';
+import CreateIcon from '@mui/icons-material/Create';
+import DoorSlidingIcon from '@mui/icons-material/DoorSliding';
+import FolderIcon from '@mui/icons-material/Folder';
 import KeyIcon from '@mui/icons-material/Key';
 import Inventory2Icon from '@mui/icons-material/Inventory2';
 import UndoIcon from '@mui/icons-material/Undo';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import ApartmentIcon from '@mui/icons-material/Apartment';
+import QrCode2Icon from '@mui/icons-material/QrCode2';
+import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip, Cell } from 'recharts';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useAssets, useCreateAsset, useReturnAsset, useUpdateAsset, useDeleteAsset } from '../core/hooks/useLifecycle';
 import { useEmployees } from '../core/hooks/useEmployees';
@@ -23,12 +36,23 @@ import { toJalali } from '../core/utils/dateUtils';
 
 const TYPE_META = {
   laptop: { label: 'لپ‌تاپ', icon: <LaptopIcon fontSize="small" />, color: '#6366f1' },
+  computer: { label: 'سیستم رایانه‌ای', icon: <DesktopWindowsIcon fontSize="small" />, color: '#0ea5e9' },
   phone: { label: 'موبایل', icon: <PhoneAndroidIcon fontSize="small" />, color: '#10b981' },
-  desk: { label: 'میز کار', icon: <DesktopAccessDisabledIcon fontSize="small" />, color: '#f59e0b' },
-  monitor: { label: 'مانیتور', icon: <Inventory2Icon fontSize="small" />, color: '#3b82f6' },
+  telephone: { label: 'تلفن ثابت', icon: <PhoneIcon fontSize="small" />, color: '#14b8a6' },
+  desk: { label: 'میز کار', icon: <TableRestaurantIcon fontSize="small" />, color: '#f59e0b' },
+  chair: { label: 'صندلی', icon: <ChairIcon fontSize="small" />, color: '#d97706' },
+  monitor: { label: 'مانیتور', icon: <MonitorIcon fontSize="small" />, color: '#3b82f6' },
+  scanner: { label: 'اسکنر', icon: <DocumentScannerIcon fontSize="small" />, color: '#8b5cf6' },
+  printer: { label: 'پرینتر', icon: <PrintIcon fontSize="small" />, color: '#ec4899' },
+  money_counter: { label: 'پول‌شمار', icon: <PaidIcon fontSize="small" />, color: '#059669' },
+  office_supplies: { label: 'لوازم اداری', icon: <CreateIcon fontSize="small" />, color: '#64748b' },
+  cabinet: { label: 'کمد', icon: <DoorSlidingIcon fontSize="small" />, color: '#a855f7' },
+  wooden_files: { label: 'فایل‌های چوبی', icon: <FolderIcon fontSize="small" />, color: '#b45309' },
   key: { label: 'کلید', icon: <KeyIcon fontSize="small" />, color: '#8b5cf6' },
   other: { label: 'سایر', icon: <Inventory2Icon fontSize="small" />, color: '#94a3b8' },
 };
+
+const CHART_COLORS = ['#6366f1', '#0ea5e9', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#d97706', '#3b82f6', '#a855f7', '#059669', '#b45309', '#64748b'];
 
 const STATUS_META = {
   assigned: { label: 'واگذارشده', color: '#10b981' },
@@ -48,7 +72,7 @@ const fieldSx = {
 };
 
 const emptyForm = {
-  name: '', asset_type: 'laptop', serial_number: '',
+  name: '', asset_type: 'laptop', serial_number: '', asset_number: '',
   employee: '', assigned_date: '', return_due_date: '', status: 'assigned', notes: '',
 };
 
@@ -86,6 +110,24 @@ const AssetsPage = () => {
     damaged: items.filter((a) => a.status === 'damaged').length,
   };
 
+  const deptCounts = {};
+  items.forEach((a) => {
+    const d = a.employee_department || 'بدون دپارتمان';
+    deptCounts[d] = (deptCounts[d] || 0) + 1;
+  });
+  const deptData = Object.entries(deptCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
+  const typeCounts = {};
+  items.forEach((a) => {
+    const t = TYPE_META[a.asset_type]?.label || a.asset_type_display || 'سایر';
+    typeCounts[t] = (typeCounts[t] || 0) + 1;
+  });
+  const typeData = Object.entries(typeCounts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count);
+
   const openAdd = () => { setEditId(null); setForm(emptyForm); setOpen(true); };
 
   const openEdit = (a) => {
@@ -94,6 +136,7 @@ const AssetsPage = () => {
       name: a.name || '',
       asset_type: a.asset_type || 'other',
       serial_number: a.serial_number || '',
+      asset_number: a.asset_number || '',
       employee: a.employee ?? '',
       assigned_date: a.assigned_date || '',
       return_due_date: a.return_due_date || '',
@@ -104,8 +147,8 @@ const AssetsPage = () => {
   };
 
   const doSave = () => {
+    if (!form.name.trim() || !form.employee) return;
     const p = { ...form };
-    if (p.employee === '' || p.employee == null) p.employee = null;
     if (p.assigned_date === '') p.assigned_date = null;
     if (p.return_due_date === '') p.return_due_date = null;
     if (editId) {
@@ -165,22 +208,75 @@ const AssetsPage = () => {
       {/* KPI cards */}
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
         {[
-          { label: 'کل تجهیزات', value: counts.total, color: '#6366f1', icon: <Inventory2Icon sx={{ fontSize: 18 }} /> },
-          { label: 'واگذارشده', value: counts.assigned, color: '#10b981', icon: <LaptopIcon sx={{ fontSize: 18 }} /> },
-          { label: 'تحویل‌شده', value: counts.returned, color: '#64748b', icon: <UndoIcon sx={{ fontSize: 18 }} /> },
-          { label: 'مفقود', value: counts.lost, color: '#ef4444', icon: <DeleteIcon sx={{ fontSize: 18 }} /> },
-          { label: 'آسیب‌دیده', value: counts.damaged, color: '#f59e0b', icon: <DesktopAccessDisabledIcon sx={{ fontSize: 18 }} /> },
+          { label: 'کل تجهیزات', value: counts.total, color: '#6366f1', icon: <Inventory2Icon /> },
+          { label: 'واگذارشده', value: counts.assigned, color: '#10b981', icon: <LaptopIcon /> },
+          { label: 'تحویل‌شده', value: counts.returned, color: '#64748b', icon: <UndoIcon /> },
+          { label: 'مفقود', value: counts.lost, color: '#ef4444', icon: <DeleteIcon /> },
+          { label: 'آسیب‌دیده', value: counts.damaged, color: '#f59e0b', icon: <CreateIcon /> },
         ].map(k => (
           <Grid item xs={6} sm={4} md={2.4} key={k.label}>
-            <Paper sx={{ p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)', display: 'flex', alignItems: 'center', gap: 1.25 }}>
-              <Avatar sx={{ width: 36, height: 36, bgcolor: `${k.color}18`, color: k.color }}>{k.icon}</Avatar>
-              <Box>
-                <Typography variant="caption" color="textSecondary" display="block" noWrap>{k.label}</Typography>
-                <Typography variant="h6" fontWeight={800} color={k.color} noWrap>{formatPersianNumber(k.value)}</Typography>
-              </Box>
+            <Paper sx={{
+              p: 1.75, borderRadius: '16px', textAlign: 'center',
+              background: `linear-gradient(160deg, ${k.color}14, rgba(255,255,255,0.7))`,
+              border: `1px solid ${k.color}24`, boxShadow: `0 4px 16px ${k.color}0d`,
+              transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 30px ${k.color}22` },
+            }}>
+              <Avatar sx={{ width: 38, height: 38, mx: 'auto', mb: 0.75, bgcolor: `${k.color}1a`, color: k.color }}>{k.icon}</Avatar>
+              <Typography variant="h5" fontWeight={900} sx={{ color: k.color, direction: 'ltr' }}>{formatPersianNumber(k.value)}</Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700 }}>{k.label}</Typography>
             </Paper>
           </Grid>
         ))}
+      </Grid>
+
+      {/* Charts */}
+      <Grid container spacing={2} sx={{ mb: 2 }}>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(100,116,139,0.14)', height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <Avatar sx={{ width: 34, height: 34, bgcolor: '#6366f118', color: '#6366f1' }}><ApartmentIcon fontSize="small" /></Avatar>
+              <Typography variant="subtitle2" fontWeight={800} color="#3730a3">توزیع تجهیزات بر اساس دپارتمان</Typography>
+            </Box>
+            {deptData.length === 0 ? (
+              <Typography variant="body2" color="textSecondary" sx={{ py: 4, textAlign: 'center' }}>داده‌ای برای نمایش نیست.</Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={deptData} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(100,116,139,0.15)" />
+                  <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11 }} stroke="transparent" />
+                  <YAxis type="category" dataKey="name" width={110} tick={{ fontSize: 11, fill: '#475569' }} stroke="transparent" />
+                  <ReTooltip cursor={{ fill: 'rgba(99,102,241,0.06)' }} formatter={(v) => [formatPersianNumber(v), 'تعداد']} />
+                  <Bar dataKey="count" radius={[0, 6, 6, 0]} barSize={18}>
+                    {deptData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
+        <Grid item xs={12} md={6}>
+          <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(100,116,139,0.14)', height: '100%' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <Avatar sx={{ width: 34, height: 34, bgcolor: '#10b98118', color: '#10b981' }}><Inventory2Icon fontSize="small" /></Avatar>
+              <Typography variant="subtitle2" fontWeight={800} color="#047857">توزیع تجهیزات بر اساس نوع</Typography>
+            </Box>
+            {typeData.length === 0 ? (
+              <Typography variant="body2" color="textSecondary" sx={{ py: 4, textAlign: 'center' }}>داده‌ای برای نمایش نیست.</Typography>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={typeData} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.15)" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#475569' }} stroke="transparent" interval={0} angle={-20} textAnchor="end" height={50} />
+                  <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="transparent" />
+                  <ReTooltip cursor={{ fill: 'rgba(16,185,129,0.06)' }} formatter={(v) => [formatPersianNumber(v), 'تعداد']} />
+                  <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={22}>
+                    {typeData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Paper>
+        </Grid>
       </Grid>
 
       {/* Filters */}
@@ -222,7 +318,6 @@ const AssetsPage = () => {
                   <TableCell sx={{ fontWeight: 700 }}>سریال</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>پرسنل</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>تاریخ واگذاری</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>بازگشت مورد انتظار</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>وضعیت</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
                 </TableRow>
@@ -235,8 +330,15 @@ const AssetsPage = () => {
                     <TableRow key={a.id} hover>
                       <TableCell>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                          <Avatar sx={{ width: 30, height: 30, bgcolor: `${tm.color}18`, color: tm.color }}>{tm.icon}</Avatar>
-                          <Typography variant="body2" fontWeight={700}>{a.name}</Typography>
+                          <Avatar sx={{ width: 34, height: 34, bgcolor: `${tm.color}18`, color: tm.color }}>{tm.icon}</Avatar>
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography variant="body2" fontWeight={700} noWrap>{a.name}</Typography>
+                            {a.asset_number && (
+                              <Typography variant="caption" color="textSecondary" sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <QrCode2Icon sx={{ fontSize: 12 }} /> اموال: {toPersianDigits(a.asset_number)}
+                              </Typography>
+                            )}
+                          </Box>
                         </Box>
                       </TableCell>
                       <TableCell>
@@ -244,9 +346,15 @@ const AssetsPage = () => {
                           sx={{ bgcolor: `${tm.color}18`, color: tm.color, fontWeight: 700, fontSize: 11 }} />
                       </TableCell>
                       <TableCell>{a.serial_number ? toPersianDigits(a.serial_number) : '—'}</TableCell>
-                      <TableCell>{a.employee_name || '—'}</TableCell>
+                      <TableCell>
+                        <Box sx={{ minWidth: 0 }}>
+                          <Typography variant="body2" fontWeight={600} noWrap>{a.employee_name || '—'}</Typography>
+                          {a.employee_department && (
+                            <Typography variant="caption" color="textSecondary" noWrap sx={{ display: 'block' }}>{a.employee_department}</Typography>
+                          )}
+                        </Box>
+                      </TableCell>
                       <TableCell>{a.assigned_date ? toJalali(a.assigned_date) : '—'}</TableCell>
-                      <TableCell>{a.return_due_date ? toJalali(a.return_due_date) : '—'}</TableCell>
                       <TableCell>
                         <Chip size="small" label={a.status_display || sm.label}
                           sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 11 }} />
@@ -298,16 +406,23 @@ const AssetsPage = () => {
                 </FormControl>
               </Grid>
             </Grid>
-            <TextField fullWidth size="small" label="سریال / شناسه" value={form.serial_number} sx={fieldSx}
-              onChange={(e) => setForm((p) => ({ ...p, serial_number: e.target.value }))} />
+            <Grid container spacing={1.5}>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="شماره اموال" value={form.asset_number} sx={fieldSx}
+                  onChange={(e) => setForm((p) => ({ ...p, asset_number: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <TextField fullWidth size="small" label="سریال / شناسه" value={form.serial_number} sx={fieldSx}
+                  onChange={(e) => setForm((p) => ({ ...p, serial_number: e.target.value }))} />
+              </Grid>
+            </Grid>
 
             <Divider />
 
             <Typography variant="subtitle2" fontWeight={800} color="#047857">واگذاری و تاریخ‌ها</Typography>
             <FormControl fullWidth size="small" sx={fieldSx}>
-              <InputLabel>پرسنل واگذارشده</InputLabel>
-              <Select value={form.employee || ''} label="پرسنل واگذارشده" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
-                <MenuItem value="">بدون پرسنل</MenuItem>
+              <InputLabel>پرسنل استفاده‌کننده *</InputLabel>
+              <Select value={form.employee || ''} label="پرسنل استفاده‌کننده *" onChange={(e) => setForm((p) => ({ ...p, employee: e.target.value }))}>
                 {empList.map((e) => <MenuItem key={e.id} value={e.id}>{e.full_name} ({e.employee_id})</MenuItem>)}
               </Select>
             </FormControl>
@@ -338,7 +453,7 @@ const AssetsPage = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, pb: 2 }}>
           <Button onClick={() => { setOpen(false); setEditId(null); setForm(emptyForm); }}>انصراف</Button>
-          <Button variant="contained" disabled={!form.name} onClick={doSave}
+          <Button variant="contained" disabled={!form.name.trim() || !form.employee} onClick={doSave}
             sx={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', borderRadius: '10px', px: 3 }}>
             {editId ? 'ذخیره تغییرات' : 'ثبت تجهیز'}
           </Button>
@@ -367,8 +482,10 @@ const AssetsPage = () => {
                 <Grid container spacing={1.5}>
                   {[
                     { label: 'نوع', value: viewAsset.asset_type_display || tm.label },
+                    { label: 'شماره اموال', value: viewAsset.asset_number ? toPersianDigits(viewAsset.asset_number) : '—' },
                     { label: 'سریال / شناسه', value: viewAsset.serial_number ? toPersianDigits(viewAsset.serial_number) : '—' },
                     { label: 'پرسنل', value: viewAsset.employee_name || '—' },
+                    { label: 'دپارتمان', value: viewAsset.employee_department || '—' },
                     { label: 'تاریخ واگذاری', value: viewAsset.assigned_date ? toJalali(viewAsset.assigned_date) : '—' },
                     { label: 'بازگشت مورد انتظار', value: viewAsset.return_due_date ? toJalali(viewAsset.return_due_date) : '—' },
                     { label: 'تاریخ تحویل', value: viewAsset.returned_date ? toJalali(viewAsset.returned_date) : '—' },

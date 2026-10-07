@@ -7,13 +7,15 @@ class AssetSerializer(serializers.ModelSerializer):
     asset_type_display = serializers.CharField(source='get_asset_type_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    employee_department = serializers.CharField(source='employee.department.name', read_only=True, default='')
 
     class Meta:
         model = Asset
         fields = [
-            'id', 'name', 'asset_type', 'asset_type_display', 'serial_number',
-            'employee', 'employee_name', 'assigned_date', 'return_due_date',
-            'returned_date', 'status', 'status_display', 'notes',
+            'id', 'name', 'asset_type', 'asset_type_display', 'serial_number', 'asset_number',
+            'employee', 'employee_name', 'employee_code', 'employee_department',
+            'assigned_date', 'return_due_date', 'returned_date', 'status', 'status_display', 'notes',
             'is_active', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
