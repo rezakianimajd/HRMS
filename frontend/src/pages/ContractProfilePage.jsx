@@ -130,6 +130,7 @@ const ContractProfilePage = () => {
   const totalPaid = (c.payments || []).reduce((s, x) => s + Number(x.amount || 0), 0);
   const totalInvoices = (c.invoices || []).reduce((s, x) => s + Number(x.total || 0), 0);
   const remaining = Math.max(0, Number(c.amount || 0) - totalPaid);
+  const progressPercent = Number(c.amount) > 0 ? Math.min(100, Math.round((totalPaid / Number(c.amount)) * 100)) : 0;
 
   const currencyLabel = c.currency_name || 'ریال';
   const currencySymbol = c.currency_symbol || '﷼';
@@ -301,35 +302,25 @@ const ContractProfilePage = () => {
           {tabIndex === 0 && (
             <Box>
               <Grid container spacing={2} sx={{ mb: 2 }}>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-                    <Typography variant="caption" color="textSecondary">مبلغ قرارداد</Typography>
-                    <Typography variant="h6" fontWeight={800} color="#f59e0b">{formatPersianNumber(c.amount || 0)}</Typography>
-                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-                    <Typography variant="caption" color="textSecondary">جمع پرداخت‌ها</Typography>
-                    <Typography variant="h6" fontWeight={800} color="#10b981">{formatPersianNumber(totalPaid)}</Typography>
-                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-                    <Typography variant="caption" color="textSecondary">جمع فاکتورها</Typography>
-                    <Typography variant="h6" fontWeight={800} color="#8b5cf6">{formatPersianNumber(totalInvoices)}</Typography>
-                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
-                  </Paper>
-                </Grid>
-                <Grid item xs={12} sm={6} md={3}>
-                  <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-                    <Typography variant="caption" color="textSecondary">باقی‌مانده</Typography>
-                    <Typography variant="h6" fontWeight={800} color="#ef4444">{formatPersianNumber(remaining)}</Typography>
-                    <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
-                  </Paper>
-                </Grid>
+                <AmountCard icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />} color="#f59e0b" label="مبلغ قرارداد" value={formatPersianNumber(c.amount || 0)} currency={currencyLabel} />
+                <AmountCard icon={<PaymentsIcon sx={{ fontSize: 20 }} />} color="#10b981" label="جمع پرداخت‌ها" value={formatPersianNumber(totalPaid)} currency={currencyLabel} />
+                <AmountCard icon={<ReceiptIcon sx={{ fontSize: 20 }} />} color="#8b5cf6" label="جمع فاکتورها" value={formatPersianNumber(totalInvoices)} currency={currencyLabel} />
+                <AmountCard icon={<ScheduleIcon sx={{ fontSize: 20 }} />} color="#ef4444" label="باقی‌مانده" value={formatPersianNumber(remaining)} currency={currencyLabel} />
               </Grid>
+
+              {/* پیشرفت مالی */}
+              <Paper sx={{ ...glassPaper, p: 2, mb: 2 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                  <Typography variant="subtitle2" fontWeight={800}>پیشرفت مالی</Typography>
+                  <Typography variant="body2" fontWeight={900} color="#10b981">{toPersianDigits(progressPercent)}٪</Typography>
+                </Box>
+                <Box sx={{ height: 12, bgcolor: 'rgba(0,0,0,0.06)', borderRadius: '10px', overflow: 'hidden' }}>
+                  <Box sx={{ width: `${progressPercent}%`, height: '100%', background: 'linear-gradient(90deg,#10b981,#14b8a6)', borderRadius: '10px', transition: 'width 0.6s ease' }} />
+                </Box>
+                <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.75 }}>
+                  {formatPersianNumber(totalPaid)} از {formatPersianNumber(c.amount || 0)} {currencyLabel} پرداخت شده
+                </Typography>
+              </Paper>
 
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}>
@@ -362,19 +353,26 @@ const ContractProfilePage = () => {
 
           {/* تایم‌لاین */}
           {tabIndex === 1 && (
-            <Box sx={{ position: 'relative', '&::before': { content: '""', position: 'absolute', right: 12, top: 0, bottom: 0, width: 2, background: 'rgba(99,102,241,0.18)' } }}>
+            <Box sx={{ position: 'relative', '&::before': { content: '""', position: 'absolute', right: 14, top: 4, bottom: 4, width: 3, background: 'linear-gradient(180deg,#6366f133,#6366f10f)' } }}>
               {timeline.length === 0 ? (
                 <Typography variant="body2" color="textSecondary">رویدادی ثبت نشده است.</Typography>
               ) : (
-                <Stack spacing={2}>
-                  {timeline.map((ev, i) => (
-                    <Box key={i} sx={{ position: 'relative', pr: 4 }}>
-                      <Box sx={{ position: 'absolute', right: 5, top: 4, width: 14, height: 14, borderRadius: '50%', background: timelineColor[ev.type] || '#6366f1', border: '3px solid #fff', boxShadow: '0 0 0 2px rgba(99,102,241,0.2)' }} />
-                      <Typography variant="caption" color="textSecondary">{toJalali(ev.date)}</Typography>
-                      <Typography variant="body2" fontWeight={700}>{ev.title}</Typography>
-                      {ev.extra && <Typography variant="caption" color="textSecondary">{ev.extra}</Typography>}
-                    </Box>
-                  ))}
+                <Stack spacing={1.5}>
+                  {timeline.map((ev, i) => {
+                    const color = timelineColor[ev.type] || '#6366f1';
+                    return (
+                      <Box key={i} sx={{ position: 'relative', pr: 5 }}>
+                        <Box sx={{ position: 'absolute', right: 6, top: 12, width: 18, height: 18, borderRadius: '50%', background: color, border: '3px solid #fff', boxShadow: `0 0 0 3px ${color}33`, zIndex: 1 }} />
+                        <Paper sx={{ p: 1.5, borderRadius: '12px', background: `linear-gradient(135deg, ${color}0e, rgba(255,255,255,0.5))`, border: `1px solid ${color}22` }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" fontWeight={800}>{ev.title}</Typography>
+                            <Chip size="small" label={toJalali(ev.date)} sx={{ bgcolor: `${color}18`, color, height: 18, fontSize: 10, fontWeight: 700 }} />
+                          </Box>
+                          {ev.extra && <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.25 }}>{ev.extra}</Typography>}
+                        </Paper>
+                      </Box>
+                    );
+                  })}
                 </Stack>
               )}
             </Box>
@@ -429,8 +427,12 @@ const ContractProfilePage = () => {
                   <SectionTitle color="#8b5cf6" icon={<ReceiptIcon sx={{ fontSize: 16 }} />}>فاکتورها</SectionTitle>
                   {renderMini(c.invoices, 'فاکتوری نیست', x => (
                     <Paper key={x.id} variant="outlined" sx={{ p: 1, borderRadius: '10px' }}>
-                      <Typography variant="body2" fontWeight={700}>{x.number || '—'}</Typography>
-                      <Typography variant="caption" color="textSecondary">{formatPersianNumber(x.total || 0)} ریال {x.is_paid ? '· پرداخت شده' : ''}</Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" fontWeight={700}>{x.number || '—'}</Typography>
+                        <Chip size="small" label={x.is_paid ? 'پرداخت شده' : 'باز'} sx={{ bgcolor: x.is_paid ? '#10b98118' : '#f59e0b18', color: x.is_paid ? '#059669' : '#b45309', height: 18, fontSize: 10 }} />
+                      </Box>
+                      <Typography variant="caption" color="textSecondary">{toJalali(x.date)}</Typography>
+                      <Typography variant="body2" fontWeight={800} color="#8b5cf6">{formatPersianNumber(x.total || 0)} {x.currency_symbol || currencyLabel}</Typography>
                     </Paper>
                   ))}
                 </Paper>
@@ -440,8 +442,12 @@ const ContractProfilePage = () => {
                   <SectionTitle color="#6366f1" icon={<ReceiptLongIcon sx={{ fontSize: 16 }} />}>صورت‌وضعیت‌ها</SectionTitle>
                   {renderMini(c.statements, 'صورت‌وضعیتی نیست', x => (
                     <Paper key={x.id} variant="outlined" sx={{ p: 1, borderRadius: '10px' }}>
-                      <Typography variant="body2" fontWeight={700}>{x.number || '—'}</Typography>
-                      <Typography variant="caption" color="textSecondary">{formatPersianNumber(x.amount || 0)} ریال {x.is_approved ? '· تأیید شده' : ''}</Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" fontWeight={700}>{x.number || '—'}</Typography>
+                        <Chip size="small" label={x.is_approved ? 'تأیید شده' : 'در انتظار'} sx={{ bgcolor: x.is_approved ? '#10b98118' : '#f59e0b18', color: x.is_approved ? '#059669' : '#b45309', height: 18, fontSize: 10 }} />
+                      </Box>
+                      <Typography variant="caption" color="textSecondary">{toJalali(x.date)}</Typography>
+                      <Typography variant="body2" fontWeight={800} color="#6366f1">{formatPersianNumber((x.net_amount ?? x.amount) || 0)} {currencyLabel}</Typography>
                     </Paper>
                   ))}
                 </Paper>
@@ -452,7 +458,8 @@ const ContractProfilePage = () => {
                   {renderMini(c.payments, 'پرداختی نیست', x => (
                     <Paper key={x.id} variant="outlined" sx={{ p: 1, borderRadius: '10px' }}>
                       <Typography variant="body2" fontWeight={700}>{toJalali(x.date)}</Typography>
-                      <Typography variant="caption" color="textSecondary">{formatPersianNumber(x.amount || 0)} ریال · {x.reference || ''}</Typography>
+                      <Typography variant="body2" fontWeight={800} color="#10b981">{formatPersianNumber(x.amount || 0)} {currencyLabel}</Typography>
+                      <Typography variant="caption" color="textSecondary">{x.reference ? `مرجع: ${x.reference}` : ''}{x.method ? ` · ${x.method}` : ''}</Typography>
                     </Paper>
                   ))}
                 </Paper>
@@ -467,9 +474,27 @@ const ContractProfilePage = () => {
                 <Paper sx={{ ...glassPaper, p: 2 }}>
                   <SectionTitle color="#ec4899" icon={<EditNoteIcon sx={{ fontSize: 16 }} />}>الحاقیه‌ها</SectionTitle>
                   {renderMini(c.addendums, 'الحاقیه‌ای نیست', x => (
-                    <Paper key={x.id} variant="outlined" sx={{ p: 1, borderRadius: '10px' }}>
-                      <Typography variant="body2" fontWeight={700}>{x.number || '—'} · {toJalali(x.date)}</Typography>
-                      <Typography variant="caption" color="textSecondary">{x.change_description}</Typography>
+                    <Paper key={x.id} variant="outlined" sx={{ p: 1.25, borderRadius: '12px', background: 'rgba(236,72,153,0.04)', borderColor: 'rgba(236,72,153,0.2)' }}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 0.5 }}>
+                        <Typography variant="body2" fontWeight={800}>{x.number || '—'}</Typography>
+                        <Typography variant="caption" color="textSecondary">{toJalali(x.date)}</Typography>
+                      </Box>
+                      {x.subject && <Typography variant="body2" sx={{ mt: 0.25 }}>{x.subject}</Typography>}
+                      <Stack direction="row" spacing={0.75} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
+                        {x.amount_change != null && x.amount_change !== '' && (
+                          <Chip size="small" label={`مبلغ: ${Number(x.amount_change) >= 0 ? '+' : ''}${formatPersianNumber(x.amount_change)}`}
+                            sx={{ bgcolor: Number(x.amount_change) >= 0 ? '#10b98118' : '#ef444418', color: Number(x.amount_change) >= 0 ? '#059669' : '#b91c1c', height: 20, fontSize: 10, fontWeight: 700 }} />
+                        )}
+                        {x.percent_change != null && x.percent_change !== '' && (
+                          <Chip size="small" label={`${Number(x.percent_change) >= 0 ? '+' : ''}${toPersianDigits(x.percent_change)}٪`}
+                            sx={{ bgcolor: '#6366f118', color: '#4f46e5', height: 20, fontSize: 10, fontWeight: 700 }} />
+                        )}
+                        {x.new_end_date && (
+                          <Chip size="small" label={`پایان جدید: ${toJalali(x.new_end_date)}`}
+                            sx={{ bgcolor: '#ec489918', color: '#be185d', height: 20, fontSize: 10, fontWeight: 700 }} />
+                        )}
+                      </Stack>
+                      {x.change_description && <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>{x.change_description}</Typography>}
                     </Paper>
                   ))}
                 </Paper>
