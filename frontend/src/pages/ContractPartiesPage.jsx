@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -16,9 +17,11 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import PhoneIcon from '@mui/icons-material/Phone';
 import BusinessIcon from '@mui/icons-material/Business';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
+import LaunchIcon from '@mui/icons-material/Launch';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { toJalali } from '../core/utils/dateUtils';
@@ -74,6 +77,7 @@ const EMPTY_FORM = {
 
 const ContractPartiesPage = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -256,7 +260,6 @@ const ContractPartiesPage = () => {
                           </Box>
                           <Box sx={{ textAlign: 'left', flexShrink: 0 }}>
                             <Chip size="small" label={active ? 'فعال' : 'غیرفعال'} color={active ? 'success' : 'default'} variant="outlined" sx={{ height: 20, fontSize: 10 }} />
-                            <Typography variant="caption" fontWeight={800} display="block" sx={{ mt: 0.5, fontSize: 10 }}>{p.contracts_count || 0} قرارداد</Typography>
                           </Box>
                         </Box>
                       </Paper>
@@ -297,12 +300,12 @@ const ContractPartiesPage = () => {
                   </Box>
                 </Box>
 
-                {/* Financial summary */}
-                <Grid container spacing={1.5}>
-                  <Grid item xs={6}><Paper sx={{ p: 1.75, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#0ea5e914,#0ea5e908)', border: '1px solid #0ea5e928' }}><Typography variant="h5" fontWeight={900} color="#0ea5e9" sx={{ direction: 'ltr', textAlign: 'center', display: 'block' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قراردادها</Typography></Paper></Grid>
-                  <Grid item xs={6}><Paper sx={{ p: 1.75, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#10b98114,#10b98108)', border: '1px solid #10b98128' }}><Typography variant="h5" fontWeight={900} color="#10b981" sx={{ direction: 'ltr', textAlign: 'center', display: 'block' }}>{summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)}</Typography><Typography variant="caption" color="textSecondary">قرارداد فعال</Typography></Paper></Grid>
-                  <Grid item xs={12}><Paper sx={{ p: 1.75, textAlign: 'center', borderRadius: '12px', background: 'linear-gradient(135deg,#8b5cf614,#8b5cf608)', border: '1px solid #8b5cf628' }}><Typography variant="h6" fontWeight={900} color="#8b5cf6" sx={{ direction: 'ltr', textAlign: 'center', display: 'block' }}>{summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ${totalCurrencyLabel}`}</Typography><Typography variant="caption" color="textSecondary">جمع مبالغ قراردادها</Typography></Paper></Grid>
-                </Grid>
+                {/* آمار قراردادها */}
+                <InfoCard title="آمار قراردادها" color="#8b5cf6" icon={AssessmentIcon}>
+                  <InfoRow label="تعداد قراردادها" value={summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)} ltr />
+                  <InfoRow label="قراردادهای فعال" value={summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)} ltr />
+                  <InfoRow label="جمع مبالغ قراردادها" value={summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ${totalCurrencyLabel}`} ltr />
+                </InfoCard>
 
                 {/* پروژه‌ها — شماتیک رنگی */}
                 <InfoCard title="پروژه‌های قراردادها" color="#3b82f6" icon={BusinessIcon}>
@@ -345,55 +348,67 @@ const ContractPartiesPage = () => {
                   ) : (
                     <Stack spacing={0.75}>
                       {contractList.map((ct, i) => (
-                        <Box key={i} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 0.9, borderRadius: '10px', background: 'rgba(245,158,11,0.05)' }}>
+                        <Box key={i} onClick={() => navigate(`/external-contracts/${ct.id}`)}
+                          sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, p: 0.9, borderRadius: '10px', background: 'rgba(245,158,11,0.05)', cursor: 'pointer', '&:hover': { background: 'rgba(245,158,11,0.12)' }, transition: 'background 0.15s ease' }}>
                           <Box sx={{ minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={700} noWrap>{ct.subject || ct.number || '—'}</Typography>
                             <Typography variant="caption" color="textSecondary">{ct.contract_type_master_name || ct.contract_type_display || '—'}</Typography>
                           </Box>
-                          <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309', flexShrink: 0, direction: 'ltr', textAlign: 'center' }}>
-                            {formatPersianNumber(ct.amount || 0)} {ct.currency_symbol || ct.currency_name || 'ریال'}
-                          </Typography>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
+                            <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309', direction: 'ltr', textAlign: 'center' }}>
+                              {formatPersianNumber(ct.amount || 0)} {ct.currency_symbol || ct.currency_name || 'ریال'}
+                            </Typography>
+                            <LaunchIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                          </Box>
                         </Box>
                       ))}
                     </Stack>
                   )}
                 </InfoCard>
 
-                {/* Legal */}
-                <InfoCard title="اطلاعات حقوقی" color="#f97316" icon={BusinessIcon}>
-                  <InfoRow label="شناسه ملی / کد ثبت" value={selected.national_id} ltr />
-                  <InfoRow label="کد اقتصادی" value={selected.economic_code} ltr />
-                  <InfoRow label="شماره ثبت" value={selected.registration_number} ltr />
-                  <InfoRow label="تاریخ تأسیس" value={selected.establishment_date ? toJalali(selected.establishment_date) : null} />
-                  <InfoRow label="نوع شرکت" value={selected.company_type_display} />
-                  <InfoRow label="سرمایه ثبتی" value={selected.registered_capital ? `${formatPersianNumber(selected.registered_capital)} ریال` : null} />
-                </InfoCard>
+                {/* حقوقی + مدیریت */}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <InfoCard title="اطلاعات حقوقی" color="#f97316" icon={BusinessIcon}>
+                      <InfoRow label="شناسه ملی / کد ثبت" value={selected.national_id} ltr />
+                      <InfoRow label="کد اقتصادی" value={selected.economic_code} ltr />
+                      <InfoRow label="شماره ثبت" value={selected.registration_number} ltr />
+                      <InfoRow label="تاریخ تأسیس" value={selected.establishment_date ? toJalali(selected.establishment_date) : null} />
+                      <InfoRow label="نوع شرکت" value={selected.company_type_display} />
+                      <InfoRow label="سرمایه ثبتی" value={selected.registered_capital ? `${formatPersianNumber(selected.registered_capital)} ریال` : null} />
+                    </InfoCard>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <InfoCard title="مدیریت و ارتباطات کلیدی" color="#10b981" icon={PersonIcon}>
+                      <InfoRow label="مدیر عامل" value={selected.ceo_name} />
+                      <InfoRow label="تلفن مدیر عامل" value={selected.ceo_phone ? toPersianDigits(selected.ceo_phone) : null} ltr />
+                      <InfoRow label="مدیر مالی" value={selected.finance_manager_name} />
+                      <InfoRow label="تلفن مدیر مالی" value={selected.finance_manager_phone ? toPersianDigits(selected.finance_manager_phone) : null} ltr />
+                      <InfoRow label="رابط فنی" value={selected.technical_contact_name} />
+                      <InfoRow label="تلفن رابط فنی" value={selected.technical_contact_phone ? toPersianDigits(selected.technical_contact_phone) : null} ltr />
+                    </InfoCard>
+                  </Grid>
+                </Grid>
 
-                {/* Contact */}
-                <InfoCard title="اطلاعات تماس" color="#0ea5e9" icon={PhoneIcon}>
-                  <InfoRow label="تلفن" value={toPersianDigits(selected.phone)} ltr />
-                  <InfoRow label="موبایل" value={toPersianDigits(selected.mobile)} ltr />
-                  <InfoRow label="ایمیل" value={selected.email} ltr />
-                  <InfoRow label="شخص رابط" value={selected.contact_person} />
-                  <InfoRow label="آدرس" value={selected.address} />
-                </InfoCard>
-
-                {/* Management */}
-                <InfoCard title="مدیریت و ارتباطات کلیدی" color="#10b981" icon={PersonIcon}>
-                  <InfoRow label="مدیر عامل" value={selected.ceo_name} />
-                  <InfoRow label="تلفن مدیر عامل" value={selected.ceo_phone ? toPersianDigits(selected.ceo_phone) : null} ltr />
-                  <InfoRow label="مدیر مالی" value={selected.finance_manager_name} />
-                  <InfoRow label="تلفن مدیر مالی" value={selected.finance_manager_phone ? toPersianDigits(selected.finance_manager_phone) : null} ltr />
-                  <InfoRow label="رابط فنی" value={selected.technical_contact_name} />
-                  <InfoRow label="تلفن رابط فنی" value={selected.technical_contact_phone ? toPersianDigits(selected.technical_contact_phone) : null} ltr />
-                </InfoCard>
-
-                {/* Bank */}
-                <InfoCard title="اطلاعات بانکی" color="#8b5cf6" icon={AccountBalanceIcon}>
-                  <InfoRow label="بانک" value={selected.bank_name} />
-                  <InfoRow label="شماره حساب" value={selected.account_number} ltr />
-                  <InfoRow label="شماره شبا" value={selected.sheba_number} ltr />
-                </InfoCard>
+                {/* تماس + بانکی */}
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={6}>
+                    <InfoCard title="اطلاعات تماس" color="#0ea5e9" icon={PhoneIcon}>
+                      <InfoRow label="تلفن" value={toPersianDigits(selected.phone)} ltr />
+                      <InfoRow label="موبایل" value={toPersianDigits(selected.mobile)} ltr />
+                      <InfoRow label="ایمیل" value={selected.email} ltr />
+                      <InfoRow label="شخص رابط" value={selected.contact_person} />
+                      <InfoRow label="آدرس" value={selected.address} />
+                    </InfoCard>
+                  </Grid>
+                  <Grid item xs={12} md={6}>
+                    <InfoCard title="اطلاعات بانکی" color="#8b5cf6" icon={AccountBalanceIcon}>
+                      <InfoRow label="بانک" value={selected.bank_name} />
+                      <InfoRow label="شماره حساب" value={selected.account_number} ltr />
+                      <InfoRow label="شماره شبا" value={selected.sheba_number} ltr />
+                    </InfoCard>
+                  </Grid>
+                </Grid>
               </Stack>
             )}
           </Paper>
