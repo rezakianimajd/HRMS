@@ -6,7 +6,6 @@ import {
   Box, Typography, Paper, Button, Chip, Avatar, Grid, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
   InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import AddIcon from '@mui/icons-material/Add';
@@ -15,7 +14,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
-import BusinessIcon from '@mui/icons-material/Business';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 
@@ -126,25 +124,28 @@ const ExternalContractsPage = () => {
     <Box>
       {/* Header */}
       <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(245,158,11,0.10), rgba(249,115,22,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.16)', borderRadius: '12px',
+        p: 3, mb: 2.5, textAlign: 'center', position: 'relative', overflow: 'hidden',
+        background: 'linear-gradient(135deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.4))',
+        border: '1px solid rgba(245,158,11,0.18)', borderRadius: '18px',
       }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
-          <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
+        <Box sx={{ position: 'absolute', top: -70, left: '50%', transform: 'translateX(-50%)', width: 320, height: 320, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.18), transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
+        <Avatar sx={{ width: 60, height: 60, mx: 'auto', background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 10px 30px rgba(245,158,11,0.45)', position: 'relative', zIndex: 1 }}>
+          <HandshakeIcon sx={{ color: '#fff', fontSize: 30 }} />
         </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">قراردادهای برون‌سازمانی</Typography>
-          <Typography variant="body2" color="textSecondary">پیمانکاری، خرید، مناقصه + فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت</Typography>
+        <Typography variant="h5" fontWeight={900} color="#b45309" sx={{ mt: 1.25, position: 'relative', zIndex: 1 }}>قراردادهای من</Typography>
+        <Typography variant="body2" color="textSecondary" sx={{ position: 'relative', zIndex: 1 }}>
+          مدیریت پیمانکاری، خرید و مناقصه با فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت
+        </Typography>
+        <Box sx={{ mt: 2, display: 'flex', gap: 1, justifyContent: 'center', flexWrap: 'wrap', position: 'relative', zIndex: 1 }}>
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportCsv(filtered)}
+            sx={{ borderRadius: '12px', px: 2.5, whiteSpace: 'nowrap' }}>
+            خروجی CSV
+          </Button>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
+            sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '12px', px: 2.5, whiteSpace: 'nowrap', boxShadow: '0 8px 20px rgba(245,158,11,0.35)' }}>
+            قرارداد جدید
+          </Button>
         </Box>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportCsv(filtered)}
-          sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
-          خروجی CSV
-        </Button>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
-          قرارداد جدید
-        </Button>
       </Paper>
 
       {msg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
@@ -159,12 +160,16 @@ const ExternalContractsPage = () => {
           { label: 'فسخ شده', value: counts.terminated, color: '#ef4444' },
         ].map(k => (
           <Grid item xs={6} sm={4} md={2.4} key={k.label}>
-            <Paper sx={{ p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)', display: 'flex', alignItems: 'center', gap: 1.25 }}>
-              <Avatar sx={{ width: 36, height: 36, bgcolor: `${k.color}18`, color: k.color }}><HandshakeIcon sx={{ fontSize: 18 }} /></Avatar>
-              <Box>
-                <Typography variant="caption" color="textSecondary" display="block" noWrap>{k.label}</Typography>
-                <Typography variant="h6" fontWeight={800} color={k.color} noWrap>{formatPersianNumber(k.value)}</Typography>
-              </Box>
+            <Paper sx={{
+              p: 1.75, borderRadius: '16px', textAlign: 'center', position: 'relative', overflow: 'hidden',
+              background: `linear-gradient(160deg, ${k.color}14, rgba(255,255,255,0.6))`,
+              border: `1px solid ${k.color}22`,
+              boxShadow: `0 4px 16px ${k.color}10`,
+              '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 30px ${k.color}22` },
+              transition: 'all 0.2s ease',
+            }}>
+              <Typography variant="h5" fontWeight={900} sx={{ color: k.color, direction: 'ltr' }}>{formatPersianNumber(k.value)}</Typography>
+              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700 }}>{k.label}</Typography>
             </Paper>
           </Grid>
         ))}
@@ -192,71 +197,60 @@ const ExternalContractsPage = () => {
         </Stack>
       </Paper>
 
-      {/* Table */}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
+      {/* Contract list */}
+      <Box>
         {isLoading ? (
-          <Box sx={{ py: 6, textAlign: 'center' }}><CircularProgress /></Box>
+          <Paper sx={{ py: 6, textAlign: 'center', borderRadius: '16px' }}><CircularProgress /></Paper>
         ) : filtered.length === 0 ? (
-          <Box sx={{ py: 6, textAlign: 'center' }}>
-            <HandshakeIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1.5 }} />
+          <Paper sx={{ py: 7, textAlign: 'center', borderRadius: '16px', background: 'rgba(255,255,255,0.55)' }}>
+            <HandshakeIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 1.5 }} />
             <Typography color="textSecondary">قراردادی ثبت نشده است.</Typography>
-          </Box>
+          </Paper>
         ) : (
-          <TableContainer sx={{ overflowX: 'auto' }}>
-            <Table size="small">
-              <TableHead>
-                <TableRow sx={{ bgcolor: 'rgba(245,158,11,0.06)' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>شماره</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>موضوع قرارداد</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>طرف قرارداد</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>نوع</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>مبلغ</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>تاریخ شروع</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>تاریخ پایان</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>وضعیت</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {filtered.map(c => (
-                  <TableRow key={c.id} hover>
-                    <TableCell>{c.number ? toPersianDigits(c.number) : '—'}</TableCell>
-                    <TableCell><Typography variant="body2" fontWeight={700}>{c.subject}</Typography></TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <BusinessIcon fontSize="small" sx={{ color: 'text.secondary' }} />
-                        <Typography variant="body2">{c.party_name || '—'}</Typography>
+          <Stack spacing={1.25}>
+            {filtered.map(c => {
+              const tColor = TYPE_COLORS[c.contract_type] || '#64748b';
+              return (
+                <Paper key={c.id} onClick={() => navigate(`/external-contracts/${c.id}`)}
+                  sx={{
+                    p: 2, borderRadius: '16px', cursor: 'pointer',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.55))',
+                    border: '1px solid rgba(100,116,139,0.14)',
+                    boxShadow: '0 2px 10px rgba(15,23,42,0.02)',
+                    '&:hover': { borderColor: `${tColor}66`, boxShadow: `0 14px 34px rgba(15,23,42,0.09)`, transform: 'translateY(-2px)' },
+                    transition: 'all 0.18s ease',
+                  }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                    <Avatar sx={{ width: 48, height: 48, background: `linear-gradient(135deg, ${tColor}, ${tColor}cc)`, boxShadow: `0 6px 16px ${tColor}33`, flexShrink: 0 }}>
+                      <HandshakeIcon sx={{ color: '#fff' }} />
+                    </Avatar>
+                    <Box sx={{ flex: 1, minWidth: 220 }}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                        <Typography variant="caption" fontWeight={800} color="textSecondary" sx={{ whiteSpace: 'nowrap' }}>#{toPersianDigits(c.number || '—')}</Typography>
+                        <Chip size="small" label={typeLabel(c)} sx={{ bgcolor: `${tColor}18`, color: tColor, fontWeight: 700, fontSize: 10, height: 20 }} />
+                        <Chip size="small" label={STATUS_LABELS[c.status] || c.status} sx={{ bgcolor: `${STATUS_COLORS[c.status] || '#64748b'}18`, color: STATUS_COLORS[c.status] || '#64748b', fontWeight: 700, fontSize: 10, height: 20 }} />
                       </Box>
-                    </TableCell>
-                    <TableCell>
-                      <Chip size="small" label={typeLabel(c)}
-                        sx={{ bgcolor: `${TYPE_COLORS[c.contract_type] || '#64748b'}18`, color: TYPE_COLORS[c.contract_type] || '#64748b', fontWeight: 700, fontSize: 11 }} />
-                    </TableCell>
-                    <TableCell>{c.amount ? `${formatPersianNumber(c.amount)} ${c.currency_name || 'ریال'}` : '—'}</TableCell>
-                    <TableCell>{c.start_date ? toJalali(c.start_date) : '—'}</TableCell>
-                    <TableCell>{c.end_date ? toJalali(c.end_date) : '—'}</TableCell>
-                    <TableCell>
-                      <Chip size="small" label={STATUS_LABELS[c.status] || c.status}
-                        sx={{ bgcolor: `${STATUS_COLORS[c.status] || '#64748b'}18`, color: STATUS_COLORS[c.status] || '#64748b', fontWeight: 700, fontSize: 11 }} />
-                    </TableCell>
-                    <TableCell sx={{ whiteSpace: 'nowrap' }}>
-                      <Tooltip title="مشاهده">
-                        <IconButton size="small" color="info" onClick={() => navigate(`/external-contracts/${c.id}`)}><VisibilityIcon fontSize="small" /></IconButton>
-                      </Tooltip>
-                      <Tooltip title="ویرایش">
-                        <IconButton size="small" color="primary" onClick={() => navigate(`/contracts/${c.id}/edit`)}><EditIcon fontSize="small" /></IconButton>
-                      </Tooltip>
-                      <Tooltip title="حذف">
-                        <IconButton size="small" color="error" onClick={() => setDeleteId(c.id)}><DeleteIcon fontSize="small" /></IconButton>
-                      </Tooltip>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                      <Typography variant="body1" fontWeight={800} sx={{ mt: 0.5 }}>{c.subject}</Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        {c.party_name || '—'} · {c.start_date ? toJalali(c.start_date) : '—'} تا {c.end_date ? toJalali(c.end_date) : '—'}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ textAlign: 'center', flexShrink: 0 }}>
+                      <Typography variant="h6" fontWeight={900} sx={{ color: '#b45309', direction: 'ltr' }}>{formatPersianNumber(c.amount || 0)}</Typography>
+                      <Typography variant="caption" color="textSecondary">{c.currency_name || 'ریال'}</Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', gap: 0.25, flexShrink: 0 }} onClick={e => e.stopPropagation()}>
+                      <Tooltip title="مشاهده"><IconButton size="small" color="info" onClick={() => navigate(`/external-contracts/${c.id}`)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="ویرایش"><IconButton size="small" color="primary" onClick={() => navigate(`/contracts/${c.id}/edit`)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => setDeleteId(c.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </Box>
+                  </Box>
+                </Paper>
+              );
+            })}
+          </Stack>
         )}
-      </Paper>
+      </Box>
 
       {/* Delete confirm dialog */}
       <Dialog open={!!deleteId} onClose={() => setDeleteId(null)} maxWidth="xs" fullWidth>
