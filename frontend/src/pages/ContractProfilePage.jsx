@@ -76,6 +76,21 @@ const ContractProfilePage = () => {
     queryFn: () => axiosInstance.get(`/external-contracts/${id}/`).then(r => r.data),
   });
 
+  const { data: allContracts } = useQuery({
+    queryKey: ['external-contracts-all'],
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 1000 } }).then(r => r.data),
+  });
+  const allList = Array.isArray(allContracts) ? allContracts : allContracts?.results || [];
+
+  const relatedContracts = useMemo(() => {
+    if (!c) return [];
+    const projects = new Set((c.project_allocations || []).map(p => p.project).filter(Boolean));
+    if (c.project) projects.add(c.project);
+    return allList.filter(x => String(x.id) !== String(c.id) && (
+      projects.size > 0 && ((x.project_allocations || []).some(p => projects.has(p.project)) || (x.project && projects.has(x.project)))
+    )).slice(0, 8);
+  }, [allList, c]);
+
   const timeline = useMemo(() => {
     if (!c) return [];
     const events = [];
@@ -107,6 +122,13 @@ const ContractProfilePage = () => {
   const remaining = Math.max(0, Number(c.amount || 0) - totalPaid);
   const progressPercent = Number(c.amount) > 0 ? Math.min(100, Math.round((totalPaid / Number(c.amount)) * 100)) : 0;
   const currencyLabel = c.currency_name || 'ریال';
+
+  const addendumTotal = (c.addendums || []).reduce((s, x) => s + Number(x.amount_change || 0), 0);
+  const amountWithAddendum = Number(c.amount || 0) + addendumTotal;
+  const lastAddendum = (c.addendums || []).length
+    ? c.addendums.reduce((m, a) => (a.date > m.date ? a : m), c.addendums[0])
+    : null;
+  const endDateWithAddendum = lastAddendum?.new_end_date || c.end_date;
 
   const timelineColor = {
     created: '#64748b', signing: '#10b981', start: '#3b82f6', end: '#ef4444',
@@ -223,8 +245,11 @@ const ContractProfilePage = () => {
             <InfoCard title="اطلاعات کلیدی" color="#6366f1" icon={BusinessIcon}>
               <InfoRow label="طرف قرارداد" value={c.party_name} />
               <InfoRow label="نوع قرارداد" value={c.contract_type_master_name || TYPE_LABELS[c.contract_type]} />
+              <InfoRow label="مبلغ اولیه" value={`${formatPersianNumber(c.amount || 0)} ${currencyLabel}`} ltr />
+              <InfoRow label="مبلغ با الحاقیه" value={`${formatPersianNumber(amountWithAddendum)} ${currencyLabel}`} ltr />
               <InfoRow label="تاریخ شروع" value={toJalali(c.start_date)} />
               <InfoRow label="تاریخ پایان" value={toJalali(c.end_date)} />
+              <InfoRow label="تاریخ پایان (با الحاقیه)" value={toJalali(endDateWithAddendum)} />
               <InfoRow label="تاریخ امضا" value={toJalali(c.signing_date)} />
               <InfoRow label="امضاکننده" value={c.signatory_name} />
               <InfoRow label="پیش‌پرداخت" value={c.advance_payment ? `${formatPersianNumber(c.advance_payment)} ${currencyLabel}` : null} ltr />
@@ -361,6 +386,45 @@ const ContractProfilePage = () => {
               <Typography variant="caption" color="textSecondary">داده‌ای نیست</Typography>
             ) : (
               <BarChart data={itemsDist.filter(d => d.value > 0)} />
+            )}
+          </InfoCard>
+        </Grid>
+      </Grid>
+
+      {/* شبکه ارتباط */}
+      <Grid container spacing={2.5} sx={{ mt: 2.5 }}>
+        <Grid item xs={12}>
+          <InfoCard title="شبکه ارتباط (قراردادهای هم‌پروژه)" color="#3b82f6" icon={AccountBalanceIcon}>
+            {relatedContracts.length === 0 ? (
+              <Typography variant="caption" color="textSecondary">قرارداد مرتبطی در همین پروژه‌ها یافت نشد.</Typography>
+            ) : (
+              <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                <svg viewBox="0 0 300 260" style={{ width: '100%', maxWidth: 420, margin: '0 auto', display: 'block' }}>
+                  {relatedContracts.map((rc, i) => {
+                    const angle = (i / relatedContracts.length) * 2 * Math.PI - Math.PI / 2;
+                    const r = 95;
+                    const x = 150 + r * Math.cos(angle);
+                    const y = 130 + r * Math.sin(angle);
+                    return (
+                      <g key={rc.id}>
+                        <line x1="150" y1="130" x2={x} y2={y} stroke="#3b82f633" strokeWidth="1.5" strokeDasharray="4 3" />
+                        <circle cx={x} cy={y} r="26" fill="#ffffff" stroke="#3b82f6" strokeWidth="2" />
+                        <text x={x} y={y - 4} textAnchor="middle" fontSize="9" fill="#3b82f6" fontWeight="700">{rc.number || '—'}</text>
+                        <text x={x} y={y + 8} textAnchor="middle" fontSize="7" fill="#64748b">{toPersianDigits(rc.amount ? (rc.amount / 1000000) : 0)} م</text>
+                      </g>
+                    );
+                  })}
+                  <circle cx="150" cy="130" r="34" fill="url(#netGrad)" stroke="#f59e0b" strokeWidth="3" />
+                  <text x="150" y="122" textAnchor="middle" fontSize="10" fill="#fff" fontWeight="900">{c.number || 'قرارداد'}</text>
+                  <text x="150" y="138" textAnchor="middle" fontSize="7" fill="#fff">مرکزی</text>
+                  <defs>
+                    <linearGradient id="netGrad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="#f59e0b" />
+                      <stop offset="100%" stopColor="#f97316" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </Box>
             )}
           </InfoCard>
         </Grid>

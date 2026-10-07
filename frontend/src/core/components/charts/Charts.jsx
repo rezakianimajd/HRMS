@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
-import { toPersianDigits } from '../../utils/numberUtils';
+import { toPersianDigits, formatPersianNumber } from '../../utils/numberUtils';
 
 /* =============================================================================
  * Donut / Pie Chart (pure SVG - no dependencies)
@@ -35,7 +35,7 @@ export const DonutChart = ({ data, size = 160, thickness = 28, centerLabel }) =>
           })}
         </svg>
         <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-          <Typography variant="h5" fontWeight={800}>{toPersianDigits(total)}</Typography>
+          <Typography variant="h5" fontWeight={800}>{formatPersianNumber(total)}</Typography>
           <Typography variant="caption" color="textSecondary">{centerLabel || 'مجموع'}</Typography>
         </Box>
       </Box>
@@ -44,7 +44,7 @@ export const DonutChart = ({ data, size = 160, thickness = 28, centerLabel }) =>
           <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
             <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: d.color, flexShrink: 0 }} />
             <Typography variant="body2" sx={{ flex: 1 }}>{d.label}</Typography>
-            <Typography variant="body2" fontWeight={600}>{toPersianDigits(d.value)}</Typography>
+            <Typography variant="body2" fontWeight={600}>{formatPersianNumber(d.value)}</Typography>
             <Typography variant="caption" color="textSecondary" sx={{ width: 40, textAlign: 'left' }}>
               {toPersianDigits(Math.round((d.value / total) * 100))}٪
             </Typography>
