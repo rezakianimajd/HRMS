@@ -216,18 +216,30 @@ def apply(request):
 
         fields = _assign_target_fields(level, obj)
         is_new = action == 'new'
-        MappingEntry.objects.update_or_create(
+        entry = MappingEntry.objects.filter(
             company=company,
             source_id=source_id or None,
             level=level,
             source_code=source_code,
-            defaults={
-                'source_name': source_name,
-                'status': 'new' if is_new else 'matched',
-                'resolved': True,
+        ).first()
+        if entry:
+            entry.source_name = source_name
+            entry.status = 'new' if is_new else 'matched'
+            entry.resolved = True
+            for k, v in fields.items():
+                setattr(entry, k, v)
+            entry.save()
+        else:
+            MappingEntry.objects.create(
+                company=company,
+                source_id=source_id or None,
+                level=level,
+                source_code=source_code,
+                source_name=source_name,
+                status='new' if is_new else 'matched',
+                resolved=True,
                 **fields,
-            },
-        )
+            )
         if is_new:
             created += 1
         else:
@@ -245,43 +257,58 @@ def apply(request):
 def _create_new_target(level, company, name):
     """ایجاد ردیف جدید در سطح کدینگ مربوطه با کد خودکار (بر اساس CodingConfig)."""
     from accounting.models import AccountType
+    from django.db import IntegrityError
     acc_type = AccountType.objects.filter(company=company).first()
+
     if level == 'group':
         if not acc_type:
             return None
-        return AccountGroup.objects.create(
-            company=company, account_type=acc_type,
-            code=suggest_code(company, 'group') or _next_code(AccountGroup, company),
-            name=name,
-        )
+        for _ in range(3):
+            code = suggest_code(company, 'group') or _next_code(AccountGroup, company)
+            try:
+                return AccountGroup.objects.create(company=company, account_type=acc_type, code=code, name=name)
+            except IntegrityError:
+                continue
+        return None
+
     if level in ('general', 'subsidiary'):
         if not acc_type:
             return None
-        return Account.objects.create(
-            company=company, account_type=acc_type,
-            code=suggest_code(company, level) or _next_code(Account, company),
-            name=name,
-            level=1 if level == 'general' else 2,
-        )
+        for attempt in range(5):
+            code = suggest_code(company, level) if attempt == 0 else _next_code(Account, company)
+            if not code:
+                code = _next_code(Account, company)
+            try:
+                return Account.objects.create(
+                    company=company, account_type=acc_type, code=code, name=name,
+                    level=1 if level == 'general' else 2,
+                )
+            except IntegrityError:
+                continue
+        return None
+
     if level == 'auxiliary':
-        return AuxiliaryAccount.objects.create(
-            company=company,
-            code=suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company),
-            name=name,
-        )
+        for attempt in range(5):
+            code = suggest_code(company, 'auxiliary') if attempt == 0 else _next_code(AuxiliaryAccount, company)
+            if not code:
+                code = _next_code(AuxiliaryAccount, company)
+            try:
+                return AuxiliaryAccount.objects.create(company=company, code=code, name=name)
+            except IntegrityError:
+                continue
+        return None
     return None
 
 
 def _next_code(model, company):
+    """تولید کد عددی بعدی (بر اساس بیشترین کد عددی موجود)."""
     from django.db.models import Max
     agg = model.objects.filter(company=company).aggregate(m=Max('code'))
     cur = 0
     for ch in str(agg.get('m') or ''):
         if ch.isdigit():
             cur = cur * 10 + int(ch)
-        else:
-            cur = 0
-    return str(cur + 1)
+    return str(cur + 1) if cur else '1'
 
 
 # -----------------------------------------------------------------------------
@@ -486,96 +513,78 @@ def sync_auxiliaries(request):
     from projects.models import Project
     from employees.models import Employee
 
-    def get_category(name, source):
+    def get_category(name, source, sort):
         return AuxiliaryCategory.objects.get_or_create(
             company=company, name=name,
-            defaults={'code': name[:20], 'source': source},
+            defaults={'code': source + str(sort), 'source': source, 'sort_order': sort},
         )[0]
 
-    cat_party_legal = get_category('طرف حساب حقوقی', 'party')
-    cat_party_natural = get_category('طرف حساب حقیقی', 'party')
-    cat_bank = get_category('بانک', 'bank')
-    cat_contract = get_category('قرارداد', 'contract')
-    cat_project = get_category('پروژه', 'project')
-    cat_employee = get_category('پرسنل', 'employee')
+    cat_party_legal = get_category('طرف حساب حقوقی', 'party', 1)
+    cat_party_natural = get_category('طرف حساب حقیقی', 'party', 2)
+    cat_bank = get_category('بانک', 'bank', 3)
+    cat_contract = get_category('قرارداد', 'contract', 4)
+    cat_project = get_category('پروژه', 'project', 5)
+    cat_employee = get_category('پرسنل', 'employee', 6)
 
     created = 0
     updated = 0
+    counts = {}
+
+    def upsert(lookup, aux_type, category, name, extra=None):
+        nonlocal created, updated
+        obj = AuxiliaryAccount.objects.filter(company=company, **lookup).first()
+        if obj:
+            changed = False
+            if not obj.category:
+                obj.category = category
+                changed = True
+            if not obj.aux_type or obj.aux_type == 'other':
+                obj.aux_type = aux_type
+                changed = True
+            if changed:
+                obj.save(update_fields=['category', 'aux_type', 'updated_at'])
+            updated += 1
+            return
+        kwargs = {'company': company, 'category': category, 'aux_type': aux_type, 'name': name, **lookup}
+        if extra:
+            kwargs.update(extra)
+        kwargs['code'] = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
+        obj = AuxiliaryAccount.objects.create(**kwargs)
+        created += 1
 
     # طرف‌حساب‌ها (حقیقی/حقوقی)
     for party in ContractParty.objects.filter(company=company, is_active=True):
         cat = cat_party_legal if party.person_type == 'legal' else cat_party_natural
-        obj, is_new = AuxiliaryAccount.objects.get_or_create(
-            company=company, party=party,
-            defaults={'category': cat, 'person_type': party.person_type, 'name': party.name},
-        )
-        if is_new:
-            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
-            obj.save(update_fields=['code', 'updated_at'])
-            created += 1
-        else:
-            if not obj.category:
-                obj.category = cat
-                obj.save(update_fields=['category', 'updated_at'])
-            updated += 1
+        upsert({'party': party}, 'party', cat, party.name, {'person_type': party.person_type})
+    counts['parties'] = ContractParty.objects.filter(company=company, is_active=True).count()
 
     # بانک‌ها / صندوق‌ها
     for entity in TreasuryEntity.objects.filter(company=company, is_active=True):
-        obj, is_new = AuxiliaryAccount.objects.get_or_create(
-            company=company, treasury_entity=entity,
-            defaults={'category': cat_bank, 'name': entity.name},
-        )
-        if is_new:
-            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
-            obj.save(update_fields=['code', 'updated_at'])
-            created += 1
-        else:
-            updated += 1
+        upsert({'treasury_entity': entity}, 'bank' if entity.entity_type == 'bank' else 'cash', cat_bank, entity.name)
+    counts['banks'] = TreasuryEntity.objects.filter(company=company, is_active=True).count()
 
     # قراردادها (نام = طرف + شماره قرارداد)
     for contract in Contract.objects.filter(company=company).select_related('party'):
-        if not contract.party:
-            continue
-        label = f"{contract.party.name} - {contract.number}".strip(' -')
-        obj, is_new = AuxiliaryAccount.objects.get_or_create(
-            company=company, contract=contract,
-            defaults={'category': cat_contract, 'party': contract.party, 'name': label},
-        )
-        if is_new:
-            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
-            obj.save(update_fields=['code', 'updated_at'])
-            created += 1
+        if contract.party:
+            label = f"{contract.party.name} - {contract.number}".strip(' -')
         else:
-            updated += 1
+            label = contract.number or f'قرارداد {contract.pk}'
+        upsert({'contract': contract}, 'contract', cat_contract, label, {'party': contract.party})
+    counts['contracts'] = Contract.objects.filter(company=company).count()
 
     # پروژه‌ها
-    for project in Project.objects.filter(company=company, is_active=True):
-        obj, is_new = AuxiliaryAccount.objects.get_or_create(
-            company=company, project=project,
-            defaults={'category': cat_project, 'name': project.name},
-        )
-        if is_new:
-            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
-            obj.save(update_fields=['code', 'updated_at'])
-            created += 1
-        else:
-            updated += 1
+    for project in Project.objects.filter(company=company):
+        upsert({'project': project}, 'project', cat_project, project.name)
+    counts['projects'] = Project.objects.filter(company=company).count()
 
     # پرسنل
     for emp in Employee.objects.filter(company=company, is_active=True):
-        obj, is_new = AuxiliaryAccount.objects.get_or_create(
-            company=company, employee=emp,
-            defaults={'category': cat_employee, 'name': emp.full_name},
-        )
-        if is_new:
-            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
-            obj.save(update_fields=['code', 'updated_at'])
-            created += 1
-        else:
-            updated += 1
+        upsert({'employee': emp}, 'employee', cat_employee, emp.full_name)
+    counts['employees'] = Employee.objects.filter(company=company, is_active=True).count()
 
     return Response({
         'message': 'تفصیل‌ها همگام‌سازی شدند',
         'created': created,
         'updated': updated,
+        'counts': counts,
     })
