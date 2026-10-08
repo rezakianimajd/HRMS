@@ -40,6 +40,8 @@ const DataMappingPage = () => {
   const codingFileRef = useRef(null);
   const [postNow, setPostNow] = useState(false);
   const [docSourceId, setDocSourceId] = useState('');
+  const [docFiscalYear, setDocFiscalYear] = useState('');
+  const [fiscalYears, setFiscalYears] = useState([]);
   const [docLoading, setDocLoading] = useState(false);
   const [docResult, setDocResult] = useState(null);
   const [docMsg, setDocMsg] = useState('');
@@ -66,6 +68,12 @@ const DataMappingPage = () => {
 
   React.useEffect(() => { loadSources(); }, []);
   React.useEffect(() => { loadOptions(level); }, [level]);
+  React.useEffect(() => {
+    axiosInstance.get('/accounting/fiscal-years/').then(r => {
+      const d = Array.isArray(r.data) ? r.data : r.data?.results || [];
+      setFiscalYears(d);
+    }).catch(() => {});
+  }, []);
 
   const createSource = async () => {
     const name = window.prompt('نام برنامه مبدا (مثلاً سپیدار، هلو، نوین):');
@@ -91,6 +99,7 @@ const DataMappingPage = () => {
       fd.append('file', file);
       fd.append('post', String(postNow));
       if (docSourceId) fd.append('source_id', docSourceId);
+      if (docFiscalYear) fd.append('fiscal_year', docFiscalYear);
       const r = await axiosInstance.post('/datamapping/import-documents/', fd);
       setDocResult(r.data);
       setDocMsg(r.data.message);
@@ -387,20 +396,44 @@ const DataMappingPage = () => {
   );
 
 
+  const downloadDocSample = async () => {
+    try {
+      const r = await axiosInstance.get('/datamapping/template/', { params: { level: 'documents' }, responseType: 'blob' });
+      const url = URL.createObjectURL(r.data);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'template_documents.xlsx';
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (e) { /* ignore */ }
+  };
+
   const renderDocuments = () => (
     <Stack spacing={2}>
       <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
-        <Typography variant="subtitle2" fontWeight={800} color="#0f766e" mb={1}>ایمپورت اسناد حسابداری از اکسل</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle2" fontWeight={800} color="#0f766e">ایمپورت اسناد حسابداری از اکسل</Typography>
+          <Button size="small" variant="outlined" onClick={downloadDocSample} sx={{ borderRadius: '8px' }}>
+            دانلود فایل نمونه
+          </Button>
+        </Box>
         <Typography variant="caption" color="textSecondary" display="block" mb={1.5}>
-          ستون‌های «شماره سند»، «تاریخ»، «شرح»، «کد حساب/معین»، «شرح سطر»، «بدهکار»، «بستانکار» و «تفصیل» به‌صورت خودکار شناسایی می‌شوند.
-          کدهای مبدا با نگاشت‌های انجام‌شده (یا کدهای موجود) تطبیق داده شده و سند حسابداری ساخته می‌شود.
+          ستون‌های «ردیف، تاریخ سند، شماره سند، شماره عطف، معین، تفصیل۱، تفصیل۲، تفصیل۳، شرح سطر، بدهکار، بستانکار، شرح سند» به‌صورت خودکار شناسایی می‌شوند.
+          تاریخ به‌صورت شمسی (مثلاً ۱۴۰۳/۱۲/۲۵) خوانده و به میلادی تبدیل می‌شود. کدهای معین و تفصیل از طریق نگاشت‌های انجام‌شده (یا کدهای موجود) تطبیق داده می‌شوند.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
-          <FormControl size="small" sx={{ minWidth: 260 }}>
+          <FormControl size="small" sx={{ minWidth: 220 }}>
             <InputLabel>برنامه مبدا (منبع)</InputLabel>
             <Select value={docSourceId || ''} label="برنامه مبدا (منبع)" onChange={(e) => setDocSourceId(e.target.value)}>
               <MenuItem value="">همه / عمومی</MenuItem>
               {sources.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>سال مالی</InputLabel>
+            <Select value={docFiscalYear || ''} label="سال مالی" onChange={(e) => setDocFiscalYear(e.target.value)}>
+              <MenuItem value="">تشخیص خودکار از تاریخ</MenuItem>
+              {fiscalYears.map((y) => <MenuItem key={y.id} value={y.id}>{y.name}</MenuItem>)}
             </Select>
           </FormControl>
           <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => docFileRef.current?.click()}
@@ -440,10 +473,21 @@ const DataMappingPage = () => {
           </Grid>
           {docResult.unresolved_codes && docResult.unresolved_codes.length > 0 && (
             <Box sx={{ mt: 1.5 }}>
-              <Typography variant="caption" color="#b91c1c" fontWeight={700}>کدهای بدون نگاشت:</Typography>
+              <Typography variant="caption" color="#b91c1c" fontWeight={700}>کدهای بدون نگاشت (قبل از ایمپورت بعدی، در تب «نگاشت کدینگ» آن‌ها را تطبیق دهید):</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.5 }}>
                 {docResult.unresolved_codes.map((c) => (
                   <Chip key={c} size="small" label={toPersianDigits(c)} sx={{ direction: 'ltr', bgcolor: 'rgba(239,68,68,0.1)', color: '#b91c1c' }} />
+                ))}
+              </Box>
+            </Box>
+          )}
+          {docResult.skipped_rows && docResult.skipped_rows.length > 0 && (
+            <Box sx={{ mt: 1.5 }}>
+              <Typography variant="caption" color="#b45309" fontWeight={700}>سطرهای ردشده (معین یافت نشد):</Typography>
+              <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.5 }}>
+                {docResult.skipped_rows.map((r, i) => (
+                  <Chip key={i} size="small" label={`ردیف ${toPersianDigits(r.row)} — ${r.reason}`}
+                    sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309' }} />
                 ))}
               </Box>
             </Box>

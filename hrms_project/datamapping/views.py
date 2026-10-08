@@ -423,28 +423,65 @@ def entries(request):
 # ایمپورت اسناد حسابداری
 # -----------------------------------------------------------------------------
 DOC_HEADERS = {
+    'row_no': ['ردیف', 'ردیف سند', 'سطر', 'row', 'row_no'],
+    'date': ['تاریخ سند', 'تاریخ', 'date'],
     'doc_number': ['شماره سند', 'شماره', 'شماره سند مبدا', 'number', 'doc_no'],
-    'date': ['تاریخ', 'تاریخ سند', 'date'],
-    'description': ['شرح', 'شرح سند', 'description'],
-    'account_code': ['کد حساب', 'کد معین', 'کد', 'حساب', 'account', 'account_code'],
-    'line_description': ['شرح سطر', 'شرح ردیف', 'line_description'],
+    'reference': ['شماره عطف', 'عطف', 'reference', 'ref'],
+    'account_code': ['معین', 'کد معین', 'کد حساب', 'کد', 'حساب', 'account', 'account_code'],
+    'auxiliary_1': ['تفصیل1', 'تفصیل 1', 'تفصیل یک', 'تفصیلی1', 'تفصیلی یک', 'aux1', 'auxiliary1'],
+    'auxiliary_2': ['تفصیل2', 'تفصیل 2', 'تفصیل دو', 'تفصیلی2', 'تفصیلی دو', 'aux2', 'auxiliary2'],
+    'auxiliary_3': ['تفصیل3', 'تفصیل 3', 'تفصیل سه', 'تفصیلی3', 'تفصیلی سه', 'aux3', 'auxiliary3'],
+    'line_description': ['شرح سطر', 'شرح ردیف', 'شرح', 'line_description'],
     'debit': ['بدهکار', 'debit'],
     'credit': ['بستانکار', 'credit'],
-    'auxiliary_code': ['تفصیل', 'کد تفصیل', 'تفصیلی', 'auxiliary', 'aux'],
+    'doc_description': ['شرح سند', 'شرح کل سند', 'doc_description'],
 }
 
 
 def _parse_date(value):
+    """تبدیل تاریخ به میلادی. ورودی ممکن است شمسی متنی، میلادی متنی یا سلول تاریخ اکسل باشد.
+
+    - اگر مقدار سلول اکسل از نوع date/datetime باشد، مستقیم میلادی برمی‌گردد (openpyxl
+      تاریخ را میلادی می‌دهد) و نیازی به تبدیل ندارد.
+    - اگر رشتهٔ متنی باشد: سال 1300 تا 1499 شمسی فرض شده و با jdatetime به میلادی تبدیل
+      می‌شود؛ در غیر این صورت میلادی تفسیر می‌شود.
+    """
+    import jdatetime
+
+    if isinstance(value, datetime):
+        return value.date()
     if isinstance(value, date):
         return value
     if not value:
         return None
     s = str(value).strip()
-    for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%m/%d/%Y', '%d/%m/%Y'):
+    if not s:
+        return None
+
+    # نرمال‌سازی ارقام فارسی/عربی و جداکننده‌ها
+    s = normalize(s).replace('/', '-').replace('.', '-').replace('،', '-')
+
+    # فرمت شمسی: 1403/05/12 یا 1403-05-12
+    for fmt in ('%Y-%m-%d', '%Y/%m/%d'):
         try:
-            return datetime.strptime(s, fmt).date()
+            d = datetime.strptime(s, fmt)
         except ValueError:
             continue
+        if 1300 <= d.year <= 1499:
+            try:
+                return jdatetime.date(d.year, d.month, d.day).togregorian()
+            except Exception:
+                return None
+        return d.date()
+
+    # تاریخ هجری شمسی بدون جداکننده: 14030512
+    if s.isdigit() and len(s) in (8,):
+        try:
+            y, m, d = int(s[0:4]), int(s[4:6]), int(s[6:8])
+            if 1300 <= y <= 1499:
+                return jdatetime.date(y, m, d).togregorian()
+        except Exception:
+            pass
     return None
 
 
@@ -485,12 +522,28 @@ def _resolve_auxiliary(company, code, source_id=None):
     return None
 
 
+def _fiscal_year_for(company, doc_date, fiscal_year_id=None):
+    """سال مالی: یا از id ارسالی، یا با تشخیص از بازهٔ تاریخ."""
+    if fiscal_year_id:
+        fy = FiscalYear.objects.filter(company=company, id=fiscal_year_id).first()
+        if fy:
+            return fy
+    if doc_date:
+        fy = FiscalYear.objects.filter(
+            company=company, start_date__lte=doc_date, end_date__gte=doc_date,
+        ).order_by('-start_date').first()
+        if fy:
+            return fy
+    return FiscalYear.objects.filter(company=company).order_by('-start_date').first()
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def import_documents(request):
     company = _company(request)
     post_now = str(request.data.get('post') or 'false').lower() in ('true', '1')
     source_id = request.data.get('source_id') or None
+    fiscal_year_id = request.data.get('fiscal_year') or request.query_params.get('fiscal_year') or None
     file = request.FILES.get('file')
     if not file:
         return Response({'error': 'فایل انتخاب نشده است'}, status=400)
@@ -505,7 +558,10 @@ def import_documents(request):
         headers = [str(h).strip() if h is not None else '' for h in raw[0]]
         col_map = _match_headers(headers, DOC_HEADERS)
         if 'account_code' not in col_map:
-            return Response({'error': 'ستون «کد حساب / کد معین» پیدا نشد'}, status=400)
+            return Response({'error': 'ستون «معین / کد حساب» پیدا نشد'}, status=400)
+
+        def _text(v):
+            return str(v).strip() if v is not None else ''
 
         rows = []
         for r in raw[1:]:
@@ -518,20 +574,24 @@ def import_documents(request):
                 return None
 
             rows.append({
-                'doc_number': str(cell('doc_number') or '').strip() if cell('doc_number') is not None else '',
+                'row_no': _text(cell('row_no')),
+                'doc_number': _text(cell('doc_number')),
+                'reference': _text(cell('reference')),
                 'date': _parse_date(cell('date')),
-                'description': str(cell('description') or '').strip() if cell('description') is not None else '',
-                'account_code': str(cell('account_code') or '').strip(),
-                'line_description': str(cell('line_description') or '').strip() if cell('line_description') is not None else '',
+                'doc_description': _text(cell('doc_description')),
+                'account_code': _text(cell('account_code')),
+                'auxiliary_1': _text(cell('auxiliary_1')),
+                'auxiliary_2': _text(cell('auxiliary_2')),
+                'auxiliary_3': _text(cell('auxiliary_3')),
+                'line_description': _text(cell('line_description')),
                 'debit': to_decimal(cell('debit')),
                 'credit': to_decimal(cell('credit')),
-                'auxiliary_code': str(cell('auxiliary_code') or '').strip() if cell('auxiliary_code') is not None else '',
             })
 
         from collections import OrderedDict
         docs = OrderedDict()
         for r in rows:
-            key = r['doc_number'] or (r['date'].isoformat() if r['date'] else 'doc')
+            key = r['doc_number'] or (r['reference'] or (r['date'].isoformat() if r['date'] else 'doc'))
             docs.setdefault(key, []).append(r)
 
         journal, _ = Journal.objects.get_or_create(
@@ -542,19 +602,19 @@ def import_documents(request):
         created_docs = 0
         created_lines = 0
         unresolved_codes = set()
+        skipped_rows = []
         for doc_key, lines in docs.items():
             first = lines[0]
             doc_date = first['date'] or date.today()
-            fiscal_year = FiscalYear.objects.filter(
-                company=company, start_date__lte=doc_date, end_date__gte=doc_date,
-            ).order_by('-start_date').first()
+            fiscal_year = _fiscal_year_for(company, doc_date, fiscal_year_id)
 
             doc = AccountingDocument.objects.create(
                 company=company,
                 journal=journal,
                 fiscal_year=fiscal_year,
                 date=doc_date,
-                description=first['description'] or f'سند ایمپورت‌شده {doc_key}',
+                description=first['doc_description'] or f'سند ایمپورت‌شده {doc_key}',
+                reference=first['reference'] or '',
                 number='',
                 status='posted' if post_now else 'draft',
                 source_module='datamapping',
@@ -566,20 +626,31 @@ def import_documents(request):
             for i, ln in enumerate(lines, start=1):
                 acc = _resolve_account(company, ln['account_code'], source_id)
                 if not acc:
-                    unresolved_codes.add(ln['account_code'])
+                    if ln['account_code']:
+                        unresolved_codes.add(ln['account_code'])
+                    skipped_rows.append({'row': ln['row_no'] or i, 'reason': 'کد معین یافت نشد', 'code': ln['account_code']})
                     continue
-                aux = _resolve_auxiliary(company, ln['auxiliary_code'], source_id)
+                aux1 = _resolve_auxiliary(company, ln['auxiliary_1'], source_id)
+                aux2 = _resolve_auxiliary(company, ln['auxiliary_2'], source_id)
+                aux3 = _resolve_auxiliary(company, ln['auxiliary_3'], source_id)
+                for code, aux in ((ln['auxiliary_1'], aux1), (ln['auxiliary_2'], aux2), (ln['auxiliary_3'], aux3)):
+                    if code and not aux:
+                        unresolved_codes.add(code)
+
                 AccountingDocumentLine.objects.create(
                     company=company,
                     document=doc,
                     account=acc,
-                    auxiliary_1=aux,
+                    auxiliary_1=aux1,
+                    auxiliary_2=aux2,
+                    auxiliary_3=aux3,
                     line_no=i,
-                    description=ln['line_description'] or ln['description'],
+                    description=ln['line_description'] or '',
                     debit=ln['debit'],
                     credit=ln['credit'],
                 )
                 created_lines += 1
+                _link_aux_categories(acc, aux1, aux2, aux3)
 
         return Response({
             'message': 'ایمپورت اسناد انجام شد',
@@ -587,9 +658,32 @@ def import_documents(request):
             'created_lines': created_lines,
             'post_now': post_now,
             'unresolved_codes': sorted(unresolved_codes)[:100],
+            'skipped_rows': skipped_rows[:100],
         })
     except Exception as e:
         return Response({'error': f'خطا در ایمپورت: {str(e)[:150]}'}, status=400)
+
+
+def _link_aux_categories(account, aux1, aux2, aux3):
+    """ایجاد رابطهٔ دستهٔ تفصیلی با حساب معین.
+
+    وقتی سندی با یک معین و تفصیل‌هایی از یک دسته ثبت می‌شود، حساب معین باید آن
+    دسته را به‌عنوان `auxiliary_category_1/2/3` بشناسد تا در سند بعدی همان
+    تفصیل‌ها قابل انتخاب و درج کد باشند.
+    """
+    changed = False
+    for idx, aux in enumerate((aux1, aux2, aux3), start=1):
+        cat = getattr(aux, 'category', None)
+        if not cat:
+            continue
+        field = f'auxiliary_category_{idx}'
+        if not getattr(account, field, None):
+            setattr(account, field, cat)
+            changed = True
+    if changed:
+        account.save(update_fields=[
+            'auxiliary_category_1', 'auxiliary_category_2', 'auxiliary_category_3', 'updated_at',
+        ])
 
 
 # -----------------------------------------------------------------------------
@@ -763,12 +857,14 @@ TEMPLATE_HEADERS = {
     'general': ['کد کل', 'عنوان', 'کد والد'],
     'subsidiary': ['کد حساب', 'عنوان', 'کد والد'],
     'auxiliary': ['کد', 'عنوان', 'دسته'],
+    'documents': ['ردیف', 'تاریخ سند', 'شماره سند', 'شماره عطف', 'معین', 'تفصیل1', 'تفصیل2', 'تفصیل3', 'شرح سطر', 'بدهکار', 'بستانکار', 'شرح سند'],
 }
 TEMPLATE_SAMPLES = {
     'group': ['100', 'دارایی‌های جاری', '1'],
     'general': ['1001', 'موجودی نقد', '100'],
     'subsidiary': ['10011', 'صندوق', '1001'],
     'auxiliary': ['100', 'بانک ملت', 'بانک'],
+    'documents': ['1', '1403/12/25', '1001', 'عطف-۱', '10011', '100', '', '', 'خرید نقدی کالا', '15000000', '', 'سند خرید'],
 }
 
 
@@ -786,7 +882,7 @@ def template(request):
 
     wb = openpyxl.Workbook()
     ws = wb.active
-    ws.title = LEVEL_LABELS.get(level, 'کدینگ')
+    ws.title = 'اسناد حسابداری' if level == 'documents' else LEVEL_LABELS.get(level, 'کدینگ')
 
     header_fill = PatternFill(start_color='6366F1', end_color='6366F1', fill_type='solid')
     header_font = Font(color='FFFFFF', bold=True)
