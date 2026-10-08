@@ -274,14 +274,34 @@ def _create_new_target(level, company, name):
     if level in ('general', 'subsidiary'):
         if not acc_type:
             return None
+        if level == 'subsidiary':
+            # معین باید زیر یک حساب کل باشد تا در لیست معین نمایش داده شود.
+            parent = Account.objects.filter(company=company, parent__isnull=True).first()
+            if not parent:
+                parent = Account.objects.create(
+                    company=company, account_type=acc_type,
+                    code=suggest_code(company, 'general') or _next_code(Account, company),
+                    name='حساب کل عمومی', level=1,
+                )
+            for attempt in range(5):
+                code = suggest_code(company, 'subsidiary', parent.code) if attempt == 0 else _next_code(Account, company)
+                if not code:
+                    code = _next_code(Account, company)
+                try:
+                    return Account.objects.create(
+                        company=company, account_type=acc_type, code=code, name=name,
+                        level=2, parent=parent, group=parent.group,
+                    )
+                except IntegrityError:
+                    continue
+            return None
         for attempt in range(5):
-            code = suggest_code(company, level) if attempt == 0 else _next_code(Account, company)
+            code = suggest_code(company, 'general') if attempt == 0 else _next_code(Account, company)
             if not code:
                 code = _next_code(Account, company)
             try:
                 return Account.objects.create(
-                    company=company, account_type=acc_type, code=code, name=name,
-                    level=1 if level == 'general' else 2,
+                    company=company, account_type=acc_type, code=code, name=name, level=1,
                 )
             except IntegrityError:
                 continue

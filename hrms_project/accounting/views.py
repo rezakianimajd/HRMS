@@ -258,6 +258,7 @@ class AccountGroupViewSet(CompanyScopedViewSet):
     queryset = AccountGroup.objects.select_related('account_type')
     search_fields = ['code', 'name']
     ordering = ['code']
+    pagination_class = None
 
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
@@ -287,6 +288,7 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['code', 'name']
     ordering = ['code']
+    pagination_class = None
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -322,6 +324,7 @@ class AuxiliaryAccountViewSet(CompanyScopedViewSet):
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['code', 'name']
     ordering = ['code']
+    pagination_class = None
 
     def destroy(self, request, *args, **kwargs):
         obj = self.get_object()
