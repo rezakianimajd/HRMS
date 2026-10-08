@@ -116,6 +116,7 @@ import AccountingCodingsPage from './pages/AccountingCodingsPage';
 import AccountGroupsPage from './pages/AccountGroupsPage';
 import AccountsClassicPage from './pages/AccountsClassicPage';
 import AuxiliaryAccountsPage from './pages/AuxiliaryAccountsPage';
+import DataMappingPage from './pages/DataMappingPage';
 import ProcurementPage from './pages/ProcurementPage';
 import ProcurementSuppliersPage from './pages/procurement/ProcurementSuppliersPage';
 import ProcurementItemsPage from './pages/procurement/ProcurementItemsPage';
@@ -252,6 +253,7 @@ const AppRoutes = () => {
       <Route path="/accounting/groups" element={<ProtectedLayout><AccountGroupsPage /></ProtectedLayout>} />
       <Route path="/accounting/accounts/:kind" element={<ProtectedLayout><AccountsClassicPage /></ProtectedLayout>} />
       <Route path="/accounting/auxiliary" element={<ProtectedLayout><AuxiliaryAccountsPage /></ProtectedLayout>} />
+      <Route path="/accounting/datamapping" element={<ProtectedLayout><DataMappingPage /></ProtectedLayout>} />
       <Route path="/accounting/*" element={<ProtectedLayout><AccountingPage /></ProtectedLayout>} />
       <Route path="/procurement" element={<ProtectedLayout><ProcurementPage /></ProtectedLayout>} />
       <Route path="/procurement/suppliers" element={<ProtectedLayout><ProcurementSuppliersPage /></ProtectedLayout>} />

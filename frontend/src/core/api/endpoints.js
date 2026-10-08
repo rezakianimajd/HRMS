@@ -135,6 +135,14 @@ const endpoints = {
     segments: `${API_BASE}/notifications/bale-segments/`,
     importContacts: `${API_BASE}/notifications/bale-contacts-import/`,
   },
+  datamapping: {
+    sources: `${API_BASE}/datamapping/sources/`,
+    options: `${API_BASE}/datamapping/options/`,
+    preview: `${API_BASE}/datamapping/preview/`,
+    apply: `${API_BASE}/datamapping/apply/`,
+    entries: `${API_BASE}/datamapping/entries/`,
+    importDocuments: `${API_BASE}/datamapping/import-documents/`,
+  },
 };
 
 export default endpoints;

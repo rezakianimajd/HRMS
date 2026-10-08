@@ -71,6 +71,7 @@ TENANT_APPS = [
     'accounting',                      # Accounting (central financial engine)
     'procurement',                     # Procurement / Purchase-to-Pay (خرید و تدارکات)
     'treasury',                        # Treasury / Cash & payment management (خزانه‌داری)
+    'datamapping',                     # Data mapping / import (نگاشت و ایمپورت داده)
 ]
 
 INSTALLED_APPS = SHARED_APPS + [app for app in TENANT_APPS if app not in SHARED_APPS]
