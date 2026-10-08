@@ -653,3 +653,56 @@ def sync_auxiliaries(request):
         'updated': updated,
         'counts': counts,
     })
+
+
+# -----------------------------------------------------------------------------
+# حذف همهٔ کدینگ‌های حسابداری (برای شروع مجدد ایمپورت)
+# -----------------------------------------------------------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def clear_codings(request):
+    """حذف همهٔ گروه‌ها، حساب‌ها (کل/معین)، تفصیلی‌ها، نگاشت‌ها و اسناد حسابداری شرکت.
+
+    برای شروع مجدد فرآیند ایمپورت. اسناد و خطوط هم حذف می‌شوند چون با PROTECT
+    به حساب‌ها متصل هستند. CodingConfig (سربرگ کدینگ) دست‌نخورده می‌ماند.
+    """
+    company = _company(request)
+    confirm = str(request.data.get('confirm') or '').strip()
+    if confirm != 'DELETE':
+        return Response({'error': 'برای حذف، مقدار confirm را "DELETE" بفرستید.'}, status=400)
+
+    from accounting.models import (
+        AccountGroup, Account, AuxiliaryAccount,
+        AccountingDocument, AccountingDocumentLine,
+    )
+
+    result = {}
+
+    def _count(qs):
+        return qs.count()
+
+    # 1) خطوط و اسناد (به‌خاطر PROTECT حساب)
+    result['document_lines'] = _count(AccountingDocumentLine.objects.filter(company=company))
+    AccountingDocumentLine.objects.filter(company=company).delete()
+    result['documents'] = _count(AccountingDocument.objects.filter(company=company))
+    AccountingDocument.objects.filter(company=company).delete()
+
+    # 2) تفصیلی‌ها
+    result['auxiliaries'] = _count(AuxiliaryAccount.objects.filter(company=company))
+    AuxiliaryAccount.objects.filter(company=company).delete()
+
+    # 3) حساب‌های معین (دارای parent) سپس کل (بدون parent)
+    result['subsidiaries'] = _count(Account.objects.filter(company=company, parent__isnull=False))
+    Account.objects.filter(company=company, parent__isnull=False).delete()
+    result['generals'] = _count(Account.objects.filter(company=company, parent__isnull=True))
+    Account.objects.filter(company=company, parent__isnull=True).delete()
+
+    # 4) گروه‌ها
+    result['groups'] = _count(AccountGroup.objects.filter(company=company))
+    AccountGroup.objects.filter(company=company).delete()
+
+    # 5) نگاشت‌ها
+    result['mappings'] = _count(MappingEntry.objects.filter(company=company))
+    MappingEntry.objects.filter(company=company).delete()
+
+    return Response({'message': 'همهٔ کدینگ‌ها حذف شدند', 'deleted': result})

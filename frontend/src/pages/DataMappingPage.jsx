@@ -153,6 +153,24 @@ const DataMappingPage = () => {
     }
   };
 
+  const clearAll = async () => {
+    const ok1 = window.confirm('هشدار: همه گروه‌ها، حساب‌ها (کل/معین)، تفصیلی‌ها، نگاشت‌ها و اسناد حسابداری حذف می‌شوند. ادامه می‌دهید؟');
+    if (!ok1) return;
+    const ok2 = window.prompt('برای تأیید نهایی عبارت DELETE را بنویسید:');
+    if (ok2 !== 'DELETE') {
+      setCodingErr('حذف لغو شد (عبارت تأیید درست نبود).');
+      return;
+    }
+    try {
+      const r = await axiosInstance.post('/datamapping/clear-codings/', { confirm: 'DELETE' });
+      const d = r.data.deleted || {};
+      setCodingMsg(`حذف شد: ${formatPersianNumber(d.groups || 0)} گروه، ${formatPersianNumber(d.generals || 0)} کل، ${formatPersianNumber(d.subsidiaries || 0)} معین، ${formatPersianNumber(d.auxiliaries || 0)} تفصیل`);
+      setPreviewRows([]);
+    } catch (err) {
+      setCodingErr(err.response?.data?.error || 'خطا در حذف');
+    }
+  };
+
 
   const renderCoding = () => (
     <Stack spacing={2}>
@@ -193,6 +211,10 @@ const DataMappingPage = () => {
           <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => codingFileRef.current?.click()}
             sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '10px', px: 3 }}>
             انتخاب فایل اکسل
+          </Button>
+          <Button variant="outlined" color="error" onClick={clearAll}
+            sx={{ borderRadius: '10px', whiteSpace: 'nowrap' }}>
+            حذف همه کدینگ‌ها
           </Button>
           <Typography variant="caption" color="textSecondary">
             ستون‌های «کد» و «عنوان» (یا نام) به‌صورت خودکار شناسایی می‌شوند.
