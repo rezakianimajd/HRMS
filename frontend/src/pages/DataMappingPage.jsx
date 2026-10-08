@@ -44,6 +44,10 @@ const DataMappingPage = () => {
   const [docMsg, setDocMsg] = useState('');
   const [docErr, setDocErr] = useState('');
   const docFileRef = useRef(null);
+  const [auxSources, setAuxSources] = useState([]);
+  const [auxSyncing, setAuxSyncing] = useState('');
+  const [auxMsg, setAuxMsg] = useState('');
+  const [auxErr, setAuxErr] = useState('');
 
   const loadSources = async () => {
     try {
@@ -187,6 +191,48 @@ const DataMappingPage = () => {
       setCodingErr('خطا در دانلود نمونه');
     }
   };
+
+  const loadAuxSources = async () => {
+    try {
+      const r = await axiosInstance.get('/datamapping/auxiliary-sources/');
+      setAuxSources(Array.isArray(r.data) ? r.data : []);
+    } catch (e) { /* ignore */ }
+  };
+
+  React.useEffect(() => { loadAuxSources(); }, [tab]);
+
+  const syncKind = async (kind) => {
+    setAuxSyncing(kind);
+    setAuxMsg('');
+    setAuxErr('');
+    try {
+      const r = await axiosInstance.post('/datamapping/sync-auxiliaries/', { kinds: [kind] });
+      const d = r.data;
+      setAuxMsg(`همگام‌سازی شد: ${formatPersianNumber(d.created)} جدید، ${formatPersianNumber(d.updated)} موجود`);
+      loadAuxSources();
+    } catch (err) {
+      setAuxErr(err.response?.data?.error || 'خطا در همگام‌سازی');
+    } finally {
+      setAuxSyncing('');
+    }
+  };
+
+  const syncAllAux = async () => {
+    setAuxSyncing('__all__');
+    setAuxMsg('');
+    setAuxErr('');
+    try {
+      const r = await axiosInstance.post('/datamapping/sync-auxiliaries/', {});
+      const d = r.data;
+      setAuxMsg(`همگام‌سازی همه: ${formatPersianNumber(d.created)} جدید، ${formatPersianNumber(d.updated)} موجود`);
+      loadAuxSources();
+    } catch (err) {
+      setAuxErr(err.response?.data?.error || 'خطا در همگام‌سازی');
+    } finally {
+      setAuxSyncing('');
+    }
+  };
+
 
 
   const renderCoding = () => (
@@ -395,6 +441,60 @@ const DataMappingPage = () => {
     </Stack>
   );
 
+  const renderAuxiliaries = () => (
+    <Stack spacing={2}>
+      <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+          <Typography variant="subtitle2" fontWeight={800} color="#9a3412">ساخت تفصیلی‌ها از ماژول‌ها (دسته به دسته)</Typography>
+          <Button variant="contained" onClick={syncAllAux} disabled={!!auxSyncing}
+            sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px' }}>
+            {auxSyncing === '__all__' ? 'در حال همگام‌سازی...' : 'ساخت همه'}
+          </Button>
+        </Box>
+        <Typography variant="caption" color="textSecondary" display="block" mb={1.5}>
+          تفصیلی‌ها مستقیماً از موجودیت‌های هر ماژول ساخته می‌شوند و در دستهٔ مربوطه قرار می‌گیرند.
+        </Typography>
+        {(auxMsg || auxErr) && (
+          <Alert severity={auxErr ? 'error' : 'success'} onClose={() => { setAuxMsg(''); setAuxErr(''); }} sx={{ mb: 1.5 }}>
+            {auxErr || auxMsg}
+          </Alert>
+        )}
+        <Grid container spacing={1.5}>
+          {auxSources.map((s) => (
+            <Grid item xs={12} sm={6} md={4} key={s.kind}>
+              <Paper sx={{
+                p: 1.75, borderRadius: '14px', border: '1px solid rgba(100,116,139,0.14)',
+                background: 'rgba(255,255,255,0.6)', height: '100%', display: 'flex', flexDirection: 'column', gap: 0.5,
+              }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Typography variant="body2" fontWeight={800}>{s.label}</Typography>
+                  <Chip size="small" label={`${formatPersianNumber(s.count)} مورد`} sx={{ fontWeight: 700 }} />
+                </Box>
+                <Typography variant="caption" color="textSecondary">ماژول: {s.module}</Typography>
+                <Typography variant="caption" color="textSecondary">دسته: {s.category}</Typography>
+                <Button size="small" variant="outlined" onClick={() => syncKind(s.kind)} disabled={!!auxSyncing}
+                  sx={{ mt: 1, borderRadius: '8px', whiteSpace: 'nowrap' }}>
+                  {auxSyncing === s.kind ? 'در حال ساخت...' : 'ساخت تفصیلی‌ها'}
+                </Button>
+              </Paper>
+            </Grid>
+          ))}
+        </Grid>
+      </Paper>
+
+      <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
+        <Typography variant="subtitle2" fontWeight={800} color="#9a3412" mb={1}>ایمپورت تفصیلی از اکسل (با دسته‌بندی)</Typography>
+        <Typography variant="caption" color="textSecondary" display="block" mb={1.5}>
+          ستون‌های «کد»، «عنوان» و «دسته» خوانده می‌شوند؛ اگر دسته در سیستم نباشد ساخته می‌شود.
+        </Typography>
+        <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => setTab(0)}
+          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 3 }}>
+          ایمپورت از اکسل (تب نگاشت کدینگ)
+        </Button>
+      </Paper>
+    </Stack>
+  );
+
   return (
     <Box>
       <Paper sx={{
@@ -417,10 +517,11 @@ const DataMappingPage = () => {
         <Tabs value={tab} onChange={(e, v) => setTab(v)}>
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><AccountTreeIcon fontSize="small" /> نگاشت کدینگ</Box>} />
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><DescriptionIcon fontSize="small" /> ایمپورت اسناد</Box>} />
+          <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><HubIcon fontSize="small" /> تفصیلی‌ها</Box>} />
         </Tabs>
       </Paper>
 
-      {tab === 0 ? renderCoding() : renderDocuments()}
+      {tab === 0 ? renderCoding() : tab === 1 ? renderDocuments() : renderAuxiliaries()}
     </Box>
   );
 };

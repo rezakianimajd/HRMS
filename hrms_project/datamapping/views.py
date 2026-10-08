@@ -112,7 +112,7 @@ def options(request):
 CODING_HEADERS = {
     'source_code': ['کد', 'کد حساب', 'کد کل', 'کد مبدا', 'code'],
     'source_name': ['عنوان', 'نام', 'شرح', 'نام حساب', 'title', 'name'],
-    'parent_name': ['کد والد', 'کد پدر', 'کد گروه', 'کد نوع', 'والد', 'پدر', 'گروه', 'نوع حساب', 'نوع', 'زیرمجموعه', 'parent'],
+    'parent_name': ['کد والد', 'کد پدر', 'کد گروه', 'کد نوع', 'والد', 'پدر', 'گروه', 'نوع حساب', 'نوع', 'زیرمجموعه', 'دسته', 'parent'],
 }
 
 
@@ -343,12 +343,22 @@ def _create_new_target(level, company, name, parent_name=''):
         return None
 
     if level == 'auxiliary':
+        category = None
+        if parent_name:
+            from accounting.models import AuxiliaryCategory
+            category = AuxiliaryCategory.objects.filter(company=company, name=parent_name).first()
+            if not category:
+                category = _best_named(AuxiliaryCategory.objects.filter(company=company), parent_name)
+            if not category:
+                category = AuxiliaryCategory.objects.create(
+                    company=company, code=parent_name[:30], name=parent_name,
+                )
         for attempt in range(5):
             code = suggest_code(company, 'auxiliary') if attempt == 0 else _next_code(AuxiliaryAccount, company)
             if not code:
                 code = _next_code(AuxiliaryAccount, company)
             try:
-                return AuxiliaryAccount.objects.create(company=company, code=code, name=name)
+                return AuxiliaryAccount.objects.create(company=company, code=code, name=name, category=category)
             except IntegrityError:
                 continue
         return None
@@ -568,19 +578,73 @@ def import_documents(request):
 
 
 # -----------------------------------------------------------------------------
-# ساخت خودکار حساب‌های تفصیلی از موجودیت‌های ماژول‌های دیگر
+# ساخت خودکار حساب‌های تفصیلی از موجودیت‌های ماژول‌های دیگر (دسته به دسته)
 # -----------------------------------------------------------------------------
+AUX_SOURCES = [
+    {'kind': 'bank', 'label': 'بانک‌ها و صندوق‌ها', 'module': 'خزانه‌داری', 'category': 'بانک', 'cat_source': 'bank'},
+    {'kind': 'employee', 'label': 'پرسنل', 'module': 'منابع انسانی', 'category': 'پرسنل', 'cat_source': 'employee'},
+    {'kind': 'supplier', 'label': 'تأمین‌کنندگان', 'module': 'خرید و تدارکات', 'category': 'تأمین‌کننده', 'cat_source': 'manual'},
+    {'kind': 'custodian', 'label': 'تنخواه‌داران', 'module': 'تنخواه', 'category': 'تنخواه‌دار', 'cat_source': 'employee'},
+    {'kind': 'party', 'label': 'طرف‌حساب‌ها (حقوقی/حقیقی)', 'module': 'قراردادها', 'category': 'طرف حساب', 'cat_source': 'party'},
+    {'kind': 'contract', 'label': 'قراردادها', 'module': 'قراردادها', 'category': 'قرارداد', 'cat_source': 'contract'},
+    {'kind': 'project', 'label': 'پروژه‌ها', 'module': 'پروژه‌ها', 'category': 'پروژه', 'cat_source': 'project'},
+]
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def auxiliary_sources(request):
+    """لیست منابع موجود برای ساخت تفصیلی + تعداد هر کدام."""
+    company = _company(request)
+
+    from contracts.models import ContractParty, Contract
+    from treasury.models import TreasuryEntity
+    from projects.models import Project
+    from employees.models import Employee
+    from procurement.models import Supplier
+    from pettycash.models import PettyCashFund
+
+    counts = {
+        'bank': TreasuryEntity.objects.filter(company=company, is_active=True).count(),
+        'employee': Employee.objects.filter(company=company, is_active=True).count(),
+        'supplier': Supplier.objects.filter(company=company, status='active').count(),
+        'custodian': PettyCashFund.objects.filter(company=company, status='active').values('custodian_id').distinct().count(),
+        'party': ContractParty.objects.filter(company=company, is_active=True).count(),
+        'contract': Contract.objects.filter(company=company).count(),
+        'project': Project.objects.filter(company=company).count(),
+    }
+
+    return Response([
+        {
+            'kind': s['kind'],
+            'label': s['label'],
+            'module': s['module'],
+            'category': s['category'],
+            'count': counts.get(s['kind'], 0),
+        }
+        for s in AUX_SOURCES
+    ])
+
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def sync_auxiliaries(request):
-    """ساخت تفصیل‌ها از: طرف‌حساب‌ها (حقیقی/حقوقی)، بانک‌ها، قراردادها، پروژه‌ها و پرسنل."""
+    """ساخت تفصیل‌ها از ماژول‌ها. `kinds` لیست منابع؛ اگر خالی بود همه را همگام می‌کند."""
     company = _company(request)
+    kinds = request.data.get('kinds') or []
+    if isinstance(kinds, str):
+        kinds = [kinds]
+    kinds = [k for k in kinds if any(s['kind'] == k for s in AUX_SOURCES)]
+    if not kinds:
+        kinds = [s['kind'] for s in AUX_SOURCES]
 
     from accounting.models import AuxiliaryCategory
     from contracts.models import ContractParty, Contract
     from treasury.models import TreasuryEntity
     from projects.models import Project
     from employees.models import Employee
+    from procurement.models import Supplier
+    from pettycash.models import PettyCashFund
 
     def get_category(name, source, sort):
         return AuxiliaryCategory.objects.get_or_create(
@@ -588,12 +652,14 @@ def sync_auxiliaries(request):
             defaults={'code': source + str(sort), 'source': source, 'sort_order': sort},
         )[0]
 
-    cat_party_legal = get_category('طرف حساب حقوقی', 'party', 1)
-    cat_party_natural = get_category('طرف حساب حقیقی', 'party', 2)
-    cat_bank = get_category('بانک', 'bank', 3)
-    cat_contract = get_category('قرارداد', 'contract', 4)
-    cat_project = get_category('پروژه', 'project', 5)
-    cat_employee = get_category('پرسنل', 'employee', 6)
+    cat_bank = get_category('بانک', 'bank', 1)
+    cat_employee = get_category('پرسنل', 'employee', 2)
+    cat_supplier = get_category('تأمین‌کننده', 'manual', 3)
+    cat_custodian = get_category('تنخواه‌دار', 'employee', 4)
+    cat_party_legal = get_category('طرف حساب حقوقی', 'party', 5)
+    cat_party_natural = get_category('طرف حساب حقیقی', 'party', 6)
+    cat_contract = get_category('قرارداد', 'contract', 7)
+    cat_project = get_category('پروژه', 'project', 8)
 
     created = 0
     updated = 0
@@ -618,38 +684,53 @@ def sync_auxiliaries(request):
         if extra:
             kwargs.update(extra)
         kwargs['code'] = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
-        obj = AuxiliaryAccount.objects.create(**kwargs)
+        AuxiliaryAccount.objects.create(**kwargs)
         created += 1
 
-    # طرف‌حساب‌ها (حقیقی/حقوقی)
-    for party in ContractParty.objects.filter(company=company, is_active=True):
-        cat = cat_party_legal if party.person_type == 'legal' else cat_party_natural
-        upsert({'party': party}, 'party', cat, party.name, {'person_type': party.person_type})
-    counts['parties'] = ContractParty.objects.filter(company=company, is_active=True).count()
+    if 'bank' in kinds:
+        for entity in TreasuryEntity.objects.filter(company=company, is_active=True):
+            upsert({'treasury_entity': entity}, 'bank' if entity.entity_type == 'bank' else 'cash', cat_bank, entity.name)
+        counts['bank'] = TreasuryEntity.objects.filter(company=company, is_active=True).count()
 
-    # بانک‌ها / صندوق‌ها
-    for entity in TreasuryEntity.objects.filter(company=company, is_active=True):
-        upsert({'treasury_entity': entity}, 'bank' if entity.entity_type == 'bank' else 'cash', cat_bank, entity.name)
-    counts['banks'] = TreasuryEntity.objects.filter(company=company, is_active=True).count()
+    if 'employee' in kinds:
+        for emp in Employee.objects.filter(company=company, is_active=True):
+            upsert({'employee': emp}, 'employee', cat_employee, emp.full_name)
+        counts['employee'] = Employee.objects.filter(company=company, is_active=True).count()
 
-    # قراردادها (نام = طرف + شماره قرارداد)
-    for contract in Contract.objects.filter(company=company).select_related('party'):
-        if contract.party:
-            label = f"{contract.party.name} - {contract.number}".strip(' -')
-        else:
-            label = contract.number or f'قرارداد {contract.pk}'
-        upsert({'contract': contract}, 'contract', cat_contract, label, {'party': contract.party})
-    counts['contracts'] = Contract.objects.filter(company=company).count()
+    if 'supplier' in kinds:
+        for sup in Supplier.objects.filter(company=company, status='active'):
+            upsert({'supplier': sup}, 'supplier', cat_supplier, sup.name)
+        counts['supplier'] = Supplier.objects.filter(company=company, status='active').count()
 
-    # پروژه‌ها
-    for project in Project.objects.filter(company=company):
-        upsert({'project': project}, 'project', cat_project, project.name)
-    counts['projects'] = Project.objects.filter(company=company).count()
+    if 'custodian' in kinds:
+        seen = set()
+        for fund in PettyCashFund.objects.filter(company=company, status='active').select_related('custodian'):
+            emp = fund.custodian
+            if not emp or emp.id in seen:
+                continue
+            seen.add(emp.id)
+            upsert({'employee': emp}, 'employee', cat_custodian, emp.full_name)
+        counts['custodian'] = len(seen)
 
-    # پرسنل
-    for emp in Employee.objects.filter(company=company, is_active=True):
-        upsert({'employee': emp}, 'employee', cat_employee, emp.full_name)
-    counts['employees'] = Employee.objects.filter(company=company, is_active=True).count()
+    if 'party' in kinds:
+        for party in ContractParty.objects.filter(company=company, is_active=True):
+            cat = cat_party_legal if party.person_type == 'legal' else cat_party_natural
+            upsert({'party': party}, 'party', cat, party.name, {'person_type': party.person_type})
+        counts['party'] = ContractParty.objects.filter(company=company, is_active=True).count()
+
+    if 'contract' in kinds:
+        for contract in Contract.objects.filter(company=company).select_related('party'):
+            if contract.party:
+                label = f"{contract.party.name} - {contract.number}".strip(' -')
+            else:
+                label = contract.number or f'قرارداد {contract.pk}'
+            upsert({'contract': contract}, 'contract', cat_contract, label, {'party': contract.party})
+        counts['contract'] = Contract.objects.filter(company=company).count()
+
+    if 'project' in kinds:
+        for project in Project.objects.filter(company=company):
+            upsert({'project': project}, 'project', cat_project, project.name)
+        counts['project'] = Project.objects.filter(company=company).count()
 
     return Response({
         'message': 'تفصیل‌ها همگام‌سازی شدند',
@@ -666,13 +747,13 @@ TEMPLATE_HEADERS = {
     'group': ['کد', 'عنوان', 'کد والد'],
     'general': ['کد کل', 'عنوان', 'کد والد'],
     'subsidiary': ['کد حساب', 'عنوان', 'کد والد'],
-    'auxiliary': ['کد', 'عنوان'],
+    'auxiliary': ['کد', 'عنوان', 'دسته'],
 }
 TEMPLATE_SAMPLES = {
     'group': ['100', 'دارایی‌های جاری', '1'],
     'general': ['1001', 'موجودی نقد', '100'],
     'subsidiary': ['10011', 'صندوق', '1001'],
-    'auxiliary': ['100', 'بانک ملت', ''],
+    'auxiliary': ['100', 'بانک ملت', 'بانک'],
 }
 
 

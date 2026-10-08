@@ -143,6 +143,7 @@ const endpoints = {
     entries: `${API_BASE}/datamapping/entries/`,
     importDocuments: `${API_BASE}/datamapping/import-documents/`,
     syncAuxiliaries: `${API_BASE}/datamapping/sync-auxiliaries/`,
+    auxiliarySources: `${API_BASE}/datamapping/auxiliary-sources/`,
     clearCodings: `${API_BASE}/datamapping/clear-codings/`,
     template: `${API_BASE}/datamapping/template/`,
   },
