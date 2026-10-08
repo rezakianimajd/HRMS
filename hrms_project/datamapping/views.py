@@ -321,29 +321,38 @@ def _parse_date(value):
     return None
 
 
-def _resolve_account(company, code):
+def _resolve_account(company, code, source_id=None):
     if not code:
         return None
     acc = Account.objects.filter(company=company, code=code).first()
     if acc:
         return acc
-    entry = MappingEntry.objects.filter(
+    # ابتدا نگاشت مختص منبع، سپس نگاشت عمومی
+    qs = MappingEntry.objects.filter(
         company=company, level__in=['subsidiary', 'general'], source_code=code, resolved=True,
-    ).first()
+    )
+    if source_id:
+        entry = qs.filter(source_id=source_id).first() or qs.filter(source__isnull=True).first()
+    else:
+        entry = qs.first()
     if entry and entry.target_account:
         return entry.target_account
     return None
 
 
-def _resolve_auxiliary(company, code):
+def _resolve_auxiliary(company, code, source_id=None):
     if not code:
         return None
     aux = AuxiliaryAccount.objects.filter(company=company, code=code).first()
     if aux:
         return aux
-    entry = MappingEntry.objects.filter(
+    qs = MappingEntry.objects.filter(
         company=company, level='auxiliary', source_code=code, resolved=True,
-    ).first()
+    )
+    if source_id:
+        entry = qs.filter(source_id=source_id).first() or qs.filter(source__isnull=True).first()
+    else:
+        entry = qs.first()
     if entry and entry.target_auxiliary:
         return entry.target_auxiliary
     return None
@@ -354,6 +363,7 @@ def _resolve_auxiliary(company, code):
 def import_documents(request):
     company = _company(request)
     post_now = str(request.data.get('post') or 'false').lower() in ('true', '1')
+    source_id = request.data.get('source_id') or None
     file = request.FILES.get('file')
     if not file:
         return Response({'error': 'فایل انتخاب نشده است'}, status=400)
@@ -427,11 +437,11 @@ def import_documents(request):
             )
             created_docs += 1
             for i, ln in enumerate(lines, start=1):
-                acc = _resolve_account(company, ln['account_code'])
+                acc = _resolve_account(company, ln['account_code'], source_id)
                 if not acc:
                     unresolved_codes.add(ln['account_code'])
                     continue
-                aux = _resolve_auxiliary(company, ln['auxiliary_code'])
+                aux = _resolve_auxiliary(company, ln['auxiliary_code'], source_id)
                 AccountingDocumentLine.objects.create(
                     company=company,
                     document=doc,

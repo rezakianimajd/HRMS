@@ -38,6 +38,7 @@ const DataMappingPage = () => {
   const [codingErr, setCodingErr] = useState('');
   const codingFileRef = useRef(null);
   const [postNow, setPostNow] = useState(false);
+  const [docSourceId, setDocSourceId] = useState('');
   const [docLoading, setDocLoading] = useState(false);
   const [docResult, setDocResult] = useState(null);
   const [docMsg, setDocMsg] = useState('');
@@ -70,6 +71,28 @@ const DataMappingPage = () => {
       setSourceId(r.data.id);
     } catch (e) {
       setCodingErr(e.response?.data?.error || 'خطا در ساخت منبع');
+    }
+  };
+
+  const onPickDocFile = async (e) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setDocErr('');
+    setDocResult(null);
+    setDocLoading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('post', String(postNow));
+      if (docSourceId) fd.append('source_id', docSourceId);
+      const r = await axiosInstance.post('/datamapping/import-documents/', fd);
+      setDocResult(r.data);
+      setDocMsg(r.data.message);
+    } catch (err) {
+      setDocErr(err.response?.data?.error || 'خطا در ایمپورت اسناد');
+    } finally {
+      setDocLoading(false);
     }
   };
 
@@ -270,6 +293,13 @@ const DataMappingPage = () => {
           کدهای مبدا با نگاشت‌های انجام‌شده (یا کدهای موجود) تطبیق داده شده و سند حسابداری ساخته می‌شود.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
+          <FormControl size="small" sx={{ minWidth: 260 }}>
+            <InputLabel>برنامه مبدا (منبع)</InputLabel>
+            <Select value={docSourceId || ''} label="برنامه مبدا (منبع)" onChange={(e) => setDocSourceId(e.target.value)}>
+              <MenuItem value="">همه / عمومی</MenuItem>
+              {sources.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
+            </Select>
+          </FormControl>
           <Button variant="contained" startIcon={<CloudUploadIcon />} onClick={() => docFileRef.current?.click()}
             sx={{ background: 'linear-gradient(135deg, #10b981, #0ea5e9)', borderRadius: '10px', px: 3 }}>
             انتخاب فایل اسناد
