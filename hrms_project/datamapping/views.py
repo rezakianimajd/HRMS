@@ -112,7 +112,7 @@ def options(request):
 CODING_HEADERS = {
     'source_code': ['کد', 'کد حساب', 'کد مبدا', 'code'],
     'source_name': ['عنوان', 'نام', 'شرح', 'نام حساب', 'title', 'name'],
-    'parent_name': ['والد', 'پدر', 'حساب کل', 'کل', 'گروه', 'نوع حساب', 'نوع', 'زیرمجموعه', 'parent'],
+    'parent_name': ['کد والد', 'کد کل', 'کد گروه', 'کد نوع', 'کد پدر', 'والد', 'پدر', 'حساب کل', 'کل', 'گروه', 'نوع حساب', 'نوع', 'زیرمجموعه', 'parent'],
 }
 
 
@@ -270,9 +270,11 @@ def _create_new_target(level, company, name, parent_name=''):
     acc_type = AccountType.objects.filter(company=company).first()
 
     if level == 'group':
-        # والد گروه = نوع حساب
+        # والد گروه = نوع حساب (کد یا نام)
         if parent_name:
-            match = _best_named(AccountType.objects.filter(company=company), parent_name)
+            match = AccountType.objects.filter(company=company, code=parent_name).first()
+            if not match:
+                match = _best_named(AccountType.objects.filter(company=company), parent_name)
             if match:
                 acc_type = match
         if not acc_type:
@@ -290,7 +292,9 @@ def _create_new_target(level, company, name, parent_name=''):
             return None
         group = None
         if parent_name:
-            group = _best_named(AccountGroup.objects.filter(company=company), parent_name)
+            group = AccountGroup.objects.filter(company=company, code=parent_name).first()
+            if not group:
+                group = _best_named(AccountGroup.objects.filter(company=company), parent_name)
             if group:
                 acc_type = group.account_type
 
