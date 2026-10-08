@@ -28,6 +28,7 @@ const LEVELS = [
 const DataMappingPage = () => {
   const [tab, setTab] = useState(0);
   const [level, setLevel] = useState('subsidiary');
+  const [kind, setKind] = useState('');
   const [sourceId, setSourceId] = useState('');
   const [sources, setSources] = useState([]);
   const [options, setOptions] = useState([]);
@@ -110,6 +111,7 @@ const DataMappingPage = () => {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('level', level);
+      if (kind) fd.append('kind', kind);
       if (sourceId) fd.append('source_id', sourceId);
       const r = await axiosInstance.post('/datamapping/preview/', fd);
       setPreviewRows((r.data.rows || []).map((row) => ({
@@ -137,6 +139,7 @@ const DataMappingPage = () => {
     try {
       const payload = {
         level,
+        kind: kind || '',
         source_id: sourceId || null,
         rows: previewRows.map((r) => ({
           source_code: r.source_code,
@@ -265,6 +268,15 @@ const DataMappingPage = () => {
           </FormControl>
           <Button variant="outlined" startIcon={<AddIcon />} onClick={createSource}
             sx={{ borderRadius: '10px', whiteSpace: 'nowrap' }}>منبع جدید</Button>
+          {level === 'auxiliary' && (
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel>دسته تفصیلی</InputLabel>
+              <Select value={kind || ''} label="دسته تفصیلی" onChange={(e) => setKind(e.target.value)}>
+                <MenuItem value="">همه دسته‌ها</MenuItem>
+                {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
+              </Select>
+            </FormControl>
+          )}
         </Stack>
       </Paper>
 
@@ -472,10 +484,16 @@ const DataMappingPage = () => {
                 </Box>
                 <Typography variant="caption" color="textSecondary">ماژول: {s.module}</Typography>
                 <Typography variant="caption" color="textSecondary">دسته: {s.category}</Typography>
-                <Button size="small" variant="outlined" onClick={() => syncKind(s.kind)} disabled={!!auxSyncing}
-                  sx={{ mt: 1, borderRadius: '8px', whiteSpace: 'nowrap' }}>
-                  {auxSyncing === s.kind ? 'در حال ساخت...' : 'ساخت تفصیلی‌ها'}
-                </Button>
+                <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
+                  <Button size="small" variant="outlined" onClick={() => syncKind(s.kind)} disabled={!!auxSyncing}
+                    sx={{ borderRadius: '8px', whiteSpace: 'nowrap', flex: 1 }}>
+                    {auxSyncing === s.kind ? 'در حال ساخت...' : 'ساخت'}
+                  </Button>
+                  <Button size="small" variant="outlined" color="secondary" onClick={() => { setLevel('auxiliary'); setKind(s.kind); setTab(0); }}
+                    sx={{ borderRadius: '8px', whiteSpace: 'nowrap', flex: 1 }}>
+                    ایمپورت اکسل
+                  </Button>
+                </Stack>
               </Paper>
             </Grid>
           ))}

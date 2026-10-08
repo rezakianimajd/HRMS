@@ -18,7 +18,7 @@ class MappingEntrySerializer(serializers.ModelSerializer):
     class Meta:
         model = MappingEntry
         fields = [
-            'id', 'source', 'level', 'level_display', 'source_code', 'source_name',
+            'id', 'source', 'level', 'level_display', 'kind', 'source_code', 'source_name',
             'target_group', 'target_account', 'target_auxiliary',
             'target_name', 'target_code', 'match_score', 'status', 'status_display', 'resolved',
         ]

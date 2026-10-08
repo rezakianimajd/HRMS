@@ -39,6 +39,7 @@ class MappingEntry(BaseModel):
         related_name='entries', verbose_name=_('منبع'),
     )
     level = models.CharField(max_length=20, choices=Level.choices, verbose_name=_('سطح کدینگ'))
+    kind = models.CharField(max_length=20, blank=True, default='', verbose_name=_('دسته تفصیلی'))
     source_code = models.CharField(max_length=50, blank=True, verbose_name=_('کد مبدا'))
     source_name = models.CharField(max_length=250, blank=True, verbose_name=_('عنوان مبدا'))
 

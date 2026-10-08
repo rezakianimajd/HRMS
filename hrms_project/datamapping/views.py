@@ -123,6 +123,7 @@ def preview(request):
     level = request.data.get('level') or request.query_params.get('level')
     if level not in LEVEL_LABELS:
         return Response({'error': 'سطح کدینگ نامعتبر است'}, status=400)
+    kind = request.data.get('kind') or request.query_params.get('kind') or ''
 
     file = request.FILES.get('file')
     if not file:
@@ -141,7 +142,13 @@ def preview(request):
             return Response({'error': 'ستون‌های «کد» یا «عنوان» پیدا نشدند'}, status=400)
 
         candidates = get_candidates(level, company)
-        existing = {e.source_code: e for e in MappingEntry.objects.filter(company=company, level=level)}
+        # برای تفصیلی: فقط کاندیدهای همان دسته (قابل ردیابی دسته به دسته)
+        if level == 'auxiliary' and kind:
+            cat_name = dict((s['kind'], s['category']) for s in AUX_SOURCES).get(kind)
+            if cat_name:
+                candidates = [a for a in candidates if getattr(getattr(a, 'category', None), 'name', '') == cat_name]
+
+        existing = {e.source_code: e for e in MappingEntry.objects.filter(company=company, level=level, kind=kind)}
 
         rows = []
         for r in raw[1:]:
@@ -166,7 +173,7 @@ def preview(request):
                 'previously_mapped': bool(prev and prev.status in ('matched', 'new')),
                 'previous_target_name': prev.target_name if prev else '',
             })
-        return Response({'level': level, 'rows': rows, 'total': len(rows)})
+        return Response({'level': level, 'kind': kind, 'rows': rows, 'total': len(rows)})
     except Exception as e:
         return Response({'error': f'خطا در خواندن فایل: {str(e)[:120]}'}, status=400)
 
@@ -182,6 +189,7 @@ def apply(request):
     if level not in LEVEL_LABELS:
         return Response({'error': 'سطح کدینگ نامعتبر است'}, status=400)
     source_id = request.data.get('source_id')
+    kind = request.data.get('kind') or ''
     rows = request.data.get('rows') or []
 
     created = 0
@@ -210,7 +218,7 @@ def apply(request):
             if not name:
                 errors.append({'row': i + 2, 'error': 'عنوان جدید خالی است'})
                 continue
-            obj = _create_new_target(level, company, name, parent_name=parent_name)
+            obj = _create_new_target(level, company, name, parent_name=parent_name, kind=kind)
             if not obj:
                 errors.append({'row': i + 2, 'error': 'ایجاد رکورد جدید ناموفق بود'})
                 continue
@@ -224,6 +232,7 @@ def apply(request):
             company=company,
             source_id=source_id or None,
             level=level,
+            kind=kind,
             source_code=source_code,
         ).first()
         if entry:
@@ -238,6 +247,7 @@ def apply(request):
                 company=company,
                 source_id=source_id or None,
                 level=level,
+                kind=kind,
                 source_code=source_code,
                 source_name=source_name,
                 status='new' if is_new else 'matched',
@@ -258,7 +268,7 @@ def apply(request):
     })
 
 
-def _create_new_target(level, company, name, parent_name=''):
+def _create_new_target(level, company, name, parent_name='', kind=''):
     """ایجاد ردیف جدید در سطح کدینگ مربوطه با کد خودکار (بر اساس CodingConfig).
 
     `parent_name` نام/کد والد (نوع حساب برای گروه، گروه برای کل، کل برای معین) است
@@ -344,14 +354,16 @@ def _create_new_target(level, company, name, parent_name=''):
 
     if level == 'auxiliary':
         category = None
-        if parent_name:
-            from accounting.models import AuxiliaryCategory
-            category = AuxiliaryCategory.objects.filter(company=company, name=parent_name).first()
+        from accounting.models import AuxiliaryCategory
+        # نام دسته: از ستون «دسته» یا از kind انتخاب‌شده
+        cat_name = parent_name or dict((s['kind'], s['category']) for s in AUX_SOURCES).get(kind, '')
+        if cat_name:
+            category = AuxiliaryCategory.objects.filter(company=company, name=cat_name).first()
             if not category:
-                category = _best_named(AuxiliaryCategory.objects.filter(company=company), parent_name)
+                category = _best_named(AuxiliaryCategory.objects.filter(company=company), cat_name)
             if not category:
                 category = AuxiliaryCategory.objects.create(
-                    company=company, code=parent_name[:30], name=parent_name,
+                    company=company, code=cat_name[:30], name=cat_name,
                 )
         for attempt in range(5):
             code = suggest_code(company, 'auxiliary') if attempt == 0 else _next_code(AuxiliaryAccount, company)
@@ -398,10 +410,13 @@ def _next_code(model, company):
 def entries(request):
     company = _company(request)
     level = request.query_params.get('level')
+    kind = request.query_params.get('kind')
     qs = MappingEntry.objects.filter(company=company).select_related('target_group', 'target_account', 'target_auxiliary')
     if level:
         qs = qs.filter(level=level)
-    return Response(MappingEntrySerializer(qs[:500], many=True).data)
+    if kind:
+        qs = qs.filter(kind=kind)
+    return Response(MappingEntrySerializer(qs[:1000], many=True).data)
 
 
 # -----------------------------------------------------------------------------
