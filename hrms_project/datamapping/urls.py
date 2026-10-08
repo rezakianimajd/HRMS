@@ -10,4 +10,5 @@ urlpatterns = [
     path('import-documents/', views.import_documents, name='dm-import-documents'),
     path('sync-auxiliaries/', views.sync_auxiliaries, name='dm-sync-auxiliaries'),
     path('clear-codings/', views.clear_codings, name='dm-clear-codings'),
+    path('template/', views.template, name='dm-template'),
 ]

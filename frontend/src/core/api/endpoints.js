@@ -144,6 +144,7 @@ const endpoints = {
     importDocuments: `${API_BASE}/datamapping/import-documents/`,
     syncAuxiliaries: `${API_BASE}/datamapping/sync-auxiliaries/`,
     clearCodings: `${API_BASE}/datamapping/clear-codings/`,
+    template: `${API_BASE}/datamapping/template/`,
   },
 };
 

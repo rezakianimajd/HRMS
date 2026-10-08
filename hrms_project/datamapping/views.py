@@ -660,6 +660,61 @@ def sync_auxiliaries(request):
 
 
 # -----------------------------------------------------------------------------
+# قالب اکسل نمونه
+# -----------------------------------------------------------------------------
+TEMPLATE_HEADERS = {
+    'group': ['کد', 'عنوان', 'کد والد'],
+    'general': ['کد کل', 'عنوان', 'کد والد'],
+    'subsidiary': ['کد حساب', 'عنوان', 'کد والد'],
+    'auxiliary': ['کد', 'عنوان'],
+}
+TEMPLATE_SAMPLES = {
+    'group': ['100', 'دارایی‌های جاری', '1'],
+    'general': ['1001', 'موجودی نقد', '100'],
+    'subsidiary': ['10011', 'صندوق', '1001'],
+    'auxiliary': ['100', 'بانک ملت', ''],
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def template(request):
+    """دانلود فایل اکسل نمونه برای یک سطح کدینگ."""
+    level = request.query_params.get('level', 'subsidiary')
+    headers = TEMPLATE_HEADERS.get(level, TEMPLATE_HEADERS['subsidiary'])
+    sample = TEMPLATE_SAMPLES.get(level, TEMPLATE_SAMPLES['subsidiary'])
+
+    import openpyxl
+    from openpyxl.styles import Font, PatternFill, Alignment
+    from django.http import HttpResponse
+
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = LEVEL_LABELS.get(level, 'کدینگ')
+
+    header_fill = PatternFill(start_color='6366F1', end_color='6366F1', fill_type='solid')
+    header_font = Font(color='FFFFFF', bold=True)
+    center = Alignment(horizontal='center', vertical='center')
+
+    for col_idx, h in enumerate(headers, start=1):
+        c = ws.cell(row=1, column=col_idx, value=h)
+        c.fill = header_fill
+        c.font = header_font
+        c.alignment = center
+        ws.column_dimensions[openpyxl.utils.get_column_letter(col_idx)].width = 18
+
+    for col_idx, val in enumerate(sample, start=1):
+        ws.cell(row=2, column=col_idx, value=val).alignment = center
+
+    response = HttpResponse(
+        content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+    response['Content-Disposition'] = f'attachment; filename=template_{level}.xlsx'
+    wb.save(response)
+    return response
+
+
+# -----------------------------------------------------------------------------
 # حذف همهٔ کدینگ‌های حسابداری (برای شروع مجدد ایمپورت)
 # -----------------------------------------------------------------------------
 @api_view(['POST'])

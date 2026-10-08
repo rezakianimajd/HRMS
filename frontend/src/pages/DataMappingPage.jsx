@@ -137,6 +137,7 @@ const DataMappingPage = () => {
         rows: previewRows.map((r) => ({
           source_code: r.source_code,
           source_name: r.source_name,
+          parent_name: r.parent_name || '',
           action: r.action,
           target_id: r.target_id,
           new_name: r.new_name,
@@ -168,6 +169,22 @@ const DataMappingPage = () => {
       setPreviewRows([]);
     } catch (err) {
       setCodingErr(err.response?.data?.error || 'خطا در حذف');
+    }
+  };
+
+  const downloadTemplate = async () => {
+    try {
+      const r = await axiosInstance.get('/datamapping/template/', { params: { level }, responseType: 'blob' });
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `template_${level}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (e) {
+      setCodingErr('خطا در دانلود نمونه');
     }
   };
 
@@ -212,6 +229,10 @@ const DataMappingPage = () => {
             sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', borderRadius: '10px', px: 3 }}>
             انتخاب فایل اکسل
           </Button>
+          <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={downloadTemplate}
+            sx={{ borderRadius: '10px', whiteSpace: 'nowrap' }}>
+            دانلود نمونه اکسل
+          </Button>
           <Button variant="outlined" color="error" onClick={clearAll}
             sx={{ borderRadius: '10px', whiteSpace: 'nowrap' }}>
             حذف همه کدینگ‌ها
@@ -247,6 +268,7 @@ const DataMappingPage = () => {
                 <TableRow sx={{ bgcolor: 'rgba(99,102,241,0.06)' }}>
                   <TableCell sx={{ fontWeight: 700 }}>کد مبدا</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>عنوان مبدا</TableCell>
+                  <TableCell sx={{ fontWeight: 700 }}>والد</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>پیشنهاد خودکار</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>اقدام</TableCell>
                   <TableCell sx={{ fontWeight: 700 }}>هدف / عنوان جدید</TableCell>
@@ -257,6 +279,7 @@ const DataMappingPage = () => {
                   <TableRow key={idx} hover sx={{ bgcolor: r.action === 'ignore' ? 'rgba(100,116,139,0.05)' : 'transparent' }}>
                     <TableCell sx={{ direction: 'ltr', textAlign: 'left' }}>{toPersianDigits(r.source_code)}</TableCell>
                     <TableCell>{r.source_name}</TableCell>
+                    <TableCell sx={{ direction: 'ltr', textAlign: 'left' }}>{toPersianDigits(r.parent_name)}</TableCell>
                     <TableCell>
                       {r.matched_target_name ? (
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
