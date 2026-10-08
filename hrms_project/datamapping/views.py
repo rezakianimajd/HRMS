@@ -112,6 +112,7 @@ def options(request):
 CODING_HEADERS = {
     'source_code': ['کد', 'کد حساب', 'کد مبدا', 'code'],
     'source_name': ['عنوان', 'نام', 'شرح', 'نام حساب', 'title', 'name'],
+    'parent_name': ['والد', 'پدر', 'حساب کل', 'کل', 'گروه', 'نوع حساب', 'نوع', 'زیرمجموعه', 'parent'],
 }
 
 
@@ -148,6 +149,7 @@ def preview(request):
                 continue
             code = str(r[col_map['source_code']]).strip() if 'source_code' in col_map and col_map['source_code'] < len(r) and r[col_map['source_code']] is not None else ''
             name = str(r[col_map['source_name']]).strip() if 'source_name' in col_map and col_map['source_name'] < len(r) and r[col_map['source_name']] is not None else ''
+            parent_name = str(r[col_map['parent_name']]).strip() if 'parent_name' in col_map and col_map['parent_name'] < len(r) and r[col_map['parent_name']] is not None else ''
             if not code and not name:
                 continue
             best, score = find_best_match(name, code, candidates)
@@ -155,6 +157,7 @@ def preview(request):
             rows.append({
                 'source_code': code,
                 'source_name': name,
+                'parent_name': parent_name,
                 'matched_target_id': getattr(best, 'id', None),
                 'matched_target_code': getattr(best, 'code', ''),
                 'matched_target_name': getattr(best, 'name', ''),
@@ -203,10 +206,11 @@ def apply(request):
                 continue
         elif action == 'new':
             name = str(row.get('new_name', '') or source_name or '').strip()
+            parent_name = str(row.get('parent_name', '') or '').strip()
             if not name:
                 errors.append({'row': i + 2, 'error': 'عنوان جدید خالی است'})
                 continue
-            obj = _create_new_target(level, company, name)
+            obj = _create_new_target(level, company, name, parent_name=parent_name)
             if not obj:
                 errors.append({'row': i + 2, 'error': 'ایجاد رکورد جدید ناموفق بود'})
                 continue
@@ -254,13 +258,23 @@ def apply(request):
     })
 
 
-def _create_new_target(level, company, name):
-    """ایجاد ردیف جدید در سطح کدینگ مربوطه با کد خودکار (بر اساس CodingConfig)."""
-    from accounting.models import AccountType
+def _create_new_target(level, company, name, parent_name=''):
+    """ایجاد ردیف جدید در سطح کدینگ مربوطه با کد خودکار (بر اساس CodingConfig).
+
+    `parent_name` نام/کد والد (نوع حساب برای گروه، گروه برای کل، کل برای معین) است
+    که از اکسل خوانده می‌شود تا حساب در دستهٔ درست قرار گیرد.
+    """
+    from accounting.models import AccountType, AccountGroup
     from django.db import IntegrityError
+
     acc_type = AccountType.objects.filter(company=company).first()
 
     if level == 'group':
+        # والد گروه = نوع حساب
+        if parent_name:
+            match = _best_named(AccountType.objects.filter(company=company), parent_name)
+            if match:
+                acc_type = match
         if not acc_type:
             return None
         for _ in range(3):
@@ -274,34 +288,51 @@ def _create_new_target(level, company, name):
     if level in ('general', 'subsidiary'):
         if not acc_type:
             return None
-        if level == 'subsidiary':
-            # معین باید زیر یک حساب کل باشد تا در لیست معین نمایش داده شود.
-            parent = Account.objects.filter(company=company, parent__isnull=True).first()
-            if not parent:
-                parent = Account.objects.create(
-                    company=company, account_type=acc_type,
-                    code=suggest_code(company, 'general') or _next_code(Account, company),
-                    name='حساب کل عمومی', level=1,
-                )
+        group = None
+        if parent_name:
+            group = _best_named(AccountGroup.objects.filter(company=company), parent_name)
+            if group:
+                acc_type = group.account_type
+
+        if level == 'general':
             for attempt in range(5):
-                code = suggest_code(company, 'subsidiary', parent.code) if attempt == 0 else _next_code(Account, company)
+                code = suggest_code(company, 'general') if attempt == 0 else _next_code(Account, company)
                 if not code:
                     code = _next_code(Account, company)
                 try:
                     return Account.objects.create(
                         company=company, account_type=acc_type, code=code, name=name,
-                        level=2, parent=parent, group=parent.group,
+                        level=1, group=group,
+                        nature=group.nature if group else acc_type.default_nature if hasattr(acc_type, 'default_nature') else 'debit',
                     )
                 except IntegrityError:
                     continue
             return None
+
+        # معین: والد = حساب کل
+        parent = None
+        if parent_name:
+            # ابتدا بر اساس کد، سپس نام
+            parent = Account.objects.filter(company=company, parent__isnull=True, code=parent_name).first()
+            if not parent:
+                parent = _best_named(Account.objects.filter(company=company, parent__isnull=True), parent_name)
+        if not parent:
+            parent = Account.objects.filter(company=company, parent__isnull=True).first()
+        if not parent:
+            parent = Account.objects.create(
+                company=company, account_type=acc_type,
+                code=suggest_code(company, 'general') or _next_code(Account, company),
+                name='حساب کل عمومی', level=1,
+            )
         for attempt in range(5):
-            code = suggest_code(company, 'general') if attempt == 0 else _next_code(Account, company)
+            code = suggest_code(company, 'subsidiary', parent.code) if attempt == 0 else _next_code(Account, company)
             if not code:
                 code = _next_code(Account, company)
             try:
                 return Account.objects.create(
-                    company=company, account_type=acc_type, code=code, name=name, level=1,
+                    company=company, account_type=parent.account_type or acc_type, code=code, name=name,
+                    level=2, parent=parent, group=parent.group,
+                    nature=parent.nature,
                 )
             except IntegrityError:
                 continue
@@ -317,6 +348,20 @@ def _create_new_target(level, company, name):
             except IntegrityError:
                 continue
         return None
+    return None
+
+
+def _best_named(qs, name):
+    """بهترین تطبیق نام/کد در یک queryset بر اساس شباهت."""
+    from datamapping.services import similarity
+    best = None
+    best_score = 0.0
+    for obj in qs:
+        score = max(similarity(name, obj.name), similarity(name, str(obj.code)))
+        if score > best_score:
+            best, best_score = obj, score
+    if best and best_score >= 0.5:
+        return best
     return None
 
 
