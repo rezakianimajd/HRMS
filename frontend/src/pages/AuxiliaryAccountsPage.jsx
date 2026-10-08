@@ -40,6 +40,7 @@ const AuxiliaryAccountsPage = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ code: '', name: '', category: '', project: '', contract: '', employee: '', party: '', treasury_entity: '', person_type: '' });
   const [msg, setMsg] = useState(null);
+  const [syncing, setSyncing] = useState(false);
 
   const { data, isLoading } = useQuery({ queryKey: ['auxiliary-accounts'], queryFn: () => axiosInstance.get('/accounting/auxiliary-accounts/').then(r => r.data) });
   const { data: categories } = useQuery({ queryKey: ['aux-categories'], queryFn: () => axiosInstance.get('/accounting/auxiliary-categories/').then(r => r.data) });
@@ -101,6 +102,22 @@ const AuxiliaryAccountsPage = () => {
     catch (e) { setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' }); }
   };
 
+  const syncAll = async () => {
+    setSyncing(true);
+    setMsg(null);
+    try {
+      const r = await axiosInstance.post('/datamapping/sync-auxiliaries/');
+      const d = r.data;
+      qc.invalidateQueries({ queryKey: ['auxiliary-accounts'] });
+      qc.invalidateQueries({ queryKey: ['aux-categories'] });
+      setMsg({ ok: true, text: `تفصیل‌ها همگام‌سازی شدند: ${d.created} جدید، ${d.updated} موجود` });
+    } catch (e) {
+      setMsg({ ok: false, text: e.response?.data?.error || 'خطا در همگام‌سازی' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const filtered = useMemo(() => {
     const q = search.trim();
     return list.filter(a => !q || `${a.code} ${a.name}`.includes(q));
@@ -118,6 +135,11 @@ const AuxiliaryAccountsPage = () => {
           <Typography variant="body2" color="textSecondary">شناور و دسته‌بندی‌شده (پرسنل، اشخاص، پروژه، قرارداد و ...)</Typography>
         </Box>
         <Chip label={`${list.length} تفصیل`} sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.1)', color: COLOR_DARK }} />
+        <Button variant="contained" startIcon={syncing ? <CircularProgress size={16} color="inherit" /> : <BoltIcon />}
+          onClick={syncAll} disabled={syncing}
+          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '12px', px: 2.5, whiteSpace: 'nowrap' }}>
+          ساخت خودکار تفصیل‌ها
+        </Button>
       </Paper>
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}

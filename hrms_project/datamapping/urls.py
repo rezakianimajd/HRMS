@@ -8,4 +8,5 @@ urlpatterns = [
     path('apply/', views.apply, name='dm-apply'),
     path('entries/', views.entries, name='dm-entries'),
     path('import-documents/', views.import_documents, name='dm-import-documents'),
+    path('sync-auxiliaries/', views.sync_auxiliaries, name='dm-sync-auxiliaries'),
 ]

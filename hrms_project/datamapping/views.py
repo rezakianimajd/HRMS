@@ -14,6 +14,7 @@ from datamapping.serializers import MappingSourceSerializer, MappingEntrySeriali
 from datamapping.services import (
     normalize, find_best_match, get_candidates, to_decimal,
 )
+from accounting.coding import suggest_code
 
 
 def _company(request):
@@ -242,6 +243,7 @@ def apply(request):
 
 
 def _create_new_target(level, company, name):
+    """ایجاد ردیف جدید در سطح کدینگ مربوطه با کد خودکار (بر اساس CodingConfig)."""
     from accounting.models import AccountType
     acc_type = AccountType.objects.filter(company=company).first()
     if level == 'group':
@@ -249,19 +251,23 @@ def _create_new_target(level, company, name):
             return None
         return AccountGroup.objects.create(
             company=company, account_type=acc_type,
-            code=_next_code(AccountGroup, company), name=name,
+            code=suggest_code(company, 'group') or _next_code(AccountGroup, company),
+            name=name,
         )
     if level in ('general', 'subsidiary'):
         if not acc_type:
             return None
         return Account.objects.create(
             company=company, account_type=acc_type,
-            code=_next_code(Account, company), name=name,
+            code=suggest_code(company, level) or _next_code(Account, company),
+            name=name,
             level=1 if level == 'general' else 2,
         )
     if level == 'auxiliary':
         return AuxiliaryAccount.objects.create(
-            company=company, code=_next_code(AuxiliaryAccount, company), name=name,
+            company=company,
+            code=suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company),
+            name=name,
         )
     return None
 
@@ -463,3 +469,113 @@ def import_documents(request):
         })
     except Exception as e:
         return Response({'error': f'خطا در ایمپورت: {str(e)[:150]}'}, status=400)
+
+
+# -----------------------------------------------------------------------------
+# ساخت خودکار حساب‌های تفصیلی از موجودیت‌های ماژول‌های دیگر
+# -----------------------------------------------------------------------------
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def sync_auxiliaries(request):
+    """ساخت تفصیل‌ها از: طرف‌حساب‌ها (حقیقی/حقوقی)، بانک‌ها، قراردادها، پروژه‌ها و پرسنل."""
+    company = _company(request)
+
+    from accounting.models import AuxiliaryCategory
+    from contracts.models import ContractParty, Contract
+    from treasury.models import TreasuryEntity
+    from projects.models import Project
+    from employees.models import Employee
+
+    def get_category(name, source):
+        return AuxiliaryCategory.objects.get_or_create(
+            company=company, name=name,
+            defaults={'code': name[:20], 'source': source},
+        )[0]
+
+    cat_party_legal = get_category('طرف حساب حقوقی', 'party')
+    cat_party_natural = get_category('طرف حساب حقیقی', 'party')
+    cat_bank = get_category('بانک', 'bank')
+    cat_contract = get_category('قرارداد', 'contract')
+    cat_project = get_category('پروژه', 'project')
+    cat_employee = get_category('پرسنل', 'employee')
+
+    created = 0
+    updated = 0
+
+    # طرف‌حساب‌ها (حقیقی/حقوقی)
+    for party in ContractParty.objects.filter(company=company, is_active=True):
+        cat = cat_party_legal if party.person_type == 'legal' else cat_party_natural
+        obj, is_new = AuxiliaryAccount.objects.get_or_create(
+            company=company, party=party,
+            defaults={'category': cat, 'person_type': party.person_type, 'name': party.name},
+        )
+        if is_new:
+            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
+            obj.save(update_fields=['code', 'updated_at'])
+            created += 1
+        else:
+            if not obj.category:
+                obj.category = cat
+                obj.save(update_fields=['category', 'updated_at'])
+            updated += 1
+
+    # بانک‌ها / صندوق‌ها
+    for entity in TreasuryEntity.objects.filter(company=company, is_active=True):
+        obj, is_new = AuxiliaryAccount.objects.get_or_create(
+            company=company, treasury_entity=entity,
+            defaults={'category': cat_bank, 'name': entity.name},
+        )
+        if is_new:
+            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
+            obj.save(update_fields=['code', 'updated_at'])
+            created += 1
+        else:
+            updated += 1
+
+    # قراردادها (نام = طرف + شماره قرارداد)
+    for contract in Contract.objects.filter(company=company).select_related('party'):
+        if not contract.party:
+            continue
+        label = f"{contract.party.name} - {contract.number}".strip(' -')
+        obj, is_new = AuxiliaryAccount.objects.get_or_create(
+            company=company, contract=contract,
+            defaults={'category': cat_contract, 'party': contract.party, 'name': label},
+        )
+        if is_new:
+            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
+            obj.save(update_fields=['code', 'updated_at'])
+            created += 1
+        else:
+            updated += 1
+
+    # پروژه‌ها
+    for project in Project.objects.filter(company=company, is_active=True):
+        obj, is_new = AuxiliaryAccount.objects.get_or_create(
+            company=company, project=project,
+            defaults={'category': cat_project, 'name': project.name},
+        )
+        if is_new:
+            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
+            obj.save(update_fields=['code', 'updated_at'])
+            created += 1
+        else:
+            updated += 1
+
+    # پرسنل
+    for emp in Employee.objects.filter(company=company, is_active=True):
+        obj, is_new = AuxiliaryAccount.objects.get_or_create(
+            company=company, employee=emp,
+            defaults={'category': cat_employee, 'name': emp.full_name},
+        )
+        if is_new:
+            obj.code = suggest_code(company, 'auxiliary') or _next_code(AuxiliaryAccount, company)
+            obj.save(update_fields=['code', 'updated_at'])
+            created += 1
+        else:
+            updated += 1
+
+    return Response({
+        'message': 'تفصیل‌ها همگام‌سازی شدند',
+        'created': created,
+        'updated': updated,
+    })
