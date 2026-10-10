@@ -812,7 +812,7 @@ const DataMappingPage = () => {
               <Chip size="small" label={`${formatPersianNumber(selectedIds.length)} انتخاب‌شده`} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.12)', color: '#4338ca' }} />
               <FormControl size="small" sx={{ minWidth: 140 }}>
                 <InputLabel>وضعیت گروهی</InputLabel>
-                <Select value="" label="وضعیت گروهی" onChange={(e) => { if (e.target.value) bulkApply({ status: e.target.value }); }}>
+                <Select value="" label="وضعیت گروهی" onChange={(e) => { if (e.target.value) bulkApply({ action: 'set_status', value: e.target.value }); }}>
                   <MenuItem value="">انتخاب...</MenuItem>
                   <MenuItem value="matched">نگاشت‌شده</MenuItem>
                   <MenuItem value="ignored">نادیده</MenuItem>
@@ -823,7 +823,7 @@ const DataMappingPage = () => {
               {entriesLevel === 'auxiliary' && (
                 <FormControl size="small" sx={{ minWidth: 150 }}>
                   <InputLabel>دسته گروهی</InputLabel>
-                  <Select value="" label="دسته گروهی" onChange={(e) => { if (e.target.value) bulkApply({ kind: e.target.value }); }}>
+                  <Select value="" label="دسته گروهی" onChange={(e) => { if (e.target.value) bulkApply({ action: 'set_kind', value: e.target.value }); }}>
                     <MenuItem value="">انتخاب...</MenuItem>
                     {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
                   </Select>
