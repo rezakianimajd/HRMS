@@ -3,7 +3,7 @@ import {
   Box, Typography, Paper, Button, Tabs, Tab, Chip, Avatar, Grid, Stack,
   Select, MenuItem, FormControl, InputLabel, TextField, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Switch, FormControlLabel, LinearProgress,
+  Switch, FormControlLabel, LinearProgress, Checkbox,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import HubIcon from '@mui/icons-material/Hub';
@@ -61,6 +61,8 @@ const DataMappingPage = () => {
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesErr, setEntriesErr] = useState('');
   const [editingEntry, setEditingEntry] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const loadSources = async () => {
     try {
@@ -322,6 +324,56 @@ const DataMappingPage = () => {
       loadEntries();
     } catch (err) {
       setEntriesErr(err.response?.data?.error || 'خطا در حذف نگاشت');
+    }
+  };
+
+  // ----- انتخاب دسته‌جمعی -----
+  const toggleSelect = (id) => {
+    setSelectedIds((p) => (p.includes(id) ? p.filter((x) => x !== id) : [...p, id]));
+  };
+  const allSelected = entries.length > 0 && entries.every((en) => selectedIds.includes(en.id));
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : entries.map((en) => en.id));
+  };
+  const clearSelection = () => setSelectedIds([]);
+
+  const bulkApply = async (payload) => {
+    if (selectedIds.length === 0) return;
+    setBulkBusy(true);
+    setEntriesErr('');
+    let done = 0;
+    try {
+      for (const id of selectedIds) {
+        try {
+          await axiosInstance.patch(`/datamapping/entries/${id}/`, payload);
+          done++;
+        } catch (e) { /* ادامه برای بقیه */ }
+      }
+      setEntriesErr(done > 0 ? '' : 'خطا در اعمال عملیات');
+      clearSelection();
+      loadEntries();
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const bulkDelete = async () => {
+    if (selectedIds.length === 0) return;
+    if (!window.confirm(`${selectedIds.length} نگاشت حذف شود؟`)) return;
+    setBulkBusy(true);
+    setEntriesErr('');
+    let done = 0;
+    try {
+      for (const id of selectedIds) {
+        try {
+          await axiosInstance.delete(`/datamapping/entries/${id}/`);
+          done++;
+        } catch (e) { /* ادامه */ }
+      }
+      clearSelection();
+      loadEntries();
+    } finally {
+      setBulkBusy(false);
     }
   };
 
@@ -703,6 +755,42 @@ const DataMappingPage = () => {
       </Paper>
 
       <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
+        {/* نوار انتخاب دسته‌جمعی */}
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1.5, pb: 1.5, borderBottom: '1px solid rgba(100,116,139,0.1)' }}>
+          <FormControlLabel
+            control={<Checkbox size="small" checked={allSelected} onChange={toggleSelectAll} disabled={entries.length === 0} />}
+            label={<Typography variant="caption" fontWeight={700}>انتخاب همه ({formatPersianNumber(entries.length)})</Typography>} />
+          {selectedIds.length > 0 && (
+            <>
+              <Chip size="small" label={`${formatPersianNumber(selectedIds.length)} انتخاب‌شده`} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.12)', color: '#4338ca' }} />
+              <FormControl size="small" sx={{ minWidth: 140 }}>
+                <InputLabel>وضعیت گروهی</InputLabel>
+                <Select value="" label="وضعیت گروهی" onChange={(e) => { if (e.target.value) bulkApply({ status: e.target.value }); }}>
+                  <MenuItem value="">انتخاب...</MenuItem>
+                  <MenuItem value="matched">نگاشت‌شده</MenuItem>
+                  <MenuItem value="ignored">نادیده</MenuItem>
+                  <MenuItem value="new">ایجاد جدید</MenuItem>
+                  <MenuItem value="pending">در انتظار</MenuItem>
+                </Select>
+              </FormControl>
+              {entriesLevel === 'auxiliary' && (
+                <FormControl size="small" sx={{ minWidth: 150 }}>
+                  <InputLabel>دسته گروهی</InputLabel>
+                  <Select value="" label="دسته گروهی" onChange={(e) => { if (e.target.value) bulkApply({ kind: e.target.value }); }}>
+                    <MenuItem value="">انتخاب...</MenuItem>
+                    {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              )}
+              <Button size="small" color="error" variant="outlined" onClick={bulkDelete} disabled={bulkBusy} sx={{ borderRadius: '8px' }}>
+                حذف گروهی
+              </Button>
+              <Button size="small" variant="text" onClick={clearSelection} sx={{ borderRadius: '8px' }}>انصراف</Button>
+            </>
+          )}
+          {bulkBusy && <LinearProgress sx={{ width: 120, borderRadius: '6px' }} />}
+        </Box>
+
         {entries.length === 0 && !entriesLoading ? (
           <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>
             هنوز نگاشتی ثبت نشده است. از تب «نگاشت کدینگ» یا «ایمپورت اسناد» شروع کنید.
@@ -726,6 +814,9 @@ const DataMappingPage = () => {
         borderRight: `4px solid ${lc}`,
       }}>
         <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Checkbox size="small" checked={selectedIds.includes(en.id)} onChange={() => toggleSelect(en.id)} sx={{ p: 0.5 }} />
+          </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 96 }}>
             <Chip size="small" label={en.level_display} sx={{ fontWeight: 800, bgcolor: `${lc}1a`, color: lc }} />
           </Box>
