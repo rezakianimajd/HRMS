@@ -629,10 +629,10 @@ def _resolve_account(company, code, source_id=None):
     acc = Account.objects.filter(company=company, code=code).first()
     if acc:
         return acc
-    # ابتدا نگاشت مختص منبع، سپس نگاشت عمومی
+    # نگاشت‌های معتبر: دارای هدف و نادیده‌گرفته‌نشده (به جای تکیهٔ صرف بر resolved)
     qs = MappingEntry.objects.filter(
-        company=company, level__in=['subsidiary', 'general'], source_code=code, resolved=True,
-    )
+        company=company, level__in=['subsidiary', 'general'], source_code=code,
+    ).exclude(status='ignored').exclude(target_account__isnull=True)
     if source_id:
         entry = qs.filter(source_id=source_id).first() or qs.filter(source__isnull=True).first()
     else:
@@ -649,8 +649,8 @@ def _resolve_auxiliary(company, code, source_id=None):
     if aux:
         return aux
     qs = MappingEntry.objects.filter(
-        company=company, level='auxiliary', source_code=code, resolved=True,
-    )
+        company=company, level='auxiliary', source_code=code,
+    ).exclude(status='ignored').exclude(target_auxiliary__isnull=True)
     if source_id:
         entry = qs.filter(source_id=source_id).first() or qs.filter(source__isnull=True).first()
     else:
