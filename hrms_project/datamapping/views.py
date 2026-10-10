@@ -406,15 +406,14 @@ def _next_code(model, company):
 # -----------------------------------------------------------------------------
 # لیست نگاشت‌ها
 # -----------------------------------------------------------------------------
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def entries(request):
+def _entries_queryset(request, params=None):
+    """ساخت queryset نگاشت‌ها بر اساس فیلترهای مشترک (برای لیست و عملیات گروهی)."""
     company = _company(request)
-    level = request.query_params.get('level')
-    kind = request.query_params.get('kind')
-    source_id = request.query_params.get('source')
-    q = request.query_params.get('q', '').strip()
-    limit = int(request.query_params.get('limit', 200))
+    p = params if params is not None else request.query_params
+    level = p.get('level')
+    kind = p.get('kind')
+    source_id = p.get('source')
+    q = (p.get('q') or '').strip()
     qs = MappingEntry.objects.filter(company=company).select_related(
         'source', 'target_group', 'target_account', 'target_auxiliary', 'target_auxiliary__category',
     )
@@ -432,14 +431,77 @@ def entries(request):
             | models.Q(target_account__name__icontains=q)
             | models.Q(target_auxiliary__name__icontains=q)
         )
-    # فقط تعداد محدود، با اولویت نگاشت‌های حل‌نشده یا اخیر
-    qs = qs.order_by('-updated_at')
+    return qs
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def entries(request):
+    qs = _entries_queryset(request).order_by('-updated_at')
     total = qs.count()
-    limit = max(1, min(limit, 500))
+
+    # صفحه‌بندی: page (۱-مبنا) و page_size (پیش‌فرض 100، حداکثر 500)
+    try:
+        page = int(request.query_params.get('page', 1))
+    except (TypeError, ValueError):
+        page = 1
+    try:
+        page_size = int(request.query_params.get('page_size', 100))
+    except (TypeError, ValueError):
+        page_size = 100
+    page = max(1, page)
+    page_size = max(1, min(page_size, 500))
+
+    start = (page - 1) * page_size
+    results = MappingEntrySerializer(qs[start:start + page_size], many=True).data
+    num_pages = (total + page_size - 1) // page_size if total else 1
     return Response({
         'count': total,
-        'results': MappingEntrySerializer(qs[:limit], many=True).data,
+        'page': page,
+        'page_size': page_size,
+        'num_pages': num_pages,
+        'results': results,
     })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def bulk_entries(request):
+    """عملیات گروهی روی «همهٔ نتایج فیلتر» (نه فقط صفحهٔ فعلی).
+
+    body: { 'action': 'set_status'|'set_kind'|'delete', 'value': ... , 'ids': [...] (اختیاری) }
+    اگر ids داده شود فقط همان‌ها؛ در غیر این صورت روی همهٔ نتایج فیلتر اعمال می‌شود.
+    """
+    company = _company(request)
+    action = request.data.get('action')
+    value = request.data.get('value')
+    ids = request.data.get('ids') or []
+    params = request.data.get('params') or {}
+
+    if ids:
+        qs = MappingEntry.objects.filter(company=company, id__in=ids)
+    else:
+        qs = _entries_queryset(request, params)
+
+    n = qs.count()
+    if action == 'delete':
+        qs.delete()
+        return Response({'affected': n, 'message': f'{n} نگاشت حذف شد'})
+
+    if action == 'set_status':
+        if value not in ('matched', 'new', 'ignored', 'pending'):
+            return Response({'error': 'وضعیت نامعتبر'}, status=400)
+        qs.update(status=value)
+        return Response({'affected': n, 'message': f'وضعیت {n} نگاشت تغییر کرد'})
+
+    if action == 'set_kind':
+        qs.update(kind=value or '')
+        # دستهٔ تفصیلی مقصد را هم برای هر کدام اصلاح کن
+        for entry in qs.select_related('target_auxiliary'):
+            _apply_target_category(company, entry)
+        return Response({'affected': n, 'message': f'دستهٔ {n} نگاشت تغییر کرد'})
+
+    return Response({'error': 'action نامعتبر'}, status=400)
 
 
 @api_view(['PATCH', 'DELETE'])

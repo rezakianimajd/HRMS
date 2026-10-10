@@ -61,6 +61,8 @@ const DataMappingPage = () => {
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesErr, setEntriesErr] = useState('');
   const [editingEntry, setEditingEntry] = useState(null);
+  const [page, setPage] = useState(1);
+  const [numPages, setNumPages] = useState(1);
   const [selectedIds, setSelectedIds] = useState([]);
   const [bulkBusy, setBulkBusy] = useState(false);
 
@@ -272,7 +274,7 @@ const DataMappingPage = () => {
     setEntriesLoading(true);
     setEntriesErr('');
     try {
-      const params = { limit: 300 };
+      const params = { page, page_size: 100 };
       if (entriesLevel) params.level = entriesLevel;
       if (entriesKind) params.kind = entriesKind;
       if (entriesSource) params.source = entriesSource;
@@ -281,6 +283,8 @@ const DataMappingPage = () => {
       const d = r.data || {};
       setEntries(Array.isArray(d) ? d : d.results || []);
       setEntriesTotal(d.count ?? (Array.isArray(d) ? d.length : 0));
+      setNumPages(d.num_pages ?? 1);
+      setPage(d.page ?? 1);
     } catch (err) {
       setEntriesErr(err.response?.data?.error || 'خطا در دریافت نگاشت‌ها');
     } finally {
@@ -288,7 +292,8 @@ const DataMappingPage = () => {
     }
   };
 
-  React.useEffect(() => { loadEntries(); }, [entriesLevel, entriesKind, entriesSource]);
+  React.useEffect(() => { setPage(1); }, [entriesLevel, entriesKind, entriesSource]);
+  React.useEffect(() => { loadEntries(); }, [page, entriesLevel, entriesKind, entriesSource]);
 
   const updateEntryTarget = async (entryId, targetId) => {
     try {
@@ -341,17 +346,14 @@ const DataMappingPage = () => {
     if (selectedIds.length === 0) return;
     setBulkBusy(true);
     setEntriesErr('');
-    let done = 0;
     try {
-      for (const id of selectedIds) {
-        try {
-          await axiosInstance.patch(`/datamapping/entries/${id}/`, payload);
-          done++;
-        } catch (e) { /* ادامه برای بقیه */ }
-      }
-      setEntriesErr(done > 0 ? '' : 'خطا در اعمال عملیات');
+      // ارسال ids صریح؛ بک‌اند فقط همان‌ها را تغییر می‌دهد
+      const r = await axiosInstance.post('/datamapping/entries/bulk/', { ...payload, ids: selectedIds });
+      setEntriesErr(r.data?.message || '');
       clearSelection();
       loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در اعمال عملیات');
     } finally {
       setBulkBusy(false);
     }
@@ -362,16 +364,35 @@ const DataMappingPage = () => {
     if (!window.confirm(`${selectedIds.length} نگاشت حذف شود؟`)) return;
     setBulkBusy(true);
     setEntriesErr('');
-    let done = 0;
     try {
-      for (const id of selectedIds) {
-        try {
-          await axiosInstance.delete(`/datamapping/entries/${id}/`);
-          done++;
-        } catch (e) { /* ادامه */ }
-      }
+      const r = await axiosInstance.post('/datamapping/entries/bulk/', { action: 'delete', ids: selectedIds });
+      setEntriesErr(r.data?.message || '');
       clearSelection();
       loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در حذف');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  // عملیات گروهی روی «همهٔ نتایج فیلتر» (بدون نیاز به انتخاب تک‌تک)
+  const bulkApplyAll = async (payload) => {
+    if (!window.confirm('این عملیات روی همهٔ نتایج فیلترشده اعمال شود؟')) return;
+    setBulkBusy(true);
+    setEntriesErr('');
+    try {
+      const params = {};
+      if (entriesLevel) params.level = entriesLevel;
+      if (entriesKind) params.kind = entriesKind;
+      if (entriesSource) params.source = entriesSource;
+      if (entriesQ.trim()) params.q = entriesQ.trim();
+      const r = await axiosInstance.post('/datamapping/entries/bulk/', { ...payload, params });
+      setEntriesErr(r.data?.message || '');
+      clearSelection();
+      loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در اعمال عملیات');
     } finally {
       setBulkBusy(false);
     }
@@ -747,9 +768,35 @@ const DataMappingPage = () => {
           <Button size="small" variant="contained" onClick={loadEntries}
             sx={{ borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>جستجو</Button>
           {entriesTotal > 0 && (
-            <Typography variant="caption" color="textSecondary">{formatPersianNumber(entriesTotal)} نگاشت (نمایش {formatPersianNumber(entries.length)})</Typography>
+            <Typography variant="caption" color="textSecondary">{formatPersianNumber(entriesTotal)} نگاشت</Typography>
           )}
         </Stack>
+        {/* عملیات روی همهٔ نتایج فیلتر */}
+        {entriesTotal > 0 && (
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.5 }}>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>وضعیت (همه نتایج)</InputLabel>
+              <Select value="" label="وضعیت (همه نتایج)" onChange={(e) => { if (e.target.value) bulkApplyAll({ action: 'set_status', value: e.target.value }); }}>
+                <MenuItem value="">انتخاب...</MenuItem>
+                <MenuItem value="matched">نگاشت‌شده</MenuItem>
+                <MenuItem value="ignored">نادیده</MenuItem>
+                <MenuItem value="new">ایجاد جدید</MenuItem>
+                <MenuItem value="pending">در انتظار</MenuItem>
+              </Select>
+            </FormControl>
+            {entriesLevel === 'auxiliary' && (
+              <FormControl size="small" sx={{ minWidth: 150 }}>
+                <InputLabel>دسته (همه نتایج)</InputLabel>
+                <Select value="" label="دسته (همه نتایج)" onChange={(e) => { if (e.target.value) bulkApplyAll({ action: 'set_kind', value: e.target.value }); }}>
+                  <MenuItem value="">انتخاب...</MenuItem>
+                  {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
+            <Button size="small" color="error" variant="outlined" onClick={() => bulkApplyAll({ action: 'delete' })}
+              sx={{ borderRadius: '8px' }}>حذف همهٔ نتایج</Button>
+          </Box>
+        )}
         {entriesLoading && <LinearProgress sx={{ mt: 1.5, borderRadius: '10px' }} />}
         {entriesErr && <Alert severity="error" onClose={() => setEntriesErr('')} sx={{ mt: 1 }}>{entriesErr}</Alert>}
       </Paper>
@@ -790,6 +837,15 @@ const DataMappingPage = () => {
           )}
           {bulkBusy && <LinearProgress sx={{ width: 120, borderRadius: '6px' }} />}
         </Box>
+
+        {/* صفحه‌بندی */}
+        {numPages > 1 && (
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', mb: 1 }}>
+            <Button size="small" variant="outlined" disabled={page <= 1} onClick={() => setPage(p => p - 1)} sx={{ borderRadius: '8px' }}>قبلی</Button>
+            <Typography variant="caption" fontWeight={700}>صفحه {formatPersianNumber(page)} از {formatPersianNumber(numPages)}</Typography>
+            <Button size="small" variant="outlined" disabled={page >= numPages} onClick={() => setPage(p => p + 1)} sx={{ borderRadius: '8px' }}>بعدی</Button>
+          </Box>
+        )}
 
         {entries.length === 0 && !entriesLoading ? (
           <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>

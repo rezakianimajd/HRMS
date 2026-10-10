@@ -7,6 +7,7 @@ urlpatterns = [
     path('preview/', views.preview, name='dm-preview'),
     path('apply/', views.apply, name='dm-apply'),
     path('entries/', views.entries, name='dm-entries'),
+    path('entries/bulk/', views.bulk_entries, name='dm-bulk-entries'),
     path('entries/<int:pk>/', views.entry_detail, name='dm-entry-detail'),
     path('import-documents/', views.import_documents, name='dm-import-documents'),
     path('sync-auxiliaries/', views.sync_auxiliaries, name='dm-sync-auxiliaries'),
