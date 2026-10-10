@@ -55,8 +55,12 @@ const DataMappingPage = () => {
   const [entries, setEntries] = useState([]);
   const [entriesLevel, setEntriesLevel] = useState('');
   const [entriesKind, setEntriesKind] = useState('');
+  const [entriesSource, setEntriesSource] = useState('');
+  const [entriesQ, setEntriesQ] = useState('');
+  const [entriesTotal, setEntriesTotal] = useState(0);
   const [entriesLoading, setEntriesLoading] = useState(false);
   const [entriesErr, setEntriesErr] = useState('');
+  const [editingEntry, setEditingEntry] = useState(null);
 
   const loadSources = async () => {
     try {
@@ -266,11 +270,15 @@ const DataMappingPage = () => {
     setEntriesLoading(true);
     setEntriesErr('');
     try {
-      const params = {};
+      const params = { limit: 300 };
       if (entriesLevel) params.level = entriesLevel;
       if (entriesKind) params.kind = entriesKind;
+      if (entriesSource) params.source = entriesSource;
+      if (entriesQ.trim()) params.q = entriesQ.trim();
       const r = await axiosInstance.get('/datamapping/entries/', { params });
-      setEntries(Array.isArray(r.data) ? r.data : r.data?.results || []);
+      const d = r.data || {};
+      setEntries(Array.isArray(d) ? d : d.results || []);
+      setEntriesTotal(d.count ?? (Array.isArray(d) ? d.length : 0));
     } catch (err) {
       setEntriesErr(err.response?.data?.error || 'خطا در دریافت نگاشت‌ها');
     } finally {
@@ -278,7 +286,7 @@ const DataMappingPage = () => {
     }
   };
 
-  React.useEffect(() => { loadEntries(); }, [entriesLevel, entriesKind]);
+  React.useEffect(() => { loadEntries(); }, [entriesLevel, entriesKind, entriesSource]);
 
   const updateEntryTarget = async (entryId, targetId) => {
     try {
@@ -622,6 +630,7 @@ const DataMappingPage = () => {
 
   const targetIdOf = (en) => en.target_group || en.target_account || en.target_auxiliary || '';
   const optForLevel = { group: optAll.groups, general: optAll.general, subsidiary: optAll.subsidiary, auxiliary: optAll.auxiliary };
+  const kindLabel = (k) => (auxSources.find((s) => s.kind === k) || {}).category || k || '';
 
   const renderMappings = () => (
     <Stack spacing={2}>
@@ -630,21 +639,48 @@ const DataMappingPage = () => {
           <Typography variant="subtitle2" fontWeight={800} color="#3730a3">نگاشت‌های ثبت‌شده (منبع → هدف)</Typography>
           <Button size="small" variant="outlined" onClick={loadEntries} sx={{ borderRadius: '8px' }}>بروزرسانی</Button>
         </Box>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>سطح کدینگ</InputLabel>
-            <Select value={entriesLevel || ''} label="سطح کدینگ" onChange={(e) => setEntriesLevel(e.target.value)}>
-              <MenuItem value="">همه سطوح</MenuItem>
-              {LEVELS.map((l) => <MenuItem key={l.key} value={l.key}>{l.label}</MenuItem>)}
+
+        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1.5 }}>
+          {[{ key: '', label: 'همه' }, ...LEVELS].map((l) => (
+            <Chip
+              key={l.key}
+              label={l.label}
+              clickable
+              onClick={() => setEntriesLevel(l.key)}
+              sx={{
+                fontWeight: 700, px: 1,
+                bgcolor: entriesLevel === l.key ? '#4338ca' : 'rgba(99,102,241,0.08)',
+                color: entriesLevel === l.key ? '#fff' : '#4338ca',
+                '&:hover': { bgcolor: entriesLevel === l.key ? '#4338ca' : 'rgba(99,102,241,0.16)' },
+              }}
+            />
+          ))}
+        </Box>
+
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" flexWrap="wrap">
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>منبع</InputLabel>
+            <Select value={entriesSource || ''} label="منبع" onChange={(e) => setEntriesSource(e.target.value)}>
+              <MenuItem value="">همه منابع</MenuItem>
+              {sources.map((s) => <MenuItem key={s.id} value={s.id}>{s.name}</MenuItem>)}
             </Select>
           </FormControl>
-          <FormControl size="small" sx={{ minWidth: 200 }}>
-            <InputLabel>دسته تفصیلی</InputLabel>
-            <Select value={entriesKind || ''} label="دسته تفصیلی" onChange={(e) => setEntriesKind(e.target.value)}>
-              <MenuItem value="">همه دسته‌ها</MenuItem>
-              {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
-            </Select>
-          </FormControl>
+          {entriesLevel === 'auxiliary' && (
+            <FormControl size="small" sx={{ minWidth: 190 }}>
+              <InputLabel>دسته تفصیلی</InputLabel>
+              <Select value={entriesKind || ''} label="دسته تفصیلی" onChange={(e) => setEntriesKind(e.target.value)}>
+                <MenuItem value="">همه دسته‌ها</MenuItem>
+                {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
+              </Select>
+            </FormControl>
+          )}
+          <TextField size="small" placeholder="جستجو (کد/عنوان/هدف)..." value={entriesQ}
+            onChange={(e) => setEntriesQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') loadEntries(); }}
+            sx={{ minWidth: 220 }} />
+          <Button size="small" variant="contained" onClick={loadEntries} sx={{ borderRadius: '8px' }}>جستجو</Button>
+          {entriesTotal > 0 && (
+            <Typography variant="caption" color="textSecondary">{formatPersianNumber(entriesTotal)} نگاشت (نمایش {formatPersianNumber(entries.length)})</Typography>
+          )}
         </Stack>
         {entriesLoading && <LinearProgress sx={{ mt: 1.5, borderRadius: '10px' }} />}
         {entriesErr && <Alert severity="error" onClose={() => setEntriesErr('')} sx={{ mt: 1 }}>{entriesErr}</Alert>}
@@ -656,74 +692,98 @@ const DataMappingPage = () => {
             هنوز نگاشتی ثبت نشده است. از تب «نگاشت کدینگ» یا «ایمپورت اسناد» شروع کنید.
           </Typography>
         ) : (
-          <TableContainer>
-            <Table size="small">
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 800 }}>سطح</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>منبع</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>کد مبدا</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>عنوان مبدا</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>کد / عنوان هدف</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>وضعیت</TableCell>
-                  <TableCell sx={{ fontWeight: 800 }}>اقدام</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {entries.map((en) => renderMappingRow(en))}
-              </TableBody>
-            </Table>
-          </TableContainer>
+          <Stack spacing={1}>
+            {entries.map((en) => renderMappingRow(en))}
+          </Stack>
         )}
       </Paper>
     </Stack>
   );
 
   const renderMappingRow = (en) => (
-    <TableRow key={en.id} hover>
-      <TableCell>
-        <Chip size="small" label={en.level_display} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca' }} />
-      </TableCell>
-      <TableCell>
-        <Typography variant="caption" color="textSecondary">{en.source_name || 'عمومی'}</Typography>
-        {en.kind && <Typography variant="caption" color="textSecondary" display="block">دسته: {en.kind}</Typography>}
-      </TableCell>
-      <TableCell sx={{ direction: 'ltr', textAlign: 'left', fontWeight: 700 }}>{toPersianDigits(en.source_code)}</TableCell>
-      <TableCell>{en.source_name || '—'}</TableCell>
-      <TableCell>
-        {en.target_code ? (
-          <Box>
-            <Typography variant="body2" fontWeight={700} sx={{ direction: 'ltr', textAlign: 'left' }}>{toPersianDigits(en.target_code)}</Typography>
-            <Typography variant="caption" color="textSecondary">{en.target_name}</Typography>
-          </Box>
-        ) : (
-          <Typography variant="caption" color="textSecondary">—</Typography>
-        )}
-      </TableCell>
-      <TableCell>
-        <FormControl size="small" sx={{ minWidth: 120 }}>
-          <Select value={en.status} onChange={(e) => updateEntryStatus(en.id, e.target.value)}>
-            <MenuItem value="matched">نگاشت‌شده</MenuItem>
-            <MenuItem value="new">ایجاد جدید</MenuItem>
-            <MenuItem value="ignored">نادیده</MenuItem>
-            <MenuItem value="pending">در انتظار</MenuItem>
-          </Select>
-        </FormControl>
-      </TableCell>
-      <TableCell>
-        <Stack direction="row" spacing={0.5}>
-          <FormControl size="small" sx={{ minWidth: 170 }}>
-            <Select value={targetIdOf(en) || ''} onChange={(e) => updateEntryTarget(en.id, e.target.value)} displayEmpty>
-              <MenuItem value="">انتخاب هدف...</MenuItem>
-              {(optForLevel[en.level] || []).map((o) => (
-                <MenuItem key={o.id} value={o.id}>{o.code} - {o.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <Button size="small" color="error" onClick={() => deleteEntry(en.id)} sx={{ minWidth: 0, px: 1 }}>حذف</Button>
-        </Stack>
-      </TableCell>
-    </TableRow>
+    <Box key={en.id} sx={{
+      p: 1.5, borderRadius: '12px', border: '1px solid rgba(100,116,139,0.14)',
+      background: 'rgba(255,255,255,0.6)',
+    }}>
+      <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1.5, flexWrap: 'wrap' }}>
+        {/* سطح */}
+        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 90 }}>
+          <Chip size="small" label={en.level_display} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca' }} />
+        </Box>
+
+        {/* مبدا */}
+        <Box sx={{ flex: 1, minWidth: 200, p: 1, borderRadius: '10px', bgcolor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.14)' }}>
+          <Typography variant="caption" color="textSecondary" display="block">مبدا {en.source_label ? `(${en.source_label})` : ''}</Typography>
+          <Typography variant="body2" fontWeight={800} sx={{ direction: 'ltr', textAlign: 'left' }}>{en.source_code || '—'}</Typography>
+          <Typography variant="caption" color="textSecondary">{en.source_name || '—'}</Typography>
+          {en.kind && (
+            <Typography variant="caption" color="textSecondary" display="block">دسته مبدا: {kindLabel(en.kind)}</Typography>
+          )}
+        </Box>
+
+        {/* فلش */}
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5 }}>
+          <Typography variant="h6" sx={{ color: '#94a3b8', fontWeight: 900, direction: 'ltr' }}>→</Typography>
+        </Box>
+
+        {/* هدف */}
+        <Box sx={{ flex: 1, minWidth: 200, p: 1, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.14)' }}>
+          <Typography variant="caption" color="textSecondary" display="block">هدف</Typography>
+          <Typography variant="body2" fontWeight={800} sx={{ direction: 'ltr', textAlign: 'left', color: en.target_code ? '#4338ca' : 'text.disabled' }}>
+            {en.target_code ? toPersianDigits(en.target_code) : '—'}
+          </Typography>
+          <Typography variant="caption" color="textSecondary">{en.target_name || '—'}</Typography>
+          {en.level === 'auxiliary' && en.target_category && (
+            <Typography variant="caption" color="textSecondary" display="block">دسته هدف: {en.target_category}</Typography>
+          )}
+        </Box>
+
+        {/* وضعیت */}
+        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 110 }}>
+          <Chip size="small" label={en.status_display} sx={{
+            fontWeight: 700,
+            bgcolor: en.status === 'matched' ? 'rgba(16,185,129,0.12)' : en.status === 'ignored' ? 'rgba(100,116,139,0.12)' : 'rgba(245,158,11,0.12)',
+            color: en.status === 'matched' ? '#059669' : en.status === 'ignored' ? '#64748b' : '#b45309',
+          }} />
+        </Box>
+
+        {/* دکمه عملیات */}
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Button size="small" variant="outlined" onClick={() => setEditingEntry(editingEntry === en.id ? null : en.id)}
+            sx={{ borderRadius: '8px', whiteSpace: 'nowrap' }}>
+            عملیات
+          </Button>
+        </Box>
+      </Box>
+
+      {/* پنل اصلاح — فقط برای همین ردیف باز می‌شود */}
+      {editingEntry === en.id && (
+        <Box sx={{ mt: 1.5, p: 1.5, borderRadius: '10px', bgcolor: 'rgba(100,116,139,0.06)', border: '1px dashed rgba(100,116,139,0.25)' }}>
+          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" flexWrap="wrap">
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>وضعیت</InputLabel>
+              <Select value={en.status} label="وضعیت" onChange={(e) => updateEntryStatus(en.id, e.target.value)}>
+                <MenuItem value="matched">نگاشت‌شده</MenuItem>
+                <MenuItem value="new">ایجاد جدید</MenuItem>
+                <MenuItem value="ignored">نادیده</MenuItem>
+                <MenuItem value="pending">در انتظار</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 220 }}>
+              <InputLabel>تغییر هدف</InputLabel>
+              <Select value={targetIdOf(en) || ''} label="تغییر هدف" onChange={(e) => updateEntryTarget(en.id, e.target.value)} displayEmpty>
+                <MenuItem value="">انتخاب هدف...</MenuItem>
+                {(optForLevel[en.level] || []).map((o) => (
+                  <MenuItem key={o.id} value={o.id}>{o.code} - {o.name}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button size="small" color="error" variant="outlined" onClick={() => deleteEntry(en.id)} sx={{ borderRadius: '8px' }}>حذف</Button>
+            <Button size="small" onClick={() => setEditingEntry(null)} sx={{ borderRadius: '8px' }}>بستن</Button>
+          </Stack>
+        </Box>
+      )}
+    </Box>
   );
 
   return (

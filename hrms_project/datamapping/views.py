@@ -1,6 +1,7 @@
 """نگاشت و ایمپورت داده — API."""
 from datetime import date, datetime
 
+from django.db import models
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -411,14 +412,34 @@ def entries(request):
     company = _company(request)
     level = request.query_params.get('level')
     kind = request.query_params.get('kind')
+    source_id = request.query_params.get('source')
+    q = request.query_params.get('q', '').strip()
+    limit = int(request.query_params.get('limit', 200))
     qs = MappingEntry.objects.filter(company=company).select_related(
-        'source', 'target_group', 'target_account', 'target_auxiliary',
+        'source', 'target_group', 'target_account', 'target_auxiliary', 'target_auxiliary__category',
     )
     if level:
         qs = qs.filter(level=level)
     if kind:
         qs = qs.filter(kind=kind)
-    return Response(MappingEntrySerializer(qs[:1000], many=True).data)
+    if source_id:
+        qs = qs.filter(source_id=source_id)
+    if q:
+        qs = qs.filter(
+            models.Q(source_code__icontains=q)
+            | models.Q(source_name__icontains=q)
+            | models.Q(target_group__name__icontains=q)
+            | models.Q(target_account__name__icontains=q)
+            | models.Q(target_auxiliary__name__icontains=q)
+        )
+    # فقط تعداد محدود، با اولویت نگاشت‌های حل‌نشده یا اخیر
+    qs = qs.order_by('-updated_at')
+    total = qs.count()
+    limit = max(1, min(limit, 500))
+    return Response({
+        'count': total,
+        'results': MappingEntrySerializer(qs[:limit], many=True).data,
+    })
 
 
 @api_view(['PATCH', 'DELETE'])
