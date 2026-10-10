@@ -482,6 +482,9 @@ def entry_detail(request, pk):
         entry.status = status_val
     if 'resolved' in data:
         entry.resolved = bool(data['resolved'])
+    # تغییر دستهٔ تفصیلی (kind)
+    if 'kind' in data:
+        entry.kind = data.get('kind') or ''
     # بر اساس هدف، وضعیت را به‌روز کن
     if entry.target_group or entry.target_account or entry.target_auxiliary:
         entry.resolved = True

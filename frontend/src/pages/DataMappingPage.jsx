@@ -306,6 +306,15 @@ const DataMappingPage = () => {
     }
   };
 
+  const updateEntryKind = async (entryId, kind) => {
+    try {
+      await axiosInstance.patch(`/datamapping/entries/${entryId}/`, { kind });
+      loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در اصلاح دسته');
+    }
+  };
+
   const deleteEntry = async (entryId) => {
     if (!window.confirm('این نگاشت حذف شود؟')) return;
     try {
@@ -632,26 +641,32 @@ const DataMappingPage = () => {
   const optForLevel = { group: optAll.groups, general: optAll.general, subsidiary: optAll.subsidiary, auxiliary: optAll.auxiliary };
   const kindLabel = (k) => (auxSources.find((s) => s.kind === k) || {}).category || k || '';
 
+  const levelColor = (key) => (LEVELS.find((l) => l.key === key) || {}).color || '#6366f1';
+
   const renderMappings = () => (
     <Stack spacing={2}>
-      <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
+      <Paper sx={{
+        p: 2, borderRadius: '16px',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.85), rgba(255,255,255,0.6))',
+        border: '1px solid rgba(100,116,139,0.14)', backdropFilter: 'blur(12px)',
+      }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, mb: 1.5 }}>
-          <Typography variant="subtitle2" fontWeight={800} color="#3730a3">نگاشت‌های ثبت‌شده (منبع → هدف)</Typography>
+          <Typography variant="subtitle1" fontWeight={800} color="#3730a3">نگاشت‌های ثبت‌شده (منبع → هدف)</Typography>
           <Button size="small" variant="outlined" onClick={loadEntries} sx={{ borderRadius: '8px' }}>بروزرسانی</Button>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap', mb: 1.5 }}>
-          {[{ key: '', label: 'همه' }, ...LEVELS].map((l) => (
+        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+          {[{ key: '', label: 'همه', color: '#64748b' }, ...LEVELS].map((l) => (
             <Chip
               key={l.key}
               label={l.label}
               clickable
               onClick={() => setEntriesLevel(l.key)}
               sx={{
-                fontWeight: 700, px: 1,
-                bgcolor: entriesLevel === l.key ? '#4338ca' : 'rgba(99,102,241,0.08)',
-                color: entriesLevel === l.key ? '#fff' : '#4338ca',
-                '&:hover': { bgcolor: entriesLevel === l.key ? '#4338ca' : 'rgba(99,102,241,0.16)' },
+                fontWeight: 700, px: 1.5, py: 0.5, borderRadius: '10px',
+                bgcolor: entriesLevel === l.key ? l.color : 'rgba(100,116,139,0.08)',
+                color: entriesLevel === l.key ? '#fff' : '#475569',
+                '&:hover': { bgcolor: entriesLevel === l.key ? l.color : 'rgba(100,116,139,0.16)' },
               }}
             />
           ))}
@@ -676,8 +691,9 @@ const DataMappingPage = () => {
           )}
           <TextField size="small" placeholder="جستجو (کد/عنوان/هدف)..." value={entriesQ}
             onChange={(e) => setEntriesQ(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') loadEntries(); }}
-            sx={{ minWidth: 220 }} />
-          <Button size="small" variant="contained" onClick={loadEntries} sx={{ borderRadius: '8px' }}>جستجو</Button>
+            sx={{ minWidth: 220, flex: 1 }} />
+          <Button size="small" variant="contained" onClick={loadEntries}
+            sx={{ borderRadius: '8px', background: 'linear-gradient(135deg,#6366f1,#4f46e5)' }}>جستجو</Button>
           {entriesTotal > 0 && (
             <Typography variant="caption" color="textSecondary">{formatPersianNumber(entriesTotal)} نگاشت (نمایش {formatPersianNumber(entries.length)})</Typography>
           )}
@@ -692,7 +708,7 @@ const DataMappingPage = () => {
             هنوز نگاشتی ثبت نشده است. از تب «نگاشت کدینگ» یا «ایمپورت اسناد» شروع کنید.
           </Typography>
         ) : (
-          <Stack spacing={1}>
+          <Stack spacing={1.25}>
             {entries.map((en) => renderMappingRow(en))}
           </Stack>
         )}
@@ -700,65 +716,71 @@ const DataMappingPage = () => {
     </Stack>
   );
 
-  const renderMappingRow = (en) => (
-    <Box key={en.id} sx={{
-      p: 1.5, borderRadius: '12px', border: '1px solid rgba(100,116,139,0.14)',
-      background: 'rgba(255,255,255,0.6)',
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1.5, flexWrap: 'wrap' }}>
-        {/* سطح */}
-        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 90 }}>
-          <Chip size="small" label={en.level_display} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca' }} />
-        </Box>
+  const renderMappingRow = (en) => {
+    const lc = levelColor(en.level);
+    return (
+      <Box key={en.id} sx={{
+        p: 1.5, borderRadius: '14px', border: '1px solid rgba(100,116,139,0.14)',
+        background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.55))',
+        boxShadow: '0 2px 10px rgba(15,23,42,0.04)',
+        borderRight: `4px solid ${lc}`,
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'stretch', gap: 1.5, flexWrap: 'wrap' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 96 }}>
+            <Chip size="small" label={en.level_display} sx={{ fontWeight: 800, bgcolor: `${lc}1a`, color: lc }} />
+          </Box>
 
-        {/* مبدا */}
-        <Box sx={{ flex: 1, minWidth: 200, p: 1, borderRadius: '10px', bgcolor: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.14)' }}>
-          <Typography variant="caption" color="textSecondary" display="block">مبدا {en.source_label ? `(${en.source_label})` : ''}</Typography>
-          <Typography variant="body2" fontWeight={800} sx={{ direction: 'ltr', textAlign: 'left' }}>{en.source_code || '—'}</Typography>
-          <Typography variant="caption" color="textSecondary">{en.source_name || '—'}</Typography>
-          {en.kind && (
-            <Typography variant="caption" color="textSecondary" display="block">دسته مبدا: {kindLabel(en.kind)}</Typography>
-          )}
-        </Box>
+          {/* مبدا */}
+          <Box sx={{ flex: 1, minWidth: 210, p: 1.25, borderRadius: '10px', bgcolor: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.14)' }}>
+            <Typography variant="caption" color="#059669" fontWeight={800} display="block" mb={0.25}>مبدا {en.source_label ? `· ${en.source_label}` : ''}</Typography>
+            <Typography variant="body1" fontWeight={800} sx={{ direction: 'ltr', textAlign: 'left' }}>{en.source_code || '—'}</Typography>
+            <Typography variant="caption" color="textSecondary">{en.source_name || '—'}</Typography>
+            {en.kind && (
+              <Typography variant="caption" color="#b45309" display="block">دسته مبدا: {kindLabel(en.kind)}</Typography>
+            )}
+          </Box>
 
-        {/* فلش */}
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5 }}>
-          <Typography variant="h6" sx={{ color: '#94a3b8', fontWeight: 900, direction: 'ltr' }}>→</Typography>
-        </Box>
+          {/* فلش */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5 }}>
+            <Box sx={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(99,102,241,0.1)' }}>
+              <Typography sx={{ color: '#6366f1', fontWeight: 900, direction: 'ltr', fontSize: 18 }}>→</Typography>
+            </Box>
+          </Box>
 
-        {/* هدف */}
-        <Box sx={{ flex: 1, minWidth: 200, p: 1, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.06)', border: '1px solid rgba(99,102,241,0.14)' }}>
-          <Typography variant="caption" color="textSecondary" display="block">هدف</Typography>
-          <Typography variant="body2" fontWeight={800} sx={{ direction: 'ltr', textAlign: 'left', color: en.target_code ? '#4338ca' : 'text.disabled' }}>
-            {en.target_code ? toPersianDigits(en.target_code) : '—'}
-          </Typography>
-          <Typography variant="caption" color="textSecondary">{en.target_name || '—'}</Typography>
-          {en.level === 'auxiliary' && en.target_category && (
-            <Typography variant="caption" color="textSecondary" display="block">دسته هدف: {en.target_category}</Typography>
-          )}
-        </Box>
+          {/* هدف */}
+          <Box sx={{ flex: 1, minWidth: 210, p: 1.25, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.05)', border: '1px solid rgba(99,102,241,0.14)' }}>
+            <Typography variant="caption" color="#4f46e5" fontWeight={800} display="block" mb={0.25}>هدف</Typography>
+            <Typography variant="body1" fontWeight={800} sx={{ direction: 'ltr', textAlign: 'left', color: en.target_code ? '#4338ca' : 'text.disabled' }}>
+              {en.target_code ? toPersianDigits(en.target_code) : '—'}
+            </Typography>
+            <Typography variant="caption" color="textSecondary">{en.target_name || '—'}</Typography>
+            {en.level === 'auxiliary' && en.target_category && (
+              <Typography variant="caption" color="#4338ca" display="block">دسته هدف: {en.target_category}</Typography>
+            )}
+          </Box>
 
-        {/* وضعیت */}
-        <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 110 }}>
-          <Chip size="small" label={en.status_display} sx={{
-            fontWeight: 700,
-            bgcolor: en.status === 'matched' ? 'rgba(16,185,129,0.12)' : en.status === 'ignored' ? 'rgba(100,116,139,0.12)' : 'rgba(245,158,11,0.12)',
-            color: en.status === 'matched' ? '#059669' : en.status === 'ignored' ? '#64748b' : '#b45309',
-          }} />
-        </Box>
+          {/* وضعیت */}
+          <Box sx={{ display: 'flex', alignItems: 'center', minWidth: 110 }}>
+            <Chip size="small" label={en.status_display} sx={{
+              fontWeight: 700,
+              bgcolor: en.status === 'matched' ? 'rgba(16,185,129,0.14)' : en.status === 'ignored' ? 'rgba(100,116,139,0.14)' : 'rgba(245,158,11,0.14)',
+              color: en.status === 'matched' ? '#059669' : en.status === 'ignored' ? '#64748b' : '#b45309',
+            }} />
+          </Box>
 
-        {/* دکمه عملیات */}
-        <Box sx={{ display: 'flex', alignItems: 'center' }}>
-          <Button size="small" variant="outlined" onClick={() => setEditingEntry(editingEntry === en.id ? null : en.id)}
-            sx={{ borderRadius: '8px', whiteSpace: 'nowrap' }}>
-            عملیات
-          </Button>
+          {/* دکمه عملیات */}
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <Button size="small" variant={editingEntry === en.id ? 'contained' : 'outlined'}
+              onClick={() => setEditingEntry(editingEntry === en.id ? null : en.id)}
+              sx={{ borderRadius: '8px', whiteSpace: 'nowrap', color: editingEntry === en.id ? '#fff' : '#4f46e5', borderColor: '#c7d2fe', background: editingEntry === en.id ? '#4f46e5' : 'transparent' }}>
+              {editingEntry === en.id ? 'بستن' : 'عملیات'}
+            </Button>
+          </Box>
         </Box>
-      </Box>
 
       {/* پنل اصلاح — فقط برای همین ردیف باز می‌شود */}
       {editingEntry === en.id && (
-        <Box sx={{ mt: 1.5, p: 1.5, borderRadius: '10px', bgcolor: 'rgba(100,116,139,0.06)', border: '1px dashed rgba(100,116,139,0.25)' }}>
+        <Box sx={{ mt: 1.5, p: 1.5, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.05)', border: '1px dashed rgba(99,102,241,0.3)' }}>
           <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems="center" flexWrap="wrap">
             <FormControl size="small" sx={{ minWidth: 150 }}>
               <InputLabel>وضعیت</InputLabel>
@@ -769,6 +791,15 @@ const DataMappingPage = () => {
                 <MenuItem value="pending">در انتظار</MenuItem>
               </Select>
             </FormControl>
+            {en.level === 'auxiliary' && (
+              <FormControl size="small" sx={{ minWidth: 170 }}>
+                <InputLabel>دسته</InputLabel>
+                <Select value={en.kind || ''} label="دسته" onChange={(e) => updateEntryKind(en.id, e.target.value)} displayEmpty>
+                  <MenuItem value="">بدون دسته</MenuItem>
+                  {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
+                </Select>
+              </FormControl>
+            )}
             <FormControl size="small" sx={{ minWidth: 220 }}>
               <InputLabel>تغییر هدف</InputLabel>
               <Select value={targetIdOf(en) || ''} label="تغییر هدف" onChange={(e) => updateEntryTarget(en.id, e.target.value)} displayEmpty>
@@ -779,12 +810,12 @@ const DataMappingPage = () => {
               </Select>
             </FormControl>
             <Button size="small" color="error" variant="outlined" onClick={() => deleteEntry(en.id)} sx={{ borderRadius: '8px' }}>حذف</Button>
-            <Button size="small" onClick={() => setEditingEntry(null)} sx={{ borderRadius: '8px' }}>بستن</Button>
           </Stack>
         </Box>
       )}
     </Box>
-  );
+    );
+  };
 
   return (
     <Box>
