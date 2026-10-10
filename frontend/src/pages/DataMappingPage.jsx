@@ -32,6 +32,7 @@ const DataMappingPage = () => {
   const [sourceId, setSourceId] = useState('');
   const [sources, setSources] = useState([]);
   const [options, setOptions] = useState([]);
+  const [optAll, setOptAll] = useState({ groups: [], general: [], subsidiary: [], auxiliary: [] });
   const [previewRows, setPreviewRows] = useState([]);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [applying, setApplying] = useState(false);
@@ -51,6 +52,11 @@ const DataMappingPage = () => {
   const [auxSyncing, setAuxSyncing] = useState('');
   const [auxMsg, setAuxMsg] = useState('');
   const [auxErr, setAuxErr] = useState('');
+  const [entries, setEntries] = useState([]);
+  const [entriesLevel, setEntriesLevel] = useState('');
+  const [entriesKind, setEntriesKind] = useState('');
+  const [entriesLoading, setEntriesLoading] = useState(false);
+  const [entriesErr, setEntriesErr] = useState('');
 
   const loadSources = async () => {
     try {
@@ -68,6 +74,17 @@ const DataMappingPage = () => {
 
   React.useEffect(() => { loadSources(); }, []);
   React.useEffect(() => { loadOptions(level); }, [level]);
+  React.useEffect(() => {
+    axiosInstance.get('/datamapping/options/').then(r => {
+      const d = r.data || {};
+      setOptAll({
+        groups: d.groups || [],
+        general: d.general || [],
+        subsidiary: d.subsidiary || [],
+        auxiliary: d.auxiliary || [],
+      });
+    }).catch(() => {});
+  }, []);
   React.useEffect(() => {
     axiosInstance.get('/accounting/fiscal-years/').then(r => {
       const d = Array.isArray(r.data) ? r.data : r.data?.results || [];
@@ -242,6 +259,52 @@ const DataMappingPage = () => {
       setAuxErr(err.response?.data?.error || 'خطا در همگام‌سازی');
     } finally {
       setAuxSyncing('');
+    }
+  };
+
+  const loadEntries = async () => {
+    setEntriesLoading(true);
+    setEntriesErr('');
+    try {
+      const params = {};
+      if (entriesLevel) params.level = entriesLevel;
+      if (entriesKind) params.kind = entriesKind;
+      const r = await axiosInstance.get('/datamapping/entries/', { params });
+      setEntries(Array.isArray(r.data) ? r.data : r.data?.results || []);
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در دریافت نگاشت‌ها');
+    } finally {
+      setEntriesLoading(false);
+    }
+  };
+
+  React.useEffect(() => { loadEntries(); }, [entriesLevel, entriesKind]);
+
+  const updateEntryTarget = async (entryId, targetId) => {
+    try {
+      await axiosInstance.patch(`/datamapping/entries/${entryId}/`, { target_id: targetId });
+      loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در اصلاح نگاشت');
+    }
+  };
+
+  const updateEntryStatus = async (entryId, status) => {
+    try {
+      await axiosInstance.patch(`/datamapping/entries/${entryId}/`, { status });
+      loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در اصلاح نگاشت');
+    }
+  };
+
+  const deleteEntry = async (entryId) => {
+    if (!window.confirm('این نگاشت حذف شود؟')) return;
+    try {
+      await axiosInstance.delete(`/datamapping/entries/${entryId}/`);
+      loadEntries();
+    } catch (err) {
+      setEntriesErr(err.response?.data?.error || 'خطا در حذف نگاشت');
     }
   };
 
@@ -557,6 +620,112 @@ const DataMappingPage = () => {
     </Stack>
   );
 
+  const targetIdOf = (en) => en.target_group || en.target_account || en.target_auxiliary || '';
+  const optForLevel = { group: optAll.groups, general: optAll.general, subsidiary: optAll.subsidiary, auxiliary: optAll.auxiliary };
+
+  const renderMappings = () => (
+    <Stack spacing={2}>
+      <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, mb: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight={800} color="#3730a3">نگاشت‌های ثبت‌شده (منبع → هدف)</Typography>
+          <Button size="small" variant="outlined" onClick={loadEntries} sx={{ borderRadius: '8px' }}>بروزرسانی</Button>
+        </Box>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>سطح کدینگ</InputLabel>
+            <Select value={entriesLevel || ''} label="سطح کدینگ" onChange={(e) => setEntriesLevel(e.target.value)}>
+              <MenuItem value="">همه سطوح</MenuItem>
+              {LEVELS.map((l) => <MenuItem key={l.key} value={l.key}>{l.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: 200 }}>
+            <InputLabel>دسته تفصیلی</InputLabel>
+            <Select value={entriesKind || ''} label="دسته تفصیلی" onChange={(e) => setEntriesKind(e.target.value)}>
+              <MenuItem value="">همه دسته‌ها</MenuItem>
+              {auxSources.map((s) => <MenuItem key={s.kind} value={s.kind}>{s.category}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Stack>
+        {entriesLoading && <LinearProgress sx={{ mt: 1.5, borderRadius: '10px' }} />}
+        {entriesErr && <Alert severity="error" onClose={() => setEntriesErr('')} sx={{ mt: 1 }}>{entriesErr}</Alert>}
+      </Paper>
+
+      <Paper sx={{ p: 2, borderRadius: '16px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(100,116,139,0.14)' }}>
+        {entries.length === 0 && !entriesLoading ? (
+          <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>
+            هنوز نگاشتی ثبت نشده است. از تب «نگاشت کدینگ» یا «ایمپورت اسناد» شروع کنید.
+          </Typography>
+        ) : (
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 800 }}>سطح</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>منبع</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>کد مبدا</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>عنوان مبدا</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>کد / عنوان هدف</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>وضعیت</TableCell>
+                  <TableCell sx={{ fontWeight: 800 }}>اقدام</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {entries.map((en) => renderMappingRow(en))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </Stack>
+  );
+
+  const renderMappingRow = (en) => (
+    <TableRow key={en.id} hover>
+      <TableCell>
+        <Chip size="small" label={en.level_display} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca' }} />
+      </TableCell>
+      <TableCell>
+        <Typography variant="caption" color="textSecondary">{en.source_name || 'عمومی'}</Typography>
+        {en.kind && <Typography variant="caption" color="textSecondary" display="block">دسته: {en.kind}</Typography>}
+      </TableCell>
+      <TableCell sx={{ direction: 'ltr', textAlign: 'left', fontWeight: 700 }}>{toPersianDigits(en.source_code)}</TableCell>
+      <TableCell>{en.source_name || '—'}</TableCell>
+      <TableCell>
+        {en.target_code ? (
+          <Box>
+            <Typography variant="body2" fontWeight={700} sx={{ direction: 'ltr', textAlign: 'left' }}>{toPersianDigits(en.target_code)}</Typography>
+            <Typography variant="caption" color="textSecondary">{en.target_name}</Typography>
+          </Box>
+        ) : (
+          <Typography variant="caption" color="textSecondary">—</Typography>
+        )}
+      </TableCell>
+      <TableCell>
+        <FormControl size="small" sx={{ minWidth: 120 }}>
+          <Select value={en.status} onChange={(e) => updateEntryStatus(en.id, e.target.value)}>
+            <MenuItem value="matched">نگاشت‌شده</MenuItem>
+            <MenuItem value="new">ایجاد جدید</MenuItem>
+            <MenuItem value="ignored">نادیده</MenuItem>
+            <MenuItem value="pending">در انتظار</MenuItem>
+          </Select>
+        </FormControl>
+      </TableCell>
+      <TableCell>
+        <Stack direction="row" spacing={0.5}>
+          <FormControl size="small" sx={{ minWidth: 170 }}>
+            <Select value={targetIdOf(en) || ''} onChange={(e) => updateEntryTarget(en.id, e.target.value)} displayEmpty>
+              <MenuItem value="">انتخاب هدف...</MenuItem>
+              {(optForLevel[en.level] || []).map((o) => (
+                <MenuItem key={o.id} value={o.id}>{o.code} - {o.name}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button size="small" color="error" onClick={() => deleteEntry(en.id)} sx={{ minWidth: 0, px: 1 }}>حذف</Button>
+        </Stack>
+      </TableCell>
+    </TableRow>
+  );
+
   return (
     <Box>
       <Paper sx={{
@@ -580,10 +749,11 @@ const DataMappingPage = () => {
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><AccountTreeIcon fontSize="small" /> نگاشت کدینگ</Box>} />
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><DescriptionIcon fontSize="small" /> ایمپورت اسناد</Box>} />
           <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><HubIcon fontSize="small" /> تفصیلی‌ها</Box>} />
+          <Tab label={<Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}><PlaylistAddCheckIcon fontSize="small" /> نگاشت‌های ثبت‌شده</Box>} />
         </Tabs>
       </Paper>
 
-      {tab === 0 ? renderCoding() : tab === 1 ? renderDocuments() : renderAuxiliaries()}
+      {tab === 0 ? renderCoding() : tab === 1 ? renderDocuments() : tab === 2 ? renderAuxiliaries() : renderMappings()}
     </Box>
   );
 };

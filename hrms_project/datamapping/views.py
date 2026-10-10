@@ -411,12 +411,63 @@ def entries(request):
     company = _company(request)
     level = request.query_params.get('level')
     kind = request.query_params.get('kind')
-    qs = MappingEntry.objects.filter(company=company).select_related('target_group', 'target_account', 'target_auxiliary')
+    qs = MappingEntry.objects.filter(company=company).select_related(
+        'source', 'target_group', 'target_account', 'target_auxiliary',
+    )
     if level:
         qs = qs.filter(level=level)
     if kind:
         qs = qs.filter(kind=kind)
     return Response(MappingEntrySerializer(qs[:1000], many=True).data)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+def entry_detail(request, pk):
+    """اصلاح یا حذف یک نگاشت.
+
+    PATCH: تغییر «هدف» (target_group/target_account/target_auxiliary) یا وضعیت/نادیده‌گرفتن.
+    DELETE: حذف نگاشت.
+    """
+    company = _company(request)
+    entry = MappingEntry.objects.filter(company=company, id=pk).first()
+    if not entry:
+        return Response({'error': 'نگاشت یافت نشد'}, status=404)
+
+    if request.method == 'DELETE':
+        entry.delete()
+        return Response({'message': 'نگاشت حذف شد'})
+
+    data = request.data
+    level = entry.level
+    target_id = data.get('target_id')
+    if target_id is not None:
+        obj = _resolve_target(level, target_id, company)
+        for k, v in _assign_target_fields(level, obj).items():
+            setattr(entry, k, v)
+        # پاک‌کردن هدف‌های دیگر سطح در صورت تغییر سطح (ایمن‌سازی)
+        if level == 'group':
+            entry.target_account = None
+            entry.target_auxiliary = None
+        elif level in ('general', 'subsidiary'):
+            entry.target_group = None
+            entry.target_auxiliary = None
+        else:
+            entry.target_group = None
+            entry.target_account = None
+
+    status_val = data.get('status')
+    if status_val:
+        entry.status = status_val
+    if 'resolved' in data:
+        entry.resolved = bool(data['resolved'])
+    # بر اساس هدف، وضعیت را به‌روز کن
+    if entry.target_group or entry.target_account or entry.target_auxiliary:
+        entry.resolved = True
+        if entry.status == 'pending':
+            entry.status = 'matched'
+    entry.save()
+    return Response(MappingEntrySerializer(entry).data)
 
 
 # -----------------------------------------------------------------------------

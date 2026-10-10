@@ -12,14 +12,15 @@ class MappingSourceSerializer(serializers.ModelSerializer):
 class MappingEntrySerializer(serializers.ModelSerializer):
     level_display = serializers.CharField(source='get_level_display', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    source_name = serializers.CharField(source='source.name', read_only=True, default='')
     target_name = serializers.CharField(read_only=True)
     target_code = serializers.CharField(read_only=True)
 
     class Meta:
         model = MappingEntry
         fields = [
-            'id', 'source', 'level', 'level_display', 'kind', 'source_code', 'source_name',
-            'target_group', 'target_account', 'target_auxiliary',
+            'id', 'source', 'source_name', 'level', 'level_display', 'kind',
+            'source_code', 'target_group', 'target_account', 'target_auxiliary',
             'target_name', 'target_code', 'match_score', 'status', 'status_display', 'resolved',
         ]
         read_only_fields = ['id', 'company', 'match_score', 'resolved']
