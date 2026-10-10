@@ -485,6 +485,7 @@ def entry_detail(request, pk):
     # تغییر دستهٔ تفصیلی (kind)
     if 'kind' in data:
         entry.kind = data.get('kind') or ''
+        _apply_target_category(company, entry)
     # بر اساس هدف، وضعیت را به‌روز کن
     if entry.target_group or entry.target_account or entry.target_auxiliary:
         entry.resolved = True
@@ -759,6 +760,36 @@ def _link_aux_categories(account, aux1, aux2, aux3):
         account.save(update_fields=[
             'auxiliary_category_1', 'auxiliary_category_2', 'auxiliary_category_3', 'updated_at',
         ])
+
+
+_KIND_TO_CATEGORY = {
+    'bank': 'بانک',
+    'employee': 'پرسنل',
+    'supplier': 'تأمین‌کننده',
+    'custodian': 'تنخواه‌دار',
+    'party': 'طرف حساب حقوقی',
+    'contract': 'قرارداد',
+    'project': 'پروژه',
+}
+
+
+def _apply_target_category(company, entry):
+    """تغییر دستهٔ تفصیلی مقصد بر اساس `kind` نگاشت.
+
+    وقتی دستهٔ نگاشت (kind) تغییر می‌کند، باید دستهٔ خودِ تفصیلیِ مقصد
+    (`target_auxiliary.category`) هم در کدینگ حسابداری به‌روز شود.
+    """
+    aux = entry.target_auxiliary
+    if not aux:
+        return
+    cat_name = _KIND_TO_CATEGORY.get(entry.kind)
+    if not cat_name:
+        return
+    from accounting.models import AuxiliaryCategory
+    category = AuxiliaryCategory.objects.filter(company=company, name=cat_name).first()
+    if category and aux.category_id != category.id:
+        aux.category = category
+        aux.save(update_fields=['category', 'updated_at'])
 
 
 # -----------------------------------------------------------------------------

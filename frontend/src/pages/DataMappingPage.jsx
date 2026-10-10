@@ -651,7 +651,7 @@ const DataMappingPage = () => {
         border: '1px solid rgba(100,116,139,0.14)', backdropFilter: 'blur(12px)',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1.5, mb: 1.5 }}>
-          <Typography variant="subtitle1" fontWeight={800} color="#3730a3">نگاشت‌های ثبت‌شده (منبع → هدف)</Typography>
+          <Typography variant="subtitle1" fontWeight={800} color="#3730a3">نگاشت‌های ثبت‌شده (هدف ← منبع)</Typography>
           <Button size="small" variant="outlined" onClick={loadEntries} sx={{ borderRadius: '8px' }}>بروزرسانی</Button>
         </Box>
 
@@ -743,7 +743,7 @@ const DataMappingPage = () => {
           {/* فلش */}
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', px: 0.5 }}>
             <Box sx={{ width: 30, height: 30, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(99,102,241,0.1)' }}>
-              <Typography sx={{ color: '#6366f1', fontWeight: 900, direction: 'ltr', fontSize: 18 }}>→</Typography>
+              <Typography sx={{ color: '#6366f1', fontWeight: 900, direction: 'ltr', fontSize: 18 }}>←</Typography>
             </Box>
           </Box>
 
