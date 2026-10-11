@@ -276,40 +276,6 @@ const MatrixReportPage = () => {
               </Stack>
             </Paper>
             <Paper sx={{ ...glass, p: 1.25 }}>
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
-                <LayersIcon sx={{ fontSize: 18, color: '#f59e0b' }} />
-                <Typography variant="caption" fontWeight={900} sx={{ color: '#b45309', fontFamily: FONT }}>زیر سطح</Typography>
-              </Stack>
-              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1, fontFamily: FONT }}>
-                {subLevels.length === 0
-                  ? 'این سطح ریزتر ندارد'
-                  : (selectedNode ? `محدود به ${selectedNode.code} — ${selectedNode.name}` : 'بدون انتخاب = همهٔ حساب‌ها')}
-              </Typography>
-              <Stack spacing={0.75}>
-                {subLevels.map((l) => {
-                  const active = subLevel === l.value;
-                  const count = (selectedNode ? descendantsOf(selectedNode) : flat)
-                    .filter((n) => (n.level ?? -1) === l.value).length;
-                  return (
-                    <Button key={l.value} fullWidth size="small" variant={active ? 'contained' : 'outlined'}
-                      onClick={() => setSubLevel(active ? null : l.value)}
-                      sx={{ justifyContent: 'space-between', borderRadius: '12px', fontFamily: FONT, px: 1.25,
-                        borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
-                        background: active ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.55)',
-                        color: active ? '#fff' : 'text.primary',
-                        boxShadow: active ? '0 8px 18px rgba(245,158,11,0.35)' : 'none' }}>
-                      <span>{`ریز ${l.label}`}</span>
-                      <Chip size="small" label={toPersianDigits(String(count))}
-                        sx={{ height: 18, fontSize: 11, fontFamily: FONT,
-                          bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
-                          color: active ? '#fff' : 'text.secondary' }} />
-                    </Button>
-                  );
-                })}
-              </Stack>
-            </Paper>
-
-            <Paper sx={{ ...glass, p: 1.25 }}>
               <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
                 <ViewColumnIcon sx={{ fontSize: 18, color: GREEN }} />
                 <Typography variant="caption" fontWeight={900} sx={{ color: GREEN, fontFamily: FONT }}>ستون‌ها</Typography>
@@ -355,21 +321,42 @@ const MatrixReportPage = () => {
               </Stack>
             </Paper>
 
-            {/* نوار وضعیت انتخاب */}
-            <Paper sx={{ ...glass, p: 1, mb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Chip size="small" label={`سطح: ${currentLevel.label}`}
-                sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(6,182,212,0.14)', color: '#0e7490' }} />
-              {currentSub ? (
-                <Chip size="small" label={`ریز: ${currentSub.label}`}
-                  sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(245,158,11,0.16)', color: '#b45309' }} />
-              ) : null}
-              {selectedNode ? (
-                <Chip size="small" color="primary" onDelete={() => { setSelectedKey(null); setSubLevel(null); }}
-                  label={`انتخاب: ${selectedNode.code} — ${selectedNode.name}`} sx={{ fontFamily: FONT, fontWeight: 700 }} />
-              ) : null}
-              <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>
-                سطرها: <b>{toPersianDigits(String(visibleRows.length))}</b> · سطر نخست «جمع کل» و سطر پایانی «جمع ستونی» · برای ریز گردش دوبار کلیک کنید
-              </Typography>
+            {/* زیر سطح — افقی، بالای جدول */}
+            <Paper sx={{ ...glass, p: 1.25, mb: 1.5, '@media print': { display: 'none' } }}>
+              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Stack direction="row" spacing={0.75} alignItems="center">
+                  <LayersIcon sx={{ fontSize: 18, color: '#f59e0b' }} />
+                  <Typography variant="caption" fontWeight={900} sx={{ color: '#b45309', fontFamily: FONT }}>زیر سطح</Typography>
+                </Stack>
+                <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>
+                  {subLevels.length === 0
+                    ? 'این سطح ریزتر ندارد'
+                    : (selectedNode ? `محدود به ${selectedNode.code} — ${selectedNode.name}` : 'بدون انتخاب = همهٔ حساب‌ها')}
+                </Typography>
+                <Box sx={{ flex: 1, minWidth: 12 }} />
+                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                  {subLevels.map((l) => {
+                    const active = subLevel === l.value;
+                    const count = (selectedNode ? descendantsOf(selectedNode) : flat)
+                      .filter((n) => (n.level ?? -1) === l.value).length;
+                    return (
+                      <Button key={l.value} size="small" variant={active ? 'contained' : 'outlined'}
+                        onClick={() => setSubLevel(active ? null : l.value)}
+                        sx={{ borderRadius: '12px', fontFamily: FONT, px: 1.5, gap: 1, minWidth: 125,
+                          borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
+                          background: active ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.6)',
+                          color: active ? '#fff' : 'text.primary',
+                          boxShadow: active ? '0 8px 18px rgba(245,158,11,0.35)' : 'none' }}>
+                        <span>{`ریز ${l.label}`}</span>
+                        <Chip size="small" label={toPersianDigits(String(count))}
+                          sx={{ height: 18, fontSize: 11, fontFamily: FONT,
+                            bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
+                            color: active ? '#fff' : 'text.secondary' }} />
+                      </Button>
+                    );
+                  })}
+                </Stack>
+              </Stack>
             </Paper>
             {visibleRows.length === 0 ? (
               <EmptyState message="گردشی برای این سطح و فیلترهای انتخابی وجود ندارد" />
