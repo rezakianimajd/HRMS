@@ -49,6 +49,10 @@ const norm = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '').toLowerC
 const byCode = (a, b) => String(a?.code ?? '').localeCompare(String(b?.code ?? ''), undefined, { numeric: true });
 
 const HEAD_H = 46; // ارتفاع ثابت ردیف هدر (برای هدر چسبان)
+const ROW_H = 38; // ارتفاع ثابت هر ردیف داده
+const FOOTER_H = 42; // ارتفاع ردیف «جمع ستونی» (چسبان در پایین)
+const BODY_ROWS = 15; // تعداد ردیف قابل‌نمایش پیش از اسکرول
+const TABLE_MAX_H = HEAD_H + BODY_ROWS * ROW_H + FOOTER_H; // ۱۵ ردیف + هدر + سطر جمع
 
 /** همهٔ زیرمجموعه‌های یک گره */
 const descendantsOf = (node) => {
@@ -243,15 +247,18 @@ const MatrixReportPage = () => {
       <TableRow key={row.__key} hover selected={isSelected}
         onClick={() => setSelectedKey(row.__key === selectedKey ? null : row.__key)}
         onDoubleClick={() => setLedgerNode(row)}
-        sx={{ cursor: 'pointer', bgcolor: isSelected ? 'rgba(6,182,212,0.14)' : undefined,
+        sx={{ cursor: 'pointer', height: ROW_H, bgcolor: isSelected ? 'rgba(6,182,212,0.14)' : undefined,
           boxShadow: isSelected ? `inset 3px 0 0 ${CYAN}` : undefined }}>
         <TableCell sx={{ width: 56, color: 'text.secondary' }}>{toPersianDigits(index + 1)}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
           <Typography variant="body2" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>{toPersianDigits(row.code)}</Typography>
         </TableCell>
-        <TableCell>
-          <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{row.name}</Typography>
-          {path ? <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{path}</Typography> : null}
+        <TableCell sx={{ maxWidth: 380, overflow: 'hidden' }}>
+          <Typography variant="body2" fontWeight={700}
+            sx={{ fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {row.name}
+            {path ? <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 11, ml: 1 }}>‹ {path}</Box> : null}
+          </Typography>
         </TableCell>
         {renderAmountCells(row, true)}
       </TableRow>
@@ -378,7 +385,7 @@ const MatrixReportPage = () => {
               <EmptyState message="گردشی برای این سطح و فیلترهای انتخابی وجود ندارد" />
             ) : (
               <div style={{ ...glass, padding: 12, overflow: 'hidden' }}>
-                <TableContainer sx={{ maxHeight: 620, overflowX: 'auto' }}>
+                <TableContainer sx={{ maxHeight: TABLE_MAX_H, overflowX: 'auto' }}>
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
@@ -413,14 +420,21 @@ const MatrixReportPage = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      <TableRow sx={{ bgcolor: 'rgba(250,204,21,0.24)' }}>
+                      <TableRow sx={{ height: ROW_H, bgcolor: 'rgba(250,204,21,0.24)' }}>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع کل</TableCell>
                         {renderAmountCells(total, true)}
                       </TableRow>
                       {visibleRows.map(renderRow)}
-                      <TableRow sx={{ bgcolor: 'rgba(139,92,246,0.14)' }}>
+                      {/* سطر جمع ستونی — همیشه چسبان در پایینِ ناحیهٔ اسکرول */}
+                      <TableRow sx={{
+                        height: FOOTER_H,
+                        '& .MuiTableCell-root': {
+                          position: 'sticky', bottom: 0, zIndex: 3,
+                          bgcolor: '#ede9fe', borderTop: '2px solid rgba(124,58,237,0.4)',
+                        },
+                      }}>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع ستونی</TableCell>
