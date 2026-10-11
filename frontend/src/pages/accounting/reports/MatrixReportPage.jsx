@@ -159,7 +159,12 @@ const MatrixReportPage = () => {
   if (isLoading) return <Loading />;
 
   const isFlat = (v) => Math.abs(v || 0) < 0.005;
-  const headSx = { fontWeight: 800, whiteSpace: 'nowrap', bgcolor: '#f8fafc', fontSize: 12.5, textAlign: 'center' };
+  // توجه: قاعدهٔ سراسری index.css (`[dir="rtl"] .MuiTableCell-root { text-align: right }`)
+  // از کلاس sx قوی‌تر است، پس برای وسط‌چین‌کردن عناوین هدر از !important استفاده می‌کنیم.
+  const headSx = {
+    fontWeight: 800, whiteSpace: 'nowrap', bgcolor: '#f8fafc', fontSize: 12.5,
+    textAlign: 'center !important',
+  };
 
   const numCell = (value, color, bold, sub) => (
     <Box>
@@ -178,8 +183,8 @@ const MatrixReportPage = () => {
   // در یک ردیف چسبان قرار می‌گیرد تا هنگام اسکرول «گردش دوره / مانده …» هم دیده شود.
   const moneyHead = (group, label, color, bg) => (
     <TableCell align="center" sx={{ ...headSx, bgcolor: bg, height: HEAD_H, borderBottom: `2px solid ${color}55` }}>
-      <Typography variant="caption" display="block" sx={{ color, fontWeight: 800, lineHeight: 1.25 }}>{group}</Typography>
-      <Typography variant="caption" display="block" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.25 }}>{label}</Typography>
+      <Typography variant="caption" display="block" sx={{ color, fontWeight: 800, lineHeight: 1.25, textAlign: 'center !important' }}>{group}</Typography>
+      <Typography variant="caption" display="block" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.25, textAlign: 'center !important' }}>{label}</Typography>
     </TableCell>
   );
 
@@ -395,7 +400,7 @@ const MatrixReportPage = () => {
                             {moneyHead('گردش دوره', 'بدهکار', BLUE, '#dbeafe')}
                             {moneyHead('گردش دوره', 'بستانکار', BLUE, '#dbeafe')}
                             <TableCell align="center" sx={{ ...headSx, bgcolor: '#ede9fe', height: HEAD_H, borderBottom: '2px solid #7c3aed55' }}>
-                              <Typography variant="caption" sx={{ color: '#7c3aed', fontWeight: 900 }}>مانده</Typography>
+                              <Typography variant="caption" sx={{ color: '#7c3aed', fontWeight: 900, textAlign: 'center !important' }}>مانده</Typography>
                             </TableCell>
                           </>
                         )}
