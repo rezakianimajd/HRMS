@@ -49,10 +49,10 @@ const norm = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '').toLowerC
 const byCode = (a, b) => String(a?.code ?? '').localeCompare(String(b?.code ?? ''), undefined, { numeric: true });
 
 const HEAD_H = 46; // ارتفاع ثابت ردیف هدر (برای هدر چسبان)
-const ROW_H = 38; // ارتفاع ثابت هر ردیف داده
+const ROW_H = 36; // ارتفاع ثابت هر ردیف داده
 const FOOTER_H = 42; // ارتفاع ردیف «جمع ستونی» (چسبان در پایین)
-const BODY_ROWS = 15; // تعداد ردیف قابل‌نمایش پیش از اسکرول
-const TABLE_MAX_H = HEAD_H + BODY_ROWS * ROW_H + FOOTER_H; // ۱۵ ردیف + هدر + سطر جمع
+const BODY_ROWS = 13; // تعداد ردیف قابل‌نمایش پیش از اسکرول (تک‌صفحه‌ای)
+const TABLE_MAX_H = HEAD_H + BODY_ROWS * ROW_H + FOOTER_H; // ۱۳ ردیف + هدر + سطر جمع
 
 /** همهٔ زیرمجموعه‌های یک گره */
 const descendantsOf = (node) => {
@@ -287,7 +287,7 @@ const MatrixReportPage = () => {
       ) : (
         <>
         {/* نوار جستجو و فیلترها — تمام عرض */}
-        <Paper sx={{ ...glass, p: 1.5, mb: 1.5, '@media print': { display: 'none' } }}>
+        <Paper sx={{ ...glass, p: 1.25, mb: 1, '@media print': { display: 'none' } }}>
           <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
             <TextField size="small" placeholder="جستجو در همه‌چیز: کد، شرح و والدها…" value={search}
               onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 260, flex: 1 }}
@@ -355,7 +355,7 @@ const MatrixReportPage = () => {
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
             {/* ریز سطح — ثابت: همهٔ سطوح */}
-            <Paper sx={{ ...glass, p: 1.25, mb: 1.5, '@media print': { display: 'none' } }}>
+            <Paper sx={{ ...glass, p: 1, mb: 1, '@media print': { display: 'none' } }}>
               <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                 {subLevels.map((l) => {
                   const active = (subLevel === null ? level : subLevel) === l.value;
@@ -383,7 +383,7 @@ const MatrixReportPage = () => {
             {visibleRows.length === 0 ? (
               <EmptyState message="گردشی برای این سطح و فیلترهای انتخابی وجود ندارد" />
             ) : (
-              <div style={{ ...glass, padding: 12, overflow: 'hidden' }}>
+              <div style={{ ...glass, padding: 8, overflow: 'hidden' }}>
                 <TableContainer sx={{ maxHeight: TABLE_MAX_H, overflowX: 'auto' }}>
                   <Table size="small" stickyHeader>
                     <TableHead>
