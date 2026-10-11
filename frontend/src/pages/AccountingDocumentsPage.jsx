@@ -22,7 +22,6 @@ import LockIcon from '@mui/icons-material/Lock';
 import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
 import ChecklistIcon from '@mui/icons-material/Checklist';
-import NotificationImportantIcon from '@mui/icons-material/NotificationImportant';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
@@ -180,16 +179,14 @@ const AccountingDocumentsPage = () => {
                 ) : list.map(row => (
                   <TableRow key={row.id} hover>
                     <TableCell>
-                      <Stack direction="row" alignItems="center" spacing={0.5}>
-                        <span>{docLabel(row)}</span>
-                        {(row.open_issues_count || 0) > 0 && (
-                          <Tooltip title={`${row.open_issues_count} مورد نیازمند اصلاح — برای مشاهده و رفع کلیک کنید`}>
-                            <IconButton size="small" sx={{ p: 0.25 }} onClick={() => setIssuesDoc(row)}>
-                              <NotificationImportantIcon sx={{ fontSize: 16, color: '#ef4444' }} />
-                            </IconButton>
-                          </Tooltip>
-                        )}
-                      </Stack>
+                      {(row.open_issues_count || 0) > 0 ? (
+                        <Tooltip title={`سند ${docLabel(row)} - ${row.open_issues_count} مورد نیازمند اصلاح (برای تیک زدن، سند را باز کنید)`}>
+                          <Box component="span" onClick={() => setIssuesDoc(row)}
+                            sx={{ color: '#dc2626', fontWeight: 800, cursor: 'pointer', borderBottom: '1px dashed #dc2626' }}>
+                            {docLabel(row)}
+                          </Box>
+                        </Tooltip>
+                      ) : <span>{docLabel(row)}</span>}
                     </TableCell>
                     <TableCell>{toJalali(row.date)}</TableCell>
                     <TableCell>{row.journal_name || '—'}</TableCell>
@@ -207,7 +204,12 @@ const AccountingDocumentsPage = () => {
                       {row.status === 'submitted' && <Tooltip title="تأیید"><IconButton size="small" color="success" onClick={() => action.mutate({ id: row.id, act: 'approve' })}><CheckCircleIcon fontSize="small" /></IconButton></Tooltip>}
                       {(row.status === 'approved' || row.status === 'submitted') && <Tooltip title="ثبت نهایی"><IconButton size="small" color="info" onClick={() => action.mutate({ id: row.id, act: 'post_document' })}><LockIcon fontSize="small" /></IconButton></Tooltip>}
                       {(row.status === 'posted' || row.status === 'locked') && <Tooltip title="برگشت"><IconButton size="small" color="warning" onClick={() => action.mutate({ id: row.id, act: 'reverse' })}><UndoIcon fontSize="small" /></IconButton></Tooltip>}
-                      <Tooltip title="رفع نواقص / یادداشت مشکلات سند"><IconButton size="small" sx={{ color: '#f97316' }} onClick={() => setIssuesDoc(row)}><ChecklistIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title={(row.open_issues_count || 0) > 0
+                        ? `مشاهدهٔ نواقص سند (${row.open_issues_count} مورد باز) — برای تیک زدن، سند را باز کنید`
+                        : 'مشاهدهٔ نواقص سند (چک‌لیست خالی است)'}>
+                        <IconButton size="small" sx={{ color: (row.open_issues_count || 0) > 0 ? '#dc2626' : '#94a3b8' }}
+                          onClick={() => setIssuesDoc(row)}><ChecklistIcon fontSize="small" /></IconButton>
+                      </Tooltip>
                       {CAN_DELETE(row.status) && <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => { if (window.confirm(`سند ${docLabel(row)} حذف شود؟`)) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
                       <Tooltip title="تایم‌لاین"><IconButton size="small" color="primary" onClick={() => openTimeline(row)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
@@ -225,7 +227,7 @@ const AccountingDocumentsPage = () => {
         <DialogContent><Timeline events={timeline?.history} /></DialogContent>
       </Dialog>
 
-      <DocumentIssuesDialog document={issuesDoc} onClose={() => setIssuesDoc(null)} />
+      <DocumentIssuesDialog document={issuesDoc} open={Boolean(issuesDoc)} readOnly onClose={() => setIssuesDoc(null)} />
     </Box>
   );
 };

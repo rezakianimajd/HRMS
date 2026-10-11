@@ -12,9 +12,11 @@ import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import SaveIcon from '@mui/icons-material/Save';
 import DescriptionIcon from '@mui/icons-material/Description';
 import BoltIcon from '@mui/icons-material/Bolt';
+import ChecklistIcon from '@mui/icons-material/Checklist';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
+import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
 
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
@@ -120,6 +122,7 @@ const AccountingDocumentNewPage = () => {
   const [saving, setSaving] = useState(false);
   const [activeRow, setActiveRow] = useState(0);
   const [picker, setPicker] = useState(null);
+  const [issuesOpen, setIssuesOpen] = useState(false);
 
   const { data: journals } = useQuery({ queryKey: ['doc-journals'], queryFn: () => axiosInstance.get('/accounting/journals/').then(r => r.data) });
   const { data: years } = useQuery({ queryKey: ['doc-years'], queryFn: () => axiosInstance.get('/accounting/fiscal-years/').then(r => r.data) });
@@ -131,6 +134,16 @@ const AccountingDocumentNewPage = () => {
     queryFn: () => axiosInstance.get(`/accounting/documents/${id}/`).then(r => r.data),
     enabled: isEdit,
   });
+
+  // نواقص سند (چک‌لیست رفع نقص)
+  const openIssuesCount = existingDoc?.open_issues_count || 0;
+  const openIssuesDialog = () => {
+    if (!isEdit) {
+      setMsg({ ok: false, text: 'ابتدا سند را ذخیره کنید، سپس می‌توانید نواقص را ثبت و رفع کنید.' });
+      return;
+    }
+    setIssuesOpen(true);
+  };
 
   const list = (d) => Array.isArray(d) ? d : d?.results || [];
   const journalList = list(journals);
@@ -323,6 +336,15 @@ const AccountingDocumentNewPage = () => {
           <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>{isEdit ? 'ویرایش سند' : 'سند جدید'}</Typography>
         </Box>
         <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} variant="outlined" color="primary" sx={{ borderRadius: '10px', fontFamily: FONT }}>افزودن ردیف</Button>
+        <Tooltip title={isEdit ? 'چک‌لیست نواقص سند (ثبت مشکل و تیک زدن پس از رفع)' : 'ابتدا سند را ذخیره کنید'}>
+          <Button size="small" startIcon={<ChecklistIcon />} onClick={openIssuesDialog} variant="outlined"
+            sx={{ borderRadius: '10px', fontFamily: FONT,
+              color: openIssuesCount > 0 ? '#b91c1c' : undefined,
+              borderColor: openIssuesCount > 0 ? '#ef4444' : undefined,
+              background: openIssuesCount > 0 ? 'rgba(239,68,68,0.08)' : undefined }}>
+            رفع نقص{openIssuesCount > 0 ? ` (${toPersianDigits(String(openIssuesCount))})` : ''}
+          </Button>
+        </Tooltip>
         <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} variant="outlined" color="error" sx={{ borderRadius: '10px', fontFamily: FONT }}>حذف ردیف</Button>
         <Button size="small" startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '10px', fontFamily: FONT }}>خروج</Button>
         <Button size="small" startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
@@ -445,6 +467,12 @@ const AccountingDocumentNewPage = () => {
         color={COLOR_DARK}
         onClose={() => setPicker(null)}
         onSelect={(o) => { if (picker) setLine(picker.row, picker.slot, o.id); }}
+      />
+
+      <DocumentIssuesDialog
+        document={{ id, number: header.number }}
+        open={issuesOpen}
+        onClose={() => setIssuesOpen(false)}
       />
     </Box>
   );
