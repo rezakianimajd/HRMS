@@ -10,8 +10,6 @@ import GridViewIcon from '@mui/icons-material/GridView';
 import PrintIcon from '@mui/icons-material/Print';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import SearchIcon from '@mui/icons-material/Search';
-import LayersIcon from '@mui/icons-material/Layers';
-import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import CloseIcon from '@mui/icons-material/Close';
 import { BLUE, COLOR_DARK, CYAN, GREEN, EmptyState, Loading, ReportHeader, glass } from './reportHelpers';
 import JalaliDatePicker from '../../../core/components/ui/JalaliDatePicker';
@@ -249,10 +247,6 @@ const MatrixReportPage = () => {
           {/* ستون کنار: سطح تراز / زیر سطح / ستون‌ها */}
           <Stack spacing={1.5} sx={{ width: 216, flexShrink: 0, '@media print': { display: 'none' } }}>
             <Paper sx={{ ...glass, p: 1.25 }}>
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-                <LayersIcon sx={{ fontSize: 18, color: COLOR_DARK }} />
-                <Typography variant="caption" fontWeight={900} sx={{ color: COLOR_DARK, fontFamily: FONT }}>سطح تراز</Typography>
-              </Stack>
               <Stack spacing={0.75}>
                 {LEVELS.map((l) => {
                   const count = flat.filter((n) => (n.level ?? -1) === l.value).length;
@@ -276,10 +270,6 @@ const MatrixReportPage = () => {
               </Stack>
             </Paper>
             <Paper sx={{ ...glass, p: 1.25 }}>
-              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
-                <ViewColumnIcon sx={{ fontSize: 18, color: GREEN }} />
-                <Typography variant="caption" fontWeight={900} sx={{ color: GREEN, fontFamily: FONT }}>ستون‌ها</Typography>
-              </Stack>
               <Stack spacing={0.75}>
                 {COLUMN_MODES.map((m) => {
                   const active = columnMode === m.value;
@@ -321,43 +311,34 @@ const MatrixReportPage = () => {
               </Stack>
             </Paper>
 
-            {/* زیر سطح — افقی، بالای جدول */}
-            <Paper sx={{ ...glass, p: 1.25, mb: 1.5, '@media print': { display: 'none' } }}>
-              <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Stack direction="row" spacing={0.75} alignItems="center">
-                  <LayersIcon sx={{ fontSize: 18, color: '#f59e0b' }} />
-                  <Typography variant="caption" fontWeight={900} sx={{ color: '#b45309', fontFamily: FONT }}>زیر سطح</Typography>
-                </Stack>
-                <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>
-                  {subLevels.length === 0
-                    ? 'این سطح ریزتر ندارد'
-                    : (selectedNode ? `محدود به ${selectedNode.code} — ${selectedNode.name}` : 'بدون انتخاب = همهٔ حساب‌ها')}
-                </Typography>
-                <Box sx={{ flex: 1, minWidth: 12 }} />
-                <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-                  {subLevels.map((l) => {
-                    const active = subLevel === l.value;
-                    const count = (selectedNode ? descendantsOf(selectedNode) : flat)
-                      .filter((n) => (n.level ?? -1) === l.value).length;
-                    return (
-                      <Button key={l.value} size="small" variant={active ? 'contained' : 'outlined'}
-                        onClick={() => setSubLevel(active ? null : l.value)}
-                        sx={{ borderRadius: '12px', fontFamily: FONT, px: 1.5, gap: 1, minWidth: 125,
-                          borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
-                          background: active ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.6)',
-                          color: active ? '#fff' : 'text.primary',
-                          boxShadow: active ? '0 8px 18px rgba(245,158,11,0.35)' : 'none' }}>
-                        <span>{`ریز ${l.label}`}</span>
-                        <Chip size="small" label={toPersianDigits(String(count))}
-                          sx={{ height: 18, fontSize: 11, fontFamily: FONT,
-                            bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
-                            color: active ? '#fff' : 'text.secondary' }} />
-                      </Button>
-                    );
-                  })}
-                </Stack>
+            {/* زیر سطح — افقی، بالای جدول (بدون عنوان و توضیح) */}
+            {subLevels.length > 0 ? (
+              <Paper sx={{ ...glass, p: 1.25, mb: 1.5, '@media print': { display: 'none' } }}>
+              <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+                {subLevels.map((l) => {
+                  const active = subLevel === l.value;
+                  const count = (selectedNode ? descendantsOf(selectedNode) : flat)
+                    .filter((n) => (n.level ?? -1) === l.value).length;
+                  return (
+                    <Button key={l.value} size="small" variant={active ? 'contained' : 'outlined'}
+                      onClick={() => setSubLevel(active ? null : l.value)}
+                      sx={{ borderRadius: '12px', fontFamily: FONT, px: 1.5, gap: 1, minWidth: 125,
+                        borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
+                        background: active ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.6)',
+                        color: active ? '#fff' : 'text.primary',
+                        boxShadow: active ? '0 8px 18px rgba(245,158,11,0.35)' : 'none' }}>
+                      <span>{`ریز ${l.label}`}</span>
+                      <Chip size="small" label={toPersianDigits(String(count))}
+                        sx={{ height: 18, fontSize: 11, fontFamily: FONT,
+                          bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
+                          color: active ? '#fff' : 'text.secondary' }} />
+                    </Button>
+                  );
+                })}
               </Stack>
             </Paper>
+            ) : null}
+
             {visibleRows.length === 0 ? (
               <EmptyState message="گردشی برای این سطح و فیلترهای انتخابی وجود ندارد" />
             ) : (
