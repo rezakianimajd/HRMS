@@ -45,6 +45,8 @@ const EMPTY_TOTAL = {
 
 const norm = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '').toLowerCase();
 
+const HEAD_H = 46; // ارتفاع ثابت ردیف هدر (برای هدر چسبان)
+
 /** همهٔ زیرمجموعه‌های یک گره */
 const descendantsOf = (node) => {
   const out = [];
@@ -157,7 +159,7 @@ const MatrixReportPage = () => {
   if (isLoading) return <Loading />;
 
   const isFlat = (v) => Math.abs(v || 0) < 0.005;
-  const headSx = { fontWeight: 800, whiteSpace: 'nowrap' };
+  const headSx = { fontWeight: 800, whiteSpace: 'nowrap', bgcolor: '#f8fafc', fontSize: 12.5 };
 
   const numCell = (value, color, bold, sub) => (
     <Box>
@@ -172,8 +174,13 @@ const MatrixReportPage = () => {
   );
 
   const money = (v, color, bold) => numCell(v || 0, isFlat(v) ? 'text.disabled' : color, bold);
-  const groupHead = (label, color) => (
-    <TableCell colSpan={2} align="center" sx={{ ...headSx, color, bgcolor: `${color}14` }}>{label}</TableCell>
+  // سلول هدر مبلغ: خط بالایی = گروه (رنگی)، خط پایینی = ستون؛
+  // در یک ردیف چسبان قرار می‌گیرد تا هنگام اسکرول «گردش دوره / مانده …» هم دیده شود.
+  const moneyHead = (group, label, color, bg) => (
+    <TableCell align="center" sx={{ ...headSx, bgcolor: bg, height: HEAD_H, borderBottom: `2px solid ${color}55` }}>
+      <Typography variant="caption" display="block" sx={{ color, fontWeight: 800, lineHeight: 1.25 }}>{group}</Typography>
+      <Typography variant="caption" display="block" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1.25 }}>{label}</Typography>
+    </TableCell>
   );
 
   // ستون‌های مبلغ بر اساس قالب انتخاب‌شده
@@ -229,7 +236,7 @@ const MatrixReportPage = () => {
           boxShadow: isSelected ? `inset 3px 0 0 ${CYAN}` : undefined }}>
         <TableCell sx={{ width: 56, color: 'text.secondary' }}>{toPersianDigits(index + 1)}</TableCell>
         <TableCell sx={{ whiteSpace: 'nowrap' }}>
-          <Typography variant="body2" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>{row.code}</Typography>
+          <Typography variant="body2" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>{toPersianDigits(row.code)}</Typography>
         </TableCell>
         <TableCell>
           <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{row.name}</Typography>
@@ -364,37 +371,34 @@ const MatrixReportPage = () => {
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
-                        <TableCell rowSpan={2} sx={headSx}>ردیف</TableCell>
-                        <TableCell rowSpan={2} sx={headSx}>کد حساب</TableCell>
-                        <TableCell rowSpan={2} sx={headSx}>شرح حساب</TableCell>
+                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK, textAlign: 'center' }}>ردیف</TableCell>
+                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK, textAlign: 'center' }}>کد حساب</TableCell>
+                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK }}>شرح حساب</TableCell>
                         {columnMode === '6' ? (
                           <>
-                            {groupHead('مانده ابتدای دوره', '#7c3aed')}
-                            {groupHead('گردش دوره', BLUE)}
-                            {groupHead('مانده پایان دوره', GREEN)}
+                            {moneyHead('مانده ابتدای دوره', 'بدهکار', '#7c3aed', '#f3e8ff')}
+                            {moneyHead('مانده ابتدای دوره', 'بستانکار', '#7c3aed', '#f3e8ff')}
+                            {moneyHead('گردش دوره', 'بدهکار', BLUE, '#dbeafe')}
+                            {moneyHead('گردش دوره', 'بستانکار', BLUE, '#dbeafe')}
+                            {moneyHead('مانده پایان دوره', 'بدهکار', GREEN, '#d1fae5')}
+                            {moneyHead('مانده پایان دوره', 'بستانکار', GREEN, '#d1fae5')}
                           </>
                         ) : columnMode === '4' ? (
                           <>
-                            {groupHead('گردش دوره', BLUE)}
-                            {groupHead('مانده دوره', GREEN)}
+                            {moneyHead('گردش دوره', 'بدهکار', BLUE, '#dbeafe')}
+                            {moneyHead('گردش دوره', 'بستانکار', BLUE, '#dbeafe')}
+                            {moneyHead('مانده', 'بدهکار', '#7c3aed', '#ede9fe')}
+                            {moneyHead('مانده', 'بستانکار', '#7c3aed', '#ede9fe')}
                           </>
                         ) : (
                           <>
-                            {groupHead('گردش دوره', BLUE)}
-                            <TableCell align="center" sx={{ ...headSx, bgcolor: 'rgba(139,92,246,0.12)' }}>مانده</TableCell>
+                            {moneyHead('گردش دوره', 'بدهکار', BLUE, '#dbeafe')}
+                            {moneyHead('گردش دوره', 'بستانکار', BLUE, '#dbeafe')}
+                            <TableCell align="center" sx={{ ...headSx, bgcolor: '#ede9fe', height: HEAD_H, borderBottom: '2px solid #7c3aed55' }}>
+                              <Typography variant="caption" sx={{ color: '#7c3aed', fontWeight: 900 }}>مانده</Typography>
+                            </TableCell>
                           </>
                         )}
-                      </TableRow>
-                      <TableRow>
-                        {(columnMode === '3' ? ['بدهکار', 'بستانکار']
-                          : columnMode === '4' ? ['بدهکار', 'بستانکار', 'بدهکار', 'بستانکار']
-                            : ['بدهکار', 'بستانکار', 'بدهکار', 'بستانکار', 'بدهکار', 'بستانکار']
-                        ).map((lbl, i) => (
-                          <TableCell key={`${lbl}-${i}`} align="center" sx={headSx}>{lbl}</TableCell>
-                        ))}
-                        {columnMode === '3' ? (
-                          <TableCell align="center" sx={{ ...headSx, bgcolor: 'rgba(139,92,246,0.08)' }}>بستانکار در پرانتز</TableCell>
-                        ) : null}
                       </TableRow>
                     </TableHead>
                     <TableBody>

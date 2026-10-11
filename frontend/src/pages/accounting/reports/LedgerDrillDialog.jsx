@@ -69,7 +69,7 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
           <ReceiptLongIcon sx={{ color: BLUE }} />
           <Box sx={{ flex: 1, minWidth: 160 }}>
             <Typography variant="subtitle1" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>
-              ریز گردش {node?.code} — {node?.name}
+              ریز گردش {node?.code != null ? toPersianDigits(node.code) : ''} — {node?.name || ''}
             </Typography>
             <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>
               {KIND_LABEL[node?.kind] || 'حساب'} · بازه: {range}
