@@ -68,6 +68,8 @@ $FrontendFiles = @(
     'frontend/src/core/components/accounting/DocumentIssuesDialog.jsx',
     'frontend/src/core/components/ui/Timeline.jsx',
     'frontend/src/pages/accounting/reports/MatrixReportPage.jsx',
+    'frontend/src/pages/accounting/reports/LedgerDrillDialog.jsx',
+    'frontend/src/pages/accounting/reports/reportHelpers.jsx',
     'frontend/src/pages/accounting/reports/TreeTrialBalancePage.jsx',
     'frontend/src/pages/accounting/reports/LedgerReviewPage.jsx'
 )

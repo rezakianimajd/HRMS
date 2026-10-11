@@ -35,6 +35,23 @@ def _report_lines(request):
     return qs
 
 
+def _signed_balance(debit, credit):
+    """ماندهٔ تجمعی با علامت؛ ممکن است طرف بدهکار/بستانکار عوض شود.
+
+    برخلاف ماندهٔ دورهٔ یک بازه (که ماهیت حساب تعیین‌کننده است)، ماندهٔ ابتدای
+    دوره و پایان دوره بر پایهٔ خالص تجمعی محاسبه می‌شود.
+    """
+    net = float(debit or 0) - float(credit or 0)
+    return (net, 0.0) if net >= 0 else (0.0, -net)
+
+
+def _is_before(doc_date, boundary):
+    """آیا تاریخ سند پیش از مرز «از تاریخ» است؟ (تفکیک ماندهٔ ابتدای دوره)"""
+    if not boundary or doc_date is None:
+        return False
+    return doc_date.isoformat()[:10] < str(boundary)[:10]
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def dashboard(request):
@@ -328,18 +345,64 @@ def general_ledger(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def account_ledger(request, account_id):
-    """دفتر معین یک حساب: گردش + مانده."""
-    account = Account.objects.filter(id=account_id, company=_company(request)).first()
-    if not account:
-        return Response({'error': 'حساب یافت نشد'}, status=404)
+    """ریز گردش یک حساب / گروه حساب / تفصیلی: ردیف‌های گردش + ماندهٔ تجمعی.
 
-    lines = _report_lines(request).filter(account_id=account_id).order_by('document__date', 'document__id', 'line_no')
+    پارامترهای اختیاری:
+      ``kind``     = account (پیش‌فرض) | group | aux1 | aux2 | aux3
+      ``account``  = شناسهٔ حساب والد (برای kind=aux*، جهت ماهیت و محدودکردن مسیر)
+      ``aux1``/``aux2`` = پیشوند مسیر تفصیلی (برای kind=aux2/aux3)
+      ``date_from`` / ``date_to`` = بازهٔ تاریخ سند
+    """
+    company = _company(request)
+    kind = (request.query_params.get('kind') or 'account').strip()
+    lines = _report_lines(request)
+    nature = 'debit'
+
+    if kind == 'group':
+        group = AccountGroup.objects.filter(id=account_id, company=company).first()
+        if not group:
+            return Response({'error': 'گروه حساب یافت نشد'}, status=404)
+        lines = lines.filter(account__group_id=group.id)
+        nature = getattr(group, 'nature', None) or 'debit'
+        base = {'kind': 'group', 'code': group.code, 'name': group.name, 'nature': nature}
+    elif kind in ('aux1', 'aux2', 'aux3'):
+        slot = int(kind[-1])
+        aux = AuxiliaryAccount.objects.filter(id=account_id, company=company).first()
+        if not aux:
+            return Response({'error': 'تفصیلی یافت نشد'}, status=404)
+        lines = lines.filter(**{f'auxiliary_{slot}_id': aux.id})
+        for i in range(1, slot):
+            prefix = request.query_params.get(f'aux{i}')
+            if prefix:
+                lines = lines.filter(**{f'auxiliary_{i}_id': prefix})
+        parent_id = request.query_params.get('account')
+        parent = Account.objects.filter(id=parent_id, company=company).first() if parent_id else None
+        if parent:
+            lines = lines.filter(account_id=parent.id)
+            nature = parent.nature or 'debit'
+        base = {'kind': kind, 'code': aux.code, 'name': aux.name, 'nature': nature}
+    else:
+        account = Account.objects.filter(id=account_id, company=company).first()
+        if not account:
+            return Response({'error': 'حساب یافت نشد'}, status=404)
+        lines = lines.filter(account_id=account.id)
+        nature = account.nature or 'debit'
+        base = {'kind': 'account', 'code': account.code, 'name': account.name, 'nature': nature}
+
+    date_from = request.query_params.get('date_from')
+    date_to = request.query_params.get('date_to')
+    if date_from:
+        lines = lines.filter(document__date__gte=date_from)
+    if date_to:
+        lines = lines.filter(document__date__lte=date_to)
+
+    lines = lines.order_by('document__date', 'document__id', 'line_no')
     rows = []
     balance = 0
     for line in lines:
         debit = float(line.debit or 0)
         credit = float(line.credit or 0)
-        if account.nature == 'debit':
+        if nature == 'debit':
             balance += debit - credit
         else:
             balance += credit - debit
@@ -355,7 +418,7 @@ def account_ledger(request, account_id):
     total_debit = sum(r['debit'] for r in rows)
     total_credit = sum(r['credit'] for r in rows)
     return Response({
-        'account': {'code': account.code, 'name': account.name, 'nature': account.nature},
+        'account': base,
         'rows': rows,
         'total_debit': total_debit,
         'total_credit': total_credit,
@@ -598,18 +661,29 @@ def tree_trial_balance(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def matrix_report(request):
-    """گزارش مرور ترکیبی (ماتریس): تراز سلسله‌مراتبی پله‌ای.
+    """گزارش ماتریس تراز حساب‌ها: سطح تراز + ریز سطح + تراز سه/چهار/شش‌ستونی.
 
-    ستون عمودی (ردیف‌ها): گروه → کل → معین → تفصیل ۱ → تفصیل ۲ → تفصیل ۳.
-    ستون افقی (بالای جدول): سطح تفکیک — ریز گروه، ریز کل، ریز معین،
-    ریز تفصیل ۱، ریز تفصیل ۲، ریز تفصیل ۳.
-    برای هر سطر: کد حساب، شرح، گردش بدهکار، گردش بستانکار، مانده بدهکار، مانده بستانکار.
+    پارامترها (اختیاری): ``date_from`` و ``date_to`` (تاریخ سند، ISO/میلادی).
+
+    - گردش دوره = اسناد بین «از تاریخ» و «تا تاریخ».
+    - ماندهٔ ابتدای دوره = خالص تجمعی اسناد پیش از «از تاریخ» (برای تراز شش‌ستونی).
+    - ماندهٔ پایان دوره = ماندهٔ ابتدای دوره + گردش دوره.
+    - ``balance_debit``/``balance_credit`` همان ماندهٔ دوره بر پایهٔ ماهیت حساب است
+      (برای قالب سه/چهارستونی).
+
+    هر گره: ``id, kind, code, name, level, debit, credit, balance_debit,
+    balance_credit, opening_balance_debit, opening_balance_credit,
+    closing_balance_debit, closing_balance_credit, children``.
     """
     company = _company(request)
+    date_from = request.query_params.get('date_from')
+    date_to = request.query_params.get('date_to')
     lines = _report_lines(request).select_related(
         'account', 'account__account_type', 'account__group',
         'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
     )
+    if date_to:
+        lines = lines.filter(document__date__lte=date_to)
 
     def resolve_nature(nature, account_type):
         if nature and nature != 'none':
@@ -645,6 +719,8 @@ def matrix_report(request):
             'level': 1 if a.parent_id is None else 2,
             'debit': 0.0,
             'credit': 0.0,
+            'opening_debit': 0.0,
+            'opening_credit': 0.0,
             'children': [],
         }
 
@@ -665,6 +741,8 @@ def matrix_report(request):
             'level': 0,
             'debit': 0.0,
             'credit': 0.0,
+            'opening_debit': 0.0,
+            'opening_credit': 0.0,
             'children': [],
         }
 
@@ -679,8 +757,14 @@ def matrix_report(request):
             continue
         debit = float(line.debit or 0)
         credit = float(line.credit or 0)
-        acc_nodes[aid]['debit'] += debit
-        acc_nodes[aid]['credit'] += credit
+        # اسناد پیش از «از تاریخ» به‌عنوان ماندهٔ ابتدای دوره تفکیک می‌شوند
+        opening = _is_before(line.document.date, date_from)
+        if opening:
+            acc_nodes[aid]['opening_debit'] += debit
+            acc_nodes[aid]['opening_credit'] += credit
+        else:
+            acc_nodes[aid]['debit'] += debit
+            acc_nodes[aid]['credit'] += credit
 
         path = []
         for slot, aux_obj in (
@@ -702,10 +786,16 @@ def matrix_report(request):
                 'level': _SLOT_LEVEL[slot],
                 'debit': 0.0,
                 'credit': 0.0,
+                'opening_debit': 0.0,
+                'opening_credit': 0.0,
                 'children': [],
             })
-            node['debit'] += debit
-            node['credit'] += credit
+            if opening:
+                node['opening_debit'] += debit
+                node['opening_credit'] += credit
+            else:
+                node['debit'] += debit
+                node['credit'] += credit
     # --- اتصال حساب‌ها: معین زیر کل، کل زیر گروه ---
     account_roots = []
     for a in accounts:
@@ -744,6 +834,8 @@ def matrix_report(request):
             if child['kind'] == 'account':
                 node['debit'] += child['debit']
                 node['credit'] += child['credit']
+                node['opening_debit'] += child['opening_debit']
+                node['opening_credit'] += child['opening_credit']
 
     for r in roots:
         rollup(r)
@@ -753,6 +845,15 @@ def matrix_report(request):
         node['balance_debit'], node['balance_credit'] = balances(
             node['debit'], node['credit'], node['nature']
         )
+        # ماندهٔ ابتدا و پایان دوره (خالص تجمعی با علامت) — برای تراز شش‌ستونی
+        node['opening_balance_debit'], node['opening_balance_credit'] = _signed_balance(
+            node['opening_debit'], node['opening_credit']
+        )
+        node['closing_balance_debit'], node['closing_balance_credit'] = _signed_balance(
+            node['opening_debit'] + node['debit'], node['opening_credit'] + node['credit']
+        )
+        node.pop('opening_debit', None)
+        node.pop('opening_credit', None)
         node.pop('group_id', None)
         node.pop('parent_id', None)
         node['children'] = sorted(node['children'], key=lambda x: x['code'])
@@ -763,25 +864,29 @@ def matrix_report(request):
     for r in roots:
         finalize(r)
 
+    _TOTAL_KEYS = (
+        'debit', 'credit', 'balance_debit', 'balance_credit',
+        'opening_balance_debit', 'opening_balance_credit',
+        'closing_balance_debit', 'closing_balance_credit',
+    )
+
     def total_of(node_list):
-        t = {'debit': 0.0, 'credit': 0.0, 'balance_debit': 0.0, 'balance_credit': 0.0}
+        t = {k: 0.0 for k in _TOTAL_KEYS}
         for n in node_list:
-            t['debit'] += n['debit']
-            t['credit'] += n['credit']
-            t['balance_debit'] += n['balance_debit']
-            t['balance_credit'] += n['balance_credit']
+            for k in _TOTAL_KEYS:
+                t[k] += float(n.get(k) or 0)
         return t
 
     return Response({
         'tree': roots,
         'total': total_of(roots),
         'levels': [
-            {'value': 0, 'label': 'ریز گروه'},
-            {'value': 1, 'label': 'ریز کل'},
-            {'value': 2, 'label': 'ریز معین'},
-            {'value': 3, 'label': 'ریز تفصیل ۱'},
-            {'value': 4, 'label': 'ریز تفصیل ۲'},
-            {'value': 5, 'label': 'ریز تفصیل ۳'},
+            {'value': 0, 'label': 'گروه'},
+            {'value': 1, 'label': 'کل'},
+            {'value': 2, 'label': 'معین'},
+            {'value': 3, 'label': 'تفصیلی ۴'},
+            {'value': 4, 'label': 'تفصیلی ۵'},
+            {'value': 5, 'label': 'تفصیلی ۶'},
         ],
     })
 

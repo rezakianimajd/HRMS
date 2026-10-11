@@ -1,357 +1,429 @@
 import React, { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useNavigate } from 'react-router-dom';
 import axiosInstance from '../../../core/api/axiosConfig';
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Typography, Grid, Box, Paper, Button, ButtonGroup, TextField, Divider,
-  FormControlLabel, Checkbox,
+  Box, Button, Checkbox, Chip, FormControlLabel, InputAdornment, Paper, Stack,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
+  Tooltip, Typography,
 } from '@mui/material';
 import GridViewIcon from '@mui/icons-material/GridView';
 import PrintIcon from '@mui/icons-material/Print';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import SearchIcon from '@mui/icons-material/Search';
+import LayersIcon from '@mui/icons-material/Layers';
+import ViewColumnIcon from '@mui/icons-material/ViewColumn';
 import CloseIcon from '@mui/icons-material/Close';
-import {
-  COLOR_DARK, BLUE, GREEN, CYAN, glass,
-  ReportHeader, StatCard, Loading, EmptyState, StatGrid,
-} from './reportHelpers';
-import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../../../core/utils/numberUtils';
+import { BLUE, COLOR_DARK, CYAN, GREEN, EmptyState, Loading, ReportHeader, glass } from './reportHelpers';
+import JalaliDatePicker from '../../../core/components/ui/JalaliDatePicker';
+import LedgerDrillDialog from './LedgerDrillDialog';
+import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
 
 /*
- * گزارش تراز حساب‌ها (ماتریس سلسله‌مراتبی) — مطابق نمونهٔ نرم‌افزار حسابداری:
- *   • نوار عمودی سمت راست  : سطح تراز → گروه ← کل ← معین ← تفصیلی ۴ ← تفصیلی ۵ ← تفصیلی ۶
- *   • نوار افقی بالای جدول : «ریز» همان سطح (نمایش زیرسطح به‌صورت تورفته زیر هر سطر)
- *   • قالب ستون‌ها          : چهار ستونی (گردش بدهکار/بستانکار + مانده بدهکار/بستانکار) و سه ستونی
- *   • سطر نخست «جمع کل»، سطر پایانی «جمع ستونی»؛ به‌همراه محدودهٔ کد حساب.
+ * گزارش ماتریس تراز حساب‌ها — کارت‌های «سطح تراز»، «زیر سطح» (ریزِ سطوح پایین‌تر) و
+ * «ستون‌ها» (سه/چهار/شش‌ستونی) + جستجوی همه‌چیز + کلیک برای انتخاب و دوبار کلیک برای ریز گردش.
  */
+const FONT = 'Vazirmatn, IRANSans, sans-serif';
+
 const LEVELS = [
-  { value: 0, label: 'گروه', title: 'تراز گروه', detail: 'ریز گروه' },
-  { value: 1, label: 'کل', title: 'تراز کل', detail: 'ریز کل' },
-  { value: 2, label: 'معین', title: 'تراز معین', detail: 'ریز معین' },
-  { value: 3, label: 'تفصیلی ۴', title: 'تراز تفصیلی ۴', detail: 'ریز تفصیلی ۴' },
-  { value: 4, label: 'تفصیلی ۵', title: 'تراز تفصیلی ۵', detail: 'ریز تفصیلی ۵' },
-  { value: 5, label: 'تفصیلی ۶', title: 'تراز تفصیلی ۶', detail: 'ریز تفصیلی ۶' },
+  { value: 0, label: 'گروه' },
+  { value: 1, label: 'کل' },
+  { value: 2, label: 'معین' },
+  { value: 3, label: 'تفصیلی ۴' },
+  { value: 4, label: 'تفصیلی ۵' },
+  { value: 5, label: 'تفصیلی ۶' },
 ];
 
 const COLUMN_MODES = [
-  { value: '4', label: 'چهار ستونی' },
   { value: '3', label: 'سه ستونی' },
+  { value: '4', label: 'چهار ستونی' },
+  { value: '6', label: 'شش ستونی' },
 ];
 
-const normCode = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '');
+const EMPTY_TOTAL = {
+  debit: 0, credit: 0, balance_debit: 0, balance_credit: 0,
+  opening_balance_debit: 0, opening_balance_credit: 0,
+  closing_balance_debit: 0, closing_balance_credit: 0,
+};
+
+const norm = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '').toLowerCase();
 
 const MatrixReportPage = () => {
-  const navigate = useNavigate();
   const [level, setLevel] = useState(1);
-  const [expanded, setExpanded] = useState(false);
+  const [subLevel, setSubLevel] = useState(null);
+  const [selectedKey, setSelectedKey] = useState(null);
   const [columnMode, setColumnMode] = useState('4');
   const [onlyWithActivity, setOnlyWithActivity] = useState(true);
   const [fromCode, setFromCode] = useState('');
   const [toCode, setToCode] = useState('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [search, setSearch] = useState('');
+  const [ledgerNode, setLedgerNode] = useState(null);
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['acc-report-matrix'],
-    queryFn: () => axiosInstance.get('/accounting/reports/matrix/').then((r) => r.data),
+    queryKey: ['acc-report-matrix', dateFrom, dateTo],
+    queryFn: () => axiosInstance.get('/accounting/reports/matrix/', {
+      params: { date_from: dateFrom || undefined, date_to: dateTo || undefined },
+    }).then((r) => r.data),
   });
-
-  // پهن‌کردن درخت حساب‌ها به یک فهرست مسطح (نیاز به پیمایش بازگشتی)
+  // درخت تخت‌شده: کلید یکتا و فهرست والدها روی خود گره نوشته می‌شود
+  // (تا زیرمجموعه‌ها هم هنگام فیلتر «زیر سطح» همان کلید و والدها را داشته باشند)
   const flat = useMemo(() => {
     const out = [];
-    const walk = (nodes) => {
+    const walk = (nodes, ancestors, prefix) => {
       (nodes || []).forEach((n) => {
+        const key = `${prefix}/${n.kind}-${n.id}`;
+        n.__key = key;
+        n.__parents = ancestors;
         out.push(n);
-        if (n.children && n.children.length) walk(n.children);
+        walk(n.children, [...ancestors, n], key);
       });
     };
-    walk(data?.tree || []);
+    walk(data?.tree || [], [], '');
     return out;
   }, [data]);
 
-  // سطرهای سطح انتخاب‌شده؛ در حالت «ریز» زیرسطح نیز تورفته زیر هر سطر می‌آید
-  const rows = useMemo(() => {
-    const levelNodes = flat.filter((n) => (n.level ?? -1) === level);
-    if (!expanded) return levelNodes.map((n) => ({ ...n, __detail: false }));
+  const selectedNode = useMemo(
+    () => flat.find((n) => n.__key === selectedKey) || null,
+    [flat, selectedKey],
+  );
+
+  const descendantsOf = (node) => {
     const out = [];
-    levelNodes.forEach((n) => {
-      out.push({ ...n, __detail: false });
-      (n.children || [])
-        .filter((c) => (c.level ?? -1) === level + 1)
-        .forEach((c) => out.push({ ...c, __detail: true }));
-    });
+    const walk = (n) => (n?.children || []).forEach((c) => { out.push(c); walk(c); });
+    walk(node);
     return out;
-  }, [flat, level, expanded]);
+  };
 
-  const visibleRows = useMemo(() => rows.filter((r) => {
-    if (onlyWithActivity && !(r.debit || r.credit)) return false;
-    const code = normCode(r.code);
-    if (fromCode && code < normCode(fromCode)) return false;
-    if (toCode && code > normCode(toCode)) return false;
+  // ردیف‌های پایه: با انتخاب «زیر سطح» فقط همان سطح نمایش داده می‌شود
+  // (اگر ردیفی انتخاب شده باشد، محدود به زیرمجموعهٔ همان حساب)
+  const baseRows = useMemo(() => {
+    if (subLevel !== null) {
+      const scope = selectedNode ? descendantsOf(selectedNode) : flat;
+      return scope.filter((n) => (n.level ?? -1) === subLevel);
+    }
+    return flat.filter((n) => (n.level ?? -1) === level);
+  }, [flat, level, subLevel, selectedNode]);
+
+  // نوار جستجو: کد و شرح خود ردیف + کد و شرح والدها + بازهٔ کد + فقط دارای گردش
+  const visibleRows = useMemo(() => baseRows.filter((r) => {
+    const code = norm(r.code);
+    if (fromCode && code < norm(fromCode)) return false;
+    if (toCode && code > norm(toCode)) return false;
+    if (onlyWithActivity && !(r.debit || r.credit || r.opening_balance_debit || r.opening_balance_credit)) return false;
+    const q = search.trim();
+    if (q) {
+      const parents = (r.__parents || []).flatMap((p) => [p.code, p.name]);
+      const hay = [r.code, r.name, ...parents].join(' ');
+      if (!hay.toLowerCase().includes(q.toLowerCase()) && !norm(hay).includes(norm(q))) return false;
+    }
     return true;
-  }), [rows, onlyWithActivity, fromCode, toCode]);
+  }), [baseRows, fromCode, toCode, onlyWithActivity, search]);
 
-  // جمع ستونی = جمع سطرهای سطح اصلی (زیرسطح‌ها دوباره‌شماری نمی‌شوند)
-  const columnTotals = useMemo(() => {
-    const t = { debit: 0, credit: 0, balance_debit: 0, balance_credit: 0 };
-    visibleRows.forEach((r) => {
-      if (r.__detail) return;
-      t.debit += r.debit || 0;
-      t.credit += r.credit || 0;
-      t.balance_debit += r.balance_debit || 0;
-      t.balance_credit += r.balance_credit || 0;
-    });
+  const columnTotals = useMemo(() => visibleRows.reduce((t, r) => {
+    t.debit += r.debit || 0;
+    t.credit += r.credit || 0;
+    t.balance_debit += r.balance_debit || 0;
+    t.balance_credit += r.balance_credit || 0;
+    t.opening_balance_debit += r.opening_balance_debit || 0;
+    t.opening_balance_credit += r.opening_balance_credit || 0;
+    t.closing_balance_debit += r.closing_balance_debit || 0;
+    t.closing_balance_credit += r.closing_balance_credit || 0;
     return t;
-  }, [visibleRows]);
+  }, { ...EMPTY_TOTAL }), [visibleRows]);
 
-  const total = data?.total || { debit: 0, credit: 0, balance_debit: 0, balance_credit: 0 };
-  const current = LEVELS.find((l) => l.value === level) || LEVELS[1];
+  const total = data?.total || EMPTY_TOTAL;
+  const subLevels = LEVELS.filter((l) => l.value > level);
+  const currentLevel = LEVELS.find((l) => l.value === level) || LEVELS[1];
+  const currentSub = subLevels.find((l) => l.value === subLevel) || null;
 
+  const resetAll = () => {
+    setLevel(1); setSubLevel(null); setSelectedKey(null); setColumnMode('4');
+    setOnlyWithActivity(true); setFromCode(''); setToCode('');
+    setDateFrom(''); setDateTo(''); setSearch('');
+  };
   if (isLoading) return <Loading />;
 
-  const netBalance = (n) => (n.balance_debit || 0) - (n.balance_credit || 0);
   const isFlat = (v) => Math.abs(v || 0) < 0.005;
+  const headSx = { fontWeight: 800, whiteSpace: 'nowrap' };
 
   const numCell = (value, color, bold, sub) => (
     <Box>
-      <Typography
-        variant="body2"
-        fontWeight={bold ? 900 : 600}
-        sx={{ color, direction: 'ltr', textAlign: 'right', whiteSpace: 'nowrap' }}
-      >
+      <Typography variant="body2" fontWeight={bold ? 900 : 600}
+        sx={{ color, direction: 'ltr', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT }}>
         {formatPersianNumber(value)}
       </Typography>
       {sub ? (
-        <Typography variant="caption" sx={{ color, display: 'block', textAlign: 'right' }}>
-          {sub}
-        </Typography>
+        <Typography variant="caption" sx={{ color, display: 'block', textAlign: 'right', fontFamily: FONT }}>{sub}</Typography>
       ) : null}
     </Box>
   );
 
-  const headCell = (label, extra = {}) => (
-    <TableCell
-      key={label}
-      sx={{ fontWeight: 800, whiteSpace: 'nowrap', bgcolor: 'rgba(139,92,246,0.08)', ...extra }}
-    >
-      {label}
-    </TableCell>
+  const money = (v, color, bold) => numCell(v || 0, isFlat(v) ? 'text.disabled' : color, bold);
+  const groupHead = (label, color) => (
+    <TableCell colSpan={2} align="center" sx={{ ...headSx, color, bgcolor: `${color}14` }}>{label}</TableCell>
   );
 
-  // ستون‌های مبلغ بر اساس قالب انتخاب‌شده (سه / چهار ستونی)
+  // ستون‌های مبلغ بر اساس قالب انتخاب‌شده
   const renderAmountCells = (row, bold) => {
-    if (columnMode === '4') {
+    if (columnMode === '6') {
       return (
         <>
-          <TableCell>{numCell(row.debit || 0, isFlat(row.debit) ? 'text.disabled' : BLUE, bold)}</TableCell>
-          <TableCell>{numCell(row.credit || 0, isFlat(row.credit) ? 'text.disabled' : GREEN, bold)}</TableCell>
-          <TableCell>{numCell(row.balance_debit || 0, isFlat(row.balance_debit) ? 'text.disabled' : BLUE, bold)}</TableCell>
-          <TableCell>{numCell(row.balance_credit || 0, isFlat(row.balance_credit) ? 'text.disabled' : GREEN, bold)}</TableCell>
+          <TableCell>{money(row.opening_balance_debit, '#7c3aed', bold)}</TableCell>
+          <TableCell>{money(row.opening_balance_credit, '#7c3aed', bold)}</TableCell>
+          <TableCell>{money(row.debit, BLUE, bold)}</TableCell>
+          <TableCell>{money(row.credit, GREEN, bold)}</TableCell>
+          <TableCell>{money(row.closing_balance_debit, BLUE, bold)}</TableCell>
+          <TableCell>{money(row.closing_balance_credit, GREEN, bold)}</TableCell>
         </>
       );
     }
-    const net = netBalance(row);
+    if (columnMode === '4') {
+      return (
+        <>
+          <TableCell>{money(row.debit, BLUE, bold)}</TableCell>
+          <TableCell>{money(row.credit, GREEN, bold)}</TableCell>
+          <TableCell>{money(row.balance_debit, BLUE, bold)}</TableCell>
+          <TableCell>{money(row.balance_credit, GREEN, bold)}</TableCell>
+        </>
+      );
+    }
+    const net = (row.balance_debit || 0) - (row.balance_credit || 0);
     return (
       <>
-        <TableCell>{numCell(row.debit || 0, isFlat(row.debit) ? 'text.disabled' : BLUE, bold)}</TableCell>
-        <TableCell>{numCell(row.credit || 0, isFlat(row.credit) ? 'text.disabled' : GREEN, bold)}</TableCell>
+        <TableCell>{money(row.debit, BLUE, bold)}</TableCell>
+        <TableCell>{money(row.credit, GREEN, bold)}</TableCell>
         <TableCell>
-          {numCell(
-            Math.abs(net),
-            isFlat(net) ? 'text.disabled' : (net >= 0 ? BLUE : GREEN),
-            bold,
-            isFlat(net) ? '' : (net >= 0 ? 'بدهکار' : 'بستانکار'),
-          )}
+          {numCell(Math.abs(net), isFlat(net) ? 'text.disabled' : (net >= 0 ? BLUE : GREEN), bold,
+            isFlat(net) ? '' : (net >= 0 ? 'بدهکار' : 'بستانکار'))}
         </TableCell>
       </>
     );
   };
 
   const renderRow = (row, index) => {
-    const detail = row.__detail;
+    const isSelected = row.__key === selectedKey;
+    const parents = row.__parents || [];
+    const path = parents.length > 1 ? parents.slice(-2).map((p) => p.name).join(' ‹ ') : '';
     return (
-      <TableRow
-        key={`${row.kind}-${row.id}-${index}`}
-        hover
-        sx={{ bgcolor: detail ? 'rgba(6,182,212,0.05)' : undefined }}
-      >
-        <TableCell sx={{ width: 56 }}>
-          <Typography variant="body2" sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-            {toPersianDigits(index + 1)}
-          </Typography>
-        </TableCell>
-        <TableCell sx={{ pr: detail ? 4 : 1 }}>
-          <Typography
-            variant="body2"
-            fontWeight={detail ? 500 : 800}
-            sx={{ color: detail ? 'text.secondary' : COLOR_DARK, whiteSpace: 'nowrap' }}
-          >
-            {detail ? '↳ ' : ''}{row.code}
-          </Typography>
+      <TableRow key={row.__key} hover selected={isSelected}
+        onClick={() => setSelectedKey(row.__key === selectedKey ? null : row.__key)}
+        onDoubleClick={() => setLedgerNode(row)}
+        sx={{ cursor: 'pointer', bgcolor: isSelected ? 'rgba(6,182,212,0.14)' : undefined,
+          boxShadow: isSelected ? `inset 3px 0 0 ${CYAN}` : undefined }}>
+        <TableCell sx={{ width: 56, color: 'text.secondary' }}>{toPersianDigits(index + 1)}</TableCell>
+        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+          <Typography variant="body2" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>{row.code}</Typography>
         </TableCell>
         <TableCell>
-          <Typography
-            variant="body2"
-            fontWeight={detail ? 400 : 700}
-            sx={{ color: detail ? 'text.secondary' : 'text.primary' }}
-          >
-            {row.name}
-          </Typography>
+          <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{row.name}</Typography>
+          {path ? <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{path}</Typography> : null}
         </TableCell>
-        {renderAmountCells(row, !detail)}
+        {renderAmountCells(row, true)}
       </TableRow>
     );
   };
-
   return (
     <>
       <ReportHeader
         icon={<GridViewIcon sx={{ fontSize: 28, color: '#fff' }} />}
-        title="گزارش تراز حساب‌ها"
-        subtitle="تراز سلسله‌مراتبی: گروه ← کل ← معین ← تفصیلی ۴/۵/۶ — سطح تراز در نوار کنار و ریز زیرسطح در نوار بالا"
+        title="گزارش ماتریس تراز حساب‌ها"
+        subtitle={`سطح: ${currentLevel.label}${currentSub ? ` · ریز: ${currentSub.label}` : ''} — برای انتخاب روی ردیف کلیک کنید و برای ریز گردش حساب دوبار کلیک کنید`}
         color={CYAN}
         dark="#0891b2"
+        actions={(
+          <>
+            <Button size="small" variant="outlined" startIcon={<RestartAltIcon />} onClick={resetAll}
+              sx={{ borderRadius: '12px', fontFamily: FONT }}>بازنشانی</Button>
+            <Button size="small" variant="contained" startIcon={<PrintIcon />} onClick={() => window.print()}
+              sx={{ borderRadius: '12px', fontFamily: FONT, background: `linear-gradient(135deg,${CYAN},#0891b2)`,
+                boxShadow: `0 8px 18px ${CYAN}44` }}>چاپ</Button>
+          </>
+        )}
       />
-
-      <StatGrid>
-        <Grid item xs={6} sm={3}><StatCard label="گردش بدهکار" value={total.debit} color={BLUE} /></Grid>
-        <Grid item xs={6} sm={3}><StatCard label="گردش بستانکار" value={total.credit} color={GREEN} /></Grid>
-        <Grid item xs={6} sm={3}><StatCard label="مانده بدهکار" value={total.balance_debit} color={BLUE} /></Grid>
-        <Grid item xs={6} sm={3}><StatCard label="مانده بستانکار" value={total.balance_credit} color={GREEN} /></Grid>
-      </StatGrid>
 
       {isError ? (
         <EmptyState message="خطا در بارگذاری تراز حساب‌ها. دوباره تلاش کنید." />
       ) : (
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', '@media print': { display: 'block' } }}>
-          {/* نوار سطح تراز — در چیدمان راست‌به‌چپ در سمت راست قرار می‌گیرد */}
-          <Paper
-            sx={{
-              ...glass, p: 1.25, minWidth: 172, display: 'flex', flexDirection: 'column', gap: 0.75,
-              '@media print': { display: 'none' },
-            }}
-          >
-            <Typography variant="caption" fontWeight={900} sx={{ color: COLOR_DARK, mb: 0.5 }}>
-              سطح تراز
-            </Typography>
-            {LEVELS.map((l) => (
-              <Button
-                key={l.value}
-                size="small"
-                variant={!expanded && level === l.value ? 'contained' : 'outlined'}
-                onClick={() => { setLevel(l.value); setExpanded(false); }}
-                sx={{ justifyContent: 'flex-start' }}
-              >
-                {l.title}
-              </Button>
-            ))}
-          </Paper>
+          {/* ستون کنار: سطح تراز / زیر سطح / ستون‌ها */}
+          <Stack spacing={1.5} sx={{ width: 216, flexShrink: 0, '@media print': { display: 'none' } }}>
+            <Paper sx={{ ...glass, p: 1.25 }}>
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
+                <LayersIcon sx={{ fontSize: 18, color: COLOR_DARK }} />
+                <Typography variant="caption" fontWeight={900} sx={{ color: COLOR_DARK, fontFamily: FONT }}>سطح تراز</Typography>
+              </Stack>
+              <Stack spacing={0.75}>
+                {LEVELS.map((l) => {
+                  const count = flat.filter((n) => (n.level ?? -1) === l.value).length;
+                  const active = level === l.value && subLevel === null;
+                  return (
+                    <Button key={l.value} fullWidth size="small" variant={active ? 'contained' : 'outlined'}
+                      onClick={() => { setLevel(l.value); setSubLevel(null); setSelectedKey(null); }}
+                      sx={{ justifyContent: 'space-between', borderRadius: '12px', fontFamily: FONT, px: 1.25,
+                        borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
+                        background: active ? `linear-gradient(135deg,${CYAN},#0891b2)` : 'rgba(255,255,255,0.55)',
+                        color: active ? '#fff' : 'text.primary',
+                        boxShadow: active ? `0 8px 18px ${CYAN}44` : 'none' }}>
+                      <span>{l.label}</span>
+                      <Chip size="small" label={toPersianDigits(String(count))}
+                        sx={{ height: 18, fontSize: 11, fontFamily: FONT,
+                          bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
+                          color: active ? '#fff' : 'text.secondary' }} />
+                    </Button>
+                  );
+                })}
+              </Stack>
+            </Paper>
+            <Paper sx={{ ...glass, p: 1.25 }}>
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
+                <LayersIcon sx={{ fontSize: 18, color: '#f59e0b' }} />
+                <Typography variant="caption" fontWeight={900} sx={{ color: '#b45309', fontFamily: FONT }}>زیر سطح</Typography>
+              </Stack>
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1, fontFamily: FONT }}>
+                {subLevels.length === 0
+                  ? 'این سطح ریزتر ندارد'
+                  : (selectedNode ? `محدود به ${selectedNode.code} — ${selectedNode.name}` : 'بدون انتخاب = همهٔ حساب‌ها')}
+              </Typography>
+              <Stack spacing={0.75}>
+                {subLevels.map((l) => {
+                  const active = subLevel === l.value;
+                  const count = (selectedNode ? descendantsOf(selectedNode) : flat)
+                    .filter((n) => (n.level ?? -1) === l.value).length;
+                  return (
+                    <Button key={l.value} fullWidth size="small" variant={active ? 'contained' : 'outlined'}
+                      onClick={() => setSubLevel(active ? null : l.value)}
+                      sx={{ justifyContent: 'space-between', borderRadius: '12px', fontFamily: FONT, px: 1.25,
+                        borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
+                        background: active ? 'linear-gradient(135deg,#f59e0b,#d97706)' : 'rgba(255,255,255,0.55)',
+                        color: active ? '#fff' : 'text.primary',
+                        boxShadow: active ? '0 8px 18px rgba(245,158,11,0.35)' : 'none' }}>
+                      <span>{`ریز ${l.label}`}</span>
+                      <Chip size="small" label={toPersianDigits(String(count))}
+                        sx={{ height: 18, fontSize: 11, fontFamily: FONT,
+                          bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
+                          color: active ? '#fff' : 'text.secondary' }} />
+                    </Button>
+                  );
+                })}
+              </Stack>
+            </Paper>
+
+            <Paper sx={{ ...glass, p: 1.25 }}>
+              <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 1 }}>
+                <ViewColumnIcon sx={{ fontSize: 18, color: GREEN }} />
+                <Typography variant="caption" fontWeight={900} sx={{ color: GREEN, fontFamily: FONT }}>ستون‌ها</Typography>
+              </Stack>
+              <Stack spacing={0.75}>
+                {COLUMN_MODES.map((m) => {
+                  const active = columnMode === m.value;
+                  return (
+                    <Button key={m.value} fullWidth size="small" variant={active ? 'contained' : 'outlined'}
+                      onClick={() => setColumnMode(m.value)}
+                      sx={{ justifyContent: 'flex-start', borderRadius: '12px', fontFamily: FONT, px: 1.25,
+                        borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
+                        background: active ? 'linear-gradient(135deg,#10b981,#059669)' : 'rgba(255,255,255,0.55)',
+                        color: active ? '#fff' : 'text.primary',
+                        boxShadow: active ? '0 8px 18px rgba(16,185,129,0.35)' : 'none' }}>
+                      {m.label}
+                    </Button>
+                  );
+                })}
+              </Stack>
+            </Paper>
+          </Stack>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            {/* نوار ریز سطح + قالب ستون + محدودهٔ کد + چاپ */}
-            <Paper
-              sx={{
-                ...glass, p: 1.25, mb: 1.5, display: 'flex', flexWrap: 'wrap',
-                gap: 1, alignItems: 'center', '@media print': { display: 'none' },
-              }}
-            >
-              <Typography variant="caption" fontWeight={900} sx={{ color: COLOR_DARK }}>ریز سطح</Typography>
-              <ButtonGroup size="small" variant="outlined">
-                {LEVELS.map((l) => (
-                  <Button
-                    key={l.value}
-                    variant={expanded && level === l.value ? 'contained' : 'outlined'}
-                    onClick={() => { setLevel(l.value); setExpanded(true); }}
-                  >
-                    {l.detail}
-                  </Button>
-                ))}
-              </ButtonGroup>
-
-              <Divider orientation="vertical" flexItem />
-
-              <Typography variant="caption" fontWeight={900} sx={{ color: COLOR_DARK }}>قالب</Typography>
-              <ButtonGroup size="small">
-                {COLUMN_MODES.map((m) => (
-                  <Button
-                    key={m.value}
-                    variant={columnMode === m.value ? 'contained' : 'outlined'}
-                    onClick={() => setColumnMode(m.value)}
-                  >
-                    {m.label}
-                  </Button>
-                ))}
-              </ButtonGroup>
-
-              <Divider orientation="vertical" flexItem />
-
-              <TextField
-                label="از کد" size="small" value={fromCode}
-                onChange={(e) => setFromCode(e.target.value)} sx={{ width: 108 }}
-              />
-              <TextField
-                label="تا کد" size="small" value={toCode}
-                onChange={(e) => setToCode(e.target.value)} sx={{ width: 108 }}
-              />
-              <FormControlLabel
-                control={<Checkbox size="small" checked={onlyWithActivity}
+            {/* نوار جستجو و فیلترها */}
+            <Paper sx={{ ...glass, p: 1.5, mb: 1.5, '@media print': { display: 'none' } }}>
+              <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
+                <TextField size="small" placeholder="جستجو در همه‌چیز: کد، شرح و والدها…" value={search}
+                  onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 240, flex: 1 }}
+                  InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }} />
+                <TextField size="small" label="از کد" value={fromCode} onChange={(e) => setFromCode(e.target.value)} sx={{ width: 108 }} />
+                <TextField size="small" label="تا کد" value={toCode} onChange={(e) => setToCode(e.target.value)} sx={{ width: 108 }} />
+                <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: 148 }} />
+                <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: 148 }} />
+                <FormControlLabel control={<Checkbox size="small" checked={onlyWithActivity}
                   onChange={(e) => setOnlyWithActivity(e.target.checked)} />}
-                label={<Typography variant="caption">فقط دارای گردش</Typography>}
-              />
-
-              <Button size="small" variant="outlined"
-                onClick={() => { setFromCode(''); setToCode(''); setExpanded(false); setLevel(1); }}>
-                بازنشانی
-              </Button>
-
-              <Box sx={{ flex: 1 }} />
-              <Button size="small" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
-              <Button size="small" color="inherit" startIcon={<CloseIcon />}
-                onClick={() => navigate('/accounting/reports')}>خروج</Button>
+                  label={<Typography variant="caption" sx={{ fontFamily: FONT }}>فقط دارای گردش</Typography>} />
+                <Tooltip title="پاک کردن جستجو و فیلترها">
+                  <Button size="small" variant="outlined" startIcon={<CloseIcon />}
+                    onClick={() => { setSearch(''); setFromCode(''); setToCode(''); setDateFrom(''); setDateTo(''); setOnlyWithActivity(true); }}
+                    sx={{ borderRadius: '12px', fontFamily: FONT }}>پاک کردن</Button>
+                </Tooltip>
+              </Stack>
             </Paper>
 
+            {/* نوار وضعیت انتخاب */}
             <Paper sx={{ ...glass, p: 1, mb: 1, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                نمایش: <b>{expanded ? current.detail : current.title}</b>
-                {' — '}سطرها: <b>{toPersianDigits(visibleRows.length)}</b>
-                {' — '}سطر نخست «جمع کل» و سطر پایانی «جمع ستونی» است.
+              <Chip size="small" label={`سطح: ${currentLevel.label}`}
+                sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(6,182,212,0.14)', color: '#0e7490' }} />
+              {currentSub ? (
+                <Chip size="small" label={`ریز: ${currentSub.label}`}
+                  sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(245,158,11,0.16)', color: '#b45309' }} />
+              ) : null}
+              {selectedNode ? (
+                <Chip size="small" color="primary" onDelete={() => { setSelectedKey(null); setSubLevel(null); }}
+                  label={`انتخاب: ${selectedNode.code} — ${selectedNode.name}`} sx={{ fontFamily: FONT, fontWeight: 700 }} />
+              ) : null}
+              <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>
+                سطرها: <b>{toPersianDigits(String(visibleRows.length))}</b> · سطر نخست «جمع کل» و سطر پایانی «جمع ستونی» · برای ریز گردش دوبار کلیک کنید
               </Typography>
             </Paper>
-
             {visibleRows.length === 0 ? (
-              <EmptyState message="گردشی برای این سطح و بازهٔ کد وجود ندارد" />
+              <EmptyState message="گردشی برای این سطح و فیلترهای انتخابی وجود ندارد" />
             ) : (
               <div style={{ ...glass, padding: 12, overflow: 'hidden' }}>
                 <TableContainer sx={{ maxHeight: 620, overflowX: 'auto' }}>
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
-                        {headCell('ردیف', { width: 56 })}
-                        {headCell('کد حساب')}
-                        {headCell('شرح حساب', { minWidth: 200 })}
-                        {headCell('گردش بدهکار', { color: BLUE, bgcolor: 'rgba(37,99,235,0.08)' })}
-                        {headCell('گردش بستانکار', { color: GREEN, bgcolor: 'rgba(5,150,105,0.08)' })}
-                        {columnMode === '4'
-                          ? headCell('مانده بدهکار', { color: BLUE, bgcolor: 'rgba(37,99,235,0.08)' })
-                          : null}
-                        {columnMode === '4'
-                          ? headCell('مانده بستانکار', { color: GREEN, bgcolor: 'rgba(5,150,105,0.08)' })
-                          : headCell('مانده', { bgcolor: 'rgba(139,92,246,0.08)' })}
+                        <TableCell rowSpan={2} sx={headSx}>ردیف</TableCell>
+                        <TableCell rowSpan={2} sx={headSx}>کد حساب</TableCell>
+                        <TableCell rowSpan={2} sx={headSx}>شرح حساب</TableCell>
+                        {columnMode === '6' ? (
+                          <>
+                            {groupHead('مانده ابتدای دوره', '#7c3aed')}
+                            {groupHead('گردش دوره', BLUE)}
+                            {groupHead('مانده پایان دوره', GREEN)}
+                          </>
+                        ) : columnMode === '4' ? (
+                          <>
+                            {groupHead('گردش دوره', BLUE)}
+                            {groupHead('مانده دوره', GREEN)}
+                          </>
+                        ) : (
+                          <>
+                            {groupHead('گردش دوره', BLUE)}
+                            <TableCell align="center" sx={{ ...headSx, bgcolor: 'rgba(139,92,246,0.12)' }}>مانده</TableCell>
+                          </>
+                        )}
+                      </TableRow>
+                      <TableRow>
+                        {(columnMode === '3' ? ['بدهکار', 'بستانکار']
+                          : columnMode === '4' ? ['بدهکار', 'بستانکار', 'بدهکار', 'بستانکار']
+                            : ['بدهکار', 'بستانکار', 'بدهکار', 'بستانکار', 'بدهکار', 'بستانکار']
+                        ).map((lbl, i) => (
+                          <TableCell key={`${lbl}-${i}`} align="center" sx={headSx}>{lbl}</TableCell>
+                        ))}
+                        {columnMode === '3' ? (
+                          <TableCell align="center" sx={{ ...headSx, bgcolor: 'rgba(139,92,246,0.08)' }}>بدهکار/بستانکار</TableCell>
+                        ) : null}
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {/* سطر جمع کل (کل دفاتر) */}
                       <TableRow sx={{ bgcolor: 'rgba(250,204,21,0.24)' }}>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
-                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK }}>جمع کل</TableCell>
+                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع کل</TableCell>
                         {renderAmountCells(total, true)}
                       </TableRow>
-
                       {visibleRows.map(renderRow)}
-
-                      {/* سطر جمع ستونی (سطرهای نمایش‌داده‌شده) */}
                       <TableRow sx={{ bgcolor: 'rgba(139,92,246,0.14)' }}>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
-                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK }}>جمع ستونی</TableCell>
+                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع ستونی</TableCell>
                         {renderAmountCells(columnTotals, true)}
                       </TableRow>
                     </TableBody>
@@ -362,6 +434,9 @@ const MatrixReportPage = () => {
           </Box>
         </Box>
       )}
+
+      <LedgerDrillDialog node={ledgerNode} dateFrom={dateFrom} dateTo={dateTo}
+        onClose={() => setLedgerNode(null)} />
     </>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Paper, Typography, Avatar, CircularProgress, Grid } from '@mui/material';
+import { Box, Paper, Typography, Avatar, CircularProgress, Grid, Stack } from '@mui/material';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 
 export const COLOR = '#8b5cf6';
@@ -19,17 +19,22 @@ export const glass = {
   borderRadius: '16px',
 };
 
-export const ReportHeader = ({ icon, title, subtitle, color = COLOR, dark = COLOR_DARK }) => (
-  <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
+export const ReportHeader = ({ icon, title, subtitle, color = COLOR, dark = COLOR_DARK, actions }) => (
+  <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
     background: `linear-gradient(120deg, ${color}1a, rgba(255,255,255,0.3))`,
     border: `1px solid ${color}30`, borderRadius: '16px' }}>
     <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${color},${dark})`, boxShadow: `0 8px 24px ${color}55` }}>
       {icon}
     </Avatar>
-    <Box sx={{ flex: 1 }}>
+    <Box sx={{ flex: 1, minWidth: 200 }}>
       <Typography variant="h6" fontWeight={800} sx={{ color: dark }}>{title}</Typography>
       <Typography variant="body2" color="textSecondary">{subtitle}</Typography>
     </Box>
+    {actions ? (
+      <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', alignItems: 'center', '@media print': { display: 'none' } }}>
+        {actions}
+      </Stack>
+    ) : null}
   </Paper>
 );
 
