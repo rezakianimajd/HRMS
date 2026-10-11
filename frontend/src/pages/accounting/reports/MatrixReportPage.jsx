@@ -62,25 +62,68 @@ const descendantsOf = (node) => {
   return out;
 };
 
+/** فیلدهای مبلغی که هنگام تجمیع کدها جمع زده می‌شوند */
+const AMOUNT_KEYS = [
+  'debit', 'credit', 'balance_debit', 'balance_credit',
+  'opening_balance_debit', 'opening_balance_credit',
+  'closing_balance_debit', 'closing_balance_credit',
+];
+
+/** گره‌های هم‌کد یک سطح را در «یک ردیف» جمع می‌زند — هر کد فقط یک بار */
+const rowsFromNodes = (nodes, lv) => {
+  const bucket = new Map();
+  (nodes || []).forEach((n) => {
+    if ((n.level ?? -1) !== lv) return;
+    const code = String(n.code ?? '');
+    const prev = bucket.get(code);
+    if (!prev) {
+      const row = { code, name: n.name, level: lv, kind: n.kind, nodes: [n] };
+      AMOUNT_KEYS.forEach((k) => { row[k] = n[k] || 0; });
+      bucket.set(code, row);
+    } else {
+      prev.nodes.push(n);
+      AMOUNT_KEYS.forEach((k) => { prev[k] += n[k] || 0; });
+    }
+  });
+  return [...bucket.values()];
+};
+
+/** گره‌های سطح lv که به ردیف تجمیع‌شدهٔ انتخاب‌شده وصل‌اند (والد، خودِ کد، یا زیرمجموعه) */
+const scopeNodes = (row, lv) => {
+  const out = [];
+  row.nodes.forEach((n) => {
+    const nl = n.level ?? -1;
+    if (lv > nl) {
+      descendantsOf(n).forEach((d) => { if ((d.level ?? -1) === lv) out.push(d); });
+    } else if (lv < nl) {
+      (n.__parents || []).forEach((p) => { if ((p.level ?? -1) === lv) out.push(p); });
+    } else {
+      out.push(n);
+    }
+  });
+  return out;
+};
+
 /**
- * «شاخهٔ» یک سطح نسبت به گره انتخاب‌شده:
- *   سطح پایین‌تر → زیرمجموعه‌های همان گره
- *   سطح بالاتر  → والدهای همان گره (کل/معین/گروهی که این کد به آن وصل است)
- *   همان سطح    → خود گره
- *   بدون انتخاب → همهٔ گره‌ها
+ * ردیف‌های یک سطح (هر کد یک ردیف، ارقام شاخه‌ها جمع‌شده):
+ *   بدون انتخاب کد → همهٔ کدهای آن سطح
+ *   با انتخاب کد    → فقط کدهای همان «شاخه» (والدها / خود / زیرمجموعه‌ها)
  */
-const branchAt = (node, lv, allNodes) => {
-  if (!node) return allNodes;
-  const nl = node.level ?? -1;
-  if (lv > nl) return descendantsOf(node);
-  if (lv < nl) return (node.__parents || []);
-  return [node];
+const levelRows = (allNodes, lv, row = null) => (
+  row ? rowsFromNodes(scopeNodes(row, lv), lv) : rowsFromNodes(allNodes, lv)
+);
+
+/** هدف «ریز گردش» برای دابل‌کلیک: گرهٔ تک‌شاخه، یا گره بدون والد تا جمع همهٔ شاخه‌ها بیاید */
+const drillNodeOf = (row) => {
+  if (!row || !row.nodes || !row.nodes.length) return null;
+  if (row.nodes.length === 1) return row.nodes[0];
+  return { ...row.nodes[0], __parents: [], __agg: true };
 };
 
 const MatrixReportPage = () => {
   const [level, setLevel] = useState(1);
   const [subLevel, setSubLevel] = useState(null);
-  const [selectedKey, setSelectedKey] = useState(null);
+  const [selected, setSelected] = useState(null); // { level, code } — ردیف تجمیع‌شدهٔ انتخاب‌شده
   const [columnMode, setColumnMode] = useState('4');
   const [onlyWithActivity, setOnlyWithActivity] = useState(true);
   const [fromCode, setFromCode] = useState('');
@@ -113,21 +156,17 @@ const MatrixReportPage = () => {
     return out;
   }, [data]);
 
-  const selectedNode = useMemo(
-    () => flat.find((n) => n.__key === selectedKey) || null,
-    [flat, selectedKey],
-  );
+  const selectedRow = useMemo(() => {
+    if (!selected) return null;
+    return levelRows(flat, selected.level).find((r) => r.code === selected.code) || null;
+  }, [flat, selected]);
 
-  // ردیف‌های پایه: با انتخاب «ریز سطح» فقط همان سطح نمایش داده می‌شود
-  // (و اگر کدی انتخاب شده باشد، فقط «شاخهٔ» همان کد در آن سطح)
-  // ترتیب نمایش همیشه بر اساس «کد حساب» از کوچک به بزرگ است.
+  // ردیف‌های پایه: هر کد فقط یک ردیف (جمعِ شاخه‌ها) و ترتیب بر اساس کد
   const baseRows = useMemo(() => {
-    const rows = subLevel === null
-      ? flat.filter((n) => (n.level ?? -1) === level)
-      : (selectedNode ? branchAt(selectedNode, subLevel, flat) : flat)
-        .filter((n) => (n.level ?? -1) === subLevel);
+    const target = subLevel === null ? level : subLevel;
+    const rows = levelRows(flat, target, subLevel === null ? null : selectedRow);
     return [...rows].sort(byCode);
-  }, [flat, level, subLevel, selectedNode]);
+  }, [flat, level, subLevel, selectedRow]);
 
   // نوار جستجو: کد و شرح خود ردیف + کد و شرح والدها + بازهٔ کد + فقط دارای گردش
   const visibleRows = useMemo(() => baseRows.filter((r) => {
@@ -137,7 +176,7 @@ const MatrixReportPage = () => {
     if (onlyWithActivity && !(r.debit || r.credit || r.opening_balance_debit || r.opening_balance_credit)) return false;
     const q = search.trim();
     if (q) {
-      const parents = (r.__parents || []).flatMap((p) => [p.code, p.name]);
+      const parents = r.nodes.flatMap((n) => (n.__parents || []).flatMap((p) => [p.code, p.name]));
       const hay = [r.code, r.name, ...parents].join(' ');
       if (!hay.toLowerCase().includes(q.toLowerCase()) && !norm(hay).includes(norm(q))) return false;
     }
@@ -161,7 +200,7 @@ const MatrixReportPage = () => {
   const currentSub = subLevels.find((l) => l.value === subLevel) || null;
 
   const resetAll = () => {
-    setLevel(1); setSubLevel(null); setSelectedKey(null); setColumnMode('4');
+    setLevel(1); setSubLevel(null); setSelected(null); setColumnMode('4');
     setOnlyWithActivity(true); setFromCode(''); setToCode('');
     setDateFrom(''); setDateTo(''); setSearch('');
   };
@@ -239,13 +278,14 @@ const MatrixReportPage = () => {
   };
 
   const renderRow = (row, index) => {
-    const isSelected = row.__key === selectedKey;
-    const parents = row.__parents || [];
-    const path = parents.length > 1 ? parents.slice(-2).map((p) => p.name).join(' ‹ ') : '';
+    const isSelected = Boolean(selectedRow && selectedRow.code === row.code && selectedRow.level === row.level);
+    const parents = (row.nodes[0] && row.nodes[0].__parents) || [];
+    const merged = row.nodes.length > 1;
+    const path = (!merged && parents.length > 1) ? parents.slice(-2).map((p) => p.name).join(' ‹ ') : '';
     return (
-      <TableRow key={row.__key} hover selected={isSelected}
-        onClick={() => setSelectedKey(row.__key === selectedKey ? null : row.__key)}
-        onDoubleClick={() => setLedgerNode(row)}
+      <TableRow key={`${row.level}-${row.code}`} hover selected={isSelected}
+        onClick={() => setSelected(isSelected ? null : { level: row.level, code: row.code })}
+        onDoubleClick={() => setLedgerNode(drillNodeOf(row))}
         sx={{ cursor: 'pointer', height: ROW_H, bgcolor: isSelected ? 'rgba(6,182,212,0.14)' : undefined,
           boxShadow: isSelected ? `inset 3px 0 0 ${CYAN}` : undefined }}>
         <TableCell sx={{ width: 56, color: 'text.secondary' }}>{toPersianDigits(index + 1)}</TableCell>
@@ -257,6 +297,11 @@ const MatrixReportPage = () => {
             sx={{ fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {row.name}
             {path ? <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 10, ml: 1 }}>‹ {path}</Box> : null}
+            {merged ? (
+              <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 10, ml: 1 }}>
+                ({toPersianDigits(String(row.nodes.length))} شاخه)
+              </Box>
+            ) : null}
           </Typography>
         </TableCell>
         {renderAmountCells(row, true)}
@@ -317,7 +362,7 @@ const MatrixReportPage = () => {
                   const active = level === l.value;
                   return (
                     <Button key={l.value} fullWidth size="small" variant={active ? 'contained' : 'outlined'}
-                      onClick={() => { setLevel(l.value); setSubLevel(null); setSelectedKey(null); }}
+                      onClick={() => { setLevel(l.value); setSubLevel(null); setSelected(null); }}
                       sx={{ justifyContent: 'space-between', borderRadius: '12px', fontFamily: FONT, px: 1.25,
                         borderColor: active ? undefined : 'rgba(148,163,184,0.45)',
                         background: active ? `linear-gradient(135deg,${CYAN},#0891b2)` : 'rgba(255,255,255,0.55)',
@@ -359,8 +404,7 @@ const MatrixReportPage = () => {
               <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                 {subLevels.map((l) => {
                   const active = (subLevel === null ? level : subLevel) === l.value;
-                  const count = branchAt(selectedNode, l.value, flat)
-                    .filter((n) => (n.level ?? -1) === l.value).length;
+                  const count = levelRows(flat, l.value, selectedRow).length;
                   return (
                     <Button key={l.value} size="small" variant={active ? 'contained' : 'outlined'}
                       onClick={() => setSubLevel(active ? null : l.value)}

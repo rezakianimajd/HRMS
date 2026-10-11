@@ -49,7 +49,7 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
   );
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['acc-drill-ledger', node?.__key, dateFrom, dateTo],
+    queryKey: ['acc-drill-ledger', node?.kind, node?.id, params.account || '', params.aux1 || '', params.aux2 || '', dateFrom, dateTo],
     queryFn: () => axiosInstance
       .get(`/accounting/reports/account-ledger/${node.id}/`, { params })
       .then((r) => r.data),
