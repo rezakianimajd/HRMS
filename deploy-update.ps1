@@ -208,6 +208,12 @@ if (-not $SkipFrontend) {
         if ($LASTEXITCODE -ne 0) { throw 'آماده‌سازی /tmp روی سرور ناموفق بود.' }
         scp -r $buildDir "${Srv}:/tmp/hrms-new"          # نتیجه: /tmp/hrms-new/build
         if ($LASTEXITCODE -ne 0) { throw 'انتقال build ناموفق بود.' }
+
+        # محافظ: تا وقتی build جدید روی سرور تأیید نشده، build فعلی جابه‌جا/حذف نمی‌شود.
+        ssh $Srv "test -d /tmp/hrms-new/build && test -f /tmp/hrms-new/build/index.html"
+        if ($LASTEXITCODE -ne 0) { throw 'پوشهٔ build روی سرور در /tmp/hrms-new پیدا نشد؛ انتقال کامل نشده است (build فعلی دست‌نخورده ماند).' }
+        Ok 'build جدید روی سرور تأیید شد (/tmp/hrms-new/build).'
+
         ssh -t $Srv "rm -rf $AppDir/frontend/build.old; if [ -d $AppDir/frontend/build ]; then sudo mv $AppDir/frontend/build $AppDir/frontend/build.old; fi; sudo mv /tmp/hrms-new/build $AppDir/frontend/build && sudo chown -R ${AppUser}:${AppUser} $AppDir/frontend/build && sudo rm -rf $AppDir/frontend/build.old /tmp/hrms-new"
         if ($LASTEXITCODE -ne 0) { throw 'جای‌گزینی build روی سرور ناموفق بود.' }
         Ok 'build جای‌گزین شد.'
