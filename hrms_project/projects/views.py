@@ -166,6 +166,14 @@ class ProjectViewSet(BaseProjectViewSet):
             date_to=parse_date(request.query_params.get('date_to') or ''),
         ))
 
+    @action(detail=True, methods=['get'], url_path='cashflow')
+    def cashflow(self, request, pk=None):
+        """جریان نقدی پروژه: پیش‌بینی برنامه در برابر واقعی دفاتر/پرداخت‌ها (ماه شمسی)."""
+        from projects.cashflow import project_cashflow
+
+        rial_only = request.query_params.get('rial_only') not in ('0', 'false', 'False')
+        return Response(project_cashflow(self.get_object(), rial_only=rial_only))
+
     @action(detail=True, methods=['get'])
     def profile(self, request, pk=None):
         """پروندهٔ کامل پروژه: قراردادها، اقلام و الحاقیه‌ها، هزینه/درآمد و پرداخت‌ها."""

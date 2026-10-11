@@ -266,3 +266,50 @@ class ChangeOrderApprovalAdmin(admin.ModelAdmin):
     list_display = ['change_order', 'action', 'actor_name', 'created_at']
     list_filter = ['action']
 
+
+# ------------------- فاز ۲ (بخش دوم): صورتجلسه/گواهی/تخصیص -------------------
+from projects.phase2_models import (  # noqa: E402
+    CostAllocation, MeasurementSheet, MeasurementSheetLine, PaymentCertificate,
+)
+
+
+class MeasurementSheetLineInline(admin.TabularInline):
+    model = MeasurementSheetLine
+    extra = 1
+    fields = ('line_no', 'contract_item', 'wbs', 'description', 'unit', 'unit_price',
+              'previous_quantity', 'current_quantity', 'cumulative_quantity', 'amount')
+
+
+@admin.register(MeasurementSheet)
+class MeasurementSheetAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'project', 'contract', 'date', 'status',
+                    'gross_amount', 'net_amount', 'checked_by', 'approved_by']
+    list_filter = ['project', 'status', 'contract']
+    search_fields = ['number', 'title']
+    inlines = [MeasurementSheetLineInline]
+    readonly_fields = ['gross_amount', 'retention_amount', 'net_amount', 'statement',
+                       'checked_at', 'approved_at']
+
+
+@admin.register(MeasurementSheetLine)
+class MeasurementSheetLineAdmin(admin.ModelAdmin):
+    list_display = ['sheet', 'line_no', 'description', 'unit', 'current_quantity',
+                    'cumulative_quantity', 'amount']
+    list_filter = ['sheet']
+
+
+@admin.register(PaymentCertificate)
+class PaymentCertificateAdmin(admin.ModelAdmin):
+    list_display = ['number', 'project', 'contract', 'sheet', 'date', 'due_date',
+                    'gross', 'deductions', 'net_payable', 'paid_amount', 'status']
+    list_filter = ['project', 'status', 'contract']
+    search_fields = ['number']
+
+
+@admin.register(CostAllocation)
+class CostAllocationAdmin(admin.ModelAdmin):
+    list_display = ['title', 'project', 'kind', 'wbs', 'employee', 'resource',
+                    'date', 'quantity', 'rate', 'amount', 'cost_transaction']
+    list_filter = ['project', 'kind']
+    search_fields = ['title', 'note']
+

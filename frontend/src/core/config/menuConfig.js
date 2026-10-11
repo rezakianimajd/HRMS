@@ -1,5 +1,6 @@
 import React from 'react';
 import DashboardIcon from '@mui/icons-material/Dashboard';
+
 import TimelineIcon from '@mui/icons-material/Timeline';
 import PeopleIcon from '@mui/icons-material/People';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -509,6 +510,8 @@ const projectsMenu = [
       { id: 'projects-price-lists', title: 'فهرست‌بها', icon: <ReceiptLongIcon />, path: '/projects/price-lists', color: '#f59e0b', primary: false, ready: true },
       { id: 'projects-contracts', title: 'قراردادها و تجاری', icon: <HistoryEduIcon />, path: '/projects/commercial', color: '#f97316', primary: false, ready: true },
       { id: 'projects-change-orders', title: 'تغییرات پروژه', icon: <HistoryEduIcon />, path: '/projects/change-orders', color: '#ec4899', primary: false, ready: true },
+            { id: 'projects-certification', title: 'صورتجلسه و گواهی پرداخت', icon: <FactCheckIcon />, path: '/projects/certification', color: '#10b981', primary: false, ready: true },
+
       comingSoon('/projects/progress', 'projects-progress', 'صورت‌وضعیت‌ها', <BarChartOutlinedIcon />, '#6366f1'),
     ],
   },

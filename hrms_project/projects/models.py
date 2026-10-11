@@ -457,3 +457,8 @@ from projects.schedule_models import (  # noqa: E402,F401
 from projects.change_models import (  # noqa: E402,F401
     ChangeOrder, ChangeOrderApproval, ChangeOrderLine,
 )
+
+# فاز ۲ (بخش دوم) — صورتجلسه، گواهی پرداخت و تخصیص هزینه
+from projects.phase2_models import (  # noqa: E402,F401
+    CostAllocation, MeasurementSheet, MeasurementSheetLine, PaymentCertificate,
+)

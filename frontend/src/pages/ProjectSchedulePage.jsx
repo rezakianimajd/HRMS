@@ -102,6 +102,12 @@ const ProjectSchedulePage = () => {
     enabled: !!projectId && tab === 2,
   });
 
+  const { data: cashflow } = useQuery({
+    queryKey: ['project-cashflow', projectId],
+    queryFn: () => axiosInstance.get(`/projects/${projectId}/cashflow/`).then(r => r.data),
+    enabled: !!projectId && tab === 3,
+  });
+
   const recalc = useMutation({
     mutationFn: () => axiosInstance.post(`/projects/${projectId}/recalculate-schedule/`).then(r => r.data),
     onSuccess: (data) => {
@@ -234,6 +240,7 @@ const ProjectSchedulePage = () => {
           <Tab label="گانت (RTL شمسی)" />
           <Tab label="EVM و منحنی S" />
           <Tab label="منابع و بیش‌تخصیص" />
+          <Tab label="جریان نقدی" />
         </Tabs>
       </Paper>
       {/* ---------------- تب ۰: گانت ---------------- */}
@@ -503,7 +510,99 @@ const ProjectSchedulePage = () => {
           </Box>
         )
       )}
-      {/* ---------------- تب ۲: منابع و بیش‌تخصیص ---------------- */}
+      {/* ---------------- تب ۳: جریان نقدی ---------------- */}
+      {tab === 3 && (
+        !cashflow ? (
+          <Paper sx={{ p: 3, textAlign: 'center' }}><CircularProgress /></Paper>
+        ) : (
+          <Box>
+            <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
+              <Typography variant="subtitle2" fontWeight={800} color="#0e7490">جریان نقدی پروژه (ماه شمسی)</Typography>
+              {cashflow.baseline ? (
+                <Chip size="small" label={`مبنا: ${cashflow.baseline}`}
+                  sx={{ fontWeight: 700, bgcolor: 'rgba(139,92,246,0.12)', color: '#6d28d9' }} />
+              ) : null}
+              <Chip size="small" label={`پیش‌بینی ورودی: ${money(cashflow.totals?.planned_in)}`}
+                sx={{ fontWeight: 700, bgcolor: 'rgba(14,165,233,0.12)', color: '#0369a1' }} />
+              <Chip size="small" label={`واقعی ورودی: ${money(cashflow.totals?.actual_in)}`}
+                sx={{ fontWeight: 700, bgcolor: 'rgba(16,185,129,0.14)', color: '#047857' }} />
+              <Chip size="small" label={`واقعی خروجی: ${money(cashflow.totals?.actual_out)}`}
+                sx={{ fontWeight: 700, bgcolor: 'rgba(239,68,68,0.14)', color: '#b91c1c' }} />
+              <Chip size="small" label={`خالص واقعی: ${money(cashflow.totals?.net_actual)}`}
+                color={(cashflow.totals?.net_actual || 0) >= 0 ? 'success' : 'error'}
+                sx={{ fontWeight: 700 }} />
+            </Stack>
+
+            {(!cashflow.rows || cashflow.rows.length === 0) ? (
+              <Alert severity="info" sx={{ borderRadius: '10px' }}>
+                برای محاسبهٔ جریان نقدی، ابتدا فعالیت‌ها/بیس‌لاین (برای پیش‌بینی) و پرداخت‌ها یا تراکنش‌های هزینه
+                (برای واقعی) را ثبت کنید.
+              </Alert>
+            ) : (
+              <React.Fragment>
+                <Paper sx={{ p: 2, mb: 1.5, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.7)' }}>
+                  <Box sx={{ height: 320 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={cashflow.rows} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                        <XAxis dataKey="month_short" reversed tick={{ fontSize: 11 }}
+                          tickFormatter={(v) => toPersianDigits(String(v))} />
+                        <YAxis orientation="right" tick={{ fontSize: 11 }} width={90}
+                          tickFormatter={(v) => formatPersianNumber(v)} />
+                        <ReTooltip formatter={(v) => formatPersianNumber(v)}
+                          labelFormatter={(label, payload) => payload?.[0]?.payload?.month_label
+                            || toPersianDigits(String(label))}
+                          contentStyle={{ direction: 'rtl', textAlign: 'right', fontFamily: FONT }} />
+                        <Legend align="right" wrapperStyle={{ fontFamily: FONT, direction: 'rtl' }} />
+                        <Line type="monotone" dataKey="cum_inflow_planned" name="ورودی برنامه‌ای (تجمعی)"
+                          stroke="#0ea5e9" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="cum_inflow_actual" name="ورودی واقعی (تجمعی)"
+                          stroke="#10b981" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="cum_outflow_planned" name="خروجی برنامه‌ای (تجمعی)"
+                          stroke="#94a3b8" strokeWidth={2} strokeDasharray="4 3" dot={false} />
+                        <Line type="monotone" dataKey="cum_outflow_actual" name="خروجی واقعی (تجمعی)"
+                          stroke="#ef4444" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </Box>
+                </Paper>
+
+                <Paper sx={{ p: 1.5, borderRadius: '12px' }}>
+                  <TableContainer sx={{ maxHeight: 320 }}>
+                    <Table size="small" stickyHeader>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell sx={headSx}>ماه</TableCell>
+                          <TableCell sx={headSx}>ورودی برنامه‌ای</TableCell>
+                          <TableCell sx={headSx}>ورودی واقعی</TableCell>
+                          <TableCell sx={headSx}>خروجی برنامه‌ای</TableCell>
+                          <TableCell sx={headSx}>خروجی واقعی</TableCell>
+                          <TableCell sx={headSx}>خالص برنامه‌ای</TableCell>
+                          <TableCell sx={headSx}>خالص واقعی</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {cashflow.rows.slice(-14).map((row) => (
+                          <TableRow key={row.month} hover>
+                            <TableCell sx={{ fontFamily: FONT, whiteSpace: 'nowrap' }}>{row.month_label}</TableCell>
+                            <TableCell sx={numSx}>{money(row.inflow_planned)}</TableCell>
+                            <TableCell sx={{ ...numSx, color: '#047857' }}>{money(row.inflow_actual)}</TableCell>
+                            <TableCell sx={numSx}>{money(row.outflow_planned)}</TableCell>
+                            <TableCell sx={{ ...numSx, color: '#b91c1c' }}>{money(row.outflow_actual)}</TableCell>
+                            <TableCell sx={numSx}>{money(row.net_planned)}</TableCell>
+                            <TableCell sx={{ ...numSx, fontWeight: 700 }}>{money(row.net_actual)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                </Paper>
+              </React.Fragment>
+            )}
+          </Box>
+        )
+      )}
+
       {tab === 2 && (
         !histogram ? (
           <Paper sx={{ p: 3, textAlign: 'center' }}><CircularProgress /></Paper>

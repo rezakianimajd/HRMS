@@ -59,6 +59,15 @@ from projects.change_views import ChangeOrderViewSet  # noqa: E402
 
 router.register(r'change-orders', ChangeOrderViewSet, basename='change-order')
 
+# ------------------- فاز ۲ (بخش دوم): صورتجلسه/گواهی/تخصیص -------------------
+from projects.phase2_views import (  # noqa: E402
+    CostAllocationViewSet, MeasurementSheetViewSet, PaymentCertificateViewSet,
+)
+
+router.register(r'measurement-sheets', MeasurementSheetViewSet, basename='measurement-sheet')
+router.register(r'payment-certificates', PaymentCertificateViewSet, basename='payment-certificate')
+router.register(r'cost-allocations', CostAllocationViewSet, basename='cost-allocation')
+
 from projects import analytics_views
 
 urlpatterns = [

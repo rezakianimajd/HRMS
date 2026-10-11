@@ -3,9 +3,15 @@ from datetime import date
 
 from django.test import TestCase
 
+from contracts.models import Payment, Statement
 from projects.change_models import ChangeOrder, ChangeOrderLine
 from projects.change_service import apply_change_order, decide, submit
 from projects.cost_models import BudgetLine, CommittedCost, CostTransaction
+from projects.phase2_models import CostAllocation, MeasurementSheet, MeasurementSheetLine
+from projects.phase2_service import (
+    approve_sheet, check_sheet, create_certificate, issue_certificate, post_allocation,
+    recalculate_sheet, register_certificate_payment, submit_sheet,
+)
 from projects.tests.base import ProjectTestMixin
 
 
@@ -132,3 +138,89 @@ class PurchaseIntegrationTests(ProjectTestMixin, TestCase):
         # idempotent
         self.assertEqual(sync_grn_costs(grn, None).pk, tx.pk)
         self.assertEqual(CostTransaction.objects.filter(project=self.project).count(), 1)
+
+
+class CertificationWorkflowTests(ProjectTestMixin, TestCase):
+    """صورتجلسهٔ اندازه‌گیری → تأیید مشاور/کارفرما → گواهی پرداخت → پرداخت."""
+
+    def setUp(self):
+        self.make_project()
+        self.contract = self.make_contract(number='C-100')
+        self.sheet = MeasurementSheet.objects.create(
+            company=self.company, project=self.project, contract=self.contract,
+            number='MS-01', title='کارکرد دورهٔ اول', date=date(2026, 5, 1),
+            retention_percent=10, insurance_amount=1000, tax_amount=500,
+        )
+        MeasurementSheetLine.objects.create(
+            company=self.company, sheet=self.sheet, line_no=1, description='بتن‌ریزی',
+            unit='متر مکعب', unit_price=1_000_000, previous_quantity=0,
+            current_quantity=10, cumulative_quantity=10, amount=10_000_000,
+        )
+
+    def test_recalculate_totals_and_deductions(self):
+        recalculate_sheet(self.sheet)
+        self.sheet.refresh_from_db()
+        self.assertEqual(float(self.sheet.gross_amount), 10_000_000)
+        self.assertEqual(float(self.sheet.retention_amount), 1_000_000)   # ۱۰٪
+        self.assertEqual(float(self.sheet.net_amount), 8_998_500)          # ۱۰م − (۱م + ۱۰۰۰ + ۵۰۰)
+
+    def test_full_workflow_creates_certificate_statement_and_payment(self):
+        submit_sheet(self.sheet, None)
+        self.assertEqual(self.sheet.status, 'submitted')
+        check_sheet(self.sheet, None)
+        self.assertEqual(self.sheet.status, 'checked')
+        approve_sheet(self.sheet, None)
+        self.assertEqual(self.sheet.status, 'approved')
+
+        certificate = create_certificate(self.sheet, None)
+        self.sheet.refresh_from_db()
+        self.assertEqual(self.sheet.status, 'certified')
+        self.assertEqual(certificate.number, 'PC-MS-01')
+        self.assertEqual(float(certificate.net_payable), 8_998_500)
+        self.assertIsNotNone(certificate.statement_id)
+        self.assertEqual(Statement.objects.filter(contract=self.contract, number='PC-MS-01').count(), 1)
+        self.assertTrue(Statement.objects.get(pk=certificate.statement_id).is_approved)
+
+        issue_certificate(certificate, None)
+        register_certificate_payment(certificate, None)
+        certificate.refresh_from_db()
+        self.assertEqual(certificate.status, 'paid')
+        self.assertIsNotNone(certificate.contract_payment_id)
+        self.assertEqual(Payment.objects.filter(contract=self.contract).count(), 1)
+        self.assertEqual(float(certificate.paid_amount), 8_998_500)
+
+    def test_cannot_certify_before_employer_approval(self):
+        with self.assertRaises(ValueError):
+            create_certificate(self.sheet, None)
+
+    def test_cannot_skip_workflow_steps(self):
+        with self.assertRaises(ValueError):
+            approve_sheet(self.sheet, None)     # از پیش‌نویس نمی‌توان تأیید کارفرما گرفت
+        submit_sheet(self.sheet, None)
+        with self.assertRaises(ValueError):
+            approve_sheet(self.sheet, None)     # نیاز به تأیید مشاور
+
+    def test_cannot_pay_more_than_remaining(self):
+        submit_sheet(self.sheet, None)
+        check_sheet(self.sheet, None)
+        approve_sheet(self.sheet, None)
+        certificate = create_certificate(self.sheet, None)
+        with self.assertRaises(ValueError):
+            register_certificate_payment(certificate, None, amount=9_000_000)
+
+    def test_allocation_posts_cost_transaction_once(self):
+        allocation = CostAllocation.objects.create(
+            company=self.company, project=self.project, kind='labor',
+            title='دستمزد اردیبهشت', date=date(2026, 4, 25),
+            quantity=10, unit='روز', rate=2_000_000, amount=20_000_000,
+        )
+        tx = post_allocation(allocation, None)
+        allocation.refresh_from_db()
+        self.assertEqual(allocation.cost_transaction_id, tx.pk)
+        self.assertEqual(tx.lines.count(), 1)
+        self.assertEqual(float(tx.lines.first().net_amount), 20_000_000)
+        self.assertEqual(tx.number, 'ALLOC-1405-02')
+
+        self.assertEqual(post_allocation(allocation, None).pk, tx.pk)   # idempotent
+        self.assertEqual(CostTransaction.objects.filter(project=self.project).count(), 1)
+
