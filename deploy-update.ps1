@@ -64,6 +64,7 @@ $BackendFiles = @(
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
 $FrontendFiles = @(
     'frontend/src/pages/AccountingDocumentsPage.jsx',
+    'frontend/src/pages/AccountingDocumentNewPage.jsx',
     'frontend/src/core/components/accounting/DocumentIssuesDialog.jsx',
     'frontend/src/core/components/ui/Timeline.jsx',
     'frontend/src/pages/accounting/reports/MatrixReportPage.jsx',
