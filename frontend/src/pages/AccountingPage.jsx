@@ -73,17 +73,17 @@ const KpiCard = ({ icon, label, value, color, delta, spark = [], sub, onClick })
   return (
     <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ height: '100%' }}>
       <Paper onClick={onClick} sx={{
-        ...glass, p: 2, height: '100%', cursor: onClick ? 'pointer' : 'default',
+        ...glass, p: 2, height: '100%', cursor: onClick ? 'pointer' : 'default', textAlign: 'center',
         position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s',
         '&:hover': onClick ? { transform: 'translateY(-4px)', boxShadow: `0 18px 40px ${color}33` } : {},
       }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 1 }}>
           <Avatar sx={{ width: 42, height: 42, background: `linear-gradient(135deg, ${color}, ${color}cc)`, boxShadow: `0 6px 16px ${color}44` }}>{icon}</Avatar>
           <Typography variant="caption" color="textSecondary" fontWeight={600}>{label}</Typography>
         </Box>
-        <Typography ref={ref} variant="h5" fontWeight={900} sx={{ color, lineHeight: 1.1 }}>{formatPersianNumber(Math.round(displayed))}</Typography>
+        <Typography ref={ref} variant="h5" fontWeight={900} sx={{ color, lineHeight: 1.1, textAlign: 'center' }}>{formatPersianNumber(Math.round(displayed))}</Typography>
         {del !== null && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, mt: 0.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.5 }}>
             {del >= 0 ? <TrendingUpIcon sx={{ fontSize: 16, color: GREEN }} /> : <TrendingDownIcon sx={{ fontSize: 16, color: RED }} />}
             <Typography variant="caption" fontWeight={800} sx={{ color: del >= 0 ? GREEN : RED }}>{fmtDelta(del)}</Typography>
             <Typography variant="caption" color="textSecondary">نسبت به ماه قبل</Typography>
@@ -205,10 +205,10 @@ const AccountingPage = () => {
                   <linearGradient id="expg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor={RED} stopOpacity={0.4} /><stop offset="100%" stopColor={RED} stopOpacity={0} /></linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-                <XAxis dataKey="label" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
-                <ReTooltip formatter={(v) => formatPersianNumber(v)} />
-                <Legend />
+                <XAxis dataKey="label" reversed tick={{ fontSize: 10 }} />
+                <YAxis orientation="right" tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
+                <ReTooltip formatter={(v) => formatPersianNumber(v)} contentStyle={{ direction: 'rtl', textAlign: 'right' }} />
+                <Legend align="right" wrapperStyle={{ direction: 'rtl' }} />
                 <Area type="monotone" dataKey="revenue" name="درآمد" stroke={GREEN} fill="url(#rev)" strokeWidth={2} />
                 <Area type="monotone" dataKey="expense" name="هزینه" stroke={RED} fill="url(#expg)" strokeWidth={2} />
               </AreaChart>
@@ -243,11 +243,12 @@ const AccountingPage = () => {
             <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1}>وضعیت اسناد</Typography>
             <ResponsiveContainer width="100%" height={200}>
               <PieChart>
-                <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85} paddingAngle={3}
+                <Pie data={statusData} dataKey="value" nameKey="name" innerRadius={55} outerRadius={85}
+                  paddingAngle={3} startAngle={90} endAngle={450}
                   onClick={(entry) => navigate('/accounting/documents', { state: { status: entry.key } })}>
                   {statusData.map((s) => <Cell key={s.key} fill={COLORS[s.key]} />)}
                 </Pie>
-                <ReTooltip formatter={(v) => formatPersianNumber(v)} />
+                <ReTooltip formatter={(v) => formatPersianNumber(v)} contentStyle={{ direction: 'rtl', textAlign: 'right' }} />
               </PieChart>
             </ResponsiveContainer>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
@@ -266,9 +267,9 @@ const AccountingPage = () => {
         <ResponsiveContainer width="100%" height={240}>
           <BarChart data={categories} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" />
-            <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-            <YAxis tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
-            <ReTooltip formatter={(v) => formatPersianNumber(v)} />
+            <XAxis dataKey="label" reversed tick={{ fontSize: 11 }} />
+            <YAxis orientation="right" tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
+            <ReTooltip formatter={(v) => formatPersianNumber(v)} contentStyle={{ direction: 'rtl', textAlign: 'right' }} />
             <Bar dataKey="value" name="مبلغ" fill={VIOLET} radius={[6, 6, 0, 0]} />
           </BarChart>
         </ResponsiveContainer>
@@ -285,10 +286,10 @@ const AccountingPage = () => {
               <ResponsiveContainer width="100%" height={260}>
                 <BarChart data={topAccounts} layout="vertical" margin={{ top: 5, right: 30, left: 30, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.06)" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
-                  <YAxis type="category" dataKey="label" width={130} tick={{ fontSize: 11 }} />
-                  <ReTooltip formatter={(v) => formatPersianNumber(v)} />
-                  <Bar dataKey="turnover" name="گردش" fill={VIOLET} radius={[0, 8, 8, 0]} barSize={18} onClick={(entry) => navigate('/accounting/accounts/subsidiary')} cursor="pointer" />
+                  <XAxis type="number" reversed tick={{ fontSize: 10 }} tickFormatter={v => formatPersianNumber(v)} />
+                  <YAxis type="category" dataKey="label" orientation="right" width={130} tick={{ fontSize: 11 }} />
+                  <ReTooltip formatter={(v) => formatPersianNumber(v)} contentStyle={{ direction: 'rtl', textAlign: 'right' }} />
+                  <Bar dataKey="turnover" name="گردش" fill={VIOLET} radius={[8, 0, 0, 8]} barSize={18} onClick={(entry) => navigate('/accounting/accounts/subsidiary')} cursor="pointer" />
                 </BarChart>
               </ResponsiveContainer>
             )}

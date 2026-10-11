@@ -42,8 +42,22 @@ const money = (v) => formatPersianNumber(v || 0);
 const fmtDate = (d) => (d ? toJalali(d) : '—');
 const curCode = (currency) => ((currency?.code || 'IRR') === 'IRR' ? '' : currency.code);
 
-const headSx = { fontWeight: 800, whiteSpace: 'nowrap', fontSize: 12.5, bgcolor: 'rgba(248,250,252,0.9)' };
-const numSx = { direction: 'ltr', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT };
+// --- کمکی‌های نمودار: ارقام فارسی + برچسب ماه به سبک بقیهٔ برنامه (MM/YY) ---
+const faNum = (v) => (typeof v === 'number' ? formatPersianNumber(v) : toPersianDigits(String(v ?? '')));
+const monthLabel = (m) => {
+  const s = String(m || '');
+  return s.length >= 7 ? `${toPersianDigits(s.slice(5))}/${toPersianDigits(s.slice(0, 4).slice(2))}` : toPersianDigits(s);
+};
+const rtlTip = { direction: 'rtl', textAlign: 'right', fontFamily: FONT };
+const legendStyle = { fontFamily: FONT, fontSize: 12, direction: 'rtl' };
+
+const headSx = {
+  fontWeight: 800, whiteSpace: 'nowrap', fontSize: 12.5,
+  bgcolor: 'rgba(248,250,252,0.9)', textAlign: 'center !important',
+};
+const numSx = {
+  direction: 'ltr', textAlign: 'center !important', whiteSpace: 'nowrap', fontFamily: FONT,
+};
 
 const GlassCard = ({ children, sx = {}, ...rest }) => (
   <Paper sx={{ ...glassPaper, p: 2, ...sx }} {...rest}>{children}</Paper>
@@ -52,19 +66,21 @@ const GlassCard = ({ children, sx = {}, ...rest }) => (
 const StatTile = ({ icon, label, value, sub, color, onClick, active }) => (
   <Paper onClick={onClick}
     sx={{
-      ...glassPaper, p: 1.5, height: '100%', cursor: onClick ? 'pointer' : 'default',
+      ...glassPaper, p: 1.5, height: '100%', textAlign: 'center',
+      cursor: onClick ? 'pointer' : 'default',
       border: active ? `1px solid ${color}` : undefined,
       boxShadow: active ? `0 10px 26px ${color}33` : undefined,
       transition: 'all .18s ease',
       '&:hover': onClick ? { transform: 'translateY(-2px)', boxShadow: `0 12px 28px ${color}2e` } : undefined,
     }}>
-    <Stack direction="row" alignItems="center" spacing={1}>
+    <Stack alignItems="center" spacing={0.4}>
       <Avatar sx={{ width: 34, height: 34, background: `linear-gradient(135deg,${color},${color}bb)` }}>{icon}</Avatar>
-      <Box sx={{ minWidth: 0, flex: 1 }}>
-        <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{label}</Typography>
-        <Typography variant="subtitle1" fontWeight={900} sx={{ color, lineHeight: 1.25, ...numSx }}>{value}</Typography>
-        {sub ? <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{sub}</Typography> : null}
-      </Box>
+      <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT, textAlign: 'center' }}>{label}</Typography>
+      <Typography variant="subtitle1" fontWeight={900}
+        sx={{ color, lineHeight: 1.3, width: '100%', ...numSx }}>{value}</Typography>
+      {sub ? (
+        <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT, textAlign: 'center' }}>{sub}</Typography>
+      ) : null}
     </Stack>
   </Paper>
 );
@@ -383,12 +399,13 @@ const ProjectProfilePage = () => {
             </Typography>
             <Box sx={{ height: 250 }}>
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={monthly} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                <LineChart data={monthly} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                  <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} width={80} />
-                  <ReTooltip formatter={(v) => money(v)} />
-                  <Legend wrapperStyle={{ fontFamily: FONT, fontSize: 12 }} />
+                  <XAxis dataKey="month" reversed tick={{ fontSize: 11 }} tickFormatter={monthLabel} />
+                  <YAxis orientation="right" tick={{ fontSize: 11 }} width={80} tickFormatter={faNum} />
+                  <ReTooltip formatter={(v) => money(v)} labelFormatter={monthLabel}
+                    contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
+                  <Legend align="right" wrapperStyle={legendStyle} />
                   <Line type="monotone" dataKey="cost" name="هزینه" stroke={CLR.cost} strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="revenue" name="درآمد" stroke={CLR.revenue} strokeWidth={2} dot={false} />
                   <Line type="monotone" dataKey="payment" name="پرداخت" stroke={CLR.pay} strokeWidth={2} dot={false} />
@@ -406,11 +423,12 @@ const ProjectProfilePage = () => {
               <Box sx={{ height: 250 }}>
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={costPie} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80} paddingAngle={2}>
+                    <Pie data={costPie} dataKey="value" nameKey="name" innerRadius={45} outerRadius={80}
+                      paddingAngle={2} startAngle={90} endAngle={450}>
                       {costPie.map((c) => <Cell key={c.name} fill={c.color} />)}
                     </Pie>
-                    <ReTooltip formatter={(v) => money(v)} />
-                    <Legend wrapperStyle={{ fontFamily: FONT, fontSize: 11 }} />
+                    <ReTooltip formatter={(v) => money(v)} contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
+                    <Legend align="right" wrapperStyle={{ ...legendStyle, fontSize: 11 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </Box>
@@ -425,11 +443,12 @@ const ProjectProfilePage = () => {
             {byStatus.length === 0 ? <Empty text="قراردادی متصل نشده است" /> : (
               <Box sx={{ height: 250 }}>
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={byStatus.map(r => ({ name: STATUS_LABELS[r.status] || r.status, amount: r.amount }))}>
+                  <BarChart data={byStatus.map(r => ({ name: STATUS_LABELS[r.status] || r.status, amount: r.amount }))}
+                    margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} width={70} />
-                    <ReTooltip formatter={(v) => money(v)} />
+                    <XAxis dataKey="name" reversed tick={{ fontSize: 11 }} />
+                    <YAxis orientation="right" tick={{ fontSize: 11 }} width={70} tickFormatter={faNum} />
+                    <ReTooltip formatter={(v) => money(v)} contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
                     <Bar dataKey="amount" name="مبلغ" radius={[6, 6, 0, 0]}>
                       {byStatus.map((r, i) => <Cell key={r.status} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
                     </Bar>

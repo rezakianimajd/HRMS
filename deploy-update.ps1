@@ -81,7 +81,10 @@ $FrontendFiles = @(
     'frontend/src/pages/accounting/reports/reportHelpers.jsx',
     'frontend/src/pages/accounting/reports/TreeTrialBalancePage.jsx',
     'frontend/src/pages/accounting/reports/LedgerReviewPage.jsx',
-    'frontend/src/pages/ProjectProfilePage.jsx'
+    'frontend/src/pages/ProjectProfilePage.jsx',
+    'frontend/src/pages/AccountingPage.jsx',
+    'frontend/src/pages/AssetsPage.jsx',
+    'frontend/src/pages/AssistantPage.jsx'
 )
 
 function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }
