@@ -11,6 +11,7 @@ from rest_framework.response import Response
 
 from accounting.models import (
     AccountingDocument, AccountingDocumentLine, Account, AccountType,
+    AccountGroup, AuxiliaryAccount,
 )
 
 
@@ -590,54 +591,191 @@ def tree_trial_balance(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def matrix_report(request):
-    """گزارش مرور ترکیبی (ماتریس): حساب‌ها در ردیف، مراکز هزینه در ستون."""
-    lines = _posted_lines(request).select_related('account', 'cost_center')
+    """گزارش مرور ترکیبی (ماتریس): تراز سلسله‌مراتبی پله‌ای.
 
-    accounts = {}
-    cost_centers = {}
-    cells = {}
+    ستون عمودی (ردیف‌ها): گروه → کل → معین → تفصیل ۱ → تفصیل ۲ → تفصیل ۳.
+    ستون افقی (بالای جدول): سطح تفکیک — ریز گروه، ریز کل، ریز معین،
+    ریز تفصیل ۱، ریز تفصیل ۲، ریز تفصیل ۳.
+    برای هر سطر: کد حساب، شرح، گردش بدهکار، گردش بستانکار، مانده بدهکار، مانده بستانکار.
+    """
+    company = _company(request)
+    lines = _posted_lines(request).select_related(
+        'account', 'account__account_type', 'account__group',
+        'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
+    )
 
-    for line in lines:
-        a = line.account_id
-        debit = float(line.debit or 0)
-        credit = float(line.credit or 0)
+    def resolve_nature(nature, account_type):
+        if nature and nature != 'none':
+            return nature
+        if account_type is not None and getattr(account_type, 'default_nature', 'none') != 'none':
+            return account_type.default_nature
+        return 'debit'
 
-        acc = accounts.setdefault(a, {
-            'id': a,
-            'code': line.account.code,
-            'name': line.account.name,
-            'nature': line.account.nature,
+    def balances(debit, credit, nature):
+        """(balance_debit, balance_credit) بر اساس ماهیت."""
+        if nature == 'credit':
+            diff = credit - debit
+            return (0.0, diff) if diff >= 0 else (-diff, 0.0)
+        diff = debit - credit
+        return (diff, 0.0) if diff >= 0 else (0.0, -diff)
+
+    # --- گره‌های حساب (کل و معین) ---
+    accounts = list(
+        Account.objects.filter(company=company, is_active=True)
+        .select_related('group', 'account_type')
+        .order_by('code')
+    )
+    acc_nodes = {}
+    for a in accounts:
+        acc_nodes[a.id] = {
+            'id': a.id,
+            'kind': 'account',
+            'code': a.code,
+            'name': a.name,
+            'nature': resolve_nature(a.nature, a.account_type),
+            'group_id': a.group_id,
+            'parent_id': a.parent_id,
+            'level': 1 if a.parent_id is None else 2,
             'debit': 0.0,
             'credit': 0.0,
-        })
-        acc['debit'] += debit
-        acc['credit'] += credit
+            'children': [],
+        }
 
-        c = line.cost_center_id
-        if c:
-            cc = cost_centers.setdefault(c, {
-                'id': c,
-                'code': line.cost_center.code,
-                'name': line.cost_center.name,
+    # --- گره‌های گروه ---
+    groups = list(
+        AccountGroup.objects.filter(company=company, is_active=True)
+        .select_related('account_type')
+        .order_by('code')
+    )
+    group_nodes = {}
+    for g in groups:
+        group_nodes[g.id] = {
+            'id': g.id,
+            'kind': 'group',
+            'code': g.code,
+            'name': g.name,
+            'nature': resolve_nature(g.nature, g.account_type),
+            'level': 0,
+            'debit': 0.0,
+            'credit': 0.0,
+            'children': [],
+        }
+
+    _SLOT_LEVEL = {'aux1': 3, 'aux2': 4, 'aux3': 5}
+
+    # --- گره‌های تفصیلی (تفصیل ۱/۲/۳) با مسیر کامل ---
+    aux_nodes = {}
+    for line in lines:
+        aid = line.account_id
+        if aid not in acc_nodes:
+            # سطر متعلق به حساب غیرفعال/ناموجود — در گزارش لحاظ نمی‌شود
+            continue
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        acc_nodes[aid]['debit'] += debit
+        acc_nodes[aid]['credit'] += credit
+
+        path = []
+        for slot, aux_obj in (
+            ('aux1', line.auxiliary_1),
+            ('aux2', line.auxiliary_2),
+            ('aux3', line.auxiliary_3),
+        ):
+            if aux_obj is not None:
+                path.append((slot, aux_obj))
+
+        for i, (slot, aux_obj) in enumerate(path):
+            key = tuple([aid] + [(s, o.id) for s, o in path[: i + 1]])
+            node = aux_nodes.setdefault(key, {
+                'id': aux_obj.id,
+                'kind': slot,
+                'code': aux_obj.code,
+                'name': aux_obj.name,
+                'nature': acc_nodes[aid]['nature'] if aid in acc_nodes else 'debit',
+                'level': _SLOT_LEVEL[slot],
                 'debit': 0.0,
                 'credit': 0.0,
+                'children': [],
             })
-            cc['debit'] += debit
-            cc['credit'] += credit
-            key = f"{a}:{c}"
-            cell = cells.setdefault(key, {'debit': 0.0, 'credit': 0.0})
-            cell['debit'] += debit
-            cell['credit'] += credit
+            node['debit'] += debit
+            node['credit'] += credit
+    # --- اتصال حساب‌ها: معین زیر کل، کل زیر گروه ---
+    account_roots = []
+    for a in accounts:
+        node = acc_nodes[a.id]
+        if a.parent_id and a.parent_id in acc_nodes:
+            acc_nodes[a.parent_id]['children'].append(node)
+        else:
+            account_roots.append(node)
 
-    account_rows = sorted(accounts.values(), key=lambda x: x['code'])
-    cost_cols = sorted(cost_centers.values(), key=lambda x: x['code'])
+    # --- اتصال تفصیلی‌ها (زیر حساب یا تفصیلی بالادستی) ---
+    for key, node in aux_nodes.items():
+        aid = key[0]
+        if len(key) > 2:
+            parent_key = key[:-1]
+            if parent_key in aux_nodes:
+                aux_nodes[parent_key]['children'].append(node)
+                continue
+        acc_nodes[aid]['children'].append(node)
+
+    # --- اتصال ریشه‌های حساب به گروه (یا به ریشهٔ گزارش) ---
+    roots = []
+    for node in account_roots:
+        gid = node['group_id']
+        if gid and gid in group_nodes:
+            group_nodes[gid]['children'].append(node)
+        else:
+            roots.append(node)
+    for gnode in group_nodes.values():
+        roots.append(gnode)
+
+    # --- رول‌آپ گردش حساب‌ها به والد (تفصیلی‌ها جمع نمی‌شوند: زیرمجموعه‌اند) ---
+    def rollup(node, depth=0):
+        node['depth'] = depth
+        for child in node['children']:
+            rollup(child, depth + 1)
+            if child['kind'] == 'account':
+                node['debit'] += child['debit']
+                node['credit'] += child['credit']
+
+    for r in roots:
+        rollup(r)
+
+    # --- محاسبهٔ مانده برای هر گره (پس از رول‌آپ) ---
+    def finalize(node):
+        node['balance_debit'], node['balance_credit'] = balances(
+            node['debit'], node['credit'], node['nature']
+        )
+        node.pop('group_id', None)
+        node.pop('parent_id', None)
+        node['children'] = sorted(node['children'], key=lambda x: x['code'])
+        for child in node['children']:
+            finalize(child)
+
+    roots = sorted(roots, key=lambda x: x['code'])
+    for r in roots:
+        finalize(r)
+
+    def total_of(node_list):
+        t = {'debit': 0.0, 'credit': 0.0, 'balance_debit': 0.0, 'balance_credit': 0.0}
+        for n in node_list:
+            t['debit'] += n['debit']
+            t['credit'] += n['credit']
+            t['balance_debit'] += n['balance_debit']
+            t['balance_credit'] += n['balance_credit']
+        return t
 
     return Response({
-        'accounts': account_rows,
-        'cost_centers': cost_cols,
-        'cells': cells,
-        'total_debit': sum(a['debit'] for a in account_rows),
-        'total_credit': sum(a['credit'] for a in account_rows),
+        'tree': roots,
+        'total': total_of(roots),
+        'levels': [
+            {'value': 0, 'label': 'ریز گروه'},
+            {'value': 1, 'label': 'ریز کل'},
+            {'value': 2, 'label': 'ریز معین'},
+            {'value': 3, 'label': 'ریز تفصیل ۱'},
+            {'value': 4, 'label': 'ریز تفصیل ۲'},
+            {'value': 5, 'label': 'ریز تفصیل ۳'},
+        ],
     })
 
 
