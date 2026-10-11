@@ -1,31 +1,38 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
-  TextField, Alert, IconButton, Tooltip, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  MenuItem, FormControl, InputLabel, Select,
+  TextField, Alert, IconButton, Tooltip, Grid,
+  MenuItem, FormControl, InputLabel, Select, LinearProgress, Switch, FormControlLabel,
 } from '@mui/material';
 import NumbersIcon from '@mui/icons-material/Numbers';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import { toPersianDigits } from '../core/utils/numberUtils';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
+import HistoryIcon from '@mui/icons-material/History';
+import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
+import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
+const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
+  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.40))',
+  backdropFilter: 'blur(22px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(22px) saturate(160%)',
   border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 14px 40px rgba(99,102,241,0.12)', borderRadius: '16px',
+  boxShadow: '0 16px 46px rgba(99,102,241,0.12)', borderRadius: '18px',
 };
 
 const AccountingSequencesPage = () => {
   const qc = useQueryClient();
   const [form, setForm] = useState({});
   const [editing, setEditing] = useState(null);
+  const [msg, setMsg] = useState(null);
+  const [renumber, setRenumber] = useState({ fiscal_year_id: '', journal_id: '', prefix: '', padding: 5, start: 1 });
 
   const { data, isLoading } = useQuery({ queryKey: ['acc-sequences'], queryFn: () => axiosInstance.get('/accounting/sequences/').then(r => r.data) });
   const { data: journals } = useQuery({ queryKey: ['seq-journals'], queryFn: () => axiosInstance.get('/accounting/journals/').then(r => r.data) });
@@ -37,84 +44,190 @@ const AccountingSequencesPage = () => {
 
   const save = useMutation({
     mutationFn: (p) => editing ? axiosInstance.patch(`/accounting/sequences/${editing.id}/`, p) : axiosInstance.post('/accounting/sequences/', p),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['acc-sequences'] }); setEditing(null); setForm({}); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['acc-sequences'] }); setEditing(null); setForm({}); setMsg({ ok: true, text: 'ذخیره شد' }); },
+    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا در ذخیره' }),
   });
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/accounting/sequences/${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['acc-sequences'] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['acc-sequences'] }); setMsg({ ok: true, text: 'حذف شد' }); },
+  });
+
+  const renumberMutation = useMutation({
+    mutationFn: (p) => axiosInstance.post('/accounting/sequences/renumber/', p),
+    onSuccess: (r) => setMsg({ ok: true, text: r.data?.message || 'شماره‌گذاری مجدد انجام شد' }),
+    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا در شماره‌گذاری مجدد' }),
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+  const setRn = (k, v) => setRenumber(p => ({ ...p, [k]: v }));
+
+  const previewOf = (s) => `${s.prefix || ''}${String(s.next_number || 1).padStart(s.padding || 5, '0')}`;
+  const stats = useMemo(() => {
+    const byYear = {};
+    list.forEach(s => { if (s.fiscal_year) byYear[s.fiscal_year] = (byYear[s.fiscal_year] || 0) + 1; });
+    return { total: list.length, years: Object.keys(byYear).length };
+  }, [list]);
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <NumbersIcon sx={{ fontSize: 28, color: '#fff' }} />
+      <Paper sx={{
+        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
+        background: 'linear-gradient(120deg, rgba(99,102,241,0.14), rgba(16,185,129,0.06), rgba(255,255,255,0.3))',
+        border: '1px solid rgba(99,102,241,0.2)', borderRadius: '18px',
+      }}>
+        <Avatar sx={{ width: 58, height: 58, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 28px ${COLOR}55` }}>
+          <NumbersIcon sx={{ fontSize: 30, color: '#fff' }} />
         </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>شماره‌گذاری اسناد</Typography>
-          <Typography variant="body2" color="textSecondary">تعیین پیشوند و قالب شماره به ازای روزنامه، سال و شعبه</Typography>
+        <Box sx={{ flex: 1, minWidth: 220 }}>
+          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>شماره‌گذاری اسناد</Typography>
+          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>پیشوند و قالب شمارهٔ اسناد + شماره‌گذاری مجدد بر اساس تاریخ</Typography>
         </Box>
-      </Paper>
-
-      <Paper sx={{ ...glass, p: 2.5, mb: 2 }}>
-        <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK} mb={2}>{editing ? 'ویرایش شماره‌گذاری' : 'شماره‌گذاری جدید'}</Typography>
-        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>روزنامه</InputLabel>
-            <Select value={form.journal || ''} label="روزنامه" onChange={e => set('journal', e.target.value)}>
-              <MenuItem value="">—</MenuItem>
-              {journalsList.map(j => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: 160 }}>
-            <InputLabel>سال مالی</InputLabel>
-            <Select value={form.fiscal_year || ''} label="سال مالی" onChange={e => set('fiscal_year', e.target.value)}>
-              <MenuItem value="">—</MenuItem>
-              {yearsList.map(y => <MenuItem key={y.id} value={y.id}>{y.name}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField size="small" label="پیشوند" value={form.prefix || ''} onChange={e => set('prefix', e.target.value)} sx={{ width: 130 }} />
-          <TextField size="small" label="شمارهٔ بعدی" type="number" value={form.next_number ?? 1} onChange={e => set('next_number', Number(e.target.value) || 1)} sx={{ width: 120 }} />
-          <TextField size="small" label="تعداد ارقام" type="number" value={form.padding ?? 5} onChange={e => set('padding', Number(e.target.value) || 5)} sx={{ width: 120 }} />
-          <Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, next_number: Number(form.next_number) || 1, padding: Number(form.padding) || 5 })}
-            sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
-            {editing ? 'به‌روزرسانی' : 'افزودن'}
-          </Button>
-          {editing && <Button variant="outlined" onClick={() => { setEditing(null); setForm({}); }}>انصراف</Button>}
+        <Stack direction="row" spacing={1.5}>
+          <Box sx={{ textAlign: 'center', px: 2, py: 1, borderRadius: '12px', bgcolor: 'rgba(99,102,241,0.1)' }}>
+            <Typography variant="h6" fontWeight={900} color={COLOR_DARK} sx={{ fontFamily: FONT }}>{formatPersianNumber(stats.total)}</Typography>
+            <Typography variant="caption" color="textSecondary">قانون</Typography>
+          </Box>
+          <Box sx={{ textAlign: 'center', px: 2, py: 1, borderRadius: '12px', bgcolor: 'rgba(16,185,129,0.1)' }}>
+            <Typography variant="h6" fontWeight={900} color="#059669" sx={{ fontFamily: FONT }}>{formatPersianNumber(stats.years)}</Typography>
+            <Typography variant="caption" color="textSecondary">سال مالی</Typography>
+          </Box>
         </Stack>
       </Paper>
 
+      {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)} sx={{ mb: 2, borderRadius: '14px', fontFamily: FONT }}>{msg.text}</Alert>}
+
+      <Grid container spacing={2}>
+        <Grid item xs={12} md={5}>
+          <Paper sx={{ ...glass, p: 2.5 }}>
+            <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK} mb={2} sx={{ fontFamily: FONT }}>{editing ? 'ویرایش شماره‌گذاری' : 'شماره‌گذاری جدید'}</Typography>
+            <Stack spacing={1.5}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>دفتر روزنامه</InputLabel>
+                <Select value={form.journal || ''} label="دفتر روزنامه" onChange={e => set('journal', e.target.value)}>
+                  <MenuItem value="">— عمومی —</MenuItem>
+                  {journalsList.map(j => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small" fullWidth>
+                <InputLabel>سال مالی</InputLabel>
+                <Select value={form.fiscal_year || ''} label="سال مالی" onChange={e => set('fiscal_year', e.target.value)}>
+                  <MenuItem value="">— عمومی —</MenuItem>
+                  {yearsList.map(y => <MenuItem key={y.id} value={y.id}>{y.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <Stack direction="row" spacing={1.5}>
+                <TextField size="small" label="پیشوند" value={form.prefix || ''} onChange={e => set('prefix', e.target.value)} sx={{ flex: 1 }} placeholder="مثلاً INV-" />
+                <TextField size="small" label="شمارهٔ بعدی" type="number" value={form.next_number ?? 1} onChange={e => set('next_number', Number(e.target.value) || 1)} sx={{ width: 130 }} />
+                <TextField size="small" label="تعداد ارقام" type="number" value={form.padding ?? 5} onChange={e => set('padding', Number(e.target.value) || 5)} sx={{ width: 120 }} />
+              </Stack>
+              <Box sx={{ p: 1.5, borderRadius: '12px', bgcolor: 'rgba(99,102,241,0.06)', border: '1px dashed rgba(99,102,241,0.3)', textAlign: 'center' }}>
+                <Typography variant="caption" color="textSecondary">پیش‌نمایش</Typography>
+                <Typography variant="h6" fontWeight={900} sx={{ direction: 'ltr', color: COLOR_DARK, fontFamily: FONT }}>
+                  {`${form.prefix || ''}${String(form.next_number ?? 1).padStart(form.padding ?? 5, '0')}`}
+                </Typography>
+              </Box>
+              <Stack direction="row" spacing={1}>
+                <Button variant="contained" startIcon={<SaveIcon />} onClick={() => save.mutate({ ...form, next_number: Number(form.next_number) || 1, padding: Number(form.padding) || 5 })}
+                  sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', flex: 1, fontFamily: FONT }}>
+                  {editing ? 'به‌روزرسانی' : 'افزودن'}
+                </Button>
+                {editing && <Button variant="outlined" onClick={() => { setEditing(null); setForm({}); }} sx={{ borderRadius: '12px', fontFamily: FONT }}>انصراف</Button>}
+              </Stack>
+            </Stack>
+          </Paper>
+        </Grid>
+
+        <Grid item xs={12} md={7}>
+          <Paper sx={{ ...glass, p: 2.5 }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
+              <Avatar sx={{ width: 40, height: 40, bgcolor: 'rgba(16,185,129,0.15)' }}>
+                <AutoFixHighIcon sx={{ color: '#059669' }} />
+              </Avatar>
+              <Box>
+                <Typography variant="subtitle1" fontWeight={800} color="#059669" sx={{ fontFamily: FONT }}>شماره‌گذاری مجدد اسناد</Typography>
+                <Typography variant="caption" color="textSecondary">اسناد بر اساس تاریخ مرتب و شماره‌گذاری مجدد می‌شوند</Typography>
+              </Box>
+            </Box>
+            <Stack spacing={1.5}>
+              <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+                <FormControl size="small" sx={{ flex: 1 }}>
+                  <InputLabel>سال مالی</InputLabel>
+                  <Select value={renumber.fiscal_year_id || ''} label="سال مالی" onChange={e => setRn('fiscal_year_id', e.target.value)}>
+                    <MenuItem value="">همه سال‌ها</MenuItem>
+                    {yearsList.map(y => <MenuItem key={y.id} value={y.id}>{y.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ flex: 1 }}>
+                  <InputLabel>دفتر روزنامه</InputLabel>
+                  <Select value={renumber.journal_id || ''} label="دفتر روزنامه" onChange={e => setRn('journal_id', e.target.value)}>
+                    <MenuItem value="">همه روزنامه‌ها</MenuItem>
+                    {journalsList.map(j => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Stack>
+              <Stack direction="row" spacing={1.5}>
+                <TextField size="small" label="پیشوند" value={renumber.prefix} onChange={e => setRn('prefix', e.target.value)} sx={{ flex: 1 }} />
+                <TextField size="small" label="شروع از" type="number" value={renumber.start} onChange={e => setRn('start', Number(e.target.value) || 1)} sx={{ width: 110 }} />
+                <TextField size="small" label="تعداد ارقام" type="number" value={renumber.padding} onChange={e => setRn('padding', Number(e.target.value) || 5)} sx={{ width: 110 }} />
+              </Stack>
+              <Button variant="contained" startIcon={<AutorenewIcon />} disabled={renumberMutation.isPending}
+                onClick={() => renumberMutation.mutate({ ...renumber, start: Number(renumber.start) || 1, padding: Number(renumber.padding) || 5 })}
+                sx={{ background: 'linear-gradient(135deg,#10b981,#059669)', borderRadius: '12px', fontFamily: FONT }}>
+                {renumberMutation.isPending ? 'در حال انجام...' : 'شماره‌گذاری مجدد'}
+              </Button>
+              {renumberMutation.isPending && <LinearProgress sx={{ borderRadius: '6px' }} />}
+            </Stack>
+          </Paper>
+        </Grid>
+      </Grid>
+
       {isLoading ? <Box textAlign="center" py={4}><CircularProgress /></Box> : (
-        <TableContainer component={Paper} sx={{ ...glass }}>
-          <Table size="small">
-            <TableHead><TableRow><TableCell>روزنامه</TableCell><TableCell>سال مالی</TableCell><TableCell>پیشوند</TableCell><TableCell>شمارهٔ بعدی</TableCell><TableCell>ارقام</TableCell><TableCell>پیش‌نمایش</TableCell><TableCell>عملیات</TableCell></TableRow></TableHead>
-            <TableBody>
-              {list.length === 0 ? <TableRow><TableCell colSpan={7} align="center">شماره‌گذاری‌ای ثبت نشده است</TableCell></TableRow> :
-              list.map(s => {
-                const journal_name = journalsList.find(j => j.id === s.journal)?.name || '—';
-                const year_name = yearsList.find(y => y.id === s.fiscal_year)?.name || '—';
-                const preview = `${s.prefix || ''}${String(s.next_number).padStart(s.padding || 5, '0')}`;
+        <Paper sx={{ ...glass, p: 2, mt: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+            <HistoryIcon fontSize="small" sx={{ color: COLOR_DARK }} />
+            <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>قوانین شماره‌گذاری</Typography>
+          </Box>
+          {list.length === 0 ? (
+            <Typography variant="body2" color="textSecondary" textAlign="center" py={4} sx={{ fontFamily: FONT }}>هنوز قانونی ثبت نشده است.</Typography>
+          ) : (
+            <Stack spacing={1}>
+              {list.map(s => {
+                const j = journalsList.find(x => x.id === s.journal);
+                const y = yearsList.find(x => x.id === s.fiscal_year);
                 return (
-                  <TableRow key={s.id} hover>
-                    <TableCell>{journal_name}</TableCell>
-                    <TableCell>{year_name}</TableCell>
-                    <TableCell>{s.prefix || '—'}</TableCell>
-                    <TableCell>{toPersianDigits(s.next_number)}</TableCell>
-                    <TableCell>{toPersianDigits(s.padding)}</TableCell>
-                    <TableCell><Chip size="small" label={preview} color="primary" sx={{ fontWeight: 800 }} /></TableCell>
-                    <TableCell>
-                      <IconButton size="small" onClick={() => { setEditing(s); setForm(s); }}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(s.id); }}><DeleteIcon fontSize="small" /></IconButton>
-                    </TableCell>
-                  </TableRow>
+                  <Box key={s.id} sx={{
+                    p: 1.5, borderRadius: '14px', border: '1px solid rgba(100,116,139,0.14)',
+                    background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.55))',
+                    display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
+                    borderRight: '4px solid #6366f1',
+                  }}>
+                    <Box sx={{ flex: 1, minWidth: 160 }}>
+                      <Typography variant="body2" fontWeight={800} sx={{ fontFamily: FONT }}>{j?.name || 'عمومی'}</Typography>
+                      <Typography variant="caption" color="textSecondary">{y?.name || 'همه سال‌ها'}</Typography>
+                    </Box>
+                    <Box sx={{ minWidth: 100 }}>
+                      <Typography variant="caption" color="textSecondary" display="block">پیشوند</Typography>
+                      <Typography variant="body2" fontWeight={700} sx={{ direction: 'ltr', textAlign: 'left', fontFamily: FONT }}>{s.prefix || '—'}</Typography>
+                    </Box>
+                    <Box sx={{ minWidth: 90 }}>
+                      <Typography variant="caption" color="textSecondary" display="block">شمارهٔ بعدی</Typography>
+                      <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{toPersianDigits(s.next_number)}</Typography>
+                    </Box>
+                    <Box sx={{ minWidth: 70 }}>
+                      <Typography variant="caption" color="textSecondary" display="block">ارقام</Typography>
+                      <Typography variant="body2" fontWeight={700} sx={{ fontFamily: FONT }}>{toPersianDigits(s.padding)}</Typography>
+                    </Box>
+                    <Chip size="small" label={previewOf(s)} sx={{ fontWeight: 800, bgcolor: 'rgba(99,102,241,0.12)', color: COLOR_DARK, direction: 'ltr', fontFamily: FONT }} />
+                    <Box>
+                      <Tooltip title="ویرایش"><IconButton size="small" onClick={() => { setEditing(s); setForm(s); }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(s.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </Box>
+                  </Box>
                 );
               })}
-            </TableBody>
-          </Table>
-        </TableContainer>
+            </Stack>
+          )}
+        </Paper>
       )}
     </Box>
   );

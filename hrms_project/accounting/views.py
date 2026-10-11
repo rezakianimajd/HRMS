@@ -735,6 +735,39 @@ class AccountingSequenceViewSet(CompanyScopedViewSet):
     queryset = AccountingSequence.objects.select_related('journal', 'fiscal_year', 'branch')
     ordering = ['journal', 'fiscal_year']
 
+    @action(detail=False, methods=['post'])
+    def renumber(self, request):
+        """شماره‌گذاری مجدد اسناد بر اساس تاریخ.
+
+        body:
+          - fiscal_year_id (اختیاری): محدود به یک سال مالی
+          - journal_id (اختیاری): محدود به یک روزنامه
+          - prefix, padding, start (اختیاری): قالب شماره
+        اسناد (پیش‌نویس/تأییدشده/ثبت‌شده) بر اساس تاریخ + id مرتب و شماره‌گذاری می‌شوند.
+        """
+        company = _company(request)
+        fiscal_year_id = request.data.get('fiscal_year_id') or None
+        journal_id = request.data.get('journal_id') or None
+        prefix = str(request.data.get('prefix') or '')
+        padding = int(request.data.get('padding') or 5)
+        start = int(request.data.get('start') or 1)
+
+        qs = AccountingDocument.objects.filter(company=company)
+        if fiscal_year_id:
+            qs = qs.filter(fiscal_year_id=fiscal_year_id)
+        if journal_id:
+            qs = qs.filter(journal_id=journal_id)
+        qs = qs.order_by('date', 'id')
+
+        updated = 0
+        for idx, doc in enumerate(qs.iterator(), start=start):
+            number = f'{prefix}{str(idx).zfill(padding)}'
+            if doc.number != number:
+                AccountingDocument.objects.filter(pk=doc.pk).update(number=number)
+                updated += 1
+
+        return Response({'message': f'{updated} سند شماره‌گذاری مجدد شد', 'updated': updated, 'total': qs.count()})
+
 
 class SourceTransactionViewSet(CompanyScopedViewSet):
     serializer_class = SourceTransactionSerializer
