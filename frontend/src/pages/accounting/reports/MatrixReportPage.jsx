@@ -45,6 +45,29 @@ const EMPTY_TOTAL = {
 
 const norm = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '').toLowerCase();
 
+/** همهٔ زیرمجموعه‌های یک گره */
+const descendantsOf = (node) => {
+  const out = [];
+  const walk = (n) => (n?.children || []).forEach((c) => { out.push(c); walk(c); });
+  walk(node);
+  return out;
+};
+
+/**
+ * «شاخهٔ» یک سطح نسبت به گره انتخاب‌شده:
+ *   سطح پایین‌تر → زیرمجموعه‌های همان گره
+ *   سطح بالاتر  → والدهای همان گره (کل/معین/گروهی که این کد به آن وصل است)
+ *   همان سطح    → خود گره
+ *   بدون انتخاب → همهٔ گره‌ها
+ */
+const branchAt = (node, lv, allNodes) => {
+  if (!node) return allNodes;
+  const nl = node.level ?? -1;
+  if (lv > nl) return descendantsOf(node);
+  if (lv < nl) return (node.__parents || []);
+  return [node];
+};
+
 const MatrixReportPage = () => {
   const [level, setLevel] = useState(1);
   const [subLevel, setSubLevel] = useState(null);
@@ -86,23 +109,12 @@ const MatrixReportPage = () => {
     [flat, selectedKey],
   );
 
-  const descendantsOf = (node) => {
-    const out = [];
-    const walk = (n) => (n?.children || []).forEach((c) => { out.push(c); walk(c); });
-    walk(node);
-    return out;
-  };
-
-  // ردیف‌های پایه: با انتخاب «زیر سطح» فقط همان سطح نمایش داده می‌شود
-  // (اگر ردیفی انتخاب شده باشد، محدود به زیرمجموعهٔ همان حساب)
+  // ردیف‌های پایه: با انتخاب «ریز سطح» فقط همان سطح نمایش داده می‌شود
+  // (و اگر کدی انتخاب شده باشد، فقط «شاخهٔ» همان کد در آن سطح)
   const baseRows = useMemo(() => {
-    if (subLevel !== null) {
-      // فقط وقتی ریزسطح پایین‌تر از سطح تراز باشد، محدود به زیرمجموعهٔ حساب انتخاب‌شده می‌شود؛
-      // در غیر این صورت (سطح بالاتر یا بدون انتخاب) همهٔ ردیف‌های آن سطح نمایش داده می‌شود.
-      const scope = (selectedNode && subLevel > level) ? descendantsOf(selectedNode) : flat;
-      return scope.filter((n) => (n.level ?? -1) === subLevel);
-    }
-    return flat.filter((n) => (n.level ?? -1) === level);
+    if (subLevel === null) return flat.filter((n) => (n.level ?? -1) === level);
+    const scope = selectedNode ? branchAt(selectedNode, subLevel, flat) : flat;
+    return scope.filter((n) => (n.level ?? -1) === subLevel);
   }, [flat, level, subLevel, selectedNode]);
 
   // نوار جستجو: کد و شرح خود ردیف + کد و شرح والدها + بازهٔ کد + فقط دارای گردش
@@ -189,13 +201,17 @@ const MatrixReportPage = () => {
       );
     }
     const net = (row.balance_debit || 0) - (row.balance_credit || 0);
+    const isCredit = net < 0;
     return (
       <>
         <TableCell>{money(row.debit, BLUE, bold)}</TableCell>
         <TableCell>{money(row.credit, GREEN, bold)}</TableCell>
         <TableCell>
-          {numCell(Math.abs(net), isFlat(net) ? 'text.disabled' : (net >= 0 ? BLUE : GREEN), bold,
-            isFlat(net) ? '' : (net >= 0 ? 'بدهکار' : 'بستانکار'))}
+          <Typography variant="body2" fontWeight={bold ? 900 : 600}
+            sx={{ color: isFlat(net) ? 'text.disabled' : (isCredit ? GREEN : BLUE),
+              direction: 'ltr', textAlign: 'right', whiteSpace: 'nowrap', fontFamily: FONT }}>
+            {isFlat(net) ? '—' : (isCredit ? `(${formatPersianNumber(Math.abs(net))})` : formatPersianNumber(Math.abs(net)))}
+          </Typography>
         </TableCell>
       </>
     );
@@ -319,7 +335,7 @@ const MatrixReportPage = () => {
               <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                 {subLevels.map((l) => {
                   const active = (subLevel === null ? level : subLevel) === l.value;
-                  const count = ((selectedNode && l.value > level) ? descendantsOf(selectedNode) : flat)
+                  const count = branchAt(selectedNode, l.value, flat)
                     .filter((n) => (n.level ?? -1) === l.value).length;
                   return (
                     <Button key={l.value} size="small" variant={active ? 'contained' : 'outlined'}
@@ -377,7 +393,7 @@ const MatrixReportPage = () => {
                           <TableCell key={`${lbl}-${i}`} align="center" sx={headSx}>{lbl}</TableCell>
                         ))}
                         {columnMode === '3' ? (
-                          <TableCell align="center" sx={{ ...headSx, bgcolor: 'rgba(139,92,246,0.08)' }}>بدهکار/بستانکار</TableCell>
+                          <TableCell align="center" sx={{ ...headSx, bgcolor: 'rgba(139,92,246,0.08)' }}>بستانکار در پرانتز</TableCell>
                         ) : null}
                       </TableRow>
                     </TableHead>
