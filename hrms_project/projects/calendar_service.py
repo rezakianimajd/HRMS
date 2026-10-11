@@ -170,9 +170,9 @@ def _contract_events(contracts, pmap):
     if not contract_ids:
         return []
 
-    def group(model):
+    def group(model, order_by='date'):
         out = {}
-        rows = model.objects.filter(contract_id__in=contract_ids).order_by('date')
+        rows = model.objects.filter(contract_id__in=contract_ids).order_by(order_by)
         for row in rows:
             out.setdefault(row.contract_id, []).append(row)
         return out
@@ -181,7 +181,8 @@ def _contract_events(contracts, pmap):
     invoices = group(Invoice)
     statements = group(Statement)
     payments = group(Payment)
-    guarantees = group(Guarantee)
+    # توجه: مدل Guarantee فیلد `date` ندارد → باید با `issue_date` مرتب شود.
+    guarantees = group(Guarantee, order_by='issue_date')
 
     events = []
     for c in contracts:

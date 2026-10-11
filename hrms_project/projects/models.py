@@ -369,6 +369,10 @@ class Resource(BaseModel):
     code = models.CharField(max_length=50, verbose_name=_('کد'))
     name = models.CharField(max_length=200, verbose_name=_('نام'))
     unit = models.CharField(max_length=30, blank=True, verbose_name=_('واحد'))
+    daily_capacity = models.DecimalField(
+        max_digits=18, decimal_places=2, default=0, verbose_name=_('ظرفیت روزانه'),
+        help_text=_('۰ = بدون سقف (برای هشدار بیش‌تخصیص در تحلیل منابع)'),
+    )
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
@@ -437,3 +441,14 @@ class OBSNode(BaseModel):
 
     def __str__(self):
         return f'{self.code} - {self.name}'
+
+
+# ---------------------------------------------------------------------------
+# فاز ۱ — زمان‌بندی، منابع و EVM
+# مدل‌ها در ماژول جدا تعریف شده و اینجا import می‌شوند تا Django آن‌ها را کشف کند
+# (app_label به‌صورت خودکار «projects» است).
+# ---------------------------------------------------------------------------
+from projects.schedule_models import (  # noqa: E402,F401
+    Activity, ActivityProgress, ActivityRelationship, Baseline, BaselineActivity,
+    CalendarException, ResourceAssignment, ResourceRate, WorkCalendar,
+)

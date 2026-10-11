@@ -3,7 +3,7 @@ from datetime import date
 
 from django.test import TestCase
 
-from contracts.models import Payment
+from contracts.models import Guarantee, Payment
 from projects.calendar_service import build_calendar_events
 from projects.cost_models import CostTransaction, CostTransactionLine, ProgressStatement
 from projects.models import ProjectPhase
@@ -85,6 +85,18 @@ class CalendarServiceTests(ProjectTestMixin, TestCase):
         data = build_calendar_events(FakeRequest(self.company, limit='3'))
         self.assertEqual(data['count'], 3)
         self.assertTrue(data['counts'])
+
+    def test_guarantee_events_use_issue_date(self):
+        """رگرسیون: مدل Guarantee فیلد `date` ندارد و نباید با آن مرتب شود (قبلاً ۵۰۰ می‌داد)."""
+        Guarantee.objects.create(
+            company=self.company, contract=self.contract, guarantee_type='performance',
+            amount=25_000, issue_date=date(2026, 4, 20), expiry_date=date(2027, 4, 20),
+        )
+        data = build_calendar_events(FakeRequest(self.company))
+        kinds = {e['kind'] for e in data['events']}
+        self.assertIn('guarantee', kinds)
+        titles = [e['title'] for e in data['events'] if e['kind'] == 'guarantee']
+        self.assertTrue(any('صدور تضمین' in t for t in titles))
 
     def test_program_projects_are_excluded_by_default(self):
         self.project.is_program = True

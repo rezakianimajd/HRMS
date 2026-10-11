@@ -68,3 +68,11 @@ def jalali_period_fields(gregorian_date):
         'jm': p['jm'],
         'jd': p['jd'],
     }
+
+
+def jalali_full(gregorian_date):
+    """تاریخ کامل شمسی به‌صورت کوتاه: '1405/01/12' (برای گانت و جدول‌ها)."""
+    p = jalali_parts(gregorian_date)
+    if not p:
+        return ''
+    return f"{p['jy']:04d}/{p['jm']:02d}/{p['jd']:02d}"

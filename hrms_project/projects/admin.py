@@ -161,3 +161,74 @@ class ProgressStatementAdmin(admin.ModelAdmin):
 @admin.register(ProgressStatementItem)
 class ProgressStatementItemAdmin(admin.ModelAdmin):
     list_display = ['statement', 'contract_item', 'wbs', 'description', 'amount']
+
+
+# ------------------------- فاز ۱: زمان‌بندی و منابع -------------------------
+from projects.schedule_models import (  # noqa: E402
+    Activity, ActivityProgress, ActivityRelationship, Baseline, BaselineActivity,
+    CalendarException, ResourceAssignment, ResourceRate, WorkCalendar,
+)
+
+
+@admin.register(WorkCalendar)
+class WorkCalendarAdmin(admin.ModelAdmin):
+    list_display = ['name', 'project', 'code', 'hours_per_day', 'is_default']
+    list_filter = ['project', 'is_default']
+    search_fields = ['name', 'code']
+
+
+@admin.register(CalendarException)
+class CalendarExceptionAdmin(admin.ModelAdmin):
+    list_display = ['calendar', 'date', 'is_working', 'hours', 'title']
+    list_filter = ['calendar', 'is_working']
+    search_fields = ['title']
+
+
+@admin.register(Activity)
+class ActivityAdmin(admin.ModelAdmin):
+    list_display = ['code', 'name', 'project', 'activity_type', 'duration_days',
+                    'early_start', 'early_finish', 'total_float', 'is_critical', 'percent_complete']
+    list_filter = ['project', 'activity_type', 'is_critical']
+    search_fields = ['code', 'name']
+    readonly_fields = ['early_start', 'early_finish', 'late_start', 'late_finish',
+                       'total_float', 'is_critical']
+
+
+@admin.register(ActivityRelationship)
+class ActivityRelationshipAdmin(admin.ModelAdmin):
+    list_display = ['project', 'predecessor', 'successor', 'rel_type', 'lag_days']
+    list_filter = ['project', 'rel_type']
+
+
+@admin.register(Baseline)
+class BaselineAdmin(admin.ModelAdmin):
+    list_display = ['project', 'name', 'version', 'is_current', 'total_cost',
+                    'start_date', 'end_date', 'created_at']
+    list_filter = ['project', 'is_current']
+
+
+@admin.register(BaselineActivity)
+class BaselineActivityAdmin(admin.ModelAdmin):
+    list_display = ['baseline', 'code', 'name', 'early_start', 'early_finish',
+                    'duration_days', 'total_float', 'planned_cost']
+    list_filter = ['baseline']
+
+
+@admin.register(ResourceRate)
+class ResourceRateAdmin(admin.ModelAdmin):
+    list_display = ['resource', 'effective_from', 'rate', 'currency']
+    list_filter = ['resource', 'currency']
+
+
+@admin.register(ResourceAssignment)
+class ResourceAssignmentAdmin(admin.ModelAdmin):
+    list_display = ['activity', 'resource', 'units_per_day', 'unit_rate',
+                    'planned_cost', 'actual_cost']
+    list_filter = ['resource']
+
+
+@admin.register(ActivityProgress)
+class ActivityProgressAdmin(admin.ModelAdmin):
+    list_display = ['activity', 'date', 'percent_complete', 'quantity']
+    list_filter = ['date']
+

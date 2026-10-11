@@ -88,7 +88,17 @@ $BackendFiles = @(
     'hrms_project/projects/tests/test_jalali_utils.py',
     'hrms_project/projects/tests/test_wbs_template.py',
     'hrms_project/projects/tests/test_phase0_cost.py',
-    'hrms_project/projects/tests/test_calendar_service.py'
+    'hrms_project/projects/tests/test_calendar_service.py',
+    'hrms_project/projects/schedule_models.py',
+    'hrms_project/projects/scheduling/__init__.py',
+    'hrms_project/projects/scheduling/workcal.py',
+    'hrms_project/projects/scheduling/cpm.py',
+    'hrms_project/projects/scheduling/evm.py',
+    'hrms_project/projects/scheduling/service.py',
+    'hrms_project/projects/migrations/0006_baseline_workcalendar_activity_activityprogress_and_more.py',
+    'hrms_project/projects/migrations/0007_resource_daily_capacity.py',
+    'hrms_project/projects/tests/test_cpm.py',
+    'hrms_project/projects/tests/test_evm.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
