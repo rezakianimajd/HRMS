@@ -3,6 +3,8 @@
 Business logic lives in `accounting.services`; these ViewSets are thin and
 expose the lifecycle actions (submit/approve/post/lock/reverse) via @action.
 """
+import uuid
+
 from django.utils import timezone
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
@@ -612,6 +614,71 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             return Response({'error': str(e)}, status=400)
         self._log(obj, 'reversed', 'برگشت خورد')
         return Response(AccountingDocumentSerializer(reversal).data)
+
+    # ---- نواقص سند (چک‌لیست رفع نواقص) ----
+    @staticmethod
+    def _issues_payload(obj):
+        items = list(obj.issues or [])
+        return {
+            'issues': items,
+            'issues_count': len(items),
+            'open_issues_count': sum(1 for i in items if not i.get('done')),
+        }
+
+    def _save_issues(self, obj, items, step, note):
+        obj.issues = items
+        obj.save(update_fields=['issues', 'updated_at'])
+        self._log(obj, step, note)
+
+    @action(detail=True, methods=['post'])
+    def issue_add(self, request, pk=None):
+        """افزودن یک ردیف به چک‌لیست نواقص سند (یادداشت مشکل برای اصلاح بعدی)."""
+        obj = self.get_object()
+        text = (request.data.get('text') or '').strip()
+        if not text:
+            return Response({'error': 'متن نواقص را وارد کنید.'}, status=400)
+        items = [dict(i) for i in (obj.issues or [])]
+        items.append({
+            'id': uuid.uuid4().hex[:12],
+            'text': text[:500],
+            'done': False,
+            'by': request.user.username or '',
+            'at': timezone.now().isoformat(),
+        })
+        self._save_issues(obj, items, 'issue_added', text[:200])
+        return Response(self._issues_payload(obj))
+
+    @action(detail=True, methods=['post'])
+    def issue_toggle(self, request, pk=None):
+        """تیک زدن / تیک برداشتن یک ردیف نواقص (تیک سبز = رفع شد)."""
+        obj = self.get_object()
+        issue_id = str(request.data.get('id') or '')
+        items = [dict(i) for i in (obj.issues or [])]
+        target = next((i for i in items if str(i.get('id')) == issue_id), None)
+        if target is None:
+            return Response({'error': 'ردیف نواقص پیدا نشد.'}, status=404)
+        target['done'] = not target.get('done')
+        target['done_by'] = (request.user.username or '') if target['done'] else ''
+        target['done_at'] = timezone.now().isoformat() if target['done'] else ''
+        self._save_issues(
+            obj, items,
+            'issue_done' if target['done'] else 'issue_reopened',
+            (target.get('text') or '')[:200],
+        )
+        return Response(self._issues_payload(obj))
+
+    @action(detail=True, methods=['post'])
+    def issue_remove(self, request, pk=None):
+        """حذف یک ردیف از چک‌لیست نواقص سند."""
+        obj = self.get_object()
+        issue_id = str(request.data.get('id') or '')
+        items = [dict(i) for i in (obj.issues or [])]
+        target = next((i for i in items if str(i.get('id')) == issue_id), None)
+        if target is None:
+            return Response({'error': 'ردیف نواقص پیدا نشد.'}, status=404)
+        remaining = [i for i in items if str(i.get('id')) != issue_id]
+        self._save_issues(obj, remaining, 'issue_removed', (target.get('text') or '')[:200])
+        return Response(self._issues_payload(obj))
 
     @action(detail=False, methods=['post'])
     def bulk_post(self, request):

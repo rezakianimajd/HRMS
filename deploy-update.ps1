@@ -13,8 +13,14 @@
 .PARAMETER LocalBuild
     بیلد روی ویندوز انجام شود و پوشهٔ build منتقل شود (پیش‌فرض: بیلد روی سرور).
 
+.PARAMETER Migrate
+    اجرای migrate_schemas روی سرور — لازم پس از هر تغییر مدل
+    (مثلاً افزودن فیلد issues = چک‌لیست نواقص سند).
+
 .EXAMPLE
     .\deploy-update.ps1                  # استقرار کامل (بک‌اند + فرانت‌اند با بیلد روی سرور)
+.EXAMPLE
+    .\deploy-update.ps1 -Migrate          # همراه با اجرای مایگریشن (پس از تغییر مدل)
 .EXAMPLE
     .\deploy-update.ps1 -CheckOnly        # فقط تست اتصال و مجوزها، بدون هیچ تغییری
 .EXAMPLE
@@ -32,6 +38,7 @@ param(
     [string] $AppDir    = '/opt/hrms',             # ریشهٔ پروژه روی سرور
     [string] $StaticDir = '/var/www/hrms/static',  # مقصد location /static/ در nginx
     [switch] $LocalBuild,
+    [switch] $Migrate,
     [switch] $SkipBackend,
     [switch] $SkipFrontend,
     [switch] $NoBuild,
@@ -42,16 +49,23 @@ $ErrorActionPreference = 'Stop'
 $Srv      = "$User@$Server"
 $RepoRoot = $PSScriptRoot
 
-# فایل‌های تغییریافتهٔ بک‌اند (مسیر نسبت به ریشهٔ مخزن)
+# فایل‌های تغییریافتهٔ بک‌اند (مسیر نسبت به ریشهٔ مخزن — مقصد هم همان مسیر روی سرور است)
 $BackendFiles = @(
+    'hrms_project/accounting/models.py',
+    'hrms_project/accounting/serializers.py',
+    'hrms_project/accounting/views.py',
     'hrms_project/accounting/constants.py',
     'hrms_project/accounting/report_views.py',
     'hrms_project/accounting/annual_views.py',
-    'hrms_project/accounting/tax_views.py'
+    'hrms_project/accounting/tax_views.py',
+    'hrms_project/accounting/migrations/0021_accountingdocument_issues.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
 $FrontendFiles = @(
+    'frontend/src/pages/AccountingDocumentsPage.jsx',
+    'frontend/src/core/components/accounting/DocumentIssuesDialog.jsx',
+    'frontend/src/core/components/ui/Timeline.jsx',
     'frontend/src/pages/accounting/reports/MatrixReportPage.jsx',
     'frontend/src/pages/accounting/reports/TreeTrialBalancePage.jsx',
     'frontend/src/pages/accounting/reports/LedgerReviewPage.jsx'
@@ -75,15 +89,26 @@ if (-not $SkipBackend) {
         foreach ($f in $BackendFiles) {
             if (-not (Test-Path $f)) { throw "فایل پیدا نشد: $f" }
             $name = Split-Path $f -Leaf
+            $remoteDir = (Split-Path $f -Parent) -replace '\\', '/'
             scp $f "${Srv}:/tmp/$name"
             if ($LASTEXITCODE -ne 0) { throw "انتقال ناموفق: $f" }
-            ssh -t $Srv "sudo cp /tmp/$name $AppDir/hrms_project/accounting/$name; sudo chown ${AppUser}:${AppUser} $AppDir/hrms_project/accounting/$name; sudo chmod 644 $AppDir/hrms_project/accounting/$name; rm -f /tmp/$name"
+            ssh -t $Srv "sudo mkdir -p $AppDir/$remoteDir; sudo cp /tmp/$name $AppDir/$f; sudo chown ${AppUser}:${AppUser} $AppDir/$f; sudo chmod 644 $AppDir/$f; rm -f /tmp/$name"
             if ($LASTEXITCODE -ne 0) { throw "جای‌گزینی ناموفق روی سرور: $name" }
             Ok $f
         }
     } finally { Pop-Location }
     Ok 'فایل‌های بک‌اند جای‌گزین شدند.'
 } else { Warn 'بک‌اند رد شد (-SkipBackend)' }
+
+# ---------------------------------------------------------------- مایگریشن
+if ($Migrate) {
+    Step 'مایگریشن (migrate_schemas روی همهٔ شرکت‌ها)'
+    ssh -t $Srv "sudo -u ${AppUser} bash -lc 'cd $AppDir/hrms_project && set -a && . ./.env && set +a && DJANGO_SETTINGS_MODULE=hrms_project.settings.production $AppDir/venv/bin/python manage.py migrate_schemas'"
+    if ($LASTEXITCODE -ne 0) { throw 'اجرای migrate_schemas ناموفق بود.' }
+    Ok 'مایگریشن اعمال شد.'
+} elseif (-not $SkipBackend) {
+    Warn 'اگر مدل تغییر کرده، با -Migrate هم اجرا کنید (این تغییر فیلد issues نیاز به مایگریشن دارد).'
+}
 
 # ---------------------------------------------------------------- فرانت‌اند
 if (-not $SkipFrontend) {
@@ -116,9 +141,10 @@ if (-not $SkipFrontend) {
             foreach ($f in $FrontendFiles) {
                 if (-not (Test-Path $f)) { throw "فایل پیدا نشد: $f" }
                 $name = Split-Path $f -Leaf
+                $remoteDir = (Split-Path $f -Parent) -replace '\\', '/'
                 scp $f "${Srv}:/tmp/$name"
                 if ($LASTEXITCODE -ne 0) { throw "انتقال ناموفق: $f" }
-                ssh -t $Srv "sudo cp /tmp/$name $AppDir/$f; sudo chown ${AppUser}:${AppUser} $AppDir/$f; rm -f /tmp/$name"
+                ssh -t $Srv "sudo mkdir -p $AppDir/$remoteDir; sudo cp /tmp/$name $AppDir/$f; sudo chown ${AppUser}:${AppUser} $AppDir/$f; rm -f /tmp/$name"
                 if ($LASTEXITCODE -ne 0) { throw "جای‌گزینی ناموفق روی سرور: $f" }
                 Ok $f
             }

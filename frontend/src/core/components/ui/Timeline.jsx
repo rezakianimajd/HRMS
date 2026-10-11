@@ -8,6 +8,8 @@ import {
   LockOutlined as PostedIcon,
   UndoOutlined as ReversedIcon,
   DescriptionOutlined as DefaultIcon,
+  PlaylistAddCheckOutlined as IssuesIcon,
+  TaskAltOutlined as FixedIcon,
 } from '@mui/icons-material';
 
 const STEP_META = {
@@ -19,6 +21,10 @@ const STEP_META = {
   locked: { label: 'قفل', icon: PostedIcon, color: '#8b5cf6' },
   reversed: { label: 'برگشت', icon: ReversedIcon, color: '#ef4444' },
   rejected: { label: 'برگشت خورده', icon: ReversedIcon, color: '#ef4444' },
+  issue_added: { label: 'ثبت نواقص سند', icon: IssuesIcon, color: '#f97316' },
+  issue_done: { label: 'رفع نقص', icon: FixedIcon, color: '#22c55e' },
+  issue_reopened: { label: 'بازگشایی نقص', icon: IssuesIcon, color: '#f59e0b' },
+  issue_removed: { label: 'حذف ردیف نواقص', icon: IssuesIcon, color: '#94a3b8' },
 };
 
 const fmtDate = (iso) => {

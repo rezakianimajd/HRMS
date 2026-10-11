@@ -155,10 +155,15 @@ class AccountingDocumentSerializer(BaseModelSerializer):
     lines = AccountingDocumentLineSerializer(many=True, required=False)
     journal_name = serializers.CharField(source='journal.name', read_only=True)
     period_code = serializers.CharField(source='period.code', read_only=True)
+    issues_count = serializers.IntegerField(read_only=True)
+    open_issues_count = serializers.IntegerField(read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = AccountingDocument
         fields = '__all__'
+        # نواقص سند فقط از طریق اکشن‌های اختصاصی تغییر می‌کند
+        # (issue_add / issue_toggle / issue_remove) تا تاریخچه ثبت شود.
+        extra_kwargs = {'issues': {'read_only': True}}
 
     def create(self, validated_data):
         from django.utils import timezone

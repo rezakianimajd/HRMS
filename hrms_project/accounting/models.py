@@ -425,6 +425,7 @@ class AccountingDocument(BaseModel):
     source_id = models.CharField(max_length=64, blank=True, default='', verbose_name=_('شناسهٔ منبع'))
     is_locked = models.BooleanField(default=False, verbose_name=_('قفل ویرایش'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
+    issues = models.JSONField(default=list, blank=True, verbose_name=_('نواقص سند (چک‌لیست رفع نواقص)'))
     # Who / when
     created_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ایجادکننده'))
     submitted_by = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('ارسال‌کننده'))
@@ -465,6 +466,16 @@ class AccountingDocument(BaseModel):
     @property
     def is_balanced(self):
         return self.total_debit == self.total_credit
+
+    # ---- نواقص سند (چک‌لیست رفع نواقص) ----
+    @property
+    def issues_count(self):
+        return len(self.issues or [])
+
+    @property
+    def open_issues_count(self):
+        """تعداد نواقصِ رفع‌نشده — مبنای آلارم قرمز در لیست اسناد."""
+        return sum(1 for i in (self.issues or []) if not i.get('done'))
 
 
 class AccountingDocumentLine(BaseModel):

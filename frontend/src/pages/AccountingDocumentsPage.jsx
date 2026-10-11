@@ -21,10 +21,18 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
 import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
+import ChecklistIcon from '@mui/icons-material/Checklist';
+import NotificationImportantIcon from '@mui/icons-material/NotificationImportant';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
+
+const docLabel = (row) => row?.number || `#${row?.id}`;
+
+// فقط اسناد ثبت/قفل‌شده قابل حذف نیستند (قاعدهٔ سمت سرور در views.py::destroy)
+const CAN_DELETE = (status) => !['posted', 'locked'].includes(status);
 
 const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
@@ -51,6 +59,7 @@ const AccountingDocumentsPage = () => {
   const navigate = useNavigate();
   const [actionMsg, setActionMsg] = useState(null);
   const [timeline, setTimeline] = useState(null);
+  const [issuesDoc, setIssuesDoc] = useState(null);
 
   // فیلترها
   const [q, setQ] = useState('');
@@ -85,7 +94,15 @@ const AccountingDocumentsPage = () => {
 
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/accounting/documents/${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['accounting-documents'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['accounting-documents'] });
+      setActionMsg({ ok: true, text: 'سند حذف شد' });
+      setTimeout(() => setActionMsg(null), 2500);
+    },
+    onError: (e) => {
+      setActionMsg({ ok: false, text: e.response?.data?.error || 'حذف سند ناموفق بود' });
+      setTimeout(() => setActionMsg(null), 4000);
+    },
   });
 
   const openTimeline = (row) => {
@@ -162,7 +179,18 @@ const AccountingDocumentsPage = () => {
                   <TableRow><TableCell colSpan={8} align="center" sx={{ color: 'text.secondary' }}>سندی ثبت نشده است</TableCell></TableRow>
                 ) : list.map(row => (
                   <TableRow key={row.id} hover>
-                    <TableCell>{row.number || `#${row.id}`}</TableCell>
+                    <TableCell>
+                      <Stack direction="row" alignItems="center" spacing={0.5}>
+                        <span>{docLabel(row)}</span>
+                        {(row.open_issues_count || 0) > 0 && (
+                          <Tooltip title={`${row.open_issues_count} مورد نیازمند اصلاح — برای مشاهده و رفع کلیک کنید`}>
+                            <IconButton size="small" sx={{ p: 0.25 }} onClick={() => setIssuesDoc(row)}>
+                              <NotificationImportantIcon sx={{ fontSize: 16, color: '#ef4444' }} />
+                            </IconButton>
+                          </Tooltip>
+                        )}
+                      </Stack>
+                    </TableCell>
                     <TableCell>{toJalali(row.date)}</TableCell>
                     <TableCell>{row.journal_name || '—'}</TableCell>
                     <TableCell sx={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.description}</TableCell>
@@ -179,7 +207,8 @@ const AccountingDocumentsPage = () => {
                       {row.status === 'submitted' && <Tooltip title="تأیید"><IconButton size="small" color="success" onClick={() => action.mutate({ id: row.id, act: 'approve' })}><CheckCircleIcon fontSize="small" /></IconButton></Tooltip>}
                       {(row.status === 'approved' || row.status === 'submitted') && <Tooltip title="ثبت نهایی"><IconButton size="small" color="info" onClick={() => action.mutate({ id: row.id, act: 'post_document' })}><LockIcon fontSize="small" /></IconButton></Tooltip>}
                       {(row.status === 'posted' || row.status === 'locked') && <Tooltip title="برگشت"><IconButton size="small" color="warning" onClick={() => action.mutate({ id: row.id, act: 'reverse' })}><UndoIcon fontSize="small" /></IconButton></Tooltip>}
-                      {row.status === 'draft' && <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
+                      <Tooltip title="رفع نواقص / یادداشت مشکلات سند"><IconButton size="small" sx={{ color: '#f97316' }} onClick={() => setIssuesDoc(row)}><ChecklistIcon fontSize="small" /></IconButton></Tooltip>
+                      {CAN_DELETE(row.status) && <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => { if (window.confirm(`سند ${docLabel(row)} حذف شود؟`)) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
                       <Tooltip title="تایم‌لاین"><IconButton size="small" color="primary" onClick={() => openTimeline(row)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
                     </TableCell>
                   </TableRow>
@@ -195,6 +224,8 @@ const AccountingDocumentsPage = () => {
         <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK }}>تایم‌لاین سند {timeline?.number || `#${timeline?.id}`}</DialogTitle>
         <DialogContent><Timeline events={timeline?.history} /></DialogContent>
       </Dialog>
+
+      <DocumentIssuesDialog document={issuesDoc} onClose={() => setIssuesDoc(null)} />
     </Box>
   );
 };
