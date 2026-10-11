@@ -59,6 +59,11 @@ $BackendFiles = @(
     'hrms_project/accounting/annual_views.py',
     'hrms_project/accounting/tax_views.py',
     'hrms_project/employees/views.py',
+    'hrms_project/employees/admin.py',
+    'hrms_project/attendance/admin.py',
+    'hrms_project/leaves/admin.py',
+    'hrms_project/orgchart/admin.py',
+    'hrms_project/payroll/admin.py',
     'hrms_project/accounting/migrations/0021_accountingdocument_issues.py'
 )
 
