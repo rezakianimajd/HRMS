@@ -156,7 +156,6 @@ const MatrixReportPage = () => {
     return t;
   }, { ...EMPTY_TOTAL }), [visibleRows]);
 
-  const total = data?.total || EMPTY_TOTAL;
   const subLevels = LEVELS; // ثابت — همهٔ سطوح (پایین و بالای سطح تراز) تا گزارش هر سطح گرفته شود
   const currentLevel = LEVELS.find((l) => l.value === level) || LEVELS[1];
   const currentSub = subLevels.find((l) => l.value === subLevel) || null;
@@ -254,10 +253,10 @@ const MatrixReportPage = () => {
           <Typography variant="body2" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>{toPersianDigits(row.code)}</Typography>
         </TableCell>
         <TableCell sx={{ maxWidth: 380, overflow: 'hidden' }}>
-          <Typography variant="body2" fontWeight={700}
+          <Typography variant="caption" fontWeight={700}
             sx={{ fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {row.name}
-            {path ? <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 11, ml: 1 }}>‹ {path}</Box> : null}
+            {path ? <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 10, ml: 1 }}>‹ {path}</Box> : null}
           </Typography>
         </TableCell>
         {renderAmountCells(row, true)}
@@ -420,12 +419,6 @@ const MatrixReportPage = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      <TableRow sx={{ height: ROW_H, bgcolor: 'rgba(250,204,21,0.24)' }}>
-                        <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
-                        <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
-                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع کل</TableCell>
-                        {renderAmountCells(total, true)}
-                      </TableRow>
                       {visibleRows.map(renderRow)}
                       {/* سطر جمع ستونی — همیشه چسبان در پایینِ ناحیهٔ اسکرول */}
                       <TableRow sx={{
