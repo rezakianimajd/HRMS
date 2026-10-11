@@ -50,7 +50,7 @@ const TreeTrialBalancePage = () => {
           </StatGrid>
 
           {rows.length === 0 ? (
-            <EmptyState message="گردش ثبت‌شده‌ای وجود ندارد" />
+            <EmptyState message="گردشی وجود ندارد" />
           ) : (
             <div style={{ ...glass, padding: 16, overflow: 'hidden' }}>
               <TableContainer sx={{ maxHeight: 600 }}>

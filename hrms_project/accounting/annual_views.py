@@ -11,6 +11,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
 from accounting.models import (
     Account, AccountingDocument, AccountingDocumentLine, AccountingSettings,
     FiscalYear, Journal,
@@ -21,10 +22,11 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
-def _posted_lines(company, year=None):
+def _report_lines(company, year=None):
+    """خطوط اسناد قابل‌گزارش (ارسال‌شده/تأییدشده/ثبت‌شده/قفل‌شده) — اسناد پیش‌نویس لحاظ نمی‌شوند."""
     qs = AccountingDocumentLine.objects.filter(
         document__company=company,
-        document__status__in=['posted', 'locked'],
+        document__status__in=REPORTABLE_DOCUMENT_STATUSES,
     ).select_related('account', 'account__account_type')
     if year is not None:
         qs = qs.filter(document__fiscal_year=year)
@@ -34,7 +36,7 @@ def _posted_lines(company, year=None):
 def _net_balance(company, account, year):
     debit = 0.0
     credit = 0.0
-    for line in _posted_lines(company, year).filter(account=account):
+    for line in _report_lines(company, year).filter(account=account):
         debit += float(line.debit or 0)
         credit += float(line.credit or 0)
     cat = account.account_type.category
@@ -296,10 +298,12 @@ def legal_books(request):
     year_id = request.query_params.get('fiscal_year')
     year = FiscalYear.objects.filter(id=year_id, company=company).first() if year_id else None
 
-    lines = _posted_lines(company, year)
+    lines = _report_lines(company, year)
 
     journal_book = []
-    docs = AccountingDocument.objects.filter(company=company, status__in=['posted', 'locked']).order_by('date', 'id')
+    docs = AccountingDocument.objects.filter(
+        company=company, status__in=REPORTABLE_DOCUMENT_STATUSES,
+    ).order_by('date', 'id')
     for doc in docs:
         if year and doc.fiscal_year_id != year.id:
             continue
@@ -334,7 +338,7 @@ def legal_books(request):
         balance = (rec['credit'] - rec['debit']) if rec['nature'] == 'credit' else (rec['debit'] - rec['credit'])
         general_ledger.append({**rec, 'balance': balance})
 
-    ordered = _posted_lines(company, year).order_by('document__date', 'document__id', 'line_no')
+    ordered = _report_lines(company, year).order_by('document__date', 'document__id', 'line_no')
     by_account = {}
     for line in ordered:
         by_account.setdefault(line.account_id, []).append({

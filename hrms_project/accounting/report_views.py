@@ -1,4 +1,7 @@
-"""Accounting reports — read-only aggregations over posted documents.
+"""Accounting reports — read-only aggregations over reportable documents.
+
+"Reportable" = every document except drafts (see `constants.REPORTABLE_DOCUMENT_STATUSES`):
+submitted, approved, posted and locked documents all appear in the reports.
 
 All querysets are company-scoped. Report strings are kept printable and RTL.
 """
@@ -9,6 +12,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
 from accounting.models import (
     AccountingDocument, AccountingDocumentLine, Account, AccountType,
     AccountGroup, AuxiliaryAccount,
@@ -19,11 +23,14 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
-def _posted_lines(request):
-    """All lines from posted/locked documents, company-scoped."""
+def _report_lines(request):
+    """همهٔ خطوط اسناد قابل‌گزارش (ارسال‌شده/تأییدشده/ثبت‌شده/قفل‌شده) — شرکت جاری.
+
+    پیش‌نویس‌ها کنار گذاشته می‌شوند.
+    """
     qs = AccountingDocumentLine.objects.filter(
         document__company=_company(request),
-        document__status__in=['posted', 'locked'],
+        document__status__in=REPORTABLE_DOCUMENT_STATUSES,
     ).select_related('account')
     return qs
 
@@ -36,7 +43,7 @@ def dashboard(request):
     company = _company(request)
 
     docs = AccountingDocument.objects.filter(company=company)
-    lines = _posted_lines(request).select_related('account__account_type')
+    lines = _report_lines(request).select_related('account__account_type')
 
     assets = liabilities = equity = 0
     revenue_month = expense_month = 0
@@ -90,7 +97,7 @@ def dashboard_rich(request):
     import calendar
 
     company = _company(request)
-    qs = _posted_lines(request).select_related('account__account_type', 'document')
+    qs = _report_lines(request).select_related('account__account_type', 'document')
 
     year_id = request.query_params.get('fiscal_year')
     if year_id:
@@ -296,7 +303,7 @@ def dashboard_rich(request):
 def general_ledger(request):
     """دفتر کل: گردش همهٔ حساب‌ها در سندهای ثبت‌شده."""
     from_account = request.query_params.get('account')
-    lines = _posted_lines(request).order_by('document__date', 'document__id', 'line_no')
+    lines = _report_lines(request).order_by('document__date', 'document__id', 'line_no')
     if from_account:
         lines = lines.filter(account_id=from_account)
 
@@ -326,7 +333,7 @@ def account_ledger(request, account_id):
     if not account:
         return Response({'error': 'حساب یافت نشد'}, status=404)
 
-    lines = _posted_lines(request).filter(account_id=account_id).order_by('document__date', 'document__id', 'line_no')
+    lines = _report_lines(request).filter(account_id=account_id).order_by('document__date', 'document__id', 'line_no')
     rows = []
     balance = 0
     for line in lines:
@@ -360,7 +367,7 @@ def account_ledger(request, account_id):
 @permission_classes([IsAuthenticated])
 def trial_balance(request):
     """تراز آزمایشی: جمع بدهکار/بستانکار و ماندهٔ هر حساب."""
-    lines = _posted_lines(request)
+    lines = _report_lines(request)
     aggregates = {}
     for line in lines:
         agg = aggregates.setdefault(line.account_id, {
@@ -395,7 +402,7 @@ def trial_balance(request):
 @permission_classes([IsAuthenticated])
 def income_statement(request):
     """صورت سود و زیان: درآمد − بهای تمام‌شده = سود ناخالص؛ − هزینه = سود خالص."""
-    lines = _posted_lines(request).filter(
+    lines = _report_lines(request).filter(
         account__account_type__category__in=['revenue', 'expense', 'cost_of_sales'],
     ).select_related('account__account_type')
 
@@ -434,7 +441,7 @@ def income_statement(request):
 @permission_classes([IsAuthenticated])
 def balance_sheet(request):
     """ترازنامه: دارایی = بدهی + حقوق مالکانه."""
-    lines = _posted_lines(request).select_related('account__account_type')
+    lines = _report_lines(request).select_related('account__account_type')
 
     assets = {}
     liabilities = {}
@@ -486,7 +493,7 @@ def balance_sheet(request):
 @permission_classes([IsAuthenticated])
 def cash_flow(request):
     """جریان نقدی (روش مستقیم): عملیاتی + سرمایه‌گذاری + تأمین مالی."""
-    lines = _posted_lines(request).select_related('account__account_type')
+    lines = _report_lines(request).select_related('account__account_type')
 
     operating_in = 0
     operating_out = 0
@@ -525,7 +532,7 @@ def cash_flow(request):
 @permission_classes([IsAuthenticated])
 def tree_trial_balance(request):
     """تراز درختی حساب‌ها: سلسله‌مراتب حساب با جمع‌شوندگی فرزندان به والد."""
-    lines = _posted_lines(request)
+    lines = _report_lines(request)
 
     direct = {}
     for line in lines:
@@ -599,7 +606,7 @@ def matrix_report(request):
     برای هر سطر: کد حساب، شرح، گردش بدهکار، گردش بستانکار، مانده بدهکار، مانده بستانکار.
     """
     company = _company(request)
-    lines = _posted_lines(request).select_related(
+    lines = _report_lines(request).select_related(
         'account', 'account__account_type', 'account__group',
         'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
     )
@@ -787,7 +794,7 @@ def ledger_review(request):
 
     docs = (
         AccountingDocument.objects
-        .filter(company=_company(request), status__in=['posted', 'locked'])
+        .filter(company=_company(request), status__in=REPORTABLE_DOCUMENT_STATUSES)
         .select_related('journal')
         .order_by('date', 'id')
     )
@@ -844,7 +851,7 @@ def _safe_ratio(num, den):
 @permission_classes([IsAuthenticated])
 def financial_statements(request):
     """صورت‌های مالی یکپارچه: ترازنامه + سود و زیان + جریان نقدی + نسبت‌ها."""
-    lines = _posted_lines(request).select_related('account__account_type')
+    lines = _report_lines(request).select_related('account__account_type')
 
     assets, liabilities, equity = {}, {}, {}
     for line in lines:

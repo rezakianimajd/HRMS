@@ -9,6 +9,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
 from accounting.models import AccountingDocument, AccountingDocumentLine
 
 
@@ -17,9 +18,10 @@ def _company(request):
 
 
 def _lines(request):
+    """خطوط اسناد قابل‌گزارش (ارسال‌شده/تأییدشده/ثبت‌شده/قفل‌شده) — شرکت جاری."""
     qs = AccountingDocumentLine.objects.filter(
         document__company=_company(request),
-        document__status__in=['posted', 'locked'],
+        document__status__in=REPORTABLE_DOCUMENT_STATUSES,
     ).select_related('document', 'account', 'account__account_type', 'auxiliary', 'auxiliary_1')
     year_id = request.query_params.get('fiscal_year')
     if year_id:
@@ -147,7 +149,7 @@ def official_ledger(request):
 
     journal_book = []
     docs = AccountingDocument.objects.filter(
-        company=_company(request), status__in=['posted', 'locked'],
+        company=_company(request), status__in=REPORTABLE_DOCUMENT_STATUSES,
     ).order_by('date', 'id')
     year_id = request.query_params.get('fiscal_year')
     for doc in docs:

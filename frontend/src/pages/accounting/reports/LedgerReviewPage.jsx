@@ -57,7 +57,7 @@ const LedgerReviewPage = () => {
           </StatGrid>
 
           {nonEmpty.length === 0 ? (
-            <EmptyState message="سند ثبت‌شده‌ای برای مرور وجود ندارد" />
+            <EmptyState message="سندی برای مرور وجود ندارد" />
           ) : (
             nonEmpty.map((j) => (
               <SectionCard

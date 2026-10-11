@@ -316,7 +316,7 @@ const MatrixReportPage = () => {
             </Paper>
 
             {visibleRows.length === 0 ? (
-              <EmptyState message="گردش ثبت‌شده‌ای برای این سطح و بازهٔ کد وجود ندارد" />
+              <EmptyState message="گردشی برای این سطح و بازهٔ کد وجود ندارد" />
             ) : (
               <div style={{ ...glass, padding: 12, overflow: 'hidden' }}>
                 <TableContainer sx={{ maxHeight: 620, overflowX: 'auto' }}>
