@@ -45,6 +45,9 @@ const EMPTY_TOTAL = {
 
 const norm = (v) => toEnglishDigits(String(v ?? '')).replace(/\s/g, '').toLowerCase();
 
+/** مقایسهٔ کد حساب‌ها به‌صورت عددی (۱۰۰ < ۹۹ درست مقایسه شود) */
+const byCode = (a, b) => String(a?.code ?? '').localeCompare(String(b?.code ?? ''), undefined, { numeric: true });
+
 const HEAD_H = 46; // ارتفاع ثابت ردیف هدر (برای هدر چسبان)
 
 /** همهٔ زیرمجموعه‌های یک گره */
@@ -113,10 +116,13 @@ const MatrixReportPage = () => {
 
   // ردیف‌های پایه: با انتخاب «ریز سطح» فقط همان سطح نمایش داده می‌شود
   // (و اگر کدی انتخاب شده باشد، فقط «شاخهٔ» همان کد در آن سطح)
+  // ترتیب نمایش همیشه بر اساس «کد حساب» از کوچک به بزرگ است.
   const baseRows = useMemo(() => {
-    if (subLevel === null) return flat.filter((n) => (n.level ?? -1) === level);
-    const scope = selectedNode ? branchAt(selectedNode, subLevel, flat) : flat;
-    return scope.filter((n) => (n.level ?? -1) === subLevel);
+    const rows = subLevel === null
+      ? flat.filter((n) => (n.level ?? -1) === level)
+      : (selectedNode ? branchAt(selectedNode, subLevel, flat) : flat)
+        .filter((n) => (n.level ?? -1) === subLevel);
+    return [...rows].sort(byCode);
   }, [flat, level, subLevel, selectedNode]);
 
   // نوار جستجو: کد و شرح خود ردیف + کد و شرح والدها + بازهٔ کد + فقط دارای گردش
