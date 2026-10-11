@@ -98,7 +98,18 @@ $BackendFiles = @(
     'hrms_project/projects/migrations/0006_baseline_workcalendar_activity_activityprogress_and_more.py',
     'hrms_project/projects/migrations/0007_resource_daily_capacity.py',
     'hrms_project/projects/tests/test_cpm.py',
-    'hrms_project/projects/tests/test_evm.py'
+    'hrms_project/projects/tests/test_evm.py',
+    'hrms_project/projects/change_models.py',
+    'hrms_project/projects/change_service.py',
+    'hrms_project/projects/change_serializers.py',
+    'hrms_project/projects/change_views.py',
+    'hrms_project/projects/integration.py',
+    'hrms_project/projects/migrations/0008_changeorder_changeorderapproval_changeorderline_and_more.py',
+    'hrms_project/projects/tests/test_change_state_machine.py',
+    'hrms_project/projects/tests/test_phase2_integration.py',
+    'hrms_project/procurement/models.py',
+    'hrms_project/procurement/views.py',
+    'hrms_project/procurement/migrations/0003_goodsreceiptnote_cost_transaction_purchaseorder_cbs_and_more.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
@@ -119,6 +130,7 @@ $FrontendFiles = @(
     'frontend/src/pages/AssistantPage.jsx',
     'frontend/src/pages/ProjectCalendarPage.jsx',
     'frontend/src/pages/ProjectSchedulePage.jsx',
+    'frontend/src/pages/ProjectChangeOrdersPage.jsx',
     'frontend/src/pages/ProjectsStructurePage.jsx',
     'frontend/src/AppRoutes.jsx',
     'frontend/src/core/config/menuConfig.js'

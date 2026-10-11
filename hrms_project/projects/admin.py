@@ -232,3 +232,37 @@ class ActivityProgressAdmin(admin.ModelAdmin):
     list_display = ['activity', 'date', 'percent_complete', 'quantity']
     list_filter = ['date']
 
+
+# ------------------------- فاز ۲: تغییرات پروژه -------------------------
+from projects.change_models import (  # noqa: E402
+    ChangeOrder, ChangeOrderApproval, ChangeOrderLine,
+)
+
+
+class ChangeOrderLineInline(admin.TabularInline):
+    model = ChangeOrderLine
+    extra = 1
+    fields = ('wbs', 'cbs', 'cost_source', 'description', 'unit', 'quantity', 'unit_price', 'amount')
+
+
+@admin.register(ChangeOrder)
+class ChangeOrderAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'project', 'status', 'cost_impact',
+                    'time_impact_days', 'applied', 'request_date']
+    list_filter = ['project', 'status', 'cause', 'applied']
+    search_fields = ['number', 'title', 'subject']
+    inlines = [ChangeOrderLineInline]
+    readonly_fields = ['applied', 'applied_at', 'applied_budget_line', 'created_addendum']
+
+
+@admin.register(ChangeOrderLine)
+class ChangeOrderLineAdmin(admin.ModelAdmin):
+    list_display = ['change_order', 'wbs', 'cbs', 'description', 'quantity', 'unit_price', 'amount']
+    list_filter = ['change_order']
+
+
+@admin.register(ChangeOrderApproval)
+class ChangeOrderApprovalAdmin(admin.ModelAdmin):
+    list_display = ['change_order', 'action', 'actor_name', 'created_at']
+    list_filter = ['action']
+

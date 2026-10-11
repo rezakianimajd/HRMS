@@ -54,6 +54,11 @@ router.register(r'resource-rates', ResourceRateViewSet, basename='resource-rate'
 router.register(r'resource-assignments', ResourceAssignmentViewSet, basename='resource-assignment')
 router.register(r'activity-progress', ActivityProgressViewSet, basename='activity-progress')
 
+# ------------------------- فاز ۲: تغییرات پروژه -------------------------
+from projects.change_views import ChangeOrderViewSet  # noqa: E402
+
+router.register(r'change-orders', ChangeOrderViewSet, basename='change-order')
+
 from projects import analytics_views
 
 urlpatterns = [

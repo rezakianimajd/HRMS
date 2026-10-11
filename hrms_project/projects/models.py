@@ -452,3 +452,8 @@ from projects.schedule_models import (  # noqa: E402,F401
     Activity, ActivityProgress, ActivityRelationship, Baseline, BaselineActivity,
     CalendarException, ResourceAssignment, ResourceRate, WorkCalendar,
 )
+
+# فاز ۲ — تغییرات پروژه (Change Order)
+from projects.change_models import (  # noqa: E402,F401
+    ChangeOrder, ChangeOrderApproval, ChangeOrderLine,
+)

@@ -135,6 +135,10 @@ class PurchaseRequest(BaseModel):
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره درخواست'))
     requester = models.ForeignKey('auth.User', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', db_constraint=False, verbose_name=_('درخواست‌دهنده'))
     department = models.CharField(max_length=200, blank=True, verbose_name=_('واحد درخواست'))
+    project = models.ForeignKey(
+        'projects.Project', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_requests', verbose_name=_('پروژه'),
+    )
     date = models.DateField(verbose_name=_('تاریخ درخواست'))
     required_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ نیاز'))
     description = models.TextField(blank=True, verbose_name=_('شرح'))
@@ -191,6 +195,19 @@ class PurchaseOrder(BaseModel):
     number = models.CharField(max_length=50, blank=True, verbose_name=_('شماره سفارش'))
     supplier = models.ForeignKey(Supplier, on_delete=models.PROTECT, related_name='purchase_orders', verbose_name=_('تأمین‌کننده'))
     source_request = models.ForeignKey(PurchaseRequest, on_delete=models.SET_NULL, null=True, blank=True, related_name='purchase_orders', verbose_name=_('درخواست مبدأ'))
+    # فاز ۲ — اتصال سفارش خرید به پروژه (مبنای تعهد و هزینهٔ واقعی پروژه)
+    project = models.ForeignKey(
+        'projects.Project', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_orders', verbose_name=_('پروژه'),
+    )
+    wbs = models.ForeignKey(
+        'projects.WBSNode', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_orders', verbose_name=_('گره WBS'),
+    )
+    cbs = models.ForeignKey(
+        'projects.CBSNode', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_orders', verbose_name=_('گره CBS'),
+    )
     date = models.DateField(verbose_name=_('تاریخ سفارش'))
     expected_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ تحویل'))
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
@@ -203,6 +220,10 @@ class PurchaseOrder(BaseModel):
     payment_terms = models.CharField(max_length=200, blank=True, verbose_name=_('شرایط پرداخت'))
     history = models.JSONField(default=list, blank=True, verbose_name=_('تاریخچهٔ چرخه'))
     source_transaction = models.OneToOneField('accounting.SourceTransaction', on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('تراکنش منبع حسابداری'))
+    committed_cost = models.ForeignKey(
+        'projects.CommittedCost', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_orders', verbose_name=_('تعهد ایجادشده در پروژه'),
+    )
 
     class Meta:
         verbose_name = _('سفارش خرید')
@@ -218,6 +239,14 @@ class PurchaseOrderLine(BaseModel):
     order = models.ForeignKey(PurchaseOrder, on_delete=models.CASCADE, related_name='lines', verbose_name=_('سفارش'))
     line_no = models.PositiveIntegerField(default=0, verbose_name=_('ردیف'))
     item = models.ForeignKey(Item, on_delete=models.PROTECT, related_name='po_lines', verbose_name=_('کالا'))
+    wbs = models.ForeignKey(
+        'projects.WBSNode', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_order_lines', verbose_name=_('گره WBS'),
+    )
+    cbs = models.ForeignKey(
+        'projects.CBSNode', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='purchase_order_lines', verbose_name=_('گره CBS'),
+    )
     quantity = models.DecimalField(max_digits=18, decimal_places=3, verbose_name=_('تعداد'))
     received_quantity = models.DecimalField(max_digits=18, decimal_places=3, default=0, verbose_name=_('تعداد تحویل‌شده'))
     unit = models.ForeignKey(UnitOfMeasure, on_delete=models.SET_NULL, null=True, blank=True, related_name='+', verbose_name=_('واحد'))
@@ -245,6 +274,10 @@ class GoodsReceiptNote(BaseModel):
     order = models.ForeignKey(PurchaseOrder, on_delete=models.PROTECT, related_name='receipts', verbose_name=_('سفارش خرید'))
     date = models.DateField(verbose_name=_('تاریخ رسید'))
     received_by = models.CharField(max_length=200, blank=True, verbose_name=_('تحویل‌گیرنده'))
+    cost_transaction = models.ForeignKey(
+        'projects.CostTransaction', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='goods_receipts', verbose_name=_('تراکنش هزینهٔ ایجادشده'),
+    )
     status = models.CharField(max_length=15, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'))
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
 

@@ -1,9 +1,13 @@
 """Views for the Procurement (خرید و تدارکات) module."""
+import logging
+
 from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
+
+logger = logging.getLogger('procurement')
 
 from procurement.models import (
     SupplierCategory, Supplier, ItemCategory, UnitOfMeasure, Item,
@@ -132,6 +136,9 @@ class PurchaseOrderViewSet(BaseViewSet):
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
+        project = self.request.query_params.get('project')
+        if project:
+            qs = qs.filter(project_id=project)
         return qs
 
     @action(detail=True, methods=['post'])
@@ -152,6 +159,15 @@ class PurchaseOrderViewSet(BaseViewSet):
         obj.status = 'approved'
         obj.history = [*obj.history, {'step': 'approved', 'by': request.user.username, 'at': timezone.now().isoformat()}]
         obj.save()
+        # فاز ۲ — ثبت خودکار «تعهد هزینه» پروژه از سفارش خرید (idempotent)
+        try:
+            from projects.integration import sync_po_commitment
+            commitment = sync_po_commitment(obj, request.user)
+            if commitment is not None and obj.committed_cost_id != commitment.id:
+                obj.committed_cost = commitment
+                obj.save(update_fields=['committed_cost', 'updated_at'])
+        except Exception:  # noqa: BLE001 — خطای یکپارچگی نباید تأیید سفارش را متوقف کند
+            logger.exception('sync_po_commitment failed for PO %s', obj.pk)
         return Response(self.get_serializer(obj).data)
 
     @action(detail=True, methods=['post'])
@@ -187,6 +203,15 @@ class GoodsReceiptNoteViewSet(BaseViewSet):
         all_full = all((l.received_quantity or 0) >= (l.quantity or 0) for l in order.lines.all())
         order.status = 'received' if all_full else 'partial'
         order.save(update_fields=['status', 'updated_at'])
+        # فاز ۲ — ثبت خودکار «تراکنش هزینه» پروژه از قبض انبار (idempotent)
+        try:
+            from projects.integration import sync_grn_costs
+            tx = sync_grn_costs(obj, request.user)
+            if tx is not None and obj.cost_transaction_id != tx.id:
+                obj.cost_transaction = tx
+                obj.save(update_fields=['cost_transaction', 'updated_at'])
+        except Exception:  # noqa: BLE001
+            logger.exception('sync_grn_costs failed for GRN %s', obj.pk)
         return Response(self.get_serializer(obj).data)
 
 
