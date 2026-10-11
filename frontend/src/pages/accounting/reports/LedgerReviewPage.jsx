@@ -10,7 +10,7 @@ import {
   COLOR_DARK, BLUE, GREEN,
   glass, ReportHeader, StatCard, Loading, EmptyState, StatGrid, SectionCard,
 } from './reportHelpers';
-import { formatPersianNumber } from '../../../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali } from '../../../core/utils/dateUtils';
 
 const LedgerReviewPage = () => {
