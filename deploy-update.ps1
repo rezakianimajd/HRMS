@@ -142,6 +142,19 @@ if (-not $SkipBackend) {
     Ok 'فایل‌های بک‌اند جای‌گزین شدند.'
 } else { Warn 'بک‌اند رد شد (-SkipBackend)' }
 
+# --------------------------------- بررسی سازگاری مدل با مایگریشن‌های سرور (همیشه)
+# نکته: `manage.py check` فایل مایگریشن جاافتاده را نمی‌بیند، اما
+# `makemigrations --check --dry-run` گراف مایگریشن را اعتبارسنجی می‌کند.
+if (-not $SkipBackend) {
+    Step '۲.۵/۶ بررسی همگامی مدل با مایگریشن‌های سرور'
+    ssh -t $Srv "sudo -u ${AppUser} bash -lc 'cd $AppDir/hrms_project && set -a && . ./.env && set +a && DJANGO_SETTINGS_MODULE=hrms_project.settings.production $AppDir/venv/bin/python manage.py makemigrations --check --dry-run'"
+    if ($LASTEXITCODE -ne 0) {
+        throw 'مدل‌ها با مایگریشن‌های روی سرور همگام نیستند (احتمالاً یک فایل مایگریشن منتقل نشده). لیست BackendFiles را بازبینی کنید.'
+    }
+    Ok 'مدل و مایگریشن همگام است.'
+}
+
+
 # ---------------------------------------------------------------- مایگریشن
 if ($Migrate) {
     Step 'مایگریشن (migrate_schemas روی همهٔ شرکت‌ها)'
