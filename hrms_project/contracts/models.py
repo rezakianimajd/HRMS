@@ -5,6 +5,7 @@ parties (contractor/vendor), contracts, invoices, statements (صورت وضعی�
 addendums (الحاقیه), guarantees (تضامین), and payments.
 """
 from django.db import models
+from django.contrib.postgres.indexes import GinIndex
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
 
@@ -160,6 +161,14 @@ class Contract(BaseModel):
         verbose_name = _('قرارداد')
         verbose_name_plural = _('قراردادها')
         ordering = ['-created_at']
+        indexes = [
+            # Phase 0: جست‌وجوی «قراردادهای یک پروژه» روی JSONB بدون Seq Scan انجام شود.
+            GinIndex(
+                fields=['project_allocations'],
+                name='contract_alloc_gin_idx',
+                opclasses=['jsonb_path_ops'],
+            ),
+        ]
 
     def __str__(self):
         return f'{self.number or "—"} - {self.subject}'
@@ -202,6 +211,9 @@ class Invoice(BaseModel):
         verbose_name = _('فاکتور')
         verbose_name_plural = _('فاکتورها')
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['contract', 'date'], name='invoice_contract_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.number or "—"} ({self.total})'
@@ -262,6 +274,9 @@ class Statement(BaseModel):
         verbose_name = _('صورت‌وضعیت')
         verbose_name_plural = _('صورت‌وضعیت‌ها')
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['contract', 'date'], name='stmt_contract_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.number or "—"} ({self.amount})'
@@ -378,6 +393,9 @@ class Payment(BaseModel):
         verbose_name = _('پرداخت')
         verbose_name_plural = _('پرداخت‌ها')
         ordering = ['-date']
+        indexes = [
+            models.Index(fields=['contract', 'date'], name='payment_contract_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.date} - {self.amount}'

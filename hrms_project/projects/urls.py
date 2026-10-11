@@ -2,7 +2,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from projects.views import (
     ProjectTypeViewSet, ProjectViewSet, ProjectPhaseViewSet, WBSNodeViewSet,
-    WBSTemplateViewSet, CBSNodeViewSet, ResourceCategoryViewSet, ResourceViewSet,
+    WBSTemplateViewSet, WBSTemplateNodeViewSet, CBSNodeViewSet, ResourceCategoryViewSet, ResourceViewSet,
     CostSourceViewSet, OBSNodeViewSet,
     PriceListViewSet, PriceListVersionViewSet, PriceListChapterViewSet,
     PriceListItemViewSet, ContractItemViewSet, ContractWBSViewSet,
@@ -19,6 +19,7 @@ router.register(r'projects', ProjectViewSet, basename='project')
 router.register(r'project-phases', ProjectPhaseViewSet, basename='project-phase')
 router.register(r'wbs-nodes', WBSNodeViewSet, basename='wbs-node')
 router.register(r'wbs-templates', WBSTemplateViewSet, basename='wbs-template')
+router.register(r'wbs-template-nodes', WBSTemplateNodeViewSet, basename='wbs-template-node')
 router.register(r'cbs-nodes', CBSNodeViewSet, basename='cbs-node')
 router.register(r'resource-categories', ResourceCategoryViewSet, basename='resource-category')
 router.register(r'resources', ResourceViewSet, basename='resource')

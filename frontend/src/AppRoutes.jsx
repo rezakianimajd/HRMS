@@ -51,6 +51,7 @@ import ContractDraftsPage from './pages/ContractDraftsPage';
 import ContractApprovalsPage from './pages/ContractApprovalsPage';
 import ProjectsPage from './pages/ProjectsPage';
 import ProjectsDashboardPage from './pages/ProjectsDashboardPage';
+import ProjectCalendarPage from './pages/ProjectCalendarPage';
 import ProjectsStructurePage from './pages/ProjectsStructurePage';
 import ProjectsResourcesPage from './pages/ProjectsResourcesPage';
 import ProjectsCostSourcesPage from './pages/ProjectsCostSourcesPage';
@@ -305,6 +306,7 @@ const AppRoutes = () => {
       <Route path="/contracts-definitions" element={<ProtectedLayout><ContractDefinitionsPage /></ProtectedLayout>} />
       <Route path="/projects" element={<ProtectedLayout><ProjectsPage /></ProtectedLayout>} />
       <Route path="/projects/dashboard" element={<ProtectedLayout><ProjectsDashboardPage /></ProtectedLayout>} />
+      <Route path="/projects/calendar" element={<ProtectedLayout><ProjectCalendarPage /></ProtectedLayout>} />
       <Route path="/projects/structure" element={<ProtectedLayout><ProjectsStructurePage /></ProtectedLayout>} />
       <Route path="/projects/resources" element={<ProtectedLayout><ProjectsResourcesPage /></ProtectedLayout>} />
       <Route path="/projects/cost-sources" element={<ProtectedLayout><ProjectsCostSourcesPage /></ProtectedLayout>} />

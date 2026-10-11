@@ -10,10 +10,15 @@ These are deliberately separate dimensions:
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
+from core.models.audit_mixin import (
+    AllObjectsManager, AuditableModel, SoftDeleteManager,
+)
 
 
-class BudgetLine(BaseModel):
+class BudgetLine(BaseModel, AuditableModel):
     """A planned cost line (budget) attachable to a project / WBS / CBS."""
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
     project = models.ForeignKey(
         'projects.Project', on_delete=models.CASCADE, related_name='budget_lines', verbose_name=_('پروژه'),
     )
@@ -44,8 +49,10 @@ class BudgetLine(BaseModel):
         return f'{self.project.code} :: {self.description or self.id}'
 
 
-class CommittedCost(BaseModel):
+class CommittedCost(BaseModel, AuditableModel):
     """A real commitment event (PO, subcontract, contract award)."""
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
     project = models.ForeignKey(
         'projects.Project', on_delete=models.CASCADE, related_name='committed_costs', verbose_name=_('پروژه'),
     )
@@ -74,13 +81,18 @@ class CommittedCost(BaseModel):
         verbose_name = _('تعهد هزینه')
         verbose_name_plural = _('تعهدات هزینه')
         ordering = ['-date', 'project']
+        indexes = [
+            models.Index(fields=['project', 'date'], name='committed_proj_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.project.code} :: {self.description or self.id}'
 
 
-class CostTransaction(BaseModel):
+class CostTransaction(BaseModel, AuditableModel):
     """Header of an actual cost event."""
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
     project = models.ForeignKey(
         'projects.Project', on_delete=models.CASCADE, related_name='cost_transactions', verbose_name=_('پروژه'),
     )
@@ -94,7 +106,16 @@ class CostTransaction(BaseModel):
         'contracts.Contract', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='cost_transactions', verbose_name=_('قرارداد'),
     )
-    currency = models.CharField(max_length=10, default='IRR', verbose_name=_('ارز'))
+    # Phase 0: ارز به‌صورت ارجاع به سرویس ارز (به‌جای رشتهٔ آزاد).
+    # `currency_code` مقدار قدیمی را برای سازگاری عقب‌رو نگه می‌دارد.
+    currency = models.ForeignKey(
+        'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cost_transactions', verbose_name=_('ارز'),
+    )
+    currency_code = models.CharField(
+        max_length=10, default='IRR', blank=True,
+        verbose_name=_('کد ارز (میراثی)'),
+    )
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
     accounting_reference = models.CharField(max_length=100, blank=True, verbose_name=_('مرجع حسابداری'))
     purchase_reference = models.CharField(max_length=100, blank=True, verbose_name=_('مرجع خرید'))
@@ -106,13 +127,18 @@ class CostTransaction(BaseModel):
         verbose_name = _('تراکنش هزینه')
         verbose_name_plural = _('تراکنش‌های هزینه')
         ordering = ['-date', 'project']
+        indexes = [
+            models.Index(fields=['project', 'date'], name='cost_tx_proj_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.number or self.id} - {self.project.code}'
 
 
-class CostTransactionLine(BaseModel):
+class CostTransactionLine(BaseModel, AuditableModel):
     """Multi-dimensional line of a cost transaction."""
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
     transaction = models.ForeignKey(CostTransaction, on_delete=models.CASCADE, related_name='lines', verbose_name=_('تراکنش'))
     wbs = models.ForeignKey(
         'projects.WBSNode', on_delete=models.PROTECT, null=True, blank=True,
@@ -156,8 +182,10 @@ class CostTransactionLine(BaseModel):
         return f'{self.transaction_id} :: {self.description or self.id}'
 
 
-class ProgressStatement(BaseModel):
+class ProgressStatement(BaseModel, AuditableModel):
     """Commercial progress statement header (NOT actual cost)."""
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
     project = models.ForeignKey(
         'projects.Project', on_delete=models.CASCADE, related_name='progress_statements', verbose_name=_('پروژه'),
     )
@@ -179,13 +207,18 @@ class ProgressStatement(BaseModel):
         verbose_name = _('صورت‌وضعیت')
         verbose_name_plural = _('صورت‌وضعیت‌ها')
         ordering = ['-date', 'project']
+        indexes = [
+            models.Index(fields=['project', 'date'], name='progress_proj_date_idx'),
+        ]
 
     def __str__(self):
         return f'{self.number or self.id} - {self.project.code}'
 
 
-class ProgressStatementItem(BaseModel):
+class ProgressStatementItem(BaseModel, AuditableModel):
     """Line of a progress statement (quantity + progress, not just amount)."""
+    objects = SoftDeleteManager()
+    all_objects = AllObjectsManager()
     statement = models.ForeignKey(ProgressStatement, on_delete=models.CASCADE, related_name='items', verbose_name=_('صورت‌وضعیت'))
     contract_item = models.ForeignKey(
         'projects.ContractItem', on_delete=models.SET_NULL, null=True, blank=True,

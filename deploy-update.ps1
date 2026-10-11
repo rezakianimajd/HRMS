@@ -66,7 +66,29 @@ $BackendFiles = @(
     'hrms_project/payroll/admin.py',
     'hrms_project/accounting/migrations/0021_accountingdocument_issues.py',
     'hrms_project/projects/views.py',
-    'hrms_project/projects/profile_views.py'
+    'hrms_project/projects/profile_views.py',
+    'hrms_project/projects/urls.py',
+    'hrms_project/projects/serializers.py',
+    'hrms_project/projects/cost_models.py',
+    'hrms_project/projects/cost_views.py',
+    'hrms_project/projects/cost_serializers.py',
+    'hrms_project/projects/admin.py',
+    'hrms_project/projects/jalali_utils.py',
+    'hrms_project/projects/audit.py',
+    'hrms_project/projects/calendar_service.py',
+    'hrms_project/projects/wbs_template_service.py',
+    'hrms_project/core/models/audit_mixin.py',
+    'hrms_project/core/models/__init__.py',
+    'hrms_project/contracts/models.py',
+    'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',
+    'hrms_project/projects/migrations/0005_wbstemplatenode_budgetline_created_by_and_more.py',
+    'hrms_project/contracts/migrations/0021_contract_contract_alloc_gin_idx_and_more.py',
+    'hrms_project/projects/tests/__init__.py',
+    'hrms_project/projects/tests/base.py',
+    'hrms_project/projects/tests/test_jalali_utils.py',
+    'hrms_project/projects/tests/test_wbs_template.py',
+    'hrms_project/projects/tests/test_phase0_cost.py',
+    'hrms_project/projects/tests/test_calendar_service.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
@@ -84,7 +106,11 @@ $FrontendFiles = @(
     'frontend/src/pages/ProjectProfilePage.jsx',
     'frontend/src/pages/AccountingPage.jsx',
     'frontend/src/pages/AssetsPage.jsx',
-    'frontend/src/pages/AssistantPage.jsx'
+    'frontend/src/pages/AssistantPage.jsx',
+    'frontend/src/pages/ProjectCalendarPage.jsx',
+    'frontend/src/pages/ProjectsStructurePage.jsx',
+    'frontend/src/AppRoutes.jsx',
+    'frontend/src/core/config/menuConfig.js'
 )
 
 function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }

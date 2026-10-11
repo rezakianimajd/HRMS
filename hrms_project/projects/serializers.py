@@ -1,7 +1,7 @@
 """Serializers for the Projects module."""
 from rest_framework import serializers
 from projects.models import (
-    ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, CBSNode,
+    ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, WBSTemplateNode, CBSNode,
     ResourceCategory, Resource, CostSource, OBSNode,
     PriceList, PriceListVersion, PriceListChapter, PriceListItem,
     ContractItem, ContractWBS, ContractPriceBasis,
@@ -19,15 +19,21 @@ class ProjectSerializer(serializers.ModelSerializer):
     project_type_name = serializers.CharField(source='project_type.name', read_only=True)
     manager_name = serializers.CharField(source='manager.full_name', read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    parent_name = serializers.CharField(source='parent.name', read_only=True)
+    children_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Project
         fields = [
             'id', 'code', 'name', 'project_type', 'project_type_name', 'manager',
             'manager_name', 'client', 'location', 'start_date', 'end_date',
-            'status', 'status_display', 'description', 'is_active', 'created_at',
+            'status', 'status_display', 'parent', 'parent_name', 'is_program',
+            'children_count', 'description', 'is_active', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_children_count(self, obj):
+        return obj.children.count()
 
 
 class ProjectPhaseSerializer(serializers.ModelSerializer):
@@ -54,13 +60,40 @@ class WBSNodeSerializer(serializers.ModelSerializer):
         return WBSNodeSerializer(obj.children.all(), many=True).data
 
 
+class WBSTemplateNodeSerializer(serializers.ModelSerializer):
+    node_type_display = serializers.CharField(source='get_node_type_display', read_only=True)
+    children = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WBSTemplateNode
+        fields = [
+            'id', 'template', 'code', 'name', 'parent', 'node_type',
+            'node_type_display', 'sequence', 'description', 'children', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_children(self, obj):
+        return WBSTemplateNodeSerializer(obj.children.all(), many=True).data
+
+
 class WBSTemplateSerializer(serializers.ModelSerializer):
     project_type_name = serializers.CharField(source='project_type.name', read_only=True)
+    nodes = serializers.SerializerMethodField()
+    nodes_count = serializers.SerializerMethodField()
 
     class Meta:
         model = WBSTemplate
-        fields = ['id', 'name', 'project_type', 'project_type_name', 'is_active']
+        fields = [
+            'id', 'name', 'project_type', 'project_type_name',
+            'nodes', 'nodes_count', 'is_active',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_nodes(self, obj):
+        return WBSTemplateNodeSerializer(obj.nodes.filter(parent__isnull=True), many=True).data
+
+    def get_nodes_count(self, obj):
+        return obj.nodes.count()
 
 
 class CBSNodeSerializer(serializers.ModelSerializer):

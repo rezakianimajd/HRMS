@@ -42,12 +42,9 @@ const money = (v) => formatPersianNumber(v || 0);
 const fmtDate = (d) => (d ? toJalali(d) : '—');
 const curCode = (currency) => ((currency?.code || 'IRR') === 'IRR' ? '' : currency.code);
 
-// --- کمکی‌های نمودار: ارقام فارسی + برچسب ماه به سبک بقیهٔ برنامه (MM/YY) ---
+// --- کمکی‌های نمودار: ارقام فارسی + برچسب ماه شمسی (بک‌اند month_short/month_label می‌فرستد) ---
 const faNum = (v) => (typeof v === 'number' ? formatPersianNumber(v) : toPersianDigits(String(v ?? '')));
-const monthLabel = (m) => {
-  const s = String(m || '');
-  return s.length >= 7 ? `${toPersianDigits(s.slice(5))}/${toPersianDigits(s.slice(0, 4).slice(2))}` : toPersianDigits(s);
-};
+const faLabel = (v) => toPersianDigits(String(v ?? ''));
 const rtlTip = { direction: 'rtl', textAlign: 'right', fontFamily: FONT };
 const legendStyle = { fontFamily: FONT, fontSize: 12, direction: 'rtl' };
 
@@ -308,6 +305,18 @@ const ProjectProfilePage = () => {
               <Chip size="small" label={project.status_display || STATUS_LABELS[project.status] || project.status}
                 sx={{ fontFamily: FONT, fontWeight: 800, bgcolor: `${STATUS_COLORS[project.status] || '#64748b'}22`, color: STATUS_COLORS[project.status] || '#64748b' }} />
               {project.project_type ? <Chip size="small" variant="outlined" label={project.project_type} sx={{ fontFamily: FONT }} /> : null}
+              {project.is_program ? (
+                <Chip size="small" color="secondary" label="برنامه (مجموعهٔ پروژه‌ها)"
+                  sx={{ fontFamily: FONT, fontWeight: 700 }} />
+              ) : null}
+              {project.parent_name ? (
+                <Chip size="small" variant="outlined" color="primary" label={`برنامه: ${project.parent_name}`}
+                  sx={{ fontFamily: FONT, fontWeight: 700 }} />
+              ) : null}
+              {project.children_count ? (
+                <Chip size="small" label={`${toPersianDigits(project.children_count)} پروژهٔ زیرمجموعه`}
+                  sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(14,165,233,0.12)', color: '#0369a1' }} />
+              ) : null}
             </Stack>
             <Stack direction="row" spacing={2} sx={{ mt: 0.5 }} flexWrap="wrap" useFlexGap>
               <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>کارفرما: <b>{project.client || '—'}</b></Typography>
@@ -401,9 +410,10 @@ const ProjectProfilePage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthly} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                  <XAxis dataKey="month" reversed tick={{ fontSize: 11 }} tickFormatter={monthLabel} />
+                  <XAxis dataKey="month_short" reversed tick={{ fontSize: 11 }} tickFormatter={faLabel} />
                   <YAxis orientation="right" tick={{ fontSize: 11 }} width={80} tickFormatter={faNum} />
-                  <ReTooltip formatter={(v) => money(v)} labelFormatter={monthLabel}
+                  <ReTooltip formatter={(v) => money(v)}
+                    labelFormatter={(label, payload) => payload?.[0]?.payload?.month_label || faLabel(label)}
                     contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
                   <Legend align="right" wrapperStyle={legendStyle} />
                   <Line type="monotone" dataKey="cost" name="هزینه" stroke={CLR.cost} strokeWidth={2} dot={false} />

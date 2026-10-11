@@ -3,14 +3,14 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from projects.models import (
-    ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, CBSNode,
+    ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, WBSTemplateNode, CBSNode,
     ResourceCategory, Resource, CostSource, OBSNode,
     PriceList, PriceListVersion, PriceListChapter, PriceListItem,
     ContractItem, ContractWBS, ContractPriceBasis,
 )
 from projects.serializers import (
     ProjectTypeSerializer, ProjectSerializer, ProjectPhaseSerializer,
-    WBSNodeSerializer, WBSTemplateSerializer, CBSNodeSerializer,
+    WBSNodeSerializer, WBSTemplateSerializer, WBSTemplateNodeSerializer, CBSNodeSerializer,
     ResourceCategorySerializer, ResourceSerializer, CostSourceSerializer,
     OBSNodeSerializer,
     PriceListSerializer, PriceListVersionSerializer, PriceListChapterSerializer,
@@ -59,7 +59,42 @@ class ProjectViewSet(BaseProjectViewSet):
         project_type = self.request.query_params.get('project_type')
         if project_type:
             qs = qs.filter(project_type_id=project_type)
+        parent = self.request.query_params.get('parent')
+        if parent:
+            qs = qs.filter(parent_id=parent)
+        if self.request.query_params.get('roots') in ('1', 'true', 'True'):
+            qs = qs.filter(parent__isnull=True)
+        if self.request.query_params.get('is_program') in ('1', 'true', 'True'):
+            qs = qs.filter(is_program=True)
         return qs
+
+    @action(detail=False, methods=['get'])
+    def calendar(self, request):
+        """رویدادهای تقویمی پروژه‌ها: شروع/پایان، فازها، هزینه، تعهد، درآمد،
+        قراردادهای مرتبط (امضا/فاکتور/صورت‌وضعیت/پرداخت/الحاقیه/تضمین) و اسناد دفاتر."""
+        from projects.calendar_service import build_calendar_events
+        return Response(build_calendar_events(request))
+
+    @action(detail=True, methods=['post'], url_path='apply-wbs-template')
+    def apply_wbs_template(self, request, pk=None):
+        """ساخت یا به‌روزرسانی درخت WBS پروژه از «قالب WBS» (Phase 0)."""
+        from projects.models import WBSTemplate
+        from projects.wbs_template_service import apply_template
+
+        project = self.get_object()
+        template_id = request.data.get('template') or request.data.get('template_id')
+        if not template_id:
+            return Response({'detail': 'شناسهٔ قالب (template) الزامی است.'}, status=400)
+        mode = request.data.get('mode') or 'append'
+        if mode not in ('append', 'replace'):
+            return Response({'detail': "mode باید «append» یا «replace» باشد."}, status=400)
+        try:
+            result = apply_template(project, template_id, mode=mode)
+        except WBSTemplate.DoesNotExist:
+            return Response({'detail': 'قالب WBS یافت نشد.'}, status=404)
+        except ValueError as exc:
+            return Response({'detail': str(exc)}, status=400)
+        return Response(result)
 
     @action(detail=True, methods=['get'])
     def profile(self, request, pk=None):
@@ -107,6 +142,19 @@ class WBSNodeViewSet(BaseProjectViewSet):
 class WBSTemplateViewSet(BaseProjectViewSet):
     serializer_class = WBSTemplateSerializer
     queryset = WBSTemplate.objects.all()
+
+
+class WBSTemplateNodeViewSet(BaseProjectViewSet):
+    """گره‌های «قالب WBS» — مبنای ساخت خودکار ساختار پروژه‌های مشابه (Phase 0)."""
+    serializer_class = WBSTemplateNodeSerializer
+    queryset = WBSTemplateNode.objects.all()
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('template', 'parent')
+        template_id = self.request.query_params.get('template')
+        if template_id:
+            qs = qs.filter(template_id=template_id)
+        return qs
 
 
 class CBSNodeViewSet(BaseProjectViewSet):

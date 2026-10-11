@@ -50,16 +50,23 @@ class CostTransactionLineSerializer(serializers.ModelSerializer):
 class CostTransactionSerializer(serializers.ModelSerializer):
     lines = CostTransactionLineSerializer(many=True, read_only=True)
     total_amount = serializers.SerializerMethodField()
+    currency_name = serializers.CharField(source='currency.name', read_only=True)
+    currency_code_display = serializers.SerializerMethodField()
 
     class Meta:
         model = CostTransaction
         fields = [
-            'id', 'project', 'number', 'date', 'cost_source', 'contract', 'currency',
+            'id', 'project', 'number', 'date', 'cost_source', 'contract',
+            'currency', 'currency_name', 'currency_code', 'currency_code_display',
             'description', 'accounting_reference', 'purchase_reference',
             'warehouse_reference', 'payroll_reference', 'document_reference',
             'lines', 'total_amount', 'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_currency_code_display(self, obj):
+        """کد ارز مؤثر: از ارجاع جدید و در نبود آن مقدار میراثی (Phase 0)."""
+        return obj.currency.code if obj.currency_id else (obj.currency_code or 'IRR')
 
     def get_total_amount(self, obj):
         return sum(float(l.net_amount or l.amount or 0) for l in obj.lines.all())

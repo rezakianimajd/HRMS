@@ -54,6 +54,14 @@ class Project(BaseModel):
     project_type = models.ForeignKey(
         ProjectType, on_delete=models.PROTECT, related_name='projects', verbose_name=_('نوع پروژه'),
     )
+    parent = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='children', verbose_name=_('پروژه/برنامهٔ مادر'),
+    )
+    is_program = models.BooleanField(
+        default=False, verbose_name=_('برنامه (مجموعهٔ پروژه‌ها)'),
+        help_text=_('اگر فعال باشد این رکورد یک «برنامه» است و پروژه‌های زیرمجموعه در آن تجمیع می‌شوند.'),
+    )
     manager = models.ForeignKey(
         'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='managed_projects', verbose_name=_('مدیر پروژه'),
@@ -259,6 +267,38 @@ class WBSNode(BaseModel):
 
     def __str__(self):
         return f'{self.project.code} / {self.code} - {self.name}'
+
+
+class WBSTemplateNode(BaseModel):
+    """گرهٔ ساختار در یک قالب WBS.
+
+    با این مدل، «قالب WBS» واقعاً ساختار دارد و می‌توان با یک درخواست،
+    درخت WBS یک پروژهٔ جدید را از قالب ساخت (Phase 0 — رفع بی‌اثر بودن قالب).
+    """
+    template = models.ForeignKey(
+        'WBSTemplate', on_delete=models.CASCADE, related_name='nodes', verbose_name=_('قالب WBS'),
+    )
+    parent = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='children', verbose_name=_('گره بالادستی'),
+    )
+    code = models.CharField(max_length=50, verbose_name=_('کد'))
+    name = models.CharField(max_length=250, verbose_name=_('نام'))
+    node_type = models.CharField(
+        max_length=30, choices=WBSNode.NodeType.choices,
+        default=WBSNode.NodeType.WORK_PACKAGE, verbose_name=_('نوع گره'),
+    )
+    sequence = models.PositiveIntegerField(default=0, verbose_name=_('ترتیب'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('گرهٔ قالب WBS')
+        verbose_name_plural = _('گره‌های قالب WBS')
+        unique_together = [('template', 'code')]
+        ordering = ['sequence', 'code']
+
+    def __str__(self):
+        return f'{self.template.name} / {self.code} - {self.name}'
 
 
 class WBSTemplate(BaseModel):

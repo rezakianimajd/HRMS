@@ -1,6 +1,6 @@
 from django.contrib import admin
 from projects.models import (
-    ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, CBSNode,
+    ProjectType, Project, ProjectPhase, WBSNode, WBSTemplate, WBSTemplateNode, CBSNode,
     ResourceCategory, Resource, CostSource, OBSNode,
     PriceList, PriceListVersion, PriceListChapter, PriceListItem,
     ContractItem, ContractWBS, ContractPriceBasis,
@@ -36,6 +36,22 @@ class WBSNodeAdmin(admin.ModelAdmin):
 @admin.register(WBSTemplate)
 class WBSTemplateAdmin(admin.ModelAdmin):
     list_display = ['name', 'project_type', 'is_active']
+
+
+class WBSTemplateNodeInline(admin.TabularInline):
+    model = WBSTemplateNode
+    extra = 1
+    fields = ('parent', 'code', 'name', 'node_type', 'sequence')
+
+
+WBSTemplateAdmin.inlines = [WBSTemplateNodeInline]
+
+
+@admin.register(WBSTemplateNode)
+class WBSTemplateNodeAdmin(admin.ModelAdmin):
+    list_display = ['template', 'code', 'name', 'node_type', 'parent', 'sequence']
+    list_filter = ['template', 'node_type']
+    search_fields = ['code', 'name']
 
 
 @admin.register(CBSNode)

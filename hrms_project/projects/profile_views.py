@@ -18,6 +18,7 @@ from projects.cost_models import (
     BudgetLine, CommittedCost, CostTransaction, CostTransactionLine, ProgressStatement,
 )
 from projects.models import ContractItem
+from projects.jalali_utils import jalali_period_fields
 
 RIAL_CODES = {'', 'IRR', 'IRT', 'RIAL', 'RIALS'}
 
@@ -51,6 +52,25 @@ def _date(d):
 
 def _month(d):
     return d.strftime('%Y-%m') if d else None
+
+
+def _bump_month(monthly, gregorian_date, key, value):
+    """افزودن مقدار به سطل **ماه شمسی** (Phase 0 — پیش از این ماه میلادی بود)."""
+    period = jalali_period_fields(gregorian_date)
+    month = period['month']
+    if not month:
+        return
+    row = monthly.setdefault(month, {
+        'month': month,
+        'month_short': period['month_short'],
+        'month_label': period['month_label'],
+        'jy': period['jy'],
+        'jm': period['jm'],
+        'cost': 0.0,
+        'revenue': 0.0,
+        'payment': 0.0,
+    })
+    row[key] += float(value or 0)
 def _item_row(i):
     return {
         'id': i.id, 'code': i.code, 'description': i.description, 'unit': i.unit,
@@ -135,23 +155,62 @@ def _ledger_row(line):
     }
 
 
-def _contract_payload(contract):
-    items = list(ContractItem.objects.filter(contract=contract).order_by('code'))
-    addendums = list(Addendum.objects.filter(contract=contract).select_related('currency').order_by('-date'))
-    statements = list(Statement.objects.filter(contract=contract).select_related('currency').order_by('-date'))
-    invoices = list(Invoice.objects.filter(contract=contract).select_related('currency').order_by('-date'))
-    payments = list(Payment.objects.filter(contract=contract).select_related('currency').order_by('-date'))
-    guarantees = list(Guarantee.objects.filter(contract=contract).order_by('-created_at'))
+def _group(rows, attr='contract_id'):
+    """گروه‌بندی ردیف‌ها بر اساس شناسهٔ قرارداد (برای حذف کوئری‌های N+1)."""
+    out = {}
+    for row in rows:
+        out.setdefault(getattr(row, attr), []).append(row)
+    return out
 
-    ledger = [
-        _ledger_row(l) for l in AccountingDocumentLine.objects.filter(
-            document__company_id=contract.company_id,
+
+def _contract_payloads(contracts):
+    """پروندهٔ همهٔ قراردادهای یک پروژه با تعداد کوئری **ثابت** (Phase 0).
+
+    پیش از این برای هر قرارداد ۶ کوئری + کوئری اسناد اجرا می‌شد (N+1)؛
+    اکنون برای کل پروژه فقط ۷ کوئری اجرا می‌شود.
+    """
+    ids = [c.id for c in contracts]
+    if not ids:
+        return []
+
+    items = _group(ContractItem.objects.filter(contract_id__in=ids).order_by('code'))
+    addendums = _group(
+        Addendum.objects.filter(contract_id__in=ids).select_related('currency').order_by('-date'))
+    statements = _group(
+        Statement.objects.filter(contract_id__in=ids).select_related('currency').order_by('-date'))
+    invoices = _group(
+        Invoice.objects.filter(contract_id__in=ids).select_related('currency').order_by('-date'))
+    payments = _group(
+        Payment.objects.filter(contract_id__in=ids).select_related('currency').order_by('-date'))
+    guarantees = _group(
+        Guarantee.objects.filter(contract_id__in=ids).order_by('-created_at'))
+    ledger = _group(
+        AccountingDocumentLine.objects.filter(
+            contract_id__in=ids,
             document__status__in=REPORTABLE_DOCUMENT_STATUSES,
-            contract=contract,
-        ).select_related(
-            'document', 'account', 'currency', 'auxiliary', 'auxiliary_1',
-        ).order_by('-document__date', 'line_no')
+        ).select_related('document', 'account', 'currency', 'auxiliary', 'auxiliary_1')
+        .order_by('-document__date', 'line_no')
+    )
+
+    return [
+        _payload_from(
+            c,
+            items.get(c.id, []),
+            addendums.get(c.id, []),
+            statements.get(c.id, []),
+            invoices.get(c.id, []),
+            payments.get(c.id, []),
+            guarantees.get(c.id, []),
+            ledger.get(c.id, []),
+        )
+        for c in contracts
     ]
+
+
+def _payload_from(contract, items, addendums, statements, invoices, payments,
+                  guarantees, ledger_lines):
+    """محاسبهٔ پروندهٔ یک قرارداد از داده‌های از پیش واکشی‌شده (بدون کوئری)."""
+    ledger = [_ledger_row(l) for l in ledger_lines]
 
     add_rial = sum(_f(a.amount_change) for a in addendums if _is_rial(a.currency))
     add_cur = sum(_f(a.amount_change) for a in addendums if not _is_rial(a.currency))
@@ -225,7 +284,7 @@ def build_project_profile(project):
         .select_related('party', 'currency')
         .order_by('-signing_date', '-created_at')
     )
-    contract_payloads = [_contract_payload(c) for c in contracts]
+    contract_payloads = _contract_payloads(contracts)
     contract_ids = [c.id for c in contracts]
 
     for c, cp in zip(contracts, contract_payloads):
@@ -294,7 +353,7 @@ def build_project_profile(project):
             'cost_source': t.cost_source.name if t.cost_source_id else '',
             'contract_id': t.contract_id,
             'contract_number': t.contract.number if t.contract_id else '',
-            'currency': t.currency,
+            'currency': (t.currency.code if t.currency_id else (t.currency_code or 'IRR')),
             'description': t.description,
             'amount': _f(t.total),
             'accounting_reference': t.accounting_reference,
@@ -361,21 +420,15 @@ def build_project_profile(project):
         .order_by('-document__date', 'line_no')[:400]
     ]
 
-    # ---------- ۶) نمودارها ----------
+    # ---------- ۶) نمودارها (سطل‌گذاری ماهانه بر پایهٔ ماه شمسی) ----------
     monthly = {}
 
-    def bump(month, key, value):
-        if not month:
-            return
-        row = monthly.setdefault(month, {'month': month, 'cost': 0.0, 'revenue': 0.0, 'payment': 0.0})
-        row[key] += float(value or 0)
-
     for r in cost_lines_qs.values('transaction__date').annotate(total=Sum('net_amount')):
-        bump(_month(r['transaction__date']), 'cost', r['total'])
+        _bump_month(monthly, r['transaction__date'], 'cost', r['total'])
     for r in progress_qs.values('date').annotate(total=Sum('net_payable')):
-        bump(_month(r['date']), 'revenue', r['total'])
+        _bump_month(monthly, r['date'], 'revenue', r['total'])
     for r in Payment.objects.filter(contract_id__in=contract_ids).values('date').annotate(total=Sum('amount')):
-        bump(_month(r['date']), 'payment', r['total'])
+        _bump_month(monthly, r['date'], 'payment', r['total'])
 
     contracts_by_status = [
         {'status': r['status'], 'count': r['count'], 'amount': _f(r['total'])}
@@ -425,6 +478,10 @@ def build_project_profile(project):
         'location': project.location,
         'start_date': _date(project.start_date),
         'end_date': _date(project.end_date),
+        'parent_id': project.parent_id,
+        'parent_name': project.parent.name if project.parent_id else '',
+        'is_program': bool(project.is_program),
+        'children_count': project.children.count(),
         'manager_id': project.manager_id,
         'manager_name': str(project.manager) if project.manager_id else '',
         'project_type': project.project_type.name if project.project_type_id else '',

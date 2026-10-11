@@ -492,6 +492,7 @@ const projectsMenu = [
     items: [
       { id: 'projects', title: 'پروژه‌ها', icon: <AccountTreeIcon />, path: '/projects', color: '#8b5cf6', primary: true, ready: true },
       { id: 'projects-types', title: 'انواع پروژه', icon: <CategoryIcon />, path: '/projects/types', color: '#6366f1', primary: false, ready: true },
+      { id: 'projects-calendar', title: 'تقویم پروژه‌ها', icon: <CalendarMonthIcon />, path: '/projects/calendar', color: '#10b981', primary: false, ready: true },
       { id: 'projects-structure', title: 'ساختار (WBS / CBS)', icon: <AccountTreeIcon />, path: '/projects/structure', color: '#0ea5e9', primary: false, ready: true },
       { id: 'projects-resources', title: 'منابع (RBS)', icon: <Inventory2Icon />, path: '/projects/resources', color: '#10b981', primary: false, ready: true },
       { id: 'projects-cost-sources', title: 'منشأ هزینه', icon: <NumbersIcon />, path: '/projects/cost-sources', color: '#f59e0b', primary: false, ready: true },

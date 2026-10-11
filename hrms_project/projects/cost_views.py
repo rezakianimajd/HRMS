@@ -13,6 +13,7 @@ from projects.cost_serializers import (
     CostTransactionLineSerializer, ProgressStatementSerializer,
     ProgressStatementItemSerializer,
 )
+from projects import audit
 
 
 def _company(request):
@@ -20,6 +21,12 @@ def _company(request):
 
 
 class BaseCostViewSet(viewsets.ModelViewSet):
+    """پایهٔ ViewSetهای مالی پروژه.
+
+    Phase 0: هر تغییر مالی (ایجاد/ویرایش/حذف) در `core.AuditLog` ثبت می‌شود،
+    کاربر جاری روی رکورد مهر می‌خورد و حذف به‌صورت **نرم** انجام می‌شود.
+    """
+
     def get_queryset(self):
         qs = super().get_queryset()
         company = _company(self.request)
@@ -27,9 +34,28 @@ class BaseCostViewSet(viewsets.ModelViewSet):
             qs = qs.filter(company=company)
         return qs
 
+    def _user(self):
+        user = getattr(self.request, 'user', None)
+        return user if getattr(user, 'is_authenticated', False) else None
+
     def perform_create(self, serializer):
         company = _company(self.request)
-        serializer.save(company=company)
+        user = self._user()
+        instance = serializer.save(company=company, created_by=user, updated_by=user)
+        audit.log_object(user, instance, 'CREATE')
+
+    def perform_update(self, serializer):
+        user = self._user()
+        before = audit._snapshot(serializer.instance)
+        instance = serializer.save(updated_by=user)
+        changes = audit.diff(before, audit._snapshot(instance))
+        audit.log_object(user, instance, 'UPDATE', changes=changes)
+
+    def perform_destroy(self, instance):
+        user = self._user()
+        audit.log_object(user, instance, 'DELETE', description=f'حذف نرم {instance.__class__.__name__} #{instance.pk}')
+        instance.delete()  # Soft delete (AuditableModel.delete)
+
 
 
 class BudgetLineViewSet(BaseCostViewSet):
