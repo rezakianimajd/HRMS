@@ -64,7 +64,9 @@ $BackendFiles = @(
     'hrms_project/leaves/admin.py',
     'hrms_project/orgchart/admin.py',
     'hrms_project/payroll/admin.py',
-    'hrms_project/accounting/migrations/0021_accountingdocument_issues.py'
+    'hrms_project/accounting/migrations/0021_accountingdocument_issues.py',
+    'hrms_project/projects/views.py',
+    'hrms_project/projects/profile_views.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
@@ -78,7 +80,8 @@ $FrontendFiles = @(
     'frontend/src/pages/accounting/reports/LedgerDrillDialog.jsx',
     'frontend/src/pages/accounting/reports/reportHelpers.jsx',
     'frontend/src/pages/accounting/reports/TreeTrialBalancePage.jsx',
-    'frontend/src/pages/accounting/reports/LedgerReviewPage.jsx'
+    'frontend/src/pages/accounting/reports/LedgerReviewPage.jsx',
+    'frontend/src/pages/ProjectProfilePage.jsx'
 )
 
 function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }

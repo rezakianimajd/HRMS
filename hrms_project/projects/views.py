@@ -61,6 +61,12 @@ class ProjectViewSet(BaseProjectViewSet):
             qs = qs.filter(project_type_id=project_type)
         return qs
 
+    @action(detail=True, methods=['get'])
+    def profile(self, request, pk=None):
+        """پروندهٔ کامل پروژه: قراردادها، اقلام و الحاقیه‌ها، هزینه/درآمد و پرداخت‌ها."""
+        from projects.profile_views import build_project_profile
+        return Response(build_project_profile(self.get_object()))
+
 
 class ProjectPhaseViewSet(BaseProjectViewSet):
     serializer_class = ProjectPhaseSerializer
