@@ -159,7 +159,7 @@ const MatrixReportPage = () => {
   if (isLoading) return <Loading />;
 
   const isFlat = (v) => Math.abs(v || 0) < 0.005;
-  const headSx = { fontWeight: 800, whiteSpace: 'nowrap', bgcolor: '#f8fafc', fontSize: 12.5 };
+  const headSx = { fontWeight: 800, whiteSpace: 'nowrap', bgcolor: '#f8fafc', fontSize: 12.5, textAlign: 'center' };
 
   const numCell = (value, color, bold, sub) => (
     <Box>
@@ -371,8 +371,8 @@ const MatrixReportPage = () => {
                   <Table size="small" stickyHeader>
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK, textAlign: 'center' }}>ردیف</TableCell>
-                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK, textAlign: 'center' }}>کد حساب</TableCell>
+                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK }}>ردیف</TableCell>
+                        <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK }}>کد حساب</TableCell>
                         <TableCell sx={{ ...headSx, bgcolor: '#eef2ff', color: COLOR_DARK }}>شرح حساب</TableCell>
                         {columnMode === '6' ? (
                           <>
