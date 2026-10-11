@@ -58,11 +58,13 @@ $BackendFiles = @(
     'hrms_project/accounting/report_views.py',
     'hrms_project/accounting/annual_views.py',
     'hrms_project/accounting/tax_views.py',
+    'hrms_project/employees/views.py',
     'hrms_project/accounting/migrations/0021_accountingdocument_issues.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
 $FrontendFiles = @(
+    'frontend/src/pages/EmployeeForm.jsx',
     'frontend/src/pages/AccountingDocumentsPage.jsx',
     'frontend/src/pages/AccountingDocumentNewPage.jsx',
     'frontend/src/core/components/accounting/DocumentIssuesDialog.jsx',

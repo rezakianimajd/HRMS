@@ -134,12 +134,38 @@ const cardNumberField = (label, field, value, onChange) => {
   );
 };
 
-const dateField = (label, field, value, onChange) => (
+const dateField = (label, field, value, onChange, required = false) => (
   <Grid item xs={12} sm={6} md={4}>
-    <JalaliDatePicker fullWidth label={label} value={value}
+    <JalaliDatePicker fullWidth label={required ? `${label} *` : label} value={value}
       onChange={gregorian => onChange(field, gregorian)} />
   </Grid>
 );
+
+/** فیلدهای الزامیِ سرور (EmployeeCreateSerializer) — تا کاربر قبل از ذخیره بداند */
+const REQUIRED_FIELDS = [
+  'first_name', 'last_name', 'national_id', 'mobile', 'employee_id', 'birth_date', 'hire_date',
+];
+
+/** متن خطای ذخیره را از پاسخ سرور می‌سازد (همهٔ خطاهای فیلدی، نه فقط detail) */
+const describeSaveError = (err, t) => {
+  const label = (k) => {
+    const key = `employees.${k}`;
+    const v = t(key);
+    return v === key ? k : v;
+  };
+  const data = err.response?.data;
+  if (!data) return `${t('employees.save_error')} (${err.message || 'network'})`;
+  if (typeof data === 'string') return data.slice(0, 300);
+  const parts = [];
+  if (data.detail) parts.push(String(data.detail));
+  if (Array.isArray(data.non_field_errors)) parts.push(data.non_field_errors.join(' ، '));
+  Object.entries(data).forEach(([k, v]) => {
+    if (k === 'detail' || k === 'non_field_errors') return;
+    const msg = Array.isArray(v) ? v.join(' ، ') : (v && typeof v === 'object' ? JSON.stringify(v) : String(v));
+    parts.push(`${label(k)}: ${msg}`);
+  });
+  return parts.length ? parts.join(' | ') : t('employees.save_error');
+};
 
 const EmployeeForm = () => {
   const { t } = useTranslation();
@@ -218,6 +244,18 @@ const EmployeeForm = () => {
 
   const handleSubmit = async () => {
     setError('');
+    // اعتبارسنجی سمت کلاینت برای فیلدهای الزامیِ سرور (فقط در حالت ساخت)
+    if (!isEdit) {
+      const missing = REQUIRED_FIELDS.filter((f) => !form[f]).map((f) => {
+        const key = `employees.${f}`;
+        const v = t(key);
+        return v === key ? f : v;
+      });
+      if (missing.length) {
+        setError(`تکمیل این فیلدها الزامی است: ${missing.join(' ، ')}`);
+        return;
+      }
+    }
     setSubmitting(true);
     try {
       let empId = id;
@@ -284,7 +322,10 @@ const EmployeeForm = () => {
       setSuccess(true);
       setTimeout(() => navigate(`/employees/${empId}`), 1200);
     } catch (err) {
-      setError(err.response?.data?.detail || t('employees.save_error'));
+      // لاگ کامل در کنسول مرورگر (F12 → Console) + پیام دقیق روی صفحه
+      console.error('[EmployeeForm] ذخیره ناموفق — status:', err.response?.status,
+        '| response:', err.response?.data, '| payload:', form);
+      setError(describeSaveError(err, t));
     } finally {
       setSubmitting(false);
     }
@@ -367,7 +408,7 @@ const EmployeeForm = () => {
           {textField(t('employees.first_name'), 'first_name', form.first_name, handleChange, true)}
           {textField(t('employees.last_name'), 'last_name', form.last_name, handleChange, true)}
           {textField(t('employees.national_id'), 'national_id', form.national_id, handleChange, true)}
-          {dateField(t('employees.birth_date'), 'birth_date', form.birth_date, handleChange)}
+          {dateField(t('employees.birth_date'), 'birth_date', form.birth_date, handleChange, true)}
           {textField(t('employees.birth_place'), 'birth_place', form.birth_place, handleChange)}
           {selectField('میزان تحصیلات', 'education_level', form.education_level, handleChange, [
             { value: 'under_diploma', label: 'زیر دیپلم' },
@@ -418,7 +459,7 @@ const EmployeeForm = () => {
       <SectionCard title="اطلاعات شغلی و استخدام" icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#f59e0b">
         <Grid container spacing={2}>
           {textField(t('employees.employee_id'), 'employee_id', form.employee_id, handleChange, true)}
-          {dateField(t('employees.hire_date'), 'hire_date', form.hire_date, handleChange)}
+          {dateField(t('employees.hire_date'), 'hire_date', form.hire_date, handleChange, true)}
           {dateField(t('employees.probation_end_date'), 'probation_end_date', form.probation_end_date, handleChange)}
           {dateField(t('employees.official_date'), 'official_date', form.official_date, handleChange)}
           {selectField(t('employees.department'), 'department', form.department, handleChange, mapOpts(departments))}

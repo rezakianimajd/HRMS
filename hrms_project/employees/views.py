@@ -1,6 +1,9 @@
 """
 Views for the Employees module.
 """
+import logging
+
+from django.db import IntegrityError
 from rest_framework import viewsets, status, filters, parsers
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework.decorators import action
@@ -21,6 +24,10 @@ from employees.serializers import (
 )
 from employees.filters import EmployeeFilter
 from employees.engines.employee_engine import EmployeeEngine
+
+# لاگ ماژول پرسنل — خطاهای ذخیره/ویرایش برای پیگیری سریع در لاگ سرور ثبت می‌شوند
+# (journalctl -u gunicorn  یا  /var/log/hrms/gunicorn-error.log)
+logger = logging.getLogger('employees')
 
 
 class StandardPagination(PageNumberPagination):
@@ -66,6 +73,57 @@ class EmployeeViewSet(viewsets.ModelViewSet):
         """Assign company from request context when creating."""
         company = getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None)
         serializer.save(company=company)
+
+    def _log_invalid(self, serializer):
+        """ثبت دقیق خطای اعتبارسنجی در لاگ سرور (برای رفع سریع مشکل ذخیره)."""
+        if not serializer.errors:
+            return
+        safe_payload = {}
+        for k, v in self.request.data.items():
+            safe_payload[k] = '<file>' if hasattr(v, 'read') else v
+        logger.warning(
+            'employees: ذخیره ناموفق (%s) user=%s company=%s errors=%s payload=%s',
+            self.action,
+            getattr(self.request.user, 'username', '?'),
+            getattr(self.request, 'tenant', None) or getattr(self.request, 'company', None),
+            dict(serializer.errors),
+            safe_payload,
+        )
+
+    def create(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if not serializer.is_valid():
+            self._log_invalid(serializer)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            self.perform_create(serializer)
+        except IntegrityError as exc:
+            logger.error('employees: خطای یکتایی در ذخیرهٔ پرسنل: %s', exc, exc_info=True)
+            return Response(
+                {'detail': 'رکورد تکراری است — کد ملی، شمارهٔ استخدام یا شمارهٔ موبایل قبلاً ثبت شده است.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        headers = self.get_success_headers(serializer.data)
+        return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+
+    def update(self, request, *args, **kwargs):
+        partial = kwargs.pop('partial', False)
+        instance = self.get_object()
+        serializer = self.get_serializer(instance, data=request.data, partial=partial)
+        if not serializer.is_valid():
+            self._log_invalid(serializer)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        try:
+            self.perform_update(serializer)
+        except IntegrityError as exc:
+            logger.error('employees: خطای یکتایی در ویرایش پرسنل: %s', exc, exc_info=True)
+            return Response(
+                {'detail': 'رکورد تکراری است — کد ملی، شمارهٔ استخدام یا شمارهٔ موبایل قبلاً ثبت شده است.'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        if getattr(instance, '_prefetched_objects_cache', None):
+            instance._prefetched_objects_cache = {}
+        return Response(serializer.data)
 
     def perform_update(self, serializer):
         serializer.save()
