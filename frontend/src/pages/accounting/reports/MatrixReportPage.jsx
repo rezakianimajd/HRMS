@@ -97,7 +97,9 @@ const MatrixReportPage = () => {
   // (اگر ردیفی انتخاب شده باشد، محدود به زیرمجموعهٔ همان حساب)
   const baseRows = useMemo(() => {
     if (subLevel !== null) {
-      const scope = selectedNode ? descendantsOf(selectedNode) : flat;
+      // فقط وقتی ریزسطح پایین‌تر از سطح تراز باشد، محدود به زیرمجموعهٔ حساب انتخاب‌شده می‌شود؛
+      // در غیر این صورت (سطح بالاتر یا بدون انتخاب) همهٔ ردیف‌های آن سطح نمایش داده می‌شود.
+      const scope = (selectedNode && subLevel > level) ? descendantsOf(selectedNode) : flat;
       return scope.filter((n) => (n.level ?? -1) === subLevel);
     }
     return flat.filter((n) => (n.level ?? -1) === level);
@@ -131,7 +133,7 @@ const MatrixReportPage = () => {
   }, { ...EMPTY_TOTAL }), [visibleRows]);
 
   const total = data?.total || EMPTY_TOTAL;
-  const subLevels = LEVELS.filter((l) => l.value > level);
+  const subLevels = LEVELS; // ثابت — همهٔ سطوح (پایین و بالای سطح تراز) تا گزارش هر سطح گرفته شود
   const currentLevel = LEVELS.find((l) => l.value === level) || LEVELS[1];
   const currentSub = subLevels.find((l) => l.value === subLevel) || null;
 
@@ -243,14 +245,36 @@ const MatrixReportPage = () => {
       {isError ? (
         <EmptyState message="خطا در بارگذاری تراز حساب‌ها. دوباره تلاش کنید." />
       ) : (
+        <>
+        {/* نوار جستجو و فیلترها — تمام عرض */}
+        <Paper sx={{ ...glass, p: 1.5, mb: 1.5, '@media print': { display: 'none' } }}>
+          <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
+            <TextField size="small" placeholder="جستجو در همه‌چیز: کد، شرح و والدها…" value={search}
+              onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 260, flex: 1 }}
+              InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }} />
+            <TextField size="small" label="از کد" value={fromCode} onChange={(e) => setFromCode(e.target.value)} sx={{ width: 108 }} />
+            <TextField size="small" label="تا کد" value={toCode} onChange={(e) => setToCode(e.target.value)} sx={{ width: 108 }} />
+            <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: 148 }} />
+            <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: 148 }} />
+            <FormControlLabel control={<Checkbox size="small" checked={onlyWithActivity}
+              onChange={(e) => setOnlyWithActivity(e.target.checked)} />}
+              label={<Typography variant="caption" sx={{ fontFamily: FONT }}>فقط دارای گردش</Typography>} />
+            <Tooltip title="پاک کردن جستجو و فیلترها">
+              <Button size="small" variant="outlined" startIcon={<CloseIcon />}
+                onClick={() => { setSearch(''); setFromCode(''); setToCode(''); setDateFrom(''); setDateTo(''); setOnlyWithActivity(true); }}
+                sx={{ borderRadius: '12px', fontFamily: FONT }}>پاک کردن</Button>
+            </Tooltip>
+          </Stack>
+        </Paper>
+
         <Box sx={{ display: 'flex', gap: 2, alignItems: 'flex-start', '@media print': { display: 'block' } }}>
-          {/* ستون کنار: سطح تراز / زیر سطح / ستون‌ها */}
+          {/* ستون کنار: سطح تراز / ستون‌ها */}
           <Stack spacing={1.5} sx={{ width: 216, flexShrink: 0, '@media print': { display: 'none' } }}>
             <Paper sx={{ ...glass, p: 1.25 }}>
               <Stack spacing={0.75}>
                 {LEVELS.map((l) => {
                   const count = flat.filter((n) => (n.level ?? -1) === l.value).length;
-                  const active = level === l.value && subLevel === null;
+                  const active = level === l.value;
                   return (
                     <Button key={l.value} fullWidth size="small" variant={active ? 'contained' : 'outlined'}
                       onClick={() => { setLevel(l.value); setSubLevel(null); setSelectedKey(null); }}
@@ -290,34 +314,12 @@ const MatrixReportPage = () => {
           </Stack>
 
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            {/* نوار جستجو و فیلترها */}
-            <Paper sx={{ ...glass, p: 1.5, mb: 1.5, '@media print': { display: 'none' } }}>
-              <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap alignItems="center">
-                <TextField size="small" placeholder="جستجو در همه‌چیز: کد، شرح و والدها…" value={search}
-                  onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 240, flex: 1 }}
-                  InputProps={{ startAdornment: (<InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>) }} />
-                <TextField size="small" label="از کد" value={fromCode} onChange={(e) => setFromCode(e.target.value)} sx={{ width: 108 }} />
-                <TextField size="small" label="تا کد" value={toCode} onChange={(e) => setToCode(e.target.value)} sx={{ width: 108 }} />
-                <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: 148 }} />
-                <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: 148 }} />
-                <FormControlLabel control={<Checkbox size="small" checked={onlyWithActivity}
-                  onChange={(e) => setOnlyWithActivity(e.target.checked)} />}
-                  label={<Typography variant="caption" sx={{ fontFamily: FONT }}>فقط دارای گردش</Typography>} />
-                <Tooltip title="پاک کردن جستجو و فیلترها">
-                  <Button size="small" variant="outlined" startIcon={<CloseIcon />}
-                    onClick={() => { setSearch(''); setFromCode(''); setToCode(''); setDateFrom(''); setDateTo(''); setOnlyWithActivity(true); }}
-                    sx={{ borderRadius: '12px', fontFamily: FONT }}>پاک کردن</Button>
-                </Tooltip>
-              </Stack>
-            </Paper>
-
-            {/* زیر سطح — افقی، بالای جدول (بدون عنوان و توضیح) */}
-            {subLevels.length > 0 ? (
-              <Paper sx={{ ...glass, p: 1.25, mb: 1.5, '@media print': { display: 'none' } }}>
+            {/* ریز سطح — ثابت: همهٔ سطوح */}
+            <Paper sx={{ ...glass, p: 1.25, mb: 1.5, '@media print': { display: 'none' } }}>
               <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
                 {subLevels.map((l) => {
-                  const active = subLevel === l.value;
-                  const count = (selectedNode ? descendantsOf(selectedNode) : flat)
+                  const active = (subLevel === null ? level : subLevel) === l.value;
+                  const count = ((selectedNode && l.value > level) ? descendantsOf(selectedNode) : flat)
                     .filter((n) => (n.level ?? -1) === l.value).length;
                   return (
                     <Button key={l.value} size="small" variant={active ? 'contained' : 'outlined'}
@@ -337,7 +339,6 @@ const MatrixReportPage = () => {
                 })}
               </Stack>
             </Paper>
-            ) : null}
 
             {visibleRows.length === 0 ? (
               <EmptyState message="گردشی برای این سطح و فیلترهای انتخابی وجود ندارد" />
@@ -401,6 +402,7 @@ const MatrixReportPage = () => {
             )}
           </Box>
         </Box>
+        </>
       )}
 
       <LedgerDrillDialog node={ledgerNode} dateFrom={dateFrom} dateTo={dateTo}
