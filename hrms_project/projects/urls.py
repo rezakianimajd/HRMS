@@ -12,6 +12,11 @@ from projects.cost_views import (
     BudgetLineViewSet, CommittedCostViewSet, CostTransactionViewSet,
     CostTransactionLineViewSet, ProgressStatementViewSet, ProgressStatementItemViewSet,
 )
+from projects.schedule_views import (
+    ActivityProgressViewSet, ActivityRelationshipViewSet, ActivityViewSet,
+    BaselineViewSet, CalendarExceptionViewSet, ResourceAssignmentViewSet,
+    ResourceRateViewSet, WorkCalendarViewSet,
+)
 
 router = DefaultRouter()
 router.register(r'project-types', ProjectTypeViewSet, basename='project-type')
@@ -38,6 +43,16 @@ router.register(r'cost-transactions', CostTransactionViewSet, basename='cost-tra
 router.register(r'cost-transaction-lines', CostTransactionLineViewSet, basename='cost-transaction-line')
 router.register(r'progress-statements', ProgressStatementViewSet, basename='progress-statement')
 router.register(r'progress-statement-items', ProgressStatementItemViewSet, basename='progress-statement-item')
+
+# ------------------------- فاز ۱: زمان‌بندی و منابع -------------------------
+router.register(r'work-calendars', WorkCalendarViewSet, basename='work-calendar')
+router.register(r'calendar-exceptions', CalendarExceptionViewSet, basename='calendar-exception')
+router.register(r'activities', ActivityViewSet, basename='activity')
+router.register(r'activity-relationships', ActivityRelationshipViewSet, basename='activity-relationship')
+router.register(r'baselines', BaselineViewSet, basename='baseline')
+router.register(r'resource-rates', ResourceRateViewSet, basename='resource-rate')
+router.register(r'resource-assignments', ResourceAssignmentViewSet, basename='resource-assignment')
+router.register(r'activity-progress', ActivityProgressViewSet, basename='activity-progress')
 
 from projects import analytics_views
 

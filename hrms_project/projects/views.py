@@ -96,6 +96,76 @@ class ProjectViewSet(BaseProjectViewSet):
             return Response({'detail': str(exc)}, status=400)
         return Response(result)
 
+    # ------------------------------------------------------------------ فاز ۱
+    @action(detail=True, methods=['post'], url_path='recalculate-schedule')
+    def recalculate_schedule(self, request, pk=None):
+        """اجرای CPM روی شبکهٔ فعالیت‌های پروژه و ذخیرهٔ زودترین/دیرترین/شناوری."""
+        from django.utils.dateparse import parse_date
+        from projects.scheduling.cpm import ScheduleCycleError, ScheduleValidationError
+        from projects.scheduling.service import recalculate_schedule as run_schedule
+
+        project = self.get_object()
+        try:
+            result = run_schedule(
+                project,
+                project_start=parse_date(request.data.get('project_start') or ''),
+                project_finish=parse_date(request.data.get('project_finish') or ''),
+            )
+        except (ScheduleCycleError, ScheduleValidationError) as exc:
+            return Response({'detail': str(exc)}, status=400)
+        return Response(result)
+
+    @action(detail=True, methods=['get', 'post'], url_path='baseline')
+    def baseline(self, request, pk=None):
+        """GET: بیس‌لاین جاری | POST: قفل برنامهٔ فعلی به‌عنوان بیس‌لاین نسخه‌دار."""
+        from projects.schedule_serializers import BaselineSerializer
+        from projects.scheduling.service import current_baseline, freeze_baseline
+
+        project = self.get_object()
+        if request.method == 'POST':
+            try:
+                baseline = freeze_baseline(
+                    project,
+                    name=request.data.get('name'),
+                    note=request.data.get('note') or '',
+                )
+            except ValueError as exc:
+                return Response({'detail': str(exc)}, status=400)
+            return Response(BaselineSerializer(baseline).data, status=201)
+
+        baseline = current_baseline(project)
+        if not baseline:
+            return Response({'detail': 'برای این پروژه بیس‌لاینی ثبت نشده است.'}, status=404)
+        return Response(BaselineSerializer(baseline).data)
+
+    @action(detail=True, methods=['get'], url_path='evm')
+    def evm(self, request, pk=None):
+        """شاخص‌های ارزش کسب‌شده (PV/EV/AC, SPI/CPI, EAC…) و منحنی S شمسی."""
+        from django.utils.dateparse import parse_date
+        from projects.scheduling.service import project_evm
+
+        as_of = parse_date(request.query_params.get('as_of') or '')
+        return Response(project_evm(self.get_object(), as_of=as_of))
+
+    @action(detail=True, methods=['get'], url_path='gantt')
+    def gantt(self, request, pk=None):
+        """دادهٔ صفحهٔ گانت (فعالیت‌ها با برچسب شمسی + وابستگی‌ها + بیس‌لاین)."""
+        from projects.scheduling.service import gantt_payload
+
+        return Response(gantt_payload(self.get_object()))
+
+    @action(detail=True, methods=['get'], url_path='resource-histogram')
+    def resource_histogram(self, request, pk=None):
+        """بار روزانهٔ منابع و هشدار بیش‌تخصیص."""
+        from django.utils.dateparse import parse_date
+        from projects.scheduling.service import resource_histogram as build_histogram
+
+        return Response(build_histogram(
+            self.get_object(),
+            date_from=parse_date(request.query_params.get('date_from') or ''),
+            date_to=parse_date(request.query_params.get('date_to') or ''),
+        ))
+
     @action(detail=True, methods=['get'])
     def profile(self, request, pk=None):
         """پروندهٔ کامل پروژه: قراردادها، اقلام و الحاقیه‌ها، هزینه/درآمد و پرداخت‌ها."""

@@ -118,6 +118,7 @@ $FrontendFiles = @(
     'frontend/src/pages/AssetsPage.jsx',
     'frontend/src/pages/AssistantPage.jsx',
     'frontend/src/pages/ProjectCalendarPage.jsx',
+    'frontend/src/pages/ProjectSchedulePage.jsx',
     'frontend/src/pages/ProjectsStructurePage.jsx',
     'frontend/src/AppRoutes.jsx',
     'frontend/src/core/config/menuConfig.js'
