@@ -270,6 +270,17 @@ class AccountGroupViewSet(CompanyScopedViewSet):
             return Response({'error': 'این گروه حساب، زیرگروه دارد و قابل حذف نیست.'}, status=400)
         return super().destroy(request, *args, **kwargs)
 
+    def perform_update(self, serializer):
+        """ویرایش گروه: تغییر دستی نوع/ماهیت، آن را «قفل» می‌کند.
+
+        با این نشانه، ابزار اصلاح خودکار نوع گروه را بازنویسی نمی‌کند.
+        """
+        data = serializer.validated_data
+        if 'account_type' in data or 'nature' in data or 'coding_locked' in data:
+            if 'coding_locked' not in data:
+                data['coding_locked'] = True
+        serializer.save()
+
 
 class _NoDeleteWithLinesMixin:
     use_lines_rel = 'lines'
@@ -302,20 +313,21 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         return qs
 
     def perform_create(self, serializer):
-        """ساخت حساب با **وراثت اجباری** از والد انتخاب‌شده.
+        """ساخت حساب: نوع/ماهیت پیشنهادی از والد/گروه، اما **ورودی کاربر مقدم است**.
 
         قاعده‌ها:
-        * اگر «حساب بالادستی» انتخاب شده باشد، نوع حساب و ماهیت همیشه از والد
-          گرفته می‌شود (حتی اگر کلاینت مقدار دیگری بفرستد) تا زیرمجموعه‌ای با نوع
-          ناهمگون — مثل «دارایی» زیر والد «بدهی» — ثبت نشود.
-        * گروه و سطح نیز از والد ارث می‌برند (سطح = سطح والد + ۱).
-        * اگر والدی نباشد، نوع/ماهیت از «گروه حساب» و در نهایت از ورودی کلاینت
-          گرفته می‌شود.
+        * اگر کلاینت نوع/ماهیت را فرستاده باشد (مثلاً کاربر آن را در فرم تغییر داده)،
+          همان پذیرفته می‌شود — پیشنهاد خودکار فقط «مقدار اولیهٔ فرم» است.
+        * در غیر این صورت از والد، سپس گروه، سپس استنتاج از نام و در آخر از نوع
+          پیش‌فرض شرکت استفاده می‌شود.
+        * گروه و سطح از والد ارث می‌برند (سطح = سطح والد + ۱).
         """
         data = serializer.validated_data
         parent = data.get('parent')
         group = data.get('group')
         inherited_type, inherited_nature, source = coding.resolve_inheritance(parent, group)
+        client_type = data.get('account_type')
+        client_nature = data.get('nature')
 
         if parent is not None:
             data['level'] = (parent.level or 1) + 1
@@ -324,15 +336,25 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         elif not data.get('level'):
             data['level'] = 1
 
-        if inherited_type is not None:
-            data['account_type'] = inherited_type
-        elif not data.get('account_type'):
-            data['account_type'] = self._fallback_account_type(data.get('name'))
-
-        if inherited_nature:
-            data['nature'] = inherited_nature
+        if client_type is None:
+            data['account_type'] = inherited_type or self._fallback_account_type(data.get('name'))
+        if not client_nature or client_nature == 'none':
+            if inherited_nature:
+                data['nature'] = inherited_nature
 
         serializer.save(company=_company(self.request))
+
+    def perform_update(self, serializer):
+        """ویرایش حساب: اگر کاربر نوع/ماهیت را دستی فرستاده باشد، «قفل دستی» می‌شود.
+
+        با این نشانه، ابزار اصلاح خودکار (`sync-types`) دیگر آن رکورد را بازنویسی
+        نمی‌کند و تصمیم کاربر محترم می‌ماند.
+        """
+        data = serializer.validated_data
+        if 'account_type' in data or 'nature' in data or 'coding_locked' in data:
+            if 'coding_locked' not in data:
+                data['coding_locked'] = True
+        serializer.save()
 
     def _fallback_account_type(self, name):
         """آخرین راه‌حل تعیین نوع حساب: استنتاج از نام، سپس اولین نوع (بر پایهٔ کد)."""
@@ -351,7 +373,10 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         رفع «ناهمگونی کدینگ»: رکوردهایی که گروهشان «بدهی جاری» است اما نوع
         «دارایی» دارند و به همین دلیل اشتباهاً در دارایی‌های ترازنامه می‌آیند.
         GET  → پیش‌نمایش تغییرات
-        POST → پیش‌نمایش، و با `apply=1` اعمال (اختیاری `fix_groups=1`)
+        POST → پیش‌نمایش، و با `apply=1` اعمال
+               (`fix_groups=1` اصلاح نوع گروه‌ها، `force=1` بازنویسی رکوردهای دستی)
+        رکوردهایی که نوع/ماهیت آن‌ها دستی تعیین شده (`coding_locked`) بدون
+        `force=1` دست‌نخورده می‌مانند.
         """
         company = _company(request)
         params = request.query_params if request.method == 'GET' else request.data
@@ -360,7 +385,27 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
             return str(params.get(key, '')).lower() in ('1', 'true', 'yes', 'on')
 
         runner = maintenance.sync_account_types if _flag('apply') else maintenance.analyze_account_types
-        return Response(runner(company, fix_groups=_flag('fix_groups')))
+        return Response(runner(company, fix_groups=_flag('fix_groups'), force=_flag('force')))
+
+    @action(detail=False, methods=['post'], url_path='unlock-coding')
+    def unlock_coding(self, request):
+        """آزادسازی «قفل دستی» کدینگ حساب‌ها/گروه‌ها تا اصلاح خودکار آن‌ها را بپذیرد.
+
+        بدنهٔ اختیاری: `{"ids": [1,2,3]}` (پیش‌فرض: همهٔ رکوردهای قفل‌شدهٔ شرکت).
+        """
+        company = _company(request)
+        ids = request.data.get('ids')
+        accounts = Account.objects.filter(company=company, coding_locked=True)
+        groups = AccountGroup.objects.filter(company=company, coding_locked=True)
+        if ids:
+            accounts = accounts.filter(id__in=ids)
+            groups = groups.filter(id__in=ids)
+        accounts_updated = accounts.update(coding_locked=False)
+        groups_updated = groups.update(coding_locked=False)
+        return Response({
+            'accounts_unlocked': accounts_updated,
+            'groups_unlocked': groups_updated,
+        })
 
 
 

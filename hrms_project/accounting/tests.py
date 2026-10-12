@@ -233,6 +233,41 @@ class CodingHealthSyncTests(TestCase):
         self.assertEqual(rows[child.id]['source'], 'parent')
         self.assertEqual(rows[child.id]['new_category'], 'liability')
 
+    def test_locked_account_is_skipped_by_sync(self):
+        """رکورد دستی (coding_locked) نباید بازنویسی شود، اما با force پیشنهاد داده می‌شود."""
+        self.broken.coding_locked = True
+        self.broken.save(update_fields=['coding_locked'])
+        report = analyze_account_types(self.company)
+        self.assertEqual(report['accounts_mismatched'], 0)
+        self.assertEqual(report['locked_accounts'], 1)
+        forced = analyze_account_types(self.company, force=True)
+        self.assertEqual(forced['accounts_mismatched'], 1)
+
+    def test_manual_type_and_nature_are_preserved(self):
+        """تصمیم دستی کاربر (نوع/ماهیت) با اجرای سینک تغییر نمی‌کند."""
+        self.broken.account_type = self.liability
+        self.broken.nature = 'credit'
+        self.broken.coding_locked = True
+        self.broken.save(update_fields=['account_type', 'nature', 'coding_locked'])
+        report = sync_account_types(self.company)
+        self.assertEqual(report['accounts_updated'], 0)
+        self.broken.refresh_from_db()
+        self.assertEqual(self.broken.account_type_id, self.liability.id)
+        self.assertEqual(self.broken.nature, 'credit')
+
+    def test_locked_group_is_skipped(self):
+        self.liab_group.account_type = self.asset
+        self.liab_group.coding_locked = True
+        self.liab_group.save(update_fields=['account_type', 'coding_locked'])
+        report = analyze_account_types(self.company, fix_groups=True)
+        self.assertEqual(len(report['groups_to_fix']), 0)
+        self.assertEqual(report['locked_groups'], 1)
+
+    def test_equity_keywords_cover_profit_and_loss(self):
+        self.assertEqual(infer_category_from_name('سود (زیان)'), 'equity')
+        self.assertEqual(infer_category_from_name('سود و زیان انباشته'), 'equity')
+        self.assertEqual(infer_category_from_name('زیان انباشته'), 'equity')
+
     def test_serializer_flags_type_mismatch(self):
         data = AccountSerializer(self.broken).data
         self.assertTrue(data['type_mismatch'])

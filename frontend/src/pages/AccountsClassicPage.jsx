@@ -5,8 +5,7 @@ import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, IconButton, Tooltip, Alert, InputAdornment, Autocomplete,
-  Grid, FormControl, InputLabel, Select, MenuItem, Divider,
-  Dialog, DialogTitle, DialogContent, DialogActions, FormControlLabel, Checkbox,
+  Grid, FormControl, InputLabel, Select, MenuItem,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import BoltIcon from '@mui/icons-material/Bolt';
@@ -14,6 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ClearIcon from '@mui/icons-material/Clear';
 import SearchIcon from '@mui/icons-material/Search';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import CodingSyncDialog from '../core/components/accounting/CodingSyncDialog';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 const COLOR = '#3b82f6';
@@ -59,39 +59,6 @@ const errText = (e, fallback) => {
 };
 const natureBg = (n) => n === 'credit' ? 'rgba(239,68,68,0.12)' : n === 'debit' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)';
 
-// برچسب فارسی طبقهٔ حساب و منبع وراثت (برای دیالوگ اصلاح ناهمگونی)
-const CATEGORY_FA = {
-  asset: 'دارایی', liability: 'بدهی', equity: 'حقوق صاحبان سهام',
-  revenue: 'درآمد', expense: 'هزینه', cost_of_sales: 'بهای تمام‌شده',
-};
-const SOURCE_FA = { parent: 'حساب والد', group: 'گروه حساب', group_name: 'نام گروه' };
-
-// فهرست تغییرات پیشنهادی اصلاح ناهمگونی (کد/نام/نوع فعلی → نوع درست)
-const SyncChangeList = ({ report }) => (
-  <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', maxHeight: 280, overflow: 'auto' }}>
-    <Stack spacing={0.75} divider={<Divider flexItem />}>
-      {(report.changes || []).slice(0, 40).map(r => (
-        <Stack key={r.id} direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Chip size="small" label={r.code} sx={{ fontWeight: 800, bgcolor: 'rgba(59,130,246,0.1)', color: COLOR_DARK }} />
-          <Typography variant="body2" fontWeight={700} sx={{ flex: 1, minWidth: 130 }}>{r.name}</Typography>
-          <Typography variant="caption" color="textSecondary">{r.group_name || r.parent_code || '—'}</Typography>
-          <Chip size="small" label={r.current_type_name} sx={{ bgcolor: 'rgba(239,68,68,0.1)', color: '#b91c1c', fontWeight: 700 }} />
-          <Typography variant="caption">→</Typography>
-          <Chip size="small" label={r.new_type_name} sx={{ bgcolor: 'rgba(16,185,129,0.12)', color: '#047857', fontWeight: 700 }} />
-          {r.current_nature !== r.new_nature && (
-            <Chip size="small" label={`ماهیت: ${natureLabel(r.new_nature)}`} sx={{ bgcolor: natureBg(r.new_nature), color: natureColor(r.new_nature), fontWeight: 700 }} />
-          )}
-          <Typography variant="caption" color="textSecondary">منبع: {SOURCE_FA[r.source] || r.source}</Typography>
-        </Stack>
-      ))}
-      {(report.changes || []).length > 40 && (
-        <Typography variant="caption" color="textSecondary">
-          … و {report.changes.length - 40} مورد دیگر
-        </Typography>
-      )}
-    </Stack>
-  </Paper>
-);
 
 
 const AccountsClassicPage = () => {
@@ -105,10 +72,6 @@ const AccountsClassicPage = () => {
   const [msg, setMsg] = useState(null);
   // اصلاح ناهمگونی نوع حساب‌ها (حساب‌هایی که گروهشان بدهی است اما نوعشان دارایی ثبت شده)
   const [syncOpen, setSyncOpen] = useState(false);
-  const [syncReport, setSyncReport] = useState(null);
-  const [syncLoading, setSyncLoading] = useState(false);
-  const [syncError, setSyncError] = useState(null);
-  const [syncFixGroups, setSyncFixGroups] = useState(true);
 
   const endpoint = '/accounting/accounts/';
   const { data, isLoading } = useQuery({
@@ -218,51 +181,20 @@ const AccountsClassicPage = () => {
   // تعداد حساب‌های ناهمگون در همین فهرست (نوع ثبت‌شده ≠ نوع گروه/والد)
   const mismatchCount = useMemo(() => list.filter(a => a.type_mismatch).length, [list]);
 
-  // گروه‌هایی که نامشان هیچ نشانه‌ای از طبقه ندارد → نیازمند تعیین دستی نوع
-  const reviewGroups = ((syncReport?.groups_report) || [])
-    .filter(g => g.source === 'group_type' && (g.accounts_count || 0) > 0);
-
-  const loadSyncPreview = async () => {
-    setSyncLoading(true);
-    setSyncError(null);
-    setSyncReport(null);
-    try {
-      const { data } = await axiosInstance.get('/accounting/accounts/sync-types/', { params: { fix_groups: 1 } });
-      setSyncReport(data);
-      setSyncFixGroups((data.groups_to_fix || []).length > 0);
-      setSyncOpen(true);
-    } catch (e) {
-      setMsg({ ok: false, text: errText(e, 'بررسی ناهمگونی کدینگ ممکن نشد') });
-    } finally {
-      setSyncLoading(false);
-    }
-  };
-
-  const applySync = async () => {
-    setSyncLoading(true);
-    setSyncError(null);
-    try {
-      const { data } = await axiosInstance.post('/accounting/accounts/sync-types/', {
-        apply: 1,
-        fix_groups: syncFixGroups ? 1 : 0,
-      });
-      setSyncReport(data);
-      qc.invalidateQueries({ queryKey: ['accounts'] });
-      qc.invalidateQueries({ queryKey: ['accounts', kind] });
-      qc.invalidateQueries({ queryKey: ['acc-groups'] });
-      qc.invalidateQueries({ queryKey: ['acc-general'] });
-      qc.invalidateQueries({ queryKey: ['balance-sheet'] });
-      setMsg({
-        ok: true,
-        text: `نوع ${data.accounts_updated || 0} حساب اصلاح شد`
-          + (data.groups_updated ? ` و ${data.groups_updated} گروه حساب اصلاح شد` : '')
-          + '. ترازنامه را دوباره باز کنید.',
-      });
-    } catch (e) {
-      setSyncError(errText(e, 'اعمال اصلاحات ممکن نشد'));
-    } finally {
-      setSyncLoading(false);
-    }
+  // پس از اعمال پیشنهادهای اصلاح، فهرست‌ها و گزارش‌ها تازه‌سازی می‌شوند
+  const handleSynced = (result) => {
+    qc.invalidateQueries({ queryKey: ['accounts'] });
+    qc.invalidateQueries({ queryKey: ['accounts', kind] });
+    qc.invalidateQueries({ queryKey: ['acc-groups'] });
+    qc.invalidateQueries({ queryKey: ['acc-general'] });
+    qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
+    qc.invalidateQueries({ queryKey: ['acc-bs-page'] });
+    setMsg({
+      ok: true,
+      text: `نوع ${result?.accounts_updated || 0} حساب`
+        + (result?.groups_updated ? ` و ${result.groups_updated} گروه حساب` : '')
+        + ' اصلاح شد.',
+    });
   };
 
   return (
@@ -290,9 +222,8 @@ const AccountsClassicPage = () => {
         <Button
           size="small"
           variant={mismatchCount > 0 ? 'contained' : 'outlined'}
-          startIcon={syncLoading ? <CircularProgress size={16} color="inherit" /> : <BoltIcon />}
-          onClick={loadSyncPreview}
-          disabled={syncLoading}
+          startIcon={<BoltIcon />}
+          onClick={() => setSyncOpen(true)}
           sx={{
             borderRadius: '12px', fontWeight: 700, textTransform: 'none',
             ...(mismatchCount > 0
@@ -465,6 +396,11 @@ const AccountsClassicPage = () => {
                             <Chip size="small" label="نوع ناهمگون" sx={{ bgcolor: 'rgba(239,68,68,0.12)', color: '#b91c1c', fontWeight: 700, flexShrink: 0 }} />
                           </Tooltip>
                         )}
+                        {a.coding_locked && (
+                          <Tooltip title="نوع/ماهیت این حساب دستی تعیین شده است؛ ابزار اصلاح خودکار آن را تغییر نمی‌دهد.">
+                            <Chip size="small" label="دستی" sx={{ bgcolor: 'rgba(15,23,42,0.08)', color: '#334155', fontWeight: 700, flexShrink: 0 }} />
+                          </Tooltip>
+                        )}
                         <Chip size="small" label={natureLabel(a.nature)} sx={{ bgcolor: natureBg(a.nature), color: natureColor(a.nature), fontWeight: 700, flexShrink: 0 }} />
                         <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این حساب؟')) del(a.id); }} title="حذف">
                           <DeleteIcon fontSize="small" />
@@ -478,109 +414,11 @@ const AccountsClassicPage = () => {
         </Grid>
       </Grid>
 
-      {/* دیالوگ اصلاح ناهمگونی نوع حساب‌ها */}
-      <Dialog open={syncOpen} onClose={() => setSyncOpen(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ fontWeight: 900, color: COLOR_DARK, display: 'flex', alignItems: 'center', gap: 1 }}>
-          <WarningAmberIcon sx={{ color: '#dc2626' }} />
-          اصلاح ناهمگونی نوع حساب‌ها
-        </DialogTitle>
-        <DialogContent dividers>
-          {syncError && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }}>{syncError}</Alert>}
-          {!syncReport && syncLoading && <Box textAlign="center" py={4}><CircularProgress /></Box>}
-
-          {syncReport && (
-            <Stack spacing={2}>
-              {syncReport.applied && (
-                <Alert severity="success" sx={{ borderRadius: '12px' }}>
-                  اعمال شد: {syncReport.accounts_updated || 0} حساب
-                  {syncReport.groups_updated ? ` و ${syncReport.groups_updated} گروه` : ''} اصلاح شد.
-                </Alert>
-              )}
-
-              <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-                <Chip label={`کل حساب‌های شرکت: ${syncReport.accounts_total}`} sx={{ fontWeight: 700 }} />
-                <Chip
-                  label={`ناهمگون: ${syncReport.accounts_mismatched}`}
-                  sx={{ fontWeight: 700, bgcolor: syncReport.accounts_mismatched ? 'rgba(239,68,68,0.12)' : 'rgba(16,185,129,0.12)', color: syncReport.accounts_mismatched ? '#b91c1c' : '#047857' }}
-                />
-                <Chip label={`ماهیت ناهمگون: ${syncReport.nature_mismatched}`} sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.14)', color: '#b45309' }} />
-                <Chip label={`گروه ناهمگون: ${(syncReport.groups_to_fix || []).length}`} sx={{ fontWeight: 700, bgcolor: 'rgba(124,58,237,0.12)', color: '#6d28d9' }} />
-              </Stack>
-
-              {Object.keys(syncReport.summary_by_category || {}).length > 0 && (
-                <Typography variant="body2" color="textSecondary">
-                  انتقال‌ها:{' '}
-                  {Object.entries(syncReport.summary_by_category)
-                    .map(([k, v]) => `${v} حساب → «${CATEGORY_FA[k] || k}»`)
-                    .join(' · ')}
-                </Typography>
-              )}
-
-              {syncReport.accounts_mismatched === 0 ? (
-                <Alert severity="success" sx={{ borderRadius: '12px' }}>
-                  هیچ ناهمگونی‌ای یافت نشد؛ نوع همهٔ حساب‌ها با والد/گروه آن‌ها همخوان است.
-                </Alert>
-              ) : (
-                <>
-                  <Alert severity="info" sx={{ borderRadius: '12px' }}>
-                    این حساب‌ها پیش‌تر با نوع اشتباه (معمولاً «دارایی») ثبت شده‌اند؛ به همین دلیل در
-                    ترازنامه و صورت سود و زیان نادرست دسته‌بندی می‌شوند. با «اعمال اصلاحات»، نوع و
-                    ماهیت آن‌ها از والد/گروه اصلاح می‌شود.
-                  </Alert>
-                  <SyncChangeList report={syncReport} />
-                </>
-              )}
-
-              {!syncReport.applied && (syncReport.groups_to_fix || []).length > 0 && (
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: '12px' }}>
-                  <Typography variant="caption" color="textSecondary">گروه‌هایی که نامشان با نوعشان نمی‌خواند:</Typography>
-                  <Stack spacing={0.5} mt={0.5}>
-                    {syncReport.groups_to_fix.map(g => (
-                      <Typography key={g.id} variant="caption">
-                        • {g.code} {g.name}: {g.from_type_name} → {g.to_type_name}
-                      </Typography>
-                    ))}
-                  </Stack>
-                </Paper>
-              )}
-
-              {reviewGroups.length > 0 && (
-                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: '12px', bgcolor: 'rgba(245,158,11,0.06)' }}>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#b45309' }}>
-                    گروه‌های نیازمند بازبینی دستی ({reviewGroups.length}): نامشان هیچ نشانه‌ای از طبقهٔ حساب ندارد،
-                    پس ابزار نمی‌تواند نوعشان را تشخیص دهد؛ نوع را از صفحهٔ «گروه حساب‌ها» تعیین کنید.
-                  </Typography>
-                  <Stack spacing={0.5} mt={0.5}>
-                    {reviewGroups.slice(0, 12).map(g => (
-                      <Typography key={g.id} variant="caption">
-                        • {g.code} {g.name} — نوع فعلی: {g.current_type_name} — {g.accounts_count} حساب
-                      </Typography>
-                    ))}
-                    {reviewGroups.length > 12 && (
-                      <Typography variant="caption">… و {reviewGroups.length - 12} گروه دیگر</Typography>
-                    )}
-                  </Stack>
-                </Paper>
-              )}
-
-              <FormControlLabel
-                control={<Checkbox checked={syncFixGroups} onChange={e => setSyncFixGroups(e.target.checked)} />}
-                label={`اصلاح نوع ${(syncReport.groups_to_fix || []).length} گروه ناهمگون بر پایهٔ نام آن‌ها`}
-              />
-            </Stack>
-          )}
-        </DialogContent>
-        <DialogActions sx={{ px: 3, py: 1.5 }}>
-          <Button onClick={() => setSyncOpen(false)} sx={{ fontWeight: 700 }}>بستن</Button>
-          <Button
-            variant="contained"
-            onClick={applySync}
-            disabled={syncLoading || !syncReport || syncReport.applied || syncReport.accounts_mismatched === 0}
-            sx={{ borderRadius: '12px', fontWeight: 800, background: 'linear-gradient(135deg,#ef4444,#dc2626)' }}>
-            {syncLoading ? <CircularProgress size={20} color="inherit" /> : 'اعمال اصلاحات'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <CodingSyncDialog
+        open={syncOpen}
+        onClose={() => setSyncOpen(false)}
+        onApplied={handleSynced}
+      />
     </Box>
   );
 };

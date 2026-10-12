@@ -15,6 +15,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CategoryIcon from '@mui/icons-material/Category';
+import CodingSyncDialog from '../core/components/accounting/CodingSyncDialog';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -235,32 +236,23 @@ const AccountingCodingsPage = () => {
   const auxList = Array.isArray(auxiliaries) ? auxiliaries : auxiliaries?.results || [];
 
   const qc = useQueryClient();
-  const [fixing, setFixing] = useState(false);
+  const [syncOpen, setSyncOpen] = useState(false);
   const [fixMsg, setFixMsg] = useState(null);
   const mismatchCount = [...generalList, ...subsidiaryList].filter(a => a.type_mismatch).length;
 
-  // اصلاح خودکار ناهمگونی نوع/ماهیت (حساب زیر گروه «بدهی» که نوعش «دارایی» ثبت شده)
-  const fixMismatch = async () => {
-    setFixing(true);
-    setFixMsg(null);
-    try {
-      const { data } = await axiosInstance.post('/accounting/accounts/sync-types/', { apply: 1, fix_groups: 1 });
-      qc.invalidateQueries({ queryKey: ['accounts'] });
-      qc.invalidateQueries({ queryKey: ['acc-general'] });
-      qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
-      qc.invalidateQueries({ queryKey: ['acc-groups'] });
-      qc.invalidateQueries({ queryKey: ['balance-sheet'] });
-      setFixMsg({
-        ok: true,
-        text: `نوع ${data.accounts_updated || 0} حساب`
-          + (data.groups_updated ? ` و ${data.groups_updated} گروه حساب` : '')
-          + ' اصلاح شد.',
-      });
-    } catch (e) {
-      setFixMsg({ ok: false, text: 'اعمال اصلاحات ممکن نشد.' });
-    } finally {
-      setFixing(false);
-    }
+  // پس از اعمال پیشنهادهای اصلاح ناهمگونی (دیالوگ مشترک)، فهرست‌ها تازه‌سازی می‌شوند
+  const handleSynced = (result) => {
+    qc.invalidateQueries({ queryKey: ['accounts'] });
+    qc.invalidateQueries({ queryKey: ['acc-general'] });
+    qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
+    qc.invalidateQueries({ queryKey: ['acc-groups'] });
+    qc.invalidateQueries({ queryKey: ['acc-bs-page'] });
+    setFixMsg({
+      ok: true,
+      text: `نوع ${result?.accounts_updated || 0} حساب`
+        + (result?.groups_updated ? ` و ${result.groups_updated} گروه حساب` : '')
+        + ' اصلاح شد.',
+    });
   };
 
   const pageMeta = {
@@ -373,16 +365,23 @@ const AccountingCodingsPage = () => {
           severity="warning"
           sx={{ mb: 2, borderRadius: '14px', alignItems: 'center' }}
           action={
-            <Button color="inherit" size="small" startIcon={<BoltIcon />} onClick={fixMismatch} disabled={fixing} sx={{ fontWeight: 800 }}>
-              {fixing ? 'در حال اصلاح…' : 'اصلاح خودکار'}
+            <Button color="inherit" size="small" startIcon={<BoltIcon />} onClick={() => setSyncOpen(true)} sx={{ fontWeight: 800 }}>
+              بررسی و اصلاح
             </Button>
           }>
           {mismatchCount} حساب «نوع ناهمگون» دارد؛ یعنی نوع ثبت‌شدهٔ آن با گروه/والدش (مثلاً گروه «بدهی جاری») یکی نیست و
-          به همین دلیل در ترازنامه و صورت سود و زیان اشتباه دسته‌بندی می‌شود. با «اصلاح خودکار»، نوع و ماهیت از والد/گروه بازنویسی می‌شود.
+          به همین دلیل در ترازنامه و صورت سود و زیان اشتباه دسته‌بندی می‌شود. با «بررسی و اصلاح»، پیشنهادها نمایش
+          داده می‌شود و تنها پس از تأیید شما اعمال می‌گردد (موارد دستی/قفل‌شده دست‌نخورده می‌مانند).
         </Alert>
       )}
 
       <CodingsPanel {...meta} />
+
+      <CodingSyncDialog
+        open={syncOpen}
+        onClose={() => setSyncOpen(false)}
+        onApplied={handleSynced}
+      />
     </Box>
   );
 };

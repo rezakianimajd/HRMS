@@ -160,6 +160,11 @@ class AccountGroup(BaseModel):
     name = models.CharField(max_length=150, verbose_name=_('عنوان'))
     nature = models.CharField(max_length=10, choices=Nature.choices, default=Nature.NONE, verbose_name=_('ماهیت'))
     parent = models.ForeignKey('self', on_delete=models.SET_NULL, null=True, blank=True, related_name='children', verbose_name=_('گروه بالادستی'))
+    coding_locked = models.BooleanField(
+        default=False,
+        verbose_name=_('کدینگ دستی (قفل)'),
+        help_text=_('نوع/ماهیت این گروه دستی تعیین شده و ابزار اصلاح خودکار نباید آن را تغییر دهد.'),
+    )
     is_active = models.BooleanField(default=True, verbose_name=_('فعال'))
 
     class Meta:
@@ -204,6 +209,11 @@ class Account(BaseModel):
     requires_contract = models.BooleanField(default=False, verbose_name=_('نیازمند قرارداد'))
     requires_party = models.BooleanField(default=False, verbose_name=_('نیازمند طرف حساب'))
     requires_employee = models.BooleanField(default=False, verbose_name=_('نیازمند پرسنل'))
+    coding_locked = models.BooleanField(
+        default=False,
+        verbose_name=_('کدینگ دستی (قفل)'),
+        help_text=_('نوع/ماهیت این حساب دستی تعیین شده و ابزار اصلاح خودکار نباید آن را تغییر دهد.'),
+    )
     auxiliary_category_1 = models.ForeignKey(
         'AuxiliaryCategory', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='accounts_cat1', verbose_name=_('ارتباط با تفصیل یک'),

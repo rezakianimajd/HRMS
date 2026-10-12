@@ -24,7 +24,7 @@ CATEGORY_KEYWORDS = [
         'دارایی', 'نقد', 'بانک', 'صندوق', 'موجودی', 'دریافتنی', 'سرمایه‌گذاری',
         'انبار', 'اموال', 'پیش‌پرداخت', 'پیش‌خرید',
     )),
-    ('equity', ('حقوق مالکانه', 'سرمایه', 'اندوخته', 'سود و زیان')),
+    ('equity', ('حقوق مالکانه', 'سرمایه', 'اندوخته', 'سود و زیان', 'سود (زیان)', 'سود انباشته', 'زیان انباشته')),
     ('liability', ('بدهی', 'پرداختنی', 'وام', 'تسهیلات', 'حقوق پرداختنی')),
     ('cost_of_sales', ('بهای تمام‌شده', 'بهای تمام شده', 'بهای خرید', 'خرید کالا')),
     ('revenue', ('درآمد', 'فروش')),
@@ -103,6 +103,7 @@ def _row(account, group=None, parent=None):
         'current_type_name': getattr(account.account_type, 'name', ''),
         'current_category': _category_of(account.account_type) or '',
         'current_nature': account.nature,
+        'coding_locked': bool(account.coding_locked),
     }
 
 
@@ -146,11 +147,14 @@ def _expected_category(account, group_targets, parent_types):
     return category, source, ref
 
 
-def analyze_account_types(company=None, fix_groups=False):
+def analyze_account_types(company=None, fix_groups=False, force=False):
     """تحلیل کامل ناهمگونی نوع/ماهیت (بدون تغییر داده).
 
     در دو مرحله محاسبه می‌شود تا والدهای درست، مبنای فرزندان قرار گیرند:
     ۱) گروه‌ها → ۲) حساب‌ها (والد ← گروه ← نام).
+
+    رکوردهایی که کاربر نوع/ماهیت آن‌ها را **دستی** تعیین کرده (`coding_locked`)
+    دست‌نخورده می‌مانند؛ مگر با `force=True` که اصراری برای بازنویسی همه است.
     """
     types_by_category = _types_by_category(company)
 
@@ -161,9 +165,13 @@ def analyze_account_types(company=None, fix_groups=False):
 
     group_targets = {}
     groups_to_fix = []
+    locked_groups = 0
     for group in groups:
         target, source, ref = _resolve_group(group, types_by_category, group_targets)
         if target is None or target.id == group.account_type_id:
+            continue
+        if group.coding_locked and not force:
+            locked_groups += 1
             continue
         groups_to_fix.append({
             'id': group.id,
@@ -193,6 +201,7 @@ def analyze_account_types(company=None, fix_groups=False):
     nature_changes = []
     by_category = {}
     group_account_counts = {}
+    locked_accounts = 0
 
     for account in accounts:
         if account.group_id:
@@ -203,6 +212,10 @@ def analyze_account_types(company=None, fix_groups=False):
         if target_type is None:
             target_type = account.account_type
         parent_types[account.id] = target_type
+
+        if account.coding_locked and not force:
+            locked_accounts += 1
+            continue
 
         type_changed = target_type is not None and target_type.id != account.account_type_id
         target_nature = None
@@ -237,6 +250,9 @@ def analyze_account_types(company=None, fix_groups=False):
         'accounts_total': len(accounts),
         'accounts_mismatched': len(changes),
         'nature_mismatched': len(nature_changes),
+        'locked_accounts': locked_accounts,
+        'locked_groups': locked_groups,
+        'force': bool(force),
         'groups_total': len(groups),
         'groups_to_fix': groups_to_fix,
         'groups_report': _groups_report(groups, group_targets, group_account_counts),
@@ -267,14 +283,18 @@ def _groups_report(groups, group_targets, account_counts=None):
             'source': source or '',
             'matched_by': ref,
             'accounts_count': counts.get(group.id, 0),
+            'coding_locked': bool(group.coding_locked),
             'ok': bool(expected_category) and expected_category == current_category,
         })
     return report
 
 
-def sync_account_types(company=None, fix_groups=False):
-    """اعمال همگام‌سازی نوع/ماهیت حساب‌ها + (اختیاری) اصلاح نوع گروه‌ها."""
-    report = analyze_account_types(company=company, fix_groups=fix_groups)
+def sync_account_types(company=None, fix_groups=False, force=False):
+    """اعمال همگام‌سازی نوع/ماهیت حساب‌ها + (اختیاری) اصلاح نوع گروه‌ها.
+
+    رکوردهای «دستی» (`coding_locked`) بازنویسی نمی‌شوند؛ مگر `force=True`.
+    """
+    report = analyze_account_types(company=company, fix_groups=fix_groups, force=force)
     rows = report['changes']
 
     with transaction.atomic():

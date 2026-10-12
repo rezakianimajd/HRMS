@@ -249,6 +249,11 @@ const AccountGroupsPage = () => {
                           <Chip size="small" label="نوع نامتناسب" sx={{ bgcolor: 'rgba(239,68,68,0.12)', color: '#b91c1c', fontWeight: 700, flexShrink: 0 }} />
                         </Tooltip>
                       )}
+                      {g.coding_locked && (
+                        <Tooltip title="نوع/ماهیت این گروه دستی تعیین شده است؛ ابزار اصلاح خودکار آن را تغییر نمی‌دهد.">
+                          <Chip size="small" label="دستی" sx={{ bgcolor: 'rgba(15,23,42,0.08)', color: '#334155', fontWeight: 700, flexShrink: 0 }} />
+                        </Tooltip>
+                      )}
                       <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این گروه؟')) del.mutate(g.id); }} title="حذف">
                         <DeleteIcon fontSize="small" />
                       </IconButton>
