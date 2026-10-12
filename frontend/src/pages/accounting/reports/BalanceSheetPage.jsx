@@ -344,8 +344,38 @@ const BalanceSheetPage = () => {
     });
   };
 
-  const balanced = !!data?.is_balanced;
+  const balanced = data?.is_balanced !== undefined
+    ? !!data.is_balanced
+    : (!!data && Math.round(((data.total_assets || 0) - (data.total_liabilities_equity || 0)) * 100) / 100 === 0);
+  const difference = data?.difference !== undefined
+    ? data.difference
+    : Math.round(((data?.total_assets || 0) - (data?.total_liabilities_equity || 0)) * 100) / 100;
   const audited = !!data?.audited;
+  // سازگاری با پاسخ قدیمی بک‌اند: اگر گروه‌بندی نیامده باشد، از ردیف‌های تخت گروه می‌سازیم
+  const groupedOf = (groups, rows, total) => {
+    if (groups && groups.length) return groups;
+    const list = rows || [];
+    if (!list.length) return [];
+    const byGroup = {};
+    list.forEach((row) => {
+      const key = row.group || 'حساب‌ها';
+      const bucket = byGroup[key] || (byGroup[key] = { name: key, code: '', rows: [], total: 0 });
+      bucket.rows.push(row);
+      bucket.total += row.balance || 0;
+    });
+    return Object.values(byGroup).map((g) => ({
+      ...g,
+      total: Math.round(g.total * 100) / 100,
+      percent: total ? Math.round((g.total / total) * 1000) / 10 : 0,
+      rows: g.rows.map((r) => ({
+        ...r,
+        share: total ? Math.round(((r.balance || 0) / total) * 1000) / 10 : 0,
+      })),
+    }));
+  };
+  const assetGroups = groupedOf(data?.asset_groups, data?.assets, data?.total_assets);
+  const liabilityGroups = groupedOf(data?.liability_groups, data?.liabilities, data?.total_liabilities);
+  const equityGroups = groupedOf(data?.equity_groups, data?.equity, data?.total_equity);
   const maxSide = Math.max(
     Math.abs(data?.total_assets || 0),
     Math.abs(data?.total_liabilities || 0),
@@ -439,7 +469,7 @@ const BalanceSheetPage = () => {
               icon={<AccountBalanceIcon sx={{ fontSize: 24, color: '#fff' }} />}
               tone="asset"
               total={data?.total_assets}
-              groups={data?.asset_groups}
+              groups={assetGroups}
               emptyText="حساب دارایی با مانده در این دوره ثبت نشده است."
             />
           </Grid>
@@ -452,7 +482,7 @@ const BalanceSheetPage = () => {
                 icon={<AccountBalanceIcon sx={{ fontSize: 24, color: '#fff' }} />}
                 tone="liability"
                 total={data?.total_liabilities}
-                groups={data?.liability_groups}
+                groups={liabilityGroups}
                 emptyText="حساب بدهی با مانده در این دوره ثبت نشده است."
               />
               <SectionCard
@@ -461,7 +491,7 @@ const BalanceSheetPage = () => {
                 icon={<TrendingUpIcon sx={{ fontSize: 24, color: '#fff' }} />}
                 tone="equity"
                 total={data?.total_equity}
-                groups={data?.equity_groups}
+                groups={equityGroups}
                 emptyText="حساب حقوق صاحبان سهام با مانده در این دوره ثبت نشده است."
               />
             </Stack>
@@ -480,7 +510,7 @@ const BalanceSheetPage = () => {
                     تطبیق جمع دارایی‌ها با بدهی‌ها + حقوق صاحبان سهام و مهر تأیید حسابرسی
                   </Typography>
                 </Box>
-                <BalanceBadge balanced={balanced} difference={data?.difference} />
+                <BalanceBadge balanced={balanced} difference={difference} />
               </Stack>
 
               <Grid container spacing={1.5} sx={{ mt: 0.5, position: 'relative', zIndex: 1 }}>
