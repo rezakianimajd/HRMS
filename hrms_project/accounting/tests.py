@@ -141,7 +141,55 @@ class CodingHealthSyncTests(TestCase):
         report = analyze_account_types(self.company, fix_groups=True)
         self.assertEqual(len(report['groups_to_fix']), 1)
         self.assertEqual(report['groups_to_fix'][0]['to_category'], 'liability')
-        self.assertEqual(report['changes'][0]['source'], 'group_name')
+        self.assertEqual(report['changes'][0]['source'], 'group')
+
+    def test_group_expected_category_uses_ancestor_name(self):
+        """گروهِ بدون کلیدواژه، طبقه را از نام گروهِ بالادستی می‌گیرد."""
+        child = AccountGroup.objects.create(
+            company=self.company, account_type=self.asset, code='210-1',
+            name='تجاری', nature='credit', parent=self.liab_group,
+        )
+        account = Account.objects.create(
+            company=self.company, code='21001001', name='پرداختنی الف',
+            account_type=self.asset, level=2, nature='debit', group=child,
+        )
+        report = analyze_account_types(self.company)
+        rows = {row['id']: row for row in report['changes']}
+        self.assertEqual(rows[account.id]['new_category'], 'liability')
+        self.assertIn(rows[account.id]['source'], ('ancestor_name', 'group'))
+        group_report = {g['code']: g for g in report['groups_report']}
+        self.assertEqual(group_report['210-1']['expected_category'], 'liability')
+
+    def test_account_name_inference_when_group_missing(self):
+        AccountType.objects.create(
+            company=self.company, code='5', name='هزینه', category='expense',
+            default_nature='debit',
+        )
+        account = Account.objects.create(
+            company=self.company, code='3001', name='هزینه‌های اداری',
+            account_type=self.asset, level=2, nature='debit',
+        )
+        report = analyze_account_types(self.company)
+        rows = {row['id']: row for row in report['changes']}
+        self.assertEqual(rows[account.id]['source'], 'account_name')
+        self.assertEqual(rows[account.id]['new_category'], 'expense')
+
+    def test_parent_chain_is_fixed_top_down(self):
+        """والد اشتباه در همان اجرا اصلاح می‌شود و فرزند از والدِ **اصلاح‌شده** ارث می‌برد."""
+        general = Account.objects.create(
+            company=self.company, code='2100', name='بدهی‌های جاری',
+            account_type=self.asset, level=1, nature='debit', group=self.liab_group,
+        )
+        child = Account.objects.create(
+            company=self.company, code='210000001', name='پرداختنی ب',
+            account_type=self.asset, level=2, nature='debit', parent=general,
+        )
+        report = sync_account_types(self.company)
+        general.refresh_from_db()
+        child.refresh_from_db()
+        self.assertEqual(general.account_type_id, self.liability.id)
+        self.assertEqual(child.account_type_id, self.liability.id)
+        self.assertEqual(report['accounts_updated'], 2)
 
     def test_sync_applies_type_and_nature(self):
         report = sync_account_types(self.company)

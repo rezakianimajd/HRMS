@@ -659,10 +659,14 @@ def balance_sheet(request):
 
     lines, year, as_of = _balance_scope(request)
     buckets = {'asset': {}, 'liability': {}, 'equity': {}}
+    category_lines = {}
+    excluded_lines = {}
     for line in lines:
         account = line.account
         category = account.account_type.category if account.account_type else None
+        category_lines[category] = category_lines.get(category, 0) + 1
         if category not in buckets:
+            excluded_lines[category] = excluded_lines.get(category, 0) + 1
             continue
         debit = float(line.debit or 0)
         credit = float(line.credit or 0)
@@ -692,6 +696,21 @@ def balance_sheet(request):
     documents = audit['integrity']
     # مهر تأیید فقط وقتی «سبز» است که حسابرسی تأیید کرده باشد و اسناد دامنه پاک باشند
     audited = bool(audit['is_audited'] and documents['is_clean'])
+
+    # تشخیص طبقه‌بندی: اگر همهٔ سطرها در «دارایی» جمع شده باشند، یعنی نوع حساب‌ها
+    # ناهمگون است (عارضهٔ ایمپورت قدیمی) و باید از ابزار اصلاح کدینگ استفاده شود.
+    classified = {
+        'asset': len(buckets['asset']),
+        'liability': len(buckets['liability']),
+        'equity': len(buckets['equity']),
+    }
+    suspicious = bool(
+        classified['asset'] > 0
+        and classified['liability'] == 0
+        and classified['equity'] == 0
+        and (excluded_lines.get('expense', 0) + excluded_lines.get('revenue', 0)
+             + excluded_lines.get('cost_of_sales', 0)) > 0
+    )
 
     return Response({
         # --- دارایی‌ها ---
@@ -724,6 +743,13 @@ def balance_sheet(request):
         'as_of': as_of or '',
         'audit': audit,
         'audited': audited,
+        # --- تشخیص طبقه‌بندی (برای نمایش هشدار و اصلاح از همین صفحه) ---
+        'classification': {
+            'accounts': classified,
+            'lines': {k: v for k, v in category_lines.items() if k},
+            'excluded': {k: v for k, v in excluded_lines.items() if k},
+            'suspicious': suspicious,
+        },
         'generated_at': timezone.now().isoformat(),
     })
 

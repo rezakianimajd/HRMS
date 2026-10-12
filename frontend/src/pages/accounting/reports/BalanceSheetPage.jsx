@@ -13,6 +13,7 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PrintIcon from '@mui/icons-material/Print';
+import BoltIcon from '@mui/icons-material/Bolt';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
@@ -292,6 +293,67 @@ const AuditSeal = ({ audit, audited, onRecord }) => {
 
 
 /* ================================= صفحهٔ ترازنامه ================================= */
+// برچسب فارسی طبقهٔ حساب (برای بنر تشخیص طبقه‌بندی)
+const CATEGORY_FA = {
+  asset: 'دارایی', liability: 'بدهی', equity: 'حقوق صاحبان سهام',
+  revenue: 'درآمد', expense: 'هزینه', cost_of_sales: 'بهای تمام‌شده',
+};
+
+/* --- بنر تشخیص طبقه‌بندی: نشان می‌دهد چرا همه‌چیز در کارت دارایی‌ها آمده --- */
+const CodingClassificationBanner = ({ classification, integrity = {}, fixing, onFix }) => {
+  const mismatched = integrity.coding_mismatch_accounts || 0;
+  const mismatchedGroups = integrity.coding_mismatch_groups || 0;
+  const suspicious = !!classification?.suspicious;
+  if (!mismatched && !mismatchedGroups && !suspicious) return null;
+  const counts = classification?.accounts || {};
+  const excluded = classification?.excluded || {};
+
+  return (
+    <Paper sx={{ ...glassCard('#dc2626'), p: 1.75, mb: 2.5 }}>
+      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap
+        sx={{ position: 'relative', zIndex: 1 }}>
+        <WarningAmberIcon sx={{ color: '#dc2626' }} />
+        <Box sx={{ flex: 1, minWidth: 240 }}>
+          <Typography sx={{ fontFamily: FONT, fontWeight: 900, color: '#b91c1c' }}>
+            طبقه‌بندی حساب‌ها هم‌خوان نیست
+          </Typography>
+          <Typography variant="caption" sx={{ fontFamily: FONT, color: '#7f1d1d' }}>
+            {mismatched > 0
+              ? `${toPersianDigits(mismatched)} حساب`
+              : 'حساب‌های این دوره'}
+            {mismatchedGroups > 0 ? ` و ${toPersianDigits(mismatchedGroups)} گروه` : ''}
+            {' '}با نوع ناهمگون ثبت شده‌اند (گروهشان بدهی/هزینه است اما نوعشان «دارایی»)؛ به همین دلیل
+            همه در کارت دارایی‌ها می‌آیند و فقط با نام گروه تفکیک می‌شوند. با «اصلاح نوع حساب‌ها»،
+            نوع و ماهیت از والد/گروه بازنویسی و گزارش بازخوانی می‌شود.
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
+          {Object.entries(counts).map(([k, v]) => (
+            <Chip key={k} size="small" label={`${CATEGORY_FA[k] || k}: ${toPersianDigits(v)}`}
+              sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(15,23,42,0.06)' }} />
+          ))}
+          {Object.entries(excluded).map(([k, v]) => (
+            <Chip key={k} size="small" label={`کنارگذاشته — ${CATEGORY_FA[k] || k}: ${toPersianDigits(v)}`}
+              sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(100,116,139,0.12)', color: '#334155' }} />
+          ))}
+        </Stack>
+        <Button
+          variant="contained"
+          disabled={fixing}
+          onClick={onFix}
+          startIcon={fixing ? <CircularProgress size={16} color="inherit" /> : <BoltIcon />}
+          sx={{
+            borderRadius: '12px', fontFamily: FONT, fontWeight: 800,
+            background: 'linear-gradient(135deg,#ef4444,#dc2626)',
+            boxShadow: '0 10px 24px rgba(220,38,38,0.3)',
+          }}>
+          {fixing ? 'در حال اصلاح…' : 'اصلاح نوع حساب‌ها و بازخوانی'}
+        </Button>
+      </Stack>
+    </Paper>
+  );
+};
+
 const BalanceSheetPage = () => {
   const qc = useQueryClient();
   const [yearId, setYearId] = useState('');
@@ -344,6 +406,37 @@ const BalanceSheetPage = () => {
       approved_at: form.approved_at || null,
       as_of_date: form.as_of_date || null,
     });
+  };
+
+  // اصلاح ناهمگونی نوع حساب‌ها و بازخوانی گزارش (عارضهٔ «همه دارایی»)
+  const [fixing, setFixing] = useState(false);
+  const fixCoding = async () => {
+    setFixing(true);
+    setMsg(null);
+    try {
+      const { data: repair } = await axiosInstance.post(
+        '/accounting/accounts/sync-types/', { apply: 1, fix_groups: 1 },
+      );
+      setMsg({
+        type: 'success',
+        text: `نوع ${toPersianDigits(repair.accounts_updated || 0)} حساب`
+          + (repair.groups_updated ? ` و ${toPersianDigits(repair.groups_updated)} گروه حساب` : '')
+          + ' اصلاح شد؛ گزارش بازخوانی شد.',
+      });
+      qc.invalidateQueries({ queryKey: ['acc-bs-page'] });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['acc-general'] });
+      qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
+      qc.invalidateQueries({ queryKey: ['acc-groups'] });
+      refetch();
+    } catch (e) {
+      setMsg({
+        type: 'error',
+        text: e?.response?.data?.detail || e?.response?.data?.error || 'اصلاح نوع حساب‌ها ناموفق بود.',
+      });
+    } finally {
+      setFixing(false);
+    }
   };
 
   const balanced = data?.is_balanced !== undefined
@@ -430,6 +523,13 @@ const BalanceSheetPage = () => {
             </Button>
           </>
         )}
+      />
+
+      <CodingClassificationBanner
+        classification={data?.classification}
+        integrity={data?.audit?.integrity || {}}
+        fixing={fixing}
+        onFix={fixCoding}
       />
 
       {/* نوار وضعیت ترازنامه: سال مالی، تاریخ، تراز/ناتراز و تأیید حسابرسی */}
