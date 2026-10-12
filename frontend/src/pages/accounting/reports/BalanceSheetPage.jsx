@@ -18,6 +18,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali } from '../../../core/utils/dateUtils';
 import JalaliDatePicker from '../../../core/components/ui/JalaliDatePicker';
+import { ReportHeader } from './reportHelpers';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
@@ -386,39 +387,15 @@ const BalanceSheetPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ ...glassCard(PALETTE.summary.main), p: 2.5, mb: 2.5 }}>
-        <Blob color="#2563eb" side="right" size={240} />
-        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap" sx={{ position: 'relative', zIndex: 1 }}>
-          <Avatar sx={{
-            width: 58, height: 58,
-            background: 'linear-gradient(135deg,#3b82f6,#0f172a)',
-            boxShadow: '0 14px 34px rgba(37,99,235,0.45)',
-          }}>
-            <AccountBalanceIcon sx={{ fontSize: 30, color: '#fff' }} />
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 240 }}>
-            <Typography variant="h5" fontWeight={900} sx={{ fontFamily: FONT, color: '#0f172a' }}>
-              ترازنامه
-            </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: FONT }}>
-              دارایی‌ها (راست) = بدهی‌ها + حقوق صاحبان سهام (چپ) — با مهر تأیید حسابرسی
-            </Typography>
-            <Stack direction="row" spacing={1} sx={{ mt: 0.75 }} flexWrap="wrap" useFlexGap>
-              <Chip size="small" label={data?.fiscal_year?.name || 'همهٔ دوره‌ها'}
-                sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(37,99,235,0.12)', color: '#1d4ed8' }} />
-              <Chip size="small" label={`تا تاریخ: ${data?.as_of ? jalali(data.as_of) : 'امروز'}`}
-                sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(100,116,139,0.12)' }} />
-              <Chip size="small" icon={balanced ? <CheckCircleIcon /> : <WarningAmberIcon />}
-                label={balanced ? 'تراز' : `ناتراز (${money(data?.difference)})`}
-                color={balanced ? 'success' : 'error'} sx={{ fontFamily: FONT, fontWeight: 800 }} />
-              <Chip size="small" icon={<VerifiedIcon />}
-                label={audited ? 'تأییدشدهٔ حسابرسی' : (data?.audit?.approval ? 'تأیید غیرنهایی' : 'بدون تأیید')}
-                color={audited ? 'primary' : 'default'} sx={{ fontFamily: FONT, fontWeight: 800 }} />
-            </Stack>
-          </Box>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems="center"
-            sx={{ '@media print': { display: 'none' } }}>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+      <ReportHeader
+        icon={<AccountBalanceIcon sx={{ fontSize: 28, color: '#fff' }} />}
+        title="ترازنامه"
+        subtitle="دارایی‌ها (راست) = بدهی‌ها + حقوق صاحبان سهام (چپ) — با مهر تأیید حسابرسی"
+        color="#3b82f6"
+        dark="#1d4ed8"
+        actions={(
+          <>
+            <FormControl size="small" sx={{ minWidth: 190 }}>
               <InputLabel>سال مالی</InputLabel>
               <Select value={yearId} label="سال مالی" onChange={(e) => setYearId(e.target.value)}>
                 <MenuItem value="">همهٔ دوره‌ها</MenuItem>
@@ -429,7 +406,7 @@ const BalanceSheetPage = () => {
                 ))}
               </Select>
             </FormControl>
-            <Box sx={{ minWidth: 190 }}>
+            <Box sx={{ minWidth: 180 }}>
               <JalaliDatePicker fullWidth label="تا تاریخ" value={asOf}
                 onChange={(g) => setAsOf(g || '')} />
             </Box>
@@ -443,9 +420,39 @@ const BalanceSheetPage = () => {
               sx={{ borderRadius: '12px', fontFamily: FONT, fontWeight: 700 }}>
               چاپ
             </Button>
-          </Stack>
+            <Button variant="contained" startIcon={<VerifiedIcon />} onClick={() => setOpen(true)}
+              sx={{
+                borderRadius: '12px', fontFamily: FONT, fontWeight: 700,
+                background: 'linear-gradient(135deg,#7c3aed,#a78bfa)',
+              }}>
+              ثبت تأیید حسابرسی
+            </Button>
+          </>
+        )}
+      />
+
+      {/* نوار وضعیت ترازنامه: سال مالی، تاریخ، تراز/ناتراز و تأیید حسابرسی */}
+      <Paper sx={{ ...glassCard(PALETTE.audit.main), p: 1.5, mb: 2.5 }}>
+        <Blob color={PALETTE.audit.main} side="right" size={160} />
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap
+          sx={{ position: 'relative', zIndex: 1 }}>
+          <Chip size="small" label={`سال مالی: ${data?.fiscal_year?.name || 'همهٔ دوره‌ها'}`}
+            sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(37,99,235,0.12)', color: '#1d4ed8' }} />
+          <Chip size="small" label={`تا تاریخ: ${data?.as_of ? jalali(data.as_of) : 'امروز'}`}
+            sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(100,116,139,0.12)' }} />
+          <Chip size="small" icon={balanced ? <CheckCircleIcon /> : <WarningAmberIcon />}
+            label={balanced ? 'معادلهٔ حسابداری تراز است' : `ناتراز — اختلاف: ${money(difference)}`}
+            color={balanced ? 'success' : 'error'} sx={{ fontFamily: FONT, fontWeight: 800 }} />
+          <Chip size="small" icon={<VerifiedIcon />}
+            label={audited ? 'تأییدشدهٔ حسابرسی' : (data?.audit?.approval ? 'تأیید غیرنهایی' : 'بدون تأیید حسابرسی')}
+            color={audited ? 'primary' : 'default'} sx={{ fontFamily: FONT, fontWeight: 800 }} />
+          <Box sx={{ flex: 1 }} />
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: FONT }}>
+            آخرین به‌روزرسانی: {data?.generated_at ? toJalali(String(data.generated_at).slice(0, 10)) : '—'}
+          </Typography>
         </Stack>
       </Paper>
+
 
       {msg ? (
         <Alert severity={msg.type} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setMsg(null)}>

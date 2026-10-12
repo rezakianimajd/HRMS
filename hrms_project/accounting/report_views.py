@@ -624,8 +624,9 @@ def balance_sheet(request):
     یک کارت تمام‌عرض جمع‌ها و کنترل تراز، و «مهر تأیید حسابرسی» غنی‌سازی شده است:
     گروه‌بندی بر پایهٔ گروه حساب، نسبت‌ها، سلامت اسناد و آخرین تأیید حسابرسی.
     """
-    lines, year, as_of = _balance_scope(request)
+    from django.utils import timezone
 
+    lines, year, as_of = _balance_scope(request)
     buckets = {'asset': {}, 'liability': {}, 'equity': {}}
     for line in lines:
         account = line.account
