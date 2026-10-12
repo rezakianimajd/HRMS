@@ -13,6 +13,7 @@ from accounting.views import (
     ApprovalPolicyViewSet, ApprovalStepViewSet,
     AccountingSequenceViewSet, SourceTransactionViewSet,
     PostingTemplateViewSet, AccountingSettingsViewSet, CodingConfigViewSet,
+    FinancialStatementApprovalViewSet,
 )
 
 router = DefaultRouter()
@@ -40,6 +41,7 @@ router.register(r'source-transactions', SourceTransactionViewSet, basename='sour
 router.register(r'posting-templates', PostingTemplateViewSet, basename='posting-template')
 router.register(r'settings', AccountingSettingsViewSet, basename='accounting-settings')
 router.register(r'coding-configs', CodingConfigViewSet, basename='coding-config')
+router.register(r'statement-approvals', FinancialStatementApprovalViewSet, basename='statement-approval')
 
 urlpatterns = [
     path('', include(router.urls)),

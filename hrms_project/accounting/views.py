@@ -18,7 +18,7 @@ from accounting.models import (
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
-    ApprovalPolicy, ApprovalStep,
+    ApprovalPolicy, ApprovalStep, FinancialStatementApproval,
 )
 from accounting.serializers import (
     BranchSerializer, FiscalYearSerializer, FiscalPeriodSerializer,
@@ -29,7 +29,7 @@ from accounting.serializers import (
     AccountingDocumentSerializer, AccountingSequenceSerializer,
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
     CodingConfigSerializer, BankStatementSerializer, BankStatementLineSerializer, BankReconciliationSerializer,
-    ApprovalPolicySerializer, ApprovalStepSerializer,
+    ApprovalPolicySerializer, ApprovalStepSerializer, FinancialStatementApprovalSerializer,
 )
 from accounting.services import PostingService, SourcePostingService, AccountingError
 from accounting import coding
@@ -1101,3 +1101,34 @@ class CodingConfigViewSet(CompanyScopedViewSet):
         parent_code = request.query_params.get('parent_code')
         code = coding.suggest_code(company, level, parent_code)
         return Response({'code': code})
+
+
+class FinancialStatementApprovalViewSet(CompanyScopedViewSet):
+    """تأیید/حسابرسی صورت‌های مالی (ترازنامه، سود و زیان، جریان وجوه نقد).
+
+    هر رکورد یک سابقهٔ تأیید با نام حسابرس، مؤسسه، شمارهٔ گزارش و متن نظر است و
+    آخرین رکورد، وضعیت جاری «مهر تأیید حسابرسی» را در گزارش‌ها تعیین می‌کند.
+    """
+    serializer_class = FinancialStatementApprovalSerializer
+    queryset = FinancialStatementApproval.objects.all()
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['auditor_name', 'audit_firm', 'reference_no', 'opinion_note']
+    ordering = ['-approved_at', '-id']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('fiscal_year')
+        params = self.request.query_params
+        if params.get('statement_type'):
+            qs = qs.filter(statement_type=params['statement_type'])
+        if params.get('fiscal_year'):
+            qs = qs.filter(fiscal_year_id=params['fiscal_year'])
+        if params.get('status'):
+            qs = qs.filter(status=params['status'])
+        return qs
+
+    @action(detail=False, methods=['get'])
+    def latest(self, request):
+        """آخرین تأیید ثبت‌شده برای نوع صورت/سال مالی جاری."""
+        obj = self.filter_queryset(self.get_queryset()).first()
+        return Response(self.get_serializer(obj).data if obj else None)
+

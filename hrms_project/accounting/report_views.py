@@ -5,7 +5,7 @@ submitted, approved, posted and locked documents all appear in the reports.
 
 All querysets are company-scoped. Report strings are kept printable and RTL.
 """
-from django.db.models import Sum, Count
+from django.db.models import Q, Sum, Count
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 from rest_framework.decorators import api_view, permission_classes
@@ -15,7 +15,7 @@ from rest_framework.response import Response
 from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
 from accounting.models import (
     AccountingDocument, AccountingDocumentLine, Account, AccountType,
-    AccountGroup, AuxiliaryAccount,
+    AccountGroup, AuxiliaryAccount, FiscalYear, FinancialStatementApproval,
 )
 
 
@@ -500,56 +500,201 @@ def income_statement(request):
     })
 
 
+# =============================================================================
+# ترازنامه — ابزارهای مشترک (گروه‌بندی، سلامت اسناد، مهر تأیید حسابرسی)
+# =============================================================================
+UNGROUPED_LABEL = 'سایر حساب‌ها'
+AUDIT_FINAL_STATUSES = ('approved', 'approved_with_comments')
+
+
+def _round2(value):
+    """گرد کردن مبلغ به دو رقم اعشار (مقایسهٔ دقیق تراز)."""
+    return round(float(value or 0), 2)
+
+
+def _balance_scope(request):
+    """دامنهٔ ترازنامه: شرکت + (سال مالی و/یا تاریخ «تا تاریخ»)."""
+    company = _company(request)
+    qs = _report_lines(request).select_related('account__account_type', 'account__group')
+    params = request.query_params
+    year = None
+    year_id = params.get('fiscal_year')
+    if year_id:
+        year = FiscalYear.objects.filter(pk=year_id, company=company).first()
+        if year:
+            qs = qs.filter(document__date__gte=year.start_date, document__date__lte=year.end_date)
+    as_of = params.get('as_of') or params.get('date_to')
+    if as_of:
+        qs = qs.filter(document__date__lte=as_of)
+    return qs, year, as_of
+
+
+def _grouped_rows(rows, total):
+    """ردیف‌ها را بر پایهٔ گروه حساب دسته‌بندی می‌کند (با جمع و سهم درصدی)."""
+    groups = {}
+    for row in rows:
+        key = row.get('group') or UNGROUPED_LABEL
+        bucket = groups.setdefault(key, {
+            'name': key, 'code': row.get('group_code') or '', 'rows': [], 'total': 0.0,
+        })
+        bucket['rows'].append(row)
+        bucket['total'] += row['balance']
+    ordered = sorted(groups.values(), key=lambda g: (-g['total'], g['name']))
+    for group in ordered:
+        group['total'] = _round2(group['total'])
+        group['percent'] = round(group['total'] / total * 100, 1) if total else 0.0
+        group['rows'] = sorted(group['rows'], key=lambda r: r['code'])
+        for row in group['rows']:
+            row['share'] = round(row['balance'] / total * 100, 1) if total else 0.0
+    return ordered
+
+
+def _document_integrity(request, year=None, as_of=None):
+    """سلامت اسناد در دامنهٔ گزارش (مبنای تصمیم «تأیید حسابرسی»)."""
+    qs = AccountingDocument.objects.filter(company=_company(request))
+    if year:
+        qs = qs.filter(date__gte=year.start_date, date__lte=year.end_date)
+    if as_of:
+        qs = qs.filter(date__lte=as_of)
+    by_status = {row['status']: row['n'] for row in qs.values('status').annotate(n=Count('id'))}
+    unbalanced = 0
+    for doc in qs.annotate(d=Sum('lines__debit'), c=Sum('lines__credit')):
+        if _round2(float(doc.d or 0) - float(doc.c or 0)) != 0:
+            unbalanced += 1
+    totals = qs.aggregate(debit=Sum('lines__debit'), credit=Sum('lines__credit'))
+    pending = by_status.get('submitted', 0) + by_status.get('approved', 0)
+    return {
+        'documents': sum(by_status.values()),
+        'by_status': by_status,
+        'posted': by_status.get('posted', 0) + by_status.get('locked', 0),
+        'pending_approval': pending,
+        'draft_excluded': by_status.get('draft', 0),
+        'unbalanced_documents': unbalanced,
+        'total_debit': _round2(totals['debit']),
+        'total_credit': _round2(totals['credit']),
+        'is_clean': unbalanced == 0 and pending == 0,
+    }
+
+
+def _audit_block(request, year=None, as_of=None):
+    """آخرین تأیید حسابرسی + وضعیت سلامت داده‌های دامنهٔ گزارش."""
+    approvals = (
+        FinancialStatementApproval.objects
+        .filter(company=_company(request), statement_type__in=['balance_sheet', 'combined'])
+        .select_related('fiscal_year')
+        .order_by('-approved_at', '-id')
+    )
+    if year:
+        approvals = approvals.filter(Q(fiscal_year=year) | Q(fiscal_year__isnull=True))
+    item = approvals.first()
+    integrity = _document_integrity(request, year=year, as_of=as_of)
+    payload = None
+    if item:
+        payload = {
+            'id': item.id,
+            'statement_type': item.statement_type,
+            'statement_type_display': item.get_statement_type_display(),
+            'status': item.status,
+            'status_display': item.get_status_display(),
+            'auditor_name': item.auditor_name,
+            'audit_firm': item.audit_firm,
+            'reference_no': item.reference_no,
+            'approved_at': item.approved_at.isoformat() if item.approved_at else '',
+            'as_of_date': item.as_of_date.isoformat() if item.as_of_date else '',
+            'opinion_note': item.opinion_note,
+            'prepared_by_name': item.prepared_by_name,
+            'fiscal_year_name': item.fiscal_year.name if item.fiscal_year else '',
+            'is_final': item.status in AUDIT_FINAL_STATUSES,
+        }
+    return {
+        'approval': payload,
+        'is_audited': bool(payload and payload['is_final']),
+        'status': (payload or {}).get('status') or 'unaudited',
+        'integrity': integrity,
+    }
+
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def balance_sheet(request):
-    """ترازنامه: دارایی = بدهی + حقوق مالکانه."""
-    lines = _report_lines(request).select_related('account__account_type')
+    """ترازنامه: دارایی = بدهی + حقوق صاحبان سهام.
 
-    assets = {}
-    liabilities = {}
-    equity = {}
+    خروجی برای نمایش کارتی «دارایی (راست) / بدهی + حقوق صاحبان سهام (چپ)» به‌همراه
+    یک کارت تمام‌عرض جمع‌ها و کنترل تراز، و «مهر تأیید حسابرسی» غنی‌سازی شده است:
+    گروه‌بندی بر پایهٔ گروه حساب، نسبت‌ها، سلامت اسناد و آخرین تأیید حسابرسی.
+    """
+    lines, year, as_of = _balance_scope(request)
+
+    buckets = {'asset': {}, 'liability': {}, 'equity': {}}
     for line in lines:
-        category = line.account.account_type.category
+        account = line.account
+        category = account.account_type.category if account.account_type else None
+        if category not in buckets:
+            continue
         debit = float(line.debit or 0)
         credit = float(line.credit or 0)
-        if category == 'asset':
-            balance = debit - credit
-            target = assets
-        elif category == 'liability':
-            balance = credit - debit
-            target = liabilities
-        elif category == 'equity':
-            balance = credit - debit
-            target = equity
-        else:
-            continue
-        rec = target.setdefault(line.account_id, {
-            'id': line.account_id,
-            'code': line.account.code,
-            'name': line.account.name,
-            'balance': 0,
+        balance = (debit - credit) if category == 'asset' else (credit - debit)
+        rec = buckets[category].setdefault(account.id, {
+            'id': account.id,
+            'code': account.code,
+            'name': account.name,
+            'group': account.group.name if account.group else '',
+            'group_code': account.group.code if account.group else '',
+            'balance': 0.0,
         })
         rec['balance'] += balance
 
-    def to_rows(target):
-        rows = list(target.values())
-        rows.sort(key=lambda x: x['code'])
-        return rows, sum(r['balance'] for r in rows)
+    def finalize(bucket):
+        rows = [{**row, 'balance': _round2(row['balance'])} for row in bucket.values()]
+        rows.sort(key=lambda r: r['code'])
+        return rows, _round2(sum(r['balance'] for r in rows))
 
-    asset_rows, total_assets = to_rows(assets)
-    liability_rows, total_liabilities = to_rows(liabilities)
-    equity_rows, total_equity = to_rows(equity)
+    asset_rows, total_assets = finalize(buckets['asset'])
+    liability_rows, total_liabilities = finalize(buckets['liability'])
+    equity_rows, total_equity = finalize(buckets['equity'])
+
+    total_le = _round2(total_liabilities + total_equity)
+    difference = _round2(total_assets - total_le)
+    audit = _audit_block(request, year=year, as_of=as_of)
+    documents = audit['integrity']
+    # مهر تأیید فقط وقتی «سبز» است که حسابرسی تأیید کرده باشد و اسناد دامنه پاک باشند
+    audited = bool(audit['is_audited'] and documents['is_clean'])
 
     return Response({
+        # --- دارایی‌ها ---
         'assets': asset_rows,
+        'asset_groups': _grouped_rows(asset_rows, total_assets),
         'total_assets': total_assets,
+        # --- بدهی‌ها ---
         'liabilities': liability_rows,
+        'liability_groups': _grouped_rows(liability_rows, total_liabilities),
         'total_liabilities': total_liabilities,
+        # --- حقوق صاحبان سهام ---
         'equity': equity_rows,
+        'equity_groups': _grouped_rows(equity_rows, total_equity),
         'total_equity': total_equity,
-        'total_liabilities_equity': total_liabilities + total_equity,
+        # --- کنترل تراز ---
+        'total_liabilities_equity': total_le,
+        'difference': difference,
+        'is_balanced': difference == 0,
+        'ratios': {
+            'debt_to_asset': round(total_liabilities / total_assets * 100, 1) if total_assets else 0.0,
+            'equity_to_asset': round(total_equity / total_assets * 100, 1) if total_assets else 0.0,
+            'leverage': round(total_liabilities / total_equity, 2) if total_equity else 0.0,
+        },
+        # --- فراداده و تأیید حسابرسی ---
+        'fiscal_year': ({
+            'id': year.id, 'name': year.name, 'status': year.status,
+            'start_date': year.start_date.isoformat(), 'end_date': year.end_date.isoformat(),
+            'is_current': year.is_current,
+        } if year else None),
+        'as_of': as_of or '',
+        'audit': audit,
+        'audited': audited,
+        'generated_at': timezone.now().isoformat(),
     })
+
 
 
 @api_view(['GET'])

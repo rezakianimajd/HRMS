@@ -830,3 +830,60 @@ class AccountingSettings(BaseModel):
 
     def __str__(self):
         return f'تنظیمات حسابداری ({self.company_id})'
+
+
+# =============================================================================
+# Financial statement approval — تأیید صورت‌های مالی (حسابرسی)
+# =============================================================================
+class FinancialStatementApproval(BaseModel):
+    """تأیید/حسابرسی صورت‌های مالی (ترازنامه، سود و زیان، جریان نقدی).
+
+    هر رکورد یک «سابقهٔ تأیید» است؛ آخرین رکورد برای هر (شرکت، نوع صورت، سال مالی)
+    وضعیت جاری تأیید را مشخص می‌کند و در گزارش‌ها به‌عنوان مهر تأیید نمایش داده می‌شود.
+    """
+
+    class StatementType(models.TextChoices):
+        BALANCE_SHEET = 'balance_sheet', _('ترازنامه')
+        INCOME_STATEMENT = 'income_statement', _('سود و زیان')
+        CASH_FLOW = 'cash_flow', _('جریان وجوه نقد')
+        COMBINED = 'combined', _('صورت‌های مالی کامل')
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('در انتظار تأیید')
+        APPROVED = 'approved', _('تأییدشده')
+        APPROVED_WITH_COMMENTS = 'approved_with_comments', _('تأیید با ملاحظات')
+        REJECTED = 'rejected', _('رد شده')
+
+    statement_type = models.CharField(
+        max_length=30, choices=StatementType.choices, default=StatementType.BALANCE_SHEET,
+        verbose_name=_('نوع صورت مالی'),
+    )
+    fiscal_year = models.ForeignKey(
+        FiscalYear, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='statement_approvals', verbose_name=_('سال مالی'),
+    )
+    as_of_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صورت مالی'))
+    period_from = models.DateField(null=True, blank=True, verbose_name=_('از تاریخ'))
+    period_to = models.DateField(null=True, blank=True, verbose_name=_('تا تاریخ'))
+    status = models.CharField(
+        max_length=30, choices=Status.choices, default=Status.PENDING,
+        verbose_name=_('وضعیت تأیید'),
+    )
+    auditor_name = models.CharField(max_length=200, verbose_name=_('حسابرس/تأییدکننده'))
+    audit_firm = models.CharField(max_length=250, blank=True, verbose_name=_('مؤسسهٔ حسابرسی'))
+    reference_no = models.CharField(max_length=120, blank=True, verbose_name=_('شمارهٔ گزارش/نامه'))
+    approved_at = models.DateField(null=True, blank=True, verbose_name=_('تاریخ تأیید'))
+    opinion_note = models.TextField(blank=True, verbose_name=_('متن نظر حسابرسی'))
+    note = models.TextField(blank=True, verbose_name=_('یادداشت داخلی'))
+    prepared_by_name = models.CharField(max_length=200, blank=True, verbose_name=_('تهیه‌کننده'))
+
+    class Meta:
+        verbose_name = _('تأیید صورت مالی')
+        verbose_name_plural = _('تأییدهای صورت مالی (حسابرسی)')
+        ordering = ['-approved_at', '-id']
+        indexes = [
+            models.Index(fields=['company', 'statement_type'], name='fsa_co_type_idx'),
+        ]
+
+    def __str__(self):
+        return f'{self.get_statement_type_display()} — {self.auditor_name} ({self.status})'

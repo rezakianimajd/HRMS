@@ -8,7 +8,7 @@ from accounting.models import (
     AccountingDocumentDimension, AccountingSequence,
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
-    ApprovalPolicy, ApprovalStep,
+    ApprovalPolicy, ApprovalStep, FinancialStatementApproval,
 )
 
 
@@ -38,6 +38,29 @@ class FiscalPeriodSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = FiscalPeriod
         fields = ['id', 'fiscal_year', 'code', 'start_date', 'end_date', 'status', 'status_display']
+
+
+class FinancialStatementApprovalSerializer(BaseModelSerializer):
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    statement_type_display = serializers.CharField(source='get_statement_type_display', read_only=True)
+    fiscal_year_name = serializers.CharField(source='fiscal_year.name', read_only=True)
+    is_final = serializers.SerializerMethodField()
+
+    class Meta(BaseModelSerializer.Meta):
+        model = FinancialStatementApproval
+        fields = [
+            'id', 'statement_type', 'statement_type_display', 'fiscal_year', 'fiscal_year_name',
+            'as_of_date', 'period_from', 'period_to', 'status', 'status_display',
+            'auditor_name', 'audit_firm', 'reference_no', 'approved_at', 'opinion_note',
+            'note', 'prepared_by_name', 'is_final', 'created_at',
+        ]
+
+    def get_is_final(self, obj):
+        """آیا این رکورد یک تأیید نهایی (و نه رد/در انتظار) است؟"""
+        return obj.status in (
+            FinancialStatementApproval.Status.APPROVED,
+            FinancialStatementApproval.Status.APPROVED_WITH_COMMENTS,
+        )
 
 
 class AccountingBookSerializer(BaseModelSerializer):
