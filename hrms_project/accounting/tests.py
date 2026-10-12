@@ -9,6 +9,9 @@ from accounting.coding import next_code, resolve_inheritance, suggest_code
 from accounting.maintenance import (
     analyze_account_types, infer_category_from_name, sync_account_types,
 )
+from accounting.annual_views import (
+    _annual_payload, _balance_rows, _carry_sides, _persist_annual, _zero_sides,
+)
 from accounting.models import Account, AccountGroup, AccountType
 from accounting.serializers import AccountSerializer
 from core.models import Company
@@ -276,4 +279,138 @@ class CodingHealthSyncTests(TestCase):
         data = AccountSerializer(self.broken).data
         self.assertTrue(data['type_mismatch'])
         self.assertEqual(data['group_type_category'], 'liability')
+
+
+
+class AnnualOperationTests(TestCase):
+    """عملیات سالانه: انتقال مانده تا آخرین تفصیل + پیش‌نمایش + پیش‌نویس قابل ویرایش."""
+
+    def setUp(self):
+        from datetime import date as _date
+        from types import SimpleNamespace
+
+        from accounting.models import (
+            AccountingDocument, AccountingDocumentLine, AuxiliaryAccount, FiscalYear,
+        )
+        from django.http import QueryDict
+
+        self.SimpleNamespace = SimpleNamespace
+        self.QueryDict = QueryDict
+        self.AccountingDocument = AccountingDocument
+        self.AccountingDocumentLine = AccountingDocumentLine
+        self.FiscalYear = FiscalYear
+
+        self.company = make_company(schema_name='testco3')
+        self.expense = AccountType.objects.create(
+            company=self.company, code='5', name='هزینه', category='expense', default_nature='debit',
+        )
+        self.asset = AccountType.objects.create(
+            company=self.company, code='1', name='دارایی', category='asset', default_nature='debit',
+        )
+        self.general = Account.objects.create(
+            company=self.company, code='5001', name='هزینه‌های اداری',
+            account_type=self.expense, level=1, nature='debit',
+        )
+        self.sub = Account.objects.create(
+            company=self.company, code='500100001', name='هزینه چاپ و تکثیر',
+            account_type=self.expense, level=2, nature='debit', parent=self.general,
+        )
+        self.bank = Account.objects.create(
+            company=self.company, code='1001', name='موجودی نقد و بانک',
+            account_type=self.asset, level=1, nature='debit',
+        )
+        self.aux = AuxiliaryAccount.objects.create(
+            company=self.company, code='A-1', name='چاپخانه الف',
+            aux_type='supplier', account=self.sub,
+        )
+        self.year = FiscalYear.objects.create(
+            company=self.company, name='1403', start_date=_date(2024, 3, 20),
+            end_date=_date(2025, 3, 20), status='open', is_current=True,
+        )
+        self.prev = FiscalYear.objects.create(
+            company=self.company, name='1402', start_date=_date(2023, 3, 21),
+            end_date=_date(2024, 3, 19), status='closed',
+        )
+        self.doc = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.prev, date=_date(2024, 1, 10),
+            description='هزینه چاپ', status='posted',
+        )
+        self.AccountingDocumentLine.objects.create(
+            document=self.doc, company=self.company, account=self.sub, auxiliary_1=self.aux,
+            debit=1500, credit=0, line_no=1,
+        )
+        self.AccountingDocumentLine.objects.create(
+            document=self.doc, company=self.company, account=self.bank,
+            debit=0, credit=1500, line_no=2,
+        )
+
+    def _request(self, params, method='POST'):
+        request = self.SimpleNamespace(
+            tenant=self.company,
+            company=self.company,
+            query_params=self.QueryDict(''),
+            data=params,
+            method=method,
+        )
+        return request
+
+    def test_balance_rows_keep_last_auxiliary(self):
+        """ماندهٔ هر حساب به تفکیک «آخرین تفصیل» تجمیع می‌شود (نه فقط کد معین)."""
+        rows = _balance_rows(self.company, self.prev, ('expense',))
+        self.assertEqual(len(rows), 1)
+        row = rows[0]
+        self.assertEqual(row['account'].id, self.sub.id)
+        self.assertEqual(row['deepest_aux'].id, self.aux.id)
+        self.assertAlmostEqual(row['net'], 1500)
+
+    def test_opening_preview_lines_include_auxiliary(self):
+        data, error = _annual_payload(self._request({'fiscal_year': self.year.id}), 'opening')
+        self.assertIsNone(error)
+        self.assertTrue(data['lines'])
+        expense_line = next(l for l in data['lines'] if l['account'] == self.sub.id)
+        self.assertEqual(expense_line['auxiliary_1'], self.aux.id)
+        self.assertIn('چاپخانه الف', expense_line['auxiliary_path'])
+        self.assertAlmostEqual(expense_line['debit'], 1500)
+        self.assertTrue(data['totals']['is_balanced'])
+        self.assertEqual(data['default_date'], self.year.start_date.isoformat())
+
+    def test_annual_date_can_be_customized(self):
+        data, error = _annual_payload(
+            self._request({'fiscal_year': self.year.id, 'date': '2024-04-05'}), 'opening',
+        )
+        self.assertIsNone(error)
+        self.assertEqual(data['date'], '2024-04-05')
+
+    def test_create_opening_as_editable_draft(self):
+        request = self._request({
+            'fiscal_year': self.year.id,
+            'status': 'draft',
+            'create': 1,
+            'lines': [
+                {'account': self.sub.id, 'auxiliary_1': self.aux.id, 'debit': 1500, 'credit': 0},
+                {'account': self.bank.id, 'debit': 0, 'credit': 1500},
+            ],
+        })
+        payload, error, status = _persist_annual(request, 'opening', request.data)
+        self.assertIsNone(error)
+        self.assertEqual(status, 201)
+        doc = self.AccountingDocument.objects.get(
+            company=self.company, source_module='annual', source_type='opening',
+        )
+        self.assertEqual(doc.status, 'draft')
+        self.assertFalse(doc.is_locked)
+        self.assertEqual(doc.lines.count(), 2)
+        aux_line = doc.lines.get(account=self.sub)
+        self.assertEqual(aux_line.auxiliary_1_id, self.aux.id)
+
+    def test_closing_zeroes_liability(self):
+        """اختتامیه باید بدهی را بستانکار نکند، بلکه بدهکار کند (صفر شدن)."""
+        (debit, credit), (target_debit, target_credit) = _zero_sides('liability', 500)
+        self.assertEqual((debit, credit), (500, 0))
+        self.assertEqual((target_debit, target_credit), (0, 500))
+
+    def test_carry_sides_use_absolute_amounts(self):
+        self.assertEqual(_carry_sides('equity', -300), (300, 0))
+        self.assertEqual(_carry_sides('asset', -200), (0, 200))
+
 

@@ -14,12 +14,16 @@ from rest_framework.response import Response
 from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
 from accounting.models import (
     Account, AccountingDocument, AccountingDocumentLine, AccountingSettings,
-    FiscalYear, Journal,
+    AuxiliaryAccount, FiscalYear, Journal,
 )
 
 
 def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
+
+
+def _round2(value):
+    return round(float(value or 0), 2)
 
 
 def _report_lines(company, year=None):
@@ -33,30 +37,80 @@ def _report_lines(company, year=None):
     return qs
 
 
-def _net_balance(company, account, year):
-    debit = 0.0
-    credit = 0.0
-    for line in _report_lines(company, year).filter(account=account):
-        debit += float(line.debit or 0)
-        credit += float(line.credit or 0)
-    cat = account.account_type.category
-    if cat in ('asset', 'expense', 'cost_of_sales'):
-        return debit - credit
-    return credit - debit
+AUX_FIELDS = ('auxiliary', 'auxiliary_1', 'auxiliary_2', 'auxiliary_3')
+DEBIT_CATEGORIES = ('asset', 'expense', 'cost_of_sales')
 
 
-def _balances_by_category(company, year, categories):
-    accounts = (
-        Account.objects.filter(company=company, is_active=True, account_type__category__in=categories)
-        .select_related('account_type')
-        .order_by('code')
+def _balance_rows(company, year, categories):
+    """ماندهٔ تجمعی به تفکیک «حساب + تفصیلی‌های سطر» تا **آخرین تفصیل**.
+
+    برای هر ترکیب (حساب، تفصیل یک/دو/سه) یک ردیف برمی‌گرداند تا سند سالانه فقط
+    «کد معین» نباشد و تفصیلی‌های مرتبط با حساب هم منتقل شوند.
+    """
+    lines = _report_lines(company, year).select_related(
+        'account', 'account__account_type',
+        'auxiliary', 'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
     )
-    result = []
-    for a in accounts:
-        net = _net_balance(company, a, year)
-        if abs(net) > 1e-9:
-            result.append({'account': a, 'net': net})
-    return result
+    agg = {}
+    for line in lines:
+        account_type = line.account.account_type
+        category = account_type.category if account_type else None
+        if category not in categories:
+            continue
+        key = (
+            line.account_id, line.auxiliary_id, line.auxiliary_1_id,
+            line.auxiliary_2_id, line.auxiliary_3_id,
+        )
+        rec = agg.get(key)
+        if rec is None:
+            rec = agg[key] = {
+                'account': line.account,
+                'category': category,
+                'auxiliary': line.auxiliary,
+                'auxiliary_1': line.auxiliary_1,
+                'auxiliary_2': line.auxiliary_2,
+                'auxiliary_3': line.auxiliary_3,
+                'debit': 0.0,
+                'credit': 0.0,
+            }
+        rec['debit'] += float(line.debit or 0)
+        rec['credit'] += float(line.credit or 0)
+
+    rows = []
+    for key, rec in agg.items():
+        debit, credit = rec['debit'], rec['credit']
+        net = (debit - credit) if rec['category'] in DEBIT_CATEGORIES else (credit - debit)
+        if abs(net) <= 1e-9:
+            continue
+        deepest = rec['auxiliary_3'] or rec['auxiliary_2'] or rec['auxiliary_1'] or rec['auxiliary']
+        rows.append({
+            **rec,
+            'net': _round2(net),
+            'deepest_aux': deepest,
+            'key': '|'.join(str(k or '') for k in key),
+        })
+    rows.sort(key=lambda r: (r['account'].code, (r['deepest_aux'].code if r['deepest_aux'] else '')))
+    return rows
+
+
+def _carry_sides(category, net):
+    """افتتاحیه: مانده همان‌طور که هست منتقل می‌شود (همیشه با مقدار مثبت)."""
+    if category == 'asset':
+        return (abs(net), 0.0) if net >= 0 else (0.0, abs(net))
+    return (0.0, abs(net)) if net >= 0 else (abs(net), 0.0)
+
+
+def _zero_sides(category, net):
+    """اختتامیه: حساب صفر می‌شود (برعکسِ مانده) و همان مانده به حساب هدف می‌رود."""
+    carry = _carry_sides(category, net)
+    return (carry[1], carry[0]), carry
+
+
+def _close_sides(category, net):
+    """بستن حساب‌های موقت: مقابلِ مانده، حساب هدف خورده می‌شود."""
+    if category == 'revenue':
+        return (net, 0.0), (0.0, net)
+    return (0.0, net), (net, 0.0)
 
 
 def _target_account(company):
@@ -80,214 +134,470 @@ def _journal(company, jtype, name):
     return j
 
 
-@api_view(['POST'])
+# =============================================================================
+# عملیات سالانه — موتور مشترک (پیش‌نمایش، تاریخ دلخواه، پیش‌نویس قابل ویرایش)
+# =============================================================================
+ANNUAL_SPECS = {
+    'opening': {
+        'title': 'سند افتتاحیه',
+        'source_type': 'opening',
+        'source_prefix': 'opening',
+        'journal_type': Journal.JournalType.OPENING,
+        'journal_name': 'سند افتتاحیه',
+        'categories': ('asset', 'liability', 'equity'),
+        'date_attr': 'start_date',
+        'needs_prev_year': True,
+        'target': 'profit_loss',
+    },
+    'closing': {
+        'title': 'سند اختتامیه',
+        'source_type': 'closing',
+        'source_prefix': 'closing',
+        'journal_type': Journal.JournalType.CLOSING,
+        'journal_name': 'سند اختتامیه',
+        'categories': ('asset', 'liability', 'equity'),
+        'date_attr': 'end_date',
+        'needs_prev_year': False,
+        'target': 'retained',
+    },
+    'close-accounts': {
+        'title': 'بستن حساب‌های موقت',
+        'source_type': 'close-accounts',
+        'source_prefix': 'close',
+        'journal_type': Journal.JournalType.CLOSING,
+        'journal_name': 'سند بستن حساب‌ها',
+        'categories': ('revenue', 'expense', 'cost_of_sales'),
+        'date_attr': 'end_date',
+        'needs_prev_year': False,
+        'target': 'profit_loss',
+    },
+}
+
+
+def _flag(value):
+    return str(value or '').lower() in ('1', 'true', 'yes', 'on')
+
+
+def _parse_date(raw, fallback):
+    if not raw:
+        return fallback
+    try:
+        from datetime import date as _date
+        return _date.fromisoformat(str(raw)[:10])
+    except (ValueError, TypeError):
+        return fallback
+
+
+def _source_id(kind, year):
+    return f'{ANNUAL_SPECS[kind]["source_prefix"]}-{year.id}'
+
+
+def _aux_path(aux):
+    """مسیر تفصیلی تا آخرین سطح (برای نمایش در پیش‌نمایش)."""
+    if aux is None:
+        return ''
+    chain, node, seen = [], aux, set()
+    while node is not None and node.id not in seen and len(chain) < 6:
+        seen.add(node.id)
+        chain.append(f'{node.code} {node.name}'.strip())
+        node = node.parent
+    return ' / '.join(reversed(chain))
+
+
+def _aux_options(company, account_ids, limit=400):
+    """تفصیلی‌های مرتبط با هر حساب (برای انتخاب دستی در پیش‌نمایش)."""
+    options = {}
+    if not account_ids:
+        return options
+    qs = (
+        AuxiliaryAccount.objects
+        .filter(company=company, account_id__in=list(account_ids), is_active=True)
+        .order_by('code')[:limit]
+    )
+    for aux in qs:
+        options.setdefault(aux.account_id, []).append({
+            'id': aux.id, 'code': aux.code, 'name': aux.name, 'path': _aux_path(aux),
+        })
+    return options
+
+
+def _blank_aux():
+    return {'auxiliary': None, 'auxiliary_1': None, 'auxiliary_2': None, 'auxiliary_3': None, 'deepest': None}
+
+
+def _row_line(row, debit, credit, description):
+    line = {**_blank_aux(), 'account': row['account'], 'deepest': row['deepest_aux'],
+            'auxiliary': row['auxiliary'], 'auxiliary_1': row['auxiliary_1'],
+            'auxiliary_2': row['auxiliary_2'], 'auxiliary_3': row['auxiliary_3']}
+    line.update({'debit': _round2(debit), 'credit': _round2(credit), 'description': description})
+    return line
+
+
+def _target_line(target, debit, credit, description):
+    line = {**_blank_aux(), 'account': target}
+    line.update({'debit': _round2(debit), 'credit': _round2(credit), 'description': description})
+    return line
+
+
+def _build_spec_lines(kind, rows, target):
+    """ساخت سطرهای پیشنهادی سند سالانه — با تفصیلی‌های هر ردیف حساب."""
+    lines = []
+    for row in rows:
+        category, net = row['category'], row['net']
+        code = row['account'].code
+        if kind == 'opening':
+            debit, credit = _carry_sides(category, net)
+            lines.append(_row_line(row, debit, credit, f'ماندهٔ سال قبل {code}'))
+            continue
+        if kind == 'closing':
+            (debit, credit), (td, tc) = _zero_sides(category, net)
+            lines.append(_row_line(row, debit, credit, f'اختتام {code}'))
+            if target is not None and (td or tc):
+                lines.append(_target_line(target, td, tc, 'اختتام به حساب هدف'))
+        else:
+            (debit, credit), (td, tc) = _close_sides(category, net)
+            lines.append(_row_line(row, debit, credit, f'بستن {code}'))
+            if target is not None and (td or tc):
+                lines.append(_target_line(target, td, tc, 'انتقال به سود و زیان'))
+    if kind == 'opening' and target is not None:
+        diff = _round2(sum(l['debit'] for l in lines) - sum(l['credit'] for l in lines))
+        if abs(diff) > 0.001:
+            lines.append(_target_line(
+                target, 0.0, diff, 'توازن افتتاحیه',
+            ) if diff > 0 else _target_line(target, -diff, 0.0, 'توازن افتتاحیه'))
+    return lines
+
+
+
+def _line_json(line):
+    account = line['account']
+    aux = line.get('deepest')
+    account_type = account.account_type
+    return {
+        'account': account.id,
+        'account_code': account.code,
+        'account_name': account.name,
+        'account_type_name': account_type.name if account_type else '',
+        'category': account_type.category if account_type else '',
+        'auxiliary': line.get('auxiliary').id if line.get('auxiliary') else None,
+        'auxiliary_1': line.get('auxiliary_1').id if line.get('auxiliary_1') else None,
+        'auxiliary_2': line.get('auxiliary_2').id if line.get('auxiliary_2') else None,
+        'auxiliary_3': line.get('auxiliary_3').id if line.get('auxiliary_3') else None,
+        'auxiliary_label': f'{aux.code} - {aux.name}' if aux else '',
+        'auxiliary_path': _aux_path(aux),
+        'debit': _round2(line['debit']),
+        'credit': _round2(line['credit']),
+        'description': line.get('description', ''),
+    }
+
+
+def _lines_from_payload(raw_lines, company):
+    """ساخت سطرها از ورودی ویرایش‌شدهٔ کاربر (پیش‌نمایش قابل ادیت)."""
+    lines = []
+    for item in raw_lines or []:
+        account = (
+            Account.objects.filter(id=item.get('account'), company=company)
+            .select_related('account_type').first()
+        )
+        if account is None:
+            continue
+        debit = float(item.get('debit') or 0)
+        credit = float(item.get('credit') or 0)
+        if abs(debit) < 1e-9 and abs(credit) < 1e-9:
+            continue
+        auxes = {}
+        for field in AUX_FIELDS:
+            aux_id = item.get(field)
+            auxes[field] = (
+                AuxiliaryAccount.objects.filter(id=aux_id, company=company).first() if aux_id else None
+            )
+        deepest = auxes['auxiliary_3'] or auxes['auxiliary_2'] or auxes['auxiliary_1'] or auxes['auxiliary']
+        lines.append({
+            'account': account,
+            'auxiliary': auxes['auxiliary'],
+            'auxiliary_1': auxes['auxiliary_1'],
+            'auxiliary_2': auxes['auxiliary_2'],
+            'auxiliary_3': auxes['auxiliary_3'],
+            'deepest': deepest,
+            'debit': _round2(debit),
+            'credit': _round2(credit),
+            'description': item.get('description') or '',
+        })
+    return lines
+
+
+def _existing_document(company, kind, year):
+    return AccountingDocument.objects.filter(
+        company=company, source_module='annual',
+        source_type=ANNUAL_SPECS[kind]['source_type'], source_id=_source_id(kind, year),
+    ).first()
+
+
+def _document_json(doc):
+    if doc is None:
+        return None
+    return {
+        'id': doc.id,
+        'number': doc.number or f'#{doc.id}',
+        'status': doc.status,
+        'status_display': doc.get_status_display(),
+        'date': doc.date.isoformat() if doc.date else None,
+        'is_locked': doc.is_locked,
+        'description': doc.description,
+    }
+
+
+def _annual_payload(request, kind):
+    """محاسبهٔ داده‌های پیش‌نمایش یک عملیات سالانه (بدون هیچ تغییری در داده)."""
+    company = _company(request)
+    spec = ANNUAL_SPECS[kind]
+    params = dict(request.query_params.dict())
+    try:
+        params.update({k: v for k, v in request.data.items()})
+    except AttributeError:
+        pass
+
+    year = FiscalYear.objects.filter(id=params.get('fiscal_year'), company=company).first()
+    if not year:
+        return None, {'error': 'سال مالی معتبر انتخاب کنید.'}
+
+    source_year = year
+    prev_year = None
+    if spec['needs_prev_year']:
+        prev_year = (
+            FiscalYear.objects.filter(company=company, start_date__lt=year.start_date)
+            .order_by('-start_date').first()
+        )
+        if not prev_year:
+            return None, {'error': 'سال مالی قبل یافت نشد؛ سند افتتاحیه قابل ساخت نیست.'}
+        source_year = prev_year
+
+    target = _retained_account(company) if spec['target'] == 'retained' else _target_account(company)
+    rows = _balance_rows(company, source_year, spec['categories'])
+    lines = _build_spec_lines(kind, rows, target)
+
+    default_date = getattr(year, spec['date_attr'])
+    chosen_date = _parse_date(params.get('date'), default_date)
+
+    debit_total = _round2(sum(l['debit'] for l in lines))
+    credit_total = _round2(sum(l['credit'] for l in lines))
+    difference = _round2(debit_total - credit_total)
+
+    options = _aux_options(company, {l['account'].id for l in lines})
+
+    warnings = []
+    without_aux = sum(1 for l in lines if l.get('deepest') is None)
+    with_aux = sum(1 for l in lines if l.get('deepest') is not None)
+    if without_aux:
+        warnings.append(
+            f'{without_aux} سطر بدون تفصیلی است؛ اگر برای آن حساب تفصیلی تعریف شده باشد، '
+            'در همین جدول می‌توانید تفصیلی را انتخاب کنید.'
+        )
+    if not lines:
+        warnings.append('مانده‌ای برای انتقال یافت نشد.')
+    if abs(difference) > 0.001:
+        warnings.append(f'سند متوازن نیست (اختلاف {difference:,.2f}).')
+
+    existing = _existing_document(company, kind, year)
+    if existing is not None:
+        warnings.append(
+            f'سند این عملیات قبلاً ساخته شده است (شماره {existing.number or existing.id}، '
+            f'وضعیت {existing.get_status_display()}). برای بازسازی، «جایگزینی سند موجود» را انتخاب کنید.'
+        )
+
+    return {
+        'kind': kind,
+        'title': spec['title'],
+        'fiscal_year': {
+            'id': year.id, 'name': year.name,
+            'start_date': year.start_date.isoformat(), 'end_date': year.end_date.isoformat(),
+        },
+        'prev_year': ({
+            'id': prev_year.id, 'name': prev_year.name,
+            'start_date': prev_year.start_date.isoformat(), 'end_date': prev_year.end_date.isoformat(),
+        } if prev_year else None),
+        'source_year': {
+            'id': source_year.id, 'name': source_year.name,
+            'start_date': source_year.start_date.isoformat(), 'end_date': source_year.end_date.isoformat(),
+        },
+        'default_date': default_date.isoformat(),
+        'date': chosen_date.isoformat(),
+        'journal_name': spec['journal_name'],
+        'target_account': ({'id': target.id, 'code': target.code, 'name': target.name} if target else None),
+        'lines': [_line_json(l) for l in lines],
+        'aux_options': {str(k): v for k, v in options.items()},
+        'totals': {'debit': debit_total, 'credit': credit_total,
+                   'difference': difference, 'is_balanced': abs(difference) <= 0.001},
+        'aux_summary': {'with_aux': with_aux, 'without_aux': without_aux, 'accounts': len(rows)},
+        'warnings': warnings,
+        'existing': _document_json(existing),
+        'needs_prev_year': spec['needs_prev_year'],
+    }, None
+
+
+
+def _persist_annual(request, kind, payload):
+    """ساخت/بازسازی سند عملیات سالانه از سطرهای تأییدشدهٔ کاربر."""
+    company = _company(request)
+    spec = ANNUAL_SPECS[kind]
+    params = dict(request.query_params.dict())
+    try:
+        params.update({k: v for k, v in request.data.items()})
+    except AttributeError:
+        pass
+
+    year = FiscalYear.objects.filter(id=params.get('fiscal_year'), company=company).first()
+    if not year:
+        return None, {'error': 'سال مالی معتبر انتخاب کنید.'}, 400
+
+    raw_lines = payload.get('lines')
+    if isinstance(raw_lines, list):
+        lines = _lines_from_payload(raw_lines, company)
+    else:
+        computed, error = _annual_payload(request, kind)
+        if error:
+            return None, error, 400
+        lines = _lines_from_payload(computed['lines'], company)
+
+    if not lines:
+        return None, {'error': 'سندی برای ایجاد وجود ندارد (هیچ مانده یا سطری یافت نشد).'}, 400
+
+    totals = {
+        'debit': _round2(sum(l['debit'] for l in lines)),
+        'credit': _round2(sum(l['credit'] for l in lines)),
+    }
+    difference = _round2(totals['debit'] - totals['credit'])
+    if abs(difference) > 0.001 and not _flag(params.get('force')):
+        return None, {
+            'error': f'سند متوازن نیست (بدهکار {totals["debit"]:,.2f} / بستانکار {totals["credit"]:,.2f}). '
+                     'برای ثبت با اختلاف، گزینهٔ «ثبت با اختلاف» را فعال کنید.',
+            'totals': totals,
+        }, 400
+
+    status = str(params.get('status') or 'draft').lower()
+    if status not in ('draft', 'submitted', 'posted'):
+        status = 'draft'
+
+    doc_date = _parse_date(params.get('date'), getattr(year, spec['date_attr']))
+    replace = _flag(params.get('replace'))
+    force_replace = _flag(params.get('force_replace'))
+
+    existing = _existing_document(company, kind, year)
+    if existing is not None and not replace:
+        return None, {
+            'error': f'سند این عملیات از قبل وجود دارد (شماره {existing.number or existing.id}). '
+                     'برای بازسازی، «جایگزینی سند موجود» را انتخاب کنید.',
+            'existing': _document_json(existing),
+        }, 400
+    if existing is not None and existing.is_locked and not force_replace:
+        return None, {
+            'error': 'سند موجود ثبت‌شده/قفل است؛ برای بازسازی، «جایگزینی سند ثبت‌شده» را فعال کنید.',
+            'existing': _document_json(existing),
+        }, 400
+
+    journal = _journal(company, spec['journal_type'], spec['journal_name'])
+    locked = status in ('posted', 'locked')
+    description = f'{spec["title"]} — {year.name}'
+
+    with transaction.atomic():
+        if existing is not None:
+            existing.lines.all().delete()
+            doc = existing
+            doc.journal = journal
+            doc.fiscal_year = year
+            doc.date = doc_date
+            doc.description = description
+            doc.status = status
+            doc.is_locked = locked
+            doc.issues = []
+            doc.posted_by = request.user if status == 'posted' else None
+            doc.posted_at = timezone.now() if status == 'posted' else None
+            doc.save()
+        else:
+            doc = AccountingDocument.objects.create(
+                company=company,
+                journal=journal,
+                fiscal_year=year,
+                date=doc_date,
+                description=description,
+                status=status,
+                source_module='annual',
+                source_type=spec['source_type'],
+                source_id=_source_id(kind, year),
+                is_locked=locked,
+                created_by=request.user,
+                posted_by=request.user if status == 'posted' else None,
+                posted_at=timezone.now() if status == 'posted' else None,
+            )
+        for index, line in enumerate(lines, start=1):
+            amount = line['debit'] or line['credit']
+            AccountingDocumentLine.objects.create(
+                document=doc,
+                company=company,
+                account=line['account'],
+                auxiliary=line.get('auxiliary'),
+                auxiliary_1=line.get('auxiliary_1'),
+                auxiliary_2=line.get('auxiliary_2'),
+                auxiliary_3=line.get('auxiliary_3'),
+                description=line.get('description') or '',
+                debit=Decimal(str(line['debit'])),
+                credit=Decimal(str(line['credit'])),
+                line_no=index,
+                base_amount=Decimal(str(amount)),
+            )
+
+    from accounting.serializers import AccountingDocumentSerializer
+    return AccountingDocumentSerializer(doc).data, None, 201
+
+
+
+def _annual_action(request, kind):
+    """GET/POST مشترک: پیش‌نمایش (پیش‌فرض) یا ساخت سند."""
+    params = dict(request.query_params.dict())
+    try:
+        params.update({k: v for k, v in request.data.items()})
+    except AttributeError:
+        pass
+
+    wants_preview = _flag(params.get('preview')) or request.method == 'GET'
+    if wants_preview and not _flag(params.get('create')):
+        data, error = _annual_payload(request, kind)
+        if error:
+            return Response(error, status=400)
+        return Response(data)
+
+    data, error, status = _persist_annual(request, kind, params)
+    if error:
+        return Response(error, status=status)
+    return Response({
+        'document': data,
+        'id': data.get('id'),
+        'number': data.get('number'),
+        'status': data.get('status'),
+        'total_debit': data.get('total_debit'),
+        'total_credit': data.get('total_credit'),
+    }, status=status)
+
+
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def opening_document(request):
-    """سند افتتاحیه: انتقال ماندهٔ پایان سال قبل به ابتدای سال جدید."""
-    company = _company(request)
-    year_id = request.data.get('fiscal_year')
-    year = FiscalYear.objects.filter(id=year_id, company=company).first()
-    if not year:
-        return Response({'error': 'سال مالی معتبر انتخاب کنید.'}, status=400)
-
-    prev = FiscalYear.objects.filter(company=company, start_date__lt=year.start_date).order_by('-start_date').first()
-    if not prev:
-        return Response({'error': 'سال مالی قبل یافت نشد؛ سند افتتاحیه قابل ساخت نیست.'}, status=400)
-
-    existing = AccountingDocument.objects.filter(
-        company=company, source_module='annual', source_type='opening', source_id=f'opening-{year.id}',
-    ).first()
-    if existing:
-        from accounting.serializers import AccountingDocumentSerializer
-        return Response(AccountingDocumentSerializer(existing).data)
-
-    target = _target_account(company)
-    if not target:
-        return Response({'error': 'حساب سود و زیان/حقوق برای توازن تعیین نشده است.'}, status=400)
-
-    rows = _balances_by_category(company, prev, ['asset', 'liability', 'equity'])
-    journal = _journal(company, Journal.JournalType.OPENING, 'سند افتتاحیه')
-
-    with transaction.atomic():
-        doc = AccountingDocument.objects.create(
-            company=company,
-            journal=journal,
-            fiscal_year=year,
-            date=year.start_date,
-            description=f'سند افتتاحیهٔ {year.name}',
-            status='posted',
-            source_module='annual',
-            source_type='opening',
-            source_id=f'opening-{year.id}',
-            is_locked=True,
-            posted_by=request.user,
-            posted_at=timezone.now(),
-        )
-        line_no = 0
-        debit_total = 0.0
-        credit_total = 0.0
-
-        def push(account, debit, credit, desc=''):
-            nonlocal line_no, debit_total, credit_total
-            line_no += 1
-            AccountingDocumentLine.objects.create(
-                document=doc, company=company, account=account,
-                description=desc,
-                debit=Decimal(str(debit)), credit=Decimal(str(credit)),
-                line_no=line_no, base_amount=Decimal(str(debit or credit)),
-            )
-            debit_total += debit
-            credit_total += credit
-
-        for r in rows:
-            cat = r['account'].account_type.category
-            debit_side = cat == 'asset'
-            net = r['net']
-            if net >= 0:
-                d, c = (abs(net), 0.0) if debit_side else (0.0, abs(net))
-            else:
-                d, c = (0.0, abs(net)) if debit_side else (abs(net), 0.0)
-            push(r['account'], d, c, f'ماندهٔ سال قبل {r["account"].code}')
-
-        diff = debit_total - credit_total
-        if diff > 1e-9:
-            push(target, 0.0, diff, 'توازن افتتاحیه')
-        elif diff < -1e-9:
-            push(target, -diff, 0.0, 'توازن افتتاحیه')
-
-    from accounting.serializers import AccountingDocumentSerializer
-    return Response(AccountingDocumentSerializer(doc).data, status=201)
+    """سند افتتاحیه — پیش‌نمایش قابل‌ویرایش، تاریخ دلخواه و پیش‌نویس قابل ادیت."""
+    return _annual_action(request, 'opening')
 
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def close_accounts(request):
-    """بستن حساب‌های موقت (درآمد/هزینه/بهای تمام‌شده) به حساب سود و زیان."""
-    company = _company(request)
-    year_id = request.data.get('fiscal_year')
-    year = FiscalYear.objects.filter(id=year_id, company=company).first()
-    if not year:
-        return Response({'error': 'سال مالی معتبر انتخاب کنید.'}, status=400)
-
-    target = _target_account(company)
-    if not target:
-        return Response({'error': 'حساب سود و زیان تعیین نشده است.'}, status=400)
-
-    existing = AccountingDocument.objects.filter(
-        company=company, source_module='annual', source_type='close-accounts', source_id=f'close-{year.id}',
-    ).first()
-    if existing:
-        from accounting.serializers import AccountingDocumentSerializer
-        return Response(AccountingDocumentSerializer(existing).data)
-
-    rows = _balances_by_category(company, year, ['revenue', 'expense', 'cost_of_sales'])
-    journal = _journal(company, Journal.JournalType.CLOSING, 'سند بستن حساب‌ها')
-
-    with transaction.atomic():
-        doc = AccountingDocument.objects.create(
-            company=company,
-            journal=journal,
-            fiscal_year=year,
-            date=year.end_date,
-            description=f'بستن حساب‌های موقت {year.name}',
-            status='posted',
-            source_module='annual',
-            source_type='close-accounts',
-            source_id=f'close-{year.id}',
-            is_locked=True,
-            posted_by=request.user,
-            posted_at=timezone.now(),
-        )
-        line_no = 0
-        for r in rows:
-            cat = r['account'].account_type.category
-            net = r['net']
-            if cat == 'revenue':
-                d_acc, c_acc, d_tgt, c_tgt = net, 0.0, 0.0, net
-            else:
-                d_acc, c_acc, d_tgt, c_tgt = 0.0, net, net, 0.0
-            line_no += 1
-            AccountingDocumentLine.objects.create(
-                document=doc, company=company, account=r['account'],
-                description=f'بستن {r["account"].code}',
-                debit=Decimal(str(d_acc)), credit=Decimal(str(c_acc)),
-                line_no=line_no, base_amount=Decimal(str(d_acc or c_acc)),
-            )
-            line_no += 1
-            AccountingDocumentLine.objects.create(
-                document=doc, company=company, account=target,
-                description='انتقال به سود و زیان',
-                debit=Decimal(str(d_tgt)), credit=Decimal(str(c_tgt)),
-                line_no=line_no, base_amount=Decimal(str(d_tgt or c_tgt)),
-            )
-
-    from accounting.serializers import AccountingDocumentSerializer
-    return Response(AccountingDocumentSerializer(doc).data, status=201)
+    """بستن حساب‌های موقت (درآمد/هزینه/بهای تمام‌شده) با پیش‌نمایش و ویرایش."""
+    return _annual_action(request, 'close-accounts')
 
 
-@api_view(['POST'])
+@api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 def closing_document(request):
-    """سند اختتامیه: صفر کردن حساب‌های ترازنامه‌ای به حساب سود/زیان انباشته."""
-    company = _company(request)
-    year_id = request.data.get('fiscal_year')
-    year = FiscalYear.objects.filter(id=year_id, company=company).first()
-    if not year:
-        return Response({'error': 'سال مالی معتبر انتخاب کنید.'}, status=400)
-
-    target = _retained_account(company)
-    if not target:
-        return Response({'error': 'حساب سود/زیان انباشته تعیین نشده است.'}, status=400)
-
-    existing = AccountingDocument.objects.filter(
-        company=company, source_module='annual', source_type='closing', source_id=f'closing-{year.id}',
-    ).first()
-    if existing:
-        from accounting.serializers import AccountingDocumentSerializer
-        return Response(AccountingDocumentSerializer(existing).data)
-
-    rows = _balances_by_category(company, year, ['asset', 'liability', 'equity'])
-    journal = _journal(company, Journal.JournalType.CLOSING, 'سند اختتامیه')
-
-    with transaction.atomic():
-        doc = AccountingDocument.objects.create(
-            company=company,
-            journal=journal,
-            fiscal_year=year,
-            date=year.end_date,
-            description=f'سند اختتامیهٔ {year.name}',
-            status='posted',
-            source_module='annual',
-            source_type='closing',
-            source_id=f'closing-{year.id}',
-            is_locked=True,
-            posted_by=request.user,
-            posted_at=timezone.now(),
-        )
-        line_no = 0
-        for r in rows:
-            net = r['net']
-            if net >= 0:
-                d_acc, c_acc, d_tgt, c_tgt = 0.0, net, net, 0.0
-            else:
-                d_acc, c_acc, d_tgt, c_tgt = -net, 0.0, 0.0, -net
-            line_no += 1
-            AccountingDocumentLine.objects.create(
-                document=doc, company=company, account=r['account'],
-                description=f'اختتام {r["account"].code}',
-                debit=Decimal(str(d_acc)), credit=Decimal(str(c_acc)),
-                line_no=line_no, base_amount=Decimal(str(d_acc or c_acc)),
-            )
-            line_no += 1
-            AccountingDocumentLine.objects.create(
-                document=doc, company=company, account=target,
-                description='اختتام به حساب هدف',
-                debit=Decimal(str(d_tgt)), credit=Decimal(str(c_tgt)),
-                line_no=line_no, base_amount=Decimal(str(d_tgt or c_tgt)),
-            )
-
-    from accounting.serializers import AccountingDocumentSerializer
-    return Response(AccountingDocumentSerializer(doc).data, status=201)
+    """سند اختتامیه — صفر کردن حساب‌های ترازنامه‌ای با پیش‌نمایش و ویرایش."""
+    return _annual_action(request, 'closing')
 
 
 @api_view(['GET'])
