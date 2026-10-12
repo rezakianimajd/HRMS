@@ -189,6 +189,7 @@ const IntegrityChips = ({ integrity = {} }) => {
     { label: `در انتظار تأیید: ${toPersianDigits(integrity.pending_approval || 0)}`, ok: !integrity.pending_approval, color: '#f59e0b' },
     { label: `سند ناتراز: ${toPersianDigits(integrity.unbalanced_documents || 0)}`, ok: !integrity.unbalanced_documents, color: '#ef4444' },
     { label: `پیش‌نویس کنارگذاشته: ${toPersianDigits(integrity.draft_excluded || 0)}`, ok: true, color: '#64748b' },
+    { label: `حساب با نوع ناهمگون: ${toPersianDigits((integrity.coding_mismatch_accounts || 0) + (integrity.coding_mismatch_groups || 0))}`, ok: !(integrity.coding_mismatch_accounts || integrity.coding_mismatch_groups), color: '#dc2626' },
   ];
   return (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>

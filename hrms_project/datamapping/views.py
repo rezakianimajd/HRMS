@@ -22,6 +22,22 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
+def _infer_account_type(types, name):
+    """نوع حساب متناسب با نام (به‌جای پیش‌فرض «همه دارایی»).
+
+    ایمپورت‌ها پیش‌تر همیشه اولین نوع حساب (کد ۱ = دارایی) را برمی‌داشتند؛ به همین
+    دلیل حساب‌های بدهی/هزینه/درآمد هم در خوشهٔ دارایی می‌افتادند.
+    """
+    from accounting.maintenance import infer_category_from_name
+
+    category = infer_category_from_name(name)
+    if category:
+        for account_type in types:
+            if account_type.category == category:
+                return account_type
+    return None
+
+
 LEVEL_LABELS = {
     'group': 'گروه حساب',
     'general': 'حساب کل',
@@ -278,7 +294,8 @@ def _create_new_target(level, company, name, parent_name='', kind=''):
     from accounting.models import AccountType, AccountGroup
     from django.db import IntegrityError
 
-    acc_type = AccountType.objects.filter(company=company).first()
+    types = list(AccountType.objects.filter(company=company).order_by('code'))
+    acc_type = _infer_account_type(types, name) or (types[0] if types else None)
 
     if level == 'group':
         # والد گروه = نوع حساب (کد یا نام)

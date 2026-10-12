@@ -32,7 +32,7 @@ from accounting.serializers import (
     ApprovalPolicySerializer, ApprovalStepSerializer, FinancialStatementApprovalSerializer,
 )
 from accounting.services import PostingService, SourcePostingService, AccountingError
-from accounting import coding
+from accounting import coding, maintenance
 
 
 def _company(request):
@@ -327,14 +327,40 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         if inherited_type is not None:
             data['account_type'] = inherited_type
         elif not data.get('account_type'):
-            data['account_type'] = AccountType.objects.filter(
-                company=_company(self.request),
-            ).order_by('code').first()
+            data['account_type'] = self._fallback_account_type(data.get('name'))
 
         if inherited_nature:
             data['nature'] = inherited_nature
 
         serializer.save(company=_company(self.request))
+
+    def _fallback_account_type(self, name):
+        """آخرین راه‌حل تعیین نوع حساب: استنتاج از نام، سپس اولین نوع (بر پایهٔ کد)."""
+        qs = AccountType.objects.filter(company=_company(self.request))
+        inferred = maintenance.infer_category_from_name(name)
+        if inferred:
+            match = qs.filter(category=inferred).order_by('code').first()
+            if match:
+                return match
+        return qs.order_by('code').first()
+
+    @action(detail=False, methods=['get', 'post'], url_path='sync-types')
+    def sync_types(self, request):
+        """همگام‌سازی نوع/ماهیت حساب‌ها با والد و گروه.
+
+        رفع «ناهمگونی کدینگ»: رکوردهایی که گروهشان «بدهی جاری» است اما نوع
+        «دارایی» دارند و به همین دلیل اشتباهاً در دارایی‌های ترازنامه می‌آیند.
+        GET  → پیش‌نمایش تغییرات
+        POST → پیش‌نمایش، و با `apply=1` اعمال (اختیاری `fix_groups=1`)
+        """
+        company = _company(request)
+        params = request.query_params if request.method == 'GET' else request.data
+
+        def _flag(key):
+            return str(params.get(key, '')).lower() in ('1', 'true', 'yes', 'on')
+
+        runner = maintenance.sync_account_types if _flag('apply') else maintenance.analyze_account_types
+        return Response(runner(company, fix_groups=_flag('fix_groups')))
 
 
 

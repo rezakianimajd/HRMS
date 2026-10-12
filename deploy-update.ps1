@@ -59,6 +59,12 @@ $BackendFiles = @(
     'hrms_project/accounting/report_views.py',
     'hrms_project/accounting/coding.py',
     'hrms_project/accounting/tests.py',
+    # --- کدینگ والد-آگاه + ابزار رفع ناهمگونی نوع حساب ---
+    'hrms_project/accounting/maintenance.py',
+    'hrms_project/accounting/management/__init__.py',
+    'hrms_project/accounting/management/commands/__init__.py',
+    'hrms_project/accounting/management/commands/sync_account_types.py',
+    'hrms_project/datamapping/views.py',
     'hrms_project/accounting/annual_views.py',
     'hrms_project/accounting/tax_views.py',
     'hrms_project/employees/views.py',

@@ -1,5 +1,6 @@
 """Serializers for the Accounting module."""
 from rest_framework import serializers
+from accounting.maintenance import infer_category_from_name
 from accounting.models import (
     Branch, FiscalYear, FiscalPeriod, AccountingBook,
     AccountType, AccountGroup, Account, AuxiliaryAccount, AuxiliaryCategory,
@@ -78,9 +79,17 @@ class AccountTypeSerializer(BaseModelSerializer):
 
 
 class AccountGroupSerializer(BaseModelSerializer):
+    account_type_name = serializers.CharField(source='account_type.name', read_only=True)
+    category = serializers.CharField(source='account_type.category', read_only=True)
+    suggested_category = serializers.SerializerMethodField()
+
     class Meta(BaseModelSerializer.Meta):
         model = AccountGroup
         fields = '__all__'
+
+    def get_suggested_category(self, obj):
+        """طبقهٔ پیشنهادی بر پایهٔ نام گروه (هشدار ناهمگونی نام و نوع)."""
+        return infer_category_from_name(obj.name)
 
 
 class AccountSerializer(BaseModelSerializer):
@@ -89,6 +98,11 @@ class AccountSerializer(BaseModelSerializer):
     account_type_name = serializers.CharField(source='account_type.name', read_only=True)
     account_type_category = serializers.CharField(source='account_type.category', read_only=True)
     group_name = serializers.CharField(source='group.name', read_only=True)
+    group_type_name = serializers.CharField(source='group.account_type.name', read_only=True)
+    group_type_category = serializers.CharField(source='group.account_type.category', read_only=True)
+    parent_type_name = serializers.CharField(source='parent.account_type.name', read_only=True)
+    parent_type_category = serializers.CharField(source='parent.account_type.category', read_only=True)
+    type_mismatch = serializers.SerializerMethodField()
 
     class Meta(BaseModelSerializer.Meta):
         model = Account
@@ -99,6 +113,21 @@ class AccountSerializer(BaseModelSerializer):
             'auxiliary_category_2': {'required': False},
             'auxiliary_category_3': {'required': False},
         }
+
+    def get_type_mismatch(self, obj):
+        """آیا نوع حساب با والد/گروه آن ناهمگون است؟ (عارضهٔ «همه دارایی»)."""
+        current = getattr(obj.account_type, 'category', None)
+        if not current:
+            return False
+        if obj.parent_id and obj.parent is not None and obj.parent.account_type_id:
+            return obj.parent.account_type.category != current
+        if obj.group_id and obj.group is not None and obj.group.account_type_id:
+            expected = obj.group.account_type.category
+            name_category = infer_category_from_name(obj.group.name)
+            if name_category and name_category != expected:
+                expected = name_category
+            return expected != current
+        return False
 
 class AuxiliaryCategorySerializer(BaseModelSerializer):
     source_display = serializers.CharField(source='get_source_display', read_only=True)

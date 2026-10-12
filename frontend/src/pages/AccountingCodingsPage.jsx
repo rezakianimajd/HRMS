@@ -202,6 +202,24 @@ const CodingsPanel = ({
   );
 };
 
+// سلول «نوع حساب» با هشدار ناهمگونی (نوع ثبت‌شده ≠ نوع گروه/والد)
+const typeChip = (row) => (
+  <Stack direction="row" spacing={0.5} alignItems="center">
+    <Chip
+      size="small"
+      label={row.account_type_name || '—'}
+      color={row.type_mismatch ? 'error' : 'default'}
+      variant={row.type_mismatch ? 'filled' : 'outlined'}
+      sx={{ fontWeight: 700 }}
+    />
+    {row.type_mismatch && (
+      <Tooltip title={`نوع ثبت‌شده با گروه «${row.group_name || '—'}» (نوع: ${row.group_type_name || '—'}) همخوان نیست؛ در گزارش‌ها اشتباه دسته‌بندی می‌شود.`}>
+        <Chip size="small" label="ناهمگون" sx={{ bgcolor: 'rgba(239,68,68,0.14)', color: '#b91c1c', fontWeight: 700 }} />
+      </Tooltip>
+    )}
+  </Stack>
+);
+
 const AccountingCodingsPage = () => {
   const { kind } = useParams();
   const { data: types } = useQuery({ queryKey: ['acc-types'], queryFn: () => axiosInstance.get('/accounting/account-types/').then(r => r.data) });
@@ -215,6 +233,35 @@ const AccountingCodingsPage = () => {
   const generalList = Array.isArray(generals) ? generals : generals?.results || [];
   const subsidiaryList = Array.isArray(subsidiaries) ? subsidiaries : subsidiaries?.results || [];
   const auxList = Array.isArray(auxiliaries) ? auxiliaries : auxiliaries?.results || [];
+
+  const qc = useQueryClient();
+  const [fixing, setFixing] = useState(false);
+  const [fixMsg, setFixMsg] = useState(null);
+  const mismatchCount = [...generalList, ...subsidiaryList].filter(a => a.type_mismatch).length;
+
+  // اصلاح خودکار ناهمگونی نوع/ماهیت (حساب زیر گروه «بدهی» که نوعش «دارایی» ثبت شده)
+  const fixMismatch = async () => {
+    setFixing(true);
+    setFixMsg(null);
+    try {
+      const { data } = await axiosInstance.post('/accounting/accounts/sync-types/', { apply: 1, fix_groups: 1 });
+      qc.invalidateQueries({ queryKey: ['accounts'] });
+      qc.invalidateQueries({ queryKey: ['acc-general'] });
+      qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
+      qc.invalidateQueries({ queryKey: ['acc-groups'] });
+      qc.invalidateQueries({ queryKey: ['balance-sheet'] });
+      setFixMsg({
+        ok: true,
+        text: `نوع ${data.accounts_updated || 0} حساب`
+          + (data.groups_updated ? ` و ${data.groups_updated} گروه حساب` : '')
+          + ' اصلاح شد.',
+      });
+    } catch (e) {
+      setFixMsg({ ok: false, text: 'اعمال اصلاحات ممکن نشد.' });
+    } finally {
+      setFixing(false);
+    }
+  };
 
   const pageMeta = {
     groups: {
@@ -232,7 +279,7 @@ const AccountingCodingsPage = () => {
       title: 'حساب‌های کل', icon: <AccountTreeIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/accounts/',
       level: 'general',
-      columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب کل' }, { key: 'nature', label: 'ماهیت' }],
+      columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب کل' }, { key: 'account_type_name', label: 'نوع حساب', render: typeChip }, { key: 'nature', label: 'ماهیت' }],
       fields: [
         { key: 'account_type', label: 'نوع حساب', type: 'autocomplete', options: typeList, getLabel: o => o.name },
         { key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب کل' },
@@ -244,7 +291,7 @@ const AccountingCodingsPage = () => {
       title: 'حساب‌های معین', icon: <AccountTreeIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/accounts/',
       level: 'subsidiary',
-      columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' }, { key: 'parent_code', label: 'حساب کل' }],
+      columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' }, { key: 'parent_code', label: 'حساب کل' }, { key: 'account_type_name', label: 'نوع حساب', render: typeChip }],
       fields: [
         { key: 'parent', label: 'حساب کل (والد)', type: 'autocomplete', options: generalList, getLabel: o => `${o.code} - ${o.name}` },
         { key: 'account_type', label: 'نوع حساب (ارثی از والد)', type: 'inherited' },
@@ -318,6 +365,22 @@ const AccountingCodingsPage = () => {
           <Typography variant="body2" color="textSecondary">کدینگ حسابداری — افزودن، ویرایش و حذف</Typography>
         </Box>
       </Paper>
+
+      {fixMsg && <Alert severity={fixMsg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setFixMsg(null)}>{fixMsg.text}</Alert>}
+
+      {mismatchCount > 0 && (
+        <Alert
+          severity="warning"
+          sx={{ mb: 2, borderRadius: '14px', alignItems: 'center' }}
+          action={
+            <Button color="inherit" size="small" startIcon={<BoltIcon />} onClick={fixMismatch} disabled={fixing} sx={{ fontWeight: 800 }}>
+              {fixing ? 'در حال اصلاح…' : 'اصلاح خودکار'}
+            </Button>
+          }>
+          {mismatchCount} حساب «نوع ناهمگون» دارد؛ یعنی نوع ثبت‌شدهٔ آن با گروه/والدش (مثلاً گروه «بدهی جاری») یکی نیست و
+          به همین دلیل در ترازنامه و صورت سود و زیان اشتباه دسته‌بندی می‌شود. با «اصلاح خودکار»، نوع و ماهیت از والد/گروه بازنویسی می‌شود.
+        </Alert>
+      )}
 
       <CodingsPanel {...meta} />
     </Box>
