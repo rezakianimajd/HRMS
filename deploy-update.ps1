@@ -68,6 +68,7 @@ $BackendFiles = @(
     'hrms_project/projects/views.py',
     'hrms_project/projects/profile_views.py',
     'hrms_project/projects/urls.py',
+    'hrms_project/projects/models.py',
     'hrms_project/projects/serializers.py',
     'hrms_project/projects/cost_models.py',
     'hrms_project/projects/cost_views.py',
@@ -109,7 +110,24 @@ $BackendFiles = @(
     'hrms_project/projects/tests/test_phase2_integration.py',
     'hrms_project/procurement/models.py',
     'hrms_project/procurement/views.py',
-    'hrms_project/procurement/migrations/0003_goodsreceiptnote_cost_transaction_purchaseorder_cbs_and_more.py'
+    'hrms_project/procurement/migrations/0003_goodsreceiptnote_cost_transaction_purchaseorder_cbs_and_more.py',
+    # --- فاز ۲ (بخش دوم): صورتجلسه/گواهی پرداخت/تخصیص هزینه + جریان نقدی ---
+    'hrms_project/projects/phase2_models.py',
+    'hrms_project/projects/phase2_service.py',
+    'hrms_project/projects/phase2_serializers.py',
+    'hrms_project/projects/phase2_views.py',
+    'hrms_project/projects/cashflow.py',
+    'hrms_project/projects/migrations/0009_measurementsheet_measurementsheetline_and_more.py',
+    'hrms_project/projects/tests/test_phase2_cert_cashflow.py',
+    # --- فاز ۳: رجیستر ریسک ---
+    'hrms_project/projects/risk_models.py',
+    'hrms_project/projects/risk_engine.py',
+    'hrms_project/projects/risk_service.py',
+    'hrms_project/projects/risk_serializers.py',
+    'hrms_project/projects/risk_views.py',
+    'hrms_project/projects/migrations/0010_riskcategory_risk_riskreview_riskaction_and_more.py',
+    'hrms_project/projects/tests/test_risk_engine.py',
+    'hrms_project/projects/tests/test_phase3_risk_db.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
@@ -131,6 +149,8 @@ $FrontendFiles = @(
     'frontend/src/pages/ProjectCalendarPage.jsx',
     'frontend/src/pages/ProjectSchedulePage.jsx',
     'frontend/src/pages/ProjectChangeOrdersPage.jsx',
+    'frontend/src/pages/ProjectCertificationPage.jsx',
+    'frontend/src/pages/ProjectRiskPage.jsx',
     'frontend/src/pages/ProjectsStructurePage.jsx',
     'frontend/src/AppRoutes.jsx',
     'frontend/src/core/config/menuConfig.js'

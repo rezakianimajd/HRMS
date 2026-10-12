@@ -462,3 +462,8 @@ from projects.change_models import (  # noqa: E402,F401
 from projects.phase2_models import (  # noqa: E402,F401
     CostAllocation, MeasurementSheet, MeasurementSheetLine, PaymentCertificate,
 )
+
+# فاز ۳ — رجیستر ریسک
+from projects.risk_models import (  # noqa: E402,F401
+    Risk, RiskAction, RiskCategory, RiskReview,
+)
