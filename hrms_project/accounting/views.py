@@ -349,11 +349,21 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
 
         با این نشانه، هیچ فرایند خودکاری مقدارِ تعیین‌شدهٔ کاربر را بازنویسی نمی‌کند
         و هرچه کاربر ذخیره کند ملاک باقی می‌ماند.
+
+        گروه و سطح نیز از «والد انتخاب‌شده» پیروی می‌کنند (نه مقدار قدیمیِ از قبل) —
+        تا حساب معین همیشه زیر گروهِ حسابِ کل خودش بماند.
         """
         data = serializer.validated_data
         if 'account_type' in data or 'nature' in data or 'coding_locked' in data:
             if 'coding_locked' not in data:
                 data['coding_locked'] = True
+
+        parent = data.get('parent', serializer.instance.parent)
+        if parent is not None:
+            data['level'] = (parent.level or 1) + 1
+            if getattr(parent, 'group_id', None):
+                data['group'] = parent.group
+
         serializer.save()
 
     def _fallback_account_type(self, name):

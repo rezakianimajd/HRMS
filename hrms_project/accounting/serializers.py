@@ -100,6 +100,8 @@ class AccountSerializer(BaseModelSerializer):
     group_name = serializers.CharField(source='group.name', read_only=True)
     group_type_name = serializers.CharField(source='group.account_type.name', read_only=True)
     group_type_category = serializers.CharField(source='group.account_type.category', read_only=True)
+    parent_code = serializers.CharField(source='parent.code', read_only=True)
+    parent_name = serializers.CharField(source='parent.name', read_only=True)
     parent_type_name = serializers.CharField(source='parent.account_type.name', read_only=True)
     parent_type_category = serializers.CharField(source='parent.account_type.category', read_only=True)
     type_mismatch = serializers.SerializerMethodField()
