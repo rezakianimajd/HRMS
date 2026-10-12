@@ -55,3 +55,7 @@ package-lock.json
 *.swo
 Thumbs.db
 Desktop.ini
+# ÂÑÔíæ ãæŞÊ ÇÓ˜ÑíÊ ÇÓÊŞÑÇÑ
+_hrms-files.tgz
+.deploy-stage-*/
+

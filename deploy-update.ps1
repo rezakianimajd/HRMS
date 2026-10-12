@@ -37,6 +37,7 @@ param(
     [string] $AppUser   = 'hrms',                  # کاربر اجرای برنامه روی سرور
     [string] $AppDir    = '/opt/hrms',             # ریشهٔ پروژه روی سرور
     [string] $StaticDir = '/var/www/hrms/static',  # مقصد location /static/ در nginx
+    [switch] $Archive,      # انتقال یک‌بارهٔ همهٔ فایل‌ها با یک آرشیو tar.gz (کمترین تعداد پرسش رمز)
     [switch] $LocalBuild,
     [switch] $Migrate,
     [switch] $SkipBackend,
@@ -161,14 +162,52 @@ function Ok   ($m) { Write-Host "   [ok] $m" -ForegroundColor Green }
 function Warn ($m) { Write-Host "   [..] $m" -ForegroundColor Yellow }
 
 Step "۱/۶ بررسی اتصال و مجوز sudo روی $Srv"
-ssh -o ConnectTimeout=10 $Srv 'echo "  host: $(hostname) | user: $(whoami) | sudo: $(sudo -n true 2>/dev/null && echo yes || echo no-password-required-no)"'
+# مهم: در دستورهای ssh از کوتیشن دوتایی و $(...) استفاده نکنید؛ کلاینت ssh ویندوز
+# کوتیشن‌های داخلی را حذف می‌کند و دستور روی سرور شکسته می‌شود (pipe اشتباه اجرا می‌شود).
+$probe = @(ssh -o ConnectTimeout=10 $Srv 'hostname; id -un; sudo -n true && echo SUDO_OK || echo SUDO_NEEDS_PASSWORD')
 if ($LASTEXITCODE -ne 0) { throw "اتصال SSH برقرار نشد. نام کاربری (-User) یا کلید/رمز را بررسی کنید." }
-Ok 'اتصال برقرار است.'
+$rHost = ($probe | Select-Object -First 1)
+$rUser = ($probe | Select-Object -Skip 1 -First 1)
+Ok "اتصال برقرار است — سرور: $rHost | کاربر: $rUser"
+if ($probe -contains 'SUDO_OK') { Ok 'sudo بدون رمز فعال است.' }
+else { Warn 'sudo بدون رمز فعال نیست؛ در ادامه هر دستور sudo رمز کاربر SSH را می‌خواهد.' }
 if ($CheckOnly) { Warn '-CheckOnly → پایان بدون تغییر.'; return }
 
 # ---------------------------------------------------------------- بک‌اند
 if (-not $SkipBackend) {
     Step '۲/۶ ارسال فایل‌های بک‌اند'
+    if ($Archive) {
+        # --- انتقال یک‌باره با آرشیو: ۲ پرسش رمز، به‌جای ۲× تعداد فایل ---
+        $send = @()
+        if (-not $SkipBackend) { $send += $BackendFiles }
+        if (-not $SkipFrontend) { $send += $FrontendFiles }
+        $stage = Join-Path $RepoRoot ('.deploy-stage-' + [guid]::NewGuid().ToString('N'))
+        # نام نسبی برای آرشیو: tar ویندوز مسیر «C:\...» را به‌صورت host:path تفسیر می‌کند
+        $archiveName = '_hrms-files.tgz'
+        $archive = Join-Path $RepoRoot $archiveName
+        New-Item -ItemType Directory -Path $stage -Force | Out-Null
+        if (Test-Path $archive) { Remove-Item $archive -Force }
+        Push-Location $RepoRoot
+        try {
+            foreach ($f in $send) {
+                if (-not (Test-Path $f)) { throw "فایل پیدا نشد: $f" }
+                $dst = Join-Path $stage $f
+                New-Item -ItemType Directory -Path (Split-Path $dst -Parent) -Force | Out-Null
+                Copy-Item -LiteralPath $f -Destination $dst -Force
+            }
+            tar -czf $archiveName -C $stage .
+        } finally { Pop-Location }
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $archive)) { throw 'ساخت آرشیو ناموفق بود.' }
+        Ok ('آرشیو ساخته شد: {0:N1} KB — {1} فایل' -f ((Get-Item $archive).Length / 1KB), $send.Count)
+        scp $archive "${Srv}:/tmp/hrms-files.tgz"
+        if ($LASTEXITCODE -ne 0) { throw 'انتقال آرشیو ناموفق بود.' }
+        ssh -t $Srv "rm -rf /tmp/hrms-files && mkdir -p /tmp/hrms-files && tar xzf /tmp/hrms-files.tgz -C /tmp/hrms-files && test -f /tmp/hrms-files/hrms_project/projects/urls.py && sudo cp -a /tmp/hrms-files/. $AppDir/ && sudo chown -R ${AppUser}:${AppUser} $AppDir/hrms_project $AppDir/frontend/src && rm -rf /tmp/hrms-files /tmp/hrms-files.tgz"
+        if ($LASTEXITCODE -ne 0) { throw 'استخراج/جای‌گزینی آرشیو روی سرور ناموفق بود.' }
+        Remove-Item $stage -Recurse -Force
+        Remove-Item $archive -Force -ErrorAction SilentlyContinue
+        Ok 'همهٔ فایل‌ها یک‌باره جای‌گزین شدند (حالت -Archive).'
+    }
+    else {
     Push-Location $RepoRoot
     try {
         foreach ($f in $BackendFiles) {
@@ -183,6 +222,7 @@ if (-not $SkipBackend) {
         }
     } finally { Pop-Location }
     Ok 'فایل‌های بک‌اند جای‌گزین شدند.'
+    }
 } else { Warn 'بک‌اند رد شد (-SkipBackend)' }
 
 # --------------------------------- بررسی سازگاری مدل با مایگریشن‌های سرور (همیشه)
@@ -239,6 +279,10 @@ if (-not $SkipFrontend) {
         Ok 'build جای‌گزین شد.'
     }
     else {
+        if ($Archive -and -not $SkipBackend) {
+            Warn 'سورس فرانت‌اند داخل همان آرشیو بک‌اند منتقل شد (-Archive).'
+        }
+        else {
         Step '۳/۶ ارسال سورس فرانت‌اند'
         Push-Location $RepoRoot
         try {
@@ -253,6 +297,7 @@ if (-not $SkipFrontend) {
                 Ok $f
             }
         } finally { Pop-Location }
+        }
 
         Step '۴/۶ بیلد روی سرور'
         if (-not $NoBuild) {
