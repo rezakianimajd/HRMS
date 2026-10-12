@@ -13,8 +13,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import ClearIcon from '@mui/icons-material/Clear';
 import SearchIcon from '@mui/icons-material/Search';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import CodingSyncDialog from '../core/components/accounting/CodingSyncDialog';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 
 const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
@@ -70,8 +68,6 @@ const AccountsClassicPage = () => {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: '', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
   const [msg, setMsg] = useState(null);
-  // اصلاح ناهمگونی نوع حساب‌ها (حساب‌هایی که گروهشان بدهی است اما نوعشان دارایی ثبت شده)
-  const [syncOpen, setSyncOpen] = useState(false);
 
   const endpoint = '/accounting/accounts/';
   const { data, isLoading } = useQuery({
@@ -178,25 +174,6 @@ const AccountsClassicPage = () => {
     return list.filter(a => !q || `${a.code} ${a.name}`.includes(q));
   }, [list, search]);
 
-  // تعداد حساب‌های ناهمگون در همین فهرست (نوع ثبت‌شده ≠ نوع گروه/والد)
-  const mismatchCount = useMemo(() => list.filter(a => a.type_mismatch).length, [list]);
-
-  // پس از اعمال پیشنهادهای اصلاح، فهرست‌ها و گزارش‌ها تازه‌سازی می‌شوند
-  const handleSynced = (result) => {
-    qc.invalidateQueries({ queryKey: ['accounts'] });
-    qc.invalidateQueries({ queryKey: ['accounts', kind] });
-    qc.invalidateQueries({ queryKey: ['acc-groups'] });
-    qc.invalidateQueries({ queryKey: ['acc-general'] });
-    qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
-    qc.invalidateQueries({ queryKey: ['acc-bs-page'] });
-    setMsg({
-      ok: true,
-      text: `نوع ${result?.accounts_updated || 0} حساب`
-        + (result?.groups_updated ? ` و ${result.groups_updated} گروه حساب` : '')
-        + ' اصلاح شد.',
-    });
-  };
-
   return (
     <Box>
       {/* هدر */}
@@ -212,26 +189,6 @@ const AccountsClassicPage = () => {
           </Typography>
         </Box>
         <Chip label={`${list.length} حساب`} sx={{ fontWeight: 700, bgcolor: 'rgba(59,130,246,0.1)', color: COLOR_DARK }} />
-        {mismatchCount > 0 && (
-          <Chip
-            icon={<WarningAmberIcon sx={{ fontSize: 16 }} />}
-            label={`${mismatchCount} حساب با نوع ناهمگون`}
-            sx={{ fontWeight: 700, bgcolor: 'rgba(239,68,68,0.12)', color: '#b91c1c' }}
-          />
-        )}
-        <Button
-          size="small"
-          variant={mismatchCount > 0 ? 'contained' : 'outlined'}
-          startIcon={<BoltIcon />}
-          onClick={() => setSyncOpen(true)}
-          sx={{
-            borderRadius: '12px', fontWeight: 700, textTransform: 'none',
-            ...(mismatchCount > 0
-              ? { background: 'linear-gradient(135deg,#ef4444,#dc2626)', boxShadow: '0 8px 20px rgba(220,38,38,0.3)' }
-              : { borderColor: `${COLOR}55`, color: COLOR_DARK }),
-          }}>
-          {mismatchCount > 0 ? 'اصلاح ناهمگونی نوع حساب‌ها' : 'بررسی ناهمگونی نوع حساب‌ها'}
-        </Button>
       </Paper>
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
@@ -282,6 +239,14 @@ const AccountsClassicPage = () => {
                   renderInput={p => <TextField {...p} label="حساب کل (پدر)" sx={fieldSx} />}
                 />
               )}
+
+              {/* نوع حساب: مقدار پیشنهادی از والد/گروه به‌صورت پیش‌فرض، اما کاربر می‌تواند عوض کند */}
+              <Autocomplete
+                size="small" options={typeList} getOptionLabel={o => o.name}
+                value={typeList.find(t => t.id === (form.account_type || effectiveType)) || null}
+                onChange={(e, v) => set('account_type', v ? v.id : '')}
+                renderInput={p => <TextField {...p} label="نوع حساب" sx={fieldSx} />}
+              />
 
               {/* وراثت از والد/گروه: کد پیشنهادی + نوع حساب + ماهیت */}
               <Box sx={{
@@ -384,23 +349,8 @@ const AccountsClassicPage = () => {
                             <Chip size="small" label={a.code} sx={{ fontWeight: 800, bgcolor: 'rgba(59,130,246,0.1)', color: COLOR_DARK, fontSize: 11 }} />
                             <Typography variant="body2" fontWeight={700} noWrap>{a.name}</Typography>
                           </Stack>
-                          <Typography variant="caption" color="textSecondary">
-                            {typeName}{parentName ? ` · ${parentName}` : ''}
-                            {a.type_mismatch
-                              ? ` → باید «${a.parent_type_name || a.group_type_name || '—'}» باشد`
-                              : ''}
-                          </Typography>
+                          <Typography variant="caption" color="textSecondary">{typeName}{parentName ? ` · ${parentName}` : ''}</Typography>
                         </Box>
-                        {a.type_mismatch && (
-                          <Tooltip title={`نوع ثبت‌شده «${typeName}» با ${a.parent_id ? 'حساب والد' : 'گروه'} «${a.parent_code || a.group_name || '—'}» همخوان نیست؛ به همین دلیل در گزارش‌ها اشتباه دسته‌بندی می‌شود.`}>
-                            <Chip size="small" label="نوع ناهمگون" sx={{ bgcolor: 'rgba(239,68,68,0.12)', color: '#b91c1c', fontWeight: 700, flexShrink: 0 }} />
-                          </Tooltip>
-                        )}
-                        {a.coding_locked && (
-                          <Tooltip title="نوع/ماهیت این حساب دستی تعیین شده است؛ ابزار اصلاح خودکار آن را تغییر نمی‌دهد.">
-                            <Chip size="small" label="دستی" sx={{ bgcolor: 'rgba(15,23,42,0.08)', color: '#334155', fontWeight: 700, flexShrink: 0 }} />
-                          </Tooltip>
-                        )}
                         <Chip size="small" label={natureLabel(a.nature)} sx={{ bgcolor: natureBg(a.nature), color: natureColor(a.nature), fontWeight: 700, flexShrink: 0 }} />
                         <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این حساب؟')) del(a.id); }} title="حذف">
                           <DeleteIcon fontSize="small" />
@@ -413,12 +363,6 @@ const AccountsClassicPage = () => {
           </Paper>
         </Grid>
       </Grid>
-
-      <CodingSyncDialog
-        open={syncOpen}
-        onClose={() => setSyncOpen(false)}
-        onApplied={handleSynced}
-      />
     </Box>
   );
 };

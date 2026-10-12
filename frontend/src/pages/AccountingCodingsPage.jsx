@@ -15,7 +15,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import CategoryIcon from '@mui/icons-material/Category';
-import CodingSyncDialog from '../core/components/accounting/CodingSyncDialog';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -203,22 +202,9 @@ const CodingsPanel = ({
   );
 };
 
-// سلول «نوع حساب» با هشدار ناهمگونی (نوع ثبت‌شده ≠ نوع گروه/والد)
+// سلول «نوع حساب» — فقط نمایش نوع ثبت‌شده (بدون هشدار)
 const typeChip = (row) => (
-  <Stack direction="row" spacing={0.5} alignItems="center">
-    <Chip
-      size="small"
-      label={row.account_type_name || '—'}
-      color={row.type_mismatch ? 'error' : 'default'}
-      variant={row.type_mismatch ? 'filled' : 'outlined'}
-      sx={{ fontWeight: 700 }}
-    />
-    {row.type_mismatch && (
-      <Tooltip title={`نوع ثبت‌شده با گروه «${row.group_name || '—'}» (نوع: ${row.group_type_name || '—'}) همخوان نیست؛ در گزارش‌ها اشتباه دسته‌بندی می‌شود.`}>
-        <Chip size="small" label="ناهمگون" sx={{ bgcolor: 'rgba(239,68,68,0.14)', color: '#b91c1c', fontWeight: 700 }} />
-      </Tooltip>
-    )}
-  </Stack>
+  <Chip size="small" label={row.account_type_name || '—'} variant="outlined" sx={{ fontWeight: 700 }} />
 );
 
 const AccountingCodingsPage = () => {
@@ -234,26 +220,6 @@ const AccountingCodingsPage = () => {
   const generalList = Array.isArray(generals) ? generals : generals?.results || [];
   const subsidiaryList = Array.isArray(subsidiaries) ? subsidiaries : subsidiaries?.results || [];
   const auxList = Array.isArray(auxiliaries) ? auxiliaries : auxiliaries?.results || [];
-
-  const qc = useQueryClient();
-  const [syncOpen, setSyncOpen] = useState(false);
-  const [fixMsg, setFixMsg] = useState(null);
-  const mismatchCount = [...generalList, ...subsidiaryList].filter(a => a.type_mismatch).length;
-
-  // پس از اعمال پیشنهادهای اصلاح ناهمگونی (دیالوگ مشترک)، فهرست‌ها تازه‌سازی می‌شوند
-  const handleSynced = (result) => {
-    qc.invalidateQueries({ queryKey: ['accounts'] });
-    qc.invalidateQueries({ queryKey: ['acc-general'] });
-    qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
-    qc.invalidateQueries({ queryKey: ['acc-groups'] });
-    qc.invalidateQueries({ queryKey: ['acc-bs-page'] });
-    setFixMsg({
-      ok: true,
-      text: `نوع ${result?.accounts_updated || 0} حساب`
-        + (result?.groups_updated ? ` و ${result.groups_updated} گروه حساب` : '')
-        + ' اصلاح شد.',
-    });
-  };
 
   const pageMeta = {
     groups: {
@@ -286,7 +252,7 @@ const AccountingCodingsPage = () => {
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' }, { key: 'parent_code', label: 'حساب کل' }, { key: 'account_type_name', label: 'نوع حساب', render: typeChip }],
       fields: [
         { key: 'parent', label: 'حساب کل (والد)', type: 'autocomplete', options: generalList, getLabel: o => `${o.code} - ${o.name}` },
-        { key: 'account_type', label: 'نوع حساب (ارثی از والد)', type: 'inherited' },
+        { key: 'account_type', label: 'نوع حساب', type: 'autocomplete', options: typeList, getLabel: o => o.name },
         { key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' },
         { key: 'nature', label: 'ماهیت', type: 'select', options: [{ value: 'debit', label: 'بدهکار' }, { value: 'credit', label: 'بستانکار' }] },
       ],
@@ -358,30 +324,7 @@ const AccountingCodingsPage = () => {
         </Box>
       </Paper>
 
-      {fixMsg && <Alert severity={fixMsg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setFixMsg(null)}>{fixMsg.text}</Alert>}
-
-      {mismatchCount > 0 && (
-        <Alert
-          severity="warning"
-          sx={{ mb: 2, borderRadius: '14px', alignItems: 'center' }}
-          action={
-            <Button color="inherit" size="small" startIcon={<BoltIcon />} onClick={() => setSyncOpen(true)} sx={{ fontWeight: 800 }}>
-              بررسی و اصلاح
-            </Button>
-          }>
-          {mismatchCount} حساب «نوع ناهمگون» دارد؛ یعنی نوع ثبت‌شدهٔ آن با گروه/والدش (مثلاً گروه «بدهی جاری») یکی نیست و
-          به همین دلیل در ترازنامه و صورت سود و زیان اشتباه دسته‌بندی می‌شود. با «بررسی و اصلاح»، پیشنهادها نمایش
-          داده می‌شود و تنها پس از تأیید شما اعمال می‌گردد (موارد دستی/قفل‌شده دست‌نخورده می‌مانند).
-        </Alert>
-      )}
-
       <CodingsPanel {...meta} />
-
-      <CodingSyncDialog
-        open={syncOpen}
-        onClose={() => setSyncOpen(false)}
-        onApplied={handleSynced}
-      />
     </Box>
   );
 };

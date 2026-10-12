@@ -271,9 +271,9 @@ class AccountGroupViewSet(CompanyScopedViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def perform_update(self, serializer):
-        """ویرایش گروه: تغییر دستی نوع/ماهیت، آن را «قفل» می‌کند.
+        """ویرایش گروه: تغییر دستی نوع/ماهیت، رکورد را به‌عنوان «کدینگ دستی» قفل می‌کند.
 
-        با این نشانه، ابزار اصلاح خودکار نوع گروه را بازنویسی نمی‌کند.
+        با این نشانه، هیچ فرایند خودکاری مقدارِ تعیین‌شدهٔ کاربر را بازنویسی نمی‌کند.
         """
         data = serializer.validated_data
         if 'account_type' in data or 'nature' in data or 'coding_locked' in data:
@@ -345,10 +345,10 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         serializer.save(company=_company(self.request))
 
     def perform_update(self, serializer):
-        """ویرایش حساب: اگر کاربر نوع/ماهیت را دستی فرستاده باشد، «قفل دستی» می‌شود.
+        """ویرایش حساب: تغییر نوع/ماهیت، رکورد را به‌عنوان «کدینگ دستی» قفل می‌کند.
 
-        با این نشانه، ابزار اصلاح خودکار (`sync-types`) دیگر آن رکورد را بازنویسی
-        نمی‌کند و تصمیم کاربر محترم می‌ماند.
+        با این نشانه، هیچ فرایند خودکاری مقدارِ تعیین‌شدهٔ کاربر را بازنویسی نمی‌کند
+        و هرچه کاربر ذخیره کند ملاک باقی می‌ماند.
         """
         data = serializer.validated_data
         if 'account_type' in data or 'nature' in data or 'coding_locked' in data:
@@ -365,47 +365,6 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
             if match:
                 return match
         return qs.order_by('code').first()
-
-    @action(detail=False, methods=['get', 'post'], url_path='sync-types')
-    def sync_types(self, request):
-        """همگام‌سازی نوع/ماهیت حساب‌ها با والد و گروه.
-
-        رفع «ناهمگونی کدینگ»: رکوردهایی که گروهشان «بدهی جاری» است اما نوع
-        «دارایی» دارند و به همین دلیل اشتباهاً در دارایی‌های ترازنامه می‌آیند.
-        GET  → پیش‌نمایش تغییرات
-        POST → پیش‌نمایش، و با `apply=1` اعمال
-               (`fix_groups=1` اصلاح نوع گروه‌ها، `force=1` بازنویسی رکوردهای دستی)
-        رکوردهایی که نوع/ماهیت آن‌ها دستی تعیین شده (`coding_locked`) بدون
-        `force=1` دست‌نخورده می‌مانند.
-        """
-        company = _company(request)
-        params = request.query_params if request.method == 'GET' else request.data
-
-        def _flag(key):
-            return str(params.get(key, '')).lower() in ('1', 'true', 'yes', 'on')
-
-        runner = maintenance.sync_account_types if _flag('apply') else maintenance.analyze_account_types
-        return Response(runner(company, fix_groups=_flag('fix_groups'), force=_flag('force')))
-
-    @action(detail=False, methods=['post'], url_path='unlock-coding')
-    def unlock_coding(self, request):
-        """آزادسازی «قفل دستی» کدینگ حساب‌ها/گروه‌ها تا اصلاح خودکار آن‌ها را بپذیرد.
-
-        بدنهٔ اختیاری: `{"ids": [1,2,3]}` (پیش‌فرض: همهٔ رکوردهای قفل‌شدهٔ شرکت).
-        """
-        company = _company(request)
-        ids = request.data.get('ids')
-        accounts = Account.objects.filter(company=company, coding_locked=True)
-        groups = AccountGroup.objects.filter(company=company, coding_locked=True)
-        if ids:
-            accounts = accounts.filter(id__in=ids)
-            groups = groups.filter(id__in=ids)
-        accounts_updated = accounts.update(coding_locked=False)
-        groups_updated = groups.update(coding_locked=False)
-        return Response({
-            'accounts_unlocked': accounts_updated,
-            'groups_unlocked': groups_updated,
-        })
 
 
 

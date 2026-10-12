@@ -35,12 +35,6 @@ const natureLabel = (n) => NATURE_OPTS.find(o => o.value === n)?.label || 'مه�
 const natureColor = (n) => n === 'credit' ? '#dc2626' : n === 'debit' ? '#059669' : '#888';
 const natureBg = (n) => n === 'credit' ? 'rgba(239,68,68,0.12)' : n === 'debit' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)';
 
-// برچسب فارسی طبقهٔ حساب (برای هشدار ناهمگونی نام گروه با نوع آن)
-const CATEGORY_FA = {
-  asset: 'دارایی', liability: 'بدهی', equity: 'حقوق صاحبان سهام',
-  revenue: 'درآمد', expense: 'هزینه', cost_of_sales: 'بهای تمام‌شده',
-};
-
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
     borderRadius: '14px',
@@ -235,25 +229,10 @@ const AccountGroupsPage = () => {
                           <Chip size="small" label={g.code} sx={{ fontWeight: 800, bgcolor: 'rgba(99,102,241,0.1)', color: COLOR_DARK, fontSize: 11 }} />
                           <Typography variant="body2" fontWeight={700} noWrap>{g.name}</Typography>
                         </Stack>
-                        <Typography variant="caption" color="textSecondary">
-                          {type?.name || '—'}
-                          {g.suggested_category && g.category && g.suggested_category !== g.category
-                            ? ` → با نام «${g.name}» نمی‌خواند؛ پیشنهاد: ${CATEGORY_FA[g.suggested_category] || g.suggested_category}`
-                            : ''}
-                        </Typography>
+                        <Typography variant="caption" color="textSecondary">{type?.name || '—'}</Typography>
                       </Box>
 
                       <Chip size="small" label={natureLabel(g.nature)} sx={{ bgcolor: natureBg(g.nature), color: natureColor(g.nature), fontWeight: 700, flexShrink: 0 }} />
-                      {g.suggested_category && g.category && g.suggested_category !== g.category && (
-                        <Tooltip title={`نام گروه «${g.name}» با نوع انتخاب‌شده (${CATEGORY_FA[g.category] || g.category}) همخوان نیست؛ به همین دلیل حساب‌های این گروه در گزارش‌ها اشتباه دسته‌بندی می‌شوند.`}>
-                          <Chip size="small" label="نوع نامتناسب" sx={{ bgcolor: 'rgba(239,68,68,0.12)', color: '#b91c1c', fontWeight: 700, flexShrink: 0 }} />
-                        </Tooltip>
-                      )}
-                      {g.coding_locked && (
-                        <Tooltip title="نوع/ماهیت این گروه دستی تعیین شده است؛ ابزار اصلاح خودکار آن را تغییر نمی‌دهد.">
-                          <Chip size="small" label="دستی" sx={{ bgcolor: 'rgba(15,23,42,0.08)', color: '#334155', fontWeight: 700, flexShrink: 0 }} />
-                        </Tooltip>
-                      )}
                       <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این گروه؟')) del.mutate(g.id); }} title="حذف">
                         <DeleteIcon fontSize="small" />
                       </IconButton>

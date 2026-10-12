@@ -13,14 +13,12 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import AddIcon from '@mui/icons-material/Add';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import PrintIcon from '@mui/icons-material/Print';
-import BoltIcon from '@mui/icons-material/Bolt';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali } from '../../../core/utils/dateUtils';
 import JalaliDatePicker from '../../../core/components/ui/JalaliDatePicker';
 import { ReportHeader } from './reportHelpers';
-import CodingSyncDialog from '../../../core/components/accounting/CodingSyncDialog';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
@@ -191,7 +189,6 @@ const IntegrityChips = ({ integrity = {} }) => {
     { label: `در انتظار تأیید: ${toPersianDigits(integrity.pending_approval || 0)}`, ok: !integrity.pending_approval, color: '#f59e0b' },
     { label: `سند ناتراز: ${toPersianDigits(integrity.unbalanced_documents || 0)}`, ok: !integrity.unbalanced_documents, color: '#ef4444' },
     { label: `پیش‌نویس کنارگذاشته: ${toPersianDigits(integrity.draft_excluded || 0)}`, ok: true, color: '#64748b' },
-    { label: `حساب با نوع ناهمگون: ${toPersianDigits((integrity.coding_mismatch_accounts || 0) + (integrity.coding_mismatch_groups || 0))}`, ok: !(integrity.coding_mismatch_accounts || integrity.coding_mismatch_groups), color: '#dc2626' },
   ];
   return (
     <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
@@ -294,66 +291,6 @@ const AuditSeal = ({ audit, audited, onRecord }) => {
 
 
 /* ================================= صفحهٔ ترازنامه ================================= */
-// برچسب فارسی طبقهٔ حساب (برای بنر تشخیص طبقه‌بندی)
-const CATEGORY_FA = {
-  asset: 'دارایی', liability: 'بدهی', equity: 'حقوق صاحبان سهام',
-  revenue: 'درآمد', expense: 'هزینه', cost_of_sales: 'بهای تمام‌شده',
-};
-
-/* --- بنر تشخیص طبقه‌بندی: نشان می‌دهد چرا همه‌چیز در کارت دارایی‌ها آمده --- */
-const CodingClassificationBanner = ({ classification, integrity = {}, onFix }) => {
-  const mismatched = integrity.coding_mismatch_accounts || 0;
-  const mismatchedGroups = integrity.coding_mismatch_groups || 0;
-  const suspicious = !!classification?.suspicious;
-  if (!mismatched && !mismatchedGroups && !suspicious) return null;
-  const counts = classification?.accounts || {};
-  const excluded = classification?.excluded || {};
-
-  return (
-    <Paper sx={{ ...glassCard('#dc2626'), p: 1.75, mb: 2.5 }}>
-      <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" useFlexGap
-        sx={{ position: 'relative', zIndex: 1 }}>
-        <WarningAmberIcon sx={{ color: '#dc2626' }} />
-        <Box sx={{ flex: 1, minWidth: 240 }}>
-          <Typography sx={{ fontFamily: FONT, fontWeight: 900, color: '#b91c1c' }}>
-            طبقه‌بندی حساب‌ها هم‌خوان نیست
-          </Typography>
-          <Typography variant="caption" sx={{ fontFamily: FONT, color: '#7f1d1d' }}>
-            {mismatched > 0
-              ? `${toPersianDigits(mismatched)} حساب`
-              : 'حساب‌های این دوره'}
-            {mismatchedGroups > 0 ? ` و ${toPersianDigits(mismatchedGroups)} گروه` : ''}
-            {' '}با نوع ناهمگون ثبت شده‌اند (گروهشان بدهی/هزینه است اما نوعشان «دارایی»)؛ به همین دلیل
-            همه در کارت دارایی‌ها می‌آیند و فقط با نام گروه تفکیک می‌شوند. با «اصلاح نوع حساب‌ها»،
-            پیشنهادها نمایش داده می‌شود و تنها با تأیید شما اعمال می‌گردد (موارد دستی/قفل‌شده دست‌نخورده می‌مانند).
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-          {Object.entries(counts).map(([k, v]) => (
-            <Chip key={k} size="small" label={`${CATEGORY_FA[k] || k}: ${toPersianDigits(v)}`}
-              sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(15,23,42,0.06)' }} />
-          ))}
-          {Object.entries(excluded).map(([k, v]) => (
-            <Chip key={k} size="small" label={`کنارگذاشته — ${CATEGORY_FA[k] || k}: ${toPersianDigits(v)}`}
-              sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(100,116,139,0.12)', color: '#334155' }} />
-          ))}
-        </Stack>
-        <Button
-          variant="contained"
-          onClick={onFix}
-          startIcon={<BoltIcon />}
-          sx={{
-            borderRadius: '12px', fontFamily: FONT, fontWeight: 800,
-            background: 'linear-gradient(135deg,#ef4444,#dc2626)',
-            boxShadow: '0 10px 24px rgba(220,38,38,0.3)',
-          }}>
-          بررسی و اصلاح نوع حساب‌ها
-        </Button>
-      </Stack>
-    </Paper>
-  );
-};
-
 const BalanceSheetPage = () => {
   const qc = useQueryClient();
   const [yearId, setYearId] = useState('');
@@ -406,23 +343,6 @@ const BalanceSheetPage = () => {
       approved_at: form.approved_at || null,
       as_of_date: form.as_of_date || null,
     });
-  };
-
-  // بررسی و اصلاح ناهمگونی کدینگ (فقط پیشنهاد؛ اعمال با تأیید کاربر در دیالوگ)
-  const [syncOpen, setSyncOpen] = useState(false);
-  const handleSynced = (result) => {
-    setMsg({
-      type: 'success',
-      text: `نوع ${toPersianDigits(result?.accounts_updated || 0)} حساب`
-        + (result?.groups_updated ? ` و ${toPersianDigits(result.groups_updated)} گروه حساب` : '')
-        + ' اصلاح شد؛ گزارش بازخوانی شد.',
-    });
-    qc.invalidateQueries({ queryKey: ['acc-bs-page'] });
-    qc.invalidateQueries({ queryKey: ['accounts'] });
-    qc.invalidateQueries({ queryKey: ['acc-general'] });
-    qc.invalidateQueries({ queryKey: ['acc-subsidiary'] });
-    qc.invalidateQueries({ queryKey: ['acc-groups'] });
-    refetch();
   };
 
   const balanced = data?.is_balanced !== undefined
@@ -509,18 +429,6 @@ const BalanceSheetPage = () => {
             </Button>
           </>
         )}
-      />
-
-      <CodingClassificationBanner
-        classification={data?.classification}
-        integrity={data?.audit?.integrity || {}}
-        onFix={() => setSyncOpen(true)}
-      />
-
-      <CodingSyncDialog
-        open={syncOpen}
-        onClose={() => setSyncOpen(false)}
-        onApplied={handleSynced}
       />
 
       {/* نوار وضعیت ترازنامه: سال مالی، تاریخ، تراز/ناتراز و تأیید حسابرسی */}

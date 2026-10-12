@@ -5,7 +5,7 @@ submitted, approved, posted and locked documents all appear in the reports.
 
 All querysets are company-scoped. Report strings are kept printable and RTL.
 """
-from django.db.models import Q, Sum, Count, F
+from django.db.models import Q, Sum, Count
 from django.template.loader import render_to_string
 from django.http import HttpResponse
 from rest_framework.decorators import api_view, permission_classes
@@ -13,7 +13,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
-from accounting.maintenance import infer_category_from_name
 from accounting.models import (
     AccountingDocument, AccountingDocumentLine, Account, AccountType,
     AccountGroup, AuxiliaryAccount, FiscalYear, FinancialStatementApproval,
@@ -550,30 +549,6 @@ def _grouped_rows(rows, total):
     return ordered
 
 
-def _coding_health(request):
-    """سلامت کدینگ: حساب‌ها و گروه‌های ناهمگون با نوع درست.
-
-    * حساب‌های ناهمگون: نوع حساب با نوع گروه (یا والد) یکی نیست — مثل حسابی در
-      گروهِ «بدهی جاری» با نوع «دارایی»؛ این‌ها اشتباهاً در بخش دارایی‌های
-      ترازنامه/سود و زیان می‌آیند.
-    * گروه‌های ناهمگون: نام گروه با نوع آن تعارض دارد (مثل «بدهی جاری» با نوع
-      «دارایی») که ریشهٔ همان ناهمگونی است.
-    """
-    company = _company(request)
-    accounts = (
-        Account.objects
-        .filter(company=company, group__isnull=False, group__account_type__isnull=False)
-        .exclude(account_type__category=F('group__account_type__category'))
-        .count()
-    )
-    groups = 0
-    for group in AccountGroup.objects.filter(company=company).select_related('account_type'):
-        inferred = infer_category_from_name(group.name)
-        if inferred and group.account_type_id and inferred != group.account_type.category:
-            groups += 1
-    return {'accounts': accounts, 'groups': groups}
-
-
 def _document_integrity(request, year=None, as_of=None):
     """سلامت اسناد در دامنهٔ گزارش (مبنای تصمیم «تأیید حسابرسی»)."""
     qs = AccountingDocument.objects.filter(company=_company(request))
@@ -588,7 +563,6 @@ def _document_integrity(request, year=None, as_of=None):
             unbalanced += 1
     totals = qs.aggregate(debit=Sum('lines__debit'), credit=Sum('lines__credit'))
     pending = by_status.get('submitted', 0) + by_status.get('approved', 0)
-    health = _coding_health(request)
     return {
         'documents': sum(by_status.values()),
         'by_status': by_status,
@@ -596,14 +570,9 @@ def _document_integrity(request, year=None, as_of=None):
         'pending_approval': pending,
         'draft_excluded': by_status.get('draft', 0),
         'unbalanced_documents': unbalanced,
-        'coding_mismatch_accounts': health['accounts'],
-        'coding_mismatch_groups': health['groups'],
         'total_debit': _round2(totals['debit']),
         'total_credit': _round2(totals['credit']),
-        'is_clean': (
-            unbalanced == 0 and pending == 0
-            and health['accounts'] == 0 and health['groups'] == 0
-        ),
+        'is_clean': unbalanced == 0 and pending == 0,
     }
 
 
@@ -659,14 +628,10 @@ def balance_sheet(request):
 
     lines, year, as_of = _balance_scope(request)
     buckets = {'asset': {}, 'liability': {}, 'equity': {}}
-    category_lines = {}
-    excluded_lines = {}
     for line in lines:
         account = line.account
         category = account.account_type.category if account.account_type else None
-        category_lines[category] = category_lines.get(category, 0) + 1
         if category not in buckets:
-            excluded_lines[category] = excluded_lines.get(category, 0) + 1
             continue
         debit = float(line.debit or 0)
         credit = float(line.credit or 0)
@@ -696,21 +661,6 @@ def balance_sheet(request):
     documents = audit['integrity']
     # مهر تأیید فقط وقتی «سبز» است که حسابرسی تأیید کرده باشد و اسناد دامنه پاک باشند
     audited = bool(audit['is_audited'] and documents['is_clean'])
-
-    # تشخیص طبقه‌بندی: اگر همهٔ سطرها در «دارایی» جمع شده باشند، یعنی نوع حساب‌ها
-    # ناهمگون است (عارضهٔ ایمپورت قدیمی) و باید از ابزار اصلاح کدینگ استفاده شود.
-    classified = {
-        'asset': len(buckets['asset']),
-        'liability': len(buckets['liability']),
-        'equity': len(buckets['equity']),
-    }
-    suspicious = bool(
-        classified['asset'] > 0
-        and classified['liability'] == 0
-        and classified['equity'] == 0
-        and (excluded_lines.get('expense', 0) + excluded_lines.get('revenue', 0)
-             + excluded_lines.get('cost_of_sales', 0)) > 0
-    )
 
     return Response({
         # --- دارایی‌ها ---
@@ -743,13 +693,6 @@ def balance_sheet(request):
         'as_of': as_of or '',
         'audit': audit,
         'audited': audited,
-        # --- تشخیص طبقه‌بندی (برای نمایش هشدار و اصلاح از همین صفحه) ---
-        'classification': {
-            'accounts': classified,
-            'lines': {k: v for k, v in category_lines.items() if k},
-            'excluded': {k: v for k, v in excluded_lines.items() if k},
-            'suspicious': suspicious,
-        },
         'generated_at': timezone.now().isoformat(),
     })
 
