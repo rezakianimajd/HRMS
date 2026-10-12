@@ -255,13 +255,17 @@ class CodingHealthSyncTests(TestCase):
         self.assertEqual(self.broken.account_type_id, self.liability.id)
         self.assertEqual(self.broken.nature, 'credit')
 
-    def test_locked_group_is_skipped(self):
+    def test_locked_group_type_wins_over_name_heuristic(self):
+        """گروهِ دستی (قفل): نوع کاربر مبناست، نه حدس از نام؛ حساب‌هایش هم دست‌نخورده."""
         self.liab_group.account_type = self.asset
         self.liab_group.coding_locked = True
         self.liab_group.save(update_fields=['account_type', 'coding_locked'])
         report = analyze_account_types(self.company, fix_groups=True)
         self.assertEqual(len(report['groups_to_fix']), 0)
-        self.assertEqual(report['locked_groups'], 1)
+        self.assertEqual(report['accounts_mismatched'], 0)
+        forced = analyze_account_types(self.company, fix_groups=True, force=True)
+        self.assertEqual(len(forced['groups_to_fix']), 1)
+        self.assertEqual(forced['accounts_mismatched'], 1)
 
     def test_equity_keywords_cover_profit_and_loss(self):
         self.assertEqual(infer_category_from_name('سود (زیان)'), 'equity')

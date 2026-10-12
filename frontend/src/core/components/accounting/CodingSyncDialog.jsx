@@ -18,6 +18,7 @@ const CATEGORY_FA = {
 const SOURCE_FA = {
   parent: 'حساب والد', parent_name: 'نام والد', group: 'گروه حساب',
   ancestor_name: 'نام گروهِ بالادستی', account_name: 'نام حساب', group_type: 'نوع گروه',
+  group_manual: 'گروه دستی (کاربر)',
 };
 const NATURE_FA = { debit: 'بدهکار', credit: 'بستانکار', none: 'مهم نیست' };
 

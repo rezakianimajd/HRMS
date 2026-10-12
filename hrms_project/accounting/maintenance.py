@@ -57,13 +57,21 @@ def _types_by_category(company=None):
     return mapping
 
 
-def _resolve_group(group, types_by_category, cache):
+def _resolve_group(group, types_by_category, cache, force=False):
     """طبقهٔ درست یک گروه: نام خود → نام گروه‌های بالادستی → نوع فعلی گروه.
+
+    گروهی که کاربر نوعش را دستی تعیین کرده (`coding_locked`) با نوع **همان کاربر**
+    مبنا قرار می‌گیرد (تصمیم دستی مقدم بر حدس از نام است)؛ مگر `force=True`.
 
     برمی‌گرداند: ``(نوع هدف یا None, منبع, کد گروهِ مرجع یا '')``
     """
     if group.id in cache:
         return cache[group.id]
+
+    if group.coding_locked and not force:
+        result = (group.account_type, 'group_manual', '')
+        cache[group.id] = result
+        return result
 
     category, source, ref = infer_category_from_name(group.name), 'group_name', group.code
     node, seen, depth = group.parent, {group.id}, 0
@@ -131,7 +139,9 @@ def _expected_category(account, group_targets, parent_types):
     if group is not None:
         target, source, ref = group_targets.get(group.id) or (group.account_type, 'group_type', '')
         category = _category_of(target)
-        if source in ('group_name', 'ancestor_name') and category:
+        if source == 'group_manual' and category:
+            candidates.append((0, category, 'group_manual', ref))
+        elif source in ('group_name', 'ancestor_name') and category:
             candidates.append((1, category, 'group' if source == 'group_name' else source, ref))
         elif category:
             candidates.append((3, category, 'group_type', ''))
@@ -167,11 +177,11 @@ def analyze_account_types(company=None, fix_groups=False, force=False):
     groups_to_fix = []
     locked_groups = 0
     for group in groups:
-        target, source, ref = _resolve_group(group, types_by_category, group_targets)
-        if target is None or target.id == group.account_type_id:
-            continue
+        target, source, ref = _resolve_group(group, types_by_category, group_targets, force=force)
         if group.coding_locked and not force:
             locked_groups += 1
+            continue
+        if target is None or target.id == group.account_type_id:
             continue
         groups_to_fix.append({
             'id': group.id,
