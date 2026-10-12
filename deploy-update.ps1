@@ -182,11 +182,12 @@ if (-not $SkipBackend) {
         if (-not $SkipBackend) { $send += $BackendFiles }
         if (-not $SkipFrontend) { $send += $FrontendFiles }
         $stage = Join-Path $RepoRoot ('.deploy-stage-' + [guid]::NewGuid().ToString('N'))
-        # نام نسبی برای آرشیو: tar ویندوز مسیر «C:\...» را به‌صورت host:path تفسیر می‌کند
-        $archiveName = '_hrms-files.tgz'
-        $archive = Join-Path $RepoRoot $archiveName
+        # نام نسبی برای بسته: tar ویندوز مسیر «C:\...» را به‌صورت host:path تفسیر می‌کند
+        # نکته: نام متغیرها با پارامترهای اسکریپت (-Archive) هم‌نام نباشد (PowerShell بی‌توجه به بزرگی/کوچکی است)
+        $pkgName = '_hrms-files.tgz'
+        $pkgPath = Join-Path $RepoRoot $pkgName
         New-Item -ItemType Directory -Path $stage -Force | Out-Null
-        if (Test-Path $archive) { Remove-Item $archive -Force }
+        if (Test-Path $pkgPath) { Remove-Item $pkgPath -Force }
         Push-Location $RepoRoot
         try {
             foreach ($f in $send) {
@@ -195,16 +196,16 @@ if (-not $SkipBackend) {
                 New-Item -ItemType Directory -Path (Split-Path $dst -Parent) -Force | Out-Null
                 Copy-Item -LiteralPath $f -Destination $dst -Force
             }
-            tar -czf $archiveName -C $stage .
+            tar -czf $pkgName -C $stage .
         } finally { Pop-Location }
-        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $archive)) { throw 'ساخت آرشیو ناموفق بود.' }
-        Ok ('آرشیو ساخته شد: {0:N1} KB — {1} فایل' -f ((Get-Item $archive).Length / 1KB), $send.Count)
-        scp $archive "${Srv}:/tmp/hrms-files.tgz"
+        if ($LASTEXITCODE -ne 0 -or -not (Test-Path $pkgPath)) { throw 'ساخت آرشیو ناموفق بود.' }
+        Ok ('آرشیو ساخته شد: {0:N1} KB — {1} فایل' -f ((Get-Item $pkgPath).Length / 1KB), $send.Count)
+        scp $pkgPath "${Srv}:/tmp/hrms-files.tgz"
         if ($LASTEXITCODE -ne 0) { throw 'انتقال آرشیو ناموفق بود.' }
         ssh -t $Srv "rm -rf /tmp/hrms-files && mkdir -p /tmp/hrms-files && tar xzf /tmp/hrms-files.tgz -C /tmp/hrms-files && test -f /tmp/hrms-files/hrms_project/projects/urls.py && sudo cp -a /tmp/hrms-files/. $AppDir/ && sudo chown -R ${AppUser}:${AppUser} $AppDir/hrms_project $AppDir/frontend/src && rm -rf /tmp/hrms-files /tmp/hrms-files.tgz"
         if ($LASTEXITCODE -ne 0) { throw 'استخراج/جای‌گزینی آرشیو روی سرور ناموفق بود.' }
         Remove-Item $stage -Recurse -Force
-        Remove-Item $archive -Force -ErrorAction SilentlyContinue
+        Remove-Item $pkgPath -Force -ErrorAction SilentlyContinue
         Ok 'همهٔ فایل‌ها یک‌باره جای‌گزین شدند (حالت -Archive).'
     }
     else {
