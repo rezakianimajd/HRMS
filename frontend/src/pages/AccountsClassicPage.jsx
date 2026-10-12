@@ -37,6 +37,24 @@ const fieldSx = {
 
 const natureLabel = (n) => n === 'credit' ? 'بستانکار' : n === 'debit' ? 'بدهکار' : 'مهم نیست';
 const natureColor = (n) => n === 'credit' ? '#dc2626' : n === 'debit' ? '#059669' : '#888';
+
+// پیام خطای خوانا از پاسخ DRF (فیلدهای خطادار)
+const errText = (e, fallback) => {
+  const d = e?.response?.data;
+  if (!d) return fallback;
+  if (typeof d === 'string') return d;
+  if (d.error) return d.error;
+  if (d.detail) return d.detail;
+  const labels = {
+    account_type: 'نوع حساب', nature: 'ماهیت', code: 'کد حساب', name: 'نام حساب',
+    group: 'گروه حساب', parent: 'حساب والد', level: 'سطح',
+  };
+  const first = Object.entries(d)[0];
+  if (!first) return fallback;
+  const [field, value] = first;
+  const msg = Array.isArray(value) ? value[0] : value;
+  return `${labels[field] || field}: ${msg}`;
+};
 const natureBg = (n) => n === 'credit' ? 'rgba(239,68,68,0.12)' : n === 'debit' ? 'rgba(16,185,129,0.12)' : 'rgba(100,116,139,0.12)';
 
 const AccountsClassicPage = () => {
@@ -46,7 +64,7 @@ const AccountsClassicPage = () => {
 
   const [search, setSearch] = useState('');
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
+  const [form, setForm] = useState({ code: '', name: '', group: '', parent: '', account_type: '', nature: '', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
   const [msg, setMsg] = useState(null);
 
   const endpoint = '/accounting/accounts/';
@@ -56,15 +74,24 @@ const AccountsClassicPage = () => {
   });
   const { data: groups } = useQuery({ queryKey: ['acc-groups'], queryFn: () => axiosInstance.get('/accounting/account-groups/').then(r => r.data) });
   const { data: generals } = useQuery({ queryKey: ['acc-general'], queryFn: () => axiosInstance.get('/accounting/accounts/', { params: { kind: 'general' } }).then(r => r.data) });
+  const { data: types } = useQuery({ queryKey: ['acc-types'], queryFn: () => axiosInstance.get('/accounting/account-types/').then(r => r.data) });
+  // پیشنهاد کد **بر پایهٔ والد انتخاب‌شده** (یا گروه)؛ با تغییر والد، کد بازتولید می‌شود
   const { data: suggested } = useQuery({
-    queryKey: ['suggest-code', kind],
-    queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level: kind } }).then(r => r.data),
+    queryKey: ['suggest-code', kind, form.parent || '', form.group || ''],
+    queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', {
+      params: {
+        level: kind,
+        ...(form.parent ? { parent: form.parent } : {}),
+        ...(form.group ? { group: form.group } : {}),
+      },
+    }).then(r => r.data),
   });
   const { data: auxCategories } = useQuery({ queryKey: ['aux-categories'], queryFn: () => axiosInstance.get('/accounting/auxiliary-categories/').then(r => r.data) });
 
   const list = Array.isArray(data) ? data : data?.results || [];
   const groupList = Array.isArray(groups) ? groups : groups?.results || [];
   const generalList = Array.isArray(generals) ? generals : generals?.results || [];
+  const typeList = Array.isArray(types) ? types : types?.results || [];
   const auxCategoryList = Array.isArray(auxCategories) ? auxCategories : auxCategories?.results || [];
 
   const saveCredit = async (payload) => {
@@ -74,16 +101,19 @@ const AccountsClassicPage = () => {
 
   const resetForm = () => {
     setEditing(null);
-    setForm({ code: suggested?.code || '', name: '', group: '', parent: '', account_type: '', nature: 'debit', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
+    setForm({ code: suggested?.code || '', name: '', group: '', parent: '', account_type: '', nature: '', auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '' });
     setMsg(null);
   };
 
-  // پیشنهاد خودکار کد هنگام باز شدن فرم
+  // پی‌ده‌ها: پیشنهاد کد و وراثت با تغییر «والد/گروه» از سرور تازه می‌شود
   useEffect(() => {
-    if (!editing && suggested?.code) {
-      setForm(p => ({ ...p, code: suggested.code }));
-    }
-  }, [suggested?.code]);
+    if (editing || !suggested) return;
+    setForm(p => ({
+      ...p,
+      code: suggested.code || p.code,
+      nature: p.nature || suggested.nature || '',
+    }));
+  }, [suggested?.code, suggested?.parent_code, suggested?.nature, editing]);
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
@@ -97,8 +127,10 @@ const AccountsClassicPage = () => {
   const inheritedFromGroupType = selectedGroup?.account_type;
   const inheritedFromGroupNature = selectedGroup?.nature;
 
-  const effectiveType = isGeneral ? (form.account_type || inheritedFromGroupType) : (form.account_type || inheritedType);
-  const effectiveNature = isGeneral ? (form.nature || inheritedFromGroupNature) : (form.nature || inheritedNature);
+  const effectiveType = form.account_type || suggested?.account_type
+    || (isGeneral ? inheritedFromGroupType : inheritedType);
+  const effectiveNature = form.nature || suggested?.nature
+    || (isGeneral ? inheritedFromGroupNature : inheritedNature);
 
   const submit = async () => {
     setMsg(null);
@@ -121,7 +153,7 @@ const AccountsClassicPage = () => {
       qc.invalidateQueries({ queryKey: ['accounts', kind] });
       resetForm();
     } catch (e) {
-      setMsg({ ok: false, text: e.response?.data?.error || 'خطا در ذخیره' });
+      setMsg({ ok: false, text: errText(e, 'خطا در ذخیره') });
     }
   };
 
@@ -131,7 +163,7 @@ const AccountsClassicPage = () => {
       qc.invalidateQueries({ queryKey: ['accounts'] });
       qc.invalidateQueries({ queryKey: ['accounts', kind] });
     } catch (e) {
-      setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' });
+      setMsg({ ok: false, text: errText(e, 'حذف ممکن نیست') });
     }
   };
 
@@ -206,11 +238,40 @@ const AccountsClassicPage = () => {
                 />
               )}
 
-              {/* نمایش وراثت نوع و ماهیت */}
-              <Stack direction="row" spacing={1}>
-                <Chip size="small" label={`نوع: ${effectiveType ? groupList.find(x => x.account_type === effectiveType)?.account_type_name || '—' : '—'}`} />
-                <Chip size="small" label={`ماهیت: ${natureLabel(effectiveNature)}`} sx={{ bgcolor: natureBg(effectiveNature), color: natureColor(effectiveNature) }} />
-              </Stack>
+              {/* وراثت از والد/گروه: کد پیشنهادی + نوع حساب + ماهیت */}
+              <Box sx={{
+                p: 1.5, borderRadius: '14px',
+                background: 'rgba(59,130,246,0.06)', border: '1px dashed rgba(59,130,246,0.35)',
+              }}>
+                <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+                  <Chip size="small" icon={<BoltIcon sx={{ fontSize: 14 }} />}
+                    label={`کد پیشنهادی: ${suggested?.code || '—'}`}
+                    sx={{ fontWeight: 800, bgcolor: 'rgba(59,130,246,0.14)', color: COLOR_DARK }} />
+                  <Chip size="small"
+                    label={suggested?.code_basis === 'parent'
+                      ? `بر پایهٔ والد ${suggested?.parent_code || ''}`
+                      : 'بازهٔ عمومی سطح'}
+                    sx={{ fontWeight: 700, bgcolor: 'rgba(100,116,139,0.12)' }} />
+                  <Chip size="small"
+                    label={`نوع: ${suggested?.account_type_name || typeList.find(t => t.id === effectiveType)?.name || '—'}`}
+                    sx={{ fontWeight: 700, bgcolor: 'rgba(37,99,235,0.12)', color: '#1d4ed8' }} />
+                  <Chip size="small" label={`ماهیت: ${natureLabel(effectiveNature)}`}
+                    sx={{ bgcolor: natureBg(effectiveNature), color: natureColor(effectiveNature), fontWeight: 700 }} />
+                  {suggested?.inherited_from ? (
+                    <Chip size="small" color="success" variant="outlined"
+                      label={suggested.inherited_from === 'parent' ? 'ارث‌بری از والد' : 'ارث‌بری از گروه'}
+                      sx={{ fontWeight: 700 }} />
+                  ) : (
+                    <Chip size="small" color="warning" variant="outlined"
+                      label="والد/گروه انتخاب نشده" sx={{ fontWeight: 700 }} />
+                  )}
+                </Stack>
+                {suggested?.full_code ? (
+                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 0.75 }}>
+                    مسیر کد: {suggested.full_code}
+                  </Typography>
+                ) : null}
+              </Box>
 
               {/* اجازه تغییر دستی ماهیت (در بازه) */}
               <FormControl fullWidth size="small">

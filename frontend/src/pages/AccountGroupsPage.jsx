@@ -45,6 +45,24 @@ const fieldSx = {
   },
 };
 
+// پیام خطای خوانا از پاسخ DRF (فیلدهای خطادار)
+const errText = (e, fallback) => {
+  const d = e?.response?.data;
+  if (!d) return fallback;
+  if (typeof d === 'string') return d;
+  if (d.error) return d.error;
+  if (d.detail) return d.detail;
+  const labels = {
+    account_type: 'نوع حساب', nature: 'ماهیت', code: 'کد', name: 'نام',
+    group: 'گروه حساب', parent: 'حساب والد', level: 'سطح',
+  };
+  const first = Object.entries(d)[0];
+  if (!first) return fallback;
+  const [field, value] = first;
+  const msg = Array.isArray(value) ? value[0] : value;
+  return `${labels[field] || field}: ${msg}`;
+};
+
 const AccountGroupsPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
@@ -67,12 +85,12 @@ const AccountGroupsPage = () => {
       qc.invalidateQueries({ queryKey: ['account-groups'] });
       resetForm();
     },
-    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا در ذخیره' }),
+    onError: (e) => setMsg({ ok: false, text: errText(e, 'خطا در ذخیره') }),
   });
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/accounting/account-groups/${id}/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['account-groups'] }),
-    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' }),
+    onError: (e) => setMsg({ ok: false, text: errText(e, 'حذف ممکن نیست') }),
   });
 
   const resetForm = () => { setEditing(null); setForm({ code: suggested?.code || '', name: '', account_type: '', nature: 'none' }); setMsg(null); };
@@ -146,7 +164,13 @@ const AccountGroupsPage = () => {
                 size="small" options={typeList} getOptionLabel={o => o.name}
                 value={typeList.find(t => t.id === form.account_type) || null}
                 onChange={(e, v) => set('account_type', v ? v.id : '')}
-                renderInput={p => <TextField {...p} label="نوع حساب" sx={fieldSx} />}
+                renderInput={p => (
+                  <TextField
+                    {...p} label="نوع حساب" required sx={fieldSx}
+                    error={!form.account_type}
+                    helperText={!form.account_type ? 'انتخاب نوع حساب الزامی است (دارایی/بدهی/حقوق مالکانه/…)' : ' '}
+                  />
+                )}
               />
 
               <FormControl fullWidth size="small">
@@ -160,7 +184,7 @@ const AccountGroupsPage = () => {
 
               <Button
                 fullWidth variant="contained" startIcon={save.isLoading ? <CircularProgress size={18} /> : <AddIcon />}
-                onClick={() => save.mutate()} disabled={save.isLoading || !form.code || !form.name}
+                onClick={() => save.mutate()} disabled={save.isLoading || !form.code || !form.name || !form.account_type}
                 sx={{ mt: 0.5, py: 1.1, borderRadius: '14px', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 24px ${COLOR}44`, '&:hover': { background: `linear-gradient(135deg,${COLOR_DARK},${COLOR_DARK})` } }}>
                 {editing ? 'ذخیره تغییرات' : 'افزودن گروه حساب'}
               </Button>

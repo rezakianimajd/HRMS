@@ -302,22 +302,40 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
         return qs
 
     def perform_create(self, serializer):
+        """ساخت حساب با **وراثت اجباری** از والد انتخاب‌شده.
+
+        قاعده‌ها:
+        * اگر «حساب بالادستی» انتخاب شده باشد، نوع حساب و ماهیت همیشه از والد
+          گرفته می‌شود (حتی اگر کلاینت مقدار دیگری بفرستد) تا زیرمجموعه‌ای با نوع
+          ناهمگون — مثل «دارایی» زیر والد «بدهی» — ثبت نشود.
+        * گروه و سطح نیز از والد ارث می‌برند (سطح = سطح والد + ۱).
+        * اگر والدی نباشد، نوع/ماهیت از «گروه حساب» و در نهایت از ورودی کلاینت
+          گرفته می‌شود.
+        """
         data = serializer.validated_data
         parent = data.get('parent')
         group = data.get('group')
+        inherited_type, inherited_nature, source = coding.resolve_inheritance(parent, group)
 
-        # وراثت: اگر پدر داشته باشد از پدر ارث می‌برد؛ وگرنه از گروه.
-        if parent and not data.get('account_type'):
-            data['account_type'] = parent.account_type
-        if parent and not data.get('nature'):
-            data['nature'] = parent.nature
+        if parent is not None:
+            data['level'] = (parent.level or 1) + 1
+            if parent.group_id and not group:
+                data['group'] = parent.group
+        elif not data.get('level'):
+            data['level'] = 1
 
-        if not parent and group and not data.get('account_type'):
-            data['account_type'] = group.account_type
-        if not parent and group and not data.get('nature'):
-            data['nature'] = group.nature
+        if inherited_type is not None:
+            data['account_type'] = inherited_type
+        elif not data.get('account_type'):
+            data['account_type'] = AccountType.objects.filter(
+                company=_company(self.request),
+            ).order_by('code').first()
+
+        if inherited_nature:
+            data['nature'] = inherited_nature
 
         serializer.save(company=_company(self.request))
+
 
 
 class AuxiliaryAccountViewSet(CompanyScopedViewSet):
@@ -1089,18 +1107,50 @@ class CodingConfigViewSet(CompanyScopedViewSet):
 
     @action(detail=False, methods=['get'])
     def suggest(self, request):
-        """پیشنهاد کد بعدی برای یک سطح کدینگ مشخص.
+        """پیشنهاد کد بعدی + اطلاعات وراثت برای یک سطح کدینگ.
 
-        برای سطح `subsidiary` می‌توان `parent_code` (کد کل) را ارسال کرد تا کد
-        معین به‌صورت ترکیبی (کدکل + پسوند) تولید شود.
+        پارامترها:
+        * `level` — سطح کدینگ (general / subsidiary / group / auxiliary / cost_center ...)
+        * `parent` — شناسهٔ حساب بالادستی (برای ساخت کد معین بر پایهٔ **والد انتخاب‌شده**)
+        * `group` — شناسهٔ گروه حساب (وراثت نوع/ماهیت وقتی والد نداریم)
+        * `account_type` — نوع حساب دلخواه (اگر والد/گروه تعیین‌کننده نباشد)
+        * `parent_code` — کد والد به‌صورت متن (سازگاری با نسخه‌های قبلی)
+
+        خروجی شامل `code` (کد پیشنهادی)، `code_basis` (`parent` یا `range`)،
+        `account_type`/`account_type_name`، `nature` و `inherited_from` است تا فرم
+        کدینگ نوع و ماهیت را از والد نمایش دهد، نه پیش‌فرض «دارایی».
         """
-        level = request.query_params.get('level')
+        params = request.query_params
+        level = params.get('level')
         if not level:
             return Response({'error': 'level الزامی است'}, status=400)
         company = _company(request)
-        parent_code = request.query_params.get('parent_code')
-        code = coding.suggest_code(company, level, parent_code)
-        return Response({'code': code})
+
+        parent = None
+        if params.get('parent'):
+            parent = (
+                Account.objects.filter(pk=params['parent'], company=company)
+                .select_related('account_type', 'group').first()
+            )
+        group = None
+        if params.get('group'):
+            group = AccountGroup.objects.filter(pk=params['group'], company=company).first()
+        account_type = None
+        if params.get('account_type'):
+            account_type = AccountType.objects.filter(
+                pk=params['account_type'], company=company,
+            ).first()
+
+        payload = coding.next_code(
+            company, level, parent=parent, group=group, account_type=account_type,
+            parent_code=params.get('parent_code'), subclass=params.get('subclass'),
+        )
+        if payload is None:
+            return Response(
+                {'code': None, 'detail': 'تنظیمات کدینگ برای این سطح یافت نشد.'}, status=200,
+            )
+        return Response(payload)
+
 
 
 class FinancialStatementApprovalViewSet(CompanyScopedViewSet):

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -30,6 +30,26 @@ const glass = {
   borderRadius: '16px',
 };
 
+// پیام خطای خوانا از پاسخ DRF (فیلدهای خطادار)
+const apiErr = (e, fallback) => {
+  const d = e?.response?.data;
+  if (!d) return fallback;
+  if (typeof d === 'string') return d;
+  if (d.error) return d.error;
+  if (d.detail) return d.detail;
+  const labels = {
+    account_type: 'نوع حساب', nature: 'ماهیت', code: 'کد', name: 'نام',
+    group: 'گروه حساب', parent: 'حساب والد', account: 'حساب معین',
+    aux_level: 'سطح تفصیلی', start_date: 'تاریخ شروع', end_date: 'تاریخ پایان',
+    fiscal_year: 'سال مالی', level: 'سطح',
+  };
+  const first = Object.entries(d)[0];
+  if (!first) return fallback;
+  const [field, value] = first;
+  const msg = Array.isArray(value) ? value[0] : value;
+  return `${labels[field] || field}: ${msg}`;
+};
+
 const CodingsPanel = ({
   title, icon, endpoint, level, columns, fields, transformList, buildPayload, warnDelete,
 }) => {
@@ -40,23 +60,41 @@ const CodingsPanel = ({
   const [msg, setMsg] = useState(null);
 
   const { data, isLoading } = useQuery({ queryKey: [endpoint], queryFn: () => axiosInstance.get(endpoint).then(r => r.data) });
+  // پیشنهاد کد با در نظر گرفتن «والد» انتخاب‌شده (برای حساب معین) و «گروه»
   const { data: suggested } = useQuery({
-    queryKey: ['suggest-code', level],
-    queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', { params: { level } }).then(r => r.data),
+    queryKey: ['suggest-code', level, form.parent || '', form.group || ''],
+    queryFn: () => axiosInstance.get('/accounting/coding-configs/suggest/', {
+      params: {
+        level,
+        ...(form.parent ? { parent: form.parent } : {}),
+        ...(form.group ? { group: form.group } : {}),
+      },
+    }).then(r => r.data),
     enabled: !!level,
   });
   const raw = Array.isArray(data) ? data : data?.results || [];
   const list = transformList ? transformList(raw) : raw;
 
+  // با تغییر والد/گروه، کد و وراثت نوع/ماهیت تازه می‌شود
+  useEffect(() => {
+    if (editing || !suggested) return;
+    setForm(p => ({
+      ...p,
+      code: suggested.code || p.code,
+      nature: p.nature || suggested.nature || '',
+      account_type: p.account_type || suggested.account_type || '',
+    }));
+  }, [suggested?.code, suggested?.parent_code, editing]);
+
   const save = useMutation({
     mutationFn: (p) => editing ? axiosInstance.patch(`${endpoint}${editing.id}/`, p) : axiosInstance.post(endpoint, p),
     onSuccess: () => { qc.invalidateQueries({ queryKey: [endpoint] }); setOpen(false); setEditing(null); setForm({}); },
-    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }),
+    onError: (e) => setMsg({ ok: false, text: apiErr(e, 'خطا در ذخیره') }),
   });
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`${endpoint}${id}/`),
     onSuccess: () => qc.invalidateQueries({ queryKey: [endpoint] }),
-    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' }),
+    onError: (e) => setMsg({ ok: false, text: apiErr(e, 'حذف ممکن نیست') }),
   });
 
   const openNew = () => { setEditing(null); setForm({ code: suggested?.code || '' }); setOpen(true); };
@@ -122,6 +160,14 @@ const CodingsPanel = ({
             <TextField key={f.key} fullWidth size="small" type="number" label={f.label} value={form[f.key] ?? ''} onChange={e => set(f.key, e.target.value)} />
           ) : f.type === 'date' ? (
             <JalaliDatePicker key={f.key} fullWidth label={f.label} value={form[f.key] || ''} onChange={v => set(f.key, v)} />
+          ) : f.type === 'inherited' ? (
+            <TextField
+              key={f.key} fullWidth size="small" disabled label={f.label}
+              value={suggested?.account_type_name
+                ? `${suggested.account_type_name}${suggested.inherited_from === 'parent'
+                  ? ' (ارثی از والد)' : suggested.inherited_from === 'group' ? ' (ارثی از گروه)' : ''}`
+                : '— ابتدا والد/گروه را انتخاب کنید —'}
+            />
           ) : (
             <TextField
               key={f.key} fullWidth size="small" label={f.label} value={form[f.key] || ''} onChange={e => set(f.key, e.target.value)}
@@ -134,6 +180,15 @@ const CodingsPanel = ({
               } : undefined}
             />
           ))}
+          {suggested?.code ? (
+            <Typography variant="caption" color="text.secondary">
+              کد پیشنهادی <strong>{suggested.code}</strong>
+              {suggested.code_basis === 'parent'
+                ? ` — بر پایهٔ والد ${suggested.parent_code || ''}`
+                : ' — بازهٔ عمومی این سطح'}
+              {suggested.account_type_name ? ` · نوع: ${suggested.account_type_name}` : ''}
+            </Typography>
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpen(false)}>انصراف</Button>
@@ -191,8 +246,8 @@ const AccountingCodingsPage = () => {
       level: 'subsidiary',
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' }, { key: 'parent_code', label: 'حساب کل' }],
       fields: [
-        { key: 'parent', label: 'حساب کل', type: 'autocomplete', options: generalList, getLabel: o => `${o.code} - ${o.name}` },
-        { key: 'account_type', label: 'نوع حساب', type: 'autocomplete', options: typeList, getLabel: o => o.name },
+        { key: 'parent', label: 'حساب کل (والد)', type: 'autocomplete', options: generalList, getLabel: o => `${o.code} - ${o.name}` },
+        { key: 'account_type', label: 'نوع حساب (ارثی از والد)', type: 'inherited' },
         { key: 'code', label: 'کد' }, { key: 'name', label: 'نام حساب معین' },
         { key: 'nature', label: 'ماهیت', type: 'select', options: [{ value: 'debit', label: 'بدهکار' }, { value: 'credit', label: 'بستانکار' }] },
       ],
