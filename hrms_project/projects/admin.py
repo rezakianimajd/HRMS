@@ -371,3 +371,75 @@ class RiskReviewAdmin(admin.ModelAdmin):
     search_fields = ['reviewer_name', 'note']
 
 
+# ------------------- فاز ۳ (بخش دوم): کیفیت و HSE -------------------
+from projects.quality_models import (  # noqa: E402
+    HSEIncident, Inspection, NCR, PunchItem, QualityPlan, QualityPlanItem,
+)
+
+
+class QualityPlanItemInline(admin.TabularInline):
+    model = QualityPlanItem
+    extra = 1
+    fields = ('item_no', 'description', 'wbs', 'activity', 'inspection_type', 'point_type',
+              'reference', 'frequency', 'responsible_name', 'planned_date', 'status', 'sort_order')
+
+
+@admin.register(QualityPlan)
+class QualityPlanAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'project', 'revision', 'date', 'status',
+                    'prepared_by_name', 'approved_by_name']
+    list_filter = ['project', 'status']
+    search_fields = ['number', 'title']
+    inlines = [QualityPlanItemInline]
+
+
+@admin.register(QualityPlanItem)
+class QualityPlanItemAdmin(admin.ModelAdmin):
+    list_display = ['plan', 'item_no', 'description', 'inspection_type', 'point_type',
+                    'responsible_name', 'planned_date', 'status']
+    list_filter = ['status', 'inspection_type', 'point_type', 'plan__project']
+    search_fields = ['item_no', 'description', 'reference']
+
+
+@admin.register(Inspection)
+class InspectionAdmin(admin.ModelAdmin):
+    list_display = ['number', 'project', 'plan_item', 'date', 'inspector_name', 'status',
+                    'result', 'report_ref']
+    list_filter = ['project', 'status', 'result']
+    search_fields = ['number', 'title', 'inspector_name', 'location']
+
+
+class PunchItemInline(admin.TabularInline):
+    model = PunchItem
+    extra = 0
+    fields = ('number', 'description', 'location', 'priority', 'status', 'responsible_name',
+              'due_date', 'cost')
+
+
+@admin.register(NCR)
+class NCRAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'project', 'severity', 'source', 'discipline', 'status',
+                    'detected_date', 'due_date', 'closed_date', 'responsible_name', 'cost_impact']
+    list_filter = ['project', 'status', 'severity', 'source']
+    search_fields = ['number', 'title', 'description', 'responsible_name']
+    readonly_fields = ['closed_date', 'closed_by']
+    inlines = [PunchItemInline]
+
+
+@admin.register(PunchItem)
+class PunchItemAdmin(admin.ModelAdmin):
+    list_display = ['number', 'description', 'project', 'location', 'discipline', 'priority',
+                    'status', 'responsible_name', 'due_date', 'fixed_date', 'verified_date', 'cost']
+    list_filter = ['project', 'status', 'priority']
+    search_fields = ['number', 'description', 'location', 'responsible_name']
+
+
+@admin.register(HSEIncident)
+class HSEIncidentAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'project', 'incident_type', 'severity', 'status', 'date',
+                    'lost_days', 'man_hours', 'location', 'reported_by_name']
+    list_filter = ['project', 'incident_type', 'severity', 'status']
+    search_fields = ['number', 'title', 'location', 'involved_persons', 'reported_by_name']
+
+
+

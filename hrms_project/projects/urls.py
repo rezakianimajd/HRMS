@@ -78,6 +78,20 @@ router.register(r'risks', RiskViewSet, basename='risk')
 router.register(r'risk-actions', RiskActionViewSet, basename='risk-action')
 router.register(r'risk-reviews', RiskReviewViewSet, basename='risk-review')
 
+# ------------------- فاز ۳ (بخش دوم): کیفیت و HSE -------------------
+from projects.quality_views import (  # noqa: E402
+    HSEIncidentViewSet, InspectionViewSet, NCRViewSet, PunchItemViewSet,
+    QualityKpiViewSet, QualityPlanItemViewSet, QualityPlanViewSet,
+)
+
+router.register(r'quality-plans', QualityPlanViewSet, basename='quality-plan')
+router.register(r'quality-plan-items', QualityPlanItemViewSet, basename='quality-plan-item')
+router.register(r'inspections', InspectionViewSet, basename='inspection')
+router.register(r'ncrs', NCRViewSet, basename='ncr')
+router.register(r'punch-items', PunchItemViewSet, basename='punch-item')
+router.register(r'hse-incidents', HSEIncidentViewSet, basename='hse-incident')
+router.register(r'quality-kpis', QualityKpiViewSet, basename='quality-kpi')
+
 from projects import analytics_views
 
 urlpatterns = [

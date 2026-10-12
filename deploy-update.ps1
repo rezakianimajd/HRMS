@@ -128,7 +128,16 @@ $BackendFiles = @(
     'hrms_project/projects/risk_views.py',
     'hrms_project/projects/migrations/0010_riskcategory_risk_riskreview_riskaction_and_more.py',
     'hrms_project/projects/tests/test_risk_engine.py',
-    'hrms_project/projects/tests/test_phase3_risk_db.py'
+    'hrms_project/projects/tests/test_phase3_risk_db.py',
+    # --- فاز ۳ (بخش دوم): کیفیت و HSE ---
+    'hrms_project/projects/quality_models.py',
+    'hrms_project/projects/quality_engine.py',
+    'hrms_project/projects/quality_service.py',
+    'hrms_project/projects/quality_serializers.py',
+    'hrms_project/projects/quality_views.py',
+    'hrms_project/projects/migrations/0011_inspection_ncr_punchitem_qualityplan_qualityplanitem_and_more.py',
+    'hrms_project/projects/tests/test_quality_engine.py',
+    'hrms_project/projects/tests/test_phase3_quality_db.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
@@ -152,6 +161,7 @@ $FrontendFiles = @(
     'frontend/src/pages/ProjectChangeOrdersPage.jsx',
     'frontend/src/pages/ProjectCertificationPage.jsx',
     'frontend/src/pages/ProjectRiskPage.jsx',
+    'frontend/src/pages/ProjectQualityPage.jsx',
     'frontend/src/pages/ProjectsStructurePage.jsx',
     'frontend/src/AppRoutes.jsx',
     'frontend/src/core/config/menuConfig.js'

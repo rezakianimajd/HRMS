@@ -467,3 +467,8 @@ from projects.phase2_models import (  # noqa: E402,F401
 from projects.risk_models import (  # noqa: E402,F401
     Risk, RiskAction, RiskCategory, RiskReview,
 )
+
+# فاز ۳ (بخش دوم) — کیفیت و HSE
+from projects.quality_models import (  # noqa: E402,F401
+    HSEIncident, Inspection, NCR, PunchItem, QualityPlan, QualityPlanItem,
+)

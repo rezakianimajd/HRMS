@@ -56,6 +56,7 @@ import ProjectSchedulePage from './pages/ProjectSchedulePage';
 import ProjectChangeOrdersPage from './pages/ProjectChangeOrdersPage';
 import ProjectCertificationPage from './pages/ProjectCertificationPage';
 import ProjectRiskPage from './pages/ProjectRiskPage';
+import ProjectQualityPage from './pages/ProjectQualityPage';
 import ProjectsStructurePage from './pages/ProjectsStructurePage';
 import ProjectsResourcesPage from './pages/ProjectsResourcesPage';
 import ProjectsCostSourcesPage from './pages/ProjectsCostSourcesPage';
@@ -313,6 +314,7 @@ const AppRoutes = () => {
       <Route path="/projects/calendar" element={<ProtectedLayout><ProjectCalendarPage /></ProtectedLayout>} />
       <Route path="/projects/schedule" element={<ProtectedLayout><ProjectSchedulePage /></ProtectedLayout>} />
       <Route path="/projects/risks" element={<ProtectedLayout><ProjectRiskPage /></ProtectedLayout>} />
+      <Route path="/projects/quality" element={<ProtectedLayout><ProjectQualityPage /></ProtectedLayout>} />
       <Route path="/projects/change-orders" element={<ProtectedLayout><ProjectChangeOrdersPage /></ProtectedLayout>} />
       <Route path="/projects/certification" element={<ProtectedLayout><ProjectCertificationPage /></ProtectedLayout>} />
 

@@ -497,6 +497,7 @@ const projectsMenu = [
       { id: 'projects-calendar', title: 'تقویم پروژه‌ها', icon: <CalendarMonthIcon />, path: '/projects/calendar', color: '#10b981', primary: false, ready: true },
       { id: 'projects-schedule', title: 'زمان‌بندی و EVM', icon: <TimelineIcon />, path: '/projects/schedule', color: '#8b5cf6', primary: true, ready: true },
       { id: 'projects-risks', title: 'رجیستر ریسک', icon: <InsightsIcon />, path: '/projects/risks', color: '#ef4444', primary: false, ready: true },
+      { id: 'projects-quality', title: 'کیفیت و HSE', icon: <FactCheckIcon />, path: '/projects/quality', color: '#0ea5e9', primary: false, ready: true },
       { id: 'projects-structure', title: 'ساختار (WBS / CBS)', icon: <AccountTreeIcon />, path: '/projects/structure', color: '#0ea5e9', primary: false, ready: true },
       { id: 'projects-resources', title: 'منابع (RBS)', icon: <Inventory2Icon />, path: '/projects/resources', color: '#10b981', primary: false, ready: true },
       { id: 'projects-cost-sources', title: 'منشأ هزینه', icon: <NumbersIcon />, path: '/projects/cost-sources', color: '#f59e0b', primary: false, ready: true },
