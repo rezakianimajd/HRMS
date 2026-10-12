@@ -218,6 +218,10 @@ const AccountsClassicPage = () => {
   // تعداد حساب‌های ناهمگون در همین فهرست (نوع ثبت‌شده ≠ نوع گروه/والد)
   const mismatchCount = useMemo(() => list.filter(a => a.type_mismatch).length, [list]);
 
+  // گروه‌هایی که نامشان هیچ نشانه‌ای از طبقه ندارد → نیازمند تعیین دستی نوع
+  const reviewGroups = ((syncReport?.groups_report) || [])
+    .filter(g => g.source === 'group_type' && (g.accounts_count || 0) > 0);
+
   const loadSyncPreview = async () => {
     setSyncLoading(true);
     setSyncError(null);
@@ -536,6 +540,25 @@ const AccountsClassicPage = () => {
                         • {g.code} {g.name}: {g.from_type_name} → {g.to_type_name}
                       </Typography>
                     ))}
+                  </Stack>
+                </Paper>
+              )}
+
+              {reviewGroups.length > 0 && (
+                <Paper variant="outlined" sx={{ p: 1.25, borderRadius: '12px', bgcolor: 'rgba(245,158,11,0.06)' }}>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#b45309' }}>
+                    گروه‌های نیازمند بازبینی دستی ({reviewGroups.length}): نامشان هیچ نشانه‌ای از طبقهٔ حساب ندارد،
+                    پس ابزار نمی‌تواند نوعشان را تشخیص دهد؛ نوع را از صفحهٔ «گروه حساب‌ها» تعیین کنید.
+                  </Typography>
+                  <Stack spacing={0.5} mt={0.5}>
+                    {reviewGroups.slice(0, 12).map(g => (
+                      <Typography key={g.id} variant="caption">
+                        • {g.code} {g.name} — نوع فعلی: {g.current_type_name} — {g.accounts_count} حساب
+                      </Typography>
+                    ))}
+                    {reviewGroups.length > 12 && (
+                      <Typography variant="caption">… و {reviewGroups.length - 12} گروه دیگر</Typography>
+                    )}
                   </Stack>
                 </Paper>
               )}

@@ -192,8 +192,12 @@ def analyze_account_types(company=None, fix_groups=False):
     changes = []
     nature_changes = []
     by_category = {}
+    group_account_counts = {}
 
     for account in accounts:
+        if account.group_id:
+            group_account_counts[account.group_id] = group_account_counts.get(account.group_id, 0) + 1
+
         expected, source, ref = _expected_category(account, group_targets, parent_types)
         target_type = types_by_category.get(expected) if expected else None
         if target_type is None:
@@ -235,7 +239,7 @@ def analyze_account_types(company=None, fix_groups=False):
         'nature_mismatched': len(nature_changes),
         'groups_total': len(groups),
         'groups_to_fix': groups_to_fix,
-        'groups_report': _groups_report(groups, group_targets),
+        'groups_report': _groups_report(groups, group_targets, group_account_counts),
         'summary_by_category': by_category,
         'changes': changes[:300],
         'fix_groups': bool(fix_groups),
@@ -243,8 +247,9 @@ def analyze_account_types(company=None, fix_groups=False):
     }
 
 
-def _groups_report(groups, group_targets):
+def _groups_report(groups, group_targets, account_counts=None):
     """وضعیت هر گروه: نوع فعلی، طبقهٔ مورد انتظار و منبع تشخیص (برای بازبینی کاربر)."""
+    counts = account_counts or {}
     report = []
     for group in groups:
         target, source, ref = group_targets.get(group.id) or (group.account_type, 'group_type', '')
@@ -261,6 +266,7 @@ def _groups_report(groups, group_targets):
             'expected_type_name': getattr(target, 'name', '') or '',
             'source': source or '',
             'matched_by': ref,
+            'accounts_count': counts.get(group.id, 0),
             'ok': bool(expected_category) and expected_category == current_category,
         })
     return report
