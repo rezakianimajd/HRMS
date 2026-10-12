@@ -10,6 +10,10 @@ from projects.phase2_models import (
 class MeasurementSheetLineSerializer(serializers.ModelSerializer):
     contract_item_code = serializers.CharField(source='contract_item.code', read_only=True)
     wbs_name = serializers.CharField(source='wbs.name', read_only=True)
+    # داخل صورتجلسه به‌صورت تودرتو نوشته می‌شود؛ نیازی به ارسال مجدد sheet نیست
+    sheet = serializers.PrimaryKeyRelatedField(
+        queryset=MeasurementSheet.objects.all(), required=False,
+    )
 
     class Meta:
         model = MeasurementSheetLine

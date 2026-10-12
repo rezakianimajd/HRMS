@@ -313,3 +313,61 @@ class CostAllocationAdmin(admin.ModelAdmin):
     list_filter = ['project', 'kind']
     search_fields = ['title', 'note']
 
+
+# ------------------- فاز ۳ (بخش اول): رجیستر ریسک -------------------
+from projects.risk_models import (  # noqa: E402
+    Risk, RiskAction, RiskCategory, RiskReview,
+)
+
+
+@admin.register(RiskCategory)
+class RiskCategoryAdmin(admin.ModelAdmin):
+    list_display = ['code', 'name', 'discipline', 'is_active']
+    list_filter = ['is_active', 'discipline']
+    search_fields = ['code', 'name']
+
+
+class RiskActionInline(admin.TabularInline):
+    model = RiskAction
+    extra = 1
+    fields = ('title', 'owner', 'owner_name', 'start_date', 'due_date', 'status', 'cost',
+              'sort_order')
+
+
+class RiskReviewInline(admin.TabularInline):
+    model = RiskReview
+    extra = 0
+    readonly_fields = ['probability', 'impact', 'score', 'residual_score', 'status',
+                       'reviewer_name']
+    fields = ('date', 'reviewer', 'reviewer_name', 'probability', 'impact', 'score',
+              'residual_score', 'status', 'note', 'next_review_date')
+
+
+@admin.register(Risk)
+class RiskAdmin(admin.ModelAdmin):
+    list_display = ['number', 'title', 'project', 'category', 'risk_type', 'probability',
+                    'impact_cost', 'score', 'level', 'status', 'owner', 'due_date',
+                    'expected_cost']
+    list_filter = ['project', 'status', 'level', 'risk_type', 'category']
+    search_fields = ['number', 'title', 'description', 'owner_name']
+    readonly_fields = ['score', 'level', 'expected_cost', 'residual_score', 'residual_cost',
+                       'closed_date']
+    inlines = [RiskActionInline, RiskReviewInline]
+
+
+@admin.register(RiskAction)
+class RiskActionAdmin(admin.ModelAdmin):
+    list_display = ['title', 'risk', 'owner', 'owner_name', 'start_date', 'due_date',
+                    'completed_at', 'status', 'cost']
+    list_filter = ['status', 'risk__project']
+    search_fields = ['title', 'owner_name']
+
+
+@admin.register(RiskReview)
+class RiskReviewAdmin(admin.ModelAdmin):
+    list_display = ['risk', 'date', 'reviewer_name', 'probability', 'impact', 'score',
+                    'residual_score', 'status', 'next_review_date']
+    list_filter = ['status', 'risk__project']
+    search_fields = ['reviewer_name', 'note']
+
+

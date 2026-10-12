@@ -68,6 +68,16 @@ router.register(r'measurement-sheets', MeasurementSheetViewSet, basename='measur
 router.register(r'payment-certificates', PaymentCertificateViewSet, basename='payment-certificate')
 router.register(r'cost-allocations', CostAllocationViewSet, basename='cost-allocation')
 
+# ------------------- فاز ۳ (بخش اول): رجیستر ریسک -------------------
+from projects.risk_views import (  # noqa: E402
+    RiskActionViewSet, RiskCategoryViewSet, RiskReviewViewSet, RiskViewSet,
+)
+
+router.register(r'risk-categories', RiskCategoryViewSet, basename='risk-category')
+router.register(r'risks', RiskViewSet, basename='risk')
+router.register(r'risk-actions', RiskActionViewSet, basename='risk-action')
+router.register(r'risk-reviews', RiskReviewViewSet, basename='risk-review')
+
 from projects import analytics_views
 
 urlpatterns = [
