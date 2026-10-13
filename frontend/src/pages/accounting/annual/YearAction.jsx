@@ -27,6 +27,12 @@ const STATUS_OPTIONS = [
   { value: 'posted', label: 'ثبت نهایی' },
 ];
 
+const CATEGORY_FA = {
+  asset: 'دارایی', liability: 'بدهی', equity: 'حقوق صاحبان سهام',
+  revenue: 'درآمد', expense: 'هزینه', cost_of_sales: 'بهای تمام‌شده',
+  memorandum: 'حساب‌های انتظامی',
+};
+
 /**
  * عملیات سالانه (افتتاحیه / اختتامیه / بستن حساب‌ها)
  *  ۱) انتخاب سال مالی و «تاریخ سند» (پیش‌فرض: ابتدا/پایان سال)
@@ -46,6 +52,14 @@ const PreviewPanel = ({
     <>
       <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mt: 2, mb: 1.5 }}>
         <Chip size="small" label={`سال مالی: ${preview.fiscal_year.name}`} sx={{ fontWeight: 700 }} />
+        {Object.entries(preview.rows_by_category || {}).map(([k, v]) => (
+          <Chip
+            key={k}
+            size="small"
+            label={`${CATEGORY_FA[k] || k}: ${toPersianDigits(v)}`}
+            sx={{ fontWeight: 700, bgcolor: k === 'memorandum' ? 'rgba(124,58,237,0.12)' : 'rgba(15,23,42,0.06)', color: k === 'memorandum' ? '#6d28d9' : undefined }}
+          />
+        ))}
         {preview.prev_year && (
           <Chip size="small" label={`سال مبدأ: ${preview.prev_year.name}`} sx={{ fontWeight: 700, bgcolor: 'rgba(14,165,233,0.12)' }} />
         )}

@@ -109,6 +109,9 @@ def _balance_rows(company, year, categories):
     for key, rec in agg.items():
         debit, credit = rec['debit'], rec['credit']
         nature = rec['account'].nature
+        if rec['category'] == 'memorandum' and nature not in ('debit', 'credit'):
+            # ماهیت تعیین نشده است → سمت درست از گردش واقعیِ خودِ حساب استنتاج می‌شود
+            nature = 'debit' if debit >= credit else 'credit'
         net = _signed_net(rec['category'], nature, debit, credit)
         if abs(net) <= 1e-9:
             continue
@@ -376,6 +379,25 @@ def _lines_from_payload(raw_lines, company):
     return lines
 
 
+def _misclassified_memorandum_accounts(company, limit=5):
+    """حساب‌هایی که نامشان «انتظامی» است اما دستهٔ نوع حسابشان انتظامی نیست.
+
+    عارضهٔ رایج داده‌ها: حساب‌های انتظامی زیر نوع «دارایی» ساخته می‌شوند؛ در این حالت
+    در سند اختتامیه/افتتاحیه به‌عنوان انتظامی شناخته نمی‌شوند و در ترازنامه هم وارد می‌شوند.
+    """
+    qs = (
+        Account.objects
+        .filter(company=company, is_active=True, name__contains='انتظامی')
+        .exclude(account_type__category='memorandum')
+        .select_related('account_type')
+        .order_by('code')
+    )
+    return [
+        f'{a.code} {a.name} ({a.account_type.name if a.account_type else "—"})'
+        for a in qs[:limit]
+    ]
+
+
 def _existing_document(company, kind, year):
     return AccountingDocument.objects.filter(
         company=company, source_module='annual',
@@ -489,6 +511,20 @@ def _annual_payload(request, kind):
             '(که مانده‌ها را صفر می‌کند) در این محاسبه لحاظ نشده است.'
         )
 
+    # شمارش ردیف‌ها به تفکیک دسته (برای اطمینان کاربر از حضور انتظامی‌ها در سند)
+    rows_by_category = {}
+    for r in rows:
+        rows_by_category[r['category']] = rows_by_category.get(r['category'], 0) + 1
+
+    misclassified = _misclassified_memorandum_accounts(company)
+    if misclassified:
+        warnings.append(
+            f'{len(misclassified)} حساب با نام «انتظامی» وجود دارد که دستهٔ نوع حسابش «حساب‌های انتظامی» نیست '
+            f'(مثل «{misclassified[0]}»)؛ این حساب‌ها در سند انتظامی نمی‌آیند و به‌عنوان دارایی/بدهی در '
+            'ترازنامه وارد می‌شوند. برای اعمال رفتار انتظامی، دستهٔ نوع حساب آن‌ها را در «کدینگ → انواع حساب» '
+            'به «حساب‌های انتظامی» تغییر دهید.'
+        )
+
     return {
         'kind': kind,
         'title': spec['title'],
@@ -513,6 +549,7 @@ def _annual_payload(request, kind):
         'totals': {'debit': debit_total, 'credit': credit_total,
                    'difference': difference, 'is_balanced': abs(difference) <= 0.001},
         'aux_summary': {'with_aux': with_aux, 'without_aux': without_aux, 'accounts': len(rows)},
+        'rows_by_category': rows_by_category,
         'memorandum': {
             'lines': len(memo_lines),
             'debit': memo_debit,

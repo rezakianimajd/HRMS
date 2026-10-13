@@ -528,4 +528,42 @@ class AnnualOperationTests(TestCase):
         self.assertEqual((bank_line['debit'], bank_line['credit']), (0, 1000))
         self.assertTrue(any('پیش از بستن' in n for n in data['notes']))
 
+    def test_memorandum_side_inferred_when_nature_unset(self):
+        """حساب انتظامی با ماهیت «مهم نیست» → سمت درست از گردش واقعی حساب استنتاج می‌شود."""
+        from datetime import date as _date
+
+        from accounting.models import AccountingDocument, AccountingDocumentLine
+
+        memo_type = AccountType.objects.create(
+            company=self.company, code='7', name='انتظامی', category='memorandum', default_nature='none',
+        )
+        account = Account.objects.create(
+            company=self.company, code='7005', name='امانی بدون ماهیت',
+            account_type=memo_type, level=1, nature='none',
+        )
+        doc = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.prev, date=_date(2024, 2, 2),
+            description='امانی', status='posted',
+        )
+        AccountingDocumentLine.objects.create(
+            document=doc, company=self.company, account=account, debit=400, credit=0, line_no=1,
+        )
+        rows = _balance_rows(self.company, self.prev, ('memorandum',))
+        row = next(r for r in rows if r['account'].id == account.id)
+        self.assertEqual(row['nature'], 'debit')
+        data, error = _annual_payload(self._request({'fiscal_year': self.year.id}), 'opening')
+        self.assertIsNone(error)
+        line = next(l for l in data['lines'] if l['account'] == account.id)
+        self.assertEqual((line['debit'], line['credit']), (400, 0))
+
+    def test_warns_when_memorandum_accounts_use_wrong_category(self):
+        """حساب با نام انتظامی که دستهٔ نوعش انتظامی نیست → هشدار راهنما."""
+        Account.objects.create(
+            company=self.company, code='8001', name='تعهدات انتظامی',
+            account_type=self.asset, level=1, nature='debit',
+        )
+        data, error = _annual_payload(self._request({'fiscal_year': self.year.id}), 'opening')
+        self.assertIsNone(error)
+        self.assertTrue(any('انتظامی' in w and 'کدینگ' in w for w in data['warnings']))
+
 
