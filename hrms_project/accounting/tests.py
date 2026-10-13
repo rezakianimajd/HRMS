@@ -413,4 +413,119 @@ class AnnualOperationTests(TestCase):
         self.assertEqual(_carry_sides('equity', -300), (300, 0))
         self.assertEqual(_carry_sides('asset', -200), (0, 200))
 
+    def _memorandum_pair(self):
+        """حساب‌های انتظامی دوطرفه (انتظامی بدهکار ↔ انتظامی بستانکار) + اسناد سال."""
+        from datetime import date as _date
+
+        from accounting.models import AccountingDocument, AccountingDocumentLine
+
+        memo_type = AccountType.objects.create(
+            company=self.company, code='7', name='انتظامی', category='memorandum', default_nature='debit',
+        )
+        debit_account = Account.objects.create(
+            company=self.company, code='7001', name='اسناد تضمینی نزد بانک',
+            account_type=memo_type, level=1, nature='debit',
+        )
+        credit_account = Account.objects.create(
+            company=self.company, code='7002', name='طرف اسناد تضمینی',
+            account_type=memo_type, level=1, nature='credit',
+        )
+        doc = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.prev, date=_date(2024, 2, 1),
+            description='ثبت اسناد تضمینی', status='posted',
+        )
+        AccountingDocumentLine.objects.create(
+            document=doc, company=self.company, account=debit_account,
+            debit=9000, credit=0, line_no=1,
+        )
+        AccountingDocumentLine.objects.create(
+            document=doc, company=self.company, account=credit_account,
+            debit=0, credit=9000, line_no=2,
+        )
+        return debit_account, credit_account
+
+    def test_closing_covers_memorandum_accounts(self):
+        """سند اختتامیه باید حساب‌های انتظامی را هم صفر کند (قبلاً باز می‌ماندند)."""
+        debit_account, credit_account = self._memorandum_pair()
+        data, error = _annual_payload(self._request({'fiscal_year': self.year.id}), 'closing')
+        self.assertIsNone(error)
+        memo_ids = {l['account'] for l in data['lines'] if l['category'] == 'memorandum'}
+        self.assertEqual(memo_ids, {debit_account.id, credit_account.id})
+        self.assertEqual(data['memorandum']['lines'], 2)
+        self.assertTrue(data['memorandum']['is_balanced'])
+        self.assertTrue(data['totals']['is_balanced'])
+        self.assertTrue(any('انتظامی' in n for n in data['notes']))
+        # هر دو حساب انتظامی برگشت خورده‌اند (مانده صفر می‌شود)
+        debit_row = next(l for l in data['lines'] if l['account'] == debit_account.id)
+        credit_row = next(l for l in data['lines'] if l['account'] == credit_account.id)
+        self.assertEqual((debit_row['debit'], debit_row['credit']), (0, 9000))
+        self.assertEqual((credit_row['debit'], credit_row['credit']), (9000, 0))
+
+    def test_opening_carries_memorandum_balances(self):
+        debit_account, credit_account = self._memorandum_pair()
+        data, error = _annual_payload(self._request({'fiscal_year': self.year.id}), 'opening')
+        self.assertIsNone(error)
+        memo_ids = {l['account'] for l in data['lines'] if l['category'] == 'memorandum'}
+        self.assertEqual(memo_ids, {debit_account.id, credit_account.id})
+        self.assertTrue(data['totals']['is_balanced'])
+
+    def test_closing_compensates_unbalanced_memorandum(self):
+        """اگر جمع انتظامی‌ها متوازن نباشد، اختلاف با حساب هدف جبران و اعلام می‌شود."""
+        from datetime import date as _date
+
+        from accounting.models import AccountingDocument, AccountingDocumentLine
+
+        memo_type = AccountType.objects.create(
+            company=self.company, code='7', name='انتظامی', category='memorandum', default_nature='debit',
+        )
+        only_debit = Account.objects.create(
+            company=self.company, code='7003', name='امانی‌ها',
+            account_type=memo_type, level=1, nature='debit',
+        )
+        doc = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.year, date=_date(2024, 6, 1),
+            description='امانی', status='posted',
+        )
+        AccountingDocumentLine.objects.create(
+            document=doc, company=self.company, account=only_debit, debit=800, credit=0, line_no=1,
+        )
+        data, error = _annual_payload(self._request({'fiscal_year': self.year.id}), 'closing')
+        self.assertIsNone(error)
+        self.assertFalse(data['memorandum']['is_balanced'])
+        self.assertTrue(data['totals']['is_balanced'])
+        self.assertTrue(any('متوازن نیست' in n for n in data['notes']))
+
+    def test_opening_ignores_previous_year_closing_entry(self):
+        """مانده‌ها «پیش از بستن» محاسبه می‌شوند تا افتتاحیهٔ سال بعد خالی درنیاید."""
+        from datetime import date as _date
+
+        from accounting.models import AccountingDocument, AccountingDocumentLine, FiscalYear
+
+        # ماندهٔ دارایی ۵۰۰ در سال مبدأ (به‌علاوهٔ ۱۵۰۰ بستانکار setUp → ماندهٔ ۱۰۰۰ بستانکار)
+        AccountingDocumentLine.objects.create(
+            document=self.doc, company=self.company, account=self.bank,
+            debit=500, credit=0, line_no=3,
+        )
+        # سند اختتامیهٔ همان سال که مانده را صفر می‌کند (باید در محاسبه لحاظ نشود)
+        closing_doc = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.prev, date=self.prev.end_date,
+            description='سند اختتامیه', status='posted',
+            source_module='annual', source_type='closing', source_id=f'closing-{self.prev.id}',
+        )
+        AccountingDocumentLine.objects.create(
+            document=closing_doc, company=self.company, account=self.bank,
+            debit=1000, credit=0, line_no=1,
+        )
+
+        next_year = FiscalYear.objects.create(
+            company=self.company, name='1404', start_date=_date(2025, 3, 21),
+            end_date=_date(2026, 3, 20), status='draft',
+        )
+        data, error = _annual_payload(self._request({'fiscal_year': next_year.id}), 'opening')
+        self.assertIsNone(error)
+        bank_line = next(l for l in data['lines'] if l['account'] == self.bank.id)
+        # ماندهٔ واقعی ۱۰۰۰ بستانکار است (نه صفر) تا در سال جدید منتقل شود
+        self.assertEqual((bank_line['debit'], bank_line['credit']), (0, 1000))
+        self.assertTrue(any('پیش از بستن' in n for n in data['notes']))
+
 

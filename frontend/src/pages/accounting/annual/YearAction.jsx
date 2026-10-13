@@ -55,6 +55,17 @@ const PreviewPanel = ({
         {preview.aux_summary.without_aux > 0 && (
           <Chip size="small" label={`بدون تفصیلی: ${preview.aux_summary.without_aux}`} sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.14)', color: '#b45309' }} />
         )}
+        {preview.memorandum?.lines > 0 && (
+          <Chip
+            size="small"
+            label={`انتظامی: ${toPersianDigits(preview.memorandum.lines)} سطر${preview.memorandum.is_balanced ? '' : ' (نامتوازن)'}`}
+            sx={{
+              fontWeight: 700,
+              bgcolor: preview.memorandum.is_balanced ? 'rgba(124,58,237,0.12)' : 'rgba(239,68,68,0.14)',
+              color: preview.memorandum.is_balanced ? '#6d28d9' : '#b91c1c',
+            }}
+          />
+        )}
         <Chip
           size="small"
           label={`جمع بدهکار: ${money(totals.debit)} / بستانکار: ${money(totals.credit)}`}
@@ -66,6 +77,10 @@ const PreviewPanel = ({
           sx={{ fontWeight: 800, bgcolor: balanced ? 'rgba(16,185,129,0.14)' : 'rgba(239,68,68,0.14)', color: balanced ? '#047857' : '#b91c1c' }}
         />
       </Stack>
+
+      {(preview.notes || []).map((n) => (
+        <Alert key={n} severity="info" sx={{ mb: 1, borderRadius: '12px', fontSize: 12.5 }}>{n}</Alert>
+      ))}
 
       {(preview.warnings || []).map((w) => (
         <Alert key={w} severity="warning" sx={{ mb: 1, borderRadius: '12px', fontSize: 12.5 }}>{w}</Alert>

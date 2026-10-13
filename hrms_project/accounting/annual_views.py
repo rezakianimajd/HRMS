@@ -41,13 +41,42 @@ AUX_FIELDS = ('auxiliary', 'auxiliary_1', 'auxiliary_2', 'auxiliary_3')
 DEBIT_CATEGORIES = ('asset', 'expense', 'cost_of_sales')
 
 
+def _is_debit_side(category, nature):
+    """آیا ماندهٔ مثبت این حساب در سمت بدهکار است؟
+
+    دارایی/هزینه/بهای تمام‌شده بدهکارند و بدهی/حقوق/درآمد بستانکار؛ برای
+    **حساب‌های انتظامی** (که هم می‌توانند بدهکار باشند و هم بستانکار) ماهیت خودِ
+    حساب تعیین‌کننده است.
+    """
+    if category in DEBIT_CATEGORIES:
+        return True
+    if category == 'memorandum':
+        return nature != 'credit'
+    return False
+
+
+def _signed_net(category, nature, debit, credit):
+    """ماندهٔ علامت‌دار بر پایهٔ سمت درستِ همان حساب."""
+    return (debit - credit) if _is_debit_side(category, nature) else (credit - debit)
+
+
+def _exclude_annual_closing(qs):
+    """حذف «سند اختتامیهٔ سالانه» از محاسبهٔ مانده‌ها.
+
+    سند اختتامیه، ماندهٔ حساب‌های دائمی را عمداً صفر می‌کند؛ پس اگر آن را در محاسبه
+    لحاظ کنیم، مانده‌های واقعی پایان سال صفر می‌شوند و سند افتتاحیهٔ سال بعد خالی
+    درمی‌آید. پس برای استخراج مانده‌های «پیش از بستن» این سند کنار گذاشته می‌شود.
+    """
+    return qs.exclude(document__source_module='annual', document__source_type='closing')
+
+
 def _balance_rows(company, year, categories):
     """ماندهٔ تجمعی به تفکیک «حساب + تفصیلی‌های سطر» تا **آخرین تفصیل**.
 
-    برای هر ترکیب (حساب، تفصیل یک/دو/سه) یک ردیف برمی‌گرداند تا سند سالانه فقط
-    «کد معین» نباشد و تفصیلی‌های مرتبط با حساب هم منتقل شوند.
+    سند اختتامیهٔ همان سال از محاسبه کنار گذاشته می‌شود تا مانده‌های واقعیِ پایان سال
+    (پیش از بستن) منتقل شوند.
     """
-    lines = _report_lines(company, year).select_related(
+    lines = _exclude_annual_closing(_report_lines(company, year)).select_related(
         'account', 'account__account_type',
         'auxiliary', 'auxiliary_1', 'auxiliary_2', 'auxiliary_3',
     )
@@ -79,12 +108,14 @@ def _balance_rows(company, year, categories):
     rows = []
     for key, rec in agg.items():
         debit, credit = rec['debit'], rec['credit']
-        net = (debit - credit) if rec['category'] in DEBIT_CATEGORIES else (credit - debit)
+        nature = rec['account'].nature
+        net = _signed_net(rec['category'], nature, debit, credit)
         if abs(net) <= 1e-9:
             continue
         deepest = rec['auxiliary_3'] or rec['auxiliary_2'] or rec['auxiliary_1'] or rec['auxiliary']
         rows.append({
             **rec,
+            'nature': nature,
             'net': _round2(net),
             'deepest_aux': deepest,
             'key': '|'.join(str(k or '') for k in key),
@@ -93,16 +124,16 @@ def _balance_rows(company, year, categories):
     return rows
 
 
-def _carry_sides(category, net):
+def _carry_sides(category, net, nature='debit'):
     """افتتاحیه: مانده همان‌طور که هست منتقل می‌شود (همیشه با مقدار مثبت)."""
-    if category == 'asset':
+    if _is_debit_side(category, nature):
         return (abs(net), 0.0) if net >= 0 else (0.0, abs(net))
     return (0.0, abs(net)) if net >= 0 else (abs(net), 0.0)
 
 
-def _zero_sides(category, net):
+def _zero_sides(category, net, nature='debit'):
     """اختتامیه: حساب صفر می‌شود (برعکسِ مانده) و همان مانده به حساب هدف می‌رود."""
-    carry = _carry_sides(category, net)
+    carry = _carry_sides(category, net, nature)
     return (carry[1], carry[0]), carry
 
 
@@ -144,7 +175,7 @@ ANNUAL_SPECS = {
         'source_prefix': 'opening',
         'journal_type': Journal.JournalType.OPENING,
         'journal_name': 'سند افتتاحیه',
-        'categories': ('asset', 'liability', 'equity'),
+        'categories': ('asset', 'liability', 'equity', 'memorandum'),
         'date_attr': 'start_date',
         'needs_prev_year': True,
         'target': 'profit_loss',
@@ -155,7 +186,7 @@ ANNUAL_SPECS = {
         'source_prefix': 'closing',
         'journal_type': Journal.JournalType.CLOSING,
         'journal_name': 'سند اختتامیه',
-        'categories': ('asset', 'liability', 'equity'),
+        'categories': ('asset', 'liability', 'equity', 'memorandum'),
         'date_attr': 'end_date',
         'needs_prev_year': False,
         'target': 'retained',
@@ -240,25 +271,44 @@ def _target_line(target, debit, credit, description):
 
 
 def _build_spec_lines(kind, rows, target):
-    """ساخت سطرهای پیشنهادی سند سالانه — با تفصیلی‌های هر ردیف حساب."""
+    """ساخت سطرهای پیشنهادی سند سالانه — با تفصیلی‌های هر ردیف حساب.
+
+    نکتهٔ حسابداری: **حساب‌های انتظامی** طرف مقابلِ خود را در همان گروه دارند
+    (انتظامی بدهکار ↔ انتظامی بستانکار)؛ پس در سند اختتامیه فقط برگشت می‌خورند و
+    به حساب سود و زیان/انباشته منتقل نمی‌شوند. اگر جمع آن‌ها متوازن نباشد، اختلاف
+    با حساب هدف جبران و در هشدارها اعلام می‌شود.
+    """
     lines = []
+    memo_target_balance = 0.0
     for row in rows:
         category, net = row['category'], row['net']
+        nature = row.get('nature') or getattr(row['account'], 'nature', 'debit')
         code = row['account'].code
         if kind == 'opening':
-            debit, credit = _carry_sides(category, net)
+            debit, credit = _carry_sides(category, net, nature)
             lines.append(_row_line(row, debit, credit, f'ماندهٔ سال قبل {code}'))
             continue
         if kind == 'closing':
-            (debit, credit), (td, tc) = _zero_sides(category, net)
+            (debit, credit), (td, tc) = _zero_sides(category, net, nature)
             lines.append(_row_line(row, debit, credit, f'اختتام {code}'))
+            if category == 'memorandum':
+                memo_target_balance += td - tc
+                continue
             if target is not None and (td or tc):
                 lines.append(_target_line(target, td, tc, 'اختتام به حساب هدف'))
+            continue
+        (debit, credit), (td, tc) = _close_sides(category, net)
+        lines.append(_row_line(row, debit, credit, f'بستن {code}'))
+        if target is not None and (td or tc):
+            lines.append(_target_line(target, td, tc, 'انتقال به سود و زیان'))
+
+    if kind == 'closing' and target is not None and abs(memo_target_balance) > 0.001:
+        # جمع انتظامی‌ها متوازن نیست → همان اندازه که لازم است به حساب هدف می‌رود
+        if memo_target_balance > 0:
+            lines.append(_target_line(target, memo_target_balance, 0.0, 'جبران عدم توازن حساب‌های انتظامی'))
         else:
-            (debit, credit), (td, tc) = _close_sides(category, net)
-            lines.append(_row_line(row, debit, credit, f'بستن {code}'))
-            if target is not None and (td or tc):
-                lines.append(_target_line(target, td, tc, 'انتقال به سود و زیان'))
+            lines.append(_target_line(target, 0.0, -memo_target_balance, 'جبران عدم توازن حساب‌های انتظامی'))
+
     if kind == 'opening' and target is not None:
         diff = _round2(sum(l['debit'] for l in lines) - sum(l['credit'] for l in lines))
         if abs(diff) > 0.001:
@@ -330,6 +380,17 @@ def _existing_document(company, kind, year):
     return AccountingDocument.objects.filter(
         company=company, source_module='annual',
         source_type=ANNUAL_SPECS[kind]['source_type'], source_id=_source_id(kind, year),
+    ).first()
+
+
+def _existing_closing_of_source_year(company, year):
+    """سند اختتامیهٔ همان سال (اگر ساخته شده باشد) — برای اطلاع‌رسانی به کاربر."""
+    if year is None:
+        return None
+    return AccountingDocument.objects.filter(
+        company=company, source_module='annual',
+        source_type=ANNUAL_SPECS['closing']['source_type'],
+        source_id=_source_id('closing', year),
     ).first()
 
 
@@ -405,6 +466,29 @@ def _annual_payload(request, kind):
             f'وضعیت {existing.get_status_display()}). برای بازسازی، «جایگزینی سند موجود» را انتخاب کنید.'
         )
 
+    # حساب‌های انتظامی: طرف مقابل در همان گروه است و به سود و زیان منتقل نمی‌شوند
+    memo_lines = [
+        l for l in lines
+        if l['account'].account_type and l['account'].account_type.category == 'memorandum'
+    ]
+    memo_debit = _round2(sum(l['debit'] for l in memo_lines))
+    memo_credit = _round2(sum(l['credit'] for l in memo_lines))
+    memo_balanced = abs(memo_debit - memo_credit) <= 0.001
+    notes = []
+    if memo_lines:
+        notes.append(
+            f'{len(memo_lines)} سطر مربوط به حساب‌های انتظامی در سند گنجانده شد — '
+            + ('جمع انتظامی‌ها متوازن است، پس طرف مقابلِ آن‌ها در همان گروه حساب‌های انتظامی است '
+               'و به سود و زیان منتقل نمی‌شود.'
+               if memo_balanced else
+               'جمع انتظامی‌ها متوازن نیست؛ اختلاف آن‌ها با حساب هدف جبران شد.')
+        )
+    if _existing_closing_of_source_year(company, source_year) is not None:
+        notes.append(
+            f'مانده‌ها «پیش از بستن» سال {source_year.name} محاسبه شده‌اند؛ سند اختتامیهٔ آن سال '
+            '(که مانده‌ها را صفر می‌کند) در این محاسبه لحاظ نشده است.'
+        )
+
     return {
         'kind': kind,
         'title': spec['title'],
@@ -429,7 +513,14 @@ def _annual_payload(request, kind):
         'totals': {'debit': debit_total, 'credit': credit_total,
                    'difference': difference, 'is_balanced': abs(difference) <= 0.001},
         'aux_summary': {'with_aux': with_aux, 'without_aux': without_aux, 'accounts': len(rows)},
+        'memorandum': {
+            'lines': len(memo_lines),
+            'debit': memo_debit,
+            'credit': memo_credit,
+            'is_balanced': memo_balanced,
+        },
         'warnings': warnings,
+        'notes': notes,
         'existing': _document_json(existing),
         'needs_prev_year': spec['needs_prev_year'],
     }, None
