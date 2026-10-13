@@ -276,13 +276,13 @@ def _target_line(target, debit, credit, description):
 def _build_spec_lines(kind, rows, target):
     """ساخت سطرهای پیشنهادی سند سالانه — با تفصیلی‌های هر ردیف حساب.
 
-    نکتهٔ حسابداری: **حساب‌های انتظامی** طرف مقابلِ خود را در همان گروه دارند
-    (انتظامی بدهکار ↔ انتظامی بستانکار)؛ پس در سند اختتامیه فقط برگشت می‌خورند و
-    به حساب سود و زیان/انباشته منتقل نمی‌شوند. اگر جمع آن‌ها متوازن نباشد، اختلاف
-    با حساب هدف جبران و در هشدارها اعلام می‌شود.
+    * **افتتاحیه**: هر حساب با معین/تفصیل خودش ثبت می‌شود و اگر لازم باشد یک سطر توازن.
+    * **اختتامیه / بستن حساب‌ها**: فقط **برگشت** ماندهٔ هر حساب (با معین/تفصیل خودش)؛
+      اگر حساب‌های موقت بسته شده باشند و کتاب‌ها در تعادل باشند، جمع بدهکار و بستانکار
+      خودِ همین برگشت‌ها برابر است و **هیچ سطر حساب هدفی ساخته نمی‌شود** (بدون گردش
+      اضافی). تنها در صورت نامتعادل بودن، **یک** سطر توازن به حساب هدف اضافه می‌شود.
     """
     lines = []
-    memo_target_balance = 0.0
     for row in rows:
         category, net = row['category'], row['net']
         nature = row.get('nature') or getattr(row['account'], 'nature', 'debit')
@@ -292,32 +292,19 @@ def _build_spec_lines(kind, rows, target):
             lines.append(_row_line(row, debit, credit, f'ماندهٔ سال قبل {code}'))
             continue
         if kind == 'closing':
-            (debit, credit), (td, tc) = _zero_sides(category, net, nature)
+            debit, credit = _zero_sides(category, net, nature)[0]
             lines.append(_row_line(row, debit, credit, f'اختتام {code}'))
-            if category == 'memorandum':
-                memo_target_balance += td - tc
-                continue
-            if target is not None and (td or tc):
-                lines.append(_target_line(target, td, tc, 'اختتام به حساب هدف'))
-            continue
-        (debit, credit), (td, tc) = _close_sides(category, net)
-        lines.append(_row_line(row, debit, credit, f'بستن {code}'))
-        if target is not None and (td or tc):
-            lines.append(_target_line(target, td, tc, 'انتقال به سود و زیان'))
-
-    if kind == 'closing' and target is not None and abs(memo_target_balance) > 0.001:
-        # جمع انتظامی‌ها متوازن نیست → همان اندازه که لازم است به حساب هدف می‌رود
-        if memo_target_balance > 0:
-            lines.append(_target_line(target, memo_target_balance, 0.0, 'جبران عدم توازن حساب‌های انتظامی'))
         else:
-            lines.append(_target_line(target, 0.0, -memo_target_balance, 'جبران عدم توازن حساب‌های انتظامی'))
+            debit, credit = _close_sides(category, net)[0]
+            lines.append(_row_line(row, debit, credit, f'بستن {code}'))
 
-    if kind == 'opening' and target is not None:
-        diff = _round2(sum(l['debit'] for l in lines) - sum(l['credit'] for l in lines))
-        if abs(diff) > 0.001:
-            lines.append(_target_line(
-                target, 0.0, diff, 'توازن افتتاحیه',
-            ) if diff > 0 else _target_line(target, -diff, 0.0, 'توازن افتتاحیه'))
+    diff = _round2(sum(l['debit'] for l in lines) - sum(l['credit'] for l in lines))
+    if target is not None and abs(diff) > 0.001:
+        description = 'توازن افتتاحیه' if kind == 'opening' else 'توازن اختتامیه'
+        if diff > 0:
+            lines.append(_target_line(target, 0.0, diff, description))
+        else:
+            lines.append(_target_line(target, -diff, 0.0, description))
     return lines
 
 
@@ -377,6 +364,14 @@ def _lines_from_payload(raw_lines, company):
             'description': item.get('description') or '',
         })
     return lines
+
+
+def _temporary_balance(company, year):
+    """ماندهٔ حساب‌های موقت سال (درآمد منهای هزینه) — اگر «بستن حساب‌ها» اجرا نشده باشد صفر نیست."""
+    total = 0.0
+    for row in _balance_rows(company, year, ('revenue', 'expense', 'cost_of_sales')):
+        total += row['net'] if row['category'] == 'revenue' else -row['net']
+    return _round2(total)
 
 
 def _misclassified_memorandum_accounts(company, limit=5):
@@ -515,6 +510,26 @@ def _annual_payload(request, kind):
     rows_by_category = {}
     for r in rows:
         rows_by_category[r['category']] = rows_by_category.get(r['category'], 0) + 1
+
+    # آیا سطر توازن اضافه شده است؟ (برای سندهای برگشتی، حالت مطلوب «بدون سطر توازن» است)
+    balancing_lines = [l for l in lines if 'توازن' in (l.get('description') or '')]
+    if kind in ('closing', 'close-accounts') and lines:
+        if not balancing_lines:
+            notes.append(
+                'این سند فقط برگشتِ ماندهٔ حساب‌هاست و خودبه‌خود متوازن است — بدون هیچ سطر توازن اضافی.'
+            )
+        else:
+            temporary = _temporary_balance(company, year) if kind == 'closing' else 0.0
+            if kind == 'closing' and abs(temporary) > 0.001:
+                warnings.append(
+                    f'حساب‌های موقت سال (درآمد/هزینه/بهای تمام‌شده) بسته نشده‌اند (مانده {temporary:,.2f})؛ '
+                    'به همین دلیل یک سطر «توازن اختتامیه» به حساب هدف اضافه شد. توصیه: ابتدا «بستن حساب‌ها» را '
+                    'اجرا کنید تا سند اختتامیه تنها برگشتِ حساب‌ها و خودبه‌خود متوازن شود.'
+                )
+            else:
+                warnings.append(
+                    'کتاب‌ها در تعادل نیستند؛ یک سطر «توازن» به حساب هدف اضافه شد.'
+                )
 
     misclassified = _misclassified_memorandum_accounts(company)
     if misclassified:
