@@ -39,6 +39,34 @@ def _text(value):
     return '' if value in (None, '') else str(value)
 
 
+def _related_name(obj, field, *attrs):
+    """نامِ یک رابطه (FK) را ایمن بخوان.
+
+    نام فیلد در مدل‌های مختلف یکسان نیست (مثلاً «امضاکننده» فیلد `full_name` دارد و
+    «ارز» فیلد `name`)، پس چند نام ممکن بررسی می‌شود و در نبود همه، رشتهٔ خالی
+    برمی‌گردد تا خروجی هرگز خطا ندهد.
+    """
+    related = getattr(obj, field, None)
+    if related is None:
+        return ''
+    for attr in attrs:
+        value = getattr(related, attr, None)
+        if value:
+            return str(value)
+    return ''
+
+
+def _display(obj, attr):
+    """متن نمایشی یک فیلد دارای choices (مثلاً get_status_display)."""
+    getter = getattr(obj, f'get_{attr}_display', None)
+    if callable(getter):
+        try:
+            return getter()
+        except Exception:  # noqa: BLE001
+            return ''
+    return ''
+
+
 def _sheet(wb, title, headers, first=False):
     """ساخت شیت راست‌به‌چپ با سرستون‌های قالب‌بندی‌شده و ردیف‌های یخ‌زده."""
     from openpyxl.styles import Alignment, Font, PatternFill
@@ -75,13 +103,12 @@ def _append(ws, values):
 
 
 def _party_name(contract):
-    return getattr(contract.party, 'name', '') if contract.party_id else ''
+    return _related_name(contract, 'party', 'name')
 
 
 def _type_label(contract):
-    if contract.contract_type_master_id:
-        return contract.contract_type_master.name or ''
-    return contract.get_contract_type_display()
+    label = _related_name(contract, 'contract_type_master', 'name')
+    return label or _display(contract, 'contract_type')
 
 
 def _project_names(contract):
@@ -94,12 +121,17 @@ def _project_names(contract):
             ids.append(item['project'])
     if contract.project_id and not ids:
         ids.append(contract.project_id)
-    if ids:
+    if not ids:
+        return names
+    try:
         from projects.models import Project
-        mapping = dict(Project.objects.filter(id__in=[i for i in ids if str(i).isdigit()])
-                       .values_list('id', 'name'))
-        names = [mapping.get(int(i), f'#{i}') for i in ids if str(i).isdigit()]
-    return names
+        numeric = [i for i in ids if str(i).isdigit()]
+        mapping = dict(
+            Project.objects.filter(id__in=numeric).values_list('id', 'name')
+        )
+        return [mapping.get(int(i), f'#{i}') for i in ids]
+    except Exception:  # noqa: BLE001 — نبود مدل/جدول پروژه نباید خروجی را قطع کند
+        return [f'#{i}' for i in ids]
 
 
 
@@ -156,17 +188,17 @@ def _contracts_sheet(wb, contracts, first=False):
             index,
             _text(contract.number),
             _text(contract.subject),
-            _party_name(contract),
-            contract.party.get_person_type_display() if contract.party_id else '',
+            _related_name(contract, 'party', 'name'),
+            _display(contract.party, 'person_type') if contract.party_id else '',
             _type_label(contract),
             _text(contract.category),
-            contract.get_status_display(),
+            _display(contract, 'status'),
             amount,
-            _text(contract.currency.name if contract.currency_id else 'ریال'),
+            _related_name(contract, 'currency', 'name', 'code') or 'ریال',
             _fa_date(contract.signing_date),
             _fa_date(contract.start_date),
             _fa_date(contract.end_date),
-            _text(contract.signatory.name if contract.signatory_id else ''),
+            _related_name(contract, 'signatory', 'full_name', 'name'),
             '، '.join(_project_names(contract)),
             _text(contract.project_name),
             _text(contract.project_location),
@@ -175,7 +207,7 @@ def _contracts_sheet(wb, contracts, first=False):
             _num(contract.retention_percent),
             _text(contract.warranty_period),
             _num(contract.guarantee_amount),
-            contract.get_guarantee_type_display() if contract.guarantee_type else '',
+            _display(contract, 'guarantee_type'),
             len(bundle['invoices']),
             bundle['invoice_total'],
             len(bundle['statements']),
@@ -189,8 +221,8 @@ def _contracts_sheet(wb, contracts, first=False):
             len(bundle['addendums']),
             addendum_change,
             len(bundle['disputes']),
-            _text(contract.party.phone if contract.party_id else ''),
-            _text(contract.party.email if contract.party_id else ''),
+            _related_name(contract, 'party', 'phone', 'mobile'),
+            _related_name(contract, 'party', 'email'),
             _fa_date(contract.created_at.date() if contract.created_at else None),
             _fa_date(contract.updated_at.date() if contract.updated_at else None),
         ])
@@ -227,7 +259,7 @@ def _terms_sheet(wb, contracts):
             _text(contract.number),
             _text(contract.subject),
             _party_name(contract),
-            contract.get_status_display(),
+            _display(contract, 'status'),
             _text(contract.payment_terms),
             _text(contract.delivery_terms),
             _text(contract.penalty_terms),
@@ -314,7 +346,7 @@ def _guarantees_sheet(wb, contracts):
             index += 1
             _append(ws, [
                 index, _text(contract.number), _text(contract.subject),
-                guarantee.get_guarantee_type_display(), guarantee.get_instrument_type_display(),
+                _display(guarantee, 'guarantee_type'), _display(guarantee, 'instrument_type'),
                 _text(guarantee.number), _num(guarantee.amount),
                 _fa_date(guarantee.issue_date), _fa_date(guarantee.expiry_date),
                 _text(guarantee.bank), _text(guarantee.check_number), _text(guarantee.check_bank),
@@ -322,7 +354,7 @@ def _guarantees_sheet(wb, contracts):
                 _fa_date(guarantee.promissory_due_date), _text(guarantee.guarantee_number),
                 _fa_date(guarantee.guarantee_expiry_date),
                 'بله' if guarantee.is_released else 'خیر', _fa_date(guarantee.release_date),
-                guarantee.get_last_action_display() if guarantee.last_action else '',
+                _display(guarantee, 'last_action'),
                 _fa_date(guarantee.last_action_date), _text(guarantee.note),
             ])
     return ws
@@ -417,7 +449,7 @@ def _payments_sheet(wb, contracts):
             _append(ws, [
                 index, _text(contract.number), _text(contract.subject),
                 _fa_date(payment.date), _num(payment.amount),
-                _text(payment.currency.name if payment.currency_id else 'ریال'),
+                _related_name(payment, 'currency', 'name', 'code') or 'ریال',
                 _text(payment.reference), _text(payment.method),
                 _text(payment.invoice.number if payment.invoice_id else ''),
                 _text(payment.statement.number if payment.statement_id else ''),
@@ -478,8 +510,8 @@ def _disputes_sheet(wb, contracts):
             index += 1
             _append(ws, [
                 index, _text(contract.number), _text(contract.subject),
-                _text(dispute.title), dispute.get_dispute_type_display(),
-                dispute.get_severity_display(), dispute.get_status_display(),
+                _text(dispute.title), _display(dispute, 'dispute_type'),
+                _display(dispute, 'severity'), _display(dispute, 'status'),
                 _num(dispute.claim_amount), _fa_date(dispute.opened_date),
                 _fa_date(dispute.resolved_date), _text(dispute.description),
                 _text(dispute.resolution),

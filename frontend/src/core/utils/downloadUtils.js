@@ -14,14 +14,19 @@ const filenameFromDisposition = (disposition, fallback) => {
 /**
  * خواندن پیام خطا وقتی پاسخ سرور Blob است (خطاهای DRF مثل 401/400).
  */
-const messageFromBlob = async (blob) => {
+const messageFromBlob = async (blob, status) => {
   try {
     const text = await blob.text();
+    const trimmed = (text || '').trim();
+    // خطاهای HTML (مثل صفحهٔ 500 جنگو) به پیام کوتاه و قابل‌فهم تبدیل می‌شوند
+    if (trimmed.startsWith('<') && /<!doctype|<html/i.test(trimmed.slice(0, 200))) {
+      return `خطای سرور (${status || 500}) — گزارش خطا در فایل لاگ سرور ثبت شده است.`;
+    }
     try {
-      const data = JSON.parse(text);
-      return data?.detail || data?.error || data?.message || text.slice(0, 300) || 'خطا در تهیهٔ فایل';
+      const data = JSON.parse(trimmed);
+      return data?.detail || data?.error || data?.message || trimmed.slice(0, 300) || 'خطا در تهیهٔ فایل';
     } catch {
-      return text.slice(0, 300) || 'خطا در تهیهٔ فایل';
+      return trimmed.slice(0, 300) || 'خطا در تهیهٔ فایل';
     }
   } catch {
     return 'خطا در تهیهٔ فایل';
@@ -44,7 +49,7 @@ const downloadFile = async (url, { params, filename = '', fallbackName = 'downlo
   } catch (error) {
     const data = error?.response?.data;
     if (data instanceof Blob) {
-      throw new Error(await messageFromBlob(data));
+      throw new Error(await messageFromBlob(data, error?.response?.status));
     }
     throw error;
   }

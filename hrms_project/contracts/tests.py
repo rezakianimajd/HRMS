@@ -6,6 +6,7 @@ from django.test import TestCase
 from contracts.excel_export import build_contracts_workbook
 from contracts.models import Addendum, Contract, ContractParty, Guarantee, Invoice, Payment, Statement
 from core.models import Company
+from settings_app.models import Currency, Signatory
 
 
 def make_company(schema_name='testco-ctr', name='شرکت تست قرارداد'):
@@ -22,9 +23,17 @@ class ContractExcelExportTests(TestCase):
         self.party = ContractParty.objects.create(
             company=self.company, name='شرکت الف', party_type='contractor',
         )
+        # «امضاکننده» در مدل Signatory فیلد full_name دارد (نه name) و «ارز» فیلد name
+        self.signatory = Signatory.objects.create(
+            company=self.company, full_name='مدیرعامل تست', position='مدیرعامل',
+        )
+        self.currency = Currency.objects.create(
+            company=self.company, code='IRR', name='ریال', symbol='﷼', exchange_rate=1,
+        )
         self.contract = Contract.objects.create(
             company=self.company, number='C-1', subject='قرارداد تست', party=self.party,
             contract_type='construction', status='active', amount=10_000_000,
+            signatory=self.signatory, currency=self.currency,
             start_date=date(2025, 3, 21), end_date=date(2026, 3, 20),
             payment_terms='شرایط پرداخت', penalty_terms='وجه التزام',
             project_allocations=[{'project': 1, 'percentage': 100}],
@@ -77,6 +86,9 @@ class ContractExcelExportTests(TestCase):
         self.assertEqual(data['جمع صورت‌وضعیت‌ها (قابل پرداخت)'], 980_000.0)
         self.assertEqual(data['جمع پرداخت‌ها'], 980_000.0)
         self.assertEqual(data['مانده پرداخت‌نشده'], 9_020_000.0)
+        # «امضاکننده» (full_name) و «ارز» درست خوانده شوند — رگرسیون خطای 500
+        self.assertEqual(data['امضاکننده'], 'مدیرعامل تست')
+        self.assertEqual(data['ارز'], 'ریال')
         # تاریخ شمسی
         self.assertRegex(str(data['تاریخ شروع']), r'^\d{4}/\d{2}/\d{2}$')
 
