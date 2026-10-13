@@ -326,3 +326,91 @@ class ContractGuaranteeStatusTests(TestCase):
         self.assertEqual(result['requirements'][0]['status'], 'provided')
         self.assertEqual(result['summary']['unrequired_count'], 0)
 
+
+class GuaranteeKindOptionsTests(TestCase):
+    """یکسانی گزینه‌های «نوع ضمانت» قرارداد و «نوع تضمین» تضامین در همهٔ لایه‌ها."""
+
+    NEW_KINDS = [
+        'deduction_refund',
+        'warranty_period',
+        'maintenance_period',
+        'funds_refund',
+        'insurance_social',
+        'materials_supply',
+    ]
+
+    def test_contract_and_guarantee_use_the_same_choices(self):
+        from contracts.models import Contract, Guarantee
+
+        self.assertIs(Contract.GuaranteeKind, Guarantee.GuaranteeType)
+        self.assertEqual(list(Contract.GuaranteeKind.choices),
+                         list(Guarantee.GuaranteeType.choices))
+
+    def test_field_choices_of_both_models_match(self):
+        from contracts.models import Contract, Guarantee
+
+        contract_field = Contract._meta.get_field('guarantee_type')
+        guarantee_field = Guarantee._meta.get_field('guarantee_type')
+        self.assertEqual(list(contract_field.choices), list(guarantee_field.choices))
+
+    def test_new_kinds_are_available_and_other_is_last(self):
+        from contracts.models import Contract
+
+        codes = [code for code, _label in Contract.GuaranteeKind.choices]
+        for kind in self.NEW_KINDS:
+            self.assertIn(kind, codes)
+        self.assertEqual(codes[-1], 'other')  # «سایر» همیشه آخر
+        self.assertEqual(len(codes), len(set(codes)))
+
+    def test_codes_fit_the_field_max_length(self):
+        from contracts.models import Contract
+
+        longest = max(len(code) for code, _label in Contract.GuaranteeKind.choices)
+        self.assertLessEqual(longest, Contract._meta.get_field('guarantee_type').max_length)
+
+    def test_addendum_schema_uses_the_same_options(self):
+        from contracts.addendum_schema import SUBJECTS
+        from contracts.models import Contract
+
+        expected = [(code, str(label)) for code, label in Contract.GuaranteeKind.choices]
+        field = None
+        for subject in SUBJECTS:
+            for row in subject.get('fields', []):
+                if row.get('key') == 'guarantee_kind':
+                    field = row
+        self.assertIsNotNone(field, 'فیلد guarantee_kind در طرح الحاقیه پیدا نشد.')
+        self.assertEqual([(c['value'], c['label']) for c in field['choices']], expected)
+
+    def _frontend_file(self, filename):
+        from django.conf import settings
+
+        path = settings.BASE_DIR.parent / 'frontend' / 'src' / 'core' / 'constants' / filename
+        if not path.exists():
+            self.skipTest(f'فایل فرانت‌اند در دسترس نیست: {path}')
+        return path.read_text(encoding='utf-8')
+
+    def test_frontend_guarantee_types_matches_backend(self):
+        """فایل ثابت‌های فرانت‌اند باید همان گزینه‌ها و همان ترتیب بک‌اند را داشته باشد."""
+        import re
+
+        from contracts.models import Contract
+
+        text = self._frontend_file('guaranteeTypes.js')
+        pairs = re.findall(r"value: '([a-z_]+)', label: '([^']+)'", text)
+        self.assertTrue(pairs, 'جفت‌های value/label در guaranteeTypes.js خوانده نشد.')
+        self.assertEqual(pairs, [(code, str(label)) for code, label in Contract.GuaranteeKind.choices])
+
+    def test_frontend_addendum_choices_match_backend(self):
+        """گزینه‌های «نوع تضمین» فیلد الحاقیه در فایل تولیدشدهٔ فرانت‌اند هم هم‌خوان باشد."""
+        import re
+
+        from contracts.models import Contract
+
+        text = self._frontend_file('addendumSubjects.js')
+        start = text.index('"key": "guarantee_kind"')
+        tail = text[start:]
+        block = tail[:tail.index('"key":', 10)]  # فقط بدنهٔ همین فیلد تا فیلد بعدی
+        pairs = re.findall(r'"value": "([a-z_]+)",\s*"label": "([^"]+)"', block)
+        self.assertTrue(pairs, 'گزینه‌های guarantee_kind در addendumSubjects.js خوانده نشد.')
+        self.assertEqual(pairs, [(code, str(label)) for code, label in Contract.GuaranteeKind.choices])
+

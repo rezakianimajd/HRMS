@@ -190,19 +190,47 @@ export const ADDENDUM_SCHEMA = {
           "choices": [
             {
               "value": "performance",
-              "label": "حسن انجام کار"
+              "label": "ضمانت حسن انجام کار"
             },
             {
               "value": "advance",
-              "label": "پیش‌پرداخت"
+              "label": "ضمانت پیش‌پرداخت"
             },
             {
               "value": "bid",
-              "label": "شرکت در مناقصه"
+              "label": "ضمانت شرکت در مناقصه"
             },
             {
               "value": "execution",
-              "label": "اجرای تعهدات"
+              "label": "ضمانت اجرای تعهدات"
+            },
+            {
+              "value": "insurance",
+              "label": "سپرده حق بیمه"
+            },
+            {
+              "value": "deduction_refund",
+              "label": "ضمانت استرداد کسور وجه‌الضمان"
+            },
+            {
+              "value": "warranty_period",
+              "label": "ضمانت‌نامه دوره تضمین یا رفع عیب"
+            },
+            {
+              "value": "maintenance_period",
+              "label": "ضمانت‌نامه دوره نگهداری"
+            },
+            {
+              "value": "funds_refund",
+              "label": "ضمانت‌نامه بازپرداخت یا استرداد وجوه"
+            },
+            {
+              "value": "insurance_social",
+              "label": "ضمانت‌نامه تعهدات بیمه و تأمین اجتماعی"
+            },
+            {
+              "value": "materials_supply",
+              "label": "ضمانت‌نامه تأمین مصالح و تجهیزات"
             },
             {
               "value": "other",

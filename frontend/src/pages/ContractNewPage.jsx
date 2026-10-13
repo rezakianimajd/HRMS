@@ -20,6 +20,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
+import { GUARANTEE_TYPES } from '../core/constants/guaranteeTypes';
 
 const TYPE_LABELS = {
   construction: 'پیمانکاری / اجرا', purchase: 'خرید', tender: 'مناقصه',
@@ -29,15 +30,6 @@ const TYPE_LABELS = {
 const STATUS_LABELS = {
   draft: 'پیش‌نویس', active: 'در حال اجرا', suspended: 'متوقف',
   completed: 'تکمیل شده', terminated: 'فسخ شده',
-};
-
-const GUARANTEE_TYPES = {
-  performance: 'ضمانت حسن انجام کار',
-  advance: 'ضمانت پیش‌پرداخت',
-  bid: 'ضمانت شرکت در مناقصه',
-  execution: 'ضمانت اجرای تعهدات',
-  insurance: 'سپرده حق بیمه',
-  other: 'سایر',
 };
 
 const fieldSx = {
@@ -355,7 +347,7 @@ const ContractNewPage = () => {
         </Grid>
 
         {/* ضمانت‌ها */}
-        <SectionHeader icon={<LockIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#f59e0b" title="ضمانت‌ها (حسن انجام کار، پیش‌پرداخت، مناقصه، اجرای تعهدات، حق بیمه و ...)">
+        <SectionHeader icon={<LockIcon sx={{ color: '#fff', fontSize: 16 }} />} color="#f59e0b" title="ضمانت‌ها (حسن انجام کار، پیش‌پرداخت، مناقصه، اجرای تعهدات، حق بیمه، دوره تضمین/نگهداری، بازپرداخت و ...)">
           <Button size="small" startIcon={<AddCircleIcon />} onClick={addGuaranteeItem} sx={{ color: '#f59e0b', textTransform: 'none' }}>افزودن ضمانت</Button>
         </SectionHeader>
         {guaranteeItems.length === 0 ? (
@@ -370,7 +362,7 @@ const ContractNewPage = () => {
                     <Grid item xs={12} sm={3}>
                       <FormControl size="small" fullWidth sx={fieldSx}><InputLabel>نوع ضمانت</InputLabel>
                         <Select value={g.type || 'performance'} label="نوع ضمانت" onChange={e => updateGuaranteeItem(idx, 'type', e.target.value)}>
-                          {Object.entries(GUARANTEE_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+                          {GUARANTEE_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
                         </Select>
                       </FormControl>
                     </Grid>

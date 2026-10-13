@@ -24,13 +24,7 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import { glassPaper } from '../core/theme/tokens';
-
-const TYPE_LABELS = {
-  performance: 'ضمانت حسن انجام کار',
-  advance: 'ضمانت پیش‌پرداخت',
-  bid: 'ضمانت شرکت در مناقصه',
-  other: 'سایر',
-};
+import { GUARANTEE_TYPES, GUARANTEE_TYPE_LABELS as TYPE_LABELS } from '../core/constants/guaranteeTypes';
 
 const INSTRUMENT_LABELS = {
   check: 'چک',
@@ -341,7 +335,7 @@ const GuaranteesPage = () => {
               <FormControl size="small" fullWidth>
                 <InputLabel>نوع تضمین</InputLabel>
                 <Select value={form.guarantee_type} label="نوع تضمین" onChange={e => setForm(p => ({ ...p, guarantee_type: e.target.value }))}>
-                  {Object.entries(TYPE_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
+                  {GUARANTEE_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>

@@ -102,6 +102,7 @@ $BackendFiles = @(
     'hrms_project/contracts/guarantee_status.py',
     'hrms_project/contracts/migrations/0022_addendum_subject_type_alter_addendum_subject.py',
     'hrms_project/contracts/migrations/0023_addendum_advance_change_addendum_new_advance_payment_and_more.py',
+    'hrms_project/contracts/migrations/0024_expand_guarantee_kind_choices.py',
     'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',
     'hrms_project/projects/migrations/0005_wbstemplatenode_budgetline_created_by_and_more.py',
     'hrms_project/contracts/migrations/0021_contract_contract_alloc_gin_idx_and_more.py',

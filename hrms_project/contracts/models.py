@@ -10,6 +10,29 @@ from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
 
 
+class GuaranteeKind(models.TextChoices):
+    """نوع ضمانت / تضمین — **منبع یگانه** برای هر دو جای کاربرد.
+
+    «نوع ضمانت» در قرارداد (`Contract.guarantee_type` و اقلام `guarantee_items`) و
+    «نوع تضمین» در تضامین ثبت‌شده (`Guarantee.guarantee_type`) هر دو به همین تعریف
+    ارجاع می‌دهند (Contract.GuaranteeKind و Guarantee.GuaranteeType)، پس گزینه‌های
+    دو صفحه هرگز از هم جدا نمی‌شوند.
+    """
+
+    PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
+    ADVANCE = 'advance', _('ضمانت پیش‌پرداخت')
+    BID = 'bid', _('ضمانت شرکت در مناقصه')
+    EXECUTION = 'execution', _('ضمانت اجرای تعهدات')
+    INSURANCE = 'insurance', _('سپرده حق بیمه')
+    DEDUCTION_REFUND = 'deduction_refund', _('ضمانت استرداد کسور وجه‌الضمان')
+    WARRANTY_PERIOD = 'warranty_period', _('ضمانت‌نامه دوره تضمین یا رفع عیب')
+    MAINTENANCE_PERIOD = 'maintenance_period', _('ضمانت‌نامه دوره نگهداری')
+    FUNDS_REFUND = 'funds_refund', _('ضمانت‌نامه بازپرداخت یا استرداد وجوه')
+    INSURANCE_SOCIAL = 'insurance_social', _('ضمانت‌نامه تعهدات بیمه و تأمین اجتماعی')
+    MATERIALS_SUPPLY = 'materials_supply', _('ضمانت‌نامه تأمین مصالح و تجهیزات')
+    OTHER = 'other', _('سایر')
+
+
 class ContractParty(BaseModel):
     """A contractor / vendor / supplier (طرف قرارداد)."""
 
@@ -86,13 +109,8 @@ class Contract(BaseModel):
         COMPLETED = 'completed', _('تکمیل شده')
         TERMINATED = 'terminated', _('فسخ شده')
 
-    class GuaranteeKind(models.TextChoices):
-        PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
-        ADVANCE = 'advance', _('ضمانت پیش‌پرداخت')
-        BID = 'bid', _('ضمانت شرکت در مناقصه')
-        EXECUTION = 'execution', _('ضمانت اجرای تعهدات')
-        INSURANCE = 'insurance', _('سپرده حق بیمه')
-        OTHER = 'other', _('سایر')
+    # «نوع ضمانت» قرارداد — همان گزینه‌های module-level (منبع یگانه با Guarantee.GuaranteeType)
+    GuaranteeKind = GuaranteeKind
 
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره قرارداد'))
     subject = models.CharField(max_length=300, verbose_name=_('موضوع قرارداد'))
@@ -436,13 +454,8 @@ class Guarantee(BaseModel):
     Lifecycle actions depend on the kind.
     """
 
-    class GuaranteeType(models.TextChoices):
-        PERFORMANCE = 'performance', _('ضمانت حسن انجام کار')
-        ADVANCE = 'advance', _('ضمانت پیش‌پرداخت')
-        BID = 'bid', _('ضمانت شرکت در مناقصه')
-        EXECUTION = 'execution', _('ضمانت اجرای تعهدات')
-        INSURANCE = 'insurance', _('سپرده حق بیمه')
-        OTHER = 'other', _('سایر')
+    # «نوع تضمین» تضامین ثبت‌شده — همان گزینه‌های Contract.guarantee_type (منبع یگانه)
+    GuaranteeType = GuaranteeKind
 
     class InstrumentType(models.TextChoices):
         CHECK = 'check', _('چک')

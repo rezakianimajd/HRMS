@@ -28,6 +28,7 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import { GUARANTEE_TYPE_LABELS } from '../core/constants/guaranteeTypes';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { glassPaper, STATUS_LABELS, STATUS_COLORS, SimpleEntityList } from './projects/ProjectsShared';
 
@@ -716,7 +717,7 @@ const ProjectProfilePage = () => {
                     <TableRow key={`${g.contract_id}-${g.id}`} hover>
                       <TableCell sx={numSx}>{toPersianDigits(g.number || '—')}</TableCell>
                       <TableCell sx={numSx}>{toPersianDigits(g.contract_number || '—')}</TableCell>
-                      <TableCell sx={{ fontFamily: FONT }}>{g.guarantee_type || '—'}</TableCell>
+                      <TableCell sx={{ fontFamily: FONT }}>{GUARANTEE_TYPE_LABELS[g.guarantee_type] || g.guarantee_type || '—'}</TableCell>
                       <TableCell sx={{ ...numSx, fontWeight: 700 }}>{money(g.amount)}</TableCell>
                       <TableCell sx={{ fontFamily: FONT }}>{g.bank || '—'}</TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>{fmtDate(g.issue_date)}</TableCell>
