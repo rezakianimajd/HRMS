@@ -21,6 +21,11 @@ from projects.cost_models import (  # noqa: F401
     ProgressStatement, ProgressStatementItem,
 )
 
+# تعاریف اولیهٔ پروژه (نگاشت کل/معین/تفصیل) — در همین اپ برای شناسایی مدل‌ها.
+from projects.definition_models import (  # noqa: F401
+    ProjectAccountDefinition, ProjectAccountDefinitionAux,
+)
+
 from django.core.exceptions import ValidationError
 
 

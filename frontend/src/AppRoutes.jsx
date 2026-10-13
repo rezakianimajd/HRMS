@@ -61,6 +61,7 @@ import ProjectsStructurePage from './pages/ProjectsStructurePage';
 import ProjectsResourcesPage from './pages/ProjectsResourcesPage';
 import ProjectsCostSourcesPage from './pages/ProjectsCostSourcesPage';
 import ProjectsOBSPage from './pages/ProjectsOBSPage';
+import ProjectDefinitionsPage from './pages/ProjectDefinitionsPage';
 import ProjectTypesPage from './pages/ProjectTypesPage';
 import ProjectProfilePage from './pages/ProjectProfilePage';
 import PriceListPage from './pages/PriceListPage';
@@ -323,6 +324,8 @@ const AppRoutes = () => {
       <Route path="/projects/cost-sources" element={<ProtectedLayout><ProjectsCostSourcesPage /></ProtectedLayout>} />
       <Route path="/projects/obs" element={<ProtectedLayout><ProjectsOBSPage /></ProtectedLayout>} />
       <Route path="/projects/types" element={<ProtectedLayout><ProjectTypesPage /></ProtectedLayout>} />
+      <Route path="/projects/definitions" element={<ProtectedLayout><ProjectDefinitionsPage /></ProtectedLayout>} />
+
       <Route path="/projects/:id" element={<ProtectedLayout><ProjectProfilePage /></ProtectedLayout>} />
       <Route path="/projects/price-lists" element={<ProtectedLayout><PriceListPage /></ProtectedLayout>} />
       <Route path="/projects/commercial" element={<ProtectedLayout><CommercialPage /></ProtectedLayout>} />

@@ -12,6 +12,9 @@ from projects.cost_views import (
     BudgetLineViewSet, CommittedCostViewSet, CostTransactionViewSet,
     CostTransactionLineViewSet, ProgressStatementViewSet, ProgressStatementItemViewSet,
 )
+from projects.definition_views import (
+    ProjectAccountDefinitionViewSet, ProjectAuxiliaryViewSet,
+)
 from projects.schedule_views import (
     ActivityProgressViewSet, ActivityRelationshipViewSet, ActivityViewSet,
     BaselineViewSet, CalendarExceptionViewSet, ResourceAssignmentViewSet,
@@ -43,6 +46,11 @@ router.register(r'cost-transactions', CostTransactionViewSet, basename='cost-tra
 router.register(r'cost-transaction-lines', CostTransactionLineViewSet, basename='cost-transaction-line')
 router.register(r'progress-statements', ProgressStatementViewSet, basename='progress-statement')
 router.register(r'progress-statement-items', ProgressStatementItemViewSet, basename='progress-statement-item')
+
+# ---------------- تعاریف اولیهٔ پروژه: نگاشت کل/معین/تفصیل ----------------
+router.register(r'project-account-definitions', ProjectAccountDefinitionViewSet,
+                basename='project-account-definition')
+router.register(r'project-auxiliaries', ProjectAuxiliaryViewSet, basename='project-auxiliary')
 
 # ------------------------- فاز ۱: زمان‌بندی و منابع -------------------------
 router.register(r'work-calendars', WorkCalendarViewSet, basename='work-calendar')

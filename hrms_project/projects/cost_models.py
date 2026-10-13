@@ -165,6 +165,39 @@ class CostTransactionLine(BaseModel, AuditableModel):
         related_name='cost_lines', verbose_name=_('مسئول (OBS)'),
     )
     description = models.CharField(max_length=250, blank=True, verbose_name=_('شرح'))
+    # --- کدینگ حسابداری ردیف (بر پایهٔ «تعاریف اولیهٔ پروژه») ---
+    account_definition = models.ForeignKey(
+        'projects.ProjectAccountDefinition', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='cost_lines', verbose_name=_('تعریف حسابداری'),
+    )
+    general_account = models.ForeignKey(
+        'accounting.Account', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('حساب کل'),
+    )
+    account = models.ForeignKey(
+        'accounting.Account', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('حساب معین'),
+    )
+    cost_center = models.ForeignKey(
+        'accounting.CostCenter', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('مرکز هزینه'),
+    )
+    auxiliary_1 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('تفصیل یک'),
+    )
+    auxiliary_2 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('تفصیل دو'),
+    )
+    auxiliary_3 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('تفصیل سه'),
+    )
+    coding_note = models.CharField(
+        max_length=250, blank=True, verbose_name=_('یادداشت کدینگ'),
+        help_text=_('توضیح خودکار/دستی محل ثبت این ردیف.'),
+    )
     quantity = models.DecimalField(max_digits=18, decimal_places=4, default=0, verbose_name=_('مقدار'))
     unit = models.CharField(max_length=30, blank=True, verbose_name=_('واحد'))
     unit_cost = models.DecimalField(max_digits=18, decimal_places=4, default=0, verbose_name=_('نرخ واحد'))

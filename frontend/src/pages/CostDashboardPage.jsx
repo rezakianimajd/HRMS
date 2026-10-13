@@ -115,6 +115,8 @@ const CostTransactionsManager = ({ projectId }) => {
   const qc = useQueryClient();
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState({ number: '', date: '', cost_source: '', description: '' });
+  const [coding, setCoding] = useState({ definition: '', line_description: '', amount: '' });
+  const [preview, setPreview] = useState(null);
 
   const { data: sources } = useQuery({ queryKey: ['cost-sources'], queryFn: () => axiosInstance.get('/cost-sources/').then(r => r.data) });
   const sourceList = Array.isArray(sources) ? sources : sources?.results || [];
@@ -122,9 +124,46 @@ const CostTransactionsManager = ({ projectId }) => {
   const { data: raw } = useQuery({ queryKey: ['cost-transactions', projectId], queryFn: () => axiosInstance.get('/cost-transactions/', { params: { project: projectId } }).then(r => r.data) });
   const list = Array.isArray(raw) ? raw : raw?.results || [];
 
+  // تعاریف اولیهٔ پروژه (نگاشت کل/معین/تفصیل) برای انتخاب محل ثبت هزینه
+  const { data: definitionData } = useQuery({
+    queryKey: ['effective-definitions', projectId],
+    queryFn: () => axiosInstance.get('/projects/project-account-definitions/effective/', { params: { project: projectId } }).then(r => r.data),
+    enabled: !!projectId && dialog,
+  });
+  const definitions = definitionData?.definitions || [];
+
+  const resolve = useMutation({
+    mutationFn: () => axiosInstance.post('/projects/cost-transaction-lines/resolve/', {
+      project: projectId, definition: coding.definition, create: false,
+    }).then(r => r.data),
+    onSuccess: (data) => setPreview(data),
+  });
+
+  const reset = () => {
+    setForm({ number: '', date: '', cost_source: '', description: '' });
+    setCoding({ definition: '', line_description: '', amount: '' });
+    setPreview(null);
+  };
+
   const create = useMutation({
-    mutationFn: (p) => axiosInstance.post('/cost-transactions/', p),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['cost-transactions'] }); setDialog(false); setForm({ number: '', date: '', cost_source: '', description: '' }); },
+    mutationFn: async (payload) => {
+      const tx = await axiosInstance.post('/cost-transactions/', payload);
+      if (coding.definition) {
+        const amount = Number(coding.amount) || 0;
+        await axiosInstance.post('/cost-transaction-lines/', {
+          transaction: tx.data.id,
+          account_definition: coding.definition,
+          description: coding.line_description || payload.description || 'ردیف هزینه',
+          quantity: 1, unit_cost: amount, amount, net_amount: amount,
+        });
+      }
+      return tx.data;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['cost-transactions'] });
+      setDialog(false);
+      reset();
+    },
   });
 
   return (
@@ -138,11 +177,20 @@ const CostTransactionsManager = ({ projectId }) => {
           <Paper key={t.id} variant="outlined" sx={{ p: 1, borderRadius: '10px' }}>
             <Typography variant="body2" fontWeight={700}>{t.number || '──'} · {toJalali(t.date)} · {formatPersianNumber(t.total_amount)}</Typography>
             <Typography variant="caption" color="textSecondary">{t.description}</Typography>
+            {(t.lines || []).length > 0 && (
+              <Stack spacing={0.4} sx={{ mt: 0.5 }}>
+                {t.lines.map(line => (
+                  <Typography key={line.id} variant="caption" sx={{ color: '#6d28d9' }}>
+                    {line.description || 'ردیف'} — {line.coding_preview || 'بدون کدینگ'}
+                  </Typography>
+                ))}
+              </Stack>
+            )}
           </Paper>
         ))}
         {list.length === 0 && <Typography variant="caption" color="textSecondary" textAlign="center">هزینه‌ای ثبت نشده</Typography>}
       </Stack>
-      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="xs" fullWidth>
+      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
         <DialogTitle>تراکنش هزینه</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <TextField size="small" label="شماره سند" value={form.number} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} />
@@ -153,6 +201,47 @@ const CostTransactionsManager = ({ projectId }) => {
             </Select>
           </FormControl>
           <TextField size="small" label="توضیح" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+
+          <Divider textAlign="right">
+            <Typography variant="caption" fontWeight={800} color="#6d28d9">کدینگ هزینه (تعاریف اولیهٔ پروژه)</Typography>
+          </Divider>
+          <FormControl size="small" fullWidth><InputLabel>تعریف حسابداری</InputLabel>
+            <Select value={coding.definition || ''} label="تعریف حسابداری"
+              onChange={e => { setCoding(p => ({ ...p, definition: e.target.value })); setPreview(null); }}>
+              <MenuItem value="">— بدون کدینگ —</MenuItem>
+              {definitions.map(d => <MenuItem key={d.id} value={d.id}>{d.title} ({d.kind_display})</MenuItem>)}
+            </Select>
+          </FormControl>
+          {definitions.length === 0 && (
+            <Alert severity="info" sx={{ py: 0, borderRadius: '10px' }}>
+              <Typography variant="caption">
+                برای این پروژه تعریفی ثبت نشده است؛ از «تنظیمات و تعاریف ← مدیریت پروژه ← تعاریف اولیه» استفاده کنید.
+              </Typography>
+            </Alert>
+          )}
+          <Grid container spacing={1.5}>
+            <Grid item xs={7}>
+              <TextField size="small" fullWidth label="شرح ردیف" value={coding.line_description}
+                onChange={e => setCoding(p => ({ ...p, line_description: e.target.value }))} />
+            </Grid>
+            <Grid item xs={5}>
+              <TextField size="small" fullWidth type="number" label="مبلغ ردیف" value={coding.amount}
+                onChange={e => setCoding(p => ({ ...p, amount: e.target.value }))} />
+            </Grid>
+          </Grid>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <Button size="small" variant="outlined" disabled={!coding.definition}
+              onClick={() => resolve.mutate()}>پیش‌نمایش کدینگ</Button>
+            {preview ? (
+              <Chip size="small" color={preview.ready ? 'success' : 'warning'}
+                label={preview.preview || 'کدینگ ناقص'} sx={{ maxWidth: 340 }} />
+            ) : null}
+          </Stack>
+          {preview?.warnings?.length ? (
+            <Alert severity="warning" sx={{ py: 0, borderRadius: '10px' }}>
+              <Typography variant="caption">{preview.warnings.join(' | ')}</Typography>
+            </Alert>
+          ) : null}
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setDialog(false)}>انصراف</Button>

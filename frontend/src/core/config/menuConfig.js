@@ -164,7 +164,10 @@ const settingsMenu = [
     id: 'settings-projects',
     title: 'مدیریت پروژه',
     color: '#8b5cf6',
-    items: [comingSoon('/modules/projects', 'mod-projects', 'مدیریت پروژه', <InsightsIcon />, '#8b5cf6')],
+    items: [
+      { id: 'settings-projects-definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/projects/definitions', color: '#6d28d9', primary: true, ready: true },
+      comingSoon('/modules/projects', 'mod-projects', 'مدیریت پروژه', <InsightsIcon />, '#8b5cf6'),
+    ],
   },
   {
     id: 'settings-inventory',
@@ -494,6 +497,7 @@ const projectsMenu = [
     items: [
       { id: 'projects', title: 'پروژه‌ها', icon: <AccountTreeIcon />, path: '/projects', color: '#8b5cf6', primary: true, ready: true },
       { id: 'projects-types', title: 'انواع پروژه', icon: <CategoryIcon />, path: '/projects/types', color: '#6366f1', primary: false, ready: true },
+      { id: 'projects-definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/projects/definitions', color: '#6d28d9', primary: false, ready: true },
       { id: 'projects-calendar', title: 'تقویم پروژه‌ها', icon: <CalendarMonthIcon />, path: '/projects/calendar', color: '#10b981', primary: false, ready: true },
       { id: 'projects-schedule', title: 'زمان‌بندی و EVM', icon: <TimelineIcon />, path: '/projects/schedule', color: '#8b5cf6', primary: true, ready: true },
       { id: 'projects-risks', title: 'رجیستر ریسک', icon: <InsightsIcon />, path: '/projects/risks', color: '#ef4444', primary: false, ready: true },
