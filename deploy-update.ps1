@@ -158,6 +158,7 @@ $BackendFiles = @(
     'hrms_project/projects/definition_serializers.py',
     'hrms_project/projects/definition_views.py',
     'hrms_project/projects/migrations/0012_costtransactionline_account_and_more.py',
+    'hrms_project/projects/migrations/0013_remove_projectaccountdefinition_uniq_proj_def_type_code_and_more.py',
     'hrms_project/projects/tests/test_accounting_definitions.py'
 )
 
