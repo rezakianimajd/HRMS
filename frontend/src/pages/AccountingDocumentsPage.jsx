@@ -207,15 +207,15 @@ const AccountingDocumentsPage = () => {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>شماره</TableCell>
-                  <TableCell>تاریخ</TableCell>
-                  <TableCell>دفتر</TableCell>
-                  <TableCell>شرح</TableCell>
-                  <TableCell>تهیه‌کننده</TableCell>
-                  <TableCell>بدهکار</TableCell>
-                  <TableCell>بستانکار</TableCell>
-                  <TableCell>وضعیت</TableCell>
-                  <TableCell>عملیات</TableCell>
+                  <TableCell align="center">شماره</TableCell>
+                  <TableCell align="center">تاریخ</TableCell>
+                  <TableCell align="center">دفتر</TableCell>
+                  <TableCell align="center">شرح</TableCell>
+                  <TableCell align="center">تهیه‌کننده</TableCell>
+                  <TableCell align="center">بدهکار</TableCell>
+                  <TableCell align="center">بستانکار</TableCell>
+                  <TableCell align="center">وضعیت</TableCell>
+                  <TableCell align="center">عملیات</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -243,11 +243,6 @@ const AccountingDocumentsPage = () => {
                           {row.created_by_name || '—'}
                         </Box>
                       </Tooltip>
-                      {row.fiscal_year_name && (
-                        <Typography variant="caption" color="textSecondary" display="block">
-                          {row.fiscal_year_name}
-                        </Typography>
-                      )}
                     </TableCell>
                     <TableCell>{formatPersianNumber(row.total_debit)}</TableCell>
                     <TableCell>{formatPersianNumber(row.total_credit)}</TableCell>
