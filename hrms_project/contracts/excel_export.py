@@ -342,6 +342,7 @@ def _addendum_slots(bundle):
     for addendum in bundle['addendums']:
         slots.append({
             'number': _attr(addendum, 'number'),
+            'subject_type': _display(addendum, 'subject_type') or _attr(addendum, 'subject'),
             'subject': _attr(addendum, 'subject'),
             'date': _fa_date(getattr(addendum, 'date', None)),
             'new_end_date': _fa_date(getattr(addendum, 'new_end_date', None)),
@@ -466,7 +467,8 @@ BLOCK_SPECS = [
         ('یادداشت', 'note'),
     ]),
     ('الحاقیه', _addendum_slots, [
-        ('شماره', 'number'), ('موضوع', 'subject'), ('تاریخ', 'date'),
+        ('شماره', 'number'), ('موضوع الحاقیه', 'subject_type'), ('شرح موضوع', 'subject'),
+        ('تاریخ', 'date'),
         ('تاریخ پایان جدید', 'new_end_date'), ('تغییر مبلغ', 'amount_change'),
         ('تغییر درصد', 'percent_change'), ('تعداد مفاد', 'provisions'),
         ('شرح تغییرات', 'description'),

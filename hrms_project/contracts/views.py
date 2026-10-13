@@ -287,7 +287,18 @@ class AddendumViewSet(BaseContractViewSet):
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
+        subject_type = self.request.query_params.get('subject_type')
+        if subject_type:
+            qs = qs.filter(subject_type=subject_type)
         return qs
+
+    @action(detail=False, methods=['get'], url_path='subject-types')
+    def subject_types(self, request):
+        """فهرست استاندارد «موضوع الحاقیه» (برای فرم و فیلترها)."""
+        return Response([
+            {'value': value, 'label': label}
+            for value, label in Addendum.SubjectType.choices
+        ])
 
 
 class GuaranteeViewSet(BaseContractViewSet):

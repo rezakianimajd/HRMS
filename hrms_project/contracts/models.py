@@ -285,9 +285,35 @@ class Statement(BaseModel):
 class Addendum(BaseModel):
     """الحاقیه / amendment to a contract."""
 
+    class SubjectType(models.TextChoices):
+        """موضوع استاندارد الحاقیه (مطابق فهرست رایج قراردادی)."""
+        PROVISIONS = 'provisions', _('اصلاح و تکمیل مفاد قرارداد')
+        AMOUNT = 'amount', _('تغییر مبلغ، بهای قرارداد و تعدیل قیمت')
+        DURATION = 'duration', _('تغییر مدت، تمدید و اصلاح برنامه زمانی قرارداد')
+        SCOPE = 'scope', _('تغییر موضوع، دامنه و حجم کار قرارداد')
+        TECHNICAL = 'technical', _('تغییر مشخصات فنی، نقشه‌ها و استانداردهای اجرایی')
+        PAYMENT = 'payment', _('تغییر شرایط پرداخت، پیش‌پرداخت و تسویه‌حساب')
+        GUARANTEES = 'guarantees', _('تغییر تضامین، ضمانت‌نامه‌ها و وثایق')
+        DEDUCTIONS = 'deductions', _('تغییر کسورات، جرایم و خسارات قراردادی')
+        OBLIGATIONS = 'obligations', _('تغییر تعهدات، مسئولیت‌ها و حدود اختیارات طرفین')
+        PARTIES = 'parties', _('تغییر مشخصات طرفین، نمایندگان و صاحبان امضای مجاز')
+        PROJECT = 'project', _('تغییر پروژه، محل اجرا و نحوه تخصیص کار')
+        CONSULTANTS = 'consultants', _('تغییر ناظر، مشاور، پیمانکاران جزء و عوامل اجرایی')
+        SUPPLY = 'supply', _('تغییر شرایط تأمین مصالح، تجهیزات و تحویل کالا')
+        LEGAL = 'legal', _('تغییر شرایط بیمه، مالیات و الزامات قانونی')
+        SUSPENSION = 'suspension', _('تغییر شرایط تعلیق، توقف، ازسرگیری و خاتمه قرارداد')
+        DELIVERY = 'delivery', _('تغییر شرایط تحویل، آزمایش، تأیید و تضمین کیفیت')
+        CURRENCY = 'currency', _('تغییر ارز قرارداد، نرخ تسعیر و شرایط مالی بین‌المللی')
+        OTHER = 'other', _('سایر تغییرات و الحاق موارد جدید')
+
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='addendums', verbose_name=_('قرارداد'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره الحاقیه'))
-    subject = models.CharField(max_length=300, blank=True, verbose_name=_('موضوع الحاقیه'))
+    subject_type = models.CharField(
+        max_length=20, choices=SubjectType.choices, blank=True,
+        verbose_name=_('موضوع الحاقیه'),
+        help_text=_('موضوع از فهرست استاندارد انتخاب می‌شود؛ شرح تکمیلی در فیلد «شرح موضوع».'),
+    )
+    subject = models.CharField(max_length=300, blank=True, verbose_name=_('شرح موضوع'))
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
     currency = models.ForeignKey(
         'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
@@ -307,6 +333,13 @@ class Addendum(BaseModel):
 
     def __str__(self):
         return f'{self.number or "—"} - {self.date}'
+
+    @property
+    def subject_label(self):
+        """عنوان موضوع استاندارد؛ در نبود آن شرح موضوع."""
+        if self.subject_type:
+            return self.get_subject_type_display()
+        return self.subject or ''
 
 
 class Guarantee(BaseModel):

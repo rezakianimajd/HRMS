@@ -110,11 +110,14 @@ class AddendumSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    subject_type_display = serializers.CharField(source='get_subject_type_display', read_only=True)
+    subject_label = serializers.CharField(read_only=True)
 
     class Meta:
         model = Addendum
         fields = [
-            'id', 'contract', 'contract_subject', 'number', 'subject', 'date',
+            'id', 'contract', 'contract_subject', 'number',
+            'subject_type', 'subject_type_display', 'subject_label', 'subject', 'date',
             'currency', 'currency_name', 'currency_symbol',
             'amount_change', 'percent_change', 'new_end_date',
             'change_description', 'provisions',

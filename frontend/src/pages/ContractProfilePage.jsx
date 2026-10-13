@@ -122,7 +122,7 @@ const ContractProfilePage = () => {
     push(c.end_date, 'end', 'پایان / انقضای قرارداد', '');
     (c.invoices || []).forEach(x => push(x.date, 'invoice', 'ثبت فاکتور', `${x.number || '—'} · ${formatPersianNumber(x.total || 0)}`));
     (c.statements || []).forEach(x => push(x.date, 'statement', 'ثبت صورت‌وضعیت', `${x.number || '—'} · ${formatPersianNumber(x.amount || 0)}`));
-    (c.addendums || []).forEach(x => push(x.date, 'addendum', 'ثبت الحاقیه', x.number || x.change_description?.slice(0, 40)));
+    (c.addendums || []).forEach(x => push(x.date, 'addendum', 'ثبت الحاقیه', x.subject_type_display || x.number || x.change_description?.slice(0, 40)));
     (c.guarantees || []).forEach(x => push(x.issue_date, 'guarantee', 'صدور تضمین', x.guarantee_type_display));
     (c.guarantees || []).forEach(x => push(x.expiry_date, 'guarantee-expiry', 'انقضای تضمین', x.number || ''));
     (c.payments || []).forEach(x => push(x.date, 'payment', 'پرداخت', `${formatPersianNumber(x.amount || 0)}`));
@@ -357,6 +357,12 @@ const ContractProfilePage = () => {
                         <Typography variant="body2" fontWeight={800}>{x.number || '—'}</Typography>
                         <Typography variant="caption" color="textSecondary">{toJalali(x.date)}</Typography>
                       </Box>
+                      {x.subject_type_display ? (
+                        <Typography variant="caption" display="block" sx={{ color: '#be185d', fontWeight: 700 }}>
+                          {x.subject_type_display}
+                          {x.subject ? ` — ${x.subject}` : ''}
+                        </Typography>
+                      ) : null}
                       <Stack direction="row" spacing={0.5} sx={{ mt: 0.5, flexWrap: 'wrap' }}>
                         {x.amount_change != null && x.amount_change !== '' && (
                           <Chip size="small" label={`${Number(x.amount_change) >= 0 ? '+' : ''}${formatPersianNumber(x.amount_change)}`}

@@ -6,6 +6,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import ContractSubEntityPage from './ContractSubEntityPage';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import { ADDENDUM_SUBJECTS } from '../../core/constants/addendumSubjects';
 
 /* ---------------------------- Invoices ---------------------------- */
 export const ContractInvoicesPage = () => (
@@ -112,12 +113,15 @@ export const ContractAddendumsPage = () => (
       editLabel: 'ویرایش الحاقیه',
       listColumns: [
         { key: 'number', label: 'شماره' },
+        { key: 'subject_type_display', label: 'موضوع' },
         { key: 'date', label: 'تاریخ', render: (v) => toJalali(v) },
         { key: 'amount_change', label: 'تغییر مبلغ', render: (v) => formatPersianNumber(v || 0) },
         { key: 'new_end_date', label: 'پایان جدید', render: (v) => toJalali(v) },
       ],
       fields: [
         { key: 'number', label: 'شماره الحاقیه', type: 'text', span: 6 },
+        { key: 'subject_type', label: 'موضوع الحاقیه', type: 'select', span: 6, options: ADDENDUM_SUBJECTS },
+        { key: 'subject', label: 'شرح موضوع', type: 'text', span: 6 },
         { key: 'date', label: 'تاریخ', type: 'date', span: 6 },
         { key: 'amount_change', label: 'تغییر مبلغ (ریال)', type: 'number', span: 6 },
         { key: 'new_end_date', label: 'تاریخ پایان جدید', type: 'date', span: 6 },

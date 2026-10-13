@@ -23,9 +23,10 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import { glassPaper } from '../core/theme/tokens';
+import { ADDENDUM_SUBJECTS, addendumSubjectLabel } from '../core/constants/addendumSubjects';
 
 const EMPTY = {
-  id: null, contract: '', number: '', subject: '', date: '',
+  id: null, contract: '', number: '', subject_type: '', subject: '', date: '',
   currency: '', amount_change: '', percent_change: '', new_end_date: '',
   change_description: '', provisions: [],
 };
@@ -53,6 +54,15 @@ const ContractAddendumsPage = () => {
   });
   const currencyList = Array.isArray(currencies) ? currencies : currencies?.results || [];
 
+  // موضوع‌های استاندارد الحاقیه از سرور خوانده می‌شود (پشتیبان: فهرست محلی)
+  const { data: subjectTypes } = useQuery({
+    queryKey: ['addendum-subject-types'],
+    queryFn: () => axiosInstance.get('/contract-addendums/subject-types/').then(r => r.data),
+  });
+  const subjectOptions = Array.isArray(subjectTypes) && subjectTypes.length
+    ? subjectTypes
+    : ADDENDUM_SUBJECTS;
+
   const { data, isLoading } = useQuery({
     queryKey: ['contract-addendums', contractId],
     queryFn: () => axiosInstance.get('/contract-addendums/', { params: { contract: contractId, page_size: 500 } }).then(r => r.data),
@@ -66,12 +76,14 @@ const ContractAddendumsPage = () => {
     return list.filter(a =>
       (a.number || '').toLowerCase().includes(q) ||
       (a.subject || '').toLowerCase().includes(q) ||
+      (a.subject_type_display || '').toLowerCase().includes(q) ||
       (a.change_description || '').toLowerCase().includes(q));
   }, [list, search]);
 
   const sanitize = (p) => ({
     ...p,
     contract: p.contract || null,
+    subject_type: p.subject_type || '',
     amount_change: p.amount_change === '' || p.amount_change == null ? null : Number(p.amount_change),
     percent_change: p.percent_change === '' || p.percent_change == null ? null : Number(p.percent_change),
     date: p.date || null,
@@ -177,9 +189,12 @@ const ContractAddendumsPage = () => {
                         <EditNoteIcon sx={{ color: '#fff' }} />
                       </Avatar>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body1" fontWeight={800}>{a.subject || a.number || 'الحاقیه'}</Typography>
+                        <Typography variant="body1" fontWeight={800}>
+                          {a.subject_type_display || a.subject || a.number || 'الحاقیه'}
+                        </Typography>
                         <Typography variant="caption" color="textSecondary">
                           {a.number ? `شماره: ${a.number} · ` : ''}{toJalali(a.date)}
+                          {a.subject && a.subject_type_display ? ` · ${a.subject}` : ''}
                         </Typography>
                       </Box>
                       <Box>
@@ -245,8 +260,31 @@ const ContractAddendumsPage = () => {
             <Typography variant="caption" fontWeight={700} color="#be185d" sx={{ mb: 1, display: 'block' }}>اطلاعات پایه</Typography>
             <Grid container spacing={2}>
               <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره الحاقیه" value={form.number || ''} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
-              <Grid item xs={12} md={8}><TextField size="small" fullWidth label="موضوع الحاقیه" value={form.subject || ''} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
-              <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ الحاقیه" value={form.date} onChange={(g) => setForm(p => ({ ...p, date: g }))} /></Grid>
+              <Grid item xs={12} md={8}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>موضوع الحاقیه</InputLabel>
+                  <Select
+                    value={form.subject_type || ''}
+                    label="موضوع الحاقیه"
+                    onChange={e => {
+                      const value = e.target.value;
+                      const label = addendumSubjectLabel(value)
+                        || (subjectOptions.find(o => o.value === value)?.label || '');
+                      setForm(p => ({
+                        ...p,
+                        subject_type: value,
+                        // پیشنهاد شرح موضوع از عنوان انتخاب‌شده (قابل ویرایش)
+                        subject: p.subject?.trim() ? p.subject : label,
+                      }));
+                    }}
+                  >
+                    <MenuItem value="">—</MenuItem>
+                    {subjectOptions.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
+              </Grid>
+              <Grid item xs={12} md={8}><TextField size="small" fullWidth label="شرح موضوع (اختیاری)" value={form.subject || ''} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
+              <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ الحاقیه" value={form.date} onChange={(g) => setForm(p => ({ ...p, date: g }))} /></Grid>
               <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ پایان جدید" value={form.new_end_date} onChange={(g) => setForm(p => ({ ...p, new_end_date: g }))} /></Grid>
             </Grid>
           </Box>

@@ -60,6 +60,7 @@ class ContractExcelExportTests(TestCase):
         Addendum.objects.create(
             company=self.company, contract=self.contract, number='A-1',
             date=date(2025, 8, 1), amount_change=1_500_000,
+            subject_type='duration', subject='تمدید شش ماه',
             provisions=[{'title': 'بند یک', 'text': 'متن بند'}],
         )
 
@@ -113,6 +114,9 @@ class ContractExcelExportTests(TestCase):
         self.assertEqual(data['پرداخت 1 — مبلغ'], 980_000.0)
         self.assertEqual(data['تضمین 1 — شماره'], 'G-1')
         self.assertEqual(data['الحاقیه 1 — تغییر مبلغ'], 1_500_000.0)
+        self.assertEqual(data['الحاقیه 1 — موضوع الحاقیه'],
+                         'تغییر مدت، تمدید و اصلاح برنامه زمانی قرارداد')
+        self.assertEqual(data['الحاقیه 1 — شرح موضوع'], 'تمدید شش ماه')
         self.assertEqual(data['مفاد الحاقیه 1 — عنوان'], 'بند یک')
         self.assertEqual(data['تخصیص پروژه 1 — درصد'], 100.0)
         self.assertEqual(data['پیش‌پرداخت مرحله‌ای 1 — مبلغ'], 2_000_000.0)
