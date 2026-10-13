@@ -142,6 +142,18 @@ class ContractViewSet(BaseContractViewSet):
         contract = self.get_object()
         return Response(contract_effects(contract))
 
+    @action(detail=True, methods=['get'], url_path='guarantees-status')
+    def guarantees_status(self, request, pk=None):
+        """وضعیت تأمین تضامین قرارداد: کدام تضمین اورده شده و کدام نه.
+
+        برای هر «قلم تضمین قرارداد» مبلغ مورد نیاز، مبلغ تأمین‌شده، کمبود، درصد پوشش و
+        تضامین وابسته (شماره/ابزار/مبلغ/سررسید/آزادشده) برگردانده می‌شود.
+        """
+        from contracts.guarantee_status import guarantee_compliance
+
+        contract = self.get_object()
+        return Response(guarantee_compliance(contract))
+
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
         """خروجی اکسل جامع قراردادها — تک‌شیت و **یک ردیف برای هر قرارداد**.

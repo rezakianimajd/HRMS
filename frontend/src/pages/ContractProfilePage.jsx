@@ -5,9 +5,13 @@ import axiosInstance from '../core/api/axiosConfig';
 import downloadFile from '../core/utils/downloadUtils';
 import {
   Alert, Box, Typography, Paper, Button, CircularProgress, Chip, Divider, Grid, Avatar, Stack, Tooltip,
+  LinearProgress,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DownloadIcon from '@mui/icons-material/Download';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import CancelRoundedIcon from '@mui/icons-material/CancelRounded';
+import HourglassBottomIcon from '@mui/icons-material/HourglassBottom';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -107,6 +111,13 @@ const ContractProfilePage = () => {
   const { data: effects } = useQuery({
     queryKey: ['contract-effects', id],
     queryFn: () => axiosInstance.get(`/external-contracts/${id}/effective/`).then(r => r.data),
+    enabled: !!id,
+  });
+
+  // وضعیت تأمین تضامین: کدام قلم تضمین اورده شده و کدام نه
+  const { data: guaranteeStatus } = useQuery({
+    queryKey: ['contract-guarantees-status', id],
+    queryFn: () => axiosInstance.get(`/external-contracts/${id}/guarantees-status/`).then(r => r.data),
     enabled: !!id,
   });
 
@@ -280,7 +291,12 @@ const ContractProfilePage = () => {
           <StatCard icon={<EditNoteIcon sx={{ fontSize: 20 }} />} color="#ec4899" label="الحاقیه‌ها" value={toPersianDigits((c.addendums || []).length)} sub="مورد" />
         </Grid>
         <Grid item xs={6} sm={4} md={2}>
-          <StatCard icon={<LockIcon sx={{ fontSize: 20 }} />} color="#3b82f6" label="تضمین‌ها" value={toPersianDigits((c.guarantees || []).length)} sub="مورد" />
+          <StatCard icon={<LockIcon sx={{ fontSize: 20 }} />} color="#3b82f6" label="تضمین‌ها"
+            value={toPersianDigits((c.guarantees || []).length)}
+            sub={guaranteeStatus?.summary
+              ? `پوشش ${toPersianDigits(guaranteeStatus.summary.coverage_percent)}٪`
+              : 'مورد'} />
+
         </Grid>
       </Grid>
 
@@ -461,27 +477,186 @@ const ContractProfilePage = () => {
             </InfoCard>
 
             <InfoCard title="تضمین‌ها" color="#f59e0b" icon={LockIcon}>
-              {(c.guarantee_items_display || []).length === 0 && (c.guarantees || []).length === 0 ? (
-                <Typography variant="caption" color="textSecondary">تضمینی ثبت نشده است.</Typography>
-              ) : (
-                <Stack spacing={0.75}>
-                  {(c.guarantee_items_display || []).map((g, i) => (
-                    <Box key={`gi-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', p: 1, borderRadius: '10px', background: 'rgba(245,158,11,0.05)' }}>
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography variant="body2" fontWeight={700}>{g.type_label}</Typography>
-                        {g.note && <Typography variant="caption" color="textSecondary">{g.note}</Typography>}
+              {(() => {
+                const summary = guaranteeStatus?.summary;
+                const requirements = guaranteeStatus?.requirements || [];
+                const statusStyle = {
+                  provided: { color: '#059669', bg: 'rgba(16,185,129,0.10)', icon: <CheckCircleRoundedIcon sx={{ fontSize: 18 }} /> },
+                  partial: { color: '#b45309', bg: 'rgba(245,158,11,0.12)', icon: <HourglassBottomIcon sx={{ fontSize: 18 }} /> },
+                  missing: { color: '#b91c1c', bg: 'rgba(239,68,68,0.10)', icon: <CancelRoundedIcon sx={{ fontSize: 18 }} /> },
+                };
+                // در نبود سرویس وضعیت، نمایش سادهٔ فهرست‌های قبلی
+                if (!summary) {
+                  return ((c.guarantee_items_display || []).length === 0 && (c.guarantees || []).length === 0) ? (
+                    <Typography variant="caption" color="textSecondary">تضمینی ثبت نشده است.</Typography>
+                  ) : (
+                    <Stack spacing={0.75}>
+                      {(c.guarantee_items_display || []).map((g, i) => (
+                        <Box key={`gi-${i}`} sx={{ display: 'flex', justifyContent: 'space-between', p: 1, borderRadius: '10px', background: 'rgba(245,158,11,0.05)' }}>
+                          <Typography variant="body2" fontWeight={700}>{g.type_label}</Typography>
+                          <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309' }}>
+                            {formatPersianNumber(g.amount || 0)} {currencyLabel}
+                          </Typography>
+                        </Box>
+                      ))}
+                    </Stack>
+                  );
+                }
+                if (!requirements.length && !(guaranteeStatus?.unrequired || []).length) {
+                  return <Typography variant="caption" color="textSecondary">تضمینی برای این قرارداد تعریف نشده است.</Typography>;
+                }
+                const coverageColor = summary.coverage_percent >= 100 ? '#10b981'
+                  : summary.coverage_percent > 0 ? '#f59e0b' : '#ef4444';
+                return (
+                  <Stack spacing={1.25}>
+                    <Box sx={{ p: 1.25, borderRadius: '12px', background: `${coverageColor}12`, border: `1px solid ${coverageColor}33` }}>
+                      <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+                        <Typography variant="body2" fontWeight={800} sx={{ color: coverageColor }}>
+                          پوشش تضامین: {toPersianDigits(summary.coverage_percent)}٪
+                        </Typography>
+                        <Chip size="small" color="success" variant="outlined"
+                          label={`تأمین‌شده: ${toPersianDigits(summary.provided_count)}`} />
+                        {summary.partial_count > 0 && (
+                          <Chip size="small" color="warning" variant="outlined"
+                            label={`ناقص: ${toPersianDigits(summary.partial_count)}`} />
+                        )}
+                        {summary.missing_count > 0 && (
+                          <Chip size="small" color="error" variant="outlined"
+                            label={`تأمین‌نشده: ${toPersianDigits(summary.missing_count)}`} />
+                        )}
+                      </Stack>
+                      <LinearProgress variant="determinate" value={Math.min(summary.coverage_percent, 100)}
+                        sx={{ height: 8, borderRadius: 4, mt: 1, bgcolor: `${coverageColor}22`,
+                          '& .MuiLinearProgress-bar': { bgcolor: coverageColor } }} />
+                      <Stack direction="row" flexWrap="wrap" sx={{ mt: 1, gap: 0.5 }}>
+                        <Chip size="small" variant="outlined" label={`مورد نیاز: ${formatPersianNumber(summary.required_total)}`} />
+                        <Chip size="small" variant="outlined" label={`تأمین‌شده: ${formatPersianNumber(summary.provided_total)}`} />
+                        {summary.balance_total > 0 && (
+                          <Chip size="small" color="error" variant="outlined" label={`کمبود: ${formatPersianNumber(summary.balance_total)}`} />
+                        )}
+                        {summary.released_total > 0 && (
+                          <Chip size="small" variant="outlined" label={`آزادشده: ${formatPersianNumber(summary.released_total)}`} />
+                        )}
+                      </Stack>
+                    </Box>
+
+                    {/* هر قلم تضمین قرارداد + وضعیت اورده/نیاورده */}
+                    {requirements.map((req) => {
+                      const style = statusStyle[req.status] || statusStyle.missing;
+                      return (
+                        <Box key={req.type} sx={{ p: 1.25, borderRadius: '12px', background: style.bg,
+                          border: `1px solid ${style.color}33` }}>
+                          <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
+                            <Avatar sx={{ width: 26, height: 26, bgcolor: style.color }}>{style.icon}</Avatar>
+                            <Box sx={{ flex: 1, minWidth: 140 }}>
+                              <Typography variant="body2" fontWeight={800} sx={{ color: style.color }}>
+                                {req.label}
+                              </Typography>
+                              {req.note && (
+                                <Typography variant="caption" color="textSecondary">{req.note}</Typography>
+                              )}
+                            </Box>
+                            <Box sx={{ textAlign: 'left' }}>
+                              <Typography variant="body2" fontWeight={800}>
+                                {formatPersianNumber(req.required)} {currencyLabel}
+                              </Typography>
+                              <Typography variant="caption" color="textSecondary">
+                                {req.percent ? `${toPersianDigits(req.percent)}٪ مبلغ مؤثر · ` : ''}
+                                {req.status_label}
+                              </Typography>
+                            </Box>
+                          </Stack>
+
+                          <Stack direction="row" alignItems="center" gap={1} sx={{ mt: 1 }}>
+                            <LinearProgress variant="determinate" value={Math.min(req.coverage_percent, 100)}
+                              sx={{ height: 7, borderRadius: 4, flex: 1, bgcolor: `${style.color}22`,
+                                '& .MuiLinearProgress-bar': { bgcolor: style.color } }} />
+                            <Typography variant="caption" fontWeight={800} sx={{ color: style.color, minWidth: 44 }}>
+                              {toPersianDigits(req.coverage_percent)}٪
+                            </Typography>
+                          </Stack>
+
+                          <Stack direction="row" flexWrap="wrap" sx={{ mt: 1, gap: 0.5 }}>
+                            <Chip size="small" variant="outlined"
+                              label={`اورده/تأمین‌شده: ${formatPersianNumber(req.provided)}`} />
+                            {req.balance > 0 && (
+                              <Chip size="small" color="error" variant="outlined"
+                                label={`کمبود: ${formatPersianNumber(req.balance)}`} />
+                            )}
+                            {req.released_total > 0 && (
+                              <Chip size="small" variant="outlined"
+                                label={`آزادشده: ${formatPersianNumber(req.released_total)}`} />
+                            )}
+                          </Stack>
+
+                          {/* تضامین ثبت‌شدهٔ همین قلم — زیر همان مبلغ */}
+                          <Stack spacing={0.5} sx={{ mt: 1 }}>
+                            {req.items.length === 0 ? (
+                              <Typography variant="caption" sx={{ color: style.color }}>
+                                هنوز تضمینی برای این قلم اورده/ثبت نشده است.
+                              </Typography>
+                            ) : req.items.map((item) => (
+                              <Box key={item.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap',
+                                p: 0.75, borderRadius: '8px', background: 'rgba(255,255,255,0.65)' }}>
+                                <Chip size="small" label={item.instrument_label || item.type_label}
+                                  sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.14)', color: '#b45309' }} />
+                                <Typography variant="caption" fontWeight={800}>{item.number || '—'}</Typography>
+                                <Typography variant="caption">
+                                  {formatPersianNumber(item.amount)} {currencyLabel}
+                                </Typography>
+                                <Typography variant="caption" color="textSecondary">
+                                  انقضا: {toJalali(item.expiry_date)}
+                                  {item.days_to_expiry != null && !item.is_released
+                                    ? (item.days_to_expiry < 0
+                                      ? ' · منقضی شده'
+                                      : ` · ${toPersianDigits(item.days_to_expiry)} روز مانده`)
+                                    : ''}
+                                </Typography>
+                                {item.is_released ? (
+                                  <Chip size="small" label="آزاد شده"
+                                    sx={{ bgcolor: 'rgba(100,116,139,0.15)', color: '#475569' }} />
+                                ) : (
+                                  <Chip size="small" icon={<CheckCircleRoundedIcon />} label="فعال"
+                                    sx={{ bgcolor: 'rgba(16,185,129,0.14)', color: '#047857' }} />
+                                )}
+                                {item.bank && (
+                                  <Typography variant="caption" color="textSecondary">· {item.bank}</Typography>
+                                )}
+                              </Box>
+                            ))}
+                          </Stack>
+                        </Box>
+                      );
+                    })}
+
+                    {/* تضامین ثبت‌شده بدون قلم متناظر در قرارداد */}
+                    {(guaranteeStatus?.unrequired || []).length > 0 && (
+                      <Box sx={{ p: 1.25, borderRadius: '12px', background: 'rgba(100,116,139,0.06)',
+                        border: '1px dashed rgba(100,116,139,0.35)' }}>
+                        <Typography variant="caption" fontWeight={800} color="textSecondary"
+                          display="block" sx={{ mb: 0.5 }}>
+                          تضامین ثبت‌شده بدون قلم متناظر در قرارداد
+                        </Typography>
+                        <Stack spacing={0.5}>
+                          {(guaranteeStatus.unrequired || []).map((item) => (
+                            <Typography key={item.id} variant="caption" color="textSecondary">
+                              {item.instrument_label || item.type_label} · {item.number || '—'} ·{' '}
+                              {formatPersianNumber(item.amount)} {currencyLabel}
+                              {item.is_released ? ' · آزاد شده' : ''}
+                            </Typography>
+                          ))}
+                        </Stack>
                       </Box>
-                      <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309' }}>{formatPersianNumber(g.amount || 0)} {currencyLabel}{g.percent ? ` (${formatPersianNumber(g.percent)}٪)` : ''}</Typography>
-                    </Box>
-                  ))}
-                  {(c.guarantees || []).map(x => (
-                    <Box key={x.id} sx={{ p: 1, borderRadius: '10px', background: 'rgba(245,158,11,0.05)' }}>
-                      <Typography variant="body2" fontWeight={700}>{x.guarantee_type_display} · {formatPersianNumber(x.amount || 0)} {currencyLabel}</Typography>
-                      <Typography variant="caption" color="textSecondary">تا {toJalali(x.expiry_date)} {x.is_released ? '· آزاد شده' : ''}</Typography>
-                    </Box>
-                  ))}
-                </Stack>
-              )}
+                    )}
+
+                    {(guaranteeStatus?.warnings || []).map((warning) => (
+                      <Alert key={warning} severity="warning" sx={{ borderRadius: '10px', py: 0 }}>
+                        <Typography variant="caption">{warning}</Typography>
+                      </Alert>
+                    ))}
+                  </Stack>
+                );
+              })()}
             </InfoCard>
           </Stack>
         </Grid>

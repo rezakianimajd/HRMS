@@ -99,6 +99,7 @@ $BackendFiles = @(
     'hrms_project/contracts/tests.py',
     'hrms_project/contracts/addendum_schema.py',
     'hrms_project/contracts/addendum_effects.py',
+    'hrms_project/contracts/guarantee_status.py',
     'hrms_project/contracts/migrations/0022_addendum_subject_type_alter_addendum_subject.py',
     'hrms_project/contracts/migrations/0023_addendum_advance_change_addendum_new_advance_payment_and_more.py',
     'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',

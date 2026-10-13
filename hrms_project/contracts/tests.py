@@ -190,3 +190,123 @@ class ContractExcelExportTests(TestCase):
         with self.assertRaises(ValidationError):
             broken.clean()
 
+
+class ContractGuaranteeStatusTests(TestCase):
+    """وضعیت تأمین تضامین قرارداد (تضمین‌های اورده‌شده در برابر اقلام مورد نیاز قرارداد)."""
+
+    def setUp(self):
+        self.company = make_company(schema_name='testco-gst', name='شرکت تست تضامین')
+        self.party = ContractParty.objects.create(
+            company=self.company, name='پیمانکار ب', party_type='contractor',
+        )
+        self.contract = Contract.objects.create(
+            company=self.company, number='C-G1', subject='قرارداد تضامین', party=self.party,
+            contract_type='construction', status='active', amount=1_000_000_000,
+            guarantee_type='insurance', guarantee_amount=20_000_000,
+            guarantee_items=[
+                {'type': 'performance', 'percent': 5, 'note': 'حسن انجام کار'},
+                {'type': 'advance', 'amount': 200_000_000, 'note': 'پیش‌پرداخت'},
+                {'type': 'bid', 'amount': 50_000_000, 'note': 'شرکت در مناقصه'},
+            ],
+        )
+
+    def _guarantee(self, **kwargs):
+        payload = {
+            'company': self.company, 'contract': self.contract,
+            'guarantee_type': 'performance', 'instrument_type': 'bank_guarantee',
+            'amount': 0,
+        }
+        payload.update(kwargs)
+        return Guarantee.objects.create(**payload)
+
+    def test_percent_requirement_uses_effective_contract_amount(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        result = guarantee_compliance(self.contract)
+        performance = next(r for r in result['requirements'] if r['type'] == 'performance')
+        # ۵٪ از مبلغ مؤثر ۱٬۰۰۰٬۰۰۰٬۰۰۰ = ۵۰٬۰۰۰٬۰۰۰
+        self.assertEqual(performance['required'], 50_000_000.0)
+        self.assertEqual(performance['status'], 'missing')
+
+    def test_addendum_increases_percent_requirement(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        Addendum.objects.create(
+            company=self.company, contract=self.contract, number='A-G1',
+            date=date(2025, 9, 1), amount_change=200_000_000,
+            subject='افزایش مبلغ',
+            subjects=[{'type': 'amount', 'fields': {'amount_change': 200_000_000}}],
+        )
+        result = guarantee_compliance(self.contract)
+        performance = next(r for r in result['requirements'] if r['type'] == 'performance')
+        # ۵٪ از ۱٬۲۰۰٬۰۰۰٬۰۰۰ = ۶۰٬۰۰۰٬۰۰۰
+        self.assertEqual(performance['required'], 60_000_000.0)
+
+    def test_partial_and_provided_statuses(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        self._guarantee(guarantee_type='performance', amount=50_000_000, number='PG-1')
+        self._guarantee(guarantee_type='advance', amount=120_000_000, number='AD-1')
+        result = guarantee_compliance(self.contract)
+        by_type = {row['type']: row for row in result['requirements']}
+        self.assertEqual(by_type['performance']['status'], 'provided')
+        self.assertEqual(by_type['performance']['coverage_percent'], 100.0)
+        self.assertEqual(by_type['advance']['status'], 'partial')
+        self.assertEqual(by_type['advance']['balance'], 80_000_000.0)
+        self.assertEqual(by_type['bid']['status'], 'missing')
+        self.assertEqual(result['summary']['required_count'], 4)  # + تضمین اصلی قرارداد
+        self.assertTrue(any('کامل تأمین نشده' in w for w in result['warnings']))
+        self.assertTrue(any('هنوز اورده/ثبت نشده' in w for w in result['warnings']))
+
+    def test_released_guarantee_does_not_count_as_coverage(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        self._guarantee(guarantee_type='advance', amount=200_000_000, is_released=True,
+                        number='AD-0')
+        result = guarantee_compliance(self.contract)
+        advance = next(r for r in result['requirements'] if r['type'] == 'advance')
+        self.assertEqual(advance['provided'], 0.0)
+        self.assertEqual(advance['released_total'], 200_000_000.0)
+        self.assertEqual(advance['status'], 'missing')
+        self.assertEqual(advance['released_count'], 1)
+        self.assertEqual(result['summary']['provided_total'], 0.0)
+
+    def test_extra_guarantee_is_listed_as_unrequired(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        self._guarantee(guarantee_type='other', amount=5_000_000, number='X-1')
+        result = guarantee_compliance(self.contract)
+        self.assertEqual([row['number'] for row in result['unrequired']], ['X-1'])
+        self.assertEqual(result['summary']['unrequired_count'], 1)
+
+    def test_guarantee_items_are_linked_to_their_requirement(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        self._guarantee(guarantee_type='advance', amount=100_000_000, number='AD-2')
+        self._guarantee(guarantee_type='advance', amount=50_000_000, number='AD-3',
+                        is_released=True)
+        result = guarantee_compliance(self.contract)
+        advance = next(r for r in result['requirements'] if r['type'] == 'advance')
+        self.assertEqual([row['number'] for row in advance['items']], ['AD-2', 'AD-3'])
+        self.assertEqual(advance['provided_count'], 1)
+        self.assertEqual(advance['items'][0]['amount'], 100_000_000.0)
+
+    def test_guarantees_status_endpoint_url_resolves(self):
+        from django.urls import resolve
+
+        match = resolve(f'/api/external-contracts/{self.contract.pk}/guarantees-status/')
+        self.assertEqual(match.func.cls.__name__, 'ContractViewSet')
+        self.assertEqual(match.func.actions['get'], 'guarantees_status')
+
+    def test_contract_without_requirements(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        bare = Contract.objects.create(
+            company=self.company, number='C-G2', subject='قرارداد بدون تضمین', party=self.party,
+        )
+        self._guarantee(contract=bare, guarantee_type='other', amount=1_000_000, number='X-2')
+        result = guarantee_compliance(bare)
+        self.assertEqual(result['summary']['required_count'], 0)
+        self.assertEqual(result['summary']['unrequired_count'], 1)
+        self.assertEqual(result['requirements'], [])
+
