@@ -101,22 +101,14 @@ const ExternalContractsPage = () => {
     (!typeFilter || String(c.contract_type_master) === String(typeFilter))
   );
 
-  const exportCsv = (rows) => {
-    const header = ['شماره', 'موضوع', 'طرف', 'نوع', 'مبلغ', 'ارز', 'شروع', 'پایان', 'وضعیت'];
-    const esc = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
-    const lines = rows.map(c => [
-      c.number, c.subject, c.party_name, typeLabel(c),
-      c.amount, c.currency_name || 'ریال', toJalali(c.start_date), toJalali(c.end_date),
-      STATUS_LABELS[c.status] || c.status,
-    ].map(esc).join(','));
-    const csv = '\uFEFF' + [header.map(esc).join(','), ...lines].join('\r\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'contracts.csv';
-    a.click();
-    URL.revokeObjectURL(url);
+  // خروجی اکسل جامع (چند شیتی): همهٔ آیتم‌های درون قراردادها + مفاد و شرایط
+  const exportExcel = () => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (statusFilter) params.set('status', statusFilter);
+    if (typeFilter) params.set('contract_type_master', typeFilter);
+    const query = params.toString();
+    window.open(`/api/external-contracts/export-excel/${query ? `?${query}` : ''}`, '_blank');
   };
 
   return (
@@ -134,10 +126,12 @@ const ExternalContractsPage = () => {
           <Typography variant="h6" fontWeight={800} color="#b45309">قراردادهای برون‌سازمانی</Typography>
           <Typography variant="body2" color="textSecondary">پیمانکاری، خرید، مناقصه + فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت</Typography>
         </Box>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => exportCsv(filtered)}
-          sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
-          خروجی CSV
-        </Button>
+        <Tooltip title="خروجی اکسل چندشیتی: قراردادها، مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
+          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
+            sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
+            خروجی اکسل
+          </Button>
+        </Tooltip>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
           sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
           قرارداد جدید

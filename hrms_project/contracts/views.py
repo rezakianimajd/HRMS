@@ -86,7 +86,8 @@ class ContractViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('party', 'signatory').prefetch_related(
-            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments', 'audit_logs',
+            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
+            'disputes', 'audit_logs',
         )
         party_id = self.request.query_params.get('party')
         if party_id:
@@ -94,6 +95,9 @@ class ContractViewSet(BaseContractViewSet):
         contract_type = self.request.query_params.get('contract_type')
         if contract_type:
             qs = qs.filter(contract_type=contract_type)
+        type_master = self.request.query_params.get('contract_type_master')
+        if type_master:
+            qs = qs.filter(contract_type_master_id=type_master)
         status = self.request.query_params.get('status')
         if status:
             qs = qs.filter(status=status)
@@ -126,6 +130,32 @@ class ContractViewSet(BaseContractViewSet):
     def perform_destroy(self, instance):
         self._audit(instance, 'delete')
         instance.delete()
+
+    @action(detail=False, methods=['get'], url_path='export-excel')
+    def export_excel(self, request):
+        """خروجی اکسل جامع قراردادها — همهٔ آیتم‌های درون هر قرارداد در چند شیت.
+
+        فیلترهای همان صفحه اعمال می‌شوند (q، وضعیت، نوع قرارداد، طرف، پروژه) و با
+        پارامتر `contract=<id>` می‌توان فقط یک قرارداد را با تمام جزئیاتش گرفت.
+        """
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        from contracts.excel_export import build_contracts_workbook
+
+        queryset = self.filter_queryset(self.get_queryset()).order_by('-created_at')
+        contract_id = request.query_params.get('contract')
+        if contract_id:
+            queryset = queryset.filter(id=contract_id)
+
+        workbook = build_contracts_workbook(queryset)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        filename = f'contracts-{timezone.localtime().strftime("%Y%m%d-%H%M")}.xlsx'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        workbook.save(response)
+        return response
 
     @action(detail=False, methods=['get'])
     def stats(self, request):

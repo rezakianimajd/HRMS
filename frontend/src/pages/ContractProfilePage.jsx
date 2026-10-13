@@ -3,9 +3,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Button, CircularProgress, Chip, Divider, Grid, Avatar, Stack,
+  Box, Typography, Paper, Button, CircularProgress, Chip, Divider, Grid, Avatar, Stack, Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import DownloadIcon from '@mui/icons-material/Download';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import GavelIcon from '@mui/icons-material/Gavel';
@@ -163,7 +164,15 @@ const ContractProfilePage = () => {
       {/* Navigation */}
       <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
         <Button variant="text" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
-        <Button variant="contained" onClick={() => navigate(`/contracts/${id}/edit`)}>ویرایش</Button>
+        <Box sx={{ display: 'flex', gap: 1 }}>
+          <Tooltip title="خروجی اکسل کامل این قرارداد: مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
+            <Button variant="outlined" startIcon={<DownloadIcon />}
+              onClick={() => window.open(`/api/external-contracts/export-excel/?contract=${id}`, '_blank')}>
+              خروجی اکسل
+            </Button>
+          </Tooltip>
+          <Button variant="contained" onClick={() => navigate(`/contracts/${id}/edit`)}>ویرایش</Button>
+        </Box>
       </Box>
 
       {/* Hero */}
