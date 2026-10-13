@@ -55,7 +55,7 @@ class AccountDefinitionMixin(ProjectTestMixin):
         }
         if scope == 'type':
             payload['project_type'] = self.project_type
-        else:
+        elif scope == 'project':
             payload['project'] = self.project
         definition = ProjectAccountDefinition.objects.create(**payload)
         for slot, source in (rules or {1: SRC.PROJECT, 2: SRC.NONE, 3: SRC.NONE}).items():
@@ -64,6 +64,20 @@ class AccountDefinitionMixin(ProjectTestMixin):
                 source=source, category=self.category if source == SRC.PROJECT else None,
             )
         return definition
+
+    def add_rule(self, definition, slot, source=SRC.AUTO, category=None,
+                 auxiliary=None, auto_create=True):
+        """افزودن (یا جایگزینی) یک اسلات تفصیل با دستهٔ مشخص."""
+        ProjectAccountDefinitionAux.objects.filter(definition=definition, slot=slot).delete()
+        return ProjectAccountDefinitionAux.objects.create(
+            company=self.company, definition=definition, slot=slot, source=source,
+            category=category, auxiliary=auxiliary, auto_create=auto_create,
+        )
+
+    def make_auxiliary_category(self, code='CTR', name='قراردادها', source='contract'):
+        return AuxiliaryCategory.objects.create(
+            company=self.company, code=code, name=name, source=source,
+        )
 
 
 class EffectiveDefinitionTests(AccountDefinitionMixin, TestCase):
@@ -80,6 +94,36 @@ class EffectiveDefinitionTests(AccountDefinitionMixin, TestCase):
         self.assertEqual(len(rows), 1)
         self.assertEqual(rows[0].pk, override.pk)
         self.assertEqual(rows[0].title, 'مصالح خاص پروژه')
+
+    def test_global_definition_applies_to_every_project(self):
+        """تعریف «همهٔ پروژه‌ها» برای همهٔ پروژه‌ها معتبر است."""
+        self.make_definition(code='OVH', title='سربار عمومی', scope='all')
+        for project in (self.project,):
+            rows = effective_definitions(self.company, project)
+            self.assertEqual([row.code for row in rows], ['OVH'])
+            self.assertTrue(rows[0].is_global)
+            self.assertEqual(rows[0].scope, 'all')
+            self.assertEqual(rows[0].scope_label, 'همهٔ پروژه‌ها')
+
+    def test_priority_project_then_type_then_global(self):
+        self.make_definition(code='MAT', title='عمومی', scope='all')
+        self.make_definition(code='MAT', title='نوع پروژه')
+        self.make_definition(code='MAT', title='پروژهٔ خاص', scope='project')
+        rows = effective_definitions(self.company, self.project)
+        self.assertEqual([row.title for row in rows], ['پروژهٔ خاص'])
+
+        # بدون تعریف پروژه‌ای، تعریف نوع پروژه برنده است
+        rows = effective_definitions(self.company, self.project)
+        self.assertEqual(len(rows), 1)
+        self.make_definition(code='MAT', title='پروژهٔ خاص', scope='project').delete()
+        rows = effective_definitions(self.company, self.project)
+        self.assertEqual([row.title for row in rows], ['نوع پروژه'])
+
+    def test_kind_filter_reads_only_requested_kind(self):
+        self.make_definition(code='MAT', title='مصالح', kind='material', scope='all')
+        self.make_definition(code='EXP', title='هزینه', kind='expense', scope='all')
+        rows = effective_definitions(self.company, self.project, kind='expense')
+        self.assertEqual([row.code for row in rows], ['EXP'])
 
     def test_other_project_type_definition_is_ignored(self):
         other = ProjectType.objects.create(company=self.company, name='بازرگانی', code='TRD')
@@ -167,12 +211,14 @@ class DefinitionValidationTests(AccountDefinitionMixin, TestCase):
         with self.assertRaises(ValidationError):
             definition.clean()
 
-    def test_scope_is_required_and_unique(self):
-        broken = ProjectAccountDefinition(
-            company=self.company, code='Y', title='بی‌حوزه', kind='expense',
+    def test_scope_rules(self):
+        """حوزه: پروژه / نوع پروژه / خالی(=همهٔ پروژه‌ها)؛ دو حوزه با هم ممنوع."""
+        global_definition = ProjectAccountDefinition(
+            company=self.company, code='Y', title='عمومی برای همهٔ پروژه‌ها', kind='expense',
         )
-        with self.assertRaises(ValidationError):
-            broken.clean()
+        global_definition.clean()          # بدون حوزه = همهٔ پروژه‌ها (بدون خطا)
+        self.assertTrue(global_definition.is_global)
+        self.assertEqual(global_definition.scope_label, 'همهٔ پروژه‌ها')
 
         both = ProjectAccountDefinition(
             company=self.company, code='Z', title='دوحوزه', kind='expense',
@@ -233,4 +279,75 @@ class TemplateAndUsageTests(AccountDefinitionMixin, TestCase):
         second = project_auxiliary(self.company, self.project)
         self.assertEqual(first.pk, second.pk)
         self.assertEqual(first.aux_type, 'project')
+
+
+class CategoryDrivenAuxTests(AccountDefinitionMixin, TestCase):
+    """تفصیل‌ها بر پایهٔ «دستهٔ تفصیلی» — خود برنامه دسته را می‌خواند و سر جایش می‌گذارد."""
+
+    def test_auto_source_reads_project_category(self):
+        definition = self.make_definition(rules={})
+        self.add_rule(definition, 1, source=SRC.AUTO, category=self.category)  # دسته: پروژه
+        coding = build_coding(definition, project=self.project, create=True)
+        self.assertEqual(coding['auxiliary_1']['aux_type'], 'project')
+        self.assertEqual(coding['auxiliary_1']['category_name'], 'پروژه')
+        auxiliary = AuxiliaryAccount.objects.get(pk=coding['auxiliary_1']['id'])
+        self.assertEqual(auxiliary.project_id, self.project.pk)
+        self.assertEqual(auxiliary.category_id, self.category.pk)
+
+    def test_auto_source_reads_contract_category(self):
+        contract_category = self.make_auxiliary_category(code='CTR', name='قراردادها', source='contract')
+        party = ContractParty.objects.create(company=self.company, name='پیمانکار ب')
+        contract = Contract.objects.create(
+            company=self.company, subject='قرارداد ب', party=party, project=self.project,
+        )
+        definition = self.make_definition(rules={})
+        self.add_rule(definition, 2, source=SRC.AUTO, category=contract_category)
+
+        coding = build_coding(
+            definition, project=self.project, party=party, contract=contract, create=True,
+        )
+        self.assertEqual(coding['auxiliary_2']['aux_type'], 'contract')
+        auxiliary = AuxiliaryAccount.objects.get(pk=coding['auxiliary_2']['id'])
+        self.assertEqual(auxiliary.contract_id, contract.pk)
+        self.assertEqual(auxiliary.category_id, contract_category.pk)
+
+        # بار دوم همان تفصیل برمی‌گردد (ساختهٔ دوباره نمی‌شود)
+        again = build_coding(
+            definition, project=self.project, party=party, contract=contract, create=True,
+        )
+        self.assertEqual(again['auxiliary_2']['id'], coding['auxiliary_2']['id'])
+        self.assertEqual(again['created_auxiliaries'], [])
+
+    def test_auto_with_manual_category_uses_fixed_auxiliary(self):
+        """دستهٔ «ریز هزینه‌ها» (دستی) تفصیل ثابت انتخاب‌شده را می‌نشاند."""
+        detail_category = self.make_auxiliary_category(code='DET', name='ریز هزینه‌ها', source='manual')
+        fixed = AuxiliaryAccount.objects.create(
+            company=self.company, code='DET-1', name='مصالح ریز', aux_type='other',
+            category=detail_category,
+        )
+        definition = self.make_definition(rules={})
+        self.add_rule(definition, 3, source=SRC.AUTO, category=detail_category, auxiliary=fixed)
+        coding = build_coding(definition, project=self.project, create=False)
+        self.assertEqual(coding['auxiliary_3']['id'], fixed.pk)
+
+    def test_auto_without_category_warns(self):
+        definition = self.make_definition(rules={})
+        self.add_rule(definition, 1, source=SRC.AUTO, category=None)
+        coding = build_coding(definition, project=self.project, create=False)
+        self.assertIsNone(coding['auxiliary_1'])
+        self.assertTrue(any('دستهٔ تفصیلی' in warning for warning in coding['warnings']))
+
+    def test_contract_category_without_contract_warns(self):
+        contract_category = self.make_auxiliary_category()
+        definition = self.make_definition(rules={})
+        self.add_rule(definition, 1, source=SRC.AUTO, category=contract_category)
+        coding = build_coding(definition, project=self.project, create=True)
+        self.assertIsNone(coding['auxiliary_1'])
+        self.assertTrue(any('در دسترس نیست' in warning for warning in coding['warnings']))
+
+    def test_coding_problems_flags_rule_without_category(self):
+        definition = self.make_definition(rules={})
+        self.add_rule(definition, 1, source=SRC.AUTO, category=None)
+        problems = definition.coding_problems()
+        self.assertTrue(any('تفصیلی' in item for item in problems))
 

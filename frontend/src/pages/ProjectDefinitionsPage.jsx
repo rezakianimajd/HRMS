@@ -111,7 +111,7 @@ const CodingPreview = ({ coding }) => {
 };
 
 /* ------------------------------------------------------------- فرم تعریف */
-const DefinitionDialog = ({ open, onClose, scope, projectTypeId, projectId, definition, meta }) => {
+const DefinitionDialog = ({ open, onClose, scope, projectTypeId, projectId, definition, meta, defaultKind = 'expense' }) => {
   const qc = useQueryClient();
   const [form, setForm] = useState(emptyForm());
   const [preview, setPreview] = useState(null);
@@ -121,12 +121,12 @@ const DefinitionDialog = ({ open, onClose, scope, projectTypeId, projectId, defi
 
   React.useEffect(() => {
     if (!open) return;
-    setForm(definition ? toForm(definition) : emptyForm());
+    setForm(definition ? toForm(definition) : { ...emptyForm(), kind: defaultKind });
     setPreview(null);
     setError('');
     setPreviewParty('');
     setPreviewProject(projectId ? String(projectId) : '');
-  }, [open, definition, projectId]);
+  }, [open, definition, projectId, defaultKind]);
 
   const set = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
   const lookups = useLookups(open, form.general_account);
@@ -182,8 +182,9 @@ const DefinitionDialog = ({ open, onClose, scope, projectTypeId, projectId, defi
           auto_create: rule.auto_create,
         })),
     };
-    if (scope === 'project') body.project = projectId;
-    else body.project_type = projectTypeId;
+    if (scope === 'project' && projectId) body.project = projectId;
+    if (scope === 'project_type' && projectTypeId) body.project_type = projectTypeId;
+    // scope === 'all' → بدون حوزه: تعریف عمومی برای همهٔ پروژه‌ها
     if (form.id) body.id = form.id;
     save.mutate(body);
   };
@@ -193,7 +194,8 @@ const DefinitionDialog = ({ open, onClose, scope, projectTypeId, projectId, defi
       <DialogTitle sx={{ fontWeight: 800, color: COLOR }}>
         {form.id ? 'ویرایش تعریف نگاشت' : 'تعریف نگاشت جدید'}
         <Typography variant="caption" color="textSecondary" sx={{ ml: 1 }}>
-          {scope === 'project' ? 'حوزه: پروژهٔ خاص' : 'حوزه: نوع پروژه (الگو)'}
+          {scope === 'all' ? 'حوزه: همهٔ پروژه‌ها (عمومی)'
+            : scope === 'project' ? 'حوزه: پروژهٔ خاص' : 'حوزه: نوع پروژه (الگو)'}
         </Typography>
       </DialogTitle>
       <DialogContent dividers sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
@@ -297,37 +299,45 @@ const DefinitionDialog = ({ open, onClose, scope, projectTypeId, projectId, defi
   );
 };
 
-const RuleRow = ({ rule, index, sources, categories, auxiliaries, onChange }) => (
-  <Paper variant="outlined" sx={{ p: 1.25, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
-    <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems="center">
-      <Chip size="small" label={`تفصیل ${['یک', 'دو', 'سه'][index]}`}
-        sx={{ fontWeight: 800, bgcolor: 'rgba(109,40,217,0.12)', color: COLOR, minWidth: 74 }} />
-      <FormControl size="small" sx={{ minWidth: 190 }}>
-        <InputLabel>منبع تفصیل</InputLabel>
-        <Select value={rule.source} label="منبع تفصیل"
-          onChange={(e) => onChange({ ...rule, source: e.target.value })}>
-          {sources.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
-        </Select>
-      </FormControl>
-      {rule.source === 'fixed' ? (
+const RuleRow = ({ rule, index, sources, categories, auxiliaries, onChange }) => {
+  const category = (categories || []).find((item) => item.id === rule.category) || null;
+  const needsFixed = rule.source === 'fixed'
+    || (rule.source === 'auto' && category && category.source === 'manual');
+  return (
+    <Paper variant="outlined" sx={{ p: 1.25, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems="center">
+        <Chip size="small" label={`تفصیل ${['یک', 'دو', 'سه'][index]}`}
+          sx={{ fontWeight: 800, bgcolor: 'rgba(109,40,217,0.12)', color: COLOR, minWidth: 74 }} />
         <Box sx={{ minWidth: 220, flex: 1 }}>
-          <CodePicker label="تفصیل ثابت" options={auxiliaries} value={rule.auxiliary}
-            onChange={(value) => onChange({ ...rule, auxiliary: value })} />
+          <CodePicker label="دستهٔ تفصیلی" options={categories}
+            value={rule.category} onChange={(value) => onChange({ ...rule, category: value })}
+            helper={category
+              ? `نوع دسته: ${category.source_display || category.source}`
+              : 'مثلاً پروژه، قراردادها، ریز هزینه‌ها'} />
         </Box>
-      ) : null}
-      <Box sx={{ minWidth: 190, flex: 1 }}>
-        <CodePicker label="دسته‌بندی تفصیلی" options={categories}
-          value={rule.category} onChange={(value) => onChange({ ...rule, category: value })}
-          helper={rule.source === 'none' ? 'با انتخاب منبع فعال می‌شود' : 'دستهٔ تفصیلی مقصد'} />
-      </Box>
-      <FormControlLabel sx={{ m: 0 }} control={(
-        <Switch size="small" checked={rule.auto_create}
-          onChange={(e) => onChange({ ...rule, auto_create: e.target.checked })} />
-      )} label={<Typography variant="caption">ساخت خودکار</Typography>} />
-    </Stack>
-  </Paper>
-);
-const emptyRule = (slot) => ({ slot, source: 'none', category: null, auxiliary: null, auto_create: true });
+        <FormControl size="small" sx={{ minWidth: 190 }}>
+          <InputLabel>نحوهٔ خواندن</InputLabel>
+          <Select value={rule.source} label="نحوهٔ خواندن"
+            onChange={(e) => onChange({ ...rule, source: e.target.value })}>
+            {sources.map((item) => <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>)}
+          </Select>
+        </FormControl>
+        {needsFixed ? (
+          <Box sx={{ minWidth: 200, flex: 1 }}>
+            <CodePicker label="تفصیل ثابت" options={auxiliaries} value={rule.auxiliary}
+              onChange={(value) => onChange({ ...rule, auxiliary: value })} />
+          </Box>
+        ) : null}
+        <FormControlLabel sx={{ m: 0 }} control={(
+          <Switch size="small" checked={rule.auto_create}
+            onChange={(e) => onChange({ ...rule, auto_create: e.target.checked })} />
+        )} label={<Typography variant="caption">ساخت خودکار</Typography>} />
+      </Stack>
+    </Paper>
+  );
+};
+
+const emptyRule = (slot) => ({ slot, source: 'auto', category: null, auxiliary: null, auto_create: true });
 
 const emptyForm = () => ({
   id: null, code: '', title: '', kind: 'expense', description: '',
@@ -347,13 +357,14 @@ const toForm = (row) => ({
   auxiliary_rules: [1, 2, 3].map((slot) => {
     const rule = (row.auxiliary_rules || []).find((item) => item.slot === slot);
     return rule ? {
-      slot, source: rule.source || 'none', category: rule.category || null,
+      slot, source: rule.source || 'auto', category: rule.category || null,
       auxiliary: rule.auxiliary || null, auto_create: rule.auto_create !== false,
     } : emptyRule(slot);
   }),
 });
 
 const SCOPES = [
+  { value: 'all', label: 'همهٔ پروژه‌ها (عمومی)' },
   { value: 'project_type', label: 'نوع پروژه (الگو)' },
   { value: 'project', label: 'پروژهٔ خاص (جایگزین)' },
 ];
@@ -469,9 +480,10 @@ const TemplateDialog = ({ open, onClose, scope, projectTypeId, projectId }) => {
 /* --------------------------------------------------- تب نگاشت حساب‌ها */
 const DefinitionsTab = ({ meta }) => {
   const qc = useQueryClient();
-  const [scope, setScope] = useState('project_type');
+  const [scope, setScope] = useState('all');
   const [projectTypeId, setProjectTypeId] = useState('');
   const [projectId, setProjectId] = useState('');
+  const [kindFilter, setKindFilter] = useState('expense');
   const [dialog, setDialog] = useState(false);
   const [editing, setEditing] = useState(null);
   const [templateOpen, setTemplateOpen] = useState(false);
@@ -487,11 +499,17 @@ const DefinitionsTab = ({ meta }) => {
   });
   const projects = listOf(projectData);
 
-  const scopeReady = scope === 'project_type' ? !!projectTypeId : !!projectId;
-  const params = scope === 'project_type' ? { project_type: projectTypeId } : { project: projectId };
+  // «همهٔ پروژهها» نیاز به انتخاب ندارد؛ برای دو حوزهٔ دیگر انتخاب الزامی است
+  const scopeReady = scope === 'all'
+    ? true
+    : (scope === 'project_type' ? !!projectTypeId : !!projectId);
+  const scopeParams = scope === 'all'
+    ? { scope: 'all' }
+    : (scope === 'project_type' ? { project_type: projectTypeId } : { project: projectId });
+  const params = { ...scopeParams, ...(kindFilter ? { kind: kindFilter } : {}) };
 
   const { data, isLoading } = useQuery({
-    queryKey: ['project-account-definitions', scope, projectTypeId, projectId],
+    queryKey: ['project-account-definitions', scope, projectTypeId, projectId, kindFilter],
     queryFn: () => axiosInstance.get(API, { params }).then((r) => r.data),
     enabled: scopeReady,
   });
@@ -505,7 +523,9 @@ const DefinitionsTab = ({ meta }) => {
   const summary = (row) => {
     const rules = (row.auxiliary_rules || []).filter((rule) => rule.source !== 'none');
     if (!rules.length) return 'بدون تفصیل';
-    return rules.map((rule) => `تفصیل ${rule.slot}: ${rule.source_display}`).join(' · ');
+    return rules
+      .map((rule) => `تفصیل ${rule.slot}: ${rule.category_name || rule.source_display}`)
+      .join(' · ');
   };
 
 
@@ -526,14 +546,23 @@ const DefinitionsTab = ({ meta }) => {
                 {projectTypes.map((item) => <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>)}
               </Select>
             </FormControl>
-          ) : (
+          ) : scope === 'project' ? (
             <FormControl size="small" sx={{ minWidth: 260 }}>
               <InputLabel>پروژه</InputLabel>
               <Select value={projectId} label="پروژه" onChange={(e) => setProjectId(e.target.value)}>
                 {projects.map((item) => <MenuItem key={item.id} value={item.id}>{item.code} - {item.name}</MenuItem>)}
               </Select>
             </FormControl>
-          )}
+          ) : null}
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>نوع آیتم</InputLabel>
+            <Select value={kindFilter} label="نوع آیتم" onChange={(e) => setKindFilter(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {(meta?.kinds || []).map((item) => (
+                <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <Box sx={{ flex: 1 }} />
           <Button size="small" variant="outlined" startIcon={<AutoAwesomeIcon />} disabled={!scopeReady}
             onClick={() => setTemplateOpen(true)}>قالب پیشنهادی</Button>
@@ -541,10 +570,18 @@ const DefinitionsTab = ({ meta }) => {
             onClick={() => { setEditing(null); setDialog(true); }}
             sx={{ background: `linear-gradient(135deg,${COLOR},#8b5cf6)` }}>تعریف جدید</Button>
         </Stack>
+        {scope === 'all' && (
+          <Alert severity="info" sx={{ mt: 1.5, borderRadius: '12px', py: 0 }}>
+            <Typography variant="caption">
+              تعریف‌های «همهٔ پروژه‌ها» برای تمام پروژه‌ها خوانده می‌شوند؛ اگر پروژه یا نوع پروژهٔ خاصی
+              تعریف هم‌کد داشته باشد، همان اولویت می‌گیرد (پروژه ← نوع پروژه ← همهٔ پروژه‌ها).
+            </Typography>
+          </Alert>
+        )}
         {scope === 'project' && (
           <Alert severity="info" sx={{ mt: 1.5, borderRadius: '12px', py: 0 }}>
             <Typography variant="caption">
-              تعریف‌های این پروژه، تعریف‌های هم‌کد «نوع پروژه» را جایگزین می‌کنند.
+              تعریف‌های این پروژه، تعریف‌های هم‌کد «نوع پروژه» و «همهٔ پروژه‌ها» را جایگزین می‌کنند.
             </Typography>
           </Alert>
         )}
@@ -574,6 +611,7 @@ const DefinitionsTab = ({ meta }) => {
                   <Typography variant="subtitle2" fontWeight={800} sx={{ flex: 1 }}>{row.title}</Typography>
                   <Chip size="small" label={row.kind_display}
                     sx={{ bgcolor: `${KIND_COLORS[row.kind] || '#94a3b8'}22`, color: KIND_COLORS[row.kind] || '#94a3b8', fontWeight: 700 }} />
+                  <Chip size="small" variant="outlined" label={row.scope_label} />
                   {row.subsidiary_under_general ? (
                     <Tooltip title="معین زیرمجموعهٔ کل است">
                       <CheckCircleIcon sx={{ color: '#10b981', fontSize: 18 }} />
@@ -613,7 +651,7 @@ const DefinitionsTab = ({ meta }) => {
 
       <DefinitionDialog open={dialog} onClose={(saved) => { setDialog(false); if (saved) setEditing(null); }}
         scope={scope} projectTypeId={projectTypeId} projectId={projectId}
-        definition={editing} meta={meta} />
+        definition={editing} meta={meta} defaultKind={kindFilter || 'expense'} />
       <TemplateDialog open={templateOpen} onClose={() => setTemplateOpen(false)}
         scope={scope} projectTypeId={projectTypeId} projectId={projectId} />
     </Box>

@@ -9,6 +9,8 @@ from projects.definition_models import (
 class ProjectAccountDefinitionAuxSerializer(serializers.ModelSerializer):
     source_display = serializers.CharField(source='get_source_display', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
+    category_source = serializers.CharField(source='category.source', read_only=True)
+    category_source_display = serializers.CharField(source='category.get_source_display', read_only=True)
     auxiliary_code = serializers.CharField(source='auxiliary.code', read_only=True)
     auxiliary_name = serializers.CharField(source='auxiliary.name', read_only=True)
 
@@ -16,10 +18,11 @@ class ProjectAccountDefinitionAuxSerializer(serializers.ModelSerializer):
         model = ProjectAccountDefinitionAux
         fields = [
             'id', 'slot', 'source', 'source_display', 'category', 'category_name',
+            'category_source', 'category_source_display',
             'auxiliary', 'auxiliary_code', 'auxiliary_name', 'auto_create',
         ]
-        read_only_fields = ['id', 'source_display', 'category_name',
-                            'auxiliary_code', 'auxiliary_name']
+        read_only_fields = ['id', 'source_display', 'category_name', 'category_source',
+                            'category_source_display', 'auxiliary_code', 'auxiliary_name']
 
     def validate_slot(self, value):
         if value not in (1, 2, 3):
@@ -29,6 +32,11 @@ class ProjectAccountDefinitionAuxSerializer(serializers.ModelSerializer):
     def validate(self, attrs):
         source = attrs.get('source', getattr(self.instance, 'source', None))
         auxiliary = attrs.get('auxiliary', getattr(self.instance, 'auxiliary', None))
+        category = attrs.get('category', getattr(self.instance, 'category', None))
+        if source == ProjectAccountDefinitionAux.Source.AUTO and not category:
+            raise serializers.ValidationError({
+                'category': 'در حالت «از دستهٔ تفصیلی» انتخاب دسته (پروژه، قرارداد، ریز هزینه‌ها و ...) الزامی است.',
+            })
         if source == ProjectAccountDefinitionAux.Source.FIXED and not auxiliary:
             raise serializers.ValidationError(
                 {'auxiliary': 'برای منبع «تفصیل ثابت» انتخاب تفصیل الزامی است.'}
@@ -92,11 +100,8 @@ class ProjectAccountDefinitionSerializer(serializers.ModelSerializer):
         project_type = attrs.get('project_type', getattr(self.instance, 'project_type', None))
         if project and project_type:
             raise serializers.ValidationError({
-                'project': 'فقط یکی از «نوع پروژه» یا «پروژه» را به‌عنوان حوزهٔ تعریف انتخاب کنید.',
-            })
-        if not project and not project_type:
-            raise serializers.ValidationError({
-                'project_type': 'حوزهٔ تعریف الزامی است: یا «نوع پروژه» یا «پروژه».',
+                'project': 'فقط یکی از «پروژه» یا «نوع پروژه» را انتخاب کنید؛ '
+                           'برای تعریف عمومی (همهٔ پروژه‌ها) هیچ‌کدام را انتخاب نکنید.',
             })
         general = attrs.get('general_account', getattr(self.instance, 'general_account', None))
         subsidiary = attrs.get('subsidiary_account', getattr(self.instance, 'subsidiary_account', None))

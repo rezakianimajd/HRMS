@@ -30,15 +30,27 @@ SOURCE_AUX_TYPE = {
 }
 
 SOURCE_LABELS = {
+    'auto': 'از دستهٔ تفصیلی (خودکار)',
     'project': 'پروژهٔ همین سند',
     'party': 'طرف حساب / پیمانکار',
     'supplier': 'تأمین‌کننده',
-    'contract': 'قرارداد',
+    'contract': 'قرارداد همین سند',
     'employee': 'پرسنل',
     'bank': 'بانک',
     'cash': 'صندوق',
     'fixed': 'تفصیل ثابت',
     'none': 'بدون تفصیل',
+}
+
+# دستهٔ تفصیلی حسابداری (AuxiliaryCategory.Source) → منبع تفصیل در این ماژول
+CATEGORY_SOURCE_MAP = {
+    'project': ProjectAccountDefinitionAux.Source.PROJECT,
+    'contract': ProjectAccountDefinitionAux.Source.CONTRACT,
+    'party': ProjectAccountDefinitionAux.Source.PARTY,
+    'employee': ProjectAccountDefinitionAux.Source.EMPLOYEE,
+    'bank': ProjectAccountDefinitionAux.Source.BANK,
+    'cash': ProjectAccountDefinitionAux.Source.CASH,
+    'manual': ProjectAccountDefinitionAux.Source.FIXED,
 }
 
 # پیشنهاد «قالب اولیه» برای شروع سریع تعاریف هر نوع پروژه
@@ -102,11 +114,20 @@ def _base_queryset(company):
     ).prefetch_related('auxiliary_rules')
 
 
-def _merge_scoped(rows):
-    """ترکیب ردیف‌های دو حوزه: تعریف پروژه‌ای جای تعریف نوع پروژه را می‌گیرد."""
-    ordered = sorted(rows, key=lambda d: 0 if getattr(d, 'project_id', None) else 1)
+def _merge_scoped(rows, with_global=True):
+    """ترکیب ردیف‌های سه حوزه — اولویت: پروژه ← نوع پروژه ← همهٔ پروژه‌ها."""
+    def priority(definition):
+        if getattr(definition, 'project_id', None):
+            return 0
+        if getattr(definition, 'project_type_id', None):
+            return 1
+        return 2
+
+    ordered = sorted(rows, key=priority)
     merged, seen = [], set()
     for definition in ordered:
+        if not with_global and priority(definition) == 2:
+            continue
         if definition.code in seen:
             continue
         seen.add(definition.code)
@@ -115,15 +136,23 @@ def _merge_scoped(rows):
     return merged
 
 
-def effective_definitions(company, project):
-    """تعریف‌های مؤثر یک پروژه: تعریف پروژه‌ای بر تعریف نوع پروژه اولویت دارد."""
-    if company is None or project is None:
+def effective_definitions(company, project=None, kind=None):
+    """تعریف‌های مؤثر یک پروژه (یا تعریف‌های عمومی وقتی پروژه داده نشود).
+
+    اولویت: تعریف «پروژهٔ خاص» ← «نوع پروژه» ← «همهٔ پروژه‌ها (عمومی)».
+    """
+    if company is None:
         return []
-    type_id = getattr(project, 'project_type_id', None)
-    query = Q(project_id=project.pk)
-    if type_id:
-        query |= Q(project_type_id=type_id, project__isnull=True)
-    return _merge_scoped(list(_base_queryset(company).filter(query)))
+    query = Q(project__isnull=True, project_type__isnull=True)  # عمومی/همهٔ پروژه‌ها
+    if project is not None:
+        query |= Q(project_id=project.pk)
+        type_id = getattr(project, 'project_type_id', None)
+        if type_id:
+            query |= Q(project_type_id=type_id, project__isnull=True)
+    rows = _base_queryset(company).filter(query)
+    if kind:
+        rows = rows.filter(kind=kind)
+    return _merge_scoped(list(rows))
 
 
 def resolve_definition(company, project, code=None, kind=None, definition_id=None):
@@ -149,27 +178,53 @@ def resolve_definition(company, project, code=None, kind=None, definition_id=Non
 # ----------------------------------------------------------------------------
 # ساخت/یافتن تفصیل‌ها
 # ----------------------------------------------------------------------------
-def _lookup_auxiliary(company, source, ctx):
-    """تفصیل موجود را بر اساس منبع پیدا کن."""
+def _lookup_auxiliary(company, source, ctx, category=None):
+    """تفصیل موجود را بر اساس منبع (و در صورت تعیین، همان دستهٔ تفصیلی) پیدا کن.
+
+    اولویت: ابتدا در «همان دستهٔ تعریفی» جست‌وجو می‌شود (مثل دستهٔ پروژه یا قراردادها)؛
+    اگر نبود، تفصیل موجودِ آن موجودیت در هر دسته‌ای پذیرفته می‌شود.
+    """
     from accounting.models import AuxiliaryAccount
 
     qs = AuxiliaryAccount.objects.filter(company=company)
     project = ctx.get('project')
+
+    def _find(**filters):
+        if category is not None:
+            match = qs.filter(category=category, **filters).order_by('code').first()
+            if match is not None:
+                return match
+        return qs.filter(**filters).order_by('code').first()
+
     if source == ProjectAccountDefinitionAux.Source.PROJECT:
-        return qs.filter(project=project).order_by('code').first() if project else None
+        return _find(project=project) if project else None
     if source == ProjectAccountDefinitionAux.Source.PARTY and ctx.get('party') is not None:
-        return qs.filter(party=ctx['party']).order_by('code').first()
+        return _find(party=ctx['party'])
     if source == ProjectAccountDefinitionAux.Source.SUPPLIER and ctx.get('supplier') is not None:
-        return qs.filter(supplier=ctx['supplier']).order_by('code').first()
+        return _find(supplier=ctx['supplier'])
     if source == ProjectAccountDefinitionAux.Source.CONTRACT and ctx.get('contract') is not None:
-        return qs.filter(contract=ctx['contract']).order_by('code').first()
+        return _find(contract=ctx['contract'])
     if source == ProjectAccountDefinitionAux.Source.EMPLOYEE and ctx.get('employee') is not None:
-        return qs.filter(employee=ctx['employee']).order_by('code').first()
+        return _find(employee=ctx['employee'])
     if source in (ProjectAccountDefinitionAux.Source.BANK, ProjectAccountDefinitionAux.Source.CASH):
         entity = ctx.get('treasury_entity')
         if entity is not None:
-            return qs.filter(treasury_entity=entity).order_by('code').first()
+            return _find(treasury_entity=entity)
     return None
+
+
+def _resolve_source(rule):
+    """منبع مؤثر یک قاعده: در حالت «خودکار» از دستهٔ تفصیلی خوانده می‌شود."""
+    source = rule.source
+    if source != ProjectAccountDefinitionAux.Source.AUTO:
+        return source, None
+    category = getattr(rule, 'category', None)
+    if category is None:
+        return None, 'دستهٔ تفصیلی برای این اسلات انتخاب نشده است.'
+    mapped = CATEGORY_SOURCE_MAP.get(getattr(category, 'source', 'manual'))
+    if mapped is None:
+        return None, f'دستهٔ «{getattr(category, "name", "")}» قابل تبدیل به تفصیل خودکار نیست.'
+    return mapped, None
 
 
 def _aux_identity(source, ctx):
@@ -209,19 +264,28 @@ def ensure_auxiliary(company, rule, ctx, create=None):
     """تفصیل متناظر با یک قاعده را برگردان (و در صورت اجازه، بساز).
 
     خروجی: ``(auxiliary_or_None, created: bool, warning_or_None)``
+
+    * قاعدهٔ «از دستهٔ تفصیلی» → نوع تفصیل از `category.source` خوانده می‌شود
+      (پروژه، قرارداد، طرف حساب، پرسنل، بانک/صندوق) و در همان دسته ساخته می‌شود؛
+      برای دستهٔ «دستی» (مثل ریز هزینه‌ها) تفصیل ثابت انتخاب‌شده استفاده می‌شود.
     """
     from accounting.coding import next_code
     from accounting.models import AuxiliaryAccount
 
-    source = rule.source
+    source, problem = _resolve_source(rule)
+    if problem:
+        return None, False, problem
     if source == ProjectAccountDefinitionAux.Source.NONE:
         return None, False, None
     if source == ProjectAccountDefinitionAux.Source.FIXED:
         if rule.auxiliary_id:
             return rule.auxiliary, False, None
-        return None, False, f'تفصیل ثابت اسلات {rule.slot} انتخاب نشده است.'
+        label = getattr(getattr(rule, 'category', None), 'name', '') or 'تفصیل ثابت'
+        return None, False, (
+            f'برای اسلات {rule.slot} (دستهٔ «{label}») تفصیلی انتخاب نشده است.'
+        )
 
-    existing = _lookup_auxiliary(company, source, ctx)
+    existing = _lookup_auxiliary(company, source, ctx, category=rule.category)
     if existing is not None:
         return existing, False, None
 
@@ -313,10 +377,11 @@ def build_coding(definition, *, project=None, party=None, supplier=None, contrac
                 )
             continue
         if rule.category is None and expected.get(slot) is not None:
+            # اگر معین دستهٔ تفصیلی تعریف کرده و در تعریف انتخاب نشده، همان پذیرفته می‌شود
             rule.category = expected[slot]
         auxiliary, created, warning = ensure_auxiliary(company, rule, ctx, create=create)
         if warning:
-            warnings.append(warning)
+            warnings.append(f'تفصیل {slot}: {warning}')
         if auxiliary is not None:
             auxiliaries[slot] = auxiliary
             if created:
@@ -489,7 +554,7 @@ def apply_template(company, rows, project=None, project_type=None):
         for slot in (1, 2, 3):
             ProjectAccountDefinitionAux.objects.create(
                 company=company, definition=definition, slot=slot,
-                source=ProjectAccountDefinitionAux.Source.NONE, auto_create=True,
+                source=ProjectAccountDefinitionAux.Source.AUTO, auto_create=True,
             )
         created.append(code)
     return {'created': created, 'skipped': skipped, 'errors': errors}

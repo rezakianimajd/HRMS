@@ -83,6 +83,8 @@ class ProjectAccountDefinitionViewSet(BaseProjectDefinitionViewSet):
             qs = qs.filter(project__isnull=False)
         elif scope == 'project_type':
             qs = qs.filter(project_type__isnull=False)
+        elif scope == 'all':
+            qs = qs.filter(project__isnull=True, project_type__isnull=True)
         return qs
 
     @action(detail=False, methods=['get'])
@@ -95,20 +97,28 @@ class ProjectAccountDefinitionViewSet(BaseProjectDefinitionViewSet):
 
     @action(detail=False, methods=['get'])
     def effective(self, request):
-        """تعریف‌های مؤثر یک پروژه (تعریف پروژه‌ای بر نوع پروژه اولویت دارد)."""
+        """تعریف‌های مؤثر یک پروژه (پروژه ← نوع پروژه ← همهٔ پروژه‌ها).
+
+        اگر `project` فرستاده نشود، تعریف‌های «عمومی/همهٔ پروژه‌ها» برگردانده می‌شود.
+        با پارامتر `kind` (مثلاً `kind=expense`) فقط همان نوع آیتم خوانده می‌شود.
+        """
         company = _company(request)
         project_id = _int(request.query_params.get('project'))
-        project = Project.objects.filter(pk=project_id, company=company).select_related(
-            'project_type').first() if project_id else None
-        if project is None:
-            return Response({'detail': 'پروژه یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
-        rows = effective_definitions(company, project)
+        kind = request.query_params.get('kind') or None
+        project = None
+        if project_id:
+            project = Project.objects.filter(pk=project_id, company=company).select_related(
+                'project_type').first()
+            if project is None:
+                return Response({'detail': 'پروژه یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        rows = effective_definitions(company, project, kind=kind)
         return Response({
             'project': {
                 'id': project.pk, 'code': project.code, 'name': project.name,
                 'project_type': project.project_type_id,
                 'project_type_name': getattr(project.project_type, 'name', ''),
-            },
+            } if project else None,
+            'kind': kind or '',
             'definitions': ProjectAccountDefinitionSerializer(rows, many=True).data,
         })
 

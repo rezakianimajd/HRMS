@@ -124,10 +124,12 @@ const CostTransactionsManager = ({ projectId }) => {
   const { data: raw } = useQuery({ queryKey: ['cost-transactions', projectId], queryFn: () => axiosInstance.get('/cost-transactions/', { params: { project: projectId } }).then(r => r.data) });
   const list = Array.isArray(raw) ? raw : raw?.results || [];
 
-  // تعاریف اولیهٔ پروژه (نگاشت کل/معین/تفصیل) برای انتخاب محل ثبت هزینه
+  // تعاریف اولیهٔ پروژه برای «تب هزینه‌ها»: کل/معین و تفصیل‌ها را از اینجا می‌خوانیم
   const { data: definitionData } = useQuery({
     queryKey: ['effective-definitions', projectId],
-    queryFn: () => axiosInstance.get('/projects/project-account-definitions/effective/', { params: { project: projectId } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/projects/project-account-definitions/effective/', {
+      params: { project: projectId, kind: 'expense' },
+    }).then(r => r.data),
     enabled: !!projectId && dialog,
   });
   const definitions = definitionData?.definitions || [];
@@ -203,7 +205,9 @@ const CostTransactionsManager = ({ projectId }) => {
           <TextField size="small" label="توضیح" value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
 
           <Divider textAlign="right">
-            <Typography variant="caption" fontWeight={800} color="#6d28d9">کدینگ هزینه (تعاریف اولیهٔ پروژه)</Typography>
+            <Typography variant="caption" fontWeight={800} color="#6d28d9">
+              کدینگ هزینه (از تعاریف اولیهٔ پروژه: کل / معین / تفصیل‌ها)
+            </Typography>
           </Divider>
           <FormControl size="small" fullWidth><InputLabel>تعریف حسابداری</InputLabel>
             <Select value={coding.definition || ''} label="تعریف حسابداری"

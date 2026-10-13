@@ -85,19 +85,24 @@ class ProjectAccountDefinition(BaseModel):
         constraints = [
             models.UniqueConstraint(
                 fields=['company', 'project_type', 'code'],
-                condition=models.Q(project__isnull=True),
+                condition=models.Q(project__isnull=True, project_type__isnull=False),
                 name='uniq_proj_def_type_code',
             ),
             models.UniqueConstraint(
                 fields=['company', 'project', 'code'],
-                condition=models.Q(project_type__isnull=True),
+                condition=models.Q(project_type__isnull=True, project__isnull=False),
                 name='uniq_proj_def_project_code',
+            ),
+            models.UniqueConstraint(
+                fields=['company', 'code'],
+                condition=models.Q(project__isnull=True, project_type__isnull=True),
+                name='uniq_proj_def_global_code',
             ),
         ]
 
     def __str__(self):
         scope = self.project.name if self.project_id else (
-            self.project_type.name if self.project_type_id else 'بی‌موضوع'
+            self.project_type.name if self.project_type_id else 'همهٔ پروژه‌ها'
         )
         return f'{self.code} - {self.title} ({scope})'
 
@@ -108,11 +113,17 @@ class ProjectAccountDefinition(BaseModel):
             return 'project'
         if self.project_type_id:
             return 'project_type'
-        return 'none'
+        return 'all'
+
+    @property
+    def is_global(self):
+        """آیا برای همهٔ پروژه‌ها (عمومی) تعریف شده است؟"""
+        return not self.project_id and not self.project_type_id
 
     @property
     def scope_label(self):
-        return {'project': 'پروژه', 'project_type': 'نوع پروژه'}.get(self.scope, '—')
+        return {'project': 'پروژه', 'project_type': 'نوع پروژه',
+                'all': 'همهٔ پروژه‌ها'}.get(self.scope, '—')
 
     def subsidiary_is_under_general(self):
         """آیا معین زیرمجموعهٔ (در هر عمقی) حساب کل انتخابی است؟"""
@@ -141,13 +152,11 @@ class ProjectAccountDefinition(BaseModel):
         return problems
 
     def clean(self):
+        """حوزهٔ تعریف: پروژه / نوع پروژه / خالی = همهٔ پروژه‌ها (عمومی)."""
         if self.project_id and self.project_type_id:
             raise ValidationError({
-                'project': _('فقط یکی از «نوع پروژه» یا «پروژه» را به‌عنوان حوزهٔ تعریف انتخاب کنید.'),
-            })
-        if not self.project_id and not self.project_type_id:
-            raise ValidationError({
-                'project_type': _('حوزهٔ تعریف الزامی است: یا «نوع پروژه» یا «پروژه».'),
+                'project': _('فقط یکی از «پروژه» یا «نوع پروژه» را انتخاب کنید؛ '
+                             'برای تعریف عمومی هیچ‌کدام را انتخاب نکنید.'),
             })
         if self.general_account_id and self.subsidiary_account_id \
                 and not self.subsidiary_is_under_general():
@@ -160,11 +169,12 @@ class ProjectAccountDefinitionAux(BaseModel):
     """تفصیل‌های یک تعریف: در هر اسلات (۱..۳) منبع تفصیل مشخص می‌شود."""
 
     class Source(models.TextChoices):
+        AUTO = 'auto', _('از دستهٔ تفصیلی (خودکار)')
         NONE = 'none', _('بدون تفصیل')
         PROJECT = 'project', _('پروژهٔ همین سند')
         PARTY = 'party', _('طرف حساب / پیمانکار')
         SUPPLIER = 'supplier', _('تأمین‌کننده')
-        CONTRACT = 'contract', _('قرارداد')
+        CONTRACT = 'contract', _('قرارداد همین سند')
         EMPLOYEE = 'employee', _('پرسنل')
         BANK = 'bank', _('بانک')
         CASH = 'cash', _('صندوق')
@@ -179,11 +189,14 @@ class ProjectAccountDefinitionAux(BaseModel):
         help_text=_('تفصیل یک = ۱، تفصیل دو = ۲، تفصیل سه = ۳'),
     )
     source = models.CharField(
-        max_length=20, choices=Source.choices, default=Source.NONE, verbose_name=_('منبع تفصیل'),
+        max_length=20, choices=Source.choices, default=Source.AUTO, verbose_name=_('منبع تفصیل'),
+        help_text=_('«از دستهٔ تفصیلی» یعنی نوع تفصیل از دستهٔ انتخابی خوانده می‌شود '
+                    '(پروژه، قرارداد، طرف حساب، ریز هزینه‌ها و ...).'),
     )
     category = models.ForeignKey(
         'accounting.AuxiliaryCategory', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='+', verbose_name=_('دسته‌بندی تفصیلی'),
+        help_text=_('دستهٔ تفصیلی مقصد؛ مثلاً «پروژه»، «قراردادها» یا «ریز هزینه‌ها».'),
     )
     auxiliary = models.ForeignKey(
         'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
@@ -206,5 +219,10 @@ class ProjectAccountDefinitionAux(BaseModel):
     def clean(self):
         if self.slot not in (1, 2, 3):
             raise ValidationError({'slot': _('شمارهٔ اسلات تفصیل باید ۱، ۲ یا ۳ باشد.')})
+        if self.source == self.Source.AUTO and not self.category_id:
+            raise ValidationError({
+                'category': _('در حالت «از دستهٔ تفصیلی» انتخاب دسته (مثلاً پروژه، قرارداد، '
+                              'ریز هزینه‌ها) الزامی است.'),
+            })
         if self.source == self.Source.FIXED and not self.auxiliary_id:
             raise ValidationError({'auxiliary': _('برای «تفصیل ثابت» انتخاب تفصیل الزامی است.')})
