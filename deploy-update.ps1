@@ -151,7 +151,14 @@ $BackendFiles = @(
     'hrms_project/projects/quality_views.py',
     'hrms_project/projects/migrations/0011_inspection_ncr_punchitem_qualityplan_qualityplanitem_and_more.py',
     'hrms_project/projects/tests/test_quality_engine.py',
-    'hrms_project/projects/tests/test_phase3_quality_db.py'
+    'hrms_project/projects/tests/test_phase3_quality_db.py',
+    # --- تعاریف اولیهٔ پروژه: نگاشت کل/معین/تفصیل ---
+    'hrms_project/projects/definition_models.py',
+    'hrms_project/projects/accounting_definitions.py',
+    'hrms_project/projects/definition_serializers.py',
+    'hrms_project/projects/definition_views.py',
+    'hrms_project/projects/migrations/0012_costtransactionline_account_and_more.py',
+    'hrms_project/projects/tests/test_accounting_definitions.py'
 )
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
@@ -191,7 +198,11 @@ $FrontendFiles = @(
     'frontend/src/pages/ProjectQualityPage.jsx',
     'frontend/src/pages/ProjectsStructurePage.jsx',
     'frontend/src/AppRoutes.jsx',
-    'frontend/src/core/config/menuConfig.js'
+    'frontend/src/core/config/menuConfig.js',
+    # --- تعاریف اولیهٔ پروژه ---
+    'frontend/src/pages/ProjectDefinitionsPage.jsx',
+    'frontend/src/pages/CostDashboardPage.jsx',
+    'frontend/src/pages/projects/ProjectsShared.jsx'
 )
 
 function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }
@@ -209,6 +220,32 @@ Ok "اتصال برقرار است — سرور: $rHost | کاربر: $rUser"
 if ($probe -contains 'SUDO_OK') { Ok 'sudo بدون رمز فعال است.' }
 else { Warn 'sudo بدون رمز فعال نیست؛ در ادامه هر دستور sudo رمز کاربر SSH را می‌خواهد.' }
 if ($CheckOnly) { Warn '-CheckOnly → پایان بدون تغییر.'; return }
+
+# ---------------------------------------------------------------- ایمنی انتقال
+# هر فایل پایتون/فرانت‌اندی که در مخزن محلی هست ولی روی سرور وجود ندارد (مثل ماژول
+# تازه‌ساخته‌شده) خودکار به لیست انتقال افزوده می‌شود؛ در غیر این صورت import روی سرور
+# با خطای «No module named ...» می‌شکند.
+if ($Archive -and -not $SkipBackend) {
+    Step '۱.۵/۶ شناسایی فایل‌های جاافتاده روی سرور'
+    $remotePy = @(ssh -o ConnectTimeout=15 $Srv "cd $AppDir && find hrms_project -name '*.py' -not -path '*__pycache__*' -not -path '*/venv/*' 2>/dev/null")
+    $remoteJs = @(ssh -o ConnectTimeout=15 $Srv "cd $AppDir && find frontend/src -type f -name '*.js' -o -type f -name '*.jsx' 2>/dev/null")
+    if ($remotePy.Count -lt 50 -or $remoteJs.Count -lt 50) {
+        Warn 'فهرست فایل‌های سرور کامل خوانده نشد؛ پرش از تکمیل خودکار لیست.'
+    } else {
+        $rel = { param($p) $p.FullName.Substring($RepoRoot.Length + 1).Replace('\', '/') }
+        $localPy = @(Get-ChildItem -Path (Join-Path $RepoRoot 'hrms_project') -Recurse -File -Filter '*.py' |
+            Where-Object { $_.FullName -notmatch '[\\/](venv|__pycache__)[\\/]' } | ForEach-Object { & $rel $_ })
+        $localJs = @(Get-ChildItem -Path (Join-Path $RepoRoot 'frontend/src') -Recurse -File -Include '*.js', '*.jsx' |
+            ForEach-Object { & $rel $_ })
+        $added = @()
+        foreach ($f in $localPy) { if ($remotePy -notcontains $f -and $BackendFiles -notcontains $f) { $BackendFiles += $f; $added += $f } }
+        foreach ($f in $localJs) { if ($remoteJs -notcontains $f -and $FrontendFiles -notcontains $f) { $FrontendFiles += $f; $added += $f } }
+        if ($added.Count -gt 0) {
+            Ok ("{0} فایل جاافتاده به بسته افزوده شد:" -f $added.Count)
+            $added | ForEach-Object { Write-Host "      + $_" -ForegroundColor DarkGray }
+        } else { Ok 'همهٔ فایل‌های مخزن روی سرور موجودند.' }
+    }
+}
 
 # ---------------------------------------------------------------- بک‌اند
 if (-not $SkipBackend) {
