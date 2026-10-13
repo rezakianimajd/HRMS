@@ -104,7 +104,7 @@ const ExternalContractsPage = () => {
     (!typeFilter || String(c.contract_type_master) === String(typeFilter))
   );
 
-  // خروجی اکسل جامع (تک‌شیتی): ردیف هر قرارداد + همهٔ آیتم‌های درون آن
+  // خروجی اکسل جامع: تک‌شیت و یک ردیف برای هر قرارداد (همهٔ آیتم‌ها در ستون‌های همان ردیف)
   const exportExcel = async () => {
     if (exporting) return;
     setExporting(true);
