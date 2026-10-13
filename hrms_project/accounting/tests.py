@@ -619,3 +619,119 @@ class AnnualOperationTests(TestCase):
         self.assertTrue(any('انتظامی' in w and 'کدینگ' in w for w in data['warnings']))
 
 
+
+class DocumentFiscalYearAndPreparerTests(TestCase):
+    """فیلتر «سال مالی» (با پیش‌فرض آخرین سال دارای سند) و ستون «تهیه‌کننده» در فهرست اسناد."""
+
+    def setUp(self):
+        from datetime import date as _date
+        from types import SimpleNamespace
+
+        from django.contrib.auth.models import User
+        from django.http import QueryDict
+
+        from accounting.models import AccountingDocument, FiscalYear
+
+        self.SimpleNamespace = SimpleNamespace
+        self.QueryDict = QueryDict
+        self.AccountingDocument = AccountingDocument
+        self.FiscalYear = FiscalYear
+        self._date = _date
+
+        self.company = make_company(schema_name='testco-fy', name='شرکت تست سال مالی')
+        self.user = User.objects.create_user('ali', password='x', first_name='علی', last_name='محمدی')
+        self.user2 = User.objects.create_user('sara', password='x')
+
+        self.y1402 = FiscalYear.objects.create(
+            company=self.company, name='1402', start_date=_date(2023, 3, 21),
+            end_date=_date(2024, 3, 19), status='closed',
+        )
+        self.y1403 = FiscalYear.objects.create(
+            company=self.company, name='1403', start_date=_date(2024, 3, 20),
+            end_date=_date(2025, 3, 20), status='open', is_current=True,
+        )
+        self.y1404 = FiscalYear.objects.create(
+            company=self.company, name='1404', start_date=_date(2025, 3, 21),
+            end_date=_date(2026, 3, 20), status='open',
+        )
+
+        self.doc1402 = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.y1402, date=_date(2023, 6, 1),
+            description='سند ۱۴۰۲', status='posted', created_by=self.user,
+        )
+        self.doc1403 = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.y1403, date=_date(2024, 6, 1),
+            description='سند ۱۴۰۳', status='draft', created_by=self.user,
+        )
+        # سند قدیمی بدون سال مالی که تاریخش در بازهٔ ۱۴۰۳ است
+        self.no_year = AccountingDocument.objects.create(
+            company=self.company, date=_date(2025, 1, 1),
+            description='بدون سال مالی', status='posted', created_by=self.user2,
+        )
+
+    def _view(self, params='', company=None):
+        from accounting.views import AccountingDocumentViewSet
+
+        company = company or self.company
+        view = AccountingDocumentViewSet()
+        view.request = self.SimpleNamespace(
+            tenant=company, company=company, query_params=self.QueryDict(params),
+        )
+        return view
+
+    def test_filter_by_year_returns_only_that_year(self):
+        ids = list(self._view(f'fiscal_year={self.y1402.id}').get_queryset().values_list('id', flat=True))
+        self.assertEqual(ids, [self.doc1402.id])
+
+    def test_document_without_year_is_matched_by_date_range(self):
+        ids = set(self._view(f'fiscal_year={self.y1403.id}').get_queryset().values_list('id', flat=True))
+        self.assertIn(self.doc1403.id, ids)
+        self.assertIn(self.no_year.id, ids)     # بدون سال مالی اما در بازهٔ همان سال
+        self.assertNotIn(self.doc1402.id, ids)
+
+    def test_fiscal_years_action_reports_counts_and_default(self):
+        view = self._view()
+        data = view.fiscal_years(view.request).data
+        counts = {row['name']: row['document_count'] for row in data['years']}
+        self.assertEqual(counts, {'1404': 0, '1403': 2, '1402': 1})
+        # آخرین سال مالی که در آن سند ثبت شده است (۱۴۰۴ سند ندارد)
+        self.assertEqual(data['default'], self.y1403.id)
+        self.assertEqual(data['without_year'], 1)
+
+    def test_fiscal_years_default_is_current_year_when_no_documents(self):
+        empty = make_company(schema_name='testco-fy2', name='شرکت بدون سند')
+        self.FiscalYear.objects.create(
+            company=empty, name='1402', start_date=self._date(2023, 3, 21),
+            end_date=self._date(2024, 3, 19), status='closed',
+        )
+        current = self.FiscalYear.objects.create(
+            company=empty, name='1403', start_date=self._date(2024, 3, 20),
+            end_date=self._date(2025, 3, 20), status='open', is_current=True,
+        )
+        view = self._view(company=empty)
+        data = view.fiscal_years(view.request).data
+        self.assertEqual(data['default'], current.id)
+
+    def test_serializer_exposes_fiscal_year_and_preparer(self):
+        from accounting.serializers import AccountingDocumentSerializer
+
+        payload = AccountingDocumentSerializer(self.doc1403).data
+        self.assertEqual(payload['fiscal_year_name'], '1403')
+        self.assertEqual(payload['prepared_by_name'], 'علی محمدی')
+        self.assertEqual(payload['created_by_name'], 'علی محمدی')
+
+    def test_preparer_name_falls_back_to_username(self):
+        from accounting.serializers import AccountingDocumentSerializer
+
+        payload = AccountingDocumentSerializer(self.no_year).data
+        self.assertEqual(payload['prepared_by_name'], 'sara')
+
+    def test_preparer_name_is_empty_without_creator(self):
+        from accounting.serializers import AccountingDocumentSerializer
+
+        doc = self.AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.y1403, date=self._date(2024, 7, 1),
+            description='بدون سازنده', status='draft',
+        )
+        self.assertEqual(AccountingDocumentSerializer(doc).data['prepared_by_name'], '')
+

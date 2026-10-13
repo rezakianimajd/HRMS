@@ -30,6 +30,7 @@ from accounting.serializers import (
     SourceTransactionSerializer, PostingTemplateSerializer, AccountingSettingsSerializer,
     CodingConfigSerializer, BankStatementSerializer, BankStatementLineSerializer, BankReconciliationSerializer,
     ApprovalPolicySerializer, ApprovalStepSerializer, FinancialStatementApprovalSerializer,
+    user_full_name,
 )
 from accounting.services import PostingService, SourcePostingService, AccountingError
 from accounting import coding, maintenance
@@ -466,7 +467,7 @@ class ApprovalStepViewSet(CompanyScopedViewSet):
 class AccountingDocumentViewSet(CompanyScopedViewSet):
     serializer_class = AccountingDocumentSerializer
     queryset = AccountingDocument.objects.select_related(
-        'branch', 'journal', 'fiscal_year', 'period',
+        'branch', 'journal', 'fiscal_year', 'period', 'created_by',
     ).prefetch_related('lines__account')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'description']
@@ -484,6 +485,19 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         journal = p.get('journal')
         if journal:
             qs = qs.filter(journal_id=journal)
+
+        # سال مالی (انتخاب دقیق) — اسناد همان سال مالی؛ اسناد قدیمیِ بدون سال مالی هم
+        # اگر تاریخشان در بازهٔ همان سال باشد شامل می‌شوند.
+        fiscal_year = p.get('fiscal_year')
+        if fiscal_year:
+            year = FiscalYear.objects.filter(pk=fiscal_year, company=_company(self.request)).first()
+            if year:
+                qs = qs.filter(
+                    Q(fiscal_year_id=year.pk)
+                    | Q(fiscal_year__isnull=True, date__gte=year.start_date, date__lte=year.end_date)
+                )
+            else:
+                qs = qs.filter(fiscal_year_id=fiscal_year)
 
         # سال مالی (از/تا)
         year_from = p.get('year_from'); year_to = p.get('year_to')
@@ -582,21 +596,60 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         obj.save(update_fields=['history', 'updated_at'])
 
     @action(detail=False, methods=['get'])
+    def fiscal_years(self, request):
+        """سال‌های مالی همراه با تعداد اسناد هر سال — برای انتخابگر «سال مالی».
+
+        `default` = آخرین سال مالی (جدیدترین از نظر تاریخ شروع) که در آن سند ثبت شده
+        است؛ اگر هیچ سندی ثبت نشده باشد، سال جاری و در نهایت جدیدترین سال مالی.
+        """
+        from django.db.models import Q
+        company = _company(request)
+        base = AccountingDocument.objects.filter(company=company)
+        rows = []
+        for year in FiscalYear.objects.filter(company=company).order_by('-start_date'):
+            count = base.filter(
+                Q(fiscal_year_id=year.pk)
+                | Q(fiscal_year__isnull=True, date__gte=year.start_date, date__lte=year.end_date)
+            ).distinct().count()
+            rows.append({
+                'id': year.pk,
+                'name': year.name,
+                'start_date': year.start_date,
+                'end_date': year.end_date,
+                'status': year.status,
+                'status_display': year.get_status_display(),
+                'is_current': year.is_current,
+                'document_count': count,
+            })
+        default_id = next((row['id'] for row in rows if row['document_count']), None)
+        if default_id is None:
+            default_id = next((row['id'] for row in rows if row['is_current']),
+                              rows[0]['id'] if rows else None)
+        return Response({
+            'years': rows,
+            'default': default_id,
+            'without_year': base.filter(fiscal_year__isnull=True).count(),
+        })
+
+    @action(detail=False, methods=['get'])
     def export(self, request):
         """خروجی CSV اسناد حسابداری (با فیلترهای اعمال‌شده)."""
         import csv
         from django.http import HttpResponse
-        qs = self.get_queryset().select_related('journal')
+        qs = self.get_queryset().select_related('journal', 'fiscal_year', 'created_by')
         response = HttpResponse(content_type='text/csv; charset=utf-8')
         response['Content-Disposition'] = 'attachment; filename="accounting_documents.csv"'
         writer = csv.writer(response)
-        writer.writerow(['شماره', 'تاریخ', 'روزنامه', 'وضعیت', 'بدهکار', 'بستانکار', 'شرح'])
+        writer.writerow(['شماره', 'تاریخ', 'سال مالی', 'روزنامه', 'وضعیت', 'تهیه‌کننده',
+                         'بدهکار', 'بستانکار', 'شرح'])
         for doc in qs:
             writer.writerow([
                 doc.number or doc.pk,
                 doc.date.isoformat() if doc.date else '',
+                doc.fiscal_year.name if doc.fiscal_year else '',
                 doc.journal.name if doc.journal else '',
                 doc.get_status_display(),
+                user_full_name(doc.created_by),
                 float(doc.total_debit),
                 float(doc.total_credit),
                 doc.description,

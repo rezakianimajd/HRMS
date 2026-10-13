@@ -19,6 +19,14 @@ class BaseModelSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'company', 'created_at', 'updated_at']
 
 
+def user_full_name(user):
+    """نام و نام خانوادگی کاربر؛ در نبود نام، نام کاربری (برای ستون «تهیه‌کننده»)."""
+    if not user:
+        return ''
+    full = ' '.join(part for part in [user.first_name, user.last_name] if part).strip()
+    return full or user.username or ''
+
+
 class BranchSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = Branch
@@ -209,8 +217,18 @@ class AccountingDocumentSerializer(BaseModelSerializer):
     lines = AccountingDocumentLineSerializer(many=True, required=False)
     journal_name = serializers.CharField(source='journal.name', read_only=True)
     period_code = serializers.CharField(source='period.code', read_only=True)
+    fiscal_year_name = serializers.CharField(source='fiscal_year.name', read_only=True)
+    prepared_by_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
     issues_count = serializers.IntegerField(read_only=True)
     open_issues_count = serializers.IntegerField(read_only=True)
+
+    def get_prepared_by_name(self, obj):
+        """نام و نام خانوادگی کاربری که سند را ثبت/تهیه کرده است."""
+        return user_full_name(obj.created_by)
+
+    def get_created_by_name(self, obj):
+        return user_full_name(obj.created_by)
 
     class Meta(BaseModelSerializer.Meta):
         model = AccountingDocument

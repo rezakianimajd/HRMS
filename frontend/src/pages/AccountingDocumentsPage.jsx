@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -22,7 +22,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
 import ChecklistIcon from '@mui/icons-material/Checklist';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -67,11 +67,31 @@ const AccountingDocumentsPage = () => {
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
   const [journal, setJournal] = useState('');
+  // سال مالی: null = هنوز تعیین نشده (منتظر پیش‌فرض سرور)، '' = همهٔ سال‌ها
+  const [fiscalYear, setFiscalYear] = useState(null);
+
+  // سال‌های مالی + پیش‌فرض سرور: آخرین سال مالی که در آن سند ثبت شده است
+  const { data: fyData, isError: fyError } = useQuery({
+    queryKey: ['doc-fiscal-years'],
+    queryFn: () => axiosInstance.get('/accounting/documents/fiscal_years/').then(r => r.data),
+  });
+  const yearOptions = fyData?.years || [];
+
+  useEffect(() => {
+    if (fiscalYear === null && fyData) {
+      setFiscalYear(fyData.default ? String(fyData.default) : '');
+    }
+  }, [fyData, fiscalYear]);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['accounting-documents', q, status, dateFrom, dateTo, journal],
+    queryKey: ['accounting-documents', q, status, dateFrom, dateTo, journal, fiscalYear],
+    enabled: fiscalYear !== null || fyError,
     queryFn: () => axiosInstance.get('/accounting/documents/', {
-      params: { q, status: status || undefined, date_from: dateFrom || undefined, date_to: dateTo || undefined, journal: journal || undefined },
+      params: {
+        q, status: status || undefined, date_from: dateFrom || undefined,
+        date_to: dateTo || undefined, journal: journal || undefined,
+        fiscal_year: fiscalYear || undefined,
+      },
     }).then(r => r.data),
   });
 
@@ -141,6 +161,20 @@ const AccountingDocumentsPage = () => {
               {Object.entries(STATUS_META).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
             </Select>
           </FormControl>
+          <FormControl size="small" sx={{ minWidth: 190 }}>
+            <InputLabel>سال مالی</InputLabel>
+            <Select value={fiscalYear ?? ''} label="سال مالی" onChange={e => setFiscalYear(e.target.value)}
+              disabled={fiscalYear === null && !fyError}>
+              <MenuItem value="">همه سال‌ها</MenuItem>
+              {yearOptions.map(y => (
+                <MenuItem key={y.id} value={String(y.id)}>
+                  {y.name}
+                  {` (${toPersianDigits(y.document_count || 0)} سند)`}
+                  {y.is_current ? ' · جاری' : ''}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
           <FormControl size="small" sx={{ minWidth: 170 }}>
             <InputLabel>روزنامه</InputLabel>
             <Select value={journal} label="روزنامه" onChange={e => setJournal(e.target.value)}>
@@ -150,12 +184,12 @@ const AccountingDocumentsPage = () => {
           </FormControl>
           <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: 140 }} />
           <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: 140 }} />
-          <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={() => { setQ(''); setStatus(''); setDateFrom(''); setDateTo(''); setJournal(''); }}>پاک کردن</Button>
+          <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={() => { setQ(''); setStatus(''); setDateFrom(''); setDateTo(''); setJournal(''); setFiscalYear(''); }}>پاک کردن</Button>
           <Button size="small" variant="outlined" startIcon={<DownloadIcon />}
             onClick={async () => {
               try {
                 await downloadFile('/accounting/documents/export/', {
-                  params: { q, status, date_from: dateFrom, date_to: dateTo, journal },
+                  params: { q, status, date_from: dateFrom, date_to: dateTo, journal, fiscal_year: fiscalYear },
                   fallbackName: 'accounting_documents.csv',
                 });
               } catch (e) {
@@ -177,6 +211,7 @@ const AccountingDocumentsPage = () => {
                   <TableCell>تاریخ</TableCell>
                   <TableCell>دفتر</TableCell>
                   <TableCell>شرح</TableCell>
+                  <TableCell>تهیه‌کننده</TableCell>
                   <TableCell>بدهکار</TableCell>
                   <TableCell>بستانکار</TableCell>
                   <TableCell>وضعیت</TableCell>
@@ -185,7 +220,7 @@ const AccountingDocumentsPage = () => {
               </TableHead>
               <TableBody>
                 {list.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} align="center" sx={{ color: 'text.secondary' }}>سندی ثبت نشده است</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={9} align="center" sx={{ color: 'text.secondary' }}>سندی ثبت نشده است</TableCell></TableRow>
                 ) : list.map(row => (
                   <TableRow key={row.id} hover>
                     <TableCell>
@@ -201,6 +236,19 @@ const AccountingDocumentsPage = () => {
                     <TableCell>{toJalali(row.date)}</TableCell>
                     <TableCell>{row.journal_name || '—'}</TableCell>
                     <TableCell sx={{ maxWidth: 220, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.description}</TableCell>
+                    <TableCell>
+                      <Tooltip title={row.created_by_name || 'ثبت‌کننده ثبت نشده است'}>
+                        <Box component="span" sx={{ display: 'block', maxWidth: 160, whiteSpace: 'nowrap',
+                          overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {row.created_by_name || '—'}
+                        </Box>
+                      </Tooltip>
+                      {row.fiscal_year_name && (
+                        <Typography variant="caption" color="textSecondary" display="block">
+                          {row.fiscal_year_name}
+                        </Typography>
+                      )}
+                    </TableCell>
                     <TableCell>{formatPersianNumber(row.total_debit)}</TableCell>
                     <TableCell>{formatPersianNumber(row.total_credit)}</TableCell>
                     <TableCell>
