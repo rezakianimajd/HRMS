@@ -305,7 +305,6 @@ def _payment_slots(bundle):
     return slots
 
 
-
 def _guarantee_slots(bundle):
     """ستون‌های «تضمین N»."""
     slots = []
@@ -431,7 +430,6 @@ def _dispute_slots(bundle):
     return slots
 
 
-
 # ----------------------------------------------------------------------------
 # مشخصات ستون‌ها: ثابت‌های قرارداد + بلوک‌های آیتم (برای هر آیتم چند ستون)
 # ----------------------------------------------------------------------------
@@ -491,7 +489,6 @@ BLOCK_SPECS = [
         ('تاریخ رفع', 'resolved_date'), ('اقدام / نتیجه', 'resolution'), ('توضیحات', 'description'),
     ]),
 ]
-
 
 
 CONTRACT_HEADERS = [
@@ -571,7 +568,6 @@ def _contract_row(index, entry, widths):
             for _column_label, key in columns:
                 row.append(values.get(key, ''))
     return row
-
 
 
 # ----------------------------------------------------------------------------
