@@ -17,6 +17,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import BusinessIcon from '@mui/icons-material/Business';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import downloadFile from '../core/utils/downloadUtils';
 
 const TYPE_LABELS = {
   construction: 'پیمانکاری / اجرا',
@@ -69,6 +70,8 @@ const ExternalContractsPage = () => {
   const [typeFilter, setTypeFilter] = useState('');
   const [deleteId, setDeleteId] = useState(null);
   const [msg, setMsg] = useState('');
+  const [msgOk, setMsgOk] = useState(true);
+  const [exporting, setExporting] = useState(false);
 
   const { data: contracts, isLoading } = useQuery({
     queryKey: ['external-contracts'],
@@ -102,13 +105,28 @@ const ExternalContractsPage = () => {
   );
 
   // خروجی اکسل جامع (چند شیتی): همهٔ آیتم‌های درون قراردادها + مفاد و شرایط
-  const exportExcel = () => {
-    const params = new URLSearchParams();
-    if (search) params.set('search', search);
-    if (statusFilter) params.set('status', statusFilter);
-    if (typeFilter) params.set('contract_type_master', typeFilter);
-    const query = params.toString();
-    window.open(`/api/external-contracts/export-excel/${query ? `?${query}` : ''}`, '_blank');
+  const exportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setMsg('');
+    setMsgOk(true);
+    try {
+      await downloadFile('/external-contracts/export-excel/', {
+        params: {
+          ...(search ? { search } : {}),
+          ...(statusFilter ? { status: statusFilter } : {}),
+          ...(typeFilter ? { contract_type_master: typeFilter } : {}),
+        },
+        fallbackName: 'contracts.xlsx',
+      });
+      setMsg('فایل اکسل تهیه و دانلود شد.');
+    } catch (e) {
+      setMsg(`خطا در تهیهٔ فایل اکسل: ${e?.message || 'نامشخص'}`);
+      setMsgOk(false);
+    } finally {
+      setExporting(false);
+      setTimeout(() => setMsg(''), 4000);
+    }
   };
 
   return (
@@ -127,10 +145,13 @@ const ExternalContractsPage = () => {
           <Typography variant="body2" color="textSecondary">پیمانکاری، خرید، مناقصه + فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت</Typography>
         </Box>
         <Tooltip title="خروجی اکسل چندشیتی: قراردادها، مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
-          <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}
-            sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
-            خروجی اکسل
-          </Button>
+          <span>
+            <Button variant="outlined" startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+              disabled={exporting} onClick={exportExcel}
+              sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
+              {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+            </Button>
+          </span>
         </Tooltip>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
           sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
@@ -138,7 +159,7 @@ const ExternalContractsPage = () => {
         </Button>
       </Paper>
 
-      {msg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
+      {msg && <Alert severity={msgOk ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
 
       {/* Filters */}
       <Paper sx={{ p: 1.5, mb: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>

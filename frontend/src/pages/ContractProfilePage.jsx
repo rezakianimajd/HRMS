@@ -1,9 +1,10 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
+import downloadFile from '../core/utils/downloadUtils';
 import {
-  Box, Typography, Paper, Button, CircularProgress, Chip, Divider, Grid, Avatar, Stack, Tooltip,
+  Alert, Box, Typography, Paper, Button, CircularProgress, Chip, Divider, Grid, Avatar, Stack, Tooltip,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -71,6 +72,25 @@ const StatCard = ({ icon, color, label, value, sub }) => (
 const ContractProfilePage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
+
+  // خروجی اکسل کامل این قرارداد (تمام آیتم‌های درون قرارداد) — با احراز هویت JWT
+  const exportContract = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      await downloadFile('/external-contracts/export-excel/', {
+        params: { contract: id },
+        fallbackName: `contract-${id}.xlsx`,
+      });
+    } catch (e) {
+      setExportError(`خطا در تهیهٔ فایل اکسل: ${e?.message || 'نامشخص'}`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   const { data: c, isLoading } = useQuery({
     queryKey: ['external-contract', id],
@@ -166,14 +186,20 @@ const ContractProfilePage = () => {
         <Button variant="text" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
         <Box sx={{ display: 'flex', gap: 1 }}>
           <Tooltip title="خروجی اکسل کامل این قرارداد: مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
-            <Button variant="outlined" startIcon={<DownloadIcon />}
-              onClick={() => window.open(`/api/external-contracts/export-excel/?contract=${id}`, '_blank')}>
-              خروجی اکسل
-            </Button>
+            <span>
+              <Button variant="outlined" disabled={exporting} startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+                onClick={exportContract}>
+                {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+              </Button>
+            </span>
           </Tooltip>
           <Button variant="contained" onClick={() => navigate(`/contracts/${id}/edit`)}>ویرایش</Button>
         </Box>
       </Box>
+
+      {exportError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>{exportError}</Alert>
+      )}
 
       {/* Hero */}
       <Paper sx={{ ...glass, mb: 2.5, position: 'relative', overflow: 'hidden' }}>

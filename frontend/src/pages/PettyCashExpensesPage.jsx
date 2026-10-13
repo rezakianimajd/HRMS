@@ -23,6 +23,7 @@ import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import downloadFile from '../core/utils/downloadUtils';
 
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
@@ -105,7 +106,8 @@ const PettyCashExpensesPage = () => {
           <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>صورت هزینه‌های تنخواه</Typography>
           <Typography variant="body2" color="textSecondary">چرخهٔ ارسال به حسابداری، تأیید و ثبت نهایی</Typography>
         </Box>
-        <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => window.open('/api/petty-cash-expense-statements/export/', '_blank')}
+        <Button variant="outlined" startIcon={<DownloadIcon />}
+          onClick={() => downloadFile('/petty-cash-expense-statements/export/', { fallbackName: 'petty_cash_expenses.csv' }).catch(() => {})}
           sx={{ borderRadius: '12px' }}>خروجی CSV</Button>
         <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/petty-cash/expenses/new')}
           sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
@@ -167,7 +169,7 @@ const PettyCashExpensesPage = () => {
                       ) : (
                         <>
                           {s.status === 'draft' && <Tooltip title="ارسال به حسابداری"><IconButton size="small" color="primary" onClick={() => submit.mutate(s.id)}><SendIcon fontSize="small" /></IconButton></Tooltip>}
-                          <Tooltip title="گزارش چاپی PDF"><IconButton size="small" color="secondary" onClick={() => window.open(`/api/petty-cash-expense-statements/${s.id}/pdf/`, '_blank')}><PrinterIcon fontSize="small" /></IconButton></Tooltip>
+                          <Tooltip title="گزارش چاپی PDF"><IconButton size="small" color="secondary" onClick={() => downloadFile(`/petty-cash-expense-statements/${s.id}/pdf/`, { fallbackName: `petty-statement-${s.id}.pdf` }).catch(() => {})}><PrinterIcon fontSize="small" /></IconButton></Tooltip>
                           {s.status === 'draft' && <Tooltip title="حذف (نرم)"><IconButton size="small" color="error" onClick={() => softDelete.mutate(s.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
                           <Tooltip title="تایم‌لاین"><IconButton size="small" color="info" onClick={() => openTimeline(s)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>
                         </>

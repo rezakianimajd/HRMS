@@ -27,6 +27,7 @@ import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
+import downloadFile from '../core/utils/downloadUtils';
 
 const docLabel = (row) => row?.number || `#${row?.id}`;
 
@@ -151,7 +152,16 @@ const AccountingDocumentsPage = () => {
           <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: 140 }} />
           <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={() => { setQ(''); setStatus(''); setDateFrom(''); setDateTo(''); setJournal(''); }}>پاک کردن</Button>
           <Button size="small" variant="outlined" startIcon={<DownloadIcon />}
-            onClick={() => window.open(`/api/accounting/documents/export/?q=${q}&status=${status}&date_from=${dateFrom}&date_to=${dateTo}&journal=${journal}`, '_blank')}>
+            onClick={async () => {
+              try {
+                await downloadFile('/accounting/documents/export/', {
+                  params: { q, status, date_from: dateFrom, date_to: dateTo, journal },
+                  fallbackName: 'accounting_documents.csv',
+                });
+              } catch (e) {
+                setActionMsg({ ok: false, text: `خطا در تهیهٔ خروجی: ${e?.message || 'نامشخص'}` });
+              }
+            }}>
             خروجی CSV
           </Button>
         </Stack>
