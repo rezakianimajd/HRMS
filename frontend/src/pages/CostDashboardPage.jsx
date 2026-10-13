@@ -127,7 +127,7 @@ const CostTransactionsManager = ({ projectId }) => {
   // تعاریف اولیهٔ پروژه برای «تب هزینه‌ها»: کل/معین و تفصیل‌ها را از اینجا می‌خوانیم
   const { data: definitionData } = useQuery({
     queryKey: ['effective-definitions', projectId],
-    queryFn: () => axiosInstance.get('/projects/project-account-definitions/effective/', {
+    queryFn: () => axiosInstance.get('/project-account-definitions/effective/', {
       params: { project: projectId, kind: 'expense' },
     }).then(r => r.data),
     enabled: !!projectId && dialog,
@@ -135,7 +135,7 @@ const CostTransactionsManager = ({ projectId }) => {
   const definitions = definitionData?.definitions || [];
 
   const resolve = useMutation({
-    mutationFn: () => axiosInstance.post('/projects/cost-transaction-lines/resolve/', {
+    mutationFn: () => axiosInstance.post('/cost-transaction-lines/resolve/', {
       project: projectId, definition: coding.definition, create: false,
     }).then(r => r.data),
     onSuccess: (data) => setPreview(data),

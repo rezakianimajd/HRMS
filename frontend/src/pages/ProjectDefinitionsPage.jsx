@@ -20,8 +20,8 @@ import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { PageHeader, glassPaper } from './projects/ProjectsShared';
 
-const API = '/projects/project-account-definitions/';
-const AUX_API = '/projects/project-auxiliaries/';
+const API = '/project-account-definitions/';
+const AUX_API = '/project-auxiliaries/';
 const COLOR = '#6d28d9';
 
 const listOf = (data) => (Array.isArray(data) ? data : data?.results || []);
@@ -404,7 +404,7 @@ const useLookups = (enabled, generalAccount) => {
   });
   const { data: partyData } = useQuery({
     queryKey: ['def-parties'],
-    queryFn: () => axiosInstance.get('/contracts/contract-parties/', { params: { page_size: 500 } }).then((r) => r.data),
+    queryFn: () => axiosInstance.get('/contract-parties/', { params: { page_size: 500 } }).then((r) => r.data),
     enabled,
   });
   return {
@@ -490,7 +490,7 @@ const DefinitionsTab = ({ meta }) => {
 
   const { data: typeData } = useQuery({
     queryKey: ['def-project-types'],
-    queryFn: () => axiosInstance.get('/projects/project-types/', { params: { page_size: 500 } }).then((r) => r.data),
+    queryFn: () => axiosInstance.get('/project-types/', { params: { page_size: 500 } }).then((r) => r.data),
   });
   const projectTypes = listOf(typeData);
   const { data: projectData } = useQuery({
@@ -508,7 +508,7 @@ const DefinitionsTab = ({ meta }) => {
     : (scope === 'project_type' ? { project_type: projectTypeId } : { project: projectId });
   const params = { ...scopeParams, ...(kindFilter ? { kind: kindFilter } : {}) };
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['project-account-definitions', scope, projectTypeId, projectId, kindFilter],
     queryFn: () => axiosInstance.get(API, { params }).then((r) => r.data),
     enabled: scopeReady,
@@ -595,6 +595,13 @@ const DefinitionsTab = ({ meta }) => {
         </Paper>
       ) : isLoading ? (
         <Box textAlign="center" py={4}><CircularProgress /></Box>
+      ) : isError ? (
+        <Paper sx={{ ...glassPaper, p: 3 }}>
+          <Alert severity="error" sx={{ borderRadius: '12px' }}>
+            دریافت تعاریف ناموفق بود. اگر خطا «۴۰۴» است یعنی نسخهٔ سرور این سرویس را ندارد؛
+            اجرای دیپلوی بک‌اند لازم است.
+          </Alert>
+        </Paper>
       ) : rows.length === 0 ? (
         <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
           <Typography variant="body2" color="textSecondary">
@@ -670,7 +677,7 @@ const AuxiliariesTab = () => {
   });
   const projects = listOf(projectData);
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isError } = useQuery({
     queryKey: ['project-auxiliaries', projectId],
     queryFn: () => axiosInstance.get(AUX_API, { params: { project: projectId } }).then((r) => r.data),
     enabled: !!projectId,
@@ -722,6 +729,12 @@ const AuxiliariesTab = () => {
         </Paper>
       ) : isLoading ? (
         <Box textAlign="center" py={4}><CircularProgress /></Box>
+      ) : isError ? (
+        <Paper sx={{ ...glassPaper, p: 3 }}>
+          <Alert severity="error" sx={{ borderRadius: '12px' }}>
+            دریافت تفصیل‌های پروژه ناموفق بود (در صورت «۴۰۴» دیپلوی بک‌اند را اجرا کنید).
+          </Alert>
+        </Paper>
       ) : (
         <>
           <Grid container spacing={2} sx={{ mb: 2 }}>
