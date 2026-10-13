@@ -166,6 +166,20 @@ def _day_of(value):
     return getattr(value, 'date', lambda: None)() if value is not None else None
 
 
+def _iso_day(value):
+    """رشتهٔ ISO تاریخ (خروجی موتور الحاقیه) را به date تبدیل می‌کند."""
+    if not value:
+        return None
+    if not isinstance(value, str):
+        return value
+    from datetime import date as _date
+
+    try:
+        return _date.fromisoformat(str(value)[:10])
+    except ValueError:
+        return None
+
+
 def _created_day(contract):
     return _day_of(getattr(contract, 'created_at', None))
 
@@ -340,8 +354,12 @@ def _addendum_slots(bundle):
     """ستون‌های «الحاقیه N»."""
     slots = []
     for addendum in bundle['addendums']:
+        subject_labels = getattr(addendum, 'subject_labels', None)
+        if subject_labels is None:
+            subject_labels = [_display(addendum, 'subject_type') or _attr(addendum, 'subject')]
         slots.append({
             'number': _attr(addendum, 'number'),
+            'subjects': '، '.join(label for label in subject_labels if label),
             'subject_type': _display(addendum, 'subject_type') or _attr(addendum, 'subject'),
             'subject': _attr(addendum, 'subject'),
             'date': _fa_date(getattr(addendum, 'date', None)),
@@ -467,9 +485,13 @@ BLOCK_SPECS = [
         ('یادداشت', 'note'),
     ]),
     ('الحاقیه', _addendum_slots, [
-        ('شماره', 'number'), ('موضوع الحاقیه', 'subject_type'), ('شرح موضوع', 'subject'),
-        ('تاریخ', 'date'),
+        ('شماره', 'number'), ('موضوع‌های الحاقیه', 'subjects'), ('موضوع اصلی', 'subject_type'),
+        ('شرح موضوع', 'subject'), ('تاریخ', 'date'),
         ('تاریخ پایان جدید', 'new_end_date'), ('تغییر مبلغ', 'amount_change'),
+        ('مبلغ جدید قرارداد', 'new_amount'), ('تغییر پیش‌پرداخت', 'advance_change'),
+        ('پیش‌پرداخت جدید', 'new_advance_payment'),
+        ('درصد حسن انجام کار جدید', 'new_retention_percent'),
+        ('مبلغ جدید تضمین', 'new_guarantee_amount'), ('نرخ تسعیر جدید', 'new_exchange_rate'),
         ('تغییر درصد', 'percent_change'), ('تعداد مفاد', 'provisions'),
         ('شرح تغییرات', 'description'),
     ]),
@@ -497,6 +519,11 @@ CONTRACT_HEADERS = [
     'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'طرف قرارداد', 'نوع شخص طرف', 'نوع قرارداد',
     'طبقه‌بندی', 'وضعیت', 'مبلغ', 'ارز', 'تاریخ شروع', 'تاریخ پایان', 'تاریخ امضا', 'امضاکننده',
     'پیش‌پرداخت', 'درصد حسن انجام کار', 'دوره گارانتی', 'مبلغ تضمین', 'نوع ضمانت',
+    # --- مقادیر مؤثر پس از اعمال الحاقیه‌ها ---
+    'مبلغ (با الحاقیه)', 'جمع تغییر مبلغ الحاقیه‌ها', 'پیش‌پرداخت (با الحاقیه)',
+    'جمع تغییر پیش‌پرداخت الحاقیه‌ها', 'تاریخ پایان (با الحاقیه)',
+    'درصد حسن انجام کار (با الحاقیه)', 'مبلغ تضمین (با الحاقیه)',
+    'نرخ تسعیر (با الحاقیه)',
     'پروژه‌ها', 'نام پروژه / طرح', 'محل اجرا / تحویل', 'شماره مناقصه / استعلام',
     'تعداد فاکتورها', 'جمع مبلغ فاکتورها', 'تعداد صورت‌وضعیت‌ها', 'جمع مبلغ صورت‌وضعیت‌ها',
     'تعداد پرداخت‌ها', 'جمع مبلغ پرداخت‌ها', 'مانده پرداخت‌نشده', 'درصد پرداخت‌شده',
@@ -531,6 +558,12 @@ def _contract_row(index, entry, widths):
     paid_percent = round(payment_total / amount * 100, 1) if amount else ''
     addendums = bundle['addendums']
     provisions = sum(len(getattr(a, 'provisions', None) or []) for a in addendums)
+    # مقادیر مؤثر پس از اعمال الحاقیه‌ها (بدون بازنویسی دادهٔ قرارداد)
+    from contracts.addendum_effects import compute_effects
+
+    effects = compute_effects(contract, addendums)
+    eff = effects['effective']
+    deltas = effects['deltas']
     row = [
         index, _attr(contract, 'number'), _attr(contract, 'subject'),
         _party_name(contract), _party_type(contract), _type_label(contract),
@@ -543,6 +576,12 @@ def _contract_row(index, entry, widths):
         _num(getattr(contract, 'retention_percent', None)),
         _attr(contract, 'warranty_period'), _num(getattr(contract, 'guarantee_amount', None)),
         _display(contract, 'guarantee_type'),
+        # --- مؤثر با الحاقیه ---
+        _num(eff.get('amount')), _num(deltas.get('amount')),
+        _num(eff.get('advance_payment')), _num(deltas.get('advance_payment')),
+        _fa_date(_iso_day(eff.get('end_date'))),
+        _num(eff.get('retention_percent')), _num(eff.get('guarantee_amount')),
+        _num(eff.get('exchange_rate')),
         _project_names(contract), _attr(contract, 'project_name'),
         _attr(contract, 'project_location'), _attr(contract, 'tender_number'),
         len(bundle['invoices']), _num(bundle['invoice_total']),

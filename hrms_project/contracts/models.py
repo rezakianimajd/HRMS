@@ -310,10 +310,40 @@ class Addendum(BaseModel):
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره الحاقیه'))
     subject_type = models.CharField(
         max_length=20, choices=SubjectType.choices, blank=True,
-        verbose_name=_('موضوع الحاقیه'),
-        help_text=_('موضوع از فهرست استاندارد انتخاب می‌شود؛ شرح تکمیلی در فیلد «شرح موضوع».'),
+        verbose_name=_('موضوع اصلی الحاقیه'),
+        help_text=_('به‌صورت خودکار از اولین «موضوع‌های الحاقیه» هم‌گام می‌شود.'),
     )
     subject = models.CharField(max_length=300, blank=True, verbose_name=_('شرح موضوع'))
+    subjects = models.JSONField(
+        default=list, blank=True, verbose_name=_('موضوع‌های الحاقیه'),
+        help_text=_('فهرست موضوع‌ها همراه فیلدهای تخصصی هر موضوع: '
+                    '[{"type": "amount", "fields": {...}}] — امکان انتخاب چند موضوع.'),
+    )
+    # ---- مقادیر اثرگذار بر پروندهٔ قرارداد (آینهٔ فیلدهای موضوعی، برای گزارش/فیلتر) ----
+    new_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('مبلغ جدید قرارداد'),
+    )
+    advance_change = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('تغییر پیش‌پرداخت'),
+    )
+    new_advance_payment = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('پیش‌پرداخت جدید'),
+    )
+    new_retention_percent = models.DecimalField(
+        max_digits=8, decimal_places=2, null=True, blank=True,
+        verbose_name=_('درصد حسن انجام کار جدید'),
+    )
+    new_guarantee_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('مبلغ جدید تضمین'),
+    )
+    new_exchange_rate = models.DecimalField(
+        max_digits=18, decimal_places=6, null=True, blank=True,
+        verbose_name=_('نرخ تسعیر جدید'),
+    )
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
     currency = models.ForeignKey(
         'settings_app.Currency', on_delete=models.SET_NULL, null=True, blank=True,
@@ -334,12 +364,66 @@ class Addendum(BaseModel):
     def __str__(self):
         return f'{self.number or "—"} - {self.date}'
 
+    # ------------------------------------------------------------------ موضوع‌ها
+    @property
+    def subject_values(self):
+        """ارزش موضوع‌ها (با پشتیبان‌گیری از فیلد تک‌مقداری قدیمی)."""
+        values = [
+            item.get('type') for item in (self.subjects or [])
+            if isinstance(item, dict) and item.get('type')
+        ]
+        if not values and self.subject_type:
+            values = [self.subject_type]
+        return values
+
+    @property
+    def subject_labels(self):
+        from contracts.addendum_schema import subject_label
+
+        return [label for label in (subject_label(value) for value in self.subject_values) if label]
+
+    @property
+    def subjects_display(self):
+        """عنوان‌های موضوع‌ها به‌صورت یک متن (برای فهرست/خروجی)."""
+        return '، '.join(self.subject_labels)
+
+    def subject_fields(self, kind=None):
+        """فیلدهای تخصصی موضوع‌ها (برای فرم/خروجی)."""
+        rows = []
+        for item in self.subjects or []:
+            if not isinstance(item, dict):
+                continue
+            if kind and item.get('type') != kind:
+                continue
+            rows.append({'type': item.get('type'), 'fields': item.get('fields') or {}})
+        return rows
+
     @property
     def subject_label(self):
-        """عنوان موضوع استاندارد؛ در نبود آن شرح موضوع."""
-        if self.subject_type:
-            return self.get_subject_type_display()
+        """عنوان موضوع‌ها؛ در نبود آن‌ها شرح موضوع."""
+        labels = self.subject_labels
+        if labels:
+            return '، '.join(labels)
         return self.subject or ''
+
+    def clean(self):
+        """اعتبارسنجی موضوع‌ها (نامعتبر/تکراری) و هم‌گامی موضوع اصلی."""
+        from django.core.exceptions import ValidationError
+
+        from contracts.addendum_schema import validate_subjects
+
+        errors = validate_subjects(self.subjects)
+        if errors:
+            raise ValidationError({'subjects': errors})
+
+    def save(self, *args, **kwargs):
+        """نرمال‌سازی موضوع‌ها و هم‌گام‌سازی «موضوع اصلی» پیش از ذخیره."""
+        from contracts.addendum_schema import normalize_subjects
+
+        self.subjects = normalize_subjects(self.subjects)
+        values = [item['type'] for item in self.subjects]
+        self.subject_type = values[0] if values else (self.subject_type or '')
+        super().save(*args, **kwargs)
 
 
 class Guarantee(BaseModel):

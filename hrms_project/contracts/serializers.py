@@ -112,17 +112,80 @@ class AddendumSerializer(serializers.ModelSerializer):
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     subject_type_display = serializers.CharField(source='get_subject_type_display', read_only=True)
     subject_label = serializers.CharField(read_only=True)
+    subjects_display = serializers.CharField(read_only=True)
+    subjects_detail = serializers.SerializerMethodField()
+    effect = serializers.SerializerMethodField()
 
     class Meta:
         model = Addendum
         fields = [
             'id', 'contract', 'contract_subject', 'number',
-            'subject_type', 'subject_type_display', 'subject_label', 'subject', 'date',
+            'subject_type', 'subject_type_display', 'subject_label',
+            'subjects', 'subjects_display', 'subjects_detail',
+            'subject', 'date',
             'currency', 'currency_name', 'currency_symbol',
-            'amount_change', 'percent_change', 'new_end_date',
-            'change_description', 'provisions',
+            'amount_change', 'percent_change', 'new_amount',
+            'advance_change', 'new_advance_payment', 'new_retention_percent',
+            'new_guarantee_amount', 'new_exchange_rate',
+            'new_end_date', 'change_description', 'provisions',
+            'effect',
         ]
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at',
+                            'subject_label', 'subjects_display', 'subjects_detail', 'effect']
+
+    def get_subjects_detail(self, obj):
+        """موضوع‌های انتخاب‌شده با عنوان و فیلدهای پرشده (برای نمایش/ویرایش)."""
+        from contracts.addendum_schema import SUBJECT_INDEX
+
+        rows = []
+        for item in obj.subjects or []:
+            if not isinstance(item, dict):
+                continue
+            subject = SUBJECT_INDEX.get(item.get('type'))
+            if not subject:
+                continue
+            fields = item.get('fields') or {}
+            rows.append({
+                'type': subject['value'],
+                'label': subject['label'],
+                'group': subject['group'],
+                'group_label': subject.get('group_label', ''),
+                'fields': fields,
+                'filled': [
+                    {'key': spec['key'], 'label': spec['label'], 'type': spec['type'],
+                     'value': fields.get(spec['key'])}
+                    for spec in subject['fields']
+                    if fields.get(spec['key']) not in (None, '')
+                ],
+            })
+        return rows
+
+    def get_effect(self, obj):
+        """اثر این الحاقیه بر پروندهٔ قرارداد (فقط تغییرات اعمال‌شدهٔ خودش)."""
+        from contracts.addendum_effects import addendum_effect_values, _apply
+        from contracts.addendum_effects import base_values
+
+        contract = getattr(obj, 'contract', None)
+        if contract is None:
+            return None
+        effective = base_values(contract)
+        applied = _apply(effective, addendum_effect_values(obj))
+        return {
+            'changes': applied,
+            'preview': effective,
+            'has_effect': bool(applied),
+        }
+
+    def validate(self, attrs):
+        from contracts.addendum_schema import validate_subjects
+
+        subjects = attrs.get('subjects', getattr(self.instance, 'subjects', None))
+        errors = validate_subjects(subjects)
+        if errors:
+            raise serializers.ValidationError({'subjects': errors})
+        if not subjects and attrs.get('subject_type'):
+            attrs['subjects'] = [{'type': attrs['subject_type'], 'fields': {}}]
+        return attrs
 
 
 class GuaranteeSerializer(serializers.ModelSerializer):

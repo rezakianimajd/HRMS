@@ -60,7 +60,12 @@ class ContractExcelExportTests(TestCase):
         Addendum.objects.create(
             company=self.company, contract=self.contract, number='A-1',
             date=date(2025, 8, 1), amount_change=1_500_000,
-            subject_type='duration', subject='تمدید شش ماه',
+            subject='تمدید شش ماه',
+            subjects=[
+                {'type': 'amount', 'fields': {'amount_change': 1_500_000, 'percent_change': 15}},
+                {'type': 'payment', 'fields': {'advance_change': 500_000}},
+                {'type': 'duration', 'fields': {'new_end_date': '2026-09-20'}},
+            ],
             provisions=[{'title': 'بند یک', 'text': 'متن بند'}],
         )
 
@@ -114,12 +119,74 @@ class ContractExcelExportTests(TestCase):
         self.assertEqual(data['پرداخت 1 — مبلغ'], 980_000.0)
         self.assertEqual(data['تضمین 1 — شماره'], 'G-1')
         self.assertEqual(data['الحاقیه 1 — تغییر مبلغ'], 1_500_000.0)
-        self.assertEqual(data['الحاقیه 1 — موضوع الحاقیه'],
-                         'تغییر مدت، تمدید و اصلاح برنامه زمانی قرارداد')
+        self.assertEqual(
+            data['الحاقیه 1 — موضوع‌های الحاقیه'],
+            'تغییر مبلغ، بهای قرارداد و تعدیل قیمت، تغییر شرایط پرداخت، پیش‌پرداخت و تسویه‌حساب، '
+            'تغییر مدت، تمدید و اصلاح برنامه زمانی قرارداد',
+        )
+        self.assertEqual(data['الحاقیه 1 — تغییر پیش‌پرداخت'], 500_000.0)
         self.assertEqual(data['الحاقیه 1 — شرح موضوع'], 'تمدید شش ماه')
+        # ---- مقادیر مؤثر پروندهٔ قرارداد (اثر الحاقیه) ----
+        self.assertEqual(data['مبلغ (با الحاقیه)'], 11_500_000.0)
+        self.assertEqual(data['جمع تغییر مبلغ الحاقیه‌ها'], 1_500_000.0)
+        self.assertEqual(data['پیش‌پرداخت (با الحاقیه)'], 2_500_000.0)
+        self.assertEqual(data['جمع تغییر پیش‌پرداخت الحاقیه‌ها'], 500_000.0)
+        self.assertEqual(data['درصد حسن انجام کار (با الحاقیه)'], 5.0)
+        self.assertNotEqual(data['تاریخ پایان (با الحاقیه)'], data['تاریخ پایان'])
+        self.assertRegex(str(data['تاریخ پایان (با الحاقیه)']), r'^\d{4}/\d{2}/\d{2}$')
         self.assertEqual(data['مفاد الحاقیه 1 — عنوان'], 'بند یک')
         self.assertEqual(data['تخصیص پروژه 1 — درصد'], 100.0)
         self.assertEqual(data['پیش‌پرداخت مرحله‌ای 1 — مبلغ'], 2_000_000.0)
         self.assertEqual(data['قلم ضمانت قرارداد 1 — درصد'], 5.0)
         # ستون خالی برای آیتم دوم ساخته نشده (بیشترین تعداد = ۱)
         self.assertNotIn('فاکتور 2 — شماره', headers)
+
+    def test_addendum_serializer_exposes_multiple_subjects(self):
+        from contracts.serializers import AddendumSerializer
+
+        addendum = self.contract.addendums.first()
+        data = AddendumSerializer(addendum).data
+        self.assertEqual([item['type'] for item in data['subjects']],
+                         ['amount', 'payment', 'duration'])
+        # «موضوع اصلی» با اولین موضوع هم‌گام می‌شود
+        self.assertEqual(data['subject_type'], 'amount')
+        self.assertEqual(len(data['subjects_detail']), 3)
+        payment = [item for item in data['subjects_detail'] if item['type'] == 'payment'][0]
+        self.assertEqual(payment['label'], 'تغییر شرایط پرداخت، پیش‌پرداخت و تسویه‌حساب')
+        self.assertEqual(payment['filled'][0]['key'], 'advance_change')
+        self.assertEqual(payment['filled'][0]['value'], 500_000)
+        self.assertTrue(data['effect']['has_effect'])
+        fields = {change['field'] for change in data['effect']['changes']}
+        self.assertIn('advance_payment', fields)
+        self.assertIn('amount', fields)
+        self.assertIn('end_date', fields)
+
+    def test_contract_effective_engine_applies_all_addendums(self):
+        from contracts.addendum_effects import contract_effects
+
+        result = contract_effects(self.contract)
+        self.assertEqual(result['effective']['amount'], 11_500_000.0)
+        self.assertEqual(result['effective']['advance_payment'], 2_500_000.0)
+        self.assertEqual(result['effective']['end_date'], '2026-09-20')
+        self.assertEqual(result['deltas']['amount'], 1_500_000.0)
+        self.assertEqual(result['deltas']['advance_payment'], 500_000.0)
+        self.assertEqual(result['addendum_count'], 1)
+        self.assertEqual(result['changed'],
+                         ['advance_payment', 'amount', 'end_date'])
+        # دادهٔ اصلی قرارداد دست‌نخورده می‌ماند
+        self.contract.refresh_from_db()
+        self.assertEqual(float(self.contract.amount), 10_000_000.0)
+        self.assertEqual(float(self.contract.advance_payment), 2_000_000.0)
+
+    def test_addendum_subject_validation_rejects_unknown(self):
+        from django.core.exceptions import ValidationError
+
+        from contracts.models import Addendum as AddendumModel
+
+        broken = AddendumModel(
+            company=self.company, contract=self.contract,
+            subjects=[{'type': 'not-a-subject', 'fields': {}}],
+        )
+        with self.assertRaises(ValidationError):
+            broken.clean()
+

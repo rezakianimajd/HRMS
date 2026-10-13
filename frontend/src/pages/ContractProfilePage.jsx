@@ -103,6 +103,13 @@ const ContractProfilePage = () => {
   });
   const allList = Array.isArray(allContracts) ? allContracts : allContracts?.results || [];
 
+  // پروندهٔ مؤثر قرارداد: اثر همهٔ الحاقیه‌ها (مبلغ، پیش‌پرداخت، مدت، تضمین و ...)
+  const { data: effects } = useQuery({
+    queryKey: ['contract-effects', id],
+    queryFn: () => axiosInstance.get(`/external-contracts/${id}/effective/`).then(r => r.data),
+    enabled: !!id,
+  });
+
   const relatedContracts = useMemo(() => {
     if (!c) return [];
     const projects = new Set((c.project_allocations || []).map(p => p.project).filter(Boolean));
@@ -141,10 +148,16 @@ const ContractProfilePage = () => {
   const totalPaid = (c.payments || []).reduce((s, x) => s + Number(x.amount || 0), 0);
   const totalInvoices = (c.invoices || []).reduce((s, x) => s + Number(x.total || 0), 0);
   const addendumTotal = (c.addendums || []).reduce((s, x) => s + Number(x.amount_change || 0), 0);
-  const amountWithAddendum = Number(c.amount || 0) + addendumTotal;
+  // مقادیر مؤثر: اول از موتور بک‌اند، در نبود آن محاسبهٔ محلی
+  const effective = effects?.effective || {};
+  const effectsChanged = effects?.changed || [];
+  const amountWithAddendum = Number(effective.amount ?? (Number(c.amount || 0) + addendumTotal));
+  const advanceWithAddendum = Number(effective.advance_payment ?? c.advance_payment ?? 0);
+  const guaranteeWithAddendum = Number(effective.guarantee_amount ?? c.guarantee_amount ?? 0);
+  const retentionWithAddendum = Number(effective.retention_percent ?? c.retention_percent ?? 0);
   const addendumsWithEnd = (c.addendums || []).filter(a => a.new_end_date);
   const lastAddendum = addendumsWithEnd.length ? addendumsWithEnd.reduce((m, a) => (a.date > m.date ? a : m)) : null;
-  const endDateWithAddendum = lastAddendum?.new_end_date || c.end_date;
+  const endDateWithAddendum = effective.end_date || lastAddendum?.new_end_date || c.end_date;
   const remaining = Math.max(0, amountWithAddendum - totalPaid);
   const progressPercent = amountWithAddendum > 0 ? Math.min(100, Math.round((totalPaid / amountWithAddendum) * 100)) : 0;
   const currencyLabel = c.currency_name || 'ریال';
@@ -270,6 +283,72 @@ const ContractProfilePage = () => {
           <StatCard icon={<LockIcon sx={{ fontSize: 20 }} />} color="#3b82f6" label="تضمین‌ها" value={toPersianDigits((c.guarantees || []).length)} sub="مورد" />
         </Grid>
       </Grid>
+
+      {/* پروندهٔ مؤثر قرارداد (اثر الحاقیه‌ها) */}
+      <Paper sx={{ p: 2, mb: 2.5, borderRadius: '12px',
+        background: 'linear-gradient(120deg, rgba(5,150,105,0.08), rgba(255,255,255,0.3))',
+        border: '1px solid rgba(5,150,105,0.22)' }}>
+        <Stack direction="row" alignItems="center" gap={1} mb={1} flexWrap="wrap">
+          <LockIcon sx={{ color: '#047857', fontSize: 20 }} />
+          <Typography variant="subtitle2" fontWeight={800} color="#047857">
+            پروندهٔ مؤثر قرارداد —{' '}
+            {(c.addendums || []).length > 0
+              ? `با اعمال ${toPersianDigits(effects?.addendum_count ?? (c.addendums || []).length)} الحاقیه`
+              : 'بدون الحاقیه'}
+          </Typography>
+          {effectsChanged.length > 0 ? (
+            <Chip size="small" color="success" label="مقادیر با الحاقیه تغییر کرده است" sx={{ fontWeight: 700 }} />
+          ) : (
+            <Chip size="small" variant="outlined" label="بدون تغییر نسبت به پایه" />
+          )}
+        </Stack>
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />} color="#059669"
+              label="مبلغ (با الحاقیه)" value={formatPersianNumber(amountWithAddendum)}
+              sub={`پایه: ${formatPersianNumber(c.amount || 0)}`} />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard icon={<PaymentsIcon sx={{ fontSize: 20 }} />} color="#0891b2"
+              label="پیش‌پرداخت (با الحاقیه)" value={formatPersianNumber(advanceWithAddendum)}
+              sub={`پایه: ${formatPersianNumber(c.advance_payment || 0)}`} />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard icon={<LockIcon sx={{ fontSize: 20 }} />} color="#7c3aed"
+              label="مبلغ تضمین (با الحاقیه)" value={formatPersianNumber(guaranteeWithAddendum)}
+              sub={`پایه: ${formatPersianNumber(c.guarantee_amount || 0)}`} />
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <StatCard icon={<ScheduleIcon sx={{ fontSize: 20 }} />} color="#2563eb"
+              label="پایان (با الحاقیه)" value={toJalali(endDateWithAddendum)}
+              sub={`پایه: ${toJalali(c.end_date)}`} />
+          </Grid>
+        </Grid>
+        {(effects?.changes || []).length > 0 && (
+          <Box sx={{ mt: 1.5 }}>
+            <Typography variant="caption" fontWeight={800} color="#047857" sx={{ mb: 0.5, display: 'block' }}>
+              ردیابی تغییرات پرونده
+            </Typography>
+            <Stack spacing={0.4}>
+              {(effects.changes || []).map((change, index) => (
+                <Typography key={`${change.field}-${index}`} variant="caption" color="textSecondary">
+                  <b>{change.label}</b>
+                  {': '}
+                  {change.field === 'end_date'
+                    ? `${toJalali(change.from)} → ${toJalali(change.to)}`
+                    : `${formatPersianNumber(change.from || 0)} → ${formatPersianNumber(change.to || 0)}`}
+                  {` (${change.source_label}${change.mode === 'set' ? ' — مقدارگذاری' : ' — جمع/کاهش'})`}
+                </Typography>
+              ))}
+            </Stack>
+          </Box>
+        )}
+        {(effects?.warnings || []).map((warning) => (
+          <Alert key={warning} severity="warning" sx={{ mt: 1, borderRadius: '10px', py: 0 }}>
+            <Typography variant="caption">{warning}</Typography>
+          </Alert>
+        ))}
+      </Paper>
 
       {/* Main grid */}
       <Grid container spacing={2.5}>

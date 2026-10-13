@@ -1,11 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Button, Avatar, Grid, CircularProgress, Stack, Chip,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
-  InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Snackbar, Alert, Divider,
+  InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Snackbar, Alert,
+  Divider, Autocomplete, AlertTitle, Table, TableBody, TableCell, TableHead, TableRow,
 } from '@mui/material';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import AddIcon from '@mui/icons-material/Add';
@@ -17,20 +18,262 @@ import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
+import TuneIcon from '@mui/icons-material/Tune';
+import ChangeCircleIcon from '@mui/icons-material/ChangeCircle';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import { glassPaper } from '../core/theme/tokens';
-import { ADDENDUM_SUBJECTS, addendumSubjectLabel } from '../core/constants/addendumSubjects';
+import {
+  ADDENDUM_SCHEMA, ADDENDUM_GROUPS, CONTRACT_TARGET_LABELS,
+  addendumSubject, addendumSubjectLabel,
+} from '../core/constants/addendumSubjects';
 
 const EMPTY = {
-  id: null, contract: '', number: '', subject_type: '', subject: '', date: '',
-  currency: '', amount_change: '', percent_change: '', new_end_date: '',
-  change_description: '', provisions: [],
+  id: null, contract: '', number: '', subject: '', date: '', currency: '',
+  change_description: '', provisions: [], subjects: [],
 };
 
+const GROUP_COLORS = {
+  financial: '#059669', time: '#2563eb', scope: '#7c3aed',
+  parties: '#db2777', legal: '#b45309', close: '#0891b2', other: '#64748b',
+};
+
+/** فیلدهای آینه‌ای (اثرگذار بر پروندهٔ قرارداد) که همراه موضوع‌ها ذخیره می‌شوند. */
+const MIRROR_KEYS = Object.values(ADDENDUM_SCHEMA.subjects)
+  .flatMap((subject) => subject.fields)
+  .filter((field) => field.effect)
+  .map((field) => field.key);
+
+/** جمع‌بندی مقادیر آینه‌ای از موضوع‌های انتخاب‌شده (برای ذخیره در ستون‌های مدل). */
+const collectMirrors = (subjects) => {
+  const mirrors = {};
+  MIRROR_KEYS.forEach((key) => { mirrors[key] = null; });
+  (subjects || []).forEach((item) => {
+    Object.entries(item.fields || {}).forEach(([key, value]) => {
+      if (MIRROR_KEYS.includes(key) && value !== '' && value != null) mirrors[key] = value;
+    });
+  });
+  return mirrors;
+};
+
+/* -------------------------------------------------- انتخاب چند موضوع */
+const SubjectPicker = ({ value, onChange, options }) => {
+  const selected = (value || [])
+    .map((item) => options.find((option) => option.value === item.type))
+    .filter(Boolean);
+  return (
+    <Autocomplete
+      multiple
+      size="small"
+      fullWidth
+      options={options}
+      value={selected}
+      disableCloseOnSelect
+      groupBy={(option) => option.group_label || 'سایر'}
+      getOptionLabel={(option) => option.label}
+      isOptionEqualToValue={(a, b) => a.value === b.value}
+      filterSelectedOptions
+      onChange={(_event, next) => {
+        onChange((next || []).map((option) => {
+          const previous = (value || []).find((item) => item.type === option.value);
+          return { type: option.value, fields: previous?.fields || {} };
+        }));
+      }}
+      renderTags={(items, getTagProps) => items.map((option, index) => (
+        <Chip
+          {...getTagProps({ index })}
+          key={option.value}
+          label={option.label}
+          size="small"
+          sx={{
+            fontWeight: 700,
+            bgcolor: `${GROUP_COLORS[option.group] || '#64748b'}18`,
+            color: GROUP_COLORS[option.group] || '#64748b',
+          }}
+        />
+      ))}
+      renderInput={(params) => (
+        <TextField
+          {...params}
+          label="موضوع‌های الحاقیه (چند موضوع قابل انتخاب است)"
+          placeholder="جست‌وجو در موضوع‌ها..."
+        />
+      )}
+    />
+  );
+};
+
+/* ----------------------------------------- فیلدهای تخصصی هر موضوع انتخاب‌شده */
+const SubjectField = ({ spec, value, onChange }) => {
+  if (spec.type === 'date') {
+    return <JalaliDatePicker fullWidth label={spec.label} value={value || ''} onChange={onChange} />;
+  }
+  if (spec.type === 'money') {
+    return (
+      <MoneyInput size="small" fullWidth label={spec.label} value={value ?? ''} onChange={onChange} />
+    );
+  }
+  if (spec.type === 'percent') {
+    return (
+      <TextField size="small" fullWidth type="number" label={spec.label} value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)}
+        InputProps={{ endAdornment: <InputAdornment position="end">٪</InputAdornment> }} />
+    );
+  }
+  if (spec.type === 'select') {
+    return (
+      <FormControl size="small" fullWidth>
+        <InputLabel>{spec.label}</InputLabel>
+        <Select value={value ?? ''} label={spec.label}
+          onChange={(event) => onChange(event.target.value)}>
+          <MenuItem value="">—</MenuItem>
+          {(spec.choices || []).map((choice) => (
+            <MenuItem key={choice.value} value={choice.value}>{choice.label}</MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+    );
+  }
+  if (spec.type === 'textarea') {
+    return (
+      <TextField size="small" fullWidth multiline rows={2} label={spec.label} value={value ?? ''}
+        onChange={(event) => onChange(event.target.value)} />
+    );
+  }
+  const numeric = spec.type === 'number' || spec.type === 'int';
+  return (
+    <TextField size="small" fullWidth type={numeric ? 'number' : 'text'} label={spec.label}
+      value={value ?? ''} onChange={(event) => onChange(event.target.value)}
+      helperText={spec.help || ''} />
+  );
+};
+
+const SubjectFields = ({ item, onChange }) => {
+  const subject = addendumSubject(item.type);
+  if (!subject) return null;
+  const color = GROUP_COLORS[subject.group] || '#64748b';
+  return (
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', borderColor: `${color}44`,
+      background: `${color}08` }}>
+      <Stack direction="row" alignItems="center" gap={1} mb={1.5} flexWrap="wrap">
+        <Chip size="small" label={subject.group_label}
+          sx={{ bgcolor: `${color}22`, color, fontWeight: 800 }} />
+        <Typography variant="subtitle2" fontWeight={800} sx={{ flex: 1, color }}>
+          {subject.label}
+        </Typography>
+        {subject.fields.some((field) => field.effect) ? (
+          <Tooltip title="این موضوع می‌تواند مقدار پروندهٔ قرارداد را تغییر دهد">
+            <Chip size="small" icon={<ChangeCircleIcon />} label="اثرگذار بر پروندهٔ قرارداد"
+              variant="outlined" sx={{ color }} />
+          </Tooltip>
+        ) : null}
+      </Stack>
+      <Grid container spacing={1.5}>
+        {subject.fields.map((spec) => (
+          <Grid item xs={12} sm={6} md={4} key={`${item.type}-${spec.key}`}>
+            <SubjectField
+              spec={spec}
+              value={(item.fields || {})[spec.key]}
+              onChange={(next) => onChange({ ...(item.fields || {}), [spec.key]: next })} />
+          </Grid>
+        ))}
+      </Grid>
+      {subject.fields.some((field) => field.effect) ? (
+        <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+          فیلدهای نشان‌دار روی پروندهٔ قرارداد اثر می‌گذارند:
+          {' '}
+          {subject.fields.filter((field) => field.effect)
+            .map((field) => `${field.label} → ${CONTRACT_TARGET_LABELS[field.effect[0]] || field.effect[0]}`)
+            .join(' · ')}
+        </Typography>
+      ) : null}
+    </Paper>
+  );
+};
+
+
+/* -------------------------------------- پیش‌نمایش اثر بر پروندهٔ قرارداد */
+const EffectPreview = ({ effect, loading }) => {
+  if (loading) {
+    return (
+      <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', textAlign: 'center' }}>
+        <CircularProgress size={20} />
+      </Paper>
+    );
+  }
+  if (!effect) return null;
+  const base = effect.base || {};
+  const effective = effect.effective || {};
+  const deltas = effect.deltas || {};
+  const isMoney = (field) => ['amount', 'advance_payment', 'guarantee_amount'].includes(field);
+  const show = (value, field) => (
+    field === 'end_date'
+      ? (value ? toJalali(value) : '—')
+      : `${formatPersianNumber(value || 0)}`
+  );
+  return (
+    <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', background: 'rgba(5,150,105,0.04)',
+      borderColor: 'rgba(5,150,105,0.25)' }}>
+      <Stack direction="row" alignItems="center" gap={1} mb={1} flexWrap="wrap">
+        <Avatar sx={{ width: 28, height: 28, bgcolor: '#059669', fontSize: 13 }}>
+          <TuneIcon sx={{ fontSize: 16 }} />
+        </Avatar>
+        <Typography variant="subtitle2" fontWeight={800} color="#047857">
+          اثر این الحاقیه بر پروندهٔ قرارداد
+        </Typography>
+        <Chip size="small" variant="outlined" label={`${formatPersianNumber(effect.addendum_count || 0)} الحاقیه`} />
+        {(effect.changed || []).map((field) => (
+          <Chip key={field} size="small" color="success"
+            label={CONTRACT_TARGET_LABELS[field] || field} sx={{ fontWeight: 700 }} />
+        ))}
+      </Stack>
+      <Table size="small">
+        <TableHead>
+          <TableRow>
+            <TableCell sx={{ fontWeight: 800 }}>مورد</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>مقدار پایه</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>پس از الحاقیه</TableCell>
+            <TableCell sx={{ fontWeight: 800 }}>تغییر</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {Object.entries(CONTRACT_TARGET_LABELS).map(([field, label]) => {
+            const delta = deltas[field];
+            const changed = field === 'end_date'
+              ? base[field] !== effective[field]
+              : Math.abs(Number(delta || 0)) > 0;
+            return (
+              <TableRow key={field} sx={{ bgcolor: changed ? 'rgba(5,150,105,0.06)' : 'transparent' }}>
+                <TableCell>{label}</TableCell>
+                <TableCell>{show(base[field], field)}</TableCell>
+                <TableCell sx={{ fontWeight: changed ? 800 : 400 }}>
+                  {show(effective[field], field)}
+                </TableCell>
+                <TableCell sx={{ color: changed ? '#047857' : 'text.secondary' }}>
+                  {field === 'end_date'
+                    ? (changed ? 'تغییر یافته' : '—')
+                    : (delta ? `${isMoney(field) ? formatPersianNumber(delta) : formatPersianNumber(delta)}` : '—')}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+      </Table>
+      {(effect.warnings || []).map((warning) => (
+        <Alert key={warning} severity="warning" sx={{ mt: 1, borderRadius: '10px', py: 0 }}>
+          <Typography variant="caption">{warning}</Typography>
+        </Alert>
+      ))}
+    </Paper>
+  );
+};
+
+
+
+/* ------------------------------------------------------------ صفحهٔ اصلی */
 const ContractAddendumsPage = () => {
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
@@ -39,70 +282,107 @@ const ContractAddendumsPage = () => {
   const [search, setSearch] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
+  const [preview, setPreview] = useState(null);
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
 
   const { data: contracts } = useQuery({
     queryKey: ['ext-contracts-addendum'],
-    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((r) => r.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
   const { data: currencies } = useQuery({
     queryKey: ['currencies-addendum'],
-    queryFn: () => axiosInstance.get('/currencies/', { params: { page_size: 100 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/currencies/', { params: { page_size: 100 } }).then((r) => r.data),
   });
   const currencyList = Array.isArray(currencies) ? currencies : currencies?.results || [];
 
-  // موضوع‌های استاندارد الحاقیه از سرور خوانده می‌شود (پشتیبان: فهرست محلی)
-  const { data: subjectTypes } = useQuery({
-    queryKey: ['addendum-subject-types'],
-    queryFn: () => axiosInstance.get('/contract-addendums/subject-types/').then(r => r.data),
+  // طرح موضوع‌ها از سرور؛ در نبود سرویس، فهرست محلی هم‌تراز استفاده می‌شود
+  const { data: schemaData } = useQuery({
+    queryKey: ['addendum-subject-schema'],
+    queryFn: () => axiosInstance.get('/contract-addendums/subject-types/').then((r) => r.data),
   });
-  const subjectOptions = Array.isArray(subjectTypes) && subjectTypes.length
-    ? subjectTypes
-    : ADDENDUM_SUBJECTS;
+  const subjectOptions = useMemo(() => {
+    if (Array.isArray(schemaData)) return schemaData;          // حالت compact
+    if (schemaData?.subjects?.length) return schemaData.subjects;
+    return ADDENDUM_SCHEMA.subjects;
+  }, [schemaData]);
 
   const { data, isLoading } = useQuery({
     queryKey: ['contract-addendums', contractId],
-    queryFn: () => axiosInstance.get('/contract-addendums/', { params: { contract: contractId, page_size: 500 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/contract-addendums/', {
+      params: { contract: contractId, page_size: 500 },
+    }).then((r) => r.data),
     enabled: !!contractId,
   });
   const list = Array.isArray(data) ? data : data?.results || [];
 
+  const { data: contractEffects } = useQuery({
+    queryKey: ['contract-effects', contractId],
+    queryFn: () => axiosInstance.get(`/external-contracts/${contractId}/effective/`).then((r) => r.data),
+    enabled: !!contractId,
+  });
+
   const filtered = useMemo(() => {
     const q = (search || '').trim().toLowerCase();
     if (!q) return list;
-    return list.filter(a =>
-      (a.number || '').toLowerCase().includes(q) ||
-      (a.subject || '').toLowerCase().includes(q) ||
-      (a.subject_type_display || '').toLowerCase().includes(q) ||
-      (a.change_description || '').toLowerCase().includes(q));
+    return list.filter((row) =>
+      (row.number || '').toLowerCase().includes(q) ||
+      (row.subject || '').toLowerCase().includes(q) ||
+      (row.subjects_display || '').toLowerCase().includes(q) ||
+      (row.change_description || '').toLowerCase().includes(q));
   }, [list, search]);
 
-  const sanitize = (p) => ({
-    ...p,
-    contract: p.contract || null,
-    subject_type: p.subject_type || '',
-    amount_change: p.amount_change === '' || p.amount_change == null ? null : Number(p.amount_change),
-    percent_change: p.percent_change === '' || p.percent_change == null ? null : Number(p.percent_change),
-    date: p.date || null,
-    new_end_date: p.new_end_date || null,
-    currency: p.currency || null,
-    provisions: Array.isArray(p.provisions) ? p.provisions : [],
+  const sanitize = (payload) => ({
+    ...payload,
+    contract: payload.contract || null,
+    date: payload.date || null,
+    new_end_date: payload.new_end_date || null,
+    currency: payload.currency || null,
+    provisions: Array.isArray(payload.provisions) ? payload.provisions : [],
+    subjects: (payload.subjects || []).map((item) => ({
+      type: item.type,
+      fields: Object.fromEntries(
+        Object.entries(item.fields || {}).filter(([, value]) => value !== '' && value != null),
+      ),
+    })),
+    ...collectMirrors(payload.subjects),
+    subject_type: payload.subjects?.[0]?.type || '',
   });
 
+  const previewEffect = useMutation({
+    mutationFn: () => axiosInstance.post('/contract-addendums/effect-preview/', {
+      contract: contractId,
+      subjects: form.subjects,
+      ...collectMirrors(form.subjects),
+      ignore: form.id || undefined,
+    }).then((r) => r.data),
+    onSuccess: (data) => setPreview(data),
+  });
+
+  // پیش‌نمایش زندهٔ اثر الحاقیه (با تأخیر کوتاه پس از آخرین تغییر موضوع‌ها/فیلدها)
+  useEffect(() => {
+    if (!dialog || !contractId) return undefined;
+    const timer = setTimeout(() => previewEffect.mutate(), 400);
+    return () => clearTimeout(timer);
+  }, [dialog, contractId, form.subjects, form.id]);
+
   const save = useMutation({
-    mutationFn: (p) => {
-      const clean = sanitize(p);
+    mutationFn: (payload) => {
+      const clean = sanitize(payload);
       return clean.id
         ? axiosInstance.patch(`/contract-addendums/${clean.id}/`, clean)
         : axiosInstance.post('/contract-addendums/', clean);
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['contract-addendums'] });
+      qc.invalidateQueries({ queryKey: ['contract-effects'] });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
-      setDialog(false); setForm(EMPTY); setToast('ذخیره شد');
+      setDialog(false);
+      setForm(EMPTY);
+      setPreview(null);
+      setToast('الحاقیه ذخیره شد');
     },
     onError: (e) => {
       const d = e.response?.data;
@@ -113,6 +393,7 @@ const ContractAddendumsPage = () => {
         else if (d.detail) msg = d.detail;
         else if (d.error) msg = d.error;
         else if (d.non_field_errors) msg = d.non_field_errors[0];
+        else if (Array.isArray(d.subjects)) msg = d.subjects[0];
         else { const first = Object.values(d).flat()[0]; if (first) msg = first; }
       }
       setError(msg);
@@ -121,18 +402,84 @@ const ContractAddendumsPage = () => {
 
   const del = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/contract-addendums/${id}/`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['contract-addendums'] }); setToast('حذف شد'); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contract-addendums'] });
+      qc.invalidateQueries({ queryKey: ['contract-effects'] });
+      setToast('حذف شد');
+    },
   });
 
-  const addProvision = () => setForm(p => ({ ...p, provisions: [...(p.provisions || []), { title: '', text: '' }] }));
-  const updateProvision = (i, key, val) => setForm(p => ({
-    ...p,
-    provisions: (p.provisions || []).map((pr, idx) => (idx === i ? { ...pr, [key]: val } : pr)),
-  }));
-  const removeProvision = (i) => setForm(p => ({ ...p, provisions: (p.provisions || []).filter((_, idx) => idx !== i) }));
+  const openNew = () => {
+    setForm({ ...EMPTY, contract: contractId });
+    setPreview(null);
+    setError('');
+    setDialog(true);
+  };
 
-  const selCurrency = currencyList.find(c => String(c.id) === String(form.currency));
-  const currencyLabel = selCurrency ? selCurrency.name : (contractList.find(c => String(c.id) === String(contractId))?.currency_name || 'ریال');
+  const openEdit = (row) => {
+    setForm({
+      id: row.id,
+      contract: row.contract || contractId,
+      number: row.number || '',
+      subject: row.subject || '',
+      date: row.date || '',
+      currency: row.currency || '',
+      change_description: row.change_description || '',
+      provisions: row.provisions || [],
+      subjects: (row.subjects || []).map((item) => ({
+        type: item.type, fields: { ...(item.fields || {}) },
+      })),
+    });
+    setPreview(null);
+    setError('');
+    setDialog(true);
+  };
+
+  const updateSubjectFields = (type, fields) => setForm((prev) => ({
+    ...prev,
+    subjects: (prev.subjects || []).map((item) => (
+      item.type === type ? { type, fields } : item
+    )),
+  }));
+
+  const addProvision = () => setForm((prev) => ({
+    ...prev, provisions: [...(prev.provisions || []), { title: '', text: '' }],
+  }));
+  const updateProvision = (index, key, value) => setForm((prev) => ({
+    ...prev,
+    provisions: (prev.provisions || []).map((row, idx) => (
+      idx === index ? { ...row, [key]: value } : row
+    )),
+  }));
+  const removeProvision = (index) => setForm((prev) => ({
+    ...prev, provisions: (prev.provisions || []).filter((_, idx) => idx !== index),
+  }));
+
+  const selCurrency = currencyList.find((c) => String(c.id) === String(form.currency));
+  const currencyLabel = selCurrency
+    ? selCurrency.name
+    : (contractList.find((c) => String(c.id) === String(contractId))?.currency_name || 'ریال');
+  const effective = contractEffects?.effective || {};
+  const baseContract = contractEffects?.base || {};
+
+  const summaryChip = (label, value, field, isDate) => {
+    const changed = (contractEffects?.changed || []).includes(field);
+    return (
+      <Chip
+        key={field}
+        size="small"
+        icon={changed ? <ChangeCircleIcon /> : undefined}
+        label={`${label}: ${isDate
+          ? (value ? toJalali(value) : '—')
+          : formatPersianNumber(value || 0)}${changed ? ' (با الحاقیه)' : ''}`}
+        sx={{
+          fontWeight: 700,
+          bgcolor: changed ? 'rgba(5,150,105,0.12)' : 'rgba(100,116,139,0.08)',
+          color: changed ? '#047857' : '#475569',
+        }}
+      />
+    );
+  };
 
   return (
     <Box>
@@ -142,9 +489,12 @@ const ContractAddendumsPage = () => {
         <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', boxShadow: '0 8px 24px rgba(236,72,153,0.4)' }}>
           <EditNoteIcon sx={{ color: '#fff', fontSize: 28 }} />
         </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
+        <Box sx={{ flex: 1, minWidth: 220 }}>
           <Typography variant="h6" fontWeight={800} color="#be185d">الحاقیه‌های قرارداد</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت الحاقیه با مبلغ، ارز، درصد تغییر، مفاد و شرح کامل</Typography>
+          <Typography variant="body2" color="textSecondary">
+            چند موضوع در هر الحاقیه + فیلدهای تخصصی هر موضوع؛ اثر آن‌ها روی پروندهٔ قرارداد (مبلغ،
+            پیش‌پرداخت، مدت، تضمین و ...) به‌صورت زنده محاسبه می‌شود.
+          </Typography>
         </Box>
       </Paper>
 
@@ -160,15 +510,38 @@ const ContractAddendumsPage = () => {
           <Paper sx={{ ...glassPaper, p: 1.5, mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
             <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
             <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
-              {contractList.find(c => String(c.id) === String(contractId))?.subject || 'قرارداد'}
+              {contractList.find((c) => String(c.id) === String(contractId))?.subject || 'قرارداد'}
             </Typography>
-            <TextField size="small" placeholder="جستجو در الحاقیه‌ها..." value={search} onChange={e => setSearch(e.target.value)} sx={{ minWidth: 220 }}
+            <TextField size="small" placeholder="جست‌وجو در الحاقیه‌ها..." value={search}
+              onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 220 }}
               InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-            <Button variant="contained" startIcon={<AddIcon />}
-              onClick={() => { setForm({ ...EMPTY, contract: contractId }); setError(''); setDialog(true); }}
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
               sx={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', borderRadius: '10px' }}>
               الحاقیه جدید
             </Button>
+          </Paper>
+
+          {/* خلاصهٔ پروندهٔ مؤثر قرارداد (اثر الحاقیه‌ها) */}
+          <Paper sx={{ ...glassPaper, p: 1.5, mb: 2 }}>
+            <Stack direction="row" spacing={0.75} flexWrap="wrap" alignItems="center">
+              <Chip size="small" label="پروندهٔ مؤثر قرارداد"
+                sx={{ fontWeight: 800, bgcolor: 'rgba(5,150,105,0.14)', color: '#047857' }} />
+              {summaryChip('مبلغ', effective.amount, 'amount')}
+              {summaryChip('پیش‌پرداخت', effective.advance_payment, 'advance_payment')}
+              {summaryChip('پایان', effective.end_date, 'end_date', true)}
+              {summaryChip('تضمین', effective.guarantee_amount, 'guarantee_amount')}
+              {summaryChip('حسن انجام کار', effective.retention_percent, 'retention_percent')}
+              {baseContract.amount ? (
+                <Typography variant="caption" color="textSecondary">
+                  (پایه: مبلغ {formatPersianNumber(baseContract.amount)} · پیش‌پرداخت {formatPersianNumber(baseContract.advance_payment || 0)})
+                </Typography>
+              ) : null}
+            </Stack>
+            {(contractEffects?.warnings || []).map((warning) => (
+              <Alert key={warning} severity="warning" sx={{ mt: 1, borderRadius: '10px', py: 0 }}>
+                <Typography variant="caption">{warning}</Typography>
+              </Alert>
+            ))}
           </Paper>
 
           {isLoading ? (
@@ -180,60 +553,38 @@ const ContractAddendumsPage = () => {
             </Paper>
           ) : (
             <Grid container spacing={2}>
-              {filtered.map(a => (
-                <Grid item xs={12} md={6} key={a.id}>
+              {filtered.map((row) => (
+                <Grid item xs={12} md={6} key={row.id}>
                   <Paper sx={{ ...glassPaper, p: 2, position: 'relative', overflow: 'hidden' }}>
-                    <Box sx={{ position: 'absolute', top: -30, left: -30, width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle, rgba(236,72,153,0.14), transparent 70%)', pointerEvents: 'none' }} />
-                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
+                    <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
                       <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#ec4899,#8b5cf6)' }}>
                         <EditNoteIcon sx={{ color: '#fff' }} />
                       </Avatar>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography variant="body1" fontWeight={800}>
-                          {a.subject_type_display || a.subject || a.number || 'الحاقیه'}
+                          {row.subjects_display || row.subject || row.number || 'الحاقیه'}
                         </Typography>
                         <Typography variant="caption" color="textSecondary">
-                          {a.number ? `شماره: ${a.number} · ` : ''}{toJalali(a.date)}
-                          {a.subject && a.subject_type_display ? ` · ${a.subject}` : ''}
+                          {row.number ? `شماره: ${row.number} · ` : ''}{toJalali(row.date)}
+                          {row.subject ? ` · ${row.subject}` : ''}
                         </Typography>
                       </Box>
                       <Box>
-                        <IconButton size="small" onClick={() => { setForm({ ...a, provisions: a.provisions || [] }); setError(''); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف این الحاقیه؟')) del.mutate(a.id); }}><DeleteIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" color="error"
+                          onClick={() => { if (window.confirm('حذف این الحاقیه؟')) del.mutate(row.id); }}>
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
                       </Box>
                     </Box>
 
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
-                      {a.amount_change != null && a.amount_change !== '' && (
-                        <Chip size="small" icon={<AttachMoneyIcon />} label={`تغییر مبلغ: ${formatPersianNumber(a.amount_change)} ${a.currency_name || currencyLabel}`}
-                          sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#047857', fontWeight: 700 }} />
-                      )}
-                      {a.percent_change != null && a.percent_change !== '' && (
-                        <Chip size="small" label={`٪${formatPersianNumber(a.percent_change)}`} sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: '#7c3aed', fontWeight: 700 }} />
-                      )}
-                      {a.new_end_date && (
-                        <Chip size="small" icon={<CalendarMonthIcon />} label={`پایان جدید: ${toJalali(a.new_end_date)}`}
-                          sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#1d4ed8', fontWeight: 700 }} />
-                      )}
-                    </Box>
-
-                    {a.change_description && (
-                      <Typography variant="body2" color="textSecondary" sx={{ mb: 1 }}>{a.change_description}</Typography>
-                    )}
-
-                    {Array.isArray(a.provisions) && a.provisions.length > 0 && (
-                      <Box>
-                        <Typography variant="caption" fontWeight={800} color="#be185d" sx={{ mb: 0.5, display: 'block' }}>مفاد ({formatPersianNumber(a.provisions.length)})</Typography>
-                        <Stack spacing={0.5}>
-                          {a.provisions.map((pr, i) => (
-                            <Box key={i} sx={{ p: 1, borderRadius: '8px', background: 'rgba(236,72,153,0.05)', border: '1px solid rgba(236,72,153,0.12)' }}>
-                              <Typography variant="caption" fontWeight={700}>{pr.title}</Typography>
-                              {pr.text && <Typography variant="caption" color="textSecondary" display="block">{pr.text}</Typography>}
-                            </Box>
-                          ))}
-                        </Stack>
-                      </Box>
-                    )}
+                    <Stack direction="row" spacing={0.5} sx={{ mb: 1, flexWrap: 'wrap', gap: 0.5 }}>
+                      {(row.subjects_detail || []).map((item) => (
+                        <Chip key={item.type} size="small" label={item.label}
+                          sx={{ bgcolor: `${GROUP_COLORS[item.group] || '#64748b'}18`,
+                            color: GROUP_COLORS[item.group] || '#64748b', fontWeight: 700 }} />
+                      ))}
+                    </Stack>
                   </Paper>
                 </Grid>
               ))}
@@ -242,6 +593,7 @@ const ContractAddendumsPage = () => {
         </>
       )}
 
+
       <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
         <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 3, py: 2,
           background: 'linear-gradient(120deg, rgba(236,72,153,0.12), rgba(139,92,246,0.08), rgba(255,255,255,0.4))',
@@ -249,87 +601,102 @@ const ContractAddendumsPage = () => {
           <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', boxShadow: '0 6px 18px rgba(236,72,153,0.4)' }}>
             <EditNoteIcon sx={{ color: '#fff' }} />
           </Avatar>
-          <Box>
+          <Box sx={{ flex: 1 }}>
             <Typography variant="h6" fontWeight={800}>{form.id ? 'ویرایش الحاقیه' : 'الحاقیه جدید'}</Typography>
-            <Typography variant="caption" color="textSecondary">ثبت کامل الحاقیه با جزئیات مالی و مفاد</Typography>
+            <Typography variant="caption" color="textSecondary">
+              موضوع‌ها را (چند مورد) انتخاب کنید؛ فیلدهای تخصصی هر موضوع نمایش داده می‌شود.
+            </Typography>
           </Box>
         </DialogTitle>
 
         <DialogContent sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
           <Box>
-            <Typography variant="caption" fontWeight={700} color="#be185d" sx={{ mb: 1, display: 'block' }}>اطلاعات پایه</Typography>
+            <Typography variant="caption" fontWeight={700} color="#be185d" sx={{ mb: 1, display: 'block' }}>
+              اطلاعات پایه
+            </Typography>
             <Grid container spacing={2}>
-              <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره الحاقیه" value={form.number || ''} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
-              <Grid item xs={12} md={8}>
+              <Grid item xs={12} md={4}>
+                <TextField size="small" fullWidth label="شماره الحاقیه" value={form.number || ''}
+                  onChange={(e) => setForm((p) => ({ ...p, number: e.target.value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
+                <JalaliDatePicker fullWidth label="تاریخ الحاقیه" value={form.date}
+                  onChange={(value) => setForm((p) => ({ ...p, date: value }))} />
+              </Grid>
+              <Grid item xs={12} md={4}>
                 <FormControl size="small" fullWidth>
-                  <InputLabel>موضوع الحاقیه</InputLabel>
-                  <Select
-                    value={form.subject_type || ''}
-                    label="موضوع الحاقیه"
-                    onChange={e => {
-                      const value = e.target.value;
-                      const label = addendumSubjectLabel(value)
-                        || (subjectOptions.find(o => o.value === value)?.label || '');
-                      setForm(p => ({
-                        ...p,
-                        subject_type: value,
-                        // پیشنهاد شرح موضوع از عنوان انتخاب‌شده (قابل ویرایش)
-                        subject: p.subject?.trim() ? p.subject : label,
-                      }));
-                    }}
-                  >
+                  <InputLabel>واحد ارز</InputLabel>
+                  <Select value={form.currency || ''} label="واحد ارز"
+                    onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}>
                     <MenuItem value="">—</MenuItem>
-                    {subjectOptions.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+                    {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>
-              <Grid item xs={12} md={8}><TextField size="small" fullWidth label="شرح موضوع (اختیاری)" value={form.subject || ''} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
-              <Grid item xs={12} md={4}><JalaliDatePicker fullWidth label="تاریخ الحاقیه" value={form.date} onChange={(g) => setForm(p => ({ ...p, date: g }))} /></Grid>
-              <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ پایان جدید" value={form.new_end_date} onChange={(g) => setForm(p => ({ ...p, new_end_date: g }))} /></Grid>
+              <Grid item xs={12}>
+                <TextField size="small" fullWidth label="شرح موضوع (اختیاری)" value={form.subject || ''}
+                  onChange={(e) => setForm((p) => ({ ...p, subject: e.target.value }))} />
+              </Grid>
             </Grid>
           </Box>
 
           <Divider />
 
           <Box>
-            <Typography variant="caption" fontWeight={700} color="#047857" sx={{ mb: 1, display: 'block' }}>مبالغ و ارز</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>واحد ارز</InputLabel>
-                  <Select value={form.currency || ''} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
-                    <MenuItem value="">—</MenuItem>
-                    {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
-                  </Select>
-                </FormControl>
-              </Grid>
-              <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label={`تغییر مبلغ (${currencyLabel})`} value={form.amount_change} onChange={(v) => setForm(p => ({ ...p, amount_change: v }))} /></Grid>
-              <Grid item xs={12} md={4}><TextField size="small" fullWidth type="number" label="درصد تغییر (٪)" value={form.percent_change ?? ''} onChange={e => setForm(p => ({ ...p, percent_change: e.target.value }))} /></Grid>
-            </Grid>
+            <Typography variant="caption" fontWeight={700} color="#7c3aed" sx={{ mb: 1, display: 'block' }}>
+              موضوع‌های الحاقیه (چندگانه)
+            </Typography>
+            <SubjectPicker value={form.subjects} options={subjectOptions}
+              onChange={(subjects) => setForm((p) => ({ ...p, subjects }))} />
+            {(form.subjects || []).length === 0 ? (
+              <Alert severity="info" sx={{ mt: 1.5, borderRadius: '10px', py: 0 }}>
+                <Typography variant="caption">
+                  با انتخاب موضوع‌ها، فیلدهای تخصصی همان موضوع‌ها (و اثرشان روی پروندهٔ قرارداد) نمایان می‌شود.
+                </Typography>
+              </Alert>
+            ) : (
+              <Stack spacing={1.5} sx={{ mt: 1.5 }}>
+                {(form.subjects || []).map((item) => (
+                  <SubjectFields key={item.type} item={item}
+                    onChange={(fields) => updateSubjectFields(item.type, fields)} />
+                ))}
+              </Stack>
+            )}
           </Box>
+
+          <Divider />
+
+          <EffectPreview effect={preview} loading={previewEffect.isLoading} />
 
           <Divider />
 
           <Box>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
               <Typography variant="caption" fontWeight={700} color="#7c3aed">مفاد / بندهای الحاقیه</Typography>
-              <Button size="small" startIcon={<AddCircleIcon />} onClick={addProvision} sx={{ color: '#7c3aed' }}>افزودن بند</Button>
+              <Button size="small" startIcon={<AddCircleIcon />} onClick={addProvision} sx={{ color: '#7c3aed' }}>
+                افزودن بند
+              </Button>
             </Box>
             {(form.provisions || []).length === 0 ? (
               <Typography variant="caption" color="textSecondary">بندی تعریف نشده است.</Typography>
             ) : (
               <Stack spacing={1}>
-                {(form.provisions || []).map((pr, i) => (
-                  <Paper key={i} variant="outlined" sx={{ p: 1.25, borderRadius: '10px', background: 'rgba(139,92,246,0.04)', borderColor: 'rgba(139,92,246,0.25)' }}>
+                {(form.provisions || []).map((item, index) => (
+                  <Paper key={index} variant="outlined" sx={{ p: 1.25, borderRadius: '10px',
+                    background: 'rgba(139,92,246,0.04)', borderColor: 'rgba(139,92,246,0.25)' }}>
                     <Grid container spacing={1} alignItems="center">
                       <Grid item xs={12} sm={4}>
-                        <TextField size="small" fullWidth label="عنوان بند" value={pr.title || ''} onChange={e => updateProvision(i, 'title', e.target.value)} />
+                        <TextField size="small" fullWidth label="عنوان بند" value={item.title || ''}
+                          onChange={(e) => updateProvision(index, 'title', e.target.value)} />
                       </Grid>
                       <Grid item xs={12} sm={7}>
-                        <TextField size="small" fullWidth label="متن بند" value={pr.text || ''} onChange={e => updateProvision(i, 'text', e.target.value)} />
+                        <TextField size="small" fullWidth label="متن بند" value={item.text || ''}
+                          onChange={(e) => updateProvision(index, 'text', e.target.value)} />
                       </Grid>
                       <Grid item xs={12} sm={1}>
-                        <IconButton size="small" color="error" onClick={() => removeProvision(i)}><RemoveCircleIcon fontSize="small" /></IconButton>
+                        <IconButton size="small" color="error" onClick={() => removeProvision(index)}>
+                          <RemoveCircleIcon fontSize="small" />
+                        </IconButton>
                       </Grid>
                     </Grid>
                   </Paper>
@@ -340,21 +707,30 @@ const ContractAddendumsPage = () => {
 
           <Divider />
 
-          <TextField size="small" fullWidth label="شرح تغییرات" multiline rows={3} value={form.change_description || ''} onChange={e => setForm(p => ({ ...p, change_description: e.target.value }))} />
+          <TextField size="small" fullWidth label="شرح تغییرات" multiline rows={3}
+            value={form.change_description || ''}
+            onChange={(e) => setForm((p) => ({ ...p, change_description: e.target.value }))} />
 
-          {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+          {error && (
+            <Alert severity="error" onClose={() => setError('')}>
+              <AlertTitle>ذخیره نشد</AlertTitle>
+              {error}
+            </Alert>
+          )}
         </DialogContent>
 
         <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(236,72,153,0.12)' }}>
           <Button onClick={() => setDialog(false)} sx={{ borderRadius: '10px' }}>انصراف</Button>
-          <Button variant="contained" onClick={() => save.mutate(form)}
-            sx={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', borderRadius: '10px', px: 3, boxShadow: '0 8px 22px rgba(236,72,153,0.35)' }}>
+          <Button variant="contained" onClick={() => save.mutate(form)} disabled={save.isLoading}
+            sx={{ background: 'linear-gradient(135deg,#ec4899,#8b5cf6)', borderRadius: '10px', px: 3,
+              boxShadow: '0 8px 22px rgba(236,72,153,0.35)' }}>
             {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={!!toast} autoHideDuration={3000} onClose={() => setToast('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+      <Snackbar open={!!toast} autoHideDuration={3000} onClose={() => setToast('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
         <Alert severity="success" onClose={() => setToast('')}>{toast}</Alert>
       </Snackbar>
     </Box>
@@ -362,3 +738,4 @@ const ContractAddendumsPage = () => {
 };
 
 export default ContractAddendumsPage;
+

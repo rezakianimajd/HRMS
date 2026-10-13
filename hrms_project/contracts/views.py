@@ -131,6 +131,17 @@ class ContractViewSet(BaseContractViewSet):
         self._audit(instance, 'delete')
         instance.delete()
 
+    @action(detail=True, methods=['get'])
+    def effective(self, request, pk=None):
+        """پروندهٔ مؤثر قرارداد: اثر همهٔ الحاقیه‌ها روی مبلغ، پیش‌پرداخت، مدت، تضمین و ...
+
+        خروجی شامل مقدار پایه، مقدار مؤثر، تفاوت‌ها، ردیابی تغییرات هر الحاقیه و هشدارهاست.
+        """
+        from contracts.addendum_effects import contract_effects
+
+        contract = self.get_object()
+        return Response(contract_effects(contract))
+
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
         """خروجی اکسل جامع قراردادها — تک‌شیت و **یک ردیف برای هر قرارداد**.
@@ -294,11 +305,43 @@ class AddendumViewSet(BaseContractViewSet):
 
     @action(detail=False, methods=['get'], url_path='subject-types')
     def subject_types(self, request):
-        """فهرست استاندارد «موضوع الحاقیه» (برای فرم و فیلترها)."""
-        return Response([
-            {'value': value, 'label': label}
-            for value, label in Addendum.SubjectType.choices
-        ])
+        """طرح کامل موضوع‌های الحاقیه: عنوان، گروه و فیلدهای تخصصی هر موضوع.
+
+        پارامتر `compact=1` فقط `value`/`label` را برمی‌گرداند (برای فهرست‌های سبک).
+        """
+        from contracts.addendum_schema import CONTRACT_TARGETS, subject_options
+
+        if request.query_params.get('compact') in ('1', 'true', 'True'):
+            return Response([
+                {'value': item['value'], 'label': item['label']} for item in subject_options()
+            ])
+        return Response({
+            'subjects': subject_options(),
+            'contract_targets': CONTRACT_TARGETS,
+        })
+
+    @action(detail=False, methods=['post'], url_path='effect-preview')
+    def effect_preview(self, request):
+        """اثر «پیش‌نویس» یک الحاقیه روی پروندهٔ قرارداد (بدون ذخیره).
+
+        بدنه: ``{contract, subjects|subject_type, fields..., ignore}``
+        """
+        from contracts.addendum_effects import effects_from_payload
+        from contracts.models import Contract
+
+        company = _company(request)
+        contract_id = request.data.get('contract')
+        contract = Contract.objects.filter(pk=contract_id, company=company).prefetch_related(
+            'addendums').first() if contract_id else None
+        if contract is None:
+            return Response({'detail': 'قرارداد الزامی است.'}, status=400)
+        ignore = request.data.get('ignore') or request.data.get('ignore_id')
+        if ignore:
+            try:
+                ignore = int(ignore)
+            except (TypeError, ValueError):
+                ignore = None
+        return Response(effects_from_payload(contract, request.data, ignore_id=ignore))
 
 
 class GuaranteeViewSet(BaseContractViewSet):
