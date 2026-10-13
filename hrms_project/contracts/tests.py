@@ -3,7 +3,7 @@ from datetime import date
 
 from django.test import TestCase
 
-from contracts.excel_export import build_contracts_workbook
+from contracts.excel_export import ROW_TYPES, build_contracts_workbook
 from contracts.models import Addendum, Contract, ContractParty, Guarantee, Invoice, Payment, Statement
 from core.models import Company
 from settings_app.models import Currency, Signatory
@@ -63,45 +63,45 @@ class ContractExcelExportTests(TestCase):
             provisions=[{'title': 'بند یک', 'text': 'متن بند'}],
         )
 
-    def test_workbook_contains_all_contract_items(self):
+    def test_workbook_has_single_sheet(self):
         workbook = build_contracts_workbook([self.contract])
-        titles = workbook.sheetnames
-        for expected in (
-            'خلاصه', 'قراردادها', 'مفاد و شرایط', 'تخصیص پروژه‌ها', 'پیش‌پرداخت‌های مرحله‌ای',
-            'اقلام ضمانت قرارداد', 'تضمین‌ها', 'فاکتورها', 'صورت‌وضعیت‌ها',
-            'اضافات و کسورات صورت‌وضعیت', 'پرداخت‌ها', 'الحاقیه‌ها', 'مفاد الحاقیه‌ها',
-            'اختلافات و دعاوی',
-        ):
-            self.assertIn(expected, titles)
+        self.assertEqual(workbook.sheetnames, ['قراردادها'])
 
-    def test_contract_sheet_carries_financial_totals(self):
+    def test_contract_row_carries_financial_totals(self):
         workbook = build_contracts_workbook([self.contract])
         ws = workbook['قراردادها']
         headers = [c.value for c in ws[1]]
-        row = [c.value for c in ws[2]]
-        data = dict(zip(headers, row))
+        data = dict(zip(headers, [c.value for c in ws[2]]))
+        self.assertEqual(data['نوع ردیف'], ROW_TYPES['contract'])
         self.assertEqual(data['شماره قرارداد'], 'C-1')
-        self.assertEqual(data['مبلغ قرارداد'], 10_000_000.0)
+        self.assertEqual(data['مبلغ'], 10_000_000.0)
         self.assertEqual(data['جمع فاکتورها'], 1_090_000.0)
         self.assertEqual(data['جمع صورت‌وضعیت‌ها (قابل پرداخت)'], 980_000.0)
         self.assertEqual(data['جمع پرداخت‌ها'], 980_000.0)
         self.assertEqual(data['مانده پرداخت‌نشده'], 9_020_000.0)
+        self.assertEqual(data['درصد پرداخت‌شده'], 9.8)
         # «امضاکننده» (full_name) و «ارز» درست خوانده شوند — رگرسیون خطای 500
         self.assertEqual(data['امضاکننده'], 'مدیرعامل تست')
         self.assertEqual(data['ارز'], 'ریال')
+        self.assertIn('فاکتور: 1', str(data['تعداد و جمع آیتم‌ها']))
         # تاریخ شمسی
-        self.assertRegex(str(data['تاریخ شروع']), r'^\d{4}/\d{2}/\d{2}$')
+        self.assertRegex(str(data['تاریخ']), r'^\d{4}/\d{2}/\d{2}$')
 
-    def test_item_sheets_have_rows(self):
+    def test_all_items_are_rows_of_the_same_sheet(self):
         workbook = build_contracts_workbook([self.contract])
-        self.assertEqual(workbook['فاکتورها'].max_row, 2)
-        self.assertEqual(workbook['صورت‌وضعیت‌ها'].max_row, 2)
-        self.assertEqual(workbook['پرداخت‌ها'].max_row, 2)
-        self.assertEqual(workbook['تضمین‌ها'].max_row, 2)
-        self.assertEqual(workbook['الحاقیه‌ها'].max_row, 2)
-        # اضافات و کسورات: دو آیتم (یک اضافه + یک کسور)
-        self.assertEqual(workbook['اضافات و کسورات صورت‌وضعیت'].max_row, 3)
-        # پیش‌پرداخت مرحله‌ای و اقلام ضمانت و مفاد الحاقیه
-        self.assertEqual(workbook['پیش‌پرداخت‌های مرحله‌ای'].max_row, 2)
-        self.assertEqual(workbook['اقلام ضمانت قرارداد'].max_row, 2)
-        self.assertEqual(workbook['مفاد الحاقیه‌ها'].max_row, 2)
+        ws = workbook['قراردادها']
+        headers = [c.value for c in ws[1]]
+        kind_col = headers.index('نوع ردیف') + 1
+        amount_col = headers.index('مبلغ آیتم') + 1
+        kinds = [ws.cell(row=r, column=kind_col).value for r in range(2, ws.max_row + 1)]
+        for key in ('contract', 'invoice', 'statement', 'statement_addition', 'statement_deduction',
+                    'payment', 'guarantee', 'addendum', 'addendum_provision',
+                    'project_allocation', 'advance_payment', 'guarantee_item'):
+            self.assertIn(ROW_TYPES[key], kinds)
+        # یک قرارداد + ۱۱ آیتم (بدون اختلاف)
+        self.assertEqual(len(kinds), 12)
+        amounts = {ws.cell(row=r, column=kind_col).value: ws.cell(row=r, column=amount_col).value
+                   for r in range(2, ws.max_row + 1)}
+        self.assertEqual(amounts[ROW_TYPES['invoice']], 1_000_000.0)
+        self.assertEqual(amounts[ROW_TYPES['payment']], 980_000.0)
+        self.assertEqual(amounts[ROW_TYPES['guarantee']], 500_000.0)

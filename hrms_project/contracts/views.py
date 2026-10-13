@@ -133,7 +133,7 @@ class ContractViewSet(BaseContractViewSet):
 
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
-        """خروجی اکسل جامع قراردادها — همهٔ آیتم‌های درون هر قرارداد در چند شیت.
+        """خروجی اکسل جامع قراردادها — همهٔ آیتم‌های درون هر قرارداد در **یک شیت**.
 
         فیلترهای همان صفحه اعمال می‌شوند (q، وضعیت، نوع قرارداد، طرف، پروژه) و با
         پارامتر `contract=<id>` می‌توان فقط یک قرارداد را با تمام جزئیاتش گرفت.

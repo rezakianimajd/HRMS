@@ -1,20 +1,23 @@
-"""خروجی اکسل جامع ماژول قراردادها.
+"""خروجی اکسل قراردادها — **تک‌شیت** و جامع.
 
-خروجی یک فایل `.xlsx` چندشیتی است که **همهٔ آیتم‌های درون قرارداد** را می‌آورد:
-قراردادها، مفاد و شرایط، تخصیص پروژه‌ها، پیش‌پرداخت‌های مرحله‌ای، ضمانت‌های قرارداد،
-تضمین‌ها/ضمانت‌نامه‌ها، فاکتورها، صورت‌وضعیت‌ها (+ اضافات و کسورات)، پرداخت‌ها،
-الحاقیه‌ها (+ مفاد)، و اختلافات/دعاوی.
+همهٔ اطلاعات در یک کاربرگ جمع می‌شود: یک ردیف برای هر قرارداد (با تمام اقلام کلیدی و
+مفاد آن) و بلافاصله ردیف‌های همهٔ آیتم‌های درون قرارداد (فاکتور، صورت‌وضعیت و اضافات/
+کسورات آن، پرداخت، تضمین، الحاقیه و بندهای آن، تخصیص پروژه، پیش‌پرداخت، اقلام ضمانت و
+اختلافات). ستون «نوع ردیف» امکان فیلتر/گروه‌بندی سریع در اکسل را می‌دهد.
 """
 from decimal import Decimal
 
-try:  # تبدیل تاریخ به شمسی (همان الگوی ماژول پروژه‌ها)
+try:  # تاریخ شمسی (همان الگوی ماژول پروژه‌ها)
     from jdatetime import date as jdate
 except ImportError:  # pragma: no cover
     jdate = None
 
 
+# ----------------------------------------------------------------------------
+# کمک‌تابع‌ها
+# ----------------------------------------------------------------------------
 def _fa_date(value):
-    """تاریخ شمسی به شکل 1404/01/15 (برای فایل اکسل فارسی)."""
+    """تاریخ شمسی به شکل 1404/01/15."""
     if not value:
         return ''
     if jdate is None:
@@ -28,11 +31,11 @@ def _fa_date(value):
 
 def _num(value):
     if value in (None, ''):
-        return 0
+        return ''
     try:
         return float(Decimal(value))
     except Exception:  # noqa: BLE001
-        return 0
+        return ''
 
 
 def _text(value):
@@ -40,12 +43,7 @@ def _text(value):
 
 
 def _related_name(obj, field, *attrs):
-    """نامِ یک رابطه (FK) را ایمن بخوان.
-
-    نام فیلد در مدل‌های مختلف یکسان نیست (مثلاً «امضاکننده» فیلد `full_name` دارد و
-    «ارز» فیلد `name`)، پس چند نام ممکن بررسی می‌شود و در نبود همه، رشتهٔ خالی
-    برمی‌گردد تا خروجی هرگز خطا ندهد.
-    """
+    """نام یک رابطه (FK) را ایمن بخوان (نام فیلد در مدل‌ها متفاوت است)."""
     related = getattr(obj, field, None)
     if related is None:
         return ''
@@ -57,7 +55,9 @@ def _related_name(obj, field, *attrs):
 
 
 def _display(obj, attr):
-    """متن نمایشی یک فیلد دارای choices (مثلاً get_status_display)."""
+    """متن نمایشی یک فیلد دارای choices (get_<attr>_display)."""
+    if obj is None:
+        return ''
     getter = getattr(obj, f'get_{attr}_display', None)
     if callable(getter):
         try:
@@ -67,39 +67,9 @@ def _display(obj, attr):
     return ''
 
 
-def _sheet(wb, title, headers, first=False):
-    """ساخت شیت راست‌به‌چپ با سرستون‌های قالب‌بندی‌شده و ردیف‌های یخ‌زده."""
-    from openpyxl.styles import Alignment, Font, PatternFill
-    from openpyxl.utils import get_column_letter
-
-    ws = wb.active if first else wb.create_sheet()
-    ws.title = title[:31]
-    ws.sheet_view.rightToLeft = True
-    ws.append(list(headers))
-
-    header_font = Font(bold=True, color='FFFFFF', size=11)
-    header_fill = PatternFill('solid', fgColor='B45309')
-    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
-    for index, header in enumerate(headers, start=1):
-        cell = ws.cell(row=1, column=index)
-        cell.font = header_font
-        cell.fill = header_fill
-        cell.alignment = center
-        width = max(12, min(42, len(str(header)) + 6))
-        ws.column_dimensions[get_column_letter(index)].width = width
-    ws.freeze_panes = 'A2'
-    return ws
-
-
-def _append(ws, values):
-    """افزودن یک ردیف داده با تراز وسط."""
-    from openpyxl.styles import Alignment
-
-    ws.append(list(values))
-    row = ws.max_row
-    cell = ws.cell(row=row, column=1)
-    cell.alignment = Alignment(horizontal='center', vertical='center')
-    return row
+def _attr(obj, name):
+    """مقدار یک فیلد به‌صورت متن (نبود فیلد هم مشکلی ایجاد نمی‌کند)."""
+    return _text(getattr(obj, name, ''))
 
 
 def _party_name(contract):
@@ -107,42 +77,85 @@ def _party_name(contract):
 
 
 def _type_label(contract):
-    label = _related_name(contract, 'contract_type_master', 'name')
-    return label or _display(contract, 'contract_type')
+    return _related_name(contract, 'contract_type_master', 'name') or _display(contract, 'contract_type')
+
+
+def _project_label(project_id):
+    """نام یک پروژه با شناسهٔ عددی (ایمن در برابر نبود جدول پروژه)."""
+    if not project_id:
+        return ''
+    try:
+        from projects.models import Project
+        name = Project.objects.filter(id=project_id).values_list('name', flat=True).first()
+        return name or f'#{project_id}'
+    except Exception:  # noqa: BLE001
+        return f'#{project_id}'
+
+
+def _attr_list(contract, field):
+    """فهرست JSON یک قرارداد (همیشه list برگردانده می‌شود)."""
+    value = getattr(contract, field, None)
+    return value if isinstance(value, list) else []
+
+
+def _related_list(contract, field):
+    """فهرست آیتم‌های یک رابطه (اگر در دسترس نباشد، فهرست خالی)."""
+    fetcher = getattr(getattr(contract, field, None), 'all', None)
+    if not callable(fetcher):
+        return []
+    try:
+        return list(fetcher())
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def _related_count(contract, field):
+    """تعداد اسناد/روابط مرتبط (اگر در دسترس نباشد، رشتهٔ خالی)."""
+    counter = getattr(getattr(contract, field, None), 'count', None)
+    if not callable(counter):
+        return ''
+    try:
+        return counter()
+    except Exception:  # noqa: BLE001
+        return ''
 
 
 def _project_names(contract):
     """نام پروژه‌های تخصیص‌یافته (از project_allocations یا پروژهٔ منفرد)."""
-    allocations = contract.project_allocations or []
-    names = []
-    ids = []
-    for item in allocations:
-        if isinstance(item, dict) and item.get('project'):
-            ids.append(item['project'])
-    if contract.project_id and not ids:
+    allocations = _attr_list(contract, 'project_allocations')
+    ids = [item.get('project') for item in allocations if isinstance(item, dict) and item.get('project')]
+    if getattr(contract, 'project_id', None) and not ids:
         ids.append(contract.project_id)
     if not ids:
-        return names
-    try:
-        from projects.models import Project
-        numeric = [i for i in ids if str(i).isdigit()]
-        mapping = dict(
-            Project.objects.filter(id__in=numeric).values_list('id', 'name')
-        )
-        return [mapping.get(int(i), f'#{i}') for i in ids]
-    except Exception:  # noqa: BLE001 — نبود مدل/جدول پروژه نباید خروجی را قطع کند
-        return [f'#{i}' for i in ids]
+        return ''
+    return '، '.join(_project_label(i) for i in ids)
 
+
+def _join(label, value):
+    """ساخت بخشی از ستون «جزئیات ردیف»."""
+    text = _text(value)
+    return f'{label}: {text}' if text else ''
+
+
+def _details(*parts):
+    return '؛ '.join(p for p in parts if p)
+
+
+def _party_type(contract):
+    party = getattr(contract, 'party', None)
+    if party is None or not getattr(contract, 'party_id', None):
+        return ''
+    return _display(party, 'person_type')
 
 
 def _contract_bundle(contract):
     """آیتم‌های درون یک قرارداد + جمع‌های مالی آن."""
-    invoices = list(contract.invoices.all())
-    statements = list(contract.statements.all())
-    payments = list(contract.payments.all())
-    guarantees = list(contract.guarantees.all())
-    addendums = list(contract.addendums.all())
-    disputes = list(contract.disputes.all())
+    invoices = _related_list(contract, 'invoices')
+    statements = _related_list(contract, 'statements')
+    payments = _related_list(contract, 'payments')
+    guarantees = _related_list(contract, 'guarantees')
+    addendums = _related_list(contract, 'addendums')
+    disputes = _related_list(contract, 'disputes')
     return {
         'invoices': invoices,
         'statements': statements,
@@ -150,464 +163,389 @@ def _contract_bundle(contract):
         'guarantees': guarantees,
         'addendums': addendums,
         'disputes': disputes,
-        'invoice_total': sum(_num(i.total or i.amount) for i in invoices),
-        'statement_total': sum(_num(s.net_amount or s.amount) for s in statements),
-        'payment_total': sum(_num(p.amount) for p in payments),
-        'guarantee_total': sum(_num(g.amount) for g in guarantees),
+        'invoice_total': sum(float(getattr(i, 'total', None) or getattr(i, 'amount', None) or 0) for i in invoices),
+        'statement_total': sum(float(getattr(s, 'net_amount', None) or getattr(s, 'amount', None) or 0) for s in statements),
+        'payment_total': sum(float(getattr(p, 'amount', None) or 0) for p in payments),
+        'guarantee_total': sum(float(getattr(g, 'amount', None) or 0) for g in guarantees),
     }
 
 
-CONTRACT_HEADERS = [
-    'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'طرف قرارداد', 'نوع شخص طرف', 'نوع قرارداد',
-    'طبقه‌بندی', 'وضعیت', 'مبلغ قرارداد', 'ارز', 'تاریخ امضا', 'تاریخ شروع', 'تاریخ پایان',
-    'امضاکننده', 'پروژه‌ها', 'نام پروژه / طرح', 'محل اجرا / تحویل', 'شماره مناقصه / استعلام',
-    'پیش‌پرداخت', 'درصد حسن انجام کار', 'دوره گارانتی', 'مبلغ تضمین', 'نوع ضمانت',
-    'تعداد فاکتور', 'جمع فاکتورها', 'تعداد صورت‌وضعیت', 'جمع صورت‌وضعیت‌ها (قابل پرداخت)',
-    'تعداد پرداخت', 'جمع پرداخت‌ها', 'مانده پرداخت‌نشده', 'درصد پرداخت‌شده',
-    'تعداد تضمین', 'جمع مبلغ تضمین‌ها', 'تعداد الحاقیه', 'جمع تغییر مبلغ الحاقیه‌ها',
-    'تعداد اختلاف', 'تلفن طرف', 'ایمیل طرف', 'تاریخ ایجاد', 'آخرین به‌روزرسانی',
+# ----------------------------------------------------------------------------
+# ستون‌های کاربرگ واحد (تک‌شیت)
+# ----------------------------------------------------------------------------
+ROW_TYPES = {
+    'contract': 'قرارداد',
+    'invoice': 'فاکتور',
+    'statement': 'صورت‌وضعیت',
+    'statement_addition': 'اضافهٔ صورت‌وضعیت',
+    'statement_deduction': 'کسور صورت‌وضعیت',
+    'payment': 'پرداخت',
+    'guarantee': 'تضمین',
+    'addendum': 'الحاقیه',
+    'addendum_provision': 'مفاد الحاقیه',
+    'project_allocation': 'تخصیص پروژه',
+    'advance_payment': 'پیش‌پرداخت مرحله‌ای',
+    'guarantee_item': 'قلم ضمانت قرارداد',
+    'dispute': 'اختلاف',
+}
+
+HEADERS = [
+    'ردیف', 'نوع ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'طرف قرارداد', 'نوع شخص طرف',
+    'نوع قرارداد', 'طبقه‌بندی', 'وضعیت',
+    'مبلغ', 'ارز',
+    'تاریخ', 'تاریخ دوم (پایان/سررسید/انقضا)', 'تاریخ امضا',
+    'امضاکننده', 'پیش‌پرداخت', 'درصد حسن انجام کار', 'دوره گارانتی',
+    'مبلغ تضمین', 'نوع ضمانت',
+    'پروژه‌ها', 'نام پروژه / طرح', 'محل اجرا / تحویل', 'شماره مناقصه / استعلام',
+    'شماره / کد آیتم', 'عنوان / شرح آیتم', 'مبلغ آیتم', 'مالیات / ارزش افزوده',
+    'مبلغ کل / قابل پرداخت', 'درصد', 'مرجع / ارتباط', 'وضعیت آیتم', 'توضیحات آیتم',
+    'جزئیات ردیف',
+    'تعداد و جمع آیتم‌ها', 'جمع فاکتورها', 'جمع صورت‌وضعیت‌ها (قابل پرداخت)',
+    'جمع پرداخت‌ها', 'مانده پرداخت‌نشده', 'درصد پرداخت‌شده',
+    'شرایط و نحوه پرداخت', 'شرایط تحویل', 'وجه التزام / جریمه تأخیر', 'شرایط بیمه',
+    'توضیحات قرارداد', 'تلفن طرف', 'ایمیل طرف', 'تاریخ ایجاد', 'آخرین به‌روزرسانی',
 ]
 
 
-def _contracts_sheet(wb, contracts, first=False):
-    ws = _sheet(wb, 'قراردادها', CONTRACT_HEADERS, first=first)
-    total = {'amount': 0, 'invoice': 0, 'statement': 0, 'payment': 0, 'balance': 0, 'guarantee': 0}
-    for index, contract in enumerate(contracts, start=1):
-        bundle = _contract_bundle(contract)
-        amount = _num(contract.amount)
-        balance = amount - bundle['payment_total']
-        paid_percent = round(bundle['payment_total'] / amount * 100, 1) if amount else 0
-        addendum_change = sum(_num(a.amount_change) for a in bundle['addendums'])
-        total['amount'] += amount
-        total['invoice'] += bundle['invoice_total']
-        total['statement'] += bundle['statement_total']
-        total['payment'] += bundle['payment_total']
-        total['balance'] += balance
-        total['guarantee'] += bundle['guarantee_total']
-        _append(ws, [
-            index,
-            _text(contract.number),
-            _text(contract.subject),
-            _related_name(contract, 'party', 'name'),
-            _display(contract.party, 'person_type') if contract.party_id else '',
-            _type_label(contract),
-            _text(contract.category),
-            _display(contract, 'status'),
-            amount,
-            _related_name(contract, 'currency', 'name', 'code') or 'ریال',
-            _fa_date(contract.signing_date),
-            _fa_date(contract.start_date),
-            _fa_date(contract.end_date),
-            _related_name(contract, 'signatory', 'full_name', 'name'),
-            '، '.join(_project_names(contract)),
-            _text(contract.project_name),
-            _text(contract.project_location),
-            _text(contract.tender_number),
-            _num(contract.advance_payment),
-            _num(contract.retention_percent),
-            _text(contract.warranty_period),
-            _num(contract.guarantee_amount),
-            _display(contract, 'guarantee_type'),
-            len(bundle['invoices']),
-            bundle['invoice_total'],
-            len(bundle['statements']),
-            bundle['statement_total'],
-            len(bundle['payments']),
-            bundle['payment_total'],
-            balance,
-            paid_percent,
-            len(bundle['guarantees']),
-            bundle['guarantee_total'],
-            len(bundle['addendums']),
-            addendum_change,
-            len(bundle['disputes']),
-            _related_name(contract, 'party', 'phone', 'mobile'),
-            _related_name(contract, 'party', 'email'),
-            _fa_date(contract.created_at.date() if contract.created_at else None),
-            _fa_date(contract.updated_at.date() if contract.updated_at else None),
-        ])
+def _sheet(workbook):
+    """ساخت کاربرگ یگانه (راست‌به‌چپ، سرستون قالب‌بندی‌شده، ردیف هدر ثابت)."""
+    from openpyxl.styles import Alignment, Font, PatternFill
+    from openpyxl.utils import get_column_letter
 
-    from openpyxl.styles import Font
-    ws.append([])
-    row = ws.max_row + 1
-    ws.cell(row=row, column=1, value='جمع کل').font = Font(bold=True)
-    for column, value in (
-        (9, total['amount']),
-        (25, total['invoice']),
-        (27, total['statement']),
-        (29, total['payment']),
-        (30, total['balance']),
-        (33, total['guarantee']),
-    ):
-        ws.cell(row=row, column=column, value=value).font = Font(bold=True)
+    ws = workbook.active
+    ws.title = 'قراردادها'
+    ws.sheet_view.rightToLeft = True
+    ws.append(HEADERS)
+
+    header_font = Font(bold=True, color='FFFFFF', size=11)
+    header_fill = PatternFill('solid', fgColor='B45309')
+    center = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    for index, header in enumerate(HEADERS, start=1):
+        cell = ws.cell(row=1, column=index)
+        cell.font = header_font
+        cell.fill = header_fill
+        cell.alignment = center
+        ws.column_dimensions[get_column_letter(index)].width = max(12, min(40, len(str(header)) + 6))
+    ws.freeze_panes = 'A2'
+    return ws
 
 
-def _terms_sheet(wb, contracts):
-    """مفاد و شرایط قرارداد (متن‌های بلند که در شیت اصلی جا نمی‌شوند)."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'طرف قرارداد', 'وضعیت',
-        'شرایط و نحوه پرداخت', 'شرایط تحویل', 'وجه التزام / جریمه تأخیر', 'شرایط بیمه',
-        'توضیحات قرارداد', 'تعداد بندهای الحاقیه',
+def _blank_row():
+    return [''] * len(HEADERS)
+
+
+def _append_row(ws, values):
+    from openpyxl.styles import Alignment
+
+    row = _blank_row()
+    for index, value in enumerate(values):
+        if index < len(row):
+            row[index] = value
+    ws.append(row)
+    ws.cell(row=ws.max_row, column=1).alignment = Alignment(horizontal='center', vertical='center')
+    return ws.max_row
+
+
+def _day_of(value):
+    """تاریخ (بدون ساعت) از یک تاریخ/تاریخ‌زمان."""
+    return getattr(value, 'date', lambda: None)() if value is not None else None
+
+
+def _created_day(contract):
+    return _day_of(getattr(contract, 'created_at', None))
+
+
+def _updated_day(contract):
+    return _day_of(getattr(contract, 'updated_at', None))
+
+
+def _contract_currency(contract):
+    return _related_name(contract, 'currency', 'name', 'code') or 'ریال'
+
+
+def _contract_row(index, contract):
+    """ردیف کامل یک قرارداد (با تمام اقلام کلیدی و مفاد آن)."""
+    bundle = _contract_bundle(contract)
+    amount = float(getattr(contract, 'amount', None) or 0)
+    balance = amount - bundle['payment_total']
+    paid_percent = round(bundle['payment_total'] / amount * 100, 1) if amount else ''
+    addendums = bundle['addendums']
+    provisions = sum(len(getattr(a, 'provisions', None) or []) for a in addendums)
+    allocations = _attr_list(contract, 'project_allocations')
+    advances = _attr_list(contract, 'advance_payments')
+    guarantee_items = _attr_list(contract, 'guarantee_items')
+    summary = (
+        f"فاکتور: {len(bundle['invoices'])}، صورت‌وضعیت: {len(bundle['statements'])}، "
+        f"پرداخت: {len(bundle['payments'])}، تضمین: {len(bundle['guarantees'])}، "
+        f"الحاقیه: {len(addendums)} (بند: {provisions})، اختلاف: {len(bundle['disputes'])}، "
+        f"تخصیص پروژه: {len(allocations)}، پیش‌پرداخت مرحله‌ای: {len(advances)}، "
+        f"قلم ضمانت: {len(guarantee_items)}"
+    )
+    return [
+        index, ROW_TYPES['contract'], _attr(contract, 'number'), _attr(contract, 'subject'),
+        _party_name(contract), _party_type(contract),
+        _type_label(contract), _attr(contract, 'category'), _display(contract, 'status'),
+        _num(getattr(contract, 'amount', None)), _contract_currency(contract),
+        _fa_date(getattr(contract, 'start_date', None)), _fa_date(getattr(contract, 'end_date', None)),
+        _fa_date(getattr(contract, 'signing_date', None)),
+        _related_name(contract, 'signatory', 'full_name', 'name'),
+        _num(getattr(contract, 'advance_payment', None)), _num(getattr(contract, 'retention_percent', None)),
+        _attr(contract, 'warranty_period'), _num(getattr(contract, 'guarantee_amount', None)),
+        _display(contract, 'guarantee_type'),
+        _project_names(contract), _attr(contract, 'project_name'), _attr(contract, 'project_location'),
+        _attr(contract, 'tender_number'),
+        '', '', '', '', '', '', '', '', '',
+        _details(
+            _join('پیش‌پرداخت‌های مرحله‌ای', len(advances)),
+            _join('اقلام ضمانت قرارداد', len(guarantee_items)),
+            _join('جمع تغییر مبلغ الحاقیه‌ها', sum(float(getattr(a, 'amount_change', None) or 0) for a in addendums) or ''),
+            _join('تعداد اسناد پیوست', _related_count(contract, 'documents')),
+        ),
+        summary,
+        _num(bundle['invoice_total']), _num(bundle['statement_total']), _num(bundle['payment_total']),
+        _num(balance), paid_percent,
+        _attr(contract, 'payment_terms'), _attr(contract, 'delivery_terms'), _attr(contract, 'penalty_terms'),
+        _attr(contract, 'insurance_terms'), _attr(contract, 'description'),
+        _related_name(contract, 'party', 'phone', 'mobile'), _related_name(contract, 'party', 'email'),
+        _fa_date(_created_day(contract)), _fa_date(_updated_day(contract)),
     ]
-    ws = _sheet(wb, 'مفاد و شرایط', headers)
-    for index, contract in enumerate(contracts, start=1):
-        provisions = 0
-        for addendum in contract.addendums.all():
-            provisions += len(addendum.provisions or [])
-        _append(ws, [
-            index,
-            _text(contract.number),
-            _text(contract.subject),
-            _party_name(contract),
-            _display(contract, 'status'),
-            _text(contract.payment_terms),
-            _text(contract.delivery_terms),
-            _text(contract.penalty_terms),
-            _text(contract.insurance_terms),
-            _text(contract.description),
-            provisions,
-        ])
-    return ws
-
-
-def _allocations_sheet(wb, contracts):
-    """تخصیص پروژه‌ها (از فیلد JSON قرارداد)."""
-    headers = ['ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'پروژه', 'درصد تخصیص']
-    ws = _sheet(wb, 'تخصیص پروژه‌ها', headers)
-    index = 0
-    for contract in contracts:
-        allocations = contract.project_allocations or []
-        for item in allocations:
-            if not isinstance(item, dict):
-                continue
-            index += 1
-            project_id = item.get('project')
-            project_name = ''
-            if project_id:
-                from projects.models import Project
-                project = Project.objects.filter(id=project_id).values_list('name', flat=True).first()
-                project_name = project or f'#{project_id}'
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                project_name, _num(item.get('percentage')),
-            ])
-    return ws
-
-
-def _advance_sheet(wb, contracts):
-    """پیش‌پرداخت‌های مرحله‌ای (فیلد JSON قرارداد)."""
-    headers = ['ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'مرحله', 'مبلغ', 'سررسید', 'یادداشت']
-    ws = _sheet(wb, 'پیش‌پرداخت‌های مرحله‌ای', headers)
-    index = 0
-    for contract in contracts:
-        for item in (contract.advance_payments or []):
-            if not isinstance(item, dict):
-                continue
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _text(item.get('step')), _num(item.get('amount')),
-                _text(item.get('due_date')), _text(item.get('note')),
-            ])
-    return ws
-
-
-def _guarantee_items_sheet(wb, contracts):
-    """اقلام ضمانت ثبت‌شده در خود قرارداد (فیلد JSON)."""
-    headers = ['ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'نوع ضمانت', 'مبلغ', 'درصد', 'یادداشت']
-    ws = _sheet(wb, 'اقلام ضمانت قرارداد', headers)
-    index = 0
-    for contract in contracts:
-        for item in (contract.guarantee_items or []):
-            if not isinstance(item, dict):
-                continue
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _text(item.get('type')), _num(item.get('amount')),
-                _num(item.get('percent')), _text(item.get('note')),
-            ])
-    return ws
 
 
 
-def _guarantees_sheet(wb, contracts):
-    """تضمین‌ها / چک / سفته / ضمانت‌نامه‌ها."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'نوع تضمین', 'نوع ابزار', 'شماره',
-        'مبلغ', 'تاریخ صدور', 'تاریخ انقضا', 'بانک صادرکننده', 'شماره چک', 'بانک چک',
-        'سررسید چک', 'شماره سفته', 'سررسید سفته', 'شماره ضمانت‌نامه', 'انقضای ضمانت‌نامه',
-        'آزاد شده', 'تاریخ آزادسازی', 'آخرین اقدام', 'تاریخ آخرین اقدام', 'یادداشت',
+def _item_row(kind, contract, item_no='', item_title='', date=None, date2=None,
+              item_amount='', item_vat='', item_total='', percent='', reference='',
+              item_status='', item_note='', details=''):
+    """ساخت ردیف یک آیتم با ستون‌های مشترک (بخش قرارداد برای زمینه پر می‌شود)."""
+    return [
+        '', ROW_TYPES.get(kind, kind), _attr(contract, 'number'), _attr(contract, 'subject'),
+        _party_name(contract), _party_type(contract),
+        _type_label(contract), _attr(contract, 'category'), _display(contract, 'status'),
+        _num(getattr(contract, 'amount', None)), _contract_currency(contract),
+        _fa_date(date), _fa_date(date2), '',
+        '', '', '', '', '', '',
+        '', '', '', '',
+        _text(item_no), _text(item_title),
+        _num(item_amount), _num(item_vat), _num(item_total),
+        _num(percent), _text(reference), _text(item_status),
+        _text(item_note), _text(details),
+        '', '', '', '', '', '',
+        '', '', '', '', '',
+        '', '', '', '',
     ]
-    ws = _sheet(wb, 'تضمین‌ها', headers)
-    index = 0
-    for contract in contracts:
-        for guarantee in contract.guarantees.all().order_by('-issue_date', '-id'):
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
+
+
+def _sort_key(obj):
+    """کلید مرتب‌سازی ایمن بر اساس اولین تاریخ موجود (بدون پرس‌وجوی اضافه)."""
+    day = (getattr(obj, 'date', None) or getattr(obj, 'issue_date', None)
+           or getattr(obj, 'opened_date', None))
+    return (str(day or ''), getattr(obj, 'id', 0) or 0)
+
+
+def _item_rows(contract):
+    """ردیف‌های همهٔ آیتم‌های درون یک قرارداد (با ترتیب منطقی سند)."""
+    rows = []
+    invoices = sorted(_related_list(contract, 'invoices'), key=_sort_key)
+    payments = sorted(_related_list(contract, 'payments'), key=_sort_key)
+    statements = sorted(_related_list(contract, 'statements'), key=_sort_key)
+    invoice_numbers = {getattr(i, 'id', None): getattr(i, 'number', '') for i in invoices}
+    statement_numbers = {getattr(s, 'id', None): getattr(s, 'number', '') for s in statements}
+    payments_by_invoice, payments_by_statement = {}, {}
+    for payment in payments:
+        invoice_id = getattr(payment, 'invoice_id', None)
+        statement_id = getattr(payment, 'statement_id', None)
+        if invoice_id:
+            payments_by_invoice.setdefault(invoice_id, []).append(payment)
+        if statement_id:
+            payments_by_statement.setdefault(statement_id, []).append(payment)
+
+    for invoice in invoices:
+        linked = payments_by_invoice.get(getattr(invoice, 'id', None), [])
+        rows.append(_item_row(
+            'invoice', contract,
+            item_no=_attr(invoice, 'number'), item_title=_attr(invoice, 'subject') or 'فاکتور',
+            date=getattr(invoice, 'date', None), date2=getattr(invoice, 'due_date', None),
+            item_amount=getattr(invoice, 'amount', None), item_vat=getattr(invoice, 'vat', None),
+            item_total=getattr(invoice, 'total', None),
+            reference=f"{len(linked)} پرداخت / {sum(float(getattr(p, 'amount', None) or 0) for p in linked):,.0f}",
+            item_status='پرداخت‌شده' if getattr(invoice, 'is_paid', False) else 'پرداخت‌نشده',
+            item_note=_attr(invoice, 'description'),
+        ))
+    for statement in statements:
+        rows.append(_item_row(
+            'statement', contract,
+            item_no=_attr(statement, 'number'), item_title='صورت‌وضعیت',
+            date=getattr(statement, 'date', None),
+            item_amount=getattr(statement, 'amount', None),
+            item_vat=getattr(statement, 'value_added_tax', None),
+            item_total=getattr(statement, 'net_amount', None),
+            reference=f"تجمعی قبلی: {float(getattr(statement, 'cumulative_previous_amount', 0) or 0):,.0f}",
+            item_status='تأییدشده' if getattr(statement, 'is_approved', False) else 'تأییدنشده',
+            item_note=_attr(statement, 'description'),
+            details=_details(
+                _join('کارکرد دوره', f"{float(getattr(statement, 'work_done', 0) or 0):,.0f}"),
+                _join('سایر اضافات', f"{float(getattr(statement, 'other_additions', 0) or 0):,.0f}"),
+                _join('جمع اضافات', f"{float(getattr(statement, 'additions_total', 0) or 0):,.0f}"),
+                _join('جمع کسورات', f"{float(getattr(statement, 'deductions_total', 0) or 0):,.0f}"),
+                _join('نرخ ارز', getattr(statement, 'exchange_rate', None)),
+            ),
+        ))
+        for item in (getattr(statement, 'additions', None) or []):
+            if isinstance(item, dict):
+                rows.append(_item_row(
+                    'statement_addition', contract,
+                    item_no=item.get('code') or _attr(statement, 'number'),
+                    item_title=f"اضافه: {item.get('title') or item.get('description') or ''}".strip(),
+                    date=getattr(statement, 'date', None), item_amount=item.get('amount'),
+                    percent=item.get('percent'), reference=_attr(statement, 'number'),
+                    item_note=item.get('note'),
+                ))
+        for item in (getattr(statement, 'deductions', None) or []):
+            if isinstance(item, dict):
+                rows.append(_item_row(
+                    'statement_deduction', contract,
+                    item_no=item.get('code') or _attr(statement, 'number'),
+                    item_title=f"کسور: {item.get('title') or item.get('description') or ''}".strip(),
+                    date=getattr(statement, 'date', None), item_amount=item.get('amount'),
+                    percent=item.get('percent'), reference=_attr(statement, 'number'),
+                    item_note=item.get('note'),
+                ))
+    for payment in payments:
+        rows.append(_item_row(
+            'payment', contract,
+            item_no=_attr(payment, 'reference'), item_title='پرداخت',
+            date=getattr(payment, 'date', None), item_amount=getattr(payment, 'amount', None),
+            reference=_details(
+                _join('روش', _attr(payment, 'method')),
+                _join('فاکتور', invoice_numbers.get(getattr(payment, 'invoice_id', None), '')),
+                _join('صورت‌وضعیت', statement_numbers.get(getattr(payment, 'statement_id', None), '')),
+            ),
+            item_note=_attr(payment, 'note'),
+        ))
+    for guarantee in sorted(_related_list(contract, 'guarantees'), key=_sort_key, reverse=True):
+        rows.append(_item_row(
+            'guarantee', contract,
+            item_no=_attr(guarantee, 'number'),
+            item_title=_details(
                 _display(guarantee, 'guarantee_type'), _display(guarantee, 'instrument_type'),
-                _text(guarantee.number), _num(guarantee.amount),
-                _fa_date(guarantee.issue_date), _fa_date(guarantee.expiry_date),
-                _text(guarantee.bank), _text(guarantee.check_number), _text(guarantee.check_bank),
-                _fa_date(guarantee.check_due_date), _text(guarantee.promissory_number),
-                _fa_date(guarantee.promissory_due_date), _text(guarantee.guarantee_number),
-                _fa_date(guarantee.guarantee_expiry_date),
-                'بله' if guarantee.is_released else 'خیر', _fa_date(guarantee.release_date),
-                _display(guarantee, 'last_action'),
-                _fa_date(guarantee.last_action_date), _text(guarantee.note),
-            ])
-    return ws
-
-
-def _invoices_sheet(wb, contracts):
-    """فاکتورهای صادرشده در قرارداد."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'شماره فاکتور', 'شرح فاکتور',
-        'تاریخ فاکتور', 'تاریخ سررسید', 'مبلغ', 'مالیات', 'مبلغ کل', 'وضعیت پرداخت',
-        'تعداد پرداخت مرتبط', 'جمع پرداخت مرتبط', 'توضیحات',
-    ]
-    ws = _sheet(wb, 'فاکتورها', headers)
-    index = 0
-    for contract in contracts:
-        for invoice in contract.invoices.all().order_by('-date', '-id'):
-            index += 1
-            payments = list(invoice.payments.all())
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _text(invoice.number), _text(invoice.subject),
-                _fa_date(invoice.date), _fa_date(invoice.due_date),
-                _num(invoice.amount), _num(invoice.vat), _num(invoice.total),
-                'پرداخت‌شده' if invoice.is_paid else 'پرداخت‌نشده',
-                len(payments), sum(_num(p.amount) for p in payments),
-                _text(invoice.description),
-            ])
-    return ws
-
-
-def _statements_sheet(wb, contracts):
-    """صورت‌وضعیت‌ها با تفکیک کامل مالی."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'شماره صورت‌وضعیت', 'تاریخ',
-        'مبلغ تجمعی این صورت‌وضعیت', 'مبلغ تجمعی صورت‌وضعیت قبلی', 'کارکرد دوره',
-        'ارزش افزوده', 'سایر اضافات', 'جمع اضافات', 'جمع کسورات', 'مبلغ قابل پرداخت',
-        'نرخ ارز', 'وضعیت تأیید', 'توضیحات',
-    ]
-    ws = _sheet(wb, 'صورت‌وضعیت‌ها', headers)
-    index = 0
-    for contract in contracts:
-        for statement in contract.statements.all().order_by('date', 'id'):
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _text(statement.number), _fa_date(statement.date),
-                _num(statement.amount), _num(statement.cumulative_previous_amount),
-                _num(statement.work_done), _num(statement.value_added_tax),
-                _num(statement.other_additions), _num(statement.additions_total),
-                _num(statement.deductions_total), _num(statement.net_amount),
-                _num(statement.exchange_rate),
-                'تأییدشده' if statement.is_approved else 'تأییدنشده',
-                _text(statement.description),
-            ])
-    return ws
-
-
-def _statement_items_sheet(wb, contracts):
-    """اضافات و کسورات هر صورت‌وضعیت (آیتم‌های JSON) به‌صورت تفصیلی."""
-    headers = ['ردیف', 'شماره قرارداد', 'شماره صورت‌وضعیت', 'تاریخ', 'نوع آیتم', 'کد', 'عنوان', 'درصد', 'مبلغ', 'یادداشت']
-    ws = _sheet(wb, 'اضافات و کسورات صورت‌وضعیت', headers)
-    index = 0
-    for contract in contracts:
-        for statement in contract.statements.all().order_by('date', 'id'):
-            for kind, items in (('اضافه', statement.additions or []), ('کسور', statement.deductions or [])):
-                for item in items:
-                    if not isinstance(item, dict):
-                        continue
-                    index += 1
-                    _append(ws, [
-                        index, _text(contract.number), _text(statement.number),
-                        _fa_date(statement.date), kind, _text(item.get('code')),
-                        _text(item.get('title') or item.get('description')),
-                        _num(item.get('percent')), _num(item.get('amount')),
-                        _text(item.get('note')),
-                    ])
-    return ws
+            ),
+            date=getattr(guarantee, 'issue_date', None), date2=getattr(guarantee, 'expiry_date', None),
+            item_amount=getattr(guarantee, 'amount', None),
+            reference=_join('بانک', _attr(guarantee, 'bank')),
+            item_status=_details(
+                'آزادشده' if getattr(guarantee, 'is_released', False) else 'آزاد نشده',
+                _join('آخرین اقدام', _display(guarantee, 'last_action')),
+            ),
+            details=_details(
+                _join('شماره چک', _attr(guarantee, 'check_number')),
+                _join('بانک چک', _attr(guarantee, 'check_bank')),
+                _join('سررسید چک', _fa_date(getattr(guarantee, 'check_due_date', None))),
+                _join('شماره سفته', _attr(guarantee, 'promissory_number')),
+                _join('سررسید سفته', _fa_date(getattr(guarantee, 'promissory_due_date', None))),
+                _join('شماره ضمانت‌نامه', _attr(guarantee, 'guarantee_number')),
+                _join('انقضای ضمانت‌نامه', _fa_date(getattr(guarantee, 'guarantee_expiry_date', None))),
+                _join('تاریخ آزادسازی', _fa_date(getattr(guarantee, 'release_date', None))),
+                _join('تاریخ آخرین اقدام', _fa_date(getattr(guarantee, 'last_action_date', None))),
+            ),
+            item_note=_attr(guarantee, 'note'),
+        ))
+    for addendum in sorted(_related_list(contract, 'addendums'), key=_sort_key):
+        provisions = getattr(addendum, 'provisions', None) or []
+        rows.append(_item_row(
+            'addendum', contract,
+            item_no=_attr(addendum, 'number'), item_title=_attr(addendum, 'subject') or 'الحاقیه',
+            date=getattr(addendum, 'date', None), date2=getattr(addendum, 'new_end_date', None),
+            item_amount=getattr(addendum, 'amount_change', None),
+            percent=getattr(addendum, 'percent_change', None),
+            item_note=_attr(addendum, 'change_description'),
+            details=_join('تعداد مفاد', len(provisions)),
+        ))
+        for position, provision in enumerate(provisions, start=1):
+            if isinstance(provision, dict):
+                rows.append(_item_row(
+                    'addendum_provision', contract,
+                    item_no=f'{_attr(addendum, "number")} / بند {position}',
+                    item_title=provision.get('title'), date=getattr(addendum, 'date', None),
+                    item_note=provision.get('text'),
+                ))
+    for item in _attr_list(contract, 'project_allocations'):
+        if isinstance(item, dict):
+            project_id = item.get('project')
+            rows.append(_item_row(
+                'project_allocation', contract,
+                item_no=project_id,
+                item_title=f"تخصیص پروژه: {_project_label(project_id)}",
+                percent=item.get('percentage'),
+            ))
+    for item in _attr_list(contract, 'advance_payments'):
+        if isinstance(item, dict):
+            rows.append(_item_row(
+                'advance_payment', contract,
+                item_title=f"پیش‌پرداخت: {item.get('step') or ''}".strip(),
+                date2=item.get('due_date'), item_amount=item.get('amount'),
+                item_note=item.get('note'),
+            ))
+    for item in _attr_list(contract, 'guarantee_items'):
+        if isinstance(item, dict):
+            rows.append(_item_row(
+                'guarantee_item', contract,
+                item_title=f"قلم ضمانت: {item.get('type') or ''}".strip(),
+                item_amount=item.get('amount'), percent=item.get('percent'),
+                item_note=item.get('note'),
+            ))
+    for dispute in sorted(_related_list(contract, 'disputes'), key=_sort_key, reverse=True):
+        rows.append(_item_row(
+            'dispute', contract,
+            item_title=_attr(dispute, 'title'),
+            date=getattr(dispute, 'opened_date', None),
+            date2=getattr(dispute, 'resolved_date', None),
+            item_amount=getattr(dispute, 'claim_amount', None),
+            reference=_display(dispute, 'dispute_type'),
+            item_status=_details(_display(dispute, 'status'), _join('شدت', _display(dispute, 'severity'))),
+            item_note=_attr(dispute, 'description'),
+            details=_join('اقدام/نتیجه', _attr(dispute, 'resolution')),
+        ))
+    return rows
 
 
 
-def _payments_sheet(wb, contracts):
-    """پرداخت‌ها با ارجاع به فاکتور و صورت‌وضعیت مرتبط."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'تاریخ پرداخت', 'مبلغ', 'ارز',
-        'شماره مرجع / سند', 'روش پرداخت', 'فاکتور مرتبط', 'صورت‌وضعیت مرتبط', 'توضیحات',
-    ]
-    ws = _sheet(wb, 'پرداخت‌ها', headers)
-    index = 0
-    for contract in contracts:
-        for payment in contract.payments.all().order_by('date', 'id'):
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _fa_date(payment.date), _num(payment.amount),
-                _related_name(payment, 'currency', 'name', 'code') or 'ریال',
-                _text(payment.reference), _text(payment.method),
-                _text(payment.invoice.number if payment.invoice_id else ''),
-                _text(payment.statement.number if payment.statement_id else ''),
-                _text(payment.note),
-            ])
-    return ws
+# ----------------------------------------------------------------------------
+# ساخت کارپوشه با یک کاربرگ
+# ----------------------------------------------------------------------------
+MONEY_COLUMNS = (10, 16, 19, 27, 28, 29, 36, 37, 38, 39)
+PERCENT_COLUMNS = (17, 30, 40)
 
 
-def _addendums_sheet(wb, contracts):
-    """الحاقیه‌های قرارداد."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'شماره الحاقیه', 'موضوع الحاقیه', 'تاریخ',
-        'تغییر مبلغ', 'درصد تغییر', 'تاریخ پایان جدید', 'تعداد مفاد', 'شرح تغییرات',
-    ]
-    ws = _sheet(wb, 'الحاقیه‌ها', headers)
-    index = 0
-    for contract in contracts:
-        for addendum in contract.addendums.all().order_by('date', 'id'):
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _text(addendum.number), _text(addendum.subject), _fa_date(addendum.date),
-                _num(addendum.amount_change), _num(addendum.percent_change),
-                _fa_date(addendum.new_end_date), len(addendum.provisions or []),
-                _text(addendum.change_description),
-            ])
-    return ws
+def _format_columns(ws):
+    """قالب اعداد (مبالغ/درصد) و فعال‌کردن فیلتر سرستون."""
+    from openpyxl.utils import get_column_letter
+
+    for column in MONEY_COLUMNS:
+        for cell in ws[get_column_letter(column)][1:]:
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = '#,##0'
+    for column in PERCENT_COLUMNS:
+        for cell in ws[get_column_letter(column)][1:]:
+            if isinstance(cell.value, (int, float)):
+                cell.number_format = '0.0#'
+    ws.auto_filter.ref = f'A1:{get_column_letter(len(HEADERS))}{max(ws.max_row, 1)}'
 
 
-def _addendum_provisions_sheet(wb, contracts):
-    """مفاد / بندهای هر الحاقیه (آیتم‌های JSON)."""
-    headers = ['ردیف', 'شماره قرارداد', 'شماره الحاقیه', 'تاریخ', 'ردیف بند', 'عنوان بند', 'متن بند']
-    ws = _sheet(wb, 'مفاد الحاقیه‌ها', headers)
-    index = 0
-    for contract in contracts:
-        for addendum in contract.addendums.all().order_by('date', 'id'):
-            for position, provision in enumerate(addendum.provisions or [], start=1):
-                if not isinstance(provision, dict):
-                    continue
-                index += 1
-                _append(ws, [
-                    index, _text(contract.number), _text(addendum.number), _fa_date(addendum.date),
-                    position, _text(provision.get('title')), _text(provision.get('text')),
-                ])
-    return ws
+def build_contracts_workbook(contracts, **_options):
+    """کارپوشهٔ تک‌شیتی قراردادها.
 
-
-def _disputes_sheet(wb, contracts):
-    """اختلافات و دعاوی قرارداد (مدیریت ریسک)."""
-    headers = [
-        'ردیف', 'شماره قرارداد', 'موضوع قرارداد', 'موضوع اختلاف', 'نوع اختلاف', 'شدت',
-        'وضعیت', 'مبلغ ادعا', 'تاریخ طرح', 'تاریخ حل', 'شرح', 'اقدام / نتیجه',
-    ]
-    ws = _sheet(wb, 'اختلافات و دعاوی', headers)
-    index = 0
-    for contract in contracts:
-        for dispute in contract.disputes.all().order_by('-opened_date', '-id'):
-            index += 1
-            _append(ws, [
-                index, _text(contract.number), _text(contract.subject),
-                _text(dispute.title), _display(dispute, 'dispute_type'),
-                _display(dispute, 'severity'), _display(dispute, 'status'),
-                _num(dispute.claim_amount), _fa_date(dispute.opened_date),
-                _fa_date(dispute.resolved_date), _text(dispute.description),
-                _text(dispute.resolution),
-            ])
-    return ws
-
-
-def _summary_sheet(wb, contracts, described):
-    """شیت نخست: خلاصهٔ آماری + فهرست شیت‌ها."""
-    from django.utils import timezone
-
-    headers = ['شرح', 'مقدار']
-    ws = _sheet(wb, 'خلاصه', headers, first=True)
-
-    totals = {'amount': 0, 'invoice': 0, 'statement': 0, 'payment': 0, 'guarantee': 0}
-    counters = {'invoices': 0, 'statements': 0, 'payments': 0, 'guarantees': 0, 'addendums': 0, 'disputes': 0}
-    for contract in contracts:
-        bundle = _contract_bundle(contract)
-        totals['amount'] += _num(contract.amount)
-        totals['invoice'] += bundle['invoice_total']
-        totals['statement'] += bundle['statement_total']
-        totals['payment'] += bundle['payment_total']
-        totals['guarantee'] += bundle['guarantee_total']
-        counters['invoices'] += len(bundle['invoices'])
-        counters['statements'] += len(bundle['statements'])
-        counters['payments'] += len(bundle['payments'])
-        counters['guarantees'] += len(bundle['guarantees'])
-        counters['addendums'] += len(bundle['addendums'])
-        counters['disputes'] += len(bundle['disputes'])
-
-    rows = [
-        ('تاریخ تهیه گزارش', f'{timezone.localtime().strftime("%Y-%m-%d %H:%M")} (میلادی)'),
-        ('تعداد قراردادها', len(contracts)),
-        ('جمع مبلغ قراردادها (ریال)', totals['amount']),
-        ('جمع فاکتورها', totals['invoice']),
-        ('جمع صورت‌وضعیت‌ها (قابل پرداخت)', totals['statement']),
-        ('جمع پرداخت‌ها', totals['payment']),
-        ('مانده پرداخت‌نشده', totals['amount'] - totals['payment']),
-        ('جمع مبلغ تضمین‌ها', totals['guarantee']),
-        ('تعداد فاکتورها', counters['invoices']),
-        ('تعداد صورت‌وضعیت‌ها', counters['statements']),
-        ('تعداد پرداخت‌ها', counters['payments']),
-        ('تعداد تضمین‌ها', counters['guarantees']),
-        ('تعداد الحاقیه‌ها', counters['addendums']),
-        ('تعداد اختلافات', counters['disputes']),
-        ('', ''),
-        ('شیت‌های این فایل', '—'),
-    ]
-    for label, value in rows:
-        _append(ws, [label, value])
-
-    _append(ws, ['', ''])
-    _append(ws, ['شیت‌های این فایل', 'شرح محتوای شیت'])
-    for name, description in described:
-        _append(ws, [name, description])
-    return ws
-
-
-SHEET_LIST = [
-    ('خلاصه', 'آمار کلی قراردادها و فهرست شیت‌ها'),
-    ('قراردادها', 'همهٔ قراردادها با اقلام کلیدی و جمع‌های مالی هر قرارداد'),
-    ('مفاد و شرایط', 'شرایط پرداخت، تحویل، وجه التزام، بیمه و توضیحات قرارداد'),
-    ('تخصیص پروژه‌ها', 'پروژه‌های تخصیص‌یافته به هر قرارداد و درصد آن‌ها'),
-    ('پیش‌پرداخت‌های مرحله‌ای', 'مراحل پیش‌پرداخت هر قرارداد'),
-    ('اقلام ضمانت قرارداد', 'اقلام ضمانت ثبت‌شده در متن قرارداد'),
-    ('تضمین‌ها', 'چک، سفته و ضمانت‌نامه‌های هر قرارداد'),
-    ('فاکتورها', 'فاکتورهای صادرشده با مبلغ، مالیات و وضعیت پرداخت'),
-    ('صورت‌وضعیت‌ها', 'صورت‌وضعیت‌ها با تفکیک کامل مالی'),
-    ('اضافات و کسورات صورت‌وضعیت', 'آیتم‌های اضافات و کسورات هر صورت‌وضعیت'),
-    ('پرداخت‌ها', 'پرداخت‌های هر قرارداد با ارجاع به فاکتور و صورت‌وضعیت'),
-    ('الحاقیه‌ها', 'الحاقیه‌ها، تغییر مبلغ و تاریخ پایان جدید'),
-    ('مفاد الحاقیه‌ها', 'بندهای (مفاد) ثبت‌شده در هر الحاقیه'),
-    ('اختلافات و دعاوی', 'اختلافات قراردادی با نوع، شدت، مبلغ ادعا و نتیجه'),
-]
-
-
-def build_contracts_workbook(contracts):
-    """ساخت فایل اکسل چندشیتی از قراردادها و تمام آیتم‌های درون آن‌ها."""
+    ردیف «قرارداد» و بلافاصله همهٔ ردیف‌های آیتم‌های همان قرارداد در یک کاربرگ
+    «قراردادها» نوشته می‌شوند؛ ستون «نوع ردیف» برای فیلتر/گروه‌بندی در اکسل است.
+    """
     from openpyxl import Workbook
 
-    contracts = list(contracts)
     workbook = Workbook()
-    _summary_sheet(workbook, contracts, SHEET_LIST)
-    _contracts_sheet(workbook, contracts)
-    _terms_sheet(workbook, contracts)
-    _allocations_sheet(workbook, contracts)
-    _advance_sheet(workbook, contracts)
-    _guarantee_items_sheet(workbook, contracts)
-    _guarantees_sheet(workbook, contracts)
-    _invoices_sheet(workbook, contracts)
-    _statements_sheet(workbook, contracts)
-    _statement_items_sheet(workbook, contracts)
-    _payments_sheet(workbook, contracts)
-    _addendums_sheet(workbook, contracts)
-    _addendum_provisions_sheet(workbook, contracts)
-    _disputes_sheet(workbook, contracts)
+    ws = _sheet(workbook)
+
+    for index, contract in enumerate(contracts, start=1):
+        _append_row(ws, _contract_row(index, contract))
+        for row in _item_rows(contract):
+            _append_row(ws, row)
+
+    _format_columns(ws)
     return workbook
 
-    return ws
