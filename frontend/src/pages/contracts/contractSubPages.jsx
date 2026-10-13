@@ -100,33 +100,5 @@ export const ContractPaymentsPage = () => (
 );
 
 /* ---------------------------- Addendums --------------------------- */
-export const ContractAddendumsPage = () => (
-  <ContractSubEntityPage
-    config={{
-      title: 'الحاقیه‌های قرارداد',
-      subtitle: 'ثبت الحاقیه با شرح تغییرات، تغییر مبلغ و تاریخ پایان جدید',
-      color: '#ec4899',
-      icon: <EditNoteIcon sx={{ color: '#fff' }} />,
-      endpoint: '/contract-addendums/',
-      queryKey: 'addendums-sub',
-      addLabel: 'الحاقیه جدید',
-      editLabel: 'ویرایش الحاقیه',
-      listColumns: [
-        { key: 'number', label: 'شماره' },
-        { key: 'subject_type_display', label: 'موضوع' },
-        { key: 'date', label: 'تاریخ', render: (v) => toJalali(v) },
-        { key: 'amount_change', label: 'تغییر مبلغ', render: (v) => formatPersianNumber(v || 0) },
-        { key: 'new_end_date', label: 'پایان جدید', render: (v) => toJalali(v) },
-      ],
-      fields: [
-        { key: 'number', label: 'شماره الحاقیه', type: 'text', span: 6 },
-        { key: 'subject_type', label: 'موضوع الحاقیه', type: 'select', span: 6, options: ADDENDUM_SUBJECTS },
-        { key: 'subject', label: 'شرح موضوع', type: 'text', span: 6 },
-        { key: 'date', label: 'تاریخ', type: 'date', span: 6 },
-        { key: 'amount_change', label: 'تغییر مبلغ (ریال)', type: 'number', span: 6 },
-        { key: 'new_end_date', label: 'تاریخ پایان جدید', type: 'date', span: 6 },
-        { key: 'change_description', label: 'شرح تغییرات', type: 'textarea', span: 12 },
-      ],
-    }}
-  />
-);
+// ویرایشگر الحاقیه یک پیاده‌سازی واحد دارد (چند موضوع + فیلدهای تخصصی + اثر زنده)
+export { default as ContractAddendumsPage } from '../../ContractAddendumsPage';
