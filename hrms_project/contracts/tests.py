@@ -310,3 +310,19 @@ class ContractGuaranteeStatusTests(TestCase):
         self.assertEqual(result['summary']['unrequired_count'], 1)
         self.assertEqual(result['requirements'], [])
 
+    def test_persian_label_requirement_matches_code(self):
+        """داده‌های قدیمی که نوع قلم را با برچسب فارسی ذخیره کرده‌اند هم تطبیق داده شود."""
+        from contracts.guarantee_status import guarantee_compliance
+
+        legacy = Contract.objects.create(
+            company=self.company, number='C-G3', subject='قرارداد قدیمی', party=self.party,
+            amount=100_000_000,
+            guarantee_items=[{'type': 'ضمانت حسن انجام کار', 'amount': 5_000_000}],
+        )
+        self._guarantee(contract=legacy, guarantee_type='performance', amount=5_000_000,
+                        number='PG-L1')
+        result = guarantee_compliance(legacy)
+        self.assertEqual(result['requirements'][0]['type'], 'performance')
+        self.assertEqual(result['requirements'][0]['status'], 'provided')
+        self.assertEqual(result['summary']['unrequired_count'], 0)
+

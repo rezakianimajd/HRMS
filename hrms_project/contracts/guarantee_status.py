@@ -75,13 +75,16 @@ def _requirements(contract, effective_amount):
     from contracts.models import Contract
 
     labels = dict(Contract.GuaranteeKind.choices)
+    by_label = {label: code for code, label in labels.items()}
     rows = []
     seen_types = set()
 
     for item in (getattr(contract, 'guarantee_items', None) or []):
         if not isinstance(item, dict):
             continue
-        kind = item.get('type') or 'other'
+        raw = item.get('type') or item.get('guarantee_type') or 'other'
+        # داده‌های قدیمی ممکن است برچسب فارسی را ذخیره کرده باشند
+        kind = raw if raw in labels else by_label.get(raw, 'other')
         percent = _num(item.get('percent'))
         amount = _num(item.get('amount'))
         if not amount and percent and effective_amount:
@@ -166,12 +169,14 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
 
         if required > 0 and provided >= required - TOLERANCE:
             status, status_label = 'provided', 'تأمین شده'
-        elif provided > 0:
+        elif required > 0 and provided > 0:
             status, status_label = 'partial', 'ناقص — نیازمند تکمیل'
         elif required > 0:
             status, status_label = 'missing', 'تأمین نشده'
-        else:
+        elif provided > 0:
             status, status_label = 'provided', 'تأمین شده (بدون مبلغ تعریف‌شده)'
+        else:
+            status, status_label = 'missing', 'بدون مبلغ تعریف‌شده'
 
         requirement.update({
             'provided': provided,
