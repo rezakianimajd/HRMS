@@ -311,7 +311,6 @@ def _contract_row(index, contract):
     ]
 
 
-
 def _item_row(kind, contract, item_no='', item_title='', date=None, date2=None,
               item_amount='', item_vat='', item_total='', percent='', reference='',
               item_status='', item_note='', details=''):
@@ -505,7 +504,6 @@ def _item_rows(contract):
             details=_join('اقدام/نتیجه', _attr(dispute, 'resolution')),
         ))
     return rows
-
 
 
 # ----------------------------------------------------------------------------
