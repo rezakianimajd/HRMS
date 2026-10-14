@@ -735,3 +735,148 @@ class DocumentFiscalYearAndPreparerTests(TestCase):
         )
         self.assertEqual(AccountingDocumentSerializer(doc).data['prepared_by_name'], '')
 
+
+class AccountTreeTests(TestCase):
+    """درختوارهٔ حساب‌ها: نوع → گروه → زیرگروه → کل → معین + شمارنده‌ها + جستجو."""
+
+    def setUp(self):
+        from accounting.models import Account, AccountGroup, AccountType, AuxiliaryAccount
+
+        self.Account = Account
+        self.company = make_company(schema_name='testco-tree', name='شرکت تست درخت')
+        self.asset = AccountType.objects.create(
+            company=self.company, code='1', name='دارایی', category='asset',
+            default_nature='debit', sort_order=1,
+        )
+        self.expense = AccountType.objects.create(
+            company=self.company, code='5', name='هزینه', category='expense',
+            default_nature='debit', sort_order=2,
+        )
+        self.current = AccountGroup.objects.create(
+            company=self.company, code='11', name='دارایی جاری',
+            account_type=self.asset, nature='debit',
+        )
+        self.cash = AccountGroup.objects.create(
+            company=self.company, code='1101', name='موجودی نقد',
+            account_type=self.asset, nature='debit', parent=self.current,
+        )
+        self.admin = AccountGroup.objects.create(
+            company=self.company, code='51', name='هزینه‌های اداری',
+            account_type=self.expense, nature='debit',
+        )
+        self.cash_acc = Account.objects.create(
+            company=self.company, code='1001', name='موجودی نقد و بانک',
+            account_type=self.asset, group=self.current, level=1, nature='debit',
+        )
+        self.bank = Account.objects.create(
+            company=self.company, code='100101', name='بانک ملت',
+            account_type=self.asset, group=self.current, parent=self.cash_acc,
+            level=2, nature='debit',
+        )
+        self.admin_acc = Account.objects.create(
+            company=self.company, code='5001', name='هزینه‌های اداری',
+            account_type=self.expense, group=self.admin, level=1, nature='debit',
+        )
+        AuxiliaryAccount.objects.create(
+            company=self.company, code='A-1', name='بانک ملت شعبه مرکزی',
+            aux_type='bank', account=self.bank,
+        )
+        AuxiliaryAccount.objects.create(
+            company=self.company, code='A-2', name='بانک ملی', aux_type='bank', account=self.bank,
+        )
+
+    def test_hierarchy_type_group_subgroup_account(self):
+        from accounting.account_tree import build_account_tree
+
+        tree = build_account_tree(self.company)
+        asset = next(node for node in tree['types'] if node['code'] == '1')
+        group = next(child for child in asset['children'] if child['id'] == self.current.id)
+        subgroup = next(child for child in group['children'] if child['id'] == self.cash.id)
+        general = next(child for child in group['children'] if child['id'] == self.cash_acc.id)
+        subsidiary = general['children'][0]
+        self.assertEqual(subgroup['node_type'], 'group')
+        self.assertTrue(subgroup['is_subgroup'])
+        self.assertEqual(subgroup['children'], [])
+        self.assertEqual(general['kind'], 'general')
+        self.assertEqual(subsidiary['id'], self.bank.id)
+        self.assertEqual(subsidiary['kind'], 'subsidiary')
+        self.assertEqual(subsidiary['full_code'], '1001 / 100101')
+
+    def test_counts_per_branch(self):
+        from accounting.account_tree import build_account_tree
+
+        summary = build_account_tree(self.company)['summary']
+        self.assertEqual(summary['groups'], 3)          # ۱۱، ۱۱۰۱، ۵۱
+        self.assertEqual(summary['general'], 2)         # ۱۰۰۱، ۵۰۰۱
+        self.assertEqual(summary['subsidiary'], 1)      # ۱۰۰۱۰۱
+        self.assertEqual(summary['accounts'], 3)
+        self.assertEqual(summary['auxiliary'], 2)
+
+
+    def test_search_prunes_and_keeps_ancestors(self):
+        from accounting.account_tree import build_account_tree
+
+        tree = build_account_tree(self.company, query='100101')
+        self.assertEqual([node['code'] for node in tree['types']], ['1'])
+        asset = tree['types'][0]
+        self.assertEqual([child['id'] for child in asset['children']], [self.current.id])
+        group = asset['children'][0]
+        # زیرگروه «موجودی نقد» حساب ندارد و در جستجو حذف می‌شود
+        self.assertEqual([child['id'] for child in group['children']], [self.cash_acc.id])
+        general = group['children'][0]
+        self.assertEqual([child['id'] for child in general['children']], [self.bank.id])
+        self.assertTrue(general['has_match'])
+        self.assertTrue(general['children'][0]['matched'])
+
+    def test_search_by_name_matches_group_branch(self):
+        from accounting.account_tree import build_account_tree
+
+        tree = build_account_tree(self.company, query='اداری')
+        self.assertEqual([node['code'] for node in tree['types']], ['5'])
+        self.assertEqual(tree['summary']['accounts'], 1)
+
+    def test_cycles_do_not_hang_or_duplicate(self):
+        from accounting.account_tree import build_account_tree
+
+        first = self.Account.objects.create(
+            company=self.company, code='8001', name='الف چرخه', account_type=self.asset,
+            group=self.current, level=2, nature='debit',
+        )
+        second = self.Account.objects.create(
+            company=self.company, code='8002', name='ب چرخه', account_type=self.asset,
+            group=self.current, level=2, nature='debit', parent=first,
+        )
+        self.Account.objects.filter(pk=first.pk).update(parent=second)
+        tree = build_account_tree(self.company)
+        ids = []
+
+        def walk(nodes):
+            for node in nodes:
+                ids.append(node['id'])
+                walk(node.get('children', []))
+
+        for node in tree['types']:
+            walk(node['children'])
+        self.assertEqual(len(ids), len(set(ids)))        # هیچ گره‌ای دو بار نیامده است
+        self.assertEqual(tree['summary']['accounts'], 5)
+
+    def test_endpoint_resolves_and_returns_tree(self):
+        from types import SimpleNamespace
+
+        from django.http import QueryDict
+        from django.urls import resolve
+
+        from accounting.views import AccountViewSet
+
+        match = resolve('/api/accounting/accounts/tree/')
+        self.assertEqual(match.func.cls.__name__, 'AccountViewSet')
+        self.assertEqual(match.func.actions['get'], 'tree')
+
+        view = AccountViewSet()
+        view.request = SimpleNamespace(
+            tenant=self.company, company=self.company, query_params=QueryDict(''),
+        )
+        data = view.tree(view.request).data
+        self.assertEqual(data['summary']['accounts'], 3)
+        self.assertEqual(data['query'], '')
+

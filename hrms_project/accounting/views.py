@@ -313,6 +313,17 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
             qs = qs.filter(parent__isnull=False)
         return qs
 
+    @action(detail=False, methods=['get'])
+    def tree(self, request):
+        """درختوارهٔ کامل حساب‌ها: نوع → گروه → زیرگروه → حساب کل → معین.
+
+        پارامتر اختیاری `q` درخت را به شاخه‌های منطبق (و والدهایشان) هرس می‌کند و
+        خروجی شامل شمارنده‌های هر شاخه و نشانهٔ تطبیق (`matched`/`has_match`) است.
+        """
+        from accounting.account_tree import build_account_tree
+
+        return Response(build_account_tree(_company(request), request.query_params.get('q')))
+
     def perform_create(self, serializer):
         """ساخت حساب: نوع/ماهیت پیشنهادی از والد/گروه، اما **ورودی کاربر مقدم است**.
 

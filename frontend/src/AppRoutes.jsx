@@ -120,6 +120,7 @@ import AccountingDocumentSearchPage from './pages/AccountingDocumentSearchPage';
 import AccountingFinalizePage from './pages/AccountingFinalizePage';
 import AccountingControlPage from './pages/AccountingControlPage';
 import AccountingCodingsPage from './pages/AccountingCodingsPage';
+import AccountingAccountTreePage from './pages/AccountingAccountTreePage';
 import AccountGroupsPage from './pages/AccountGroupsPage';
 import AccountsClassicPage from './pages/AccountsClassicPage';
 import AuxiliaryAccountsPage from './pages/AuxiliaryAccountsPage';
@@ -257,6 +258,7 @@ const AppRoutes = () => {
       <Route path="/accounting/documents/finalize" element={<ProtectedLayout><AccountingFinalizePage /></ProtectedLayout>} />
       <Route path="/accounting/documents/control" element={<ProtectedLayout><AccountingControlPage /></ProtectedLayout>} />
       <Route path="/accounting/codings/:kind" element={<ProtectedLayout><AccountingCodingsPage /></ProtectedLayout>} />
+      <Route path="/accounting/accounts-tree" element={<ProtectedLayout><AccountingAccountTreePage /></ProtectedLayout>} />
       <Route path="/accounting/groups" element={<ProtectedLayout><AccountGroupsPage /></ProtectedLayout>} />
       <Route path="/accounting/accounts/:kind" element={<ProtectedLayout><AccountsClassicPage /></ProtectedLayout>} />
       <Route path="/accounting/auxiliary" element={<ProtectedLayout><AuxiliaryAccountsPage /></ProtectedLayout>} />

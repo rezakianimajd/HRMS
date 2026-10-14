@@ -58,6 +58,7 @@ $BackendFiles = @(
     'hrms_project/accounting/constants.py',
     'hrms_project/accounting/report_views.py',
     'hrms_project/accounting/coding.py',
+    'hrms_project/accounting/account_tree.py',
     'hrms_project/accounting/tests.py',
     # --- کدینگ والد-آگاه + ابزار رفع ناهمگونی نوع حساب ---
     'hrms_project/accounting/maintenance.py',
@@ -192,6 +193,7 @@ $FrontendFiles = @(
     'frontend/src/pages/AccountingDocumentsPage.jsx',
     'frontend/src/pages/PettyCashExpensesPage.jsx',
     'frontend/src/pages/AccountGroupsPage.jsx',
+    'frontend/src/pages/AccountingAccountTreePage.jsx',
     'frontend/src/pages/AccountsClassicPage.jsx',
     'frontend/src/pages/AccountingCodingsPage.jsx',
     'frontend/src/pages/ProjectProfilePage.jsx',
