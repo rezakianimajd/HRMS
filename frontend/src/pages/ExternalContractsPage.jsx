@@ -21,11 +21,7 @@ import downloadFile from '../core/utils/downloadUtils';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
-// ارزهای «ریالی/تومانی» → واحد پول سمت چپ مبلغ؛ سایر ارزها (دلار، یورو، یوان و …) سمت راست
-const isRialCurrency = (contract) => {
-  const text = `${contract?.currency_name || ''} ${contract?.currency_symbol || ''} ${contract?.currency_code || ''}`;
-  return /ریال|تومان|ريال|\bIRR\b|\bIRT\b|\bIRHR\b/i.test(text);
-};
+// واحد ارز (نام ارز؛ در نبود نام، نماد و در نهایت «ریال»)
 const currencyUnit = (contract) => contract?.currency_name || contract?.currency_symbol || 'ریال';
 
 // روزهای باقی‌مانده تا پایان (مبتنی بر تاریخ مؤثر با الحاقیه؛ بر پایهٔ روز محلی)
@@ -57,6 +53,9 @@ const bodyCellSx = {
   whiteSpace: 'nowrap', fontSize: 12.5,
   borderBottom: '1px solid rgba(15,23,42,0.06)', py: 0.9,
 };
+// تراز صریح (inline) تا قاعدهٔ سراسری «[dir=rtl] .MuiTableCell-root» بازنویسی نکند
+const CENTER = { textAlign: 'center' };
+const RIGHT = { textAlign: 'right' };
 
 const TYPE_LABELS = {
   construction: 'پیمانکاری / اجرا',
@@ -236,15 +235,16 @@ const ExternalContractsPage = () => {
               <Table size="small" stickyHeader sx={{ '& td, & th': { px: 1.25 } }}>
                 <TableHead>
                   <TableRow>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 110 }}>شماره قرارداد</TableCell>
-                    <TableCell align="center" sx={headCellSx}>طرف حساب</TableCell>
-                    <TableCell align="center" sx={headCellSx}>نام قرارداد</TableCell>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 130 }}>نوع قرارداد</TableCell>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 120 }}>وضعیت اجرا</TableCell>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 195 }}>تاریخ شروع و پایان</TableCell>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 155 }}>مانده (روز تا پایان)</TableCell>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 230 }}>مبلغ قرارداد (با الحاقیه)</TableCell>
-                    <TableCell align="center" sx={{ ...headCellSx, width: 140 }}>عملیات</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>شماره قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 165 }}>طرف حساب</TableCell>
+                    <TableCell align="center" style={CENTER} sx={headCellSx}>نام قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 125 }}>نوع قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 115 }}>وضعیت اجرا</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ شروع</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ پایان</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 145 }}>مانده (روز تا پایان)</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 205 }}>مبلغ قرارداد (با الحاقیه)</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 130 }}>عملیات</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -253,101 +253,78 @@ const ExternalContractsPage = () => {
                     const statusColor = STATUS_COLORS[c.status] || '#64748b';
                     const amount = c.effective_amount ?? c.amount ?? 0;
                     const baseAmount = c.amount ?? 0;
-                    const changedByAddendum = c.effective_amount != null
-                      && Number(c.effective_amount) !== Number(baseAmount);
-                    const rial = isRialCurrency(c);
-                    const unit = (
-                      <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                        {currencyUnit(c)}
-                      </Typography>
-                    );
-                    const amountText = (
-                      <Typography sx={{
-                        fontFamily: FONT, fontWeight: 800, fontSize: 13.5, color: '#b45309',
-                        whiteSpace: 'nowrap',
-                      }}>
-                        {formatPersianNumber(amount)}
-                      </Typography>
-                    );
                     const endEffective = c.effective_end_date || c.end_date;
-                    const remain = remainMeta(daysUntil(endEffective));
                     const extended = Boolean(c.effective_end_date && c.end_date
                       && String(c.effective_end_date).slice(0, 10) !== String(c.end_date).slice(0, 10));
+                    const remain = remainMeta(daysUntil(endEffective));
                     return (
                       <TableRow
                         key={c.id} hover
                         onClick={() => navigate(`/external-contracts/${c.id}`)}
                         sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'rgba(245,158,11,0.05)' } }}
                       >
-                        <TableCell align="center" sx={bodyCellSx}>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography sx={{ fontFamily: FONT, fontWeight: 800, fontSize: 12.5, color: '#334155' }}>
                             {toPersianDigits(c.number || '—')}
                           </Typography>
                         </TableCell>
-                        <TableCell align="right" sx={{ ...bodyCellSx, maxWidth: 190 }}>
+                        <TableCell align="right" style={RIGHT} sx={{ ...bodyCellSx, maxWidth: 170 }}>
                           <Tooltip title={c.party_name || ''}>
-                            <Typography variant="body2" fontWeight={700} color="#7c2d12" noWrap>
+                            <Typography fontWeight={700} color="#7c2d12" noWrap sx={{ fontSize: 13 }}>
                               {c.party_name || '—'}
                             </Typography>
                           </Tooltip>
                         </TableCell>
-                        <TableCell align="right" sx={{ ...bodyCellSx, maxWidth: 320 }}>
+                        <TableCell align="right" style={RIGHT} sx={{ ...bodyCellSx, maxWidth: 300 }}>
                           <Tooltip title={c.subject || ''}>
-                            <Typography variant="body2" fontWeight={800} noWrap sx={{ color: '#0f172a' }}>
+                            <Typography fontWeight={800} noWrap sx={{ color: '#0f172a', fontSize: 12 }}>
                               {c.subject || '—'}
                             </Typography>
                           </Tooltip>
                         </TableCell>
-                        <TableCell align="center" sx={bodyCellSx}>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Chip size="small" label={typeLabel(c)}
                             sx={{ bgcolor: `${typeColor}18`, color: typeColor, fontWeight: 700, fontSize: 10, height: 20 }} />
                         </TableCell>
-                        <TableCell align="center" sx={bodyCellSx}>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Chip size="small" label={STATUS_LABELS[c.status] || c.status || '—'}
                             sx={{ bgcolor: `${statusColor}18`, color: statusColor, fontWeight: 700, fontSize: 10, height: 20 }} />
                         </TableCell>
-
-                        <TableCell align="center" sx={bodyCellSx}>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography variant="caption" sx={{ fontFamily: FONT, color: '#334155', fontWeight: 700 }}>
                             {c.start_date ? toJalali(c.start_date) : '—'}
                           </Typography>
-                          <Typography component="span" variant="caption" sx={{ color: '#94a3b8', mx: 0.75 }}>←</Typography>
+                        </TableCell>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography variant="caption" sx={{
                             fontFamily: FONT, fontWeight: extended ? 800 : 700,
                             color: extended ? '#047857' : '#334155',
                           }}>
-                            {c.end_date ? toJalali(c.end_date) : '—'}
+                            {endEffective ? toJalali(endEffective) : '—'}
                           </Typography>
-                          {extended && (
-                            <Typography variant="caption" sx={{ display: 'block', color: '#047857', fontWeight: 700 }}>
-                              مؤثر با الحاقیه: {toJalali(c.effective_end_date)}
-                            </Typography>
-                          )}
                         </TableCell>
-                        <TableCell align="center" sx={bodyCellSx}>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Chip size="small" label={remain.label}
                             sx={{ bgcolor: remain.bg, color: remain.color, fontWeight: 800, fontSize: 11, height: 22 }} />
-                          {extended && (
-                            <Typography variant="caption" sx={{ display: 'block', color: '#047857', fontWeight: 700, mt: 0.25 }}>
-                              تمدیدشده
-                            </Typography>
-                          )}
                         </TableCell>
-                        <TableCell align="center" sx={bodyCellSx}>
-                          <Tooltip title={`پایه: ${formatPersianNumber(baseAmount)}${changedByAddendum
-                            ? ` | تغییر الحاقیه: ${formatPersianNumber(amount - baseAmount)}` : ''}`}>
-                            <Stack direction="row" alignItems="center" justifyContent="flex-start" spacing={0.5}>
-                              {rial ? [amountText, unit] : [unit, amountText]}
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
+                          <Tooltip title={`پایه: ${formatPersianNumber(baseAmount)}${Number(amount) !== Number(baseAmount)
+                            ? ` | تغییر الحاقیه: ${formatPersianNumber(Number(amount) - Number(baseAmount))}` : ''}`}>
+                            <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.75}>
+                              <Typography sx={{
+                                fontFamily: FONT, fontWeight: 800, fontSize: 13.5, color: '#b45309',
+                                whiteSpace: 'nowrap',
+                              }}>
+                                {formatPersianNumber(amount)}
+                              </Typography>
+                              <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                                {currencyUnit(c)}
+                              </Typography>
                             </Stack>
                           </Tooltip>
-                          {changedByAddendum && (
-                            <Typography variant="caption" sx={{ display: 'block', color: '#047857', fontWeight: 700, mt: 0.25 }}>
-                              با الحاقیه (پایه: {formatPersianNumber(baseAmount)})
-                            </Typography>
-                          )}
                         </TableCell>
-                        <TableCell sx={bodyCellSx} onClick={e => e.stopPropagation()}>
-                          <Stack direction="row" spacing={0.25} justifyContent="flex-start">
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx} onClick={e => e.stopPropagation()}>
+                          <Stack direction="row" spacing={0.25} justifyContent="center">
                             <Tooltip title="مشاهده پرونده"><IconButton size="small" color="info"
                               onClick={() => navigate(`/external-contracts/${c.id}`)}><VisibilityIcon fontSize="small" /></IconButton></Tooltip>
                             <Tooltip title="ویرایش"><IconButton size="small" color="primary"
