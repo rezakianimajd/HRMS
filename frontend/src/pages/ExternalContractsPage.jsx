@@ -47,7 +47,11 @@ const remainMeta = (days) => {
 
 const headCellSx = {
   fontWeight: 800, fontSize: 12, color: '#334155', whiteSpace: 'nowrap',
-  bgcolor: 'rgba(15,23,42,0.035)', borderBottom: '1px solid rgba(15,23,42,0.10)', py: 1.1,
+  // پس‌زمینهٔ مات (بدون شفافیت) تا هنگام اسکرول محتوای جدول از زیر هدر دیده نشود
+  backgroundColor: '#eef2f7',
+  borderBottom: '1px solid rgba(15,23,42,0.18)',
+  boxShadow: 'inset 0 -1px 0 rgba(15,23,42,0.06)',
+  py: 1.1,
 };
 const bodyCellSx = {
   whiteSpace: 'nowrap', fontSize: 12.5,
@@ -80,15 +84,6 @@ const STATUS_COLORS = {
   suspended: '#f59e0b',
   completed: '#3b82f6',
   terminated: '#ef4444',
-};
-
-const TYPE_COLORS = {
-  construction: '#f97316',
-  purchase: '#10b981',
-  tender: '#f59e0b',
-  consulting: '#6366f1',
-  service: '#0ea5e9',
-  other: '#64748b',
 };
 
 const fieldSx = {
@@ -238,8 +233,6 @@ const ExternalContractsPage = () => {
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>شماره قرارداد</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 165 }}>طرف حساب</TableCell>
                     <TableCell align="center" style={CENTER} sx={headCellSx}>نام قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 125 }}>نوع قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 115 }}>وضعیت اجرا</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ شروع</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ پایان</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 145 }}>مانده (روز تا پایان)</TableCell>
@@ -249,8 +242,6 @@ const ExternalContractsPage = () => {
                 </TableHead>
                 <TableBody>
                   {filtered.map(c => {
-                    const typeColor = TYPE_COLORS[c.contract_type] || '#64748b';
-                    const statusColor = STATUS_COLORS[c.status] || '#64748b';
                     const amount = c.effective_amount ?? c.amount ?? 0;
                     const baseAmount = c.amount ?? 0;
                     const endEffective = c.effective_end_date || c.end_date;
@@ -270,7 +261,7 @@ const ExternalContractsPage = () => {
                         </TableCell>
                         <TableCell align="right" style={RIGHT} sx={{ ...bodyCellSx, maxWidth: 170 }}>
                           <Tooltip title={c.party_name || ''}>
-                            <Typography fontWeight={700} color="#7c2d12" noWrap sx={{ fontSize: 13 }}>
+                            <Typography fontWeight={700} color="#7c2d12" noWrap sx={{ fontSize: 12 }}>
                               {c.party_name || '—'}
                             </Typography>
                           </Tooltip>
@@ -281,14 +272,6 @@ const ExternalContractsPage = () => {
                               {c.subject || '—'}
                             </Typography>
                           </Tooltip>
-                        </TableCell>
-                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                          <Chip size="small" label={typeLabel(c)}
-                            sx={{ bgcolor: `${typeColor}18`, color: typeColor, fontWeight: 700, fontSize: 10, height: 20 }} />
-                        </TableCell>
-                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                          <Chip size="small" label={STATUS_LABELS[c.status] || c.status || '—'}
-                            sx={{ bgcolor: `${statusColor}18`, color: statusColor, fontWeight: 700, fontSize: 10, height: 20 }} />
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography variant="caption" sx={{ fontFamily: FONT, color: '#334155', fontWeight: 700 }}>
@@ -310,7 +293,7 @@ const ExternalContractsPage = () => {
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Tooltip title={`پایه: ${formatPersianNumber(baseAmount)}${Number(amount) !== Number(baseAmount)
                             ? ` | تغییر الحاقیه: ${formatPersianNumber(Number(amount) - Number(baseAmount))}` : ''}`}>
-                            <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.75}>
+                            <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
                               <Typography sx={{
                                 fontFamily: FONT, fontWeight: 800, fontSize: 13.5, color: '#b45309',
                                 whiteSpace: 'nowrap',
@@ -320,7 +303,7 @@ const ExternalContractsPage = () => {
                               <Typography variant="caption" sx={{ color: '#64748b', fontWeight: 700, whiteSpace: 'nowrap' }}>
                                 {currencyUnit(c)}
                               </Typography>
-                            </Stack>
+                            </Box>
                           </Tooltip>
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx} onClick={e => e.stopPropagation()}>
