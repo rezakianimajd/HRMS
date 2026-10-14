@@ -357,18 +357,41 @@ if (-not $SkipBackend) {
 
 # ---------------------------------------------------------------- مایگریشن
 # ---------------------------------------------------------------- نصب آفلاین وابستگی‌های جدید
+# نکته: پوشهٔ venv روی سرور ممکن است مالکیت root داشته باشد؛ بنابراین اول بررسی
+# می‌کنیم بسته‌ها واقعاً غایب‌اند، و در صورت نیاز نصب را با root انجام می‌دهیم.
 if (Test-Path $WheelDir) {
     $wheels = @(Get-ChildItem -Path $WheelDir -Filter '*.whl' -File -ErrorAction SilentlyContinue)
     if ($wheels.Count -gt 0) {
-        Step '۲.۵/۶ نصب آفلاین وابستگی‌های پایتون (django-jazzmin/python-dotenv)'
-        ssh $Srv 'rm -rf /tmp/hrms-wheels && mkdir -p /tmp/hrms-wheels'
-        if ($LASTEXITCODE -ne 0) { throw 'آماده‌سازی /tmp/hrms-wheels ناموفق بود.' }
-        scp $wheels.FullName "${Srv}:/tmp/hrms-wheels/"
-        if ($LASTEXITCODE -ne 0) { throw 'انتقال wheel ها ناموفق بود.' }
-        # نصب آفلاین: هیچ تلاشی برای اتصال به اینترنت انجام نمی‌شود (--no-index)
-        ssh -t $Srv "sudo -u ${AppUser} $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels --upgrade django-jazzmin python-dotenv && rm -rf /tmp/hrms-wheels"
-        if ($LASTEXITCODE -ne 0) { throw 'نصب آفلاین wheel ها ناموفق بود.' }
-        Ok ("{0} wheel نصب شد." -f $wheels.Count)
+        Step '۲.۶/۶ نصب آفلاین وابستگی‌های پایتون (در صورت نیاز)'
+
+        # ۱) آیا هر دو بسته روی سرور import می‌شوند؟ (بدون هیچ تغییری)
+        $probeImport = @(ssh $Srv "$AppDir/venv/bin/python -c 'import jazzmin, dotenv' && echo HAVE_ALL || echo NEED_SOME")
+        if ($probeImport -contains 'HAVE_ALL') {
+            Ok 'هر دو بسته از قبل نصب‌اند (django-jazzmin + python-dotenv)؛ نیازی به نصب نیست.'
+        } else {
+            ssh $Srv 'rm -rf /tmp/hrms-wheels && mkdir -p /tmp/hrms-wheels'
+            if ($LASTEXITCODE -ne 0) { throw 'آماده‌سازی /tmp/hrms-wheels ناموفق بود.' }
+            scp $wheels.FullName "${Srv}:/tmp/hrms-wheels/"
+            if ($LASTEXITCODE -ne 0) { throw 'انتقال wheel ها ناموفق بود.' }
+
+            # تلاش ۱: نصب با کاربر برنامه (بدون --upgrade تا بسته‌های موجود دست نخورند)
+            ssh -t $Srv "sudo -u ${AppUser} $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels django-jazzmin python-dotenv"
+            $installRc = $LASTEXITCODE
+
+            if ($installRc -ne 0) {
+                # تلاش ۲: مالکیت venv احتمالاً root است → نصب با root و بازگرداندن مالکیت
+                Warn 'نصب با کاربر برنامه ناموفق بود (مالکیت venv). تلاش دوم با root...'
+                ssh -t $Srv "sudo $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels django-jazzmin python-dotenv; sudo chown -R ${AppUser}:${AppUser} $AppDir/venv"
+                $installRc = $LASTEXITCODE
+            }
+
+            ssh $Srv 'rm -rf /tmp/hrms-wheels'
+            if ($installRc -ne 0) {
+                Warn 'نصب آفلاین کامل نشد. اگر بستهٔ لازم غایب است، دستی نصب کنید (راهنما در انتهای همین اسکریپت).'
+            } else {
+                Ok 'نصب آفلاین وابستگی‌ها انجام شد.'
+            }
+        }
     }
 }
 
