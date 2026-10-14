@@ -37,6 +37,23 @@ const hasPersian = (text) => /[\u0600-\u06FF]/.test(text || '');
 // «نام انگلیسی»: نامی که حرف لاتین دارد و هیچ حرف فارسی ندارد → نمایش داده نمی‌شود
 const isEnglishName = (text) => /[A-Za-z]/.test(text || '') && !hasPersian(text);
 
+// کدِ نمایش‌دادنی: کدهای لاتینِ بدون رقم (asset، liability، …) پنهان می‌شوند؛
+// برای «نوع حساب» هر کد دارای حرف لاتین پنهان می‌شود (معمولاً نام انگلیسی طبقه است).
+const showCode = (code, isType) => {
+  if (!code) return false;
+  const text = String(code);
+  if (!/[A-Za-z]/.test(text)) return true;
+  if (isType) return false;
+  return /\d/.test(text);
+};
+
+// برچسب فارسی نوع حساب (اگر نام نوع انگلیسی باشد، برچسب طبقه نمایش داده می‌شود)
+const typeLabel = (type) => {
+  if (!type) return '';
+  if (!isEnglishName(type.name)) return type.name || '';
+  return type.category_display || type.category_label || type.name || '';
+};
+
 const glass = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.80), rgba(255,255,255,0.45))',
   backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
@@ -173,26 +190,31 @@ const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, sea
           boxShadow: `0 0 0 3px ${meta.color}22`, mx: 0.75,
         }} />
 
-        <Chip size="small" label={toPersianDigits(node.code)}
-          sx={{
-            height: 22, fontFamily: FONT, fontWeight: 800, fontSize: 12,
-            bgcolor: `${meta.color}1f`, color: meta.dark,
-            '& .MuiChip-label': { px: 1 },
-          }} />
+        {showCode(node.code, isType) && (
+          <Chip size="small" label={toPersianDigits(node.code)}
+            sx={{
+              height: 22, fontFamily: FONT, fontWeight: 800, fontSize: 12,
+              bgcolor: `${meta.color}1f`, color: meta.dark,
+              '& .MuiChip-label': { px: 1 },
+            }} />
+        )}
 
         {isType ? (
           <>
-            <Chip size="small" label={node.category_label}
-              sx={miniChip('rgba(14,165,233,0.14)', '#0369a1')} />
-            {!isEnglishName(node.name) && (
-              <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ maxWidth: 300, color: '#0f172a' }}>
+            {node.category_label && (
+              <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ maxWidth: 320, color: '#0f172a' }}>
+                {node.category_label}
+              </Typography>
+            )}
+            {!isEnglishName(node.name) && node.name !== node.category_label && (
+              <Typography variant="caption" color="textSecondary" noWrap sx={{ maxWidth: 260 }}>
                 {node.name}
               </Typography>
             )}
           </>
         ) : (
           <>
-            {!isEnglishName(node.name) && (
+            {!isEnglishName(node.name) ? (
               <Typography
                 variant="body2"
                 fontWeight={700}
@@ -201,7 +223,10 @@ const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, sea
               >
                 {node.name}
               </Typography>
-            )}
+            ) : node.category_label ? (
+              <Chip size="small" label={node.category_label}
+                sx={miniChip('rgba(14,165,233,0.14)', '#0369a1')} />
+            ) : null}
             <Chip size="small" variant="outlined" label={natureLabel(node.nature)}
               sx={miniChip(natureBg(node.nature), natureColor(node.nature))} />
           </>
@@ -678,7 +703,7 @@ const AccountingAccountTreePage = () => {
             {editor?.mode === 'group' ? (
               <>
                 <Autocomplete
-                  size="small" options={typeList} getOptionLabel={o => o.name}
+                  size="small" options={typeList} getOptionLabel={o => typeLabel(o)}
                   value={typeList.find(t => t.id === (form.account_type || effectiveType)) || null}
                   onChange={(e, v) => set('account_type', v ? v.id : '')}
                   renderInput={p => <TextField {...p} label="نوع حساب *" sx={fieldSx} />}
@@ -708,7 +733,7 @@ const AccountingAccountTreePage = () => {
                   />
                 )}
                 <Autocomplete
-                  size="small" options={typeList} getOptionLabel={o => o.name}
+                  size="small" options={typeList} getOptionLabel={o => typeLabel(o)}
                   value={typeList.find(t => t.id === (form.account_type || effectiveType)) || null}
                   onChange={(e, v) => set('account_type', v ? v.id : '')}
                   renderInput={p => <TextField {...p} label="نوع حساب" sx={fieldSx} />}
@@ -749,7 +774,7 @@ const AccountingAccountTreePage = () => {
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
                   <Chip size="small" label={`کد پیشنهادی: ${toPersianDigits(suggested?.code || '—')}`}
                     sx={miniChip('rgba(15,118,110,0.14)', COLOR_DARK)} />
-                  <Chip size="small" label={`نوع مؤثر: ${typeList.find(t => t.id === effectiveType)?.name || '—'}`}
+                  <Chip size="small" label={`نوع مؤثر: ${typeLabel(typeList.find(t => t.id === effectiveType)) || '—'}`}
                     sx={miniChip('rgba(37,99,235,0.12)', '#1d4ed8')} />
                   <Chip size="small" label={`ماهیت مؤثر: ${natureLabel(effectiveNature)}`}
                     sx={miniChip(natureBg(effectiveNature), natureColor(effectiveNature))} />

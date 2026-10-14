@@ -860,6 +860,26 @@ class AccountTreeTests(TestCase):
         self.assertEqual(len(ids), len(set(ids)))        # هیچ گره‌ای دو بار نیامده است
         self.assertEqual(tree['summary']['accounts'], 5)
 
+    def test_category_labels_are_always_persian(self):
+        """برچسب طبقهٔ نوع حساب هرگز کد انگلیسی (asset/…) را برنمی‌گرداند."""
+        from accounting.account_tree import build_account_tree, category_label
+
+        self.assertEqual(category_label('asset'), 'دارایی')
+        self.assertEqual(category_label('Assets'), 'دارایی')          # مترادف + حروف بزرگ
+        self.assertEqual(category_label('cost_of_goods_sold'), 'بهای تمام‌شده')
+        self.assertEqual(category_label('off_balance'), 'حساب‌های انتظامی')
+        self.assertEqual(category_label('نامشخص_۱۲۳'), 'نامشخص_۱۲۳')   # فارسی دست‌نخورده
+        self.assertEqual(category_label('unknown_code'), 'سایر')       # هرگز انگلیسی
+        self.assertEqual(category_label(''), 'سایر')
+
+        tree = build_account_tree(self.company)
+        asset = next(node for node in tree['types'] if node['code'] == '1')
+        self.assertEqual(asset['category_label'], 'دارایی')
+        group = next(child for child in asset['children'] if child['id'] == self.current.id)
+        self.assertEqual(group['category_label'], 'دارایی')
+        account = next(child for child in group['children'] if child['id'] == self.cash_acc.id)
+        self.assertEqual(account['category_label'], 'دارایی')
+
     def test_endpoint_resolves_and_returns_tree(self):
         from types import SimpleNamespace
 

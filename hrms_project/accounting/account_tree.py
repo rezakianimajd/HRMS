@@ -12,6 +12,7 @@
 `type` | `group` | `account` (حساب با `kind: general|subsidiary`).
 """
 from collections import defaultdict
+import re
 
 from django.db.models import Count
 
@@ -24,7 +25,34 @@ CATEGORY_LABELS = {
     'revenue': 'درآمد', 'cost_of_sales': 'بهای تمام‌شده', 'expense': 'هزینه',
     'memorandum': 'حساب‌های انتظامی',
 }
+# مترادف‌های رایج داده‌های ایمپورت‌شده (جمع/نام‌های جایگزین) → کد استاندارد
+CATEGORY_ALIASES = {
+    'assets': 'asset', 'current_assets': 'asset', 'fixed_assets': 'asset',
+    'liabilities': 'liability', 'current_liabilities': 'liability',
+    'equities': 'equity', 'owners_equity': 'equity', 'capital': 'equity',
+    'revenues': 'revenue', 'income': 'revenue', 'sales': 'revenue',
+    'expenses': 'expense', 'cost': 'expense',
+    'cost_of_goods_sold': 'cost_of_sales', 'cogs': 'cost_of_sales',
+    'off_balance': 'memorandum', 'memo': 'memorandum', 'order': 'memorandum',
+}
 TOTAL_KEYS = ('groups', 'general', 'subsidiary', 'accounts', 'auxiliary')
+
+PERSIAN_RE = re.compile(r'[\u0600-\u06FF]')
+
+
+def has_persian(text):
+    """آیا متن حرف فارسی/عربی دارد؟"""
+    return bool(PERSIAN_RE.search(str(text or '')))
+
+
+def category_label(value):
+    """برچسب **فارسی** طبقهٔ نوع حساب؛ هرگز کد انگلیسی برنمی‌گرداند."""
+    key = str(value or '').strip().lower()
+    label = CATEGORY_LABELS.get(CATEGORY_ALIASES.get(key, key)) or CATEGORY_LABELS.get(key)
+    if label:
+        return label
+    return str(value) if has_persian(value) else 'سایر'
+
 
 
 def _hit(code, name, term):
@@ -54,6 +82,9 @@ def _account_node(account, children_map, aux_counts, term, placed, depth=0):
         'nature_color': NATURE_COLORS.get(account.nature, '#64748b'),
         'type_id': account.account_type_id,
         'type_name': account.account_type.name if account.account_type_id else '',
+        'category_label': category_label(
+            getattr(account.account_type, 'category', '') if account.account_type_id else ''
+        ),
         'group_id': account.group_id,
         'group_name': account.group.name if account.group_id else '',
         'is_active': bool(getattr(account, 'is_active', True)),
@@ -88,6 +119,9 @@ def _group_node(group, sub_map, roots_by_group, children_map, aux_counts, term, 
         'coding_locked': bool(getattr(group, 'coding_locked', False)),
         'type_id': group.account_type_id,
         'type_name': group.account_type.name if group.account_type_id else '',
+        'category_label': category_label(
+            getattr(group.account_type, 'category', '') if group.account_type_id else ''
+        ),
         'is_subgroup': depth > 0,
         'matched': _hit(group.code, group.name, term),
         'children': [],
@@ -188,7 +222,7 @@ def build_tree_from(account_types, groups, accounts, aux_counts, query=None):
             'code': account_type.code,
             'name': account_type.name,
             'category': account_type.category,
-            'category_label': CATEGORY_LABELS.get(account_type.category, account_type.category),
+            'category_label': category_label(account_type.category),
             'default_nature': account_type.default_nature,
             'default_nature_label': NATURE_LABELS.get(
                 account_type.default_nature, account_type.default_nature or ''
