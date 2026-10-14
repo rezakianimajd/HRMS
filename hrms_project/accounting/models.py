@@ -12,12 +12,21 @@ from django.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
+from accounting.text_normalization import PersianNormalizedMixin
 
 
 # =============================================================================
 # Branch — organization unit that owns ledgers / sequences
 # =============================================================================
-class Branch(BaseModel):
+
+class AccountingBaseModel(PersianNormalizedMixin, BaseModel):
+    """پایهٔ مدل‌های حسابداری — متن‌ها پیش از ذخیره یکسان‌سازی می‌شوند (ي/ك → ی/ک)."""
+
+    class Meta:
+        abstract = True
+
+
+class Branch(AccountingBaseModel):
     """شعبه / واحد حسابداری (زیرمجموعهٔ شرکت)."""
     code = models.CharField(max_length=30, verbose_name=_('کد شعبه'))
     name = models.CharField(max_length=200, verbose_name=_('نام شعبه'))
@@ -40,7 +49,7 @@ class Branch(BaseModel):
 # =============================================================================
 # Fiscal year & period
 # =============================================================================
-class FiscalYear(BaseModel):
+class FiscalYear(AccountingBaseModel):
     """سال مالی."""
     class Status(models.TextChoices):
         DRAFT = 'draft', _('پیش‌نویس')
@@ -66,7 +75,7 @@ class FiscalYear(BaseModel):
         return self.name
 
 
-class FiscalPeriod(BaseModel):
+class FiscalPeriod(AccountingBaseModel):
     """دورهٔ مالی (ماه/سهماههٔ یک سال مالی)."""
     class Status(models.TextChoices):
         OPEN = 'open', _('باز')
@@ -92,7 +101,7 @@ class FiscalPeriod(BaseModel):
         return f'{self.fiscal_year.name} / {self.code}'
 
 
-class AccountingBook(BaseModel):
+class AccountingBook(AccountingBaseModel):
     """دفتر حسابداری / سرفصل‌های مجزا (اختیاری)."""
     code = models.CharField(max_length=30, verbose_name=_('کد دفتر'))
     name = models.CharField(max_length=150, verbose_name=_('نام دفتر'))
@@ -115,7 +124,7 @@ class AccountingBook(BaseModel):
 # =============================================================================
 # Chart of accounts — AccountType, AccountGroup, Account
 # =============================================================================
-class AccountType(BaseModel):
+class AccountType(AccountingBaseModel):
     """نوع حساب: دارایی/بدهی/حقوق/درآمد/بهای تمام‌شده/هزینه/خارج از تراز."""
     class Category(models.TextChoices):
         ASSET = 'asset', _('دارایی')
@@ -148,7 +157,7 @@ class AccountType(BaseModel):
         return self.name
 
 
-class AccountGroup(BaseModel):
+class AccountGroup(AccountingBaseModel):
     """گروه حساب — سطح میانی چارت حساب بین نوع و سرحساب."""
     class Nature(models.TextChoices):
         DEBIT = 'debit', _('بدهکار')
@@ -177,7 +186,7 @@ class AccountGroup(BaseModel):
         return self.name
 
 
-class Account(BaseModel):
+class Account(AccountingBaseModel):
     """سرحساب / حساب — سلسله‌مراتب نامحدود با parent (خودارجاع)."""
     class Nature(models.TextChoices):
         DEBIT = 'debit', _('بدهکار')
@@ -252,7 +261,7 @@ class Account(BaseModel):
 # =============================================================================
 # Auxiliary / Detailed account engine
 # =============================================================================
-class AuxiliaryCategory(BaseModel):
+class AuxiliaryCategory(AccountingBaseModel):
     """دسته‌بندی حساب تفصیلی (شناور): پرسنل، اشخاص حقیقی/حقوقی، پروژه، قرارداد، بانک، صندوق و ..."""
     class Source(models.TextChoices):
         MANUAL = 'manual', _('دستی')
@@ -279,7 +288,7 @@ class AuxiliaryCategory(BaseModel):
         return self.name
 
 
-class AuxiliaryAccount(BaseModel):
+class AuxiliaryAccount(AccountingBaseModel):
     """حساب تفصیلی — موجودیت تحلیلی (مشتری/تأمین‌کننده/پرسنل/پروژه/قرارداد/بانک/صندوق/سایر)."""
     class AuxType(models.TextChoices):
         PARTY = 'party', _('طرف حساب')
@@ -327,7 +336,7 @@ class AuxiliaryAccount(BaseModel):
 # =============================================================================
 # Dimensions — generic analytical axes
 # =============================================================================
-class AccountingDimension(BaseModel):
+class AccountingDimension(AccountingBaseModel):
     """بُعد مالی (نمونه: مرکز هزینه، پروژه، قرارداد، پرسنل، طرف حساب)."""
     code = models.CharField(max_length=30, verbose_name=_('کد بُعد'))
     name = models.CharField(max_length=150, verbose_name=_('نام بُعد'))
@@ -343,7 +352,7 @@ class AccountingDimension(BaseModel):
         return self.name
 
 
-class DimensionValue(BaseModel):
+class DimensionValue(AccountingBaseModel):
     """مقدار یک بُعد مالی برای یک سند/خط (link به موجودیت واقعی از طریق object_id)."""
     dimension = models.ForeignKey(AccountingDimension, on_delete=models.CASCADE, related_name='values', verbose_name=_('بُعد'))
     code = models.CharField(max_length=50, verbose_name=_('کد مقدار'))
@@ -361,7 +370,7 @@ class DimensionValue(BaseModel):
         return f'{self.dimension.name} : {self.name}'
 
 
-class CostCenter(BaseModel):
+class CostCenter(AccountingBaseModel):
     """مرکز هزینه — سلسله‌مراتب نامحدود (parent خودارجاع)."""
     code = models.CharField(max_length=30, verbose_name=_('کد مرکز هزینه'))
     name = models.CharField(max_length=200, verbose_name=_('نام مرکز هزینه'))
@@ -382,7 +391,7 @@ class CostCenter(BaseModel):
 # =============================================================================
 # Journal & Accounting document (سند حسابداری)
 # =============================================================================
-class Journal(BaseModel):
+class Journal(AccountingBaseModel):
     """دفتر روزنامه (دستی/اتوماتیک/افتتاحیه/اختتامیه/اصلاحی/برگشتی/انتقالی)."""
     class JournalType(models.TextChoices):
         MANUAL = 'manual', _('دستی')
@@ -408,7 +417,7 @@ class Journal(BaseModel):
         return self.name
 
 
-class AccountingDocument(BaseModel):
+class AccountingDocument(AccountingBaseModel):
     """سند حسابداری — هدر سند.
 
     شرکت از طریق BaseModel تأمین می‌شود (company FK)؛ اینجا دوباره تعریف نمی‌شود.
@@ -488,7 +497,7 @@ class AccountingDocument(BaseModel):
         return sum(1 for i in (self.issues or []) if not i.get('done'))
 
 
-class AccountingDocumentLine(BaseModel):
+class AccountingDocumentLine(AccountingBaseModel):
     """سطر سند حسابداری."""
     document = models.ForeignKey(AccountingDocument, on_delete=models.CASCADE, related_name='lines', verbose_name=_('سند'))
     account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='lines', verbose_name=_('حساب'))
@@ -545,7 +554,7 @@ class AccountingDocumentLine(BaseModel):
         return f'{self.account.code} <- {self.debit or self.credit}'
 
 
-class AccountingDocumentDimension(BaseModel):
+class AccountingDocumentDimension(AccountingBaseModel):
     """پیوند سند/سطر به مقادیر ابعاد مالی (generic)."""
     document = models.ForeignKey(AccountingDocument, on_delete=models.CASCADE, related_name='dimensions', verbose_name=_('سند'))
     dimension = models.ForeignKey(AccountingDimension, on_delete=models.CASCADE, related_name='document_dimensions', verbose_name=_('بُعد'))
@@ -563,7 +572,7 @@ class AccountingDocumentDimension(BaseModel):
 # =============================================================================
 # Sequence — configurable document numbering
 # =============================================================================
-class AccountingSequence(BaseModel):
+class AccountingSequence(AccountingBaseModel):
     """شماره‌گذاری پیکربندی‌شدهٔ اسناد."""
     journal = models.ForeignKey(Journal, on_delete=models.CASCADE, related_name='sequences', verbose_name=_('دفتر روزنامه'))
     fiscal_year = models.ForeignKey(FiscalYear, on_delete=models.CASCADE, related_name='sequences', verbose_name=_('سال مالی'))
@@ -584,7 +593,7 @@ class AccountingSequence(BaseModel):
 # =============================================================================
 # Source transaction & posting
 # =============================================================================
-class SourceTransaction(BaseModel):
+class SourceTransaction(AccountingBaseModel):
     """تراکنش منبع — رکورد ورودی از یک ماژول دیگر به موتور حسابداری."""
     source_module = models.CharField(max_length=50, verbose_name=_('ماژول منبع'))
     source_type = models.CharField(max_length=50, verbose_name=_('نوع منبع'))
@@ -610,7 +619,7 @@ class SourceTransaction(BaseModel):
         return f'{self.source_module}:{self.source_type}:{self.source_id}'
 
 
-class PostingBatch(BaseModel):
+class PostingBatch(AccountingBaseModel):
     """یک بچ ثبت — گروهی از اسناد اتوماتیک تولیدشده در یک عملیات."""
     source_transaction = models.ForeignKey(SourceTransaction, on_delete=models.CASCADE, related_name='batches', verbose_name=_('تراکنش منبع'))
     posted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ثبت'))
@@ -621,7 +630,7 @@ class PostingBatch(BaseModel):
         ordering = ['-created_at']
 
 
-class PostingTemplate(BaseModel):
+class PostingTemplate(AccountingBaseModel):
     """قالب ثبت حسابداری — نگاشت تراکنش منبع به آرتیکل‌ها."""
     code = models.CharField(max_length=50, verbose_name=_('کد قالب'))
     name = models.CharField(max_length=200, verbose_name=_('نام قالب'))
@@ -658,7 +667,7 @@ class PostingTemplate(BaseModel):
         return self.name
 
 
-class PostingTemplateLine(BaseModel):
+class PostingTemplateLine(AccountingBaseModel):
     """خط قالب ثبت — یک بدهکار/بستانکار در قالب."""
     template = models.ForeignKey(PostingTemplate, on_delete=models.CASCADE, related_name='lines', verbose_name=_('قالب'))
     account = models.ForeignKey(Account, on_delete=models.PROTECT, related_name='posting_template_lines', verbose_name=_('حساب'))
@@ -679,7 +688,7 @@ class PostingTemplateLine(BaseModel):
 # =============================================================================
 # Approval workflow (گردشکار تأیید چندمرحله‌ای)
 # =============================================================================
-class ApprovalPolicy(BaseModel):
+class ApprovalPolicy(AccountingBaseModel):
     """سیاست تأیید سند با سقف مبلغی برای چندمرحله‌ای شدن."""
     name = models.CharField(max_length=100, verbose_name=_('عنوان سیاست'))
     single_level_limit = models.DecimalField(max_digits=18, decimal_places=0, default=50000000, verbose_name=_('سقف تأیید تک‌مرحله (ریال)'))
@@ -693,7 +702,7 @@ class ApprovalPolicy(BaseModel):
         return self.name
 
 
-class ApprovalStep(BaseModel):
+class ApprovalStep(AccountingBaseModel):
     """یک مرحلهٔ تأیید در گردشکار سند."""
     class Decision(models.TextChoices):
         PENDING = 'pending', _('در انتظار')
@@ -722,7 +731,7 @@ class ApprovalStep(BaseModel):
 # =============================================================================
 # Bank statement & reconciliation
 # =============================================================================
-class BankStatement(BaseModel):
+class BankStatement(AccountingBaseModel):
     """صورتحساب بانکی واردشده برای مغایرت‌گیری."""
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name='bank_statements',
@@ -742,7 +751,7 @@ class BankStatement(BaseModel):
         return f'{self.account.code} - {self.statement_date}'
 
 
-class BankStatementLine(BaseModel):
+class BankStatementLine(AccountingBaseModel):
     """یک ردیف صورتحساب بانکی (برای تطبیق با سطرهای ثبت‌شده)."""
     statement = models.ForeignKey(
         BankStatement, on_delete=models.CASCADE, related_name='lines',
@@ -763,7 +772,7 @@ class BankStatementLine(BaseModel):
         return f'{self.date} - {self.description}'
 
 
-class BankReconciliation(BaseModel):
+class BankReconciliation(AccountingBaseModel):
     """تطبیق یک حساب بانکی در یک تاریخ مشخص."""
     account = models.ForeignKey(
         Account, on_delete=models.CASCADE, related_name='reconciliations',
@@ -786,7 +795,7 @@ class BankReconciliation(BaseModel):
 # =============================================================================
 # Accounting settings (per company, singleton)
 # =============================================================================
-class CodingConfig(BaseModel):
+class CodingConfig(AccountingBaseModel):
     """پیکربندی کدینگ — بازهٔ عددی برای هر سطح کدینگ.
 
     هر سطح (نوع حساب، گروه، کل، معین، تفصیلی، مرکز هزینه) می‌تواند پیشوند
@@ -819,7 +828,7 @@ class CodingConfig(BaseModel):
         return f'{self.get_level_display()} ({self.prefix}{self.start_number}..{self.prefix}{self.end_number})'
 
 
-class AccountingSettings(BaseModel):
+class AccountingSettings(AccountingBaseModel):
     """تنظیمات حسابداری (یک رکورد به ازای هر شرکت)."""
     base_currency = models.ForeignKey(
         'settings_app.Currency', on_delete=models.PROTECT, related_name='accounting_settings_as_base',
@@ -845,7 +854,7 @@ class AccountingSettings(BaseModel):
 # =============================================================================
 # Financial statement approval — تأیید صورت‌های مالی (حسابرسی)
 # =============================================================================
-class FinancialStatementApproval(BaseModel):
+class FinancialStatementApproval(AccountingBaseModel):
     """تأیید/حسابرسی صورت‌های مالی (ترازنامه، سود و زیان، جریان نقدی).
 
     هر رکورد یک «سابقهٔ تأیید» است؛ آخرین رکورد برای هر (شرکت، نوع صورت، سال مالی)

@@ -18,6 +18,18 @@ class BaseModelSerializer(serializers.ModelSerializer):
         abstract = True
         read_only_fields = ['id', 'company', 'created_at', 'updated_at']
 
+    def to_internal_value(self, data):
+        """یکسان‌سازی متن فارسی («ي/ك» → «ی/ک») در همهٔ رشته‌های ورودی، حتی JSONهای تودرتو."""
+        from accounting.text_normalization import normalize_persian_deep
+
+        if isinstance(data, dict):
+            data = {key: normalize_persian_deep(value) for key, value in data.items()}
+        elif hasattr(data, 'setlist'):          # QueryDict (فرم‌ها)
+            data = data.copy()
+            for key in list(data.keys()):
+                data.setlist(key, [normalize_persian_deep(value) for value in data.getlist(key)])
+        return super().to_internal_value(data)
+
 
 def user_full_name(user):
     """نام و نام خانوادگی کاربر؛ در نبود نام، نام کاربری (برای ستون «تهیه‌کننده»)."""

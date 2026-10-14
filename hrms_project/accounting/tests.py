@@ -900,3 +900,69 @@ class AccountTreeTests(TestCase):
         self.assertEqual(data['summary']['accounts'], 3)
         self.assertEqual(data['query'], '')
 
+
+class PersianTextNormalizationTests(TestCase):
+    """یکسان‌سازی حروف عربی «ي/ك/ى» به «ی/ک» در تمام کدینگ حسابداری."""
+
+    def setUp(self):
+        from accounting.models import AccountType
+
+        self.company = make_company(schema_name='testco-norm', name='شرکت تست نرمال‌سازی')
+        self.asset = AccountType.objects.create(
+            company=self.company, code='1', name='دارايي', category='asset', default_nature='debit',
+        )
+
+    def test_normalize_persian_function(self):
+        from accounting.text_normalization import normalize_persian, normalize_persian_deep
+
+        self.assertEqual(normalize_persian('حساب‌هاي جاري'), 'حساب‌های جاری')
+        self.assertEqual(normalize_persian('كدينگ'), 'کدینگ')
+        self.assertEqual(normalize_persian('دارايي ثابت'), 'دارایی ثابت')
+        self.assertEqual(normalize_persian('حساب‌های جاری'), 'حساب‌های جاری')   # بدون تغییر
+        self.assertEqual(normalize_persian(''), '')
+        self.assertIsNone(normalize_persian(None))
+        self.assertEqual(
+            normalize_persian_deep({'a': ['بانك ملت', {'b': 'هزينه'}]}),
+            {'a': ['بانک ملت', {'b': 'هزینه'}]},
+        )
+
+    def test_model_save_normalizes_text_fields(self):
+        from accounting.models import AccountGroup
+
+        group = AccountGroup.objects.create(
+            company=self.company, code='11', name='دارايي جاري', account_type=self.asset,
+        )
+        group.refresh_from_db()
+        self.assertEqual(group.name, 'دارایی جاری')
+
+    def test_account_name_and_code_are_normalized(self):
+        from accounting.models import Account
+
+        account = Account.objects.create(
+            company=self.company, code='ك-۱۰۰۱', name='بانك ملت مركزي',
+            account_type=self.asset, level=1, nature='debit',
+        )
+        account.refresh_from_db()
+        self.assertEqual(account.name, 'بانک ملت مرکزی')
+        self.assertEqual(account.code, 'ک-۱۰۰۱')
+
+    def test_serializer_normalizes_payload(self):
+        from accounting.serializers import AccountSerializer
+
+        serializer = AccountSerializer(data={'code': '1001', 'name': 'بانك ملي', 'nature': 'debit'})
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        account = serializer.save(company=self.company)
+        self.assertEqual(account.name, 'بانک ملی')
+
+    def test_document_serializer_normalizes_description(self):
+        from accounting.serializers import AccountingDocumentSerializer
+
+        serializer = AccountingDocumentSerializer(data={
+            'date': '2024-06-01',
+            'description': 'هزينه‌ی چاپ و تكميل تجهيزات',
+        })
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(
+            serializer.validated_data['description'], 'هزینه‌ی چاپ و تکمیل تجهیزات',
+        )
+

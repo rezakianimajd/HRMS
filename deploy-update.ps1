@@ -59,6 +59,8 @@ $BackendFiles = @(
     'hrms_project/accounting/report_views.py',
     'hrms_project/accounting/coding.py',
     'hrms_project/accounting/account_tree.py',
+    'hrms_project/accounting/text_normalization.py',
+    'hrms_project/accounting/migrations/0024_normalize_arabic_chars_in_coding.py',
     'hrms_project/accounting/tests.py',
     # --- کدینگ والد-آگاه + ابزار رفع ناهمگونی نوع حساب ---
     'hrms_project/accounting/maintenance.py',
