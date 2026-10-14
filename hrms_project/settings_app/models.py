@@ -219,3 +219,165 @@ class Currency(BaseModel):
 
     def __str__(self):
         return f'{self.code} - {self.name}'
+
+
+# =============================================================================
+# Storage & Archive — سامانهٔ بایگانی فایل بر اساس ماژول
+# =============================================================================
+class StorageProfile(BaseModel):
+    """
+    پروفایل بایگانی یک ماژول (مثلاً «پرسنل» یا «قراردادها»).
+
+    ساختار پوشه روی سرور:
+        {MEDIA_ROOT}/{archive_prefix}/company_{company}/<root_folder>/<entity_folder>/...
+
+    مثال‌ها:
+        * پرسنل → root_folder='employees'، entity_folder_pattern='{code}_{name}'
+          → media/archive/company_1/employees/1001_احمدی/مدارک هویتی/...
+        * قراردادها → root_folder='contracts'، entity_folder_pattern='{number}'
+          → media/archive/company_1/contracts/CT-1403-015/اسناد قرارداد/...
+    """
+
+    module_key = models.CharField(
+        max_length=80, verbose_name=_('کلید ماژول'),
+        help_text=_('شناسهٔ یکتا مثل hr.employees یا hrms.contracts'),
+    )
+    module_name = models.CharField(max_length=150, verbose_name=_('نام ماژول'))
+    root_folder = models.CharField(
+        max_length=100, verbose_name=_('نام پوشهٔ ماژول'),
+        help_text=_('نام پوشه در پوشهٔ بایگانی (لاتین/عدد پیشنهاد می‌شود)'),
+    )
+    entity_folder_pattern = models.CharField(
+        max_length=200, default='{code}_{name}', blank=True,
+        verbose_name=_('الگوی نام پوشهٔ موجودیت'),
+        help_text=_('متغیرها: {code} {name} {last_name} {number} {id} {national_id}'),
+    )
+    subfolders = models.JSONField(
+        default=list, blank=True, verbose_name=_('زیرپوشه‌های پیش‌فرض'),
+        help_text=_('لیست زیرپوشه‌هایی که هنگام ساخت پوشهٔ هر موجودیت ساخته می‌شوند'),
+    )
+    allowed_extensions = models.JSONField(
+        default=list, blank=True, verbose_name=_('فرمت‌های مجاز'),
+        help_text=_('اگر خالی باشد از تنظیم عمومی ALLOWED_FILE_EXTENSIONS استفاده می‌شود'),
+    )
+    max_file_size_mb = models.PositiveIntegerField(
+        default=10, verbose_name=_('حداکثر حجم فایل (MB)'),
+    )
+    include_company = models.BooleanField(
+        default=True, verbose_name=_('تفکیک بر اساس شرکت'),
+        help_text=_('ایجاد پوشهٔ company_{id} در بالای ساختار (برای چندمستاجری)'),
+    )
+    color = models.CharField(max_length=20, default='#6366f1', blank=True, verbose_name=_('رنگ نمایش'))
+    icon = models.CharField(max_length=50, default='folder', blank=True, verbose_name=_('آیکون'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('پروفایل بایگانی ماژول')
+        verbose_name_plural = _('پروفایل‌های بایگانی ماژول‌ها')
+        unique_together = [('company', 'module_key')]
+        ordering = ['sort_order', 'module_name']
+
+    def __str__(self):
+        return f'{self.module_name} ({self.root_folder})'
+
+
+class ArchiveFolder(BaseModel):
+    """
+    ثبت پوشهٔ بایگانی یک موجودیت مشخص (پرسنل، قرارداد، ...).
+
+    این رکورد نگاشت «موجودیت ← پوشه» را نگه می‌دارد تا بدون پیمایش دیسک
+    بتوان پوشهٔ هر موجودیت را پیدا کرد و از تکرار ساخت جلوگیری شد.
+    """
+
+    profile = models.ForeignKey(
+        StorageProfile, on_delete=models.CASCADE, related_name='folders',
+        verbose_name=_('پروفایل بایگانی'),
+    )
+    entity_type = models.CharField(
+        max_length=50, verbose_name=_('نوع موجودیت'),
+        help_text=_('مثلاً employee / contract / project'),
+    )
+    entity_id = models.CharField(
+        max_length=64, blank=True, null=True, verbose_name=_('شناسهٔ موجودیت'),
+    )
+    label = models.CharField(max_length=200, verbose_name=_('نام پوشه'))
+    relative_path = models.CharField(
+        max_length=500, verbose_name=_('مسیر نسبی'),
+        help_text=_('نسبت به MEDIA_ROOT'),
+    )
+
+    class Meta:
+        verbose_name = _('پوشهٔ بایگانی موجودیت')
+        verbose_name_plural = _('پوشه‌های بایگانی موجودیت‌ها')
+        ordering = ['label']
+        indexes = [
+            models.Index(fields=['company', 'profile']),
+            models.Index(fields=['entity_type', 'entity_id']),
+        ]
+
+    def __str__(self):
+        return f'{self.label} → {self.relative_path}'
+
+
+def default_storage_profiles():
+    """
+    پروفایل‌های بایگانی پیش‌فرض برای ماژول‌های اصلی سیستم.
+
+    برای «seed» اولیهٔ هر شرکت استفاده می‌شود و در صورت نبودِ پروفایل
+    برای هر شرکت فراخوانی می‌گردد.
+    """
+    return [
+        {
+            'module_key': 'hr.employees', 'module_name': 'پرسنل',
+            'root_folder': 'employees', 'entity_folder_pattern': '{code}_{last_name}',
+            'subfolders': ['مدارک هویتی', 'قرارداد و حکم', 'بیمه و مالیات', 'مدارک تحصیلی', 'سایر'],
+            'color': '#ec4899', 'icon': 'badge', 'sort_order': 1,
+            'description': 'پوشهٔ اختصاصی هر پرسنل شامل همهٔ مدارک مرتبط',
+        },
+        {
+            'module_key': 'hrms.contracts', 'module_name': 'قراردادها',
+            'root_folder': 'contracts', 'entity_folder_pattern': '{number}',
+            'subfolders': ['متن قرارداد', 'اسناد و مکاتبات', 'صورت‌وضعیت‌ها', 'تضامین', 'پرداخت‌ها'],
+            'color': '#f59e0b', 'icon': 'handshake', 'sort_order': 2,
+            'description': 'پوشهٔ هر قرارداد به نام شمارهٔ قرارداد',
+        },
+        {
+            'module_key': 'hrms.projects', 'module_name': 'پروژه‌ها',
+            'root_folder': 'projects', 'entity_folder_pattern': '{code}_{name}',
+            'subfolders': ['مدارک فنی', 'قراردادها', 'صورت‌وضعیت‌ها', 'مکاتبات', 'گزارش‌ها'],
+            'color': '#8b5cf6', 'icon': 'account_tree', 'sort_order': 3,
+        },
+        {
+            'module_key': 'hrms.recruitment', 'module_name': 'جذب و استخدام',
+            'root_folder': 'recruitment', 'entity_folder_pattern': '{name}',
+            'subfolders': ['رزومه', 'مصاحبه‌ها', 'ارزیابی', 'پیشنهاد همکاری'],
+            'color': '#0ea5e9', 'icon': 'person_search', 'sort_order': 4,
+        },
+        {
+            'module_key': 'hrms.organization_documents', 'module_name': 'بایگانی اسناد سازمان',
+            'root_folder': 'organization', 'entity_folder_pattern': '{category}',
+            'subfolders': ['مجوزها', 'ابلاغیه‌ها', 'تفاهم‌نامه‌ها', 'گزارش‌های مالی'],
+            'color': '#06b6d4', 'icon': 'folder_shared', 'sort_order': 5,
+        },
+        {
+            'module_key': 'hrms.payroll', 'module_name': 'حقوق و دستمزد',
+            'root_folder': 'payroll', 'entity_folder_pattern': '{year}',
+            'subfolders': ['سوابق پرداخت', 'لیست بیمه', 'مالیات'],
+            'color': '#10b981', 'icon': 'payments', 'sort_order': 6,
+        },
+        {
+            'module_key': 'hrms.pettycash', 'module_name': 'تنخواه',
+            'root_folder': 'pettycash', 'entity_folder_pattern': '{year}_{month}',
+            'subfolders': ['صورت‌هزینه‌ها', 'فاکتورها', 'رسیدها'],
+            'color': '#f97316', 'icon': 'wallet', 'sort_order': 7,
+        },
+        {
+            'module_key': 'hrms.accounting', 'module_name': 'حسابداری',
+            'root_folder': 'accounting', 'entity_folder_pattern': '{year}',
+            'subfolders': ['اسناد حسابداری', 'صورت‌حساب‌های بانکی', 'گزارش‌ها'],
+            'color': '#3b82f6', 'icon': 'calculate', 'sort_order': 8,
+        },
+    ]
+
+

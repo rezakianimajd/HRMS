@@ -1,8 +1,9 @@
 """Serializers for the Settings module."""
+import os
 from rest_framework import serializers
 from settings_app.models import (
     SystemSetting, CompanyProfile, BaleContact, Signatory,
-    Addition, Deduction, Currency,
+    Addition, Deduction, Currency, StorageProfile, ArchiveFolder,
 )
 
 
@@ -88,3 +89,65 @@ class CompanyProfileSerializer(serializers.ModelSerializer):
         if obj.logo and hasattr(obj.logo, 'url'):
             return obj.logo.url
         return None
+
+
+class StorageProfileSerializer(serializers.ModelSerializer):
+    """پروفایل بایگانی یک ماژول + آمار محاسبه‌شده."""
+    folder_count = serializers.SerializerMethodField()
+    file_count = serializers.SerializerMethodField()
+    total_size = serializers.SerializerMethodField()
+    path_preview = serializers.SerializerMethodField()
+
+    class Meta:
+        model = StorageProfile
+        fields = [
+            'id', 'module_key', 'module_name', 'root_folder',
+            'entity_folder_pattern', 'subfolders', 'allowed_extensions',
+            'max_file_size_mb', 'include_company', 'color', 'icon',
+            'sort_order', 'description', 'is_active',
+            'folder_count', 'file_count', 'total_size', 'path_preview',
+            'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+    def _stats(self, obj):
+        cache = self.context.setdefault('_stats_cache', {})
+        if obj.id not in cache:
+            from core.engines.archive_storage_engine import archive_engine
+            cache[obj.id] = archive_engine.module_stats(obj.company_id, obj)
+        return cache[obj.id]
+
+    def get_folder_count(self, obj):
+        try:
+            return self._stats(obj)['folder_count']
+        except Exception:
+            return 0
+
+    def get_file_count(self, obj):
+        try:
+            return self._stats(obj)['file_count']
+        except Exception:
+            return 0
+
+    def get_total_size(self, obj):
+        try:
+            return self._stats(obj)['total_size']
+        except Exception:
+            return 0
+
+    def get_path_preview(self, obj):
+        from core.engines.archive_storage_engine import archive_engine
+        base = archive_engine.company_root(obj.company_id, obj.include_company)
+        return os.path.join(os.path.basename(base), obj.root_folder or '')
+
+
+class ArchiveFolderSerializer(serializers.ModelSerializer):
+    profile_name = serializers.CharField(source='profile.module_name', read_only=True)
+
+    class Meta:
+        model = ArchiveFolder
+        fields = [
+            'id', 'profile', 'profile_name', 'entity_type', 'entity_id',
+            'label', 'relative_path', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']

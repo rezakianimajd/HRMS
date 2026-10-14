@@ -11,6 +11,7 @@ import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import BeachAccessOutlinedIcon from '@mui/icons-material/BeachAccessOutlined';
 import AccessTimeFilledOutlinedIcon from '@mui/icons-material/AccessTimeFilledOutlined';
 import PublicIcon from '@mui/icons-material/Public';
+import StorageArchivePanel from './StorageArchivePanel';
 
 const SETTING_META = {
   BASE_FILE_STORAGE_PATH: { label: 'مسیر ذخیرهسازی فایلها', desc: 'محل پیشفرض ذخیره اسناد روی سرور', group: 'storage', type: 'text' },
@@ -142,6 +143,17 @@ const GeneralSettingsPanel = () => {
               <Avatar sx={{ width: 34, height: 34, bgcolor: gm.color, boxShadow: `0 4px 14px ${gm.color}40` }}>{gm.icon}</Avatar>
               <Typography variant="subtitle1" fontWeight={700} sx={{ color: gm.color }}>{gm.title}</Typography>
             </Box>
+
+            {g === 'storage' && (
+              <>
+                <StorageArchivePanel />
+                <Divider sx={{ my: 3 }} />
+                <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5, color: gm.color }}>
+                  تنظیمات پایهٔ ذخیره‌سازی
+                </Typography>
+              </>
+            )}
+
             <Grid container spacing={3}>
               {gKeys.map(k => {
                 const meta = SETTING_META[k];

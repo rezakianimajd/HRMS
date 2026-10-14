@@ -7,6 +7,7 @@ from settings_app import backup_views
 from settings_app.bale_views import BaleContactViewSet
 from settings_app.signatory_views import SignatoryViewSet
 from settings_app.definition_views import AdditionViewSet, DeductionViewSet, CurrencyViewSet
+from settings_app import archive_views
 
 router = DefaultRouter()
 router.register(r'bale-contacts', BaleContactViewSet, basename='bale-contact')
@@ -47,4 +48,15 @@ urlpatterns = [
     path('backup/create/', backup_views.backup_create, name='api-backup-create'),
     path('backup/restore/<str:filename>/', backup_views.backup_restore, name='api-backup-restore'),
     path('backup/wipe/', backup_views.wipe_data, name='api-backup-wipe'),
+
+    # Storage & Archive (بایگانی فایل بر اساس ماژول)
+    path('storage/overview/', archive_views.storage_overview, name='api-storage-overview'),
+    path('storage/media-info/', archive_views.media_info, name='api-storage-media-info'),
+    path('storage/profiles/', archive_views.storage_profiles, name='api-storage-profiles'),
+    path('storage/profiles/<int:profile_id>/', archive_views.storage_profile_detail, name='api-storage-profile-detail'),
+    path('storage/profiles/<int:profile_id>/build/', archive_views.storage_profile_build, name='api-storage-profile-build'),
+    path('storage/profiles/<int:profile_id>/folders/', archive_views.storage_profile_folders, name='api-storage-profile-folders'),
+    path('storage/profiles/<int:profile_id>/reset/', archive_views.storage_profile_reset, name='api-storage-profile-reset'),
+    path('storage/folders/<int:folder_id>/', archive_views.storage_folder_delete, name='api-storage-folder-delete'),
+    path('storage/ensure/', archive_views.storage_ensure_entity, name='api-storage-ensure'),
 ]
