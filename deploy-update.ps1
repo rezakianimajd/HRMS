@@ -9,6 +9,11 @@
     نکتهٔ کلیدی: nginx مسیر /static/ را از /var/www/hrms/static سرو می‌کند
     (location /static/ → alias) و index.html ساختهٔ CRA به /static/js/main.<hash>.js
     اشاره می‌کند؛ پس بعد از هر بیلد، اَسِت‌های build/static باید به آن مسیر هم کپی شوند.
+    نصب آفلاین وابستگی‌های جدید: اگر پوشهٔ _transfer\wheels وجود داشته باشد، wheel ها به
+    سرور منتقل و با «pip install --no-index» (بدون هیچ اتصال به اینترنت) نصب می‌شوند؛
+    django-jazzmin و python-dotenv هر دو py3-none-any هستند و روی لینوکس نصب می‌شوند.
+
+
 
 .PARAMETER LocalBuild
     بیلد روی ویندوز انجام شود و پوشهٔ build منتقل شود (پیش‌فرض: بیلد روی سرور).
@@ -221,6 +226,27 @@ $FrontendFiles = @(
     'frontend/src/pages/projects/ProjectsShared.jsx'
 )
 
+# ---------------------------------------------------------------- سامانهٔ بایگانی فایل
+# (تنظیمات → تنظیمات عمومی → «ذخیره‌سازی و فایل‌ها»)
+$BackendFiles += @(
+    'hrms_project/core/engines/archive_storage_engine.py',
+    'hrms_project/settings_app/models.py',
+    'hrms_project/settings_app/serializers.py',
+    'hrms_project/settings_app/urls.py',
+    'hrms_project/settings_app/admin.py',
+    'hrms_project/settings_app/archive_views.py',
+    'hrms_project/settings_app/migrations/0012_storageprofile_archivefolder.py'
+)
+$FrontendFiles += @(
+    'frontend/src/core/components/settings/StorageArchivePanel.jsx',
+    'frontend/src/core/components/settings/GeneralSettingsPanel.jsx'
+)
+
+# وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
+#   django-jazzmin و python-dotenv هر دو py3-none-any هستند و روی لینوکس کار می‌کنند.
+$WheelDir = Join-Path $RepoRoot '_transfer\wheels'
+
+
 function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }
 function Ok   ($m) { Write-Host "   [ok] $m" -ForegroundColor Green }
 function Warn ($m) { Write-Host "   [..] $m" -ForegroundColor Yellow }
@@ -330,6 +356,23 @@ if (-not $SkipBackend) {
 
 
 # ---------------------------------------------------------------- مایگریشن
+# ---------------------------------------------------------------- نصب آفلاین وابستگی‌های جدید
+if (Test-Path $WheelDir) {
+    $wheels = @(Get-ChildItem -Path $WheelDir -Filter '*.whl' -File -ErrorAction SilentlyContinue)
+    if ($wheels.Count -gt 0) {
+        Step '۲.۵/۶ نصب آفلاین وابستگی‌های پایتون (django-jazzmin/python-dotenv)'
+        ssh $Srv 'rm -rf /tmp/hrms-wheels && mkdir -p /tmp/hrms-wheels'
+        if ($LASTEXITCODE -ne 0) { throw 'آماده‌سازی /tmp/hrms-wheels ناموفق بود.' }
+        scp $wheels.FullName "${Srv}:/tmp/hrms-wheels/"
+        if ($LASTEXITCODE -ne 0) { throw 'انتقال wheel ها ناموفق بود.' }
+        # نصب آفلاین: هیچ تلاشی برای اتصال به اینترنت انجام نمی‌شود (--no-index)
+        ssh -t $Srv "sudo -u ${AppUser} $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels --upgrade django-jazzmin python-dotenv && rm -rf /tmp/hrms-wheels"
+        if ($LASTEXITCODE -ne 0) { throw 'نصب آفلاین wheel ها ناموفق بود.' }
+        Ok ("{0} wheel نصب شد." -f $wheels.Count)
+    }
+}
+
+
 if ($Migrate) {
     Step 'مایگریشن (migrate_schemas روی همهٔ شرکت‌ها)'
     ssh -t $Srv "sudo -u ${AppUser} bash -lc 'cd $AppDir/hrms_project && set -a && . ./.env && set +a && DJANGO_SETTINGS_MODULE=hrms_project.settings.production $AppDir/venv/bin/python manage.py migrate_schemas'"
@@ -410,6 +453,6 @@ if ($LASTEXITCODE -ne 0) { throw 'ری‌استارت ناموفق بود (کا�
 Ok 'سرویس‌ها ری‌استارت شدند.'
 
 Step 'تأیید نهایی'
-ssh $Srv "systemctl is-active gunicorn celery-worker celery-beat nginx; echo '--- backend (باید 2 باشد):'; grep -c REPORTABLE_DOCUMENT_STATUSES $AppDir/hrms_project/accounting/report_views.py; echo '--- nginx /static/ alias:'; grep -n 'alias' /etc/nginx/sites-available/hrms 2>/dev/null || echo '  (config با این نام پیدا نشد)'; echo '--- hash در index.html:'; grep -o 'main\.[a-z0-9]*\.js' $AppDir/frontend/build/index.html; echo '--- hash موجود در ${StaticDir}:'; ls $StaticDir/js/ 2>/dev/null | grep main"
+ssh $Srv "systemctl is-active gunicorn celery-worker celery-beat nginx; echo '--- storage backend:'; test -f $AppDir/hrms_project/settings_app/archive_views.py && echo 'archive_views OK' || echo 'MISSING archive_views'; echo '--- storage migration:'; ls $AppDir/hrms_project/settings_app/migrations/0012_*.py 2>/dev/null || echo 'MISSING 0012'; echo '--- jazzmin:'; $AppDir/venv/bin/pip show django-jazzmin 2>/dev/null | head -1 || echo 'jazzmin NOT installed'; echo '--- nginx /static/ alias:'; grep -n 'alias' /etc/nginx/sites-available/hrms 2>/dev/null || echo '  (config با این نام پیدا نشد)'; echo '--- hash در index.html:'; grep -o 'main\.[a-z0-9]*\.js' $AppDir/frontend/build/index.html; echo '--- hash موجود در ${StaticDir}:'; ls $StaticDir/js/ 2>/dev/null | grep main"
 Ok 'کامل شد → مرورگر: Ctrl+Shift+R'
 
