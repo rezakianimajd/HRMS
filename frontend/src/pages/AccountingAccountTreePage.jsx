@@ -939,6 +939,7 @@ const AccountingAccountTreePage = () => {
             {editor?.node ? 'ذخیره تغییرات' : 'ثبت'}
           </Button>
         </DialogActions>
+      </Dialog>
 
       {/* دیالوگ ویرایش گروهی حساب‌های انتخاب‌شده */}
       <Dialog
@@ -1017,8 +1018,6 @@ const AccountingAccountTreePage = () => {
             اعمال روی {toPersianDigits(selected.size)} حساب
           </Button>
         </DialogActions>
-      </Dialog>
-
       </Dialog>
     </Box>
   );
