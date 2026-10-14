@@ -6,7 +6,7 @@ import axiosInstance from '../../api/axiosConfig';
 import {
   Box, Drawer, List, ListItem, ListItemButton, ListItemIcon,
   ListItemText, Divider, Typography, Avatar, IconButton, Tooltip,
-  Menu, MenuItem,
+  Menu, MenuItem, Collapse,
 } from '@mui/material';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -215,8 +215,17 @@ const Layout = ({ children }) => {
                     display: 'flex', alignItems: 'center',
                     px: 1.5, py: 0.9, mb: 0.25, mt: 0.75,
                     cursor: 'pointer',
-                    borderRadius: '10px',
-                    ...(groupActive && { bgcolor: `${iconColor}0d` }),
+                    borderRadius: '12px',
+                    transition: 'background 0.2s ease, box-shadow 0.2s ease',
+                    ...(open
+                      ? {
+                        background: `linear-gradient(135deg, ${iconColor}1f, ${iconColor}0a)`,
+                        border: `1px solid ${iconColor}33`,
+                        boxShadow: `0 4px 14px ${iconColor}1f`,
+                        borderRadius: '12px 12px 6px 6px',
+                      }
+                      : { border: '1px solid transparent' }),
+                    ...(groupActive && !open && { bgcolor: `${iconColor}0d` }),
                     '&:hover': { bgcolor: `${iconColor}14` },
                   }}
                 >
@@ -228,7 +237,9 @@ const Layout = ({ children }) => {
                       mr: 1.2,
                       ml: 0.3,
                       background: `linear-gradient(180deg, ${iconColor}, ${iconColor}55)`,
-                      opacity: groupActive ? 1 : 0.55,
+                      opacity: groupActive || open ? 1 : 0.55,
+                      boxShadow: open ? `0 0 10px ${iconColor}66` : 'none',
+                      transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
                     }}
                   />
                   <Typography
@@ -237,7 +248,7 @@ const Layout = ({ children }) => {
                       fontFamily: 'Vazirmatn, IRANSans, sans-serif',
                       fontSize: '0.9rem',
                       letterSpacing: '0.02em',
-                      color: groupActive ? iconColor : 'text.primary',
+                      color: groupActive || open ? iconColor : 'text.primary',
                       flex: 1,
                       whiteSpace: 'nowrap',
                       overflow: 'hidden',
@@ -246,16 +257,33 @@ const Layout = ({ children }) => {
                   >
                     {group.title}
                   </Typography>
-                  <IconButton size="small" sx={{ p: 0.3, color: groupActive ? iconColor : 'text.secondary', opacity: 0.7 }}>
+                  <IconButton size="small" sx={{ p: 0.3, color: groupActive || open ? iconColor : 'text.secondary', opacity: 0.75 }}>
                     {open ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowLeftIcon fontSize="small" />}
                   </IconButton>
                 </Box>
 
-                {open && group.items.map((item) => {
+                {/* زیرآیتم‌های گروه با پس‌زمینهٔ هم‌رنگ سرگروه (تمایز بصری در حالت باز) */}
+                <Collapse in={open} timeout={220} unmountOnExit>
+                  <Box
+                    sx={{
+                      position: 'relative',
+                      pr: 0.75,
+                      pl: 0.5,
+                      py: 0.6,
+                      mb: 0.25,
+                      borderRadius: '4px 4px 14px 14px',
+                      background: `linear-gradient(180deg, ${iconColor}1a, ${iconColor}08)`,
+                      border: `1px solid ${iconColor}26`,
+                      borderTop: 'none',
+                      borderRight: `3px solid ${iconColor}66`,
+                      boxShadow: `inset 0 -6px 18px ${iconColor}0f`,
+                    }}
+                  >
+                    {group.items.map((item) => {
                   const active = isActive(item.path);
                   const isPlaceholder = item.ready === false;
                   return (
-                    <ListItem key={item.id} disablePadding sx={{ mb: 0.4 }}>
+                    <ListItem key={item.id} disablePadding sx={{ mb: 0.4, '&:last-of-type': { mb: 0 } }}>
                       <ListItemButton
                         selected={active}
                         onClick={() => {
@@ -267,26 +295,30 @@ const Layout = ({ children }) => {
                         }}
                         sx={{
                           justifyContent: 'flex-start',
-                          px: 1.5,
+                          px: 1.25,
                           py: 0.7,
                           borderRadius: '10px',
                           minHeight: 36,
+                          transition: 'background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease',
                           ...(active
                             ? {
-                                background: `linear-gradient(135deg, ${item.color || '#6366f1'}26, ${item.color || '#6366f1'}12)`,
-                                border: `1px solid ${item.color || '#6366f1'}55`,
-                                boxShadow: `0 3px 12px ${item.color || '#6366f1'}20`,
-                              }
-                            : {}),
-                          '&:hover': { background: 'rgba(99,102,241,0.06)' },
+                              background: `linear-gradient(135deg, ${item.color || iconColor}2e, ${item.color || iconColor}14)`,
+                              border: `1px solid ${item.color || iconColor}55`,
+                              boxShadow: `0 3px 12px ${item.color || iconColor}26`,
+                            }
+                            : { border: '1px solid transparent' }),
+                          '&:hover': {
+                            background: `${item.color || iconColor}1a`,
+                            transform: 'translateX(-2px)',
+                          },
                         }}
                       >
                         <ListItemIcon sx={{
-                          minWidth: 36,
+                          minWidth: 34,
                           justifyContent: 'center',
-                          color: item.color || '#6366f1',
-                          opacity: active ? 1 : 0.72,
-                          filter: active ? `drop-shadow(0 2px 6px ${item.color || '#6366f1'}66)` : 'none',
+                          color: item.color || iconColor,
+                          opacity: active ? 1 : 0.75,
+                          filter: active ? `drop-shadow(0 2px 6px ${item.color || iconColor}66)` : 'none',
                           transition: 'opacity 0.2s ease',
                         }}>
                           {item.icon}
@@ -298,7 +330,7 @@ const Layout = ({ children }) => {
                               fontFamily: 'Vazirmatn, IRANSans, sans-serif',
                               fontSize: '0.85rem',
                               fontWeight: active ? 700 : 500,
-                              color: active ? (item.color || 'inherit') : 'text.primary',
+                              color: active ? (item.color || iconColor) : 'text.primary',
                               noWrap: true,
                             }}
                           />
@@ -311,7 +343,9 @@ const Layout = ({ children }) => {
                       </ListItemButton>
                     </ListItem>
                   );
-                })}
+                    })}
+                  </Box>
+                </Collapse>
               </Box>
             );
           })
@@ -343,7 +377,11 @@ const Layout = ({ children }) => {
       >
         {railGroup && (
           <>
-            <Box sx={{ px: 2, py: 1, borderBottom: '1px solid rgba(99,102,241,0.1)' }}>
+            <Box sx={{
+              px: 2, py: 1,
+              background: `linear-gradient(135deg, ${railGroup.color}1f, ${railGroup.color}0a)`,
+              borderBottom: `1px solid ${railGroup.color}33`,
+            }}>
               <Typography variant="body2" fontWeight={800} sx={{ color: railGroup.color }}>
                 {railGroup.title}
               </Typography>
@@ -364,7 +402,13 @@ const Layout = ({ children }) => {
                     }
                   }}
                   selected={active}
-                  sx={{ borderRadius: '10px', mx: 0.5, my: 0.25, px: 1.5, py: 1 }}
+                  sx={{
+                    borderRadius: '10px', mx: 0.5, my: 0.25, px: 1.5, py: 1,
+                    transition: 'background 0.18s ease',
+                    '&:hover': { background: `${railGroup.color}14` },
+                    '&.Mui-selected': { background: `${railGroup.color}26` },
+                    '&.Mui-selected:hover': { background: `${railGroup.color}33` },
+                  }}
                 >
                   <ListItemIcon sx={{ minWidth: 34, color: item.color || '#6366f1', opacity: active ? 1 : 0.7 }}>
                     {item.icon}
