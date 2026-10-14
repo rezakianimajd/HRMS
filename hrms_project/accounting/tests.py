@@ -966,3 +966,146 @@ class PersianTextNormalizationTests(TestCase):
             serializer.validated_data['description'], 'هزینه‌ی چاپ و تکمیل تجهیزات',
         )
 
+
+class AccountBulkUpdateTests(TestCase):
+    """ویرایش گروهی حساب‌ها: والد، ماهیت، نوع حساب، گروه، تفصیل‌ها و قابل‌سندخوری یک‌جا."""
+
+    def setUp(self):
+        from types import SimpleNamespace
+
+        from django.http import QueryDict
+
+        from accounting.models import Account, AccountGroup, AccountType, AuxiliaryCategory
+
+        self.SimpleNamespace = SimpleNamespace
+        self.QueryDict = QueryDict
+        self.Account = Account
+        self.company = make_company(schema_name='testco-bulk', name='شرکت تست ویرایش گروهی')
+        self.asset = AccountType.objects.create(
+            company=self.company, code='1', name='دارایی', category='asset', default_nature='debit',
+        )
+        self.expense = AccountType.objects.create(
+            company=self.company, code='5', name='هزینه', category='expense', default_nature='debit',
+        )
+        self.group_a = AccountGroup.objects.create(
+            company=self.company, code='11', name='دارایی جاری', account_type=self.asset, nature='debit',
+        )
+        self.group_b = AccountGroup.objects.create(
+            company=self.company, code='12', name='دارایی ثابت', account_type=self.asset, nature='debit',
+        )
+        self.general_a = Account.objects.create(
+            company=self.company, code='1001', name='موجودی نقد', account_type=self.asset,
+            group=self.group_a, level=1, nature='debit',
+        )
+        self.general_b = Account.objects.create(
+            company=self.company, code='1101', name='دارایی ثابت', account_type=self.asset,
+            group=self.group_b, level=1, nature='debit',
+        )
+        self.sub1 = Account.objects.create(
+            company=self.company, code='100101', name='بانک الف', account_type=self.asset,
+            group=self.group_a, parent=self.general_a, level=2, nature='debit',
+        )
+        self.sub2 = Account.objects.create(
+            company=self.company, code='100102', name='بانک ب', account_type=self.asset,
+            group=self.group_a, parent=self.general_a, level=2, nature='debit',
+        )
+        self.aux_cat = AuxiliaryCategory.objects.create(
+            company=self.company, code='A1', name='بانک‌ها',
+        )
+
+    def _call(self, payload):
+        from accounting.views import AccountViewSet
+
+        view = AccountViewSet()
+        view.request = self.SimpleNamespace(
+            tenant=self.company, company=self.company,
+            query_params=self.QueryDict(''), data=payload,
+        )
+        return view.bulk_update(view.request)
+
+    def test_bulk_sets_parent_nature_and_type(self):
+        response = self._call({
+            'ids': [self.sub1.id, self.sub2.id],
+            'fields': {'parent': self.general_b.id, 'nature': 'credit', 'account_type': self.expense.id},
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['updated'], 2)
+        self.assertEqual(response.data['errors'], [])
+        for account in (self.sub1, self.sub2):
+            account.refresh_from_db()
+            self.assertEqual(account.parent_id, self.general_b.id)
+            self.assertEqual(account.nature, 'credit')
+            self.assertEqual(account.account_type_id, self.expense.id)
+            self.assertEqual(account.group_id, self.group_b.id)   # وراثت گروه از والد
+            self.assertEqual(account.level, 2)
+            self.assertTrue(account.coding_locked)                # نشانهٔ «کدینگ دستی»
+
+    def test_bulk_sets_group_postable_and_auxiliary(self):
+        response = self._call({
+            'ids': [self.sub1.id, self.sub2.id],
+            'fields': {'group': self.group_b.id, 'is_postable': False,
+                       'auxiliary_category_1': self.aux_cat.id},
+        })
+        self.assertEqual(response.data['updated'], 2)
+        for account in (self.sub1, self.sub2):
+            account.refresh_from_db()
+            self.assertEqual(account.group_id, self.group_b.id)
+            self.assertFalse(account.is_postable)
+            self.assertEqual(account.auxiliary_category_1_id, self.aux_cat.id)
+
+    def test_rejects_empty_ids(self):
+        response = self._call({'ids': [], 'fields': {'nature': 'credit'}})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('انتخاب نشده', response.data['error'])
+
+    def test_rejects_when_no_field_selected(self):
+        response = self._call({'ids': [self.sub1.id], 'fields': {}})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('فیلدی', response.data['error'])
+
+    def test_rejects_unknown_only_fields(self):
+        response = self._call({'ids': [self.sub1.id], 'fields': {'code': '9999'}})
+        self.assertEqual(response.status_code, 400)
+
+
+    def test_rejects_parent_from_selection(self):
+        response = self._call({
+            'ids': [self.general_a.id, self.sub1.id],
+            'fields': {'parent': self.general_a.id},
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('والد', response.data['error'])
+        self.sub1.refresh_from_db()
+        self.assertEqual(self.sub1.parent_id, self.general_a.id)   # هیچ تغییری اعمال نشد
+
+    def test_rejects_cycle_parent(self):
+        response = self._call({
+            'ids': [self.general_a.id],
+            'fields': {'parent': self.sub1.id},     # زیرمجموعهٔ خودِ حساب
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('چرخه', response.data['error'])
+        self.general_a.refresh_from_db()
+        self.assertIsNone(self.general_a.parent_id)
+
+    def test_rejects_parent_outside_company(self):
+        other = make_company(schema_name='testco-bulk2', name='شرکت دیگر')
+        foreign_general = self.Account.objects.create(
+            company=other, code='2001', name='حساب شرکت دیگر',
+            account_type=self.asset, level=1, nature='debit',
+        )
+        response = self._call({'ids': [self.sub1.id], 'fields': {'parent': foreign_general.id}})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('حساب والد', response.data['error'])
+
+    def test_accounts_of_other_company_are_not_touched(self):
+        response = self._call({'ids': [999999], 'fields': {'nature': 'credit'}})
+        self.assertEqual(response.status_code, 404)
+
+    def test_endpoint_url_resolves(self):
+        from django.urls import resolve
+
+        match = resolve('/api/accounting/accounts/bulk-update/')
+        self.assertEqual(match.func.cls.__name__, 'AccountViewSet')
+        self.assertEqual(match.func.actions['post'], 'bulk_update')
+

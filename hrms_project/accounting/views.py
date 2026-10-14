@@ -388,6 +388,118 @@ class AccountViewSet(_NoDeleteWithLinesMixin, CompanyScopedViewSet):
                 return match
         return qs.order_by('code').first()
 
+    # ---------------------------------------------------------------- ویرایش گروهی
+    BULK_LIMIT = 300
+    BULK_FIELDS = (
+        'parent', 'group', 'account_type', 'nature', 'is_postable',
+        'auxiliary_category_1', 'auxiliary_category_2', 'auxiliary_category_3',
+    )
+
+    @staticmethod
+    def _descendant_ids(company, root_ids):
+        """شناسهٔ همهٔ زیرمجموعه‌های حساب‌های داده‌شده (برای جلوگیری از چرخه)."""
+        seen = set(root_ids)
+        frontier = set(root_ids)
+        while frontier:
+            children = set(
+                Account.objects.filter(company=company, parent_id__in=frontier)
+                .values_list('id', flat=True)
+            )
+            frontier = children - seen
+            seen |= children
+        return seen - set(root_ids)
+
+    @staticmethod
+    def _first_error(errors):
+        """نخستین پیام خطای اعتبارسنجی به‌صورت متن خوانا."""
+        if isinstance(errors, dict):
+            for value in errors.values():
+                return AccountViewSet._first_error(value)
+            return ''
+        if isinstance(errors, (list, tuple)) and errors:
+            return AccountViewSet._first_error(errors[0])
+        return str(errors)
+
+    @action(detail=False, methods=['post'], url_path='bulk-update')
+    def bulk_update(self, request):
+        """ویرایش گروهی چند حساب (معین/کل) به‌صورت یکجا.
+
+        بدنهٔ درخواست: `{"ids": [1, 2, 3], "fields": {"parent": 12, "nature": "credit"}}`.
+        فقط فیلدهای ارسال‌شده تغییر می‌کنند و **همان قاعده‌های ویرایش تکی** اعمال می‌شود
+        (وراثت گروه/سطح از والد، نشانهٔ «کدینگ دستی»، یکسان‌سازی متن، اعتبارسنجی سریالایزر).
+        خروجی: تعداد به‌روزشده و فهرست خطاهای هر ردیف.
+        """
+        ids = request.data.get('ids') or []
+        fields = request.data.get('fields') or {}
+        if not isinstance(ids, list) or not ids:
+            return Response({'error': 'هیچ حسابی برای ویرایش انتخاب نشده است.'}, status=400)
+        if not isinstance(fields, dict):
+            return Response({'error': 'فیلدهای ویرایش نامعتبر است.'}, status=400)
+        if len(ids) > self.BULK_LIMIT:
+            return Response(
+                {'error': f'حداکثر {self.BULK_LIMIT} حساب در هر ویرایش گروهی مجاز است.'}, status=400,
+            )
+        changes = {key: value for key, value in fields.items() if key in self.BULK_FIELDS}
+        if not changes:
+            return Response({'error': 'هیچ فیلدی برای تغییر مشخص نشده است.'}, status=400)
+
+        company = _company(request)
+
+        # اعتبارسنجی مالکیت شرکت برای فیلدهای ارجاعی (جلوگیری از ارجاع بین‌شرکتی)
+        related = {
+            'parent': (Account, 'حساب والد'),
+            'group': (AccountGroup, 'گروه حساب'),
+            'account_type': (AccountType, 'نوع حساب'),
+            'auxiliary_category_1': (AuxiliaryCategory, 'تفصیل یک'),
+            'auxiliary_category_2': (AuxiliaryCategory, 'تفصیل دو'),
+            'auxiliary_category_3': (AuxiliaryCategory, 'تفصیل سه'),
+        }
+        for field, (model, label) in related.items():
+            value = changes.get(field)
+            if value and not model.objects.filter(company=company, pk=value).exists():
+                return Response({'error': f'{label} انتخاب‌شده در این شرکت یافت نشد.'}, status=400)
+
+        accounts = list(Account.objects.filter(company=company, id__in=ids))
+        if not accounts:
+            return Response({'error': 'حسابی با این شناسه‌ها یافت نشد.'}, status=404)
+
+        selected_ids = {account.id for account in accounts}
+        parent_id = changes.get('parent')
+        if parent_id:
+            if parent_id in selected_ids:
+                return Response(
+                    {'error': 'حساب والد نمی‌تواند یکی از حساب‌های انتخاب‌شده باشد.'}, status=400,
+                )
+            if parent_id in self._descendant_ids(company, selected_ids):
+                return Response(
+                    {'error': 'حساب والد نمی‌تواند زیرمجموعهٔ حساب‌های انتخاب‌شده باشد (چرخه).'},
+                    status=400,
+                )
+
+        updated = 0
+        errors = []
+        for account in accounts:
+            serializer = self.get_serializer(account, data=changes, partial=True)
+            if not serializer.is_valid():
+                errors.append({
+                    'id': account.id, 'code': account.code, 'name': account.name,
+                    'error': self._first_error(serializer.errors),
+                })
+                continue
+            try:
+                self.perform_update(serializer)
+                updated += 1
+            except Exception as exc:  # noqa: BLE001 — خطای یک ردیف، بقیه ادامه پیدا می‌کنند
+                errors.append({
+                    'id': account.id, 'code': account.code, 'name': account.name,
+                    'error': str(exc),
+                })
+        return Response({
+            'updated': updated,
+            'total': len(accounts),
+            'errors': errors,
+        })
+
 
 
 class AuxiliaryAccountViewSet(CompanyScopedViewSet):

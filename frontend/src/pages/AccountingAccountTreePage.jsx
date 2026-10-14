@@ -5,7 +5,7 @@ import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, IconButton, Tooltip, Alert, InputAdornment, Autocomplete,
   FormControl, InputLabel, Select, MenuItem, Dialog, DialogTitle, DialogContent,
-  DialogActions, Divider, Collapse, Menu, ListItemIcon, ListItemText,
+  DialogActions, Divider, Collapse, Menu, ListItemIcon, ListItemText, Checkbox,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
@@ -138,20 +138,35 @@ const collectKeys = (nodes, acc = [], onlyMatches = false) => {
   return acc;
 };
 
+// شناسهٔ همهٔ حساب‌های درخت (برای «انتخاب همه» در ویرایش گروهی)
+const collectAccountIds = (nodes, acc = []) => {
+  (nodes || []).forEach(node => {
+    if (node.node_type === 'account') acc.push(node.id);
+    if ((node.children || []).length) collectAccountIds(node.children, acc);
+  });
+  return acc;
+};
+
 /** یک ردیف درخت (نوع/گروه/زیرگروه/کل/معین) با باز/بسته، شمارنده‌ها و اکشن‌ها. */
-const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, searchTerm }) => {
+const NodeRow = ({
+  node, depth, expanded, onToggle, onEdit, onDelete, onAdd, searchTerm,
+  selectMode = false, selected, onSelect,
+}) => {
   const [menuAnchor, setMenuAnchor] = useState(null);
   const key = NODE_KEY(node);
   const isOpen = expanded.has(key);
   const hasChildren = (node.children || []).length > 0;
   const meta = nodeMeta(node);
   const isType = node.node_type === 'type';
+  const isSelected = node.node_type === 'account' && selected?.has(node.id);
   const chips = countChips(node);
-  const rowBg = node.matched && searchTerm
-    ? 'rgba(250,204,21,0.22)'
-    : isType ? `linear-gradient(90deg, ${meta.color}1f, rgba(255,255,255,0.55))`
-      : node.node_type === 'group' ? 'rgba(99,102,241,0.07)'
-        : 'rgba(255,255,255,0.58)';
+  const rowBg = isSelected
+    ? 'rgba(15,118,110,0.16)'
+    : node.matched && searchTerm
+      ? 'rgba(250,204,21,0.22)'
+      : isType ? `linear-gradient(90deg, ${meta.color}1f, rgba(255,255,255,0.55))`
+        : node.node_type === 'group' ? 'rgba(99,102,241,0.07)'
+          : 'rgba(255,255,255,0.58)';
 
   const addOptions = isType
     ? [{ kind: 'group', label: 'گروه حساب جدید' }]
@@ -174,6 +189,16 @@ const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, sea
           '&:hover': { boxShadow: '0 8px 22px rgba(15,118,110,0.12)' },
         }}
       >
+        {selectMode && node.node_type === 'account' && (
+          <Checkbox
+            size="small"
+            checked={Boolean(isSelected)}
+            onChange={(e) => { e.stopPropagation(); onSelect(node); }}
+            onClick={(e) => e.stopPropagation()}
+            sx={{ p: 0.25, ml: -0.5, color: meta.color, '&.Mui-checked': { color: meta.color } }}
+          />
+        )}
+
         {hasChildren ? (
           <IconButton
             size="small"
@@ -298,6 +323,9 @@ const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, sea
                 onDelete={onDelete}
                 onAdd={onAdd}
                 searchTerm={searchTerm}
+                selectMode={selectMode}
+                selected={selected}
+                onSelect={onSelect}
               />
             ))}
           </Box>
@@ -316,6 +344,13 @@ const AccountingAccountTreePage = () => {
   const lastQuery = useRef(null);
   const [msg, setMsg] = useState(null);
   const [editor, setEditor] = useState(null);
+  const [selectMode, setSelectMode] = useState(false);
+  const [selected, setSelected] = useState(new Set());
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkForm, setBulkForm] = useState({
+    parent: '', group: '', account_type: '', nature: '', is_postable: '',
+    auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '',
+  });
   const [form, setForm] = useState({
     code: '', name: '', account_type: '', nature: '', group: '', parent: '',
     auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '',
@@ -549,6 +584,77 @@ const AccountingAccountTreePage = () => {
     editor?.mode === 'group' ? form.account_type : (form.parent || form.group)
   );
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
+  const setBulk = (key, value) => setBulkForm(prev => ({ ...prev, [key]: value }));
+
+  // ---- انتخاب گروهی ----
+  const toggleSelect = (node) => setSelected(prev => {
+    const next = new Set(prev);
+    if (next.has(node.id)) next.delete(node.id); else next.add(node.id);
+    return next;
+  });
+  const selectAllAccounts = () => setSelected(new Set(collectAccountIds(treeTypes)));
+  const clearSelection = () => setSelected(new Set());
+  const exitSelectMode = () => { setSelectMode(false); clearSelection(); };
+
+  // حساب‌های انتخاب‌شده + همهٔ زیرمجموعه‌هایشان (برای حذف از فهرست «والد» و جلوگیری از چرخه)
+  const blockedAsParent = useMemo(() => {
+    const blocked = new Set();
+    const markDescendants = (children) => (children || []).forEach(child => {
+      if (child.node_type === 'account') blocked.add(child.id);
+      markDescendants(child.children);
+    });
+    const walk = (nodes) => (nodes || []).forEach(node => {
+      if (node.node_type !== 'account') { walk(node.children); return; }
+      if (selected.has(node.id)) {
+        blocked.add(node.id);
+        markDescendants(node.children);
+      }
+      walk(node.children);
+    });
+    walk(treeTypes);
+    return blocked;
+  }, [treeTypes, selected]);
+  const bulkParentOptions = useMemo(
+    () => generalList.filter(account => !blockedAsParent.has(account.id)),
+    [generalList, blockedAsParent],
+  );
+
+  const emptyBulkForm = {
+    parent: '', group: '', account_type: '', nature: '', is_postable: '',
+    auxiliary_category_1: '', auxiliary_category_2: '', auxiliary_category_3: '',
+  };
+  const openBulk = () => { setBulkForm(emptyBulkForm); setBulkOpen(true); };
+  const bulkHasChanges = Object.values(bulkForm).some(value => value !== '' && value != null);
+
+  const bulk = useMutation({
+    mutationFn: () => {
+      const fields = {};
+      Object.entries(bulkForm).forEach(([key, value]) => {
+        if (value === '' || value === null || value === undefined) return;
+        fields[key] = key === 'is_postable' ? value === 'true' : value;
+      });
+      return axiosInstance
+        .post('/accounting/accounts/bulk-update/', { ids: Array.from(selected), fields })
+        .then(r => r.data);
+    },
+    onSuccess: (data) => {
+      invalidate();
+      const failures = data.errors || [];
+      const done = `${toPersianDigits(data.updated)} حساب به‌روزرسانی شد`;
+      setMsg(failures.length === 0
+        ? { ok: true, text: `${done}.` }
+        : {
+          ok: false,
+          text: `${done} و ${toPersianDigits(failures.length)} ردیف ذخیره نشد — ${failures
+            .slice(0, 2).map(item => `${item.code || item.id}: ${item.error}`).join(' | ')}`,
+        });
+      setBulkOpen(false);
+      setBulkForm(emptyBulkForm);
+      clearSelection();
+      setSelectMode(false);
+    },
+    onError: (e) => setMsg({ ok: false, text: errText(e, 'ویرایش گروهی ناموفق بود') }),
+  });
 
   const openAdd = (node, kind) => {
     if (node.node_type === 'type') {
@@ -623,6 +729,14 @@ const AccountingAccountTreePage = () => {
             <Chip color="warning" variant="outlined" sx={{ fontWeight: 700 }}
               label={`شاخه‌های منطبق با «${q}»: ${toPersianDigits(summary.account_count || 0)} حساب`} />
           )}
+          <Tooltip title="انتخاب چند حساب و ویرایش گروهی">
+            <Button size="small" variant={selectMode ? 'contained' : 'outlined'}
+              startIcon={<EditIcon />}
+              onClick={() => (selectMode ? exitSelectMode() : setSelectMode(true))}
+              sx={{ borderRadius: '12px' }}>
+              {selectMode ? 'پایان انتخاب' : 'انتخاب گروهی'}
+            </Button>
+          </Tooltip>
           {isFetching && <CircularProgress size={18} />}
           <Tooltip title="به‌روزرسانی">
             <span>
@@ -631,6 +745,29 @@ const AccountingAccountTreePage = () => {
           </Tooltip>
         </Stack>
       </Paper>
+
+      {/* نوار انتخاب گروهی */}
+      {selectMode && (
+        <Paper sx={{
+          ...glass, p: 1.25, mb: 2, display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
+          background: 'linear-gradient(120deg, rgba(15,118,110,0.12), rgba(255,255,255,0.45))',
+          border: '1px dashed rgba(15,118,110,0.45)',
+        }}>
+          <Chip label={`${toPersianDigits(selected.size)} حساب انتخاب شده`}
+            sx={{ fontWeight: 800, bgcolor: 'rgba(15,118,110,0.16)', color: COLOR_DARK }} />
+          <Button size="small" variant="contained" startIcon={<EditIcon />}
+            disabled={!selected.size} onClick={openBulk}
+            sx={{ borderRadius: '12px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})` }}>
+            ویرایش گروهی
+          </Button>
+          <Button size="small" variant="outlined" onClick={selectAllAccounts}
+            disabled={collectAccountIds(treeTypes).length === 0}>انتخاب همه</Button>
+          <Button size="small" variant="outlined" onClick={clearSelection} disabled={!selected.size}>حذف انتخاب</Button>
+          <Typography variant="caption" color="textSecondary">
+            والد، ماهیت، نوع حساب، گروه، ارتباط با تفصیل‌ها و قابل‌سندخوری را می‌توانید یک‌جا برای حساب‌های انتخابی تعیین کنید.
+          </Typography>
+        </Paper>
+      )}
 
       {/* درخت */}
       <Paper sx={{ ...glass, p: 2 }}>
@@ -655,6 +792,9 @@ const AccountingAccountTreePage = () => {
               onDelete={askDelete}
               onAdd={openAdd}
               searchTerm={q}
+              selectMode={selectMode}
+              selected={selected}
+              onSelect={toggleSelect}
             />
           ))
         )}
@@ -799,6 +939,86 @@ const AccountingAccountTreePage = () => {
             {editor?.node ? 'ذخیره تغییرات' : 'ثبت'}
           </Button>
         </DialogActions>
+
+      {/* دیالوگ ویرایش گروهی حساب‌های انتخاب‌شده */}
+      <Dialog
+        open={bulkOpen} onClose={() => setBulkOpen(false)} fullWidth maxWidth="sm"
+        slotProps={{ paper: { sx: { borderRadius: '20px', background: 'linear-gradient(150deg, #fff, #f8fafc)' } } }}
+      >
+        <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK, display: 'flex', alignItems: 'center', gap: 1 }}>
+          <EditIcon sx={{ color: COLOR }} />
+          ویرایش گروهی {toPersianDigits(selected.size)} حساب
+        </DialogTitle>
+        <DialogContent dividers>
+          <Stack spacing={1.5} sx={{ mt: 0.5 }}>
+            <Alert severity="info" sx={{ borderRadius: '12px', py: 0.25 }}>
+              <Typography variant="caption">
+                فقط فیلدهایی که پر کنید روی همهٔ حساب‌های انتخاب‌شده اعمال می‌شود؛ فیلدهای خالی دست‌نخورده می‌مانند.
+              </Typography>
+            </Alert>
+
+            <Autocomplete
+              size="small" options={bulkParentOptions} getOptionLabel={o => `${toPersianDigits(o.code)} - ${o.name}`}
+              value={bulkParentOptions.find(a => a.id === bulkForm.parent) || null}
+              onChange={(e, v) => setBulk('parent', v ? v.id : '')}
+              renderInput={p => <TextField {...p} label="حساب کل والد" sx={fieldSx} />}
+            />
+            <Autocomplete
+              size="small" options={groupList} getOptionLabel={o => `${toPersianDigits(o.code)} - ${o.name}`}
+              value={groupList.find(g => g.id === bulkForm.group) || null}
+              onChange={(e, v) => setBulk('group', v ? v.id : '')}
+              renderInput={p => <TextField {...p} label="گروه حساب" sx={fieldSx} />}
+            />
+            <Autocomplete
+              size="small" options={typeList} getOptionLabel={o => typeLabel(o)}
+              value={typeList.find(t => t.id === bulkForm.account_type) || null}
+              onChange={(e, v) => setBulk('account_type', v ? v.id : '')}
+              renderInput={p => <TextField {...p} label="نوع حساب" sx={fieldSx} />}
+            />
+            <FormControl fullWidth size="small">
+              <InputLabel>ماهیت</InputLabel>
+              <Select label="ماهیت" value={bulkForm.nature} onChange={e => setBulk('nature', e.target.value)} sx={fieldSx}>
+                <MenuItem value="">بدون تغییر</MenuItem>
+                <MenuItem value="debit">بدهکار</MenuItem>
+                <MenuItem value="credit">بستانکار</MenuItem>
+                <MenuItem value="none">مهم نیست</MenuItem>
+              </Select>
+            </FormControl>
+            <FormControl fullWidth size="small">
+              <InputLabel>قابل سندخوری</InputLabel>
+              <Select label="قابل سندخوری" value={bulkForm.is_postable}
+                onChange={e => setBulk('is_postable', e.target.value)} sx={fieldSx}>
+                <MenuItem value="">بدون تغییر</MenuItem>
+                <MenuItem value="true">قابل سندخوری</MenuItem>
+                <MenuItem value="false">غیرقابل سندخوری</MenuItem>
+              </Select>
+            </FormControl>
+
+            <Divider><Typography variant="caption" color="textSecondary">ارتباط با تفصیل‌ها (اختیاری)</Typography></Divider>
+            {[1, 2, 3].map(index => (
+              <Autocomplete
+                key={index}
+                size="small" options={auxCategoryList} getOptionLabel={o => o.name}
+                value={auxCategoryList.find(c => c.id === bulkForm[`auxiliary_category_${index}`]) || null}
+                onChange={(e, v) => setBulk(`auxiliary_category_${index}`, v ? v.id : '')}
+                renderInput={p => <TextField {...p} label={`ارتباط با تفصیل ${['یک', 'دو', 'سه'][index - 1]}`} sx={fieldSx} />}
+              />
+            ))}
+          </Stack>
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button onClick={() => setBulkOpen(false)} sx={{ borderRadius: '12px' }}>انصراف</Button>
+          <Button
+            variant="contained" disabled={!bulkHasChanges || bulk.isLoading}
+            startIcon={bulk.isLoading ? <CircularProgress size={18} color="inherit" /> : <SaveIcon />}
+            onClick={() => bulk.mutate()}
+            sx={{ borderRadius: '12px', px: 3, background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})` }}
+          >
+            اعمال روی {toPersianDigits(selected.size)} حساب
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       </Dialog>
     </Box>
   );
