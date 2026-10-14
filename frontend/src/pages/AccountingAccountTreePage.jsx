@@ -301,12 +301,15 @@ const AccountingAccountTreePage = () => {
     queryFn: () => axiosInstance.get('/accounting/auxiliary-categories/').then(r => r.data),
   });
 
-  const treeTypes = treeData?.types || [];
+  const treeTypes = useMemo(() => treeData?.types || [], [treeData]);
   const summary = treeData?.summary || {};
-  const groupList = Array.isArray(groups) ? groups : groups?.results || [];
-  const generalList = Array.isArray(generals) ? generals : generals?.results || [];
-  const typeList = Array.isArray(types) ? types : types?.results || [];
-  const auxCategoryList = Array.isArray(auxCategories) ? auxCategories : auxCategories?.results || [];
+  const groupList = useMemo(() => (Array.isArray(groups) ? groups : groups?.results || []), [groups]);
+  const generalList = useMemo(() => (Array.isArray(generals) ? generals : generals?.results || []), [generals]);
+  const typeList = useMemo(() => (Array.isArray(types) ? types : types?.results || []), [types]);
+  const auxCategoryList = useMemo(
+    () => (Array.isArray(auxCategories) ? auxCategories : auxCategories?.results || []),
+    [auxCategories],
+  );
 
   const suggestLevel = !editor ? 'general'
     : editor.mode === 'group' ? 'group'
@@ -342,7 +345,7 @@ const AccountingAccountTreePage = () => {
       setExpanded(new Set(treeTypes.map(NODE_KEY)));
       setInitialized(true);
     }
-  }, [treeData, q, initialized]);
+  }, [treeData, q, initialized, treeTypes]);
 
   const toggle = (node) => setExpanded(prev => {
     const next = new Set(prev);
@@ -424,9 +427,6 @@ const AccountingAccountTreePage = () => {
     node.node_type === 'group' ? openGroup(node) : openAccount(node)
   );
 
-  const openAdd = (node, kind) => {
-    if (node.node_type === 'type') {
-
   const save = useMutation({
     mutationFn: () => {
       if (editor.mode === 'group') {
@@ -488,15 +488,16 @@ const AccountingAccountTreePage = () => {
   const groupOptions = useMemo(() => {
     if (!editor || editor.mode !== 'group' || !editor.node) return groupList;
     const blocked = new Set([editor.node.id]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      groupList.forEach(item => {
+    let added = true;
+    while (added) {
+      added = false;
+      for (let index = 0; index < groupList.length; index += 1) {
+        const item = groupList[index];
         if (item.parent && blocked.has(item.parent) && !blocked.has(item.id)) {
           blocked.add(item.id);
-          changed = true;
+          added = true;
         }
-      });
+      }
     }
     return groupList.filter(item => !blocked.has(item.id));
   }, [groupList, editor]);
@@ -506,6 +507,8 @@ const AccountingAccountTreePage = () => {
   );
   const set = (key, value) => setForm(prev => ({ ...prev, [key]: value }));
 
+  const openAdd = (node, kind) => {
+    if (node.node_type === 'type') {
       return openGroup(null, { account_type: node.id });
     }
     if (node.node_type === 'group') {
