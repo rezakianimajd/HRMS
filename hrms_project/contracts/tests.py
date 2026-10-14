@@ -191,6 +191,54 @@ class ContractExcelExportTests(TestCase):
             broken.clean()
 
 
+class ContractListEffectiveFieldsTests(TestCase):
+    """فیلدهای «مبلغ/پایان مؤثر با الحاقیه» برای فهرست قراردادها."""
+
+    def setUp(self):
+        self.company = make_company(schema_name='testco-eff', name='شرکت تست فهرست')
+        self.party = ContractParty.objects.create(
+            company=self.company, name='شرکت پیمانکار', party_type='contractor',
+        )
+        self.currency = Currency.objects.create(
+            company=self.company, code='IRR', name='ریال ایران', symbol='﷼', exchange_rate=1,
+        )
+        self.contract = Contract.objects.create(
+            company=self.company, number='C-EFF-1', subject='قرارداد آزمایشی',
+            party=self.party, contract_type='construction', status='active',
+            amount=10_000_000, currency=self.currency,
+            start_date=date(2025, 3, 21), end_date=date(2026, 3, 20),
+        )
+
+    def test_effective_fields_equal_base_without_addendum(self):
+        from contracts.serializers import ContractSerializer
+
+        payload = ContractSerializer(self.contract).data
+        self.assertEqual(payload['effective_amount'], 10_000_000.0)
+        self.assertEqual(payload['effective_end_date'], '2026-03-20')
+        self.assertFalse(payload['has_addendum'])
+        self.assertEqual(payload['currency_code'], 'IRR')
+        self.assertEqual(payload['currency_name'], 'ریال ایران')
+
+    def test_effective_fields_follow_addendum(self):
+        from contracts.serializers import ContractSerializer
+
+        Addendum.objects.create(
+            company=self.company, contract=self.contract, number='A-EFF-1',
+            date=date(2025, 8, 1), amount_change=1_500_000, subject='افزایش مبلغ و تمدید',
+            subjects=[
+                {'type': 'amount', 'fields': {'amount_change': 1_500_000}},
+                {'type': 'duration', 'fields': {'new_end_date': '2026-09-20'}},
+            ],
+        )
+        payload = ContractSerializer(self.contract).data
+        self.assertEqual(payload['effective_amount'], 11_500_000.0)
+        self.assertEqual(payload['effective_end_date'], '2026-09-20')
+        self.assertTrue(payload['has_addendum'])
+        # مبلغ پایهٔ قرارداد دست‌نخورده می‌ماند (اثر الحاقیه فقط محاسباتی است)
+        self.contract.refresh_from_db()
+        self.assertEqual(float(self.contract.amount), 10_000_000.0)
+
+
 class ContractGuaranteeStatusTests(TestCase):
     """وضعیت تأمین تضامین قرارداد (تضمین‌های اورده‌شده در برابر اقلام مورد نیاز قرارداد)."""
 

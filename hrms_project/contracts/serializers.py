@@ -265,7 +265,13 @@ class ContractSerializer(serializers.ModelSerializer):
     project_name = serializers.CharField(source='project.name', read_only=True)
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
+    currency_code = serializers.CharField(source='currency.code', read_only=True)
     exchange_rate = serializers.DecimalField(source='currency.exchange_rate', max_digits=18, decimal_places=6, read_only=True)
+
+    # مبلغ/پایان مؤثر با احتساب الحاقیه‌ها (برای فهرست قراردادها — بدون N+1)
+    effective_amount = serializers.SerializerMethodField()
+    effective_end_date = serializers.SerializerMethodField()
+    has_addendum = serializers.SerializerMethodField()
 
     project_allocations_display = serializers.SerializerMethodField()
     guarantee_items_display = serializers.SerializerMethodField()
@@ -284,8 +290,9 @@ class ContractSerializer(serializers.ModelSerializer):
             'id', 'number', 'subject', 'party', 'party_name', 'contract_type',
             'contract_type_display', 'contract_type_master', 'contract_type_master_name',
             'status', 'status_display', 'amount',
-            'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
+            'currency', 'currency_name', 'currency_symbol', 'currency_code', 'exchange_rate',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
+            'effective_amount', 'effective_end_date', 'has_addendum',
             'guarantee_amount', 'guarantee_type', 'guarantee_type_display', 'guarantee_items', 'guarantee_items_display',
             'project', 'project_name', 'project_location', 'tender_number', 'project_allocations', 'project_allocations_display',
             'advance_payment', 'advance_payments', 'retention_percent', 'warranty_period',
@@ -295,6 +302,33 @@ class ContractSerializer(serializers.ModelSerializer):
             'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def _contract_effects(self, obj):
+        """اثر الحاقیه‌ها با کش روی نمونه (سه فیلد مؤثر، یک‌بار محاسبه می‌شوند)."""
+        cached = getattr(obj, '_contract_effects_cache', None)
+        if cached is None:
+            from contracts.addendum_effects import contract_effects
+
+            try:
+                cached = contract_effects(obj)
+            except Exception:  # noqa: BLE001 — دادهٔ ناسازگار نباید فهرست را بشکند
+                cached = {}
+            obj._contract_effects_cache = cached
+        return cached
+
+    def get_effective_amount(self, obj):
+        """مبلغ قرارداد با احتساب الحاقیه‌ها (None = بدون تغییر نسبت به مبلغ پایه)."""
+        effective = self._contract_effects(obj).get('effective') or {}
+        value = effective.get('amount')
+        return float(value) if value is not None else None
+
+    def get_effective_end_date(self, obj):
+        """تاریخ پایان مؤثر با احتساب الحاقیه‌های تمدید."""
+        effective = self._contract_effects(obj).get('effective') or {}
+        return effective.get('end_date') or None
+
+    def get_has_addendum(self, obj):
+        return bool(self._contract_effects(obj).get('addendum_count'))
 
     def get_project_allocations_display(self, obj):
         allocs = obj.project_allocations or []
