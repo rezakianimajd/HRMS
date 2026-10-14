@@ -23,6 +23,19 @@ import { toPersianDigits } from '../core/utils/numberUtils';
 
 const COLOR = '#0f766e';
 const COLOR_DARK = '#0d5c56';
+const FONT = 'Vazirmatn, IRANSans, sans-serif';
+
+// چیپ‌های کوچک (وضعیت/رنگ) — ریزتر از چیپ پیش‌فرض
+const miniChip = (bgcolor, color) => ({
+  height: 18, fontSize: 10, fontWeight: 700, bgcolor, color,
+  '& .MuiChip-label': { px: 0.75, lineHeight: 1.6 },
+});
+
+// آیا متن شامل حروف فارسی/عربی است؟ (برای نمایش نام‌های فارسی)
+const hasPersian = (text) => /[\u0600-\u06FF]/.test(text || '');
+
+// «نام انگلیسی»: نامی که حرف لاتین دارد و هیچ حرف فارسی ندارد → نمایش داده نمی‌شود
+const isEnglishName = (text) => /[A-Za-z]/.test(text || '') && !hasPersian(text);
 
 const glass = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.80), rgba(255,255,255,0.45))',
@@ -161,43 +174,60 @@ const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, sea
         }} />
 
         <Chip size="small" label={toPersianDigits(node.code)}
-          sx={{ fontWeight: 800, bgcolor: `${meta.color}1f`, color: meta.dark, fontSize: 11, fontFamily: 'monospace' }} />
+          sx={{
+            height: 22, fontFamily: FONT, fontWeight: 800, fontSize: 12,
+            bgcolor: `${meta.color}1f`, color: meta.dark,
+            '& .MuiChip-label': { px: 1 },
+          }} />
 
-        <Typography
-          variant={isType ? 'subtitle2' : 'body2'}
-          fontWeight={isType ? 800 : 700}
-          noWrap
-          sx={{ maxWidth: 300, color: '#0f172a' }}
-        >
-          {node.name}
-        </Typography>
+        {isType ? (
+          <>
+            <Chip size="small" label={node.category_label}
+              sx={miniChip('rgba(14,165,233,0.14)', '#0369a1')} />
+            {!isEnglishName(node.name) && (
+              <Typography variant="subtitle2" fontWeight={800} noWrap sx={{ maxWidth: 300, color: '#0f172a' }}>
+                {node.name}
+              </Typography>
+            )}
+          </>
+        ) : (
+          <>
+            {!isEnglishName(node.name) && (
+              <Typography
+                variant="body2"
+                fontWeight={700}
+                noWrap
+                sx={{ maxWidth: 300, color: '#0f172a' }}
+              >
+                {node.name}
+              </Typography>
+            )}
+            <Chip size="small" variant="outlined" label={natureLabel(node.nature)}
+              sx={miniChip(natureBg(node.nature), natureColor(node.nature))} />
+          </>
+        )}
 
-        {isType && (
-          <Chip size="small" label={node.category_label}
-            sx={{ bgcolor: 'rgba(14,165,233,0.14)', color: '#0369a1', fontWeight: 700 }} />
-        )}
-        {!isType && (
-          <Chip size="small" variant="outlined" label={natureLabel(node.nature)}
-            sx={{ bgcolor: natureBg(node.nature), color: natureColor(node.nature), fontWeight: 700 }} />
-        )}
         {!isType && !node.is_active && (
-          <Chip size="small" label="غیرفعال" sx={{ bgcolor: 'rgba(100,116,139,0.16)', color: '#475569', fontWeight: 700 }} />
+          <Chip size="small" label="غیرفعال" sx={miniChip('rgba(100,116,139,0.16)', '#475569')} />
         )}
         {node.node_type === 'account' && !node.is_postable && (
-          <Chip size="small" label="غیرقابل سند" sx={{ bgcolor: 'rgba(245,158,11,0.16)', color: '#b45309', fontWeight: 700 }} />
+          <Chip size="small" label="غیرقابل سند" sx={miniChip('rgba(245,158,11,0.16)', '#b45309')} />
         )}
         {node.node_type === 'account' && node.coding_locked && (
-          <Chip size="small" label="کدینگ دستی" sx={{ bgcolor: 'rgba(139,92,246,0.14)', color: '#6d28d9', fontWeight: 700 }} />
+          <Chip size="small" label="کدینگ دستی" sx={miniChip('rgba(139,92,246,0.14)', '#6d28d9')} />
         )}
 
         <Box sx={{ flex: 1, minWidth: 8 }} />
 
         {chips.map(label => (
           <Chip key={label} size="small" variant="outlined" label={label}
-            sx={{ fontWeight: 700, bgcolor: 'rgba(255,255,255,0.65)', display: { xs: 'none', md: 'inline-flex' } }} />
+            sx={{
+              ...miniChip('rgba(255,255,255,0.65)', '#475569'),
+              display: { xs: 'none', md: 'inline-flex' },
+            }} />
         ))}
         {searchTerm && node.matched && (
-          <Chip size="small" label="تطبیق" color="warning" sx={{ fontWeight: 800 }} />
+          <Chip size="small" label="تطبیق" sx={miniChip('rgba(245,158,11,0.2)', '#b45309')} />
         )}
 
         <Tooltip title="افزودن زیرمجموعه">
@@ -525,16 +555,7 @@ const AccountingAccountTreePage = () => {
         </Avatar>
         <Box sx={{ flex: 1, minWidth: 220 }}>
           <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>درخت حساب‌ها</Typography>
-          <Typography variant="body2" color="textSecondary">
-            نمای درختوارهٔ چارت حساب: نوع حساب ← گروه ← زیرگروه ← حساب کل ← معین — هر گره قابل ویرایش است
-          </Typography>
         </Box>
-        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-          <Chip label={`گروه: ${toPersianDigits(summary.groups || 0)}`} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.14)', color: '#4338ca' }} />
-          <Chip label={`کل: ${toPersianDigits(summary.general || 0)}`} sx={{ fontWeight: 700, bgcolor: 'rgba(16,185,129,0.14)', color: '#047857' }} />
-          <Chip label={`معین: ${toPersianDigits(summary.subsidiary || 0)}`} sx={{ fontWeight: 700, bgcolor: 'rgba(15,118,110,0.14)', color: COLOR_DARK }} />
-          <Chip label={`تفصیلی: ${toPersianDigits(summary.auxiliary || 0)}`} sx={{ fontWeight: 700, bgcolor: 'rgba(245,158,11,0.16)', color: '#b45309' }} />
-        </Stack>
         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
           <Tooltip title="باز کردن همهٔ شاخه‌ها">
             <Button size="small" variant="outlined" startIcon={<UnfoldMoreIcon />} onClick={expandAll}>باز کردن همه</Button>
@@ -614,24 +635,6 @@ const AccountingAccountTreePage = () => {
         )}
       </Paper>
 
-      {/* راهنما */}
-      <Paper sx={{ ...glass, p: 1.75, mt: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
-        {[
-          { label: 'نوع حساب', color: '#0ea5e9' },
-          { label: 'گروه / زیرگروه', color: '#6366f1' },
-          { label: 'حساب کل', color: '#10b981' },
-          { label: 'حساب معین', color: '#0f766e' },
-        ].map(item => (
-          <Stack key={item.label} direction="row" alignItems="center" spacing={0.75}>
-            <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: item.color }} />
-            <Typography variant="caption" fontWeight={700}>{item.label}</Typography>
-          </Stack>
-        ))}
-        <Typography variant="caption" color="textSecondary">
-          روی هر ردیف کلیک کنید تا باز/بسته شود؛ با + زیرمجموعه بسازید، با ✎ ویرایش و با 🗑 حذف کنید.
-        </Typography>
-      </Paper>
-
 
 
       {/* دیالوگ ثبت/ویرایش گره */}
@@ -660,7 +663,7 @@ const AccountingAccountTreePage = () => {
               InputProps={{
                 endAdornment: (
                   <InputAdornment position="end">
-                    <Tooltip title={`پیشنهاد کد بعدی${suggested?.code ? `: ${suggested.code}` : ''}`}>
+                    <Tooltip title={`پیشنهاد کد بعدی${suggested?.code ? `: ${toPersianDigits(suggested.code)}` : ''}`}>
                       <IconButton size="small" onClick={() => set('code', suggested?.code || form.code)}>
                         <BoltIcon fontSize="small" color="primary" />
                       </IconButton>
@@ -681,7 +684,7 @@ const AccountingAccountTreePage = () => {
                   renderInput={p => <TextField {...p} label="نوع حساب *" sx={fieldSx} />}
                 />
                 <Autocomplete
-                  size="small" options={groupOptions} getOptionLabel={o => `${o.code} - ${o.name}`}
+                  size="small" options={groupOptions} getOptionLabel={o => `${toPersianDigits(o.code)} - ${o.name}`}
                   value={groupOptions.find(g => g.id === form.parent) || null}
                   onChange={(e, v) => set('parent', v ? v.id : '')}
                   renderInput={p => <TextField {...p} label="گروه بالادستی (برای ساخت زیرگروه)" sx={fieldSx} />}
@@ -691,14 +694,14 @@ const AccountingAccountTreePage = () => {
               <>
                 {form.parent ? (
                   <Autocomplete
-                    size="small" options={generalList} getOptionLabel={o => `${o.code} - ${o.name}`}
+                    size="small" options={generalList} getOptionLabel={o => `${toPersianDigits(o.code)} - ${o.name}`}
                     value={generalList.find(a => a.id === form.parent) || null}
                     onChange={(e, v) => set('parent', v ? v.id : '')}
                     renderInput={p => <TextField {...p} label="حساب کل والد *" sx={fieldSx} />}
                   />
                 ) : (
                   <Autocomplete
-                    size="small" options={groupList} getOptionLabel={o => `${o.code} - ${o.name}`}
+                    size="small" options={groupList} getOptionLabel={o => `${toPersianDigits(o.code)} - ${o.name}`}
                     value={groupList.find(g => g.id === form.group) || null}
                     onChange={(e, v) => set('group', v ? v.id : '')}
                     renderInput={p => <TextField {...p} label="گروه حساب *" sx={fieldSx} />}
@@ -744,16 +747,16 @@ const AccountingAccountTreePage = () => {
                 background: 'rgba(15,118,110,0.06)', border: '1px dashed rgba(15,118,110,0.3)',
               }}>
                 <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
-                  <Chip size="small" label={`کد پیشنهادی: ${suggested?.code || '—'}`}
-                    sx={{ fontWeight: 800, bgcolor: 'rgba(15,118,110,0.14)', color: COLOR_DARK }} />
+                  <Chip size="small" label={`کد پیشنهادی: ${toPersianDigits(suggested?.code || '—')}`}
+                    sx={miniChip('rgba(15,118,110,0.14)', COLOR_DARK)} />
                   <Chip size="small" label={`نوع مؤثر: ${typeList.find(t => t.id === effectiveType)?.name || '—'}`}
-                    sx={{ fontWeight: 700, bgcolor: 'rgba(37,99,235,0.12)', color: '#1d4ed8' }} />
+                    sx={miniChip('rgba(37,99,235,0.12)', '#1d4ed8')} />
                   <Chip size="small" label={`ماهیت مؤثر: ${natureLabel(effectiveNature)}`}
-                    sx={{ bgcolor: natureBg(effectiveNature), color: natureColor(effectiveNature), fontWeight: 700 }} />
+                    sx={miniChip(natureBg(effectiveNature), natureColor(effectiveNature))} />
                   {suggested?.inherited_from && (
                     <Chip size="small" color="success" variant="outlined"
                       label={suggested.inherited_from === 'parent' ? 'ارث‌بری از والد' : 'ارث‌بری از گروه'}
-                      sx={{ fontWeight: 700 }} />
+                      sx={miniChip('transparent', '#047857')} />
                   )}
                 </Stack>
               </Box>
