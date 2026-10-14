@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -8,10 +8,6 @@ import {
   DialogActions, Divider, Collapse, Menu, ListItemIcon, ListItemText,
 } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import FolderOpenIcon from '@mui/icons-material/FolderOpen';
-import SubdirectoryArrowLeftIcon from '@mui/icons-material/SubdirectoryArrowLeft';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import UnfoldMoreIcon from '@mui/icons-material/UnfoldMore';
 import UnfoldLessIcon from '@mui/icons-material/UnfoldLess';
@@ -74,16 +70,16 @@ const errText = (e, fallback) => {
 
 const nodeMeta = (node) => {
   if (node.node_type === 'type') {
-    return { color: '#0ea5e9', dark: '#0284c7', icon: <AccountBalanceIcon sx={{ fontSize: 18 }} />, label: 'نوع حساب' };
+    return { color: '#0ea5e9', dark: '#0284c7', label: 'نوع حساب' };
   }
   if (node.node_type === 'group') {
     return node.is_subgroup
-      ? { color: '#8b5cf6', dark: '#7c3aed', icon: <SubdirectoryArrowLeftIcon sx={{ fontSize: 18 }} />, label: 'زیرگروه' }
-      : { color: '#6366f1', dark: '#4f46e5', icon: <FolderOpenIcon sx={{ fontSize: 18 }} />, label: 'گروه حساب' };
+      ? { color: '#8b5cf6', dark: '#7c3aed', label: 'زیرگروه' }
+      : { color: '#6366f1', dark: '#4f46e5', label: 'گروه حساب' };
   }
   return node.kind === 'general'
-    ? { color: '#10b981', dark: '#059669', icon: <AccountTreeIcon sx={{ fontSize: 18 }} />, label: 'حساب کل' }
-    : { color: '#0f766e', dark: '#0d5c56', icon: <ReceiptLongIcon sx={{ fontSize: 18 }} />, label: 'حساب معین' };
+    ? { color: '#10b981', dark: '#059669', label: 'حساب کل' }
+    : { color: '#0f766e', dark: '#0d5c56', label: 'حساب معین' };
 };
 
 const countChips = (node) => {
@@ -152,19 +148,17 @@ const NodeRow = ({ node, depth, expanded, onToggle, onEdit, onDelete, onAdd, sea
           <IconButton
             size="small"
             onClick={(e) => { e.stopPropagation(); onToggle(node); }}
-            sx={{ color: meta.color, transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)', transition: 'transform .2s', p: 0.25 }}
+            sx={{ color: meta.color, transform: isOpen ? 'rotate(0deg)' : 'rotate(90deg)', transition: 'transform .2s', p: 0.25 }}
           >
             <ExpandMoreIcon fontSize="small" />
           </IconButton>
         ) : <Box sx={{ width: 30, flexShrink: 0 }} />}
 
-        <Avatar sx={{
-          width: isType ? 34 : 28, height: isType ? 34 : 28, flexShrink: 0,
+        <Box sx={{
+          width: isType ? 10 : 8, height: isType ? 10 : 8, borderRadius: '50%', flexShrink: 0,
           background: `linear-gradient(135deg, ${meta.color}, ${meta.dark})`,
-          boxShadow: `0 4px 12px ${meta.color}55`,
-        }}>
-          {meta.icon}
-        </Avatar>
+          boxShadow: `0 0 0 3px ${meta.color}22`, mx: 0.75,
+        }} />
 
         <Chip size="small" label={toPersianDigits(node.code)}
           sx={{ fontWeight: 800, bgcolor: `${meta.color}1f`, color: meta.dark, fontSize: 11, fontFamily: 'monospace' }} />
@@ -264,7 +258,7 @@ const AccountingAccountTreePage = () => {
   const [search, setSearch] = useState('');
   const [q, setQ] = useState('');
   const [expanded, setExpanded] = useState(new Set());
-  const [initialized, setInitialized] = useState(false);
+  const lastQuery = useRef(null);
   const [msg, setMsg] = useState(null);
   const [editor, setEditor] = useState(null);
   const [form, setForm] = useState({
@@ -334,18 +328,12 @@ const AccountingAccountTreePage = () => {
     || (form.parent ? selectedParent?.nature : selectedGroup?.nature);
 
 
-  // باز شدن خودکار: بار اول همهٔ انواع، در جستجو همهٔ شاخه‌های منطبق
+  // همهٔ شاخه‌ها در شروع بسته‌اند؛ فقط در جستجو شاخه‌های منطبق خودکار باز می‌شوند
   useEffect(() => {
-    if (!treeData) return;
-    if (q) {
-      setExpanded(new Set(collectKeys(treeTypes, [], true)));
-      return;
-    }
-    if (!initialized) {
-      setExpanded(new Set(treeTypes.map(NODE_KEY)));
-      setInitialized(true);
-    }
-  }, [treeData, q, initialized, treeTypes]);
+    if (!treeData || lastQuery.current === q) return;
+    lastQuery.current = q;
+    setExpanded(q ? new Set(collectKeys(treeTypes, [], true)) : new Set());
+  }, [treeData, q, treeTypes]);
 
   const toggle = (node) => setExpanded(prev => {
     const next = new Set(prev);
@@ -627,11 +615,18 @@ const AccountingAccountTreePage = () => {
       </Paper>
 
       {/* راهنما */}
-      <Paper sx={{ ...glass, p: 1.75, mt: 2, display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
-        <Chip size="small" icon={<AccountBalanceIcon sx={{ fontSize: 15 }} />} label="نوع حساب" sx={{ fontWeight: 700 }} />
-        <Chip size="small" icon={<FolderOpenIcon sx={{ fontSize: 15 }} />} label="گروه / زیرگروه" sx={{ fontWeight: 700 }} />
-        <Chip size="small" icon={<AccountTreeIcon sx={{ fontSize: 15 }} />} label="حساب کل" sx={{ fontWeight: 700 }} />
-        <Chip size="small" icon={<ReceiptLongIcon sx={{ fontSize: 15 }} />} label="حساب معین" sx={{ fontWeight: 700 }} />
+      <Paper sx={{ ...glass, p: 1.75, mt: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+        {[
+          { label: 'نوع حساب', color: '#0ea5e9' },
+          { label: 'گروه / زیرگروه', color: '#6366f1' },
+          { label: 'حساب کل', color: '#10b981' },
+          { label: 'حساب معین', color: '#0f766e' },
+        ].map(item => (
+          <Stack key={item.label} direction="row" alignItems="center" spacing={0.75}>
+            <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: item.color }} />
+            <Typography variant="caption" fontWeight={700}>{item.label}</Typography>
+          </Stack>
+        ))}
         <Typography variant="caption" color="textSecondary">
           روی هر ردیف کلیک کنید تا باز/بسته شود؛ با + زیرمجموعه بسازید، با ✎ ویرایش و با 🗑 حذف کنید.
         </Typography>
@@ -645,9 +640,10 @@ const AccountingAccountTreePage = () => {
         slotProps={{ paper: { sx: { borderRadius: '20px', background: 'linear-gradient(150deg, #fff, #f8fafc)' } } }}
       >
         <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK, display: 'flex', alignItems: 'center', gap: 1 }}>
-          {editor?.mode === 'group'
-            ? <FolderOpenIcon sx={{ color: '#6366f1' }} />
-            : <AccountTreeIcon sx={{ color: editor?.node?.kind === 'general' ? '#10b981' : COLOR }} />}
+          <AccountTreeIcon sx={{
+            color: editor?.mode === 'group' ? '#6366f1'
+              : (editor?.node?.kind === 'general' ? '#10b981' : COLOR),
+          }} />
           {editor?.title}
         </DialogTitle>
         <DialogContent dividers>
