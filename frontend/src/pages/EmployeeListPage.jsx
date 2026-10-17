@@ -5,16 +5,18 @@ import {
   Box, Typography, Button, TextField, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Paper, IconButton,
   Tooltip, TablePagination, Collapse, Grid, FormControl, InputLabel,
-  Select, MenuItem, InputAdornment, CircularProgress, Avatar, Chip,
+  Select, MenuItem, InputAdornment, CircularProgress, Avatar, Chip, Stack, Alert,
 } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SearchIcon from '@mui/icons-material/Search';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import PeopleIcon from '@mui/icons-material/People';
-import { useEmployees, useDeleteEmployee, useDepartments, useJobTitles, useWorkLocations } from '../core/hooks/useEmployees';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import { useEmployees, useDeleteEmployee, useDepartments, useJobTitles, useWorkLocations, useInsuranceLists } from '../core/hooks/useEmployees';
 import StatusBadge from '../core/components/ui/StatusBadge';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
+import downloadFile from '../core/utils/downloadUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
 
 const EmployeeListPage = () => {
@@ -26,9 +28,11 @@ const EmployeeListPage = () => {
   const [search, setSearch] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState({
-    department: '', job_title: '', work_location: '', status: '', gender: '',
+    department: '', job_title: '', work_location: '', status: '', gender: '', insurance_list: '',
   });
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   React.useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 400);
@@ -44,12 +48,14 @@ const EmployeeListPage = () => {
     ...(filters.work_location && { work_location: filters.work_location }),
     ...(filters.status && { status: filters.status }),
     ...(filters.gender && { gender: filters.gender }),
+    ...(filters.insurance_list && { insurance_list: filters.insurance_list }),
   };
 
   const { data, isLoading } = useEmployees(queryParams);
   const { data: departments } = useDepartments();
   const { data: jobTitles } = useJobTitles();
   const { data: workLocations } = useWorkLocations();
+  const { data: insuranceLists } = useInsuranceLists();
   const deleteMutation = useDeleteEmployee();
 
   const employees = data?.results || [];
@@ -68,9 +74,35 @@ const EmployeeListPage = () => {
     setPage(0);
   };
   const resetFilters = () => {
-    setFilters({ department: '', job_title: '', work_location: '', status: '', gender: '' });
+    setFilters({ department: '', job_title: '', work_location: '', status: '', gender: '', insurance_list: '' });
     setSearch('');
     setPage(0);
+  };
+
+  // خروجی اکسل با اعمال همان فیلترهای فعال صفحه (بدون صفحه‌بندی)
+  const exportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      const params = {};
+      if (debouncedSearch) params.search = debouncedSearch;
+      if (filters.department) params.department = filters.department;
+      if (filters.job_title) params.job_title = filters.job_title;
+      if (filters.work_location) params.work_location = filters.work_location;
+      if (filters.status) params.status = filters.status;
+      if (filters.gender) params.gender = filters.gender;
+      if (filters.insurance_list) params.insurance_list = filters.insurance_list;
+
+      await downloadFile('/employees/export-excel/', {
+        params,
+        fallbackName: 'employees.xlsx',
+      });
+    } catch (e) {
+      setExportError(`خطا در تهیهٔ فایل اکسل: ${e?.message || 'نامشخص'}`);
+    } finally {
+      setExporting(false);
+    }
   };
 
   return (
@@ -93,10 +125,22 @@ const EmployeeListPage = () => {
             <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} پرسنل</Typography>
           </Box>
         </Box>
-        <Button variant="contained" onClick={() => navigate('/employees/new')}>
-          {t('employees.add_employee')}
-        </Button>
+        <Stack direction="row" spacing={1}>
+          <Button variant="outlined" startIcon={<FileDownloadIcon />}
+            onClick={exportExcel} disabled={exporting}>
+            {exporting ? <CircularProgress size={18} /> : 'خروجی اکسل'}
+          </Button>
+          <Button variant="contained" onClick={() => navigate('/employees/new')}>
+            {t('employees.add_employee')}
+          </Button>
+        </Stack>
       </Paper>
+
+      {exportError && (
+        <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>
+          {exportError}
+        </Alert>
+      )}
 
       {/* Search & Filter Toolbar - glass */}
       <Paper sx={{
@@ -147,6 +191,17 @@ const EmployeeListPage = () => {
               </FormControl>
             </Grid>
             <Grid item xs={12} sm={6} md={2}>
+              <FormControl fullWidth size="small"><InputLabel>لیست بیمه</InputLabel>
+                <Select value={filters.insurance_list} label="لیست بیمه"
+                  onChange={(e) => handleFilterChange('insurance_list', e.target.value)}>
+                  <MenuItem value="">{t('common.all')}</MenuItem>
+                  {Array.isArray(insuranceLists) && insuranceLists.map(item => (
+                    <MenuItem key={item.id} value={item.id}>{item.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6} md={2}>
               <FormControl fullWidth size="small"><InputLabel>{t('employees.status')}</InputLabel>
                 <Select value={filters.status} label={t('employees.status')} onChange={(e) => handleFilterChange('status', e.target.value)}>
                   <MenuItem value="">{t('common.all')}</MenuItem>
@@ -184,13 +239,14 @@ const EmployeeListPage = () => {
                 <TableCell>{t('employees.department')}</TableCell>
                 <TableCell>{t('employees.job_title')}</TableCell>
                 <TableCell>{t('employees.work_location')}</TableCell>
+                <TableCell>لیست بیمه</TableCell>
                 <TableCell>{t('employees.status')}</TableCell>
                 <TableCell>{t('common.actions')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {employees.length === 0 ? (
-                <TableRow><TableCell colSpan={9} align="center">{t('table.no_results')}</TableCell></TableRow>
+                <TableRow><TableCell colSpan={10} align="center">{t('table.no_results')}</TableCell></TableRow>
               ) : (
                 employees.map((emp, index) => (
                   <TableRow key={emp.id} hover sx={{ cursor: 'pointer' }} onClick={() => navigate(`/employees/${emp.id}`)}>
@@ -217,6 +273,7 @@ const EmployeeListPage = () => {
                     <TableCell>{emp.department_name}</TableCell>
                     <TableCell>{emp.job_title_name}</TableCell>
                     <TableCell>{emp.work_location_name}</TableCell>
+                    <TableCell>{emp.insurance_list_name || '—'}</TableCell>
                     <TableCell><StatusBadge status={emp.status} /></TableCell>
                     <TableCell onClick={(e) => e.stopPropagation()}>
                       <Tooltip title={t('common.edit')}><IconButton size="small" onClick={() => navigate(`/employees/${emp.id}/edit`)}><EditIcon fontSize="small" /></IconButton></Tooltip>

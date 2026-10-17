@@ -128,6 +128,32 @@ class EmployeeViewSet(viewsets.ModelViewSet):
     def perform_update(self, serializer):
         serializer.save()
 
+    @action(detail=False, methods=['get'], url_path='export-excel')
+    def export_excel(self, request):
+        """خروجی اکسل پرونده‌های پرسنلی — با اعمال همان فیلترهای صفحه.
+
+        پارامترهای پشتیبانی‌شده همان فیلترهای `EmployeeFilter` هستند:
+        `search`, `department`, `job_title`, `work_location`, `status`, `gender`,
+        `insurance_list` و …
+        """
+        from django.http import HttpResponse
+        from django.utils import timezone
+
+        from employees.excel_export import build_employees_workbook
+
+        queryset = self.filter_queryset(self.get_queryset()).order_by(
+            'last_name', 'first_name',
+        )
+
+        workbook = build_employees_workbook(queryset)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        filename = f'employees-{timezone.localtime().strftime("%Y%m%d-%H%M")}.xlsx'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        workbook.save(response)
+        return response
+
     def destroy(self, request, *args, **kwargs):
         """Soft delete - set is_active=False instead of physical delete.
 

@@ -57,6 +57,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
     department_name = serializers.CharField(source='department.name', read_only=True)
     job_title_name = serializers.CharField(source='job_title.name', read_only=True)
     work_location_name = serializers.CharField(source='work_location.name', read_only=True)
+    insurance_list_name = serializers.CharField(source='insurance_list.name', read_only=True)
     full_name = serializers.CharField(read_only=True)
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     gender_display = serializers.CharField(source='get_gender_display', read_only=True)
@@ -71,6 +72,7 @@ class EmployeeListSerializer(serializers.ModelSerializer):
             'department', 'department_name',
             'job_title', 'job_title_name',
             'work_location', 'work_location_name',
+            'insurance_list', 'insurance_list_name',
             'status', 'status_display',
             'gender', 'gender_display',
             'hire_date', 'birth_date', 'is_active', 'created_at',

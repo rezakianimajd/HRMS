@@ -286,7 +286,11 @@ $BackendFiles += @(
     'hrms_project/core/management/commands/apply_due_updates.py',
     'hrms_project/core/migrations/0015_updatesettings_notify_bale_and_more.py',
     'scripts/systemd/hrms-update-schedule.service',
-    'scripts/systemd/hrms-update-schedule.timer'
+    'scripts/systemd/hrms-update-schedule.timer',
+    # پرسنل: فیلتر لیست بیمه + خروجی اکسل
+    'hrms_project/employees/excel_export.py',
+    'hrms_project/employees/serializers.py',
+    'hrms_project/employees/views.py'
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
@@ -295,7 +299,8 @@ $FrontendFiles += @(
     'frontend/src/core/components/ui/SystemBroadcastGate.jsx',
     'frontend/src/core/hooks/useSystemStatus.js',
     'frontend/src/modules/settings/Settings.jsx',
-    'frontend/src/App.jsx'
+    'frontend/src/App.jsx',
+    'frontend/src/pages/EmployeeListPage.jsx'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
