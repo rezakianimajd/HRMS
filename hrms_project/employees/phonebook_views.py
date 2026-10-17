@@ -34,7 +34,7 @@ class PhonebookViewSet(viewsets.ReadOnlyModelViewSet):
         qs = Employee.objects.filter(is_active=True).select_related(
             'department', 'job_title', 'work_location', 'insurance_list'
         ).only(
-            'id', 'first_name', 'last_name', 'employee_id', 'national_id',
+            'id', 'first_name', 'last_name', 'employee_id', 'national_id', 'gender',
             'mobile', 'phone', 'emergency_contact_name', 'emergency_contact_phone',
             'email', 'address', 'postal_code', 'photo',
             'department__name', 'job_title__name', 'work_location__name', 'insurance_list__name',
@@ -63,6 +63,7 @@ class PhonebookViewSet(viewsets.ReadOnlyModelViewSet):
             'last_name': emp.last_name,
             'full_name': emp.full_name,
             'photo_url': photo_url,
+            'gender': emp.gender,
             'national_id': emp.national_id,
             'mobile': emp.mobile,
             'phone': emp.phone,

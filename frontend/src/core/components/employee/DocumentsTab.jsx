@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Grid, Card, CardContent, CardActions,
-  IconButton, Tooltip, Chip, Button, CircularProgress, Paper, Avatar
+  IconButton, Tooltip, Chip, Button, CircularProgress, Paper, Avatar, Stack
 } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
@@ -123,6 +123,7 @@ const DocumentsTab = ({ employeeId }) => {
   const [showUpload, setShowUpload] = useState(false);
   const [previewDoc, setPreviewDoc] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [deletingPhoto, setDeletingPhoto] = useState(false);
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -146,6 +147,23 @@ const DocumentsTab = ({ employeeId }) => {
     }
   };
 
+  const handlePhotoDelete = async () => {
+    if (!employee?.photo_url) return;
+    if (!window.confirm('عکس پرسنلی حذف شود؟')) return;
+    setDeletingPhoto(true);
+    try {
+      // null (نه رشتهٔ خالی) چون فیلد photo در مدل null=True است
+      await axiosInstance.patch(`/employees/${employeeId}/`, { photo: null });
+      queryClient.invalidateQueries({ queryKey: ['employee'] });
+      queryClient.invalidateQueries({ queryKey: ['employees'] });
+      queryClient.invalidateQueries({ queryKey: ['phonebook'] });
+    } catch (err) {
+      window.alert(err?.response?.data?.detail || 'حذف عکس ناموفق بود.');
+    } finally {
+      setDeletingPhoto(false);
+    }
+  };
+
   if (isLoading) return <Box sx={{ textAlign: 'center', p: 3 }}><CircularProgress /></Box>;
 
   return (
@@ -159,13 +177,24 @@ const DocumentsTab = ({ employeeId }) => {
             عکس در تمام بخش‌ها (لیست پرسنل، دفترچه تلفن، پرونده) نمایش داده می‌شود.
           </Typography>
           <input id="employee-photo-input" type="file" accept="image/*" hidden onChange={handlePhotoUpload} />
-          <Button
-            variant="outlined" size="small" startIcon={<PhotoCameraIcon />}
-            onClick={() => document.getElementById('employee-photo-input').click()}
-            disabled={uploadingPhoto}
-          >
-            {uploadingPhoto ? <CircularProgress size={16} /> : (employee?.photo_url ? 'تغییر عکس پرسنلی' : 'آپلود عکس پرسنلی')}
-          </Button>
+          <Stack direction="row" spacing={1} sx={{ flexWrap: 'wrap', gap: 1 }}>
+            <Button
+              variant="outlined" size="small" startIcon={<PhotoCameraIcon />}
+              onClick={() => document.getElementById('employee-photo-input').click()}
+              disabled={uploadingPhoto || deletingPhoto}
+            >
+              {uploadingPhoto ? <CircularProgress size={16} /> : (employee?.photo_url ? 'تغییر عکس پرسنلی' : 'آپلود عکس پرسنلی')}
+            </Button>
+            {employee?.photo_url && (
+              <Button
+                variant="text" size="small" color="error" startIcon={<DeleteIcon />}
+                onClick={handlePhotoDelete}
+                disabled={uploadingPhoto || deletingPhoto}
+              >
+                {deletingPhoto ? <CircularProgress size={16} /> : 'حذف عکس'}
+              </Button>
+            )}
+          </Stack>
         </Box>
       </Paper>
 

@@ -290,7 +290,9 @@ $BackendFiles += @(
     # پرسنل: فیلتر لیست بیمه + خروجی اکسل
     'hrms_project/employees/excel_export.py',
     'hrms_project/employees/serializers.py',
-    'hrms_project/employees/views.py'
+    'hrms_project/employees/views.py',
+    # پرسنل: آواتار جنسیت‌محور + حذف عکس
+    'hrms_project/employees/phonebook_views.py'
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
@@ -300,7 +302,10 @@ $FrontendFiles += @(
     'frontend/src/core/hooks/useSystemStatus.js',
     'frontend/src/modules/settings/Settings.jsx',
     'frontend/src/App.jsx',
-    'frontend/src/pages/EmployeeListPage.jsx'
+    'frontend/src/pages/EmployeeListPage.jsx',
+    'frontend/src/pages/EmployeeForm.jsx',
+    'frontend/src/core/components/ui/EmployeeAvatar.jsx',
+    'frontend/src/core/components/employee/DocumentsTab.jsx'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)

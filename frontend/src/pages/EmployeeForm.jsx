@@ -27,6 +27,7 @@ import axiosInstance from '../core/api/axiosConfig';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import {
   useEmployee, useCreateEmployee, useUpdateEmployee,
   useDepartments, useJobTitles, useWorkLocations, useInsuranceLists, useContractTypes,
@@ -384,13 +385,17 @@ const EmployeeForm = () => {
 
       <SectionCard title="اطلاعات فردی و هویتی" icon={<PersonIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#6366f1">
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2, p: 2, bgcolor: 'rgba(99,102,241,0.04)', borderRadius: '10px' }}>
-          <Avatar src={photoPreview || form.photo_url || undefined} sx={{
-            width: 80, height: 80, fontSize: 32, fontWeight: 800,
-            background: 'linear-gradient(135deg, #6366f1, #ec4899)',
-            boxShadow: '0 4px 16px rgba(99,102,241,0.3)',
-          }}>
-            {!photoPreview && !form.photo_url && (form.first_name?.charAt(0) || '؟')}
-          </Avatar>
+          <EmployeeAvatar
+            employee={{
+              photo_url: photoPreview || form.photo_url || null,
+              gender: form.gender,
+              first_name: form.first_name,
+              last_name: form.last_name,
+            }}
+            size={80}
+            fontSize={32}
+            sx={{ boxShadow: '0 4px 16px rgba(99,102,241,0.3)' }}
+          />
           <Box>
             <Typography variant="body2" fontWeight={700} sx={{ mb: 0.5 }}>عکس پرسنلی</Typography>
             <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1 }}>
