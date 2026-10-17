@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Typography, Avatar, Chip, Stack, alpha } from '@mui/material';
+import { Box, Chip, alpha } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -12,10 +12,11 @@ import HubIcon from '@mui/icons-material/Hub';
 import LayersIcon from '@mui/icons-material/Layers';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import PublicIcon from '@mui/icons-material/Public';
-import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import axiosInstance from '../core/api/axiosConfig';
 import { EntityManager, ENDPOINTS } from '../core/components/settings/shared';
-import SettingsShell from '../core/components/settings/SettingsShell';
+import {
+  PageHeader, StatGrid, TabsCard, SectionNote, SOFT,
+} from '../core/components/settings/settingsUi';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 
 const ORG_TYPES = [
@@ -31,37 +32,37 @@ const ORG_TYPES = [
 const TABS = [
   {
     key: 'departments', endpointKey: 'departments', label: 'دپارتمان‌ها',
-    icon: <AccountTreeIcon />, color: '#14b8a6', group: 'ساختار سازمانی',
+    icon: <AccountTreeIcon />, color: '#68b7a8', group: 'ساختار سازمانی',
     desc: 'واحدها و دپارتمان‌های سازمان',
   },
   {
     key: 'jobTitles', endpointKey: 'jobTitles', label: 'عناوین شغلی',
-    icon: <WorkIcon />, color: '#ec4899', group: 'ساختار سازمانی',
+    icon: <WorkIcon />, color: '#d38aa8', group: 'ساختار سازمانی',
     desc: 'سمت‌های سازمانی به‌همراه سطح',
   },
   {
     key: 'locations', endpointKey: 'workLocations', label: 'محل‌های استقرار',
-    icon: <LocationOnIcon />, color: '#10b981', group: 'ساختار سازمانی',
+    icon: <LocationOnIcon />, color: '#7fbf8a', group: 'ساختار سازمانی',
     desc: 'شعب و محل‌های کاری',
   },
   {
     key: 'insurance', endpointKey: 'insuranceLists', label: 'لیست‌های بیمه',
-    icon: <ShieldIcon />, color: '#f59e0b', group: 'بیمه و قرارداد',
+    icon: <ShieldIcon />, color: '#d3ac6e', group: 'بیمه و قرارداد',
     desc: 'کدهای کارگاهی تأمین اجتماعی',
   },
   {
     key: 'contractTypes', endpointKey: 'contractTypes', label: 'انواع قرارداد',
-    icon: <NoteAltIcon />, color: '#8b5cf6', group: 'بیمه و قرارداد',
+    icon: <NoteAltIcon />, color: '#a08fdc', group: 'بیمه و قرارداد',
     desc: 'الگوهای قرارداد استخدام',
   },
   {
     key: 'docTypes', endpointKey: 'documentTypes', label: 'انواع مدارک',
-    icon: <DescriptionIcon />, color: '#3b82f6', group: 'مدارک و طرف‌های خارجی',
+    icon: <DescriptionIcon />, color: '#7aa6d6', group: 'مدارک و طرف‌های خارجی',
     desc: 'دسته‌بندی مدارک و زیرپوشهٔ بایگانی',
   },
   {
     key: 'organizations', endpointKey: 'organizations', label: 'سازمان‌های خارجی',
-    icon: <CategoryIcon />, color: '#f97316', group: 'مدارک و طرف‌های خارجی',
+    icon: <CategoryIcon />, color: '#d69a74', group: 'مدارک و طرف‌های خارجی',
     desc: 'سازمان‌های مالیات، تأمین اجتماعی و ...',
   },
 ];
@@ -114,8 +115,8 @@ const MANAGER_PROPS = {
 };
 
 const DefinitionsPage = () => {
-  const [activeKey, setActiveKey] = useState(TABS[0].key);
-  const active = TABS.find((tab) => tab.key === activeKey) || TABS[0];
+  const [tabIndex, setTabIndex] = useState(0);
+  const active = TABS[Math.min(tabIndex, TABS.length - 1)];
 
   const { data: counts = {} } = useQuery({
     queryKey: ['definition-counts'],
@@ -141,7 +142,7 @@ const DefinitionsPage = () => {
   const totalRecords = TABS.reduce((sum, tab) => sum + (counts[tab.key] || 0), 0);
   const activeCount = counts[active.key] || 0;
 
-  const nav = TABS.map((tab) => ({
+  const tabs = TABS.map((tab) => ({
     ...tab,
     badge: counts[tab.key] != null ? formatPersianNumber(counts[tab.key]) : '',
   }));
@@ -150,80 +151,66 @@ const DefinitionsPage = () => {
     {
       label: 'کل رکوردهای پایه', value: formatPersianNumber(totalRecords),
       sub: `${formatPersianNumber(TABS.length)} گروه تعریف پایه`,
-      icon: <LayersIcon />, color: '#6366f1',
+      icon: <LayersIcon />, color: SOFT.indigo,
     },
     {
       label: 'دپارتمان‌ها', value: formatPersianNumber(counts.departments || 0),
-      sub: 'واحدهای سازمانی', icon: <ApartmentIcon />, color: '#14b8a6',
+      sub: 'واحدهای سازمانی', icon: <ApartmentIcon />, color: SOFT.teal,
     },
     {
       label: 'انواع مدارک', value: formatPersianNumber(counts.docTypes || 0),
-      sub: 'دسته‌بندی مدارک پرسنلی', icon: <DescriptionIcon />, color: '#3b82f6',
+      sub: 'دسته‌بندی مدارک پرسنلی', icon: <DescriptionIcon />, color: SOFT.blue,
     },
     {
       label: 'سازمان‌های خارجی', value: formatPersianNumber(counts.organizations || 0),
-      sub: 'مالیات، بیمه و مراجع', icon: <PublicIcon />, color: '#f97316',
+      sub: 'مالیات، بیمه و مراجع', icon: <PublicIcon />, color: SOFT.orange,
     },
   ];
 
-  const shellProps = MANAGER_PROPS[active.key];
-
   return (
-    <SettingsShell
-      brand="تعاریف اولیه"
-      brandSub="داده‌های پایهٔ سازمان"
-      icon={<HubIcon />}
-      title="تعاریف و داده‌های پایه"
-      subtitle="مدیریت ساختار سازمانی، مدارک، بیمه و طرف‌های خارجی — همهٔ ماژول‌ها از این داده‌ها استفاده می‌کنند."
-      badge={<Chip size="small" label={`${formatPersianNumber(TABS.length)} گروه`} sx={{ fontWeight: 800 }} />}
-      nav={nav}
-      activeKey={active.key}
-      onSelect={setActiveKey}
-      stats={stats}
-      footer={(
-        <Stack direction="row" spacing={1} alignItems="center">
-          <Avatar sx={{ width: 30, height: 30, bgcolor: alpha('#6366f1', 0.12), color: '#6366f1' }}>
-            <InfoOutlinedIcon sx={{ fontSize: 17 }} />
-          </Avatar>
-          <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: 11, fontWeight: 800 }} noWrap>راهنما</Typography>
-            <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }} noWrap>
-              تغییرات بلافاصله در فرم‌ها اعمال می‌شود
-            </Typography>
-          </Box>
-        </Stack>
-      )}
-    >
-      <Box sx={{
-        display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
-        p: 1.5, mb: 1.75, borderRadius: '16px',
-        background: `linear-gradient(135deg, ${alpha(active.color, 0.13)}, ${alpha(active.color, 0.02)})`,
-        border: `1px solid ${alpha(active.color, 0.18)}`,
-      }}>
-        <Avatar variant="rounded" sx={{
-          width: 38, height: 38, borderRadius: '11px',
-          bgcolor: alpha(active.color, 0.15), color: active.color,
-        }}>
-          {React.cloneElement(active.icon, { sx: { fontSize: 19 } })}
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 160 }}>
-          <Typography sx={{ fontWeight: 900, fontSize: 13.5 }}>{active.label}</Typography>
-          <Typography variant="caption" color="text.secondary">{active.desc}</Typography>
-        </Box>
-        <Chip
-          size="small"
-          label={`${formatPersianNumber(activeCount)} رکورد`}
-          sx={{
-            fontWeight: 800, bgcolor: alpha(active.color, 0.12), color: active.color,
-            '& .MuiChip-label': { px: 1 },
-          }}
-        />
-      </Box>
+    <Box>
+      <PageHeader
+        icon={<HubIcon />}
+        title="تعاریف و داده‌های پایه"
+        subtitle="مدیریت ساختار سازمانی، مدارک، بیمه و طرف‌های خارجی — همهٔ ماژول‌ها از این داده‌ها استفاده می‌کنند."
+        color={SOFT.indigo}
+        badge={(
+          <Chip size="small" variant="outlined" label={`${formatPersianNumber(TABS.length)} گروه`}
+            sx={{ fontWeight: 800 }} />
+        )}
+      />
 
-      {shellProps ? <EntityManager {...shellProps} /> : null}
-    </SettingsShell>
+      <TabsCard
+        tabs={tabs}
+        value={Math.min(tabIndex, TABS.length - 1)}
+        onChange={setTabIndex}
+        activeColor={active.color}
+      />
+
+      <StatGrid stats={stats} />
+
+      <SectionNote
+        icon={active.icon}
+        title={active.label}
+        desc={active.desc}
+        color={active.color}
+        trailing={(
+          <Chip
+            size="small"
+            label={`${formatPersianNumber(activeCount)} رکورد`}
+            sx={{
+              fontWeight: 800,
+              bgcolor: alpha(active.color, 0.12),
+              color: active.color,
+              '& .MuiChip-label': { px: 1 },
+            }}
+          />
+        )}
+      />
+
+      {MANAGER_PROPS[active.key] ? <EntityManager {...MANAGER_PROPS[active.key]} /> : null}
+    </Box>
   );
 };
 
 export default DefinitionsPage;
-

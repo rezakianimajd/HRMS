@@ -17,6 +17,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import { formatPersianNumber } from '../../utils/numberUtils';
+import { SOFT } from './settingsUi';
 
 export const ENDPOINTS = {
   departments: '/departments/',
@@ -40,7 +41,7 @@ export const fieldLabel = (f) => FIELD_LABELS[f] || f;
 /* =============================================================================
  * Generic Entity Manager (CRUD) - departments, titles, locations, insurance, docs
  * ============================================================================= */
-const ACCENT = '#6366f1';
+const ACCENT = SOFT.indigo;
 
 export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields = {}, defaultForm = {}, title }) => {
   const { t } = useTranslation();
@@ -131,8 +132,8 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
               variant="contained" size="small" startIcon={<AddIcon />} onClick={() => handleOpen()}
               sx={{
                 borderRadius: '10px', fontWeight: 800, whiteSpace: 'nowrap',
-                background: `linear-gradient(135deg, ${ACCENT}, #8b5cf6)`,
-                boxShadow: `0 8px 18px ${alpha(ACCENT, 0.3)}`,
+                bgcolor: ACCENT, boxShadow: `0 6px 14px ${alpha(ACCENT, 0.22)}`,
+                '&:hover': { bgcolor: '#6f7ecb' },
               }}
             >
               افزودن
@@ -314,7 +315,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
           <Button onClick={() => setOpen(false)}>{t('common.cancel')}</Button>
           <Button variant="contained" onClick={() => saveMutation.mutate(form)}
             disabled={saveMutation.isLoading}
-            sx={{ borderRadius: '10px', fontWeight: 800, background: `linear-gradient(135deg, ${ACCENT}, #8b5cf6)` }}>
+            sx={{ borderRadius: '10px', fontWeight: 800, bgcolor: ACCENT, '&:hover': { bgcolor: '#6f7ecb' } }}>
             {saveMutation.isLoading ? <CircularProgress size={20} color="inherit" /> : t('common.save')}
           </Button>
         </DialogActions>
