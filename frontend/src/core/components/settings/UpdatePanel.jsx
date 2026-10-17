@@ -4,7 +4,7 @@ import {
   DialogTitle, Divider, FormControl, FormControlLabel, IconButton, InputLabel,
   LinearProgress, List, ListItem, ListItemIcon, ListItemText, MenuItem, Paper,
   Select, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TextField, Tooltip, Typography,
+  TableRow, TextField, Tooltip, Typography, Avatar,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
@@ -22,8 +22,25 @@ import useSystemStatus from '../../hooks/useSystemStatus';
 import axiosInstance from '../../api/axiosConfig';
 import { formatBytes } from './StorageArchivePanel';
 import { toJalali } from '../../utils/dateUtils';
+import { toPersianDigits } from '../../utils/numberUtils';
+import { SURFACE, SOFT } from './settingsUi';
 
-const COLOR = '#8b5cf6';
+const COLOR = SOFT.violet;
+const CARD = { ...SURFACE, p: 1.75, mb: 1.75 };
+
+const SectionHead = ({ icon, title, actions }) => (
+  <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
+    <Avatar variant="rounded" sx={{
+      width: 30, height: 30, borderRadius: '9px',
+      bgcolor: `${COLOR}24`, color: COLOR,
+    }}>
+      {React.cloneElement(icon, { sx: { fontSize: 17 } })}
+    </Avatar>
+    <Typography sx={{ fontSize: 13, fontWeight: 800, flex: 1 }}>{title}</Typography>
+    {actions}
+  </Stack>
+);
+
 const ACCEPT = '.zip,.tar.gz,.tgz';
 const FALLBACK_CHUNK = 4 * 1024 * 1024;
 
@@ -292,18 +309,13 @@ const UpdatePanel = () => {
       {notice && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setNotice('')}>{notice}</Alert>}
 
       {/* Status */}
-      <Paper variant="outlined" sx={{
-        p: 2, mb: 2, borderRadius: '12px', borderColor: `${COLOR}33`,
-        background: `linear-gradient(135deg, ${COLOR}0d, transparent)`,
-      }}>
+      <Paper elevation={0} sx={CARD}>
         <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-          <SystemUpdateAltIcon sx={{ color: COLOR }} />
+          <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: `${COLOR}24`, color: COLOR }}><SystemUpdateAltIcon sx={{ fontSize: 18 }} /></Avatar>
           <Box sx={{ flex: 1, minWidth: 220 }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ color: COLOR }}>
-              به‌روزرسانی سیستم
-            </Typography>
-            <Typography variant="caption" color="textSecondary">
-              نسخهٔ فعلی <b>{currentVersion}</b> · کانال {status.channel} · حداکثر حجم {status.max_package_mb} مگابایت
+            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>به‌روزرسانی سیستم</Typography>
+            <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+              نسخهٔ فعلی <b>{toPersianDigits(currentVersion)}</b> · کانال {status.channel} · حداکثر حجم {toPersianDigits(status.max_package_mb)} مگابایت
             </Typography>
           </Box>
           <Chip size="small" variant="outlined"
@@ -325,11 +337,8 @@ const UpdatePanel = () => {
 
       {/* Phase 3: settings */}
       {cfg && (
-        <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '12px' }}>
-          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
-            <SettingsIcon sx={{ color: COLOR, fontSize: 20 }} />
-            <Typography variant="subtitle2" fontWeight={700}>تنظیمات به‌روزرسانی</Typography>
-          </Stack>
+        <Paper elevation={0} sx={CARD}>
+          <SectionHead icon={<SettingsIcon />} title="تنظیمات به‌روزرسانی" />
 
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap" useFlexGap>
             <FormControl size="small" sx={{ minWidth: 150 }}>
@@ -383,14 +392,8 @@ const UpdatePanel = () => {
       )}
 
       {/* Upload */}
-      <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '12px' }}>
-        <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
-          بارگذاری بستهٔ به‌روزرسانی
-        </Typography>
-        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5 }}>
-          فایل <code>.zip</code> یا <code>.tar.gz</code> را اینجا رها کنید. بسته ابتدا تأیید
-          (امضا و چکسام) و سپس در فهرست زیر ثبت می‌شود.
-        </Typography>
+      <Paper elevation={0} sx={CARD}>
+        <SectionHead icon={<CloudUploadIcon />} title="بارگذاری بستهٔ به‌روزرسانی" />
 
         <Box
           onDragOver={(event) => { event.preventDefault(); setDragging(true); }}
@@ -426,7 +429,7 @@ const UpdatePanel = () => {
           <Box sx={{ mt: 2 }}>
             <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
               <Typography variant="caption" noWrap sx={{ maxWidth: 380 }}>{fileName}</Typography>
-              <Typography variant="caption" fontWeight={700}>{progress}%</Typography>
+              <Typography variant="caption" fontWeight={700}>{toPersianDigits(progress)}٪</Typography>
             </Stack>
             <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
             <Box sx={{ mt: 1 }}>
@@ -438,9 +441,9 @@ const UpdatePanel = () => {
 
 
       {/* Releases */}
-      <Paper variant="outlined" sx={{ borderRadius: '12px', overflow: 'hidden' }}>
-        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-          <Typography variant="subtitle2" fontWeight={700}>بسته‌های بارگذاری‌شده</Typography>
+      <Paper elevation={0} sx={{ ...CARD, p: 0, overflow: 'hidden' }}>
+        <Box sx={{ px: 1.75, py: 1.25, borderBottom: '1px solid', borderColor: 'divider' }}>
+          <SectionHead icon={<SystemUpdateAltIcon />} title="بسته‌های بارگذاری‌شده" />
         </Box>
         {releases.length === 0 ? (
           <Box sx={{ p: 4, textAlign: 'center' }}>
@@ -450,7 +453,7 @@ const UpdatePanel = () => {
           </Box>
         ) : (
           <TableContainer>
-            <Table size="small">
+            <Table size="small" sx={{ '& th': { fontSize: 10.5, fontWeight: 800, bgcolor: 'rgba(139,92,246,0.04)' }, '& td': { fontSize: 11, py: 1 } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>نسخه</TableCell>
@@ -515,9 +518,9 @@ const UpdatePanel = () => {
 
       {/* Scheduled installs */}
       {(status.schedules || []).length > 0 && (
-        <Paper variant="outlined" sx={{ mt: 2, borderRadius: '12px', overflow: 'hidden' }}>
-          <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
-            <Typography variant="subtitle2" fontWeight={700}>زمان‌بندی‌های نصب</Typography>
+        <Paper elevation={0} sx={{ ...CARD, p: 0, mt: 0, overflow: 'hidden' }}>
+          <Box sx={{ px: 1.75, py: 1.25, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <SectionHead icon={<ScheduleIcon />} title="زمان‌بندی‌های نصب" />
           </Box>
           <TableContainer>
             <Table size="small">
@@ -563,10 +566,10 @@ const UpdatePanel = () => {
 
       {/* Last run */}
       {status.last_run && (
-        <Paper variant="outlined" sx={{ p: 2, mt: 2, borderRadius: '12px' }}>
+        <Paper elevation={0} sx={CARD}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
-            <CheckCircleOutlineIcon sx={{ fontSize: 18, color: 'text.secondary' }} />
-            <Typography variant="subtitle2" fontWeight={700}>آخرین اجرای به‌روزرسانی</Typography>
+            <CheckCircleOutlineIcon sx={{ fontSize: 18, color: SOFT.green }} />
+            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>آخرین اجرای به‌روزرسانی</Typography>
             <Chip size="small" label={`${status.last_run.from_version} → ${status.last_run.to_version}`} />
             <Chip size="small" variant="outlined" label={status.last_run.status_display} />
             <Typography variant="caption" color="textSecondary">
@@ -583,11 +586,6 @@ const UpdatePanel = () => {
           )}
         </Paper>
       )}
-
-      <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 2 }}>
-        بسته‌ها در مسیر سرور <code>{status.update_root}</code> نگهداری می‌شوند و از طریق
-        آدرس عمومی <code>/media/</code> قابل دانلود نیستند.
-      </Typography>
 
       {/* Apply confirmation */}
       <Dialog open={Boolean(applyTarget)} onClose={() => { if (!applying) setApplyTarget(null); }}
@@ -638,7 +636,7 @@ const UpdatePanel = () => {
         maxWidth="sm" fullWidth>
         <DialogTitle>
           <Stack direction="row" spacing={1} alignItems="center">
-            <SystemUpdateAltIcon sx={{ color: COLOR }} />
+            <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: `${COLOR}24`, color: COLOR }}><SystemUpdateAltIcon sx={{ fontSize: 18 }} /></Avatar>
             <Typography fontWeight={800}>پیشرفت به‌روزرسانی</Typography>
             <Chip size="small" label={runData?.status_display || 'در حال اجرا'}
               color={runData?.status === 'success' ? 'success'
