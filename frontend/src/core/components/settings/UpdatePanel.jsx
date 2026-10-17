@@ -22,11 +22,19 @@ import useSystemStatus from '../../hooks/useSystemStatus';
 import axiosInstance from '../../api/axiosConfig';
 import { formatBytes } from './StorageArchivePanel';
 import { toJalali } from '../../utils/dateUtils';
-import { toPersianDigits } from '../../utils/numberUtils';
+import { toEnglishDigits, toPersianDigits } from '../../utils/numberUtils';
 import { SURFACE, SOFT } from './settingsUi';
 
 const COLOR = SOFT.violet;
 const CARD = { ...SURFACE, p: 1.75, mb: 1.75 };
+
+const FIELD_SX = {
+  '& .MuiInputBase-input': { fontSize: 11.5 },
+  '& .MuiSelect-select': { fontSize: 11.5 },
+  '& .MuiInputLabel-root': { fontSize: 11 },
+};
+
+const onlyDigits = (value) => Number(toEnglishDigits(String(value)).replace(/[^0-9]/g, '')) || 0;
 
 const SectionHead = ({ icon, title, actions }) => (
   <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
@@ -310,25 +318,27 @@ const UpdatePanel = () => {
 
       {/* Status */}
       <Paper elevation={0} sx={CARD}>
-        <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-          <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: `${COLOR}24`, color: COLOR }}><SystemUpdateAltIcon sx={{ fontSize: 18 }} /></Avatar>
-          <Box sx={{ flex: 1, minWidth: 220 }}>
-            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>به‌روزرسانی سیستم</Typography>
-            <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-              نسخهٔ فعلی <b>{toPersianDigits(currentVersion)}</b> · کانال {status.channel} · حداکثر حجم {toPersianDigits(status.max_package_mb)} مگابایت
-            </Typography>
-          </Box>
+        <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: `${COLOR}24`, color: COLOR }}>
+            <SystemUpdateAltIcon sx={{ fontSize: 18 }} />
+          </Avatar>
+          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>به‌روزرسانی سیستم</Typography>
+          <Chip size="small" variant="outlined" label={`نسخهٔ فعلی ${toPersianDigits(currentVersion)}`} />
           <Chip size="small" variant="outlined"
             color={status.signature_required ? 'success' : 'warning'}
             label={status.signature_required ? 'امضای بسته الزامی است' : 'کلید امضا تنظیم نشده'} />
           <Chip size="small" variant="outlined"
             color={status.apply_enabled ? 'success' : 'default'}
             label={status.apply_enabled ? 'نصب خودکار فعال' : 'نصب خودکار: فاز بعد'} />
-          <Button size="small" onClick={load}>به‌روزرسانی وضعیت</Button>
+          <Box sx={{ flex: 1 }} />
+          <Button size="small" variant="outlined" onClick={load}
+            sx={{ fontSize: 11, borderRadius: '9px', px: 1.5 }}>
+            به‌روزرسانی وضعیت
+          </Button>
         </Stack>
 
         {!status.signature_required && (
-          <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mt: 1.5 }}>
+          <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mt: 1.5, '& .MuiAlert-message': { fontSize: 11 } }}>
             کلید عمومی امضا تنظیم نشده است؛ بسته‌ها بدون بررسی اصالت پذیرفته می‌شوند.
             برای امنیت کامل مقدار <code>UPDATE_PUBLIC_KEY</code> را روی سرور تنظیم کنید.
           </Alert>
@@ -340,52 +350,56 @@ const UpdatePanel = () => {
         <Paper elevation={0} sx={CARD}>
           <SectionHead icon={<SettingsIcon />} title="تنظیمات به‌روزرسانی" />
 
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap" useFlexGap>
-            <FormControl size="small" sx={{ minWidth: 150 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={{ minWidth: 150, ...FIELD_SX }}>
               <InputLabel>کانال</InputLabel>
               <Select label="کانال" value={cfg.channel}
                 onChange={(event) => setCfg({ ...cfg, channel: event.target.value })}>
-                <MenuItem value="stable">stable — پایدار</MenuItem>
-                <MenuItem value="beta">beta — آزمایشی</MenuItem>
+                <MenuItem value="stable" sx={{ fontSize: 11.5 }}>پایدار</MenuItem>
+                <MenuItem value="beta" sx={{ fontSize: 11.5 }}>آزمایشی</MenuItem>
               </Select>
             </FormControl>
-            <TextField size="small" type="number" label="شمارندهٔ خروج (ثانیه)"
-              value={cfg.logout_countdown_seconds} sx={{ width: 180 }}
-              onChange={(event) => setCfg({ ...cfg, logout_countdown_seconds: Number(event.target.value) })} />
-            <TextField size="small" type="number" label="تعداد بستهٔ نگهداری"
-              value={cfg.keep_releases} sx={{ width: 170 }}
-              onChange={(event) => setCfg({ ...cfg, keep_releases: Number(event.target.value) })} />
+            <TextField size="small" label="شمارندهٔ خروج (ثانیه)"
+              value={toPersianDigits(cfg.logout_countdown_seconds ?? '')} sx={{ width: 180, ...FIELD_SX }}
+              onChange={(event) => setCfg({ ...cfg, logout_countdown_seconds: onlyDigits(event.target.value) })} />
+            <TextField size="small" label="تعداد بستهٔ نگهداری"
+              value={toPersianDigits(cfg.keep_releases ?? '')} sx={{ width: 170, ...FIELD_SX }}
+              onChange={(event) => setCfg({ ...cfg, keep_releases: onlyDigits(event.target.value) })} />
             <FormControlLabel
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: 11.5 } }}
               control={<Switch checked={Boolean(cfg.notify_email)}
                 onChange={(event) => setCfg({ ...cfg, notify_email: event.target.checked })} />}
               label="ایمیل" />
             <FormControlLabel
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: 11.5 } }}
               control={<Switch checked={Boolean(cfg.notify_bale)}
                 onChange={(event) => setCfg({ ...cfg, notify_bale: event.target.checked })} />}
               label="بله" />
           </Stack>
 
-          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 1.5 }}>
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} sx={{ mt: 1.5 }} useFlexGap>
             <TextField size="small" fullWidth label="ایمیل‌های اطلاع‌رسانی (با کاما)"
-              value={(cfg.notify_emails || []).join(',')}
+              value={(cfg.notify_emails || []).join(',')} sx={FIELD_SX}
               onChange={(event) => setCfg({
                 ...cfg,
                 notify_emails: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
-              })}
-              helperText="خالی = آدرس‌های ADMINS در تنظیمات" />
+              })} />
             <TextField size="small" fullWidth label="شناسه‌های چت بله (با کاما)"
-              value={(cfg.notify_bale_chat_ids || []).join(',')}
+              value={(cfg.notify_bale_chat_ids || []).join(',')} sx={FIELD_SX}
               onChange={(event) => setCfg({
                 ...cfg,
                 notify_bale_chat_ids: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
-              })}
-              helperText={cfg.bale_configured ? 'توکن بله روی سرور تنظیم شده است' : 'UPDATE_BALE_TOKEN روی سرور تنظیم نشده'} />
+              })} />
           </Stack>
 
-          <Box sx={{ mt: 1.5, textAlign: 'left' }}>
+          <Box sx={{
+            mt: 1.75, pt: 1.5, borderTop: '1px solid', borderColor: 'divider',
+            display: 'flex', justifyContent: 'flex-end',
+          }}>
             <Button size="small" variant="contained" onClick={saveSettings}
-              disabled={savingCfg} sx={{ bgcolor: COLOR }}>
-              {savingCfg ? <CircularProgress size={18} /> : 'ذخیرهٔ تنظیمات'}
+              disabled={savingCfg}
+              sx={{ bgcolor: COLOR, fontSize: 11.5, borderRadius: '9px', px: 2 }}>
+              {savingCfg ? <CircularProgress size={16} color="inherit" /> : 'ذخیرهٔ تنظیمات'}
             </Button>
           </Box>
         </Paper>
@@ -407,9 +421,10 @@ const UpdatePanel = () => {
           sx={{
             border: '2px dashed',
             borderColor: dragging ? COLOR : 'divider',
-            borderRadius: '12px',
-            p: 3,
-            textAlign: 'center',
+            borderRadius: '14px',
+            p: 2.5,
+            display: 'flex', flexDirection: 'column',
+            alignItems: 'center', justifyContent: 'center', textAlign: 'center',
             cursor: uploading ? 'default' : 'pointer',
             bgcolor: dragging ? `${COLOR}0d` : 'transparent',
             transition: 'all .15s ease',
@@ -420,15 +435,19 @@ const UpdatePanel = () => {
               startUpload(event.target.files?.[0]);
               event.target.value = '';
             }} />
-          <CloudUploadIcon sx={{ fontSize: 40, color: COLOR, opacity: 0.85 }} />
-          <Typography variant="body2" fontWeight={600}>فایل بسته را انتخاب یا رها کنید</Typography>
-          <Typography variant="caption" color="textSecondary">فرمت‌های مجاز: zip · tar.gz · tgz</Typography>
+          <CloudUploadIcon sx={{ fontSize: 34, color: COLOR, opacity: 0.85, mb: 0.5 }} />
+          <Typography sx={{ fontSize: 12.5, fontWeight: 700, textAlign: 'center', width: '100%' }}>
+            فایل بسته را انتخاب یا رها کنید
+          </Typography>
+          <Typography sx={{ fontSize: 10.5, color: 'text.secondary', textAlign: 'center', width: '100%', mt: 0.25 }}>
+            فرمت‌های مجاز: zip · tar.gz · tgz
+          </Typography>
         </Box>
 
         {uploading && (
           <Box sx={{ mt: 2 }}>
             <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-              <Typography variant="caption" noWrap sx={{ maxWidth: 380 }}>{fileName}</Typography>
+              <Typography noWrap sx={{ fontSize: 10.5, maxWidth: 380 }}>{fileName}</Typography>
               <Typography variant="caption" fontWeight={700}>{toPersianDigits(progress)}٪</Typography>
             </Stack>
             <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
@@ -447,7 +466,7 @@ const UpdatePanel = () => {
         </Box>
         {releases.length === 0 ? (
           <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography variant="body2" color="textSecondary">
+            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
               هنوز بسته‌ای بارگذاری نشده است.
             </Typography>
           </Box>
@@ -470,10 +489,10 @@ const UpdatePanel = () => {
                 {releases.map((release) => (
                   <TableRow key={release.id} hover>
                     <TableCell>
-                      <Typography variant="body2" fontWeight={700}>{release.version}</Typography>
+                      <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>{toPersianDigits(release.version)}</Typography>
                       {release.min_app_version && (
-                        <Typography variant="caption" color="textSecondary">
-                          حداقل نسخهٔ مبدأ: {release.min_app_version}
+                        <Typography sx={{ fontSize: 9.5, color: 'text.secondary', display: 'block' }}>
+                          حداقل نسخهٔ مبدأ: {toPersianDigits(release.min_app_version)}
                         </Typography>
                       )}
                     </TableCell>
@@ -482,7 +501,8 @@ const UpdatePanel = () => {
                       <Chip size="small"
                         variant={release.channel === status.channel ? 'filled' : 'outlined'}
                         color={release.channel === status.channel ? 'default' : 'warning'}
-                        label={release.channel || 'stable'} />
+                        label={release.channel === 'beta' ? 'آزمایشی' : 'پایدار'}
+                        sx={{ fontSize: 10.5, height: 20 }} />
                     </TableCell>
                     <TableCell>{signatureChip(release.signature_status)}</TableCell>
                     <TableCell>{formatBytes(release.size)}</TableCell>
@@ -500,10 +520,11 @@ const UpdatePanel = () => {
                       <Button size="small" variant="contained" startIcon={<PlayArrowIcon />}
                         disabled={!status.apply_enabled || release.status === 'applied'}
                         onClick={() => { setConfirmText(''); setApplyTarget(release); }}
-                        sx={{ mr: 1, bgcolor: COLOR }}>
+                        sx={{ mr: 1, bgcolor: COLOR, fontSize: 10.5, borderRadius: '8px' }}>
                         نصب
                       </Button>
                       <Button size="small" color="error" startIcon={<DeleteIcon />}
+                        sx={{ fontSize: 10.5, borderRadius: '8px' }}
                         onClick={() => removeRelease(release)}>
                         حذف
                       </Button>
@@ -536,11 +557,11 @@ const UpdatePanel = () => {
               <TableBody>
                 {(status.schedules || []).map((item) => (
                   <TableRow key={item.id} hover>
-                    <TableCell>{item.version}</TableCell>
+                    <TableCell>{toPersianDigits(item.version)}</TableCell>
                     <TableCell>
                       {toJalali(String(item.scheduled_for || '').slice(0, 10))}
                       {' — '}
-                      {String(item.scheduled_for || '').slice(11, 16)}
+                      {toPersianDigits(String(item.scheduled_for || '').slice(11, 16))}
                     </TableCell>
                     <TableCell>
                       <Chip size="small" label={item.status_display}
