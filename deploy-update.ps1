@@ -22,6 +22,10 @@
     اجرای migrate_schemas روی سرور — لازم پس از هر تغییر مدل
     (مثلاً افزودن فیلد issues = چک‌لیست نواقص سند).
 
+.PARAMETER MoveFiles
+    فایل‌های آپلودشدهٔ قبلی را از مسیر قدیمی به ساختار بایگانی
+    (archive/company_x/<module>/<entity>/) منتقل می‌کند. یک‌بار و پس از -Migrate.
+
 .EXAMPLE
     .\deploy-update.ps1                  # استقرار کامل (بک‌اند + فرانت‌اند با بیلد روی سرور)
 .EXAMPLE
@@ -34,6 +38,8 @@
     .\deploy-update.ps1 -LocalBuild       # بیلد روی ویندوز و انتقال build
 .EXAMPLE
     .\deploy-update.ps1 -User reza -Server 192.168.1.63
+.EXAMPLE
+    .\deploy-update.ps1 -Archive -LocalBuild -NoBuild -Migrate -MoveFiles   # بایگانی + انتقال فایل‌های موجود
 #>
 [CmdletBinding()]
 param(
@@ -48,7 +54,8 @@ param(
     [switch] $SkipBackend,
     [switch] $SkipFrontend,
     [switch] $NoBuild,
-    [switch] $CheckOnly
+    [switch] $CheckOnly,
+    [switch] $MoveFiles    # انتقال فایل‌های موجود به ساختار archive/ (یک‌باره؛ پس از -Migrate)
 )
 
 $ErrorActionPreference = 'Stop'
@@ -411,6 +418,18 @@ if ($Migrate) {
     Ok 'مایگریشن اعمال شد.'
 } elseif (-not $SkipBackend) {
     Warn 'اگر مدل تغییر کرده، با -Migrate هم اجرا کنید (این تغییر فیلد issues نیاز به مایگریشن دارد).'
+}
+
+# ---------------------------------------------------------------- انتقال فایل‌های موجود
+# فایل‌هایی که قبلاً با مسیر قدیمی آپلود شده‌اند (company_x/employee_y/documents/...)
+# به ساختار جدید archive/company_x/<module>/<entity>/ منتقل می‌شوند.
+# پیش‌فرض دستور «پیش‌نمایش» است؛ اینجا با --apply اجرا می‌شود.
+if ($MoveFiles) {
+    Step 'انتقال فایل‌های موجود به ساختار بایگانی'
+    ssh -t $Srv "sudo -u ${AppUser} bash -lc 'cd $AppDir/hrms_project && set -a && . ./.env && set +a && DJANGO_SETTINGS_MODULE=hrms_project.settings.production $AppDir/venv/bin/python manage.py archive_existing_files --apply'"
+    if ($LASTEXITCODE -ne 0) {
+        Warn 'انتقال فایل‌ها کامل نشد؛ خروجی بالا را بررسی کنید (فایل‌های ناموجود/خطای دسترسی).'
+    } else { Ok 'فایل‌های موجود در ساختار بایگانی قرار گرفتند.' }
 }
 
 # ---------------------------------------------------------------- فرانت‌اند
