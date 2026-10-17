@@ -14,6 +14,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
+import { toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 
 const glassCard = { ...SURFACE };
 
@@ -148,11 +149,11 @@ const CompanyProfilePage = () => {
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 240 }}>
-            <Typography sx={{ fontSize: 17, fontWeight: 900, mb: 0.5 }}>{form.company_name || 'نام شرکت'}</Typography>
+            <Typography sx={{ fontSize: 17, fontWeight: 900, mb: 0.5 }}>{toPersianDigits(form.company_name) || 'نام شرکت'}</Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-              {form.economic_code && <Chip size="small" label={`کد اقتصادی: ${form.economic_code}`} variant="outlined" />}
-              {form.national_id && <Chip size="small" label={`شناسه ملی: ${form.national_id}`} variant="outlined" />}
-              {form.registration_number && <Chip size="small" label={`شماره ثبت: ${form.registration_number}`} variant="outlined" />}
+              {form.economic_code && <Chip size="small" label={`کد اقتصادی: ${toPersianDigits(form.economic_code)}`} variant="outlined" />}
+              {form.national_id && <Chip size="small" label={`شناسه ملی: ${toPersianDigits(form.national_id)}`} variant="outlined" />}
+              {form.registration_number && <Chip size="small" label={`شماره ثبت: ${toPersianDigits(form.registration_number)}`} variant="outlined" />}
             </Stack>
           </Box>
         </Box>
@@ -164,11 +165,11 @@ const CompanyProfilePage = () => {
       {/* اطلاعات حقوقی و ثبت */}
       <Section icon={<BadgeIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات حقوقی و ثبت" color={SOFT.indigo}>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام حقوقی شرکت" value={form.legal_name || ''} onChange={e => set('legal_name', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شماره ثبت" value={form.registration_number || ''} onChange={e => set('registration_number', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شناسه ملی" value={form.national_id || ''} onChange={e => set('national_id', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد اقتصادی" value={form.economic_code || ''} onChange={e => set('economic_code', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شناسه مالیاتی" value={form.tax_id || ''} onChange={e => set('tax_id', e.target.value)} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام حقوقی شرکت" value={toPersianDigits(form.legal_name || '')} onChange={e => set('legal_name', e.target.value)} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شماره ثبت" value={toPersianDigits(form.registration_number || '')} onChange={e => set('registration_number', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شناسه ملی" value={toPersianDigits(form.national_id || '')} onChange={e => set('national_id', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد اقتصادی" value={toPersianDigits(form.economic_code || '')} onChange={e => set('economic_code', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شناسه مالیاتی" value={toPersianDigits(form.tax_id || '')} onChange={e => set('tax_id', toEnglishDigits(e.target.value))} /></Grid>
           <Grid item xs={12} md={4}>
             <JalaliDatePicker fullWidth label="تاریخ تأسیس" value={form.established_date || ''} onChange={g => set('established_date', g)} />
           </Grid>
@@ -178,20 +179,20 @@ const CompanyProfilePage = () => {
       {/* اطلاعات تماس */}
       <Section icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات تماس و آدرس" color={SOFT.green}>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="تلفن" value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="ایمیل" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="وبسایت" value={form.website || ''} onChange={e => set('website', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد پستی" value={form.postal_code || ''} onChange={e => set('postal_code', e.target.value)} /></Grid>
-          <Grid item xs={12}><TextField size="small" fullWidth sx={fieldSx} multiline rows={2} label="آدرس" value={form.address || ''} onChange={e => set('address', e.target.value)} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="تلفن" value={toPersianDigits(form.phone || '')} onChange={e => set('phone', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="ایمیل" value={toPersianDigits(form.email || '')} onChange={e => set('email', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="وبسایت" value={toPersianDigits(form.website || '')} onChange={e => set('website', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد پستی" value={toPersianDigits(form.postal_code || '')} onChange={e => set('postal_code', toEnglishDigits(e.target.value))} /></Grid>
+          <Grid item xs={12}><TextField size="small" fullWidth sx={fieldSx} multiline rows={2} label="آدرس" value={toPersianDigits(form.address || '')} onChange={e => set('address', e.target.value)} /></Grid>
         </Grid>
       </Section>
 
       {/* نماینده قانونی */}
       <Section icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 22 }} />} title="نماینده قانونی / مدیرعامل" color={SOFT.amber}>
         <Grid container spacing={2}>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام نماینده حقوقی / مدیرعامل" value={form.employer_rep_name || ''} onChange={e => set('employer_rep_name', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="سمت نماینده" value={form.employer_rep_title || ''} onChange={e => set('employer_rep_title', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد ملی نماینده" value={form.employer_rep_national_id || ''} onChange={e => set('employer_rep_national_id', e.target.value)} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام نماینده حقوقی / مدیرعامل" value={toPersianDigits(form.employer_rep_name || '')} onChange={e => set('employer_rep_name', e.target.value)} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="سمت نماینده" value={toPersianDigits(form.employer_rep_title || '')} onChange={e => set('employer_rep_title', e.target.value)} /></Grid>
+          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد ملی نماینده" value={toPersianDigits(form.employer_rep_national_id || '')} onChange={e => set('employer_rep_national_id', toEnglishDigits(e.target.value))} /></Grid>
         </Grid>
       </Section>
 
