@@ -91,7 +91,7 @@ const SectionCard = ({ title, subtitle, icon, tone, total, groups, emptyText }) 
           <Box key={`${group.code}-${group.name}`} sx={{ mb: 1.5 }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
               <Typography variant="subtitle2" fontWeight={800} sx={{ fontFamily: FONT, fontSize: 12.5 }}>
-                {group.code ? `${group.code} — ` : ''}{group.name}
+                {group.code ? `${toPersianDigits(group.code)} — ` : ''}{group.name}
               </Typography>
               <Stack direction="row" spacing={1} alignItems="center">
                 <Chip size="small" label={pct(group.percent)}
@@ -110,7 +110,7 @@ const SectionCard = ({ title, subtitle, icon, tone, total, groups, emptyText }) 
               <Stack key={row.id} direction="row" spacing={1} alignItems="center"
                 sx={{ py: 0.45, px: 0.75, borderRadius: '10px', '&:hover': { bgcolor: soft } }}>
                 <Typography variant="caption" sx={{ minWidth: 56, color: 'text.secondary', direction: 'ltr', fontFamily: FONT }}>
-                  {row.code}
+                  {toPersianDigits(row.code)}
                 </Typography>
                 <Typography sx={{ flex: 1, fontFamily: FONT, fontSize: 12.5 }}>{row.name}</Typography>
                 <Typography variant="body2" fontWeight={700} sx={{ direction: 'ltr', fontFamily: FONT }}>
@@ -242,9 +242,9 @@ const AuditSeal = ({ audit, audited, onRecord }) => {
       {approval ? (
         <Grid container spacing={1.5} sx={{ mt: 1.25, position: 'relative', zIndex: 1 }}>
           {[
-            ['شمارهٔ گزارش/نامه', approval.reference_no || '—'],
+            ['شمارهٔ گزارش/نامه', toPersianDigits(approval.reference_no) || '—'],
             ['تاریخ تأیید', jalali(approval.approved_at)],
-            ['سال مالی', approval.fiscal_year_name || '—'],
+            ['سال مالی', toPersianDigits(approval.fiscal_year_name) || '—'],
             ['تهیه‌کننده', approval.prepared_by_name || '—'],
           ].map(([k, v]) => (
             <Grid item xs={6} md={3} key={k}>
@@ -401,7 +401,7 @@ const BalanceSheetPage = () => {
                 <MenuItem value="">همهٔ دوره‌ها</MenuItem>
                 {yearList.map((y) => (
                   <MenuItem key={y.id} value={String(y.id)}>
-                    {y.name}{y.is_current ? ' (جاری)' : ''}
+                    {toPersianDigits(y.name)}{y.is_current ? ' (جاری)' : ''}
                   </MenuItem>
                 ))}
               </Select>
@@ -436,7 +436,7 @@ const BalanceSheetPage = () => {
         <Blob color={PALETTE.audit.main} side="right" size={160} />
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap
           sx={{ position: 'relative', zIndex: 1 }}>
-          <Chip size="small" label={`سال مالی: ${data?.fiscal_year?.name || 'همهٔ دوره‌ها'}`}
+          <Chip size="small" label={`سال مالی: ${data?.fiscal_year?.name ? toPersianDigits(data.fiscal_year.name) : 'همهٔ دوره‌ها'}`}
             sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(37,99,235,0.12)', color: '#1d4ed8' }} />
           <Chip size="small" label={`تا تاریخ: ${data?.as_of ? jalali(data.as_of) : 'امروز'}`}
             sx={{ fontFamily: FONT, fontWeight: 700, bgcolor: 'rgba(100,116,139,0.12)' }} />
@@ -651,7 +651,7 @@ const BalanceSheetPage = () => {
             </Grid>
             <Grid item xs={12} md={4}>
               <TextField size="small" fullWidth disabled label="سال مالی"
-                value={data?.fiscal_year?.name || 'همهٔ دوره‌ها'} />
+                value={toPersianDigits(data?.fiscal_year?.name) || 'همهٔ دوره‌ها'} />
             </Grid>
             <Grid item xs={12}>
               <TextField size="small" fullWidth multiline minRows={3} label="متن نظر حسابرسی"

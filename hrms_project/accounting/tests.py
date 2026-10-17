@@ -1109,3 +1109,138 @@ class AccountBulkUpdateTests(TestCase):
         self.assertEqual(match.func.cls.__name__, 'AccountViewSet')
         self.assertEqual(match.func.actions['post'], 'bulk_update')
 
+
+class BalanceSheetClosingTests(TestCase):
+    """ترازنامه/تراز پس از سند اختتامیه: سند اختتامیه نباید در محاسبه لحاظ شود.
+
+    سند اختتامیه ماندهٔ حساب‌های دائمی را عمداً صفر می‌کند؛ اگر در گزارش‌ها لحاظ
+    شود، پس از بستن سال ترازنامه «صفر» و بی‌معنا می‌شود. این تست تضمین می‌کند
+    گزارش‌ها همان ماندهٔ واقعی «پیش از بستن» را نشان دهند و سود دوره هم در حقوق
+    صاحبان سهام لحاظ شود تا معادلهٔ حسابداری تراز بماند.
+    """
+
+    def setUp(self):
+        from datetime import date as _date
+
+        from django.contrib.auth.models import User
+
+        from accounting.models import AccountingDocument, AccountingDocumentLine, FiscalYear
+
+        self.AccountingDocument = AccountingDocument
+        self.AccountingDocumentLine = AccountingDocumentLine
+        self._date = _date
+        self.user = User.objects.create_user(username='bs-report', password='secret')
+
+        self.company = make_company(schema_name='testco-balsheet')
+
+        def type_(code, name, category, nature):
+            return AccountType.objects.create(
+                company=self.company, code=code, name=name,
+                category=category, default_nature=nature,
+            )
+
+        self.t_asset = type_('1', 'دارایی', 'asset', 'debit')
+        self.t_liability = type_('2', 'بدهی', 'liability', 'credit')
+        self.t_equity = type_('3', 'حقوق صاحبان سهام', 'equity', 'credit')
+        self.t_revenue = type_('4', 'درآمد', 'revenue', 'credit')
+        self.t_expense = type_('5', 'هزینه', 'expense', 'debit')
+
+        self.bank = Account.objects.create(
+            company=self.company, code='1001', name='بانک',
+            account_type=self.t_asset, level=1, nature='debit',
+        )
+        self.capital = Account.objects.create(
+            company=self.company, code='3001', name='سرمایه',
+            account_type=self.t_equity, level=1, nature='credit',
+        )
+        self.sales = Account.objects.create(
+            company=self.company, code='4001', name='فروش',
+            account_type=self.t_revenue, level=1, nature='credit',
+        )
+        self.rent = Account.objects.create(
+            company=self.company, code='5001', name='اجاره',
+            account_type=self.t_expense, level=1, nature='debit',
+        )
+
+        self.year = FiscalYear.objects.create(
+            company=self.company, name='1403', start_date=_date(2024, 3, 20),
+            end_date=_date(2025, 3, 20), status='open', is_current=True,
+        )
+
+        # فروش نقدی ۱۰۰۰ و هزینهٔ اجارهٔ ۳۰۰ → سود دوره ۷۰۰ و دارایی ۷۰۰
+        self._document(_date(2024, 6, 1), 'فروش نقدی', [
+            (self.bank, 1000, 0), (self.sales, 0, 1000),
+        ])
+        self._document(_date(2024, 7, 1), 'هزینهٔ اجاره', [
+            (self.rent, 300, 0), (self.bank, 0, 300),
+        ])
+
+    def _document(self, date, description, lines, **extra):
+        doc = self.AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.year, date=date,
+            description=description, status='posted', **extra,
+        )
+        for no, (account, debit, credit) in enumerate(lines, start=1):
+            self.AccountingDocumentLine.objects.create(
+                document=doc, company=self.company, account=account,
+                debit=debit, credit=credit, line_no=no,
+            )
+        return doc
+
+    def _closing_document(self):
+        """سند اختتامیه: صفر کردن دارایی و حقوق صاحبان سهام (مانند ماژول سالانه)."""
+        return self._document(
+            self.year.end_date, 'سند اختتامیه', [
+                (self.capital, 700, 0), (self.bank, 0, 700),
+            ],
+            source_module='annual', source_type='closing',
+            source_id=f'closing-{self.year.id}',
+        )
+
+    def _get(self, view, params=None):
+        from rest_framework.test import APIRequestFactory, force_authenticate
+
+        request = APIRequestFactory().get('/api/accounting/reports/', params or {})
+        request.tenant = self.company
+        force_authenticate(request, user=self.user)
+        return view(request)
+
+    def test_balance_sheet_ignores_closing_document(self):
+        from accounting.report_views import balance_sheet
+
+        before = self._get(balance_sheet, {'fiscal_year': self.year.id}).data
+        self.assertAlmostEqual(before['total_assets'], 700)
+        self.assertAlmostEqual(before['net_profit'], 700)
+        self.assertAlmostEqual(before['total_equity'], 700)
+        self.assertTrue(before['is_balanced'])
+
+        self._closing_document()
+
+        after = self._get(balance_sheet, {'fiscal_year': self.year.id}).data
+        self.assertAlmostEqual(after['total_assets'], 700)
+        self.assertAlmostEqual(after['total_equity'], 700)
+        self.assertAlmostEqual(after['net_profit'], 700)
+        self.assertEqual(after['difference'], 0)
+        self.assertTrue(after['is_balanced'])
+
+    def test_trial_balance_ignores_closing_document(self):
+        from accounting.report_views import trial_balance
+
+        self._closing_document()
+
+        response = self._get(trial_balance, {'fiscal_year': self.year.id})
+        self.assertEqual(response.status_code, 200)
+        bank_row = next(r for r in response.data['rows'] if r['account_id'] == self.bank.id)
+        self.assertAlmostEqual(bank_row['balance'], 700)
+
+    def test_ledger_still_shows_closing_document(self):
+        """دفتر کل باید سند اختتامیه را نشان دهد تا رد حسابرسی حفظ شود."""
+        from accounting.report_views import general_ledger
+
+        self._closing_document()
+
+        response = self._get(general_ledger, {'fiscal_year': self.year.id})
+        self.assertEqual(response.status_code, 200)
+        numbers = [row.get('document_number') or row.get('description') for row in response.data['rows']]
+        self.assertTrue(any('اختتامیه' in str(n) for n in numbers))
+

@@ -23,15 +23,24 @@ def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
 
 
-def _report_lines(request):
+def _report_lines(request, *, include_annual_closing=False):
     """همهٔ خطوط اسناد قابل‌گزارش (ارسال‌شده/تأییدشده/ثبت‌شده/قفل‌شده) — شرکت جاری.
 
     پیش‌نویس‌ها کنار گذاشته می‌شوند.
+
+    **سند اختتامیه** به‌طور پیش‌فرض از گزارش‌های مالی حذف می‌شود: آن سند عمداً
+    ماندهٔ حساب‌های دائمی را صفر می‌کند و اگر در تراز/ترازنامه لحاظ شود، پس از
+    بستن سال همهٔ مانده‌ها صفر (و ترازنامه بی‌معنا) می‌شود. دفترها (کل/معین/مرور)
+    با `include_annual_closing=True` آن را نشان می‌دهند تا رد حسابرسی حفظ شود.
     """
     qs = AccountingDocumentLine.objects.filter(
         document__company=_company(request),
         document__status__in=REPORTABLE_DOCUMENT_STATUSES,
     ).select_related('account')
+    if not include_annual_closing:
+        qs = qs.exclude(
+            document__source_module='annual', document__source_type='closing',
+        )
     return qs
 
 
@@ -320,7 +329,9 @@ def dashboard_rich(request):
 def general_ledger(request):
     """دفتر کل: گردش همهٔ حساب‌ها در سندهای ثبت‌شده."""
     from_account = request.query_params.get('account')
-    lines = _report_lines(request).order_by('document__date', 'document__id', 'line_no')
+    lines = _report_lines(request, include_annual_closing=True).order_by(
+        'document__date', 'document__id', 'line_no',
+    )
     if from_account:
         lines = lines.filter(account_id=from_account)
 
@@ -355,7 +366,7 @@ def account_ledger(request, account_id):
     """
     company = _company(request)
     kind = (request.query_params.get('kind') or 'account').strip()
-    lines = _report_lines(request)
+    lines = _report_lines(request, include_annual_closing=True)
     nature = 'debit'
 
     if kind == 'group':
@@ -628,13 +639,20 @@ def balance_sheet(request):
 
     lines, year, as_of = _balance_scope(request)
     buckets = {'asset': {}, 'liability': {}, 'equity': {}}
+    # سود (زیان) دوره: اگر حساب‌های موقت هنوز بسته نشده باشند، در حقوق صاحبان
+    # سهام لحاظ می‌شود تا معادلهٔ حسابداری تراز بماند. پس از «بستن حساب‌ها»
+    # ماندهٔ این حساب‌ها صفر است، پس خطر شمارش دوباره وجود ندارد.
+    pnl = {'revenue': 0.0, 'cost_of_sales': 0.0, 'expense': 0.0}
     for line in lines:
         account = line.account
         category = account.account_type.category if account.account_type else None
-        if category not in buckets:
-            continue
         debit = float(line.debit or 0)
         credit = float(line.credit or 0)
+        if category in pnl:
+            pnl[category] += (credit - debit) if category == 'revenue' else (debit - credit)
+            continue
+        if category not in buckets:
+            continue
         balance = (debit - credit) if category == 'asset' else (credit - debit)
         rec = buckets[category].setdefault(account.id, {
             'id': account.id,
@@ -654,6 +672,19 @@ def balance_sheet(request):
     asset_rows, total_assets = finalize(buckets['asset'])
     liability_rows, total_liabilities = finalize(buckets['liability'])
     equity_rows, total_equity = finalize(buckets['equity'])
+
+    net_profit = _round2(pnl['revenue'] - pnl['cost_of_sales'] - pnl['expense'])
+    if abs(net_profit) >= 0.01:
+        equity_rows.append({
+            'id': 'net-profit',
+            'code': '',
+            'name': 'سود (زیان) دوره',
+            'group': 'سود و زیان دوره',
+            'group_code': '',
+            'balance': net_profit,
+            'is_synthetic': True,
+        })
+        total_equity = _round2(total_equity + net_profit)
 
     total_le = _round2(total_liabilities + total_equity)
     difference = _round2(total_assets - total_le)
@@ -675,6 +706,7 @@ def balance_sheet(request):
         'equity': equity_rows,
         'equity_groups': _grouped_rows(equity_rows, total_equity),
         'total_equity': total_equity,
+        'net_profit': net_profit,
         # --- کنترل تراز ---
         'total_liabilities_equity': total_le,
         'difference': difference,
@@ -1148,6 +1180,15 @@ def financial_statements(request):
     expense = -buckets['expense']
     gross_profit = revenue - cost_of_sales
     net_profit = gross_profit - expense
+
+    # سود (زیان) دوره در حقوق صاحبان سهام — همانند گزارش ترازنامه، تا معادله
+    # «دارایی = بدهی + حقوق صاحبان سهام» پیش از بستن حساب‌ها هم برقرار بماند.
+    if abs(net_profit) >= 0.01:
+        equity_rows.append({
+            'id': 'net-profit', 'code': '', 'name': 'سود (زیان) دوره',
+            'balance': net_profit, 'is_synthetic': True,
+        })
+        total_equity = _round2(total_equity + net_profit)
 
     operating_in = operating_out = investing = financing = 0.0
     for line in lines:

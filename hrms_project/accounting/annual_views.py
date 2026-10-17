@@ -751,7 +751,10 @@ def legal_books(request):
     year_id = request.query_params.get('fiscal_year')
     year = FiscalYear.objects.filter(id=year_id, company=company).first() if year_id else None
 
-    lines = _report_lines(company, year)
+    # جمع‌بندی «تراز آزمایشی» باید مانده‌های واقعی (پیش از بستن) را نشان دهد؛
+    # سند اختتامیه مانده‌ها را عمداً صفر می‌کند، پس در تراز کنار گذاشته می‌شود.
+    # دفتر روزنامه و دفتر معین (پایین) سند اختتامیه را برای رد حسابرسی نگه می‌دارند.
+    lines = _exclude_annual_closing(_report_lines(company, year))
 
     journal_book = []
     docs = AccountingDocument.objects.filter(
