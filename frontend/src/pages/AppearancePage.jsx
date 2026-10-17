@@ -1,11 +1,12 @@
 import React from 'react';
 import {
-  Box, Typography, Paper, Grid, Chip, Stack, Divider,
+  Box, Typography, Paper, Grid, Chip, Stack, Divider, Avatar,
 } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../core/context/ThemeContext';
-import { PageHeader, SOFT } from '../core/components/settings/settingsUi';
+import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
+import { formatPersianNumber } from '../core/utils/numberUtils';
 
 /* =========================================================================
  * ظاهر و پوسته (2026)
@@ -126,10 +127,33 @@ const AppearancePage = () => {
         )}
       />
 
-      {/* Theme cards with live preview */}
-      <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1.25 }}>تم نمایش</Typography>
+      {/* پوسته‌ها در یک کارت */}
+      <Paper sx={{ ...SURFACE, overflow: 'hidden' }}>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
+          px: 1.75, py: 1.25,
+          borderBottom: '1px solid', borderColor: 'divider',
+          background: `linear-gradient(135deg, ${SOFT.violet}14, transparent)`,
+        }}>
+          <Avatar variant="rounded" sx={{
+            width: 30, height: 30, borderRadius: '9px',
+            bgcolor: `${SOFT.violet}24`, color: SOFT.violet,
+          }}>
+            <PaletteIcon sx={{ fontSize: 17 }} />
+          </Avatar>
+          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>پوسته‌ها</Typography>
+          <Chip
+            size="small"
+            label={`${formatPersianNumber(THEME_MODES.length)} پوسته`}
+            sx={{
+              height: 20, fontSize: 10, fontWeight: 800,
+              bgcolor: `${SOFT.violet}1f`, color: SOFT.violet,
+            }}
+          />
+        </Box>
 
-      <Grid container spacing={2}>
+        <Box sx={{ p: 1.75 }}>
+          <Grid container spacing={2}>
         {THEME_MODES.map(m => {
           const active = mode === m.key;
           return (
@@ -165,7 +189,9 @@ const AppearancePage = () => {
             </Grid>
           );
         })}
-      </Grid>
+          </Grid>
+        </Box>
+      </Paper>
 
       {/* Neon color picker — only for Neon modes */}
       {['fmode', 'fmode_light'].includes(mode) && (
