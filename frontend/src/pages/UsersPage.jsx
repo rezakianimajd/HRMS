@@ -202,6 +202,29 @@ const UsersPage = () => {
       {tab === 0 && (
         <>
           <Paper variant="outlined" sx={{ ...SURFACE, overflow: 'hidden' }}>
+            <Box sx={{
+              px: 1.75, py: 1.25,
+              borderBottom: '1px solid', borderColor: 'divider',
+              background: `linear-gradient(135deg, ${SOFT.slate}14, transparent)`,
+            }}>
+              <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap>
+                <Avatar variant="rounded" sx={{
+                  width: 30, height: 30, borderRadius: '9px',
+                  bgcolor: `${SOFT.slate}24`, color: SOFT.slate,
+                }}>
+                  <PersonIcon sx={{ fontSize: 17 }} />
+                </Avatar>
+                <Typography sx={{ fontSize: 13, fontWeight: 800 }}>کاربران</Typography>
+                <Chip
+                  size="small"
+                  label={`${formatPersianNumber(userList.length)} کاربر`}
+                  sx={{
+                    height: 20, fontSize: 10, fontWeight: 800,
+                    bgcolor: `${SOFT.slate}1f`, color: SOFT.slate,
+                  }}
+                />
+              </Stack>
+            </Box>
             {isLoading ? (
               <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
             ) : userList.length === 0 ? (
@@ -210,12 +233,12 @@ const UsersPage = () => {
               <TableContainer>
                 <Table size="small" sx={{ '& td': { fontSize: 11, py: 1 } }}>
                   <TableHead>
-                    <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5, fontWeight: 800 } }}>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>کاربر</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>نام کاربری</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>نقش</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>دسترسی ماژول‌ها</TableCell>
-                      <TableCell align="center" sx={{ fontWeight: 700 }}>عملیات</TableCell>
+                    <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5, fontWeight: 800, textAlign: 'center' } }}>
+                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>کاربر</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>نام کاربری</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>نقش</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>دسترسی ماژول‌ها</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>عملیات</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -232,8 +255,9 @@ const UsersPage = () => {
                           </Stack>
                         </TableCell>
                         <TableCell>{u.username}</TableCell>
-                        <TableCell align="center" sx={{ minWidth: 150 }}>
-                          <FormControl fullWidth size="small" sx={{
+                        <TableCell align="center" sx={{ width: 150 }}>
+                          <FormControl size="small" sx={{
+                            width: 128,
                             '& .MuiInputLabel-root': { fontSize: 11 },
                             '& .MuiSelect-select': { fontSize: 11, py: 0.75 },
                           }}>
