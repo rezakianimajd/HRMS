@@ -4,16 +4,17 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Drawer, List, ListItem, ListItemButton, ListItemIcon,
-  ListItemText, Divider, Typography, Avatar, IconButton, Tooltip,
-  Menu, MenuItem, Collapse,
+  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Menu, MenuItem, Chip, Button,
 } from '@mui/material';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import { alpha } from '@mui/material/styles';
 import BusinessIcon from '@mui/icons-material/Business';
 import LogoutIcon from '@mui/icons-material/Logout';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowLeftIcon from '@mui/icons-material/KeyboardArrowLeft';
+import SettingsIcon from '@mui/icons-material/Settings';
+import SearchIcon from '@mui/icons-material/Search';
+import MenuIcon from '@mui/icons-material/Menu';
+import LightModeIcon from '@mui/icons-material/LightMode';
+import DarkModeIcon from '@mui/icons-material/DarkMode';
+import RocketLaunchIcon from '@mui/icons-material/RocketLaunch';
 import ConstructionIcon from '@mui/icons-material/Construction';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
@@ -25,10 +26,31 @@ import CommandPalette from './CommandPalette';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
 import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
+import { useThemeMode } from '../../context/ThemeContext';
+import { toPersianDigits } from '../../utils/numberUtils';
 
-const DRAWER_WIDTH = 290;
-const MINI_WIDTH = 82;
+const RAIL_WIDTH = 72;
+const PANEL_WIDTH = 226;
+const SIDEBAR_WIDTH = RAIL_WIDTH + PANEL_WIDTH;
 
+// انتخاب رنگ متن خوانا روی پس‌زمینهٔ رنگی (برای پیل فعال و آیکون گروه)
+const contrastText = (hex) => {
+  const raw = String(hex || '').replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((ch) => ch + ch).join('') : raw;
+  if (full.length !== 6) return '#ffffff';
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.62 ? '#111827' : '#ffffff';
+};
+
+/**
+ * چیدمان اصلی برنامه با سایدبار دوستونهٔ مدرن:
+ *  - ریل آیکونی (لوگو، گروه‌ها، ابزارها، سوییچ تم، پروفایل)
+ *  - پنل زیرمنوی گروه فعال (با هدر گروه و کارت دسترسی سریع)
+ * در موبایل هر دو ستون داخل Drawer باز می‌شوند.
+ */
 const Layout = ({ children }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -37,68 +59,17 @@ const Layout = ({ children }) => {
   const { currentCompany } = useCompany();
   const { currentApp } = useApplication();
   const { openTab } = useWorkspaceTabs();
+  const { mode, setMode } = useThemeMode();
   const menu = getMenuForApp(currentApp?.slug);
-  const [collapsed, setCollapsed] = useState(false);
+
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [expandedGroups, setExpandedGroups] = useState(() => {
-    const path = window.location.pathname;
-    const init = {};
-    menu.forEach((g) => {
-      init[g.id] = g.items.some((i) => path === i.path || path.startsWith(`${i.path}/`));
-    });
-    return init;
-  });
-  const [railAnchor, setRailAnchor] = useState(null);
-  const [railGroup, setRailGroup] = useState(null);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
 
   const { data: profile } = useQuery({
     queryKey: ['company-profile-layout'],
     queryFn: () => axiosInstance.get('/settings/company-profile/').then(r => r.data).catch(() => null),
     staleTime: 0,
   });
-
-  const toggleGroup = (id) => {
-    setExpandedGroups((prev) => {
-      const currentlyOpen = !!prev[id];
-      const next = {};
-      menu.forEach((g) => {
-        next[g.id] = currentlyOpen ? false : g.id === id;
-      });
-      return next;
-    });
-  };
-
-  useEffect(() => {
-    let activeGroupId = null;
-    menu.forEach((g) => {
-      const isActive = g.items.some(
-        (i) => location.pathname === i.path || location.pathname.startsWith(`${i.path}/`)
-      );
-      if (isActive) activeGroupId = g.id;
-    });
-    if (!activeGroupId) return;
-
-    setExpandedGroups((prev) => {
-      let changed = false;
-      const next = { ...prev };
-      menu.forEach((g) => {
-        const shouldBe = g.id === activeGroupId;
-        if (!!next[g.id] !== shouldBe) {
-          next[g.id] = shouldBe;
-          changed = true;
-        }
-      });
-      return changed ? next : prev;
-    });
-  }, [location.pathname]);
-
-  const drawerWidth = collapsed ? MINI_WIDTH : DRAWER_WIDTH;
-  const companyName = profile?.company_name || profile?.legal_name || currentCompany?.name || t('app.shortName');
-  const companyLogo = profile?.logo_url || null;
-
-  const handleLogout = async () => {
-    await logout();
-  };
 
   const isActive = (path) => {
     const [targetPath, targetQuery = ''] = String(path || '').split('?');
@@ -119,6 +90,28 @@ const Layout = ({ children }) => {
     return true;
   };
 
+  const activeGroup = menu.find((group) => group.items.some((item) => isActive(item.path)));
+  const [shownGroupId, setShownGroupId] = useState(() => activeGroup?.id || menu[0]?.id || null);
+
+  useEffect(() => {
+    if (activeGroup?.id) setShownGroupId(activeGroup.id);
+  }, [activeGroup?.id]);
+
+  const shownGroup = menu.find((group) => group.id === shownGroupId) || activeGroup || menu[0];
+  const accent = shownGroup?.color || '#6366f1';
+  const panelIcon = shownGroup?.items?.find((item) => item.primary)?.icon || shownGroup?.items?.[0]?.icon;
+
+  const companyName = profile?.company_name || profile?.legal_name || currentCompany?.name ||
+    t('app.shortName');
+  const companyLogo = profile?.logo_url || null;
+  const fullName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.username || '';
+  const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}` ||
+    user?.username?.[0] || '؟';
+
+  const handleLogout = async () => {
+    await logout();
+  };
+
   const findMenuMeta = (path) => {
     const allMenus = [menu, menuConfig];
     for (const m of allMenus) {
@@ -137,340 +130,334 @@ const Layout = ({ children }) => {
     navigate(path);
   };
 
+  const navigateTo = (path) => {
+    if (mobileOpen) setMobileOpen(false);
+    goTo(path);
+  };
+
+  const openPalette = () => {
+    if (mobileOpen) setMobileOpen(false);
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+  };
+
   useEffect(() => {
     if (!location.pathname || location.pathname === '/coming-soon') return;
     const meta = findMenuMeta(location.pathname);
     openTab({ path: location.pathname, title: meta.title, color: meta.color });
   }, [location.pathname]);
 
-  const drawerContent = (
-    <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+  const sidebarContent = (
+    <Box sx={{
+      display: 'flex',
+      height: '100%',
+      bgcolor: 'background.paper',
+      overflow: 'hidden',
+    }}>
+      {/* ---------- ریل آیکونی ---------- */}
       <Box sx={{
-        p: 2,
-        pb: 1.5,
-        borderBottom: '1px solid rgba(99,102,241,0.12)',
+        width: RAIL_WIDTH,
+        flexShrink: 0,
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
+        py: 1.5,
+        px: 0.75,
+        borderInlineEnd: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
       }}>
-        <Box sx={{ position: 'relative', zIndex: 1, flexShrink: 0 }}>
-          {companyLogo ? (
-            <Avatar src={companyLogo} sx={{ width: 68, height: 68, boxShadow: '0 8px 24px rgba(99,102,241,0.35)', border: '2px solid rgba(255,255,255,0.7)' }} />
-          ) : (
-            <Avatar sx={{
-              width: 68, height: 68,
-              background: 'linear-gradient(135deg, #6366f1, #ec4899)',
-              boxShadow: '0 8px 24px rgba(99,102,241,0.4)',
-            }}>
-              <BusinessIcon sx={{ fontSize: 34, color: '#fff' }} />
-            </Avatar>
-          )}
-        </Box>
-        {!collapsed && (
-          <>
-            <Typography variant="body2" fontWeight={700} noWrap sx={{ mt: 1, mb: 0.25, fontSize: 13, opacity: 0.85, maxWidth: '100%', letterSpacing: '-0.1px' }}>
-              {companyName}
-            </Typography>
-            <Box sx={{ mt: 0.75, width: '100%' }}>
-              <CompanySwitcher />
-            </Box>
-            <Box sx={{ mt: 0.5, width: '100%' }}>
-              <AppSwitcher />
-            </Box>
-          </>
-        )}
-      </Box>
+        <Tooltip title={companyName} placement="left" arrow>
+          <Avatar
+            onClick={() => navigateTo(menu[0]?.items?.[0]?.path || '/dashboard')}
+            src={companyLogo || undefined}
+            sx={{
+              width: 40, height: 40, borderRadius: '12px', cursor: 'pointer',
+              border: '2px solid', borderColor: 'background.paper',
+              ...(companyLogo ? {} : { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }),
+              boxShadow: (theme) => `0 8px 20px ${alpha(theme.palette.primary.main, 0.35)}`,
+              transition: 'transform 0.2s ease',
+              '&:hover': { transform: 'translateY(-1px) scale(1.03)' },
+            }}
+          >
+            {!companyLogo && <BusinessIcon sx={{ fontSize: 20, color: '#fff' }} />}
+          </Avatar>
+        </Tooltip>
 
-      <List sx={{ flex: 1, overflowY: 'auto', py: 1, px: 1 }}>
-        {collapsed ? (
-          /* ---------- حالت جمع‌شده: ریل آیکونی + منوی شناور ---------- */
-          menu.map((group) => {
-            const groupActive = group.items.some((i) => isActive(i.path));
-            const iconColor = group.color || '#6366f1';
-            const primaryItem = group.items.find((i) => i.primary) || group.items[0];
-            const groupIcon = primaryItem?.icon || <BusinessIcon />;
+        <Divider sx={{ width: 26, my: 1.4 }} />
 
-            return (
-              <Box key={group.id} sx={{ display: 'flex', justifyContent: 'center', mb: 0.75 }}>
-                <Tooltip title={group.title} placement="left" arrow>
-                  <IconButton
-                    onClick={(e) => { setRailGroup(group); setRailAnchor(e.currentTarget); }}
-                    sx={{
-                      width: 46,
-                      height: 46,
-                      borderRadius: '14px',
-                      color: groupActive ? iconColor : 'text.secondary',
-                      background: groupActive ? `${iconColor}1a` : 'transparent',
-                      border: groupActive ? `1px solid ${iconColor}55` : '1px solid transparent',
-                      boxShadow: groupActive ? `0 4px 14px ${iconColor}33` : 'none',
-                      '&:hover': {
-                        background: `${iconColor}14`,
-                        color: iconColor,
-                      },
-                      transition: 'all 0.2s ease',
-                    }}
-                  >
-                    {groupIcon}
-                  </IconButton>
-                </Tooltip>
-              </Box>
-            );
-          })
-        ) : (
-          /* ---------- حالت باز: گروه‌ها + زیرآیتم‌ها ---------- */
-          menu.map((group) => {
-            const groupActive = group.items.some((i) => isActive(i.path));
-            const open = expandedGroups[group.id];
-            const iconColor = group.color || '#6366f1';
-
-            return (
-              <Box key={group.id} sx={{ mb: 0.5 }}>
-                <Box
-                  onClick={() => toggleGroup(group.id)}
-                  sx={{
-                    display: 'flex', alignItems: 'center',
-                    px: 1.5, py: 0.9, mb: 0.25, mt: 0.75,
-                    cursor: 'pointer',
-                    borderRadius: '12px',
-                    transition: 'background 0.2s ease, box-shadow 0.2s ease',
-                    ...(open
-                      ? {
-                        background: `linear-gradient(135deg, ${iconColor}1f, ${iconColor}0a)`,
-                        border: `1px solid ${iconColor}33`,
-                        boxShadow: `0 4px 14px ${iconColor}1f`,
-                        borderRadius: '12px 12px 6px 6px',
-                      }
-                      : { border: '1px solid transparent' }),
-                    ...(groupActive && !open && { bgcolor: `${iconColor}0d` }),
-                    '&:hover': { bgcolor: `${iconColor}14` },
-                  }}
-                >
-                  <Box
-                    sx={{
-                      width: 4,
-                      height: 18,
-                      borderRadius: '10px',
-                      mr: 1.2,
-                      ml: 0.3,
-                      background: `linear-gradient(180deg, ${iconColor}, ${iconColor}55)`,
-                      opacity: groupActive || open ? 1 : 0.55,
-                      boxShadow: open ? `0 0 10px ${iconColor}66` : 'none',
-                      transition: 'box-shadow 0.2s ease, opacity 0.2s ease',
-                    }}
-                  />
-                  <Typography
-                    sx={{
-                      fontWeight: 800,
-                      fontFamily: 'Vazirmatn, IRANSans, sans-serif',
-                      fontSize: '0.9rem',
-                      letterSpacing: '0.02em',
-                      color: groupActive || open ? iconColor : 'text.primary',
-                      flex: 1,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                    }}
-                  >
-                    {group.title}
-                  </Typography>
-                  <IconButton size="small" sx={{ p: 0.3, color: groupActive || open ? iconColor : 'text.secondary', opacity: 0.75 }}>
-                    {open ? <KeyboardArrowDownIcon fontSize="small" /> : <KeyboardArrowLeftIcon fontSize="small" />}
-                  </IconButton>
-                </Box>
-
-                {/* زیرآیتم‌های گروه با پس‌زمینهٔ هم‌رنگ سرگروه (تمایز بصری در حالت باز) */}
-                <Collapse in={open} timeout={220} unmountOnExit>
-                  <Box
-                    sx={{
-                      position: 'relative',
-                      pr: 0.75,
-                      pl: 0.5,
-                      py: 0.6,
-                      mb: 0.25,
-                      borderRadius: '4px 4px 14px 14px',
-                      background: `linear-gradient(180deg, ${iconColor}1a, ${iconColor}08)`,
-                      border: `1px solid ${iconColor}26`,
-                      borderTop: 'none',
-                      borderRight: `3px solid ${iconColor}66`,
-                      boxShadow: `inset 0 -6px 18px ${iconColor}0f`,
-                    }}
-                  >
-                    {group.items.map((item) => {
-                  const active = isActive(item.path);
-                  const isPlaceholder = item.ready === false;
-                  return (
-                    <ListItem key={item.id} disablePadding sx={{ mb: 0.4, '&:last-of-type': { mb: 0 } }}>
-                      <ListItemButton
-                        selected={active}
-                        onClick={() => {
-                          if (item.ready === false) {
-                            navigate('/coming-soon', { state: { title: item.title } });
-                          } else {
-                            goTo(item.path);
-                          }
-                        }}
-                        sx={{
-                          justifyContent: 'flex-start',
-                          px: 1.25,
-                          py: 0.7,
-                          borderRadius: '10px',
-                          minHeight: 36,
-                          transition: 'background 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease',
-                          ...(active
-                            ? {
-                              background: `linear-gradient(135deg, ${item.color || iconColor}2e, ${item.color || iconColor}14)`,
-                              border: `1px solid ${item.color || iconColor}55`,
-                              boxShadow: `0 3px 12px ${item.color || iconColor}26`,
-                            }
-                            : { border: '1px solid transparent' }),
-                          '&:hover': {
-                            background: `${item.color || iconColor}1a`,
-                            transform: 'translateX(-2px)',
-                          },
-                        }}
-                      >
-                        <ListItemIcon sx={{
-                          minWidth: 34,
-                          justifyContent: 'center',
-                          color: item.color || iconColor,
-                          opacity: active ? 1 : 0.75,
-                          filter: active ? `drop-shadow(0 2px 6px ${item.color || iconColor}66)` : 'none',
-                          transition: 'opacity 0.2s ease',
-                        }}>
-                          {item.icon}
-                        </ListItemIcon>
-                        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                          <ListItemText
-                            primary={item.title}
-                            primaryTypographyProps={{
-                              fontFamily: 'Vazirmatn, IRANSans, sans-serif',
-                              fontSize: '0.85rem',
-                              fontWeight: active ? 700 : 500,
-                              color: active ? (item.color || iconColor) : 'text.primary',
-                              noWrap: true,
-                            }}
-                          />
-                          {isPlaceholder && (
-                            <Tooltip title="در حال توسعه" placement="left">
-                              <ConstructionIcon sx={{ fontSize: 15, color: 'text.disabled', ml: 0.5 }} />
-                            </Tooltip>
-                          )}
-                        </Box>
-                      </ListItemButton>
-                    </ListItem>
-                  );
-                    })}
-                  </Box>
-                </Collapse>
-              </Box>
-            );
-          })
-        )}
-      </List>
-
-      {/* فلای‌اوت گروه در حالت جمع‌شده */}
-      <Menu
-        anchorEl={railAnchor}
-        open={Boolean(railAnchor) && collapsed}
-        onClose={() => { setRailAnchor(null); setRailGroup(null); }}
-        anchorOrigin={{ vertical: 'top', horizontal: 'left' }}
-        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
-        slotProps={{
-          paper: {
-            sx: {
-              mr: 1,
-              ml: 1,
-              borderRadius: '14px',
-              minWidth: 220,
-              background: 'linear-gradient(160deg, #ffffff, #f8faff)',
-              border: '1px solid rgba(99,102,241,0.15)',
-              boxShadow: '0 18px 50px rgba(99,102,241,0.22)',
-              overflow: 'hidden',
-              p: 0.5,
-            },
-          },
-        }}
-      >
-        {railGroup && (
-          <>
-            <Box sx={{
-              px: 2, py: 1,
-              background: `linear-gradient(135deg, ${railGroup.color}1f, ${railGroup.color}0a)`,
-              borderBottom: `1px solid ${railGroup.color}33`,
-            }}>
-              <Typography variant="body2" fontWeight={800} sx={{ color: railGroup.color }}>
-                {railGroup.title}
-              </Typography>
-            </Box>
-            {railGroup.items.map((item) => {
-              const active = isActive(item.path);
-              const isPlaceholder = item.ready === false;
-              return (
-                <MenuItem
-                  key={item.id}
-                  onClick={() => {
-                    setRailAnchor(null);
-                    setRailGroup(null);
-                    if (isPlaceholder) {
-                      navigate('/coming-soon', { state: { title: item.title } });
-                    } else {
-                      goTo(item.path);
-                    }
-                  }}
-                  selected={active}
-                  sx={{
-                    borderRadius: '10px', mx: 0.5, my: 0.25, px: 1.5, py: 1,
-                    transition: 'background 0.18s ease',
-                    '&:hover': { background: `${railGroup.color}14` },
-                    '&.Mui-selected': { background: `${railGroup.color}26` },
-                    '&.Mui-selected:hover': { background: `${railGroup.color}33` },
-                  }}
-                >
-                  <ListItemIcon sx={{ minWidth: 34, color: item.color || '#6366f1', opacity: active ? 1 : 0.7 }}>
-                    {item.icon}
-                  </ListItemIcon>
-                  <ListItemText
-                    primary={item.title}
-                    primaryTypographyProps={{ fontSize: '0.85rem', fontWeight: active ? 700 : 500, noWrap: true }}
-                  />
-                  {isPlaceholder && <ConstructionIcon sx={{ fontSize: 14, color: 'text.disabled' }} />}
-                </MenuItem>
-              );
-            })}
-          </>
-        )}
-      </Menu>
-
-      <Box sx={{ borderTop: '1px solid rgba(99,102,241,0.1)', p: collapsed ? 1 : 1.5 }}>
         <Box sx={{
-          display: 'flex', alignItems: 'center', gap: 1.5, mb: 1,
-          justifyContent: collapsed ? 'center' : 'flex-start',
+          flex: 1, minHeight: 0, width: '100%',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.5,
+          overflowY: 'auto', overflowX: 'hidden',
+          '&::-webkit-scrollbar': { width: 0 },
         }}>
-          <NotificationBell glass />
-          {!collapsed && (
-            <>
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography variant="body2" fontWeight={700} noWrap>
-                  {user?.first_name || ''} {user?.last_name || ''}
-                </Typography>
-                <Typography variant="caption" color="textSecondary" noWrap>@{user?.username}</Typography>
-              </Box>
-              <Tooltip title={t('nav.logout')} placement="left">
-                <IconButton size="small" onClick={handleLogout} color="error"
-                  sx={{ bgcolor: 'rgba(239,68,68,0.08)', '&:hover': { bgcolor: 'rgba(239,68,68,0.16)' } }}>
-                  <LogoutIcon fontSize="small" />
-                </IconButton>
+          {menu.map((group) => {
+            const selected = group.id === shownGroup?.id;
+            const containsActive = group.items.some((item) => isActive(item.path));
+            const groupColor = group.color || '#6366f1';
+            const groupOn = contrastText(groupColor);
+            const groupIcon = (group.items.find((item) => item.primary) || group.items[0])?.icon;
+
+            return (
+              <Tooltip key={group.id} title={group.title} placement="left" arrow>
+                <Box sx={{ position: 'relative', width: '100%', display: 'flex', justifyContent: 'center' }}>
+                  <IconButton
+                    onClick={() => setShownGroupId(group.id)}
+                    aria-label={group.title}
+                    sx={{
+                      width: 42, height: 42, borderRadius: '50%',
+                      color: selected ? groupOn : 'text.secondary',
+                      bgcolor: selected ? groupColor : 'transparent',
+                      boxShadow: selected ? `0 8px 18px ${alpha(groupColor, 0.32)}` : 'none',
+                      transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                      '&:hover': {
+                        bgcolor: selected ? groupColor : alpha(groupColor, 0.1),
+                        color: selected ? groupOn : groupColor,
+                      },
+                    }}
+                  >
+                    {groupIcon
+                      ? React.cloneElement(groupIcon, { sx: { fontSize: 20 } })
+                      : <BusinessIcon sx={{ fontSize: 20 }} />}
+                  </IconButton>
+                  {containsActive && !selected && (
+                    <Box sx={{
+                      position: 'absolute', bottom: 2, width: 5, height: 5,
+                      borderRadius: '50%', bgcolor: groupColor, opacity: 0.85,
+                    }} />
+                  )}
+                </Box>
               </Tooltip>
-            </>
-          )}
+            );
+          })}
         </Box>
-        <Divider sx={{ mb: 0.5 }} />
-        <Box sx={{ display: 'flex', justifyContent: collapsed ? 'center' : 'flex-start' }}>
-          <Tooltip title={collapsed ? 'باز کردن منو' : 'جمع کردن منو'} placement="left">
-            <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ color: 'text.secondary' }}>
-              {collapsed ? <ChevronLeftIcon /> : <ChevronRightIcon />}
-            </IconButton>
-          </Tooltip>
+
+        <Divider sx={{ width: 26, my: 1 }} />
+
+        <Tooltip title="جستجوی سریع (Ctrl+K)" placement="left" arrow>
+          <IconButton onClick={openPalette} aria-label="جستجوی سریع" sx={{ width: 38, height: 38, color: 'text.secondary' }}>
+            <SearchIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
+        <NotificationBell />
+
+        <Tooltip title="تنظیمات" placement="left" arrow>
+          <IconButton
+            onClick={() => navigateTo('/settings')}
+            aria-label="تنظیمات"
+            sx={{
+              width: 38, height: 38,
+              color: location.pathname.startsWith('/settings') ? 'primary.main' : 'text.secondary',
+              bgcolor: location.pathname.startsWith('/settings')
+                ? (theme) => alpha(theme.palette.primary.main, 0.1)
+                : 'transparent',
+            }}
+          >
+            <SettingsIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
+        <Box sx={{
+          mt: 1, p: 0.4, borderRadius: '999px',
+          border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper',
+          display: 'flex', flexDirection: 'column', gap: 0.25,
+          boxShadow: '0 4px 14px rgba(15,23,42,0.05)',
+        }}>
+          <IconButton
+            size="small"
+            onClick={() => setMode('light')}
+            aria-label="تم روشن"
+            sx={{
+              width: 30, height: 30,
+              color: mode === 'light' ? 'primary.main' : 'text.disabled',
+              bgcolor: mode === 'light'
+                ? (theme) => alpha(theme.palette.primary.main, 0.12)
+                : 'transparent',
+            }}
+          >
+            <LightModeIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => setMode('dark')}
+            aria-label="تم تاریک"
+            sx={{
+              width: 30, height: 30,
+              color: mode === 'dark' ? 'primary.main' : 'text.disabled',
+              bgcolor: mode === 'dark'
+                ? (theme) => alpha(theme.palette.primary.main, 0.12)
+                : 'transparent',
+            }}
+          >
+            <DarkModeIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Tooltip title={fullName} placement="left" arrow>
+          <Avatar
+            onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+            sx={{
+              mt: 1.2, width: 36, height: 36, cursor: 'pointer',
+              fontSize: 12, fontWeight: 800,
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
+              color: 'primary.main',
+              border: '2px solid', borderColor: 'background.paper',
+              boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+            }}
+          >
+            {initials}
+          </Avatar>
+        </Tooltip>
+      </Box>
+      {/* ---------- پنل زیرمنو ---------- */}
+      <Box sx={{
+        width: PANEL_WIDTH,
+        flexShrink: 0,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.default',
+      }}>
+        <Box sx={{ px: 1.25, pt: 1.5 }}>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 0.9,
+            px: 1.1, py: 0.8, borderRadius: '999px',
+            border: '1px solid', borderColor: alpha(accent, 0.22),
+            bgcolor: 'background.paper',
+            boxShadow: '0 4px 14px rgba(15,23,42,0.04)',
+          }}>
+            <Avatar variant="rounded" sx={{
+              width: 24, height: 24, borderRadius: '8px',
+              bgcolor: alpha(accent, 0.14), color: accent,
+            }}>
+              {panelIcon
+                ? React.cloneElement(panelIcon, { sx: { fontSize: 14 } })
+                : <BusinessIcon sx={{ fontSize: 14 }} />}
+            </Avatar>
+            <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 800 }}>
+              {shownGroup?.title || currentApp?.title || companyName}
+            </Typography>
+            <Chip
+              size="small"
+              label={toPersianDigits(shownGroup?.items?.length || 0)}
+              sx={{
+                height: 18, fontSize: 9.5, fontWeight: 800,
+                bgcolor: alpha(accent, 0.12), color: accent,
+                '& .MuiChip-label': { px: 0.8 },
+              }}
+            />
+          </Box>
+
+          <Box sx={{
+            mt: 1,
+            display: 'flex', flexDirection: 'column', gap: 0.5,
+            '& .MuiButton-root': { fontSize: 11, minHeight: 30, py: 0.4, borderRadius: '10px' },
+          }}>
+            <AppSwitcher />
+            <CompanySwitcher />
+          </Box>
+        </Box>
+
+        <Box sx={{
+          flex: 1, minHeight: 0, overflowY: 'auto', px: 1, py: 1.25,
+          '&::-webkit-scrollbar': { width: 4 },
+          '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 2 },
+        }}>
+          <Typography sx={{
+            px: 1, mb: 0.75, fontSize: 9.5, fontWeight: 800,
+            letterSpacing: '0.06em', color: 'text.disabled',
+          }}>
+            صفحه‌ها
+          </Typography>
+
+          {(shownGroup?.items || []).map((item) => {
+            const active = isActive(item.path);
+            const itemColor = item.color || accent;
+            const itemOn = contrastText(itemColor);
+            const isPlaceholder = item.ready === false;
+
+            return (
+              <Box
+                key={item.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  if (isPlaceholder) {
+                    if (mobileOpen) setMobileOpen(false);
+                    navigate('/coming-soon', { state: { title: item.title } });
+                  } else {
+                    navigateTo(item.path);
+                  }
+                }}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    event.currentTarget.click();
+                  }
+                }}
+                sx={{
+                  display: 'flex', alignItems: 'center', gap: 1.1,
+                  px: 1.15, py: 0.85, mb: 0.25, borderRadius: '11px',
+                  cursor: 'pointer',
+                  color: active ? itemOn : 'text.secondary',
+                  bgcolor: active ? itemColor : 'transparent',
+                  boxShadow: active ? `0 8px 18px ${alpha(itemColor, 0.28)}` : 'none',
+                  transition: 'background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease',
+                  '&:hover': {
+                    bgcolor: active ? itemColor : alpha(itemColor, 0.09),
+                    color: active ? itemOn : itemColor,
+                  },
+                  '&:focus-visible': { outline: `2px solid ${alpha(itemColor, 0.5)}`, outlineOffset: 2 },
+                }}
+              >
+                <Box sx={{ display: 'flex', color: active ? itemOn : itemColor, opacity: active ? 1 : 0.8 }}>
+                  {item.icon
+                    ? React.cloneElement(item.icon, { sx: { fontSize: 18 } })
+                    : <BusinessIcon sx={{ fontSize: 18 }} />}
+                </Box>
+                <Typography noWrap sx={{ flex: 1, fontSize: 11.5, fontWeight: active ? 800 : 600 }}>
+                  {item.title}
+                </Typography>
+                {isPlaceholder && <ConstructionIcon sx={{ fontSize: 13, opacity: 0.7 }} />}
+              </Box>
+            );
+          })}
+        </Box>
+
+
+
+        <Box sx={{ p: 1.25, pt: 0.5 }}>
+          <Box sx={{
+            position: 'relative', overflow: 'hidden',
+            borderRadius: '16px', border: '1px solid', borderColor: alpha(accent, 0.2),
+            background: `linear-gradient(155deg, ${alpha(accent, 0.16)}, ${alpha(accent, 0.04)})`,
+            p: 1.5,
+          }}>
+            <Box sx={{
+              position: 'absolute', top: -20, left: -20, width: 70, height: 70,
+              borderRadius: '50%', bgcolor: alpha(accent, 0.12),
+            }} />
+            <RocketLaunchIcon sx={{ fontSize: 20, color: accent, mb: 0.5 }} />
+            <Typography sx={{ fontSize: 12, fontWeight: 800 }}>دسترسی سریع</Typography>
+            <Typography sx={{ mt: 0.5, fontSize: 10.5, lineHeight: 1.9, color: 'text.secondary' }}>
+              با Ctrl+K صفحه‌ها و قراردادها را سریع پیدا کنید.
+            </Typography>
+            <Button
+              fullWidth
+              size="small"
+              variant="contained"
+              onClick={openPalette}
+              sx={{
+                mt: 1.2, py: 0.6, fontSize: 10.5, borderRadius: '9px',
+                background: accent, color: contrastText(accent),
+                boxShadow: `0 6px 14px ${alpha(accent, 0.3)}`,
+                '&:hover': { background: accent, filter: 'brightness(0.95)' },
+              }}
+            >
+              جستجوی سریع
+            </Button>
+          </Box>
         </Box>
       </Box>
     </Box>
@@ -478,38 +465,70 @@ const Layout = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Menu
+        anchorEl={userMenuAnchor}
+        open={Boolean(userMenuAnchor)}
+        onClose={() => setUserMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1, minWidth: 210, borderRadius: '14px',
+              border: '1px solid', borderColor: 'divider',
+              boxShadow: '0 18px 40px rgba(15,23,42,0.16)',
+            },
+          },
+        }}
+      >
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{fullName}</Typography>
+          <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+            @{user?.username}
+          </Typography>
+        </Box>
+        <Divider />
+        <MenuItem
+          onClick={() => { setUserMenuAnchor(null); navigateTo('/settings'); }}
+          sx={{ fontSize: 11.5, gap: 1, py: 0.9 }}
+        >
+          <SettingsIcon sx={{ fontSize: 17, color: 'text.secondary' }} />
+          تنظیمات
+        </MenuItem>
+        <MenuItem
+          onClick={() => { setUserMenuAnchor(null); handleLogout(); }}
+          sx={{ fontSize: 11.5, gap: 1, py: 0.9, color: 'error.main' }}
+        >
+          <LogoutIcon sx={{ fontSize: 17 }} />
+          {t('nav.logout')}
+        </MenuItem>
+      </Menu>
+
       <Drawer
         variant="temporary"
         anchor="right"
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
-        ModalProps={{ keepMounted: true }}
+        ModalProps={{ keepMounted: false }}
         sx={{
           display: { xs: 'block', md: 'none' },
-          '& .MuiDrawer-paper': { width: DRAWER_WIDTH, boxSizing: 'border-box' },
-        }}
-      >
-        {drawerContent}
-      </Drawer>
-
-      <Drawer
-        variant="permanent"
-        anchor="right"
-        sx={{
-          display: { xs: 'none', md: 'block' },
-          width: drawerWidth,
-          flexShrink: 0,
-          transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
           '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            transition: 'width 0.25s cubic-bezier(0.4, 0, 0.2, 1)',
-            overflowX: 'hidden',
+            width: SIDEBAR_WIDTH, height: '100vh',
+            boxSizing: 'border-box', border: 0,
           },
         }}
       >
-        {drawerContent}
+        {mobileOpen ? sidebarContent : null}
       </Drawer>
+
+      <Box sx={{
+        display: { xs: 'none', md: 'block' },
+        width: SIDEBAR_WIDTH, flexShrink: 0, height: '100vh',
+        borderInlineEnd: '1px solid', borderColor: 'divider',
+      }}>
+        {sidebarContent}
+      </Box>
+
 
       <Box
         component="main"
@@ -522,6 +541,34 @@ const Layout = ({ children }) => {
           overflow: 'hidden',
         }}
       >
+        <Box sx={{
+          display: { xs: 'flex', md: 'none' },
+          alignItems: 'center', gap: 1,
+          px: 1.5, py: 0.9,
+          borderBottom: '1px solid', borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}>
+          <IconButton
+            size="small"
+            onClick={() => setMobileOpen(true)}
+            aria-label="باز کردن منو"
+            sx={{ color: 'text.primary' }}
+          >
+            <MenuIcon fontSize="small" />
+          </IconButton>
+          {companyLogo ? (
+            <Avatar src={companyLogo} sx={{ width: 26, height: 26 }} />
+          ) : (
+            <Avatar sx={{ width: 26, height: 26, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+              <BusinessIcon sx={{ fontSize: 14, color: '#fff' }} />
+            </Avatar>
+          )}
+          <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 800 }}>
+            {companyName}
+          </Typography>
+          <NotificationBell />
+        </Box>
+
         <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 } }}>
           {children}
         </Box>
@@ -533,3 +580,4 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
+
