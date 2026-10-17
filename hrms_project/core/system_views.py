@@ -10,6 +10,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 
+from core.maintenance import read_maintenance
 from core.models import SystemBroadcast
 from core.version import version_info
 from core.views import _public_schema
@@ -87,7 +88,12 @@ def broadcast_active(request):
         if (not item.starts_at or item.starts_at <= now)
         and (not item.expires_at or item.expires_at > now)
     ]
-    return Response({'count': len(items), 'items': items})
+    return Response({
+        'count': len(items),
+        'items': items,
+        'maintenance': read_maintenance(),
+        'server_time': timezone.now(),
+    })
 
 
 @api_view(['POST'])

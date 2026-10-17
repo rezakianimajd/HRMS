@@ -1,0 +1,15 @@
+[Unit]
+Description=Kian ERP privileged updater (apply / rollback)
+After=network.target postgresql.service redis-server.service
+Wants=postgresql.service
+
+[Service]
+Type=oneshot
+User=root
+WorkingDirectory=/opt/hrms
+Environment=KIAN_APP_DIR=/opt/hrms
+Environment=UPDATE_ROOT=/opt/hrms/updates
+ExecStart=/opt/hrms/venv/bin/python /opt/hrms/scripts/kian_updater.py --request /opt/hrms/updates/queue/request.json
+TimeoutStartSec=7200
+StandardOutput=append:/var/log/hrms/updater.log
+StandardError=append:/var/log/hrms/updater.log

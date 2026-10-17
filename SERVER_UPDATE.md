@@ -215,7 +215,7 @@ sudo systemctl start gunicorn
 
 ---
 
-## به‌روزرسانی درون‌برنامه‌ای (فاز ۱)
+## به‌روزرسانی درون‌برنامه‌ای (فاز ۲)
 
 پنل جدید: **تنظیمات → به‌روزرسانی سیستم** (فقط `super_admin` یا نقش دارای `can_manage_updates`).
 
@@ -240,6 +240,47 @@ curl -s http://localhost/api/system/version/
 ls -la /opt/hrms/updates/{inbox,staging,archive}
 ```
 
+### نصب سرویس به‌روزرسان (یک‌بار)
+
+اسکریپت استقرار این کار را خودکار انجام می‌دهد؛ برای اجرای دستی:
+
+```bash
+sudo bash /opt/hrms/scripts/install_updater_units.sh /opt/hrms
+systemctl status hrms-update.path --no-pager
+```
+
+### ساخت و امضای بسته (روی سیستم توسعه)
+
+```bash
+# یک‌بار: تولید کلید امضا
+python scripts/build_update_package.py --generate-key
+#   → مقدار UPDATE_PUBLIC_KEY را در /opt/hrms/.env قرار دهید
+
+# ساخت بسته
+python scripts/build_update_package.py --version 1.0.1 \
+  --notes "توضیح تغییرات" --key update_key.pem
+#   → dist/kian-erp-1.0.1.zip  (همین فایل را در پنل آپلود کنید)
+```
+
+### پایش و عیب‌یابی
+
+```bash
+tail -f /var/log/hrms/updater.log
+systemctl status hrms-update.service --no-pager
+ls -lh /var/backups/hrms/            # preupdate_*.dump و code_*.tar.gz
+journalctl -u gunicorn -n 50 --no-pager
+```
+
+### بازگشت (rollback)
+
+از همان پنل: کارت «آخرین اجرا» → **بازگشت به نسخهٔ قبل** (کد از اسنپ‌شات برمی‌گردد).
+بازگردانی **دیتابیس** خودکار نیست؛ در صورت نیاز:
+
+```bash
+sudo -u postgres pg_restore -d hrms_db --clean --if-exists \
+  /var/backups/hrms/preupdate_<version>_<stamp>.dump
+```
+
 ### نکات
 
 | مورد | توضیح |
@@ -247,6 +288,9 @@ ls -la /opt/hrms/updates/{inbox,staging,archive}
 | محل بسته‌ها | `/opt/hrms/updates` (خارج از `MEDIA_ROOT`؛ از `/media/` قابل دانلود نیست) |
 | حجم مجاز | `UPDATE_MAX_PACKAGE_MB` (پیش‌فرض ۵۱۲) |
 | امضا | بدون `UPDATE_PUBLIC_KEY` بسته‌ها با وضعیت «بدون امضا» پذیرفته می‌شوند |
-| نصب خودکار | هنوز غیرفعال است (`APPLY_ENABLED=False` در `core/updates_views.py`) — فاز ۲ |
+| نصب خودکار | فعال (`APPLY_ENABLED=True`) — اجرا توسط `hrms-update.service` (root، بدون رمز sudo) |
+| حالت تعمیرات | `<UPDATE_ROOT>/maintenance.json` + middleware: API پاسخ 503 JSON و مرورگر صفحهٔ HTML می‌گیرد |
+| لاگ اجرا | `/var/log/hrms/updater.log` |
 | nginx | `client_max_body_size 512M` + `no-store` روی `index.html` (اسکریپت idempotent) |
-| rollback | فعلاً از طریق استقرار مجدد نسخهٔ قبل (`deploy-update.ps1`) انجام می‌شود |
+| قفل هم‌زمانی | یک اجرا در هر لحظه (`updater.lock` + بررسی در API) |
+| بازگشت | دکمهٔ پنل (کد) — بازگردانی دیتابیس دستی از `pg_dump` |

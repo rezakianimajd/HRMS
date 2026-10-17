@@ -99,6 +99,8 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    # Maintenance gate — must stay last so it can short-circuit every request.
+    'core.middleware.maintenance.MaintenanceModeMiddleware',
 ]
 
 ROOT_URLCONF = 'hrms_project.urls'

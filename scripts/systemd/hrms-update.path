@@ -1,0 +1,9 @@
+[Unit]
+Description=Watch for Kian ERP update requests
+
+[Path]
+PathExists=/opt/hrms/updates/queue/request.json
+Unit=hrms-update.service
+
+[Install]
+WantedBy=multi-user.target

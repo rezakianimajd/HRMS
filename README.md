@@ -350,18 +350,23 @@ sudo bash backup.sh        # دیتابیس + پوشهٔ مدیا (cron روزا
 
 ### به‌روزرسانی درون‌برنامه‌ای
 
-**فاز ۱ (فعال):** تنظیمات → **به‌روزرسانی سیستم** — فقط برای نقش‌هایی که مجوز `can_manage_updates` دارند (پیش‌فرض: `super_admin`).
+**فاز ۲ (فعال):** تنظیمات → **به‌روزرسانی سیستم** — فقط برای نقش‌هایی که مجوز `can_manage_updates` دارند (پیش‌فرض: `super_admin`).
 
 | مرحله | توضیح |
 |---|---|
-| دانلود | بستهٔ `kian-erp-<version>.zip` / `.tar.gz` را روی سیستم خود دانلود کنید |
-| آپلود | Drag & Drop در پنل؛ آپلود **تکه‌تکه** (۴MB) با امکان لغو و ادامه |
+| ساخت بسته | `python scripts/build_update_package.py --version 1.0.1 --notes "…" --key update_key.pem` |
+| آپلود | فایل `dist/kian-erp-<version>.zip` را در پنل رها کنید؛ آپلود **تکه‌تکه** (۴MB) |
 | تأیید | امضای Ed25519 + SHA-256 + سازگاری نسخه (`min_app_version`) |
-| ثبت | بسته در `<APP_DIR>/updates/archive` ذخیره و در تاریخچه ثبت می‌شود |
+| نصب | تأیید متنی نسخه → اعلان خروج با شمارندهٔ ۶۰ ثانیه‌ای → حالت تعمیرات |
+| اجرا | بکاپ دیتابیس → اسنپ‌شات کد → استخراج → کپی → مهاجرت → استاتیک → ری‌استارت → health-check |
+| پایان | اعلان موفقیت + رفرش خودکار همهٔ کلاینت‌ها |
+| بازگشت | دکمهٔ «بازگشت به نسخهٔ قبل» در همان پنل (از اسنپ‌شات کد) |
 
-- بسته‌ها **خارج از `MEDIA_ROOT`** نگهداری می‌شوند و از `/media/` قابل دانلود نیستند.
-- برای فعال‌کردن بررسی اصالت، `UPDATE_PUBLIC_KEY` (Base64، Ed25519) را در `.env` تنظیم کنید؛ بدون آن بسته‌ها با هشدار «بدون امضا» پذیرفته می‌شوند.
-- **نصب خودکار** (بکاپ، مهاجرت، ری‌استارت، rollback) فاز بعد است و فعلاً با `APPLY_ENABLED = False` غیرفعال است.
+- بسته‌ها در `<APP_DIR>/updates` نگهداری می‌شوند — **خارج از `MEDIA_ROOT`** و غیرقابل دانلود از `/media/`.
+- اجرای ممتاز **بدون رمز sudo**: `hrms-update.path` + `hrms-update.service` (اسکریپت استقرار نصبشان می‌کند).
+- لاگ اجرا: `/var/log/hrms/updater.log` · وضعیت زنده: `GET /api/system/updates/runs/{id}/`
+- امضا: `UPDATE_PUBLIC_KEY` در `.env`؛ ساخت کلید: `build_update_package.py --generate-key`
+- در صورت شکست، کد قبلی به‌صورت خودکار بازگردانده می‌شود؛ بازگردانی دیتابیس دستی و از `pg_dump` تهیه‌شده انجام می‌شود.
 - نقاط پایش: `GET /api/health/` و `GET /api/system/version/` (بدون احراز هویت).
 - پیش‌نیاز nginx: `client_max_body_size 512M` و `Cache-Control: no-store` روی `index.html` — اسکریپت `scripts/patch_nginx_for_updates.sh` این کار را انجام می‌دهد.
 
@@ -852,18 +857,23 @@ Day-to-day operations guide: [SERVER_UPDATE.md](SERVER_UPDATE.md)
 
 ### In-app updates
 
-**Phase 1 (active):** Settings → **System Updates** — visible only to roles holding `can_manage_updates` (`super_admin` by default).
+**Phase 2 (active):** Settings → **System Updates** — visible only to roles holding `can_manage_updates` (`super_admin` by default).
 
 | Step | What happens |
 |---|---|
-| Download | Get the `kian-erp-<version>.zip` or `.tar.gz` package on your workstation |
-| Upload | Drag & drop in the panel; **chunked** upload (4 MB) with cancel support |
+| Build | `python scripts/build_update_package.py --version 1.0.1 --notes "…" --key update_key.pem` |
+| Upload | Drop `dist/kian-erp-<version>.zip` in the panel; **chunked** upload (4 MB) |
 | Verify | Ed25519 signature + SHA-256 + version compatibility (`min_app_version`) |
-| Record | The package is stored in `<APP_DIR>/updates/archive` and listed in the history |
+| Install | Type the version to confirm → 60-second logout countdown → maintenance mode |
+| Execute | DB dump → code snapshot → extract → copy → migrate → static → restart → health check |
+| Finish | Success broadcast + automatic reload for every client |
+| Rollback | "Roll back" button in the same panel (restores the code snapshot) |
 
-- Packages are kept **outside `MEDIA_ROOT`** and can never be downloaded through `/media/`.
-- Set `UPDATE_PUBLIC_KEY` (Base64, Ed25519) in `.env` to enforce signatures; without it packages are accepted with an "unsigned" warning.
-- **Automatic installation** (backup, migrate, restart, rollback) is the next phase and is currently disabled (`APPLY_ENABLED = False`).
+- Packages live in `<APP_DIR>/updates` — **outside `MEDIA_ROOT`** and never reachable through `/media/`.
+- Privileged execution **without sudo passwords**: `hrms-update.path` + `hrms-update.service` (installed by the deploy script).
+- Run log: `/var/log/hrms/updater.log` · live progress: `GET /api/system/updates/runs/{id}/`
+- Signing: `UPDATE_PUBLIC_KEY` in `.env`; create a key with `build_update_package.py --generate-key`.
+- On failure the previous code is restored automatically; database rollback stays manual via the `pg_dump` taken before the run.
 - Probes: `GET /api/health/` and `GET /api/system/version/` (no authentication).
 - nginx prerequisites: `client_max_body_size 512M` and `Cache-Control: no-store` on `index.html` — handled by `scripts/patch_nginx_for_updates.sh`.
 

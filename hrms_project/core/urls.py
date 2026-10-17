@@ -27,6 +27,7 @@ urlpatterns = [
     path('system/updates/releases/<int:release_id>/apply/', updates_views.release_apply, name='api-updates-release-apply'),
     path('system/updates/runs/', updates_views.runs_list, name='api-updates-runs'),
     path('system/updates/runs/<int:run_id>/', updates_views.run_detail, name='api-updates-run-detail'),
+    path('system/updates/runs/<int:run_id>/rollback/', updates_views.run_rollback, name='api-updates-run-rollback'),
 
     # Authentication
     path('auth/login/', views.login_view, name='api-login'),

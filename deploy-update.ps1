@@ -273,14 +273,23 @@ $BackendFiles += @(
     'hrms_project/core/urls.py',
     'hrms_project/core/migrations/0014_updatesettings_apprelease_systembroadcast_updaterun_and_more.py',
     'hrms_project/hrms_project/settings/base.py',
-    'scripts/patch_nginx_for_updates.sh'
+    'scripts/patch_nginx_for_updates.sh',
+    # فاز ۲: حالت تعمیرات + به‌روزرسان ممتاز
+    'hrms_project/core/maintenance.py',
+    'hrms_project/core/middleware/maintenance.py',
+    'scripts/kian_updater.py',
+    'scripts/install_updater_units.sh',
+    'scripts/systemd/hrms-update.service',
+    'scripts/systemd/hrms-update.path'
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
     'frontend/src/core/components/settings/GeneralSettingsPanel.jsx',
     'frontend/src/core/components/settings/UpdatePanel.jsx',
+    'frontend/src/core/components/ui/SystemBroadcastGate.jsx',
     'frontend/src/core/hooks/useSystemStatus.js',
-    'frontend/src/modules/settings/Settings.jsx'
+    'frontend/src/modules/settings/Settings.jsx',
+    'frontend/src/App.jsx'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
@@ -534,10 +543,20 @@ Step '۵.۴/۶ آماده‌سازی پوشهٔ به‌روزرسانی'
 ssh -t $Srv "sudo mkdir -p $AppDir/updates/inbox $AppDir/updates/staging $AppDir/updates/archive && sudo chown -R ${AppUser}:${AppUser} $AppDir/updates"
 if ($LASTEXITCODE -ne 0) { Warn 'ساخت پوشهٔ updates ناموفق بود؛ آپلود بسته کار نخواهد کرد.' }
 
+# ---------------------------------------------------------------- سرویس به‌روزرسان
+# نصب systemd path/oneshot تا اجرای آپدیت از پنل بدون رمز sudo ممکن شود.
+Step '۵.۵/۶ نصب سرویس به‌روزرسان (systemd)'
+ssh -t $Srv "sudo sed -i 's/\r$//' $AppDir/scripts/install_updater_units.sh $AppDir/scripts/kian_updater.py 2>/dev/null; sudo bash $AppDir/scripts/install_updater_units.sh $AppDir"
+if ($LASTEXITCODE -ne 0) {
+    Warn 'نصب سرویس به‌روزرسان ناموفق بود؛ دکمهٔ «نصب» در پنل کار نخواهد کرد.'
+} else {
+    Ok 'سرویس به‌روزرسان نصب و فعال شد (hrms-update.path).'
+}
+
 # ---------------------------------------------------------------- تنظیم nginx
 # لازم برای آپلود بسته‌های بزرگ و رفرش خودکار پس از به‌روزرسانی.
 # اسکریپت idempotent است: اگر تنظیمات از قبل درست باشد چیزی تغییر نمی‌کند.
-Step '۵.۵/۶ تنظیم nginx برای به‌روزرسانی درون‌برنامه‌ای'
+Step '۵.۶/۶ تنظیم nginx برای به‌روزرسانی درون‌برنامه‌ای'
 ssh -t $Srv "sudo sed -i 's/\r$//' $AppDir/scripts/patch_nginx_for_updates.sh 2>/dev/null; sudo bash $AppDir/scripts/patch_nginx_for_updates.sh"
 if ($LASTEXITCODE -ne 0) {
     Warn 'تنظیم nginx انجام نشد؛ برای آپلود بستهٔ بزرگ و رفرش خودکار، اسکریپت scripts/patch_nginx_for_updates.sh را دستی اجرا کنید.'

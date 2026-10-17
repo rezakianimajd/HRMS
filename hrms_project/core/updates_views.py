@@ -4,24 +4,31 @@ Phase 1 covers: uploading a signed package (chunked, resumable), verifying it
 and keeping a history. Applying a package stays disabled (``APPLY_ENABLED``)
 until the privileged updater service of phase 2 is installed on the server.
 """
+import json
+import os
 import shutil
 import uuid
+from datetime import timedelta
 from pathlib import Path
 
 from django.conf import settings
 from django.shortcuts import get_object_or_404
+from django.utils import timezone
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
 from core import updates_service as svc
-from core.models import AppRelease, UpdateRun, UpdateSettings, UpdateUpload
+from core.maintenance import read_maintenance
+from core.models import (
+    AppRelease, SystemBroadcast, UpdateRun, UpdateSettings, UpdateUpload,
+)
 from core.version import VERSION
 from core.views import _public_schema
 
-# Phase 2 flips this on once the privileged `hrms-update.service` exists.
-APPLY_ENABLED = False
+# Phase 2: the privileged `hrms-update.service` must be installed on the server.
+APPLY_ENABLED = True
 
 
 def _can_manage(user):
@@ -75,6 +82,16 @@ def _run_payload(run):
     }
 
 
+def _enqueue(payload):
+    """Atomically drop a request file for the systemd path unit."""
+    queue = svc.update_root() / 'queue'
+    queue.mkdir(parents=True, exist_ok=True)
+    tmp = queue / '.request.tmp'
+    with open(tmp, 'w', encoding='utf-8') as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+    os.replace(tmp, queue / 'request.json')
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @_public_schema
@@ -99,6 +116,7 @@ def updates_status(request):
         'can_manage': _can_manage(request.user),
         'apply_enabled': APPLY_ENABLED,
         'channel': config.channel,
+        'countdown_seconds': config.logout_countdown_seconds,
         'signature_required': bool(svc.configured_public_key()),
         'allow_unsigned': bool(getattr(settings, 'UPDATE_ALLOW_UNSIGNED', True)),
         'max_package_mb': svc.max_package_bytes() // (1024 * 1024),
@@ -106,6 +124,8 @@ def updates_status(request):
         'disk_free': disk_free,
         'releases': [_release_payload(item) for item in AppRelease.objects.all()[:20]],
         'last_run': _run_payload(last_run) if last_run else None,
+        'maintenance': read_maintenance(),
+        'queue_pending': (svc.update_root() / 'queue' / 'request.json').exists(),
         'active_upload': {
             'upload_id': active_upload.upload_id,
             'file_name': active_upload.file_name,
@@ -342,8 +362,8 @@ def release_apply(request, release_id):
     """
     Queue a release for installation.
 
-    Disabled until the privileged updater service (phase 2) is installed; the
-    UI hides the button when ``apply_enabled`` is false.
+    The privileged ``hrms-update.service`` (systemd path unit) picks the request
+    up from ``<UPDATE_ROOT>/queue/request.json`` and performs the whole run.
     """
     if not _can_manage(request.user):
         return Response({'error': 'دسترسی غیرمجاز'}, status=403)
@@ -351,21 +371,111 @@ def release_apply(request, release_id):
     release = get_object_or_404(AppRelease, pk=release_id)
     if not APPLY_ENABLED:
         return Response({
-            'error': 'نصب خودکار هنوز فعال نشده است؛ سرویس به‌روزرسان باید روی سرور نصب شود.',
+            'error': 'سرویس به‌روزرسان روی سرور نصب نشده است (hrms-update.service).',
             'apply_enabled': False,
         }, status=503)
 
+    if release.status == AppRelease.Status.APPLIED:
+        return Response({'error': 'این نسخه قبلاً نصب شده است.'}, status=400)
+
+    artifact = Path(release.artifact_path)
+    if not artifact.exists():
+        return Response({'error': 'فایل بسته روی سرور پیدا نشد؛ دوباره بارگذاری کنید.'}, status=400)
+
     active = UpdateRun.objects.filter(status=UpdateRun.Status.RUNNING).first()
     if active:
-        return Response({'error': 'یک عملیات به‌روزرسانی دیگر در حال اجراست.'}, status=409)
+        return Response(
+            {'error': 'یک عملیات به‌روزرسانی دیگر در حال اجراست.', 'run_id': active.id},
+            status=409,
+        )
+
+    queue_file = svc.update_root() / 'queue' / 'request.json'
+    if queue_file.exists():
+        return Response({'error': 'درخواست دیگری در صف اجرا است؛ چند لحظه صبر کنید.'}, status=409)
+
+    config = UpdateSettings.load()
+    countdown = int(config.logout_countdown_seconds or 60)
+    now = timezone.now()
 
     run = UpdateRun.objects.create(
         release=release,
         from_version=VERSION,
         to_version=release.version,
         started_by=request.user,
+        steps=[{'name': 'queued', 'status': 'done', 'at': now.isoformat()}],
     )
-    return Response({'run': _run_payload(run)}, status=202)
+
+    broadcast = SystemBroadcast.objects.create(
+        title=f'به‌روزرسانی سیستم به نسخهٔ {release.version}',
+        message=(
+            f'سیستم تا {countdown} ثانیهٔ دیگر برای به‌روزرسانی بسته می‌شود. '
+            'لطفاً کار خود را ذخیره کنید و از سیستم خارج شوید.'
+        ),
+        level=SystemBroadcast.Level.MAINTENANCE,
+        action=SystemBroadcast.Action.LOGOUT,
+        starts_at=now + timedelta(seconds=countdown),
+        expires_at=now + timedelta(hours=2),
+    )
+
+    _enqueue({
+        'action': 'apply',
+        'run_id': run.id,
+        'release_id': release.id,
+        'artifact': str(artifact),
+        'version': release.version,
+        'from_version': VERSION,
+        'countdown_seconds': countdown,
+        'requested_by': request.user.username,
+        'requested_at': now.isoformat(),
+    })
+
+    release.status = AppRelease.Status.STAGED
+    release.save(update_fields=['status'])
+
+    return Response({
+        'run': _run_payload(run),
+        'countdown_seconds': countdown,
+        'broadcast_id': broadcast.id,
+        'message': 'درخواست نصب ثبت شد؛ سرویس به‌روزرسان تا لحظاتی آن را آغاز می‌کند.',
+    }, status=202)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@_public_schema
+def run_rollback(request, run_id):
+    """Ask the privileged updater to restore the code snapshot of a run."""
+    if not _can_manage(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    run = get_object_or_404(UpdateRun, pk=run_id)
+    if run.status != UpdateRun.Status.SUCCESS:
+        return Response({'error': 'فقط یک اجرای موفق قابل بازگشت است.'}, status=400)
+    if UpdateRun.objects.filter(status=UpdateRun.Status.RUNNING).exists():
+        return Response({'error': 'یک عملیات دیگر در حال اجراست.'}, status=409)
+
+    queue_file = svc.update_root() / 'queue' / 'request.json'
+    if queue_file.exists():
+        return Response({'error': 'درخواست دیگری در صف اجرا است.'}, status=409)
+
+    now = timezone.now()
+    SystemBroadcast.objects.create(
+        title='بازگشت به نسخهٔ قبلی',
+        message='سیستم برای بازگردانی نسخهٔ قبلی به‌زودی بسته می‌شود. لطفاً کار خود را ذخیره کنید.',
+        level=SystemBroadcast.Level.MAINTENANCE,
+        action=SystemBroadcast.Action.LOGOUT,
+        starts_at=now + timedelta(seconds=30),
+        expires_at=now + timedelta(hours=1),
+    )
+
+    _enqueue({
+        'action': 'rollback',
+        'run_id': run.id,
+        'requested_by': request.user.username,
+        'requested_at': now.isoformat(),
+        'countdown_seconds': 30,
+    })
+    return Response({'queued': True, 'run_id': run.id}, status=202)
 
 
 @api_view(['GET'])

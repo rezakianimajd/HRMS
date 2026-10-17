@@ -14,6 +14,7 @@ import AppRoutes from './AppRoutes';
 import GummyBearOverlay from './core/components/ui/GummyBearOverlay';
 import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
+import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
 import './core/engines/languageEngine';
 
@@ -216,6 +217,7 @@ const ThemedApp = () => {
         <GummyBearOverlay />
         <HelpDialog />
         <GlobalErrorSnackbar />
+        <SystemBroadcastGate />
         <AppRoutes />
       </ErrorBoundary>
     </ThemeProvider>

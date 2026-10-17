@@ -1,13 +1,19 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, LinearProgress, Paper, Stack,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  DialogTitle, Divider, LinearProgress, List, ListItem, ListItemIcon, ListItemText,
+  Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Typography,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import CheckIcon from '@mui/icons-material/Check';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
 import useSystemStatus from '../../hooks/useSystemStatus';
 import axiosInstance from '../../api/axiosConfig';
 import { formatBytes } from './StorageArchivePanel';
@@ -54,6 +60,12 @@ const UpdatePanel = () => {
   const [uploadId, setUploadId] = useState(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef(null);
+
+  const [applyTarget, setApplyTarget] = useState(null);
+  const [confirmText, setConfirmText] = useState('');
+  const [applying, setApplying] = useState(false);
+  const [runId, setRunId] = useState(null);
+  const [runData, setRunData] = useState(null);
 
   const load = useCallback(async () => {
     try {
@@ -133,6 +145,65 @@ const UpdatePanel = () => {
       await load();
     } catch (e) {
       setError(e.response?.data?.error || 'حذف بسته ناموفق بود.');
+    }
+  };
+
+  // Live progress of the privileged updater (polls until the run ends).
+  useEffect(() => {
+    if (!runId) return undefined;
+    let cancelled = false;
+
+    const fetchRun = async () => {
+      try {
+        const { data } = await axiosInstance.get(
+          `/system/updates/runs/${runId}/`, { quiet: true },
+        );
+        if (cancelled) return;
+        setRunData(data);
+        if (data.status !== 'running') {
+          setRunId(null);
+          load();
+        }
+      } catch {
+        /* سرور در حال ری‌استارت است — در نوبت بعد تلاش می‌کنیم */
+      }
+    };
+
+    fetchRun();
+    const timer = setInterval(fetchRun, 2000);
+    return () => { cancelled = true; clearInterval(timer); };
+  }, [runId, load]);
+
+  const startApply = async () => {
+    if (!applyTarget) return;
+    setApplying(true); setError(''); setNotice('');
+    try {
+      const { data } = await axiosInstance.post(
+        `/system/updates/releases/${applyTarget.id}/apply/`,
+      );
+      setRunData(data.run);
+      setRunId(data.run.id);
+      setApplyTarget(null);
+      setConfirmText('');
+      setNotice(data.message || 'درخواست نصب ثبت شد.');
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'ثبت درخواست نصب ناموفق بود.');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  const startRollback = async () => {
+    if (!status?.last_run) return;
+    if (!window.confirm('بازگردانی به نسخهٔ قبلی انجام شود؟ سیستم چند لحظه بسته می‌شود.')) return;
+    setError(''); setNotice('');
+    try {
+      await axiosInstance.post(`/system/updates/runs/${status.last_run.id}/rollback/`);
+      setNotice('درخواست بازگشت ثبت شد؛ چند لحظه صبر کنید.');
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'ثبت درخواست بازگشت ناموفق بود.');
     }
   };
 
@@ -282,7 +353,13 @@ const UpdatePanel = () => {
                     <TableCell>{formatBytes(release.size)}</TableCell>
                     <TableCell>{toJalali(String(release.created_at || '').slice(0, 10))}</TableCell>
                     <TableCell>{release.uploaded_by || '—'}</TableCell>
-                    <TableCell align="center">
+                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                      <Button size="small" variant="contained" startIcon={<PlayArrowIcon />}
+                        disabled={!status.apply_enabled || release.status === 'applied'}
+                        onClick={() => { setConfirmText(''); setApplyTarget(release); }}
+                        sx={{ mr: 1, bgcolor: COLOR }}>
+                        نصب
+                      </Button>
                       <Button size="small" color="error" startIcon={<DeleteIcon />}
                         onClick={() => removeRelease(release)}>
                         حذف
@@ -307,6 +384,11 @@ const UpdatePanel = () => {
             <Typography variant="caption" color="textSecondary">
               {toJalali(String(status.last_run.started_at || '').slice(0, 10))}
             </Typography>
+            {status.last_run.status === 'success' && (
+              <Button size="small" color="warning" variant="outlined" onClick={startRollback}>
+                بازگشت به نسخهٔ قبل
+              </Button>
+            )}
           </Stack>
           {status.last_run.error && (
             <Alert severity="error" sx={{ mt: 1 }}>{status.last_run.error}</Alert>
@@ -318,6 +400,83 @@ const UpdatePanel = () => {
         بسته‌ها در مسیر سرور <code>{status.update_root}</code> نگهداری می‌شوند و از طریق
         آدرس عمومی <code>/media/</code> قابل دانلود نیستند.
       </Typography>
+
+      {/* Apply confirmation */}
+      <Dialog open={Boolean(applyTarget)} onClose={() => { if (!applying) setApplyTarget(null); }}
+        maxWidth="sm" fullWidth>
+        <DialogTitle>نصب نسخهٔ {applyTarget?.version}</DialogTitle>
+        <DialogContent dividers>
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            با شروع نصب، سیستم برای همهٔ کاربران بسته می‌شود و پس از پایان، سرویس‌ها ری‌استارت می‌شوند.
+            {applyTarget?.migrations?.length
+              ? ` ${applyTarget.migrations.length} مهاجرت دیتابیس اجرا خواهد شد.`
+              : ' این بسته مهاجرت دیتابیس ندارد.'}
+          </Alert>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            برای تأیید، نسخه را تایپ کنید: <b>{applyTarget?.version}</b>
+          </Typography>
+          <TextField fullWidth size="small" value={confirmText}
+            onChange={(event) => setConfirmText(event.target.value)}
+            placeholder={applyTarget?.version} />
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1.5 }}>
+            شمارندهٔ خروج کاربران: {status?.countdown_seconds ?? 60} ثانیه
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button onClick={() => setApplyTarget(null)} disabled={applying}>انصراف</Button>
+          <Button variant="contained" color="error" disabled={applying || !applyTarget
+            || confirmText.trim() !== applyTarget.version}
+            onClick={startApply}>
+            {applying ? <CircularProgress size={20} /> : 'شروع به‌روزرسانی'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Live progress */}
+      <Dialog open={Boolean(runData)} onClose={() => { if (!runId) setRunData(null); }}
+        maxWidth="sm" fullWidth>
+        <DialogTitle>
+          <Stack direction="row" spacing={1} alignItems="center">
+            <SystemUpdateAltIcon sx={{ color: COLOR }} />
+            <Typography fontWeight={800}>پیشرفت به‌روزرسانی</Typography>
+            <Chip size="small" label={runData?.status_display || 'در حال اجرا'}
+              color={runData?.status === 'success' ? 'success'
+                : runData?.status === 'failed' ? 'error'
+                  : runData?.status === 'rolled_back' ? 'warning' : 'default'} />
+          </Stack>
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="caption" color="textSecondary">
+            {runData?.from_version || '—'} → {runData?.to_version || '—'}
+          </Typography>
+          <List dense>
+            {(runData?.steps || []).map((step, index) => (
+              <ListItem key={`${step.name}-${index}`}>
+                <ListItemIcon sx={{ minWidth: 32 }}>
+                  {step.status === 'done'
+                    ? <CheckIcon color="success" fontSize="small" />
+                    : <HourglassEmptyIcon fontSize="small" />}
+                </ListItemIcon>
+                <ListItemText
+                  primary={step.name}
+                  secondary={step.at ? new Date(step.at).toLocaleTimeString('fa-IR') : ''} />
+              </ListItem>
+            ))}
+          </List>
+          {runId && (
+            <Box sx={{ mt: 1 }}>
+              <LinearProgress />
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
+                در حال اجرا… این پنجره را نبندید (در صورت قطع اتصال، وضعیت از تاریخچه قابل مشاهده است).
+              </Typography>
+            </Box>
+          )}
+          {runData?.error && <Alert severity="error" icon={<ErrorOutlineIcon />} sx={{ mt: 2 }}>{runData.error}</Alert>}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button onClick={() => setRunData(null)} disabled={Boolean(runId)}>بستن</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
