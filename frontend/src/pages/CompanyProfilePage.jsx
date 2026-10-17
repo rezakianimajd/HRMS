@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Grid, TextField, Button, CircularProgress,
-  Alert, Stack, Switch, FormControlLabel, Tooltip, Chip,
+  Alert, Stack, Switch, FormControlLabel, Tooltip, Chip, alpha,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -15,45 +15,35 @@ import StorageIcon from '@mui/icons-material/Storage';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import { SURFACE, SOFT } from '../core/components/settings/settingsUi';
 
-const glassCard = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.34))',
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 16px 44px rgba(99,102,241,0.12)',
-  borderRadius: '16px',
-};
+const glassCard = { ...SURFACE };
 
 const fieldSx = {
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    background: 'rgba(255,255,255,0.55)',
-    transition: 'all .2s ease',
-    '&:hover': { background: 'rgba(255,255,255,0.84)' },
-    '&.Mui-focused': { background: 'rgba(255,255,255,0.95)', boxShadow: '0 0 0 3px #6366f122' },
-  },
+  '& .MuiOutlinedInput-root': { borderRadius: '10px', fontSize: 12.5 },
 };
 
 const SectionHeader = ({ icon, title, subtitle, color }) => (
-  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
-    <Avatar sx={{ width: 42, height: 42, background: `linear-gradient(135deg, ${color}, ${color}99)`, boxShadow: `0 6px 16px ${color}55` }}>
-      {icon}
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25, mb: 1.5, flexWrap: 'wrap' }}>
+    <Avatar variant="rounded" sx={{
+      width: 32, height: 32, borderRadius: '9px',
+      bgcolor: alpha(color, 0.14), color,
+    }}>
+      {React.cloneElement(icon, { sx: { fontSize: 18 } })}
     </Avatar>
-    <Box>
-      <Typography variant="subtitle1" fontWeight={800} sx={{ color }}>{title}</Typography>
-      {subtitle && <Typography variant="caption" color="textSecondary">{subtitle}</Typography>}
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontSize: 13, fontWeight: 800 }}>{title}</Typography>
+      {subtitle ? (
+        <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>{subtitle}</Typography>
+      ) : null}
     </Box>
   </Box>
 );
 
 const Section = ({ icon, title, subtitle, color, children }) => (
-  <Paper sx={{ ...glassCard, p: 3, mb: 2.5, overflow: 'hidden', position: 'relative' }}>
-    <Box aria-hidden sx={{ position: 'absolute', top: -40, left: -40, width: 160, height: 160, borderRadius: '50%', background: `radial-gradient(circle, ${color}1a, transparent 70%)`, pointerEvents: 'none' }} />
-    <Box sx={{ position: 'relative' }}>
-      <SectionHeader icon={icon} title={title} subtitle={subtitle} color={color} />
-      {children}
-    </Box>
+  <Paper sx={{ ...glassCard, p: 1.75, mb: 1.75, overflow: 'hidden' }}>
+    <SectionHeader icon={icon} title={title} subtitle={subtitle} color={color} />
+    {children}
   </Paper>
 );
 
@@ -112,28 +102,24 @@ const CompanyProfilePage = () => {
   return (
     <Box>
       {/* Hero — logo + company identity */}
-      <Paper sx={{
-        ...glassCard, mb: 2.5, p: 3.5, position: 'relative', overflow: 'hidden',
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.14), rgba(236,72,153,0.08), rgba(255,255,255,0.4))',
-      }}>
-        <Box aria-hidden sx={{ position: 'absolute', top: -80, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(99,102,241,0.2), transparent 70%)', filter: 'blur(30px)' }} />
-        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
+      <Paper sx={{ ...glassCard, mb: 1.75, p: 2, position: 'relative', overflow: 'hidden' }}>
+        <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2.25, flexWrap: 'wrap' }}>
           <Box sx={{ position: 'relative' }}>
             {form.logo_url ? (
-              <Avatar src={form.logo_url} sx={{ width: 96, height: 96, boxShadow: '0 10px 30px rgba(99,102,241,0.4)', border: '3px solid rgba(255,255,255,0.7)' }} />
+              <Avatar src={form.logo_url} variant="rounded" sx={{ width: 72, height: 72, borderRadius: '18px', border: '1px solid', borderColor: 'divider' }} />
             ) : (
-              <Avatar sx={{ width: 96, height: 96, background: 'linear-gradient(135deg, #6366f1, #ec4899)', boxShadow: '0 10px 30px rgba(99,102,241,0.4)', border: '3px solid rgba(255,255,255,0.7)' }}>
-                <BusinessIcon sx={{ fontSize: 46, color: '#fff' }} />
+              <Avatar variant="rounded" sx={{ width: 72, height: 72, borderRadius: '18px', bgcolor: alpha(SOFT.indigo, 0.14), color: SOFT.indigo }}>
+                <BusinessIcon sx={{ fontSize: 34 }} />
               </Avatar>
             )}
             <Tooltip title="تغییر لوگو">
               <Box
                 onClick={() => document.getElementById('logo-input').click()}
                 sx={{
-                  position: 'absolute', bottom: 0, left: 0, width: 32, height: 32, borderRadius: '50%',
-                  background: 'linear-gradient(135deg,#6366f1,#ec4899)', color: '#fff',
+                  position: 'absolute', bottom: 0, left: 0, width: 28, height: 28, borderRadius: '50%',
+                  background: SOFT.indigo, color: '#fff',
                   display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
-                  boxShadow: '0 3px 10px rgba(99,102,241,0.5)',
+                  boxShadow: `0 3px 10px ${SOFT.indigo}44`,
                   '&:hover': { transform: 'scale(1.1)' }, transition: 'all .2s ease',
                 }}
               >
@@ -144,7 +130,7 @@ const CompanyProfilePage = () => {
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 240 }}>
-            <Typography variant="h4" fontWeight={800} sx={{ mb: 0.5 }}>{form.company_name || 'نام شرکت'}</Typography>
+            <Typography sx={{ fontSize: 17, fontWeight: 900, mb: 0.5 }}>{form.company_name || 'نام شرکت'}</Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {form.economic_code && <Chip size="small" label={`کد اقتصادی: ${form.economic_code}`} variant="outlined" />}
               {form.national_id && <Chip size="small" label={`شناسه ملی: ${form.national_id}`} variant="outlined" />}
@@ -161,7 +147,7 @@ const CompanyProfilePage = () => {
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setError('')}>{error}</Alert>}
 
       {/* اطلاعات حقوقی و ثبت */}
-      <Section icon={<BadgeIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات حقوقی و ثبت" subtitle="شناسهها و ابعاد حقوقی شرکت" color="#6366f1">
+      <Section icon={<BadgeIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات حقوقی و ثبت" subtitle="شناسهها و ابعاد حقوقی شرکت" color={SOFT.indigo}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام حقوقی شرکت" value={form.legal_name || ''} onChange={e => set('legal_name', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شماره ثبت" value={form.registration_number || ''} onChange={e => set('registration_number', e.target.value)} /></Grid>
@@ -175,7 +161,7 @@ const CompanyProfilePage = () => {
       </Section>
 
       {/* اطلاعات تماس */}
-      <Section icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات تماس و آدرس" subtitle="راههای ارتباطی رسمی شرکت" color="#10b981">
+      <Section icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات تماس و آدرس" subtitle="راههای ارتباطی رسمی شرکت" color={SOFT.green}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="تلفن" value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="ایمیل" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Grid>
@@ -186,7 +172,7 @@ const CompanyProfilePage = () => {
       </Section>
 
       {/* نماینده قانونی */}
-      <Section icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 22 }} />} title="نماینده قانونی / مدیرعامل" subtitle="برای درج در قراردادها" color="#f59e0b">
+      <Section icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 22 }} />} title="نماینده قانونی / مدیرعامل" subtitle="برای درج در قراردادها" color={SOFT.amber}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام نماینده حقوقی / مدیرعامل" value={form.employer_rep_name || ''} onChange={e => set('employer_rep_name', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="سمت نماینده" value={form.employer_rep_title || ''} onChange={e => set('employer_rep_title', e.target.value)} /></Grid>
@@ -195,10 +181,10 @@ const CompanyProfilePage = () => {
       </Section>
 
       {/* اطلاعرسانی */}
-      <Section icon={<NotificationsActiveIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعرسانی" subtitle="کانالهای ارسال اعلان" color="#8b5cf6">
+      <Section icon={<NotificationsActiveIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعرسانی" subtitle="کانالهای ارسال اعلان" color={SOFT.violet}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.4)' }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', borderColor: 'divider' }}>
               <FormControlLabel
                 control={<Switch checked={!!form.notify_email_enabled} onChange={e => set('notify_email_enabled', e.target.checked)} />}
                 label={<Typography variant="body2" fontWeight={600}>ارسال اعلان از طریق ایمیل</Typography>}
@@ -206,7 +192,7 @@ const CompanyProfilePage = () => {
             </Paper>
           </Grid>
           <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.4)' }}>
+            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', borderColor: 'divider' }}>
               <FormControlLabel
                 control={<Switch checked={!!form.notify_bale_enabled} onChange={e => set('notify_bale_enabled', e.target.checked)} />}
                 label={<Typography variant="body2" fontWeight={600}>ارسال پیام از طریق پیامرسان بله</Typography>}
@@ -223,7 +209,7 @@ const CompanyProfilePage = () => {
       </Section>
 
       {/* ذخیرهسازی */}
-      <Section icon={<StorageIcon sx={{ color: '#fff', fontSize: 22 }} />} title="مسیرهای ذخیرهسازی فایلها" subtitle="محل ذخیره هر دسته از فایلهای آپلودی" color="#3b82f6">
+      <Section icon={<StorageIcon sx={{ color: '#fff', fontSize: 22 }} />} title="مسیرهای ذخیرهسازی فایلها" subtitle="محل ذخیره هر دسته از فایلهای آپلودی" color={SOFT.blue}>
         <Grid container spacing={2}>
           <Grid item xs={12}><TextField size="small" fullWidth sx={fieldSx} label="مسیر پایه ذخیرهسازی" placeholder="/var/hr_data/" dir="ltr" value={form.base_storage_path || ''} onChange={e => set('base_storage_path', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="پوشه مدارک پرسنل" dir="ltr" value={form.storage_path_employees || ''} onChange={e => set('storage_path_employees', e.target.value)} /></Grid>
@@ -244,7 +230,7 @@ const CompanyProfilePage = () => {
               startIcon={updateMutation.isLoading ? null : <SaveIcon />}
               onClick={() => updateMutation.mutate(form)}
               disabled={updateMutation.isLoading}
-              sx={{ background: 'linear-gradient(135deg, #6366f1, #ec4899)', borderRadius: '12px', px: 4 }}
+              sx={{ bgcolor: SOFT.indigo, borderRadius: '10px', px: 4, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
             >
               {updateMutation.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره تغییرات'}
             </Button>

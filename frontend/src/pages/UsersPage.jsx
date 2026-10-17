@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Tabs, Tab, Avatar, Chip, FormControl, InputLabel,
+  Box, Typography, Paper, Avatar, Chip, FormControl, InputLabel,
   Select, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead,
   TableRow, Alert, Stack, Button, Dialog, DialogTitle, DialogContent,
   DialogActions, TextField, IconButton, Tooltip, CircularProgress, Switch,
@@ -17,6 +17,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import AppsIcon from '@mui/icons-material/Apps';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import { PageHeader, TabsCard, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 
 const ROLE_LABELS = {
   super_admin: 'مدیر ارشد سیستم',
@@ -26,11 +27,11 @@ const ROLE_LABELS = {
   employee: 'کارمند',
 };
 const ROLE_COLORS = {
-  super_admin: '#7c3aed',
-  hr_manager: '#2563eb',
-  hr_specialist: '#0ea5e9',
-  department_head: '#f59e0b',
-  employee: '#64748b',
+  super_admin: SOFT.violet,
+  hr_manager: SOFT.indigo,
+  hr_specialist: SOFT.blue,
+  department_head: SOFT.amber,
+  employee: SOFT.slate,
 };
 
 const PERM_LABELS = {
@@ -50,38 +51,31 @@ const PERM_LABELS = {
 };
 const ROLE_KEYS = Object.keys(ROLE_LABELS);
 
-const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.42))',
-  backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 18px 50px rgba(100,116,139,0.14)',
-  borderRadius: '20px',
-};
+const glass = { ...SURFACE };
 
 // A single selectable module card.
 const ModuleCard = ({ app, checked, disabled, onToggle }) => (
   <Paper
     onClick={() => !disabled && onToggle(app)}
     sx={{
-      p: 1.5, cursor: disabled ? 'default' : 'pointer', borderRadius: '14px',
-      display: 'flex', alignItems: 'center', gap: 1.25,
-      border: checked ? `2px solid ${app.color || '#6366f1'}` : '1px solid rgba(100,116,139,0.18)',
-      background: checked ? `${app.color || '#6366f1'}14` : 'rgba(255,255,255,0.55)',
+      p: 1.25, cursor: disabled ? 'default' : 'pointer', borderRadius: '12px',
+      display: 'flex', alignItems: 'center', gap: 1, height: '100%',
+      border: '1px solid', borderColor: checked ? `${app.color || SOFT.indigo}66` : 'divider',
+      bgcolor: checked ? `${app.color || SOFT.indigo}12` : 'background.paper',
       opacity: disabled ? 0.45 : 1,
-      transition: 'all 0.2s ease',
-      '&:hover': { transform: disabled ? 'none' : 'translateY(-1px)', boxShadow: '0 10px 26px rgba(100,116,139,0.12)' },
+      transition: 'all .18s ease',
     }}
   >
-    <Avatar sx={{ width: 34, height: 34, bgcolor: app.color || '#6366f1', fontSize: 18, flexShrink: 0 }}>
+    <Avatar variant="rounded" sx={{ width: 30, height: 30, borderRadius: '9px', bgcolor: `${app.color || SOFT.indigo}1f`, color: app.color || SOFT.indigo, fontSize: 15, flexShrink: 0 }}>
       {app.icon || '📦'}
     </Avatar>
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography variant="body2" fontWeight={700} noWrap>{app.title}</Typography>
-      <Typography variant="caption" color="textSecondary" noWrap>
+      <Typography sx={{ fontSize: 11.5, fontWeight: 800 }} noWrap>{app.title}</Typography>
+      <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }} noWrap>
         {app.is_coming_soon ? 'به‌زودی' : (app.description || app.slug)}
       </Typography>
     </Box>
-    {checked ? <CheckCircleIcon fontSize="small" sx={{ color: app.color || '#6366f1' }} /> : <RadioButtonUncheckedIcon fontSize="small" sx={{ color: 'rgba(100,116,139,0.4)' }} />}
+    {checked ? <CheckCircleIcon sx={{ fontSize: 17, color: app.color || SOFT.indigo }} /> : <RadioButtonUncheckedIcon sx={{ fontSize: 17, color: 'rgba(100,116,139,0.4)' }} />}
   </Paper>
 );
 
@@ -170,24 +164,11 @@ const UsersPage = () => {
 
   return (
     <Box>
-      {/* Page header */}
-      <Paper sx={{
-        p: 3, mb: 2.5, borderRadius: '10px',
-        background: 'linear-gradient(120deg, rgba(100,116,139,0.10), rgba(100,116,139,0.02), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(100,116,139,0.18)',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #64748b, #475569)', boxShadow: '0 8px 24px rgba(100,116,139,0.35)' }}>
-            <AdminPanelSettingsIcon sx={{ color: '#fff', fontSize: 28 }} />
-          </Avatar>
-          <Box>
-            <Typography variant="h6" fontWeight={800}>کاربران، نقش‌ها و ماژول‌ها</Typography>
-            <Typography variant="body2" color="textSecondary">
-              مدیریت کاربران، تخصیص نقش، دسترسی ماژول‌ها و سفارشی‌سازی مجوزهای هر نقش
-            </Typography>
-          </Box>
-        </Box>
-      </Paper>
+      <PageHeader
+        icon={<AdminPanelSettingsIcon />}
+        title="کاربران، نقش‌ها و ماژول‌ها"
+        color={SOFT.slate}
+      />
 
       {(msg || err) && (
         <Alert severity={err ? 'error' : 'success'} sx={{ mb: 2 }} onClose={() => { setMsg(''); setErr(''); }}>
@@ -195,31 +176,36 @@ const UsersPage = () => {
         </Alert>
       )}
 
-      <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ mb: 2, borderBottom: 1, borderColor: 'divider' }}>
-        <Tab icon={<PersonIcon />} iconPosition="start" label="کاربران" />
-        <Tab icon={<AppsIcon />} iconPosition="start" label="نقش‌ها و دسترسی ماژول‌ها" />
-        <Tab icon={<SecurityIcon />} iconPosition="start" label="مجوزهای ریز" />
-      </Tabs>
+      <TabsCard
+        tabs={[
+          { key: 'users', label: 'کاربران', icon: <PersonIcon /> },
+          { key: 'roles', label: 'نقش‌ها و دسترسی ماژول‌ها', icon: <AppsIcon /> },
+          { key: 'perms', label: 'مجوزهای ریز', icon: <SecurityIcon /> },
+        ]}
+        value={tab}
+        onChange={setTab}
+        activeColor={SOFT.slate}
+      />
 
       {/* ---------- TAB USERS ---------- */}
       {tab === 0 && (
         <>
           <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
             <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setErr(''); setOpenAdd(true); }}
-              sx={{ background: 'linear-gradient(135deg, #64748b, #475569)', borderRadius: '10px' }}>
+              sx={{ bgcolor: SOFT.slate, borderRadius: '9px', boxShadow: 'none', fontSize: 11.5, '&:hover': { bgcolor: '#8494a8' } }}>
               افزودن کاربر
             </Button>
           </Box>
-          <Paper variant="outlined" sx={{ borderRadius: '10px', overflow: 'hidden' }}>
+          <Paper variant="outlined" sx={{ ...SURFACE, overflow: 'hidden' }}>
             {isLoading ? (
               <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
             ) : userList.length === 0 ? (
               <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">کاربری یافت نشد</Typography></Box>
             ) : (
               <TableContainer>
-                <Table size="small">
+                <Table size="small" sx={{ '& td': { fontSize: 11, py: 1 } }}>
                   <TableHead>
-                    <TableRow sx={{ bgcolor: 'rgba(100,116,139,0.06)' }}>
+                    <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5, fontWeight: 800 } }}>
                       <TableCell sx={{ fontWeight: 700 }}>کاربر</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>نام کاربری</TableCell>
                       <TableCell sx={{ fontWeight: 700 }}>نقش</TableCell>
@@ -231,12 +217,12 @@ const UsersPage = () => {
                     {userList.map(u => (
                       <TableRow key={u.id} hover>
                         <TableCell>
-                          <Stack direction="row" alignItems="center" spacing={1.5}>
-                            <Avatar sx={{ width: 32, height: 32, bgcolor: ROLE_COLORS[u.role] || '#64748b', fontSize: 14 }}>
+                          <Stack direction="row" alignItems="center" spacing={1.25} useFlexGap>
+                            <Avatar sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 800, bgcolor: `${ROLE_COLORS[u.role] || SOFT.slate}1f`, color: ROLE_COLORS[u.role] || SOFT.slate }}>
                               {(u.first_name?.charAt(0) || u.username?.charAt(0) || 'U')}
                             </Avatar>
                             <Box>
-                              <Typography variant="body2" fontWeight={600}>{u.first_name} {u.last_name}</Typography>
+                              <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{u.first_name} {u.last_name}</Typography>
                               <Typography variant="caption" color="textSecondary">@{u.username}</Typography>
                             </Box>
                           </Stack>
@@ -298,19 +284,19 @@ const UsersPage = () => {
                 const checkedSet = roleAppChecked(role);
                 const isAll = checkedSet === null;
                 return (
-                  <Paper key={role.role} sx={{ ...glass, p: 2.5 }}>
+                  <Paper key={role.role} sx={{ ...glass, p: 1.75 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar sx={{ width: 36, height: 36, mr: 1.5, bgcolor: ROLE_COLORS[role.role] || '#64748b', fontSize: 15 }}>
+                      <Avatar sx={{ width: 30, height: 30, mr: 1.25, fontSize: 12, fontWeight: 800, bgcolor: `${ROLE_COLORS[role.role] || SOFT.slate}1f`, color: ROLE_COLORS[role.role] || SOFT.slate }}>
                         {role.label.charAt(0)}
                       </Avatar>
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" fontWeight={800}>{role.label}</Typography>
+                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>{role.label}</Typography>
                         <Typography variant="caption" color="textSecondary">
                           {isAll ? 'دسترسی به تمام ماژول‌ها' : `${(roleAppEdits[role.role] !== undefined ? roleAppEdits[role.role] : role.applications)?.length || 0} ماژول`}
                         </Typography>
                       </Box>
                       <Button size="small" variant="contained" startIcon={<SaveIcon fontSize="small" />} disabled={role.role === 'super_admin'}
-                        sx={{ background: ROLE_COLORS[role.role] || '#64748b' }}
+                        sx={{ bgcolor: ROLE_COLORS[role.role] || SOFT.slate, boxShadow: 'none', fontSize: 10.5 }}
                         onClick={() => {
                           const apps = roleAppEdits[role.role] !== undefined ? roleAppEdits[role.role] : role.applications;
                           axiosInstance.post(`/users/roles/${role.role}/save/`, { permissions: role.permissions, applications: apps }).then(() => {
@@ -352,17 +338,14 @@ const UsersPage = () => {
           ) : (
             <Stack spacing={2}>
               {roleList.map(role => (
-                <Paper key={role.role} variant="outlined" sx={{ p: 2, borderRadius: '12px',
-                  border: `1px solid ${(ROLE_COLORS[role.role] || '#64748b')}22`,
-                  background: `linear-gradient(160deg, ${(ROLE_COLORS[role.role] || '#64748b')}0a, rgba(255,255,255,0.4))`,
-                }}>
+                <Paper key={role.role} variant="outlined" sx={{ ...SURFACE, p: 1.75 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                    <Avatar sx={{ width: 30, height: 30, mr: 1, bgcolor: ROLE_COLORS[role.role] || '#64748b', fontSize: 13 }}>
+                    <Avatar sx={{ width: 28, height: 28, mr: 1, fontSize: 11, fontWeight: 800, bgcolor: `${ROLE_COLORS[role.role] || SOFT.slate}1f`, color: ROLE_COLORS[role.role] || SOFT.slate }}>
                       {role.label.charAt(0)}
                     </Avatar>
-                    <Typography variant="subtitle1" fontWeight={700} sx={{ flex: 1 }}>{role.label}</Typography>
+                    <Typography sx={{ fontSize: 12.5, fontWeight: 800, flex: 1 }}>{role.label}</Typography>
                     <Button size="small" variant="contained" startIcon={<SaveIcon fontSize="small" />}
-                      sx={{ background: ROLE_COLORS[role.role] || '#64748b' }}
+                      sx={{ bgcolor: ROLE_COLORS[role.role] || SOFT.slate, boxShadow: 'none', fontSize: 10.5 }}
                       onClick={() => {
                         const perms = (permEdits[role.role] && Object.keys(permEdits[role.role]).length)
                           ? permEdits[role.role] : role.permissions;
@@ -379,7 +362,7 @@ const UsersPage = () => {
                   <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 1 }}>
                     {Object.keys(role.permissions).map(key => (
                       <Box key={key} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 0.5 }}>
-                        <Typography variant="body2">{PERM_LABELS[key] || key}</Typography>
+                        <Typography sx={{ fontSize: 11 }}>{PERM_LABELS[key] || key}</Typography>
                         <Switch
                           size="small"
                           checked={permEdits[role.role]?.[key] ?? role.permissions[key]}
@@ -437,7 +420,7 @@ const UsersPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenAdd(false)}>انصراف</Button>
-          <Button variant="contained" sx={{ background: 'linear-gradient(135deg, #64748b, #475569)' }}
+          <Button variant="contained" sx={{ bgcolor: SOFT.slate, boxShadow: 'none', '&:hover': { bgcolor: '#8494a8' } }}
             disabled={!draft.username || !draft.password}
             onClick={() => createMutation.mutate(draft)}>
             ساخت کاربر
@@ -468,7 +451,7 @@ const UsersPage = () => {
         <DialogActions>
           <Button onClick={() => setModuleUser(null)}>انصراف</Button>
           <Button variant="contained" startIcon={<SaveIcon />}
-            sx={{ background: 'linear-gradient(135deg, #6366f1, #4f46e5)' }}
+            sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
             onClick={() => setAppsMutation.mutate({ id: moduleUser.id, application_ids: moduleSel })}>
             ذخیره
           </Button>

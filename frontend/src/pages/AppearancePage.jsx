@@ -1,10 +1,11 @@
 import React from 'react';
 import {
-  Box, Typography, Paper, Avatar, Grid, Chip, Stack, Divider, Alert,
+  Box, Typography, Paper, Grid, Chip, Stack, Divider,
 } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../core/context/ThemeContext';
+import { PageHeader, SOFT } from '../core/components/settings/settingsUi';
 
 /* =========================================================================
  * ظاهر و پوسته (2026)
@@ -112,33 +113,21 @@ const AppearancePage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 3, mb: 2.5, borderRadius: '10px',
-        background: 'linear-gradient(120deg, rgba(139,92,246,0.12), rgba(139,92,246,0.03), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(139,92,246,0.18)',
-        display: 'flex', alignItems: 'center', gap: 2,
-      }}>
-        <Avatar sx={{
-          width: 56, height: 56,
-          background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)',
-          boxShadow: '0 8px 24px rgba(139,92,246,0.4)',
-        }}>
-          <PaletteIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800}>ظاهر و پوسته</Typography>
-          <Typography variant="body2" color="textSecondary">
-            انتخاب تم، پیش‌نمایش زنده و شخصی‌سازی رنگ نئون برنامه
-          </Typography>
-        </Box>
-      </Paper>
+      <PageHeader
+        icon={<PaletteIcon />}
+        title="ظاهر و پوسته"
+        color={SOFT.violet}
+        badge={(
+          <Chip
+            size="small" variant="outlined"
+            label={MODE_DESC[mode]?.title || ''}
+            sx={{ fontWeight: 800 }}
+          />
+        )}
+      />
 
       {/* Theme cards with live preview */}
-      <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>تم نمایش</Typography>
-      <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-        یک تم انتخاب کنید — تغییرات بلافاصله در کل برنامه اعمال و در مرورگر ذخیره می‌شود.
-      </Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1.25 }}>تم نمایش</Typography>
 
       <Grid container spacing={2}>
         {THEME_MODES.map(m => {
@@ -148,25 +137,26 @@ const AppearancePage = () => {
               <Paper
                 onClick={() => setMode(m.key)}
                 sx={{
-                  p: 2, cursor: 'pointer', borderRadius: '10px', height: '100%',
-                  border: active ? `2px solid ${m.color}` : '1px solid rgba(0,0,0,0.08)',
-                  background: active ? `${m.color}0d` : 'rgba(255,255,255,0.5)',
-                  transition: 'all 0.25s ease',
-                  '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 12px 28px ${m.color}22` },
+                  p: 1.5, cursor: 'pointer', borderRadius: '14px', height: '100%',
+                  border: '1px solid',
+                  borderColor: active ? `${m.color}80` : 'divider',
+                  bgcolor: active ? `${m.color}0d` : 'background.paper',
+                  boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
+                  transition: 'all .2s ease',
                 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Box sx={{ fontSize: 26 }}>{m.icon}</Box>
-                  <Typography variant="subtitle1" fontWeight={700}>{m.label}</Typography>
-                  {active && <CheckCircleIcon sx={{ color: m.color, ml: 'auto', fontSize: 22 }} />}
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>{m.label}</Typography>
+                  {active && <CheckCircleIcon sx={{ color: m.color, ml: 'auto', fontSize: 19 }} />}
                 </Box>
 
                 <LivePreview mode={m.key} neonColor={neonColor} />
 
-                <Typography variant="body2" color="textSecondary" sx={{ mt: 1.2 }}>
+                <Typography sx={{ fontSize: 10.5, color: 'text.secondary', mt: 1 }}>
                   {MODE_DESC[m.key]?.desc || ''}
                 </Typography>
-                <Chip size="small" label={MODE_DESC[m.key]?.tagline || ''} variant="outlined" sx={{ mt: 0.8 }} />
-                <Stack direction="row" spacing={0.5} sx={{ mt: 1 }}>
+                <Chip size="small" label={MODE_DESC[m.key]?.tagline || ''} variant="outlined" sx={{ mt: 0.8, height: 20, fontSize: 9.5 }} />
+                <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} useFlexGap>
                   {(MODE_DESC[m.key]?.swatch || []).map((c, idx) => (
                     <Box key={idx} sx={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.12)' }} />
                   ))}
@@ -210,9 +200,6 @@ const AppearancePage = () => {
         </>
       )}
 
-      <Alert severity="info" sx={{ mt: 3 }}>
-        تنظیمات ظاهر به‌صورت خودکار ذخیره می‌شود و در دفعات بعدی ورود به همان شکل باقی می‌ماند.
-      </Alert>
     </Box>
   );
 };

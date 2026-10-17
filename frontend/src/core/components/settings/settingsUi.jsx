@@ -27,6 +27,9 @@ const CARD_SX = {
   boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
 };
 
+/** استایل مشترک کارت سفید برای صفحات تنظیمات/کاربران/ظاهر */
+export const SURFACE = { ...CARD_SX };
+
 export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT.indigo }) => (
   <Paper elevation={0} sx={{ ...CARD_SX, p: { xs: 1.5, md: 1.9 }, mb: 1.75 }}>
     <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems={{ sm: 'center' }} useFlexGap>
