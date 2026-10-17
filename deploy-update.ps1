@@ -223,6 +223,7 @@ $FrontendFiles = @(
     'frontend/src/pages/ProjectsStructurePage.jsx',
     'frontend/src/AppRoutes.jsx',
     'frontend/src/core/config/menuConfig.js',
+    'frontend/src/core/components/ui/Layout.jsx',
     'frontend/src/pages/ContractAddendumsPage.jsx',
     'frontend/src/pages/ContractProfilePage.jsx',
     'frontend/src/pages/contracts/contractSubPages.jsx',

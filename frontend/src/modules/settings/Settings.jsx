@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'react-router-dom';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Chip, Button, CircularProgress,
@@ -20,7 +20,7 @@ import NotificationSettingsPanel from '../../core/components/settings/Notificati
 import ManagementSettingsPanel from '../../core/components/settings/ManagementSettingsPanel';
 import UpdatePanel from '../../core/components/settings/UpdatePanel';
 import {
-  PageHeader, StatGrid, TabsCard, SOFT,
+  PageHeader, StatGrid, SOFT,
 } from '../../core/components/settings/settingsUi';
 import useAuth from '../../core/hooks/useAuth';
 import useSystemStatus from '../../core/hooks/useSystemStatus';
@@ -117,41 +117,40 @@ const BackupTab = () => {
   );
 };
 
+const SECTIONS = {
+  general: { title: 'تنظیمات عمومی', icon: <TuneIcon />, color: SOFT.indigo },
+  management: { title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, color: SOFT.orange },
+  notifications: { title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, color: SOFT.green },
+  backup: { title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, color: SOFT.blue },
+  updates: { title: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, color: SOFT.violet },
+};
+
 const Settings = () => {
-  const { t } = useTranslation();
+  const [searchParams] = useSearchParams();
   const { user } = useAuth();
   const { info: systemInfo, updateAvailable } = useSystemStatus();
-  const [tabIndex, setTabIndex] = useState(0);
 
   const canManageUpdates = Boolean(
     user?.permissions?.can_manage_updates || user?.is_superuser
   );
 
-  const tabs = [
-    {
-      label: 'تنظیمات عمومی', icon: <TuneIcon />, key: 'general', color: SOFT.indigo,
-      desc: 'پیکربندی ذخیره‌سازی، هشدارها و تنظیمات پایه سیستم',
-    },
-    {
-      label: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, key: 'management', color: SOFT.orange,
-      desc: 'صاحبان امضا و مسیرهای ذخیره‌سازی فایل‌ها — فقط مدیر سیستم/HR',
-    },
-    {
-      label: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, key: 'notifications', color: SOFT.green,
-      desc: 'ارسال اعلان‌ها از طریق ایمیل و پیام‌رسان بله',
-    },
-    {
-      label: 'پشتیبان‌گیری', icon: <BackupIcon />, key: 'backup', color: SOFT.blue,
-      desc: 'تهیه، مشاهده و بازیابی نسخه‌های پشتیبان داده',
-    },
-    ...(canManageUpdates ? [{
-      label: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, key: 'updates', color: SOFT.violet,
-      desc: 'بارگذاری، تأیید و پیگیری بسته‌های به‌روزرسانی Kian ERP',
-    }] : []),
-  ];
+  const requested = (searchParams.get('tab') || 'general').toLowerCase();
+  const sectionKey = SECTIONS[requested] ? requested : 'general';
+  const section = SECTIONS[sectionKey];
+  const isGeneral = sectionKey === 'general';
 
-  const safeIndex = Math.min(tabIndex, tabs.length - 1);
-  const active = tabs[safeIndex];
+  if (sectionKey === 'updates' && !canManageUpdates) {
+    return (
+      <Box>
+        <PageHeader
+          icon={<SystemUpdateAltIcon />}
+          title="به‌روزرسانی سیستم"
+          color={SOFT.violet}
+        />
+        <Alert severity="warning">دسترسی به بخش به‌روزرسانی فقط برای مدیر ارشد سیستم مجاز است.</Alert>
+      </Box>
+    );
+  }
 
   const panels = {
     general: <GeneralSettingsPanel />,
@@ -175,7 +174,7 @@ const Settings = () => {
       icon: <PersonIcon />, color: SOFT.blue,
     },
     {
-      label: 'بخش‌های تنظیمات', value: formatPersianNumber(tabs.length),
+      label: 'بخش‌های تنظیمات', value: formatPersianNumber(Object.keys(SECTIONS).length),
       sub: 'در دسترس این حساب',
       icon: <LayersIcon />, color: SOFT.violet,
     },
@@ -189,20 +188,18 @@ const Settings = () => {
   return (
     <Box>
       <PageHeader
-        icon={<TuneIcon />}
-        title={t('nav.settings')}
-        color={SOFT.indigo}
-        actions={updateAvailable ? (
+        icon={section.icon}
+        title={section.title}
+        color={section.color}
+        actions={isGeneral && updateAvailable ? (
           <Chip size="small" label="نسخهٔ جدید آماده است"
             sx={{ bgcolor: alpha(SOFT.amber, 0.14), color: SOFT.amber, fontWeight: 800 }} />
         ) : null}
       />
 
-      <TabsCard tabs={tabs} value={safeIndex} onChange={setTabIndex} activeColor={active.color} />
+      {isGeneral ? <StatGrid stats={stats} /> : null}
 
-      <StatGrid stats={stats} />
-
-      {panels[active.key]}
+      {panels[sectionKey]}
     </Box>
   );
 };

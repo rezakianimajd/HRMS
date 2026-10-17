@@ -100,8 +100,24 @@ const Layout = ({ children }) => {
     await logout();
   };
 
-  const isActive = (path) =>
-    location.pathname === path || location.pathname.startsWith(`${path}/`);
+  const isActive = (path) => {
+    const [targetPath, targetQuery = ''] = String(path || '').split('?');
+    const pathMatches = location.pathname === targetPath
+      || location.pathname.startsWith(`${targetPath}/`);
+    if (!pathMatches) return false;
+
+    const current = new URLSearchParams(location.search);
+    if (!targetQuery) {
+      // آیتم بدون کوئری (مثل /settings) وقتی فعال است که تب خاصی انتخاب نشده باشد
+      if (targetPath === '/settings' && current.get('tab')) return false;
+      return true;
+    }
+    const expected = new URLSearchParams(targetQuery);
+    for (const [key, value] of expected.entries()) {
+      if (current.get(key) !== value) return false;
+    }
+    return true;
+  };
 
   const findMenuMeta = (path) => {
     const allMenus = [menu, menuConfig];

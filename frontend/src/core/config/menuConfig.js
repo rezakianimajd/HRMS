@@ -32,6 +32,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
+import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import BackupIcon from '@mui/icons-material/Backup';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import PaletteIcon from '@mui/icons-material/Palette';
@@ -235,6 +236,7 @@ const settingsMenu = [
       { id: 'settings-backup', title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, path: '/settings?tab=backup', color: '#3b82f6', primary: false, ready: true },
       { id: 'settings-management', title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, path: '/settings?tab=management', color: '#f97316', primary: false, ready: true },
       { id: 'settings-notifications', title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, path: '/settings?tab=notifications', color: '#10b981', primary: false, ready: true },
+      { id: 'settings-updates', title: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, path: '/settings?tab=updates', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
 ];
