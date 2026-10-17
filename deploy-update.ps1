@@ -403,7 +403,7 @@ if (-not $SkipBackend) {
         Ok ('آرشیو ساخته شد: {0:N1} KB — {1} فایل' -f ((Get-Item $pkgPath).Length / 1KB), $send.Count)
         scp $pkgPath "${Srv}:/tmp/hrms-files.tgz"
         if ($LASTEXITCODE -ne 0) { throw 'انتقال آرشیو ناموفق بود.' }
-        ssh -t $Srv "rm -rf /tmp/hrms-files && mkdir -p /tmp/hrms-files && tar xzf /tmp/hrms-files.tgz -C /tmp/hrms-files && test -f /tmp/hrms-files/hrms_project/projects/urls.py && sudo cp -a /tmp/hrms-files/. $AppDir/ && sudo chown -R ${AppUser}:${AppUser} $AppDir/hrms_project $AppDir/frontend/src && rm -rf /tmp/hrms-files /tmp/hrms-files.tgz"
+        ssh -t $Srv "rm -rf /tmp/hrms-files && mkdir -p /tmp/hrms-files && tar xzf /tmp/hrms-files.tgz -C /tmp/hrms-files && test -f /tmp/hrms-files/hrms_project/projects/urls.py && sudo bash -c 'cp -a /tmp/hrms-files/. $AppDir/ && chown -R ${AppUser}:${AppUser} $AppDir/hrms_project $AppDir/frontend/src' && rm -rf /tmp/hrms-files /tmp/hrms-files.tgz"
         if ($LASTEXITCODE -ne 0) { throw 'استخراج/جای‌گزینی آرشیو روی سرور ناموفق بود.' }
         Remove-Item $stage -Recurse -Force
         Remove-Item $pkgPath -Force -ErrorAction SilentlyContinue
@@ -418,7 +418,7 @@ if (-not $SkipBackend) {
             $remoteDir = (Split-Path $f -Parent) -replace '\\', '/'
             scp $f "${Srv}:/tmp/$name"
             if ($LASTEXITCODE -ne 0) { throw "انتقال ناموفق: $f" }
-            ssh -t $Srv "sudo mkdir -p $AppDir/$remoteDir; sudo cp /tmp/$name $AppDir/$f; sudo chown ${AppUser}:${AppUser} $AppDir/$f; sudo chmod 644 $AppDir/$f; rm -f /tmp/$name"
+            ssh -t $Srv "sudo bash -c 'mkdir -p $AppDir/$remoteDir; cp /tmp/$name $AppDir/$f; chown ${AppUser}:${AppUser} $AppDir/$f; chmod 644 $AppDir/$f'; rm -f /tmp/$name"
             if ($LASTEXITCODE -ne 0) { throw "جای‌گزینی ناموفق روی سرور: $name" }
             Ok $f
         }
@@ -528,7 +528,7 @@ if (-not $SkipFrontend) {
         if ($LASTEXITCODE -ne 0) { throw 'پوشهٔ build روی سرور در /tmp/hrms-new پیدا نشد؛ انتقال کامل نشده است (build فعلی دست‌نخورده ماند).' }
         Ok 'build جدید روی سرور تأیید شد (/tmp/hrms-new/build).'
 
-        ssh -t $Srv "rm -rf $AppDir/frontend/build.old; if [ -d $AppDir/frontend/build ]; then sudo mv $AppDir/frontend/build $AppDir/frontend/build.old; fi; sudo mv /tmp/hrms-new/build $AppDir/frontend/build && sudo chown -R ${AppUser}:${AppUser} $AppDir/frontend/build && sudo rm -rf $AppDir/frontend/build.old /tmp/hrms-new"
+        ssh -t $Srv "sudo bash -c 'rm -rf $AppDir/frontend/build.old; if [ -d $AppDir/frontend/build ]; then mv $AppDir/frontend/build $AppDir/frontend/build.old; fi; mv /tmp/hrms-new/build $AppDir/frontend/build; chown -R ${AppUser}:${AppUser} $AppDir/frontend/build; rm -rf $AppDir/frontend/build.old /tmp/hrms-new'"
         if ($LASTEXITCODE -ne 0) { throw 'جای‌گزینی build روی سرور ناموفق بود.' }
         Ok 'build جای‌گزین شد.'
     }
@@ -546,7 +546,7 @@ if (-not $SkipFrontend) {
                 $remoteDir = (Split-Path $f -Parent) -replace '\\', '/'
                 scp $f "${Srv}:/tmp/$name"
                 if ($LASTEXITCODE -ne 0) { throw "انتقال ناموفق: $f" }
-                ssh -t $Srv "sudo mkdir -p $AppDir/$remoteDir; sudo cp /tmp/$name $AppDir/$f; sudo chown ${AppUser}:${AppUser} $AppDir/$f; rm -f /tmp/$name"
+                ssh -t $Srv "sudo bash -c 'mkdir -p $AppDir/$remoteDir; cp /tmp/$name $AppDir/$f; chown ${AppUser}:${AppUser} $AppDir/$f'; rm -f /tmp/$name"
                 if ($LASTEXITCODE -ne 0) { throw "جای‌گزینی ناموفق روی سرور: $f" }
                 Ok $f
             }
@@ -561,7 +561,7 @@ if (-not $SkipFrontend) {
     }
 
     Step '۵/۶ کپی اَسِت‌ها به مسیر /static (لازم برای nginx)'
-    ssh -t $Srv "sudo cp -a $AppDir/frontend/build/static/. $StaticDir/ && sudo chown -R ${AppUser}:${AppUser} $StaticDir"
+    ssh -t $Srv "sudo bash -c 'cp -a $AppDir/frontend/build/static/. $StaticDir/ && chown -R ${AppUser}:${AppUser} $StaticDir'"
     if ($LASTEXITCODE -ne 0) { throw 'کپی اَسِت‌ها به /static ناموفق بود.' }
 
     # پاک‌سازی نسخه‌های قدیمی (۵ نسخهٔ آخر نگه داشته می‌شود؛ فایل‌های .map
@@ -575,7 +575,7 @@ if (-not $SkipFrontend) {
 # بسته‌های به‌روزرسانی خارج از MEDIA_ROOT نگهداری می‌شوند و باید قابل نوشتن
 # توسط کاربر برنامه باشند.
 Step '۵.۴/۶ آماده‌سازی پوشهٔ به‌روزرسانی'
-ssh -t $Srv "sudo mkdir -p $AppDir/updates/inbox $AppDir/updates/staging $AppDir/updates/archive && sudo chown -R ${AppUser}:${AppUser} $AppDir/updates"
+ssh -t $Srv "sudo bash -c 'mkdir -p $AppDir/updates/inbox $AppDir/updates/staging $AppDir/updates/archive && chown -R ${AppUser}:${AppUser} $AppDir/updates'"
 if ($LASTEXITCODE -ne 0) { Warn 'ساخت پوشهٔ updates ناموفق بود؛ آپلود بسته کار نخواهد کرد.' }
 
 # ---------------------------------------------------------------- سرویس به‌روزرسان
@@ -601,7 +601,7 @@ if ($LASTEXITCODE -ne 0) {
 
 # ---------------------------------------------------------------- ری‌استارت
 Step '۶/۶ ری‌استارت سرویس‌ها'
-ssh -t $Srv "sudo systemctl restart gunicorn celery-worker celery-beat && sudo systemctl reload nginx"
+ssh -t $Srv "sudo bash -c 'systemctl restart gunicorn celery-worker celery-beat && systemctl reload nginx'"
 if ($LASTEXITCODE -ne 0) { throw 'ری‌استارت ناموفق بود (کاربر sudo دارد؟ نام سرویس‌ها درست است؟).' }
 Ok 'سرویس‌ها ری‌استارت شدند.'
 
