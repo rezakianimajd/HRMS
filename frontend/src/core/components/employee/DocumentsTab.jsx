@@ -21,8 +21,11 @@ import DocumentPreviewModal from './DocumentPreviewModal';
 import EmployeeAvatar from '../ui/EmployeeAvatar';
 import { toJalali } from '../../utils/dateUtils';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
+import FolderIcon from '@mui/icons-material/Folder';
 
 // Render company-archive documents that are linked to this employee.
+// اسناد «افراد تحت تکفل» جداگانه و به‌عنوان بخشی از پروندهٔ خود پرسنل نمایش داده
+// می‌شوند (نه به‌عنوان سند سازمانی).
 const CompanyLinkedDocs = ({ employeeId }) => {
   const { t } = useTranslation();
   const { data, isLoading } = useQuery({
@@ -37,64 +40,97 @@ const CompanyLinkedDocs = ({ employeeId }) => {
     return (
       <Paper variant="outlined" sx={{ p: 3, textAlign: 'center', borderRadius: '10px', borderColor: 'rgba(245,158,11,0.2)' }}>
         <Typography variant="body2" color="textSecondary">
-          سند سازمانی به این پرسنل متصل نشده است. از «بایگانی اسناد سازمان» میتوانید سند مرتبط را به او اتصال دهید.
+          سند سازمانی به این پرسنل متصل نشده است. از «بایگانی اسناد سازمان» می‌توانید سند مرتبط را به او اتصال دهید.
         </Typography>
       </Paper>
     );
   }
 
-  return (
-    <Grid container spacing={2}>
-      {linked.map(doc => (
-        <Grid item xs={12} sm={6} md={4} key={doc.id}>
-          <Card variant="outlined" sx={{
-            position: 'relative',
-            borderColor: 'rgba(245,158,11,0.25)',
-            background: 'linear-gradient(160deg, rgba(245,158,11,0.06), rgba(255,255,255,0.5))',
-            transition: 'all 0.2s ease',
-            '&:hover': { transform: 'translateY(-2px)', boxShadow: '0 8px 20px rgba(245,158,11,0.15)' },
-          }}>
-            <CardContent>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                  <Avatar sx={{ width: 32, height: 32, bgcolor: 'rgba(245,158,11,0.15)', color: '#b45309' }}>
-                    <FolderSharedIcon sx={{ fontSize: 17 }} />
-                  </Avatar>
-                  <Typography variant="subtitle2" noWrap sx={{ maxWidth: 160 }}>{doc.title}</Typography>
-                </Box>
-                {archiveStatusChip(doc)}
+  const dependent = linked.filter(d => d.is_dependent);
+  const others = linked.filter(d => !d.is_dependent);
+
+  const renderCard = (doc) => {
+    const isDep = !!doc.is_dependent;
+    const accent = isDep ? '#7c3aed' : '#b45309';
+    const soft = isDep ? 'rgba(124,58,237,' : 'rgba(245,158,11,';
+    return (
+      <Grid item xs={12} sm={6} md={4} key={doc.id}>
+        <Card variant="outlined" sx={{
+          position: 'relative',
+          borderColor: `${soft}0.25)`,
+          background: `linear-gradient(160deg, ${soft}0.06), rgba(255,255,255,0.5))`,
+          transition: 'all 0.2s ease',
+          '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 20px ${soft}0.15)` },
+        }}>
+          <CardContent>
+            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 1 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <Avatar sx={{ width: 32, height: 32, bgcolor: `${soft}0.15)`, color: accent }}>
+                  {isDep ? <FolderIcon sx={{ fontSize: 17 }} /> : <FolderSharedIcon sx={{ fontSize: 17 }} />}
+                </Avatar>
+                <Typography variant="subtitle2" noWrap sx={{ maxWidth: 160 }}>{doc.title}</Typography>
               </Box>
+              {archiveStatusChip(doc)}
+            </Box>
+            <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
               {doc.category_display && (
                 <Chip label={doc.category_display} size="small" variant="outlined"
-                  sx={{ height: 20, fontSize: '0.65rem', color: '#b45309', borderColor: 'rgba(245,158,11,0.3)', mb: 1 }} />
+                  sx={{ height: 20, fontSize: '0.65rem', color: accent, borderColor: `${soft}0.3)` }} />
               )}
-              {doc.reference_number && (
-                <Typography variant="caption" color="textSecondary" display="block">
-                  ثبت: {doc.reference_number}
-                </Typography>
+              {isDep && (
+                <Chip label="افراد تحت تکفل" size="small"
+                  sx={{ height: 20, fontSize: '0.65rem', color: '#7c3aed', bgcolor: 'rgba(124,58,237,0.1)', fontWeight: 700 }} />
               )}
-              {doc.issue_date && (
-                <Typography variant="caption" color="textSecondary" display="block">
-                  صدور: {toJalali(doc.issue_date)}
-                </Typography>
-              )}
-              {doc.file_url && (
-                <Box sx={{ mt: 1 }}>
-                  <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
-                    startIcon={<DownloadIcon fontSize="small" />}
-                    sx={{ color: '#b45309', fontSize: '0.72rem' }}>
-                    دریافت
-                  </Button>
-                </Box>
-              )}
-            </CardContent>
-          </Card>
-        </Grid>
-      ))}
-    </Grid>
+            </Stack>
+            {doc.reference_number && (
+              <Typography variant="caption" color="textSecondary" display="block">
+                ثبت: {doc.reference_number}
+              </Typography>
+            )}
+            {doc.issue_date && (
+              <Typography variant="caption" color="textSecondary" display="block">
+                صدور: {toJalali(doc.issue_date)}
+              </Typography>
+            )}
+            {doc.file_url && (
+              <Box sx={{ mt: 1 }}>
+                <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
+                  startIcon={<DownloadIcon fontSize="small" />}
+                  sx={{ color: accent, fontSize: '0.72rem' }}>
+                  دریافت
+                </Button>
+              </Box>
+            )}
+          </CardContent>
+        </Card>
+      </Grid>
+    );
+  };
+
+  return (
+    <>
+      {dependent.length > 0 && (
+        <Box sx={{ mb: 3 }}>
+          <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#7c3aed', mb: 0.5 }}>
+            مدارک افراد تحت تکفل
+          </Typography>
+          <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5 }}>
+            این مدارک جزو پروندهٔ همین پرسنل هستند و در پوشهٔ «افراد تحت تکفل» بایگانی شده‌اند.
+          </Typography>
+          <Grid container spacing={2}>{dependent.map(renderCard)}</Grid>
+        </Box>
+      )}
+      {others.length > 0 && (
+        <Box>
+          <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#b45309', mb: 1 }}>
+            اسناد سازمانی مرتبط
+          </Typography>
+          <Grid container spacing={2}>{others.map(renderCard)}</Grid>
+        </Box>
+      )}
+    </>
   );
 };
-
 const fileIcon = (ext) => {
   if (['.jpg', '.jpeg', '.png', '.gif', '.bmp', '.webp'].includes(ext)) return <ImageIcon />;
   if (ext === '.pdf') return <PictureAsPdfIcon />;
@@ -253,7 +289,7 @@ const DocumentsTab = ({ employeeId }) => {
       <Box sx={{ mt: 4 }}>
         <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1.5 }}>
           <Typography variant="h6" sx={{ color: '#b45309' }}>
-            اسناد سازمانی مرتبط
+            مدارک وابسته و اسناد مرتبط
           </Typography>
           <Button size="small" variant="outlined"
             onClick={() => {
@@ -267,7 +303,7 @@ const DocumentsTab = ({ employeeId }) => {
           </Button>
         </Box>
         <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mb: 1.5 }}>
-          اسنادی که در بایگانی سازمان به ‌این پرسنل متصل شده‌اند
+          مدارک افراد تحت تکفل و اسناد سازمانی متصل به این پرسنل
         </Typography>
 
         <CompanyLinkedDocs employeeId={employeeId} />

@@ -72,6 +72,7 @@ class OrganizationDocumentSerializer(serializers.ModelSerializer):
     category_display = serializers.CharField(source='get_category_display', read_only=True)
     file_extension = serializers.CharField(read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
+    is_dependent = serializers.BooleanField(read_only=True)
     file_url = serializers.SerializerMethodField()
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
 
@@ -82,10 +83,11 @@ class OrganizationDocumentSerializer(serializers.ModelSerializer):
             'employee', 'employee_name',
             'reference_number', 'issue_date', 'expiry_date',
             'file', 'file_url', 'file_extension',
-            'tags', 'description',
+            'tags', 'description', 'dependent_related', 'is_dependent',
             'is_expired', 'is_active', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'created_at', 'updated_at', 'file_extension', 'is_expired']
+        read_only_fields = ['id', 'created_at', 'updated_at', 'file_extension',
+                            'is_expired', 'is_dependent']
 
     def get_file_url(self, obj):
         if obj.file:

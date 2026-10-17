@@ -94,6 +94,10 @@ def organization_document_upload_path(instance, filename):
     """
     مسیر سند سازمانی در بایگانی:
         archive/company_{id}/organization/{category}/<uuid>.pdf
+
+    اگر سند به یک پرسنل متصل و مربوط به «افراد تحت تکفل» باشد، به‌جای بایگانی
+    سازمانی در پروندهٔ همان پرسنل و زیرپوشهٔ «افراد تحت تکفل» بایگانی می‌شود:
+        archive/company_{id}/employees/{code}_{last_name}/افراد تحت تکفل/<uuid>.pdf
     """
     def fields():
         try:
@@ -101,6 +105,34 @@ def organization_document_upload_path(instance, filename):
         except Exception:
             category = 'عمومی'
         return {'category': category, 'name': category, 'id': instance.pk}
+
+    def employee_fields():
+        emp = instance.employee
+        return {
+            'code': getattr(emp, 'employee_id', '') or '',
+            'name': getattr(emp, 'first_name', '') or '',
+            'last_name': getattr(emp, 'last_name', '') or '',
+            'id': emp.pk,
+            'national_id': getattr(emp, 'national_id', '') or '',
+        }
+
+    try:
+        dependent = bool(getattr(instance, 'employee_id', None)) and instance.is_dependent
+    except Exception:  # noqa: BLE001 — موجودیت ناقص نباید آپلود را بشکند
+        dependent = False
+
+    if dependent:
+        fallback = (
+            f"company_{instance.company_id}/employee_{instance.employee_id}"
+            f"/documents/{DEPENDENTS_FOLDER}"
+        )
+        return _archive_upload_path(
+            instance, filename,
+            module_key='hr.employees',
+            label_fields=employee_fields,
+            fallback_subdir=fallback,
+            subfolder=DEPENDENTS_FOLDER,
+        )
 
     return _archive_upload_path(
         instance, filename,
@@ -200,6 +232,13 @@ class OrganizationDocument(BaseModel):
     )
     tags = models.CharField(max_length=300, blank=True, verbose_name=_('برچسب‌ها'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    dependent_related = models.BooleanField(
+        default=False, verbose_name=_('مربوط به افراد تحت تکفل'),
+        help_text=_(
+            'اگر این سند به یک پرسنل متصل باشد و مربوط به افراد تحت تکفل او باشد، '
+            'در پوشهٔ همان پرسنل ← «افراد تحت تکفل» بایگانی می‌شود.'
+        ),
+    )
 
     class Meta:
         verbose_name = _('سند سازمانی')
@@ -213,6 +252,28 @@ class OrganizationDocument(BaseModel):
 
     def __str__(self):
         return self.title
+
+    def save(self, *args, **kwargs):
+        """اگر سند به افراد تحت تکفل اشاره کند، پرچم مربوط‌بودن خودکار فعال می‌شود.
+
+        اگر پرچم به‌صورت صریح در `update_fields` آمده باشد (کاربر آن را خاموش
+        کرده است)، تشخیص خودکار انجام نمی‌شود.
+        """
+        update_fields = kwargs.get('update_fields')
+        explicit_flag = update_fields is not None and 'dependent_related' in set(update_fields)
+        if (not explicit_flag and not self.dependent_related
+                and is_dependent_label(self.title, self.tags, self.description)):
+            self.dependent_related = True
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'dependent_related'}
+        return super().save(*args, **kwargs)
+
+    @property
+    def is_dependent(self) -> bool:
+        """آیا این سند مربوط به افراد تحت تکفل است؟"""
+        return bool(self.dependent_related) or is_dependent_label(
+            self.title, self.tags, self.description,
+        )
 
     @property
     def is_expired(self):

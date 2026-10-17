@@ -51,6 +51,14 @@ class OrganizationDocumentViewSet(viewsets.ModelViewSet):
         employee_id = self.request.query_params.get('employee_id')
         if employee_id:
             qs = qs.filter(employee_id=employee_id)
+        else:
+            # اسناد «افراد تحت تکفل» که به یک پرسنل متصل‌اند، جزو پروندهٔ همان
+            # پرسنل هستند و در فهرست بایگانی سازمان نمایش داده نمی‌شوند.
+            include_dep = str(
+                self.request.query_params.get('include_employee_dependents', '')
+            ).lower()
+            if include_dep not in ('1', 'true', 'yes'):
+                qs = qs.exclude(employee__isnull=False, dependent_related=True)
         expired = self.request.query_params.get('expired')
         if expired in ('true', '1'):
             from datetime import date

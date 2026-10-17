@@ -252,10 +252,30 @@ class Command(BaseCommand):
                 category = 'عمومی'
             return {'category': category, 'name': category, 'id': doc.pk}
 
+        def employee_fields(doc):
+            emp = doc.employee
+            return {
+                'code': getattr(emp, 'employee_id', '') or '',
+                'name': getattr(emp, 'first_name', '') or '',
+                'last_name': getattr(emp, 'last_name', '') or '',
+                'id': emp.pk,
+                'national_id': getattr(emp, 'national_id', '') or '',
+            }
+
         try:
-            for doc in OrganizationDocument.objects.iterator():
-                self._move(doc, 'hrms.organization_documents',
-                           lambda d=doc: fields_for(d), stats, apply)
+            docs = OrganizationDocument.objects.select_related('employee').iterator()
+            for doc in docs:
+                if doc.employee_id and doc.is_dependent:
+                    # سند تحت تکفل → پروندهٔ همان پرسنل، زیرپوشهٔ «افراد تحت تکفل»
+                    self._move(
+                        doc, 'hr.employees', lambda d=doc: employee_fields(d),
+                        stats, apply, subfolder=DEPENDENTS_FOLDER,
+                    )
+                else:
+                    self._move(
+                        doc, 'hrms.organization_documents',
+                        lambda d=doc: fields_for(d), stats, apply,
+                    )
         except Exception as exc:  # noqa: BLE001
             self.stderr.write(f'  [ردشده] اسناد سازمانی: {exc}')
 

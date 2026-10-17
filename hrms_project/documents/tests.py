@@ -9,7 +9,8 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from documents.models import (
-    DEPENDENTS_FOLDER, DocumentType, document_upload_path, is_dependent_label,
+    DEPENDENTS_FOLDER, DocumentType, OrganizationDocument,
+    document_upload_path, is_dependent_label, organization_document_upload_path,
 )
 
 
@@ -100,3 +101,55 @@ class DocumentUploadPathTests(SimpleTestCase):
         call_args = mocked.call_args
         self.assertEqual(call_args.kwargs['subfolder'], '')
         self.assertNotIn(DEPENDENTS_FOLDER, call_args.kwargs['fallback_dir'])
+
+
+class OrganizationDependentPathTests(SimpleTestCase):
+    """اسناد سازمانی متصل به پرسنل که مربوط به افراد تحت تکفل هستند."""
+
+    @staticmethod
+    def _employee():
+        from employees.models import Employee
+        return Employee(
+            pk=7, employee_id='EMP001', first_name='علی',
+            last_name='محمدی', national_id='0012345678',
+        )
+
+    def _instance(self, title, dependent_related=False):
+        doc = OrganizationDocument(
+            company_id=3, employee_id=7, title=title,
+            category=OrganizationDocument.ArchiveCategory.HR_DOC,
+            dependent_related=dependent_related,
+        )
+        doc.employee = self._employee()
+        return doc
+
+    @patch('core.engines.archive_storage_engine.resolve_upload_path')
+    def test_dependent_org_document_goes_to_employee_folder(self, mocked):
+        mocked.return_value = 'archive/x.pdf'
+        doc = self._instance('شناسنامه فرزند')
+
+        organization_document_upload_path(doc, 'child.pdf')
+
+        call_args = mocked.call_args
+        self.assertEqual(call_args.args[1], 'hr.employees')
+        self.assertEqual(call_args.kwargs['subfolder'], DEPENDENTS_FOLDER)
+
+    @patch('core.engines.archive_storage_engine.resolve_upload_path')
+    def test_flagged_org_document_goes_to_employee_folder(self, mocked):
+        mocked.return_value = 'archive/x.pdf'
+        doc = self._instance('مدرک پیوست', dependent_related=True)
+
+        organization_document_upload_path(doc, 'x.pdf')
+
+        self.assertEqual(mocked.call_args.kwargs['subfolder'], DEPENDENTS_FOLDER)
+
+    @patch('core.engines.archive_storage_engine.resolve_upload_path')
+    def test_regular_org_document_stays_in_organization_archive(self, mocked):
+        mocked.return_value = 'archive/x.pdf'
+        doc = self._instance('قرارداد پشتیبانی سالانه')
+
+        organization_document_upload_path(doc, 'contract.pdf')
+
+        call_args = mocked.call_args
+        self.assertEqual(call_args.args[1], 'hrms.organization_documents')
+        self.assertEqual(call_args.kwargs['subfolder'], '')

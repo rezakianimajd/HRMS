@@ -7,7 +7,7 @@ import {
   Box, Typography, Paper, Button, TextField, IconButton, Chip, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, FormControl, InputLabel,
   Select, MenuItem, CircularProgress, Alert, Stack, Grid, Tooltip, Divider,
-  InputAdornment, Tabs, Tab,
+  InputAdornment, Tabs, Tab, FormControlLabel, Switch,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
@@ -47,6 +47,7 @@ const emptyForm = {
   title: '',
   category: 'contract',
   employee: '',
+  dependent_related: false,
   reference_number: '',
   issue_date: '',
   expiry_date: '',
@@ -119,6 +120,7 @@ const CompanyDocumentsPage = () => {
       fd.append('expiry_date', payload.expiry_date || '');
       fd.append('tags', payload.tags || '');
       fd.append('description', payload.description || '');
+      fd.append('dependent_related', payload.dependent_related ? 'true' : 'false');
       if (payload.employee) fd.append('employee', payload.employee);
       if (payload.file) fd.append('file', payload.file);
 
@@ -154,6 +156,7 @@ const CompanyDocumentsPage = () => {
       title: doc.title || '',
       category: doc.category || 'contract',
       employee: doc.employee || '',
+      dependent_related: !!doc.dependent_related,
       reference_number: doc.reference_number || '',
       issue_date: doc.issue_date || '',
       expiry_date: doc.expiry_date || '',
@@ -433,6 +436,20 @@ const CompanyDocumentsPage = () => {
               {empList.map(emp => <MenuItem key={emp.id} value={emp.id}>{emp.full_name} ({emp.employee_id})</MenuItem>)}
             </Select>
           </FormControl>
+          <FormControlLabel
+            control={
+              <Switch checked={!!form.dependent_related}
+                onChange={e => setForm(p => ({ ...p, dependent_related: e.target.checked }))} />
+            }
+            label="مربوط به افراد تحت تکفل (بایگانی در پروندهٔ پرسنل)"
+          />
+          {form.dependent_related && (
+            <Alert severity={form.employee ? 'info' : 'warning'} sx={{ py: 0.5 }}>
+              {form.employee
+                ? 'این سند در پروندهٔ پرسنل انتخابی، زیرپوشهٔ «افراد تحت تکفل» بایگانی و از فهرست بایگانی سازمان خارج میشود.'
+                : 'برای بایگانی در پروندهٔ پرسنل، ابتدا «پرسنل مرتبط» را انتخاب کنید.'}
+            </Alert>
+          )}
           <TextField fullWidth size="small" label="شماره ثبت/مرجع" value={form.reference_number}
             onChange={e => setForm(p => ({ ...p, reference_number: e.target.value }))} />
 
