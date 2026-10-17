@@ -302,6 +302,7 @@ $BackendFiles += @(
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
+    'frontend/src/core/components/settings/SettingsShell.jsx',
     'frontend/src/core/components/settings/shared.jsx',
     'frontend/src/core/components/employee/DocumentUploadModal.jsx',
     'frontend/src/pages/CompanyDocumentsPage.jsx',
