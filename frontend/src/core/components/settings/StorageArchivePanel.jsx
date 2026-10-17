@@ -6,7 +6,7 @@ import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
   TextField, Switch, FormControlLabel, Alert, Grid, Divider, LinearProgress,
-  Breadcrumbs, Link, InputAdornment,
+  Breadcrumbs, Link, InputAdornment, alpha,
 } from '@mui/material';
 import StorageIcon from '@mui/icons-material/Storage';
 import CreateNewFolderIcon from '@mui/icons-material/CreateNewFolder';
@@ -28,8 +28,9 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import HomeIcon from '@mui/icons-material/Home';
 import { formatPersianNumber } from '../../utils/numberUtils';
 import { formatDate } from '../../utils/dateUtils';
+import { SOFT } from './settingsUi';
 
-const COLOR = '#6366f1';
+const COLOR = SOFT.indigo;
 
 export const formatBytes = (bytes) => {
   const n = Number(bytes || 0);
@@ -37,7 +38,7 @@ export const formatBytes = (bytes) => {
   const units = ['B', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.min(Math.floor(Math.log(n) / Math.log(1024)), units.length - 1);
   const val = n / Math.pow(1024, i);
-  return `${val.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+  return `${formatPersianNumber(val.toFixed(i === 0 ? 0 : 1))} ${units[i]}`;
 };
 
 const IMAGE_EXT = ['jpg', 'jpeg', 'png', 'gif', 'bmp', 'webp', 'svg'];
@@ -67,26 +68,20 @@ const copyText = async (text) => {
   }
 };
 
-const StatCard = ({ icon, label, value, sub, color }) => (
+const StatCard = ({ label, value, sub, color }) => (
   <Paper sx={{
-    p: 2, borderRadius: '14px', height: '100%',
-    background: `linear-gradient(135deg, ${color}0f, rgba(255,255,255,0.4))`,
-    border: `1px solid ${color}26`,
-    transition: 'transform .18s ease, box-shadow .18s ease',
-    '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 10px 24px ${color}22` },
+    px: 1.5, py: 1.1, borderRadius: '12px', height: '100%',
+    bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
+    boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
   }}>
-    <Stack direction="row" spacing={1.25} alignItems="center">
-      <Avatar sx={{ width: 40, height: 40, bgcolor: color, boxShadow: `0 4px 14px ${color}44` }}>{icon}</Avatar>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography variant="caption" color="textSecondary">{label}</Typography>
-        <Typography variant="h6" fontWeight={800} sx={{ color, lineHeight: 1.2 }}>{value}</Typography>
-        {sub && (
-          <Typography variant="caption" color="textSecondary" noWrap
-            sx={{ display: 'block', maxWidth: 180, fontFamily: 'monospace', direction: 'ltr', textAlign: 'right' }}>
-            {sub}
-          </Typography>
-        )}
-      </Box>
+    <Stack direction="row" spacing={0.75} alignItems="baseline" flexWrap="wrap" useFlexGap>
+      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'text.secondary' }}>
+        {label}:
+      </Typography>
+      <Typography sx={{ fontSize: 12.5, fontWeight: 900, color }}>{value}</Typography>
+      {sub ? (
+        <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }} noWrap>{sub}</Typography>
+      ) : null}
     </Stack>
   </Paper>
 );
@@ -438,67 +433,80 @@ const StorageArchivePanel = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
-      <Grid container spacing={2}>
+      <Grid container spacing={1.25}>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard color="#6366f1" icon={<StorageIcon sx={{ color: '#fff' }} />}
+          <StatCard color={SOFT.indigo}
             label="حجم کل بایگانی" value={formatBytes(totalSize)}
             sub={`${formatPersianNumber(overview?.total_files || 0)} فایل`} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard color="#10b981" icon={<FolderOpenIcon sx={{ color: '#fff' }} />}
+          <StatCard color={SOFT.green}
             label="ماژول‌های بایگانی" value={formatPersianNumber(overview?.module_count || 0)}
             sub={`${formatPersianNumber(totalFolders)} پوشهٔ موجودیت`} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard color="#f59e0b" icon={<InsertDriveFileIcon sx={{ color: '#fff' }} />}
+          <StatCard color={SOFT.amber}
             label="وضعیت پوشهٔ مدیا" value={media?.writable ? 'قابل نوشتن' : 'بدون دسترسی'}
             sub={media?.archive_root} />
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <StatCard color="#3b82f6" icon={<StorageIcon sx={{ color: '#fff' }} />}
+          <StatCard color={SOFT.blue}
             label="فضای آزاد دیسک" value={disk ? formatBytes(disk.free) : '—'}
             sub={disk ? `${formatPersianNumber(disk.percent_used)}٪ استفاده` : ''} />
         </Grid>
       </Grid>
 
       {disk && (
-        <Paper sx={{ p: 2, borderRadius: '12px' }}>
+        <Paper sx={{
+          p: 1.6, borderRadius: '12px', bgcolor: 'background.paper',
+          border: '1px solid', borderColor: 'divider',
+        }}>
           <Stack direction="row" justifyContent="space-between" mb={0.5}>
-            <Typography variant="caption" color="textSecondary">مصرف دیسک سرور</Typography>
-            <Typography variant="caption" fontWeight={700}>
+            <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>مصرف دیسک سرور</Typography>
+            <Typography sx={{ fontSize: 10.5, fontWeight: 700 }}>
               {formatBytes(disk.used)} از {formatBytes(disk.total)}
             </Typography>
           </Stack>
           <LinearProgress variant="determinate" value={Math.min(disk.percent_used, 100)}
-            sx={{ height: 10, borderRadius: 5, bgcolor: 'rgba(99,102,241,0.12)',
-              '& .MuiLinearProgress-bar': { background: 'linear-gradient(90deg,#6366f1,#ec4899)' } }} />
+            sx={{ height: 7, borderRadius: 4, bgcolor: alpha(COLOR, 0.12),
+              '& .MuiLinearProgress-bar': { bgcolor: COLOR } }} />
         </Paper>
       )}
 
-      <Paper sx={{ p: 2, borderRadius: '14px', border: `1px solid ${COLOR}1f` }}>
-        <Stack direction="row" alignItems="center" spacing={1.5} mb={2} flexWrap="wrap">
-          <Avatar sx={{ width: 34, height: 34, bgcolor: COLOR }}>
-            <StorageIcon sx={{ fontSize: 19, color: '#fff' }} />
+      <Paper sx={{
+        p: 1.75, borderRadius: '16px', bgcolor: 'background.paper',
+        border: '1px solid', borderColor: 'divider',
+        boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
+      }}>
+        <Stack direction="row" alignItems="center" spacing={1.25} mb={1.5} flexWrap="wrap">
+          <Avatar variant="rounded" sx={{
+            width: 30, height: 30, borderRadius: '9px',
+            bgcolor: alpha(COLOR, 0.14), color: COLOR,
+          }}>
+            <StorageIcon sx={{ fontSize: 17 }} />
           </Avatar>
-          <Box sx={{ flex: 1, minWidth: 220 }}>
-            <Typography variant="subtitle1" fontWeight={800} sx={{ color: COLOR }}>پوشه‌های بایگانی ماژول‌ها</Typography>
-            <Typography variant="caption" color="textSecondary">
-              برای هر ماژول یک پوشه در مدیای سرور ساخته می‌شود و اسناد هر موجودیت در پوشهٔ اختصاصی خود بایگانی می‌گردد.
-            </Typography>
+          <Box sx={{ flex: 1, minWidth: 180 }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>پوشه‌های بایگانی ماژول‌ها</Typography>
           </Box>
-          <Button size="small" startIcon={<RefreshIcon />} onClick={invalidate}>به‌روزرسانی</Button>
-          <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={openCreate}
-            sx={{ bgcolor: COLOR, borderRadius: '10px' }}>ماژول جدید</Button>
+          <Button size="small" startIcon={<RefreshIcon sx={{ fontSize: 16 }} />} onClick={invalidate}
+            sx={{ fontSize: 11 }}>به‌روزرسانی</Button>
+          <Button size="small" variant="contained" startIcon={<AddIcon sx={{ fontSize: 16 }} />} onClick={openCreate}
+            sx={{
+              bgcolor: COLOR, borderRadius: '9px', fontSize: 11, boxShadow: 'none',
+              '&:hover': { bgcolor: '#6f7ecb' },
+            }}>ماژول جدید</Button>
         </Stack>
 
         <TableContainer>
-          <Table size="small">
+          <Table size="small" sx={{
+            '& th': { fontSize: 10.5, fontWeight: 800, color: 'text.secondary', bgcolor: alpha(COLOR, 0.04) },
+            '& td': { fontSize: 11, py: 1 },
+          }}>
             <TableHead>
               <TableRow>
                 <TableCell>ماژول</TableCell>
                 <TableCell>مسیر پوشه</TableCell>
                 <TableCell>الگوی نام</TableCell>
-                <TableCell>زیرپوشه‌ها</TableCell>
                 <TableCell>پوشه‌ها</TableCell>
                 <TableCell>فایل‌ها</TableCell>
                 <TableCell>حجم</TableCell>
@@ -509,7 +517,7 @@ const StorageArchivePanel = () => {
             <TableBody>
               {profiles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8}>
+                  <TableCell colSpan={7}>
                     <EmptyState icon="🗂" title="ماژولی ثبت نشده است"
                       hint="با «ماژول جدید» یک پروفایل بایگانی بسازید." />
                   </TableCell>
@@ -521,15 +529,14 @@ const StorageArchivePanel = () => {
                 return (
                   <TableRow key={p.id} hover>
                     <TableCell>
-                      <Stack direction="row" spacing={1.25} alignItems="center">
-                        <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: accent,
-                          boxShadow: `0 0 0 3px ${accent}1f` }} />
-                        <Box>
-                          <Typography variant="body2" fontWeight={700}>{p.module_name}</Typography>
-                          <Typography variant="caption" color="textSecondary" sx={{ fontFamily: 'monospace' }}>
-                            {p.module_key}
-                          </Typography>
-                        </Box>
+                      <Stack direction="row" spacing={1.75} alignItems="center">
+                        <Box sx={{
+                          width: 9, height: 9, borderRadius: '50%', bgcolor: accent,
+                          boxShadow: `0 0 0 3px ${accent}1f`, flexShrink: 0,
+                        }} />
+                        <Typography sx={{ fontSize: 12, fontWeight: 700 }} noWrap>
+                          {p.module_name}
+                        </Typography>
                       </Stack>
                     </TableCell>
                     <TableCell>
@@ -547,21 +554,6 @@ const StorageArchivePanel = () => {
                       <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
                         {p.entity_folder_pattern || '—'}
                       </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ maxWidth: 230 }}>
-                        {(p.subfolders || []).length === 0 ? (
-                          <Typography variant="caption" color="textSecondary">—</Typography>
-                        ) : (p.subfolders || []).map((sub) => (
-                          <Chip key={sub} size="small" variant="outlined" label={sub}
-                            sx={{
-                              height: 20, fontSize: '0.65rem',
-                              ...(sub === 'افراد تحت تکفل'
-                                ? { color: '#7c3aed', borderColor: '#7c3aed66', fontWeight: 700 }
-                                : {}),
-                            }} />
-                        ))}
-                      </Stack>
                     </TableCell>
                     <TableCell>{formatPersianNumber(p.folder_count || 0)}</TableCell>
                     <TableCell>{formatPersianNumber(p.file_count || 0)}</TableCell>

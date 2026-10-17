@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Box, Chip, alpha } from '@mui/material';
+import { Box, Chip } from '@mui/material';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import WorkIcon from '@mui/icons-material/Work';
 import LocationOnIcon from '@mui/icons-material/LocationOn';
@@ -15,7 +15,7 @@ import PublicIcon from '@mui/icons-material/Public';
 import axiosInstance from '../core/api/axiosConfig';
 import { EntityManager, ENDPOINTS } from '../core/components/settings/shared';
 import {
-  PageHeader, StatGrid, TabsCard, SectionNote, SOFT,
+  PageHeader, StatGrid, TabsCard, SOFT,
 } from '../core/components/settings/settingsUi';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 
@@ -140,7 +140,6 @@ const DefinitionsPage = () => {
   });
 
   const totalRecords = TABS.reduce((sum, tab) => sum + (counts[tab.key] || 0), 0);
-  const activeCount = counts[active.key] || 0;
 
   const tabs = TABS.map((tab) => ({
     ...tab,
@@ -188,25 +187,6 @@ const DefinitionsPage = () => {
       />
 
       <StatGrid stats={stats} />
-
-      <SectionNote
-        icon={active.icon}
-        title={active.label}
-        desc={active.desc}
-        color={active.color}
-        trailing={(
-          <Chip
-            size="small"
-            label={`${formatPersianNumber(activeCount)} رکورد`}
-            sx={{
-              fontWeight: 800,
-              bgcolor: alpha(active.color, 0.12),
-              color: active.color,
-              '& .MuiChip-label': { px: 1 },
-            }}
-          />
-        )}
-      />
 
       {MANAGER_PROPS[active.key] ? <EntityManager {...MANAGER_PROPS[active.key]} /> : null}
     </Box>

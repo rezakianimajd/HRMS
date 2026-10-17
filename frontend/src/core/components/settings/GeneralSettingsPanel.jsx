@@ -2,16 +2,16 @@ import React, { useState, Fragment } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, TextField, Switch, Chip, Divider,
-  Alert, Grid, Tooltip, Stack,
+  Box, Typography, Paper, Avatar, TextField, Switch, Chip,
+  Alert, Grid, Stack, alpha,
 } from '@mui/material';
-import RadioButtonCheckedIcon from '@mui/icons-material/RadioButtonChecked';
 import CloudOutlinedIcon from '@mui/icons-material/CloudOutlined';
 import NotificationsNoneIcon from '@mui/icons-material/NotificationsNone';
 import BeachAccessOutlinedIcon from '@mui/icons-material/BeachAccessOutlined';
 import AccessTimeFilledOutlinedIcon from '@mui/icons-material/AccessTimeFilledOutlined';
 import PublicIcon from '@mui/icons-material/Public';
 import StorageArchivePanel from './StorageArchivePanel';
+import { SOFT } from './settingsUi';
 
 const SETTING_META = {
   BASE_FILE_STORAGE_PATH: { label: 'مسیر ذخیرهسازی فایلها', desc: 'محل پیشفرض ذخیره اسناد روی سرور', group: 'storage', type: 'text' },
@@ -27,12 +27,24 @@ const SETTING_META = {
 };
 
 const GROUP_META = {
-  storage:    { title: 'ذخیرهسازی و فایلها', color: '#6366f1', icon: <CloudOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  alerts:     { title: 'هشدارها و اعلانها',  color: '#f59e0b', icon: <NotificationsNoneIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  leaves:     { title: 'سیاست مرخصی',         color: '#10b981', icon: <BeachAccessOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  attendance: { title: 'حضور و کارکرد',       color: '#3b82f6', icon: <AccessTimeFilledOutlinedIcon sx={{ fontSize: 20, color: '#fff' }} /> },
-  regional:   { title: 'نمایش و واحدها',       color: '#8b5cf6', icon: <PublicIcon sx={{ fontSize: 20, color: '#fff' }} /> },
+  storage:    { title: 'ذخیره‌سازی و فایل‌ها', color: SOFT.indigo, icon: <CloudOutlinedIcon /> },
+  alerts:     { title: 'هشدارها و اعلان‌ها',  color: SOFT.amber, icon: <NotificationsNoneIcon /> },
+  leaves:     { title: 'سیاست مرخصی',         color: SOFT.green, icon: <BeachAccessOutlinedIcon /> },
+  attendance: { title: 'حضور و کارکرد',       color: SOFT.blue, icon: <AccessTimeFilledOutlinedIcon /> },
+  regional:   { title: 'نمایش و واحدها',       color: SOFT.violet, icon: <PublicIcon /> },
 };
+
+const GroupHeader = ({ meta }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+    <Avatar variant="rounded" sx={{
+      width: 30, height: 30, borderRadius: '9px',
+      bgcolor: alpha(meta.color, 0.14), color: meta.color,
+    }}>
+      {meta.icon ? React.cloneElement(meta.icon, { sx: { fontSize: 17 } }) : null}
+    </Avatar>
+    <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>{meta.title}</Typography>
+  </Box>
+);
 
 const SettingRow = ({ meta, value, onSave }) => {
   const [savedTick, setTick] = useState(false);
@@ -46,8 +58,8 @@ const SettingRow = ({ meta, value, onSave }) => {
     return (
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 180 }}>
-          <Typography variant="body1" fontWeight={600}>{meta.label}</Typography>
-          <Typography variant="caption" color="textSecondary">{meta.desc}</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
+          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>{meta.desc}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           {savedTick && <Chip size="small" label="ثبت شد ✓" color="success" />}
@@ -62,12 +74,12 @@ const SettingRow = ({ meta, value, onSave }) => {
     const arr = (Array.isArray(value) ? value : String(value || '').split(',').filter(Boolean));
     return (
       <Box>
-        <Typography variant="body1" fontWeight={600}>{meta.label}</Typography>
-        <Typography variant="caption" color="textSecondary" display="block">{meta.desc}</Typography>
+        <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
+        <Typography sx={{ fontSize: 10.5, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
           {arr.map(ext => (
             <Chip key={ext} size="small" label={ext}
-              sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#6366f1', border: '1px solid #6366f133', fontWeight: 600 }} />
+              sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(SOFT.indigo, 0.1), color: SOFT.indigo, border: '1px solid ' + alpha(SOFT.indigo, 0.22), fontWeight: 700 }} />
           ))}
         </Stack>
       </Box>
@@ -76,8 +88,8 @@ const SettingRow = ({ meta, value, onSave }) => {
 
   return (
     <Box>
-      <Typography variant="body1" fontWeight={600}>{meta.label}</Typography>
-      <Typography variant="caption" color="textSecondary" display="block">{meta.desc}</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
+      <Typography sx={{ fontSize: 10.5, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
         <TextField
           size="small" fullWidth
@@ -117,7 +129,7 @@ const GeneralSettingsPanel = () => {
 
   if (isLoading) return <Box sx={{ p: 4, textAlign: 'center' }}>در حال بارگذاری…</Box>;
 
-  const keys = Object.keys(SETTING_META);
+  const keys = Object.keys(SETTING_META).filter((k) => SETTING_META[k].group !== 'storage');
   const grouped = {};
   keys.forEach(k => {
     const g = SETTING_META[k].group;
@@ -125,55 +137,61 @@ const GeneralSettingsPanel = () => {
   });
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-      {/* info banner */}
-      <Paper sx={{ p: 1.5, borderRadius: '10px', bgcolor: 'rgba(99,102,241,0.05)', border: '1px dashed #6366f133' }}>
-        <Typography variant="body2" color="text.secondary">
-          💡 تنظیمات ذخیرهشده در این صفحه بهصورت **واقعی** در سرور اعمال میشود؛ مثلاً «سهم مرخصی سالانه» در محاسبه مانده مرخصی هر پرسنل استفاده میگردد.
-        </Typography>
-      </Paper>
-
+    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.75 }}>
       {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
 
-      {Object.entries(grouped).map(([g, gKeys]) => {
-        const gm = GROUP_META[g] || { title: g, color: '#6366f1', icon: null };
-        return (
-          <Paper key={g} sx={{ p: 2.5, borderRadius: '10px', background: `linear-gradient(135deg, ${gm.color}08, rgba(255,255,255,0.3))`, border: `1px solid ${gm.color}1c` }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-              <Avatar sx={{ width: 34, height: 34, bgcolor: gm.color, boxShadow: `0 4px 14px ${gm.color}40` }}>{gm.icon}</Avatar>
-              <Typography variant="subtitle1" fontWeight={700} sx={{ color: gm.color }}>{gm.title}</Typography>
-            </Box>
+      {/* ذخیره‌سازی و فایل‌ها — کارت سفید */}
+      <Paper sx={{
+        p: 1.75, borderRadius: '16px',
+        border: '1px solid', borderColor: 'divider',
+        bgcolor: 'background.paper',
+        boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
+      }}>
+        <GroupHeader meta={GROUP_META.storage} />
+        <StorageArchivePanel />
+      </Paper>
 
-            {g === 'storage' && (
-              <>
-                <StorageArchivePanel />
-                <Divider sx={{ my: 3 }} />
-                <Typography variant="body2" fontWeight={700} sx={{ mb: 1.5, color: gm.color }}>
-                  تنظیمات پایهٔ ذخیره‌سازی
-                </Typography>
-              </>
-            )}
-
-            <Grid container spacing={3}>
-              {gKeys.map(k => {
-                const meta = SETTING_META[k];
-                const raw = settings?.[k];
-                const val = String(raw) === '' || raw === undefined
-                  ? (meta.type === 'number' ? 0 : meta.type === 'boolean' ? false : meta.type === 'chips' ? [] : '')
-                  : raw;
-                return (
-                  <Grid key={k} item xs={12} md={6} lg={4}>
-                    <SettingRow meta={meta} value={
-                      meta.type === 'chips' ? (typeof raw === 'string' ? raw.split(',') : raw) : val
-                    }
-                    onSave={v => update.mutate({ key: k, value: meta.type === 'chips' ? (Array.isArray(v) ? v.join(',') : v) : v })} />
-                  </Grid>
-                );
-              })}
+      {/* گروه‌های کم‌حجم — دو ستون در کنار هم */}
+      <Grid container spacing={1.75}>
+        {Object.entries(grouped).filter(([g]) => g !== 'storage').map(([g, gKeys]) => {
+          const gm = GROUP_META[g] || { title: g, color: SOFT.slate, icon: null };
+          return (
+            <Grid item xs={12} lg={6} key={g}>
+              <Paper sx={{
+                p: 1.75, borderRadius: '16px', height: '100%',
+                border: '1px solid', borderColor: 'divider',
+                bgcolor: 'background.paper',
+                boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
+              }}>
+                <GroupHeader meta={gm} />
+                <Grid container spacing={1.5}>
+                  {gKeys.map((k) => {
+                    const meta = SETTING_META[k];
+                    const raw = settings?.[k];
+                    const val = String(raw) === '' || raw === undefined
+                      ? (meta.type === 'number' ? 0 : meta.type === 'boolean' ? false : meta.type === 'chips' ? [] : '')
+                      : raw;
+                    return (
+                      <Grid key={k} item xs={12} sm={6}>
+                        <SettingRow
+                          meta={meta}
+                          value={meta.type === 'chips'
+                            ? (typeof raw === 'string' ? raw.split(',') : raw)
+                            : val}
+                          onSave={(v) => update.mutate({
+                            key: k,
+                            value: meta.type === 'chips' ? (Array.isArray(v) ? v.join(',') : v) : v,
+                          })}
+                        />
+                      </Grid>
+                    );
+                  })}
+                </Grid>
+              </Paper>
             </Grid>
-          </Paper>
-        );
-      })}
+          );
+        })}
+      </Grid>
     </Box>
   );
 };

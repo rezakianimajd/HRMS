@@ -3,13 +3,14 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, TextField, Switch, Alert, Button, Chip, Divider,
+  Box, Typography, Paper, Avatar, TextField, Switch, Alert, Button, Chip, alpha,
 } from '@mui/material';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import MailIcon from '@mui/icons-material/Mail';
 import ChatIcon from '@mui/icons-material/Chat';
 import SendIcon from '@mui/icons-material/Send';
 import CircularProgress from '@mui/material/CircularProgress';
+import { SOFT } from './settingsUi';
 
 const NotificationSettingsPanel = () => {
   const { t } = useTranslation();
@@ -68,10 +69,10 @@ const NotificationSettingsPanel = () => {
       )}
 
       {/* Email */}
-      <Paper sx={{ p: 2.5, borderRadius: '10px', background: 'linear-gradient(135deg, rgba(99,102,241,0.08), rgba(255,255,255,0.3))', border: '1px solid rgba(99,102,241,0.2)' }}>
+      <Paper sx={{ p: 1.9, borderRadius: '16px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 18px rgba(15,23,42,0.04)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-          <Avatar sx={{ width: 36, height: 36, bgcolor: '#6366f1' }}><MailIcon fontSize="small" /></Avatar>
-          <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#6366f1' }}>اطلاع‌رسانی ایمیل</Typography>
+          <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '9px', bgcolor: alpha(SOFT.indigo, 0.14), color: SOFT.indigo }}><MailIcon fontSize="small" /></Avatar>
+          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>اطلاع‌رسانی ایمیل</Typography>
           <Box sx={{ flex: 1 }} />
           <Switch checked={Boolean(p.notify_email_enabled !== false)} onChange={(e) => setVal('notify_email_enabled', e.target.checked)} />
         </Box>
@@ -81,10 +82,10 @@ const NotificationSettingsPanel = () => {
       </Paper>
 
       {/* Bale */}
-      <Paper sx={{ p: 2.5, borderRadius: '10px', background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.3))', border: '1px solid rgba(16,185,129,0.2)' }}>
+      <Paper sx={{ p: 1.9, borderRadius: '16px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 18px rgba(15,23,42,0.04)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
-          <Avatar sx={{ width: 36, height: 36, bgcolor: '#10b981' }}><ChatIcon fontSize="small" /></Avatar>
-          <Typography variant="subtitle1" fontWeight={800} sx={{ color: '#10b981' }}>اطلاع‌رسانی پیام‌رسان بله</Typography>
+          <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '9px', bgcolor: alpha(SOFT.green, 0.14), color: SOFT.green }}><ChatIcon fontSize="small" /></Avatar>
+          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>اطلاع‌رسانی پیام‌رسان بله</Typography>
           <Box sx={{ flex: 1 }} />
           <Switch checked={Boolean(p.notify_bale_enabled)} onChange={(e) => setVal('notify_bale_enabled', e.target.checked)} />
         </Box>
@@ -101,13 +102,13 @@ const NotificationSettingsPanel = () => {
       </Paper>
 
       {/* Test send */}
-      <Paper sx={{ p: 2.5, borderRadius: '10px', background: 'rgba(100,116,139,0.04)' }}>
-        <Typography variant="subtitle1" fontWeight={800} gutterBottom>ارسال آزمایشی</Typography>
+      <Paper sx={{ p: 1.9, borderRadius: '16px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 18px rgba(15,23,42,0.04)' }}>
+        <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1 }}>ارسال آزمایشی</Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="outlined" size="small" startIcon={<SendIcon />} onClick={() => testSend('email')} disabled={sending}>ایمیل</Button>
           <Button variant="outlined" size="small" startIcon={<SendIcon />} onClick={() => testSend('bale')} disabled={sending}>بله</Button>
           <Button variant="contained" size="small" startIcon={<SendIcon />} onClick={() => testSend('both')} disabled={sending}
-            sx={{ background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }}>
+            sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}>
             هر دو
           </Button>
           {sending && <CircularProgress size={18} />}

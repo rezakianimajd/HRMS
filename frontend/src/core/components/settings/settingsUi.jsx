@@ -28,23 +28,23 @@ const CARD_SX = {
 };
 
 export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT.indigo }) => (
-  <Paper elevation={0} sx={{ ...CARD_SX, p: { xs: 1.75, md: 2.25 }, mb: 2 }}>
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.75} alignItems={{ sm: 'center' }}>
+  <Paper elevation={0} sx={{ ...CARD_SX, p: { xs: 1.5, md: 1.9 }, mb: 1.75 }}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
       <Avatar variant="rounded" sx={{
-        width: 46, height: 46, borderRadius: '14px',
+        width: 40, height: 40, borderRadius: '12px',
         bgcolor: alpha(color, 0.14), color,
       }}>
-        {React.cloneElement(icon, { sx: { fontSize: 24 } })}
+        {React.cloneElement(icon, { sx: { fontSize: 21 } })}
       </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
-          <Typography sx={{ fontSize: { xs: 18, md: 21 }, fontWeight: 900, letterSpacing: '-.01em' }}>
+          <Typography sx={{ fontSize: { xs: 16.5, md: 18.5 }, fontWeight: 900, letterSpacing: '-.01em' }}>
             {title}
           </Typography>
           {badge}
         </Stack>
         {subtitle ? (
-          <Typography variant="body2" color="text.secondary" sx={{ mt: 0.4 }}>{subtitle}</Typography>
+          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.3 }}>{subtitle}</Typography>
         ) : null}
       </Box>
       {actions ? (
@@ -54,32 +54,22 @@ export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT
   </Paper>
 );
 
-export const StatCard = ({ icon, label, value, sub, color = SOFT.indigo }) => (
-  <Paper elevation={0} sx={{ ...CARD_SX, p: 1.75, height: '100%' }}>
-    <Stack direction="row" spacing={1.5} alignItems="center">
-      <Avatar variant="rounded" sx={{
-        width: 42, height: 42, borderRadius: '12px',
-        bgcolor: alpha(color, 0.14), color,
-      }}>
-        {React.cloneElement(icon, { sx: { fontSize: 21 } })}
-      </Avatar>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }} noWrap>
-          {label}
-        </Typography>
-        <Typography sx={{ fontSize: 20, fontWeight: 900, lineHeight: 1.35 }} noWrap>
-          {value}
-        </Typography>
-        {sub ? (
-          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>{sub}</Typography>
-        ) : null}
-      </Box>
+export const StatCard = ({ label, value, sub, color = SOFT.indigo }) => (
+  <Paper elevation={0} sx={{ ...CARD_SX, px: 1.6, py: 1.15, height: '100%' }}>
+    <Stack direction="row" spacing={0.75} alignItems="baseline" flexWrap="wrap" useFlexGap>
+      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'text.secondary' }}>
+        {label}:
+      </Typography>
+      <Typography sx={{ fontSize: 13, fontWeight: 900, color }}>{value}</Typography>
+      {sub ? (
+        <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>{sub}</Typography>
+      ) : null}
     </Stack>
   </Paper>
 );
 
 export const StatGrid = ({ stats = [] }) => (
-  <Grid container spacing={1.5} sx={{ mb: 2 }}>
+  <Grid container spacing={1.25} sx={{ mb: 1.75 }}>
     {stats.map((stat) => (
       <Grid item xs={12} sm={6} lg={3} key={stat.label}>
         <StatCard {...stat} />

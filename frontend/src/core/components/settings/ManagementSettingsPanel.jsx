@@ -4,7 +4,7 @@ import axiosInstance from '../../api/axiosConfig';
 import {
   Box, Typography, Paper, TextField, Button, Chip, CircularProgress, Alert,
   Grid, Avatar, IconButton, Divider, Stack, Switch, Dialog, DialogTitle,
-  DialogContent, DialogActions, LinearProgress, Tooltip,
+  DialogContent, DialogActions, LinearProgress, Tooltip, alpha,
 } from '@mui/material';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import LibraryBooksOutlinedIcon from '@mui/icons-material/LibraryBooksOutlined';
@@ -17,6 +17,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ShieldIcon from '@mui/icons-material/Shield';
 import { toPersianDigits } from '../../utils/numberUtils';
+import { SOFT } from './settingsUi';
 
 /* =============================================================================
  * مدیریت مسیرهای ذخیره‌سازی — گلسمورفیسم ۲۰۲۶
@@ -67,7 +68,7 @@ const StorageManager = () => {
       border: '1px solid rgba(59,130,246,0.15)',
     }}>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.75 }}>
-        <Avatar sx={{ width: 28, height: 28, background: 'linear-gradient(135deg,#3b82f6,#6366f1)', color: '#fff' }}>
+        <Avatar variant="rounded" sx={{ width: 26, height: 26, borderRadius: '8px', bgcolor: alpha(SOFT.blue, 0.14), color: SOFT.blue }}>
           {icon}
         </Avatar>
         <Box>
@@ -113,7 +114,7 @@ const StorageManager = () => {
         startIcon={<CheckCircleIcon />}
         onClick={() => saveStorage.mutate(storage)}
         disabled={saveStorage.isLoading}
-        sx={{ mt: 1, background: 'linear-gradient(135deg,#3b82f6,#6366f1)', borderRadius: '10px', px: 2.5 }}
+        sx={{ mt: 1, bgcolor: SOFT.blue, borderRadius: '9px', px: 2.5, boxShadow: 'none', '&:hover': { bgcolor: '#6f9cc9' } }}
       >
         {saveStorage.isLoading ? 'در حال ذخیره...' : 'ذخیره مسیرها'}
       </Button>
@@ -190,7 +191,7 @@ const SignatoryManager = () => {
         <Button
           variant="contained" startIcon={<AddIcon />}
           onClick={() => { setForm({ id: null, full_name: '', position: '', national_id: '', signature_image: null }); setDialog(true); }}
-          sx={{ background: 'linear-gradient(135deg,#10b981,#059669)', borderRadius: '10px', px: 2 }}
+          sx={{ bgcolor: SOFT.green, borderRadius: '9px', px: 2, boxShadow: 'none', '&:hover': { bgcolor: '#6fae7c' } }}
         >
           افزودن صاحب امضا
         </Button>
@@ -206,9 +207,8 @@ const SignatoryManager = () => {
           {list.map(s => (
             <Grid item xs={12} sm={6} md={4} key={s.id}>
               <Paper sx={{
-                p: 2, borderRadius: '10px', position: 'relative',
-                background: 'linear-gradient(135deg, rgba(16,185,129,0.06), rgba(255,255,255,0.4))',
-                border: '1px solid rgba(16,185,129,0.18)',
+                p: 1.75, borderRadius: '14px', position: 'relative',
+                bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
                 transition: 'all .2s ease',
                 '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 10px 26px rgba(16,185,129,0.15)' },
               }}>
@@ -283,7 +283,7 @@ const SignatoryManager = () => {
           <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.full_name || save.isLoading}
             onClick={() => save.mutate(form)}
-            sx={{ background: 'linear-gradient(135deg,#10b981,#059669)' }}>
+            sx={{ bgcolor: SOFT.green, boxShadow: 'none', '&:hover': { bgcolor: '#6fae7c' } }}>
             ذخیره
           </Button>
         </DialogActions>
@@ -297,16 +297,16 @@ const ManagementSettingsPanel = () => {
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
       {/* Storage paths */}
       <Paper sx={{
-        p: 2.5, borderRadius: '10px',
-        background: 'linear-gradient(135deg, rgba(59,130,246,0.08), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(59,130,246,0.2)',
+        p: 1.9, borderRadius: '16px',
+        bgcolor: 'background.paper',
+        border: '1px solid', borderColor: 'divider',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg,#3b82f6,#6366f1)' }}>
-            <StorageIcon sx={{ color: '#fff', fontSize: 22 }} />
+          <Avatar variant="rounded" sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: alpha(SOFT.blue, 0.14), color: SOFT.blue }}>
+            <StorageIcon sx={{ fontSize: 18 }} />
           </Avatar>
           <Box>
-            <Typography variant="h6" fontWeight={800} sx={{ color: '#1d4ed8' }}>مدیریت مسیر ذخیره‌سازی فایل‌ها</Typography>
+            <Typography sx={{ fontSize: 13.5, fontWeight: 800 }}>مدیریت مسیر ذخیره‌سازی فایل‌ها</Typography>
             <Typography variant="caption" color="textSecondary">هر نوع فایل در پوشهٔ مخصوص خود ذخیره می‌شود — قابل مسیردهی دقیق</Typography>
           </Box>
         </Box>
@@ -316,16 +316,16 @@ const ManagementSettingsPanel = () => {
 
       {/* Signatories */}
       <Paper sx={{
-        p: 2.5, borderRadius: '10px',
-        background: 'linear-gradient(135deg, rgba(16,185,129,0.08), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(16,185,129,0.2)',
+        p: 1.9, borderRadius: '16px',
+        bgcolor: 'background.paper',
+        border: '1px solid', borderColor: 'divider',
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2 }}>
-          <Avatar sx={{ width: 40, height: 40, background: 'linear-gradient(135deg,#10b981,#059669)' }}>
-            <EditNoteIcon sx={{ color: '#fff', fontSize: 22 }} />
+          <Avatar variant="rounded" sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: alpha(SOFT.green, 0.14), color: SOFT.green }}>
+            <EditNoteIcon sx={{ fontSize: 18 }} />
           </Avatar>
           <Box>
-            <Typography variant="h6" fontWeight={800} sx={{ color: '#047857' }}>صاحبان امضا (امضای مجاز)</Typography>
+            <Typography sx={{ fontSize: 13.5, fontWeight: 800 }}>صاحبان امضا (امضای مجاز)</Typography>
             <Typography variant="caption" color="textSecondary">افراد دارای حق امضای قرارداد + نمونه امضای آپلودی</Typography>
           </Box>
         </Box>

@@ -20,11 +20,11 @@ import NotificationSettingsPanel from '../../core/components/settings/Notificati
 import ManagementSettingsPanel from '../../core/components/settings/ManagementSettingsPanel';
 import UpdatePanel from '../../core/components/settings/UpdatePanel';
 import {
-  PageHeader, StatGrid, TabsCard, SectionNote, SOFT,
+  PageHeader, StatGrid, TabsCard, SOFT,
 } from '../../core/components/settings/settingsUi';
 import useAuth from '../../core/hooks/useAuth';
 import useSystemStatus from '../../core/hooks/useSystemStatus';
-import { formatPersianNumber } from '../../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 
 /* Backup tab */
@@ -165,7 +165,7 @@ const Settings = () => {
 
   const stats = [
     {
-      label: 'نسخهٔ سامانه', value: systemInfo?.version || '—',
+      label: 'نسخهٔ سامانه', value: toPersianDigits(systemInfo?.version) || '—',
       sub: systemInfo?.product_name_fa || 'Kian ERP',
       icon: <SystemUpdateAltIcon />, color: SOFT.indigo,
     },
@@ -194,7 +194,7 @@ const Settings = () => {
         subtitle="پیکربندی سیستم، اطلاع‌رسانی و ابزارهای نگهداری — تغییرات بلافاصله اعمال می‌شوند."
         color={SOFT.indigo}
         badge={(
-          <Chip size="small" variant="outlined" label={`نسخه ${systemInfo?.version || '—'}`}
+          <Chip size="small" variant="outlined" label={`نسخه ${toPersianDigits(systemInfo?.version) || '—'}`}
             sx={{ fontWeight: 800 }} />
         )}
         actions={updateAvailable ? (
@@ -206,8 +206,6 @@ const Settings = () => {
       <TabsCard tabs={tabs} value={safeIndex} onChange={setTabIndex} activeColor={active.color} />
 
       <StatGrid stats={stats} />
-
-      <SectionNote icon={active.icon} desc={active.desc} color={active.color} />
 
       {panels[active.key]}
     </Box>

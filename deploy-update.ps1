@@ -308,6 +308,8 @@ $FrontendFiles += @(
     'frontend/src/pages/CompanyDocumentsPage.jsx',
     'frontend/src/pages/DefinitionsPage.jsx',
     'frontend/src/core/components/settings/GeneralSettingsPanel.jsx',
+    'frontend/src/core/components/settings/ManagementSettingsPanel.jsx',
+    'frontend/src/core/components/settings/NotificationSettingsPanel.jsx',
     'frontend/src/core/components/settings/UpdatePanel.jsx',
     'frontend/src/core/components/ui/SystemBroadcastGate.jsx',
     'frontend/src/core/hooks/useSystemStatus.js',
