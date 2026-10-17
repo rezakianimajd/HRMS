@@ -86,15 +86,17 @@ const AuditPage = () => {
                 {logs.map((l, i) => (
                   <TableRow key={l.id || i} hover>
                     <TableCell>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{l.user || '—'}</Typography>
+                      <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                        {l.user_full_name || l.user_username || '—'}
+                      </Typography>
                     </TableCell>
                     <TableCell align="center">
-                      <Chip size="small" label={l.action || '—'} variant="outlined"
+                      <Chip size="small" label={l.action_display || l.action || '—'} variant="outlined"
                         sx={{ height: 20, fontSize: 10, fontWeight: 700, color: SOFT.slate, borderColor: `${SOFT.slate}55` }} />
                     </TableCell>
                     <TableCell align="center">
                       <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>
-                        {l.model_name || '—'}
+                        {l.model_display || l.model_name || '—'}
                       </Typography>
                     </TableCell>
                     <TableCell sx={{ maxWidth: 340 }}>

@@ -120,17 +120,80 @@ class CompanySwitchSerializer(serializers.Serializer):
     company_id = serializers.IntegerField(required=True)
 
 
+_AUDIT_MODEL_LABELS = {
+    'user': 'کاربر',
+    'users': 'کاربران',
+    'auth': 'احراز هویت',
+    'core': 'هستهٔ سیستم',
+    'employees': 'پرسنل',
+    'documents': 'مدارک',
+    'organization-documents': 'بایگانی اسناد سازمان',
+    'organization_documents': 'بایگانی اسناد سازمان',
+    'contracts': 'قراردادها',
+    'leaves': 'مرخصی‌ها',
+    'attendance': 'حضور و غیاب',
+    'payroll': 'حقوق و دستمزد',
+    'settings': 'تنظیمات',
+    'settings_app': 'تنظیمات',
+    'accounting': 'حسابداری',
+    'projects': 'پروژه‌ها',
+    'procurement': 'خرید و تدارکات',
+    'treasury': 'خزانه‌داری',
+    'pettycash': 'تنخواه',
+    'recruitment': 'جذب و استخدام',
+    'appraisal': 'ارزیابی عملکرد',
+    'lifecycle': 'چرخهٔ عمر پرسنل',
+    'correspondences': 'مکاتبات',
+    'notifications': 'اعلان‌ها',
+    'orgchart': 'چارت سازمانی',
+    'datamapping': 'نگاشت داده',
+    'reports': 'گزارش‌ها',
+}
+
+
+def audit_model_label(name):
+    """برچسب فارسی برای «مدل» در دفترچه فعالیت."""
+    key = str(name or '').strip()
+    if not key:
+        return ''
+    mapped = _AUDIT_MODEL_LABELS.get(key) or _AUDIT_MODEL_LABELS.get(key.lower())
+    if mapped:
+        return mapped
+    try:
+        from django.apps import apps
+        for model in apps.get_models():
+            if model.__name__.lower() == key.lower():
+                return str(model._meta.verbose_name)
+        segment = key.replace('-', '_').lower()
+        for cfg in apps.get_app_configs():
+            if cfg.label == segment:
+                return str(cfg.verbose_name)
+    except Exception:  # noqa: BLE001 — برچسب نباید گزارش را بشکند
+        pass
+    return key
+
+
 class AuditLogSerializer(serializers.ModelSerializer):
     """Serializer for AuditLog model."""
     user_username = serializers.CharField(source='user.username', read_only=True)
+    user_full_name = serializers.SerializerMethodField()
     company_name = serializers.CharField(source='company.name', read_only=True)
     action_display = serializers.CharField(source='get_action_display', read_only=True)
+    model_display = serializers.SerializerMethodField()
 
     class Meta:
         model = AuditLog
         fields = [
-            'id', 'user', 'user_username', 'company', 'company_name',
-            'action', 'action_display', 'model_name', 'object_id',
+            'id', 'user', 'user_username', 'user_full_name', 'company', 'company_name',
+            'action', 'action_display', 'model_name', 'model_display', 'object_id',
             'changes', 'description', 'timestamp', 'ip_address',
         ]
         read_only_fields = ['id', 'timestamp']
+
+    def get_user_full_name(self, obj):
+        if not obj.user_id:
+            return ''
+        return obj.user.get_full_name() or obj.user.username
+
+    def get_model_display(self, obj):
+        return audit_model_label(obj.model_name)
