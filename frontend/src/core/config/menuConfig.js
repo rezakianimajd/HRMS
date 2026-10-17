@@ -158,6 +158,7 @@ const settingsMenu = [
     title: 'خانه',
     color: '#6366f1',
     items: [
+      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
       comingSoon('/settings/dashboard', 'settings-dashboard', 'داشبورد', <DashboardIcon />, '#6366f1', true),
     ],
   },
@@ -228,7 +229,6 @@ const settingsMenu = [
     title: 'تنظیمات عمومی',
     color: '#64748b',
     items: [
-      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
       { id: 'company-profile', title: 'مشخصات شرکت', icon: <BusinessIcon />, path: '/company-profile', color: '#6366f1', primary: false, ready: true },
       { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
       { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
