@@ -48,11 +48,15 @@ class Command(BaseCommand):
     def _label(self, profile, fields):
         return ArchiveStorageEngine.render_pattern(profile.entity_folder_pattern, fields)
 
-    def _move(self, obj, module_key, label, stats, apply):
+    def _move(self, obj, module_key, fields, stats, apply):
         if not obj.file or not obj.file.name:
             return
         profile = self._profile(obj.company_id, module_key)
-        if not profile or not label:
+        if not profile:
+            stats['skipped'] += 1
+            return
+        label = self._label(profile, fields())
+        if not label:
             stats['skipped'] += 1
             return
 
@@ -101,56 +105,49 @@ class Command(BaseCommand):
         from documents.models import Document
 
         self.stdout.write(self.style.MIGRATE_HEADING('مدارک پرسنل'))
-        profile = StorageProfile.objects.filter(module_key='hr.employees', is_active=True).first()
-        if not profile:
-            self.stderr.write('  [ردشده] پروفایل بایگانی «پرسنل» تعریف نشده است.')
-            return
 
-        for doc in Document.objects.select_related('employee').iterator():
+        def fields_for(doc):
             emp = doc.employee
-            label = self._label(profile, {
+            return {
                 'code': getattr(emp, 'employee_id', '') or '',
                 'name': getattr(emp, 'first_name', '') or '',
                 'last_name': getattr(emp, 'last_name', '') or '',
                 'id': emp.pk,
                 'national_id': getattr(emp, 'national_id', '') or '',
-            })
-            self._move(doc, 'hr.employees', label, stats, apply)
+            }
+
+        for doc in Document.objects.select_related('employee').iterator():
+            self._move(doc, 'hr.employees', lambda d=doc: fields_for(d), stats, apply)
 
     def _process_contracts(self, stats, apply):
         from contracts.models import ContractDocument
 
         self.stdout.write(self.style.MIGRATE_HEADING('مدارک قراردادها'))
-        profile = StorageProfile.objects.filter(module_key='hrms.contracts', is_active=True).first()
-        if not profile:
-            self.stderr.write('  [ردشده] پروفایل بایگانی «قراردادها» تعریف نشده است.')
-            return
 
-        for doc in ContractDocument.objects.select_related('contract').iterator():
+        def fields_for(doc):
             contract = doc.contract
-            label = self._label(profile, {
+            return {
                 'number': getattr(contract, 'number', '') or '',
                 'name': getattr(contract, 'subject', '') or '',
                 'id': contract.pk,
-            })
-            self._move(doc, 'hrms.contracts', label, stats, apply)
+            }
+
+        for doc in ContractDocument.objects.select_related('contract').iterator():
+            self._move(doc, 'hrms.contracts', lambda d=doc: fields_for(d), stats, apply)
 
     def _process_org_docs(self, stats, apply):
         from documents.models import OrganizationDocument
 
         self.stdout.write(self.style.MIGRATE_HEADING('اسناد سازمانی'))
-        profile = StorageProfile.objects.filter(
-            module_key='hrms.organization_documents', is_active=True
-        ).first()
-        if not profile:
-            self.stderr.write('  [ردشده] پروفایل بایگانی «اسناد سازمانی» تعریف نشده است.')
-            return
 
-        for doc in OrganizationDocument.objects.iterator():
+        def fields_for(doc):
             try:
                 category = doc.get_category_display()
             except Exception:  # noqa: BLE001
                 category = 'عمومی'
-            label = self._label(profile, {'category': category, 'name': category, 'id': doc.pk})
-            self._move(doc, 'hrms.organization_documents', label, stats, apply)
+            return {'category': category, 'name': category, 'id': doc.pk}
+
+        for doc in OrganizationDocument.objects.iterator():
+            self._move(doc, 'hrms.organization_documents',
+                       lambda d=doc: fields_for(d), stats, apply)
 
