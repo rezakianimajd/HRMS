@@ -4,7 +4,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Collapse,
+  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Collapse, Menu, MenuItem,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import BusinessIcon from '@mui/icons-material/Business';
@@ -15,6 +15,16 @@ import MenuIcon from '@mui/icons-material/Menu';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
+import PersonAddIcon from '@mui/icons-material/PersonAdd';
+import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import PostAddIcon from '@mui/icons-material/PostAdd';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import BackupIcon from '@mui/icons-material/Backup';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import AssessmentIcon from '@mui/icons-material/Assessment';
+import AccountTreeIcon from '@mui/icons-material/AccountTree';
+import InsightsIcon from '@mui/icons-material/Insights';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
@@ -27,14 +37,61 @@ import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 import { useThemeMode } from '../../context/ThemeContext';
 
-const SIDEBAR_WIDTH = 288;
+const RAIL_WIDTH = 68;
+const PANEL_WIDTH = 268;
+const SIDEBAR_WIDTH = RAIL_WIDTH + PANEL_WIDTH;
+
+// میانبرهای هر ماژول در ریل باریک (حداکثر ۳ مورد)
+const MODULE_SHORTCUTS = {
+  hrms: [
+    { title: 'ثبت پرسنل', path: '/employees/new', icon: <PersonAddIcon />, color: '#ec4899' },
+    { title: 'لیست قراردادها', path: '/contracts', icon: <HistoryEduIcon />, color: '#f59e0b' },
+    { title: 'تقویم', path: '/calendar', icon: <CalendarMonthIcon />, color: '#8b5cf6' },
+  ],
+  contracts: [
+    { title: 'قرارداد جدید', path: '/contracts/new', icon: <PostAddIcon />, color: '#10b981' },
+    { title: 'قراردادهای من', path: '/external-contracts', icon: <HistoryEduIcon />, color: '#f59e0b' },
+    { title: 'تقویم قراردادها', path: '/contracts-calendar', icon: <CalendarMonthIcon />, color: '#06b6d4' },
+  ],
+  settings: [
+    { title: 'مشخصات شرکت', path: '/company-profile', icon: <BusinessIcon />, color: '#6366f1' },
+    { title: 'کاربران', path: '/users', icon: <AdminPanelSettingsIcon />, color: '#64748b' },
+    { title: 'پشتیبان‌گیری', path: '/settings?tab=backup', icon: <BackupIcon />, color: '#3b82f6' },
+  ],
+  accounting: [
+    { title: 'سند جدید', path: '/accounting/document-new', icon: <PostAddIcon />, color: '#10b981' },
+    { title: 'اسناد حسابداری', path: '/accounting/documents', icon: <ReceiptLongIcon />, color: '#3b82f6' },
+    { title: 'ترازنامه', path: '/accounting/reports/balance-sheet', icon: <AssessmentIcon />, color: '#8b5cf6' },
+  ],
+  pettycash: [
+    { title: 'درخواست هزینه', path: '/petty-cash/expenses/new', icon: <PostAddIcon />, color: '#10b981' },
+    { title: 'دفتر تنخواه', path: '/petty-cash/ledger', icon: <ReceiptLongIcon />, color: '#3b82f6' },
+    { title: 'تقویم تنخواه', path: '/petty-cash/calendar', icon: <CalendarMonthIcon />, color: '#ec4899' },
+  ],
+  projects: [
+    { title: 'پروژه‌ها', path: '/projects', icon: <AccountTreeIcon />, color: '#8b5cf6' },
+    { title: 'تقویم پروژه‌ها', path: '/projects/calendar', icon: <CalendarMonthIcon />, color: '#10b981' },
+    { title: 'گزارش‌ها', path: '/projects/reports', icon: <InsightsIcon />, color: '#6366f1' },
+  ],
+};
+
+// رنگ متن خوانا روی پس‌زمینهٔ رنگی (آیکون فعال ریل)
+const contrastText = (hex) => {
+  const raw = String(hex || '').replace('#', '');
+  const full = raw.length === 3 ? raw.split('').map((ch) => ch + ch).join('') : raw;
+  if (full.length !== 6) return '#ffffff';
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.62 ? '#111827' : '#ffffff';
+};
 
 /**
- * چیدمان اصلی برنامه با سایدبار سفید تک‌ستونه:
- *  - انتخاب ماژول در بالای سایدبار، بالاتر از عنوان «منوی اصلی»
- *  - گروه‌های منو به‌صورت آکاردئونی؛ زیرمنوها با یک خط رنگی نازک در سمت راست
- *  - بدون آیکون برای آیتم‌های منو
- *  - ابزارها و کارت کاربر در پایین سایدبار
+ * چیدمان اصلی برنامه با سایدبار دوستونهٔ سفید:
+ *  - ریل باریک: لوگو، ۲ تا ۳ میانبر ماژول فعال، ابزارها و پروفایل
+ *  - پنل منو: انتخاب ماژول در بالا، سپس «منوی اصلی» آکاردئونی
+ *  - زیرمنوها بدون آیکون، با یک خط رنگی نازک در سمت راست
  */
 const Layout = ({ children }) => {
   const { t } = useTranslation();
@@ -48,6 +105,7 @@ const Layout = ({ children }) => {
   const menu = getMenuForApp(currentApp?.slug);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [expandedGroups, setExpandedGroups] = useState(() => {
     const path = window.location.pathname;
     const init = {};
@@ -85,6 +143,18 @@ const Layout = ({ children }) => {
   };
 
   const activeGroup = menu.find((group) => group.items.some((item) => isActive(item.path)));
+
+  const fallbackShortcuts = menu
+    .flatMap((group) => group.items)
+    .filter((item) => item.ready !== false && item.path);
+  const seenShortcuts = new Set();
+  const shortcuts = (MODULE_SHORTCUTS[currentApp?.slug] || fallbackShortcuts)
+    .filter((item) => {
+      if (!item?.path || seenShortcuts.has(item.path)) return false;
+      seenShortcuts.add(item.path);
+      return true;
+    })
+    .slice(0, 3);
 
   // گروه صفحهٔ جاری همیشه باز می‌ماند (حتی بعد از جابه‌جایی بین صفحه‌ها)
   useEffect(() => {
@@ -147,42 +217,180 @@ const Layout = ({ children }) => {
     <Box sx={{
       height: '100%',
       display: 'flex',
-      flexDirection: 'column',
       bgcolor: 'background.paper',
       overflow: 'hidden',
     }}>
-      {/* ---------- برند و انتخاب ماژول ---------- */}
-      <Box sx={{ px: 1.75, pt: 1.75, pb: 1.25 }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.1, mb: 1.5 }}>
+      {/* ---------- ریل میانبرهای ماژول ---------- */}
+      <Box sx={{
+        width: RAIL_WIDTH,
+        flexShrink: 0,
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        py: 1.5,
+        px: 0.75,
+        borderInlineEnd: '1px solid',
+        borderColor: 'divider',
+        bgcolor: 'background.paper',
+        overflowY: 'auto',
+        overflowX: 'hidden',
+        '&::-webkit-scrollbar': { width: 0 },
+      }}>
+        <Tooltip title={companyName} placement="left" arrow>
           <Avatar
-            src={companyLogo || undefined}
             onClick={() => navigateTo(menu[0]?.items?.[0]?.path || '/dashboard')}
+            src={companyLogo || undefined}
             sx={{
-              width: 38, height: 38, borderRadius: '11px', cursor: 'pointer',
+              width: 40, height: 40, borderRadius: '12px', cursor: 'pointer', flexShrink: 0,
               ...(companyLogo ? {} : { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)' }),
               boxShadow: (theme) => `0 6px 16px ${alpha(theme.palette.primary.main, 0.3)}`,
             }}
           >
-            {!companyLogo && <BusinessIcon sx={{ fontSize: 19, color: '#fff' }} />}
+            {!companyLogo && <BusinessIcon sx={{ fontSize: 20, color: '#fff' }} />}
           </Avatar>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800, lineHeight: 1.7 }}>
-              {companyName}
-            </Typography>
-            <Typography noWrap sx={{ fontSize: 9.5, color: 'text.secondary' }}>
-              {currentApp?.title || 'سامانهٔ منابع انسانی'}
-            </Typography>
-          </Box>
-        </Box>
+        </Tooltip>
+
+        <Divider sx={{ width: 24, my: 1.25, flexShrink: 0 }} />
 
         <Box sx={{
-          display: 'flex', flexDirection: 'column', gap: 0.75,
-          '& .MuiButton-root': { fontSize: 11, minHeight: 32, py: 0.5, borderRadius: '10px' },
+          width: '100%', flexShrink: 0,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0.75,
         }}>
-          <AppSwitcher />
-          <CompanySwitcher />
+          {shortcuts.map((shortcut) => {
+            const active = isActive(shortcut.path);
+            const color = shortcut.color || '#6366f1';
+            const onColor = contrastText(color);
+
+            return (
+              <Tooltip key={shortcut.path} title={shortcut.title} placement="left" arrow>
+                <IconButton
+                  onClick={() => navigateTo(shortcut.path)}
+                  aria-label={shortcut.title}
+                  sx={{
+                    width: 40, height: 40,
+                    color: active ? onColor : color,
+                    bgcolor: active ? color : alpha(color, 0.08),
+                    border: `1px solid ${active ? color : alpha(color, 0.18)}`,
+                    boxShadow: active ? `0 6px 16px ${alpha(color, 0.3)}` : 'none',
+                    transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
+                    '&:hover': {
+                      bgcolor: active ? color : alpha(color, 0.16),
+                      color: active ? onColor : color,
+                    },
+                  }}
+                >
+                  {shortcut.icon
+                    ? React.cloneElement(shortcut.icon, { sx: { fontSize: 19 } })
+                    : <BusinessIcon sx={{ fontSize: 19 }} />}
+                </IconButton>
+              </Tooltip>
+            );
+          })}
         </Box>
+
+        <Box sx={{ flex: 1, minHeight: 12 }} />
+        <Divider sx={{ width: 24, my: 1, flexShrink: 0 }} />
+
+        <Tooltip title="جستجوی سریع (Ctrl+K)" placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={openPalette}
+            aria-label="جستجوی سریع"
+            sx={{ color: 'text.secondary' }}
+          >
+            <SearchIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+        <NotificationBell compact />
+        <Tooltip title="تنظیمات" placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={() => navigateTo('/settings')}
+            aria-label="تنظیمات"
+            sx={{
+              color: location.pathname.startsWith('/settings') ? 'primary.main' : 'text.secondary',
+              bgcolor: location.pathname.startsWith('/settings')
+                ? (theme) => alpha(theme.palette.primary.main, 0.1)
+                : 'transparent',
+            }}
+          >
+            <SettingsIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
+        <Box sx={{
+          mt: 0.75, p: 0.4, borderRadius: '999px', flexShrink: 0,
+          border: '1px solid', borderColor: 'divider',
+          display: 'flex', flexDirection: 'column', gap: 0.25,
+          boxShadow: '0 4px 14px rgba(15,23,42,0.05)',
+        }}>
+          <IconButton
+            size="small"
+            onClick={() => setMode('light')}
+            aria-label="تم روشن"
+            sx={{
+              width: 30, height: 30,
+              color: mode === 'light' ? 'primary.main' : 'text.disabled',
+              bgcolor: mode === 'light'
+                ? (theme) => alpha(theme.palette.primary.main, 0.12)
+                : 'transparent',
+            }}
+          >
+            <LightModeIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+          <IconButton
+            size="small"
+            onClick={() => setMode('dark')}
+            aria-label="تم تاریک"
+            sx={{
+              width: 30, height: 30,
+              color: mode === 'dark' ? 'primary.main' : 'text.disabled',
+              bgcolor: mode === 'dark'
+                ? (theme) => alpha(theme.palette.primary.main, 0.12)
+                : 'transparent',
+            }}
+          >
+            <DarkModeIcon sx={{ fontSize: 16 }} />
+          </IconButton>
+        </Box>
+
+        <Tooltip title={fullName} placement="left" arrow>
+          <Avatar
+            onClick={(event) => setUserMenuAnchor(event.currentTarget)}
+            sx={{
+              mt: 1.2, width: 34, height: 34, flexShrink: 0,
+              cursor: 'pointer', fontSize: 11, fontWeight: 800,
+              bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
+              color: 'primary.main',
+              border: '2px solid', borderColor: 'background.paper',
+              boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
+            }}
+          >
+            {initials}
+          </Avatar>
+        </Tooltip>
       </Box>
+
+      {/* ---------- پنل منو ---------- */}
+      <Box sx={{
+        width: PANEL_WIDTH,
+        flexShrink: 1,
+        minWidth: 0,
+        display: 'flex',
+        flexDirection: 'column',
+        bgcolor: 'background.paper',
+      }}>
+        {/* ---------- انتخاب ماژول ---------- */}
+        <Box sx={{ px: 1.75, pt: 1.75, pb: 1.25 }}>
+          <Box sx={{
+            display: 'flex', flexDirection: 'column', gap: 0.75,
+            '& .MuiButton-root': { fontSize: 11, minHeight: 32, py: 0.5, borderRadius: '10px' },
+          }}>
+            <AppSwitcher />
+            <CompanySwitcher />
+          </Box>
+        </Box>
 
       <Divider />
 
@@ -303,84 +511,6 @@ const Layout = ({ children }) => {
         })}
       </Box>
 
-      {/* ---------- ابزارها و کارت کاربر ---------- */}
-      <Box sx={{
-        px: 1.25, pb: 1.25, pt: 0.75,
-        borderTop: '1px solid', borderColor: 'divider',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.25, color: 'text.secondary' }}>
-          <Tooltip title="جستجوی سریع (Ctrl+K)" arrow>
-            <IconButton size="small" onClick={openPalette} aria-label="جستجوی سریع">
-              <SearchIcon sx={{ fontSize: 19 }} />
-            </IconButton>
-          </Tooltip>
-          <NotificationBell compact />
-          <Tooltip title="تنظیمات" arrow>
-            <IconButton
-              size="small"
-              onClick={() => navigateTo('/settings')}
-              aria-label="تنظیمات"
-              sx={{
-                color: location.pathname.startsWith('/settings') ? 'primary.main' : 'text.secondary',
-                bgcolor: location.pathname.startsWith('/settings')
-                  ? (theme) => alpha(theme.palette.primary.main, 0.1)
-                  : 'transparent',
-              }}
-            >
-              <SettingsIcon sx={{ fontSize: 19 }} />
-            </IconButton>
-          </Tooltip>
-          <Box sx={{ flex: 1 }} />
-          <Tooltip title={mode === 'dark' ? 'تم روشن' : 'تم تاریک'} arrow>
-            <IconButton
-              size="small"
-              onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
-              aria-label="تغییر تم"
-              sx={{ color: 'text.secondary' }}
-            >
-              {mode === 'dark'
-                ? <LightModeIcon sx={{ fontSize: 19 }} />
-                : <DarkModeIcon sx={{ fontSize: 19 }} />}
-            </IconButton>
-          </Tooltip>
-        </Box>
-
-        <Box sx={{
-          display: 'flex', alignItems: 'center', gap: 1,
-          mt: 0.75, p: 1, borderRadius: '12px',
-          border: '1px solid', borderColor: 'divider',
-          bgcolor: (theme) => alpha(theme.palette.primary.main, 0.04),
-        }}>
-          <Avatar sx={{
-            width: 32, height: 32, fontSize: 11, fontWeight: 800,
-            bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
-            color: 'primary.main',
-          }}>
-            {initials}
-          </Avatar>
-          <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, lineHeight: 1.6 }}>
-              {fullName}
-            </Typography>
-            <Typography noWrap sx={{ fontSize: 9.5, color: 'text.secondary' }}>
-              @{user?.username}
-            </Typography>
-          </Box>
-          <Tooltip title={t('nav.logout')} arrow>
-            <IconButton
-              size="small"
-              onClick={handleLogout}
-              aria-label={t('nav.logout')}
-              sx={{
-                color: 'error.main',
-                bgcolor: 'rgba(239,68,68,0.08)',
-                '&:hover': { bgcolor: 'rgba(239,68,68,0.16)' },
-              }}
-            >
-              <LogoutIcon sx={{ fontSize: 17 }} />
-            </IconButton>
-          </Tooltip>
-        </Box>
       </Box>
     </Box>
   );
@@ -388,6 +518,45 @@ const Layout = ({ children }) => {
 
   return (
     <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden' }}>
+      <Menu
+        anchorEl={userMenuAnchor}
+        open={Boolean(userMenuAnchor)}
+        onClose={() => setUserMenuAnchor(null)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              mt: 1, minWidth: 200, borderRadius: '14px',
+              border: '1px solid', borderColor: 'divider',
+              boxShadow: '0 18px 40px rgba(15,23,42,0.16)',
+            },
+          },
+        }}
+      >
+        <Box sx={{ px: 2, py: 1 }}>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{fullName}</Typography>
+          <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+            @{user?.username}
+          </Typography>
+        </Box>
+        <Divider />
+        <MenuItem
+          onClick={() => { setUserMenuAnchor(null); navigateTo('/settings'); }}
+          sx={{ fontSize: 11.5, gap: 1, py: 0.9 }}
+        >
+          <SettingsIcon sx={{ fontSize: 17, color: 'text.secondary' }} />
+          تنظیمات
+        </MenuItem>
+        <MenuItem
+          onClick={() => { setUserMenuAnchor(null); handleLogout(); }}
+          sx={{ fontSize: 11.5, gap: 1, py: 0.9, color: 'error.main' }}
+        >
+          <LogoutIcon sx={{ fontSize: 17 }} />
+          {t('nav.logout')}
+        </MenuItem>
+      </Menu>
+
       <Drawer
         variant="temporary"
         anchor="right"
@@ -397,7 +566,9 @@ const Layout = ({ children }) => {
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
-            width: SIDEBAR_WIDTH, height: '100vh',
+            width: { xs: 'calc(100vw - 20px)', sm: SIDEBAR_WIDTH },
+            maxWidth: SIDEBAR_WIDTH,
+            height: '100vh',
             boxSizing: 'border-box', border: 0,
           },
         }}
