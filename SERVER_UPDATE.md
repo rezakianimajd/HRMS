@@ -215,7 +215,7 @@ sudo systemctl start gunicorn
 
 ---
 
-## به‌روزرسانی درون‌برنامه‌ای (فاز ۲)
+## به‌روزرسانی درون‌برنامه‌ای (فاز ۳)
 
 پنل جدید: **تنظیمات → به‌روزرسانی سیستم** (فقط `super_admin` یا نقش دارای `can_manage_updates`).
 
@@ -260,6 +260,30 @@ python scripts/build_update_package.py --generate-key
 python scripts/build_update_package.py --version 1.0.1 \
   --notes "توضیح تغییرات" --key update_key.pem
 #   → dist/kian-erp-1.0.1.zip  (همین فایل را در پنل آپلود کنید)
+```
+
+### زمان‌بندی و اطلاع‌رسانی
+
+```bash
+# تایمر اجرای زمان‌بندی‌ها (هر ۲ دقیقه)
+systemctl status hrms-update-schedule.timer --no-pager
+systemctl list-timers hrms-update-schedule.timer --no-pager
+journalctl -u hrms-update-schedule.service -n 30 --no-pager
+
+# اجرای دستی بررسی زمان‌بندی‌ها
+cd /opt/hrms/hrms_project
+sudo -u hrms bash -lc 'set -a; . /opt/hrms/.env; set +a; \
+  DJANGO_SETTINGS_MODULE=hrms_project.settings.production \
+  /opt/hrms/venv/bin/python manage.py apply_due_updates --dry-run'
+```
+
+برای اعلان بله:
+
+```bash
+grep -q '^UPDATE_BALE_TOKEN=' /opt/hrms/.env || \
+  echo 'UPDATE_BALE_TOKEN=<bot-token>' | sudo tee -a /opt/hrms/.env
+sudo systemctl restart gunicorn celery-worker celery-beat
+# سپس شناسهٔ چت‌ها را در پنل → به‌روزرسانی سیستم → «شناسه‌های چت بله» وارد کنید
 ```
 
 ### پایش و عیب‌یابی

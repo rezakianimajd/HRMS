@@ -30,6 +30,19 @@ class UpdateSettings(models.Model):
     keep_releases = models.PositiveSmallIntegerField(
         default=3, verbose_name=_('تعداد بستهٔ نگهداری‌شده'),
     )
+    notify_email = models.BooleanField(
+        default=True, verbose_name=_('اطلاع‌رسانی ایمیلی'),
+    )
+    notify_bale = models.BooleanField(
+        default=False, verbose_name=_('اطلاع‌رسانی بله'),
+    )
+    notify_emails = models.JSONField(
+        default=list, blank=True, verbose_name=_('ایمیل‌های اطلاع‌رسانی'),
+        help_text=_('خالی = آدرس‌های ADMINS در تنظیمات'),
+    )
+    notify_bale_chat_ids = models.JSONField(
+        default=list, blank=True, verbose_name=_('شناسه‌های چت بله'),
+    )
     updated_at = models.DateTimeField(auto_now=True, verbose_name=_('آخرین تغییر'))
 
     class Meta:
@@ -159,6 +172,45 @@ class UpdateRun(models.Model):
 
     def __str__(self):
         return f'{self.from_version} → {self.to_version} ({self.status})'
+
+
+class UpdateSchedule(models.Model):
+    """A release scheduled for automatic installation at a given time."""
+
+    class Status(models.TextChoices):
+        PENDING = 'pending', _('در انتظار')
+        QUEUED = 'queued', _('در صف اجرا')
+        DONE = 'done', _('انجام شد')
+        CANCELLED = 'cancelled', _('لغو شده')
+        FAILED = 'failed', _('ناموفق')
+
+    release = models.ForeignKey(
+        AppRelease, on_delete=models.CASCADE, related_name='schedules',
+        verbose_name=_('بسته'),
+    )
+    scheduled_for = models.DateTimeField(verbose_name=_('زمان اجرا'))
+    status = models.CharField(
+        max_length=20, choices=Status.choices, default=Status.PENDING,
+        verbose_name=_('وضعیت'),
+    )
+    note = models.TextField(blank=True, verbose_name=_('توضیح'))
+    queued_run = models.ForeignKey(
+        UpdateRun, null=True, blank=True, on_delete=models.SET_NULL,
+        related_name='schedules', verbose_name=_('اجرای مرتبط'),
+    )
+    created_by = models.ForeignKey(
+        django_settings.AUTH_USER_MODEL, null=True, blank=True,
+        on_delete=models.SET_NULL, related_name='update_schedules',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = _('زمان‌بندی به‌روزرسانی')
+        verbose_name_plural = _('زمان‌بندی‌های به‌روزرسانی')
+        ordering = ['scheduled_for']
+
+    def __str__(self):
+        return f'{self.release.version} @ {self.scheduled_for:%Y-%m-%d %H:%M}'
 
 
 class SystemBroadcast(models.Model):

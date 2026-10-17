@@ -28,6 +28,10 @@ urlpatterns = [
     path('system/updates/runs/', updates_views.runs_list, name='api-updates-runs'),
     path('system/updates/runs/<int:run_id>/', updates_views.run_detail, name='api-updates-run-detail'),
     path('system/updates/runs/<int:run_id>/rollback/', updates_views.run_rollback, name='api-updates-run-rollback'),
+    # Phase 3: settings & scheduling
+    path('system/updates/settings/', updates_views.update_settings_view, name='api-updates-settings'),
+    path('system/updates/schedules/', updates_views.schedules_view, name='api-updates-schedules'),
+    path('system/updates/schedules/<int:schedule_id>/', updates_views.schedule_cancel, name='api-updates-schedule-cancel'),
 
     # Authentication
     path('auth/login/', views.login_view, name='api-login'),

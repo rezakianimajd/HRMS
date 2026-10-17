@@ -280,7 +280,13 @@ $BackendFiles += @(
     'scripts/kian_updater.py',
     'scripts/install_updater_units.sh',
     'scripts/systemd/hrms-update.service',
-    'scripts/systemd/hrms-update.path'
+    'scripts/systemd/hrms-update.path',
+    # فاز ۳: زمان‌بندی، کانال‌ها و اطلاع‌رسانی
+    'hrms_project/core/update_notify.py',
+    'hrms_project/core/management/commands/apply_due_updates.py',
+    'hrms_project/core/migrations/0015_updatesettings_notify_bale_and_more.py',
+    'scripts/systemd/hrms-update-schedule.service',
+    'scripts/systemd/hrms-update-schedule.timer'
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',

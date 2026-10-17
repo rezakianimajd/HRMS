@@ -136,6 +136,46 @@ def broadcast(title, message, level='info', action='none'):
         log('WARN: broadcast failed: ' + traceback.format_exc(limit=2))
 
 
+def notify(subject, message):
+    """Email/Bale notification — never raises."""
+    try:
+        from core.update_notify import notify_event  # noqa: PLC0415
+        result = notify_event(subject, message)
+        log(f'notified: {result}')
+    except Exception:  # noqa: BLE001
+        log('WARN: notification failed: ' + traceback.format_exc(limit=2))
+
+
+def mark_schedule(run_id, status):
+    """Close the matching UpdateSchedule row (done/failed)."""
+    try:
+        from core.models import UpdateSchedule  # noqa: PLC0415
+        UpdateSchedule.objects.filter(queued_run_id=run_id).update(status=status)
+    except Exception:  # noqa: BLE001
+        log('WARN: could not update schedule: ' + traceback.format_exc(limit=2))
+
+
+def prune_artifacts():
+    """Keep only the newest N code snapshots and DB dumps."""
+    keep = 3
+    try:
+        from core.models import UpdateSettings  # noqa: PLC0415
+        keep = max(1, int(UpdateSettings.load().keep_releases or 3))
+    except Exception:  # noqa: BLE001
+        pass
+
+    for pattern in ('code_*.tar.gz', 'preupdate_*.dump'):
+        files = sorted(
+            BACKUP_DIR.glob(pattern), key=lambda item: item.stat().st_mtime, reverse=True,
+        )
+        for old in files[keep:]:
+            try:
+                old.unlink()
+                log(f'pruned {old.name}')
+            except OSError:
+                pass
+
+
 def safe_extract(archive: Path, target: Path) -> None:
     """Extract zip/tar archives while refusing entries outside ``target``."""
     target = target.resolve()
@@ -367,6 +407,13 @@ def apply_release(data):
         'سیستم به‌روزرسانی شد. لطفاً صفحه را بازخوانی کنید و دوباره وارد شوید.',
         SystemBroadcast.Level.SUCCESS, SystemBroadcast.Action.RELOAD,
     )
+    mark_schedule(run_id, 'done')
+    notify(
+        f'به‌روزرسانی به نسخهٔ {version} انجام شد',
+        f'ارتقا از {from_version} به {version} با موفقیت انجام شد.\n'
+        f'درخواست‌دهنده: {data.get("requested_by") or "system"}',
+    )
+    prune_artifacts()
     log('update applied successfully')
 
 
@@ -409,6 +456,10 @@ def do_rollback(data):
         'بازگشت به نسخهٔ قبلی انجام شد',
         'سیستم به نسخهٔ قبلی بازگردانده شد. لطفاً صفحه را بازخوانی کنید.',
         SystemBroadcast.Level.WARNING, SystemBroadcast.Action.RELOAD,
+    )
+    notify(
+        'بازگشت به نسخهٔ قبلی انجام شد',
+        f'اجرای #{run_id} بازگردانده شد (اسنپ‌شات: {code_snapshot.name}).',
     )
     log('rollback completed')
 
@@ -465,7 +516,9 @@ def main(argv=None) -> int:
             log('UPDATE FAILED:\n' + traceback.format_exc())
             update_run(data.get('run_id'), status='failed', error=str(exc)[:2000],
                        finished_at=_now())
+            mark_schedule(data.get('run_id'), 'failed')
             broadcast('به‌روزرسانی ناموفق بود', f'خطا: {exc}', 'warning', 'none')
+            notify('به‌روزرسانی ناموفق بود', f'خطا: {exc}')
             return 1
         finally:
             set_maintenance(False)

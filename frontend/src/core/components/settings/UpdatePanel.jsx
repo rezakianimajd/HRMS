@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Divider, LinearProgress, List, ListItem, ListItemIcon, ListItemText,
-  Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, Typography,
+  DialogTitle, Divider, FormControl, FormControlLabel, IconButton, InputLabel,
+  LinearProgress, List, ListItem, ListItemIcon, ListItemText, MenuItem, Paper,
+  Select, Stack, Switch, Table, TableBody, TableCell, TableContainer, TableHead,
+  TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
@@ -14,6 +15,9 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import CheckIcon from '@mui/icons-material/Check';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import HourglassEmptyIcon from '@mui/icons-material/HourglassEmpty';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import SettingsIcon from '@mui/icons-material/Settings';
+import JalaliDatePicker from '../ui/JalaliDatePicker';
 import useSystemStatus from '../../hooks/useSystemStatus';
 import axiosInstance from '../../api/axiosConfig';
 import { formatBytes } from './StorageArchivePanel';
@@ -63,9 +67,17 @@ const UpdatePanel = () => {
 
   const [applyTarget, setApplyTarget] = useState(null);
   const [confirmText, setConfirmText] = useState('');
+  const [forceApply, setForceApply] = useState(false);
   const [applying, setApplying] = useState(false);
   const [runId, setRunId] = useState(null);
   const [runData, setRunData] = useState(null);
+
+  const [cfg, setCfg] = useState(null);
+  const [savingCfg, setSavingCfg] = useState(false);
+  const [scheduleTarget, setScheduleTarget] = useState(null);
+  const [scheduleDate, setScheduleDate] = useState('');
+  const [scheduleTime, setScheduleTime] = useState('02:00');
+  const [scheduleForce, setScheduleForce] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -174,12 +186,66 @@ const UpdatePanel = () => {
     return () => { cancelled = true; clearInterval(timer); };
   }, [runId, load]);
 
+  // Phase 3: updater configuration (channel, countdown, retention, notifications)
+  useEffect(() => {
+    let cancelled = false;
+    axiosInstance.get('/system/updates/settings/', { quiet: true })
+      .then(({ data }) => { if (!cancelled) setCfg(data); })
+      .catch(() => { /* بدون دسترسی یا سرور در دسترس نیست */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  const saveSettings = async () => {
+    if (!cfg) return;
+    setSavingCfg(true); setError(''); setNotice('');
+    try {
+      const { data } = await axiosInstance.patch('/system/updates/settings/', cfg);
+      setCfg(data);
+      setNotice('تنظیمات به‌روزرسانی ذخیره شد.');
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'ذخیرهٔ تنظیمات ناموفق بود.');
+    } finally {
+      setSavingCfg(false);
+    }
+  };
+
+  const submitSchedule = async () => {
+    if (!scheduleTarget || !scheduleDate) return;
+    setError(''); setNotice('');
+    try {
+      await axiosInstance.post('/system/updates/schedules/', {
+        release_id: scheduleTarget.id,
+        scheduled_for: `${scheduleDate}T${scheduleTime || '02:00'}:00`,
+        force: scheduleForce,
+      });
+      setScheduleTarget(null);
+      setScheduleDate('');
+      setNotice('زمان‌بندی نصب ثبت شد.');
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'ثبت زمان‌بندی ناموفق بود.');
+    }
+  };
+
+  const cancelSchedule = async (id) => {
+    setError(''); setNotice('');
+    try {
+      await axiosInstance.delete(`/system/updates/schedules/${id}/`);
+      setNotice('زمان‌بندی لغو شد.');
+      await load();
+    } catch (e) {
+      setError(e.response?.data?.error || 'لغو زمان‌بندی ناموفق بود.');
+    }
+  };
+
   const startApply = async () => {
     if (!applyTarget) return;
     setApplying(true); setError(''); setNotice('');
     try {
       const { data } = await axiosInstance.post(
         `/system/updates/releases/${applyTarget.id}/apply/`,
+        { force: forceApply },
       );
       setRunData(data.run);
       setRunId(data.run.id);
@@ -257,6 +323,65 @@ const UpdatePanel = () => {
         )}
       </Paper>
 
+      {/* Phase 3: settings */}
+      {cfg && (
+        <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '12px' }}>
+          <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1.5 }}>
+            <SettingsIcon sx={{ color: COLOR, fontSize: 20 }} />
+            <Typography variant="subtitle2" fontWeight={700}>تنظیمات به‌روزرسانی</Typography>
+          </Stack>
+
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>کانال</InputLabel>
+              <Select label="کانال" value={cfg.channel}
+                onChange={(event) => setCfg({ ...cfg, channel: event.target.value })}>
+                <MenuItem value="stable">stable — پایدار</MenuItem>
+                <MenuItem value="beta">beta — آزمایشی</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField size="small" type="number" label="شمارندهٔ خروج (ثانیه)"
+              value={cfg.logout_countdown_seconds} sx={{ width: 180 }}
+              onChange={(event) => setCfg({ ...cfg, logout_countdown_seconds: Number(event.target.value) })} />
+            <TextField size="small" type="number" label="تعداد بستهٔ نگهداری"
+              value={cfg.keep_releases} sx={{ width: 170 }}
+              onChange={(event) => setCfg({ ...cfg, keep_releases: Number(event.target.value) })} />
+            <FormControlLabel
+              control={<Switch checked={Boolean(cfg.notify_email)}
+                onChange={(event) => setCfg({ ...cfg, notify_email: event.target.checked })} />}
+              label="ایمیل" />
+            <FormControlLabel
+              control={<Switch checked={Boolean(cfg.notify_bale)}
+                onChange={(event) => setCfg({ ...cfg, notify_bale: event.target.checked })} />}
+              label="بله" />
+          </Stack>
+
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={2} sx={{ mt: 1.5 }}>
+            <TextField size="small" fullWidth label="ایمیل‌های اطلاع‌رسانی (با کاما)"
+              value={(cfg.notify_emails || []).join(',')}
+              onChange={(event) => setCfg({
+                ...cfg,
+                notify_emails: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+              })}
+              helperText="خالی = آدرس‌های ADMINS در تنظیمات" />
+            <TextField size="small" fullWidth label="شناسه‌های چت بله (با کاما)"
+              value={(cfg.notify_bale_chat_ids || []).join(',')}
+              onChange={(event) => setCfg({
+                ...cfg,
+                notify_bale_chat_ids: event.target.value.split(',').map((item) => item.trim()).filter(Boolean),
+              })}
+              helperText={cfg.bale_configured ? 'توکن بله روی سرور تنظیم شده است' : 'UPDATE_BALE_TOKEN روی سرور تنظیم نشده'} />
+          </Stack>
+
+          <Box sx={{ mt: 1.5, textAlign: 'left' }}>
+            <Button size="small" variant="contained" onClick={saveSettings}
+              disabled={savingCfg} sx={{ bgcolor: COLOR }}>
+              {savingCfg ? <CircularProgress size={18} /> : 'ذخیرهٔ تنظیمات'}
+            </Button>
+          </Box>
+        </Paper>
+      )}
+
       {/* Upload */}
       <Paper variant="outlined" sx={{ p: 2, mb: 2, borderRadius: '12px' }}>
         <Typography variant="subtitle2" fontWeight={700} sx={{ mb: 0.5 }}>
@@ -330,6 +455,7 @@ const UpdatePanel = () => {
                 <TableRow>
                   <TableCell>نسخه</TableCell>
                   <TableCell>وضعیت</TableCell>
+                  <TableCell>کانال</TableCell>
                   <TableCell>امضا</TableCell>
                   <TableCell>حجم</TableCell>
                   <TableCell>تاریخ</TableCell>
@@ -349,11 +475,25 @@ const UpdatePanel = () => {
                       )}
                     </TableCell>
                     <TableCell>{statusChip(release)}</TableCell>
+                    <TableCell>
+                      <Chip size="small"
+                        variant={release.channel === status.channel ? 'filled' : 'outlined'}
+                        color={release.channel === status.channel ? 'default' : 'warning'}
+                        label={release.channel || 'stable'} />
+                    </TableCell>
                     <TableCell>{signatureChip(release.signature_status)}</TableCell>
                     <TableCell>{formatBytes(release.size)}</TableCell>
                     <TableCell>{toJalali(String(release.created_at || '').slice(0, 10))}</TableCell>
                     <TableCell>{release.uploaded_by || '—'}</TableCell>
                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                      <Tooltip title="زمان‌بندی نصب">
+                        <span>
+                          <IconButton size="small" disabled={!status.apply_enabled}
+                            onClick={() => { setScheduleTarget(release); setScheduleForce(false); }}>
+                            <ScheduleIcon fontSize="small" />
+                          </IconButton>
+                        </span>
+                      </Tooltip>
                       <Button size="small" variant="contained" startIcon={<PlayArrowIcon />}
                         disabled={!status.apply_enabled || release.status === 'applied'}
                         onClick={() => { setConfirmText(''); setApplyTarget(release); }}
@@ -372,6 +512,54 @@ const UpdatePanel = () => {
           </TableContainer>
         )}
       </Paper>
+
+      {/* Scheduled installs */}
+      {(status.schedules || []).length > 0 && (
+        <Paper variant="outlined" sx={{ mt: 2, borderRadius: '12px', overflow: 'hidden' }}>
+          <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider' }}>
+            <Typography variant="subtitle2" fontWeight={700}>زمان‌بندی‌های نصب</Typography>
+          </Box>
+          <TableContainer>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>نسخه</TableCell>
+                  <TableCell>زمان اجرا</TableCell>
+                  <TableCell>وضعیت</TableCell>
+                  <TableCell>ثبت‌کننده</TableCell>
+                  <TableCell align="center">عملیات</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {(status.schedules || []).map((item) => (
+                  <TableRow key={item.id} hover>
+                    <TableCell>{item.version}</TableCell>
+                    <TableCell>
+                      {toJalali(String(item.scheduled_for || '').slice(0, 10))}
+                      {' — '}
+                      {String(item.scheduled_for || '').slice(11, 16)}
+                    </TableCell>
+                    <TableCell>
+                      <Chip size="small" label={item.status_display}
+                        color={item.status === 'pending' ? 'info'
+                          : item.status === 'queued' ? 'warning'
+                            : item.status === 'done' ? 'success' : 'default'} />
+                    </TableCell>
+                    <TableCell>{item.created_by || '—'}</TableCell>
+                    <TableCell align="center">
+                      {item.status === 'pending' && (
+                        <Button size="small" color="error" onClick={() => cancelSchedule(item.id)}>
+                          لغو
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        </Paper>
+      )}
 
       {/* Last run */}
       {status.last_run && (
@@ -421,11 +609,24 @@ const UpdatePanel = () => {
           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1.5 }}>
             شمارندهٔ خروج کاربران: {status?.countdown_seconds ?? 60} ثانیه
           </Typography>
+
+          {applyTarget?.channel && status?.channel && applyTarget.channel !== status.channel && (
+            <>
+              <Alert severity="info" sx={{ mt: 1.5 }}>
+                کانال بسته ({applyTarget.channel}) با کانال سیستم ({status.channel}) متفاوت است.
+              </Alert>
+              <FormControlLabel sx={{ mt: 1 }}
+                control={<Switch checked={forceApply}
+                  onChange={(event) => setForceApply(event.target.checked)} />}
+                label="نصب اجباری با وجود اختلاف کانال" />
+            </>
+          )}
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button onClick={() => setApplyTarget(null)} disabled={applying}>انصراف</Button>
           <Button variant="contained" color="error" disabled={applying || !applyTarget
-            || confirmText.trim() !== applyTarget.version}
+            || confirmText.trim() !== applyTarget.version
+            || ((applyTarget?.channel && status?.channel && applyTarget.channel !== status.channel) && !forceApply)}
             onClick={startApply}>
             {applying ? <CircularProgress size={20} /> : 'شروع به‌روزرسانی'}
           </Button>
@@ -475,6 +676,37 @@ const UpdatePanel = () => {
         </DialogContent>
         <DialogActions sx={{ px: 3, py: 1.5 }}>
           <Button onClick={() => setRunData(null)} disabled={Boolean(runId)}>بستن</Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Schedule dialog */}
+      <Dialog open={Boolean(scheduleTarget)} onClose={() => setScheduleTarget(null)}
+        maxWidth="xs" fullWidth>
+        <DialogTitle>زمان‌بندی نصب نسخهٔ {scheduleTarget?.version}</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
+            در زمان تعیین‌شده، نصب به‌طور خودکار آغاز می‌شود و همهٔ کاربران اعلان خروج می‌گیرند.
+          </Typography>
+          <Stack spacing={2}>
+            <JalaliDatePicker fullWidth label="تاریخ اجرا" value={scheduleDate}
+              onChange={(value) => setScheduleDate(value)} />
+            <TextField fullWidth size="small" type="time" label="ساعت اجرا"
+              value={scheduleTime} onChange={(event) => setScheduleTime(event.target.value)}
+              InputLabelProps={{ shrink: true }} />
+          </Stack>
+          {scheduleTarget?.channel && status?.channel && scheduleTarget.channel !== status.channel && (
+            <FormControlLabel sx={{ mt: 1 }}
+              control={<Switch checked={scheduleForce}
+                onChange={(event) => setScheduleForce(event.target.checked)} />}
+              label="زمان‌بندی اجباری با وجود اختلاف کانال" />
+          )}
+        </DialogContent>
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button onClick={() => setScheduleTarget(null)}>انصراف</Button>
+          <Button variant="contained" disabled={!scheduleDate} onClick={submitSchedule}
+            sx={{ bgcolor: COLOR }}>
+            ثبت زمان‌بندی
+          </Button>
         </DialogActions>
       </Dialog>
     </Box>

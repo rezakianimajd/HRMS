@@ -1,0 +1,14 @@
+[Unit]
+Description=Kian ERP scheduled update runner (apply_due_updates)
+After=network.target postgresql.service redis-server.service
+
+[Service]
+Type=oneshot
+User=hrms
+Group=hrms
+WorkingDirectory=/opt/hrms/hrms_project
+Environment=DJANGO_SETTINGS_MODULE=hrms_project.settings.production
+ExecStart=/bin/bash -lc 'set -a; . /opt/hrms/.env; set +a; cd /opt/hrms/hrms_project && exec /opt/hrms/venv/bin/python manage.py apply_due_updates'
+TimeoutStartSec=300
+StandardOutput=append:/var/log/hrms/updater.log
+StandardError=append:/var/log/hrms/updater.log

@@ -196,6 +196,9 @@ BASE_FILE_STORAGE_PATH = os.environ.get('BASE_FILE_STORAGE_PATH', '/var/hr_data/
 UPDATE_ROOT = os.environ.get('UPDATE_ROOT', str(Path(BASE_DIR).parent / 'updates'))
 UPDATE_PUBLIC_KEY = os.environ.get('UPDATE_PUBLIC_KEY', '')
 UPDATE_MAX_PACKAGE_MB = int(os.environ.get('UPDATE_MAX_PACKAGE_MB', '512'))
+# Optional Bale bot token used for update notifications (per-chat ids live in
+# the UpdateSettings row, editable from the panel).
+UPDATE_BALE_TOKEN = os.environ.get('UPDATE_BALE_TOKEN', '')
 # When no public key is configured, packages are accepted but flagged as
 # "unconfigured" and the UI warns the administrator.
 UPDATE_ALLOW_UNSIGNED = os.environ.get('UPDATE_ALLOW_UNSIGNED', 'True').lower() in ('true', '1', 'yes')

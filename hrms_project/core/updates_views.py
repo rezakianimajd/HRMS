@@ -4,8 +4,6 @@ Phase 1 covers: uploading a signed package (chunked, resumable), verifying it
 and keeping a history. Applying a package stays disabled (``APPLY_ENABLED``)
 until the privileged updater service of phase 2 is installed on the server.
 """
-import json
-import os
 import shutil
 import uuid
 from datetime import timedelta
@@ -14,6 +12,7 @@ from pathlib import Path
 from django.conf import settings
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
+from django.utils.dateparse import parse_datetime
 from rest_framework.decorators import api_view, parser_classes, permission_classes
 from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -22,8 +21,9 @@ from rest_framework.response import Response
 from core import updates_service as svc
 from core.maintenance import read_maintenance
 from core.models import (
-    AppRelease, SystemBroadcast, UpdateRun, UpdateSettings, UpdateUpload,
+    AppRelease, SystemBroadcast, UpdateRun, UpdateSchedule, UpdateSettings, UpdateUpload,
 )
+from core.update_notify import notify_event
 from core.version import VERSION
 from core.views import _public_schema
 
@@ -82,16 +82,6 @@ def _run_payload(run):
     }
 
 
-def _enqueue(payload):
-    """Atomically drop a request file for the systemd path unit."""
-    queue = svc.update_root() / 'queue'
-    queue.mkdir(parents=True, exist_ok=True)
-    tmp = queue / '.request.tmp'
-    with open(tmp, 'w', encoding='utf-8') as handle:
-        json.dump(payload, handle, ensure_ascii=False, indent=2)
-    os.replace(tmp, queue / 'request.json')
-
-
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @_public_schema
@@ -123,6 +113,10 @@ def updates_status(request):
         'update_root': str(svc.update_root()),
         'disk_free': disk_free,
         'releases': [_release_payload(item) for item in AppRelease.objects.all()[:20]],
+        'schedules': [
+            _schedule_payload(item)
+            for item in UpdateSchedule.objects.select_related('release', 'created_by')[:10]
+        ],
         'last_run': _run_payload(last_run) if last_run else None,
         'maintenance': read_maintenance(),
         'queue_pending': (svc.update_root() / 'queue' / 'request.json').exists(),
@@ -394,47 +388,29 @@ def release_apply(request, release_id):
         return Response({'error': 'درخواست دیگری در صف اجرا است؛ چند لحظه صبر کنید.'}, status=409)
 
     config = UpdateSettings.load()
-    countdown = int(config.logout_countdown_seconds or 60)
-    now = timezone.now()
+    if (release.channel and config.channel and release.channel != config.channel
+            and str(request.data.get('force', '')).lower() not in ('1', 'true', 'yes')):
+        return Response({
+            'error': (
+                f'کانال بسته ({release.channel}) با کانال سیستم ({config.channel}) متفاوت است. '
+                'کانال را در تنظیمات به‌روزرسانی تغییر دهید یا نصب اجباری را انتخاب کنید.'
+            ),
+            'channel_mismatch': True,
+        }, status=400)
 
-    run = UpdateRun.objects.create(
-        release=release,
-        from_version=VERSION,
-        to_version=release.version,
-        started_by=request.user,
-        steps=[{'name': 'queued', 'status': 'done', 'at': now.isoformat()}],
+    try:
+        run, broadcast = svc.enqueue_apply(release, user=request.user)
+    except Exception as exc:  # noqa: BLE001
+        return Response({'error': f'ثبت درخواست ناموفق بود: {exc}'}, status=500)
+
+    notify_event(
+        'به‌روزرسانی در صف اجرا قرار گرفت',
+        f'نسخهٔ {release.version} توسط {request.user.username} برای نصب ثبت شد.',
     )
-
-    broadcast = SystemBroadcast.objects.create(
-        title=f'به‌روزرسانی سیستم به نسخهٔ {release.version}',
-        message=(
-            f'سیستم تا {countdown} ثانیهٔ دیگر برای به‌روزرسانی بسته می‌شود. '
-            'لطفاً کار خود را ذخیره کنید و از سیستم خارج شوید.'
-        ),
-        level=SystemBroadcast.Level.MAINTENANCE,
-        action=SystemBroadcast.Action.LOGOUT,
-        starts_at=now + timedelta(seconds=countdown),
-        expires_at=now + timedelta(hours=2),
-    )
-
-    _enqueue({
-        'action': 'apply',
-        'run_id': run.id,
-        'release_id': release.id,
-        'artifact': str(artifact),
-        'version': release.version,
-        'from_version': VERSION,
-        'countdown_seconds': countdown,
-        'requested_by': request.user.username,
-        'requested_at': now.isoformat(),
-    })
-
-    release.status = AppRelease.Status.STAGED
-    release.save(update_fields=['status'])
 
     return Response({
         'run': _run_payload(run),
-        'countdown_seconds': countdown,
+        'countdown_seconds': int(config.logout_countdown_seconds or 60),
         'broadcast_id': broadcast.id,
         'message': 'درخواست نصب ثبت شد؛ سرویس به‌روزرسان تا لحظاتی آن را آغاز می‌کند.',
     }, status=202)
@@ -468,13 +444,17 @@ def run_rollback(request, run_id):
         expires_at=now + timedelta(hours=1),
     )
 
-    _enqueue({
+    svc.enqueue_request({
         'action': 'rollback',
         'run_id': run.id,
         'requested_by': request.user.username,
         'requested_at': now.isoformat(),
         'countdown_seconds': 30,
     })
+    notify_event(
+        'بازگشت به نسخهٔ قبلی در صف اجرا قرار گرفت',
+        f'درخواست بازگشت توسط {request.user.username} ثبت شد.',
+    )
     return Response({'queued': True, 'run_id': run.id}, status=202)
 
 
@@ -498,3 +478,144 @@ def run_detail(request, run_id):
     run = get_object_or_404(UpdateRun, pk=run_id)
     return Response(_run_payload(run))
 
+
+
+
+# --------------------------------------------------------------------------- #
+# Settings & scheduling (phase 3)
+# --------------------------------------------------------------------------- #
+def _settings_payload(config):
+    return {
+        'channel': config.channel,
+        'logout_countdown_seconds': config.logout_countdown_seconds,
+        'keep_releases': config.keep_releases,
+        'notify_email': config.notify_email,
+        'notify_bale': config.notify_bale,
+        'notify_emails': config.notify_emails or [],
+        'notify_bale_chat_ids': config.notify_bale_chat_ids or [],
+        'bale_configured': bool((getattr(settings, 'UPDATE_BALE_TOKEN', '') or '').strip()),
+    }
+
+
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+@_public_schema
+def update_settings_view(request):
+    """Read or update the global updater configuration."""
+    if not _can_manage(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    config = UpdateSettings.load()
+
+    if request.method == 'PATCH':
+        if 'channel' in request.data:
+            channel = str(request.data.get('channel') or '').strip()
+            if channel not in ('stable', 'beta'):
+                return Response({'error': 'کانال باید stable یا beta باشد.'}, status=400)
+            config.channel = channel
+
+        try:
+            if 'logout_countdown_seconds' in request.data:
+                config.logout_countdown_seconds = max(
+                    10, min(int(request.data['logout_countdown_seconds']), 600),
+                )
+            if 'keep_releases' in request.data:
+                config.keep_releases = max(1, min(int(request.data['keep_releases']), 20))
+        except (TypeError, ValueError):
+            return Response({'error': 'مقدار عددی نامعتبر است.'}, status=400)
+
+        for flag in ('notify_email', 'notify_bale'):
+            if flag in request.data:
+                setattr(config, flag, bool(request.data[flag]))
+
+        if 'notify_emails' in request.data:
+            values = request.data['notify_emails'] or []
+            if isinstance(values, str):
+                values = [item.strip() for item in values.split(',') if item.strip()]
+            config.notify_emails = [str(item).strip() for item in values if str(item).strip()]
+
+        if 'notify_bale_chat_ids' in request.data:
+            values = request.data['notify_bale_chat_ids'] or []
+            if isinstance(values, str):
+                values = [item.strip() for item in values.split(',') if item.strip()]
+            config.notify_bale_chat_ids = [str(item).strip() for item in values if str(item).strip()]
+
+        config.save()
+
+    return Response(_settings_payload(config))
+
+
+def _schedule_payload(schedule):
+    return {
+        'id': schedule.id,
+        'release_id': schedule.release_id,
+        'version': schedule.release.version if schedule.release else '',
+        'scheduled_for': schedule.scheduled_for,
+        'status': schedule.status,
+        'status_display': schedule.get_status_display(),
+        'note': schedule.note,
+        'queued_run': schedule.queued_run_id,
+        'created_by': schedule.created_by.username if schedule.created_by else '',
+        'created_at': schedule.created_at,
+    }
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@_public_schema
+def schedules_view(request):
+    """List scheduled updates or schedule a release."""
+    if not _can_manage(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    if request.method == 'GET':
+        items = UpdateSchedule.objects.select_related('release', 'created_by')[:50]
+        return Response([_schedule_payload(item) for item in items])
+
+    release_id = request.data.get('release_id')
+    release = get_object_or_404(AppRelease, pk=release_id)
+
+    raw = request.data.get('scheduled_for')
+    when = parse_datetime(str(raw)) if raw else None
+    if when is None:
+        return Response({'error': 'زمان اجرا نامعتبر است (مثال: 2026-10-20T02:00:00).'}, status=400)
+    if timezone.is_naive(when):
+        when = timezone.make_aware(when)
+    if when <= timezone.now():
+        return Response({'error': 'زمان اجرا باید در آینده باشد.'}, status=400)
+
+    if UpdateSchedule.objects.filter(status=UpdateSchedule.Status.PENDING).exists():
+        return Response({'error': 'یک زمان‌بندی در انتظار اجرا وجود دارد.'}, status=409)
+
+    config = UpdateSettings.load()
+    if (release.channel and config.channel and release.channel != config.channel
+            and str(request.data.get('force', '')).lower() not in ('1', 'true', 'yes')):
+        return Response({
+            'error': f'کانال بسته ({release.channel}) با کانال سیستم ({config.channel}) متفاوت است.',
+            'channel_mismatch': True,
+        }, status=400)
+
+    schedule = UpdateSchedule.objects.create(
+        release=release,
+        scheduled_for=when,
+        created_by=request.user,
+        note=str(request.data.get('note') or ''),
+    )
+    return Response(_schedule_payload(schedule), status=201)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+@_public_schema
+def schedule_cancel(request, schedule_id):
+    """Cancel a pending schedule."""
+    if not _can_manage(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    schedule = get_object_or_404(UpdateSchedule, pk=schedule_id)
+    if schedule.status != UpdateSchedule.Status.PENDING:
+        return Response({'error': 'فقط زمان‌بندی در انتظار قابل لغو است.'}, status=400)
+
+    schedule.status = UpdateSchedule.Status.CANCELLED
+    schedule.save(update_fields=['status'])
+    return Response({'cancelled': True})

@@ -370,6 +370,18 @@ sudo bash backup.sh        # دیتابیس + پوشهٔ مدیا (cron روزا
 - نقاط پایش: `GET /api/health/` و `GET /api/system/version/` (بدون احراز هویت).
 - پیش‌نیاز nginx: `client_max_body_size 512M` و `Cache-Control: no-store` روی `index.html` — اسکریپت `scripts/patch_nginx_for_updates.sh` این کار را انجام می‌دهد.
 
+**فاز ۳ — زمان‌بندی، کانال و اطلاع‌رسانی:**
+
+| قابلیت | جزئیات |
+|---|---|
+| 🏷️ کانال انتشار | `stable` / `beta` — بستهٔ ناهمخوان با کانال سیستم فقط با «نصب اجباری» پذیرفته می‌شود |
+| 🕒 زمان‌بندی نصب | دکمهٔ زمان‌بندی روی هر بسته → تاریخ شمسی + ساعت؛ تایمر `hrms-update-schedule.timer` هر ۲ دقیقه `apply_due_updates` را اجرا می‌کند |
+| 📧 اطلاع‌رسانی | ایمیل (SMTP) و بله؛ کانال، آدرس‌ها و چت‌ها از پنل (`/api/system/updates/settings/`) |
+| 🧹 نگهداری | فقط N نسخهٔ آخر (`keep_releases`) از اسنپ‌شات‌ها و دامپ‌ها نگه داشته می‌شود |
+| 🗓️ API جدید | `GET/PATCH /api/system/updates/settings/` · `GET/POST /api/system/updates/schedules/` · `DELETE .../schedules/{id}/` |
+
+> برای فعال‌شدن اعلان بله، `UPDATE_BALE_TOKEN` را در `.env` بگذارید و شناسهٔ چت‌ها را در پنل وارد کنید.
+
 راهنمای عملیات روزمره: [SERVER_UPDATE.md](SERVER_UPDATE.md)
 
 ---
@@ -876,6 +888,18 @@ Day-to-day operations guide: [SERVER_UPDATE.md](SERVER_UPDATE.md)
 - On failure the previous code is restored automatically; database rollback stays manual via the `pg_dump` taken before the run.
 - Probes: `GET /api/health/` and `GET /api/system/version/` (no authentication).
 - nginx prerequisites: `client_max_body_size 512M` and `Cache-Control: no-store` on `index.html` — handled by `scripts/patch_nginx_for_updates.sh`.
+
+**Phase 3 — scheduling, channels & notifications:**
+
+| Feature | Details |
+|---|---|
+| 🏷️ Release channel | `stable` / `beta` — a mismatching package is rejected unless "force install" is ticked |
+| 🕒 Scheduled install | Schedule button per package → Jalali date + time; `hrms-update-schedule.timer` runs `apply_due_updates` every 2 minutes |
+| 📧 Notifications | Email (SMTP) and Bale; channel, addresses and chats are configurable from the panel (`/api/system/updates/settings/`) |
+| 🧹 Retention | Only the newest N (`keep_releases`) snapshots and DB dumps are kept |
+| 🗓️ New APIs | `GET/PATCH /api/system/updates/settings/` · `GET/POST /api/system/updates/schedules/` · `DELETE .../schedules/{id}/` |
+
+> To enable Bale notifications set `UPDATE_BALE_TOKEN` in `.env` and add chat ids in the panel.
 
 ---
 

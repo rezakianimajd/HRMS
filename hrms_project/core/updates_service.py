@@ -15,6 +15,7 @@ from __future__ import annotations
 import base64
 import hashlib
 import json
+import os
 import tarfile
 import zipfile
 from pathlib import Path
@@ -199,4 +200,76 @@ def inspect_package(path: Path, current_version: str) -> dict:
         'signature_status': signature_status,
         'warnings': warnings,
     }
+
+
+
+# --------------------------------------------------------------------------- #
+# Queue helpers (shared by the API views and the scheduled-update command)
+# --------------------------------------------------------------------------- #
+def queue_file() -> Path:
+    return update_root() / 'queue' / 'request.json'
+
+
+def enqueue_request(payload: dict) -> Path:
+    """Atomically drop a request file for the systemd path unit."""
+    queue = update_root() / 'queue'
+    queue.mkdir(parents=True, exist_ok=True)
+    target = queue / 'request.json'
+    tmp = queue / '.request.tmp'
+    with open(tmp, 'w', encoding='utf-8') as handle:
+        json.dump(payload, handle, ensure_ascii=False, indent=2)
+    os.replace(tmp, target)
+    return target
+
+
+def enqueue_apply(release, *, user=None, countdown=None):
+    """Create the run + logout broadcast + queue request for an installation."""
+    from datetime import timedelta  # noqa: PLC0415
+
+    from django.utils import timezone  # noqa: PLC0415
+
+    from core.models import SystemBroadcast, UpdateRun, UpdateSettings  # noqa: PLC0415
+    from core.version import VERSION  # noqa: PLC0415
+
+    config = UpdateSettings.load()
+    if countdown is None:
+        countdown = int(config.logout_countdown_seconds or 60)
+    countdown = int(countdown)
+    now = timezone.now()
+
+    run = UpdateRun.objects.create(
+        release=release,
+        from_version=VERSION,
+        to_version=release.version,
+        started_by=user,
+        steps=[{'name': 'queued', 'status': 'done', 'at': now.isoformat()}],
+    )
+
+    broadcast = SystemBroadcast.objects.create(
+        title=f'به‌روزرسانی سیستم به نسخهٔ {release.version}',
+        message=(
+            f'سیستم تا {countdown} ثانیهٔ دیگر برای به‌روزرسانی بسته می‌شود. '
+            'لطفاً کار خود را ذخیره کنید و از سیستم خارج شوید.'
+        ),
+        level=SystemBroadcast.Level.MAINTENANCE,
+        action=SystemBroadcast.Action.LOGOUT,
+        starts_at=now + timedelta(seconds=countdown),
+        expires_at=now + timedelta(hours=2),
+    )
+
+    enqueue_request({
+        'action': 'apply',
+        'run_id': run.id,
+        'release_id': release.id,
+        'artifact': str(release.artifact_path),
+        'version': release.version,
+        'from_version': VERSION,
+        'countdown_seconds': countdown,
+        'requested_by': user.username if user else 'system',
+        'requested_at': now.isoformat(),
+    })
+
+    release.status = release.Status.STAGED
+    release.save(update_fields=['status'])
+    return run, broadcast
 
