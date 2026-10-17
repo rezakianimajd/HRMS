@@ -8,15 +8,90 @@ from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
 
 
-def document_upload_path(instance, filename):
+def _archive_upload_path(instance, filename, *, module_key, label_fields, fallback_subdir):
     """
-    Dynamic upload path: company_{company_id}/employee_{employee_id}/documents/{uuid}_{filename}
+    مسیر آپلود را بر اساس «پروفایل بایگانی ماژول» می‌سازد.
+
+    ساختار خروجی (نسبت به MEDIA_ROOT):
+        archive/company_{id}/{root_folder}/{entity_label}/{unique}{ext}
+
+    اگر پروفایل مربوطه تعریف نشده باشد، مسیر قدیمی (fallback) برگردانده می‌شود
+    تا آپلود هرگز از کار نیفتد.
     """
     ext = os.path.splitext(filename)[1]
-    company_id = instance.company_id
-    employee_id = instance.employee_id
     unique_name = f"{uuid.uuid4().hex}{ext}"
-    return f"company_{company_id}/employee_{employee_id}/documents/{unique_name}"
+
+    try:
+        from core.engines.archive_storage_engine import archive_engine
+        from settings_app.models import StorageProfile
+
+        profile = StorageProfile.objects.filter(
+            company_id=instance.company_id, module_key=module_key, is_active=True,
+        ).first()
+        if profile:
+            fields = label_fields()
+            label = archive_engine.render_pattern(
+                profile.entity_folder_pattern, fields
+            ) or str(fields.get('code') or fields.get('number') or fields.get('id') or 'unnamed')
+
+            target_dir = archive_engine.entity_path(
+                instance.company_id, profile.root_folder, label, profile.include_company,
+            )
+            os.makedirs(target_dir, exist_ok=True)
+
+            relative = os.path.relpath(
+                os.path.join(target_dir, unique_name), archive_engine.media_root
+            )
+            return relative.replace('\\', '/')
+    except Exception:
+        # هر خطایی (نبود جدول/پروفایل، دسترسی و ...) نباید آپلود را متوقف کند.
+        pass
+
+    return f"{fallback_subdir}/{unique_name}"
+
+
+def document_upload_path(instance, filename):
+    """
+    مسیر مدرک پرسنل در بایگانی:
+        archive/company_{id}/employees/{code}_{last_name}/<uuid>.pdf
+    """
+    def fields():
+        emp = instance.employee
+        return {
+            'code': getattr(emp, 'employee_id', '') or '',
+            'name': getattr(emp, 'first_name', '') or '',
+            'last_name': getattr(emp, 'last_name', '') or '',
+            'id': emp.pk,
+            'national_id': getattr(emp, 'national_id', '') or '',
+        }
+
+    return _archive_upload_path(
+        instance, filename,
+        module_key='hr.employees',
+        label_fields=fields,
+        fallback_subdir=f"company_{instance.company_id}/employee_{instance.employee_id}/documents",
+    )
+
+
+def organization_document_upload_path(instance, filename):
+    """
+    مسیر سند سازمانی در بایگانی:
+        archive/company_{id}/organization/{category}/<uuid>.pdf
+    """
+    def fields():
+        try:
+            category = instance.get_category_display()
+        except Exception:
+            category = 'عمومی'
+        return {'category': category, 'name': category, 'id': instance.pk}
+
+    return _archive_upload_path(
+        instance, filename,
+        module_key='hrms.organization_documents',
+        label_fields=fields,
+        fallback_subdir='company_archive',
+    )
+
 
 
 class DocumentType(BaseModel):
@@ -84,7 +159,7 @@ class OrganizationDocument(BaseModel):
     issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
     expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
     file = models.FileField(
-        upload_to='company_archive/%Y/%m/',
+        upload_to=organization_document_upload_path,
         blank=True, null=True,
         verbose_name=_('فایل'),
     )

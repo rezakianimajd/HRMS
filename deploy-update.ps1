@@ -235,7 +235,15 @@ $BackendFiles += @(
     'hrms_project/settings_app/urls.py',
     'hrms_project/settings_app/admin.py',
     'hrms_project/settings_app/archive_views.py',
-    'hrms_project/settings_app/migrations/0012_storageprofile_archivefolder.py'
+    'hrms_project/settings_app/migrations/0012_storageprofile_archivefolder.py',
+    # اتصال آپلودها به موتور بایگانی (مدارک پرسنل/قرارداد/سازمانی)
+    'hrms_project/documents/models.py',
+    'hrms_project/documents/migrations/0005_alter_organizationdocument_file.py',
+    'hrms_project/contracts/migrations/0025_alter_contractdocument_file.py',
+    # دستور انتقال فایل‌های موجود به ساختار archive/
+    'hrms_project/documents/management/__init__.py',
+    'hrms_project/documents/management/commands/__init__.py',
+    'hrms_project/documents/management/commands/archive_existing_files.py'
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',

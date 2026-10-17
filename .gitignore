@@ -61,5 +61,8 @@ _hrms-files.tgz
 
 # بستهٔ انتقال آفلاین (wheel/bundle/build) — روی گیت ذخیره نمیشود
 _transfer/
+# اسکریپت‌های کمکی محلی (فقط روی سیستم توسعه)
+_mgmt.bat
+_build.bat
 
 
