@@ -130,6 +130,40 @@ sudo tail -n 50 /var/log/hrms/error.log
 
 ---
 
+## بایگانی فایل‌ها (ساختار archive/)
+
+آپلود مدارک پرسنل، اسناد قرارداد و اسناد سازمانی مستقیماً در ساختار بایگانی
+ذخیره می‌شود:
+
+```
+/var/www/hrms/media/archive/company_<id>/<root_folder>/<entity_folder>/<uuid>.<ext>
+```
+
+مثال: `archive/company_1/employees/1001_احمدی/…pdf`
+
+- الگوی نام پوشه از «تنظیمات → تنظیمات عمومی → ذخیره‌سازی و فایل‌ها» خوانده می‌شود
+  (`StorageProfile.entity_folder_pattern`).
+- اگر برای شرکتی پروفایلی تعریف نشده باشد، آپلود با مسیر قدیمی
+  (`company_x/employee_y/documents/`) انجام می‌شود تا سرویس قطع نشود.
+
+**انتقال فایل‌های قدیمی** (یک‌بار، پس از `-Migrate`):
+
+```bash
+# پیش‌نمایش (هیچ فایلی جابه‌جا نمی‌شود)
+cd /opt/hrms/hrms_project
+sudo -u hrms bash -lc 'set -a && . ./.env && set +a && \
+  DJANGO_SETTINGS_MODULE=hrms_project.settings.production \
+  /opt/hrms/venv/bin/python manage.py archive_existing_files'
+
+# اجرای واقعی
+... manage.py archive_existing_files --apply
+```
+
+یا از ویندوز: `.\deploy-update.ps1 -Archive -LocalBuild -NoBuild -Migrate -MoveFiles`
+
+
+---
+
 ## ۴) بررسی پیکربندی Nginx (مهم برای مرحله ۸)
 
 برای اطلاع از اینکه Nginx از کجا سرو می‌کند:
