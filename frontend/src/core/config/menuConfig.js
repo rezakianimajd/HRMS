@@ -158,8 +158,23 @@ const settingsMenu = [
     title: 'خانه',
     color: '#6366f1',
     items: [
-      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
       comingSoon('/settings/dashboard', 'settings-dashboard', 'داشبورد', <DashboardIcon />, '#6366f1', true),
+    ],
+  },
+  {
+    id: 'settings-general',
+    title: 'تنظیمات عمومی',
+    color: '#64748b',
+    items: [
+      { id: 'settings', title: 'تنظیمات عمومی', icon: <SettingsIcon />, path: '/settings', color: '#64748b', primary: false, ready: true },
+      { id: 'company-profile', title: 'مشخصات شرکت', icon: <BusinessIcon />, path: '/company-profile', color: '#6366f1', primary: false, ready: true },
+      { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
+      { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'audit', title: 'دفترچه فعالیت', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
+      { id: 'settings-backup', title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, path: '/settings?tab=backup', color: '#3b82f6', primary: false, ready: true },
+      { id: 'settings-management', title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, path: '/settings?tab=management', color: '#f97316', primary: false, ready: true },
+      { id: 'settings-notifications', title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, path: '/settings?tab=notifications', color: '#10b981', primary: false, ready: true },
+      { id: 'settings-updates', title: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, path: '/settings?tab=updates', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {
@@ -222,21 +237,6 @@ const settingsMenu = [
     items: [
       { id: 'contracts-definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/contracts-definitions', color: '#f59e0b', primary: true, ready: true },
       { id: 'contracts-settings-menu', title: 'انواع قرارداد و ارزیابی', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
-    ],
-  },
-  {
-    id: 'settings-general',
-    title: 'تنظیمات عمومی',
-    color: '#64748b',
-    items: [
-      { id: 'company-profile', title: 'مشخصات شرکت', icon: <BusinessIcon />, path: '/company-profile', color: '#6366f1', primary: false, ready: true },
-      { id: 'users', title: 'کاربران و نقش‌ها', icon: <AdminPanelSettingsIcon />, path: '/users', color: '#64748b', primary: false, ready: true },
-      { id: 'appearance', title: 'ظاهر و پوسته', icon: <PaletteIcon />, path: '/appearance', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'audit', title: 'دفترچه فعالیت', icon: <HistoryIcon />, path: '/audit', color: '#64748b', primary: false, ready: true },
-      { id: 'settings-backup', title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, path: '/settings?tab=backup', color: '#3b82f6', primary: false, ready: true },
-      { id: 'settings-management', title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, path: '/settings?tab=management', color: '#f97316', primary: false, ready: true },
-      { id: 'settings-notifications', title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, path: '/settings?tab=notifications', color: '#10b981', primary: false, ready: true },
-      { id: 'settings-updates', title: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, path: '/settings?tab=updates', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
 ];
