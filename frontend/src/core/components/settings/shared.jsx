@@ -105,7 +105,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
         borderBottom: '1px solid', borderColor: 'divider',
         background: `linear-gradient(135deg, ${alpha(ACCENT, 0.09)}, transparent)`,
       }}>
-        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ md: 'center' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.25} alignItems={{ md: 'center' }} useFlexGap>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1, minWidth: 0 }}>
             <Avatar variant="rounded" sx={{
               width: 34, height: 34, borderRadius: '10px',
@@ -121,7 +121,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
             </Box>
           </Box>
 
-          <Stack direction="row" spacing={1} alignItems="center">
+          <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
             <TextField
               size="small" value={search} onChange={(e) => setSearch(e.target.value)}
               placeholder="جستجو…"
@@ -182,7 +182,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                   {fields.map((f) => (
                     <TableCell key={f}>
                       {f === 'name' ? (
-                        <Stack direction="row" spacing={1} alignItems="center">
+                        <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
                           <Avatar sx={{
                             width: 28, height: 28, fontSize: 11, fontWeight: 800,
                             bgcolor: alpha(ACCENT, 0.12), color: ACCENT,

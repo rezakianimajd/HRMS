@@ -90,7 +90,7 @@ const SettingRow = ({ meta, value, onSave }) => {
     <Box>
       <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
       <Typography sx={{ fontSize: 10.5, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
-      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }}>
+      <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} useFlexGap>
         <TextField
           size="small" fullWidth
           type={meta.type === 'number' ? 'number' : 'text'}

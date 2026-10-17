@@ -29,7 +29,7 @@ const CARD_SX = {
 
 export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT.indigo }) => (
   <Paper elevation={0} sx={{ ...CARD_SX, p: { xs: 1.5, md: 1.9 }, mb: 1.75 }}>
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems={{ sm: 'center' }}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems={{ sm: 'center' }} useFlexGap>
       <Avatar variant="rounded" sx={{
         width: 40, height: 40, borderRadius: '12px',
         bgcolor: alpha(color, 0.14), color,
@@ -37,7 +37,7 @@ export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT
         {React.cloneElement(icon, { sx: { fontSize: 21 } })}
       </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap">
+        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
           <Typography sx={{ fontSize: { xs: 16.5, md: 18.5 }, fontWeight: 900, letterSpacing: '-.01em' }}>
             {title}
           </Typography>
@@ -104,7 +104,7 @@ export const TabsCard = ({ tabs = [], value, onChange, activeColor = SOFT.indigo
           icon={React.cloneElement(tab.icon, { sx: { fontSize: 17 } })}
           iconPosition="start"
           label={(
-            <Stack direction="row" spacing={0.75} alignItems="center">
+            <Stack direction="row" spacing={0.75} alignItems="center" useFlexGap>
               <span>{tab.label}</span>
               {tab.badge != null && tab.badge !== '' ? (
                 <Chip

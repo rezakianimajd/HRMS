@@ -290,7 +290,7 @@ const ArchiveBrowser = ({ profile, open, onClose, flash, onChanged }) => {
                   <TableRow key={`d-${dir.path}`} hover sx={{ cursor: 'pointer' }}
                     onClick={() => openFolder(dir.path)}>
                     <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
                         <FolderIcon sx={{ fontSize: 20, color: '#f59e0b' }} />
                         <Typography variant="body2" fontWeight={700}>{dir.name}</Typography>
                         {dir.record_id && <Chip size="small" label="ثبت‌شده" sx={{ height: 18, fontSize: 10 }} />}
@@ -320,7 +320,7 @@ const ArchiveBrowser = ({ profile, open, onClose, flash, onChanged }) => {
                 {filtered.files.map((file) => (
                   <TableRow key={`f-${file.path}`} hover>
                     <TableCell>
-                      <Stack direction="row" spacing={1} alignItems="center">
+                      <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
                         <FileGlyph name={file.name} />
                         <Typography variant="body2" noWrap sx={{ maxWidth: 320 }}>{file.name}</Typography>
                       </Stack>
@@ -478,7 +478,7 @@ const StorageArchivePanel = () => {
         border: '1px solid', borderColor: 'divider',
         boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
       }}>
-        <Stack direction="row" alignItems="center" spacing={1.25} mb={1.5} flexWrap="wrap">
+        <Stack direction="row" alignItems="center" spacing={1.25} mb={1.5} flexWrap="wrap" useFlexGap>
           <Avatar variant="rounded" sx={{
             width: 30, height: 30, borderRadius: '9px',
             bgcolor: alpha(COLOR, 0.14), color: COLOR,
@@ -529,7 +529,7 @@ const StorageArchivePanel = () => {
                 return (
                   <TableRow key={p.id} hover>
                     <TableCell>
-                      <Stack direction="row" spacing={1.75} alignItems="center">
+                      <Stack direction="row" spacing={1.75} alignItems="center" useFlexGap>
                         <Box sx={{
                           width: 9, height: 9, borderRadius: '50%', bgcolor: accent,
                           boxShadow: `0 0 0 3px ${accent}1f`, flexShrink: 0,
