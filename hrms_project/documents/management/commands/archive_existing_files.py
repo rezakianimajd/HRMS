@@ -27,6 +27,19 @@ class Command(BaseCommand):
         self.stdout.write('حالت: ' + ('اجرای واقعی' if apply else 'پیش‌نمایش (برای اجرا --apply)'))
 
         stats = {'moved': 0, 'skipped': 0, 'missing': 0, 'errors': 0}
+        for schema, ctx in self._contexts():
+            with ctx:
+                if schema:
+                    self.stdout.write(self.style.MIGRATE_HEADING(f'--- schema: {schema}'))
+                self._run(stats, apply, only)
+
+        self.stdout.write(self.style.SUCCESS(
+            f"انجام شد — منتقل: {stats['moved']} | ردشده: {stats['skipped']} | "
+            f"ناموجود: {stats['missing']} | خطا: {stats['errors']}"
+        ))
+
+    def _run(self, stats, apply, only):
+        """اجرای پردازش‌ها در schema فعلی."""
         if only in ('', 'employees'):
             self._process_documents(stats, apply)
             self._process_employee_assets(stats, apply)
@@ -35,16 +48,45 @@ class Command(BaseCommand):
         if only in ('', 'organization'):
             self._process_org_docs(stats, apply)
 
-        self.stdout.write(self.style.SUCCESS(
-            f"انجام شد — منتقل: {stats['moved']} | ردشده: {stats['skipped']} | "
-            f"ناموجود: {stats['missing']} | خطا: {stats['errors']}"
-        ))
+    def _contexts(self):
+        """
+        فهرست (نام schema، context) برای اجرا.
+
+        در حالت چند‌مستأجری (django-tenants) اگر روی schema «public» اجرا شویم،
+        دستور روی همهٔ شرکت‌ها تکرار می‌شود؛ جدول‌های ماژول‌ها فقط در schema هر
+        شرکت وجود دارند. اگر با tenant_command اجرا شده باشیم، فقط همان schema.
+        """
+        from contextlib import nullcontext
+
+        try:
+            from django.db import connection
+            from django_tenants.utils import get_tenant_model, schema_context
+        except Exception:  # noqa: BLE001 — نصب نبودن django-tenants
+            return [(None, nullcontext())]
+
+        if getattr(connection, 'schema_name', 'public') != 'public':
+            return [(None, nullcontext())]
+
+        try:
+            names = list(
+                get_tenant_model().objects.exclude(schema_name='public')
+                .values_list('schema_name', flat=True)
+            )
+        except Exception:  # noqa: BLE001
+            names = []
+
+        if not names:
+            return [(None, nullcontext())]
+        return [(name, schema_context(name)) for name in names]
 
     # ------------------------------------------------------------ helpers
     def _profile(self, company_id, module_key):
-        return StorageProfile.objects.filter(
-            company_id=company_id, module_key=module_key, is_active=True
-        ).first()
+        try:
+            return StorageProfile.objects.filter(
+                company_id=company_id, module_key=module_key, is_active=True
+            ).first()
+        except Exception:  # noqa: BLE001 — جدول در این schema وجود ندارد
+            return None
 
     def _label(self, profile, fields):
         return ArchiveStorageEngine.render_pattern(profile.entity_folder_pattern, fields)
@@ -118,8 +160,11 @@ class Command(BaseCommand):
                 'national_id': getattr(emp, 'national_id', '') or '',
             }
 
-        for doc in Document.objects.select_related('employee').iterator():
-            self._move(doc, 'hr.employees', lambda d=doc: fields_for(d), stats, apply)
+        try:
+            for doc in Document.objects.select_related('employee').iterator():
+                self._move(doc, 'hr.employees', lambda d=doc: fields_for(d), stats, apply)
+        except Exception as exc:  # noqa: BLE001 — جدول در این schema موجود نیست
+            self.stderr.write(f'  [ردشده] مدارک پرسنل: {exc}')
 
     def _process_employee_assets(self, stats, apply):
         """عکس پرسنل و تصویر امضای نسخهٔ قرارداد."""
@@ -136,12 +181,18 @@ class Command(BaseCommand):
                 'national_id': getattr(employee, 'national_id', '') or '',
             }
 
-        for emp in Employee.objects.iterator():
-            self._move(emp, 'hr.employees', lambda e=emp: fields_for(e), stats, apply, field='photo')
+        try:
+            for emp in Employee.objects.iterator():
+                self._move(emp, 'hr.employees', lambda e=emp: fields_for(e), stats, apply, field='photo')
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(f'  [ردشده] عکس پرسنل: {exc}')
 
-        for version in ContractVersion.objects.select_related('employee').iterator():
-            self._move(version, 'hr.employees', lambda v=version: fields_for(v.employee),
-                       stats, apply, field='signature_image')
+        try:
+            for version in ContractVersion.objects.select_related('employee').iterator():
+                self._move(version, 'hr.employees', lambda v=version: fields_for(v.employee),
+                           stats, apply, field='signature_image')
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(f'  [ردشده] تصویر امضا: {exc}')
 
     def _process_contracts(self, stats, apply):
         from contracts.models import ContractDocument
@@ -156,8 +207,11 @@ class Command(BaseCommand):
                 'id': contract.pk,
             }
 
-        for doc in ContractDocument.objects.select_related('contract').iterator():
-            self._move(doc, 'hrms.contracts', lambda d=doc: fields_for(d), stats, apply)
+        try:
+            for doc in ContractDocument.objects.select_related('contract').iterator():
+                self._move(doc, 'hrms.contracts', lambda d=doc: fields_for(d), stats, apply)
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(f'  [ردشده] مدارک قراردادها: {exc}')
 
     def _process_org_docs(self, stats, apply):
         from documents.models import OrganizationDocument
@@ -171,7 +225,10 @@ class Command(BaseCommand):
                 category = 'عمومی'
             return {'category': category, 'name': category, 'id': doc.pk}
 
-        for doc in OrganizationDocument.objects.iterator():
-            self._move(doc, 'hrms.organization_documents',
-                       lambda d=doc: fields_for(d), stats, apply)
+        try:
+            for doc in OrganizationDocument.objects.iterator():
+                self._move(doc, 'hrms.organization_documents',
+                           lambda d=doc: fields_for(d), stats, apply)
+        except Exception as exc:  # noqa: BLE001
+            self.stderr.write(f'  [ردشده] اسناد سازمانی: {exc}')
 

@@ -151,7 +151,6 @@ sudo tail -n 50 /var/log/hrms/error.log
   (`company_x/employee_y/documents/`) انجام می‌شود تا سرویس قطع نشود.
 
 **انتقال فایل‌های قدیمی** (یک‌بار، پس از `-Migrate`):
-
 ```bash
 # پیش‌نمایش (هیچ فایلی جابه‌جا نمی‌شود)
 cd /opt/hrms/hrms_project
@@ -162,6 +161,12 @@ sudo -u hrms bash -lc 'set -a && . ./.env && set +a && \
 # اجرای واقعی
 ... manage.py archive_existing_files --apply
 ```
+
+> **چند‌مستأجری (django-tenants):** جدول‌های ماژول‌ها (پرسنل، مدارک، قراردادها و …)
+> فقط در schema هر شرکت وجود دارند. دستور بالا اگر روی schema `public` اجرا شود،
+> خودش روی همهٔ شرکت‌ها (`standard`, `kpsmi`, …) می‌چرخد و برای هر schema جداگانه
+> پردازش می‌کند. اجرای دستی در یک شرکت هم با
+> `manage.py tenant_command archive_existing_files --schema=kpsmi -- --apply` ممکن است.
 
 یا از ویندوز: `.\deploy-update.ps1 -Archive -LocalBuild -NoBuild -Migrate -MoveFiles`
 

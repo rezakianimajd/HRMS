@@ -499,7 +499,12 @@ if (-not $SkipFrontend) {
     Step '۵/۶ کپی اَسِت‌ها به مسیر /static (لازم برای nginx)'
     ssh -t $Srv "sudo cp -a $AppDir/frontend/build/static/. $StaticDir/ && sudo chown -R ${AppUser}:${AppUser} $StaticDir"
     if ($LASTEXITCODE -ne 0) { throw 'کپی اَسِت‌ها به /static ناموفق بود.' }
-    Ok "$StaticDir به‌روزرسانی شد."
+
+    # پاک‌سازی نسخه‌های قدیمی (۵ نسخهٔ آخر نگه داشته می‌شود؛ فایل‌های .map
+    # قدیمی هر کدام چند مگابایت‌اند و دیسک را پر می‌کنند).
+    ssh -t $Srv "sudo bash -c 'cd $StaticDir/js 2>/dev/null && ls -1t main.*.js 2>/dev/null | tail -n +6 | xargs -r rm -f; cd $StaticDir/js 2>/dev/null && ls -1t main.*.js.map 2>/dev/null | tail -n +6 | xargs -r rm -f; cd $StaticDir/js 2>/dev/null && ls -1t main.*.js.LICENSE.txt 2>/dev/null | tail -n +6 | xargs -r rm -f; cd $StaticDir/css 2>/dev/null && ls -1t main.*.css 2>/dev/null | tail -n +6 | xargs -r rm -f; cd $StaticDir/css 2>/dev/null && ls -1t main.*.css.map 2>/dev/null | tail -n +6 | xargs -r rm -f'"
+    if ($LASTEXITCODE -ne 0) { Warn 'پاک‌سازی نسخه‌های قدیمی /static انجام نشد (ادامهٔ استقرار بی‌اثر است).' }
+    Ok "$StaticDir به‌روزرسانی شد (نسخه‌های قدیمی پاک‌سازی شدند)."
 } else { Warn 'فرانت‌اند رد شد (-SkipFrontend)' }
 
 # ---------------------------------------------------------------- ری‌استارت
@@ -509,6 +514,6 @@ if ($LASTEXITCODE -ne 0) { throw 'ری‌استارت ناموفق بود (کا�
 Ok 'سرویس‌ها ری‌استارت شدند.'
 
 Step 'تأیید نهایی'
-ssh $Srv "systemctl is-active gunicorn celery-worker celery-beat nginx; echo '--- storage backend:'; test -f $AppDir/hrms_project/settings_app/archive_views.py && echo 'archive_views OK' || echo 'MISSING archive_views'; echo '--- storage migration:'; ls $AppDir/hrms_project/settings_app/migrations/0012_*.py 2>/dev/null || echo 'MISSING 0012'; echo '--- jazzmin:'; $AppDir/venv/bin/pip show django-jazzmin 2>/dev/null | head -1 || echo 'jazzmin NOT installed'; echo '--- nginx /static/ alias:'; grep -n 'alias' /etc/nginx/sites-available/hrms 2>/dev/null || echo '  (config با این نام پیدا نشد)'; echo '--- hash در index.html:'; grep -o 'main\.[a-z0-9]*\.js' $AppDir/frontend/build/index.html; echo '--- hash موجود در ${StaticDir}:'; ls $StaticDir/js/ 2>/dev/null | grep main"
+ssh $Srv "systemctl is-active gunicorn celery-worker celery-beat nginx; echo '--- storage backend:'; test -f $AppDir/hrms_project/settings_app/archive_views.py && echo 'archive_views OK' || echo 'MISSING archive_views'; echo '--- storage migration:'; ls $AppDir/hrms_project/settings_app/migrations/0012_*.py 2>/dev/null || echo 'MISSING 0012'; echo '--- jazzmin:'; $AppDir/venv/bin/pip show django-jazzmin 2>/dev/null | head -1 || echo 'jazzmin NOT installed'; echo '--- nginx /static/ alias:'; grep -n 'alias' /etc/nginx/sites-available/hrms 2>/dev/null || echo '  (config با این نام پیدا نشد)'; echo '--- آخرین فایل‌های js در static:'; ls -1t $StaticDir/js/main.*.js 2>/dev/null | head -5; echo '--- ارجاع index.html:'; grep -o 'main\.[a-z0-9]*\.js' $AppDir/frontend/build/index.html | head -1"
 Ok 'کامل شد → مرورگر: Ctrl+Shift+R'
 
