@@ -108,6 +108,8 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                         <Chip size="small" label={
                           item[f] === 'executive' ? 'مدیریتی' : item[f] === 'expert' ? 'کارشناسی' : item[f] === 'operational' ? 'عملیاتی' : item[f]
                         } />
+                      ) : f === 'archive_folder' ? (
+                        item[f] ? <Chip size="small" color="primary" variant="outlined" label={item[f]} /> : '—'
                       ) : item[f]}
                     </TableCell>
                   ))}
@@ -144,6 +146,8 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
               );
             }
             const label = typeof extra === 'string' ? extra : extra.label;
+            const helper = (extra && typeof extra === 'object') ? extra.helper : '';
+            const singleLine = !!(extra && typeof extra === 'object' && extra.single);
             if (f === 'level') {
               return (
                 <FormControl key={f} fullWidth size="small" sx={{ mt: 1.5 }}>
@@ -158,7 +162,8 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
             }
             return (
               <TextField key={f} fullWidth size="small" label={label} value={form[f] || ''}
-                onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} sx={{ mt: 1.5 }} multiline />
+                onChange={e => setForm(p => ({ ...p, [f]: e.target.value }))} sx={{ mt: 1.5 }}
+                helperText={helper || undefined} multiline={!singleLine} />
             );
           })}
         </DialogContent>

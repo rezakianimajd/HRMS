@@ -5,16 +5,20 @@ import {
   FormControl, InputLabel, Select, MenuItem, CircularProgress, Alert,
   Box, Typography
 } from '@mui/material';
+import FolderIcon from '@mui/icons-material/Folder';
 import { useUploadDocument, useDocumentTypes } from '../../hooks/useDocuments';
 
 const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const { data: docTypes } = useDocumentTypes();
+  const typeOptions = Array.isArray(docTypes) ? docTypes : (docTypes?.results || []);
   const uploadMutation = useUploadDocument();
   const [form, setForm] = useState({
     title: '', document_type: '', issue_date: '', expiry_date: '',
     document_number: '', description: '',
   });
+  const selectedType = typeOptions.find((dt) => String(dt.id) === String(form.document_type));
+  const targetFolder = selectedType?.archive_subfolder || '';
   const [file, setFile] = useState(null);
   const [error, setError] = useState('');
   const [dragOver, setDragOver] = useState(false);
@@ -83,11 +87,17 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
           <InputLabel>{t('documents.document_type')}</InputLabel>
           <Select value={form.document_type} label={t('documents.document_type')}
             onChange={(e) => handleChange('document_type', e.target.value)}>
-            {Array.isArray(docTypes) && docTypes.map(dt => (
+            {typeOptions.map(dt => (
               <MenuItem key={dt.id} value={dt.id}>{dt.name}</MenuItem>
             ))}
           </Select>
         </FormControl>
+
+        {targetFolder ? (
+          <Alert severity="info" icon={<FolderIcon fontSize="small" />} sx={{ mb: 2 }}>
+            این مدرک در زیرپوشهٔ «{targetFolder}» داخل پروندهٔ این پرسنل بایگانی می‌شود.
+          </Alert>
+        ) : null}
 
         <TextField fullWidth size="small" label={t('documents.issue_date')} type="date" sx={{ mb: 2 }}
           value={form.issue_date} onChange={(e) => handleChange('issue_date', e.target.value)}

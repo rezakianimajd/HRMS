@@ -6,10 +6,15 @@ from documents.models import Document, DocumentType, OrganizationDocument
 
 
 class DocumentTypeSerializer(serializers.ModelSerializer):
+    archive_subfolder = serializers.CharField(read_only=True)
+
     class Meta:
         model = DocumentType
-        fields = ['id', 'name', 'code', 'is_active', 'created_at']
-        read_only_fields = ['id', 'created_at']
+        fields = [
+            'id', 'name', 'code', 'archive_folder', 'archive_subfolder',
+            'is_active', 'created_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'archive_subfolder']
 
 
 class DocumentListSerializer(serializers.ModelSerializer):

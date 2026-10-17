@@ -331,7 +331,10 @@ def default_storage_profiles():
         {
             'module_key': 'hr.employees', 'module_name': 'پرسنل',
             'root_folder': 'employees', 'entity_folder_pattern': '{code}_{last_name}',
-            'subfolders': ['مدارک هویتی', 'قرارداد و حکم', 'بیمه و مالیات', 'مدارک تحصیلی', 'سایر'],
+            'subfolders': [
+                'مدارک هویتی', 'قرارداد و حکم', 'بیمه و مالیات',
+                'مدارک تحصیلی', 'افراد تحت تکفل', 'سایر',
+            ],
             'color': '#ec4899', 'icon': 'badge', 'sort_order': 1,
             'description': 'پوشهٔ اختصاصی هر پرسنل شامل همهٔ مدارک مرتبط',
         },

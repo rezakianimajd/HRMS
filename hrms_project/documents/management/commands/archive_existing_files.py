@@ -1,5 +1,8 @@
 """انتقال فایل‌های موجود به ساختار بایگانی ماژول‌ها.
 
+مدارک افراد تحت تکفل (بر اساس «زیرپوشهٔ بایگانی» نوع مدرک یا نام/عنوان مدرک)
+به زیرپوشهٔ «افراد تحت تکفل» داخل پوشهٔ همان پرسنل منتقل می‌شوند.
+
 Usage:
     python manage.py archive_existing_files            # پیش‌نمایش
     python manage.py archive_existing_files --apply    # اجرای واقعی
@@ -11,6 +14,7 @@ import shutil
 from django.core.management.base import BaseCommand
 
 from core.engines.archive_storage_engine import ArchiveStorageEngine, archive_engine
+from documents.models import DEPENDENTS_FOLDER, is_dependent_label
 from settings_app.models import StorageProfile
 
 
@@ -91,7 +95,7 @@ class Command(BaseCommand):
     def _label(self, profile, fields):
         return ArchiveStorageEngine.render_pattern(profile.entity_folder_pattern, fields)
 
-    def _move(self, obj, module_key, fields, stats, apply, field='file'):
+    def _move(self, obj, module_key, fields, stats, apply, field='file', subfolder=''):
         current = getattr(obj, field, None)
         if not current or not getattr(current, 'name', None):
             return
@@ -104,9 +108,18 @@ class Command(BaseCommand):
             stats['skipped'] += 1
             return
 
+        if callable(subfolder):
+            try:
+                subfolder = subfolder() or ''
+            except Exception:  # noqa: BLE001 — نوع مدرک ناقص نباید مهاجرت را بشکند
+                subfolder = ''
+        safe_sub = archive_engine.sanitize(subfolder) if subfolder else ''
+
         target_dir = archive_engine.entity_path(
             obj.company_id, profile.root_folder, label, profile.include_company
         )
+        if safe_sub:
+            target_dir = os.path.join(target_dir, safe_sub)
         filename = os.path.basename(str(current.name))
         target_rel = os.path.relpath(
             os.path.join(target_dir, filename), archive_engine.media_root
@@ -160,9 +173,23 @@ class Command(BaseCommand):
                 'national_id': getattr(emp, 'national_id', '') or '',
             }
 
+        def folder_for(doc):
+            """زیرپوشهٔ بایگانی مدرک: «افراد تحت تکفل» برای مدارک وابستگان."""
+            try:
+                folder = doc.document_type.archive_subfolder
+            except Exception:  # noqa: BLE001
+                folder = ''
+            if not folder and is_dependent_label(doc.title, doc.description):
+                folder = DEPENDENTS_FOLDER
+            return folder
+
         try:
-            for doc in Document.objects.select_related('employee').iterator():
-                self._move(doc, 'hr.employees', lambda d=doc: fields_for(d), stats, apply)
+            docs = Document.objects.select_related('employee', 'document_type').iterator()
+            for doc in docs:
+                self._move(
+                    doc, 'hr.employees', lambda d=doc: fields_for(d), stats, apply,
+                    subfolder=lambda d=doc: folder_for(d),
+                )
         except Exception as exc:  # noqa: BLE001 — جدول در این schema موجود نیست
             self.stderr.write(f'  [ردشده] مدارک پرسنل: {exc}')
 

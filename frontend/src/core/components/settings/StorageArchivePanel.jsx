@@ -498,6 +498,7 @@ const StorageArchivePanel = () => {
                 <TableCell>ماژول</TableCell>
                 <TableCell>مسیر پوشه</TableCell>
                 <TableCell>الگوی نام</TableCell>
+                <TableCell>زیرپوشه‌ها</TableCell>
                 <TableCell>پوشه‌ها</TableCell>
                 <TableCell>فایل‌ها</TableCell>
                 <TableCell>حجم</TableCell>
@@ -508,7 +509,7 @@ const StorageArchivePanel = () => {
             <TableBody>
               {profiles.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7}>
+                  <TableCell colSpan={8}>
                     <EmptyState icon="🗂" title="ماژولی ثبت نشده است"
                       hint="با «ماژول جدید» یک پروفایل بایگانی بسازید." />
                   </TableCell>
@@ -546,6 +547,21 @@ const StorageArchivePanel = () => {
                       <Typography variant="caption" sx={{ fontFamily: 'monospace' }}>
                         {p.entity_folder_pattern || '—'}
                       </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ maxWidth: 230 }}>
+                        {(p.subfolders || []).length === 0 ? (
+                          <Typography variant="caption" color="textSecondary">—</Typography>
+                        ) : (p.subfolders || []).map((sub) => (
+                          <Chip key={sub} size="small" variant="outlined" label={sub}
+                            sx={{
+                              height: 20, fontSize: '0.65rem',
+                              ...(sub === 'افراد تحت تکفل'
+                                ? { color: '#7c3aed', borderColor: '#7c3aed66', fontWeight: 700 }
+                                : {}),
+                            }} />
+                        ))}
+                      </Stack>
                     </TableCell>
                     <TableCell>{formatPersianNumber(p.folder_count || 0)}</TableCell>
                     <TableCell>{formatPersianNumber(p.file_count || 0)}</TableCell>
@@ -638,7 +654,16 @@ const StorageArchivePanel = () => {
             <Grid item xs={12} md={6}>
               <ChipsField label="زیرپوشه‌های پیش‌فرض" value={form.subfolders}
                 onChange={(v) => setForm({ ...form, subfolders: v })}
-                placeholder="مثلاً: مدارک هویتی" />
+                placeholder="مثلاً: مدارک هویتی"
+                helper="برای بایگانی مدارک افراد تحت تکفل، زیرپوشهٔ «افراد تحت تکفل» را اضافه کنید." />
+              {form.module_key === 'hr.employees' && !(form.subfolders || []).includes('افراد تحت تکفل') && (
+                <Button size="small" startIcon={<AddIcon />} sx={{ mt: 0.5, color: '#7c3aed' }}
+                  onClick={() => setForm((p) => ({
+                    ...p, subfolders: [...(p.subfolders || []), 'افراد تحت تکفل'],
+                  }))}>
+                  افزودن «افراد تحت تکفل»
+                </Button>
+              )}
             </Grid>
             <Grid item xs={12} md={6}>
               <ChipsField label="فرمت‌های مجاز (اختیاری)" value={form.allowed_extensions}

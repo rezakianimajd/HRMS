@@ -245,7 +245,11 @@ $BackendFiles += @(
     'hrms_project/settings_app/migrations/0012_storageprofile_archivefolder.py',
     # اتصال آپلودها به موتور بایگانی (مدارک پرسنل/قرارداد/سازمانی)
     'hrms_project/documents/models.py',
+    'hrms_project/documents/serializers.py',
     'hrms_project/documents/migrations/0005_alter_organizationdocument_file.py',
+    # زیرپوشهٔ «افراد تحت تکفل» برای مدارک وابستگان
+    'hrms_project/documents/migrations/0006_documenttype_archive_folder.py',
+    'hrms_project/settings_app/migrations/0013_employees_dependents_subfolder.py',
     'hrms_project/contracts/migrations/0025_alter_contractdocument_file.py',
     # عکس پرسنل و تصویر امضا در پوشهٔ همان پرسنل
     'hrms_project/employees/models.py',
@@ -296,6 +300,9 @@ $BackendFiles += @(
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
+    'frontend/src/core/components/settings/shared.jsx',
+    'frontend/src/core/components/employee/DocumentUploadModal.jsx',
+    'frontend/src/pages/DefinitionsPage.jsx',
     'frontend/src/core/components/settings/GeneralSettingsPanel.jsx',
     'frontend/src/core/components/settings/UpdatePanel.jsx',
     'frontend/src/core/components/ui/SystemBroadcastGate.jsx',

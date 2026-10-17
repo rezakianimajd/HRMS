@@ -102,7 +102,20 @@ const DefinitionsPage = () => {
           {tabIndex === 1 && <EntityManager endpoint={ENDPOINTS.jobTitles} fields={['name', 'code']} extraFields={{ level: 'سطح' }} defaultForm={{ level: 'expert' }} title="مدیریت عناوین شغلی" />}
           {tabIndex === 2 && <EntityManager endpoint={ENDPOINTS.workLocations} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت محل‌های استقرار" />}
           {tabIndex === 3 && <EntityManager endpoint={ENDPOINTS.insuranceLists} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت لیست‌های بیمه" />}
-          {tabIndex === 4 && <EntityManager endpoint={ENDPOINTS.documentTypes} fields={['name', 'code']} title="مدیریت انواع مدارک" />}
+          {tabIndex === 4 && (
+            <EntityManager
+              endpoint={ENDPOINTS.documentTypes}
+              fields={['name', 'code']}
+              extraFields={{
+                archive_folder: {
+                  label: 'زیرپوشهٔ بایگانی',
+                  single: true,
+                  helper: 'مثلاً «افراد تحت تکفل»؛ خالی = تشخیص خودکار از نام/کد مدرک',
+                },
+              }}
+              title="مدیریت انواع مدارک"
+            />
+          )}
           {tabIndex === 5 && <EntityManager endpoint={ENDPOINTS.contractTypes} fields={['name', 'code']} extraFields={{ description: 'توضیحات' }} title="مدیریت انواع قرارداد" />}
           {tabIndex === 6 && (
             <EntityManager
