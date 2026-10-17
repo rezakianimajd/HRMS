@@ -171,7 +171,7 @@ const CompanyProfilePage = () => {
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="کد اقتصادی" value={toPersianDigits(form.economic_code || '')} onChange={e => set('economic_code', toEnglishDigits(e.target.value))} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شناسه مالیاتی" value={toPersianDigits(form.tax_id || '')} onChange={e => set('tax_id', toEnglishDigits(e.target.value))} /></Grid>
           <Grid item xs={12} md={4}>
-            <JalaliDatePicker fullWidth label="تاریخ تأسیس" value={form.established_date || ''} onChange={g => set('established_date', g)} />
+            <JalaliDatePicker fullWidth sx={fieldSx} label="تاریخ تأسیس" value={form.established_date || ''} onChange={g => set('established_date', g)} />
           </Grid>
         </Grid>
       </Section>
