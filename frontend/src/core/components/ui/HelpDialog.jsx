@@ -266,7 +266,7 @@ const HelpDialog = () => {
             <HelpOutlineIcon sx={{ fontSize: 30, color: '#fff' }} />
           </Avatar>
           <Box sx={{ flex: 1 }}>
-            <Typography variant="h5" fontWeight={800}>راهنمای جامع HRMS</Typography>
+            <Typography variant="h5" fontWeight={800}>راهنمای جامع Kian ERP</Typography>
             <Typography variant="body2" color="textSecondary">هر آنچه برای استفاده از سیستم نیاز دارید</Typography>
           </Box>
           <IconButton onClick={() => setOpen(false)} aria-label="بستن"

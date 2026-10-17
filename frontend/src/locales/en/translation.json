@@ -1,7 +1,8 @@
 {
   "app": {
-    "name": "Human Resource Management System",
-    "shortName": "HRMS"
+    "name": "Kian ERP — Integrated Business Management System",
+    "shortName": "Kian ERP",
+    "tagline": "Knowledge · Integration · Administration · Automation"
   },
   "nav": {
     "home": "Home",

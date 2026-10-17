@@ -9,7 +9,9 @@ from django.conf.urls.static import static
 
 def root_view(request):
     return JsonResponse({
-        'app': 'HRMS API',
+        'app': 'Kian ERP API',
+        'name': 'سامانه یکپارچه مدیریت کسب و کار کیان',
+        'name_en': 'Kian ERP — Integrated Business Management System',
         'version': '1.0.0',
         'frontend': 'http://localhost:3000',
         'endpoints': {

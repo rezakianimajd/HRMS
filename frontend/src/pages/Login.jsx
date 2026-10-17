@@ -216,7 +216,7 @@ const Login = () => {
                 </svg>
               </Avatar>
               <Typography variant="caption" style={{ display: 'block', textAlign: 'center', color: MUTED, fontWeight: 600, letterSpacing: 2, marginBottom: 8, fontSize: 11 }}>
-                {step === 'application' ? 'انتخاب ماژول' : 'سامانه یکپارچه مدیریت کسب و کار'}
+                {step === 'application' ? 'انتخاب ماژول' : 'سامانه یکپارچه مدیریت کسب و کار کیان'}
               </Typography>
               <Typography variant="h4" component="h1" fontWeight={900} letterSpacing="-1.5px" style={{ textAlign: 'center', width: '100%', marginBottom: 8 }}>
                 <span style={{
@@ -224,11 +224,11 @@ const Login = () => {
                   WebkitBackgroundClip: 'text', backgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                 }}>
-                  کیان
+                  Kian ERP
                 </span>
               </Typography>
               <Typography variant="caption" style={{ display: 'block', textAlign: 'center', color: MUTED, letterSpacing: 2, fontSize: 10.5 }}>
-                KIANI EBP · ENTERPRISE BUSINESS PLATFORM
+                KIAN ERP · INTEGRATED BUSINESS MANAGEMENT SYSTEM
               </Typography>
             </Box>
 

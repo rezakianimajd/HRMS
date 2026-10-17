@@ -1,8 +1,8 @@
 {
-  "name": "hrms-frontend",
+  "name": "kian-erp-frontend",
   "version": "0.1.0",
   "private": true,
-  "description": "HRMS Multi-Tenant Multi-Language Frontend",
+  "description": "Kian ERP — Integrated Business Management System (Multi-Tenant, Bilingual)",
   "dependencies": {
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",

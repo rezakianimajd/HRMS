@@ -15,7 +15,7 @@ class Command(BaseCommand):
     help = 'Create superuser, company, and sample data for development'
 
     def handle(self, *args, **options):
-        self.stdout.write(self.style.NOTICE('=== HRMS Dev Setup ==='))
+        self.stdout.write(self.style.NOTICE('=== Kian ERP Dev Setup ==='))
 
         # 1. Create superuser
         username, email, password = 'admin', 'admin@hrms.local', 'admin123'

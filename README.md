@@ -1,8 +1,11 @@
-# 🏢 HRMS 2026 — سامانهٔ جامع مدیریت منابع انسانی و مالی
+# 🏢 Kian ERP — سامانهٔ یکپارچه مدیریت کسب و کار کیان
 
 <div align="center">
 
-**Human Resource Management System · Multi-Tenant · Bilingual (FA/EN) · Enterprise Ready**
+**Kian ERP — Integrated Business Management System**
+**سامانهٔ یکپارچهٔ مدیریت کسب و کار کیان**
+
+`Multi-Tenant` · `Bilingual FA/EN` · `20 Modules` · `End-to-End: HR → Payroll → Accounting`
 
 [فارسی](#-فارسی) · [English](#-english) · [📚 نصب](INSTALLATION.md) · [🗄️ مهاجرت دیتابیس](DATABASE_MIGRATION.md) · [🔄 به‌روزرسانی سرور](SERVER_UPDATE.md) · [🎨 معرفی گرافیکی](docs/intro.html)
 
@@ -25,14 +28,30 @@
 
 | بخش | بخش | بخش |
 |---|---|---|
-| [معرفی](#معرفی) | [ماژول‌ها](#ماژولها) | [بایگانی فایل](#سامانهٔ-بایگانی-فایل-جدید) |
-| [نصب و راه‌اندازی](#نصب-و-راهاندازی) | [متغیرهای محیطی](#متغیرهای-محیطی-env) | [استقرار و به‌روزرسانی](#استقرار-و-بهروزرسانی) |
-| [ساختار پروژه](#ساختار-پروژه) | [امنیت](#چندمستأجری-و-امنیت) | [نقش‌ها](#نقشها-و-دسترسیها-rbac) |
-| [API](#رابط-api) | [تست](#تست-و-کیفیت-کد) | [عیب‌یابی](#عیبیابی-سریع) |
+| [معرفی](#معرفی) | [چرا Kian ERP؟](#چرا-kian-erp) | [ماژول‌ها](#ماژولها) |
+| [بایگانی فایل](#سامانهٔ-بایگانی-فایل-جدید) | [نصب و راه‌اندازی](#نصب-و-راهاندازی) | [متغیرهای محیطی](#متغیرهای-محیطی-env) |
+| [استقرار و به‌روزرسانی](#استقرار-و-بهروزرسانی) | [ساختار پروژه](#ساختار-پروژه) | [امنیت](#چندمستأجری-و-امنیت) |
+| [نقش‌ها](#نقشها-و-دسترسیها-rbac) | [API](#رابط-api) | [تست](#تست-و-کیفیت-کد) |
+| [عیب‌یابی](#عیبیابی-سریع) | | |
 
 ## معرفی
 
-**HRMS 2026** یک سامانهٔ یکپارچه و چند‌مستأجری (Multi-Tenant) برای مدیریت منابع انسانی، قراردادها، پروژه‌ها و چرخهٔ کامل مالی است. هر شرکت (tenant) با schema مستقل PostgreSQL، داده‌های خود را جدا نگه می‌دارد و می‌تواند ماژول‌های فعال خود را انتخاب کند.
+**Kian ERP** سامانهٔ یکپارچهٔ مدیریت کسب و کار کیان است؛ یک پلتفرم چند‌مستأجری (Multi-Tenant) که همهٔ فرایندهای سازمان را در یک پایگاه داده و یک تجربهٔ کاربری واحد به هم متصل می‌کند: از استخدام، حضور و غیاب و حقوق تا قرارداد، پروژه، تأمین کالا، خزانه‌داری، حسابداری و گزارش‌های مالی.
+
+> **از HRMS تا Kian ERP** — این سامانه با تمرکز بر منابع انسانی آغاز شد، اما امروز دامنهٔ آن کامل شده است: **۲۰ ماژول یکپارچه** که چرخهٔ کامل کسب و کار را پوشش می‌دهند، نه فقط پروندهٔ پرسنل. هر شرکت (tenant) schema مستقل PostgreSQL خود را دارد و ماژول‌های فعالش را انتخاب می‌کند.
+
+## چرا Kian ERP؟
+
+| ویژگی | ارزش برای کسب و کار |
+|---|---|
+| 🔗 **یکپارچگی واقعی** | استخدام → حضور → حقوق → سند حسابداری؛ بدون ورود دوبارهٔ داده و بدون فایل اکسل واسط |
+| 🧮 **یک منبع حقیقت** | یک پایگاه داده و یک مدل داده مشترک برای همهٔ ماژول‌ها؛ گزارش‌ها همیشه با هم می‌خوانند |
+| 🏘️ **چندشرکتی بومی** | schema مستقل برای هر شرکت؛ مناسب هلدینگ، مجموعهٔ چندشرکتی و شرکت‌های پروژه‌ای |
+| 📊 **مالی کامل** | حسابداری دوبل، خزانه‌داری، تنخواه، چک و تضامین، مالیات و صورت‌های مالی |
+| 🏗️ **کنترل پروژه** | WBS/CBS/OBS، CPM، EVM، بهای تمام‌شده، تغییرات، ریسک و گواهی پرداخت |
+| 📁 **بایگانی ساختارمند** | پوشهٔ اختصاصی هر پرسنل/قرارداد با مرور، دانلود و حذف از پنل تنظیمات |
+| 🇮🇷 **فارسی‌محور** | تقویم شمسی، RTL کامل و رابط دوزبانهٔ فارسی/انگلیسی |
+| 🧩 **قابل توسعه** | API یکپارچه، موتورهای مستقل و ماژول‌های قابل فعال/غیرفعال‌سازی |
 
 - 🏗️ **معماری:** Django 5 + DRF + PostgreSQL (schema-per-tenant) + Celery/Redis + React 18
 - 🗣️ **دوزبانه:** فارسی (پیش‌فرض، RTL) و انگلیسی — کاملاً قابل تعویض از داخل برنامه
@@ -336,7 +355,7 @@ sudo bash backup.sh        # دیتابیس + پوشهٔ مدیا (cron روزا
 ## ساختار پروژه
 
 ```
-HRMS/
+kian-erp/
 ├── deploy.sh                  ← نصب اولیه روی Ubuntu
 ├── deploy-update.ps1          ← استقرار افزایشی از ویندوز
 ├── backup.sh                  ← پشتیبان‌گیری دیتابیس + مدیا
@@ -358,6 +377,8 @@ HRMS/
     ├── src/pages/             ← صفحه‌ها (۱۵۰+ مسیر)
     └── build/                 ← خروجی بیلد
 ```
+
+> نام‌های فنی `hrms_project/`، `/opt/hrms`، `hrms_db`، `hrms_user` و سرویس‌های `hrms` تاریخی‌اند و برای سازگاری تغییر نکرده‌اند؛ **نام محصول Kian ERP است**.
 
 ### موتورهای هسته
 
@@ -488,14 +509,30 @@ npm run lint:defs                           # بررسی تعاریف/ایمپو
 
 | Section | Section | Section |
 |---|---|---|
-| [Overview](#overview) | [Modules](#modules) | [File Archive](#file-archive-new) |
-| [Installation](#installation) | [Environment](#environment-variables) | [Deployment](#deployment--updates) |
-| [Project layout](#project-layout) | [Security](#multi-tenancy--security) | [Roles](#roles--permissions-rbac) |
-| [API](#api) | [Testing](#testing--code-quality) | [Troubleshooting](#troubleshooting) |
+| [Overview](#overview) | [Why Kian ERP?](#why-kian-erp) | [Modules](#modules) |
+| [File Archive](#file-archive-new) | [Installation](#installation) | [Environment](#environment-variables) |
+| [Deployment](#deployment--updates) | [Project layout](#project-layout) | [Security](#multi-tenancy--security) |
+| [Roles](#roles--permissions-rbac) | [API](#api) | [Testing](#testing--code-quality) |
+| [Troubleshooting](#troubleshooting) | | |
 
 ## Overview
 
-**HRMS 2026** is a unified, multi-tenant platform covering human resources, contracts, projects and the full finance cycle. Every company (tenant) owns an isolated PostgreSQL schema, and each tenant can enable the modules it needs.
+**Kian ERP** is the integrated business management platform for Kian: a multi-tenant system that connects every organizational process in one database and one user experience — from hiring, attendance and payroll to contracts, projects, procurement, treasury, accounting and financial reporting.
+
+> **From HRMS to Kian ERP** — the platform started as an HR system, but its scope is now complete: **20 integrated modules** covering the full business cycle, not just employee files. Each company (tenant) owns an isolated PostgreSQL schema and chooses which modules to enable.
+
+## Why Kian ERP?
+
+| Capability | Business value |
+|---|---|
+| 🔗 **True integration** | Hiring → attendance → payroll → journal entry, with no re-entry and no spreadsheet bridges |
+| 🧮 **Single source of truth** | One database and one shared data model across modules; reports always reconcile |
+| 🏘️ **Native multi-tenancy** | An isolated schema per company — built for holdings and multi-company groups |
+| 📊 **Complete finance** | Double-entry accounting, treasury, petty cash, cheques and guarantees, tax, financial statements |
+| 🏗️ **Project controls** | WBS/CBS/OBS, CPM, EVM, cost control, change orders, risk, payment certificates |
+| 📁 **Structured archive** | A dedicated folder per employee/contract, browsable and downloadable from Settings |
+| 🇮🇷 **Persian-first** | Jalali calendar, full RTL and a bilingual FA/EN interface |
+| 🧩 **Extensible** | Unified API, independent engines and enable/disable-able modules |
 
 - 🏗️ **Architecture:** Django 5 + DRF + PostgreSQL (schema-per-tenant) + Celery/Redis + React 18
 - 🗣️ **Bilingual:** Persian (default, RTL) and English — switchable at runtime
@@ -801,7 +838,7 @@ Day-to-day operations guide: [SERVER_UPDATE.md](SERVER_UPDATE.md)
 ## Project layout
 
 ```
-HRMS/
+kian-erp/
 ├── deploy.sh                  ← first-time provisioning on Ubuntu
 ├── deploy-update.ps1          ← incremental deployment from Windows
 ├── backup.sh                  ← database + media backup
@@ -823,6 +860,8 @@ HRMS/
     ├── src/pages/             ← screens (150+ routes)
     └── build/                 ← production build output
 ```
+
+> The technical names `hrms_project/`, `/opt/hrms`, `hrms_db`, `hrms_user` and the `hrms` services are historical and were kept for compatibility; the **product name is Kian ERP**.
 
 ### Core engines
 

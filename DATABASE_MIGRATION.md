@@ -1,4 +1,4 @@
-# انتقال دیتابیس HRMS
+# انتقال دیتابیس Kian ERP
 
 راهنمای انتقال داده‌ها از محیط توسعه (SQLite روی ویندوز) به سرور Ubuntu 26.04
 (PostgreSQL + django-tenants با schema جداگانه برای هر شرکت).

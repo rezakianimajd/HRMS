@@ -341,11 +341,11 @@ django.template.context.BaseContext.__copy__ = _fixed_basecontext_copy
 # Jazzmin (admin theme)
 # =============================================================================
 JAZZMIN_SETTINGS = {
-    'site_title': 'سامانه جامع HRMS',
-    'site_header': 'HRMS — مدیریت منابع انسانی',
-    'site_brand': 'HRMS',
+    'site_title': 'کیان ERP',
+    'site_header': 'کیان ERP — سامانه یکپارچه مدیریت کسب و کار',
+    'site_brand': 'کیان ERP',
     'welcome_sign': 'خوش آمدید',
-    'copyright': 'HRMS',
+    'copyright': 'کیان ERP',
     'site_logo': None,
     'login_logo': None,
     'theme': 'darkly',
