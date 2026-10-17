@@ -348,6 +348,23 @@ sudo bash backup.sh        # دیتابیس + پوشهٔ مدیا (cron روزا
 
 از داخل برنامه هم: **تنظیمات → پشتیبان‌گیری** (`/api/backup/list|create|restore|wipe/`).
 
+### به‌روزرسانی درون‌برنامه‌ای
+
+**فاز ۱ (فعال):** تنظیمات → **به‌روزرسانی سیستم** — فقط برای نقش‌هایی که مجوز `can_manage_updates` دارند (پیش‌فرض: `super_admin`).
+
+| مرحله | توضیح |
+|---|---|
+| دانلود | بستهٔ `kian-erp-<version>.zip` / `.tar.gz` را روی سیستم خود دانلود کنید |
+| آپلود | Drag & Drop در پنل؛ آپلود **تکه‌تکه** (۴MB) با امکان لغو و ادامه |
+| تأیید | امضای Ed25519 + SHA-256 + سازگاری نسخه (`min_app_version`) |
+| ثبت | بسته در `<APP_DIR>/updates/archive` ذخیره و در تاریخچه ثبت می‌شود |
+
+- بسته‌ها **خارج از `MEDIA_ROOT`** نگهداری می‌شوند و از `/media/` قابل دانلود نیستند.
+- برای فعال‌کردن بررسی اصالت، `UPDATE_PUBLIC_KEY` (Base64، Ed25519) را در `.env` تنظیم کنید؛ بدون آن بسته‌ها با هشدار «بدون امضا» پذیرفته می‌شوند.
+- **نصب خودکار** (بکاپ، مهاجرت، ری‌استارت، rollback) فاز بعد است و فعلاً با `APPLY_ENABLED = False` غیرفعال است.
+- نقاط پایش: `GET /api/health/` و `GET /api/system/version/` (بدون احراز هویت).
+- پیش‌نیاز nginx: `client_max_body_size 512M` و `Cache-Control: no-store` روی `index.html` — اسکریپت `scripts/patch_nginx_for_updates.sh` این کار را انجام می‌دهد.
+
 راهنمای عملیات روزمره: [SERVER_UPDATE.md](SERVER_UPDATE.md)
 
 ---
@@ -832,6 +849,23 @@ sudo bash backup.sh        # database + media (daily cron is configured by deplo
 Also available in-app: **Settings → Backup** (`/api/backup/list|create|restore|wipe/`).
 
 Day-to-day operations guide: [SERVER_UPDATE.md](SERVER_UPDATE.md)
+
+### In-app updates
+
+**Phase 1 (active):** Settings → **System Updates** — visible only to roles holding `can_manage_updates` (`super_admin` by default).
+
+| Step | What happens |
+|---|---|
+| Download | Get the `kian-erp-<version>.zip` or `.tar.gz` package on your workstation |
+| Upload | Drag & drop in the panel; **chunked** upload (4 MB) with cancel support |
+| Verify | Ed25519 signature + SHA-256 + version compatibility (`min_app_version`) |
+| Record | The package is stored in `<APP_DIR>/updates/archive` and listed in the history |
+
+- Packages are kept **outside `MEDIA_ROOT`** and can never be downloaded through `/media/`.
+- Set `UPDATE_PUBLIC_KEY` (Base64, Ed25519) in `.env` to enforce signatures; without it packages are accepted with an "unsigned" warning.
+- **Automatic installation** (backup, migrate, restart, rollback) is the next phase and is currently disabled (`APPLY_ENABLED = False`).
+- Probes: `GET /api/health/` and `GET /api/system/version/` (no authentication).
+- nginx prerequisites: `client_max_body_size 512M` and `Cache-Control: no-store` on `index.html` — handled by `scripts/patch_nginx_for_updates.sh`.
 
 ---
 

@@ -33,6 +33,7 @@ class UserProfile(models.Model):
             'can_delete_documents': True,
             'can_approve_leaves': True,
             'can_view_audit_logs': True,
+            'can_manage_updates': True,
         },
         'hr_manager': {
             'can_manage_users': True,
@@ -47,6 +48,7 @@ class UserProfile(models.Model):
             'can_delete_documents': True,
             'can_approve_leaves': True,
             'can_view_audit_logs': True,
+            'can_manage_updates': False,
         },
         'hr_specialist': {
             'can_view_all_employees': True,
@@ -58,6 +60,7 @@ class UserProfile(models.Model):
             'can_delete_documents': False,
             'can_approve_leaves': True,
             'can_view_audit_logs': False,
+            'can_manage_updates': False,
         },
         'department_head': {
             'can_view_all_employees': False,
@@ -69,6 +72,7 @@ class UserProfile(models.Model):
             'can_delete_documents': False,
             'can_approve_leaves': True,
             'can_view_audit_logs': False,
+            'can_manage_updates': False,
         },
         'employee': {
             'can_view_all_employees': False,
@@ -80,6 +84,7 @@ class UserProfile(models.Model):
             'can_delete_documents': False,
             'can_approve_leaves': False,
             'can_view_audit_logs': False,
+            'can_manage_updates': False,
         },
     }
 
@@ -180,6 +185,11 @@ class UserProfile(models.Model):
     @property
     def can_manage_users(self):
         return self._effective_permissions().get('can_manage_users', False)
+
+    @property
+    def can_manage_updates(self):
+        """Only roles explicitly granted the key may upload/apply updates."""
+        return self._effective_permissions().get('can_manage_updates', False)
 
 
 class RolePermission(models.Model):

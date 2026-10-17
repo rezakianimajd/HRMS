@@ -4,8 +4,30 @@ URL configuration for the core app.
 from django.urls import path
 from core import views
 from core import application_views
+from core import system_views
+from core import updates_views
 
 urlpatterns = [
+    # Health & version (public, no auth — used by monitoring and the updater)
+    path('health/', system_views.health_view, name='api-health'),
+    path('system/version/', system_views.version_view, name='api-system-version'),
+
+    # Platform-wide announcements
+    path('system/broadcast/', system_views.broadcast_active, name='api-broadcast-active'),
+    path('system/broadcast/<int:broadcast_id>/ack/', system_views.broadcast_ack, name='api-broadcast-ack'),
+
+    # In-app updates (upload + verification + history)
+    path('system/updates/status/', updates_views.updates_status, name='api-updates-status'),
+    path('system/updates/upload/init/', updates_views.upload_init, name='api-updates-upload-init'),
+    path('system/updates/upload/<str:upload_id>/chunk/', updates_views.upload_chunk, name='api-updates-upload-chunk'),
+    path('system/updates/upload/<str:upload_id>/complete/', updates_views.upload_complete, name='api-updates-upload-complete'),
+    path('system/updates/upload/<str:upload_id>/', updates_views.upload_abort, name='api-updates-upload-abort'),
+    path('system/updates/releases/', updates_views.releases_list, name='api-updates-releases'),
+    path('system/updates/releases/<int:release_id>/', updates_views.release_detail, name='api-updates-release-detail'),
+    path('system/updates/releases/<int:release_id>/apply/', updates_views.release_apply, name='api-updates-release-apply'),
+    path('system/updates/runs/', updates_views.runs_list, name='api-updates-runs'),
+    path('system/updates/runs/<int:run_id>/', updates_views.run_detail, name='api-updates-run-detail'),
+
     # Authentication
     path('auth/login/', views.login_view, name='api-login'),
     path('auth/logout/', views.logout_view, name='api-logout'),

@@ -187,6 +187,18 @@ MEDIA_ROOT = BASE_DIR / 'media'
 BASE_FILE_STORAGE_PATH = os.environ.get('BASE_FILE_STORAGE_PATH', '/var/hr_data/')
 
 # =============================================================================
+# In-app updater (Kian ERP)
+# =============================================================================
+# Packages are stored outside MEDIA_ROOT on purpose: they must never be
+# downloadable through the public /media/ URL.
+UPDATE_ROOT = os.environ.get('UPDATE_ROOT', str(Path(BASE_DIR).parent / 'updates'))
+UPDATE_PUBLIC_KEY = os.environ.get('UPDATE_PUBLIC_KEY', '')
+UPDATE_MAX_PACKAGE_MB = int(os.environ.get('UPDATE_MAX_PACKAGE_MB', '512'))
+# When no public key is configured, packages are accepted but flagged as
+# "unconfigured" and the UI warns the administrator.
+UPDATE_ALLOW_UNSIGNED = os.environ.get('UPDATE_ALLOW_UNSIGNED', 'True').lower() in ('true', '1', 'yes')
+
+# =============================================================================
 # Default primary key field type
 # =============================================================================
 

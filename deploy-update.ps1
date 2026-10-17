@@ -258,9 +258,29 @@ $BackendFiles += @(
     'hrms_project/documents/management/commands/__init__.py',
     'hrms_project/documents/management/commands/archive_existing_files.py'
 )
+
+# ---------------------------------------------------------------- به‌روزرسانی درون‌برنامه‌ای (فاز ۰ و ۱)
+$BackendFiles += @(
+    'VERSION',
+    'hrms_project/core/version.py',
+    'hrms_project/core/models/update.py',
+    'hrms_project/core/models/__init__.py',
+    'hrms_project/core/models/user.py',
+    'hrms_project/core/serializers.py',
+    'hrms_project/core/system_views.py',
+    'hrms_project/core/updates_service.py',
+    'hrms_project/core/updates_views.py',
+    'hrms_project/core/urls.py',
+    'hrms_project/core/migrations/0014_updatesettings_apprelease_systembroadcast_updaterun_and_more.py',
+    'hrms_project/hrms_project/settings/base.py',
+    'scripts/patch_nginx_for_updates.sh'
+)
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
-    'frontend/src/core/components/settings/GeneralSettingsPanel.jsx'
+    'frontend/src/core/components/settings/GeneralSettingsPanel.jsx',
+    'frontend/src/core/components/settings/UpdatePanel.jsx',
+    'frontend/src/core/hooks/useSystemStatus.js',
+    'frontend/src/modules/settings/Settings.jsx'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
@@ -506,6 +526,24 @@ if (-not $SkipFrontend) {
     if ($LASTEXITCODE -ne 0) { Warn 'پاک‌سازی نسخه‌های قدیمی /static انجام نشد (ادامهٔ استقرار بی‌اثر است).' }
     Ok "$StaticDir به‌روزرسانی شد (نسخه‌های قدیمی پاک‌سازی شدند)."
 } else { Warn 'فرانت‌اند رد شد (-SkipFrontend)' }
+
+# ---------------------------------------------------------------- پوشهٔ بسته‌ها
+# بسته‌های به‌روزرسانی خارج از MEDIA_ROOT نگهداری می‌شوند و باید قابل نوشتن
+# توسط کاربر برنامه باشند.
+Step '۵.۴/۶ آماده‌سازی پوشهٔ به‌روزرسانی'
+ssh -t $Srv "sudo mkdir -p $AppDir/updates/inbox $AppDir/updates/staging $AppDir/updates/archive && sudo chown -R ${AppUser}:${AppUser} $AppDir/updates"
+if ($LASTEXITCODE -ne 0) { Warn 'ساخت پوشهٔ updates ناموفق بود؛ آپلود بسته کار نخواهد کرد.' }
+
+# ---------------------------------------------------------------- تنظیم nginx
+# لازم برای آپلود بسته‌های بزرگ و رفرش خودکار پس از به‌روزرسانی.
+# اسکریپت idempotent است: اگر تنظیمات از قبل درست باشد چیزی تغییر نمی‌کند.
+Step '۵.۵/۶ تنظیم nginx برای به‌روزرسانی درون‌برنامه‌ای'
+ssh -t $Srv "sudo sed -i 's/\r$//' $AppDir/scripts/patch_nginx_for_updates.sh 2>/dev/null; sudo bash $AppDir/scripts/patch_nginx_for_updates.sh"
+if ($LASTEXITCODE -ne 0) {
+    Warn 'تنظیم nginx انجام نشد؛ برای آپلود بستهٔ بزرگ و رفرش خودکار، اسکریپت scripts/patch_nginx_for_updates.sh را دستی اجرا کنید.'
+} else {
+    Ok 'nginx برای به‌روزرسانی درون‌برنامه‌ای تنظیم شد.'
+}
 
 # ---------------------------------------------------------------- ری‌استارت
 Step '۶/۶ ری‌استارت سرویس‌ها'

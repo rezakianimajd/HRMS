@@ -3,7 +3,7 @@ Serializers for the core app.
 """
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from core.models import Company, Domain, AuditLog
+from core.models import Company, Domain, AuditLog, UserProfile
 
 
 class CompanySerializer(serializers.ModelSerializer):
@@ -39,15 +39,44 @@ class DomainSerializer(serializers.ModelSerializer):
 class UserSerializer(serializers.ModelSerializer):
     """Serializer for User model."""
     companies = serializers.SerializerMethodField()
+    role = serializers.SerializerMethodField()
+    permissions = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_superuser', 'is_active', 'date_joined', 'last_login',
-            'companies',
+            'companies', 'role', 'permissions',
         ]
         read_only_fields = ['id', 'date_joined', 'last_login']
+
+    @staticmethod
+    def _profile(obj):
+        try:
+            return obj.profile
+        except Exception:  # noqa: BLE001 — کاربر بدون پروفایل
+            return None
+
+    def get_role(self, obj):
+        profile = self._profile(obj)
+        if profile is not None:
+            return profile.role
+        return UserProfile.Role.SUPER_ADMIN if obj.is_superuser else UserProfile.Role.EMPLOYEE
+
+    def get_permissions(self, obj):
+        """Effective permission keys — used by the UI to hide restricted panels."""
+        profile = self._profile(obj)
+        if obj.is_superuser:
+            permissions = dict(UserProfile.ROLE_DEFAULTS['super_admin'])
+        elif profile is not None:
+            permissions = dict(profile._effective_permissions())
+        else:
+            permissions = dict(UserProfile.ROLE_DEFAULTS['employee'])
+        permissions['is_super_admin'] = bool(obj.is_superuser or (
+            profile is not None and profile.role == UserProfile.Role.SUPER_ADMIN
+        ))
+        return permissions
 
     def get_companies(self, obj):
         """

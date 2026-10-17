@@ -3,16 +3,20 @@ import { useTranslation } from 'react-i18next';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Tabs, Tab, Avatar, Chip, Button, CircularProgress,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Stack,
 } from '@mui/material';
 import TuneIcon from '@mui/icons-material/Tune';
 import BackupIcon from '@mui/icons-material/Backup';
 import RestoreIcon from '@mui/icons-material/Restore';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import GeneralSettingsPanel from '../../core/components/settings/GeneralSettingsPanel';
 import NotificationSettingsPanel from '../../core/components/settings/NotificationSettingsPanel';
 import ManagementSettingsPanel from '../../core/components/settings/ManagementSettingsPanel';
+import UpdatePanel from '../../core/components/settings/UpdatePanel';
+import useAuth from '../../core/hooks/useAuth';
+import useSystemStatus from '../../core/hooks/useSystemStatus';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 
@@ -107,16 +111,34 @@ const BackupTab = () => {
 
 const Settings = () => {
   const { t } = useTranslation();
+  const { user } = useAuth();
+  const { info: systemInfo } = useSystemStatus();
   const [tabIndex, setTabIndex] = useState(0);
+
+  const canManageUpdates = Boolean(
+    user?.permissions?.can_manage_updates || user?.is_superuser
+  );
 
   const tabs = [
     { label: 'تنظیمات عمومی', icon: <TuneIcon />, key: 'general', color: '#6366f1', desc: 'پیکربندی ذخیره‌سازی، هشدارها و تنظیمات پایه سیستم' },
     { label: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, key: 'management', color: '#f97316', desc: 'صاحبان امضا + مسیرهای ذخیره‌سازی فایل‌ها — فقط مدیر سیستم/HR' },
     { label: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, key: 'notifications', color: '#10b981', desc: 'ارسال اعلان‌ها از طریق ایمیل و پیام‌رسان بله' },
     { label: 'پشتیبان‌گیری', icon: <BackupIcon />, key: 'backup', color: '#3b82f6', desc: 'تهیه، مشاهده و بازیابی نسخه‌های پشتیبان داده' },
+    ...(canManageUpdates ? [{
+      label: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, key: 'updates', color: '#8b5cf6',
+      desc: 'بارگذاری، تأیید و پیگیری بسته‌های به‌روزرسانی Kian ERP',
+    }] : []),
   ];
 
-  const active = tabs[tabIndex];
+  const active = tabs[Math.min(tabIndex, tabs.length - 1)];
+
+  const panels = {
+    general: <GeneralSettingsPanel />,
+    management: <ManagementSettingsPanel />,
+    notifications: <NotificationSettingsPanel />,
+    backup: <BackupTab />,
+    updates: <UpdatePanel />,
+  };
 
   return (
     <Box>
@@ -137,7 +159,12 @@ const Settings = () => {
           <TuneIcon sx={{ fontSize: 28, color: '#fff' }} />
         </Avatar>
         <Box>
-          <Typography variant="h5" fontWeight={800}>{t('nav.settings')}</Typography>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            <Typography variant="h5" fontWeight={800}>{t('nav.settings')}</Typography>
+            <Chip size="small" variant="outlined"
+              label={`نسخه ${systemInfo?.version || '—'}`}
+              sx={{ fontWeight: 700 }} />
+          </Stack>
           <Typography variant="body2" color="textSecondary">تنظیمات عمومی و ابزارهای نگهداری سیستم</Typography>
         </Box>
       </Paper>
@@ -165,10 +192,7 @@ const Settings = () => {
           }}>
             <Typography variant="body2" sx={{ color: active.color, fontWeight: 600 }}>{active.desc}</Typography>
           </Paper>
-          {tabIndex === 0 && <GeneralSettingsPanel />}
-          {tabIndex === 1 && <ManagementSettingsPanel />}
-          {tabIndex === 2 && <NotificationSettingsPanel />}
-          {tabIndex === 3 && <BackupTab />}
+          {panels[active.key]}
         </Box>
       </Paper>
     </Box>

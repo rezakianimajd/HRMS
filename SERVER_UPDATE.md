@@ -212,3 +212,41 @@ sudo systemctl start gunicorn
 - [ ] `npm run build` موفق (مرحله ۷)
 - [ ] سرویس‌ها `active` هستند (مرحله ۹ و ۱۰)
 - [ ] سایت در مرورگر با `Ctrl+Shift+R` بالا می‌آید
+
+---
+
+## به‌روزرسانی درون‌برنامه‌ای (فاز ۱)
+
+پنل جدید: **تنظیمات → به‌روزرسانی سیستم** (فقط `super_admin` یا نقش دارای `can_manage_updates`).
+
+### فعال‌سازی روی سرور
+
+```bash
+# ۱) استقرار کد + مایگریشن core.0014 (پنل + مدل‌ها)
+#    از ویندوز:  .\deploy-update.ps1 -Archive -LocalBuild -NoBuild -Migrate
+#    اسکریپت خودش پوشهٔ updates/ را می‌سازد و nginx را تنظیم می‌کند
+
+# ۲) (اختیاری ولی توصیه‌شده) الزام امضای بسته
+sudo -u hrms bash -lc 'grep -q "^UPDATE_PUBLIC_KEY=" /opt/hrms/.env || \
+  echo "UPDATE_PUBLIC_KEY=<کلید-عمومی-ed25519-base64>" >> /opt/hrms/.env'
+sudo systemctl restart gunicorn celery-worker celery-beat
+```
+
+### بررسی
+
+```bash
+curl -s http://localhost/api/health/ | head -c 400
+curl -s http://localhost/api/system/version/
+ls -la /opt/hrms/updates/{inbox,staging,archive}
+```
+
+### نکات
+
+| مورد | توضیح |
+|---|---|
+| محل بسته‌ها | `/opt/hrms/updates` (خارج از `MEDIA_ROOT`؛ از `/media/` قابل دانلود نیست) |
+| حجم مجاز | `UPDATE_MAX_PACKAGE_MB` (پیش‌فرض ۵۱۲) |
+| امضا | بدون `UPDATE_PUBLIC_KEY` بسته‌ها با وضعیت «بدون امضا» پذیرفته می‌شوند |
+| نصب خودکار | هنوز غیرفعال است (`APPLY_ENABLED=False` در `core/updates_views.py`) — فاز ۲ |
+| nginx | `client_max_body_size 512M` + `no-store` روی `index.html` (اسکریپت idempotent) |
+| rollback | فعلاً از طریق استقرار مجدد نسخهٔ قبل (`deploy-update.ps1`) انجام می‌شود |

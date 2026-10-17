@@ -323,7 +323,7 @@ upstream hrms_app {
 server {
     listen 80;
     server_name $SERVER_IP $DOMAIN;
-    client_max_body_size 50M;
+    client_max_body_size 512M;   # بسته‌های به‌روزرسانی درون‌برنامه‌ای
 
     access_log $LOG_DIR/nginx-access.log;
     error_log $LOG_DIR/nginx-error.log;
@@ -364,6 +364,8 @@ server {
         root $PROJECT_DIR/frontend/build;
         index index.html;
         try_files \$uri /index.html;
+        # index.html هرگز کش نشود تا نسخهٔ جدید بلافاصله دیده شود
+        add_header Cache-Control "no-store, must-revalidate";
     }
 }
 EOF
