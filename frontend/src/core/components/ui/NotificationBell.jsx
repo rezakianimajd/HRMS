@@ -54,7 +54,7 @@ const glassOrb = {
   },
 };
 
-const NotificationBell = ({ glass = false }) => {
+const NotificationBell = ({ glass = false, compact = false }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const { data: notifications = [] } = useNotifications(20);
@@ -82,9 +82,9 @@ const NotificationBell = ({ glass = false }) => {
   };
 
   const icon = unread ? (
-    <NotificationsActiveIcon sx={{ fontSize: 22, color: 'text.primary' }} />
+    <NotificationsActiveIcon sx={{ fontSize: compact ? 20 : 22, color: 'text.primary' }} />
   ) : (
-    <NotificationsIcon sx={{ fontSize: 22, color: 'text.secondary' }} />
+    <NotificationsIcon sx={{ fontSize: compact ? 20 : 22, color: 'text.secondary' }} />
   );
 
   const trigger = glass ? (
@@ -102,7 +102,7 @@ const NotificationBell = ({ glass = false }) => {
     </Box>
   ) : (
     <Tooltip title="اعلان‌ها">
-      <IconButton color="inherit" onClick={handleOpen}>
+      <IconButton color="inherit" onClick={handleOpen} size={compact ? 'small' : 'medium'}>
         <Badge badgeContent={toPersianDigits(unread)} color="error" max={99} invisible={!unread}>
           {icon}
         </Badge>
