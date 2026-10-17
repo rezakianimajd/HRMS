@@ -1,5 +1,4 @@
 """Serializers for the Settings module."""
-import os
 from rest_framework import serializers
 from settings_app.models import (
     SystemSetting, CompanyProfile, BaleContact, Signatory,
@@ -136,9 +135,14 @@ class StorageProfileSerializer(serializers.ModelSerializer):
             return 0
 
     def get_path_preview(self, obj):
-        from core.engines.archive_storage_engine import archive_engine
-        base = archive_engine.company_root(obj.company_id, obj.include_company)
-        return os.path.join(os.path.basename(base), obj.root_folder or '')
+        """
+        مسیر نسبی پوشهٔ ماژول داخل archive/ (برای نمایش و مرور فایل‌ها).
+        با include_company=False پوشهٔ شرکت ساخته نمی‌شود.
+        """
+        root = obj.root_folder or ''
+        if obj.include_company:
+            return f'company_{obj.company_id}/{root}'.strip('/')
+        return root
 
 
 class ArchiveFolderSerializer(serializers.ModelSerializer):
