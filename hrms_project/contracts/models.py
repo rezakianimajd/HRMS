@@ -8,8 +8,6 @@ from django.db import models
 from django.contrib.postgres.indexes import GinIndex
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
-import os
-import uuid
 
 
 class GuaranteeKind(models.TextChoices):
@@ -199,40 +197,22 @@ def contract_document_upload_path(instance, filename):
     مسیر سند قرارداد در بایگانی:
         archive/company_{id}/contracts/{contract_number}/<uuid>.pdf
     """
-    ext = os.path.splitext(filename)[1]
-    unique_name = f"{uuid.uuid4().hex}{ext}"
+    from core.engines.archive_storage_engine import resolve_upload_path
 
     try:
-        from core.engines.archive_storage_engine import archive_engine
-        from settings_app.models import StorageProfile
+        contract = instance.contract
+        fields = {
+            'number': getattr(contract, 'number', '') or '',
+            'name': getattr(contract, 'subject', '') or '',
+            'id': contract.pk,
+        }
+    except Exception:  # noqa: BLE001 — قرارداد بارگذاری نشده نباید آپلود را بشکند
+        fields = {}
 
-        profile = StorageProfile.objects.filter(
-            company_id=instance.company_id, module_key='hrms.contracts', is_active=True,
-        ).first()
-        if profile:
-            contract = instance.contract
-            label = archive_engine.render_pattern(
-                profile.entity_folder_pattern,
-                {
-                    'number': getattr(contract, 'number', '') or '',
-                    'name': getattr(contract, 'subject', '') or '',
-                    'id': contract.pk,
-                },
-            ) or str(getattr(contract, 'number', '') or contract.pk)
-
-            target_dir = archive_engine.entity_path(
-                instance.company_id, profile.root_folder, label, profile.include_company,
-            )
-            os.makedirs(target_dir, exist_ok=True)
-
-            relative = os.path.relpath(
-                os.path.join(target_dir, unique_name), archive_engine.media_root
-            )
-            return relative.replace('\\', '/')
-    except Exception:
-        pass
-
-    return f'contract_documents/{unique_name}'
+    return resolve_upload_path(
+        instance.company_id, 'hrms.contracts', fields, filename,
+        fallback_dir='contract_documents',
+    )
 
 
 class ContractDocument(BaseModel):

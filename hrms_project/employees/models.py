@@ -186,6 +186,56 @@ COMPLETENESS_FIELDS = [
 ]
 
 
+def _employee_archive_fields(employee):
+    """فیلدهای قابل استفاده در الگوی نام پوشهٔ پرسنل."""
+    return {
+        'code': getattr(employee, 'employee_id', '') or '',
+        'name': getattr(employee, 'first_name', '') or '',
+        'last_name': getattr(employee, 'last_name', '') or '',
+        'id': employee.pk,
+        'national_id': getattr(employee, 'national_id', '') or '',
+    }
+
+
+def employee_photo_upload_path(instance, filename):
+    """
+    عکس پرسنل در پوشهٔ بایگانی همان پرسنل:
+        archive/company_{id}/employees/{code}_{last_name}/<uuid>.jpg
+    """
+    from core.engines.archive_storage_engine import resolve_upload_path
+
+    try:
+        fields = _employee_archive_fields(instance)
+    except Exception:  # noqa: BLE001
+        fields = {}
+
+    return resolve_upload_path(
+        instance.company_id, 'hr.employees', fields, filename,
+        fallback_dir='employee_photos',
+    )
+
+
+def employee_signature_upload_path(instance, filename):
+    """
+    تصویر امضا/مهر نسخهٔ قرارداد در پوشهٔ بایگانی همان پرسنل:
+        archive/company_{id}/employees/{code}_{last_name}/<uuid>.png
+    """
+    from core.engines.archive_storage_engine import resolve_upload_path
+
+    try:
+        employee = instance.employee
+        fields = _employee_archive_fields(employee)
+        company_id = getattr(employee, 'company_id', None) or instance.company_id
+    except Exception:  # noqa: BLE001
+        fields = {}
+        company_id = instance.company_id
+
+    return resolve_upload_path(
+        company_id, 'hr.employees', fields, filename,
+        fallback_dir='signatures',
+    )
+
+
 class Employee(BaseModel):
     """
     Main Employee model with full personal, contact, and employment information.
@@ -228,7 +278,7 @@ class Employee(BaseModel):
         verbose_name=_('نام خانوادگی'),
     )
     photo = models.ImageField(
-        upload_to='employee_photos/',
+        upload_to=employee_photo_upload_path,
         blank=True,
         null=True,
         verbose_name=_('عکس پرسنلی'),
@@ -851,7 +901,7 @@ class ContractVersion(BaseModel):
     )
     # Uploaded signature image (digital signature visual / seal).
     signature_image = models.ImageField(
-        upload_to='signatures/',
+        upload_to=employee_signature_upload_path,
         null=True, blank=True,
         verbose_name=_('تصویر امضا / مهر'),
     )

@@ -16,7 +16,10 @@ Views for the Storage & Archive system — سامانهٔ بایگانی فای�
 """
 import os
 import shutil
+from datetime import datetime
+from urllib.parse import quote
 
+from django.conf import settings
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -374,4 +377,130 @@ def storage_profile_reset(request, profile_id):
 
     count, _ = ArchiveFolder.objects.filter(company=company, profile=profile).delete()
     return Response({'removed': count})
+
+
+# --------------------------------------------------------------------------- #
+# مرور و مدیریت فایل‌ها (پنل تنظیمات → ذخیره‌سازی و فایل‌ها)
+# --------------------------------------------------------------------------- #
+def _archive_relative(path):
+    """مسیر داده‌شده (نسبت به archive/) را به مسیر نسبی MEDIA_ROOT تبدیل می‌کند."""
+    clean = str(path or '').strip().strip('/\\')
+    return f'{archive_engine.archive_prefix}/{clean}'.rstrip('/')
+
+
+def _browse_payload(company, rel):
+    """فهرست زیرپوشه‌ها و فایل‌های یک مسیر از بایگانی را برمی‌گرداند."""
+    absolute = archive_engine.resolve(_archive_relative(rel))
+    if not os.path.isdir(absolute):
+        raise ArchiveStorageError('مسیر یافت نشد.')
+
+    dirs, files, total = [], [], 0
+    try:
+        entries = list(os.scandir(absolute))
+    except OSError as exc:
+        raise ArchiveStorageError(f'خواندن پوشه ناموفق بود: {exc}') from exc
+
+    media_url = str(settings.MEDIA_URL or '/media/')
+    if not media_url.startswith(('http://', 'https://', '/')):
+        media_url = f'/{media_url}'
+
+    for entry in entries:
+        if entry.name.startswith('.'):
+            continue
+        child_rel = f'{rel}/{entry.name}'.strip('/')
+        try:
+            info = entry.stat()
+            if entry.is_dir():
+                size, count = archive_engine.dir_size(entry.path)
+                dirs.append({
+                    'name': entry.name,
+                    'path': child_rel,
+                    'file_count': count,
+                    'size': size,
+                    'modified': datetime.fromtimestamp(info.st_mtime).isoformat(),
+                })
+            else:
+                total += info.st_size
+                files.append({
+                    'name': entry.name,
+                    'path': child_rel,
+                    'size': info.st_size,
+                    'modified': datetime.fromtimestamp(info.st_mtime).isoformat(),
+                    'url': f"{media_url.rstrip('/')}/{quote(_archive_relative(child_rel))}",
+                })
+        except OSError:
+            continue
+
+    dirs.sort(key=lambda row: row['name'].lower())
+    files.sort(key=lambda row: row['name'].lower())
+
+    # شناسهٔ رکورد پوشه‌های ثبت‌شده (برای امکان حذف از پنل)
+    registered = {
+        str(rec.relative_path).replace('\\', '/'): rec.id
+        for rec in ArchiveFolder.objects.filter(company=company)
+    }
+    for row in dirs:
+        row['record_id'] = registered.get(_archive_relative(row['path']))
+
+    return {
+        'path': rel,
+        'prefix': archive_engine.archive_prefix,
+        'parent': '/'.join(rel.split('/')[:-1]) if rel else None,
+        'dirs': dirs,
+        'files': files,
+        'dir_count': len(dirs),
+        # مجموع بازگشتی (زیرپوشه‌ها + فایل‌های همین سطح) برای نمایش خلاصه
+        'file_count': len(files) + sum(row['file_count'] for row in dirs),
+        'total_size': total + sum(row['size'] for row in dirs),
+    }
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def storage_browse(request):
+    """
+    مرور پوشه‌ها و فایل‌های داخل بایگانی.
+
+    پارامتر: ``?path=company_1/employees/1001_احمدی`` (نسبت به پوشهٔ archive)
+    خروجی: زیرپوشه‌ها، فایل‌ها (با حجم/تاریخ/لینک دانلود) و مسیر والد.
+    """
+    company = _get_company(request)
+    if not company:
+        return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
+
+    rel = str(request.query_params.get('path') or '').strip().strip('/\\')
+    try:
+        return Response(_browse_payload(company, rel))
+    except ArchiveStorageError as exc:
+        return Response({'error': str(exc)}, status=400)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def storage_file_delete(request):
+    """حذف یک فایل از بایگانی (فقط داخل پوشهٔ archive)."""
+    company = _get_company(request)
+    if not company:
+        return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
+    if not _can_edit_settings(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    rel = request.query_params.get('path') or (request.data or {}).get('path')
+    if not rel:
+        return Response({'error': 'مسیر فایل الزامی است'}, status=400)
+
+    try:
+        absolute = archive_engine.resolve(_archive_relative(rel))
+    except ArchiveStorageError as exc:
+        return Response({'error': str(exc)}, status=400)
+
+    if not os.path.isfile(absolute):
+        return Response({'error': 'فایل یافت نشد.'}, status=404)
+
+    try:
+        os.remove(absolute)
+    except OSError as exc:
+        return Response({'error': f'حذف ناموفق بود: {exc}'}, status=400)
+
+    return Response({'deleted': True, 'path': rel})
 

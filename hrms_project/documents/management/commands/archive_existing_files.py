@@ -29,6 +29,7 @@ class Command(BaseCommand):
         stats = {'moved': 0, 'skipped': 0, 'missing': 0, 'errors': 0}
         if only in ('', 'employees'):
             self._process_documents(stats, apply)
+            self._process_employee_assets(stats, apply)
         if only in ('', 'contracts'):
             self._process_contracts(stats, apply)
         if only in ('', 'organization'):
@@ -48,8 +49,9 @@ class Command(BaseCommand):
     def _label(self, profile, fields):
         return ArchiveStorageEngine.render_pattern(profile.entity_folder_pattern, fields)
 
-    def _move(self, obj, module_key, fields, stats, apply):
-        if not obj.file or not obj.file.name:
+    def _move(self, obj, module_key, fields, stats, apply, field='file'):
+        current = getattr(obj, field, None)
+        if not current or not getattr(current, 'name', None):
             return
         profile = self._profile(obj.company_id, module_key)
         if not profile:
@@ -63,19 +65,19 @@ class Command(BaseCommand):
         target_dir = archive_engine.entity_path(
             obj.company_id, profile.root_folder, label, profile.include_company
         )
-        filename = os.path.basename(str(obj.file.name))
+        filename = os.path.basename(str(current.name))
         target_rel = os.path.relpath(
             os.path.join(target_dir, filename), archive_engine.media_root
         ).replace('\\', '/')
 
-        if str(obj.file.name).replace('\\', '/') == target_rel:
+        if str(current.name).replace('\\', '/') == target_rel:
             stats['skipped'] += 1
             return
 
-        source_abs = os.path.join(archive_engine.media_root, str(obj.file.name))
+        source_abs = os.path.join(archive_engine.media_root, str(current.name))
         if not os.path.exists(source_abs):
             stats['missing'] += 1
-            self.stderr.write(f'  [ناموجود] {obj.file.name}')
+            self.stderr.write(f'  [ناموجود] {current.name}')
             return
 
         final_rel = target_rel
@@ -85,7 +87,7 @@ class Command(BaseCommand):
             final_rel = f'{stem}_{counter}{ext}'
             counter += 1
 
-        self.stdout.write(f'  {obj.file.name}  ->  {final_rel}')
+        self.stdout.write(f'  {current.name}  ->  {final_rel}')
         if not apply:
             stats['skipped'] += 1
             return
@@ -93,8 +95,8 @@ class Command(BaseCommand):
         try:
             os.makedirs(target_dir, exist_ok=True)
             shutil.move(source_abs, os.path.join(archive_engine.media_root, final_rel))
-            obj.file.name = final_rel
-            obj.save(update_fields=['file'])
+            setattr(obj, field, final_rel)
+            obj.save(update_fields=[field])
             stats['moved'] += 1
         except Exception as exc:  # noqa: BLE001
             stats['errors'] += 1
@@ -118,6 +120,28 @@ class Command(BaseCommand):
 
         for doc in Document.objects.select_related('employee').iterator():
             self._move(doc, 'hr.employees', lambda d=doc: fields_for(d), stats, apply)
+
+    def _process_employee_assets(self, stats, apply):
+        """عکس پرسنل و تصویر امضای نسخهٔ قرارداد."""
+        from employees.models import ContractVersion, Employee
+
+        self.stdout.write(self.style.MIGRATE_HEADING('عکس و امضای پرسنل'))
+
+        def fields_for(employee):
+            return {
+                'code': getattr(employee, 'employee_id', '') or '',
+                'name': getattr(employee, 'first_name', '') or '',
+                'last_name': getattr(employee, 'last_name', '') or '',
+                'id': employee.pk,
+                'national_id': getattr(employee, 'national_id', '') or '',
+            }
+
+        for emp in Employee.objects.iterator():
+            self._move(emp, 'hr.employees', lambda e=emp: fields_for(e), stats, apply, field='photo')
+
+        for version in ContractVersion.objects.select_related('employee').iterator():
+            self._move(version, 'hr.employees', lambda v=version: fields_for(v.employee),
+                       stats, apply, field='signature_image')
 
     def _process_contracts(self, stats, apply):
         from contracts.models import ContractDocument

@@ -21,6 +21,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import uuid
 from datetime import datetime
 from pathlib import Path
 
@@ -389,6 +390,52 @@ class ArchiveStorageEngine:
         if absolute != root and not absolute.startswith(root + os.sep):
             raise ArchiveStorageError('مسیر خارج از پوشهٔ مجاز است.')
         return absolute
+
+
+def resolve_upload_path(
+    company_id, module_key: str, fields: dict, filename: str,
+    *, fallback_dir: str, subfolder: str = '',
+) -> str:
+    """
+    مسیر نسبی (نسبت به MEDIA_ROOT) برای آپلود یک فایل.
+
+    اگر پروفایل بایگانی فعالِ ماژول برای شرکت وجود داشته باشد:
+        archive/company_{id}/{root_folder}/{entity_folder}/{subfolder}/<uuid>.<ext>
+    در غیر این صورت مسیر قدیمی (`fallback_dir/<uuid>.<ext>`) برگردانده می‌شود
+    تا آپلود هرگز از کار نیفتد.
+
+    پوشهٔ مقصد در همین تابع ساخته می‌شود تا ذخیره‌سازی فایل بلافاصله موفق شود.
+    """
+    ext = os.path.splitext(filename or 'file')[1]
+    unique_name = f'{uuid.uuid4().hex}{ext}'
+
+    try:
+        from settings_app.models import StorageProfile
+
+        profile = StorageProfile.objects.filter(
+            company_id=company_id, module_key=module_key, is_active=True,
+        ).first()
+        if profile:
+            label = ArchiveStorageEngine.render_pattern(
+                profile.entity_folder_pattern, fields or {}
+            )
+            if label:
+                target_dir = archive_engine.entity_path(
+                    company_id, profile.root_folder, label, profile.include_company,
+                )
+                safe_sub = archive_engine.sanitize(subfolder) if subfolder else ''
+                if safe_sub:
+                    target_dir = os.path.join(target_dir, safe_sub)
+                os.makedirs(target_dir, exist_ok=True)
+
+                relative = os.path.relpath(
+                    os.path.join(target_dir, unique_name), archive_engine.media_root
+                )
+                return relative.replace('\\', '/')
+    except Exception:  # noqa: BLE001 — نبود جدول/پروفایل یا خطای دسترسی نباید آپلود را بشکند
+        pass
+
+    return f'{fallback_dir}/{unique_name}'
 
 
 # نمونهٔ سراسری آماده برای استفاده در سرویس‌ها

@@ -247,6 +247,12 @@ $BackendFiles += @(
     'hrms_project/documents/models.py',
     'hrms_project/documents/migrations/0005_alter_organizationdocument_file.py',
     'hrms_project/contracts/migrations/0025_alter_contractdocument_file.py',
+    # عکس پرسنل و تصویر امضا در پوشهٔ همان پرسنل
+    'hrms_project/employees/models.py',
+    'hrms_project/employees/migrations/0019_alter_contractversion_signature_image_and_more.py',
+    # مرور/دانلود/حذف فایل از پنل تنظیمات
+    'hrms_project/settings_app/archive_views.py',
+    'hrms_project/settings_app/urls.py',
     # دستور انتقال فایل‌های موجود به ساختار archive/
     'hrms_project/documents/management/__init__.py',
     'hrms_project/documents/management/commands/__init__.py',

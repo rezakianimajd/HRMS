@@ -58,5 +58,7 @@ urlpatterns = [
     path('storage/profiles/<int:profile_id>/folders/', archive_views.storage_profile_folders, name='api-storage-profile-folders'),
     path('storage/profiles/<int:profile_id>/reset/', archive_views.storage_profile_reset, name='api-storage-profile-reset'),
     path('storage/folders/<int:folder_id>/', archive_views.storage_folder_delete, name='api-storage-folder-delete'),
+    path('storage/browse/', archive_views.storage_browse, name='api-storage-browse'),
+    path('storage/files/', archive_views.storage_file_delete, name='api-storage-file-delete'),
     path('storage/ensure/', archive_views.storage_ensure_entity, name='api-storage-ensure'),
 ]

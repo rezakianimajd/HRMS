@@ -2,7 +2,6 @@
 Models for the Documents module.
 """
 import os
-import uuid
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
@@ -18,36 +17,17 @@ def _archive_upload_path(instance, filename, *, module_key, label_fields, fallba
     اگر پروفایل مربوطه تعریف نشده باشد، مسیر قدیمی (fallback) برگردانده می‌شود
     تا آپلود هرگز از کار نیفتد.
     """
-    ext = os.path.splitext(filename)[1]
-    unique_name = f"{uuid.uuid4().hex}{ext}"
+    from core.engines.archive_storage_engine import resolve_upload_path
 
     try:
-        from core.engines.archive_storage_engine import archive_engine
-        from settings_app.models import StorageProfile
+        fields = label_fields()
+    except Exception:  # noqa: BLE001 — موجودیت ناقص نباید آپلود را بشکند
+        fields = {}
 
-        profile = StorageProfile.objects.filter(
-            company_id=instance.company_id, module_key=module_key, is_active=True,
-        ).first()
-        if profile:
-            fields = label_fields()
-            label = archive_engine.render_pattern(
-                profile.entity_folder_pattern, fields
-            ) or str(fields.get('code') or fields.get('number') or fields.get('id') or 'unnamed')
-
-            target_dir = archive_engine.entity_path(
-                instance.company_id, profile.root_folder, label, profile.include_company,
-            )
-            os.makedirs(target_dir, exist_ok=True)
-
-            relative = os.path.relpath(
-                os.path.join(target_dir, unique_name), archive_engine.media_root
-            )
-            return relative.replace('\\', '/')
-    except Exception:
-        # هر خطایی (نبود جدول/پروفایل، دسترسی و ...) نباید آپلود را متوقف کند.
-        pass
-
-    return f"{fallback_subdir}/{unique_name}"
+    return resolve_upload_path(
+        instance.company_id, module_key, fields, filename,
+        fallback_dir=fallback_subdir,
+    )
 
 
 def document_upload_path(instance, filename):
