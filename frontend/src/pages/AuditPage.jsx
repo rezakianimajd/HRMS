@@ -2,12 +2,23 @@ import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Avatar, CircularProgress, Chip, Table,
+  Box, Typography, Paper, Avatar, CircularProgress, Chip, Stack, Table,
   TableBody, TableCell, TableContainer, TableHead, TableRow,
 } from '@mui/material';
 import HistoryIcon from '@mui/icons-material/History';
+import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { toJalali } from '../core/utils/dateUtils';
 
-/* P5: دفترچه فعالیت — نمایش لاگهای سیستم فعلی (Audit) */
+const formatStamp = (value) => {
+  if (!value) return '—';
+  const raw = String(value);
+  const jalali = toJalali(raw.slice(0, 10));
+  const time = raw.slice(11, 16);
+  return time ? `${jalali} - ${toPersianDigits(time)}` : jalali;
+};
+
+/* P5: دفترچه فعالیت — نمایش لاگ‌های سیستم فعلی (Audit) */
 const AuditPage = () => {
   const { data, isLoading } = useQuery({
     queryKey: ['audit-logs'],
@@ -17,50 +28,83 @@ const AuditPage = () => {
 
   return (
     <Box>
-      <Paper sx={{
-        p: 3, mb: 2.5, borderRadius: '10px',
-        background: 'linear-gradient(120deg, rgba(139,92,246,0.10), rgba(139,92,246,0.02), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(139,92,246,0.18)',
-        display: 'flex', alignItems: 'center', gap: 2,
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #8b5cf6, #6d28d9)', boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
-          <HistoryIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800}>دفترچه فعالیت (Audit)</Typography>
-          <Typography variant="body2" color="textSecondary">
-            پیگیری لاگ اقدامات کاربران در سیستم
-          </Typography>
-        </Box>
-      </Paper>
+      <PageHeader
+        icon={<HistoryIcon />}
+        title="دفترچه فعالیت"
+        color={SOFT.slate}
+      />
 
-      <Paper variant="outlined" sx={{ borderRadius: '10px', overflow: 'hidden' }}>
+      <Paper sx={{ ...SURFACE, overflow: 'hidden' }}>
+        <Box sx={{
+          px: 1.75, py: 1.25,
+          borderBottom: '1px solid', borderColor: 'divider',
+          background: `linear-gradient(135deg, ${SOFT.slate}14, transparent)`,
+        }}>
+          <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap>
+            <Avatar variant="rounded" sx={{
+              width: 30, height: 30, borderRadius: '9px',
+              bgcolor: `${SOFT.slate}24`, color: SOFT.slate,
+            }}>
+              <HistoryIcon sx={{ fontSize: 17 }} />
+            </Avatar>
+            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>فعالیت‌ها</Typography>
+            <Chip
+              size="small"
+              label={`${formatPersianNumber(logs.length)} فعالیت`}
+              sx={{
+                height: 20, fontSize: 10, fontWeight: 800,
+                bgcolor: `${SOFT.slate}1f`, color: SOFT.slate,
+              }}
+            />
+          </Stack>
+        </Box>
+
         {isLoading ? (
           <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
         ) : logs.length === 0 ? (
-          <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">فعالیتی ثبت نشده است</Typography></Box>
+          <Box sx={{ p: 5, textAlign: 'center' }}>
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>فعالیتی ثبت نشده است</Typography>
+          </Box>
         ) : (
           <TableContainer>
-            <Table size="small">
+            <Table size="small" sx={{ '& td': { fontSize: 11, py: 1 } }}>
               <TableHead>
-                <TableRow sx={{ bgcolor: 'rgba(139,92,246,0.06)' }}>
-                  <TableCell sx={{ fontWeight: 700 }}>کاربر</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>اقدام</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>مدل</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>شرح</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>تاریخ</TableCell>
+                <TableRow sx={{
+                  '& th': {
+                    bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5,
+                    fontWeight: 800, textAlign: 'center',
+                  },
+                }}>
+                  <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>کاربر</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>اقدام</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>مدل</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>شرح</TableCell>
+                  <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>تاریخ</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {logs.map((l, i) => (
                   <TableRow key={l.id || i} hover>
-                    <TableCell>{l.user || '—'}</TableCell>
-                    <TableCell><Chip size="small" label={l.action || '—'} variant="outlined" /></TableCell>
-                    <TableCell>{l.model_name || '—'}</TableCell>
-                    <TableCell sx={{ maxWidth: 340 }}>
-                      <Typography variant="body2" noWrap>{l.description || ''}</Typography>
+                    <TableCell>
+                      <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{l.user || '—'}</Typography>
                     </TableCell>
-                    <TableCell>{l.timestamp ? String(l.timestamp).slice(0, 16) : '—'}</TableCell>
+                    <TableCell align="center">
+                      <Chip size="small" label={l.action || '—'} variant="outlined"
+                        sx={{ height: 20, fontSize: 10, fontWeight: 700, color: SOFT.slate, borderColor: `${SOFT.slate}55` }} />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>
+                        {l.model_name || '—'}
+                      </Typography>
+                    </TableCell>
+                    <TableCell sx={{ maxWidth: 340 }}>
+                      <Typography sx={{ fontSize: 11 }} noWrap>{l.description || ''}</Typography>
+                    </TableCell>
+                    <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                      <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                        {formatStamp(l.timestamp)}
+                      </Typography>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -311,6 +311,7 @@ $FrontendFiles += @(
     'frontend/src/pages/CompanyProfilePage.jsx',
     'frontend/src/pages/UsersPage.jsx',
     'frontend/src/pages/AppearancePage.jsx',
+    'frontend/src/pages/AuditPage.jsx',
     'frontend/src/core/components/settings/GeneralSettingsPanel.jsx',
     'frontend/src/core/components/settings/ManagementSettingsPanel.jsx',
     'frontend/src/core/components/settings/NotificationSettingsPanel.jsx',
