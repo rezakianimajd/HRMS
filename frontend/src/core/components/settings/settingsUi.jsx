@@ -29,7 +29,7 @@ const CARD_SX = {
 
 export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT.indigo }) => (
   <Paper elevation={0} sx={{ ...CARD_SX, p: { xs: 1.5, md: 1.9 }, mb: 1.75 }}>
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ sm: 'center' }}>
+    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems={{ sm: 'center' }}>
       <Avatar variant="rounded" sx={{
         width: 40, height: 40, borderRadius: '12px',
         bgcolor: alpha(color, 0.14), color,

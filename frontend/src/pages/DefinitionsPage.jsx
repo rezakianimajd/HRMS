@@ -171,7 +171,6 @@ const DefinitionsPage = () => {
       <PageHeader
         icon={<HubIcon />}
         title="تعاریف و داده‌های پایه"
-        subtitle="مدیریت ساختار سازمانی، مدارک، بیمه و طرف‌های خارجی — همهٔ ماژول‌ها از این داده‌ها استفاده می‌کنند."
         color={SOFT.indigo}
         badge={(
           <Chip size="small" variant="outlined" label={`${formatPersianNumber(TABS.length)} گروه`}

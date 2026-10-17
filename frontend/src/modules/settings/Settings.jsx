@@ -191,12 +191,7 @@ const Settings = () => {
       <PageHeader
         icon={<TuneIcon />}
         title={t('nav.settings')}
-        subtitle="پیکربندی سیستم، اطلاع‌رسانی و ابزارهای نگهداری — تغییرات بلافاصله اعمال می‌شوند."
         color={SOFT.indigo}
-        badge={(
-          <Chip size="small" variant="outlined" label={`نسخه ${toPersianDigits(systemInfo?.version) || '—'}`}
-            sx={{ fontWeight: 800 }} />
-        )}
         actions={updateAvailable ? (
           <Chip size="small" label="نسخهٔ جدید آماده است"
             sx={{ bgcolor: alpha(SOFT.amber, 0.14), color: SOFT.amber, fontWeight: 800 }} />
