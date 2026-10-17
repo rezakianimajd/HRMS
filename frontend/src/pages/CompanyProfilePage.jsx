@@ -3,19 +3,17 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Grid, TextField, Button, CircularProgress,
-  Alert, Stack, Switch, FormControlLabel, Tooltip, Chip, alpha,
+  Alert, Stack, Tooltip, Chip, alpha,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
 import BadgeIcon from '@mui/icons-material/Badge';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
-import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
-import StorageIcon from '@mui/icons-material/Storage';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-import { SURFACE, SOFT } from '../core/components/settings/settingsUi';
+import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 
 const glassCard = { ...SURFACE };
 
@@ -101,6 +99,26 @@ const CompanyProfilePage = () => {
 
   return (
     <Box>
+      <PageHeader
+        icon={<BusinessIcon />}
+        title="مشخصات شرکت"
+        color={SOFT.indigo}
+        actions={(
+          <Button
+            variant="contained"
+            startIcon={updateMutation.isLoading ? null : <SaveIcon />}
+            onClick={() => updateMutation.mutate(form)}
+            disabled={updateMutation.isLoading}
+            sx={{
+              bgcolor: SOFT.indigo, borderRadius: '9px', px: 2.5, fontSize: 11.5,
+              boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' },
+            }}
+          >
+            {updateMutation.isLoading ? <CircularProgress size={18} color="inherit" /> : 'ذخیره تغییرات'}
+          </Button>
+        )}
+      />
+
       {/* Hero — logo + company identity */}
       <Paper sx={{ ...glassCard, mb: 1.75, p: 2, position: 'relative', overflow: 'hidden' }}>
         <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', gap: 2.25, flexWrap: 'wrap' }}>
@@ -136,9 +154,6 @@ const CompanyProfilePage = () => {
               {form.national_id && <Chip size="small" label={`شناسه ملی: ${form.national_id}`} variant="outlined" />}
               {form.registration_number && <Chip size="small" label={`شماره ثبت: ${form.registration_number}`} variant="outlined" />}
             </Stack>
-            <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 1 }}>
-              این اطلاعات در پیشنمایش صورتوضعیت، سایدبار و اسناد استفاده میشود.
-            </Typography>
           </Box>
         </Box>
       </Paper>
@@ -147,7 +162,7 @@ const CompanyProfilePage = () => {
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setError('')}>{error}</Alert>}
 
       {/* اطلاعات حقوقی و ثبت */}
-      <Section icon={<BadgeIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات حقوقی و ثبت" subtitle="شناسهها و ابعاد حقوقی شرکت" color={SOFT.indigo}>
+      <Section icon={<BadgeIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات حقوقی و ثبت" color={SOFT.indigo}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام حقوقی شرکت" value={form.legal_name || ''} onChange={e => set('legal_name', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="شماره ثبت" value={form.registration_number || ''} onChange={e => set('registration_number', e.target.value)} /></Grid>
@@ -161,7 +176,7 @@ const CompanyProfilePage = () => {
       </Section>
 
       {/* اطلاعات تماس */}
-      <Section icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات تماس و آدرس" subtitle="راههای ارتباطی رسمی شرکت" color={SOFT.green}>
+      <Section icon={<ContactPhoneIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات تماس و آدرس" color={SOFT.green}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="تلفن" value={form.phone || ''} onChange={e => set('phone', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="ایمیل" value={form.email || ''} onChange={e => set('email', e.target.value)} /></Grid>
@@ -172,7 +187,7 @@ const CompanyProfilePage = () => {
       </Section>
 
       {/* نماینده قانونی */}
-      <Section icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 22 }} />} title="نماینده قانونی / مدیرعامل" subtitle="برای درج در قراردادها" color={SOFT.amber}>
+      <Section icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 22 }} />} title="نماینده قانونی / مدیرعامل" color={SOFT.amber}>
         <Grid container spacing={2}>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="نام نماینده حقوقی / مدیرعامل" value={form.employer_rep_name || ''} onChange={e => set('employer_rep_name', e.target.value)} /></Grid>
           <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="سمت نماینده" value={form.employer_rep_title || ''} onChange={e => set('employer_rep_title', e.target.value)} /></Grid>
@@ -180,63 +195,11 @@ const CompanyProfilePage = () => {
         </Grid>
       </Section>
 
-      {/* اطلاعرسانی */}
-      <Section icon={<NotificationsActiveIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعرسانی" subtitle="کانالهای ارسال اعلان" color={SOFT.violet}>
-        <Grid container spacing={2}>
-          <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', borderColor: 'divider' }}>
-              <FormControlLabel
-                control={<Switch checked={!!form.notify_email_enabled} onChange={e => set('notify_email_enabled', e.target.checked)} />}
-                label={<Typography variant="body2" fontWeight={600}>ارسال اعلان از طریق ایمیل</Typography>}
-              />
-            </Paper>
-          </Grid>
-          <Grid item xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 1.5, borderRadius: '12px', borderColor: 'divider' }}>
-              <FormControlLabel
-                control={<Switch checked={!!form.notify_bale_enabled} onChange={e => set('notify_bale_enabled', e.target.checked)} />}
-                label={<Typography variant="body2" fontWeight={600}>ارسال پیام از طریق پیامرسان بله</Typography>}
-              />
-              {!!form.notify_bale_enabled && (
-                <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-                  <TextField size="small" fullWidth sx={fieldSx} label="توکن ربات بله" value={form.bale_token || ''} onChange={e => set('bale_token', e.target.value)} />
-                  <TextField size="small" fullWidth sx={fieldSx} label="شناسه گفتگوی بله (chat_id)" value={form.bale_chat_id || ''} onChange={e => set('bale_chat_id', e.target.value)} />
-                </Box>
-              )}
-            </Paper>
-          </Grid>
-        </Grid>
-      </Section>
 
-      {/* ذخیرهسازی */}
-      <Section icon={<StorageIcon sx={{ color: '#fff', fontSize: 22 }} />} title="مسیرهای ذخیرهسازی فایلها" subtitle="محل ذخیره هر دسته از فایلهای آپلودی" color={SOFT.blue}>
-        <Grid container spacing={2}>
-          <Grid item xs={12}><TextField size="small" fullWidth sx={fieldSx} label="مسیر پایه ذخیرهسازی" placeholder="/var/hr_data/" dir="ltr" value={form.base_storage_path || ''} onChange={e => set('base_storage_path', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="پوشه مدارک پرسنل" dir="ltr" value={form.storage_path_employees || ''} onChange={e => set('storage_path_employees', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="پوشه مکاتبات" dir="ltr" value={form.storage_path_correspondences || ''} onChange={e => set('storage_path_correspondences', e.target.value)} /></Grid>
-          <Grid item xs={12} md={4}><TextField size="small" fullWidth sx={fieldSx} label="پوشه بایگانی اسناد" dir="ltr" value={form.storage_path_documents || ''} onChange={e => set('storage_path_documents', e.target.value)} /></Grid>
-        </Grid>
-      </Section>
 
-      {/* توضیحات + ذخیره */}
-      <Paper sx={{ ...glassCard, p: 3 }}>
-        <Grid container spacing={2}>
-          <Grid item xs={12}>
-            <TextField size="small" fullWidth sx={fieldSx} multiline rows={3} label="توضیحات" value={form.description || ''} onChange={e => set('description', e.target.value)} />
-          </Grid>
-          <Grid item xs={12} sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <Button
-              variant="contained"
-              startIcon={updateMutation.isLoading ? null : <SaveIcon />}
-              onClick={() => updateMutation.mutate(form)}
-              disabled={updateMutation.isLoading}
-              sx={{ bgcolor: SOFT.indigo, borderRadius: '10px', px: 4, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
-            >
-              {updateMutation.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره تغییرات'}
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
+
+
+
     </Box>
   );
 };
