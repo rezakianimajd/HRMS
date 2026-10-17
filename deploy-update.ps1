@@ -277,6 +277,7 @@ $BackendFiles += @(
     'hrms_project/core/updates_service.py',
     'hrms_project/core/updates_views.py',
     'hrms_project/core/urls.py',
+    'hrms_project/core/views.py',
     'hrms_project/core/migrations/0014_updatesettings_apprelease_systembroadcast_updaterun_and_more.py',
     'hrms_project/hrms_project/settings/base.py',
     'scripts/patch_nginx_for_updates.sh',

@@ -65,6 +65,7 @@ urlpatterns = [
     path('users/', views.users_view, name='api-users'),
     path('users/create/', views.user_create_view, name='api-user-create'),
     path('users/<int:user_id>/role/', views.user_set_role_view, name='api-user-set-role'),
+path('users/<int:user_id>/update/', views.user_update_view, name='api-user-update'),
     path('users/<int:user_id>/applications/', views.user_set_applications_view, name='api-user-set-applications'),
     path('users/<int:user_id>/delete/', views.user_delete_view, name='api-user-delete'),
     path('users/roles/', views.user_roles_view, name='api-user-roles'),

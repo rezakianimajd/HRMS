@@ -14,9 +14,11 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SecurityIcon from '@mui/icons-material/Security';
 import PersonIcon from '@mui/icons-material/Person';
 import SaveIcon from '@mui/icons-material/Save';
-import AppsIcon from '@mui/icons-material/Apps';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import EditIcon from '@mui/icons-material/Edit';
+import { formatPersianNumber } from '../core/utils/numberUtils';
 import { PageHeader, TabsCard, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 
 const ROLE_LABELS = {
@@ -87,9 +89,12 @@ const UsersPage = () => {
   const [openAdd, setOpenAdd] = useState(false);
   const [draft, setDraft] = useState({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'employee', application_ids: [] });
   const [permEdits, setPermEdits] = useState({});
-  const [roleAppEdits, setRoleAppEdits] = useState({});
-  const [moduleUser, setModuleUser] = useState(null);
-  const [moduleSel, setModuleSel] = useState([]);
+  const [viewUser, setViewUser] = useState(null);
+  const [editUser, setEditUser] = useState(null);
+  const [editForm, setEditForm] = useState({
+    username: '', first_name: '', last_name: '', email: '',
+    role: 'employee', application_ids: [],
+  });
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users-list'],
@@ -99,7 +104,7 @@ const UsersPage = () => {
     queryKey: ['users-roles'],
     queryFn: () => axiosInstance.get('/users/roles/').then(r => r.data),
   });
-  const { data: catalog, isLoading: catalogLoading } = useQuery({
+  const { data: catalog } = useQuery({
     queryKey: ['apps-catalog'],
     queryFn: () => axiosInstance.get('/applications/catalog/').then(r => r.data),
   });
@@ -132,34 +137,29 @@ const UsersPage = () => {
     },
     onError: (e) => setErr(e.response?.data?.error || 'خطا در ساخت کاربر'),
   });
-  const setAppsMutation = useMutation({
-    mutationFn: ({ id, application_ids }) => axiosInstance.post(`/users/${id}/applications/`, { application_ids }),
+  const updateMutation = useMutation({
+    mutationFn: ({ id, body }) => axiosInstance.post(`/users/${id}/update/`, body),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users-list'] });
-      setModuleUser(null);
-      setMsg('دسترسی ماژول‌ها ذخیره شد.');
+      qc.invalidateQueries({ queryKey: ['users-roles'] });
+      setEditUser(null);
+      setMsg('اطلاعات کاربر به‌روزرسانی شد.');
       setTimeout(() => setMsg(''), 2500);
     },
-    onError: (e) => setErr(e.response?.data?.error || 'خطا در ذخیره دسترسی ماژول‌ها'),
+    onError: (e) => setErr(e.response?.data?.error || 'خطا در ویرایش کاربر'),
   });
 
-  const openModuleDialog = (u) => {
-    setModuleUser(u);
-    setModuleSel(u.applications || []);
-  };
-
-  const roleAppChecked = (role) => {
-    const v = roleAppEdits[role.role] !== undefined ? roleAppEdits[role.role] : role.applications;
-    if (v === '*') return null; // all selected
-    return new Set(v || []);
-  };
-  const toggleRoleApp = (role, slug) => {
-    setRoleAppEdits(p => {
-      const cur = p[role.role] !== undefined ? p[role.role] : role.applications;
-      const set = cur === '*' ? new Set(appList.map(a => a.slug)) : new Set(cur || []);
-      if (set.has(slug)) set.delete(slug); else set.add(slug);
-      return { ...p, [role.role]: Array.from(set) };
+  const openEditUser = (u) => {
+    setEditUser(u);
+    setEditForm({
+      username: u.username || '',
+      first_name: u.first_name || '',
+      last_name: u.last_name || '',
+      email: u.email || '',
+      role: u.role || 'employee',
+      application_ids: [...(u.applications || [])],
     });
+    setErr('');
   };
 
   return (
@@ -168,6 +168,18 @@ const UsersPage = () => {
         icon={<AdminPanelSettingsIcon />}
         title="کاربران، نقش‌ها و ماژول‌ها"
         color={SOFT.slate}
+        actions={(
+          <Button
+            variant="contained" startIcon={<AddIcon />}
+            onClick={() => { setErr(''); setOpenAdd(true); }}
+            sx={{
+              bgcolor: SOFT.slate, borderRadius: '9px', boxShadow: 'none',
+              fontSize: 11.5, '&:hover': { bgcolor: '#8494a8' },
+            }}
+          >
+            افزودن کاربر
+          </Button>
+        )}
       />
 
       {(msg || err) && (
@@ -179,7 +191,6 @@ const UsersPage = () => {
       <TabsCard
         tabs={[
           { key: 'users', label: 'کاربران', icon: <PersonIcon /> },
-          { key: 'roles', label: 'نقش‌ها و دسترسی ماژول‌ها', icon: <AppsIcon /> },
           { key: 'perms', label: 'مجوزهای ریز', icon: <SecurityIcon /> },
         ]}
         value={tab}
@@ -190,12 +201,6 @@ const UsersPage = () => {
       {/* ---------- TAB USERS ---------- */}
       {tab === 0 && (
         <>
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 1.5 }}>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setErr(''); setOpenAdd(true); }}
-              sx={{ bgcolor: SOFT.slate, borderRadius: '9px', boxShadow: 'none', fontSize: 11.5, '&:hover': { bgcolor: '#8494a8' } }}>
-              افزودن کاربر
-            </Button>
-          </Box>
           <Paper variant="outlined" sx={{ ...SURFACE, overflow: 'hidden' }}>
             {isLoading ? (
               <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
@@ -206,11 +211,11 @@ const UsersPage = () => {
                 <Table size="small" sx={{ '& td': { fontSize: 11, py: 1 } }}>
                   <TableHead>
                     <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5, fontWeight: 800 } }}>
-                      <TableCell sx={{ fontWeight: 700 }}>کاربر</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>نام کاربری</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>نقش</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>دسترسی ماژول‌ها</TableCell>
-                      <TableCell sx={{ fontWeight: 700 }}>عملیات</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>کاربر</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>نام کاربری</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>نقش</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>دسترسی ماژول‌ها</TableCell>
+                      <TableCell align="center" sx={{ fontWeight: 700 }}>عملیات</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -223,38 +228,46 @@ const UsersPage = () => {
                             </Avatar>
                             <Box>
                               <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{u.first_name} {u.last_name}</Typography>
-                              <Typography variant="caption" color="textSecondary">@{u.username}</Typography>
                             </Box>
                           </Stack>
                         </TableCell>
                         <TableCell>{u.username}</TableCell>
-                        <TableCell sx={{ minWidth: 170 }}>
-                          <FormControl fullWidth size="small">
+                        <TableCell align="center" sx={{ minWidth: 150 }}>
+                          <FormControl fullWidth size="small" sx={{
+                            '& .MuiInputLabel-root': { fontSize: 11 },
+                            '& .MuiSelect-select': { fontSize: 11, py: 0.75 },
+                          }}>
                             <InputLabel>نقش</InputLabel>
                             <Select value={u.role} label="نقش" onChange={e => setRoleMutation.mutate({ id: u.id, role: e.target.value })}>
                               {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
                             </Select>
                           </FormControl>
                         </TableCell>
-                        <TableCell>
-                          <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" sx={{ maxWidth: 360 }}>
-                            {(u.applications || []).length === 0
-                              ? <Chip size="small" label="طبق نقش" variant="outlined" />
-                              : (u.applications || []).map(id => {
-                                  const app = appList.find(a => a.id === id);
-                                  return app ? (
-                                    <Chip key={id} size="small" label={app.title}
-                                      sx={{ bgcolor: `${app.color || '#6366f1'}22`, color: '#475569', fontWeight: 600, fontSize: 11 }} />
-                                  ) : null;
-                                })}
-                            <Tooltip title="ویرایش دسترسی ماژول‌ها">
-                              <IconButton size="small" onClick={() => openModuleDialog(u)}>
-                                <AppsIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </Stack>
+                        <TableCell align="center">
+                          {u.is_superuser ? (
+                            <Chip size="small" label="همهٔ ماژول‌ها"
+                              sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${SOFT.violet}1f`, color: SOFT.violet }} />
+                          ) : (u.applications || []).length > 0 ? (
+                            <Chip size="small" label={`${formatPersianNumber((u.applications || []).length)} ماژول`}
+                              sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${SOFT.indigo}1f`, color: SOFT.indigo }} />
+                          ) : (
+                            <Chip size="small" label="طبق نقش" variant="outlined"
+                              sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                          )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
+                          <Tooltip title="مشاهدهٔ مشخصات">
+                            <IconButton size="small" onClick={() => setViewUser(u)}
+                              sx={{ color: SOFT.blue, '&:hover': { bgcolor: `${SOFT.blue}14` } }}>
+                              <VisibilityIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
+                          <Tooltip title="ویرایش کاربر">
+                            <IconButton size="small" onClick={() => openEditUser(u)}
+                              sx={{ color: SOFT.indigo, '&:hover': { bgcolor: `${SOFT.indigo}14` } }}>
+                              <EditIcon fontSize="small" />
+                            </IconButton>
+                          </Tooltip>
                           <Tooltip title="غیرفعال کردن">
                             <IconButton size="small" color="error" onClick={() => {
                               if (window.confirm(`کاربر «${u.username}» غیرفعال شود؟`)) deleteMutation.mutate(u.id);
@@ -273,65 +286,8 @@ const UsersPage = () => {
         </>
       )}
 
-      {/* ---------- TAB ROLES & MODULE ACCESS ---------- */}
-      {tab === 1 && (
-        <Box>
-          {rolesLoading || catalogLoading ? (
-            <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : (
-            <Stack spacing={2.5}>
-              {roleList.map(role => {
-                const checkedSet = roleAppChecked(role);
-                const isAll = checkedSet === null;
-                return (
-                  <Paper key={role.role} sx={{ ...glass, p: 1.75 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                      <Avatar sx={{ width: 30, height: 30, mr: 1.25, fontSize: 12, fontWeight: 800, bgcolor: `${ROLE_COLORS[role.role] || SOFT.slate}1f`, color: ROLE_COLORS[role.role] || SOFT.slate }}>
-                        {role.label.charAt(0)}
-                      </Avatar>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>{role.label}</Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {isAll ? 'دسترسی به تمام ماژول‌ها' : `${(roleAppEdits[role.role] !== undefined ? roleAppEdits[role.role] : role.applications)?.length || 0} ماژول`}
-                        </Typography>
-                      </Box>
-                      <Button size="small" variant="contained" startIcon={<SaveIcon fontSize="small" />} disabled={role.role === 'super_admin'}
-                        sx={{ bgcolor: ROLE_COLORS[role.role] || SOFT.slate, boxShadow: 'none', fontSize: 10.5 }}
-                        onClick={() => {
-                          const apps = roleAppEdits[role.role] !== undefined ? roleAppEdits[role.role] : role.applications;
-                          axiosInstance.post(`/users/roles/${role.role}/save/`, { permissions: role.permissions, applications: apps }).then(() => {
-                            qc.invalidateQueries({ queryKey: ['users-roles'] });
-                            setMsg('دسترسی ماژول‌ها ذخیره شد.');
-                            setTimeout(() => setMsg(''), 2500);
-                          }).catch(e => setErr(e.response?.data?.error || 'خطا در ذخیره'));
-                        }}>
-                        ذخیره
-                      </Button>
-                    </Box>
-                    {role.role === 'super_admin' ? (
-                      <Alert severity="info" sx={{ borderRadius: '12px' }}>نقش «مدیر ارشد سیستم» به صورت خودکار به تمام ماژول‌ها دسترسی کامل دارد و قابل تغییر نیست.</Alert>
-                    ) : (
-                      <Grid container spacing={1.5}>
-                        {appList.map(app => {
-                          const checked = isAll || (checkedSet && checkedSet.has(app.slug));
-                          return (
-                            <Grid item xs={12} sm={6} md={4} key={app.id}>
-                              <ModuleCard app={app} checked={!!checked} onToggle={(a) => toggleRoleApp(role, a.slug)} />
-                            </Grid>
-                          );
-                        })}
-                      </Grid>
-                    )}
-                  </Paper>
-                );
-              })}
-            </Stack>
-          )}
-        </Box>
-      )}
-
       {/* ---------- TAB FINE PERMISSIONS ---------- */}
-      {tab === 2 && (
+      {tab === 1 && (
         <Box>
           {rolesLoading ? (
             <Box sx={{ p: 5, textAlign: 'center' }}><CircularProgress /></Box>
@@ -349,7 +305,7 @@ const UsersPage = () => {
                       onClick={() => {
                         const perms = (permEdits[role.role] && Object.keys(permEdits[role.role]).length)
                           ? permEdits[role.role] : role.permissions;
-                        const apps = roleAppEdits[role.role] !== undefined ? roleAppEdits[role.role] : role.applications;
+                        const apps = role.applications;
                         axiosInstance.post(`/users/roles/${role.role}/save/`, { permissions: perms, applications: apps }).then(() => {
                           qc.invalidateQueries({ queryKey: ['users-roles'] });
                           setMsg('مجوزها ذخیره شد.');
@@ -428,35 +384,109 @@ const UsersPage = () => {
         </DialogActions>
       </Dialog>
 
-      {/* Dialog edit module access */}
-      <Dialog open={!!moduleUser} onClose={() => setModuleUser(null)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ color: '#475569' }}>
-          دسترسی ماژول‌های «{moduleUser?.username}»
-        </DialogTitle>
-        <DialogContent>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 1.5 }}>
-            ماژول‌هایی که این کاربر مستقیم به آن‌ها دسترسی دارد. (نقش: {ROLE_LABELS[moduleUser?.role] || '—'})
+      {/* Dialog view user */}
+      <Dialog open={!!viewUser} onClose={() => setViewUser(null)} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: '18px' } }}>
+        <DialogTitle sx={{ fontSize: 15, fontWeight: 900 }}>مشخصات کاربر</DialogTitle>
+        <DialogContent dividers>
+          {viewUser && (
+            <Stack spacing={1.25}>
+              <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap sx={{ mb: 1 }}>
+                <Avatar sx={{
+                  width: 42, height: 42, fontSize: 16, fontWeight: 800,
+                  bgcolor: `${ROLE_COLORS[viewUser.role] || SOFT.slate}1f`,
+                  color: ROLE_COLORS[viewUser.role] || SOFT.slate,
+                }}>
+                  {(viewUser.first_name?.charAt(0) || viewUser.username?.charAt(0) || 'U')}
+                </Avatar>
+                <Box>
+                  <Typography sx={{ fontSize: 13, fontWeight: 800 }}>
+                    {viewUser.first_name} {viewUser.last_name}
+                  </Typography>
+                  <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>@{viewUser.username}</Typography>
+                </Box>
+              </Stack>
+              {[
+                ['نام کاربری', viewUser.username],
+                ['ایمیل', viewUser.email || '—'],
+                ['نقش', ROLE_LABELS[viewUser.role] || viewUser.role || '—'],
+                ['دسترسی ماژول‌ها', viewUser.is_superuser
+                  ? 'همهٔ ماژول‌ها'
+                  : `${formatPersianNumber((viewUser.applications || []).length)} ماژول`],
+                ['وضعیت', viewUser.is_active ? 'فعال' : 'غیرفعال'],
+              ].map(([key, value]) => (
+                <Stack key={key} direction="row" justifyContent="space-between"
+                  sx={{ py: 0.5, borderBottom: '1px dashed', borderColor: 'divider' }}>
+                  <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{key}</Typography>
+                  <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{value}</Typography>
+                </Stack>
+              ))}
+            </Stack>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setViewUser(null)}>بستن</Button>
+          <Button variant="contained" startIcon={<EditIcon />}
+            sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
+            onClick={() => { const current = viewUser; setViewUser(null); openEditUser(current); }}>
+            ویرایش
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Dialog edit user */}
+      <Dialog open={!!editUser} onClose={() => setEditUser(null)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: { borderRadius: '18px' } }}>
+        <DialogTitle sx={{ fontSize: 15, fontWeight: 900 }}>ویرایش کاربر</DialogTitle>
+        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
+          <TextField fullWidth size="small" label="نام کاربری *" value={editForm.username}
+            onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))} />
+          <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
+            <TextField fullWidth size="small" label="نام" value={editForm.first_name}
+              onChange={e => setEditForm(p => ({ ...p, first_name: e.target.value }))} />
+            <TextField fullWidth size="small" label="نام خانوادگی" value={editForm.last_name}
+              onChange={e => setEditForm(p => ({ ...p, last_name: e.target.value }))} />
+          </Stack>
+          <TextField fullWidth size="small" label="ایمیل" value={editForm.email}
+            onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
+          <FormControl fullWidth size="small">
+            <InputLabel>نقش</InputLabel>
+            <Select value={editForm.role} label="نقش"
+              onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}>
+              {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <Divider sx={{ my: 0.5 }} />
+          <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.secondary' }}>
+            دسترسی ماژول‌ها (خالی یعنی طبق نقش)
           </Typography>
-          <Grid container spacing={1.5}>
+          <Grid container spacing={1}>
             {appList.map(app => {
-              const checked = moduleSel.includes(app.id);
+              const checked = editForm.application_ids.includes(app.id);
               return (
-                <Grid item xs={12} sm={6} md={4} key={app.id}>
-                  <ModuleCard app={app} checked={checked} onToggle={() => setModuleSel(p => checked ? p.filter(i => i !== app.id) : [...p, app.id])} />
+                <Grid item xs={12} sm={6} key={app.id}>
+                  <ModuleCard app={app} checked={checked} onToggle={() => setEditForm(p => ({
+                    ...p,
+                    application_ids: checked
+                      ? p.application_ids.filter(i => i !== app.id)
+                      : [...p.application_ids, app.id],
+                  }))} />
                 </Grid>
               );
             })}
           </Grid>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setModuleUser(null)}>انصراف</Button>
+          <Button onClick={() => setEditUser(null)}>انصراف</Button>
           <Button variant="contained" startIcon={<SaveIcon />}
+            disabled={!editForm.username || updateMutation.isLoading}
             sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
-            onClick={() => setAppsMutation.mutate({ id: moduleUser.id, application_ids: moduleSel })}>
-            ذخیره
+            onClick={() => updateMutation.mutate({ id: editUser.id, body: editForm })}>
+            ذخیره تغییرات
           </Button>
         </DialogActions>
       </Dialog>
+
     </Box>
   );
 };

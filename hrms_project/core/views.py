@@ -496,6 +496,72 @@ def user_create_view(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @_public_schema
+def user_update_view(request, user_id):
+    """Update a user's profile, role and module access (sysadmin/hr_manager only)."""
+    if not _can_admin(request):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    from django.contrib.auth.models import User
+    from core.models.user import UserProfile
+    from core.models import Application
+
+    user = User.objects.filter(id=user_id, is_active=True).first()
+    if not user:
+        return Response({'error': 'کاربر یافت نشد'}, status=404)
+
+    data = request.data
+    username = (data.get('username') or user.username).strip()
+    if not username:
+        return Response({'error': 'نام کاربری الزامی است'}, status=400)
+    if User.objects.filter(username=username).exclude(id=user.id).exists():
+        return Response({'error': 'نام کاربری تکراری است'}, status=400)
+
+    role_map = _role_meta()
+    role = data.get('role')
+    if role is not None and role not in role_map:
+        return Response({'error': 'نقش نامعتبر است'}, status=400)
+
+    user.username = username
+    if 'email' in data:
+        user.email = (data.get('email') or '').strip()
+    if 'first_name' in data:
+        user.first_name = (data.get('first_name') or '').strip()
+    if 'last_name' in data:
+        user.last_name = (data.get('last_name') or '').strip()
+    user.save(update_fields=['username', 'email', 'first_name', 'last_name'])
+
+    profile, _ = UserProfile.objects.get_or_create(user=user)
+    update_fields = []
+    if role is not None and profile.role != role:
+        profile.role = role
+        update_fields.append('role')
+
+    if 'application_ids' in data:
+        ids = data.get('application_ids') or []
+        ids = [int(i) for i in ids if str(i).isdigit()]
+        profile.applications.set(Application.objects.filter(id__in=ids, is_active=True))
+        if profile.current_application_id and profile.current_application_id not in ids:
+            profile.current_application = None
+            update_fields.append('current_application')
+
+    if update_fields:
+        update_fields.append('updated_at')
+        profile.save(update_fields=update_fields)
+
+    return Response({
+        'message': 'اطلاعات کاربر به‌روزرسانی شد.',
+        'user': {
+            'id': user.id, 'username': user.username, 'email': user.email,
+            'first_name': user.first_name, 'last_name': user.last_name,
+            'role': profile.role, 'role_label': role_map.get(profile.role, ''),
+            'applications': list(profile.applications.values_list('id', flat=True)),
+        },
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@_public_schema
 def user_delete_view(request, user_id):
     """Soft-delete a user (is_active=False), sysadmin/hr_manager only."""
     if not _can_admin(request):
