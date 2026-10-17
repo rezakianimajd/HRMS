@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Box, Typography, Paper, Grid, Chip, Stack, Divider, Avatar,
+  Box, Typography, Paper, Grid, Chip, Stack, Avatar,
 } from '@mui/material';
 import PaletteIcon from '@mui/icons-material/Palette';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -193,37 +193,53 @@ const AppearancePage = () => {
         </Box>
       </Paper>
 
-      {/* Neon color picker — only for Neon modes */}
-      {['fmode', 'fmode_light'].includes(mode) && (
-        <>
-          <Divider sx={{ my: 3 }} />
-          <Typography variant="subtitle1" fontWeight={700} sx={{ mb: 1 }}>رنگ نئون</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ mb: 2 }}>
-            رنگ نئونی تم سبز مورد نظر را انتخاب کنید — بلافاصله در سراسر برنامه اعمال می‌شود.
-          </Typography>
-          <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
-            {NEON_COLOR_OPTIONS.map(c => (
-              <Chip
-                key={c.key}
-                label={c.label}
-                onClick={() => setNeonColor(c.color)}
-                sx={{
-                  fontWeight: 700,
-                  cursor: 'pointer',
-                  bgcolor: neonColor === c.color ? c.color : 'transparent',
-                  color: neonColor === c.color ? '#000' : 'inherit',
-                  border: `1px solid ${c.color}`,
-                  '&:hover': { background: `${c.color}22` },
-                }}
-              />
-            ))}
-          </Stack>
-          <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <Typography variant="body2">رنگ فعلی:</Typography>
-            <Box sx={{ width: 34, height: 34, borderRadius: '50%', background: neonColor, boxShadow: `0 0 16px ${neonColor}` }} />
-            <Typography variant="caption" color="textSecondary">{neonColor}</Typography>
+      {/* رنگ نئون — فقط برای F مود تاریک، داخل کارت */}
+      {mode === 'fmode' && (
+        <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
+          <Box sx={{
+            display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
+            px: 1.75, py: 1.25,
+            borderBottom: '1px solid', borderColor: 'divider',
+            background: `linear-gradient(135deg, ${SOFT.violet}14, transparent)`,
+          }}>
+            <Avatar variant="rounded" sx={{
+              width: 30, height: 30, borderRadius: '9px',
+              bgcolor: `${SOFT.violet}24`, color: SOFT.violet,
+            }}>
+              <PaletteIcon sx={{ fontSize: 17 }} />
+            </Avatar>
+            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>رنگ نئون</Typography>
+            <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.75 }}>
+              <Box sx={{
+                width: 14, height: 14, borderRadius: '50%',
+                background: neonColor, boxShadow: `0 0 8px ${neonColor}`,
+              }} />
+              <Typography sx={{ fontSize: 10.5, color: 'text.secondary', direction: 'ltr' }}>
+                {neonColor}
+              </Typography>
+            </Box>
           </Box>
-        </>
+
+          <Box sx={{ p: 1.75 }}>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              {NEON_COLOR_OPTIONS.map(c => (
+                <Chip
+                  key={c.key}
+                  label={c.label}
+                  onClick={() => setNeonColor(c.color)}
+                  sx={{
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    bgcolor: neonColor === c.color ? c.color : 'transparent',
+                    color: neonColor === c.color ? '#000' : 'inherit',
+                    border: `1px solid ${c.color}`,
+                    '&:hover': { background: `${c.color}22` },
+                  }}
+                />
+              ))}
+            </Stack>
+          </Box>
+        </Paper>
       )}
 
     </Box>
