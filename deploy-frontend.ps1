@@ -134,7 +134,7 @@ try {
 
 Step '۳/۴ انتقال و استقرار روی سرور'
 $tmp = "/tmp/hrms-frontend-$(Get-Date -Format 'yyyyMMddHHmmss')"
-$remoteCmd = "set -e; rm -rf '$tmp'; mkdir -p '$tmp'; tar -xzf - -C '$tmp'; bash '$tmp/deploy.sh' '$AppDir' '$StaticDir' '$tmp'"
+$remoteCmd = "set -e; rm -rf '$tmp'; mkdir -p '$tmp'; tar --warning=no-timestamp -xzf - -C '$tmp'; bash '$tmp/deploy.sh' '$AppDir' '$StaticDir' '$tmp'"
 
 Write-Host '   [..] اتصال SSH و انتقال بسته؛ در صورت نیاز فقط همین یک بار رمز سرور را وارد کنید.' -ForegroundColor Yellow
 try {
