@@ -5,7 +5,8 @@ import CssBaseline from '@mui/material/CssBaseline';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { AuthProvider } from './core/context/AuthContext';
 import { CompanyProvider } from './core/context/CompanyContext';
-import { ApplicationProvider } from './core/context/ApplicationContext';
+import { ApplicationProvider, useApplication } from './core/context/ApplicationContext';
+import { ModulePaletteProvider, useModulePalette } from './core/context/ModulePaletteContext';
 import { LanguageProvider } from './core/context/LanguageContext';
 import { ThemeProvider as AppThemeProvider, useThemeMode } from './core/context/ThemeContext';
 import { WorkspaceTabsProvider } from './core/context/WorkspaceTabsContext';
@@ -16,7 +17,7 @@ import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
 import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
-import { FONT_FAMILY } from './core/theme/tokens';
+import { FONT_FAMILY, mixHex } from './core/theme/tokens';
 import './core/engines/languageEngine';
 
 const queryClient = new QueryClient({
@@ -180,14 +181,41 @@ const getPalettes = (mode, neonColor) => {
   };
 };
 
-const getComponents = (mode, neonColor) => {
+/**
+ * اعمال پالت هر ماژول روی پالت پایه: رنگ تاکیدی + پس‌زمینه.
+ * در F مود و کوراساوا رنگ تاکیدی سراسری دست‌نخورده می‌ماند.
+ */
+const applyModulePalette = (palette, mode, modulePalette) => {
+  if (!modulePalette) return palette;
+  const next = {
+    ...palette,
+    primary: { ...palette.primary },
+    background: { ...palette.background },
+  };
+  if (modulePalette.accent && mode !== 'fmode' && mode !== 'kurosawa') {
+    next.primary = {
+      main: modulePalette.accent,
+      light: mixHex(modulePalette.accent, '#ffffff', 0.28),
+      dark: mixHex(modulePalette.accent, '#000000', 0.2),
+    };
+  }
+  if (modulePalette.background && (mode === 'light' || mode === 'fmode_light')) {
+    next.background.default = modulePalette.background;
+  }
+  return next;
+};
+
+const getComponents = (mode, neonColor, modulePalette) => {
   const isDark = mode === 'dark';
   const isF = mode === 'fmode';
-  const bodyBg = isF
+  const moduleBg = modulePalette?.background && (mode === 'light' || mode === 'fmode_light')
+    ? modulePalette.background
+    : null;
+  const bodyBg = moduleBg || (isF
     ? 'linear-gradient(135deg, #050505 0%, #0d0d0d 50%, #050505 100%)'
     : isDark
       ? 'linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)'
-      : 'linear-gradient(135deg, #f0f4ff 0%, #fdf2f8 50%, #f8fafc 100%)';
+      : 'linear-gradient(135deg, #f0f4ff 0%, #fdf2f8 50%, #f8fafc 100%)');
 
   if (isF) {
     return {
@@ -235,6 +263,9 @@ const getComponents = (mode, neonColor) => {
 const ThemedApp = () => {
   const { direction } = useLanguage();
   const { mode, neonColor } = useThemeMode();
+  const { currentApp } = useApplication();
+  const { getPalette } = useModulePalette();
+  const modulePalette = getPalette(currentApp?.slug);
 
   React.useEffect(() => {
     document.documentElement.dir = direction;
@@ -247,8 +278,8 @@ const ThemedApp = () => {
     document.body.classList.toggle('fmode-light-candy', mode === 'fmode_light');
   }, [mode]);
 
-  const palettes = getPalettes(mode, neonColor);
-  const components = getComponents(mode, neonColor);
+  const palettes = applyModulePalette(getPalettes(mode, neonColor), mode, modulePalette);
+  const components = getComponents(mode, neonColor, modulePalette);
 
   const theme = createTheme({
     direction,
@@ -276,9 +307,12 @@ const ThemedApp = () => {
               ? { background: `linear-gradient(135deg, ${neonColor}, #00ffff)`, color: '#000', '&:hover': { background: `linear-gradient(135deg, ${neonColor}, #00cccc)` } }
               : mode === 'kurosawa'
                 ? { background: 'linear-gradient(135deg, #111827, #4b5563)', color: '#fff', '&:hover': { background: 'linear-gradient(135deg, #000000, #374151)' } }
-                : { background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', '&:hover': { background: 'linear-gradient(135deg, #4f46e5, #7c3aed)' } }),
+                : {
+                  background: `linear-gradient(135deg, ${palettes.primary.main}, ${palettes.primary.dark})`,
+                  '&:hover': { background: `linear-gradient(135deg, ${palettes.primary.dark}, ${palettes.primary.main})` },
+                }),
           },
-          text: { border: '1px solid currentColor', '&:hover': { border: '1px solid currentColor', background: 'rgba(99,102,241,0.06)' } },
+          text: { border: '1px solid currentColor', '&:hover': { border: '1px solid currentColor', background: `${palettes.primary.main}0f` } },
         },
       },
       MuiInputBase: { styleOverrides: { input: { textAlign: 'right' } } },
@@ -288,8 +322,8 @@ const ThemedApp = () => {
         styleOverrides: {
           root: {
             borderRadius: '10px', margin: '2px 8px', transition: 'all 0.2s ease',
-            '&.Mui-selected': { background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12))', '&:hover': { background: 'linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.2))' } },
-            '&:hover': { background: 'rgba(99,102,241,0.06)' },
+            '&.Mui-selected': { background: `${palettes.primary.main}1f`, '&:hover': { background: `${palettes.primary.main}33` } },
+            '&:hover': { background: `${palettes.primary.main}0f` },
           },
         },
       },
@@ -318,11 +352,13 @@ function App() {
           <AuthProvider>
             <CompanyProvider>
               <ApplicationProvider>
-                <LanguageProvider>
-                  <WorkspaceTabsProvider>
-                    <ThemedApp />
-                  </WorkspaceTabsProvider>
-                </LanguageProvider>
+                <ModulePaletteProvider>
+                  <LanguageProvider>
+                    <WorkspaceTabsProvider>
+                      <ThemedApp />
+                    </WorkspaceTabsProvider>
+                  </LanguageProvider>
+                </ModulePaletteProvider>
               </ApplicationProvider>
             </CompanyProvider>
           </AuthProvider>

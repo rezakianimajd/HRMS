@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import {
   Box, Menu, MenuItem, Typography, Button,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import AppsOutlinedIcon from '@mui/icons-material/AppsOutlined';
@@ -20,6 +21,7 @@ import FactoryOutlinedIcon from '@mui/icons-material/FactoryOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import { useApplication } from '../../context/ApplicationContext';
+import { useModulePalette } from '../../context/ModulePaletteContext';
 import { toPersianDigits } from '../../utils/numberUtils';
 
 const LANDING_PATH = {
@@ -69,6 +71,8 @@ const renderIcon = (app, size) => {
 const AppSwitcher = () => {
   const navigate = useNavigate();
   const { applications, currentApp, loadApplications, switchApplication } = useApplication();
+  const { getPalette } = useModulePalette();
+  const currentAccent = getPalette(currentApp?.slug)?.accent || null;
   const [anchor, setAnchor] = useState(null);
 
   useEffect(() => {
@@ -102,15 +106,19 @@ const AppSwitcher = () => {
           textTransform: 'none',
           borderRadius: '12px',
           border: '1px solid',
-          borderColor: 'divider',
+          borderColor: currentAccent || 'divider',
           bgcolor: 'background.paper',
           color: 'text.primary',
-          boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
+          boxShadow: currentAccent
+            ? `0 0 0 3px ${alpha(currentAccent, 0.1)}`
+            : '0 1px 3px rgba(15,23,42,0.04)',
           transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
           '&:hover': {
             bgcolor: 'background.paper',
-            borderColor: 'text.disabled',
-            boxShadow: '0 6px 18px rgba(15,23,42,0.08)',
+            borderColor: currentAccent || 'text.disabled',
+            boxShadow: currentAccent
+              ? `0 0 0 4px ${alpha(currentAccent, 0.14)}`
+              : '0 6px 18px rgba(15,23,42,0.08)',
           },
         }}
       >
@@ -119,7 +127,7 @@ const AppSwitcher = () => {
             width: 32, height: 32, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: '9px',
-            border: '1px solid', borderColor: 'divider',
+            border: '1px solid', borderColor: currentAccent ? alpha(currentAccent, 0.3) : 'divider',
             bgcolor: 'action.hover',
           }}>
             {currentApp
@@ -186,6 +194,7 @@ const AppSwitcher = () => {
         <Box sx={{ p: 0.75 }}>
           {activeApps.map((app) => {
             const selected = currentApp?.id === app.id;
+            const appAccent = getPalette(app.slug)?.accent || null;
             return (
               <MenuItem
                 key={app.id}
@@ -193,8 +202,14 @@ const AppSwitcher = () => {
                 selected={selected}
                 sx={{
                   py: 0.9, px: 1.1, borderRadius: '10px', mb: 0.25, gap: 1,
-                  '&.Mui-selected': { bgcolor: 'action.selected' },
-                  '&.Mui-selected:hover': { bgcolor: 'action.selected' },
+                  border: '1px solid',
+                  borderColor: selected && currentAccent ? alpha(currentAccent, 0.22) : 'transparent',
+                  '&.Mui-selected': {
+                    bgcolor: selected && currentAccent ? alpha(currentAccent, 0.08) : 'action.selected',
+                  },
+                  '&.Mui-selected:hover': {
+                    bgcolor: selected && currentAccent ? alpha(currentAccent, 0.11) : 'action.selected',
+                  },
                 }}
               >
                 <Box sx={{
@@ -212,7 +227,13 @@ const AppSwitcher = () => {
                 }}>
                   {app.title}
                 </Typography>
-                {selected && <CheckRoundedIcon sx={{ fontSize: 15, color: 'text.secondary' }} />}
+                {appAccent && (
+                  <Box sx={{
+                    width: 6, height: 6, borderRadius: '50%',
+                    bgcolor: appAccent, flexShrink: 0,
+                  }} />
+                )}
+                {selected && <CheckRoundedIcon sx={{ fontSize: 15, color: currentAccent || 'text.secondary' }} />}
               </MenuItem>
             );
           })}

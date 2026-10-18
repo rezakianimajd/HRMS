@@ -6,6 +6,22 @@
 
 export const FONT_FAMILY = "'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif";
 
+/** ترکیب یک رنگ HEX با سفید/سیاه برای ساخت نسخهٔ روشن/تیره */
+export const mixHex = (hex, target, amount = 0.2) => {
+  const parse = (value) => {
+    const raw = String(value || '').replace('#', '').trim();
+    const full = raw.length === 3 ? raw.split('').map((ch) => ch + ch).join('') : raw;
+    if (!/^[0-9a-fA-F]{6}$/.test(full)) return null;
+    return [0, 2, 4].map((i) => parseInt(full.slice(i, i + 2), 16));
+  };
+  const from = parse(hex);
+  const to = parse(target);
+  if (!from || !to) return hex;
+  const channel = (index) => Math.round(from[index] + (to[index] - from[index]) * amount)
+    .toString(16).padStart(2, '0');
+  return `#${channel(0)}${channel(1)}${channel(2)}`;
+};
+
 export const glassPaper = {
   background: '#ffffff',
   border: '1px solid rgba(15,23,42,0.07)',

@@ -1,10 +1,16 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import {
-  Box, Typography, Paper, Grid, Chip, Stack, Avatar,
+  Box, Typography, Paper, Grid, Chip, Stack, Avatar, IconButton, Tooltip, Button,
 } from '@mui/material';
+import { alpha } from '@mui/material/styles';
 import PaletteIcon from '@mui/icons-material/Palette';
+import ColorLensOutlinedIcon from '@mui/icons-material/ColorLensOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
+import CloseIcon from '@mui/icons-material/Close';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../core/context/ThemeContext';
+import { useApplication } from '../core/context/ApplicationContext';
+import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../core/context/ModulePaletteContext';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 
@@ -109,8 +115,188 @@ const LivePreview = ({ mode, neonColor }) => {
   );
 };
 
+const ACCENT_PRESETS = [
+  SOFT.indigo, SOFT.violet, SOFT.teal, SOFT.green,
+  SOFT.amber, SOFT.orange, SOFT.pink, SOFT.blue, SOFT.slate,
+];
+
+const BG_PRESETS = [
+  '#f8fafc', '#f0f4ff', '#f1fdf7', '#fdf2f8', '#fffbeb', '#f0fdfa', '#ffffff',
+];
+
+const BG_FALLBACK = '#f8fafc';
+
+const ColorSwatch = ({ value, active, onClick, title }) => (
+  <Tooltip title={title || value} arrow>
+    <Box
+      role="button"
+      tabIndex={0}
+      onClick={onClick}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick();
+        }
+      }}
+      sx={{
+        width: 18, height: 18, borderRadius: '50%', bgcolor: value, cursor: 'pointer',
+        border: '2px solid', borderColor: active ? 'text.primary' : 'background.paper',
+        boxShadow: '0 0 0 1px rgba(15,23,42,0.12)',
+        transition: 'transform .15s ease',
+        '&:hover': { transform: 'scale(1.12)' },
+        '&:focus-visible': { outline: `2px solid ${alpha(value, 0.6)}`, outlineOffset: 1 },
+      }}
+    />
+  </Tooltip>
+);
+
+const PaletteColorInput = ({ label, value, fallback, onChange, onClear }) => (
+  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+    <Tooltip title={`${label} — انتخاب رنگ سفارشی`} arrow>
+      <Box
+        component="label"
+        sx={{
+          position: 'relative', width: 24, height: 24, flexShrink: 0,
+          borderRadius: '7px', border: '1px solid', borderColor: 'divider',
+          overflow: 'hidden', cursor: 'pointer', bgcolor: value || '#ffffff',
+        }}
+      >
+        <input
+          type="color"
+          value={value || fallback}
+          onChange={(event) => onChange(event.target.value)}
+          style={{
+            position: 'absolute', inset: 0, width: '100%', height: '100%',
+            opacity: 0, cursor: 'pointer',
+          }}
+        />
+        {!value && (
+          <Box sx={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(135deg, transparent 42%, #cbd5e1 42%, #cbd5e1 58%, transparent 58%)',
+          }} />
+        )}
+      </Box>
+    </Tooltip>
+    <Typography sx={{
+      fontSize: 9, direction: 'ltr', minWidth: 52,
+      color: value ? 'text.secondary' : 'text.disabled',
+    }}>
+      {value || 'پیش‌فرض'}
+    </Typography>
+    {value ? (
+      <Tooltip title="حذف رنگ سفارشی" arrow>
+        <IconButton size="small" onClick={onClear} sx={{ p: 0.2 }}>
+          <CloseIcon sx={{ fontSize: 12 }} />
+        </IconButton>
+      </Tooltip>
+    ) : null}
+  </Box>
+);
+
+const ModulePaletteRow = ({ app }) => {
+  const { getPalette, setPalette, resetPalette } = useModulePalette();
+  const saved = getPalette(app.slug);
+  const accent = saved?.accent || '';
+  const background = saved?.background || '';
+  const defaultAccent = MODULE_DEFAULT_ACCENTS[app.slug] || '#6366f1';
+  const displayAccent = accent || defaultAccent;
+  const customized = Boolean(saved?.hasCustom);
+
+  return (
+    <Box sx={{
+      p: 1.25, borderRadius: '14px',
+      border: '1px solid',
+      borderColor: customized ? alpha(displayAccent, 0.28) : 'divider',
+      bgcolor: customized ? alpha(displayAccent, 0.025) : 'transparent',
+    }}>
+      <Stack
+        direction={{ xs: 'column', lg: 'row' }}
+        spacing={1.25}
+        alignItems={{ lg: 'center' }}
+        useFlexGap
+      >
+        <Stack direction="row" spacing={0.9} alignItems="center" sx={{ minWidth: 150 }}>
+          <Box sx={{
+            width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
+            bgcolor: displayAccent, boxShadow: `0 0 0 3px ${alpha(displayAccent, 0.15)}`,
+          }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{app.title}</Typography>
+          {customized && (
+            <Chip size="small" label="سفارشی" sx={{
+              height: 17, fontSize: 8.5, fontWeight: 800,
+              bgcolor: alpha(displayAccent, 0.1), color: displayAccent,
+            }} />
+          )}
+        </Stack>
+
+        <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Typography sx={{ fontSize: 9.5, color: 'text.secondary', minWidth: 36 }}>تاکیدی</Typography>
+          {ACCENT_PRESETS.map((color) => (
+            <ColorSwatch
+              key={color}
+              value={color}
+              active={accent === color}
+              onClick={() => setPalette(app.slug, { accent: color })}
+            />
+          ))}
+          <PaletteColorInput
+            label="رنگ تاکیدی"
+            value={accent}
+            fallback={defaultAccent}
+            onChange={(value) => setPalette(app.slug, { accent: value })}
+            onClear={() => setPalette(app.slug, { accent: '' })}
+          />
+        </Stack>
+
+        <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
+          <Typography sx={{ fontSize: 9.5, color: 'text.secondary', minWidth: 44 }}>پس‌زمینه</Typography>
+          {BG_PRESETS.map((color) => (
+            <ColorSwatch
+              key={color}
+              value={color}
+              active={background === color}
+              onClick={() => setPalette(app.slug, { background: color })}
+            />
+          ))}
+          <PaletteColorInput
+            label="پس‌زمینه"
+            value={background}
+            fallback={BG_FALLBACK}
+            onChange={(value) => setPalette(app.slug, { background: value })}
+            onClear={() => setPalette(app.slug, { background: '' })}
+          />
+        </Stack>
+
+        <Box sx={{ flex: 1 }} />
+
+        <Tooltip title="بازنشانی این ماژول" arrow>
+          <span>
+            <IconButton
+              size="small"
+              onClick={() => resetPalette(app.slug)}
+              disabled={!saved}
+              sx={{ color: 'text.secondary' }}
+            >
+              <RestartAltIcon sx={{ fontSize: 17 }} />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
+    </Box>
+  );
+};
+
 const AppearancePage = () => {
   const { mode, setMode, neonColor, setNeonColor } = useThemeMode();
+  const { applications, loadApplications } = useApplication();
+  const { resetAll } = useModulePalette();
+
+  useEffect(() => {
+    if (!applications.length) loadApplications();
+  }, []);
+
+  const moduleApps = applications.filter((app) => app.accessible && !app.is_coming_soon);
 
   return (
     <Box>
@@ -190,6 +376,60 @@ const AppearancePage = () => {
           );
         })}
           </Grid>
+        </Box>
+      </Paper>
+
+      {/* پالت‌های رنگی هر ماژول */}
+      <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
+        <Box sx={{
+          display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
+          px: 1.75, py: 1.25,
+          borderBottom: '1px solid', borderColor: 'divider',
+        }}>
+          <Avatar variant="rounded" sx={{
+            width: 30, height: 30, borderRadius: '9px',
+            bgcolor: `${SOFT.teal}24`, color: SOFT.teal,
+          }}>
+            <ColorLensOutlinedIcon sx={{ fontSize: 17 }} />
+          </Avatar>
+          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>پالت‌های رنگی</Typography>
+          <Chip
+            size="small"
+            label={`${formatPersianNumber(moduleApps.length)} ماژول`}
+            sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${SOFT.teal}1f`, color: SOFT.teal }}
+          />
+          <Chip
+            size="small"
+            variant="outlined"
+            label="ذخیره خودکار"
+            sx={{ height: 20, fontSize: 9.5, ml: 'auto' }}
+          />
+        </Box>
+
+        <Box sx={{ p: 1.75 }}>
+          <Typography sx={{ fontSize: 10.5, color: 'text.secondary', mb: 1.5, lineHeight: 1.9 }}>
+            برای هر ماژول رنگ تاکیدی و رنگ پس‌زمینه انتخاب کنید. رنگ تاکیدی روی دکمه‌های اصلی،
+            منوی فعال و کادر سوئیچر ماژول اعمال می‌شود؛ دکمه‌های حذف، هشدار و خطا رنگ استاندارد
+            خود را حفظ می‌کنند. رنگ پس‌زمینه در تم‌های روشن اعمال می‌شود.
+          </Typography>
+
+          {moduleApps.length === 0 ? (
+            <Typography sx={{ fontSize: 11, color: 'text.disabled', py: 2, textAlign: 'center' }}>
+              ماژولی برای تنظیم یافت نشد.
+            </Typography>
+          ) : (
+            <Stack spacing={1} useFlexGap>
+              {moduleApps.map((app) => (
+                <ModulePaletteRow key={app.id} app={app} />
+              ))}
+            </Stack>
+          )}
+
+          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.25 }}>
+            <Button size="small" onClick={resetAll} sx={{ fontSize: 10.5 }}>
+              بازنشانی همهٔ پالت‌ها
+            </Button>
+          </Box>
         </Box>
       </Paper>
 

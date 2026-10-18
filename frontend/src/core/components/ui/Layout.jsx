@@ -69,6 +69,7 @@ import menuConfig, { getMenuForApp } from '../../config/menuConfig';
 import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 import { useThemeMode } from '../../context/ThemeContext';
+import { useModulePalette } from '../../context/ModulePaletteContext';
 
 const RAIL_WIDTH = 68;
 const PANEL_WIDTH = 268;
@@ -191,6 +192,8 @@ const Layout = ({ children }) => {
   const { currentApp } = useApplication();
   const { openTab } = useWorkspaceTabs();
   const { mode, setMode } = useThemeMode();
+  const { getPalette } = useModulePalette();
+  const moduleAccent = getPalette(currentApp?.slug)?.accent || null;
   const menu = getMenuForApp(currentApp?.slug);
 
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -346,11 +349,11 @@ const Layout = ({ children }) => {
                   sx={{
                     width: 40, height: 40,
                     color: ICON_COLOR,
-                    bgcolor: active ? 'action.selected' : 'transparent',
+                    bgcolor: active ? (moduleAccent ? alpha(moduleAccent, 0.12) : 'action.selected') : 'transparent',
                     border: '1px solid',
-                    borderColor: active ? 'divider' : 'transparent',
+                    borderColor: active ? (moduleAccent ? alpha(moduleAccent, 0.35) : 'divider') : 'transparent',
                     transition: 'background 0.2s ease',
-                    '&:hover': { bgcolor: 'action.hover' },
+                    '&:hover': { bgcolor: moduleAccent ? alpha(moduleAccent, 0.08) : 'action.hover' },
                   }}
                 >
                   {shortcut.icon
@@ -480,6 +483,7 @@ const Layout = ({ children }) => {
           const open = openGroupId === group.id;
           const containsActive = group.items.some((item) => isActive(item.path));
           const color = group.color || '#6366f1';
+          const accent = moduleAccent || color;
 
           return (
             <Box key={group.id} sx={{ mb: 0.25 }}>
@@ -497,11 +501,11 @@ const Layout = ({ children }) => {
                 sx={{
                   display: 'flex', alignItems: 'center', gap: 1,
                   px: 1.25, py: 1, borderRadius: '10px', cursor: 'pointer',
-                  color: containsActive || open ? color : 'text.primary',
-                  bgcolor: open ? alpha(color, 0.06) : 'transparent',
+                  color: containsActive || open ? accent : 'text.primary',
+                  bgcolor: open ? alpha(accent, 0.06) : 'transparent',
                   transition: 'background 0.18s ease, color 0.18s ease',
-                  '&:hover': { bgcolor: alpha(color, 0.08) },
-                  '&:focus-visible': { outline: `2px solid ${alpha(color, 0.45)}`, outlineOffset: 2 },
+                  '&:hover': { bgcolor: alpha(accent, 0.08) },
+                  '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.45)}`, outlineOffset: 2 },
                 }}
               >
                 <Box sx={{ display: 'flex', color: ICON_COLOR, flexShrink: 0 }}>
@@ -525,7 +529,7 @@ const Layout = ({ children }) => {
               <Collapse in={open} timeout={220} unmountOnExit>
                 <Box sx={{
                   mr: 2, pr: 1.25, my: 0.5,
-                  borderRight: `2px solid ${alpha(color, 0.45)}`,
+                  borderRight: `2px solid ${alpha(accent, 0.45)}`,
                 }}>
                   {group.items.map((item) => {
                     const active = isActive(item.path);
@@ -554,11 +558,11 @@ const Layout = ({ children }) => {
                           display: 'flex', alignItems: 'center', gap: 0.75,
                           px: 1.15, py: 0.75, mb: 0.2, borderRadius: '8px',
                           cursor: 'pointer',
-                          color: active ? color : 'text.secondary',
-                          bgcolor: active ? alpha(color, 0.08) : 'transparent',
+                          color: active ? accent : 'text.secondary',
+                          bgcolor: active ? alpha(accent, 0.08) : 'transparent',
                           transition: 'background 0.16s ease, color 0.16s ease',
-                          '&:hover': { color, bgcolor: alpha(color, 0.06) },
-                          '&:focus-visible': { outline: `2px solid ${alpha(color, 0.4)}`, outlineOffset: 1 },
+                          '&:hover': { color: accent, bgcolor: alpha(accent, 0.06) },
+                          '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.4)}`, outlineOffset: 1 },
                         }}
                       >
                         <Typography noWrap sx={{
