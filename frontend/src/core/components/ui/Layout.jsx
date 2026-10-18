@@ -206,11 +206,12 @@ const Layout = ({ children }) => {
     staleTime: 0,
   });
 
-  const isActive = (path) => {
+  // آیا مسیر آیتم با آدرس جاری (شامل کوئری) هم‌خوانی دارد؟
+  const pathMatches = (path) => {
     const [targetPath, targetQuery = ''] = String(path || '').split('?');
-    const pathMatches = location.pathname === targetPath
+    const pathMatched = location.pathname === targetPath
       || location.pathname.startsWith(`${targetPath}/`);
-    if (!pathMatches) return false;
+    if (!pathMatched) return false;
 
     const current = new URLSearchParams(location.search);
     if (!targetQuery) {
@@ -225,7 +226,29 @@ const Layout = ({ children }) => {
     return true;
   };
 
-  const activeGroup = menu.find((group) => group.items.some((item) => isActive(item.path)));
+  // مهم: در مسیرهای تودرتو (مثل /accounting/documents) فقط «دقیق‌ترین» آیتم فعال است.
+  // بدون این منطق، آیتم داشبورد /accounting به‌خاطر startsWith همیشه فعال می‌شد و
+  // گروه اشتباه باز/بسته می‌شد.
+  const activeItemPath = (() => {
+    let bestPath = null;
+    let bestScore = -1;
+    menu.forEach((group) => {
+      group.items.forEach((item) => {
+        if (!pathMatches(item.path)) return;
+        const [itemPath, itemQuery = ''] = String(item.path).split('?');
+        const score = itemPath.length + (itemQuery ? 1000 : 0);
+        if (score > bestScore) {
+          bestScore = score;
+          bestPath = item.path;
+        }
+      });
+    });
+    return bestPath;
+  })();
+
+  const isActive = (path) => Boolean(activeItemPath) && path === activeItemPath;
+
+  const activeGroup = menu.find((group) => group.items.some((item) => item.path === activeItemPath));
 
   const fallbackShortcuts = menu
     .flatMap((group) => group.items)
