@@ -25,6 +25,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const STAGE_LABELS = {
   applied: 'دریافت رزومه',
@@ -318,34 +319,23 @@ const RecruitmentPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(14,165,233,0.10), rgba(139,92,246,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(14,165,233,0.16)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', boxShadow: '0 8px 24px rgba(14,165,233,0.35)' }}>
-          <WorkOutlineIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#0369a1">جذب و استخدام</Typography>
-          <Typography variant="body2" color="textSecondary">درخواست استخدام ← کاندید ← مصاحبه ← استخدام (پایپلاین کامل)</Typography>
-        </Box>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditReqId(null); setReqForm(emptyForm); setOpenReq(true); }}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
-            درخواست استخدام جدید
-          </Button>
-          <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setOpenCand(true)}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
-            کاندید جدید
-          </Button>
-          <Button variant="contained" startIcon={<CalendarMonthIcon />} onClick={() => { setEditInterviewId(null); setInterviewForm(emptyInterview); setOpenInterview(true); }}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #8b5cf6)', borderRadius: '10px', whiteSpace: 'nowrap' }}>
-            مصاحبه جدید
-          </Button>
-        </Stack>
-      </Paper>
+      <PageHeader
+        icon={<WorkOutlineIcon />}
+        title="جذب و استخدام"
+        actions={(
+          <>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setEditReqId(null); setReqForm(emptyForm); setOpenReq(true); }}>
+              درخواست استخدام جدید
+            </Button>
+            <Button variant="contained" startIcon={<PersonAddIcon />} onClick={() => setOpenCand(true)}>
+              کاندید جدید
+            </Button>
+            <Button variant="contained" startIcon={<CalendarMonthIcon />} onClick={() => { setEditInterviewId(null); setInterviewForm(emptyInterview); setOpenInterview(true); }}>
+              مصاحبه جدید
+            </Button>
+          </>
+        )}
+      />
 
       {(msg || err) && (
         <Alert severity={err ? 'error' : 'success'} sx={{ mb: 2 }} onClose={() => { setMsg(''); setErr(''); }}>{err || msg}</Alert>

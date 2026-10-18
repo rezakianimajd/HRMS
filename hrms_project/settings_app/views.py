@@ -33,13 +33,17 @@ def _can_edit_settings(user):
 APPEARANCE_SETTINGS_KEY = 'APPEARANCE_SETTINGS'
 HEX_COLOR = re.compile(r'^#[0-9a-fA-F]{6}$')
 FONT_FAMILIES = {'vazirmatn', 'iransans', 'tahoma', 'system'}
-SIZE_RANGES = {'headerSize': (14, 32), 'cardSize': (12, 24), 'bodySize': (10, 18)}
+SIZE_RANGES = {
+    'headerSize': (14, 32), 'cardSize': (12, 24),
+    'bodySize': (10, 18), 'buttonSize': (10, 18),
+}
 WEIGHT_OPTIONS = {300, 400, 500, 600, 700}
 DEFAULT_TYPOGRAPHY = {
     'family': 'vazirmatn',
     'headerSize': 20, 'headerWeight': 500,
     'cardSize': 16, 'cardWeight': 400,
     'bodySize': 13, 'bodyWeight': 400,
+    'buttonSize': 13, 'buttonWeight': 500,
 }
 
 
@@ -84,7 +88,7 @@ def _sanitize_appearance(payload):
                 continue
             if low <= value <= high:
                 typography[key] = value
-        for key in ('headerWeight', 'cardWeight', 'bodyWeight'):
+        for key in ('headerWeight', 'cardWeight', 'bodyWeight', 'buttonWeight'):
             try:
                 value = int(raw_typography.get(key))
             except (TypeError, ValueError):

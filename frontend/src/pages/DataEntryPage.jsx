@@ -14,6 +14,7 @@ import MoneyOffIcon from '@mui/icons-material/MoneyOff';
 import InputIcon from '@mui/icons-material/Input';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import AbsenceForm from '../modules/dataEntry/AbsenceForm';
 import SalaryTab from '../modules/dataEntry/SalaryTab';
 import BenefitTab from '../modules/dataEntry/BenefitTab';
@@ -70,27 +71,10 @@ const DataEntryPage = () => {
 
   return (
     <Box>
-      {/* Glass header */}
-      <Paper sx={{
-        mb: 3, p: 2.5,
-        display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.05))',
-        border: '1px solid rgba(99,102,241,0.2)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '10px',
-      }}>
-        <Avatar sx={{
-          width: 56, height: 56,
-          background: 'linear-gradient(135deg, #6366f1, #ec4899)',
-          boxShadow: '0 6px 20px rgba(99,102,241,0.4)',
-        }}>
-          <InputIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h5" fontWeight={800}>ورود اطلاعات</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت تخصصی غیبت، حقوق، مزایا و کسورات پرسنل</Typography>
-        </Box>
-      </Paper>
+            <PageHeader
+        icon={<InputIcon />}
+        title="ورود اطلاعات"
+      />
 
       {/* Glass container with colored tabs */}
       <Paper sx={{

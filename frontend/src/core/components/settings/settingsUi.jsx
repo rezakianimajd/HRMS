@@ -3,6 +3,8 @@ import {
   Box, Paper, Typography, Stack, Avatar, Chip, Grid, Tabs, Tab, alpha,
 } from '@mui/material';
 
+import BasePageHeader from '../ui/PageHeader';
+
 /**
  * پالت نرم (Pastel) — آیکون‌های رنگی اما بدون اشباع بالا.
  * همهٔ کارت‌ها سفید و مستقل هستند.
@@ -30,32 +32,7 @@ const CARD_SX = {
 /** استایل مشترک کارت سفید برای صفحات تنظیمات/کاربران/ظاهر */
 export const SURFACE = { ...CARD_SX };
 
-export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT.indigo }) => (
-  <Paper elevation={0} sx={{ ...CARD_SX, p: { xs: 1.5, md: 1.9 }, mb: 1.75 }}>
-    <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2.25} alignItems={{ sm: 'center' }} useFlexGap>
-      <Avatar variant="rounded" sx={{
-        width: 40, height: 40, borderRadius: '12px',
-        bgcolor: alpha(color, 0.14), color,
-      }}>
-        {React.cloneElement(icon, { sx: { fontSize: 21 } })}
-      </Avatar>
-      <Box sx={{ flex: 1, minWidth: 0 }}>
-        <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography variant="h4" sx={{ letterSpacing: 0 }}>
-            {title}
-          </Typography>
-          {badge}
-        </Stack>
-        {subtitle ? (
-          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.3 }}>{subtitle}</Typography>
-        ) : null}
-      </Box>
-      {actions ? (
-        <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>{actions}</Stack>
-      ) : null}
-    </Stack>
-  </Paper>
-);
+export const PageHeader = BasePageHeader;
 
 export const StatCard = ({ label, value, sub, color = SOFT.indigo }) => (
   <Paper elevation={0} sx={{ ...CARD_SX, px: 1.6, py: 1.15, height: '100%' }}>

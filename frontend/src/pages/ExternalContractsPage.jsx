@@ -18,6 +18,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
@@ -164,33 +165,25 @@ const ExternalContractsPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(245,158,11,0.10), rgba(249,115,22,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.16)', borderRadius: '12px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
-          <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">قراردادهای برون‌سازمانی</Typography>
-          <Typography variant="body2" color="textSecondary">پیمانکاری، خرید، مناقصه + فاکتور، صورت‌وضعیت، الحاقیه، تضمین و پرداخت</Typography>
-        </Box>
-        <Tooltip title="خروجی اکسل چندشیتی: قراردادها، مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
-          <span>
-            <Button variant="outlined" startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
-              disabled={exporting} onClick={exportExcel}
-              sx={{ borderRadius: '10px', px: 2, whiteSpace: 'nowrap' }}>
-              {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+      <PageHeader
+        icon={<HandshakeIcon />}
+        title="قراردادهای برون‌سازمانی"
+        actions={(
+          <>
+            <Tooltip title="خروجی اکسل چندشیتی: قراردادها، مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
+              <span>
+                <Button variant="outlined" startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+                  disabled={exporting} onClick={exportExcel}>
+                  {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+                </Button>
+              </span>
+            </Tooltip>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}>
+              قرارداد جدید
             </Button>
-          </span>
-        </Tooltip>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/contracts/new')}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
-          قرارداد جدید
-        </Button>
-      </Paper>
+          </>
+        )}
+      />
 
       {msg && <Alert severity={msgOk ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
 

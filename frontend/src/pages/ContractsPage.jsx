@@ -22,6 +22,7 @@ import { useEmployees, useContractTypes } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 import { buildContractPrintHtml } from '../core/utils/contractPrintHtml';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const EMPTY_FORM = {
   employee: '', version: 1, year: 1404, contract_type: '',
@@ -200,24 +201,15 @@ const ContractsPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(245,158,11,0.09), rgba(239,68,68,0.04), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.16)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #ef4444)', boxShadow: '0 8px 24px rgba(245,158,11,0.35)' }}>
-          <HistoryEduIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">قراردادها و نسخه‌بندی</Typography>
-          <Typography variant="body2" color="textSecondary">نسخه‌بندی هوشمند، مقایسهٔ نسخه‌ها و امضای دیجیتال</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', borderRadius: '10px', px: 2.5 }}>
-          نسخهٔ جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<HistoryEduIcon />}
+        title="قراردادها و نسخه‌بندی"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openCreate}>
+            نسخهٔ جدید
+          </Button>
+        )}
+      />
 
       {/* Filter */}
       <Paper sx={{ p: 2, mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>

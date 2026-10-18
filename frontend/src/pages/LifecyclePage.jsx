@@ -21,6 +21,7 @@ import {
 } from '../core/hooks/useLifecycle';
 import { useEmployees } from '../core/hooks/useEmployees';
 import { toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const KIND_META = {
   onboarding: { label: 'ورود / خوش‌آمدگویی', color: '#10b981', icon: <PersonAddAlt1Icon fontSize="small" /> },
@@ -162,24 +163,15 @@ const LifecyclePage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(139,92,246,0.10), rgba(236,72,153,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(139,92,246,0.16)', borderRadius: '12px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', boxShadow: '0 8px 24px rgba(139,92,246,0.35)' }}>
-          <PlaylistAddCheckIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#6d28d9">ورود و خروج (Onboarding / Offboarding)</Typography>
-          <Typography variant="body2" color="textSecondary">چک‌لیست ورود و خروج کارکنان به‌صورت گردش‌کار استاندارد و قابل انجام</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
-          sx={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
-          چک‌لیست جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<PlaylistAddCheckIcon />}
+        title="ورود و خروج (Onboarding / Offboarding)"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
+            چک‌لیست جدید
+          </Button>
+        )}
+      />
 
       {msg && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
 

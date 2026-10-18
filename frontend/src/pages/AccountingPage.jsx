@@ -23,6 +23,7 @@ import {
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
@@ -143,22 +144,19 @@ const AccountingPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <CalculateIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>داشبورد حسابداری</Typography>
-          <Typography variant="body2" color="textSecondary">نمای تعاملی و گرافیکی وضعیت مالی و اسناد</Typography>
-        </Box>
-        <Autocomplete size="small" options={years} getOptionLabel={o => o.name} value={year}
-          onChange={(e, v) => setYear(v)} renderInput={(p) => <TextField {...p} label="سال مالی" />} sx={{ width: 180 }} />
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/accounting/document-new')}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
-          سند جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<CalculateIcon />}
+        title="داشبورد حسابداری"
+        actions={(
+          <>
+            <Autocomplete size="small" options={years} getOptionLabel={o => o.name} value={year}
+              onChange={(e, v) => setYear(v)} renderInput={(p) => <TextField {...p} label="سال مالی" />} sx={{ width: 180 }} />
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/accounting/document-new')}>
+              سند جدید
+            </Button>
+          </>
+        )}
+      />
 
       {/* ریبون اقدام سریع */}
       <Paper sx={{ ...glass, p: 1.5, mb: 2.5, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>

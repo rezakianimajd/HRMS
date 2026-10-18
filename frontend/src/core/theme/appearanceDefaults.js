@@ -17,12 +17,15 @@ export const DEFAULT_TYPOGRAPHY = {
   cardWeight: 400,
   bodySize: 13,
   bodyWeight: 400,
+  buttonSize: 13,
+  buttonWeight: 500,
 };
 
 export const SIZE_RANGES = {
   headerSize: { min: 14, max: 32 },
   cardSize: { min: 12, max: 24 },
   bodySize: { min: 10, max: 18 },
+  buttonSize: { min: 10, max: 18 },
 };
 
 export const WEIGHT_OPTIONS = [300, 400, 500, 600, 700];

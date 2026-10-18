@@ -28,6 +28,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
+import PageHeader from '../core/components/ui/PageHeader';
 import {
   useEmployee, useCreateEmployee, useUpdateEmployee,
   useDepartments, useJobTitles, useWorkLocations, useInsuranceLists, useContractTypes,
@@ -356,11 +357,15 @@ const EmployeeForm = () => {
 
   return (
     <Box>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 3 }}>
-        <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/employees')}>{t('common.back')}</Button>
-        <Typography variant="h5" fontWeight={800}>{isEdit ? t('employees.edit_employee') : t('employees.add_employee')}</Typography>
-        <Box sx={{ width: 100 }} />
-      </Box>
+      <PageHeader
+        icon={<PersonIcon />}
+        title={isEdit ? t('employees.edit_employee') : t('employees.add_employee')}
+        actions={(
+          <Button startIcon={<ArrowBackIcon />} onClick={() => navigate('/employees')}>
+            {t('common.back')}
+          </Button>
+        )}
+      />
 
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '10px' }}>{error}</Alert>}
 

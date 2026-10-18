@@ -15,6 +15,7 @@ import { useCalendarFeed, useCreateCalendarEvent } from '../core/hooks/useLifecy
 import { toGregorian, toJalali, getJalaliParts } from '../core/utils/dateUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const WEEKDAYS = ['شنبه', 'یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه'];
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
@@ -105,24 +106,15 @@ const CalendarPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(236,72,153,0.09), rgba(99,102,241,0.04), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(236,72,153,0.16)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', boxShadow: '0 8px 24px rgba(236,72,153,0.35)' }}>
-          <CalendarMonthIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#be185d">تقویم سازمانی</Typography>
-          <Typography variant="body2" color="textSecondary">رویدادها، تولدها، مرخصی‌ها و پایان قراردادها — هیبریدی شمسی</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}
-          sx={{ background: 'linear-gradient(135deg, #ec4899, #8b5cf6)', borderRadius: '10px', px: 2.5 }}>
-          رویداد جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<CalendarMonthIcon />}
+        title="تقویم سازمانی"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setDialogOpen(true)}>
+            رویداد جدید
+          </Button>
+        )}
+      />
 
       <Grid container spacing={2.5}>
         {/* Calendar grid */}

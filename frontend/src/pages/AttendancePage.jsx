@@ -16,6 +16,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import PageHeader from '../core/components/ui/PageHeader';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 /* Attendance module: register daily presence per employee, with monthly summary.
@@ -140,30 +141,15 @@ const AttendancePage = () => {
 
   return (
     <Box>
-      {/* Header hero */}
-      <Paper sx={{
-        p: 3, mb: 2.5, borderRadius: '10px',
-        background: 'linear-gradient(120deg, rgba(14,165,233,0.08), rgba(14,165,233,0.02), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(14,165,233,0.16)',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)', boxShadow: '0 8px 24px rgba(14,165,233,0.35)' }}>
-              <AccessTimeIcon sx={{ color: '#fff', fontSize: 28 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: '#0369a1' }}>حضور و غیاب</Typography>
-              <Typography variant="body2" color="textSecondary">
-                ثبت وضعیت روزانه، پیگیری کارکرد و خلاصه ماهانه کارکنان
-              </Typography>
-            </Box>
-          </Box>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
-            sx={{ background: 'linear-gradient(135deg, #0ea5e9, #06b6d4)', borderRadius: '10px', px: 3 }}>
+      <PageHeader
+        icon={<AccessTimeIcon />}
+        title="حضور و غیاب"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
             ثبت رکورد حضور
           </Button>
-        </Box>
-      </Paper>
+        )}
+      />
 
       {/* Monthly summary */}
       {summary && (

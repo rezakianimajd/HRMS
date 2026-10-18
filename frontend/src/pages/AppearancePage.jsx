@@ -410,6 +410,14 @@ const TypographyCard = ({
             onChange={onChange}
             disabled={!canEdit}
           />
+          <TypeGroup
+            label="دکمه‌های هدر"
+            sizeKey="buttonSize"
+            weightKey="buttonWeight"
+            type={type}
+            onChange={onChange}
+            disabled={!canEdit}
+          />
         </Stack>
 
         <Box sx={{
@@ -439,6 +447,14 @@ const TypographyCard = ({
           }}>
             این یک متن نمونه برای بررسی اندازه و وزن فونت متن، فیلدها و کشویی‌ها است.
           </Typography>
+          <Box sx={{
+            display: 'inline-flex', alignItems: 'center', mt: 1,
+            px: 1.5, py: 0.55, borderRadius: '8px',
+            bgcolor: 'primary.main', color: '#fff',
+            fontSize: `${type.buttonSize}px`, fontWeight: type.buttonWeight,
+          }}>
+            دکمهٔ هدر
+          </Box>
         </Box>
 
         <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.25 }}>

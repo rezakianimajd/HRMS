@@ -23,6 +23,7 @@ import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
+import PageHeader from '../core/components/ui/PageHeader';
 import { glassPaper } from '../core/theme/tokens';
 import { GUARANTEE_TYPES, GUARANTEE_TYPE_LABELS as TYPE_LABELS } from '../core/constants/guaranteeTypes';
 
@@ -181,23 +182,16 @@ const GuaranteesPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(59,130,246,0.10), rgba(16,185,129,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(59,130,246,0.16)', borderRadius: '10px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #3b82f6, #10b981)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)' }}>
-          <LockIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#1d4ed8">تضامین و ضمانت‌نامه‌ها</Typography>
-          <Typography variant="body2" color="textSecondary">مدیریت چک، سفته و ضمانت‌نامه با چرخهٔ عمر کامل</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} disabled={!contractId}
-          onClick={() => { setForm({ ...EMPTY, contract: contractId || '' }); setError(''); setDialog(true); }}
-          sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px' }}>
-          تضمین جدید
-        </Button>
-      </Paper>
+            <PageHeader
+        icon={<LockIcon />}
+        title="تضامین و ضمانت‌نامه‌ها"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} disabled={!contractId}
+            onClick={() => { setForm({ ...EMPTY, contract: contractId || '' }); setError(''); setDialog(true); }}>
+            تضمین جدید
+          </Button>
+        )}
+      />
 
       {!contractId ? (
         <Paper sx={{ ...glassPaper, p: 2 }}>

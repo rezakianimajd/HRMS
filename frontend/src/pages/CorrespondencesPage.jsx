@@ -10,6 +10,7 @@ import OutgoingLetters from '../modules/correspondences/OutgoingLetters';
 import Announcements from '../modules/correspondences/Announcements';
 import Forms from '../modules/correspondences/Forms';
 import Organizations from '../modules/correspondences/Organizations';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const TABS = [
   { key: 'incoming', label: 'نامه‌های وارده', icon: <MailIcon />, color: '#6366f1' },
@@ -24,27 +25,7 @@ const CorrespondencesPage = () => {
 
   return (
     <Box>
-      {/* Glass header */}
-      <Paper sx={{
-        mb: 3, p: 2.5,
-        display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(135deg, rgba(99,102,241,0.12), rgba(236,72,153,0.05))',
-        border: '1px solid rgba(99,102,241,0.2)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '10px',
-      }}>
-        <Avatar sx={{
-          width: 56, height: 56,
-          background: 'linear-gradient(135deg, #6366f1, #ec4899)',
-          boxShadow: '0 6px 20px rgba(99,102,241,0.4)',
-        }}>
-          <MailIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h5" fontWeight={800}>مکاتبات</Typography>
-          <Typography variant="body2" color="textSecondary">نامه‌های وارده، صادره، ابلاغ‌ها و فرم‌ها</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<MailIcon />} title="مکاتبات" />
 
       {/* Glass tabs */}
       <Paper sx={{

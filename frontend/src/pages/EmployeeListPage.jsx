@@ -16,6 +16,7 @@ import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import { useEmployees, useDeleteEmployee, useDepartments, useJobTitles, useWorkLocations, useInsuranceLists } from '../core/hooks/useEmployees';
 import StatusBadge from '../core/components/ui/StatusBadge';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
+import PageHeader from '../core/components/ui/PageHeader';
 import downloadFile from '../core/utils/downloadUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
 
@@ -107,34 +108,21 @@ const EmployeeListPage = () => {
 
   return (
     <Box>
-      {/* Glass header */}
-      <Paper sx={{
-        mb: 3, p: 2.5,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(135deg, rgba(236,72,153,0.12), rgba(99,102,241,0.06))',
-        border: '1px solid rgba(236,72,153,0.2)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '10px',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #ec4899, #6366f1)', boxShadow: '0 6px 20px rgba(236,72,153,0.4)' }}>
-            <PeopleIcon sx={{ fontSize: 28, color: '#fff' }} />
-          </Avatar>
-          <Box>
-            <Typography variant="h5" fontWeight={800}>{t('employees.title')}</Typography>
-            <Typography variant="body2" color="textSecondary">{toPersianDigits(totalCount)} پرسنل</Typography>
-          </Box>
-        </Box>
-        <Stack direction="row" spacing={1}>
-          <Button variant="outlined" startIcon={<FileDownloadIcon />}
-            onClick={exportExcel} disabled={exporting}>
-            {exporting ? <CircularProgress size={18} /> : 'خروجی اکسل'}
-          </Button>
-          <Button variant="contained" onClick={() => navigate('/employees/new')}>
-            {t('employees.add_employee')}
-          </Button>
-        </Stack>
-      </Paper>
+      <PageHeader
+        icon={<PeopleIcon />}
+        title={t('employees.title')}
+        actions={(
+          <>
+            <Button variant="outlined" startIcon={<FileDownloadIcon />}
+              onClick={exportExcel} disabled={exporting}>
+              {exporting ? <CircularProgress size={18} /> : 'خروجی اکسل'}
+            </Button>
+            <Button variant="contained" onClick={() => navigate('/employees/new')}>
+              {t('employees.add_employee')}
+            </Button>
+          </>
+        )}
+      />
 
       {exportError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>

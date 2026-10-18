@@ -12,6 +12,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const AppraisalPage = () => {
   const qc = useQueryClient();
@@ -66,24 +67,15 @@ const AppraisalPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(59,130,246,0.10), rgba(16,185,129,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(59,130,246,0.16)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #3b82f6, #10b981)', boxShadow: '0 8px 24px rgba(59,130,246,0.35)' }}>
-          <AssessmentOutlinedIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#1d4ed8">ارزیابی عملکرد دورهای</Typography>
-          <Typography variant="body2" color="textSecondary">دورههای ارزیابی + سابقه امتیاز و اهداف (OKR)</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenCycle(true)}
-          sx={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)', borderRadius: '10px', px: 2.5 }}>
-          دوره ارزیابی جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<AssessmentOutlinedIcon />}
+        title="ارزیابی عملکرد دوره‌ای"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenCycle(true)}>
+            دوره ارزیابی جدید
+          </Button>
+        )}
+      />
 
       <Grid container spacing={2.5}>
         {/* Cycles list */}

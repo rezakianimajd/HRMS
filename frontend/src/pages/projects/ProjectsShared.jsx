@@ -9,6 +9,7 @@ import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { IconButton } from '@mui/material';
+import BasePageHeader from '../../core/components/ui/PageHeader';
 
 export const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
@@ -35,19 +36,8 @@ export const STATUS_COLORS = {
 /**
  * Reusable colored page header for project sub-pages.
  */
-export const PageHeader = ({ icon, title, subtitle, color, gradient = '#8b5cf6,#3b82f6', action }) => (
-  <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-    background: 'linear-gradient(120deg, rgba(139,92,246,0.10), rgba(59,130,246,0.05), rgba(255,255,255,0.3))',
-    border: '1px solid rgba(139,92,246,0.18)', borderRadius: '10px' }}>
-    <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${gradient})`, boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
-      {icon}
-    </Avatar>
-    <Box sx={{ flex: 1, minWidth: 200 }}>
-      <Typography variant="h6" fontWeight={800} color={color}>{title}</Typography>
-      <Typography variant="body2" color="textSecondary">{subtitle}</Typography>
-    </Box>
-    {action}
-  </Paper>
+export const PageHeader = ({ icon, title, subtitle, color, gradient = '#8b5cf6,#3b82f6', action, ...rest }) => (
+  <BasePageHeader icon={icon} title={title} actions={action} {...rest} />
 );
 
 /**

@@ -27,6 +27,7 @@ import PersonSearchIcon from '@mui/icons-material/PersonSearch';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import PageHeader from '../core/components/ui/PageHeader';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 const CATEGORIES = [
@@ -172,32 +173,15 @@ const CompanyDocumentsPage = () => {
 
   return (
     <Box>
-      {/* ============ Page header ============ */}
-      <Paper sx={{
-        p: 3, mb: 2, borderRadius: '10px',
-        background: 'linear-gradient(120deg, rgba(245,158,11,0.08), rgba(245,158,11,0.02), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.16)',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.35)' }}>
-              <ArchiveIcon sx={{ color: '#fff', fontSize: 28 }} />
-            </Avatar>
-            <Box>
-              <Typography variant="h6" fontWeight={800} sx={{ color: '#b45309' }}>بایگانی اسناد</Typography>
-              <Typography variant="body2" color="textSecondary">
-                اسناد سازمانی و مدارک پرسنلی در یک‌جا — به تفکیک دو بخش
-              </Typography>
-            </Box>
-          </Box>
-          {activeTab === 0 && (
-            <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
-              sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 3 }}>
-              بایگانی سند سازمانی جدید
-            </Button>
-          )}
-        </Box>
-      </Paper>
+            <PageHeader
+        icon={<ArchiveIcon />}
+        title="بایگانی اسناد"
+        actions={activeTab === 0 ? (
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
+            بایگانی سند سازمانی جدید
+          </Button>
+        ) : null}
+      />
 
       {/* ============ Tabs: Organisation / Employee ============ */}
       <Tabs value={activeTab} onChange={(e, v) => setActiveTab(v)}

@@ -13,6 +13,7 @@ import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import { DonutChart } from '../core/components/charts/Charts';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS, currencyLabel } from '../core/theme/tokens';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const effEnd = (c) => {
   const withEnd = (c.addendums || []).filter(a => a.new_end_date);
@@ -103,24 +104,15 @@ const ContractsDashboardPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.18)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
-          <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">مدیریت قراردادها</Typography>
-          <Typography variant="body2" color="textSecondary">داشبورد وضعیت قراردادهای پیمانکاری، خرید و مناقصه</Typography>
-        </Box>
-        <Button variant="contained" onClick={() => navigate('/external-contracts')}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px' }}>
-          مشاهده قراردادها
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<HandshakeIcon />}
+        title="مدیریت قراردادها"
+        actions={(
+          <Button variant="contained" onClick={() => navigate('/external-contracts')}>
+            مشاهده قراردادها
+          </Button>
+        )}
+      />
 
       {/* KPI cards */}
       <Grid container spacing={2} sx={{ mb: 3 }}>

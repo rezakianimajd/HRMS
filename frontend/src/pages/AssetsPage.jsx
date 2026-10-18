@@ -32,6 +32,7 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useAssets, useCreateAsset, useReturnAsset, useUpdateAsset, useDeleteAsset } from '../core/hooks/useLifecycle';
 import { useEmployees } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 
 const TYPE_META = {
@@ -180,26 +181,15 @@ const AssetsPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(16,185,129,0.10), rgba(59,130,246,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(16,185,129,0.16)', borderRadius: '12px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #10b981, #3b82f6)', boxShadow: '0 8px 24px rgba(16,185,129,0.35)' }}>
-          <Inventory2Icon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#047857">اموال و تجهیزات</Typography>
-          <Typography variant="body2" color="textSecondary">
-            {formatPersianNumber(counts.assigned)} تجهیز در حال واگذاری · {formatPersianNumber(counts.total)} مجموع
-          </Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}
-          sx={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', borderRadius: '10px', px: 2.5, whiteSpace: 'nowrap' }}>
-          ثبت تجهیز
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<Inventory2Icon />}
+        title="اموال و تجهیزات"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openAdd}>
+            ثبت تجهیز
+          </Button>
+        )}
+      />
 
       {(msg || err) && (
         <Alert severity={err ? 'error' : 'success'} sx={{ mb: 2 }} onClose={() => { setMsg(''); setErr(''); }}>{err || msg}</Alert>

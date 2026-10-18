@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import PageHeader from '../core/components/ui/PageHeader';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
@@ -121,23 +122,15 @@ const DataImportPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(99,102,241,0.10), rgba(49,46,129,0.04), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(99,102,241,0.16)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
-          <UploadFileIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#4338ca">درون‌ریزی داده از اکسل</Typography>
-          <Typography variant="body2" color="textSecondary">نوع را انتخاب، نمونه را دانلود، فایل را بارگذاری کنید — همه‌چیز یکجا</Typography>
-        </Box>
-        <Button variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => setHelpOpen(true)}>
-          راهنمای ستون‌ها
-        </Button>
-      </Paper>
+            <PageHeader
+        icon={<UploadFileIcon />}
+        title="درون‌ریزی داده از اکسل"
+        actions={(
+          <Button variant="outlined" startIcon={<InfoOutlinedIcon />} onClick={() => setHelpOpen(true)}>
+            راهنمای ستون‌ها
+          </Button>
+        )}
+      />
 
       {/* Feedback */}
       {error && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setError('')}>{error}</Alert>}
