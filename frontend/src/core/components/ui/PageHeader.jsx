@@ -60,6 +60,7 @@ import LockClockOutlinedIcon from '@mui/icons-material/LockClockOutlined';
 import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
 import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
 import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoFixHighOutlinedIcon from '@mui/icons-material/AutoFixHighOutlined';
 import { useApplication } from '../../context/ApplicationContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
@@ -132,6 +133,7 @@ const OUTLINE_BY_NAME = {
   GavelIcon: GavelOutlinedIcon,
   AutoStoriesIcon: AutoStoriesOutlinedIcon,
   SearchIcon: SearchOutlinedIcon,
+  CheckCircleIcon: CheckCircleOutlineIcon,
   AutoFixHighIcon: AutoFixHighOutlinedIcon,
 };
 

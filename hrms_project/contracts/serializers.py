@@ -193,11 +193,13 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     instrument_type_display = serializers.CharField(source='get_instrument_type_display', read_only=True)
     last_action_display = serializers.CharField(source='get_last_action_display', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    contract_guarantee_label = serializers.SerializerMethodField()
 
     class Meta:
         model = Guarantee
         fields = [
-            'id', 'contract', 'contract_subject', 'guarantee_type', 'guarantee_type_display',
+            'id', 'contract', 'contract_subject', 'contract_guarantee_index', 'contract_guarantee_label',
+            'guarantee_type', 'guarantee_type_display',
             'instrument_type', 'instrument_type_display', 'number', 'amount',
             'issue_date', 'expiry_date', 'bank', 'is_released', 'release_date',
             'check_number', 'check_bank', 'check_due_date',
@@ -206,6 +208,22 @@ class GuaranteeSerializer(serializers.ModelSerializer):
             'last_action', 'last_action_display', 'last_action_date', 'note',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_contract_guarantee_label(self, obj):
+        items = obj.contract.guarantee_items if obj.contract else []
+        index = obj.contract_guarantee_index
+        if index is None or not isinstance(items, list) or index < 0 or index >= len(items):
+            return ''
+        item = items[index] or {}
+        labels = dict(Guarantee.GuaranteeType.choices)
+        label = labels.get(item.get('type'), item.get('type') or '')
+        if item.get('percent'):
+            label += f" — {item['percent']}٪"
+        elif item.get('amount'):
+            label += f" — {item['amount']}"
+        if item.get('note'):
+            label += f" — {item['note']}"
+        return label
 
 
 class PaymentSerializer(serializers.ModelSerializer):

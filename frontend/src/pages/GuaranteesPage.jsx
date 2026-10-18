@@ -3,9 +3,10 @@ import { useSearchParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Button, Chip, Avatar, Grid, CircularProgress, Stack,
+  Box, Typography, Paper, Button, Chip, Grid, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
-  InputLabel, Select, MenuItem, InputAdornment, Alert,
+  InputLabel, Select, MenuItem, InputAdornment, Alert, Table, TableBody,
+  TableCell, TableContainer, TableHead, TableRow, FormHelperText, Tooltip, IconButton,
 } from '@mui/material';
 import LockIcon from '@mui/icons-material/Lock';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,13 +19,17 @@ import GavelIcon from '@mui/icons-material/Gavel';
 import UndoIcon from '@mui/icons-material/Undo';
 import BlockIcon from '@mui/icons-material/Block';
 import UpdateIcon from '@mui/icons-material/Update';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import PageHeader from '../core/components/ui/PageHeader';
-import { glassPaper } from '../core/theme/tokens';
+import InfoCard from '../core/components/ui/InfoCard';
 import { GUARANTEE_TYPES, GUARANTEE_TYPE_LABELS as TYPE_LABELS } from '../core/constants/guaranteeTypes';
 
 const INSTRUMENT_LABELS = {
@@ -50,15 +55,8 @@ const ACTION_LABELS = {
   extended: 'تمدید',
 };
 
-const ACTION_COLORS = {
-  returned: '#10b981',
-  executed: '#ef4444',
-  canceled: '#f59e0b',
-  extended: '#3b82f6',
-};
-
 const EMPTY = {
-  id: null, contract: '', guarantee_type: 'performance', instrument_type: 'check',
+  id: null, contract: '', contract_guarantee_index: null, guarantee_type: 'performance', instrument_type: 'check',
   number: '', amount: '', issue_date: '', expiry_date: '', bank: '',
   check_number: '', check_bank: '', check_due_date: '',
   promissory_number: '', promissory_due_date: '',
@@ -71,6 +69,8 @@ const GuaranteesPage = () => {
   const urlContract = searchParams.get('contract') || '';
   const [contractId, setContractId] = useState(urlContract);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
   const [actionDialog, setActionDialog] = useState(null); // { id, action }
@@ -88,10 +88,22 @@ const GuaranteesPage = () => {
     queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
+  const selectedContract = contractList.find(c => String(c.id) === String(form.contract || contractId));
+  const { data: contractDetail } = useQuery({
+    queryKey: ['contract-detail-guarantee', form.contract],
+    queryFn: () => axiosInstance.get(`/external-contracts/${form.contract}/`).then(r => r.data),
+    enabled: dialog && Boolean(form.contract),
+  });
+  const contractGuaranteeItems = Array.isArray(contractDetail?.guarantee_items)
+    ? contractDetail.guarantee_items
+    : (Array.isArray(selectedContract?.guarantee_items) ? selectedContract.guarantee_items : []);
 
   const sanitizeGuarantee = (p) => ({
     ...p,
     contract: p.contract || null,
+    contract_guarantee_index: p.contract_guarantee_index === '' || p.contract_guarantee_index == null
+      ? null
+      : Number(p.contract_guarantee_index),
     amount: p.amount === '' || p.amount == null ? 0 : Number(p.amount),
     issue_date: p.issue_date || null,
     expiry_date: p.expiry_date || null,
@@ -149,19 +161,87 @@ const GuaranteesPage = () => {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['contract-guarantees'] }),
   });
 
+  const statusOf = (g) => {
+    if (g.last_action === 'returned') return { key: 'returned', label: 'استرداد شده', color: 'success' };
+    if (g.last_action === 'executed') return { key: 'executed', label: 'اجرا / ضبط شده', color: 'error' };
+    if (g.last_action === 'canceled') return { key: 'canceled', label: 'ابطال شده', color: 'warning' };
+    const due = g.guarantee_expiry_date || g.check_due_date || g.promissory_due_date || g.expiry_date;
+    if (due && new Date(due) < new Date()) return { key: 'expired', label: 'منقضی', color: 'error' };
+    return { key: 'active', label: 'معتبر', color: 'primary' };
+  };
+
+  const guaranteeItemLabel = (item = {}) => {
+    const type = TYPE_LABELS[item.type] || item.type || 'ضمانت';
+    const amount = item.amount
+      ? `${formatPersianNumber(item.amount)} ریال`
+      : item.percent ? `${toPersianDigits(item.percent)}٪ از قرارداد` : '';
+    return [type, amount, item.note].filter(Boolean).join(' — ');
+  };
+
+  const contractItemsFor = (id) => {
+    const contract = contractList.find(c => String(c.id) === String(id));
+    return Array.isArray(contract?.guarantee_items) ? contract.guarantee_items : [];
+  };
+
+  const guaranteeLinkFor = (g) => {
+    const index = g.contract_guarantee_index;
+    if (index != null) {
+      const item = contractItemsFor(g.contract)[index];
+      if (item) return guaranteeItemLabel(item);
+    }
+    return g.contract_guarantee_label || '';
+  };
+
+  const applyGuaranteeLink = (value) => {
+    if (value === '') {
+      setForm(p => ({ ...p, contract_guarantee_index: null }));
+      return;
+    }
+    const index = Number(value);
+    const item = contractGuaranteeItems[index] || {};
+    const contractAmount = Number(contractDetail?.amount || selectedContract?.amount || 0);
+    const amount = item.amount
+      || (item.percent && contractAmount ? Math.round((contractAmount * Number(item.percent)) / 100) : null);
+    setForm(p => ({
+      ...p,
+      contract_guarantee_index: index,
+      guarantee_type: item.type || p.guarantee_type,
+      ...(amount ? { amount } : {}),
+    }));
+  };
+
   const filtered = useMemo(() => {
     let result = list;
     if (contractId) {
       result = result.filter(g => String(g.contract) === String(contractId));
     }
+    if (statusFilter) {
+      result = result.filter(g => statusOf(g).key === statusFilter);
+    }
+    if (typeFilter) {
+      result = result.filter(g => g.instrument_type === typeFilter);
+    }
     if (search) {
       const s = search.trim();
       result = result.filter(g =>
         (g.number || '').includes(s) || (g.bank || '').includes(s) ||
-        (g.contract_subject || '').includes(s) || (g.check_number || '').includes(s));
+        (g.contract_subject || '').includes(s) || (g.check_number || '').includes(s) ||
+        (g.contract_guarantee_label || '').includes(s));
     }
     return result;
-  }, [list, search, contractId]);
+  }, [list, search, contractId, statusFilter, typeFilter]);
+
+  const scopedList = contractId
+    ? list.filter(g => String(g.contract) === String(contractId))
+    : list;
+  const activeCount = scopedList.filter(g => statusOf(g).key === 'active').length;
+  const expiringCount = scopedList.filter(g => {
+    const due = g.guarantee_expiry_date || g.check_due_date || g.promissory_due_date || g.expiry_date;
+    if (!due) return false;
+    const days = Math.ceil((new Date(due) - new Date()) / 86400000);
+    return days >= 0 && days <= 30;
+  }).length;
+  const totalAmount = scopedList.reduce((sum, g) => sum + Number(g.amount || 0), 0);
 
   const availableActions = (instrumentType) => {
     if (instrumentType === 'check' || instrumentType === 'promissory') {
@@ -194,124 +274,167 @@ const GuaranteesPage = () => {
       />
 
       {!contractId ? (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
-            انتخاب قرارداد ({formatPersianNumber(contractList.length)})
-          </Typography>
-          <ContractPicker
-            contracts={contractList}
-            onSelect={(c) => setContractId(String(c.id))}
-            height={520}
-          />
+        <Paper sx={{ p: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between" gap={1} flexWrap="wrap" sx={{ mb: 1.5 }}>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={500}>انتخاب قرارداد</Typography>
+              <Typography variant="caption" color="text.secondary">برای مشاهده و ثبت تضامین، ابتدا قرارداد را انتخاب کنید.</Typography>
+            </Box>
+            <Chip label={`${formatPersianNumber(contractList.length)} قرارداد`} color="primary" variant="outlined" />
+          </Stack>
+          <ContractPicker contracts={contractList} onSelect={(c) => setContractId(String(c.id))} height={520} />
         </Paper>
       ) : (
         <>
-          <Paper sx={{ p: 1.5, mb: 2, borderRadius: '10px', background: 'rgba(255,255,255,0.6)', display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
-            <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
-              {contractList.find(c => String(c.id) === String(contractId))?.subject || 'قرارداد'}
-            </Typography>
-            <TextField size="small" placeholder="جستجو: شماره، بانک، شماره چک..." value={search}
-              onChange={e => setSearch(e.target.value)} sx={{ minWidth: 260 }}
-              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+          <Paper sx={{ p: 1.5, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+            <Stack direction={{ xs: 'column', lg: 'row' }} spacing={1.5} useFlexGap alignItems={{ lg: 'center' }}>
+              <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
+              <Box sx={{ flex: 1, minWidth: 180 }}>
+                <Typography variant="body2" fontWeight={500} noWrap>
+                  {contractList.find(c => String(c.id) === String(contractId))?.subject || 'قرارداد'}
+                </Typography>
+                <Typography variant="caption" color="text.secondary">
+                  {toPersianDigits(scopedList.length)} تضمین ثبت‌شده
+                </Typography>
+              </Box>
+              <TextField size="small" placeholder="جستجو: شماره، بانک، شماره چک، ضمانت قرارداد…" value={search}
+                onChange={e => setSearch(e.target.value)} sx={{ minWidth: { xs: '100%', lg: 280 } }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', lg: 150 } }}>
+                <InputLabel>وضعیت</InputLabel>
+                <Select value={statusFilter} label="وضعیت" onChange={e => setStatusFilter(e.target.value)}>
+                  <MenuItem value="">همه</MenuItem>
+                  <MenuItem value="active">معتبر</MenuItem>
+                  <MenuItem value="expired">منقضی</MenuItem>
+                  <MenuItem value="returned">استرداد شده</MenuItem>
+                  <MenuItem value="executed">اجرا / ضبط شده</MenuItem>
+                  <MenuItem value="canceled">ابطال شده</MenuItem>
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: { xs: '100%', lg: 160 } }}>
+                <InputLabel>ابزار</InputLabel>
+                <Select value={typeFilter} label="ابزار" onChange={e => setTypeFilter(e.target.value)}>
+                  <MenuItem value="">همه</MenuItem>
+                  {Object.entries(INSTRUMENT_LABELS).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
+                </Select>
+              </FormControl>
+            </Stack>
           </Paper>
 
-      {/* List */}
-      {filtered.length === 0 ? (
-        <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
-          <LockIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-          <Typography variant="body2" color="textSecondary">تضمینی ثبت نشده است.</Typography>
-        </Paper>
-      ) : (
-        <Grid container spacing={2}>
-          {filtered.map(g => {
-            const color = INSTRUMENT_COLORS[g.instrument_type] || '#64748b';
-            const expired = g.expiry_date && new Date(g.expiry_date) < new Date();
-            const actions = availableActions(g.instrument_type);
-            return (
-              <Grid item xs={12} md={6} key={g.id}>
-                <Paper sx={{ ...glassPaper, p: 2, position: 'relative' }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-                    <Avatar sx={{ width: 44, height: 44, background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
-                      <LockIcon sx={{ color: '#fff' }} />
-                    </Avatar>
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography variant="body2" fontWeight={800}>
-                        {INSTRUMENT_LABELS[g.instrument_type] || '—'} · {TYPE_LABELS[g.guarantee_type]}
-                      </Typography>
-                      <Typography variant="caption" color="textSecondary">{g.number || 'بدون شماره'}</Typography>
-                    </Box>
-                    {g.last_action === 'returned' ? (
-                      <Chip size="small" color="success" icon={<CheckCircleIcon />} label="استرداد شده" />
-                    ) : g.last_action === 'executed' ? (
-                      <Chip size="small" color="error" icon={<GavelIcon />} label="اجرا / ضبط شده" />
-                    ) : g.last_action === 'canceled' ? (
-                      <Chip size="small" color="warning" icon={<BlockIcon />} label="ابطال شده" />
-                    ) : expired ? (
-                      <Chip size="small" color="error" icon={<ScheduleIcon />} label="منقضی" />
-                    ) : (
-                      <Chip size="small" color="primary" icon={<LockIcon />} label="معتبر" />
-                    )}
-                  </Box>
+          <Grid container spacing={1.5} sx={{ mb: 2 }}>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoCard icon={<LockIcon />} label="کل تضامین" value={scopedList.length} />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoCard icon={<CheckCircleIcon />} label="معتبر" value={activeCount} color="#059669" />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoCard icon={<EventBusyIcon />} label="در ۳۰ روز آینده" value={expiringCount} color="#f59e0b" />
+            </Grid>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoCard icon={<PaymentsIcon />} label="مجموع مبلغ" value={formatPersianNumber(totalAmount)} suffix="ریال" />
+            </Grid>
+          </Grid>
 
-                  <Stack spacing={0.5}>
-                    <Typography variant="body2"><strong>مبلغ:</strong> {formatPersianNumber(g.amount || 0)} ریال</Typography>
-                    <Typography variant="body2"><strong>قرارداد:</strong> {g.contract_subject || '—'}</Typography>
-                    {g.check_number && <Typography variant="body2"><strong>شماره چک:</strong> {g.check_number} · بانک: {g.check_bank || '—'}</Typography>}
-                    {g.promissory_number && <Typography variant="body2"><strong>شماره سفته:</strong> {g.promissory_number}</Typography>}
-                    {g.guarantee_number && <Typography variant="body2"><strong>شماره ضمانت‌نامه:</strong> {g.guarantee_number}</Typography>}
-                    <Typography variant="caption" color="textSecondary">
-                      صدور: {toJalali(g.issue_date)} · انقضا/سررسید: {toJalali(g.guarantee_expiry_date || g.check_due_date || g.promissory_due_date || g.expiry_date)}
-                    </Typography>
-                    {g.last_action && (
-                      <Typography variant="caption" color="textSecondary">
-                        آخرین اقدام: {ACTION_LABELS[g.last_action]} ({toJalali(g.last_action_date)})
-                      </Typography>
-                    )}
-                  </Stack>
-
-                  <Box sx={{ display: 'flex', gap: 1, mt: 1.5, flexWrap: 'wrap' }}>
-                    {!['returned', 'executed', 'canceled'].includes(g.last_action) && (
-                      actions.map(action => (
-                        <Button
-                          key={action}
-                          size="small"
-                          variant="contained"
-                          startIcon={
-                            action === 'returned' ? <UndoIcon /> :
-                            action === 'executed' ? <GavelIcon /> :
-                            action === 'canceled' ? <BlockIcon /> : <UpdateIcon />
-                          }
-                          onClick={() => setActionDialog({ id: g.id, action, instrument: g.instrument_type })}
-                          sx={{ background: `linear-gradient(135deg, ${ACTION_COLORS[action]}, ${ACTION_COLORS[action]}cc)` }}
-                        >
-                          {ACTION_LABELS[action]}
-                        </Button>
-                      ))
-                    )}
-                    <Button size="small" variant="outlined" onClick={() => { setForm({ ...g }); setError(''); setDialog(true); }}>ویرایش</Button>
-                    <Button size="small" color="error" variant="outlined" onClick={() => { if (window.confirm('حذف این تضمین؟')) remove.mutate(g.id); }}>حذف</Button>
-                  </Box>
-                </Paper>
-              </Grid>
-            );
-          })}
-        </Grid>
+          <Paper sx={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+            <TableContainer sx={{ maxHeight: 'calc(100vh - 330px)' }}>
+              <Table size="small" stickyHeader sx={{ '& td, & th': { px: 1.25, py: 0.9 } }}>
+                <TableHead>
+                  <TableRow>
+                    <TableCell sx={{ fontWeight: 600 }}>نوع / ابزار</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>شماره / مرجع</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>مبلغ</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>ضمانت قرارداد</TableCell>
+                    <TableCell sx={{ fontWeight: 600 }}>انقضا / سررسید</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>وضعیت</TableCell>
+                    <TableCell align="center" sx={{ fontWeight: 600 }}>عملیات</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {filtered.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} align="center" sx={{ py: 6, color: 'text.secondary' }}>
+                        تضمینی با این مشخصات ثبت نشده است.
+                      </TableCell>
+                    </TableRow>
+                  ) : filtered.map(g => {
+                    const status = statusOf(g);
+                    const actions = availableActions(g.instrument_type);
+                    const due = g.guarantee_expiry_date || g.check_due_date || g.promissory_due_date || g.expiry_date;
+                    const number = g.number || g.check_number || g.promissory_number || g.guarantee_number || '—';
+                    const canAct = !['returned', 'executed', 'canceled'].includes(g.last_action);
+                    return (
+                      <TableRow key={g.id} hover>
+                        <TableCell>
+                          <Typography variant="body2" fontWeight={500}>{INSTRUMENT_LABELS[g.instrument_type] || '—'}</Typography>
+                          <Typography variant="caption" color="text.secondary">{TYPE_LABELS[g.guarantee_type] || '—'}</Typography>
+                        </TableCell>
+                        <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{number}</TableCell>
+                        <TableCell sx={{ fontVariantNumeric: 'tabular-nums' }}>{formatPersianNumber(g.amount || 0)}</TableCell>
+                        <TableCell sx={{ maxWidth: 240 }}>
+                          <Typography variant="body2" noWrap title={guaranteeLinkFor(g)}>{guaranteeLinkFor(g) || '—'}</Typography>
+                        </TableCell>
+                        <TableCell sx={{ whiteSpace: 'nowrap' }}>{toJalali(due)}</TableCell>
+                        <TableCell align="center">
+                          <Chip size="small" color={status.color} variant="outlined" label={status.label} />
+                        </TableCell>
+                        <TableCell align="center">
+                          <Stack direction="row" spacing={0.25} justifyContent="center">
+                            {canAct && actions.map(action => {
+                              const icon = action === 'returned' ? <UndoIcon fontSize="small" />
+                                : action === 'executed' ? <GavelIcon fontSize="small" />
+                                  : action === 'canceled' ? <BlockIcon fontSize="small" /> : <UpdateIcon fontSize="small" />;
+                              const color = action === 'returned' ? 'success'
+                                : action === 'executed' ? 'error'
+                                  : action === 'canceled' ? 'warning' : 'primary';
+                              return (
+                                <Tooltip key={action} title={ACTION_LABELS[action]}>
+                                  <IconButton size="small" color={color}
+                                    onClick={() => setActionDialog({ id: g.id, action, instrument: g.instrument_type })}>
+                                    {icon}
+                                  </IconButton>
+                                </Tooltip>
+                              );
+                            })}
+                            <Tooltip title="ویرایش">
+                              <IconButton size="small" onClick={() => { setForm({ ...g }); setError(''); setDialog(true); }}>
+                                <EditIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                            <Tooltip title="حذف">
+                              <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف این تضمین؟')) remove.mutate(g.id); }}>
+                                <DeleteIcon fontSize="small" />
+                              </IconButton>
+                            </Tooltip>
+                          </Stack>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Paper>
+        </>
       )}
 
       {/* Add/Edit dialog with dynamic fields */}
-      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
+      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth
+        PaperProps={{ sx: { borderRadius: '16px', boxShadow: 'none', background: '#ffffff' } }}>
         <DialogTitle sx={{
           display: 'flex', alignItems: 'center', gap: 1.5, px: 3, py: 2,
-          background: 'linear-gradient(120deg, rgba(59,130,246,0.12), rgba(16,185,129,0.08), rgba(255,255,255,0.4))',
-          borderBottom: '1px solid rgba(59,130,246,0.15)',
+          borderBottom: '1px solid', borderColor: 'divider',
         }}>
-          <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#3b82f6,#10b981)', boxShadow: '0 6px 18px rgba(59,130,246,0.4)' }}>
-            <LockIcon sx={{ color: '#fff' }} />
-          </Avatar>
+          <Box sx={{
+            width: 40, height: 40, borderRadius: '12px', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            bgcolor: 'action.hover', color: 'primary.main',
+          }}>
+            <LockIcon sx={{ fontSize: 20 }} />
+          </Box>
           <Box>
-            <Typography variant="h6" fontWeight={800}>{form.id ? 'ویرایش تضمین' : 'تضمین جدید'}</Typography>
-            <Typography variant="caption" color="textSecondary">ثبت چک، سفته یا ضمانت‌نامه بانکی</Typography>
+            <Typography variant="h6" fontWeight={500}>{form.id ? 'ویرایش تضمین' : 'تضمین جدید'}</Typography>
+            <Typography variant="caption" color="text.secondary">ثبت چک، سفته یا ضمانت‌نامه بانکی برای قرارداد</Typography>
           </Box>
         </DialogTitle>
 
@@ -320,9 +443,27 @@ const GuaranteesPage = () => {
             <Grid item xs={12} md={6}>
               <FormControl size="small" fullWidth>
                 <InputLabel>قرارداد مرتبط *</InputLabel>
-                <Select value={form.contract || ''} label="قرارداد مرتبط *" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
+                <Select value={form.contract || ''} label="قرارداد مرتبط *"
+                  onChange={e => setForm(p => ({ ...p, contract: e.target.value, contract_guarantee_index: null }))}>
                   {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
                 </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} md={6}>
+              <FormControl size="small" fullWidth disabled={!contractGuaranteeItems.length}>
+                <InputLabel>ضمانت قرارداد</InputLabel>
+                <Select value={form.contract_guarantee_index ?? ''} label="ضمانت قرارداد"
+                  onChange={e => applyGuaranteeLink(e.target.value)}>
+                  <MenuItem value="">بدون اتصال به ضمانت قرارداد</MenuItem>
+                  {contractGuaranteeItems.map((item, index) => (
+                    <MenuItem key={index} value={index}>{guaranteeItemLabel(item)}</MenuItem>
+                  ))}
+                </Select>
+                <FormHelperText>
+                  {contractGuaranteeItems.length
+                    ? 'ضمانت تعریف‌شده در قرارداد را انتخاب کنید تا این رکورد به آن متصل شود.'
+                    : 'برای این قرارداد هنوز ضمانتی در مشخصات قرارداد تعریف نشده است.'}
+                </FormHelperText>
               </FormControl>
             </Grid>
             <Grid item xs={12} md={6}>
@@ -369,8 +510,8 @@ const GuaranteesPage = () => {
           </Box>
 
           {needsInstrument(form.instrument_type) && (
-            <Box sx={{ p: 2, borderRadius: '12px', background: 'rgba(245,158,11,0.06)', border: '1px solid rgba(245,158,11,0.2)' }}>
-              <Typography variant="caption" fontWeight={800} color="#b45309" sx={{ mb: 1, display: 'block' }}>اطلاعات چک</Typography>
+            <Box sx={{ p: 2, borderRadius: '16px', background: '#ffffff', border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" fontWeight={500} sx={{ mb: 1, display: 'block' }}>اطلاعات چک</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره چک" value={form.check_number} onChange={e => setForm(p => ({ ...p, check_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={4}><TextField size="small" fullWidth label="بانک چک" value={form.check_bank} onChange={e => setForm(p => ({ ...p, check_bank: e.target.value }))} /></Grid>
@@ -380,8 +521,8 @@ const GuaranteesPage = () => {
           )}
 
           {needsPromissory(form.instrument_type) && (
-            <Box sx={{ p: 2, borderRadius: '12px', background: 'rgba(139,92,246,0.06)', border: '1px solid rgba(139,92,246,0.2)' }}>
-              <Typography variant="caption" fontWeight={800} color="#7c3aed" sx={{ mb: 1, display: 'block' }}>اطلاعات سفته</Typography>
+            <Box sx={{ p: 2, borderRadius: '16px', background: '#ffffff', border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" fontWeight={500} sx={{ mb: 1, display: 'block' }}>اطلاعات سفته</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره سفته" value={form.promissory_number} onChange={e => setForm(p => ({ ...p, promissory_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ سررسید سفته" value={form.promissory_due_date} onChange={(g) => setForm(p => ({ ...p, promissory_due_date: g }))} /></Grid>
@@ -390,8 +531,8 @@ const GuaranteesPage = () => {
           )}
 
           {needsGuarantee(form.instrument_type) && (
-            <Box sx={{ p: 2, borderRadius: '12px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)' }}>
-              <Typography variant="caption" fontWeight={800} color="#047857" sx={{ mb: 1, display: 'block' }}>اطلاعات ضمانت‌نامه</Typography>
+            <Box sx={{ p: 2, borderRadius: '16px', background: '#ffffff', border: '1px solid', borderColor: 'divider' }}>
+              <Typography variant="subtitle2" fontWeight={500} sx={{ mb: 1, display: 'block' }}>اطلاعات ضمانت‌نامه</Typography>
               <Grid container spacing={2}>
                 <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره ضمانت‌نامه" value={form.guarantee_number} onChange={e => setForm(p => ({ ...p, guarantee_number: e.target.value }))} /></Grid>
                 <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ انقضای ضمانت‌نامه" value={form.guarantee_expiry_date} onChange={(g) => setForm(p => ({ ...p, guarantee_expiry_date: g }))} /></Grid>
@@ -404,18 +545,18 @@ const GuaranteesPage = () => {
           {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
         </DialogContent>
 
-        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(59,130,246,0.12)' }}>
-          <Button onClick={() => setDialog(false)} sx={{ borderRadius: '10px' }}>انصراف</Button>
+        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid', borderColor: 'divider' }}>
+          <Button onClick={() => setDialog(false)}>انصراف</Button>
           <Button variant="contained" disabled={!form.contract || !form.guarantee_type}
-            onClick={() => save.mutate(form)}
-            sx={{ background: 'linear-gradient(135deg,#3b82f6,#10b981)', borderRadius: '10px', px: 3, boxShadow: '0 8px 22px rgba(59,130,246,0.35)' }}>
+            onClick={() => save.mutate(form)}>
             {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Lifecycle action dialog */}
-      <Dialog open={!!actionDialog} onClose={() => { setActionDialog(null); setNewExpiry(''); }} maxWidth="xs" fullWidth>
+      <Dialog open={!!actionDialog} onClose={() => { setActionDialog(null); setNewExpiry(''); }} maxWidth="xs" fullWidth
+        PaperProps={{ sx: { borderRadius: '16px', boxShadow: 'none' } }}>
         <DialogTitle>{ACTION_LABELS[actionDialog?.action] || 'اقدام'}</DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           {actionDialog?.action === 'extended' && (
@@ -428,14 +569,12 @@ const GuaranteesPage = () => {
         <DialogActions>
           <Button onClick={() => { setActionDialog(null); setNewExpiry(''); }}>انصراف</Button>
           <Button variant="contained"
-            onClick={() => applyLifecycle.mutate({ id: actionDialog.id, action: actionDialog.action, new_expiry_date: newExpiry || null })}
-            sx={{ background: `linear-gradient(135deg, ${ACTION_COLORS[actionDialog?.action] || '#3b82f6'}, ${ACTION_COLORS[actionDialog?.action] || '#3b82f6'}cc)` }}>
+            color={actionDialog?.action === 'executed' ? 'error' : actionDialog?.action === 'canceled' ? 'warning' : 'primary'}
+            onClick={() => applyLifecycle.mutate({ id: actionDialog.id, action: actionDialog.action, new_expiry_date: newExpiry || null })}>
             تأیید
           </Button>
         </DialogActions>
       </Dialog>
-        </>
-      )}
     </Box>
   );
 };

@@ -494,6 +494,11 @@ class Guarantee(BaseModel):
         EXTENDED = 'extended', _('تمدید')
 
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='guarantees', verbose_name=_('قرارداد'))
+    contract_guarantee_index = models.PositiveIntegerField(
+        null=True, blank=True,
+        verbose_name=_('ردیف ضمانت قرارداد'),
+        help_text=_('اندیس ضمانت انتخاب‌شده در فهرست guarantee_items قرارداد'),
+    )
     guarantee_type = models.CharField(max_length=20, choices=GuaranteeType.choices, default=GuaranteeType.PERFORMANCE, verbose_name=_('نوع تضمین'))
     instrument_type = models.CharField(max_length=40, choices=InstrumentType.choices, default=InstrumentType.CHECK, verbose_name=_('نوع ابزار تضمین'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره'))
