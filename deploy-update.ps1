@@ -186,6 +186,12 @@ $BackendFiles = @(
 
 # فایل‌های تغییریافتهٔ فرانت‌اند (در حالت پیش‌فرض = بیلد روی سرور)
 $FrontendFiles = @(
+    # --- تم سراسری، فونت محلی و سطح‌های سفید ---
+    'frontend/src/App.jsx',
+    'frontend/src/index.css',
+    'frontend/src/core/theme/tokens.js',
+    'frontend/public/index.html',
+    'frontend/src/fonts/Vazirmatn-Variable.woff2',
     'frontend/src/pages/EmployeeForm.jsx',
     'frontend/src/pages/AccountingDocumentsPage.jsx',
     'frontend/src/pages/AccountingDocumentNewPage.jsx',

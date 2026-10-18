@@ -16,6 +16,7 @@ import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
 import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
+import { FONT_FAMILY } from './core/theme/tokens';
 import './core/engines/languageEngine';
 
 const queryClient = new QueryClient({
@@ -25,6 +26,96 @@ const queryClient = new QueryClient({
       refetchOnWindowFocus: true,
       staleTime: 60 * 1000,
     },
+  },
+});
+
+/**
+ * سطح‌های روشن و یک‌دست برنامه: همهٔ Paper/Cardها سفید، بدون گرادیان و بلور.
+ * در تم‌های تاریک از این مجموعه استفاده نمی‌شود.
+ */
+const WHITE_SURFACES = {
+  MuiPaper: {
+    styleOverrides: {
+      root: {
+        backgroundColor: '#ffffff',
+        backgroundImage: 'none',
+        border: '1px solid rgba(15,23,42,0.06)',
+        borderRadius: '16px',
+        boxShadow: '0 3px 14px rgba(15,23,42,0.04)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+        '&.MuiAlert-root, &.MuiSnackbarContent-root': {
+          border: 'none',
+          boxShadow: 'none',
+        },
+      },
+    },
+  },
+  MuiCard: {
+    styleOverrides: {
+      root: {
+        backgroundColor: '#ffffff',
+        backgroundImage: 'none',
+        border: '1px solid rgba(15,23,42,0.07)',
+        borderRadius: '16px',
+        boxShadow: '0 4px 18px rgba(15,23,42,0.05)',
+        transition: 'box-shadow 0.2s ease, border-color 0.2s ease',
+        '&:hover': {
+          transform: 'none',
+          boxShadow: '0 10px 28px rgba(15,23,42,0.08)',
+        },
+      },
+    },
+  },
+  MuiDrawer: {
+    styleOverrides: {
+      paper: {
+        background: '#ffffff !important',
+        borderLeft: '1px solid rgba(15,23,42,0.06)',
+        backdropFilter: 'none',
+        WebkitBackdropFilter: 'none',
+      },
+    },
+  },
+  MuiTextField: {
+    styleOverrides: {
+      root: {
+        '& .MuiOutlinedInput-root': {
+          borderRadius: '10px',
+          background: '#ffffff',
+          border: '1px solid rgba(15,23,42,0.1)',
+          '&:hover': { background: '#ffffff' },
+          '&.Mui-focused': {
+            background: '#ffffff',
+            boxShadow: '0 0 0 3px rgba(99,102,241,0.12)',
+          },
+        },
+      },
+    },
+  },
+};
+
+/**
+ * پایهٔ سراسری تایپوگرافی + سفیدسازی اجباری Paperهایی که inline gradient دارند.
+ */
+const cssBase = (bodyBg, whiteCards = false) => ({
+  styleOverrides: {
+    body: {
+      background: bodyBg,
+      backgroundAttachment: 'fixed',
+      fontFamily: FONT_FAMILY,
+    },
+    'button, input, select, textarea': { fontFamily: 'inherit' },
+    ...(whiteCards
+      ? {
+        '.MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root)': {
+          backgroundColor: '#ffffff !important',
+          backgroundImage: 'none !important',
+          backdropFilter: 'none !important',
+          WebkitBackdropFilter: 'none !important',
+        },
+      }
+      : {}),
   },
 });
 
@@ -61,7 +152,7 @@ const getPalettes = (mode, neonColor) => {
       success: { main: '#00c853' },
       warning: { main: '#ff9800' },
       error: { main: '#ff1744' },
-      background: { default: '#f1fdf7', paper: 'rgba(255,255,255,0.8)' },
+      background: { default: '#f1fdf7', paper: '#ffffff' },
       text: { primary: '#0d3b22', secondary: '#4b6b59' },
     };
   }
@@ -73,7 +164,7 @@ const getPalettes = (mode, neonColor) => {
       success: { main: '#111827' },
       warning: { main: '#4b5563' },
       error: { main: '#000000' },
-      background: { default: '#f3f4f6', paper: 'rgba(255,255,255,0.82)' },
+      background: { default: '#f3f4f6', paper: '#ffffff' },
       text: { primary: '#111111', secondary: '#6b7280' },
     };
   }
@@ -84,7 +175,7 @@ const getPalettes = (mode, neonColor) => {
     success: { main: '#10b981' },
     warning: { main: '#f59e0b' },
     error: { main: '#ef4444' },
-    background: { default: '#f8fafc', paper: 'rgba(255,255,255,0.72)' },
+    background: { default: '#f8fafc', paper: '#ffffff' },
     text: { primary: '#1e293b', secondary: '#64748b' },
   };
 };
@@ -100,7 +191,7 @@ const getComponents = (mode, neonColor) => {
 
   if (isF) {
     return {
-      MuiCssBaseline: { styleOverrides: { body: { background: bodyBg, backgroundAttachment: 'fixed' } } },
+      MuiCssBaseline: cssBase(bodyBg),
       MuiPaper: {
         styleOverrides: { root: { background: 'rgba(5,5,5,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: `1px solid ${neonColor}4d`, boxShadow: `0 0 24px ${neonColor}1f`, borderRadius: '10px' } },
       },
@@ -116,19 +207,16 @@ const getComponents = (mode, neonColor) => {
 
   if (mode === 'kurosawa') {
     return {
-      MuiCssBaseline: { styleOverrides: { body: { background: 'linear-gradient(135deg, #e5e7eb 0%, #f9fafb 50%, #d1d5db 100%)', backgroundAttachment: 'fixed' } } },
-      MuiPaper: { styleOverrides: { root: { background: 'rgba(255,255,255,0.82)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 8px 32px rgba(0,0,0,0.12)', borderRadius: '10px' } } },
-      MuiCard: { styleOverrides: { root: { background: 'rgba(255,255,255,0.75)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(0,0,0,0.1)', borderRadius: '10px', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.18)' } } } },
-      MuiDrawer: { styleOverrides: { paper: { background: 'rgba(255,255,255,0.85) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: '1px solid rgba(0,0,0,0.08)' } } },
-      MuiTextField: { styleOverrides: { root: { '& .MuiOutlinedInput-root': { borderRadius: '10px', background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(0,0,0,0.12)', '&:hover': { background: 'rgba(255,255,255,0.85)' }, '&.Mui-focused': { background: 'rgba(255,255,255,0.95)', boxShadow: '0 0 0 3px rgba(0,0,0,0.08)' } } } } },
+      MuiCssBaseline: cssBase('linear-gradient(135deg, #e5e7eb 0%, #f9fafb 50%, #d1d5db 100%)', true),
       MuiTab: { styleOverrides: { root: { color: '#6b7280', '&.Mui-selected': { color: '#000000', fontWeight: 700 } } } },
       MuiTabs: { styleOverrides: { indicator: { backgroundColor: '#000000' } } },
+      ...WHITE_SURFACES,
     };
   }
 
   if (isDark) {
     return {
-      MuiCssBaseline: { styleOverrides: { body: { background: bodyBg, backgroundAttachment: 'fixed' } } },
+      MuiCssBaseline: cssBase(bodyBg),
       MuiPaper: { styleOverrides: { root: { background: 'rgba(30,41,59,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(148,163,184,0.12)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', borderRadius: '10px' } } },
       MuiCard: { styleOverrides: { root: { background: 'rgba(30,41,59,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(148,163,184,0.12)', borderRadius: '10px', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' } } } },
       MuiDrawer: { styleOverrides: { paper: { background: 'rgba(15,23,42,0.85) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: '1px solid rgba(148,163,184,0.08)' } } },
@@ -139,11 +227,8 @@ const getComponents = (mode, neonColor) => {
   }
 
   return {
-    MuiCssBaseline: { styleOverrides: { body: { background: bodyBg, backgroundAttachment: 'fixed' } } },
-    MuiPaper: { styleOverrides: { root: { background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255,255,255,0.5)', boxShadow: '0 8px 32px rgba(99,102,241,0.08)', borderRadius: '10px' } } },
-    MuiCard: { styleOverrides: { root: { background: 'rgba(255,255,255,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(255,255,255,0.4)', borderRadius: '10px', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(99,102,241,0.15)' } } } },
-    MuiDrawer: { styleOverrides: { paper: { background: 'rgba(255,255,255,0.75) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: '1px solid rgba(99,102,241,0.08)' } } },
-    MuiTextField: { styleOverrides: { root: { '& .MuiOutlinedInput-root': { borderRadius: '10px', background: 'rgba(255,255,255,0.5)', '&:hover': { background: 'rgba(255,255,255,0.8)' }, '&.Mui-focused': { background: 'rgba(255,255,255,0.9)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' } } } } },
+    MuiCssBaseline: cssBase(bodyBg, true),
+    ...WHITE_SURFACES,
   };
 };
 
@@ -169,12 +254,13 @@ const ThemedApp = () => {
     direction,
     palette: palettes,
     typography: {
-      fontFamily: '"Vazirmatn", "Tahoma", sans-serif',
+      fontFamily: FONT_FAMILY,
       h4: { fontWeight: 800, letterSpacing: '-0.5px' },
       h5: { fontWeight: 700 },
       h6: { fontWeight: 600 },
       body1: { fontWeight: 400 },
       body2: { fontWeight: 400 },
+      button: { fontWeight: 600, textTransform: 'none' },
     },
     shape: { borderRadius: 1 },
     components: {

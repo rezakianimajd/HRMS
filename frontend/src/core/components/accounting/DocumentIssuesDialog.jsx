@@ -17,7 +17,7 @@ import EditNoteIcon from '@mui/icons-material/EditNote';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { toPersianDigits } from '../../utils/numberUtils';
 
-const FONT = 'Vazirmatn, Roboto, sans-serif';
+const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const fmtAt = (iso) => {
   if (!iso) return '—';

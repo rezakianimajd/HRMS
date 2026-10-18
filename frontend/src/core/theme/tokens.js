@@ -4,21 +4,19 @@
  * `glassPaper` in every page.
  */
 
+export const FONT_FAMILY = "'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif";
+
 export const glassPaper = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(20px)',
-  WebkitBackdropFilter: 'blur(20px)',
-  border: '1px solid rgba(255,255,255,0.5)',
-  boxShadow: '0 8px 32px rgba(99,102,241,0.08)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: '0 4px 18px rgba(15,23,42,0.06)',
   borderRadius: '16px',
 };
 
 export const glassForm = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.74), rgba(255,255,255,0.4))',
-  backdropFilter: 'blur(22px)',
-  WebkitBackdropFilter: 'blur(22px)',
-  border: '1px solid rgba(255,255,255,0.65)',
-  boxShadow: '0 18px 48px rgba(99,102,241,0.14)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.08)',
+  boxShadow: '0 10px 30px rgba(15,23,42,0.08)',
   borderRadius: '16px',
 };
 

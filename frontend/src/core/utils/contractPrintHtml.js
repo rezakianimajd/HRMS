@@ -52,7 +52,7 @@ export function buildContractPrintHtml({ textValue, logoUrl, companyName, compan
 <link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@300;400;500;700;900&display=swap" rel="stylesheet">
 <style>
   @page { margin: 28px 36px; }
-  body { font-family:'Vazirmatn',Tahoma,sans-serif; direction:rtl; font-size:10pt; line-height:2; color:#1a1a1a;
+  body { font-family:'Vazirmatn','IRANSans',Tahoma,sans-serif; direction:rtl; font-size:10pt; line-height:2; color:#1a1a1a;
          padding: 0; margin: 0 auto; max-width: 820px; text-align: justify; }
   .page { padding: 12px 4px; }
 </style></head><body><div class="page">${headerHtml}<hr style="border:none;border-top:1px solid #d8d8d8;margin:8px 0 16px;" />${bodyHtml}${signatureHtml}</div></body></html>`;
