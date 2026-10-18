@@ -11,6 +11,7 @@ import HRAssistant from '../core/components/ui/HRAssistant';
 import KnowledgePanel from '../core/components/ui/KnowledgePanel';
 import axiosInstance from '../core/api/axiosConfig';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const KpiCard = ({ icon, iconBg, label, value, sub }) => (
   <Paper sx={{ p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(99,102,241,0.14)', display: 'flex', alignItems: 'center', gap: 1.25 }}>
@@ -38,24 +39,16 @@ const AssistantPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(99,102,241,0.14), rgba(236,72,153,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(99,102,241,0.2)', borderRadius: '12px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #6366f1, #ec4899)', boxShadow: '0 8px 24px rgba(99,102,241,0.4)' }}>
-          <SmartToyIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#4338ca">دستیار هوشمند منابع انسانی</Typography>
-          <Typography variant="body2" color="textSecondary">پرسش و پاسخ هوشمند از داده‌های واقعی + پایگاه دانش سفارشی سازمان شما</Typography>
-        </Box>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
-          <Chip label={`${toPersianDigits(empCount)} پرسنل`} icon={<PeopleIcon fontSize="small" />} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca' }} />
-          <Chip label={`نرخ ترک خدمت: ${toPersianDigits(turnover)}٪`} icon={<TrendingDownIcon fontSize="small" />} sx={{ fontWeight: 700, bgcolor: 'rgba(239,68,68,0.1)', color: '#dc2626' }} />
-        </Stack>
-      </Paper>
+            <PageHeader
+        icon={<SmartToyIcon />}
+        title="دستیار هوشمند منابع انسانی"
+        actions={(
+          <>
+            <Chip label={`${toPersianDigits(empCount)} پرسنل`} icon={<PeopleIcon fontSize="small" />} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca' }} />
+            <Chip label={`نرخ ترک خدمت: ${toPersianDigits(turnover)}٪`} icon={<TrendingDownIcon fontSize="small" />} sx={{ fontWeight: 700, bgcolor: 'rgba(239,68,68,0.1)', color: '#dc2626' }} />
+          </>
+        )}
+      />
 
       {/* KPI cards */}
       {!isLoading && data && (

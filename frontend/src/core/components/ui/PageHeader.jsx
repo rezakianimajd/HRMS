@@ -53,6 +53,8 @@ import PlaylistAddCheckOutlinedIcon from '@mui/icons-material/PlaylistAddCheckOu
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import InputOutlinedIcon from '@mui/icons-material/InputOutlined';
 import SystemUpdateAltOutlinedIcon from '@mui/icons-material/SystemUpdateAltOutlined';
+import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
+import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
 import { useApplication } from '../../context/ApplicationContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../../theme/appearanceDefaults';
@@ -117,6 +119,8 @@ const OUTLINE_BY_NAME = {
   ArchiveIcon: ArchiveOutlinedIcon,
   InputIcon: InputOutlinedIcon,
   SystemUpdateAltIcon: SystemUpdateAltOutlinedIcon,
+  SmartToyIcon: SmartToyOutlinedIcon,
+  ChatIcon: ChatOutlinedIcon,
 };
 
 const iconName = (icon) => icon?.type?.displayName || icon?.type?.name || '';

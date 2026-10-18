@@ -13,6 +13,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import { DonutChart, BarChart, ColumnChart, LineChart, MultiLineChart } from '../core/components/charts/Charts';
 
 const KpiCard = ({ label, value, unit, icon, color, subtitle }) => (
@@ -71,20 +72,10 @@ const ManagementAnalyticsPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(59,130,246,0.10), rgba(139,92,246,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(59,130,246,0.16)', borderRadius: '10px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 8px 24px rgba(59,130,246,0.35)' }}>
-          <InsightsIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#1d4ed8">داشبورد مدیریتی</Typography>
-          <Typography variant="body2" color="textSecondary">تحلیل عمیق عملکرد، حقوق، مرخصی، اموال و حضور سازمان</Typography>
-        </Box>
-      </Paper>
+            <PageHeader
+        icon={<InsightsIcon />}
+        title="داشبورد مدیریتی"
+      />
 
       {/* KPI row */}
       <Grid container spacing={2} sx={{ mb: 2 }}>
