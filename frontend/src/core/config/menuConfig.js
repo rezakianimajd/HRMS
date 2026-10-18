@@ -196,7 +196,9 @@ const settingsMenu = [
     id: 'settings-accounting',
     title: 'حسابداری',
     color: '#0ea5e9',
-    items: [comingSoon('/modules/accounting', 'mod-accounting', 'حسابداری', <ReceiptLongIcon />, '#0ea5e9')],
+    items: [
+      { id: 'settings-accounting-definitions', title: 'تعاریف اولیه', icon: <SettingsIcon />, path: '/settings?tab=accounting', color: '#0ea5e9', primary: true, ready: true },
+    ],
   },
   {
     id: 'settings-assets',
@@ -373,14 +375,6 @@ const accountingMenu = [
       { id: 'acc-tax-seasonal', title: 'صورت معاملات فصلی', icon: <CalendarViewMonthIcon />, path: '/accounting/tax/seasonal', color: '#f59e0b', primary: false, ready: true },
       { id: 'acc-tax-official', title: 'دفاتر رسمی مالیاتی', icon: <MenuBookIcon />, path: '/accounting/tax/official-ledger', color: '#10b981', primary: false, ready: true },
       { id: 'acc-tax-bi', title: 'داشبورد هوش مالی', icon: <InsightsIcon />, path: '/accounting/tax/bi-dashboard', color: '#8b5cf6', primary: false, ready: true },
-    ],
-  },
-  {
-    id: 'accounting-settings',
-    title: 'تنظیمات',
-    color: '#64748b',
-    items: [
-      { id: 'accounting-settings', title: 'تعاریف اولیه', icon: <SettingsIcon />, path: '/accounting/settings', color: '#64748b', primary: false, ready: true },
     ],
   },
 ];

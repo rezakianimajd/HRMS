@@ -12,6 +12,7 @@ import RestoreIcon from '@mui/icons-material/Restore';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PersonIcon from '@mui/icons-material/Person';
 import LayersIcon from '@mui/icons-material/Layers';
 import VerifiedIcon from '@mui/icons-material/Verified';
@@ -19,6 +20,7 @@ import GeneralSettingsPanel from '../../core/components/settings/GeneralSettings
 import NotificationSettingsPanel from '../../core/components/settings/NotificationSettingsPanel';
 import ManagementSettingsPanel from '../../core/components/settings/ManagementSettingsPanel';
 import UpdatePanel from '../../core/components/settings/UpdatePanel';
+import AccountingSettingsPage from '../../pages/AccountingSettingsPage';
 import {
   PageHeader, StatGrid, SOFT,
 } from '../../core/components/settings/settingsUi';
@@ -121,6 +123,7 @@ const SECTIONS = {
   general: { title: 'تنظیمات عمومی', icon: <TuneIcon />, color: SOFT.indigo },
   management: { title: 'تنظیمات مدیریتی', icon: <AdminPanelSettingsIcon />, color: SOFT.orange },
   notifications: { title: 'اطلاع‌رسانی', icon: <NotificationsActiveIcon />, color: SOFT.green },
+  accounting: { title: 'تعاریف اولیه حسابداری', icon: <AccountBalanceIcon />, color: SOFT.blue },
   backup: { title: 'پشتیبان‌گیری و بازیابی', icon: <BackupIcon />, color: SOFT.blue },
   updates: { title: 'به‌روزرسانی سیستم', icon: <SystemUpdateAltIcon />, color: SOFT.violet },
 };
@@ -156,6 +159,7 @@ const Settings = () => {
     general: <GeneralSettingsPanel />,
     management: <ManagementSettingsPanel />,
     notifications: <NotificationSettingsPanel />,
+    accounting: <AccountingSettingsPage embedded />,
     backup: <BackupTab />,
     updates: <UpdatePanel />,
   };

@@ -96,7 +96,6 @@ import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
 import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
 import AccountingIntegrationPage from './pages/AccountingIntegrationPage';
 import AccountingReportsPage from './pages/AccountingReportsPage';
-import AccountingSettingsPage from './pages/AccountingSettingsPage';
 import MatrixReportPage from './pages/accounting/reports/MatrixReportPage';
 import TreeTrialBalancePage from './pages/accounting/reports/TreeTrialBalancePage';
 import LedgerReviewPage from './pages/accounting/reports/LedgerReviewPage';
@@ -249,7 +248,7 @@ const AppRoutes = () => {
       <Route path="/accounting/tax/seasonal" element={<ProtectedLayout><SeasonalReportPage /></ProtectedLayout>} />
       <Route path="/accounting/tax/official-ledger" element={<ProtectedLayout><OfficialLedgerPage /></ProtectedLayout>} />
       <Route path="/accounting/tax/bi-dashboard" element={<ProtectedLayout><BiDashboardPage /></ProtectedLayout>} />
-      <Route path="/accounting/settings" element={<ProtectedLayout><AccountingSettingsPage /></ProtectedLayout>} />
+      <Route path="/accounting/settings" element={<Navigate to="/settings?tab=accounting" replace />} />
       <Route path="/accounting/fiscal" element={<ProtectedLayout><AccountingFiscalPage /></ProtectedLayout>} />
       <Route path="/accounting/sequences" element={<ProtectedLayout><AccountingSequencesPage /></ProtectedLayout>} />
       <Route path="/accounting/reconciliation" element={<ProtectedLayout><AccountingReconciliationPage /></ProtectedLayout>} />

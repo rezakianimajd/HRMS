@@ -17,18 +17,17 @@ const COLOR = '#64748b';
 const COLOR_DARK = '#475569';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.42))',
-  backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 18px 50px rgba(100,116,139,0.14)',
-  borderRadius: '20px',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
+  borderRadius: '16px',
 };
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: '14px',
-    background: 'rgba(255,255,255,0.6)',
-    '&.Mui-focused': { background: '#fff', boxShadow: '0 0 0 4px rgba(100,116,139,0.12)' },
+    borderRadius: '10px',
+    background: '#ffffff',
+    '&.Mui-focused': { background: '#ffffff' },
   },
 };
 
@@ -167,8 +166,7 @@ const AuxiliaryCategoriesPanel = () => {
             </Select>
           </FormControl>
           <TextField size="small" label="ترتیب" type="number" value={form.sort_order} onChange={e => setForm(p => ({ ...p, sort_order: Number(e.target.value) || 0 }))} sx={{ width: 90, ...fieldSx }} />
-          <Button variant="contained" startIcon={<AddIcon />} onClick={save} disabled={!form.code || !form.name}
-            sx={{ borderRadius: '12px', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})` }}>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={save} disabled={!form.code || !form.name}>
             {editing ? 'ذخیره' : 'افزودن دسته'}
           </Button>
         </Stack>
@@ -192,11 +190,11 @@ const AuxiliaryCategoriesPanel = () => {
   );
 };
 
-const AccountingSettingsPage = () => {
+const AccountingSettingsPage = ({ embedded = false }) => {
   const [tab, setTab] = useState(0);
   return (
     <Box>
-      <PageHeader icon={<TuneIcon />} title="تعاریف اولیهٔ حسابداری" />
+      {!embedded && <PageHeader icon={<TuneIcon />} title="تعاریف اولیهٔ حسابداری" />}
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ borderBottom: '1px solid rgba(255,255,255,0.5)', px: 2 }}>
