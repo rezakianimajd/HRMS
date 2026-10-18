@@ -1,10 +1,12 @@
 import React, {
-  createContext, useCallback, useContext, useEffect, useState,
+  createContext, useCallback, useContext, useEffect, useRef, useState,
 } from 'react';
+import axiosInstance from '../api/axiosConfig';
+import useAuth from '../hooks/useAuth';
+import useCompany from '../hooks/useCompany';
+import { DEFAULT_TYPOGRAPHY } from '../theme/appearanceDefaults';
 
-const STORAGE_KEY = 'hrms_module_palettes_v1';
-
-// رنگ تاکیدی پیشنهادی هر ماژول (فقط برای نمایش در انتخابگر؛ تا ذخیره نشود اعمال نمی‌شود)
+// رنگ تاکیدی پیشنهادی هر ماژول (فقط برای نمایش در انتخاب‌گر؛ تا ذخیره نشود اعمال نمی‌شود)
 export const MODULE_DEFAULT_ACCENTS = {
   hrms: '#6366f1',
   contracts: '#f59e0b',
@@ -21,43 +23,101 @@ export const MODULE_DEFAULT_ACCENTS = {
   pettycash: '#f59e0b',
 };
 
-const ModulePaletteContext = createContext({
+const AppearanceContext = createContext({
   palettes: {},
+  typography: DEFAULT_TYPOGRAPHY,
+  canEdit: false,
+  loading: false,
+  saving: false,
+  savedTick: false,
+  error: '',
   getPalette: () => null,
   setPalette: () => {},
   resetPalette: () => {},
+  resetPalettes: () => {},
   resetAll: () => {},
+  setTypography: () => {},
+  resetTypography: () => {},
 });
 
-const sanitize = (value) => (typeof value === 'string' ? value.trim() : '');
-
-export const ModulePaletteProvider = ({ children }) => {
-  const [palettes, setPalettes] = useState(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY);
-      if (!raw) return {};
-      const parsed = JSON.parse(raw);
-      if (!parsed || typeof parsed !== 'object') return {};
-      const clean = {};
-      Object.entries(parsed).forEach(([slug, palette]) => {
-        if (!slug || !palette || typeof palette !== 'object') return;
-        const accent = sanitize(palette.accent);
-        const background = sanitize(palette.background);
-        if (accent || background) {
-          clean[slug] = { ...(accent ? { accent } : {}), ...(background ? { background } : {}) };
-        }
-      });
-      return clean;
-    } catch {
-      return {};
-    }
+const normalizeTypography = (raw) => {
+  const value = raw && typeof raw === 'object' ? raw : {};
+  const safe = {};
+  Object.keys(DEFAULT_TYPOGRAPHY).forEach((key) => {
+    safe[key] = value[key] ?? DEFAULT_TYPOGRAPHY[key];
   });
+  return safe;
+};
+
+const normalizePalettes = (raw) => (raw && typeof raw === 'object' ? raw : {});
+
+/**
+ * ظاهر سراسری (پالت رنگی هر ماژول + تایپوگرافی) از API خوانده می‌شود؛
+ * فقط «مدیر ارشد سیستم» اجازهٔ ذخیره دارد و نتیجه برای همهٔ کاربران اعمال می‌شود.
+ */
+export const ModulePaletteProvider = ({ children }) => {
+  const { user } = useAuth();
+  const { currentCompany } = useCompany();
+
+  const [palettes, setPalettes] = useState({});
+  const [typography, setTypographyState] = useState(DEFAULT_TYPOGRAPHY);
+  const [canEdit, setCanEdit] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedTick, setSavedTick] = useState(false);
+  const [error, setError] = useState('');
+
+  const dirtyRef = useRef(false);
+  const saveTimer = useRef(null);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(palettes));
-    } catch { /* ignore quota errors */ }
-  }, [palettes]);
+    if (!user) {
+      setCanEdit(false);
+      return undefined;
+    }
+    let alive = true;
+    setLoading(true);
+    axiosInstance.get('/settings/appearance/')
+      .then(({ data }) => {
+        if (!alive) return;
+        setPalettes(normalizePalettes(data?.palettes));
+        setTypographyState(normalizeTypography(data?.typography));
+        setCanEdit(Boolean(data?.can_edit));
+        setError('');
+        dirtyRef.current = false;
+      })
+      .catch(() => {
+        if (alive) setError('دریافت تنظیمات ظاهر ناموفق بود');
+      })
+      .finally(() => {
+        if (alive) setLoading(false);
+      });
+    return () => { alive = false; };
+  }, [user?.id, currentCompany?.id]);
+
+  useEffect(() => {
+    if (!canEdit || !dirtyRef.current) return undefined;
+    clearTimeout(saveTimer.current);
+    const payload = { palettes, typography };
+    saveTimer.current = setTimeout(() => {
+      setSaving(true);
+      axiosInstance.put('/settings/appearance/', payload)
+        .then(({ data }) => {
+          setSaving(false);
+          setSavedTick(true);
+          setError('');
+          dirtyRef.current = false;
+          if (data?.typography) setTypographyState(normalizeTypography(data.typography));
+          if (data?.palettes) setPalettes(normalizePalettes(data.palettes));
+          setTimeout(() => setSavedTick(false), 1800);
+        })
+        .catch((err) => {
+          setSaving(false);
+          setError(err?.response?.data?.error || 'ذخیرهٔ تنظیمات ظاهر ناموفق بود');
+        });
+    }, 500);
+    return () => clearTimeout(saveTimer.current);
+  }, [palettes, typography, canEdit]);
 
   const getPalette = useCallback((slug) => {
     if (!slug) return null;
@@ -71,37 +131,78 @@ export const ModulePaletteProvider = ({ children }) => {
   }, [palettes]);
 
   const setPalette = useCallback((slug, patch) => {
-    if (!slug) return;
+    if (!canEdit || !slug) return;
     setPalettes((prev) => {
       const next = { ...prev };
       const merged = { ...(prev[slug] || {}), ...patch };
       const cleaned = {};
-      if (sanitize(merged.accent)) cleaned.accent = sanitize(merged.accent);
-      if (sanitize(merged.background)) cleaned.background = sanitize(merged.background);
+      if (typeof merged.accent === 'string' && merged.accent.trim()) cleaned.accent = merged.accent.trim();
+      if (typeof merged.background === 'string' && merged.background.trim()) cleaned.background = merged.background.trim();
       if (Object.keys(cleaned).length) next[slug] = cleaned;
       else delete next[slug];
       return next;
     });
-  }, []);
+    dirtyRef.current = true;
+  }, [canEdit]);
 
   const resetPalette = useCallback((slug) => {
+    if (!canEdit) return;
     setPalettes((prev) => {
       if (!prev[slug]) return prev;
       const next = { ...prev };
       delete next[slug];
       return next;
     });
-  }, []);
+    dirtyRef.current = true;
+  }, [canEdit]);
 
-  const resetAll = useCallback(() => setPalettes({}), []);
+  const resetPalettes = useCallback(() => {
+    if (!canEdit) return;
+    setPalettes({});
+    dirtyRef.current = true;
+  }, [canEdit]);
+
+  const resetAll = useCallback(() => {
+    if (!canEdit) return;
+    setPalettes({});
+    setTypographyState(DEFAULT_TYPOGRAPHY);
+    dirtyRef.current = true;
+  }, [canEdit]);
+
+  const setTypography = useCallback((patch) => {
+    if (!canEdit) return;
+    setTypographyState((prev) => normalizeTypography({ ...prev, ...patch }));
+    dirtyRef.current = true;
+  }, [canEdit]);
+
+  const resetTypography = useCallback(() => {
+    if (!canEdit) return;
+    setTypographyState(DEFAULT_TYPOGRAPHY);
+    dirtyRef.current = true;
+  }, [canEdit]);
 
   return (
-    <ModulePaletteContext.Provider
-      value={{ palettes, getPalette, setPalette, resetPalette, resetAll }}
+    <AppearanceContext.Provider
+      value={{
+        palettes,
+        typography,
+        canEdit,
+        loading,
+        saving,
+        savedTick,
+        error,
+        getPalette,
+        setPalette,
+        resetPalette,
+        resetPalettes,
+        resetAll,
+        setTypography,
+        resetTypography,
+      }}
     >
       {children}
-    </ModulePaletteContext.Provider>
+    </AppearanceContext.Provider>
   );
 };
 
-export const useModulePalette = () => useContext(ModulePaletteContext);
+export const useModulePalette = () => useContext(AppearanceContext);

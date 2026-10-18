@@ -1,16 +1,21 @@
 import React, { useEffect } from 'react';
 import {
   Box, Typography, Paper, Grid, Chip, Stack, Avatar, IconButton, Tooltip, Button,
+  Alert, TextField, MenuItem,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PaletteIcon from '@mui/icons-material/Palette';
 import ColorLensOutlinedIcon from '@mui/icons-material/ColorLensOutlined';
+import FontDownloadOutlinedIcon from '@mui/icons-material/FontDownloadOutlined';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import CloseIcon from '@mui/icons-material/Close';
 import { useThemeMode, THEME_MODES, NEON_COLOR_OPTIONS } from '../core/context/ThemeContext';
 import { useApplication } from '../core/context/ApplicationContext';
 import { useModulePalette, MODULE_DEFAULT_ACCENTS } from '../core/context/ModulePaletteContext';
+import {
+  DEFAULT_TYPOGRAPHY, FONT_OPTIONS, SIZE_RANGES, WEIGHT_OPTIONS, fontStack,
+} from '../core/theme/appearanceDefaults';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 
@@ -221,7 +226,7 @@ const ModulePaletteRow = ({ app }) => {
             width: 10, height: 10, borderRadius: '50%', flexShrink: 0,
             bgcolor: displayAccent, boxShadow: `0 0 0 3px ${alpha(displayAccent, 0.15)}`,
           }} />
-          <Typography sx={{ fontSize: 13, fontWeight: 400 }}>{app.title}</Typography>
+          <Typography variant="body2" sx={{ fontWeight: 400 }}>{app.title}</Typography>
           {customized && (
             <Chip size="small" label="سفارشی" sx={{
               height: 17, fontSize: 8.5, fontWeight: 800,
@@ -231,7 +236,7 @@ const ModulePaletteRow = ({ app }) => {
         </Stack>
 
         <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography sx={{ fontSize: 11, fontWeight: 400, color: 'text.secondary', minWidth: 36 }}>تاکیدی</Typography>
+          <Typography variant="caption" sx={{ fontWeight: 400, color: 'text.secondary', minWidth: 36 }}>تاکیدی</Typography>
           {ACCENT_PRESETS.map((color) => (
             <ColorSwatch
               key={color}
@@ -250,7 +255,7 @@ const ModulePaletteRow = ({ app }) => {
         </Stack>
 
         <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography sx={{ fontSize: 11, fontWeight: 400, color: 'text.secondary', minWidth: 44 }}>پس‌زمینه</Typography>
+          <Typography variant="caption" sx={{ fontWeight: 400, color: 'text.secondary', minWidth: 44 }}>پس‌زمینه</Typography>
           {BG_PRESETS.map((color) => (
             <ColorSwatch
               key={color}
@@ -287,10 +292,177 @@ const ModulePaletteRow = ({ app }) => {
   );
 };
 
+const clampSize = (value, min, max) => Math.min(max, Math.max(min, Number(value) || min));
+
+const TypeGroup = ({ label, sizeKey, weightKey, type, onChange, disabled }) => (
+  <Box sx={{
+    flex: 1, minWidth: 220, p: 1.25,
+    border: '1px solid', borderColor: 'divider', borderRadius: '12px',
+  }}>
+    <Typography variant="body2" sx={{ mb: 1 }}>{label}</Typography>
+    <Stack direction="row" spacing={1} useFlexGap>
+      <TextField
+        size="small"
+        type="number"
+        label="اندازه (px)"
+        value={type[sizeKey]}
+        disabled={disabled}
+        inputProps={{ min: SIZE_RANGES[sizeKey].min, max: SIZE_RANGES[sizeKey].max }}
+        onChange={(event) => onChange({
+          [sizeKey]: clampSize(
+            event.target.value,
+            SIZE_RANGES[sizeKey].min,
+            SIZE_RANGES[sizeKey].max,
+          ),
+        })}
+        sx={{ width: 122 }}
+      />
+      <TextField
+        select
+        size="small"
+        label="وزن"
+        value={type[weightKey]}
+        disabled={disabled}
+        onChange={(event) => onChange({ [weightKey]: Number(event.target.value) })}
+        sx={{ width: 106 }}
+      >
+        {WEIGHT_OPTIONS.map((weight) => (
+          <MenuItem key={weight} value={weight}>{weight}</MenuItem>
+        ))}
+      </TextField>
+    </Stack>
+  </Box>
+);
+
+const TypographyCard = ({
+  canEdit, type, onChange, onReset, saving, savedTick,
+}) => (
+  <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
+    <Box sx={{
+      display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
+      px: 1.75, py: 1.25,
+      borderBottom: '1px solid', borderColor: 'divider',
+    }}>
+      <Avatar variant="rounded" sx={{
+        width: 30, height: 30, borderRadius: '9px',
+        bgcolor: `${SOFT.blue}24`, color: SOFT.blue,
+      }}>
+        <FontDownloadOutlinedIcon sx={{ fontSize: 17 }} />
+      </Avatar>
+      <Typography variant="h6">فونت و اندازه‌ها</Typography>
+      <Chip
+        size="small"
+        label={canEdit ? (saving ? 'در حال ذخیره…' : savedTick ? 'ذخیره شد' : 'ذخیره خودکار') : 'فقط مدیر ارشد'}
+        sx={{
+          height: 20, fontSize: 10, fontWeight: 500,
+          bgcolor: canEdit ? `${SOFT.green}1f` : 'action.hover',
+          color: canEdit ? SOFT.green : 'text.secondary',
+        }}
+      />
+    </Box>
+
+    <Box sx={{ p: 1.75 }}>
+      {!canEdit && (
+        <Alert severity="info" sx={{ mb: 1.5, '& .MuiAlert-message': { fontSize: 13, fontWeight: 400 } }}>
+          تغییر فونت و اندازه‌ها فقط توسط مدیر ارشد سیستم امکان‌پذیر است؛
+          تنظیمات فعلی برای همهٔ کاربران اعمال می‌شود.
+        </Alert>
+      )}
+
+      <Box sx={{
+        pointerEvents: canEdit ? 'auto' : 'none',
+        opacity: canEdit ? 1 : 0.65,
+      }}>
+        <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
+          <TextField
+            select
+            size="small"
+            label="خانوادهٔ فونت"
+            value={type.family}
+            onChange={(event) => onChange({ family: event.target.value })}
+            sx={{ minWidth: 240 }}
+          >
+            {FONT_OPTIONS.map((option) => (
+              <MenuItem key={option.key} value={option.key}>{option.label}</MenuItem>
+            ))}
+          </TextField>
+          <TypeGroup
+            label="هدر صفحه"
+            sizeKey="headerSize"
+            weightKey="headerWeight"
+            type={type}
+            onChange={onChange}
+            disabled={!canEdit}
+          />
+          <TypeGroup
+            label="عنوان کارت"
+            sizeKey="cardSize"
+            weightKey="cardWeight"
+            type={type}
+            onChange={onChange}
+            disabled={!canEdit}
+          />
+          <TypeGroup
+            label="متن و فیلدها"
+            sizeKey="bodySize"
+            weightKey="bodyWeight"
+            type={type}
+            onChange={onChange}
+            disabled={!canEdit}
+          />
+        </Stack>
+
+        <Box sx={{
+          mt: 1.5, p: 1.25, borderRadius: '12px',
+          border: '1px solid', borderColor: 'divider',
+          bgcolor: 'action.hover',
+          fontFamily: fontStack(type.family),
+        }}>
+          <Typography sx={{
+            fontSize: `${type.headerSize}px`,
+            fontWeight: type.headerWeight,
+            lineHeight: 1.5,
+          }}>
+            پیش‌نمایش هدر صفحه
+          </Typography>
+          <Typography sx={{
+            fontSize: `${type.cardSize}px`,
+            fontWeight: type.cardWeight,
+            lineHeight: 1.6, mt: 0.5,
+          }}>
+            پیش‌نمایش عنوان کارت
+          </Typography>
+          <Typography sx={{
+            fontSize: `${type.bodySize}px`,
+            fontWeight: type.bodyWeight,
+            lineHeight: 1.8, mt: 0.5, color: 'text.secondary',
+          }}>
+            این یک متن نمونه برای بررسی اندازه و وزن فونت متن، فیلدها و کشویی‌ها است.
+          </Typography>
+        </Box>
+
+        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.25 }}>
+          <Button
+            size="small"
+            onClick={onReset}
+            disabled={!canEdit}
+            sx={{ fontSize: 13, fontWeight: 400 }}
+          >
+            بازنشانی فونت به پیش‌فرض
+          </Button>
+        </Box>
+      </Box>
+    </Box>
+  </Paper>
+);
+
 const AppearancePage = () => {
   const { mode, setMode, neonColor, setNeonColor } = useThemeMode();
   const { applications, loadApplications } = useApplication();
-  const { resetAll } = useModulePalette();
+  const {
+    canEdit, typography, setTypography, resetTypography, resetPalettes,
+    saving, savedTick, error,
+  } = useModulePalette();
 
   useEffect(() => {
     if (!applications.length) loadApplications();
@@ -313,6 +485,15 @@ const AppearancePage = () => {
         )}
       />
 
+      {error && (
+        <Alert
+          severity="error"
+          sx={{ mb: 1.75, '& .MuiAlert-message': { fontSize: 13, fontWeight: 400 } }}
+        >
+          {error}
+        </Alert>
+      )}
+
       {/* پوسته‌ها در یک کارت */}
       <Paper sx={{ ...SURFACE, overflow: 'hidden' }}>
         <Box sx={{
@@ -327,7 +508,7 @@ const AppearancePage = () => {
           }}>
             <PaletteIcon sx={{ fontSize: 17 }} />
           </Avatar>
-          <Typography sx={{ fontSize: 16, fontWeight: 400 }}>پوسته‌ها</Typography>
+          <Typography variant="h6">پوسته‌ها</Typography>
           <Chip
             size="small"
             label={`${formatPersianNumber(THEME_MODES.length)} پوسته`}
@@ -356,13 +537,13 @@ const AppearancePage = () => {
                 }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
                   <Box sx={{ fontSize: 26 }}>{m.icon}</Box>
-                  <Typography sx={{ fontSize: 16, fontWeight: 400 }}>{m.label}</Typography>
+                  <Typography variant="h6">{m.label}</Typography>
                   {active && <CheckCircleIcon sx={{ color: m.color, ml: 'auto', fontSize: 19 }} />}
                 </Box>
 
                 <LivePreview mode={m.key} neonColor={neonColor} />
 
-                <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary', mt: 1 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
                   {MODE_DESC[m.key]?.desc || ''}
                 </Typography>
                 <Chip size="small" label={MODE_DESC[m.key]?.tagline || ''} variant="outlined" sx={{ mt: 0.8, height: 20, fontSize: 9.5 }} />
@@ -392,7 +573,7 @@ const AppearancePage = () => {
           }}>
             <ColorLensOutlinedIcon sx={{ fontSize: 17 }} />
           </Avatar>
-          <Typography sx={{ fontSize: 16, fontWeight: 400 }}>پالت‌های رنگی</Typography>
+          <Typography variant="h6">پالت‌های رنگی</Typography>
           <Chip
             size="small"
             label={`${formatPersianNumber(moduleApps.length)} ماژول`}
@@ -401,37 +582,66 @@ const AppearancePage = () => {
           <Chip
             size="small"
             variant="outlined"
-            label="ذخیره خودکار"
-            sx={{ height: 20, fontSize: 9.5, ml: 'auto' }}
+            label={canEdit ? 'ذخیره خودکار' : 'فقط مدیر ارشد'}
+            sx={{
+              height: 20, fontSize: 10, fontWeight: 500, ml: 'auto',
+              color: canEdit ? 'text.secondary' : 'warning.main',
+            }}
           />
         </Box>
 
         <Box sx={{ p: 1.75 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary', mb: 1.5, lineHeight: 1.9 }}>
-            برای هر ماژول رنگ تاکیدی و رنگ پس‌زمینه انتخاب کنید. رنگ تاکیدی روی دکمه‌های اصلی،
-            منوی فعال و کادر سوئیچر ماژول اعمال می‌شود؛ دکمه‌های حذف، هشدار و خطا رنگ استاندارد
-            خود را حفظ می‌کنند. رنگ پس‌زمینه در تم‌های روشن اعمال می‌شود.
-          </Typography>
-
-          {moduleApps.length === 0 ? (
-            <Typography sx={{ fontSize: 11, color: 'text.disabled', py: 2, textAlign: 'center' }}>
-              ماژولی برای تنظیم یافت نشد.
-            </Typography>
-          ) : (
-            <Stack spacing={1} useFlexGap>
-              {moduleApps.map((app) => (
-                <ModulePaletteRow key={app.id} app={app} />
-              ))}
-            </Stack>
+          {!canEdit && (
+            <Alert severity="info" sx={{ mb: 1.5, '& .MuiAlert-message': { fontSize: 13, fontWeight: 400 } }}>
+              تغییر پالت‌های رنگی فقط توسط مدیر ارشد سیستم امکان‌پذیر است؛
+              ترکیب فعلی برای همهٔ کاربران اعمال می‌شود.
+            </Alert>
           )}
 
-          <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.25 }}>
-            <Button size="small" onClick={resetAll} sx={{ fontSize: 13, fontWeight: 400 }}>
-              بازنشانی همهٔ پالت‌ها
-            </Button>
+          <Box sx={{
+            pointerEvents: canEdit ? 'auto' : 'none',
+            opacity: canEdit ? 1 : 0.65,
+          }}>
+            <Typography variant="body2" sx={{ color: 'text.secondary', mb: 1.5, lineHeight: 1.9 }}>
+              برای هر ماژول رنگ تاکیدی و رنگ پس‌زمینه انتخاب کنید. رنگ تاکیدی روی دکمه‌های اصلی،
+              منوی فعال و کادر سوئیچر ماژول اعمال می‌شود؛ دکمه‌های حذف، هشدار و خطا رنگ استاندارد
+              خود را حفظ می‌کنند. رنگ پس‌زمینه در تم‌های روشن اعمال می‌شود.
+            </Typography>
+
+            {moduleApps.length === 0 ? (
+              <Typography sx={{ fontSize: 11, color: 'text.disabled', py: 2, textAlign: 'center' }}>
+                ماژولی برای تنظیم یافت نشد.
+              </Typography>
+            ) : (
+              <Stack spacing={1} useFlexGap>
+                {moduleApps.map((app) => (
+                  <ModulePaletteRow key={app.id} app={app} />
+                ))}
+              </Stack>
+            )}
+
+            <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1.25 }}>
+              <Button
+                size="small"
+                onClick={resetPalettes}
+                disabled={!canEdit}
+                sx={{ fontSize: 13, fontWeight: 400 }}
+              >
+                بازنشانی همهٔ پالت‌ها
+              </Button>
+            </Box>
           </Box>
         </Box>
       </Paper>
+
+      <TypographyCard
+        canEdit={canEdit}
+        type={{ ...DEFAULT_TYPOGRAPHY, ...(typography || {}) }}
+        onChange={setTypography}
+        onReset={resetTypography}
+        saving={saving}
+        savedTick={savedTick}
+      />
 
       {/* رنگ نئون — فقط برای F مود تاریک، داخل کارت */}
       {mode === 'fmode' && (
@@ -448,7 +658,7 @@ const AppearancePage = () => {
             }}>
               <PaletteIcon sx={{ fontSize: 17 }} />
             </Avatar>
-            <Typography sx={{ fontSize: 16, fontWeight: 400 }}>رنگ نئون</Typography>
+            <Typography variant="h6">رنگ نئون</Typography>
             <Box sx={{ ml: 'auto', display: 'flex', alignItems: 'center', gap: 0.75 }}>
               <Box sx={{
                 width: 14, height: 14, borderRadius: '50%',

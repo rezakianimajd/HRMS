@@ -41,13 +41,13 @@ export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT
       </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography sx={{ fontSize: '20px', fontWeight: 500, letterSpacing: 0 }}>
+          <Typography variant="h4" sx={{ letterSpacing: 0 }}>
             {title}
           </Typography>
           {badge}
         </Stack>
         {subtitle ? (
-          <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary', mt: 0.3 }}>{subtitle}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.3 }}>{subtitle}</Typography>
         ) : null}
       </Box>
       {actions ? (
@@ -142,10 +142,10 @@ export const SectionNote = ({ icon, title, desc, color = SOFT.indigo, trailing }
     </Avatar>
     <Box sx={{ flex: 1, minWidth: 160 }}>
       {title ? (
-        <Typography sx={{ fontWeight: 400, fontSize: 16, color }}>{title}</Typography>
+        <Typography variant="h6" sx={{ color }}>{title}</Typography>
       ) : null}
       {desc ? (
-        <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary' }}>{desc}</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>{desc}</Typography>
       ) : null}
     </Box>
     {trailing}

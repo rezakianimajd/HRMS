@@ -17,7 +17,8 @@ import HelpDialog from './core/components/ui/HelpDialog';
 import GlobalErrorSnackbar from './core/components/ui/GlobalErrorSnackbar';
 import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
-import { FONT_FAMILY, mixHex } from './core/theme/tokens';
+import { mixHex } from './core/theme/tokens';
+import { DEFAULT_TYPOGRAPHY, fontStack } from './core/theme/appearanceDefaults';
 import './core/engines/languageEngine';
 
 const queryClient = new QueryClient({
@@ -99,36 +100,44 @@ const WHITE_SURFACES = {
 /**
  * پایهٔ سراسری تایپوگرافی + سفیدسازی اجباری Paperهایی که inline gradient دارند.
  */
-const cssBase = (bodyBg, whiteCards = false) => ({
-  styleOverrides: {
-    body: {
-      background: bodyBg,
-      backgroundAttachment: 'fixed',
-      fontFamily: FONT_FAMILY,
+const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
+  const family = fontStack(type.family);
+  return {
+    styleOverrides: {
+      body: {
+        background: bodyBg,
+        backgroundAttachment: 'fixed',
+        fontFamily: `${family} !important`,
+        fontSize: `${type.bodySize}px`,
+        fontWeight: type.bodyWeight,
+      },
+      'button, input, select, textarea': { fontFamily: 'inherit' },
+      '.MuiTypography-root, .MuiButton-root, .MuiInputBase-root, .MuiInputBase-input, .MuiSelect-select, .MuiMenuItem-root, .MuiTableCell-root, .MuiChip-label, .MuiTab-root, .MuiCardHeader-title, .MuiCardHeader-subheader, .MuiDialogTitle-root, .MuiListItemText-primary, .MuiListItemText-secondary, .MuiTooltip-tooltip, .MuiFormLabel-root, .MuiInputLabel-root': {
+        fontFamily: `${family} !important`,
+      },
+      '.MuiTypography-h1, .MuiTypography-h2, .MuiTypography-h3, .MuiTypography-h4, .MuiTypography-h5': {
+        fontSize: `${type.headerSize}px !important`,
+        fontWeight: `${type.headerWeight} !important`,
+        lineHeight: 1.5,
+      },
+      '.MuiTypography-h6, .MuiTypography-subtitle1': {
+        fontSize: `${type.cardSize}px !important`,
+        fontWeight: `${type.cardWeight} !important`,
+        lineHeight: 1.6,
+      },
+      ...(whiteCards
+        ? {
+          '.MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root)': {
+            backgroundColor: '#ffffff !important',
+            backgroundImage: 'none !important',
+            backdropFilter: 'none !important',
+            WebkitBackdropFilter: 'none !important',
+          },
+        }
+        : {}),
     },
-    'button, input, select, textarea': { fontFamily: 'inherit' },
-    '.MuiTypography-h1, .MuiTypography-h2, .MuiTypography-h3, .MuiTypography-h4, .MuiTypography-h5': {
-      fontSize: '20px !important',
-      fontWeight: '500 !important',
-      lineHeight: 1.5,
-    },
-    '.MuiTypography-h6, .MuiTypography-subtitle1': {
-      fontSize: '16px !important',
-      fontWeight: '400 !important',
-      lineHeight: 1.6,
-    },
-    ...(whiteCards
-      ? {
-        '.MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root)': {
-          backgroundColor: '#ffffff !important',
-          backgroundImage: 'none !important',
-          backdropFilter: 'none !important',
-          WebkitBackdropFilter: 'none !important',
-        },
-      }
-      : {}),
-  },
-});
+  };
+};
 
 const getPalettes = (mode, neonColor) => {
   if (mode === 'dark') {
@@ -215,7 +224,7 @@ const applyModulePalette = (palette, mode, modulePalette) => {
   return next;
 };
 
-const getComponents = (mode, neonColor, modulePalette) => {
+const getComponents = (mode, neonColor, modulePalette, type = DEFAULT_TYPOGRAPHY) => {
   const isDark = mode === 'dark';
   const isF = mode === 'fmode';
   const moduleBg = modulePalette?.background && (mode === 'light' || mode === 'fmode_light')
@@ -229,7 +238,7 @@ const getComponents = (mode, neonColor, modulePalette) => {
 
   if (isF) {
     return {
-      MuiCssBaseline: cssBase(bodyBg),
+      MuiCssBaseline: cssBase(bodyBg, false, type),
       MuiPaper: {
         styleOverrides: { root: { background: 'rgba(5,5,5,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: `1px solid ${neonColor}4d`, boxShadow: `0 0 24px ${neonColor}1f`, borderRadius: '10px' } },
       },
@@ -245,7 +254,7 @@ const getComponents = (mode, neonColor, modulePalette) => {
 
   if (mode === 'kurosawa') {
     return {
-      MuiCssBaseline: cssBase('linear-gradient(135deg, #e5e7eb 0%, #f9fafb 50%, #d1d5db 100%)', true),
+      MuiCssBaseline: cssBase('linear-gradient(135deg, #e5e7eb 0%, #f9fafb 50%, #d1d5db 100%)', true, type),
       MuiTab: { styleOverrides: { root: { color: '#6b7280', '&.Mui-selected': { color: '#000000', fontWeight: 700 } } } },
       MuiTabs: { styleOverrides: { indicator: { backgroundColor: '#000000' } } },
       ...WHITE_SURFACES,
@@ -254,7 +263,7 @@ const getComponents = (mode, neonColor, modulePalette) => {
 
   if (isDark) {
     return {
-      MuiCssBaseline: cssBase(bodyBg),
+      MuiCssBaseline: cssBase(bodyBg, false, type),
       MuiPaper: { styleOverrides: { root: { background: 'rgba(30,41,59,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(148,163,184,0.12)', boxShadow: '0 8px 32px rgba(0,0,0,0.3)', borderRadius: '10px' } } },
       MuiCard: { styleOverrides: { root: { background: 'rgba(30,41,59,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(148,163,184,0.12)', borderRadius: '10px', transition: 'all 0.3s ease', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 16px 48px rgba(0,0,0,0.4)' } } } },
       MuiDrawer: { styleOverrides: { paper: { background: 'rgba(15,23,42,0.85) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: '1px solid rgba(148,163,184,0.08)' } } },
@@ -265,7 +274,7 @@ const getComponents = (mode, neonColor, modulePalette) => {
   }
 
   return {
-    MuiCssBaseline: cssBase(bodyBg, true),
+    MuiCssBaseline: cssBase(bodyBg, true, type),
     ...WHITE_SURFACES,
   };
 };
@@ -274,8 +283,9 @@ const ThemedApp = () => {
   const { direction } = useLanguage();
   const { mode, neonColor } = useThemeMode();
   const { currentApp } = useApplication();
-  const { getPalette } = useModulePalette();
+  const { getPalette, typography: moduleTypography } = useModulePalette();
   const modulePalette = getPalette(currentApp?.slug);
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(moduleTypography || {}) };
 
   React.useEffect(() => {
     document.documentElement.dir = direction;
@@ -289,24 +299,24 @@ const ThemedApp = () => {
   }, [mode]);
 
   const palettes = applyModulePalette(getPalettes(mode, neonColor), mode, modulePalette);
-  const components = getComponents(mode, neonColor, modulePalette);
+  const components = getComponents(mode, neonColor, modulePalette, type);
 
   const theme = createTheme({
     direction,
     palette: palettes,
     typography: {
-      fontFamily: FONT_FAMILY,
-      h1: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
-      h2: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
-      h3: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
-      h4: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5, letterSpacing: 0 },
-      h5: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
-      h6: { fontSize: '16px', fontWeight: 400, lineHeight: 1.6 },
-      subtitle1: { fontSize: '16px', fontWeight: 400, lineHeight: 1.6 },
-      subtitle2: { fontSize: '13px', fontWeight: 400, lineHeight: 1.7 },
-      body1: { fontSize: '13px', fontWeight: 400, lineHeight: 1.8 },
-      body2: { fontSize: '13px', fontWeight: 400, lineHeight: 1.8 },
-      button: { fontSize: '13px', fontWeight: 400, textTransform: 'none' },
+      fontFamily: fontStack(type.family),
+      h1: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
+      h2: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
+      h3: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
+      h4: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5, letterSpacing: 0 },
+      h5: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
+      h6: { fontSize: `${type.cardSize}px`, fontWeight: type.cardWeight, lineHeight: 1.6 },
+      subtitle1: { fontSize: `${type.cardSize}px`, fontWeight: type.cardWeight, lineHeight: 1.6 },
+      subtitle2: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.7 },
+      body1: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.8 },
+      body2: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.8 },
+      button: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, textTransform: 'none' },
       caption: { fontSize: '11px', fontWeight: 400, lineHeight: 1.7 },
       overline: { fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em' },
     },
@@ -316,7 +326,7 @@ const ThemedApp = () => {
       MuiButton: {
         styleOverrides: {
           root: {
-            textTransform: 'none', fontWeight: 400, fontSize: '13px', borderRadius: '10px', padding: '8px 20px', transition: 'all 0.2s ease',
+            textTransform: 'none', fontWeight: type.bodyWeight, fontSize: `${type.bodySize}px`, borderRadius: '10px', padding: '8px 20px', transition: 'all 0.2s ease',
             '& .MuiButton-startIcon, & .MuiButton-endIcon': { display: 'none' },
           },
           contained: {
@@ -334,45 +344,45 @@ const ThemedApp = () => {
       },
       MuiInputBase: {
         styleOverrides: {
-          root: { fontSize: '13px', fontWeight: 400 },
-          input: { fontSize: '13px', fontWeight: 400, textAlign: 'right' },
+          root: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight },
+          input: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, textAlign: 'right' },
         },
       },
       MuiSelect: {
         styleOverrides: {
-          select: { fontSize: '13px', fontWeight: 400, textAlign: 'right' },
+          select: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, textAlign: 'right' },
         },
       },
       MuiMenuItem: {
-        styleOverrides: { root: { fontSize: '13px', fontWeight: 400 } },
+        styleOverrides: { root: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight } },
       },
       MuiInputLabel: {
-        styleOverrides: { root: { fontSize: '13px', fontWeight: 400 } },
+        styleOverrides: { root: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight } },
       },
       MuiFormLabel: {
-        styleOverrides: { root: { fontSize: '13px', fontWeight: 400 } },
+        styleOverrides: { root: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight } },
       },
       MuiFormHelperText: {
         styleOverrides: { root: { fontSize: '11px', fontWeight: 400 } },
       },
       MuiTableCell: {
         styleOverrides: {
-          root: { fontSize: '13px', fontWeight: 400 },
-          head: { fontSize: '13px', fontWeight: 500 },
+          root: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight },
+          head: { fontSize: `${type.bodySize}px`, fontWeight: 500 },
         },
       },
       MuiCardHeader: {
         styleOverrides: {
-          title: { fontSize: '16px', fontWeight: 400 },
+          title: { fontSize: `${type.cardSize}px`, fontWeight: type.cardWeight },
           subheader: { fontSize: '12px', fontWeight: 400 },
         },
       },
       MuiDialogTitle: {
-        styleOverrides: { root: { fontSize: '16px', fontWeight: 400 } },
+        styleOverrides: { root: { fontSize: `${type.cardSize}px`, fontWeight: type.cardWeight } },
       },
       MuiListItemText: {
         styleOverrides: {
-          primary: { fontSize: '13px', fontWeight: 400 },
+          primary: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight },
           secondary: { fontSize: '12px', fontWeight: 400 },
         },
       },

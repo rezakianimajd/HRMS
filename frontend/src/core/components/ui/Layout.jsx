@@ -511,8 +511,8 @@ const Layout = ({ children }) => {
                 <Box sx={{ display: 'flex', color: ICON_COLOR, flexShrink: 0 }}>
                   {React.cloneElement(groupIcon(group.id), { sx: { fontSize: 18 } })}
                 </Box>
-                <Typography sx={{
-                  flex: 1, fontSize: 13, fontWeight: 500,
+                <Typography variant="body2" sx={{
+                  flex: 1, fontWeight: 500,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
                   {group.title}
@@ -564,8 +564,8 @@ const Layout = ({ children }) => {
                           '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.4)}`, outlineOffset: 1 },
                         }}
                       >
-                        <Typography noWrap sx={{
-                          flex: 1, fontSize: 13,
+                        <Typography variant="body2" noWrap sx={{
+                          flex: 1,
                           fontWeight: active ? 500 : 400,
                         }}>
                           {item.title}
@@ -691,7 +691,7 @@ const Layout = ({ children }) => {
               <BusinessIcon sx={{ fontSize: 14, color: '#fff' }} />
             </Avatar>
           )}
-          <Typography noWrap sx={{ flex: 1, fontSize: 13, fontWeight: 500 }}>
+          <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: 500 }}>
             {companyName}
           </Typography>
           <NotificationBell compact iconColor={ICON_COLOR} />

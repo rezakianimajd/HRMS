@@ -29,16 +29,22 @@ class SettingsEngine:
         return value
 
     @staticmethod
-    def set_setting(key, value, company, description=None):
-        """Set a setting value."""
-        setting, _ = SystemSetting.objects.get_or_create(
-            company=company, key=key,
-            defaults={'value': str(value), 'description': description or '', 'data_type': 'string'}
+    def set_setting(key, value, company, description=None, data_type='string', is_editable=None):
+        """Set a setting value. JSON values are stored as serialized JSON."""
+        stored = json.dumps(value, ensure_ascii=False) if data_type == 'json' else str(value)
+        defaults = {'value': stored, 'description': description or '', 'data_type': data_type}
+        if is_editable is not None:
+            defaults['is_editable'] = is_editable
+        setting, created = SystemSetting.objects.get_or_create(
+            company=company, key=key, defaults=defaults,
         )
-        if not _:  # already existed
-            setting.value = str(value)
+        if not created:  # already existed
+            setting.value = stored
+            setting.data_type = data_type
             if description:
                 setting.description = description
+            if is_editable is not None:
+                setting.is_editable = is_editable
             setting.save()
         cache_key = f"setting_{company.id}_{key}" if company else f"setting_public_{key}"
         cache.delete(cache_key)

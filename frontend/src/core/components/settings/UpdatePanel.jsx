@@ -28,11 +28,7 @@ import { SURFACE, SOFT } from './settingsUi';
 const COLOR = SOFT.violet;
 const CARD = { ...SURFACE, p: 1.75, mb: 1.75 };
 
-const FIELD_SX = {
-  '& .MuiInputBase-input': { fontSize: 13, fontWeight: 400 },
-  '& .MuiSelect-select': { fontSize: 13, fontWeight: 400 },
-  '& .MuiInputLabel-root': { fontSize: 13, fontWeight: 400 },
-};
+const FIELD_SX = {};
 
 const onlyDigits = (value) => Number(toEnglishDigits(String(value)).replace(/[^0-9]/g, '')) || 0;
 
@@ -44,7 +40,7 @@ const SectionHead = ({ icon, title, actions }) => (
     }}>
       {React.cloneElement(icon, { sx: { fontSize: 17 } })}
     </Avatar>
-    <Typography sx={{ fontSize: 16, fontWeight: 400, flex: 1 }}>{title}</Typography>
+    <Typography variant="h6" sx={{ flex: 1 }}>{title}</Typography>
     {actions}
   </Stack>
 );
@@ -322,7 +318,7 @@ const UpdatePanel = () => {
           <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: `${COLOR}24`, color: COLOR }}>
             <SystemUpdateAltIcon sx={{ fontSize: 18 }} />
           </Avatar>
-          <Typography sx={{ fontSize: 16, fontWeight: 400 }}>به‌روزرسانی سیستم</Typography>
+          <Typography variant="h6">به‌روزرسانی سیستم</Typography>
           <Chip size="small" variant="outlined" label={`نسخهٔ فعلی ${toPersianDigits(currentVersion)}`} />
           <Chip size="small" variant="outlined"
             color={status.signature_required ? 'success' : 'warning'}
@@ -590,7 +586,7 @@ const UpdatePanel = () => {
         <Paper elevation={0} sx={CARD}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
             <CheckCircleOutlineIcon sx={{ fontSize: 18, color: SOFT.green }} />
-            <Typography sx={{ fontSize: 16, fontWeight: 400 }}>آخرین اجرای به‌روزرسانی</Typography>
+            <Typography variant="h6">آخرین اجرای به‌روزرسانی</Typography>
             <Chip size="small" label={`${status.last_run.from_version} → ${status.last_run.to_version}`} />
             <Chip size="small" variant="outlined" label={status.last_run.status_display} />
             <Typography variant="caption" color="textSecondary">

@@ -25,6 +25,7 @@ urlpatterns = [
 
     # Settings list & update
     path('settings/', views.settings_list, name='api-settings-list'),
+    path('settings/appearance/', views.appearance_settings_view, name='api-appearance-settings'),
     path('settings/<str:key>/', views.settings_update, name='api-settings-update'),
 
     # Roles & permissions

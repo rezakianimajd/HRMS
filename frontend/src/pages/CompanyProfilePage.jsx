@@ -31,7 +31,7 @@ const SectionHeader = ({ icon, title, subtitle, color }) => (
       {React.cloneElement(icon, { sx: { fontSize: 18 } })}
     </Avatar>
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 16, fontWeight: 400 }}>{title}</Typography>
+      <Typography variant="h6">{title}</Typography>
       {subtitle ? (
         <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>{subtitle}</Typography>
       ) : null}
