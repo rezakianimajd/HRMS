@@ -454,7 +454,6 @@ const Layout = ({ children }) => {
         <Box sx={{ px: 1.75, pt: 1.75, pb: 1.25 }}>
           <Box sx={{
             display: 'flex', flexDirection: 'column', gap: 0.75,
-            '& .MuiButton-root': { fontSize: 11, minHeight: 32, py: 0.5, borderRadius: '10px' },
           }}>
             <AppSwitcher />
             <CompanySwitcher />
