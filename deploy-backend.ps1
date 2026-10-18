@@ -38,7 +38,7 @@ function Warn($text) { Write-Host "   [..] $text" -ForegroundColor Yellow }
 
 if ($CheckOnly) {
     Step "بررسی اتصال SSH به $Srv"
-    $probe = @(ssh $Srv "hostname; id -un; test -d $AppDir/hrms_project && echo APP_OK || echo APP_NO; sudo -n true && echo SUDO_OK || echo SUDO_NEEDS_PASSWORD")
+    $probe = @(ssh $Srv "hostname; id -un; test -d $AppDir/hrms_project && echo APP_OK || echo APP_NO; sudo -n true 2>/dev/null && echo SUDO_OK || echo SUDO_NEEDS_PASSWORD")
     if ($LASTEXITCODE -ne 0) { throw "اتصال SSH برقرار نشد: $Srv" }
     if ($probe -notcontains 'APP_OK') { throw "مسیر برنامه روی سرور پیدا نشد: $AppDir/hrms_project" }
     if ($probe -contains 'SUDO_OK') { Ok 'sudo بدون رمز فعال است.' }
