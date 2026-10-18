@@ -48,7 +48,8 @@ param(
     [string] $AppUser   = 'hrms',                  # کاربر اجرای برنامه روی سرور
     [string] $AppDir    = '/opt/hrms',             # ریشهٔ پروژه روی سرور
     [string] $StaticDir = '/var/www/hrms/static',  # مقصد location /static/ در nginx
-    [switch] $Archive,      # انتقال یک‌بارهٔ همهٔ فایل‌ها با یک آرشیو tar.gz (کمترین تعداد پرسش رمز)
+    [switch] $Archive,      # انتقال یک‌بارهٔ همهٔ فایل‌ها با یک آرشیو tar.gz (اکنون پیش‌فرض است)
+    [switch] $PerFile,      # حالت قدیمی: انتقال تک‌تک فایل‌ها (پرسش رمز به ازای هر فایل)
     [switch] $LocalBuild,
     [switch] $Migrate,
     [switch] $SkipBackend,
@@ -61,6 +62,23 @@ param(
 $ErrorActionPreference = 'Stop'
 $Srv      = "$User@$Server"
 $RepoRoot = $PSScriptRoot
+$UseArchive = -not $PerFile
+
+# حالت «فقط بک‌اند» به اسکریپت اختصاصی و یک‌نشستی هدایت می‌شود تا رمز به ازای هر فایل پرسیده نشود.
+if ($SkipFrontend -and -not $SkipBackend) {
+    $backendScript = Join-Path $RepoRoot 'deploy-backend.ps1'
+    if (Test-Path -LiteralPath $backendScript) {
+        if ($MoveFiles) { Write-Host '   [..] گزینهٔ -MoveFiles در مسیر سریع بک‌اند اجرا نمی‌شود.' -ForegroundColor Yellow }
+        $backendArgs = @{ User = $User; Server = $Server; AppUser = $AppUser; AppDir = $AppDir }
+        if ($Migrate) { $backendArgs.Migrate = $true }
+        if ($CheckOnly) { $backendArgs.CheckOnly = $true }
+        & $backendScript @backendArgs
+        if (-not $?) { exit 1 }
+        exit 0
+    }
+    Write-Host '   [..] deploy-backend.ps1 پیدا نشد؛ ادامه با روش قدیمی.' -ForegroundColor Yellow
+}
+
 
 # فایل‌های تغییریافتهٔ بک‌اند (مسیر نسبت به ریشهٔ مخزن — مقصد هم همان مسیر روی سرور است)
 $BackendFiles = @(
@@ -372,7 +390,7 @@ if ($CheckOnly) { Warn '-CheckOnly → پایان بدون تغییر.'; return 
 # هر فایل پایتون/فرانت‌اندی که در مخزن محلی هست ولی روی سرور وجود ندارد (مثل ماژول
 # تازه‌ساخته‌شده) خودکار به لیست انتقال افزوده می‌شود؛ در غیر این صورت import روی سرور
 # با خطای «No module named ...» می‌شکند.
-if ($Archive -and -not $SkipBackend) {
+if ($UseArchive -and -not $SkipBackend) {
     Step '۱.۵/۶ شناسایی فایل‌های جاافتاده روی سرور'
     $remotePy = @(ssh -o ConnectTimeout=15 $Srv "cd $AppDir && find hrms_project -name '*.py' -not -path '*__pycache__*' -not -path '*/venv/*' 2>/dev/null")
     $remoteJs = @(ssh -o ConnectTimeout=15 $Srv "cd $AppDir && find frontend/src -type f -name '*.js' -o -type f -name '*.jsx' 2>/dev/null")
@@ -397,7 +415,7 @@ if ($Archive -and -not $SkipBackend) {
 # ---------------------------------------------------------------- بک‌اند
 if (-not $SkipBackend) {
     Step '۲/۶ ارسال فایل‌های بک‌اند'
-    if ($Archive) {
+    if ($UseArchive) {
         # --- انتقال یک‌باره با آرشیو: ۲ پرسش رمز، به‌جای ۲× تعداد فایل ---
         $send = @()
         if (-not $SkipBackend) { $send += $BackendFiles }
@@ -553,7 +571,7 @@ if (-not $SkipFrontend) {
         Ok 'build جای‌گزین شد.'
     }
     else {
-        if ($Archive -and -not $SkipBackend) {
+        if ($UseArchive -and -not $SkipBackend) {
             Warn 'سورس فرانت‌اند داخل همان آرشیو بک‌اند منتقل شد (-Archive).'
         }
         else {
