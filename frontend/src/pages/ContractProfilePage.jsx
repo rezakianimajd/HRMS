@@ -28,24 +28,16 @@ import ScheduleIcon from '@mui/icons-material/Schedule';
 import LaunchIcon from '@mui/icons-material/Launch';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import InfoStatCard from '../core/components/ui/InfoCard';
+import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS } from '../core/theme/tokens';
 import { DonutChart, BarChart } from '../core/components/charts/Charts';
 
-const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.75), rgba(255,255,255,0.4))',
-  backdropFilter: 'blur(14px)',
-  WebkitBackdropFilter: 'blur(14px)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 10px 34px rgba(15,23,42,0.06)',
-  borderRadius: '16px',
-};
-
 const InfoCard = ({ title, color, icon: Icon, children }) => (
-  <Box sx={{ borderRadius: '16px', overflow: 'hidden', border: `1px solid ${color}22`, background: '#fff', boxShadow: `0 6px 20px ${color}0d` }}>
-    <Box sx={{ px: 2, py: 1.25, background: `linear-gradient(120deg, ${color}16, ${color}07)`, borderBottom: `1px solid ${color}1c`, display: 'flex', alignItems: 'center', gap: 1 }}>
+  <Box sx={{ height: '100%', borderRadius: '16px', overflow: 'hidden', border: '1px solid', borderColor: 'divider', background: 'background.paper', boxShadow: 'none' }}>
+    <Box sx={{ px: 2, py: 1.25, bgcolor: 'rgba(15,23,42,0.025)', borderBottom: '1px solid', borderColor: 'divider', display: 'flex', alignItems: 'center', gap: 1 }}>
       <Icon sx={{ color, fontSize: 19 }} />
-      <Typography variant="subtitle2" fontWeight={800} sx={{ color }}>{title}</Typography>
+      <Typography variant="subtitle2" fontWeight={800} sx={{ color: 'text.primary' }}>{title}</Typography>
     </Box>
     <Box sx={{ p: 2 }}>{children}</Box>
   </Box>
@@ -194,68 +186,79 @@ const ContractProfilePage = () => {
 
   return (
     <Box>
-      {/* Navigation */}
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-        <Button variant="text" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
-        <Box sx={{ display: 'flex', gap: 1 }}>
-          <Tooltip title="خروجی اکسل کامل این قرارداد: مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
-            <span>
-              <Button variant="outlined" disabled={exporting} startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
-                onClick={exportContract}>
-                {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
-              </Button>
-            </span>
-          </Tooltip>
-          <Button variant="contained" onClick={() => navigate(`/contracts/${id}/edit`)}>ویرایش</Button>
-        </Box>
-      </Box>
+      <PageHeader
+        icon={<HandshakeIcon />}
+        title={c.subject}
+        badge={(
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap">
+            <Chip size="small" variant="outlined" label={`شماره: ${c.number || '—'}`} />
+            <Chip size="small" variant="outlined" label={c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—'} />
+            <Chip size="small" label={STATUS_LABELS[c.status] || '—'}
+              sx={{ color: '#fff', bgcolor: STATUS_COLORS[c.status] || '#64748b', fontWeight: 700 }} />
+          </Stack>
+        )}
+        actions={(
+          <>
+            <Button variant="text" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
+            <Tooltip title="خروجی اکسل کامل این قرارداد: مفاد و شرایط، پروژه‌ها، پیش‌پرداخت‌ها، ضمانت‌ها، تضمین‌ها، فاکتورها، صورت‌وضعیت‌ها، پرداخت‌ها، الحاقیه‌ها و اختلافات">
+              <span>
+                <Button variant="outlined" disabled={exporting} startIcon={exporting ? <CircularProgress size={16} /> : <DownloadIcon />}
+                  onClick={exportContract}>
+                  {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+                </Button>
+              </span>
+            </Tooltip>
+            <Button variant="contained" onClick={() => navigate(`/contracts/${id}/edit`)}>ویرایش</Button>
+          </>
+        )}
+      />
 
       {exportError && (
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>{exportError}</Alert>
       )}
 
-      {/* Hero */}
-      <Paper sx={{ ...glass, mb: 2.5, position: 'relative', overflow: 'hidden' }}>
-        <Box sx={{ position: 'absolute', top: -90, left: -60, width: 280, height: 280, borderRadius: '50%', background: 'radial-gradient(circle, rgba(245,158,11,0.18), transparent 70%)', filter: 'blur(30px)', pointerEvents: 'none' }} />
-        <Box sx={{ position: 'relative', zIndex: 1, p: 3 }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 3, flexWrap: 'wrap' }}>
-            <Avatar sx={{ width: 88, height: 88, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 10px 36px rgba(245,158,11,0.4)', border: '3px solid rgba(255,255,255,0.7)' }}>
-              <HandshakeIcon sx={{ fontSize: 44, color: '#fff' }} />
-            </Avatar>
-            <Box sx={{ flex: 1, minWidth: 240 }}>
-              <Typography variant="h4" fontWeight={900} sx={{ mb: 1 }}>{c.subject}</Typography>
-              <Stack direction="row" spacing={0.75} flexWrap="wrap">
-                <Chip size="small" label={`شماره: ${c.number || '—'}`} color="primary" variant="filled" />
-                <Chip size="small" label={c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—'} variant="outlined" />
-                <Chip size="small" label={STATUS_LABELS[c.status]} sx={{ color: '#fff', bgcolor: STATUS_COLORS[c.status] || '#64748b' }} />
-              </Stack>
+      {/* خلاصهٔ هویتی و مالی قرارداد */}
+      <Paper sx={{ p: 2, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} md={5}>
+            <Typography variant="caption" color="textSecondary">طرف قرارداد</Typography>
+            <Typography variant="subtitle1" fontWeight={900} sx={{ wordBreak: 'break-word' }}>{c.party_name || '—'}</Typography>
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
+              <Chip size="small" variant="outlined" label={`شروع: ${toJalali(c.start_date)}`} />
+              <Chip size="small" variant="outlined" label={`پایان مؤثر: ${toJalali(endDateWithAddendum)}`} />
+              <Chip size="small" variant="outlined" label={`امضا: ${toJalali(c.signing_date)}`} />
+            </Stack>
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <Typography variant="caption" color="textSecondary" display="block">پیشرفت مالی</Typography>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.75, mt: 0.25 }}>
+              <Typography variant="h6" fontWeight={900} sx={{ color: '#047857' }}>{toPersianDigits(progressPercent)}٪</Typography>
+              <Typography variant="caption" color="textSecondary">پرداخت‌شده از مبلغ قرارداد</Typography>
             </Box>
-            <Box sx={{ textAlign: 'center' }}>
-              <Typography variant="caption" color="textSecondary" display="block">مبلغ قرارداد</Typography>
-              <Typography variant="h4" fontWeight={900} sx={{ color: '#b45309', direction: 'ltr' }}>{formatPersianNumber(amountWithAddendum)}</Typography>
-              <Typography variant="caption" color="textSecondary">{currencyLabel}</Typography>
+            <LinearProgress variant="determinate" value={progressPercent} sx={{
+              mt: 0.75, height: 7, borderRadius: 4, bgcolor: 'rgba(16,185,129,0.12)',
+              '& .MuiLinearProgress-bar': { bgcolor: '#10b981', borderRadius: 4 },
+            }} />
+          </Grid>
+          <Grid item xs={12} sm={6} md={4}>
+            <Box sx={{ textAlign: { xs: 'right', md: 'left' } }}>
+              <Typography variant="caption" color="textSecondary" display="block">مبلغ قرارداد (با الحاقیه)</Typography>
+              <Typography variant="h5" fontWeight={900} sx={{ color: '#b45309', direction: 'ltr' }}>
+                {formatPersianNumber(amountWithAddendum)}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">{currencyLabel} · پرداخت‌شده: {formatPersianNumber(totalPaid)}</Typography>
             </Box>
-          </Box>
-
-          <Box sx={{ mt: 2.5 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 0.75 }}>
-              <Typography variant="caption" fontWeight={800} color="textSecondary">پیشرفت مالی</Typography>
-              <Typography variant="body2" fontWeight={900} color="#10b981">{toPersianDigits(progressPercent)}٪</Typography>
-            </Box>
-            <Box sx={{ height: 10, bgcolor: 'rgba(0,0,0,0.07)', borderRadius: '10px', overflow: 'hidden' }}>
-              <Box sx={{ width: `${progressPercent}%`, height: '100%', background: 'linear-gradient(90deg,#10b981,#14b8a6)', borderRadius: '10px', transition: 'width 0.6s ease' }} />
-            </Box>
-          </Box>
-        </Box>
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* Quick links */}
-      <Paper sx={{ ...glass, p: 1.5, mb: 2.5 }}>
+      <Paper sx={{ p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
           {quickLinks.map(a => (
             <Button key={a.label} size="small" variant="outlined" startIcon={a.icon} endIcon={a.count > 0 ? <Chip size="small" label={toPersianDigits(a.count)} sx={{ height: 16, fontSize: 10 }} /> : null}
               onClick={() => navigate(`${a.path}?contract=${id}`)}
-              sx={{ color: a.color, borderColor: `${a.color}66`, borderRadius: '10px', textTransform: 'none' }}>
+              sx={{ color: a.color, borderColor: `${a.color}55`, borderRadius: '9px', textTransform: 'none', fontWeight: 700 }}>
               {a.label}
             </Button>
           ))}
@@ -263,7 +266,7 @@ const ContractProfilePage = () => {
       </Paper>
 
       {/* Stats */}
-      <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
         <Grid item xs={6} sm={4} md={2}>
           <StatCard icon={<AccountBalanceIcon sx={{ fontSize: 20 }} />} color="#f59e0b" label="مبلغ قرارداد (با الحاقیه)" value={formatPersianNumber(amountWithAddendum)} sub={currencyLabel} />
         </Grid>
@@ -290,9 +293,8 @@ const ContractProfilePage = () => {
       </Grid>
 
       {/* پروندهٔ مؤثر قرارداد (اثر الحاقیه‌ها) */}
-      <Paper sx={{ p: 2, mb: 2.5, borderRadius: '12px',
-        background: 'linear-gradient(120deg, rgba(5,150,105,0.08), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(5,150,105,0.22)' }}>
+      <Paper sx={{ p: 2, mb: 2, borderRadius: '16px', bgcolor: 'background.paper',
+        border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
         <Stack direction="row" alignItems="center" gap={1} mb={1} flexWrap="wrap">
           <LockIcon sx={{ color: '#047857', fontSize: 20 }} />
           <Typography variant="subtitle2" fontWeight={800} color="#047857">
@@ -416,7 +418,7 @@ const ContractProfilePage = () => {
                       const color = timelineColor[ev.type] || '#6366f1';
                       return (
                         <Box key={i} sx={{ display: 'flex', alignItems: 'flex-start', gap: 1.25 }}>
-                          <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, mt: 0.4, boxShadow: `0 0 0 3px ${color}22` }} />
+                          <Box sx={{ width: 12, height: 12, borderRadius: '50%', background: color, flexShrink: 0, mt: 0.4, border: `2px solid ${color}22` }} />
                           <Box sx={{ flex: 1, minWidth: 0 }}>
                             <Typography variant="body2" fontWeight={800}>{ev.title}</Typography>
                             {ev.extra && <Typography variant="caption" color="textSecondary">{ev.extra}</Typography>}
@@ -529,18 +531,25 @@ const ContractProfilePage = () => {
                       </Stack>
                     </Box>
 
-                    {/* هر قلم تضمین قرارداد + وضعیت اورده/نیاورده */}
+                    {/* هر قلم تضمین قرارداد + تضمین‌های مرتبط همان قلم */}
                     {requirements.map((req) => {
                       const style = statusStyle[req.status] || statusStyle.missing;
+                      const rowKey = req.index != null ? `guarantee-item-${req.index}` : `guarantee-type-${req.type}`;
                       return (
-                        <Box key={req.type} sx={{ p: 1.25, borderRadius: '12px', background: style.bg,
+                        <Box key={rowKey} sx={{ p: 1.25, borderRadius: '12px', background: style.bg,
                           border: `1px solid ${style.color}33` }}>
                           <Stack direction="row" alignItems="center" gap={1} flexWrap="wrap">
                             <Avatar sx={{ width: 26, height: 26, bgcolor: style.color }}>{style.icon}</Avatar>
                             <Box sx={{ flex: 1, minWidth: 140 }}>
-                              <Typography variant="body2" fontWeight={800} sx={{ color: style.color }}>
-                                {req.label}
-                              </Typography>
+                              <Stack direction="row" spacing={0.75} useFlexGap alignItems="center" flexWrap="wrap">
+                                <Typography variant="body2" fontWeight={800} sx={{ color: style.color }}>
+                                  {req.label}
+                                </Typography>
+                                {req.index != null && (
+                                  <Chip size="small" variant="outlined" label={`ردیف ${toPersianDigits(req.index + 1)}`}
+                                    sx={{ height: 18, fontSize: 10, borderColor: `${style.color}55`, color: style.color }} />
+                                )}
+                              </Stack>
                               {req.note && (
                                 <Typography variant="caption" color="textSecondary">{req.note}</Typography>
                               )}
@@ -693,7 +702,7 @@ const ContractProfilePage = () => {
 
                 {/* مرکز */}
                 <Box sx={{ position: 'absolute', left: '50%', top: '50%', transform: 'translate(-50%, -50%)', zIndex: 2, width: 150, textAlign: 'center' }}>
-                  <Box sx={{ width: 118, height: 118, mx: 'auto', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#f97316)', boxShadow: '0 12px 34px rgba(245,158,11,0.45)', border: '3px solid #fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', px: 1 }}>
+                  <Box sx={{ width: 118, height: 118, mx: 'auto', borderRadius: '50%', background: '#f59e0b', border: '3px solid #fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', px: 1 }}>
                     <Typography variant="body2" fontWeight={900} sx={{ color: '#fff' }}>{c.number || 'قرارداد'}</Typography>
                     <Typography variant="caption" sx={{ fontSize: 8.5, lineHeight: 1.2, textAlign: 'center', color: 'rgba(255,255,255,0.9)' }}>{c.party_name || 'مرکزی'}</Typography>
                   </Box>
@@ -710,15 +719,13 @@ const ContractProfilePage = () => {
                       sx={{
                         position: 'absolute', left: `${x}%`, top: `${y}%`, transform: 'translate(-50%, -50%)',
                         zIndex: 2, cursor: 'pointer', width: 128, textAlign: 'center',
-                        '&:hover .node': { boxShadow: `0 14px 30px ${color}55`, transform: 'scale(1.05)' },
+                        '&:hover .node': { borderColor: color, backgroundColor: `${color}18` },
                       }}>
                       <Box className="node" sx={{
                         width: 100, height: 100, mx: 'auto', borderRadius: '50%',
-                        background: `linear-gradient(135deg, ${color}22, rgba(255,255,255,0.7))`,
-                        border: `2px solid ${color}`, backdropFilter: 'blur(8px)', WebkitBackdropFilter: 'blur(8px)',
-                        boxShadow: `0 6px 18px ${color}22`,
+                        backgroundColor: 'background.paper',
+                        border: `2px solid ${color}66`,
                         display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', px: 1,
-                        transition: 'all 0.2s ease',
                       }}>
                         <Typography variant="body2" fontWeight={900} sx={{ color: '#1e293b' }}>{rc.number || '—'}</Typography>
                         <Typography variant="caption" sx={{ fontSize: 8, lineHeight: 1.25, textAlign: 'center', color: '#475569' }}>{rc.party_name || '—'}</Typography>

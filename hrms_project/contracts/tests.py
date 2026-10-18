@@ -339,6 +339,30 @@ class ContractGuaranteeStatusTests(TestCase):
         self.assertEqual(advance['provided_count'], 1)
         self.assertEqual(advance['items'][0]['amount'], 100_000_000.0)
 
+    def test_linked_guarantee_stays_under_its_contract_item(self):
+        """تضمینی که به ردیف مشخصی از اقلام وصل شده، نباید زیر قلم هم‌نوع قبلی برود."""
+        from contracts.guarantee_status import guarantee_compliance
+
+        linked_contract = Contract.objects.create(
+            company=self.company, number='C-G4', subject='قرارداد با دو قلم هم‌نوع', party=self.party,
+            amount=1_000_000_000,
+            guarantee_items=[
+                {'type': 'advance', 'amount': 100_000_000, 'note': 'قلم اول'},
+                {'type': 'advance', 'amount': 200_000_000, 'note': 'قلم دوم'},
+            ],
+        )
+        self._guarantee(contract=linked_contract, guarantee_type='advance', amount=200_000_000,
+                        number='AD-L2', contract_guarantee_index=1)
+        self._guarantee(contract=linked_contract, guarantee_type='advance', amount=100_000_000,
+                        number='AD-L1')
+
+        result = guarantee_compliance(linked_contract)
+        first, second = result['requirements']
+        self.assertEqual([row['number'] for row in first['items']], ['AD-L1'])
+        self.assertEqual([row['number'] for row in second['items']], ['AD-L2'])
+        self.assertEqual(second['items'][0]['contract_guarantee_index'], 1)
+        self.assertEqual(result['summary']['unrequired_count'], 0)
+
     def test_guarantees_status_endpoint_url_resolves(self):
         from django.urls import resolve
 

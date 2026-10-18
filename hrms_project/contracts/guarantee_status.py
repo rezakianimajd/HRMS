@@ -54,6 +54,7 @@ def guarantee_payload(guarantee):
     days_left = (expiry - date.today()).days if expiry else None
     return {
         'id': getattr(guarantee, 'id', None),
+        'contract_guarantee_index': getattr(guarantee, 'contract_guarantee_index', None),
         'number': getattr(guarantee, 'number', '') or '',
         'type': getattr(guarantee, 'guarantee_type', '') or '',
         'type_label': _display(guarantee, 'guarantee_type'),
@@ -79,7 +80,7 @@ def _requirements(contract, effective_amount):
     rows = []
     seen_types = set()
 
-    for item in (getattr(contract, 'guarantee_items', None) or []):
+    for index, item in enumerate((getattr(contract, 'guarantee_items', None) or [])):
         if not isinstance(item, dict):
             continue
         raw = item.get('type') or item.get('guarantee_type') or 'other'
@@ -90,6 +91,7 @@ def _requirements(contract, effective_amount):
         if not amount and percent and effective_amount:
             amount = round(effective_amount * percent / 100.0, 2)
         rows.append({
+            'index': index,
             'type': kind,
             'label': labels.get(kind, kind),
             'note': item.get('note') or '',
@@ -103,6 +105,7 @@ def _requirements(contract, effective_amount):
     primary_amount = _num(getattr(contract, 'guarantee_amount', None))
     if primary_type and primary_amount and primary_type not in seen_types:
         rows.append({
+            'index': None,
             'type': primary_type,
             'label': labels.get(primary_type, primary_type),
             'note': 'تضمین اصلی قرارداد',
@@ -153,9 +156,46 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
     warnings = []
 
     used_ids = set()
+    requirements_by_index = {
+        requirement['index']: requirement
+        for requirement in requirements
+        if requirement.get('index') is not None
+    }
+    matched_by_requirement = {id(requirement): [] for requirement in requirements}
+
+    # ۱) تضمین‌هایی که به ردیف مشخصی از اقلام قرارداد وصل شده‌اند، دقیقاً زیر همان قلم می‌نشینند.
+    for row in items:
+        index = row.get('contract_guarantee_index')
+        if index is None:
+            continue
+        requirement = requirements_by_index.get(index)
+        if requirement is None:
+            continue
+        matched_by_requirement[id(requirement)].append(row)
+        used_ids.add(row['id'])
+
+    # ۲) تضمین‌های بدون ارتباط (دادهٔ قبلی) بر اساس نوع و ظرفیت باقی‌ماندهٔ همان قلم تطبیق می‌شوند.
+    for row in items:
+        if row.get('contract_guarantee_index') is not None or row['id'] in used_ids:
+            continue
+        candidates = [requirement for requirement in requirements if requirement['type'] == row['type']]
+        if not candidates:
+            continue
+        chosen = None
+        for requirement in candidates:
+            active_amount = sum(
+                item['amount'] for item in matched_by_requirement[id(requirement)]
+                if not item['is_released']
+            )
+            if requirement['required'] > active_amount + TOLERANCE:
+                chosen = requirement
+                break
+        chosen = chosen or candidates[0]
+        matched_by_requirement[id(chosen)].append(row)
+        used_ids.add(row['id'])
+
     for requirement in requirements:
-        matched = [row for row in items if row['type'] == requirement['type']]
-        used_ids.update(row['id'] for row in matched)
+        matched = matched_by_requirement[id(requirement)]
         active = [row for row in matched if not row['is_released']]
         released = [row for row in matched if row['is_released']]
         provided = round(sum(row['amount'] for row in active), 2)

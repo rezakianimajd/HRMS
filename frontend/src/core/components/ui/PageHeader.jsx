@@ -134,6 +134,8 @@ const OUTLINE_BY_NAME = {
   AutoStoriesIcon: AutoStoriesOutlinedIcon,
   SearchIcon: SearchOutlinedIcon,
   CheckCircleIcon: CheckCircleOutlineIcon,
+CheckCircleRoundedIcon: CheckCircleOutlineIcon,
+ScheduleIcon: AccessTimeOutlinedIcon,
   AutoFixHighIcon: AutoFixHighOutlinedIcon,
 };
 

@@ -170,12 +170,13 @@ const GuaranteesPage = () => {
     return { key: 'active', label: 'معتبر', color: 'primary' };
   };
 
-  const guaranteeItemLabel = (item = {}) => {
+  const guaranteeItemLabel = (item = {}, index = null) => {
     const type = TYPE_LABELS[item.type] || item.type || 'ضمانت';
     const amount = item.amount
       ? `${formatPersianNumber(item.amount)} ریال`
       : item.percent ? `${toPersianDigits(item.percent)}٪ از قرارداد` : '';
-    return [type, amount, item.note].filter(Boolean).join(' — ');
+    const row = index != null ? `ردیف ${toPersianDigits(index + 1)}` : '';
+    return [row, type, amount, item.note].filter(Boolean).join(' — ');
   };
 
   const contractItemsFor = (id) => {
@@ -187,7 +188,7 @@ const GuaranteesPage = () => {
     const index = g.contract_guarantee_index;
     if (index != null) {
       const item = contractItemsFor(g.contract)[index];
-      if (item) return guaranteeItemLabel(item);
+      if (item) return guaranteeItemLabel(item, index);
     }
     return g.contract_guarantee_label || '';
   };
@@ -456,7 +457,7 @@ const GuaranteesPage = () => {
                   onChange={e => applyGuaranteeLink(e.target.value)}>
                   <MenuItem value="">بدون اتصال به ضمانت قرارداد</MenuItem>
                   {contractGuaranteeItems.map((item, index) => (
-                    <MenuItem key={index} value={index}>{guaranteeItemLabel(item)}</MenuItem>
+                    <MenuItem key={index} value={index}>{guaranteeItemLabel(item, index)}</MenuItem>
                   ))}
                 </Select>
                 <FormHelperText>

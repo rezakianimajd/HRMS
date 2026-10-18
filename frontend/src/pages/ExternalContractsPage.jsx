@@ -3,10 +3,10 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Button, Chip, Avatar, CircularProgress, Stack,
+  Box, Typography, Paper, Button, Chip, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
   InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import AddIcon from '@mui/icons-material/Add';
@@ -15,10 +15,14 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
+import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
+import ScheduleIcon from '@mui/icons-material/Schedule';
+import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
@@ -49,9 +53,8 @@ const remainMeta = (days) => {
 const headCellSx = {
   fontWeight: 800, fontSize: 12, color: '#334155', whiteSpace: 'nowrap',
   // پس‌زمینهٔ مات (بدون شفافیت) تا هنگام اسکرول محتوای جدول از زیر هدر دیده نشود
-  backgroundColor: '#eef2f7',
-  borderBottom: '1px solid rgba(15,23,42,0.18)',
-  boxShadow: 'inset 0 -1px 0 rgba(15,23,42,0.06)',
+  backgroundColor: '#f1f5f9',
+  borderBottom: '1px solid rgba(15,23,42,0.14)',
   py: 1.1,
 };
 const bodyCellSx = {
@@ -89,10 +92,10 @@ const STATUS_COLORS = {
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    background: 'rgba(255,255,255,0.6)',
-    '&:hover': { background: 'rgba(255,255,255,0.85)' },
-    '&.Mui-focused': { background: '#fff', boxShadow: '0 0 0 4px rgba(245,158,11,0.12)' },
+    borderRadius: '10px',
+    backgroundColor: 'background.paper',
+    '&:hover': { backgroundColor: 'background.paper' },
+    '&.Mui-focused': { backgroundColor: 'background.paper' },
   },
 };
 
@@ -137,6 +140,16 @@ const ExternalContractsPage = () => {
     (!statusFilter || c.status === statusFilter) &&
     (!typeFilter || String(c.contract_type_master) === String(typeFilter))
   );
+
+  const overview = {
+    total: contractList.length,
+    active: contractList.filter(c => c.status === 'active').length,
+    expiring: contractList.filter(c => {
+      const days = daysUntil(c.effective_end_date || c.end_date);
+      return days !== null && days >= 0 && days <= 60;
+    }).length,
+    amount: contractList.reduce((sum, c) => sum + Number(c.effective_amount ?? c.amount ?? 0), 0),
+  };
 
   // خروجی اکسل جامع: تک‌شیت و یک ردیف برای هر قرارداد (همهٔ آیتم‌ها در ستون‌های همان ردیف)
   const exportExcel = async () => {
@@ -187,9 +200,28 @@ const ExternalContractsPage = () => {
 
       {msg && <Alert severity={msgOk ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
 
+      <Grid container spacing={1.5} sx={{ mb: 2 }}>
+        <Grid item xs={6} md={3}>
+          <InfoCard icon={<HandshakeIcon />} color="#f59e0b" label="کل قراردادها"
+            value={toPersianDigits(overview.total)} suffix="قرارداد" />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <InfoCard icon={<CheckCircleRoundedIcon />} color="#10b981" label="در حال اجرا"
+            value={toPersianDigits(overview.active)} suffix="قرارداد" />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <InfoCard icon={<ScheduleIcon />} color="#f97316" label="رو به انقضا"
+            value={toPersianDigits(overview.expiring)} suffix="تا ۶۰ روز" />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <InfoCard icon={<AccountBalanceIcon />} color="#3b82f6" label="جمع مبالغ"
+            value={formatPersianNumber(overview.amount)} suffix="ریال" />
+        </Grid>
+      </Grid>
+
       {/* Filters */}
-      <Paper sx={{ p: 1.5, mb: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}>
+      <Paper sx={{ p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} useFlexGap>
           <TextField size="small" placeholder="جستجوی موضوع / طرف / شماره…" value={search} onChange={e => setSearch(e.target.value)}
             sx={{ flex: 1, ...fieldSx }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
           <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 170 } }}>
@@ -212,20 +244,21 @@ const ExternalContractsPage = () => {
       {/* فهرست قراردادها — جدول یک‌ردیفی و خوانا */}
       <Box>
         {isLoading ? (
-          <Paper sx={{ py: 6, textAlign: 'center', borderRadius: '16px' }}><CircularProgress /></Paper>
+          <Paper sx={{ py: 6, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}><CircularProgress /></Paper>
         ) : filtered.length === 0 ? (
-          <Paper sx={{ py: 7, textAlign: 'center', borderRadius: '16px', background: 'rgba(255,255,255,0.55)' }}>
+          <Paper sx={{ py: 7, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
             <Typography color="textSecondary">قراردادی ثبت نشده است.</Typography>
           </Paper>
         ) : (
-          <Paper sx={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid rgba(100,116,139,0.14)' }}>
-            <TableContainer sx={{ maxHeight: 'calc(100vh - 330px)' }}>
-              <Table size="small" stickyHeader sx={{ '& td, & th': { px: 1.25 } }}>
+          <Paper sx={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+            <TableContainer sx={{ maxHeight: 'calc(100vh - 430px)' }}>
+              <Table size="small" stickyHeader sx={{ minWidth: 1180, '& td, & th': { px: 1.25 } }}>
                 <TableHead>
                   <TableRow>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>شماره قرارداد</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 165 }}>طرف حساب</TableCell>
                     <TableCell align="center" style={CENTER} sx={headCellSx}>نام قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 110 }}>وضعیت</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ شروع</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ پایان</TableCell>
                     <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 145 }}>مانده (روز تا پایان)</TableCell>
@@ -265,6 +298,17 @@ const ExternalContractsPage = () => {
                               {c.subject || '—'}
                             </Typography>
                           </Tooltip>
+                          <Typography variant="caption" noWrap display="block" sx={{ color: '#64748b', fontSize: 10.5 }}>
+                            {typeLabel(c)}
+                          </Typography>
+                        </TableCell>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
+                          <Chip size="small" label={STATUS_LABELS[c.status] || '—'}
+                            sx={{
+                              bgcolor: `${STATUS_COLORS[c.status] || '#64748b'}18`,
+                              color: STATUS_COLORS[c.status] || '#64748b',
+                              fontWeight: 800, fontSize: 11, height: 22,
+                            }} />
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography variant="caption" sx={{ fontFamily: FONT, color: '#334155', fontWeight: 700 }}>
