@@ -25,6 +25,38 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import InsightsIcon from '@mui/icons-material/Insights';
+import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
+import PeopleOutlinedIcon from '@mui/icons-material/PeopleOutlined';
+import LoopOutlinedIcon from '@mui/icons-material/LoopOutlined';
+import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
+import CardGiftcardOutlinedIcon from '@mui/icons-material/CardGiftcardOutlined';
+import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
+import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
+import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
+import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
+import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
+import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
+import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined';
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
+import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
+import FactoryOutlinedIcon from '@mui/icons-material/FactoryOutlined';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
+import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
+import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
+import HandymanOutlinedIcon from '@mui/icons-material/HandymanOutlined';
+import SyncAltOutlinedIcon from '@mui/icons-material/SyncAltOutlined';
+import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
+import AutorenewOutlinedIcon from '@mui/icons-material/AutorenewOutlined';
+import BarChartOutlinedIcon from '@mui/icons-material/BarChartOutlined';
+import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined';
+import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
+import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
+import CallReceivedOutlinedIcon from '@mui/icons-material/CallReceivedOutlined';
+import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
+import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
+import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
+import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
@@ -75,17 +107,73 @@ const MODULE_SHORTCUTS = {
   ],
 };
 
-// رنگ متن خوانا روی پس‌زمینهٔ رنگی (آیکون فعال ریل)
-const contrastText = (hex) => {
-  const raw = String(hex || '').replace('#', '');
-  const full = raw.length === 3 ? raw.split('').map((ch) => ch + ch).join('') : raw;
-  if (full.length !== 6) return '#ffffff';
-  const r = parseInt(full.slice(0, 2), 16);
-  const g = parseInt(full.slice(2, 4), 16);
-  const b = parseInt(full.slice(4, 6), 16);
-  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-  return luminance > 0.62 ? '#111827' : '#ffffff';
+// آیکون‌های اوت‌لاین و یک‌دست برای سرگروه‌های منوی اصلی
+const GROUP_ICONS = {
+  home: <HomeOutlinedIcon />,
+  people: <PeopleOutlinedIcon />,
+  operations: <LoopOutlinedIcon />,
+  payroll: <PaymentsOutlinedIcon />,
+  welfare: <CardGiftcardOutlinedIcon />,
+  documents: <FolderOutlinedIcon />,
+  insights: <InsightsOutlinedIcon />,
+
+  'settings-home': <HomeOutlinedIcon />,
+  'settings-general': <SettingsOutlinedIcon />,
+  'settings-projects': <AccountTreeOutlinedIcon />,
+  'settings-inventory': <Inventory2OutlinedIcon />,
+  'settings-accounting': <CalculateOutlinedIcon />,
+  'settings-assets': <HomeWorkOutlinedIcon />,
+  'settings-crm': <PeopleAltOutlinedIcon />,
+  'settings-sales': <ShoppingCartOutlinedIcon />,
+  'settings-production': <FactoryOutlinedIcon />,
+  'settings-hr': <BadgeOutlinedIcon />,
+  'settings-contracts': <DescriptionOutlinedIcon />,
+
+  'pettycash-home': <HomeOutlinedIcon />,
+  'pettycash-operations': <ReceiptLongOutlinedIcon />,
+  'pettycash-config': <SettingsOutlinedIcon />,
+
+  'accounting-home': <HomeOutlinedIcon />,
+  'accounting-definitions': <CategoryOutlinedIcon />,
+  'accounting-operations': <ReceiptLongOutlinedIcon />,
+  'accounting-tools': <HandymanOutlinedIcon />,
+  'accounting-integration': <SyncAltOutlinedIcon />,
+  'accounting-fiscal': <CalendarMonthOutlinedIcon />,
+  'accounting-annual': <AutorenewOutlinedIcon />,
+  'accounting-reports': <BarChartOutlinedIcon />,
+  'accounting-tax': <AccountBalanceOutlinedIcon />,
+  'accounting-settings': <SettingsOutlinedIcon />,
+
+  'treasury-home': <HomeOutlinedIcon />,
+  'treasury-operations': <AccountBalanceWalletOutlinedIcon />,
+  'treasury-planning': <TrendingUpOutlinedIcon />,
+  'treasury-payments': <PaymentsOutlinedIcon />,
+  'treasury-receipts': <CallReceivedOutlinedIcon />,
+  'treasury-guarantees': <VerifiedUserOutlinedIcon />,
+  'treasury-checks': <RequestQuoteOutlinedIcon />,
+
+  'procurement-home': <HomeOutlinedIcon />,
+  'procurement-master': <CategoryOutlinedIcon />,
+  'procurement-operations': <ShoppingCartOutlinedIcon />,
+
+  'projects-home': <HomeOutlinedIcon />,
+  'projects-management': <AccountTreeOutlinedIcon />,
+  'projects-commercial': <RequestQuoteOutlinedIcon />,
+  'projects-cost': <PaymentsOutlinedIcon />,
+  'projects-control': <AssessmentOutlinedIcon />,
+
+  'contracts-lifecycle': <DescriptionOutlinedIcon />,
+  'contracts-finance': <PaymentsOutlinedIcon />,
+  'contracts-parties': <StorefrontOutlinedIcon />,
+  'contracts-risks': <WarningAmberOutlinedIcon />,
+  'contracts-config': <SettingsOutlinedIcon />,
+  'contracts-docs': <FolderOutlinedIcon />,
 };
+
+const groupIcon = (id) => GROUP_ICONS[id] || <FolderOutlinedIcon />;
+
+// رنگ یک‌دست آیکون‌های سایدبار (خاکستری تیره در تم روشن و خاکستری روشن در تم تاریک)
+const ICON_COLOR = 'text.secondary';
 
 /**
  * چیدمان اصلی برنامه با سایدبار دوستونهٔ سفید:
@@ -106,16 +194,7 @@ const Layout = ({ children }) => {
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
-  const [expandedGroups, setExpandedGroups] = useState(() => {
-    const path = window.location.pathname;
-    const init = {};
-    menu.forEach((group) => {
-      init[group.id] = group.items.some(
-        (item) => path === item.path || path.startsWith(`${item.path}/`),
-      );
-    });
-    return init;
-  });
+  const [openGroupId, setOpenGroupId] = useState(null);
 
   const { data: profile } = useQuery({
     queryKey: ['company-profile-layout'],
@@ -156,16 +235,14 @@ const Layout = ({ children }) => {
     })
     .slice(0, 3);
 
-  // گروه صفحهٔ جاری همیشه باز می‌ماند (حتی بعد از جابه‌جایی بین صفحه‌ها)
+  // فقط یک گروه باز می‌ماند؛ گروه صفحهٔ جاری به‌صورت خودکار باز می‌شود
   useEffect(() => {
     if (!activeGroup?.id) return;
-    setExpandedGroups((prev) => (
-      prev[activeGroup.id] ? prev : { ...prev, [activeGroup.id]: true }
-    ));
+    setOpenGroupId(activeGroup.id);
   }, [activeGroup?.id, location.pathname, location.search]);
 
   const toggleGroup = (id) => {
-    setExpandedGroups((prev) => ({ ...prev, [id]: !prev[id] }));
+    setOpenGroupId((prev) => (prev === id ? null : id));
   };
 
   const companyName = profile?.company_name || profile?.legal_name || currentCompany?.name ||
@@ -259,8 +336,6 @@ const Layout = ({ children }) => {
         }}>
           {shortcuts.map((shortcut) => {
             const active = isActive(shortcut.path);
-            const color = shortcut.color || '#6366f1';
-            const onColor = contrastText(color);
 
             return (
               <Tooltip key={shortcut.path} title={shortcut.title} placement="left" arrow>
@@ -269,15 +344,12 @@ const Layout = ({ children }) => {
                   aria-label={shortcut.title}
                   sx={{
                     width: 40, height: 40,
-                    color: active ? onColor : color,
-                    bgcolor: active ? color : alpha(color, 0.08),
-                    border: `1px solid ${active ? color : alpha(color, 0.18)}`,
-                    boxShadow: active ? `0 6px 16px ${alpha(color, 0.3)}` : 'none',
-                    transition: 'background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease',
-                    '&:hover': {
-                      bgcolor: active ? color : alpha(color, 0.16),
-                      color: active ? onColor : color,
-                    },
+                    color: ICON_COLOR,
+                    bgcolor: active ? 'action.selected' : 'transparent',
+                    border: '1px solid',
+                    borderColor: active ? 'divider' : 'transparent',
+                    transition: 'background 0.2s ease',
+                    '&:hover': { bgcolor: 'action.hover' },
                   }}
                 >
                   {shortcut.icon
@@ -297,22 +369,20 @@ const Layout = ({ children }) => {
             size="small"
             onClick={openPalette}
             aria-label="جستجوی سریع"
-            sx={{ color: 'text.secondary' }}
+            sx={{ color: ICON_COLOR }}
           >
             <SearchIcon sx={{ fontSize: 20 }} />
           </IconButton>
         </Tooltip>
-        <NotificationBell compact />
+        <NotificationBell compact iconColor={ICON_COLOR} />
         <Tooltip title="تنظیمات" placement="left" arrow>
           <IconButton
             size="small"
             onClick={() => navigateTo('/settings')}
             aria-label="تنظیمات"
             sx={{
-              color: location.pathname.startsWith('/settings') ? 'primary.main' : 'text.secondary',
-              bgcolor: location.pathname.startsWith('/settings')
-                ? (theme) => alpha(theme.palette.primary.main, 0.1)
-                : 'transparent',
+              color: ICON_COLOR,
+              bgcolor: location.pathname.startsWith('/settings') ? 'action.selected' : 'transparent',
             }}
           >
             <SettingsIcon sx={{ fontSize: 20 }} />
@@ -331,10 +401,9 @@ const Layout = ({ children }) => {
             aria-label="تم روشن"
             sx={{
               width: 30, height: 30,
-              color: mode === 'light' ? 'primary.main' : 'text.disabled',
-              bgcolor: mode === 'light'
-                ? (theme) => alpha(theme.palette.primary.main, 0.12)
-                : 'transparent',
+              color: ICON_COLOR,
+              opacity: mode === 'light' ? 1 : 0.55,
+              bgcolor: mode === 'light' ? 'action.selected' : 'transparent',
             }}
           >
             <LightModeIcon sx={{ fontSize: 16 }} />
@@ -345,10 +414,9 @@ const Layout = ({ children }) => {
             aria-label="تم تاریک"
             sx={{
               width: 30, height: 30,
-              color: mode === 'dark' ? 'primary.main' : 'text.disabled',
-              bgcolor: mode === 'dark'
-                ? (theme) => alpha(theme.palette.primary.main, 0.12)
-                : 'transparent',
+              color: ICON_COLOR,
+              opacity: mode === 'dark' ? 1 : 0.55,
+              bgcolor: mode === 'dark' ? 'action.selected' : 'transparent',
             }}
           >
             <DarkModeIcon sx={{ fontSize: 16 }} />
@@ -409,7 +477,7 @@ const Layout = ({ children }) => {
         '&::-webkit-scrollbar-thumb': { bgcolor: 'divider', borderRadius: 2 },
       }}>
         {menu.map((group) => {
-          const open = Boolean(expandedGroups[group.id]);
+          const open = openGroupId === group.id;
           const containsActive = group.items.some((item) => isActive(item.path));
           const color = group.color || '#6366f1';
 
@@ -427,7 +495,7 @@ const Layout = ({ children }) => {
                   }
                 }}
                 sx={{
-                  display: 'flex', alignItems: 'center', gap: 0.5,
+                  display: 'flex', alignItems: 'center', gap: 1,
                   px: 1.25, py: 1, borderRadius: '10px', cursor: 'pointer',
                   color: containsActive || open ? color : 'text.primary',
                   bgcolor: open ? alpha(color, 0.06) : 'transparent',
@@ -436,6 +504,9 @@ const Layout = ({ children }) => {
                   '&:focus-visible': { outline: `2px solid ${alpha(color, 0.45)}`, outlineOffset: 2 },
                 }}
               >
+                <Box sx={{ display: 'flex', color: ICON_COLOR, flexShrink: 0 }}>
+                  {React.cloneElement(groupIcon(group.id), { sx: { fontSize: 18 } })}
+                </Box>
                 <Typography sx={{
                   flex: 1, fontSize: 12.5,
                   fontWeight: containsActive || open ? 800 : 600,
@@ -444,7 +515,7 @@ const Layout = ({ children }) => {
                   {group.title}
                 </Typography>
                 <KeyboardArrowDownIcon sx={{
-                  fontSize: 17, opacity: 0.65,
+                  fontSize: 17, color: ICON_COLOR, opacity: 0.8,
                   transform: open ? 'rotate(180deg)' : 'none',
                   transition: 'transform 0.2s ease',
                 }} />
@@ -620,7 +691,7 @@ const Layout = ({ children }) => {
           <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 800 }}>
             {companyName}
           </Typography>
-          <NotificationBell compact />
+          <NotificationBell compact iconColor={ICON_COLOR} />
         </Box>
 
         <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 } }}>

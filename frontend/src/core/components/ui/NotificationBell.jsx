@@ -54,7 +54,7 @@ const glassOrb = {
   },
 };
 
-const NotificationBell = ({ glass = false, compact = false }) => {
+const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
   const navigate = useNavigate();
   const [anchorEl, setAnchorEl] = useState(null);
   const { data: notifications = [] } = useNotifications(20);
@@ -81,10 +81,11 @@ const NotificationBell = ({ glass = false, compact = false }) => {
     handleClose();
   };
 
+  const bellColor = iconColor || (unread ? 'text.primary' : 'text.secondary');
   const icon = unread ? (
-    <NotificationsActiveIcon sx={{ fontSize: compact ? 20 : 22, color: 'text.primary' }} />
+    <NotificationsActiveIcon sx={{ fontSize: compact ? 20 : 22, color: bellColor }} />
   ) : (
-    <NotificationsIcon sx={{ fontSize: compact ? 20 : 22, color: 'text.secondary' }} />
+    <NotificationsIcon sx={{ fontSize: compact ? 20 : 22, color: bellColor }} />
   );
 
   const trigger = glass ? (
