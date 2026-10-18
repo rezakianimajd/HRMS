@@ -3,18 +3,20 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
 import {
-  Box, Typography, Paper, Avatar, Tabs, Tab, CircularProgress, Button,
-  Stack, TextField, Chip, Switch, FormControlLabel, IconButton, Tooltip, Autocomplete,
+  Box, Typography, Paper, Tabs, Tab, CircularProgress, Button,
+  Stack, TextField, Chip, Switch, FormControlLabel, IconButton, Tooltip,
   FormControl, InputLabel, Select, MenuItem, Alert,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  InputAdornment,
 } from '@mui/material';
 import TuneIcon from '@mui/icons-material/Tune';
 import SaveIcon from '@mui/icons-material/Save';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import BoltIcon from '@mui/icons-material/Bolt';
-
-const COLOR = '#64748b';
-const COLOR_DARK = '#475569';
+import SearchIcon from '@mui/icons-material/Search';
+import EditIcon from '@mui/icons-material/Edit';
+import DefinitionTable, { CodeName } from './accounting/DefinitionTable';
+import { toPersianDigits } from '../core/utils/numberUtils';
 
 const glass = {
   background: '#ffffff',
@@ -85,32 +87,83 @@ const CodingPanel = () => {
   if (isLoading || !draft) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
 
   return (
-    <Stack spacing={2}>
-      {LEVELS.map(level => {
-        const c = draft[level.value] || {};
-        return (
-          <Paper key={level.value} sx={{ ...glass, p: 2 }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" mb={1.5}>
-              <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK}>{level.label}</Typography>
-              <Stack direction="row" spacing={1} alignItems="center">
-                <FormControlLabel
-                  control={<Switch size="small" checked={!!c.is_active} onChange={e => { const next = e.target.checked; setField(level.value, 'is_active', next); commit(level.value, { ...draft[level.value], is_active: next }); }} />}
-                  label={c.is_active ? 'فعال' : 'غیرفعال'}
-                />
-                <Chip size="small" label="ذخیره خودکار" icon={<SaveIcon fontSize="small" />} sx={{ display: { xs: 'none', sm: 'flex' } }} />
-              </Stack>
-            </Stack>
-            <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-              <TextField size="small" label="پیشوند" value={c.prefix || ''} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'prefix', e.target.value)} sx={{ width: 110, ...fieldSx }} />
-              <TextField size="small" label="شروع از" type="number" value={c.start_number ?? 1} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'start_number', Number(e.target.value) || 1)} sx={{ width: 100, ...fieldSx }} />
-              <TextField size="small" label="پایان تا" type="number" value={c.end_number ?? 99} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'end_number', Number(e.target.value) || 99)} sx={{ width: 100, ...fieldSx }} />
-              <TextField size="small" label="حداقل طول" type="number" value={c.min_length ?? 1} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'min_length', Number(e.target.value) || 1)} sx={{ width: 100, ...fieldSx }} />
-              <TextField size="small" label="حداکثر طول" type="number" value={c.max_length ?? 10} onBlur={() => commit(level.value)} onChange={e => setField(level.value, 'max_length', Number(e.target.value) || 10)} sx={{ width: 100, ...fieldSx }} />
-            </Stack>
-          </Paper>
-        );
-      })}
-    </Stack>
+    <Paper sx={{ ...glass, p: 0, overflow: 'hidden' }}>
+      <Box sx={{
+        px: 2, py: 1.5, borderBottom: '1px solid', borderColor: 'divider',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap',
+      }}>
+        <Box>
+          <Typography variant="subtitle1" fontWeight={500}>ساختار کدینگ حساب‌ها</Typography>
+          <Typography variant="caption" color="text.secondary">پیشوند، بازهٔ شماره و طول کد هر سطح را تعیین کنید.</Typography>
+        </Box>
+        <Chip size="small" variant="outlined" icon={<SaveIcon fontSize="small" />} label="ذخیره خودکار" />
+      </Box>
+
+      <TableContainer sx={{ maxHeight: 'calc(100vh - 330px)' }}>
+        <Table size="small" stickyHeader sx={{ '& td, & th': { px: 1.25, py: 0.9 } }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ fontWeight: 600 }}>سطح</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>پیشوند</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>شماره از</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>شماره تا</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>حداقل طول</TableCell>
+              <TableCell sx={{ fontWeight: 600 }}>حداکثر طول</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>نمونه کد</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 600 }}>وضعیت</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {LEVELS.map(level => {
+              const c = draft[level.value] || {};
+              const sample = `${c.prefix || ''}${String(c.start_number ?? 1).padStart(Math.max(Number(c.min_length) || 1, 1), '0')}`;
+              return (
+                <TableRow key={level.value} hover>
+                  <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 500 }}>{level.label}</TableCell>
+                  <TableCell>
+                    <TextField size="small" value={c.prefix || ''} onChange={e => setField(level.value, 'prefix', e.target.value)}
+                      onBlur={() => commit(level.value)} sx={{ width: 90, ...fieldSx }} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" type="number" value={c.start_number ?? 1}
+                      onChange={e => setField(level.value, 'start_number', Number(e.target.value) || 1)}
+                      onBlur={() => commit(level.value)} sx={{ width: 90, ...fieldSx }} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" type="number" value={c.end_number ?? 99}
+                      onChange={e => setField(level.value, 'end_number', Number(e.target.value) || 99)}
+                      onBlur={() => commit(level.value)} sx={{ width: 90, ...fieldSx }} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" type="number" value={c.min_length ?? 1}
+                      onChange={e => setField(level.value, 'min_length', Number(e.target.value) || 1)}
+                      onBlur={() => commit(level.value)} sx={{ width: 80, ...fieldSx }} />
+                  </TableCell>
+                  <TableCell>
+                    <TextField size="small" type="number" value={c.max_length ?? 10}
+                      onChange={e => setField(level.value, 'max_length', Number(e.target.value) || 10)}
+                      onBlur={() => commit(level.value)} sx={{ width: 80, ...fieldSx }} />
+                  </TableCell>
+                  <TableCell align="center">
+                    <Typography component="span" sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
+                      {toPersianDigits(sample || '—')}
+                    </Typography>
+                  </TableCell>
+                  <TableCell align="center">
+                    <FormControlLabel
+                      sx={{ m: 0, justifyContent: 'center' }}
+                      control={<Switch size="small" checked={!!c.is_active}
+                        onChange={e => { const next = e.target.checked; setField(level.value, 'is_active', next); commit(level.value, { ...draft[level.value], is_active: next }); }} />}
+                      label={<Typography variant="caption" color="text.secondary">{c.is_active ? 'فعال' : 'غیرفعال'}</Typography>}
+                    />
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Paper>
   );
 };
 
@@ -132,6 +185,8 @@ const AuxiliaryCategoriesPanel = () => {
 
   const { data, isLoading } = useQuery({ queryKey: ['aux-categories'], queryFn: () => axiosInstance.get('/accounting/auxiliary-categories/').then(r => r.data) });
   const list = Array.isArray(data) ? data : data?.results || [];
+  const [search, setSearch] = useState('');
+  const [sourceFilter, setSourceFilter] = useState('');
 
   const save = async () => {
     try {
@@ -147,45 +202,79 @@ const AuxiliaryCategoriesPanel = () => {
     catch (e) { setMsg({ ok: false, text: e.response?.data?.error || 'حذف ممکن نیست' }); }
   };
 
+  const startEdit = (category) => {
+    setEditing(category);
+    setForm({ code: category.code, name: category.name, source: category.source, sort_order: category.sort_order });
+  };
+
+  const filtered = list.filter((category) => {
+    const q = search.trim();
+    return (!q || `${category.code} ${category.name}`.includes(q))
+      && (!sourceFilter || category.source === sourceFilter);
+  });
+
   if (isLoading) return <Box textAlign="center" py={4}><CircularProgress /></Box>;
 
   return (
     <Stack spacing={2}>
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
-      {/* فرم ساخت دسته */}
       <Paper sx={{ ...glass, p: 2 }}>
-        <Typography variant="subtitle2" fontWeight={800} color={COLOR_DARK} mb={1.5}>{editing ? 'ویرایش دسته' : 'ساخت دسته‌بندی جدید'}</Typography>
-        <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>
-          <TextField size="small" label="کد دسته" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} sx={{ width: 120, ...fieldSx }} />
-          <TextField size="small" label="عنوان دسته" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} sx={{ width: 180, ...fieldSx }} />
-          <FormControl size="small" sx={{ width: 150 }}>
+        <Box sx={{ mb: 1.5 }}>
+          <Typography variant="subtitle1" fontWeight={500}>{editing ? 'ویرایش دسته‌بندی' : 'دسته‌بندی تفصیلی جدید'}</Typography>
+          <Typography variant="caption" color="text.secondary">کد، عنوان و منبع دادهٔ دسته را مشخص کنید.</Typography>
+        </Box>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} useFlexGap>
+          <TextField size="small" label="کد دسته" value={form.code} onChange={e => setForm(p => ({ ...p, code: e.target.value }))} sx={{ width: { xs: '100%', md: 130 }, ...fieldSx }} />
+          <TextField size="small" label="عنوان دسته" value={form.name} onChange={e => setForm(p => ({ ...p, name: e.target.value }))} sx={{ width: { xs: '100%', md: 220 }, ...fieldSx }} />
+          <FormControl size="small" sx={{ width: { xs: '100%', md: 160 } }}>
             <InputLabel>منبع داده</InputLabel>
             <Select value={form.source} label="منبع داده" onChange={e => setForm(p => ({ ...p, source: e.target.value }))} sx={fieldSx}>
               {SOURCE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
             </Select>
           </FormControl>
-          <TextField size="small" label="ترتیب" type="number" value={form.sort_order} onChange={e => setForm(p => ({ ...p, sort_order: Number(e.target.value) || 0 }))} sx={{ width: 90, ...fieldSx }} />
+          <TextField size="small" label="ترتیب" type="number" value={form.sort_order} onChange={e => setForm(p => ({ ...p, sort_order: Number(e.target.value) || 0 }))} sx={{ width: { xs: '100%', md: 100 }, ...fieldSx }} />
           <Button variant="contained" startIcon={<AddIcon />} onClick={save} disabled={!form.code || !form.name}>
             {editing ? 'ذخیره' : 'افزودن دسته'}
           </Button>
         </Stack>
       </Paper>
 
-      {/* لیست دسته‌ها */}
-      <Paper sx={{ ...glass, p: 2 }}>
-        <Stack spacing={1}>
-          {list.map(c => (
-            <Paper key={c.id} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.55)' }}>
-              <Chip size="small" label={c.code} sx={{ fontWeight: 800, bgcolor: 'rgba(100,116,139,0.1)', color: COLOR_DARK }} />
-              <Typography variant="body2" fontWeight={700} sx={{ flex: 1 }}>{c.name}</Typography>
-              <Chip size="small" label={c.source_display || c.source} />
-              <IconButton size="small" onClick={() => { setEditing(c); setForm({ code: c.code, name: c.name, source: c.source, sort_order: c.sort_order }); }}><SaveIcon fontSize="small" /></IconButton>
-              <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del(c.id); }}><DeleteIcon fontSize="small" /></IconButton>
-            </Paper>
-          ))}
+      <Paper sx={{ p: 1.5, borderRadius: '16px', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} useFlexGap>
+          <TextField size="small" placeholder="جستجوی کد یا عنوان دسته…" value={search} onChange={e => setSearch(e.target.value)}
+            sx={{ flex: 1 }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
+            <InputLabel>منبع داده</InputLabel>
+            <Select value={sourceFilter} label="منبع داده" onChange={e => setSourceFilter(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {SOURCE_OPTIONS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+            </Select>
+          </FormControl>
         </Stack>
       </Paper>
+
+      <DefinitionTable
+        rows={filtered}
+        emptyText="دسته‌بندی‌ای ثبت نشده است."
+        activeId={editing?.id}
+        onRowClick={startEdit}
+        columns={[
+          { key: 'code_name', label: 'کد / عنوان', render: c => <CodeName code={c.code} name={c.name} /> },
+          { key: 'source', label: 'منبع داده', width: 170, render: c => c.source_display || SOURCE_OPTIONS.find(o => o.value === c.source)?.label || '—' },
+          { key: 'sort_order', label: 'ترتیب', width: 90, align: 'center', render: c => toPersianDigits(c.sort_order ?? 0) },
+          {
+            key: 'actions', label: 'عملیات', width: 95, align: 'center',
+            render: c => (
+              <>
+                <Tooltip title="ویرایش"><IconButton size="small" onClick={(e) => { e.stopPropagation(); startEdit(c); }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                <Tooltip title="حذف"><IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف؟')) del(c.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+              </>
+            ),
+          },
+        ]}
+        maxHeight="calc(100vh - 430px)"
+      />
     </Stack>
   );
 };
@@ -197,9 +286,19 @@ const AccountingSettingsPage = ({ embedded = false }) => {
       {!embedded && <PageHeader icon={<TuneIcon />} title="تعاریف اولیهٔ حسابداری" />}
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
-        <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ borderBottom: '1px solid rgba(255,255,255,0.5)', px: 2 }}>
-          <Tab label="کدینگ" sx={{ fontWeight: 700, color: tab === 0 ? COLOR_DARK : undefined }} />
-          <Tab label="دسته‌بندی‌های تفصیلی" sx={{ fontWeight: 700, color: tab === 1 ? COLOR_DARK : undefined }} />
+        <Tabs
+          value={tab}
+          onChange={(e, v) => setTab(v)}
+          sx={{
+            minHeight: 48,
+            px: 1.5,
+            borderBottom: '1px solid',
+            borderColor: 'divider',
+            '& .MuiTab-root': { minHeight: 48, minWidth: 0, px: 2, fontSize: 13, fontWeight: 500, textTransform: 'none' },
+          }}
+        >
+          <Tab label="کدینگ" />
+          <Tab label="دسته‌بندی‌های تفصیلی" />
         </Tabs>
       </Paper>
 
