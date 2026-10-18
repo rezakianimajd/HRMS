@@ -50,7 +50,7 @@ const MODULE_ICONS = {
   pettycash: AccountBalanceWalletOutlinedIcon,
 };
 
-const renderIcon = (app, size) => {
+const renderIcon = (app, size, color = 'text.secondary') => {
   const Icon = MODULE_ICONS[app?.slug] || AppsOutlinedIcon;
   if (app?.icon && /^(https?:)?\//.test(app.icon)) {
     return (
@@ -62,7 +62,7 @@ const renderIcon = (app, size) => {
       />
     );
   }
-  return <Icon sx={{ fontSize: size, color: 'text.secondary' }} />;
+  return <Icon sx={{ fontSize: size, color }} />;
 };
 
 /**
@@ -85,6 +85,7 @@ const AppSwitcher = () => {
   const pick = async (app) => {
     if (app.is_coming_soon) return;
     setAnchor(null);
+    if (currentApp?.id === app.id) return;
     await switchApplication(app);
     navigate(LANDING_PATH[app.slug] || '/dashboard');
   };
@@ -96,55 +97,47 @@ const AppSwitcher = () => {
       <Button
         fullWidth
         onClick={(event) => setAnchor(event.currentTarget)}
-        aria-label="انتخاب ماژول"
+        aria-label="تغییر ماژول"
         aria-haspopup="menu"
+        aria-expanded={Boolean(anchor)}
         sx={{
           justifyContent: 'space-between',
-          px: 1.25,
-          py: 0.9,
-          minHeight: 54,
+          px: 1.1,
+          py: 0.7,
+          minHeight: 48,
           textTransform: 'none',
           borderRadius: '12px',
           border: '1px solid',
-          borderColor: currentAccent || 'divider',
+          borderColor: currentAccent ? alpha(currentAccent, 0.28) : 'divider',
           bgcolor: 'background.paper',
           color: 'text.primary',
-          boxShadow: currentAccent
-            ? `0 0 0 3px ${alpha(currentAccent, 0.1)}`
-            : '0 1px 3px rgba(15,23,42,0.04)',
-          transition: 'border-color 0.2s ease, box-shadow 0.2s ease',
+          boxShadow: '0 1px 3px rgba(15,23,42,0.04)',
+          transition: 'border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease',
           '&:hover': {
             bgcolor: 'background.paper',
-            borderColor: currentAccent || 'text.disabled',
+            borderColor: currentAccent ? alpha(currentAccent, 0.48) : 'text.disabled',
             boxShadow: currentAccent
-              ? `0 0 0 4px ${alpha(currentAccent, 0.14)}`
+              ? `0 6px 18px ${alpha(currentAccent, 0.12)}`
               : '0 6px 18px rgba(15,23,42,0.08)',
           },
         }}
       >
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: 0, flex: 1 }}>
           <Box sx={{
-            width: 32, height: 32, flexShrink: 0,
+            width: 30, height: 30, flexShrink: 0,
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             borderRadius: '9px',
-            border: '1px solid', borderColor: currentAccent ? alpha(currentAccent, 0.3) : 'divider',
-            bgcolor: 'action.hover',
+            border: '1px solid',
+            borderColor: currentAccent ? alpha(currentAccent, 0.22) : 'divider',
+            bgcolor: currentAccent ? alpha(currentAccent, 0.08) : 'action.hover',
           }}>
             {currentApp
-              ? renderIcon(currentApp, 18)
-              : <AppsOutlinedIcon sx={{ fontSize: 18, color: 'text.secondary' }} />}
+              ? renderIcon(currentApp, 17, currentAccent || 'text.secondary')
+              : <AppsOutlinedIcon sx={{ fontSize: 17, color: 'text.secondary' }} />}
           </Box>
-          <Box sx={{ minWidth: 0, textAlign: 'right' }}>
-            <Typography variant="caption" sx={{
-              fontWeight: 500, letterSpacing: '0.06em',
-              color: 'text.disabled', lineHeight: 1.5,
-            }}>
-              ماژول فعال
-            </Typography>
-            <Typography variant="body2" noWrap sx={{ fontWeight: 400, lineHeight: 1.7 }}>
-              {currentApp?.title || 'انتخاب ماژول'}
-            </Typography>
-          </Box>
+          <Typography variant="body2" noWrap sx={{ fontWeight: 500, lineHeight: 1.5, minWidth: 0 }}>
+            {currentApp?.title || 'انتخاب ماژول'}
+          </Typography>
         </Box>
         <KeyboardArrowDownIcon sx={{
           fontSize: 18, color: 'text.secondary', flexShrink: 0,
@@ -200,6 +193,8 @@ const AppSwitcher = () => {
                 key={app.id}
                 onClick={() => pick(app)}
                 selected={selected}
+                role="menuitemradio"
+                aria-checked={selected}
                 sx={{
                   py: 0.9, px: 1.1, borderRadius: '10px', mb: 0.25, gap: 1,
                   border: '1px solid',
@@ -216,10 +211,11 @@ const AppSwitcher = () => {
                   width: 28, height: 28, flexShrink: 0,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                   borderRadius: '8px',
-                  border: '1px solid', borderColor: 'divider',
-                  bgcolor: 'background.paper',
+                  border: '1px solid',
+                  borderColor: selected && appAccent ? alpha(appAccent, 0.25) : 'divider',
+                  bgcolor: selected && appAccent ? alpha(appAccent, 0.08) : 'background.paper',
                 }}>
-                  {renderIcon(app, 16)}
+                  {renderIcon(app, 16, selected ? (appAccent || currentAccent || 'text.primary') : 'text.secondary')}
                 </Box>
                 <Typography variant="body2" noWrap sx={{
                   flex: 1,
