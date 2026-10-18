@@ -184,10 +184,11 @@ const NodeRow = ({
           display: 'flex', alignItems: 'center', gap: 0.5, py: 0.6, pr: 1 + depth * 3, pl: 0.5,
           mb: 0.5, borderRadius: '12px',
           background: rowBg,
-          border: node.matched && searchTerm ? '1px solid rgba(234,179,8,0.65)' : '1px solid rgba(255,255,255,0.75)',
+          border: isSelected
+            ? '1px solid rgba(15,118,110,0.45)'
+            : node.matched && searchTerm ? '1px solid rgba(234,179,8,0.65)' : '1px solid',
+          borderColor: isSelected ? 'rgba(15,118,110,0.45)' : node.matched && searchTerm ? 'rgba(234,179,8,0.65)' : 'divider',
           cursor: hasChildren ? 'pointer' : 'default',
-          transition: 'all .18s ease',
-          '&:hover': { boxShadow: '0 8px 22px rgba(15,118,110,0.12)' },
         }}
       >
         {selectMode && node.node_type === 'account' && (
@@ -210,19 +211,13 @@ const NodeRow = ({
           </IconButton>
         ) : <Box sx={{ width: 30, flexShrink: 0 }} />}
 
-        <Box sx={{
-          width: isType ? 10 : 8, height: isType ? 10 : 8, borderRadius: '50%', flexShrink: 0,
-          background: `linear-gradient(135deg, ${meta.color}, ${meta.dark})`,
-          boxShadow: `0 0 0 3px ${meta.color}22`, mx: 0.75,
-        }} />
-
         {showCode(node.code, isType) && (
-          <Chip size="small" label={toPersianDigits(node.code)}
-            sx={{
-              height: 22, fontFamily: FONT, fontWeight: 800, fontSize: 12,
-              bgcolor: `${meta.color}1f`, color: meta.dark,
-              '& .MuiChip-label': { px: 1 },
-            }} />
+          <Typography
+            component="span"
+            sx={{ fontWeight: 500, color: 'text.primary', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', mr: 0.75 }}
+          >
+            {toPersianDigits(node.code)}
+          </Typography>
         )}
 
         {isType ? (
@@ -253,8 +248,9 @@ const NodeRow = ({
               <Chip size="small" label={node.category_label}
                 sx={miniChip('rgba(14,165,233,0.14)', '#0369a1')} />
             ) : null}
-            <Chip size="small" variant="outlined" label={natureLabel(node.nature)}
-              sx={miniChip(natureBg(node.nature), natureColor(node.nature))} />
+            <Typography variant="caption" sx={{ color: natureColor(node.nature), fontWeight: 600, flexShrink: 0 }}>
+              {natureLabel(node.nature)}
+            </Typography>
           </>
         )}
 

@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import BoltIcon from '@mui/icons-material/Bolt';
+import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
@@ -18,6 +19,7 @@ import CategoryIcon from '@mui/icons-material/Category';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import DefinitionTable, { CodeName } from './accounting/DefinitionTable';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const COLOR = '#6366f1';
@@ -59,6 +61,8 @@ const CodingsPanel = ({
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({});
   const [msg, setMsg] = useState(null);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('code');
 
   const { data, isLoading } = useQuery({ queryKey: [endpoint], queryFn: () => axiosInstance.get(endpoint).then(r => r.data) });
   // پیشنهاد کد با در نظر گرفتن «والد» انتخاب‌شده (برای حساب معین) و «گروه»
@@ -75,6 +79,22 @@ const CodingsPanel = ({
   });
   const raw = Array.isArray(data) ? data : data?.results || [];
   const list = transformList ? transformList(raw) : raw;
+
+  const filtered = list
+    .filter((row) => {
+      const q = search.trim();
+      if (!q) return true;
+      return `${row.code ?? ''} ${row.name ?? ''} ${row.account_type_name ?? ''}`.includes(q);
+    })
+    .sort((a, b) => String(a[sortBy] ?? '').localeCompare(String(b[sortBy] ?? ''), 'fa'));
+
+  const hasCodeName = columns.some(c => c.key === 'code') || columns.some(c => c.key === 'name');
+  const displayColumns = hasCodeName
+    ? [
+      { key: 'code_name', label: 'کد / عنوان', render: (row) => <CodeName code={row.code} name={row.name} /> },
+      ...columns.filter(c => c.key !== 'code' && c.key !== 'name'),
+    ]
+    : columns;
 
   // با تغییر والد/گروه، کد و وراثت نوع/ماهیت تازه می‌شود
   useEffect(() => {
@@ -103,43 +123,53 @@ const CodingsPanel = ({
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
   return (
-    <Paper sx={{ ...glass, p: 2.5 }}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center" mb={2}>
-        <Stack direction="row" spacing={1.5} alignItems="center">
-          <Avatar sx={{ width: 40, height: 40, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 6px 16px ${COLOR}55` }}>{icon}</Avatar>
-          <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK}>{title}</Typography>
-        </Stack>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px' }}>
-          افزودن
-        </Button>
+    <Paper sx={{ p: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+      <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} useFlexGap sx={{ mb: 2 }}>
+        <TextField
+          size="small"
+          placeholder="جستجوی کد یا عنوان…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          sx={{ flex: 1 }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+        />
+        <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 150 } }}>
+          <InputLabel>ترتیب</InputLabel>
+          <Select value={sortBy} label="ترتیب" onChange={(e) => setSortBy(e.target.value)}>
+            <MenuItem value="code">کد</MenuItem>
+            <MenuItem value="name">عنوان</MenuItem>
+          </Select>
+        </FormControl>
+        <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>افزودن</Button>
       </Stack>
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
-      {isLoading ? <Box textAlign="center" py={4}><CircularProgress /></Box> : (
-        <TableContainer>
-          <Table size="small">
-            <TableHead><TableRow>{columns.map(c => <TableCell key={c.key}>{c.label}</TableCell>)}<TableCell>عملیات</TableCell></TableRow></TableHead>
-            <TableBody>
-              {list.length === 0
-                ? <TableRow><TableCell colSpan={columns.length + 1} align="center" sx={{ color: 'text.secondary' }}>موردی ثبت نشده است</TableCell></TableRow>
-                : list.map(row => (
-                  <TableRow key={row.id} hover>
-                    {columns.map(c => <TableCell key={c.key}>{c.render ? c.render(row) : row[c.key] ?? '—'}</TableCell>)}
-                    <TableCell>
-                      <IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton>
-                      <IconButton size="small" color="error" onClick={() => {
-                        if (warnDelete && warnDelete(row)) { setMsg({ ok: false, text: warnDelete(row) }); return; }
-                        if (window.confirm('حذف؟')) del.mutate(row.id);
-                      }}><DeleteIcon fontSize="small" /></IconButton>
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
-      )}
+      <DefinitionTable
+        rows={filtered}
+        columns={[
+          ...displayColumns,
+          {
+            key: 'actions', label: 'عملیات', width: 95, align: 'center',
+            render: (row) => (
+              <>
+                <Tooltip title="ویرایش"><IconButton size="small" onClick={() => openEdit(row)}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                <Tooltip title="حذف">
+                  <IconButton size="small" color="error" onClick={() => {
+                    if (warnDelete && warnDelete(row)) { setMsg({ ok: false, text: warnDelete(row) }); return; }
+                    if (window.confirm('حذف؟')) del.mutate(row.id);
+                  }}><DeleteIcon fontSize="small" /></IconButton>
+                </Tooltip>
+              </>
+            ),
+          },
+        ]}
+        loading={isLoading}
+        emptyText="موردی ثبت نشده است."
+        onRowClick={openEdit}
+        activeId={editing?.id}
+        maxHeight="calc(100vh - 340px)"
+      />
 
       <Dialog open={open} onClose={() => setOpen(false)} maxWidth="sm" fullWidth>
         <DialogTitle sx={{ color: COLOR_DARK }}>{editing ? 'ویرایش' : 'افزودن'}</DialogTitle>

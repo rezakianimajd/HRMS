@@ -2,6 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
+import DefinitionTable, { CodeName } from './accounting/DefinitionTable';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, IconButton, Tooltip, Alert, InputAdornment, Autocomplete,
@@ -38,6 +39,7 @@ const fieldSx = {
 const AuxiliaryAccountsPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [categoryFilter, setCategoryFilter] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ code: '', name: '', category: '', project: '', contract: '', employee: '', party: '', treasury_entity: '', person_type: '' });
   const [msg, setMsg] = useState(null);
@@ -121,8 +123,16 @@ const AuxiliaryAccountsPage = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim();
-    return list.filter(a => !q || `${a.code} ${a.name}`.includes(q));
-  }, [list, search]);
+    return list.filter(a => (
+      (!q || `${a.code} ${a.name}`.includes(q))
+      && (!categoryFilter || String(a.category) === String(categoryFilter))
+    ));
+  }, [list, search, categoryFilter]);
+
+  const startEdit = (a) => {
+    setEditing(a);
+    setForm({ code: a.code, name: a.name, category: a.category, project: a.project, contract: a.contract, employee: a.employee, party: a.party, treasury_entity: a.treasury_entity, person_type: a.person_type || '' });
+  };
 
   return (
     <Box>
@@ -142,9 +152,18 @@ const AuxiliaryAccountsPage = () => {
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
-      <Paper sx={{ ...glass, p: 1.5, mb: 2 }}>
-        <TextField placeholder="جستجوی حساب تفصیلی…" size="small" fullWidth value={search} onChange={e => setSearch(e.target.value)} sx={fieldSx}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+      <Paper sx={{ p: 1.5, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} useFlexGap>
+          <TextField placeholder="جستجوی کد یا نام حساب تفصیلی…" size="small" value={search} onChange={e => setSearch(e.target.value)} sx={{ flex: 1, ...fieldSx }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 220 } }}>
+            <InputLabel>دسته‌بندی</InputLabel>
+            <Select value={categoryFilter} label="دسته‌بندی" onChange={e => setCategoryFilter(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {categoryList.map(c => <MenuItem key={c.id} value={c.id}>{c.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Stack>
       </Paper>
 
       <Grid container spacing={2.5}>
@@ -219,38 +238,27 @@ const AuxiliaryAccountsPage = () => {
         </Grid>
 
         <Grid item xs={12} md={8}>
-          <Paper sx={{ ...glass, p: 2.5 }}>
-            {isLoading ? <Box textAlign="center" py={6}><CircularProgress /></Box>
-              : filtered.length === 0 ? <Box textAlign="center" py={6}><AccountTreeIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} /><Typography color="textSecondary">تفصیلی ثبت نشده است.</Typography></Box>
-              : <Stack spacing={1.25}>
-                  {filtered.map(a => {
-                    const active = editing?.id === a.id;
-                    const catName = a.category_name || '';
-                    const refName = a.project_name || a.contract_name || a.employee_name || a.party_name || a.supplier_name || a.treasury_entity_name || '';
-                    return (
-                      <Paper key={a.id} onClick={() => { setEditing(a); setForm({ code: a.code, name: a.name, category: a.category, project: a.project, contract: a.contract, employee: a.employee, party: a.party, treasury_entity: a.treasury_entity, person_type: a.person_type || '' }); }}
-                        sx={{ display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75, borderRadius: '14px', cursor: 'pointer',
-                          background: active ? 'rgba(245,158,11,0.10)' : 'rgba(255,255,255,0.55)', border: active ? `1px solid ${COLOR}66` : '1px solid rgba(255,255,255,0.8)',
-                          transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 10px 26px rgba(245,158,11,0.12)' } }}>
-                        <Box sx={{ width: 44, height: 44, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 6px 14px ${COLOR}40`, flexShrink: 0 }}>
-                          <AccountTreeIcon sx={{ fontSize: 22, color: '#fff' }} />
-                        </Box>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Stack direction="row" alignItems="center" spacing={1}>
-                            <Chip size="small" label={a.code} sx={{ fontWeight: 800, bgcolor: 'rgba(245,158,11,0.1)', color: COLOR_DARK, fontSize: 11 }} />
-                            <Typography variant="body2" fontWeight={700} noWrap>{a.name}</Typography>
-                          </Stack>
-                          <Typography variant="caption" color="textSecondary">{catName}{refName ? ` · ${refName}` : ''}</Typography>
-                        </Box>
-                        <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این تفصیل؟')) del(a.id); }} title="حذف">
-                          <DeleteIcon fontSize="small" />
-                        </IconButton>
-                      </Paper>
-                    );
-                  })}
-                </Stack>
-            }
-          </Paper>
+          <DefinitionTable
+              rows={filtered}
+              loading={isLoading}
+              emptyText="تفصیلی ثبت نشده است."
+              activeId={editing?.id}
+              onRowClick={startEdit}
+              columns={[
+                { key: 'code_name', label: 'کد / عنوان', render: a => <CodeName code={a.code} name={a.name} /> },
+                { key: 'category', label: 'دسته‌بندی', width: 170, render: a => a.category_name || '—' },
+                { key: 'reference', label: 'مرجع', render: a => a.project_name || a.contract_name || a.employee_name || a.party_name || a.supplier_name || a.treasury_entity_name || '—' },
+                {
+                  key: 'actions', label: 'عملیات', width: 95, align: 'center',
+                  render: a => (
+                    <>
+                      <Tooltip title="ویرایش"><IconButton size="small" onClick={(e) => { e.stopPropagation(); startEdit(a); }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="حذف"><IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این تفصیل؟')) del(a.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </>
+                  ),
+                },
+              ]}
+            />
         </Grid>
       </Grid>
     </Box>

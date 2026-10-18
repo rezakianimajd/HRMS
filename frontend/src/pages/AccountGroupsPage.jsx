@@ -2,6 +2,7 @@ import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
+import DefinitionTable, { CodeName } from './accounting/DefinitionTable';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, IconButton, Tooltip, Alert, InputAdornment, Autocomplete,
@@ -67,6 +68,8 @@ const errText = (e, fallback) => {
 const AccountGroupsPage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
+  const [natureFilter, setNatureFilter] = useState('');
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ code: '', name: '', account_type: '', nature: 'none' });
   const [msg, setMsg] = useState(null);
@@ -103,8 +106,12 @@ const AccountGroupsPage = () => {
 
   const filtered = useMemo(() => {
     const q = search.trim();
-    return list.filter(g => !q || `${g.code} ${g.name}`.includes(q));
-  }, [list, search]);
+    return list.filter(g => (
+      (!q || `${g.code} ${g.name}`.includes(q))
+      && (!typeFilter || String(g.account_type) === String(typeFilter))
+      && (!natureFilter || (g.nature || 'none') === natureFilter)
+    ));
+  }, [list, search, typeFilter, natureFilter]);
 
   return (
     <Box>
@@ -117,15 +124,29 @@ const AccountGroupsPage = () => {
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 
-      {/* جستجو */}
-      <Paper sx={{ ...glass, p: 1.5, mb: 2 }}>
-        <TextField
-          placeholder="جستجوی گروه حساب…"
-          size="small" fullWidth
-          value={search} onChange={e => setSearch(e.target.value)}
-          sx={fieldSx}
-          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
-        />
+      <Paper sx={{ p: 1.5, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', boxShadow: 'none' }}>
+        <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5} useFlexGap>
+          <TextField
+            placeholder="جستجوی کد یا عنوان گروه حساب…"
+            size="small" value={search} onChange={e => setSearch(e.target.value)}
+            sx={{ flex: 1, ...fieldSx }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+          />
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 180 } }}>
+            <InputLabel>نوع حساب</InputLabel>
+            <Select value={typeFilter} label="نوع حساب" onChange={e => setTypeFilter(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {typeList.map(t => <MenuItem key={t.id} value={t.id}>{t.name}</MenuItem>)}
+            </Select>
+          </FormControl>
+          <FormControl size="small" sx={{ minWidth: { xs: '100%', md: 160 } }}>
+            <InputLabel>ماهیت</InputLabel>
+            <Select value={natureFilter} label="ماهیت" onChange={e => setNatureFilter(e.target.value)}>
+              <MenuItem value="">همه</MenuItem>
+              {NATURE_OPTS.map(o => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+            </Select>
+          </FormControl>
+        </Stack>
       </Paper>
 
       {/* دو ستون: راست = فرم، چپ = لیست */}
@@ -189,54 +210,27 @@ const AccountGroupsPage = () => {
 
         {/* لیست (چپ) */}
         <Grid item xs={12} md={8}>
-          <Paper sx={{ ...glass, p: 2.5 }}>
-            {isLoading ? (
-              <Box textAlign="center" py={6}><CircularProgress /></Box>
-            ) : filtered.length === 0 ? (
-              <Box textAlign="center" py={6}>
-                <AccountTreeIcon sx={{ fontSize: 56, color: 'text.disabled', mb: 1 }} />
-                <Typography color="textSecondary">گروه حسابی ثبت نشده است.</Typography>
-              </Box>
-            ) : (
-              <Stack spacing={1.25}>
-                {filtered.map(g => {
-                  const type = typeList.find(t => t.id === g.account_type);
-                  const active = editing?.id === g.id;
-                  return (
-                    <Paper
-                      key={g.id}
-                      sx={{
-                        display: 'flex', alignItems: 'center', gap: 1.5, p: 1.75,
-                        borderRadius: '14px', cursor: 'pointer',
-                        background: active ? 'rgba(99,102,241,0.10)' : 'rgba(255,255,255,0.55)',
-                        border: active ? `1px solid ${COLOR}66` : '1px solid rgba(255,255,255,0.8)',
-                        transition: 'all 0.2s ease',
-                        '&:hover': { transform: 'translateY(-1px)', boxShadow: '0 10px 26px rgba(99,102,241,0.12)' },
-                      }}
-                      onClick={() => edit(g)}
-                    >
-                      <Box sx={{ width: 44, height: 44, borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 6px 14px ${COLOR}40`, flexShrink: 0 }}>
-                        <AccountTreeIcon sx={{ fontSize: 22, color: '#fff' }} />
-                      </Box>
-
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Stack direction="row" alignItems="center" spacing={1}>
-                          <Chip size="small" label={g.code} sx={{ fontWeight: 800, bgcolor: 'rgba(99,102,241,0.1)', color: COLOR_DARK, fontSize: 11 }} />
-                          <Typography variant="body2" fontWeight={700} noWrap>{g.name}</Typography>
-                        </Stack>
-                        <Typography variant="caption" color="textSecondary">{type?.name || '—'}</Typography>
-                      </Box>
-
-                      <Chip size="small" label={natureLabel(g.nature)} sx={{ bgcolor: natureBg(g.nature), color: natureColor(g.nature), fontWeight: 700, flexShrink: 0 }} />
-                      <IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این گروه؟')) del.mutate(g.id); }} title="حذف">
-                        <DeleteIcon fontSize="small" />
-                      </IconButton>
-                    </Paper>
-                  );
-                })}
-              </Stack>
-            )}
-          </Paper>
+          <DefinitionTable
+              rows={filtered}
+              loading={isLoading}
+              emptyText="گروه حسابی ثبت نشده است."
+              onRowClick={edit}
+              activeId={editing?.id}
+              columns={[
+                { key: 'code_name', label: 'کد / عنوان', render: g => <CodeName code={g.code} name={g.name} /> },
+                { key: 'type', label: 'نوع حساب', width: 170, render: g => typeList.find(t => t.id === g.account_type)?.name || '—' },
+                { key: 'nature', label: 'ماهیت', width: 110, align: 'center', render: g => natureLabel(g.nature) },
+                {
+                  key: 'actions', label: 'عملیات', width: 95, align: 'center',
+                  render: g => (
+                    <>
+                      <Tooltip title="ویرایش"><IconButton size="small" onClick={(e) => { e.stopPropagation(); edit(g); }}><EditIcon fontSize="small" /></IconButton></Tooltip>
+                      <Tooltip title="حذف"><IconButton size="small" color="error" onClick={(e) => { e.stopPropagation(); if (window.confirm('حذف این گروه؟')) del.mutate(g.id); }}><DeleteIcon fontSize="small" /></IconButton></Tooltip>
+                    </>
+                  ),
+                },
+              ]}
+            />
         </Grid>
       </Grid>
     </Box>
