@@ -10,6 +10,7 @@ import BookOutlinedIcon from '@mui/icons-material/BookOutlined';
 import SearchIcon from '@mui/icons-material/Search';
 import AutoStoriesIcon from '@mui/icons-material/AutoStories';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 
 const COLOR = '#0ea5e9';
@@ -42,16 +43,7 @@ const PettyCashLedgerPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <AutoStoriesIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>دفتر تنخواه</Typography>
-          <Typography variant="body2" color="textSecondary">نمای ماندهٔ جاری هر تنخواه و تراکنش‌ها</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<AutoStoriesIcon />} title="دفتر تنخواه" />
 
       <Paper sx={{ ...glass, p: 2, mb: 2 }}>
         <Stack direction="row" spacing={1.5} flexWrap="wrap" useFlexGap>

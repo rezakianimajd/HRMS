@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
+import PageHeader from '../core/components/ui/PageHeader';
 import {
   Box, Typography, Paper, Avatar, Tabs, Tab, CircularProgress, Button,
   Stack, TextField, Chip, Switch, FormControlLabel, IconButton, Tooltip, Autocomplete,
@@ -195,16 +196,7 @@ const AccountingSettingsPage = () => {
   const [tab, setTab] = useState(0);
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '20px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 28px ${COLOR}55` }}>
-          <TuneIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>تعاریف اولیهٔ حسابداری</Typography>
-          <Typography variant="body2" color="textSecondary">استانداردسازی کدینگ سطوح مختلف حساب</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<TuneIcon />} title="تعاریف اولیهٔ حسابداری" />
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ borderBottom: '1px solid rgba(255,255,255,0.5)', px: 2 }}>

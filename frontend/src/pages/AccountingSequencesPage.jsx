@@ -14,6 +14,7 @@ import AutorenewIcon from '@mui/icons-material/Autorenew';
 import HistoryIcon from '@mui/icons-material/History';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
@@ -70,29 +71,16 @@ const AccountingSequencesPage = () => {
 
   return (
     <Box>
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(99,102,241,0.14), rgba(16,185,129,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(99,102,241,0.2)', borderRadius: '18px',
-      }}>
-        <Avatar sx={{ width: 58, height: 58, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 28px ${COLOR}55` }}>
-          <NumbersIcon sx={{ fontSize: 30, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>شماره‌گذاری اسناد</Typography>
-          <Typography variant="body2" color="textSecondary" sx={{ fontFamily: FONT }}>پیشوند و قالب شمارهٔ اسناد + شماره‌گذاری مجدد بر اساس تاریخ</Typography>
-        </Box>
-        <Stack direction="row" spacing={1.5}>
-          <Box sx={{ textAlign: 'center', px: 2, py: 1, borderRadius: '12px', bgcolor: 'rgba(99,102,241,0.1)' }}>
-            <Typography variant="h6" fontWeight={900} color={COLOR_DARK} sx={{ fontFamily: FONT }}>{formatPersianNumber(stats.total)}</Typography>
-            <Typography variant="caption" color="textSecondary">قانون</Typography>
-          </Box>
-          <Box sx={{ textAlign: 'center', px: 2, py: 1, borderRadius: '12px', bgcolor: 'rgba(16,185,129,0.1)' }}>
-            <Typography variant="h6" fontWeight={900} color="#059669" sx={{ fontFamily: FONT }}>{formatPersianNumber(stats.years)}</Typography>
-            <Typography variant="caption" color="textSecondary">سال مالی</Typography>
-          </Box>
-        </Stack>
-      </Paper>
+      <PageHeader
+        icon={<NumbersIcon />}
+        title="شماره‌گذاری اسناد"
+        actions={(
+          <>
+            <Chip label={`${formatPersianNumber(stats.total)} قانون`} color="primary" variant="outlined" />
+            <Chip label={`${formatPersianNumber(stats.years)} سال مالی`} color="success" variant="outlined" />
+          </>
+        )}
+      />
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)} sx={{ mb: 2, borderRadius: '14px', fontFamily: FONT }}>{msg.text}</Alert>}
 

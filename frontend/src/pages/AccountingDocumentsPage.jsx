@@ -23,6 +23,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import HistoryIcon from '@mui/icons-material/History';
 import ChecklistIcon from '@mui/icons-material/Checklist';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
@@ -132,20 +133,15 @@ const AccountingDocumentsPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <DescriptionIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>اسناد حسابداری</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت، تأیید و ثبت نهایی اسناد با چرخهٔ دوطرفه</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/accounting/documents/new')}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
-          سند جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<DescriptionIcon />}
+        title="اسناد حسابداری"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/accounting/documents/new')}>
+            سند جدید
+          </Button>
+        )}
+      />
 
       {actionMsg && <Alert severity={actionMsg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setActionMsg(null)}>{actionMsg.text}</Alert>}
 

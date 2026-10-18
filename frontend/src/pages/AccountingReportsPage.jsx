@@ -12,6 +12,7 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import InfoCard from '../core/components/ui/InfoCard';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#8b5cf6';
 const COLOR_DARK = '#7c3aed';
@@ -279,16 +280,10 @@ const AccountingReportsPage = () => {
   const tabs = ['دفتر کل', 'دفتر معین', 'تراز آزمایشی', 'سود و زیان', 'ترازنامه', 'جریان نقدی'];
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <AssessmentIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>گزارش‌های مالی</Typography>
-          <Typography variant="body2" color="textSecondary">دفتر کل، دفتر معین، تراز آزمایشی و سود و زیان</Typography>
-        </Box>
-      </Paper>
+      <PageHeader
+        icon={<AssessmentIcon />}
+        title="گزارش‌های مالی"
+      />
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} variant="scrollable" scrollButtons="auto"

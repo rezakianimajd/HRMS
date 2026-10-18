@@ -15,6 +15,7 @@ import BoltIcon from '@mui/icons-material/Bolt';
 import ChecklistIcon from '@mui/icons-material/Checklist';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import PageHeader from '../core/components/ui/PageHeader';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
 
@@ -327,31 +328,27 @@ const AccountingDocumentNewPage = () => {
 
   return (
     <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-      <Paper sx={{ p: 1.5, mb: 1.5, display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', flexShrink: 0,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 44, height: 44, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 20px ${COLOR}55` }}>
-          <DescriptionIcon sx={{ fontSize: 24, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 140 }}>
-          <Typography variant="subtitle1" fontWeight={800} color={COLOR_DARK} sx={{ fontFamily: FONT }}>{isEdit ? 'ویرایش سند' : 'سند جدید'}</Typography>
-        </Box>
-        <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} variant="outlined" color="primary" sx={{ borderRadius: '10px', fontFamily: FONT }}>افزودن ردیف</Button>
-        <Tooltip title={isEdit ? 'چک‌لیست نواقص سند (ثبت مشکل و تیک زدن پس از رفع)' : 'ابتدا سند را ذخیره کنید'}>
-          <Button size="small" startIcon={<ChecklistIcon />} onClick={openIssuesDialog} variant="outlined"
-            sx={{ borderRadius: '10px', fontFamily: FONT,
-              color: openIssuesCount > 0 ? '#b91c1c' : undefined,
-              borderColor: openIssuesCount > 0 ? '#ef4444' : undefined,
-              background: openIssuesCount > 0 ? 'rgba(239,68,68,0.08)' : undefined }}>
-            رفع نقص{openIssuesCount > 0 ? ` (${toPersianDigits(String(openIssuesCount))})` : ''}
-          </Button>
-        </Tooltip>
-        <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} variant="outlined" color="error" sx={{ borderRadius: '10px', fontFamily: FONT }}>حذف ردیف</Button>
-        <Button size="small" startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined" sx={{ borderRadius: '10px', fontFamily: FONT }}>خروج</Button>
-        <Button size="small" startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px', px: 2.5, boxShadow: `0 8px 20px ${COLOR}44`, fontFamily: FONT }}>
-          {saving ? <CircularProgress size={16} /> : (isEdit ? 'به‌روزرسانی' : 'ذخیره سند')}
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<DescriptionIcon />}
+        title={isEdit ? 'ویرایش سند' : 'سند جدید'}
+        sx={{ mb: 1.5, py: 1 }}
+        actions={(
+          <>
+            <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} variant="outlined" color="primary">افزودن ردیف</Button>
+            <Tooltip title={isEdit ? 'چک‌لیست نواقص سند (ثبت مشکل و تیک زدن پس از رفع)' : 'ابتدا سند را ذخیره کنید'}>
+              <Button size="small" startIcon={<ChecklistIcon />} onClick={openIssuesDialog} variant="outlined"
+                color={openIssuesCount > 0 ? 'error' : 'primary'}>
+                رفع نقص{openIssuesCount > 0 ? ` (${toPersianDigits(String(openIssuesCount))})` : ''}
+              </Button>
+            </Tooltip>
+            <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} variant="outlined" color="error">حذف ردیف</Button>
+            <Button size="small" startIcon={<ArrowForwardIcon />} onClick={() => navigate('/accounting/documents')} variant="outlined">خروج</Button>
+            <Button size="small" startIcon={<SaveIcon />} onClick={submit} variant="contained" disabled={saving || !totalBalanceOk}>
+              {saving ? <CircularProgress size={16} /> : (isEdit ? 'به‌روزرسانی' : 'ذخیره سند')}
+            </Button>
+          </>
+        )}
+      />
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)} sx={{ mb: 1, borderRadius: '10px', fontSize: 13, flexShrink: 0 }}>{msg.text}</Alert>}
 

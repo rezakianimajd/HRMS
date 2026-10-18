@@ -13,6 +13,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import PageHeader from '../core/components/ui/PageHeader';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 
 const COLOR = '#10b981';
@@ -99,14 +100,7 @@ const PettyCashExpenseNewPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})` }}>
-          <ReceiptIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}><Typography variant="h6" fontWeight={800} color={COLOR_DARK}>صورت ریز هزینه تنخواه</Typography>
-        <Typography variant="body2" color="textSecondary">کدینگ هزینه‌ها و شارژ تنخواه</Typography></Box>
-      </Paper>
+      <PageHeader icon={<ReceiptIcon />} title="صورت ریز هزینه تنخواه" />
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 

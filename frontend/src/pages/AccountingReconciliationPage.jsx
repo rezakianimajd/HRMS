@@ -10,6 +10,7 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const COLOR = '#14b8a6';
@@ -62,16 +63,7 @@ const AccountingReconciliationPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <CompareArrowsIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>مغایرت‌گیری بانکی</Typography>
-          <Typography variant="body2" color="textSecondary">وارد کردن صورتحساب، تطبیق و گزارش فاصله</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<CompareArrowsIcon />} title="مغایرت‌گیری بانکی" />
 
       {/* فرم صورتحساب */}
       <Paper sx={{ ...glass, p: 2, mb: 2 }}>

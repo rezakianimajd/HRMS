@@ -9,6 +9,7 @@ import LockClockIcon from '@mui/icons-material/LockClock';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#f97316';
 const COLOR_DARK = '#ea580c';
@@ -51,21 +52,16 @@ const AccountingFinalizePage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <LockClockIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>قطعی کردن اسناد</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت نهایی گروهی اسناد تأییدشده</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<CheckCircleIcon />} disabled={selected.length === 0 || finalize.isLoading}
-          onClick={() => finalize.mutate(selected)}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
-          {finalize.isLoading ? <CircularProgress size={20} /> : `قطعی کردن (${selected.length})`}
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<LockClockIcon />}
+        title="قطعی کردن اسناد"
+        actions={(
+          <Button variant="contained" startIcon={<CheckCircleIcon />} disabled={selected.length === 0 || finalize.isLoading}
+            onClick={() => finalize.mutate(selected)}>
+            {finalize.isLoading ? <CircularProgress size={20} /> : `قطعی کردن (${selected.length})`}
+          </Button>
+        )}
+      />
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 

@@ -2,6 +2,7 @@ import React from 'react';
 import { Box, Paper, Typography, Avatar, CircularProgress } from '@mui/material';
 import { formatPersianNumber } from '../../../core/utils/numberUtils';
 import InfoCard from '../../../core/components/ui/InfoCard';
+import PageHeader from '../../../core/components/ui/PageHeader';
 
 export const COLOR = '#0ea5e9';
 export const COLOR_DARK = '#0369a1';
@@ -17,18 +18,8 @@ export const glass = {
   borderRadius: '16px',
 };
 
-export const ReportHeader = ({ icon, title, subtitle, color = COLOR, dark = COLOR_DARK }) => (
-  <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-    background: `linear-gradient(120deg, ${color}1a, rgba(255,255,255,0.3))`,
-    border: `1px solid ${color}30`, borderRadius: '16px' }}>
-    <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${color},${dark})`, boxShadow: `0 8px 24px ${color}55` }}>
-      {icon}
-    </Avatar>
-    <Box sx={{ flex: 1 }}>
-      <Typography variant="h6" fontWeight={800} sx={{ color: dark }}>{title}</Typography>
-      <Typography variant="body2" color="textSecondary">{subtitle}</Typography>
-    </Box>
-  </Paper>
+export const ReportHeader = ({ icon, title, actions }) => (
+  <PageHeader icon={icon} title={title} actions={actions} />
 );
 
 export const Loading = () => (

@@ -22,6 +22,7 @@ import UndoIcon from '@mui/icons-material/Undo';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
 
@@ -97,23 +98,21 @@ const PettyCashExpensesPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <ReceiptLongIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>صورت هزینه‌های تنخواه</Typography>
-          <Typography variant="body2" color="textSecondary">چرخهٔ ارسال به حسابداری، تأیید و ثبت نهایی</Typography>
-        </Box>
-        <Button variant="outlined" startIcon={<DownloadIcon />}
-          onClick={() => downloadFile('/petty-cash-expense-statements/export/', { fallbackName: 'petty_cash_expenses.csv' }).catch(() => {})}
-          sx={{ borderRadius: '12px' }}>خروجی CSV</Button>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/petty-cash/expenses/new')}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
-          صورت هزینه جدید
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<ReceiptLongIcon />}
+        title="صورت هزینه‌های تنخواه"
+        actions={(
+          <>
+            <Button variant="outlined" startIcon={<DownloadIcon />}
+              onClick={() => downloadFile('/petty-cash-expense-statements/export/', { fallbackName: 'petty_cash_expenses.csv' }).catch(() => {})}>
+              خروجی CSV
+            </Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/petty-cash/expenses/new')}>
+              صورت هزینه جدید
+            </Button>
+          </>
+        )}
+      />
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 

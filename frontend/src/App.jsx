@@ -140,6 +140,43 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
       '.hrms-page .MuiBox-root, .hrms-page .MuiAvatar-root': {
         boxShadow: 'none !important',
       },
+      '.accounting-page .MuiButton-contained:not(.MuiButton-containedError):not(.MuiButton-containedWarning):not(.MuiButton-containedSuccess):not(.MuiButton-containedInfo)': {
+        backgroundColor: 'var(--module-accent, #2563eb) !important',
+        backgroundImage: 'none !important',
+        color: '#ffffff !important',
+        borderRadius: '9px',
+        boxShadow: 'none !important',
+        fontSize: `${type.buttonSize}px !important`,
+        fontWeight: `${type.buttonWeight} !important`,
+      },
+      '.accounting-page .MuiButton-contained:not(.MuiButton-containedError):not(.MuiButton-containedWarning):not(.MuiButton-containedSuccess):not(.MuiButton-containedInfo):hover': {
+        backgroundColor: 'var(--module-accent, #2563eb) !important',
+        filter: 'brightness(0.94)',
+        boxShadow: 'none !important',
+      },
+      '.accounting-page .MuiButton-outlined:not(.MuiButton-outlinedError):not(.MuiButton-outlinedWarning):not(.MuiButton-outlinedSuccess):not(.MuiButton-outlinedInfo)': {
+        borderColor: 'var(--module-accent, #2563eb) !important',
+        color: 'var(--module-accent, #2563eb) !important',
+        borderRadius: '9px',
+        boxShadow: 'none !important',
+        fontSize: `${type.buttonSize}px !important`,
+        fontWeight: `${type.buttonWeight} !important`,
+      },
+      '.accounting-page .MuiButton-text:not(.MuiButton-textError):not(.MuiButton-textWarning):not(.MuiButton-textSuccess):not(.MuiButton-textInfo)': {
+        color: 'var(--module-accent, #2563eb) !important',
+        fontSize: `${type.buttonSize}px !important`,
+        fontWeight: `${type.buttonWeight} !important`,
+      },
+      '.accounting-page .MuiPaper-root .MuiTypography-h6, .accounting-page .MuiPaper-root .MuiTypography-subtitle1, .accounting-page .MuiPaper-root .MuiTypography-subtitle2': {
+        color: 'inherit !important',
+        fontWeight: '500 !important',
+      },
+      '.accounting-page .MuiPaper-root .MuiAvatar-root': {
+        backgroundImage: 'none !important',
+        backgroundColor: 'rgba(37,99,235,0.09) !important',
+        color: 'var(--module-accent, #2563eb) !important',
+        boxShadow: 'none !important',
+      },
       ...(whiteCards
         ? {
           '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root), .hrms-page .MuiCard-root': {

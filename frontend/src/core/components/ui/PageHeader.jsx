@@ -55,6 +55,12 @@ import InputOutlinedIcon from '@mui/icons-material/InputOutlined';
 import SystemUpdateAltOutlinedIcon from '@mui/icons-material/SystemUpdateAltOutlined';
 import SmartToyOutlinedIcon from '@mui/icons-material/SmartToyOutlined';
 import ChatOutlinedIcon from '@mui/icons-material/ChatOutlined';
+import TuneOutlinedIcon from '@mui/icons-material/TuneOutlined';
+import LockClockOutlinedIcon from '@mui/icons-material/LockClockOutlined';
+import GavelOutlinedIcon from '@mui/icons-material/GavelOutlined';
+import AutoStoriesOutlinedIcon from '@mui/icons-material/AutoStoriesOutlined';
+import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
+import AutoFixHighOutlinedIcon from '@mui/icons-material/AutoFixHighOutlined';
 import { useApplication } from '../../context/ApplicationContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../../theme/appearanceDefaults';
@@ -121,6 +127,12 @@ const OUTLINE_BY_NAME = {
   SystemUpdateAltIcon: SystemUpdateAltOutlinedIcon,
   SmartToyIcon: SmartToyOutlinedIcon,
   ChatIcon: ChatOutlinedIcon,
+  TuneIcon: TuneOutlinedIcon,
+  LockClockIcon: LockClockOutlinedIcon,
+  GavelIcon: GavelOutlinedIcon,
+  AutoStoriesIcon: AutoStoriesOutlinedIcon,
+  SearchIcon: SearchOutlinedIcon,
+  AutoFixHighIcon: AutoFixHighOutlinedIcon,
 };
 
 const iconName = (icon) => icon?.type?.displayName || icon?.type?.name || '';

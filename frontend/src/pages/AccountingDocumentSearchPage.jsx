@@ -11,6 +11,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import ClearIcon from '@mui/icons-material/Clear';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
@@ -124,22 +125,17 @@ const AccountingDocumentSearchPage = () => {
   return (
     <Box sx={{ pb: 10 }}>
       {/* هدر + دکمه‌ها */}
-      <Paper sx={{ p: 2.5, mb: 2, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <SearchIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>جستجو در اسناد</Typography>
-          <Typography variant="body2" color="textSecondary">جستجوی پیشرفتهٔ بازه‌ای روی همهٔ فیلدهای سند</Typography>
-        </Box>
-        <Chip label={`${toPersianDigits(list.length)} سند`} color="primary" variant="outlined" />
-        <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={clear}>پاک کردن</Button>
-        <Button size="small" variant="contained" startIcon={<SearchIcon />} onClick={doSearch}
-          sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '10px', px: 3 }}>
-          جستجو
-        </Button>
-      </Paper>
+      <PageHeader
+        icon={<SearchIcon />}
+        title="جستجو در اسناد"
+        actions={(
+          <>
+            <Chip label={`${toPersianDigits(list.length)} سند`} color="primary" variant="outlined" />
+            <Button size="small" variant="outlined" startIcon={<ClearIcon />} onClick={clear}>پاک کردن</Button>
+            <Button size="small" variant="contained" startIcon={<SearchIcon />} onClick={doSearch}>جستجو</Button>
+          </>
+        )}
+      />
 
       {/* باکس فیلتر */}
       <Paper elevation={3} sx={{

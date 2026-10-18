@@ -18,6 +18,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import axiosInstance from '../core/api/axiosConfig';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 import InfoCard from '../core/components/ui/InfoCard';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const LEVELS = [
   { key: 'group', label: 'گروه حساب', color: '#6366f1', icon: <CategoryIcon fontSize="small" /> },
@@ -964,21 +965,7 @@ const DataMappingPage = () => {
 
   return (
     <Box>
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(99,102,241,0.10), rgba(16,185,129,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(99,102,241,0.16)', borderRadius: '12px',
-      }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #6366f1, #10b981)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}>
-          <AutoFixHighIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#3730a3">نگاشت و ایمپورت داده</Typography>
-          <Typography variant="body2" color="textSecondary">
-            انتقال کدینگ و اسناد از برنامه حسابداری دیگر به‌صورت اکسل، با تطبیق خودکار عناوین
-          </Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<AutoFixHighIcon />} title="نگاشت و ایمپورت داده" />
 
       <Paper sx={{ p: 1, mb: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)}>

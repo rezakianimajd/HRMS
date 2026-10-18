@@ -12,6 +12,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import AddIcon from '@mui/icons-material/Add';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
 const COLOR = '#0ea5e9';
@@ -181,16 +182,7 @@ const AccountingFiscalPage = () => {
   const [tab, setTab] = useState(0);
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <CalendarMonthIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>دوره مالی</Typography>
-          <Typography variant="body2" color="textSecondary">مدیریت سال‌های مالی، دوره‌ها و بستن دوره</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<CalendarMonthIcon />} title="دوره مالی" />
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ borderBottom: '1px solid rgba(225,225,225,0.5)', px: 2 }}>

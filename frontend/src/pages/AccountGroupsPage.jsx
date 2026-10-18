@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
+import PageHeader from '../core/components/ui/PageHeader';
 import {
   Box, Typography, Paper, Avatar, Button, CircularProgress, Stack, Chip,
   TextField, IconButton, Tooltip, Alert, InputAdornment, Autocomplete,
@@ -108,17 +109,11 @@ const AccountGroupsPage = () => {
   return (
     <Box>
       {/* هدر */}
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '20px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 10px 28px ${COLOR}55` }}>
-          <AccountTreeIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>گروه حساب‌ها</Typography>
-          <Typography variant="body2" color="textSecondary">مدیریت گروه‌های حساب با نوع حساب و ماهیت</Typography>
-        </Box>
-        <Chip label={`${list.length} گروه`} sx={{ fontWeight: 700, bgcolor: 'rgba(99,102,241,0.1)', color: COLOR_DARK }} />
-      </Paper>
+      <PageHeader
+        icon={<AccountTreeIcon />}
+        title="گروه حساب‌ها"
+        actions={<Chip label={`${list.length} گروه`} color="primary" variant="outlined" />}
+      />
 
       {msg && <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>{msg.text}</Alert>}
 

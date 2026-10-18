@@ -8,6 +8,7 @@ import PeopleIcon from '@mui/icons-material/People';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import SearchIcon from '@mui/icons-material/Search';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#0ea5e9';
 const COLOR_DARK = '#0284c7';
@@ -26,17 +27,11 @@ const PettyCashCustodiansPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.35))`, border: `1px solid ${COLOR}28`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <PeopleIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>تنخواه‌داران</Typography>
-          <Typography variant="body2" color="textSecondary">پرسنلی که تنخواه دارند و ماندهٔ هر تنخواه</Typography>
-        </Box>
-        <Chip label={`${list.length} تنخواه‌دار`} sx={{ fontWeight: 700, bgcolor: 'rgba(14,165,233,0.1)', color: COLOR_DARK }} />
-      </Paper>
+      <PageHeader
+        icon={<PeopleIcon />}
+        title="تنخواه‌داران"
+        actions={<Chip label={`${list.length} تنخواه‌دار`} color="primary" variant="outlined" />}
+      />
 
       <Paper sx={{ ...glass, p: 1.5, mb: 2 }}>
         <TextField placeholder="جستجوی تنخواه‌دار…" size="small" fullWidth value={search} onChange={e => setSearch(e.target.value)}

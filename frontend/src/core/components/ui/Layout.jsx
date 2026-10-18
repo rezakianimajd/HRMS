@@ -193,6 +193,7 @@ const Layout = ({ children }) => {
   const { openTab } = useWorkspaceTabs();
   const { mode, setMode } = useThemeMode();
   const { getPalette } = useModulePalette();
+  const isAccounting = location.pathname.startsWith('/accounting') || location.pathname.startsWith('/petty-cash');
   const moduleAccent = getPalette(currentApp?.slug)?.accent || null;
   const menu = getMenuForApp(currentApp?.slug);
 
@@ -720,7 +721,10 @@ const Layout = ({ children }) => {
           <NotificationBell compact iconColor={ICON_COLOR} />
         </Box>
 
-        <Box className="hrms-page" sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 } }}>
+        <Box className={`hrms-page${isAccounting ? ' accounting-page' : ''}`} sx={{
+          flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 },
+          '--module-accent': moduleAccent || '#2563eb',
+        }}>
           {children}
         </Box>
         <WorkspaceTabs />

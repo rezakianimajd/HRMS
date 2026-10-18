@@ -19,6 +19,7 @@ import PostAddIcon from '@mui/icons-material/PostAdd';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#10b981';
 const COLOR_DARK = '#059669';
@@ -369,16 +370,7 @@ const AccountingIntegrationPage = () => {
   const [tab, setTab] = useState(0);
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <HubIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>ارتباط با ماژول‌ها</Typography>
-          <Typography variant="body2" color="textSecondary">قالب‌های ثبت و کارتابل تراکنش‌های منبع</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<HubIcon />} title="ارتباط با ماژول‌ها" />
 
       <Paper sx={{ ...glass, overflow: 'hidden', mb: 2 }}>
         <Tabs value={tab} onChange={(e, v) => setTab(v)} sx={{ borderBottom: '1px solid rgba(225,225,225,0.5)' }}>

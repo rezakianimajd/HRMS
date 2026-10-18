@@ -20,6 +20,7 @@ import ClearIcon from '@mui/icons-material/Clear';
 import BoltIcon from '@mui/icons-material/Bolt';
 import SaveIcon from '@mui/icons-material/Save';
 import { toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const COLOR = '#0f766e';
 const COLOR_DARK = '#0d5c56';
@@ -671,35 +672,22 @@ const AccountingAccountTreePage = () => {
 
   return (
     <Box>
-      {/* هدر */}
-      <Paper sx={{
-        p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1f, rgba(255,255,255,0.35))`,
-        border: `1px solid ${COLOR}2e`, borderRadius: '20px',
-      }}>
-        <Avatar sx={{
-          width: 56, height: 56,
-          background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})`,
-          boxShadow: `0 10px 28px ${COLOR}55`,
-        }}>
-          <AccountTreeIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>درخت حساب‌ها</Typography>
-        </Box>
-        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap>
-          <Tooltip title="باز کردن همهٔ شاخه‌ها">
-            <Button size="small" variant="outlined" startIcon={<UnfoldMoreIcon />} onClick={expandAll}>باز کردن همه</Button>
-          </Tooltip>
-          <Tooltip title="بستن همهٔ شاخه‌ها">
-            <Button size="small" variant="outlined" startIcon={<UnfoldLessIcon />} onClick={collapseAll}>بستن همه</Button>
-          </Tooltip>
-          <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => openGroup()}
-            sx={{ borderRadius: '12px', background: `linear-gradient(135deg, #6366f1, #4f46e5)` }}>گروه جدید</Button>
-          <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => openAccount()}
-            sx={{ borderRadius: '12px', background: `linear-gradient(135deg, ${COLOR}, ${COLOR_DARK})` }}>حساب کل جدید</Button>
-        </Stack>
-      </Paper>
+      <PageHeader
+        icon={<AccountTreeIcon />}
+        title="درخت حساب‌ها"
+        actions={(
+          <>
+            <Tooltip title="باز کردن همهٔ شاخه‌ها">
+              <Button size="small" variant="outlined" startIcon={<UnfoldMoreIcon />} onClick={expandAll}>باز کردن همه</Button>
+            </Tooltip>
+            <Tooltip title="بستن همهٔ شاخه‌ها">
+              <Button size="small" variant="outlined" startIcon={<UnfoldLessIcon />} onClick={collapseAll}>بستن همه</Button>
+            </Tooltip>
+            <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => openGroup()}>گروه جدید</Button>
+            <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={() => openAccount()}>حساب کل جدید</Button>
+          </>
+        )}
+      />
 
       {msg && (
         <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '14px' }} onClose={() => setMsg(null)}>

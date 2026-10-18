@@ -10,6 +10,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 import InfoCard from '../core/components/ui/InfoCard';
 import { toJalali } from '../core/utils/dateUtils';
 
@@ -63,16 +64,7 @@ const AccountingControlPage = () => {
 
   return (
     <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: `linear-gradient(120deg, ${COLOR}1a, rgba(255,255,255,0.3))`, border: `1px solid ${COLOR}30`, borderRadius: '16px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}55` }}>
-          <FactCheckIcon sx={{ fontSize: 28, color: '#fff' }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color={COLOR_DARK}>کنترل اسناد</Typography>
-          <Typography variant="body2" color="textSecondary">پایش نامتوازنی، در انتظار، آمادهٔ ثبت و قطعی</Typography>
-        </Box>
-      </Paper>
+      <PageHeader icon={<FactCheckIcon />} title="کنترل اسناد" />
 
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={6} sm={3}><StatCard icon={<WarningIcon />} label="نامتوازن" value={d.counts?.unbalanced || 0} color="#ef4444" /></Grid>
