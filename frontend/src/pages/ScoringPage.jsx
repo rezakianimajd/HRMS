@@ -11,6 +11,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupsIcon from '@mui/icons-material/Groups';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const CRITERIA_LABELS = {
   performance: 'عملکرد',
@@ -70,35 +71,18 @@ const ScoringPage = () => {
 
   return (
     <Box>
-      {/* Glass header */}
-      <Paper sx={{
-        mb: 2.5, p: 2.5,
-        display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(135deg, rgba(59,130,246,0.14), rgba(139,92,246,0.07), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(59,130,246,0.2)',
-        backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)',
-        borderRadius: '10px',
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-          <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 6px 20px rgba(59,130,246,0.4)' }}>
-            <AssessmentIcon sx={{ fontSize: 28, color: '#fff' }} />
-          </Avatar>
-          <Box>
-            <Typography variant="h5" fontWeight={800}>ارزیابی و امتیازدهی کارکنان</Typography>
-            <Typography variant="body2" color="textSecondary">
-              همهٔ معیارها از ۱۰۰ محاسبه شده و امتیاز نهایی وزن‌دار از ۱۰۰ است.
-            </Typography>
-          </Box>
-        </Box>
-
-        {/* Stats */}
-        <Stack direction="row" spacing={1} flexWrap="wrap">
-          <Chip icon={<GroupsIcon />} label={`${formatPersianNumber(stats.count)} نفر`} variant="outlined" sx={{ bgcolor: 'rgba(255,255,255,0.5)' }} />
-          <Chip icon={<TrendingUpIcon />} label={`میانگین ${formatPersianNumber(stats.avg)}`} color="primary" />
-          <Chip label={`بالاترین ${formatPersianNumber(stats.max)}`} color="success" variant="outlined" />
-          <Chip label={`پایین‌ترین ${formatPersianNumber(stats.min)}`} color="warning" variant="outlined" />
-        </Stack>
-      </Paper>
+            <PageHeader
+        icon={<AssessmentIcon />}
+        title="ارزیابی و امتیازدهی کارکنان"
+        actions={(
+          <>
+            <Chip icon={<GroupsIcon />} label={`${formatPersianNumber(stats.count)} نفر`} variant="outlined" />
+            <Chip icon={<TrendingUpIcon />} label={`میانگین ${formatPersianNumber(stats.avg)}`} color="primary" />
+            <Chip label={`بالاترین ${formatPersianNumber(stats.max)}`} color="success" variant="outlined" />
+            <Chip label={`پایین‌ترین ${formatPersianNumber(stats.min)}`} color="warning" variant="outlined" />
+          </>
+        )}
+      />
 
       <Grid container spacing={2.5}>
         {/* Ranked list */}
