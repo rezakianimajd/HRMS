@@ -137,6 +137,9 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
           boxShadow: 'none !important',
         },
       },
+      '.hrms-page .MuiBox-root, .hrms-page .MuiAvatar-root': {
+        boxShadow: 'none !important',
+      },
       ...(whiteCards
         ? {
           '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root), .hrms-page .MuiCard-root': {
