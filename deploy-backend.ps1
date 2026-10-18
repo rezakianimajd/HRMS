@@ -103,7 +103,7 @@ echo "BACKEND_DEPLOY_OK"
 
 try {
     New-Item -ItemType Directory -Path $payload -Force | Out-Null
-    $files = @(git -C $RepoRoot -c core.quotepath=false ls-files -- hrms_project scripts)
+    $files = @(git -C $RepoRoot -c core.quotepath=false ls-files --cached --others --exclude-standard -- hrms_project scripts | Sort-Object -Unique)
     if (Test-Path -LiteralPath (Join-Path $RepoRoot 'VERSION')) { $files += 'VERSION' }
     if ($files.Count -eq 0) { throw 'فهرست فایل‌های بک‌اند خالی است (git ls-files).' }
 
