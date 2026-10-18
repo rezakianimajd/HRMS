@@ -97,7 +97,7 @@ export const DetailTile = ({ label, value, ltr }) => (
     <Typography sx={{ fontSize: 10.5, color: MUTED, mb: 0.3 }}>{label}</Typography>
     <Typography sx={{
       fontSize: 12.2, fontWeight: 700, color: INK, wordBreak: 'break-word',
-      direction: ltr ? 'ltr' : 'inherit', textAlign: ltr ? 'left' : 'right',
+      direction: 'rtl', textAlign: 'right',
     }}>
       {value || '—'}
     </Typography>
@@ -170,7 +170,7 @@ export const EffectMetric = ({ label, value, base, rawValue = 0, rawBase = 0, co
         ) : null}
       </Stack>
 
-      <Typography sx={{ mt: 1, fontSize: 15, fontWeight: 900, color: INK, direction: isDate ? 'rtl' : 'ltr', textAlign: 'right' }}>
+      <Typography sx={{ mt: 1, fontSize: 15, fontWeight: 900, color: INK, direction: 'rtl', textAlign: 'right' }}>
         {value}
       </Typography>
       <Typography sx={{ mt: 0.3, fontSize: 9.5, color: MUTED }}>پایه: {base}</Typography>

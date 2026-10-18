@@ -17,7 +17,7 @@ import LockIcon from '@mui/icons-material/Lock';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import DeleteIcon from '@mui/icons-material/Delete';
 import BadgeIcon from '@mui/icons-material/Badge';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import PageHeader from '../core/components/ui/PageHeader';
@@ -213,7 +213,7 @@ const ContractNewPage = () => {
   };
 
   const selCurrency = currencyList.find(c => String(c.id) === String(form.currency));
-  const currencyLabel = selCurrency ? selCurrency.name : 'ریال';
+  const currencyLabel = normalizeCurrencyLabel(selCurrency?.name || 'ریال');
 
   return (
     <Box>
@@ -330,7 +330,7 @@ const ContractNewPage = () => {
             <Autocomplete
               size="small" fullWidth
               options={currencyList}
-              getOptionLabel={(c) => `${c.name} (${c.code})`}
+              getOptionLabel={(c) => `${normalizeCurrencyLabel(c.name || c.symbol)} (${c.code})`}
               value={currencyList.find(c => c.id === form.currency) || null}
               onChange={(e, v) => setForm(p => ({ ...p, currency: v ? v.id : '' }))}
               isOptionEqualToValue={(opt, val) => opt.id === val.id}

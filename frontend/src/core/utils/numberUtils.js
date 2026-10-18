@@ -37,6 +37,30 @@ export function formatPersianNumber(number) {
 }
 
 /**
+ * نام ارز را برای نمایش یکدست می‌کند.
+ * «ریال ایران»، نماد ﷼ و کد IRR همیشه به «ریال» تبدیل می‌شوند.
+ */
+export function normalizeCurrencyLabel(currency) {
+  const raw = typeof currency === 'string'
+    ? currency
+    : currency?.name || currency?.currency_name || currency?.symbol || currency?.currency_symbol || '';
+  const label = String(raw || '').trim().replace(/\s+/g, ' ');
+  if (!label) return 'ریال';
+  if (label === 'ریال ایران' || label === 'ریالایران' || label === '﷼' || label.toUpperCase() === 'IRR') {
+    return 'ریال';
+  }
+  return label;
+}
+
+/**
+ * مبلغ و واحد پول را همیشه به شکل «۱۲۳ ریال» برمی‌گرداند؛
+ * در متن راست‌به‌چپ، واحد پول سمت چپ عدد و با یک فاصله نمایش داده می‌شود.
+ */
+export function formatPersianMoney(number, currency = 'ریال') {
+  return `${formatPersianNumber(number)} ${normalizeCurrencyLabel(currency)}`;
+}
+
+/**
  * Format a percentage with Persian digits.
  */
 export function formatPersianPercent(number) {

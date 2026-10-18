@@ -20,7 +20,7 @@ import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import TuneIcon from '@mui/icons-material/Tune';
 import ChangeCircleIcon from '@mui/icons-material/ChangeCircle';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
@@ -456,9 +456,9 @@ const ContractAddendumsPage = () => {
   }));
 
   const selCurrency = currencyList.find((c) => String(c.id) === String(form.currency));
-  const currencyLabel = selCurrency
-    ? selCurrency.name
-    : (contractList.find((c) => String(c.id) === String(contractId))?.currency_name || 'ریال');
+  const currencyLabel = normalizeCurrencyLabel(
+    selCurrency?.name || contractList.find((c) => String(c.id) === String(contractId))?.currency_name
+  );
   const effective = contractEffects?.effective || {};
   const baseContract = contractEffects?.base || {};
 
@@ -629,7 +629,7 @@ const ContractAddendumsPage = () => {
                   <Select value={form.currency || ''} label="واحد ارز"
                     onChange={(e) => setForm((p) => ({ ...p, currency: e.target.value }))}>
                     <MenuItem value="">—</MenuItem>
-                    {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
+                    {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{normalizeCurrencyLabel(c.name || c.symbol)} ({c.code})</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>

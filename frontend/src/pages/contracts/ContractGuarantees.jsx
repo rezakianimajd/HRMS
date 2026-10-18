@@ -79,7 +79,7 @@ const RequirementCard = ({ req, currencyLabel }) => {
         </Stack>
 
         <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} useFlexGap sx={{ mt: 1 }}>
-          <Typography sx={{ fontSize: 14, fontWeight: 900, color: INK, direction: 'ltr' }}>
+          <Typography sx={{ fontSize: 14, fontWeight: 900, color: INK, direction: 'rtl' }}>
             {formatPersianNumber(req.required)} <Box component="span" sx={{ fontSize: 9.5, color: MUTED, fontWeight: 500 }}>{currencyLabel}</Box>
           </Typography>
           <Typography sx={{ fontSize: 9.5, color: MUTED }}>

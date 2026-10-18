@@ -9,7 +9,7 @@ from settings_app.serializers import (
 
 # ~24 major traded currencies (code, name(FA), symbol, country_code, exchange_rate to IRR).
 DEFAULT_CURRENCIES = [
-    ('IRR', 'ریال ایران', '﷼', 'IR', 1),
+    ('IRR', 'ریال', 'ریال', 'IR', 1),
     ('USD', 'دلار آمریکا', '$', 'US', 420000),
     ('EUR', 'یورو', '€', 'EU', 450000),
     ('GBP', 'پوند بریتانیا', '£', 'GB', 530000),

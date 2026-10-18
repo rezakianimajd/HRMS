@@ -19,7 +19,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import html2canvas from 'html2canvas';
-import { formatPersianNumber } from '../../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../../core/components/ui/ContractPicker';
@@ -185,6 +185,7 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
   const netAmount = workDone + additionsTotal - deductionsTotal;
 
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
+  const currencyLabel = normalizeCurrencyLabel(cur?.name || cur?.symbol);
   const fx = (v) => (rate > 1 ? v / rate : null);
 
   return (
@@ -215,7 +216,7 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
       <Grid container spacing={1.5}>
         <Grid item xs={4}><Field label="شماره صورت‌وضعیت" value={form.number || '—'} /></Grid>
         <Grid item xs={4}><Field label="تاریخ" value={form.date ? toJalali(form.date) : '—'} /></Grid>
-        <Grid item xs={4}><Field label="واحد ارز" value={cur?.name || '—'} /></Grid>
+        <Grid item xs={4}><Field label="واحد ارز" value={currencyLabel || '—'} /></Grid>
       </Grid>
 
       <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1 }} />
@@ -228,16 +229,16 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
         <Grid item xs={6}><Field label="تاریخ شروع" value={contract?.start_date ? toJalali(contract.start_date) : '—'} /></Grid>
         <Grid item xs={6}><Field label="تاریخ پایان" value={endDateWithAddendum ? toJalali(endDateWithAddendum) : '—'} /></Grid>
         <Grid item xs={6}><Field label="آخرین الحاقیه" value={lastAddendum?.date ? toJalali(lastAddendum.date) : '—'} /></Grid>
-        <Grid item xs={6}><Field label="مبلغ قرارداد" value={`${formatPersianNumber(contractAmount)} ${cur?.symbol || 'ریال'}`} strong color={COLOR_DARK} /></Grid>
+        <Grid item xs={6}><Field label="مبلغ قرارداد" value={`${formatPersianNumber(contractAmount)} ${currencyLabel || 'ریال'}`} strong color={COLOR_DARK} /></Grid>
       </Grid>
 
       <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1 }} />
 
       {/* Section 3: financial breakdown */}
       <Box sx={{ borderRadius: '12px', p: 2, background: `linear-gradient(135deg, ${COLOR}0e, ${COLOR}05)`, border: `1px solid ${COLOR}22` }}>
-        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={fx(cumulativeThis)} foreignSymbol={cur?.symbol} />
-        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={fx(cumulativePrev)} foreignSymbol={cur?.symbol} />
-        <Row label="کارکرد دوره" value={workDone} highlight foreign={fx(workDone)} foreignSymbol={cur?.symbol} />
+        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={fx(cumulativeThis)} foreignSymbol={currencyLabel} />
+        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={fx(cumulativePrev)} foreignSymbol={currencyLabel} />
+        <Row label="کارکرد دوره" value={workDone} highlight foreign={fx(workDone)} foreignSymbol={currencyLabel} />
       </Box>
 
       {/* Additions */}
@@ -246,10 +247,10 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
         {additions.length === 0 ? (
           <Typography variant="caption" color="textSecondary">افزودنی ثبت نشده</Typography>
         ) : (
-          additions.map((a, i) => <Row key={i} label={a.description || 'اضافه'} value={num(a.amount)} foreign={fx(num(a.amount))} foreignSymbol={cur?.symbol} />)
+          additions.map((a, i) => <Row key={i} label={a.description || 'اضافه'} value={num(a.amount)} foreign={fx(num(a.amount))} foreignSymbol={currencyLabel} />)
         )}
         <Box sx={{ borderTop: '1px solid #34d39933', mt: 0.5, pt: 0.5 }}>
-          <Row label="جمع اضافات" value={additionsTotal} green strong foreign={fx(additionsTotal)} foreignSymbol={cur?.symbol} />
+          <Row label="جمع اضافات" value={additionsTotal} green strong foreign={fx(additionsTotal)} foreignSymbol={currencyLabel} />
         </Box>
       </Box>
 
@@ -259,10 +260,10 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
         {deductions.length === 0 ? (
           <Typography variant="caption" color="textSecondary">کسوری ثبت نشده</Typography>
         ) : (
-          deductions.map((d, i) => <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} foreign={fx(num(d.amount))} foreignSymbol={cur?.symbol} />)
+          deductions.map((d, i) => <Row key={i} label={d.title || 'کسور'} value={num(d.amount)} foreign={fx(num(d.amount))} foreignSymbol={currencyLabel} />)
         )}
         <Box sx={{ borderTop: '1px solid #fca5a533', mt: 0.5, pt: 0.5 }}>
-          <Row label="جمع کسورات" value={deductionsTotal} red strong foreign={fx(deductionsTotal)} foreignSymbol={cur?.symbol} />
+          <Row label="جمع کسورات" value={deductionsTotal} red strong foreign={fx(deductionsTotal)} foreignSymbol={currencyLabel} />
         </Box>
       </Box>
 
@@ -280,7 +281,7 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           </Grid>
           <Grid item xs={6}>
             <Box sx={{ borderRadius: '10px', p: 1, background: '#4338ca0f', border: '1px solid #4338ca33', textAlign: 'center' }}>
-              <Typography variant="caption" color="textSecondary">{cur?.symbol || 'ارز'}</Typography>
+              <Typography variant="caption" color="textSecondary">{currencyLabel || 'ارز'}</Typography>
               <Typography variant="body1" fontWeight={900} sx={{ color: '#4338ca', direction: 'rtl', fontSize: 15 }}>{fx(netAmount) != null ? formatPersianNumber(fx(netAmount)) : '—'}</Typography>
             </Box>
           </Grid>
@@ -398,6 +399,7 @@ const StatementEditorPage = () => {
 
   // نرخ ارز انتخاب‌شده (قابل ویرایش توسط کاربر؛ پیش‌فرض از ارز قرارداد)
   const selCurrency = currencyList.find((c) => String(c.id) === String(form.currency)) || null;
+  const currencyLabel = normalizeCurrencyLabel(selCurrency?.name || selCurrency?.symbol);
   const baseRate = num(selCurrency?.exchange_rate || 1);
   const rate = rateOverride !== '' && rateOverride != null ? num(rateOverride) : baseRate;
 
@@ -587,7 +589,7 @@ const StatementEditorPage = () => {
                   <Typography variant="caption" sx={labelSx}>واحد ارز</Typography>
                   <FormControl size="small" fullWidth>
                     <Select value={form.currency || ''} onChange={(e) => { setField('currency', e.target.value); setRateOverride(''); }} sx={{ borderRadius: '12px', background: 'rgba(255,255,255,0.55)' }}>
-                      {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code}) — {c.symbol}</MenuItem>)}
+                      {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{normalizeCurrencyLabel(c.name || c.symbol)} ({c.code})</MenuItem>)}
                     </Select>
                   </FormControl>
                 </Grid>
@@ -638,7 +640,7 @@ const StatementEditorPage = () => {
                       </Grid>
                       <Grid item xs={6}>
                         <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
-                          <Typography variant="caption" color="textSecondary">مبلغ ارزی ({selCurrency?.symbol || ''})</Typography>
+                          <Typography variant="caption" color="textSecondary">مبلغ ارزی ({currencyLabel || ''})</Typography>
                           <Typography variant="h6" fontWeight={900} color="#4338ca">
                             {formatPersianNumber(rate > 0 ? netAmount / rate : 0)}
                           </Typography>
@@ -646,7 +648,7 @@ const StatementEditorPage = () => {
                       </Grid>
                     </Grid>
                     <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
-                      نرخ ارز: {formatPersianNumber(rate)} ریال به ازای هر {selCurrency?.name || 'واحد'}
+                      نرخ ارز: {formatPersianNumber(rate)} ریال به ازای هر {currencyLabel || 'واحد'}
                     </Typography>
                   </Box>
                 </Grid>

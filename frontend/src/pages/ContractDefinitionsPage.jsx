@@ -27,7 +27,7 @@ const flagUrl = (cc) => `https://flagcdn.com/w40/${(cc || '').toLowerCase()}.png
 
 /* Preset traded currencies (mirrors backend seed). */
 const PRESET_CURRENCIES = [
-  { code: 'IRR', name: 'ریال ایران', symbol: '﷼', country_code: 'IR' },
+  { code: 'IRR', name: 'ریال', symbol: 'ریال', country_code: 'IR' },
   { code: 'USD', name: 'دلار آمریکا', symbol: '$', country_code: 'US' },
   { code: 'EUR', name: 'یورو', symbol: '€', country_code: 'EU' },
   { code: 'GBP', name: 'پوند بریتانیا', symbol: '£', country_code: 'GB' },
@@ -194,10 +194,10 @@ const CurrencyCard = () => {
                 sx={{ width: 30, height: 22, objectFit: 'cover', borderRadius: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Stack direction="row" spacing={1} alignItems="center">
-                  <Typography variant="body2" fontWeight={700}>{c.name}</Typography>
+                  <Typography variant="body2" fontWeight={700}>{c.code === 'IRR' ? 'ریال' : c.name}</Typography>
                   <Chip size="small" label={c.code} sx={{ bgcolor: 'rgba(14,165,233,0.12)', color: '#0284c7', fontWeight: 700, height: 20 }} />
                 </Stack>
-                <Typography variant="caption" color="textSecondary">نماد: {c.symbol}</Typography>
+                <Typography variant="caption" color="textSecondary">نماد: {c.code === 'IRR' ? 'ریال' : c.symbol}</Typography>
               </Box>
               <TextField
                 size="small" type="number" label="نرخ به ریال"
@@ -217,15 +217,15 @@ const CurrencyCard = () => {
             value={selected}
             onChange={(e, v) => setSelected(v)}
             options={available}
-            getOptionLabel={(o) => `${o.name} (${o.code})`}
+            getOptionLabel={(o) => `${o.code === 'IRR' ? 'ریال' : o.name} (${o.code})`}
             renderOption={(props, o) => (
               <ListItem {...props} key={o.code}>
                 <ListItemIcon sx={{ minWidth: 36 }}>
                   <Box component="img" src={flagUrl(o.country_code)} alt={o.code} sx={{ width: 26, height: 18, objectFit: 'cover', borderRadius: '3px' }} />
                 </ListItemIcon>
                 <Box>
-                  <Typography variant="body2" fontWeight={600}>{o.name}</Typography>
-                  <Typography variant="caption" color="textSecondary">{o.code} · {o.symbol}</Typography>
+                  <Typography variant="body2" fontWeight={600}>{o.code === 'IRR' ? 'ریال' : o.name}</Typography>
+                  <Typography variant="caption" color="textSecondary">{o.code} · {o.code === 'IRR' ? 'ریال' : o.symbol}</Typography>
                 </Box>
               </ListItem>
             )}

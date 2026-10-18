@@ -15,7 +15,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
@@ -82,7 +82,9 @@ const ContractPaymentsPage = () => {
   }, [list, search]);
 
   const selCurrency = currencyList.find(c => String(c.id) === String(form.currency));
-  const currencyLabel = selCurrency ? selCurrency.name : (contractList.find(c => String(c.id) === String(contractId))?.currency_name || 'ریال');
+  const currencyLabel = normalizeCurrencyLabel(
+    selCurrency?.name || contractList.find(c => String(c.id) === String(contractId))?.currency_name
+  );
 
   const sanitize = (p) => ({
     ...p,
@@ -181,7 +183,7 @@ const ContractPaymentsPage = () => {
                         <PaymentsIcon sx={{ color: '#fff' }} />
                       </Avatar>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body1" fontWeight={800}>{formatPersianNumber(x.amount || 0)} {x.currency_name || currencyLabel}</Typography>
+                        <Typography variant="body1" fontWeight={800}>{formatPersianNumber(x.amount || 0)} {normalizeCurrencyLabel(x.currency_name || currencyLabel)}</Typography>
                         <Typography variant="caption" color="textSecondary">{toJalali(x.date)}</Typography>
                       </Box>
                       <Box>
@@ -255,7 +257,7 @@ const ContractPaymentsPage = () => {
                   <InputLabel>واحد ارز</InputLabel>
                   <Select value={form.currency || ''} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
                     <MenuItem value="">—</MenuItem>
-                    {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
+                    {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{normalizeCurrencyLabel(c.name || c.symbol)} ({c.code})</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>

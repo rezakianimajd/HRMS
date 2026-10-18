@@ -16,7 +16,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractPicker from '../core/components/ui/ContractPicker';
@@ -68,7 +68,9 @@ const ContractInvoicesPage = () => {
   }, [list, search]);
 
   const selCurrency = currencyList.find(c => String(c.id) === String(form.currency));
-  const currencyLabel = selCurrency ? selCurrency.name : (contractList.find(c => String(c.id) === String(contractId))?.currency_name || 'ریال');
+  const currencyLabel = normalizeCurrencyLabel(
+    selCurrency?.name || contractList.find(c => String(c.id) === String(contractId))?.currency_name
+  );
   const totalCalc = (Number(form.amount) || 0) + (Number(form.vat) || 0);
 
   const sanitize = (p) => ({
@@ -186,7 +188,7 @@ const ContractInvoicesPage = () => {
                     <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
                       <Chip size="small" icon={<AttachMoneyIcon />} label={`مبلغ: ${formatPersianNumber(x.amount || 0)}`} sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: '#6d28d9', fontWeight: 700 }} />
                       <Chip size="small" label={`مالیات: ${formatPersianNumber(x.vat || 0)}`} sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca', fontWeight: 700 }} />
-                      <Chip size="small" label={`کل: ${formatPersianNumber(x.total || 0)} ${x.currency_name || currencyLabel}`} sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#047857', fontWeight: 700 }} />
+                      <Chip size="small" label={`کل: ${formatPersianNumber(x.total || 0)} ${normalizeCurrencyLabel(x.currency_name || currencyLabel)}`} sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#047857', fontWeight: 700 }} />
                       {x.due_date && <Chip size="small" icon={<CalendarMonthIcon />} label={`سررسید: ${toJalali(x.due_date)}`} sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#1d4ed8' }} />}
                     </Box>
 
@@ -233,7 +235,7 @@ const ContractInvoicesPage = () => {
                   <InputLabel>واحد ارز</InputLabel>
                   <Select value={form.currency || ''} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
                     <MenuItem value="">—</MenuItem>
-                    {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{c.name} ({c.code})</MenuItem>)}
+                    {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{normalizeCurrencyLabel(c.name || c.symbol)} ({c.code})</MenuItem>)}
                   </Select>
                 </FormControl>
               </Grid>

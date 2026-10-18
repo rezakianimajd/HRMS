@@ -18,7 +18,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
 import PageHeader from '../core/components/ui/PageHeader';
@@ -27,7 +27,7 @@ import InfoCard from '../core/components/ui/InfoCard';
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 // واحد ارز (نام ارز؛ در نبود نام، نماد و در نهایت «ریال»)
-const currencyUnit = (contract) => contract?.currency_name || contract?.currency_symbol || 'ریال';
+const currencyUnit = (contract) => normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
 
 // روزهای باقی‌مانده تا پایان (مبتنی بر تاریخ مؤثر با الحاقیه؛ بر پایهٔ روز محلی)
 const parseDay = (value) => {

@@ -4,6 +4,8 @@
  * `glassPaper` in every page.
  */
 
+import { normalizeCurrencyLabel } from '../utils/numberUtils';
+
 export const FONT_FAMILY = "'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif";
 
 /** ترکیب یک رنگ HEX با سفید/سیاه برای ساخت نسخهٔ روشن/تیره */
@@ -61,8 +63,10 @@ export const CONTRACT_TYPE_LABELS = {
   other: 'سایر',
 };
 
-/** Display label for a contract's currency (falls back to ریال). */
-export const currencyLabel = (contract) => contract?.currency_name || 'ریال';
+/** Display label for a contract's currency (ریال ایران/﷼/IRR => ریال). */
+export const currencyLabel = (contract) => normalizeCurrencyLabel(
+  contract?.currency_name || contract?.currency_symbol || contract?.name || contract?.symbol
+);
 
 /** Colored gradient for a page header avatar. */
 export const gradient = (from, to) => `linear-gradient(135deg, ${from}, ${to})`;

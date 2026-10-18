@@ -208,7 +208,7 @@ class Currency(BaseModel):
     exchange_rate = models.DecimalField(
         max_digits=18, decimal_places=6, default=1,
         verbose_name=_('نرخ تبدیل به ریال'),
-        help_text=_('مقدار ریال به ازای هر واحد این ارز (ریال ایران = ۱)'),
+        help_text=_('مقدار ریال به ازای هر واحد این ارز (ریال = ۱)'),
     )
 
     class Meta:

@@ -22,7 +22,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import LaunchIcon from '@mui/icons-material/Launch';
-import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
@@ -123,7 +123,7 @@ const ContractPartiesPage = () => {
       .sort((a, b) => b.count - a.count);
   }, [contractList]);
 
-  const totalCurrencies = [...new Set(contractList.map(ct => ct.currency_symbol || ct.currency_name || 'ریال').filter(Boolean))];
+  const totalCurrencies = [...new Set(contractList.map(ct => normalizeCurrencyLabel(ct.currency_name || ct.currency_symbol)).filter(Boolean))];
   const totalCurrencyLabel = totalCurrencies.length === 1 ? totalCurrencies[0] : (totalCurrencies.length > 1 ? 'چند ارز' : 'ریال');
 
   const [error, setError] = useState('');
@@ -298,7 +298,7 @@ const ContractPartiesPage = () => {
                 <InfoCard title="آمار قراردادها" color="#8b5cf6" icon={AssessmentIcon}>
                   <InfoRow label="تعداد قراردادها" value={summaryLoading ? '...' : formatPersianNumber(summary?.contracts_count || 0)} ltr />
                   <InfoRow label="قراردادهای فعال" value={summaryLoading ? '...' : formatPersianNumber(summary?.active_count || 0)} ltr />
-                  <InfoRow label="جمع مبالغ قراردادها" value={summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ${totalCurrencyLabel}`} ltr />
+                  <InfoRow label="جمع مبالغ قراردادها" value={summaryLoading ? '...' : `${formatPersianNumber(summary?.total_amount || 0)} ${totalCurrencyLabel}`} />
                 </InfoCard>
 
                 {/* پروژه‌ها — شماتیک رنگی */}
@@ -349,8 +349,8 @@ const ContractPartiesPage = () => {
                             <Typography variant="caption" color="textSecondary">{ct.contract_type_master_name || ct.contract_type_display || '—'}</Typography>
                           </Box>
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, flexShrink: 0 }}>
-                            <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309', direction: 'ltr', textAlign: 'center' }}>
-                              {formatPersianNumber(ct.amount || 0)} {ct.currency_symbol || ct.currency_name || 'ریال'}
+                            <Typography variant="body2" fontWeight={800} sx={{ color: '#b45309', direction: 'rtl', textAlign: 'center' }}>
+                              {formatPersianNumber(ct.amount || 0)} {normalizeCurrencyLabel(ct.currency_name || ct.currency_symbol)}
                             </Typography>
                             <LaunchIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
                           </Box>

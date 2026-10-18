@@ -24,7 +24,7 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import InsightsIcon from '@mui/icons-material/Insights';
 import HubIcon from '@mui/icons-material/Hub';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS } from '../core/theme/tokens';
@@ -136,7 +136,7 @@ const ContractProfilePage = () => {
   const remainingDays = endDateWithAddendum
     ? Math.ceil((new Date(`${String(endDateWithAddendum).slice(0, 10)}T00:00:00`) - new Date()) / 86400000)
     : null;
-  const currencyLabel = c.currency_name || 'ریال';
+  const currencyLabel = normalizeCurrencyLabel(c.currency_name || c.currency_symbol);
   const contractTypeLabel = c.contract_type_master_name || TYPE_LABELS[c.contract_type] || '—';
   const coveragePercent = Number(guaranteeStatus?.summary?.coverage_percent || 0);
   const guaranteeCount = (c.guarantees || []).length;
@@ -261,10 +261,10 @@ const ContractProfilePage = () => {
               <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1.5} useFlexGap>
                 <Box>
                   <Typography sx={{ fontSize: 10.5, color: '#9a3412', fontWeight: 600 }}>مبلغ قرارداد با اعمال الحاقیه‌ها</Typography>
-                  <Typography sx={{ mt: 0.4, fontSize: { xs: 24, sm: 30 }, fontWeight: 900, color: '#b45309', direction: 'ltr', lineHeight: 1.2 }}>
-                    {formatPersianNumber(amountWithAddendum)}
+                  <Typography sx={{ mt: 0.4, fontSize: { xs: 24, sm: 30 }, fontWeight: 900, color: '#b45309', direction: 'rtl', lineHeight: 1.2 }}>
+                    {formatPersianNumber(amountWithAddendum)} <Box component="span" sx={{ fontSize: 12, fontWeight: 600, color: '#9a3412' }}>{currencyLabel}</Box>
                   </Typography>
-                  <Typography sx={{ fontSize: 10.5, color: MUTED }}>{currencyLabel} · مبلغ پایه: {formatPersianNumber(c.amount || 0)}</Typography>
+                  <Typography sx={{ fontSize: 10.5, color: MUTED }}>مبلغ پایه: {formatPersianNumber(c.amount || 0)} {currencyLabel}</Typography>
                 </Box>
                 <Chip size="small" label={`${toPersianDigits(progressPercent)}٪ پرداخت‌شده`}
                   sx={{ height: 24, fontSize: 10.5, fontWeight: 800, bgcolor: '#fff', color: '#b45309', border: '1px solid #fcd9a4' }} />
@@ -524,7 +524,7 @@ const ContractProfilePage = () => {
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
                   <Box>
                     <Typography sx={{ fontSize: 10, color: MUTED }}>ماندهٔ تعهد مالی قرارداد</Typography>
-                    <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK, direction: 'ltr', textAlign: 'right' }}>
+                    <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK, direction: 'rtl', textAlign: 'right' }}>
                       {formatPersianNumber(remaining)} <Box component="span" sx={{ fontSize: 10, color: MUTED, fontWeight: 500 }}>{currencyLabel}</Box>
                     </Typography>
                   </Box>
