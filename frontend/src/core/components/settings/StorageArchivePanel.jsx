@@ -27,6 +27,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import DescriptionIcon from '@mui/icons-material/Description';
 import HomeIcon from '@mui/icons-material/Home';
 import { formatPersianNumber } from '../../utils/numberUtils';
+import InfoCard from '../ui/InfoCard';
 import { formatDate } from '../../utils/dateUtils';
 import { SOFT } from './settingsUi';
 
@@ -69,21 +70,7 @@ const copyText = async (text) => {
 };
 
 const StatCard = ({ label, value, sub, color }) => (
-  <Paper sx={{
-    px: 1.5, py: 1.1, borderRadius: '12px', height: '100%',
-    bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider',
-    boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
-  }}>
-    <Stack direction="row" spacing={0.75} alignItems="baseline" flexWrap="wrap" useFlexGap>
-      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'text.secondary' }}>
-        {label}:
-      </Typography>
-      <Typography sx={{ fontSize: 12.5, fontWeight: 900, color }}>{value}</Typography>
-      {sub ? (
-        <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }} noWrap>{sub}</Typography>
-      ) : null}
-    </Stack>
-  </Paper>
+  <InfoCard label={label} value={value} suffix={sub} color={color} />
 );
 
 const EmptyState = ({ icon, title, hint }) => (

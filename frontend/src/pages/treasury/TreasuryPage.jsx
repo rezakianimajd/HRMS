@@ -9,6 +9,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
+import InfoCard from '../../core/components/ui/InfoCard';
 
 const COLOR = '#14b8a6';
 const COLOR_DARK = '#0f766e';
@@ -24,10 +25,7 @@ const glass = {
 };
 
 const Kpi = ({ label, value, color }) => (
-  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
-    <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{label}</Typography>
-    <Typography variant="h5" fontWeight={900} sx={{ color: color || COLOR_DARK, fontFamily: FONT, mt: 0.5 }}>{value}</Typography>
-  </Paper>
+  <InfoCard label={label} value={value} color={color} />
 );
 
 const QuickLink = ({ icon, title, subtitle, path, color }) => {

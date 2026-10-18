@@ -10,6 +10,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 import { toJalali } from '../core/utils/dateUtils';
 
 const COLOR = '#14b8a6';
@@ -23,11 +24,7 @@ const glass = {
 };
 
 const StatCard = ({ icon, label, value, color }) => (
-  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
-    <Box sx={{ display: 'flex', justifyContent: 'center', mb: 1, color }}>{icon}</Box>
-    <Typography variant="caption" color="textSecondary">{label}</Typography>
-    <Typography variant="h5" fontWeight={900} sx={{ color }}>{toPersianDigits(value)}</Typography>
-  </Paper>
+  <InfoCard icon={icon} label={label} value={value} color={color} />
 );
 
 const DocTable = ({ title, rows, color, emptyText }) => (

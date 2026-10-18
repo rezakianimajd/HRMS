@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -17,13 +17,13 @@ import AssessmentIcon from '@mui/icons-material/Assessment';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { toJalali } from '../core/utils/dateUtils';
-import { motion, useInView } from 'framer-motion';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ReTooltip,
   PieChart, Pie, Cell, BarChart, Bar, Legend,
 } from 'recharts';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
@@ -43,67 +43,16 @@ const glass = {
 const COLORS = { draft: '#64748b', submitted: '#f59e0b', approved: '#10b981', posted: '#3b82f6', locked: '#6366f1', reversed: '#ef4444' };
 const STATUS_LABELS = { draft: 'پیش‌نویس', submitted: 'در انتظار', approved: 'تأییدشده', posted: 'ثبت‌شده', locked: 'قفل‌شده', reversed: 'برگشت‌خورده' };
 
-function useCountUp(target, duration = 1200) {
-  const [value, setValue] = useState(0);
-  const ref = useRef(null);
-  const inView = useInView(ref, { once: true, margin: '-20px' });
-  useEffect(() => {
-    if (!inView) return;
-    const start = performance.now();
-    let raf;
-    const tick = (now) => {
-      const t = Math.min(1, (now - start) / duration);
-      const eased = 1 - Math.pow(1 - t, 3);
-      setValue(target * eased);
-      if (t < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [inView, target, duration]);
-  return { ref, value };
-}
-
-const fmtDelta = (d) => {
-  if (d === null || d === undefined) return null;
-  return `${toPersianDigits(Math.abs(Math.round(d)))}٪`;
-};
-
-const KpiCard = ({ icon, label, value, color, delta, spark = [], sub, onClick }) => {
-  const { ref, value: displayed } = useCountUp(Number(value) || 0);
-  const del = Number.isFinite(delta) ? delta : null;
-  return (
-    <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ height: '100%' }}>
-      <Paper onClick={onClick} sx={{
-        ...glass, p: 2, height: '100%', cursor: onClick ? 'pointer' : 'default', textAlign: 'center',
-        position: 'relative', overflow: 'hidden', transition: 'transform 0.2s, box-shadow 0.2s',
-        '&:hover': onClick ? { transform: 'translateY(-4px)', boxShadow: `0 18px 40px ${color}33` } : {},
-      }}>
-        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1.5, mb: 1 }}>
-          <Avatar sx={{ width: 42, height: 42, background: `linear-gradient(135deg, ${color}, ${color}cc)`, boxShadow: `0 6px 16px ${color}44` }}>{icon}</Avatar>
-          <Typography variant="caption" color="textSecondary" fontWeight={600}>{label}</Typography>
-        </Box>
-        <Typography ref={ref} variant="h5" fontWeight={900} sx={{ color, lineHeight: 1.1, textAlign: 'center' }}>{formatPersianNumber(Math.round(displayed))}</Typography>
-        {del !== null && (
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.5, mt: 0.5 }}>
-            {del >= 0 ? <TrendingUpIcon sx={{ fontSize: 16, color: GREEN }} /> : <TrendingDownIcon sx={{ fontSize: 16, color: RED }} />}
-            <Typography variant="caption" fontWeight={800} sx={{ color: del >= 0 ? GREEN : RED }}>{fmtDelta(del)}</Typography>
-            <Typography variant="caption" color="textSecondary">نسبت به ماه قبل</Typography>
-          </Box>
-        )}
-        {sub && <Typography variant="caption" color="textSecondary">{sub}</Typography>}
-        {spark.length > 1 && (
-          <Box sx={{ position: 'absolute', bottom: 8, left: 8, right: 8, height: 24, opacity: 0.7 }}>
-            <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={spark}>
-                <Area type="monotone" dataKey="v" stroke={color} fill={color} fillOpacity={0.15} strokeWidth={1.5} isAnimationActive={false} />
-              </AreaChart>
-            </ResponsiveContainer>
-          </Box>
-        )}
-      </Paper>
-    </motion.div>
-  );
-};
+const KpiCard = ({ icon, label, value, color, suffix, sub, onClick }) => (
+  <InfoCard
+    icon={icon}
+    label={label}
+    value={value}
+    suffix={suffix || sub}
+    color={color}
+    onClick={onClick}
+  />
+);
 
 const AccountingPage = () => {
   const navigate = useNavigate();
@@ -131,12 +80,10 @@ const AccountingPage = () => {
   }
 
   const k = data.kpis;
-  const deltas = data.deltas;
   const eq = data.accounting_equation;
   const trend = (data.monthly_trend || []).map(m => ({ ...m, label: toPersianDigits(m.month.slice(5)) + '/' + toPersianDigits(m.month.slice(0, 4).slice(2)) }));
   const statusData = Object.entries(data.status_counts || {}).map(([key, value]) => ({ key, name: STATUS_LABELS[key] || key, value }));
   const categories = data.category_breakdown || [];
-  const trendSpark = trend.map(t => ({ v: t.net }));
   const topAccounts = (data.top_accounts || []).map(a => ({ ...a, label: a.name }));
   const aging = data.aging || { receivable: {}, payable: {} };
   const vat = data.vat_summary || {};
@@ -180,7 +127,7 @@ const AccountingPage = () => {
           <KpiCard icon={<TrendingUpIcon sx={{ color: '#fff' }} />} label="حقوق مالکانه" value={k.total_equity} color="#059669" onClick={() => navigate('/accounting/reports/balance-sheet')} />
         </Grid>
         <Grid item xs={12} sm={6} md={4} lg={2.4}>
-          <KpiCard icon={<TrendingUpIcon sx={{ color: '#fff' }} />} label="سود/زیان ماه" value={k.net_profit_month} color={k.net_profit_month >= 0 ? '#059669' : '#ef4444'} delta={deltas.net} spark={trendSpark} onClick={() => navigate('/accounting/reports/income-statement')} />
+          <KpiCard icon={<TrendingUpIcon sx={{ color: '#fff' }} />} label="سود/زیان ماه" value={k.net_profit_month} color={k.net_profit_month >= 0 ? '#059669' : '#ef4444'} onClick={() => navigate('/accounting/reports/income-statement')} />
         </Grid>
         <Grid item xs={12} sm={6} md={4} lg={2.4}>
           <KpiCard icon={<PendingActionsIcon sx={{ color: '#fff' }} />} label="در انتظار تأیید" value={k.pending_documents} color="#f59e0b" sub="سند" onClick={() => navigate('/accounting/documents')} />

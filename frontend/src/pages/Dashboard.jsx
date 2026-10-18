@@ -10,35 +10,11 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import useAuth from '../core/hooks/useAuth';
 import useCompany from '../core/hooks/useCompany';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const StatCard = ({ title, value, icon, color }) => (
   <Grid item xs={12} sm={6} md={3}>
-    <Card sx={{ height: '100%' }}>
-      <CardContent>
-        <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Box sx={{
-            backgroundColor: `${color}20`,
-            borderRadius: '10px',
-            p: 1,
-            mr: 2,
-            display: 'flex',
-          }}>
-            {icon}
-          </Box>
-          <Typography variant="body2" color="textSecondary">
-            {title}
-          </Typography>
-        </Box>
-        <Typography variant="h4" fontWeight="bold">
-          {value}
-        </Typography>
-      </CardContent>
-      <LinearProgress
-        variant="determinate"
-        value={Math.min(Number(value) || 0, 100)}
-        sx={{ height: 4, backgroundColor: `${color}20`, '& .MuiLinearProgress-bar': { backgroundColor: color } }}
-      />
-    </Card>
+    <InfoCard icon={icon} label={title} value={value} color={color} />
   </Grid>
 );
 

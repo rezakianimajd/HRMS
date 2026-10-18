@@ -14,27 +14,11 @@ import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 import { DonutChart, BarChart, ColumnChart, LineChart, MultiLineChart } from '../core/components/charts/Charts';
 
 const KpiCard = ({ label, value, unit, icon, color, subtitle }) => (
-  <Paper sx={{
-    p: 2, height: '100%', borderRadius: '10px',
-    background: `linear-gradient(135deg, ${color}12, ${color}05)`,
-    border: `1px solid ${color}22`, transition: 'all 0.2s ease',
-    '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 10px 26px ${color}22` },
-  }}>
-    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
-      <Avatar sx={{ width: 36, height: 36, background: `linear-gradient(135deg, ${color}, ${color}99)`, color: '#fff' }}>
-        {icon}
-      </Avatar>
-      <Typography variant="caption" color="textSecondary">{label}</Typography>
-    </Box>
-    <Typography variant="h5" fontWeight={800} sx={{ color }}>
-      {formatPersianNumber(value)}
-      {unit && <Typography component="span" variant="body2" sx={{ mr: 0.5, color }}>{unit}</Typography>}
-    </Typography>
-    {subtitle && <Typography variant="caption" color="textSecondary">{subtitle}</Typography>}
-  </Paper>
+  <InfoCard icon={icon} label={label} value={value} suffix={unit || subtitle} color={color} />
 );
 
 const ManagementAnalyticsPage = () => {

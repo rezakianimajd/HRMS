@@ -125,6 +125,12 @@ const OUTLINE_BY_NAME = {
 
 const iconName = (icon) => icon?.type?.displayName || icon?.type?.name || '';
 
+export const OutlineIcon = ({ icon, size = 20, sx }) => {
+  const element = React.isValidElement(icon) ? icon : icon ? React.createElement(icon) : null;
+  const Icon = OUTLINE_BY_NAME[iconName(element)] || AppsOutlinedIcon;
+  return <Icon sx={{ fontSize: size, ...sx }} />;
+};
+
 const semantic = ':not(.MuiButton-containedError):not(.MuiButton-containedWarning):not(.MuiButton-containedSuccess):not(.MuiButton-containedInfo)';
 
 /**
@@ -141,7 +147,6 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, ...r
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
   const moduleAccent = getPalette(currentApp?.slug)?.accent;
   const accent = moduleAccent || color || theme.palette.primary.main;
-  const OutlineIcon = OUTLINE_BY_NAME[iconName(icon)] || AppsOutlinedIcon;
   const actionNode = actions || action || null;
 
   return (
@@ -196,7 +201,7 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, ...r
         border: `1px solid ${alpha(accent, 0.16)}`,
         color: accent,
       }}>
-        <OutlineIcon sx={{ fontSize: 20 }} />
+        <OutlineIcon icon={icon} size={20} />
       </Box>
 
       <Box sx={{

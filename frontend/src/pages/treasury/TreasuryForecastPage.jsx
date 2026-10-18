@@ -7,6 +7,7 @@ import {
 import InsightsIcon from '@mui/icons-material/Insights';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
+import InfoCard from '../../core/components/ui/InfoCard';
 import { toJalali } from '../../core/utils/dateUtils';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
@@ -23,10 +24,7 @@ const glass = {
 };
 
 const Kpi = ({ label, value, color }) => (
-  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
-    <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{label}</Typography>
-    <Typography variant="h5" fontWeight={900} sx={{ color: color || COLOR_DARK, fontFamily: FONT, mt: 0.5 }}>{value}</Typography>
-  </Paper>
+  <InfoCard label={label} value={value} color={color} />
 );
 
 const Header = ({ icon, title, subtitle, extra }) => (

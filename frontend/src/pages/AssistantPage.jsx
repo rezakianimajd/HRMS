@@ -12,16 +12,10 @@ import KnowledgePanel from '../core/components/ui/KnowledgePanel';
 import axiosInstance from '../core/api/axiosConfig';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 
-const KpiCard = ({ icon, iconBg, label, value, sub }) => (
-  <Paper sx={{ p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.65)', border: '1px solid rgba(99,102,241,0.14)', display: 'flex', alignItems: 'center', gap: 1.25 }}>
-    <Avatar sx={{ width: 40, height: 40, background: iconBg, flexShrink: 0 }}>{icon}</Avatar>
-    <Box sx={{ minWidth: 0, flex: 1, textAlign: 'center' }}>
-      <Typography variant="caption" color="textSecondary" display="block" noWrap>{label}</Typography>
-      <Typography variant="h6" fontWeight={800} color="#4338ca" noWrap>{value}</Typography>
-      {sub && <Typography variant="caption" color="textSecondary" noWrap>{sub}</Typography>}
-    </Box>
-  </Paper>
+const KpiCard = ({ icon, label, value, sub }) => (
+  <InfoCard icon={icon} label={label} value={value} suffix={sub} />
 );
 
 const AssistantPage = () => {

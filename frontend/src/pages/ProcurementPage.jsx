@@ -13,6 +13,7 @@ import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const COLOR = '#f59e0b';
 const COLOR_DARK = '#b45309';
@@ -30,12 +31,7 @@ const glass = {
 const listOf = (r) => Array.isArray(r.data) ? r.data : r.data?.results || [];
 
 const Kpi = ({ label, value, color }) => (
-  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
-    <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>{label}</Typography>
-    <Typography variant="h5" fontWeight={900} sx={{ color: color || COLOR_DARK, fontFamily: FONT, mt: 0.5 }}>
-      {typeof value === 'number' ? toPersianDigits(value) : value}
-    </Typography>
-  </Paper>
+  <InfoCard label={label} value={value} color={color} />
 );
 
 const QuickLink = ({ icon, title, subtitle, path, color }) => {

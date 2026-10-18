@@ -17,6 +17,7 @@ import PlaylistAddCheckIcon from '@mui/icons-material/PlaylistAddCheck';
 import DescriptionIcon from '@mui/icons-material/Description';
 import axiosInstance from '../core/api/axiosConfig';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const LEVELS = [
   { key: 'group', label: 'گروه حساب', color: '#6366f1', icon: <CategoryIcon fontSize="small" /> },
@@ -617,10 +618,7 @@ const DataMappingPage = () => {
               { label: 'کدهای حل‌نشده', value: (docResult.unresolved_codes || []).length, color: '#ef4444' },
             ].map((k) => (
               <Grid item xs={4} key={k.label}>
-                <Paper sx={{ p: 1.5, borderRadius: '12px', textAlign: 'center', background: `${k.color}12`, border: `1px solid ${k.color}30` }}>
-                  <Typography variant="h5" fontWeight={900} sx={{ color: k.color, direction: 'ltr' }}>{formatPersianNumber(k.value)}</Typography>
-                  <Typography variant="caption" color="textSecondary" fontWeight={700}>{k.label}</Typography>
-                </Paper>
+                <InfoCard label={k.label} value={k.value} color={k.color} />
               </Grid>
             ))}
           </Grid>

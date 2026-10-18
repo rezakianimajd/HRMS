@@ -14,6 +14,7 @@ import { toJalali } from '../core/utils/dateUtils';
 import { DonutChart } from '../core/components/charts/Charts';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS, currencyLabel } from '../core/theme/tokens';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const effEnd = (c) => {
   const withEnd = (c.addendums || []).filter(a => a.new_end_date);
@@ -89,17 +90,7 @@ const ContractsDashboardPage = () => {
   if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
 
   const card = (title, value, color, icon, suffix) => (
-    <Paper sx={{ p: 2.5, borderRadius: '10px', background: 'rgba(255,255,255,0.65)', border: `1px solid ${color}22` }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-        <Avatar sx={{ width: 52, height: 52, background: `linear-gradient(135deg, ${color}, ${color}99)` }}>
-          {icon}
-        </Avatar>
-        <Box>
-          <Typography variant="h5" fontWeight={900} sx={{ color }}>{formatPersianNumber(value)}{suffix ? ` ${suffix}` : ''}</Typography>
-          <Typography variant="caption" color="textSecondary">{title}</Typography>
-        </Box>
-      </Box>
-    </Paper>
+    <InfoCard icon={icon} label={title} value={value} suffix={suffix} color={color} />
   );
 
   return (

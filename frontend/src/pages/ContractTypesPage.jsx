@@ -15,6 +15,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import BlockIcon from '@mui/icons-material/Block';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
@@ -72,11 +73,7 @@ const ContractTypesPage = () => {
   const totalContracts = list.reduce((s, t) => s + Number(t.contracts_count || 0), 0);
 
   const kpi = (title, value, color, icon) => (
-    <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-      <Avatar sx={{ width: 44, height: 44, background: `linear-gradient(135deg,${color},${color}99)`, mx: 'auto', mb: 1 }}>{icon}</Avatar>
-      <Typography variant="caption" color="textSecondary">{title}</Typography>
-      <Typography variant="h5" fontWeight={800} sx={{ color }}>{formatPersianNumber(value)}</Typography>
-    </Paper>
+    <InfoCard icon={icon} label={title} value={value} color={color} />
   );
 
   return (

@@ -18,6 +18,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const money = (v) => formatPersianNumber(v || 0);
@@ -82,20 +83,7 @@ const levelChip = (level) => {
 };
 
 const KpiCard = ({ title, value, sub, color = '#8b5cf6', icon = null }) => (
-  <Paper sx={{ p: 1.5, borderRadius: '14px', height: '100%' }}>
-    <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-      <Box>
-        <Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-          {title}
-        </Typography>
-        <Typography sx={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color }}>{value}</Typography>
-        {sub ? (
-          <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>{sub}</Typography>
-        ) : null}
-      </Box>
-      {icon}
-    </Stack>
-  </Paper>
+  <InfoCard icon={icon} label={title} value={value} suffix={sub} color={color} />
 );
 
 const ProjectRiskPage = () => {

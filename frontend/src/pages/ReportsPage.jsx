@@ -23,6 +23,7 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import MailIcon from '@mui/icons-material/Mail';
 import { toJalali } from '../core/utils/dateUtils';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 import { DonutChart, BarChart, ColumnChart, LineChart } from '../core/components/charts/Charts';
 
 const sectionColors = {
@@ -80,25 +81,7 @@ const StatTile = ({ label, value, color }) => (
 
 /* Large KPI card - centered vertical layout */
 const KpiCard = ({ label, value, unit, subtitle, color, icon }) => (
-  <Paper sx={glassCard(color)}>
-    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', gap: 1, py: 1 }}>
-      <Avatar sx={{
-        width: 58, height: 58,
-        background: `linear-gradient(135deg, ${color}, ${color}99)`,
-        boxShadow: `0 6px 18px ${color}40`,
-      }}>
-        {icon}
-      </Avatar>
-      <Box>
-        <Typography variant="h4" fontWeight={800} sx={{ color, lineHeight: 1.1 }}>
-          {formatPersianNumber(value)}
-          {unit && <Typography component="span" variant="h5" sx={{ color, mr: 0.5 }}>{unit}</Typography>}
-        </Typography>
-        <Typography variant="body2" fontWeight={600} sx={{ mt: 0.5, color: 'text.primary' }}>{label}</Typography>
-        {subtitle && <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.25 }}>{subtitle}</Typography>}
-      </Box>
-    </Box>
-  </Paper>
+  <InfoCard icon={icon} label={label} value={value} suffix={unit || subtitle} color={color} />
 );
 
 const ReportsPage = () => {

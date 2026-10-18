@@ -17,6 +17,7 @@ import HolidayVillageIcon from '@mui/icons-material/HolidayVillage';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 /* Attendance module: register daily presence per employee, with monthly summary.
@@ -119,23 +120,7 @@ const AttendancePage = () => {
 
   const stat = (label, value, color, icon) => (
     <Grid item xs={6} md={3}>
-      <Paper sx={{
-        p: 2, borderRadius: '10px', height: '100%',
-        background: `linear-gradient(135deg, ${color}0f, ${color}04)`,
-        border: `1px solid ${color}1e`,
-      }}>
-        <Stack direction="row" alignItems="center" spacing={1}>
-          <Avatar sx={{ width: 38, height: 38, bgcolor: `${color}20`, color }}>
-            {icon}
-          </Avatar>
-          <Box>
-            <Typography variant="h5" fontWeight={800} sx={{ color }} dir="rtl">
-              {formatPersianNumber(value ?? 0)}
-            </Typography>
-            <Typography variant="caption" color="textSecondary">{label}</Typography>
-          </Box>
-        </Stack>
-      </Paper>
+      <InfoCard icon={icon} label={label} value={value} color={color} />
     </Grid>
   );
 

@@ -33,6 +33,7 @@ import { useAssets, useCreateAsset, useReturnAsset, useUpdateAsset, useDeleteAss
 import { useEmployees } from '../core/hooks/useEmployees';
 import { toPersianDigits, formatPersianNumber } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 import { toJalali } from '../core/utils/dateUtils';
 
 const TYPE_META = {
@@ -205,16 +206,7 @@ const AssetsPage = () => {
           { label: 'آسیب‌دیده', value: counts.damaged, color: '#f59e0b', icon: <CreateIcon /> },
         ].map(k => (
           <Grid item xs={6} sm={4} md={2.4} key={k.label}>
-            <Paper sx={{
-              p: 1.75, borderRadius: '16px', textAlign: 'center',
-              background: `linear-gradient(160deg, ${k.color}14, rgba(255,255,255,0.7))`,
-              border: `1px solid ${k.color}24`, boxShadow: `0 4px 16px ${k.color}0d`,
-              transition: 'all 0.2s ease', '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 14px 30px ${k.color}22` },
-            }}>
-              <Avatar sx={{ width: 38, height: 38, mx: 'auto', mb: 0.75, bgcolor: `${k.color}1a`, color: k.color }}>{k.icon}</Avatar>
-              <Typography variant="h5" fontWeight={900} sx={{ color: k.color, direction: 'ltr' }}>{formatPersianNumber(k.value)}</Typography>
-              <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 700 }}>{k.label}</Typography>
-            </Paper>
+            <InfoCard icon={k.icon} label={k.label} value={k.value} color={k.color} />
           </Grid>
         ))}
       </Grid>

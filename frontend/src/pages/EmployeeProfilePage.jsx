@@ -31,6 +31,7 @@ import OverviewTab from '../core/components/employee/OverviewTab';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import { toJalali } from '../core/utils/dateUtils';
 import { toPersianDigits } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
@@ -43,31 +44,7 @@ const glassPaper = {
 
 const InfoItem = ({ icon, color, label, value }) => (
   <Grid item xs={6} sm={4} md={3}>
-    <Paper sx={{
-      p: 1.5, height: '100%',
-      background: `linear-gradient(135deg, ${color}12, ${color}05)`,
-      border: `1px solid ${color}28`,
-      backdropFilter: 'blur(10px)',
-      WebkitBackdropFilter: 'blur(10px)',
-      borderRadius: '10px',
-      transition: 'all 0.2s ease',
-      '&:hover': { transform: 'translateY(-2px)', boxShadow: `0 8px 20px ${color}20` },
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        <Box sx={{
-          width: 36, height: 36, borderRadius: '50%',
-          background: `linear-gradient(135deg, ${color}, ${color}99)`,
-          color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: `0 2px 8px ${color}40`,
-        }}>
-          {icon}
-        </Box>
-        <Box>
-          <Typography variant="caption" color="textSecondary" display="block">{label}</Typography>
-          <Typography variant="body2" fontWeight={700}>{value}</Typography>
-        </Box>
-      </Box>
-    </Paper>
+    <InfoCard icon={icon} label={label} value={value} color={color} />
   </Grid>
 );
 

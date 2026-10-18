@@ -10,6 +10,7 @@ import {
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 import { toJalali } from '../core/utils/dateUtils';
 
 const COLOR = '#8b5cf6';
@@ -24,10 +25,7 @@ const glass = {
 };
 
 const StatCard = ({ label, value, color }) => (
-  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
-    <Typography variant="caption" color="textSecondary">{label}</Typography>
-    <Typography variant="h6" fontWeight={900} sx={{ color: color || COLOR_DARK }}>{formatPersianNumber(value)}</Typography>
-  </Paper>
+  <InfoCard label={label} value={value} color={color || COLOR_DARK} />
 );
 
 const GeneralLedger = () => {

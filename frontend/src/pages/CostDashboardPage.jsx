@@ -14,6 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const glassPaper = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.62), rgba(255,255,255,0.32))',
@@ -53,11 +54,7 @@ const CostDashboardPage = () => {
   }, [budgetList, committedList, txList, progressList]);
 
   const card = (title, value, color, icon) => (
-    <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-      <Avatar sx={{ width: 42, height: 42, background: `linear-gradient(135deg,${color},${color}99)`, mx: 'auto', mb: 1 }}>{icon}</Avatar>
-      <Typography variant="caption" color="textSecondary">{title}</Typography>
-      <Typography variant="h6" fontWeight={800} sx={{ color }}>{formatPersianNumber(value)}</Typography>
-    </Paper>
+    <InfoCard icon={icon} label={title} value={value} color={color} />
   );
 
   return (

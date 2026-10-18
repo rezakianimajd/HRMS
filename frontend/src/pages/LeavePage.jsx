@@ -18,6 +18,7 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import PageHeader from '../core/components/ui/PageHeader';
+import InfoCard from '../core/components/ui/InfoCard';
 import { useEmployees } from '../core/hooks/useEmployees';
 
 /* P2: Leaves & Missions — requests, approve/reject, balance summary. */
@@ -133,22 +134,13 @@ const LeavePage = () => {
       {balance && (
         <Grid container spacing={1.5} sx={{ mb: 2.5 }}>
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, borderRadius: '10px', textAlign: 'center', background: 'linear-gradient(135deg,#10b9810f,#fff)', border: '1px solid #10b9812e' }}>
-              <Typography variant="body2" color="textSecondary">سهم سالانه</Typography>
-              <Typography variant="h5" fontWeight={800} color="#059669">{formatPersianNumber(balance.annual_entitlement)} روز</Typography>
-            </Paper>
+            <InfoCard icon={<AccessTimeIcon />} label="سهم سالانه" value={balance.annual_entitlement} suffix="روز" color="#10b981" />
           </Grid>
           <Grid item xs={6} md={4}>
-            <Paper sx={{ p: 2, borderRadius: '10px', textAlign: 'center', background: 'linear-gradient(135deg,#f59e0b0f,#fff)', border: '1px solid #f59e0b2e' }}>
-              <Typography variant="body2" color="textSecondary">مصرفشده</Typography>
-              <Typography variant="h5" fontWeight={800} color="#d97706">{formatPersianNumber(balance.used_days)} روز</Typography>
-            </Paper>
+            <InfoCard icon={<EventBusyIcon />} label="مصرف‌شده" value={balance.used_days} suffix="روز" color="#f59e0b" />
           </Grid>
           <Grid item xs={6} md={4}>
-            <Paper sx={{ p: 2, borderRadius: '10px', textAlign: 'center', background: 'linear-gradient(135deg,#8b5cf60f,#fff)', border: '1px solid #8b5cf62e' }}>
-              <Typography variant="body2" color="textSecondary">مانده {empName(employeeFilter)}</Typography>
-              <Typography variant="h5" fontWeight={800} color="#7c3aed">{formatPersianNumber(balance.remaining_days)} روز</Typography>
-            </Paper>
+            <InfoCard icon={<FlightTakeoffIcon />} label={`مانده ${empName(employeeFilter)}`} value={balance.remaining_days} suffix="روز" color="#8b5cf6" />
           </Grid>
         </Grid>
       )}

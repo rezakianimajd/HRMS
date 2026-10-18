@@ -19,6 +19,7 @@ import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import HealthAndSafetyIcon from '@mui/icons-material/HealthAndSafety';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const money = (v) => formatPersianNumber(v || 0);
@@ -88,16 +89,8 @@ const chipOf = (map, key) => {
   );
 };
 
-const KpiCard = ({ title, value, sub, color = '#0ea5e9' }) => (
-  <Paper sx={{ p: 1.5, borderRadius: '14px', height: '100%' }}>
-    <Typography sx={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: '#64748b' }}>
-      {title}
-    </Typography>
-    <Typography sx={{ fontFamily: FONT, fontSize: 20, fontWeight: 800, color }}>{value}</Typography>
-    {sub ? (
-      <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>{sub}</Typography>
-    ) : null}
-  </Paper>
+const KpiCard = ({ title, value, sub, color = '#0ea5e9', icon }) => (
+  <InfoCard icon={icon} label={title} value={value} suffix={sub} color={color} />
 );
 
 const emptyPlan = () => ({

@@ -10,23 +10,12 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 
 /* P4: گزارش مالی — جمعبندی حقوق/مزایا/کسورات به تفکیک دپارتمان */
 const statCard = (icon, label, value, color, unit = '') => (
   <Grid item xs={12} sm={6} md={3}>
-    <Paper sx={{
-      p: 2, borderRadius: '10px', height: '100%', textAlign: 'center',
-      background: `linear-gradient(135deg, ${color}0f, rgba(255,255,255,0.4))`,
-      border: `1px solid ${color}22`,
-    }}>
-      <Card sx={{ boxShadow: 'none', background: 'transparent' }}>
-        <Avatar sx={{ width: 42, height: 42, mx: 'auto', mb: 1, bgcolor: `${color}20`, color }}>
-          {icon}
-        </Avatar>
-        <Typography variant="h6" fontWeight={800} sx={{ color }}>{formatPersianNumber(value)}</Typography>
-        <Typography variant="caption" color="textSecondary">{label} {unit}</Typography>
-      </Card>
-    </Paper>
+    <InfoCard icon={icon} label={label} value={value} suffix={unit} color={color} />
   </Grid>
 );
 

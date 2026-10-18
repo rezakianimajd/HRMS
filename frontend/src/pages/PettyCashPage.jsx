@@ -21,6 +21,7 @@ import SaveIcon from '@mui/icons-material/Save';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const COLOR = '#f59e0b';
 const COLOR_DARK = '#d97706';
@@ -87,28 +88,16 @@ const DashboardTab = () => {
 
       <Grid container spacing={2} sx={{ mb: 2.5 }}>
         <Grid item xs={6} md={3}>
-          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">مجموع ماندهٔ تنخواه‌ها</Typography>
-            <Typography variant="h5" fontWeight={900} color={COLOR_DARK}>{formatPersianNumber(d.total_balance || 0)}</Typography>
-          </Paper>
+          <InfoCard icon={<AccountBalanceWalletIcon />} label="مجموع ماندهٔ تنخواه‌ها" value={d.total_balance || 0} color={COLOR_DARK} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">تنخواه فعال</Typography>
-            <Typography variant="h5" fontWeight={900}>{toPersianDigits(d.active_funds || 0)}</Typography>
-          </Paper>
+          <InfoCard icon={<CheckCircleIcon />} label="تنخواه فعال" value={d.active_funds || 0} color="#10b981" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">مبلغ در انتظار تأیید</Typography>
-            <Typography variant="h5" fontWeight={900} color="#f59e0b">{formatPersianNumber(d.pending_total || 0)}</Typography>
-          </Paper>
+          <InfoCard icon={<ReceiptLongIcon />} label="مبلغ در انتظار تأیید" value={d.pending_total || 0} color="#f59e0b" />
         </Grid>
         <Grid item xs={6} md={3}>
-          <Paper sx={{ ...glass, p: 2.5, textAlign: 'center' }}>
-            <Typography variant="caption" color="textSecondary">مصرف این ماه</Typography>
-            <Typography variant="h5" fontWeight={900} color="#3b82f6">{formatPersianNumber(d.monthly_spend || 0)}</Typography>
-          </Paper>
+          <InfoCard icon={<DashboardIcon />} label="مصرف این ماه" value={d.monthly_spend || 0} color="#3b82f6" />
         </Grid>
       </Grid>
 

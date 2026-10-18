@@ -418,6 +418,14 @@ const TypographyCard = ({
             onChange={onChange}
             disabled={!canEdit}
           />
+          <TypeGroup
+            label="کارت‌های اطلاعات"
+            sizeKey="statSize"
+            weightKey="statWeight"
+            type={type}
+            onChange={onChange}
+            disabled={!canEdit}
+          />
         </Stack>
 
         <Box sx={{
@@ -454,6 +462,17 @@ const TypographyCard = ({
             fontSize: `${type.buttonSize}px`, fontWeight: type.buttonWeight,
           }}>
             دکمهٔ هدر
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
+            <Typography sx={{ fontSize: Math.max(type.statSize - 1, 10), color: 'text.secondary' }}>
+              تعداد پرسنل:
+            </Typography>
+            <Typography sx={{ fontSize: `${type.statSize}px`, fontWeight: type.statWeight }}>
+              ۱۲۸
+            </Typography>
+            <Typography sx={{ fontSize: Math.max(type.statSize - 2, 9), color: 'text.secondary' }}>
+              نفر
+            </Typography>
           </Box>
         </Box>
 

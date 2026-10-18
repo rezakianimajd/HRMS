@@ -16,6 +16,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import WarningIcon from '@mui/icons-material/Warning';
 import BlockIcon from '@mui/icons-material/Block';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 import { toJalali } from '../core/utils/dateUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 
@@ -91,11 +92,7 @@ const SupplierEvaluationsPage = () => {
   const countBy = (r) => list.filter(e => e.recommendation === r).length;
 
   const kpi = (title, value, color, icon, suffix = '') => (
-    <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-      <Avatar sx={{ width: 44, height: 44, background: `linear-gradient(135deg,${color},${color}99)`, mx: 'auto', mb: 1 }}>{icon}</Avatar>
-      <Typography variant="caption" color="textSecondary">{title}</Typography>
-      <Typography variant="h5" fontWeight={800} sx={{ color }}>{formatPersianNumber(value)}{suffix}</Typography>
-    </Paper>
+    <InfoCard icon={icon} label={title} value={value} suffix={suffix} color={color} />
   );
 
   return (

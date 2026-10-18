@@ -14,6 +14,7 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import { glassPaper, STATUS_LABELS, STATUS_COLORS, PageHeader } from './projects/ProjectsShared';
+import InfoCard from '../core/components/ui/InfoCard';
 
 const ProjectsDashboardPage = () => {
   const navigate = useNavigate();
@@ -41,11 +42,7 @@ const ProjectsDashboardPage = () => {
       <Grid container spacing={2} sx={{ mb: 2 }}>
         {stats.map((s, i) => (
           <Grid item xs={12} sm={6} md={3} key={i}>
-            <Paper sx={{ ...glassPaper, p: 2, textAlign: 'center' }}>
-              <Avatar sx={{ width: 44, height: 44, background: `linear-gradient(135deg,${s.color},${s.color}99)`, mx: 'auto', mb: 1 }}>{s.icon}</Avatar>
-              <Typography variant="caption" color="textSecondary">{s.label}</Typography>
-              <Typography variant="h5" fontWeight={800} sx={{ color: s.color }}>{formatPersianNumber(s.value)}</Typography>
-            </Paper>
+            <InfoCard icon={s.icon} label={s.label} value={s.value} color={s.color} />
           </Grid>
         ))}
       </Grid>

@@ -4,6 +4,7 @@ import {
 } from '@mui/material';
 
 import BasePageHeader from '../ui/PageHeader';
+import InfoCard from '../ui/InfoCard';
 
 /**
  * پالت نرم (Pastel) — آیکون‌های رنگی اما بدون اشباع بالا.
@@ -34,18 +35,8 @@ export const SURFACE = { ...CARD_SX };
 
 export const PageHeader = BasePageHeader;
 
-export const StatCard = ({ label, value, sub, color = SOFT.indigo }) => (
-  <Paper elevation={0} sx={{ ...CARD_SX, px: 1.6, py: 1.15, height: '100%' }}>
-    <Stack direction="row" spacing={0.75} alignItems="baseline" flexWrap="wrap" useFlexGap>
-      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: 'text.secondary' }}>
-        {label}:
-      </Typography>
-      <Typography sx={{ fontSize: 13, fontWeight: 900, color }}>{value}</Typography>
-      {sub ? (
-        <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>{sub}</Typography>
-      ) : null}
-    </Stack>
-  </Paper>
+export const StatCard = ({ label, value, sub, color = SOFT.indigo, icon }) => (
+  <InfoCard icon={icon} label={label} value={value} suffix={sub} color={color} />
 );
 
 export const StatGrid = ({ stats = [] }) => (

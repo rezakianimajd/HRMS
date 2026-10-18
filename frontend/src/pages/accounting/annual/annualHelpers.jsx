@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Paper, Typography, Avatar, CircularProgress } from '@mui/material';
 import { formatPersianNumber } from '../../../core/utils/numberUtils';
+import InfoCard from '../../../core/components/ui/InfoCard';
 
 export const COLOR = '#0ea5e9';
 export const COLOR_DARK = '#0369a1';
@@ -35,10 +36,7 @@ export const Loading = () => (
 );
 
 export const StatCard = ({ label, value, color = COLOR_DARK }) => (
-  <Paper sx={{ ...glass, p: 2, textAlign: 'center' }}>
-    <Typography variant="caption" color="textSecondary" sx={{ fontWeight: 600 }}>{label}</Typography>
-    <Typography variant="h6" fontWeight={900} sx={{ color, mt: 0.5 }}>{formatPersianNumber(value)}</Typography>
-  </Paper>
+  <InfoCard label={label} value={value} color={color} />
 );
 
 export default { COLOR, COLOR_DARK, glass, ReportHeader, Loading, StatCard };

@@ -720,7 +720,7 @@ const Layout = ({ children }) => {
           <NotificationBell compact iconColor={ICON_COLOR} />
         </Box>
 
-        <Box sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 } }}>
+        <Box className="hrms-page" sx={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', p: { xs: 2, md: 3 } }}>
           {children}
         </Box>
         <WorkspaceTabs />

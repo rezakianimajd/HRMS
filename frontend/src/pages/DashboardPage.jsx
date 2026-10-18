@@ -18,6 +18,7 @@ import FactCheckIcon from '@mui/icons-material/FactCheck';
 import FolderIcon from '@mui/icons-material/Folder';
 import WavingHandIcon from '@mui/icons-material/WavingHand';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import InfoCard from '../core/components/ui/InfoCard';
 import { DonutChart, BarChart } from '../core/components/charts/Charts';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
 import useAuth from '../core/hooks/useAuth';
@@ -36,32 +37,7 @@ function todayLabel() {
 }
 
 const StatCard = ({ title, value, icon, color }) => (
-  <Card sx={{
-    height: '100%',
-    background: `linear-gradient(135deg, ${color}16, ${color}06)`,
-    border: `1px solid ${color}22`,
-    borderRadius: '10px',
-    transition: 'all 0.2s ease',
-    '&:hover': { transform: 'translateY(-3px)', boxShadow: `0 10px 24px ${color}26` },
-  }}>
-    <CardContent sx={{ py: 1.25, px: 1.75, '&:last-child': { pb: 1.25 } }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.25 }}>
-        <Avatar sx={{
-          width: 36, height: 36,
-          background: `linear-gradient(135deg, ${color}, ${color}99)`,
-          boxShadow: `0 3px 10px ${color}30`,
-        }}>
-          {icon}
-        </Avatar>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography variant="caption" color="textSecondary" noWrap display="block">{title}</Typography>
-          <Typography variant="h6" fontWeight={800} sx={{ color, lineHeight: 1.15 }}>
-            {formatPersianNumber(value ?? 0)}
-          </Typography>
-        </Box>
-      </Box>
-    </CardContent>
-  </Card>
+  <InfoCard icon={icon} label={title} value={value} color={color} />
 );
 
 const PanelHeader = ({ title, icon, color }) => (
