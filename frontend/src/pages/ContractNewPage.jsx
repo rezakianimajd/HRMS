@@ -20,6 +20,7 @@ import BadgeIcon from '@mui/icons-material/Badge';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
+import PageHeader from '../core/components/ui/PageHeader';
 import { GUARANTEE_TYPES } from '../core/constants/guaranteeTypes';
 
 const TYPE_LABELS = {
@@ -216,23 +217,18 @@ const ContractNewPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(245,158,11,0.12), rgba(249,115,22,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(245,158,11,0.18)', borderRadius: '12px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #f59e0b, #f97316)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
-          <HandshakeIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 220 }}>
-          <Typography variant="h6" fontWeight={800} color="#b45309">{isEdit ? 'ویرایش قرارداد' : 'قرارداد جدید'}</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت کامل قرارداد با جزئیات حقوقی، مالی و اجرایی — تاریخ‌ها شمسی</Typography>
-        </Box>
-        <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
-        <Button variant="contained" startIcon={<SaveIcon />} disabled={!form.subject || !form.party} onClick={() => create.mutate(payload())}
-          sx={{ background: 'linear-gradient(135deg, #f59e0b, #f97316)', borderRadius: '10px', px: 3, whiteSpace: 'nowrap' }}>
-          {isEdit ? 'ذخیره تغییرات' : 'ثبت قرارداد'}
-        </Button>
-      </Paper>
+            <PageHeader
+        icon={<HandshakeIcon />}
+        title={isEdit ? 'ویرایش قرارداد' : 'قرارداد جدید'}
+        actions={(
+          <>
+            <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={() => navigate('/external-contracts')}>بازگشت</Button>
+            <Button variant="contained" startIcon={<SaveIcon />} disabled={!form.subject || !form.party} onClick={() => create.mutate(payload())}>
+              {isEdit ? 'ذخیره تغییرات' : 'ثبت قرارداد'}
+            </Button>
+          </>
+        )}
+      />
 
       {message && (
         <Alert severity={message.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMessage(null)}>{message.text}</Alert>

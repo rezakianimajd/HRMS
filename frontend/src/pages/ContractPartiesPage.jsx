@@ -25,6 +25,7 @@ import LaunchIcon from '@mui/icons-material/Launch';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { toJalali } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
 
 const PARTY_TYPES = {
   contractor: { label: 'پیمانکار', color: '#f97316' },
@@ -192,22 +193,15 @@ const ContractPartiesPage = () => {
 
   return (
     <Box>
-      {/* Header */}
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2,
-        background: 'linear-gradient(120deg, rgba(14,165,233,0.10), rgba(99,102,241,0.05), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(14,165,233,0.16)', borderRadius: '10px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', boxShadow: '0 8px 24px rgba(14,165,233,0.4)' }}>
-          <StorefrontIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography variant="h6" fontWeight={800} color="#0369a1">پیمانکاران و فروشندگان</Typography>
-          <Typography variant="body2" color="textSecondary">پروندهٔ کامل طرف‌های قرارداد با جزئیات حقوقی، بانکی و سوابق</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY_FORM); setError(''); setDialog(true); }}
-          sx={{ background: 'linear-gradient(135deg, #0ea5e9, #6366f1)', borderRadius: '10px' }}>
-          افزودن طرف
-        </Button>
-      </Paper>
+            <PageHeader
+        icon={<StorefrontIcon />}
+        title="پیمانکاران و فروشندگان"
+        actions={(
+          <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm(EMPTY_FORM); setError(''); setDialog(true); }}>
+            افزودن طرف
+          </Button>
+        )}
+      />
 
       {/* Search */}
       <Paper sx={{ p: 1.5, mb: 2, borderRadius: '12px', background: 'rgba(255,255,255,0.65)' }}>
