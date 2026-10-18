@@ -112,7 +112,24 @@ const ExternalContractsPage = () => {
 
   const { data: contracts, isLoading } = useQuery({
     queryKey: ['external-contracts'],
-    queryFn: () => axiosInstance.get('/external-contracts/').then(r => r.data),
+    queryFn: async () => {
+      // صفحه‌بندی پیش‌فرض بک‌اند ۱۰۰ ردیف است؛ برای آمار و جدول، همهٔ صفحات را می‌خوانیم.
+      const pageSize = 1000;
+      const first = await axiosInstance.get('/external-contracts/', { params: { page_size: pageSize } });
+      const payload = first.data;
+      if (Array.isArray(payload)) return payload;
+
+      const results = [...(payload?.results || [])];
+      const total = Number(payload?.count || results.length);
+      const pages = Math.ceil(total / pageSize);
+      for (let page = 2; page <= pages; page += 1) {
+        const response = await axiosInstance.get('/external-contracts/', {
+          params: { page, page_size: pageSize },
+        });
+        results.push(...(response.data?.results || []));
+      }
+      return results;
+    },
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
