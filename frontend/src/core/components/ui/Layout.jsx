@@ -23,6 +23,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import BackupIcon from '@mui/icons-material/Backup';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import AssessmentOutlinedIcon from '@mui/icons-material/AssessmentOutlined';
 import AccountTreeIcon from '@mui/icons-material/AccountTree';
 import InsightsIcon from '@mui/icons-material/Insights';
 import HomeOutlinedIcon from '@mui/icons-material/HomeOutlined';
