@@ -119,6 +119,9 @@ const ContractFinancePage = () => {
     });
     base.invoices = sortedInvoices.reduce((sum, row) => sum + toNum(row.total), 0);
     base.payments = sortedPayments.reduce((sum, row) => sum + toNum(row.amount), 0);
+    return base;
+  }, [statementRows, sortedInvoices, sortedPayments]);
+
   const advanceRows = (contract?.advance_payments || []).map((row, index) => ({
     id: `advance-${index}`,
     step: row.step,
@@ -156,8 +159,6 @@ const ContractFinancePage = () => {
     }
   };
 
-    return base;
-  }, [statementRows, sortedInvoices, sortedPayments]);
   return (
     <Box>
       <PageHeader

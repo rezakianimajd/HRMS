@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableFooter,
+  Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TableFooter,
   Typography, Chip, Stack,
 } from '@mui/material';
 import TableRowsIcon from '@mui/icons-material/TableRows';
