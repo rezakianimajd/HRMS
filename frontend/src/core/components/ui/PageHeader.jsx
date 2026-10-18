@@ -173,14 +173,14 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, ...r
           backgroundColor: `${mixHex(accent, '#000000', 0.14)} !important`,
           boxShadow: 'none',
         },
-        '& .MuiButton-outlined:not(.MuiButton-colorError):not(.MuiButton-colorWarning):not(.MuiButton-colorSuccess):not(.MuiButton-colorInfo)': {
+        '& .MuiButton-outlined:not(.MuiButton-outlinedError):not(.MuiButton-outlinedWarning):not(.MuiButton-outlinedSuccess):not(.MuiButton-outlinedInfo)': {
           borderColor: alpha(accent, 0.45),
           color: accent,
           fontSize: `${type.buttonSize}px !important`,
           fontWeight: `${type.buttonWeight} !important`,
           borderRadius: '9px',
         },
-        '& .MuiButton-text:not(.MuiButton-colorError):not(.MuiButton-colorWarning):not(.MuiButton-colorSuccess):not(.MuiButton-colorInfo)': {
+        '& .MuiButton-text:not(.MuiButton-textError):not(.MuiButton-textWarning):not(.MuiButton-textSuccess):not(.MuiButton-textInfo)': {
           color: accent,
           fontSize: `${type.buttonSize}px !important`,
           fontWeight: `${type.buttonWeight} !important`,
