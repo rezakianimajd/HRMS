@@ -52,6 +52,7 @@ const GuaranteeRow = ({ item, currencyLabel }) => (
 
 const RequirementCard = ({ req, currencyLabel }) => {
   const style = STATUS_STYLE[req.status] || STATUS_STYLE.missing;
+  const reqItems = req.items || [];
   return (
     <Grid item xs={12} md={6}>
       <Box sx={{
@@ -101,11 +102,11 @@ const RequirementCard = ({ req, currencyLabel }) => {
         </Stack>
 
         <Stack spacing={0.55} sx={{ mt: 1 }}>
-          {req.items.length === 0 ? (
+          {reqItems.length === 0 ? (
             <Box sx={{ p: 1, borderRadius: '9px', bgcolor: '#fbfcfe', border: '1px dashed #dbe4ee', textAlign: 'center' }}>
               <Typography sx={{ fontSize: 9.5, color: MUTED }}>تضمینی برای این قلم ثبت نشده است.</Typography>
             </Box>
-          ) : req.items.map((item) => <GuaranteeRow key={item.id} item={item} currencyLabel={currencyLabel} />)}
+          ) : reqItems.map((item) => <GuaranteeRow key={item.id} item={item} currencyLabel={currencyLabel} />)}
         </Stack>
       </Box>
     </Grid>
