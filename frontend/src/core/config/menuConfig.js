@@ -295,7 +295,6 @@ const accountingMenu = [
       { id: 'acc-subsidiary', title: 'حساب‌های معین', icon: <ReceiptLongIcon />, path: '/accounting/accounts/subsidiary', color: '#0ea5e9', primary: false, ready: true },
       { id: 'acc-auxiliary', title: 'حساب‌های تفصیلی', icon: <CategoryIcon />, path: '/accounting/auxiliary', color: '#f59e0b', primary: false, ready: true },
       { id: 'acc-cost-centers', title: 'مراکز هزینه', icon: <CalculateIcon />, path: '/accounting/codings/costcenters', color: '#8b5cf6', primary: false, ready: true },
-      { id: 'accounting-dimensions', title: 'ابعاد مالی', icon: <AssessmentIcon />, path: '/accounting/codings/dimensions', color: '#0ea5e9', primary: false, ready: true },
     ],
   },
   {

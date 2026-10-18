@@ -235,6 +235,7 @@ $FrontendFiles = @(
     'frontend/src/core/theme/appearanceDefaults.js',
     'frontend/src/core/components/ui/PageHeader.jsx',
     'frontend/src/core/components/ui/InfoCard.jsx',
+    'frontend/src/pages/accounting/DefinitionTable.jsx',
     'frontend/src/pages/AttendancePage.jsx',
     'frontend/src/pages/LeavePage.jsx',
     'frontend/src/pages/OrgChartPage.jsx',

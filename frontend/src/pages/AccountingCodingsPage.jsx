@@ -312,12 +312,6 @@ const AccountingCodingsPage = () => {
       columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام مرکز هزینه' }],
       fields: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام مرکز هزینه' }],
     },
-    dimensions: {
-      title: 'ابعاد مالی', icon: <CategoryIcon sx={{ color: '#fff', fontSize: 22 }} />,
-      endpoint: '/accounting/dimensions/',
-      columns: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام بُعد مالی' }],
-      fields: [{ key: 'code', label: 'کد' }, { key: 'name', label: 'نام بُعد مالی' }],
-    },
     fiscalyears: {
       title: 'سال‌های مالی', icon: <CategoryIcon sx={{ color: '#fff', fontSize: 22 }} />,
       endpoint: '/accounting/fiscal-years/',

@@ -56,19 +56,18 @@ const typeLabel = (type) => {
 };
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.80), rgba(255,255,255,0.45))',
-  backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 18px 50px rgba(15,118,110,0.14)',
-  borderRadius: '20px',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
+  borderRadius: '16px',
 };
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: '14px',
-    background: 'rgba(255,255,255,0.6)',
-    '&:hover': { background: 'rgba(255,255,255,0.85)' },
-    '&.Mui-focused': { background: '#fff', boxShadow: '0 0 0 4px rgba(15,118,110,0.12)' },
+    borderRadius: '10px',
+    background: '#ffffff',
+    '&:hover': { background: '#ffffff' },
+    '&.Mui-focused': { background: '#ffffff' },
   },
 };
 
