@@ -214,7 +214,7 @@ const UsersPage = () => {
                 }}>
                   <PersonIcon sx={{ fontSize: 17 }} />
                 </Avatar>
-                <Typography sx={{ fontSize: 13, fontWeight: 800 }}>کاربران</Typography>
+                <Typography sx={{ fontSize: 16, fontWeight: 400 }}>کاربران</Typography>
                 <Chip
                   size="small"
                   label={`${formatPersianNumber(userList.length)} کاربر`}
@@ -424,7 +424,7 @@ const UsersPage = () => {
                   {(viewUser.first_name?.charAt(0) || viewUser.username?.charAt(0) || 'U')}
                 </Avatar>
                 <Box>
-                  <Typography sx={{ fontSize: 13, fontWeight: 800 }}>
+                  <Typography sx={{ fontSize: 16, fontWeight: 400 }}>
                     {viewUser.first_name} {viewUser.last_name}
                   </Typography>
                   <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>@{viewUser.username}</Typography>

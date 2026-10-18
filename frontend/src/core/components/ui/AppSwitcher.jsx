@@ -136,12 +136,12 @@ const AppSwitcher = () => {
           </Box>
           <Box sx={{ minWidth: 0, textAlign: 'right' }}>
             <Typography sx={{
-              fontSize: 9, fontWeight: 800, letterSpacing: '0.06em',
+              fontSize: 10, fontWeight: 500, letterSpacing: '0.06em',
               color: 'text.disabled', lineHeight: 1.5,
             }}>
               ماژول فعال
             </Typography>
-            <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 800, lineHeight: 1.6 }}>
+            <Typography noWrap sx={{ fontSize: 13, fontWeight: 400, lineHeight: 1.7 }}>
               {currentApp?.title || 'انتخاب ماژول'}
             </Typography>
           </Box>
@@ -181,12 +181,12 @@ const AppSwitcher = () => {
           borderBottom: '1px solid', borderColor: 'divider',
         }}>
           <Typography sx={{
-            fontSize: 9.5, fontWeight: 800,
+            fontSize: 10, fontWeight: 500,
             letterSpacing: '0.06em', color: 'text.disabled',
           }}>
             انتخاب ماژول
           </Typography>
-          <Typography sx={{ fontSize: 9, color: 'text.disabled' }}>
+          <Typography sx={{ fontSize: 10, fontWeight: 400, color: 'text.disabled' }}>
             {toPersianDigits(activeApps.length)} ماژول
           </Typography>
         </Box>
@@ -222,8 +222,8 @@ const AppSwitcher = () => {
                   {renderIcon(app, 16)}
                 </Box>
                 <Typography noWrap sx={{
-                  flex: 1, fontSize: 11.5,
-                  fontWeight: selected ? 800 : 600,
+                  flex: 1, fontSize: 13,
+                  fontWeight: selected ? 500 : 400,
                 }}>
                   {app.title}
                 </Typography>
@@ -242,7 +242,7 @@ const AppSwitcher = () => {
         {comingSoonApps.length > 0 && (
           <Box sx={{ borderTop: '1px solid', borderColor: 'divider', p: 0.75 }}>
             <Typography sx={{
-              px: 1, py: 0.5, fontSize: 9, fontWeight: 800,
+              px: 1, py: 0.5, fontSize: 10, fontWeight: 500,
               letterSpacing: '0.04em', color: 'text.disabled',
             }}>
               در حال ساخت
@@ -259,8 +259,8 @@ const AppSwitcher = () => {
                 }}>
                   {renderIcon(app, 15)}
                 </Box>
-                <Typography noWrap sx={{ flex: 1, fontSize: 11 }}>{app.title}</Typography>
-                <Typography sx={{ fontSize: 8.5, color: 'text.disabled' }}>به‌زودی</Typography>
+                <Typography noWrap sx={{ flex: 1, fontSize: 13, fontWeight: 400 }}>{app.title}</Typography>
+                <Typography sx={{ fontSize: 9.5, color: 'text.disabled' }}>به‌زودی</Typography>
               </MenuItem>
             ))}
           </Box>

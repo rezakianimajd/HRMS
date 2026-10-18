@@ -486,7 +486,7 @@ const StorageArchivePanel = () => {
             <StorageIcon sx={{ fontSize: 17 }} />
           </Avatar>
           <Box sx={{ flex: 1, minWidth: 180 }}>
-            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>پوشه‌های بایگانی ماژول‌ها</Typography>
+            <Typography sx={{ fontSize: 16, fontWeight: 400 }}>پوشه‌های بایگانی ماژول‌ها</Typography>
           </Box>
           <Button size="small" startIcon={<RefreshIcon sx={{ fontSize: 16 }} />} onClick={invalidate}
             sx={{ fontSize: 11 }}>به‌روزرسانی</Button>

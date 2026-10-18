@@ -467,7 +467,7 @@ const Layout = ({ children }) => {
 
       <Typography sx={{
         px: 2, pt: 1.5, pb: 0.5,
-        fontSize: 9.5, fontWeight: 800, letterSpacing: '0.08em',
+        fontSize: 10, fontWeight: 500, letterSpacing: '0.08em',
         color: 'text.disabled',
       }}>
         منوی اصلی
@@ -512,8 +512,7 @@ const Layout = ({ children }) => {
                   {React.cloneElement(groupIcon(group.id), { sx: { fontSize: 18 } })}
                 </Box>
                 <Typography sx={{
-                  flex: 1, fontSize: 12.5,
-                  fontWeight: containsActive || open ? 800 : 600,
+                  flex: 1, fontSize: 13, fontWeight: 500,
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
                 }}>
                   {group.title}
@@ -566,8 +565,8 @@ const Layout = ({ children }) => {
                         }}
                       >
                         <Typography noWrap sx={{
-                          flex: 1, fontSize: 11.5,
-                          fontWeight: active ? 800 : 500,
+                          flex: 1, fontSize: 13,
+                          fontWeight: active ? 500 : 400,
                         }}>
                           {item.title}
                         </Typography>
@@ -692,7 +691,7 @@ const Layout = ({ children }) => {
               <BusinessIcon sx={{ fontSize: 14, color: '#fff' }} />
             </Avatar>
           )}
-          <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 800 }}>
+          <Typography noWrap sx={{ flex: 1, fontSize: 13, fontWeight: 500 }}>
             {companyName}
           </Typography>
           <NotificationBell compact iconColor={ICON_COLOR} />

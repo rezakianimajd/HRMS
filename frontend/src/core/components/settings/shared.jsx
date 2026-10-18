@@ -114,7 +114,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
               <CategoryOutlinedIcon sx={{ fontSize: 18 }} />
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 13, fontWeight: 900 }} noWrap>{title}</Typography>
+              <Typography sx={{ fontSize: 16, fontWeight: 400 }} noWrap>{title}</Typography>
               <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>
                 {formatPersianNumber(items.length)} رکورد ثبت‌شده
               </Typography>

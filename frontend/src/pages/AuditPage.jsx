@@ -47,7 +47,7 @@ const AuditPage = () => {
             }}>
               <HistoryIcon sx={{ fontSize: 17 }} />
             </Avatar>
-            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>فعالیت‌ها</Typography>
+            <Typography sx={{ fontSize: 16, fontWeight: 400 }}>فعالیت‌ها</Typography>
             <Chip
               size="small"
               label={`${formatPersianNumber(logs.length)} فعالیت`}

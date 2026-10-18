@@ -107,6 +107,16 @@ const cssBase = (bodyBg, whiteCards = false) => ({
       fontFamily: FONT_FAMILY,
     },
     'button, input, select, textarea': { fontFamily: 'inherit' },
+    '.MuiTypography-h1, .MuiTypography-h2, .MuiTypography-h3, .MuiTypography-h4, .MuiTypography-h5': {
+      fontSize: '20px !important',
+      fontWeight: '500 !important',
+      lineHeight: 1.5,
+    },
+    '.MuiTypography-h6, .MuiTypography-subtitle1': {
+      fontSize: '16px !important',
+      fontWeight: '400 !important',
+      lineHeight: 1.6,
+    },
     ...(whiteCards
       ? {
         '.MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root)': {
@@ -286,12 +296,19 @@ const ThemedApp = () => {
     palette: palettes,
     typography: {
       fontFamily: FONT_FAMILY,
-      h4: { fontWeight: 800, letterSpacing: '-0.5px' },
-      h5: { fontWeight: 700 },
-      h6: { fontWeight: 600 },
-      body1: { fontWeight: 400 },
-      body2: { fontWeight: 400 },
-      button: { fontWeight: 600, textTransform: 'none' },
+      h1: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
+      h2: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
+      h3: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
+      h4: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5, letterSpacing: 0 },
+      h5: { fontSize: '20px', fontWeight: 500, lineHeight: 1.5 },
+      h6: { fontSize: '16px', fontWeight: 400, lineHeight: 1.6 },
+      subtitle1: { fontSize: '16px', fontWeight: 400, lineHeight: 1.6 },
+      subtitle2: { fontSize: '13px', fontWeight: 400, lineHeight: 1.7 },
+      body1: { fontSize: '13px', fontWeight: 400, lineHeight: 1.8 },
+      body2: { fontSize: '13px', fontWeight: 400, lineHeight: 1.8 },
+      button: { fontSize: '13px', fontWeight: 400, textTransform: 'none' },
+      caption: { fontSize: '11px', fontWeight: 400, lineHeight: 1.7 },
+      overline: { fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em' },
     },
     shape: { borderRadius: 1 },
     components: {
@@ -299,7 +316,7 @@ const ThemedApp = () => {
       MuiButton: {
         styleOverrides: {
           root: {
-            textTransform: 'none', fontWeight: 600, borderRadius: '10px', padding: '8px 20px', transition: 'all 0.2s ease',
+            textTransform: 'none', fontWeight: 400, fontSize: '13px', borderRadius: '10px', padding: '8px 20px', transition: 'all 0.2s ease',
             '& .MuiButton-startIcon, & .MuiButton-endIcon': { display: 'none' },
           },
           contained: {
@@ -315,9 +332,56 @@ const ThemedApp = () => {
           text: { border: '1px solid currentColor', '&:hover': { border: '1px solid currentColor', background: `${palettes.primary.main}0f` } },
         },
       },
-      MuiInputBase: { styleOverrides: { input: { textAlign: 'right' } } },
-      MuiSelect: { styleOverrides: { select: { textAlign: 'right' } } },
-      MuiChip: { styleOverrides: { root: { borderRadius: '10px', fontWeight: 500 } } },
+      MuiInputBase: {
+        styleOverrides: {
+          root: { fontSize: '13px', fontWeight: 400 },
+          input: { fontSize: '13px', fontWeight: 400, textAlign: 'right' },
+        },
+      },
+      MuiSelect: {
+        styleOverrides: {
+          select: { fontSize: '13px', fontWeight: 400, textAlign: 'right' },
+        },
+      },
+      MuiMenuItem: {
+        styleOverrides: { root: { fontSize: '13px', fontWeight: 400 } },
+      },
+      MuiInputLabel: {
+        styleOverrides: { root: { fontSize: '13px', fontWeight: 400 } },
+      },
+      MuiFormLabel: {
+        styleOverrides: { root: { fontSize: '13px', fontWeight: 400 } },
+      },
+      MuiFormHelperText: {
+        styleOverrides: { root: { fontSize: '11px', fontWeight: 400 } },
+      },
+      MuiTableCell: {
+        styleOverrides: {
+          root: { fontSize: '13px', fontWeight: 400 },
+          head: { fontSize: '13px', fontWeight: 500 },
+        },
+      },
+      MuiCardHeader: {
+        styleOverrides: {
+          title: { fontSize: '16px', fontWeight: 400 },
+          subheader: { fontSize: '12px', fontWeight: 400 },
+        },
+      },
+      MuiDialogTitle: {
+        styleOverrides: { root: { fontSize: '16px', fontWeight: 400 } },
+      },
+      MuiListItemText: {
+        styleOverrides: {
+          primary: { fontSize: '13px', fontWeight: 400 },
+          secondary: { fontSize: '12px', fontWeight: 400 },
+        },
+      },
+      MuiChip: {
+        styleOverrides: { root: { borderRadius: '10px', fontWeight: 400, fontSize: '12px' } },
+      },
+      MuiTooltip: {
+        styleOverrides: { tooltip: { fontSize: '11px', fontWeight: 400 } },
+      },
       MuiListItemButton: {
         styleOverrides: {
           root: {

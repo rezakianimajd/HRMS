@@ -72,7 +72,7 @@ const NotificationSettingsPanel = () => {
       <Paper sx={{ p: 1.9, borderRadius: '16px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 18px rgba(15,23,42,0.04)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
           <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '9px', bgcolor: alpha(SOFT.indigo, 0.14), color: SOFT.indigo }}><MailIcon fontSize="small" /></Avatar>
-          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>اطلاع‌رسانی ایمیل</Typography>
+          <Typography sx={{ fontSize: 16, fontWeight: 400 }}>اطلاع‌رسانی ایمیل</Typography>
           <Box sx={{ flex: 1 }} />
           <Switch checked={Boolean(p.notify_email_enabled !== false)} onChange={(e) => setVal('notify_email_enabled', e.target.checked)} />
         </Box>
@@ -85,7 +85,7 @@ const NotificationSettingsPanel = () => {
       <Paper sx={{ p: 1.9, borderRadius: '16px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 18px rgba(15,23,42,0.04)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
           <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '9px', bgcolor: alpha(SOFT.green, 0.14), color: SOFT.green }}><ChatIcon fontSize="small" /></Avatar>
-          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>اطلاع‌رسانی پیام‌رسان بله</Typography>
+          <Typography sx={{ fontSize: 16, fontWeight: 400 }}>اطلاع‌رسانی پیام‌رسان بله</Typography>
           <Box sx={{ flex: 1 }} />
           <Switch checked={Boolean(p.notify_bale_enabled)} onChange={(e) => setVal('notify_bale_enabled', e.target.checked)} />
         </Box>
@@ -103,7 +103,7 @@ const NotificationSettingsPanel = () => {
 
       {/* Test send */}
       <Paper sx={{ p: 1.9, borderRadius: '16px', bgcolor: 'background.paper', border: '1px solid', borderColor: 'divider', boxShadow: '0 4px 18px rgba(15,23,42,0.04)' }}>
-        <Typography sx={{ fontSize: 13, fontWeight: 800, mb: 1 }}>ارسال آزمایشی</Typography>
+        <Typography sx={{ fontSize: 16, fontWeight: 400, mb: 1 }}>ارسال آزمایشی</Typography>
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
           <Button variant="outlined" size="small" startIcon={<SendIcon />} onClick={() => testSend('email')} disabled={sending}>ایمیل</Button>
           <Button variant="outlined" size="small" startIcon={<SendIcon />} onClick={() => testSend('bale')} disabled={sending}>بله</Button>

@@ -15,6 +15,9 @@
 
 body {
   font-family: 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: #f8fafc;

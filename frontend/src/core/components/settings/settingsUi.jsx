@@ -41,13 +41,13 @@ export const PageHeader = ({ icon, title, subtitle, badge, actions, color = SOFT
       </Avatar>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
-          <Typography sx={{ fontSize: { xs: 16.5, md: 18.5 }, fontWeight: 900, letterSpacing: '-.01em' }}>
+          <Typography sx={{ fontSize: '20px', fontWeight: 500, letterSpacing: 0 }}>
             {title}
           </Typography>
           {badge}
         </Stack>
         {subtitle ? (
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.3 }}>{subtitle}</Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary', mt: 0.3 }}>{subtitle}</Typography>
         ) : null}
       </Box>
       {actions ? (
@@ -94,10 +94,10 @@ export const TabsCard = ({ tabs = [], value, onChange, activeColor = SOFT.indigo
         '& .MuiTabs-indicator': { height: 3, borderRadius: 2, bgcolor: activeColor },
         '& .MuiTab-root': {
           minHeight: 54, minWidth: 0, px: 1.75,
-          textTransform: 'none', fontWeight: 700, fontSize: 12.5,
+          textTransform: 'none', fontWeight: 400, fontSize: 13,
           color: 'text.secondary', gap: 0.75,
         },
-        '& .MuiTab-root.Mui-selected': { color: activeColor, fontWeight: 800 },
+        '& .MuiTab-root.Mui-selected': { color: activeColor, fontWeight: 500 },
       }}
     >
       {tabs.map((tab, index) => (
@@ -142,10 +142,10 @@ export const SectionNote = ({ icon, title, desc, color = SOFT.indigo, trailing }
     </Avatar>
     <Box sx={{ flex: 1, minWidth: 160 }}>
       {title ? (
-        <Typography sx={{ fontWeight: 800, fontSize: 12.5, color }}>{title}</Typography>
+        <Typography sx={{ fontWeight: 400, fontSize: 16, color }}>{title}</Typography>
       ) : null}
       {desc ? (
-        <Typography variant="caption" color="text.secondary">{desc}</Typography>
+        <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary' }}>{desc}</Typography>
       ) : null}
     </Box>
     {trailing}

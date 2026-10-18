@@ -29,9 +29,9 @@ const COLOR = SOFT.violet;
 const CARD = { ...SURFACE, p: 1.75, mb: 1.75 };
 
 const FIELD_SX = {
-  '& .MuiInputBase-input': { fontSize: 11.5 },
-  '& .MuiSelect-select': { fontSize: 11.5 },
-  '& .MuiInputLabel-root': { fontSize: 11 },
+  '& .MuiInputBase-input': { fontSize: 13, fontWeight: 400 },
+  '& .MuiSelect-select': { fontSize: 13, fontWeight: 400 },
+  '& .MuiInputLabel-root': { fontSize: 13, fontWeight: 400 },
 };
 
 const onlyDigits = (value) => Number(toEnglishDigits(String(value)).replace(/[^0-9]/g, '')) || 0;
@@ -44,7 +44,7 @@ const SectionHead = ({ icon, title, actions }) => (
     }}>
       {React.cloneElement(icon, { sx: { fontSize: 17 } })}
     </Avatar>
-    <Typography sx={{ fontSize: 13, fontWeight: 800, flex: 1 }}>{title}</Typography>
+    <Typography sx={{ fontSize: 16, fontWeight: 400, flex: 1 }}>{title}</Typography>
     {actions}
   </Stack>
 );
@@ -322,7 +322,7 @@ const UpdatePanel = () => {
           <Avatar variant="rounded" sx={{ width: 32, height: 32, borderRadius: '10px', bgcolor: `${COLOR}24`, color: COLOR }}>
             <SystemUpdateAltIcon sx={{ fontSize: 18 }} />
           </Avatar>
-          <Typography sx={{ fontSize: 13, fontWeight: 800 }}>به‌روزرسانی سیستم</Typography>
+          <Typography sx={{ fontSize: 16, fontWeight: 400 }}>به‌روزرسانی سیستم</Typography>
           <Chip size="small" variant="outlined" label={`نسخهٔ فعلی ${toPersianDigits(currentVersion)}`} />
           <Chip size="small" variant="outlined"
             color={status.signature_required ? 'success' : 'warning'}
@@ -332,13 +332,13 @@ const UpdatePanel = () => {
             label={status.apply_enabled ? 'نصب خودکار فعال' : 'نصب خودکار: فاز بعد'} />
           <Box sx={{ flex: 1 }} />
           <Button size="small" variant="outlined" onClick={load}
-            sx={{ fontSize: 11, borderRadius: '9px', px: 1.5 }}>
+            sx={{ fontSize: 13, fontWeight: 400, borderRadius: '9px', px: 1.5 }}>
             به‌روزرسانی وضعیت
           </Button>
         </Stack>
 
         {!status.signature_required && (
-          <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mt: 1.5, '& .MuiAlert-message': { fontSize: 11 } }}>
+          <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mt: 1.5, '& .MuiAlert-message': { fontSize: 13, fontWeight: 400 } }}>
             کلید عمومی امضا تنظیم نشده است؛ بسته‌ها بدون بررسی اصالت پذیرفته می‌شوند.
             برای امنیت کامل مقدار <code>UPDATE_PUBLIC_KEY</code> را روی سرور تنظیم کنید.
           </Alert>
@@ -355,8 +355,8 @@ const UpdatePanel = () => {
               <InputLabel>کانال</InputLabel>
               <Select label="کانال" value={cfg.channel}
                 onChange={(event) => setCfg({ ...cfg, channel: event.target.value })}>
-                <MenuItem value="stable" sx={{ fontSize: 11.5 }}>پایدار</MenuItem>
-                <MenuItem value="beta" sx={{ fontSize: 11.5 }}>آزمایشی</MenuItem>
+                <MenuItem value="stable" sx={{ fontSize: 13, fontWeight: 400 }}>پایدار</MenuItem>
+                <MenuItem value="beta" sx={{ fontSize: 13, fontWeight: 400 }}>آزمایشی</MenuItem>
               </Select>
             </FormControl>
             <TextField size="small" label="شمارندهٔ خروج (ثانیه)"
@@ -366,12 +366,12 @@ const UpdatePanel = () => {
               value={toPersianDigits(cfg.keep_releases ?? '')} sx={{ width: 170, ...FIELD_SX }}
               onChange={(event) => setCfg({ ...cfg, keep_releases: onlyDigits(event.target.value) })} />
             <FormControlLabel
-              sx={{ '& .MuiFormControlLabel-label': { fontSize: 11.5 } }}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: 13, fontWeight: 400 } }}
               control={<Switch checked={Boolean(cfg.notify_email)}
                 onChange={(event) => setCfg({ ...cfg, notify_email: event.target.checked })} />}
               label="ایمیل" />
             <FormControlLabel
-              sx={{ '& .MuiFormControlLabel-label': { fontSize: 11.5 } }}
+              sx={{ '& .MuiFormControlLabel-label': { fontSize: 13, fontWeight: 400 } }}
               control={<Switch checked={Boolean(cfg.notify_bale)}
                 onChange={(event) => setCfg({ ...cfg, notify_bale: event.target.checked })} />}
               label="بله" />
@@ -398,7 +398,7 @@ const UpdatePanel = () => {
           }}>
             <Button size="small" variant="contained" onClick={saveSettings}
               disabled={savingCfg}
-              sx={{ bgcolor: COLOR, fontSize: 11.5, borderRadius: '9px', px: 2 }}>
+              sx={{ bgcolor: COLOR, fontSize: 13, fontWeight: 400, borderRadius: '9px', px: 2 }}>
               {savingCfg ? <CircularProgress size={16} color="inherit" /> : 'ذخیرهٔ تنظیمات'}
             </Button>
           </Box>
@@ -466,13 +466,13 @@ const UpdatePanel = () => {
         </Box>
         {releases.length === 0 ? (
           <Box sx={{ p: 4, textAlign: 'center' }}>
-            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: 13, fontWeight: 400, color: 'text.secondary' }}>
               هنوز بسته‌ای بارگذاری نشده است.
             </Typography>
           </Box>
         ) : (
           <TableContainer>
-            <Table size="small" sx={{ '& th': { fontSize: 10.5, fontWeight: 800, bgcolor: 'rgba(139,92,246,0.04)' }, '& td': { fontSize: 11, py: 1 } }}>
+            <Table size="small" sx={{ '& th': { fontSize: 13, fontWeight: 500, bgcolor: 'rgba(139,92,246,0.04)' }, '& td': { fontSize: 13, fontWeight: 400, py: 1 } }}>
               <TableHead>
                 <TableRow>
                   <TableCell>نسخه</TableCell>
@@ -489,7 +489,7 @@ const UpdatePanel = () => {
                 {releases.map((release) => (
                   <TableRow key={release.id} hover>
                     <TableCell>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>{toPersianDigits(release.version)}</Typography>
+                      <Typography sx={{ fontSize: 13, fontWeight: 400 }}>{toPersianDigits(release.version)}</Typography>
                       {release.min_app_version && (
                         <Typography sx={{ fontSize: 9.5, color: 'text.secondary', display: 'block' }}>
                           حداقل نسخهٔ مبدأ: {toPersianDigits(release.min_app_version)}
@@ -590,7 +590,7 @@ const UpdatePanel = () => {
         <Paper elevation={0} sx={CARD}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }} flexWrap="wrap">
             <CheckCircleOutlineIcon sx={{ fontSize: 18, color: SOFT.green }} />
-            <Typography sx={{ fontSize: 13, fontWeight: 800 }}>آخرین اجرای به‌روزرسانی</Typography>
+            <Typography sx={{ fontSize: 16, fontWeight: 400 }}>آخرین اجرای به‌روزرسانی</Typography>
             <Chip size="small" label={`${status.last_run.from_version} → ${status.last_run.to_version}`} />
             <Chip size="small" variant="outlined" label={status.last_run.status_display} />
             <Typography variant="caption" color="textSecondary">
