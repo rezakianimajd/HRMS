@@ -336,6 +336,7 @@ const NodeRow = ({
 const AccountingAccountTreePage = () => {
   const qc = useQueryClient();
   const [search, setSearch] = useState('');
+  const [nodeTypeFilter, setNodeTypeFilter] = useState('');
   const [q, setQ] = useState('');
   const [expanded, setExpanded] = useState(new Set());
   const lastQuery = useRef(null);
@@ -383,6 +384,17 @@ const AccountingAccountTreePage = () => {
   });
 
   const treeTypes = useMemo(() => treeData?.types || [], [treeData]);
+  const visibleTree = useMemo(() => {
+    if (!nodeTypeFilter) return treeTypes;
+    const prune = (nodes) => nodes.map((node) => {
+      const children = prune(node.children || []);
+      const own = nodeTypeFilter === 'account'
+        ? node.node_type === 'account'
+        : node.node_type === nodeTypeFilter;
+      return own || children.length ? { ...node, children } : null;
+    }).filter(Boolean);
+    return prune(treeTypes);
+  }, [treeTypes, nodeTypeFilter]);
   const summary = treeData?.summary || {};
   const groupList = useMemo(() => (Array.isArray(groups) ? groups : groups?.results || []), [groups]);
   const generalList = useMemo(() => (Array.isArray(generals) ? generals : generals?.results || []), [generals]);
@@ -709,6 +721,14 @@ const AccountingAccountTreePage = () => {
               ) : null,
             }}
           />
+          <FormControl size="small" sx={{ minWidth: 160 }}>
+            <InputLabel>نمایش</InputLabel>
+            <Select value={nodeTypeFilter} label="نمایش" onChange={e => setNodeTypeFilter(e.target.value)}>
+              <MenuItem value="">همه سطوح</MenuItem>
+              <MenuItem value="group">گروه‌ها</MenuItem>
+              <MenuItem value="account">حساب‌ها</MenuItem>
+            </Select>
+          </FormControl>
           {q && (
             <Chip color="warning" variant="outlined" sx={{ fontWeight: 700 }}
               label={`شاخه‌های منطبق با «${q}»: ${toPersianDigits(summary.account_count || 0)} حساب`} />
@@ -757,7 +777,7 @@ const AccountingAccountTreePage = () => {
       <Paper sx={{ ...glass, p: 2 }}>
         {isLoading ? (
           <Box textAlign="center" py={7}><CircularProgress /></Box>
-        ) : treeTypes.length === 0 ? (
+        ) : visibleTree.length === 0 ? (
           <Box textAlign="center" py={7}>
             <AccountTreeIcon sx={{ fontSize: 60, color: 'text.disabled', mb: 1 }} />
             <Typography color="textSecondary">
@@ -765,7 +785,7 @@ const AccountingAccountTreePage = () => {
             </Typography>
           </Box>
         ) : (
-          treeTypes.map(node => (
+          visibleTree.map(node => (
             <NodeRow
               key={NODE_KEY(node)}
               node={node}
