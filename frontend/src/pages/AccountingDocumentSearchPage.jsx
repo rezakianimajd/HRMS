@@ -19,10 +19,10 @@ const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.88), rgba(255,255,255,0.70))',
-  backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 14px 40px rgba(99,102,241,0.16)', borderRadius: '16px',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
+  borderRadius: '16px',
 };
 
 const STATUS_META = {
@@ -138,11 +138,11 @@ const AccountingDocumentSearchPage = () => {
       />
 
       {/* باکس فیلتر */}
-      <Paper elevation={3} sx={{
+      <Paper elevation={0} sx={{
         mb: 2,
-        background: 'linear-gradient(135deg, rgba(255,255,255,0.96), rgba(245,247,255,0.96))',
-        backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)',
-        border: '1px solid rgba(99,102,241,0.12)', borderRadius: '16px',
+        background: '#ffffff',
+        border: '1px solid rgba(15,23,42,0.07)', borderRadius: '16px',
+        boxShadow: 'none',
         px: 2, py: 1.5,
       }}>
         <Grid container spacing={2}>

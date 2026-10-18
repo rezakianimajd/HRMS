@@ -18,10 +18,10 @@ const COLOR = '#14b8a6';
 const COLOR_DARK = '#0d9488';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(255,255,255,0.34))',
-  backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 14px 40px rgba(20,184,166,0.12)', borderRadius: '16px',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
+  borderRadius: '16px',
 };
 
 const StatCard = ({ icon, label, value, color }) => (

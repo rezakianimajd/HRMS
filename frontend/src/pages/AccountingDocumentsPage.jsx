@@ -39,10 +39,9 @@ const COLOR = '#3b82f6';
 const COLOR_DARK = '#2563eb';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.32))',
-  backdropFilter: 'blur(22px)', WebkitBackdropFilter: 'blur(22px)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 14px 40px rgba(59,130,246,0.12)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
   borderRadius: '16px',
 };
 
@@ -271,7 +270,7 @@ const AccountingDocumentsPage = () => {
       </Paper>
 
       <Dialog open={!!timeline} onClose={() => setTimeline(null)} fullWidth maxWidth="sm"
-        slotProps={{ paper: { sx: { borderRadius: '20px', background: 'linear-gradient(150deg, #fff, #f8fafc)' } } }}>
+        slotProps={{ paper: { sx: { borderRadius: '20px', background: '#ffffff', boxShadow: 'none' } } }}>
         <DialogTitle sx={{ fontWeight: 800, color: COLOR_DARK }}>تایم‌لاین سند {timeline?.number || `#${timeline?.id}`}</DialogTitle>
         <DialogContent><Timeline events={timeline?.history} /></DialogContent>
       </Dialog>

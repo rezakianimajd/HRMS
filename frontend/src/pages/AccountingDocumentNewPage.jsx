@@ -25,18 +25,16 @@ const ROWS = 8;
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.48))',
-  backdropFilter: 'blur(22px) saturate(180%)',
-  WebkitBackdropFilter: 'blur(22px) saturate(180%)',
-  border: '1px solid rgba(255,255,255,0.7)',
-  boxShadow: '0 16px 44px rgba(16,185,129,0.12)',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
   borderRadius: '16px',
 };
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: '10px', background: 'rgba(255,255,255,0.6)',
-    '&.Mui-focused': { background: '#fff', boxShadow: '0 0 0 3px rgba(16,185,129,0.10)' },
+    borderRadius: '10px', background: '#ffffff',
+    '&.Mui-focused': { background: '#ffffff' },
   },
 };
 
@@ -366,7 +364,7 @@ const AccountingDocumentNewPage = () => {
 
       <Paper sx={{ ...glass, p: 1, mb: 1.5, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0, flexWrap: 'wrap', gap: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
-          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: totalBalanceOk ? COLOR : '#ef4444', boxShadow: `0 0 8px ${totalBalanceOk ? COLOR : '#ef4444'}` }} />
+          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: totalBalanceOk ? COLOR : '#ef4444' }} />
           <Typography variant="body2" fontWeight={800} sx={{ color: totalBalanceOk ? COLOR_DARK : '#ef4444', fontFamily: FONT }}>
             {totalBalanceOk ? 'سند متوازن است' : `مغایرت: ${formatPersianNumber(diff)}`}
           </Typography>

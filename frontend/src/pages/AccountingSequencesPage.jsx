@@ -21,11 +21,10 @@ const COLOR_DARK = '#4f46e5';
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.78), rgba(255,255,255,0.40))',
-  backdropFilter: 'blur(22px) saturate(160%)',
-  WebkitBackdropFilter: 'blur(22px) saturate(160%)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 16px 46px rgba(99,102,241,0.12)', borderRadius: '18px',
+  background: '#ffffff',
+  border: '1px solid rgba(15,23,42,0.07)',
+  boxShadow: 'none',
+  borderRadius: '16px',
 };
 
 const AccountingSequencesPage = () => {
@@ -184,10 +183,9 @@ const AccountingSequencesPage = () => {
                 const y = yearsList.find(x => x.id === s.fiscal_year);
                 return (
                   <Box key={s.id} sx={{
-                    p: 1.5, borderRadius: '14px', border: '1px solid rgba(100,116,139,0.14)',
-                    background: 'linear-gradient(135deg, rgba(255,255,255,0.9), rgba(255,255,255,0.55))',
+                    p: 1.5, borderRadius: '14px', border: '1px solid rgba(15,23,42,0.07)',
+                    background: '#ffffff',
                     display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap',
-                    borderRight: '4px solid #6366f1',
                   }}>
                     <Box sx={{ flex: 1, minWidth: 160 }}>
                       <Typography variant="body2" fontWeight={800} sx={{ fontFamily: FONT }}>{j?.name || 'عمومی'}</Typography>
