@@ -1,4 +1,5 @@
 import notesContent from './financialNotesContent.json';
+import notesGrid from './financialNotesExcel.json';
 import {
   classifyBalanceGroups, groupTotalValue, normText,
 } from './financialStatementsTemplate';
@@ -703,6 +704,7 @@ export const buildNotePages = ({
 }) => {
   const classification = {
     current: classifyBalanceGroups(balanceData),
+
     prior: classifyBalanceGroups(priorBalanceData),
     opening: classifyBalanceGroups(openingBalanceData),
   };
@@ -720,6 +722,7 @@ export const buildNotePages = ({
           .replace(/شرکت نمونه \(سهامی عام\)/g, () => companyName)
           .replace(/شرکت نمونه/g, () => companyName)),
         tables,
+        grid: buildNoteGrid(meta.page, ctx, tables),
         hasData: tableData,
         visible: Boolean(meta.alwaysShow || tableData || required),
       };
@@ -727,11 +730,100 @@ export const buildNotePages = ({
     .filter((page) => page.visible);
 };
 
+/* ========================================================================== *
+ * Excel grids (صفحات ۱۰ تا ۵۷)
+ * ========================================================================== */
+
+const PNL_PAGE_SCOPE = {
+  21: ['revenue'],
+  22: ['revenue'],
+  23: ['revenue', 'cost'],
+  24: ['revenue'],
+  25: ['cost'],
+  26: ['expense'],
+  27: ['revenue', 'expense'],
+  28: ['expense'],
+};
+
+const BALANCE_PAGE_SCOPE = {
+  31: ['assets', ['fixed_assets']],
+  32: ['assets', ['fixed_assets']],
+  33: ['assets', ['fixed_assets']],
+  34: ['assets', ['fixed_assets', 'investment_property']],
+  35: ['assets', ['intangible_assets']],
+  36: ['assets', ['long_term_investments']],
+  37: ['assets', ['long_term_investments', 'short_term_investments']],
+  38: ['assets', ['trade_receivables', 'other_current_assets']],
+  39: ['assets', ['long_term_receivables']],
+  40: ['assets', ['trade_receivables', 'long_term_receivables']],
+  41: ['assets', ['other_noncurrent_assets', 'other_current_assets', 'prepayments']],
+  42: ['assets', ['inventory']],
+  43: ['assets', ['contract_assets', 'short_term_investments']],
+  44: ['assets', ['cash', 'assets_held_for_sale']],
+  45: ['equity', ['share_capital']],
+  46: ['equity', ['capital_in_progress', 'share_premium', 'treasury_premium', 'legal_reserve', 'other_reserves', 'revaluation_surplus', 'retained_earnings', 'other_equity']],
+  47: ['equity', ['treasury_shares']],
+  48: ['liabilities', ['trade_payables', 'other_current_liabilities', 'tax_payable']],
+  49: ['liabilities', ['long_term_payables']],
+  50: ['liabilities', ['long_term_facilities', 'short_term_facilities']],
+  51: ['liabilities', ['long_term_facilities', 'short_term_facilities']],
+  52: ['liabilities', ['long_term_facilities', 'short_term_facilities']],
+  53: ['liabilities', ['long_term_facilities', 'short_term_facilities']],
+  54: ['liabilities', ['long_term_facilities', 'short_term_facilities']],
+  55: ['liabilities', ['tax_payable', 'deferred_tax_liability']],
+  56: ['liabilities', ['tax_payable', 'deferred_tax_liability']],
+  57: ['liabilities', ['tax_payable', 'deferred_tax_liability']],
+};
+
+const withSeries = (currentGroups, priorGroups = [], openingGroups = []) => currentGroups
+  .map((group) => {
+    const key = groupKey(group);
+    const prior = priorGroups.find((item) => groupKey(item) === key);
+    const opening = openingGroups.find((item) => groupKey(item) === key);
+    return {
+      ...group,
+      current: groupValue(group),
+      prior: prior ? groupValue(prior) : null,
+      opening: opening ? groupValue(opening) : null,
+    };
+  });
+
+const pnlScope = (page, pnl) => {
+  const keys = PNL_PAGE_SCOPE[page] || [];
+  const current = [];
+  const previous = [];
+  if (keys.includes('revenue')) {
+    current.push(...pnl.revenue);
+    previous.push(...pnl.previousRevenue);
+  }
+  if (keys.includes('cost')) {
+    current.push(...pnl.cost);
+    previous.push(...pnl.previousCost);
+  }
+  if (keys.includes('expense')) {
+    current.push(...pnl.expense);
+    previous.push(...pnl.previousExpense);
+  }
+  return withSeries(current, previous);
+};
+
+const balanceScope = (page, classification) => {
+  const scope = BALANCE_PAGE_SCOPE[page];
+  if (!scope) return [];
+  const [side, rowIds] = scope;
+  const current = rowIds.flatMap((rowId) => classification.current[side]?.[rowId] || []);
+  const prior = rowIds.flatMap((rowId) => classification.prior[side]?.[rowId] || []);
+  const opening = rowIds.flatMap((rowId) => classification.opening[side]?.[rowId] || []);
+  return withSeries(current, prior, opening);
+};
+
+
 export const applyNoteOverrides = (pages, noteValues = {}, notesText = {}) => pages.map((page) => ({
   ...page,
   paragraphs: page.paragraphs.map((paragraph, index) => (
     notesText?.[`${page.page}:${index}`] ?? paragraph
   )),
+  grid: applyGridOverrides(page.grid, noteValues?.[page.page]?.__grid__ || {}),
   tables: page.tables.map((table) => {
     const tableOverrides = noteValues?.[page.page]?.[table.id] || {};
     const rows = table.rows.map((row) => {
@@ -754,4 +846,176 @@ export const applyNoteOverrides = (pages, noteValues = {}, notesText = {}) => pa
     return { ...table, rows };
   }),
 }));
+
+
+const GROUPS_FOR_LABEL = [
+  { test: (name) => name.includes('اسناد') && name.includes('دریافتنی'), tokens: ['اسناد دریافتنی'] },
+  { test: (name) => name.includes('حساب') && name.includes('دریافتنی'), tokens: ['حساب‌های دریافتنی', 'حسابهای دریافتنی'] },
+  { test: (name) => name.includes('تسهیلات') && name.includes('اعطایی'), tokens: ['تسهیلات اعطایی'] },
+  { test: (name) => name.includes('کارکنان'), tokens: ['کارکنان', 'وام و مساعده'] },
+  { test: (name) => name.includes('اسناد') && name.includes('پرداختنی'), tokens: ['اسناد پرداختنی'] },
+  { test: (name) => name.includes('حساب') && name.includes('پرداختنی'), tokens: ['حساب‌های پرداختنی', 'حسابهای پرداختنی'] },
+  { test: (name) => name.includes('سپرده'), tokens: ['سپرده', 'حسن انجام کار'] },
+  { test: (name) => name.includes('بیمه'), tokens: ['بیمه'] },
+  { test: (name) => name.includes('مالیات'), tokens: ['مالیات'] },
+  { test: (name) => name.includes('تسهیلات'), tokens: ['تسهیلات', 'وام'] },
+  { test: (name) => name.includes('پیش') && name.includes('دریافت'), tokens: ['پیش‌دریافت', 'پیش دریافت'] },
+  { test: (name) => name.includes('سود') && name.includes('انباشته'), tokens: ['سود انباشته'] },
+  { test: (name) => name.includes('اندوخته'), tokens: ['اندوخته'] },
+  { test: (name) => name.includes('سهام') && name.includes('خزانه'), tokens: ['سهام خزانه'] },
+  { test: (name) => name.includes('موجودی') && (name.includes('کالا') || name.includes('مواد')), tokens: ['موجودی'] },
+  { test: (name) => name.includes('دارایی') && name.includes('ثابت'), tokens: ['دارایی ثابت', 'دارایی‌های ثابت'] },
+  { test: (name) => name.includes('نامشهود'), tokens: ['نامشهود'] },
+  { test: (name) => name.includes('سرمایه') && name.includes('گذاری'), tokens: ['سرمایه‌گذاری'] },
+  { test: (name) => name.includes('نقد'), tokens: ['نقد', 'بانک', 'صندوق'] },
+  { test: (name) => name.includes('دریافتنی'), tokens: ['دریافتنی', 'مطالبات'] },
+  { test: (name) => name.includes('پرداختنی'), tokens: ['پرداختنی', 'بستانکار'] },
+  { test: (name) => name.includes('هزینه'), tokens: ['هزینه'] },
+];
+
+const sumGroups = (groups, key) => round(groups.reduce(
+  (total, group) => total + (Number(group[key]) || 0), 0,
+));
+
+const labelAmount = (label, groups, totalFallback) => {
+  const clean = normText(label)
+    .replace(/^[۰-۹0-9]+(?:-[۰-۹0-9]+)*[-ـ]?/, '')
+    .replace(/[():،؛]/g, '');
+  if (!clean || clean.length < 3) return null;
+  if (['سایر', 'سایرین', 'افزایش', 'کاهش', 'واگذار', 'انتقال']
+    .some((word) => clean === normText(word))) {
+    return null;
+  }
+  if (
+    clean.includes(normText('جمع'))
+    || clean.includes(normText('بهای تمام شده'))
+  ) {
+    return totalFallback;
+  }
+  if (clean.includes(normText('اشخاص وابسته'))) return null;
+
+  const exact = groups.filter((group) => normText(group.name) === clean);
+  const partial = groups.filter((group) => {
+    const name = normText(group.name);
+    return name.includes(clean) || clean.includes(name);
+  });
+  const candidates = exact.length ? exact : partial.filter((group) => normText(group.name).length >= 4);
+  if (candidates.length) {
+    const unique = [...new Map(candidates.map((group) => [groupKey(group), group])).values()];
+    return {
+      current: sumGroups(unique, 'current'),
+      prior: sumGroups(unique, 'prior') || null,
+      opening: sumGroups(unique, 'opening') || null,
+    };
+  }
+
+  for (const rule of GROUPS_FOR_LABEL) {
+    if (!rule.tokens.some((token) => clean.includes(normText(token)))) continue;
+    const matched = groups.filter((group) => rule.test(normText(group.name)));
+    if (matched.length) {
+      const unique = [...new Map(matched.map((group) => [groupKey(group), group])).values()];
+      return {
+        current: sumGroups(unique, 'current'),
+        prior: sumGroups(unique, 'prior') || null,
+        opening: sumGroups(unique, 'opening') || null,
+      };
+    }
+  }
+
+  if (clean.includes(normText('جمع')) || clean.includes(normText('مانده'))) return totalFallback;
+  return null;
+};
+
+const fallbackFromTables = (tables) => {
+  const totals = tables
+    .map((table) => table.rows.find((row) => row.kind === 'total'))
+    .filter(Boolean);
+  if (!totals.length) return null;
+  return {
+    current: sum(totals.map((row) => row.values?.current)),
+    prior: sum(totals.map((row) => row.values?.prior)),
+    opening: sum(totals.map((row) => row.values?.opening)),
+  };
+};
+
+
+export const buildNoteGrid = (page, ctx, tables = []) => {
+  const source = notesGrid?.[page];
+  if (!source) return null;
+  const groups = Number(page) <= 30
+    ? pnlScope(Number(page), ctx.pnl)
+    : balanceScope(Number(page), ctx.classification);
+  const totalFallback = fallbackFromTables(tables) || {
+    current: sumGroups(groups, 'current'),
+    prior: sumGroups(groups, 'prior'),
+    opening: sumGroups(groups, 'opening'),
+  };
+  const detailWords = [
+    'حساب', 'مالیات', 'بیمه', 'سپرده', 'هزینه', 'سایر', 'پرداختنی',
+    'دریافتنی', 'تسهیلات', 'سرمایه', 'سود', 'اندوخته', 'موجودی',
+    'دارایی', 'بدهی', 'درآمد', 'فروش', 'بهای', 'مطالبات', 'بستانکار',
+  ];
+  const normalizedRows = source.rows.map((row, index) => {
+    if (row.cells.some((cell) => cell.x)) return row;
+    if (!row.label || /^[۰-۹0-9]+\s*-/.test(row.label)) return row;
+    const rowLabel = normText(row.label);
+    if (!detailWords.some((word) => rowLabel.includes(normText(word)))) return row;
+    const neighbor = source.rows
+      .slice(Math.max(0, index - 5), index)
+      .reverse()
+      .find((item) => item.cells.some((cell) => cell.x))
+      || source.rows.slice(index + 1, index + 6).find((item) => item.cells.some((cell) => cell.x));
+    if (!neighbor) return row;
+    const existing = new Set(row.cells.map((cell) => cell.c));
+    const manual = rowLabel.includes(normText('حساب')) || rowLabel.startsWith(normText('سایر'));
+    const added = neighbor.cells
+      .filter((cell) => cell.x && !existing.has(cell.c))
+      .map((cell) => ({
+        ...cell, t: '', n: null, ph: false, rs: 1, cs: 1, b: false, manualOnly: manual,
+      }));
+    return { ...row, cells: [...row.cells, ...added].sort((a, b) => a.c - b.c) };
+  });
+
+  const rows = normalizedRows.map((row) => {
+    let amount = labelAmount(row.label, groups, totalFallback);
+    const numericCount = row.cells.filter((cell) => cell.x).length;
+    // در جدول‌های چندستونی (مثل حرکت دارایی ثابت) بدون سرستون گروه،
+    // نوشتن یک جمع در همه ستون‌ها گمراه‌کننده است؛ خالی می‌ماند تا تکمیل شود.
+    if (amount === totalFallback && numericCount > 3) amount = null;
+    const cells = row.cells.map((cell) => {
+      if (!cell.x) return cell;
+      if (cell.manualOnly) return { ...cell, v: null };
+      if (!amount) {
+        return { ...cell, v: row.label && numericCount <= 3 ? 0 : null };
+      }
+      if (cell.k === 'zero') return { ...cell, v: 0 };
+      return { ...cell, v: amount[cell.y] ?? amount.current ?? null };
+    });
+    return { ...row, cells };
+  });
+  const numericCells = rows.flatMap((row) => row.cells.filter((cell) => cell.x));
+  const filledCells = numericCells.filter((cell) => cell.v !== null && cell.v !== undefined && cell.v !== 0);
+  return {
+    page,
+    maxCol: source.maxCol,
+    rows,
+    hasNumber: numericCells.length > 0,
+    coverage: numericCells.length ? filledCells.length / numericCells.length : 0,
+  };
+};
+
+export const applyGridOverrides = (grid, overrides = {}) => {
+  if (!grid) return grid;
+  return {
+    ...grid,
+    rows: grid.rows.map((row) => ({
+      ...row,
+      cells: row.cells.map((cell) => {
+        const key = `${row.r}-${cell.c}`;
+        if (overrides[key] === undefined) return cell;
+        return { ...cell, v: overrides[key] };
+      }),
+    })),
+  };
+};
 

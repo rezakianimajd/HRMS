@@ -776,8 +776,141 @@ const isHeadingParagraph = (text) => {
   return /^[۰-۹0-9]+\s*[-ـ]/.test(clean) || (clean.length < 110 && !/[.؛:]$/.test(clean));
 };
 
+const NoteSummary = ({ tables, accent }) => {
+  const theme = useTheme();
+  const { typography } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const summaries = (tables || [])
+    .map((table) => ({ table, total: table.rows.find((row) => row.kind === 'total') }))
+    .filter((item) => item.total);
+  if (!summaries.length) return null;
+  return (
+    <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1.25 }}>
+      {summaries.map(({ table, total }) => (
+        <Chip
+          key={table.id}
+          size="small"
+          label={`${table.title} — جمع دفتری: ${money(total.values?.current)}`}
+          sx={{
+            height: 'auto', py: 0.55, borderRadius: '8px', fontWeight: 700,
+            bgcolor: alpha(accent, 0.055), color: theme.palette.text.primary,
+            '& .MuiChip-label': { whiteSpace: 'normal', lineHeight: 1.6, fontSize: Math.max(type.bodySize - 3, 9) },
+          }}
+        />
+      ))}
+    </Stack>
+  );
+};
+
+const ExcelNoteGrid = ({ grid, editMode, onCellChange }) => {
+  const theme = useTheme();
+  const { typography } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  if (!grid?.rows?.length) return null;
+  const occupied = new Set();
+  grid.rows.forEach((row) => row.cells.forEach((cell) => {
+    for (let r = row.r; r < row.r + (cell.rs || 1); r += 1) {
+      for (let c = cell.c; c < cell.c + (cell.cs || 1); c += 1) {
+        if (r !== row.r || c !== cell.c) occupied.add(`${r}-${c}`);
+      }
+    }
+  }));
+  const cellSx = {
+    fontSize: Math.max(type.bodySize - 2, 9.2),
+    border: `1px solid ${theme.palette.divider}`,
+    py: 0.4, px: 0.55, verticalAlign: 'middle', whiteSpace: 'normal',
+  };
+  return (
+    <TableContainer sx={{ mt: 1, overflowX: 'auto', '@media print': { overflow: 'visible' } }}>
+      <Table
+        size="small"
+        sx={{
+          minWidth: Math.max(520, grid.maxCol * 72),
+          tableLayout: 'fixed',
+          borderCollapse: 'collapse',
+          '& .MuiTableCell-root': { border: `1px solid ${theme.palette.divider}` },
+        }}
+      >
+        <TableBody>
+          {grid.rows.map((row) => {
+            const hasNumber = row.cells.some((cell) => cell.x);
+            const header = !hasNumber;
+            const cellMap = new Map(row.cells.map((cell) => [cell.c, cell]));
+            const rendered = [];
+            let col = 1;
+            while (col <= grid.maxCol) {
+              if (occupied.has(`${row.r}-${col}`)) {
+                col += 1;
+                continue;
+              }
+              const cell = cellMap.get(col);
+              if (!cell) {
+                rendered.push(<TableCell key={`empty-${row.r}-${col}`} sx={cellSx} />);
+                col += 1;
+                continue;
+              }
+              const span = Math.max(cell.cs || 1, 1);
+              if (cell.x) {
+                rendered.push(
+                  <TableCell
+                    key={`${row.r}-${cell.c}`}
+                    colSpan={span}
+                    rowSpan={cell.rs || 1}
+                    align="left"
+                    sx={{
+                      ...cellSx, fontVariantNumeric: 'tabular-nums',
+                      bgcolor: header ? theme.palette.action.hover : 'transparent',
+                      color: theme.palette.text.secondary,
+                    }}
+                  >
+                    {editMode ? (
+                      <TextField
+                        variant="standard" size="small"
+                        value={cell.v ?? ''}
+                        onChange={(event) => onCellChange(row.r, cell.c, event.target.value)}
+                        inputProps={{
+                          style: {
+                            textAlign: 'left', direction: 'ltr',
+                            fontSize: Math.max(type.bodySize - 2, 9.2), paddingLeft: 6, minWidth: 54,
+                          },
+                        }}
+                      />
+                    ) : (
+                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.2), direction: 'ltr', textAlign: 'left' }}>
+                        {cell.v === null || cell.v === undefined || cell.v === '' ? '—' : formatPersianNumber(cell.v)}
+                      </Typography>
+                    )}
+                  </TableCell>,
+                );
+              } else {
+                rendered.push(
+                  <TableCell
+                    key={`${row.r}-${cell.c}`}
+                    colSpan={span}
+                    rowSpan={cell.rs || 1}
+                    sx={{
+                      ...cellSx,
+                      fontWeight: cell.b || header ? 800 : 500,
+                      bgcolor: header ? alpha(theme.palette.primary.main, 0.035) : 'transparent',
+                      color: theme.palette.text.primary,
+                    }}
+                  >
+                    {cell.t}
+                  </TableCell>,
+                );
+              }
+              col += span;
+            }
+            return <TableRow key={row.r} hover={!header}>{rendered}</TableRow>;
+          })}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
+
 const NotePage = ({
-  page, companyName, yearLabel, accent, editMode, onCellChange, onParagraphChange,
+  page, companyName, yearLabel, accent, editMode, onCellChange, onGridCellChange, onParagraphChange,
 }) => {
   const theme = useTheme();
   const { typography } = useModulePalette();
@@ -823,16 +956,47 @@ const NotePage = ({
           این یادداشت به‌صورت خودکار از دفاتر حسابداری تهیه شده است.
         </Typography>
       )}
-      {page.tables?.filter((table) => table.rows?.length).map((table) => (
-        <NoteTable
-          key={table.id}
-          table={table}
-          accent={accent}
+      <NoteSummary tables={page.tables} accent={accent} />
+      {page.grid?.hasNumber ? (
+        <ExcelNoteGrid
+          grid={page.grid}
           editMode={editMode}
-          onCellChange={onCellChange}
+          onCellChange={onGridCellChange}
         />
-      ))}
-      {page.tables?.some((table) => table.rows?.length) ? (
+      ) : (
+        page.tables?.filter((table) => table.rows?.length).map((table) => (
+          <NoteTable
+            key={table.id}
+            table={table}
+            accent={accent}
+            editMode={editMode}
+            onCellChange={onCellChange}
+          />
+        ))
+      )}
+      {page.grid?.hasNumber ? (
+        <Typography sx={{ mt: 0.75, fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.secondary }}>
+          ساختار ردیف‌ها، ستون‌ها و ادغام‌ها عیناً از فایل ۳۸۴-v1 آمده است. علامت «—» یعنی مقدار آن خانه از دفاتر قابل استخراج نبوده و در حالت ویرایش قابل تکمیل است.
+        </Typography>
+      ) : null}
+      {page.grid?.hasNumber && page.grid.coverage < 0.35
+        && page.tables?.some((table) => table.rows?.length) ? (
+          <Box sx={{ mt: 1.75 }}>
+            <Typography sx={{ mb: 0.5, fontSize: Math.max(type.bodySize - 2, 9.8), fontWeight: 800, color: theme.palette.text.secondary }}>
+              جمع‌بندی خودکار از گروه‌های حساب (برای کنترل و تکمیل جدول بالا)
+            </Typography>
+            {page.tables.filter((table) => table.rows?.length).map((table) => (
+              <NoteTable
+                key={`fallback-${table.id}`}
+                table={table}
+                accent={accent}
+                editMode={editMode}
+                onCellChange={onCellChange}
+              />
+            ))}
+          </Box>
+        ) : null}
+      {page.grid?.hasNumber || page.tables?.some((table) => table.rows?.length) ? (
         <Box sx={{
           mt: 1.75, p: 1, borderRadius: '9px', bgcolor: alpha(accent, 0.035),
           border: `1px solid ${alpha(accent, 0.1)}`,
@@ -1040,6 +1204,16 @@ const FinancialStatementsPage = () => {
       rowValues[columnKey] = parseNumericInput(raw);
       tableValues[rowId] = rowValues;
       pageValues[tableId] = tableValues;
+      return { ...previous, [notePage]: pageValues };
+    });
+  };
+
+  const handleGridCellChange = (notePage, rowNumber, columnNumber, raw) => {
+    setNoteValues((previous) => {
+      const pageValues = { ...(previous[notePage] || {}) };
+      const gridValues = { ...(pageValues.__grid__ || {}) };
+      gridValues[`${rowNumber}-${columnNumber}`] = parseNumericInput(raw);
+      pageValues.__grid__ = gridValues;
       return { ...previous, [notePage]: pageValues };
     });
   };
@@ -1253,6 +1427,9 @@ const FinancialStatementsPage = () => {
                 editMode={editMode}
                 onCellChange={(tableId, rowId, columnKey, raw) => (
                   handleNoteCellChange(activePage.page, tableId, rowId, columnKey, raw)
+                )}
+                onGridCellChange={(rowNumber, columnNumber, raw) => (
+                  handleGridCellChange(activePage.page, rowNumber, columnNumber, raw)
                 )}
                 onParagraphChange={handleParagraphChange}
               />

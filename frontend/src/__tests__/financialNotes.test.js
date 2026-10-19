@@ -46,6 +46,35 @@ test('notes are built from ledger groups and empty notes are removed', () => {
   expect(total.values.prior).toBe(0);
 });
 
+test('Excel note grids keep every row and column and accept cell overrides', () => {
+  const pages = build();
+  const receivables = pages.find((page) => page.page === '38');
+  expect(receivables.grid).toBeTruthy();
+  expect(receivables.grid.rows.length).toBeGreaterThan(20);
+  expect(receivables.grid.rows.some((row) => row.label.includes('اسناد دریافتنی'))).toBe(true);
+  expect(receivables.grid.rows.some((row) => row.label.includes('تسهیلات اعطایی'))).toBe(true);
+  expect(receivables.grid.coverage).toBeGreaterThan(0);
+  expect(receivables.grid.rows.some((row) => row.cells.some((cell) => cell.x && cell.v !== null))).toBe(true);
+
+  const payables = pages.find((page) => page.page === '48');
+  expect(payables.grid.rows.length).toBeGreaterThan(20);
+  expect(payables.grid.rows.some((row) => row.label.includes('تكليفى'))).toBe(true);
+  const depositRow = payables.grid.rows.find((row) => row.label.includes('حسن انجام كار'));
+  expect(depositRow.cells.some((cell) => cell.x)).toBe(true);
+
+  const numeric = receivables.grid.rows
+    .flatMap((row) => row.cells.map((cell) => ({ row, cell })))
+    .find(({ cell }) => cell.x);
+  const edited = applyNoteOverrides(pages, {
+    38: { __grid__: { [`${numeric.row.r}-${numeric.cell.c}`]: 1234 } },
+  });
+  const editedGrid = edited.find((page) => page.page === '38').grid;
+  const editedCell = editedGrid.rows
+    .find((row) => row.r === numeric.row.r)
+    .cells.find((cell) => cell.c === numeric.cell.c);
+  expect(editedCell.v).toBe(1234);
+});
+
 test('editing a note row recalculates its total and keeps statement source intact', () => {
   const pages = build();
   const edited = applyNoteOverrides(pages, {
