@@ -11,7 +11,7 @@ export const ACCOUNTING_BLUE = '#2563eb';
 
 export const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 
-export const SurfaceCard = ({ title, icon: Icon, color = ACCOUNTING_BLUE, action, children, sx }) => (
+export const SurfaceCard = ({ title, icon: Icon, color = ACCOUNTING_BLUE, action, children, sx, contentSx }) => (
   <Paper elevation={0} sx={{
     bgcolor: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px',
     boxShadow: 'none', overflow: 'hidden', height: '100%',
@@ -29,7 +29,7 @@ export const SurfaceCard = ({ title, icon: Icon, color = ACCOUNTING_BLUE, action
       <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 800, color: INK }}>{title}</Typography>
       {action || null}
     </Stack>
-    <Box sx={{ p: 2, flex: 1, minWidth: 0 }}>{children}</Box>
+    <Box sx={{ p: 2, flex: 1, minWidth: 0, ...contentSx }}>{children}</Box>
   </Paper>
 );
 

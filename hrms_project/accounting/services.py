@@ -84,7 +84,9 @@ class DocumentValidator:
                 raise AccountingError(f'پروژه برای حساب {line.account.code} الزامی است.')
             if line.account.requires_contract and not line.contract:
                 raise AccountingError(f'قرارداد برای حساب {line.account.code} الزامی است.')
-            if line.account.requires_party and not line.auxiliary:
+            if line.account.requires_party and not (
+                line.auxiliary or line.auxiliary_1 or line.auxiliary_2 or line.auxiliary_3
+            ):
                 raise AccountingError(f'طرف/تفصیلی برای حساب {line.account.code} الزامی است.')
             if line.account.requires_employee and not line.employee:
                 raise AccountingError(f'پرسنل برای حساب {line.account.code} الزامی است.')
@@ -112,6 +114,7 @@ class PostingService:
         self.validator.validate_draft_editable()
         self.validator.validate_no_lines()
         self.validator.validate_balance()
+        self.validator.validate_lines()
         self.document.status = 'submitted'
         self.document.submitted_by = self.user
         self.document.submitted_at = timezone.now()
@@ -173,6 +176,9 @@ class PostingService:
                     document=reversal,
                     account=line.account,
                     auxiliary=line.auxiliary,
+                    auxiliary_1=line.auxiliary_1,
+                    auxiliary_2=line.auxiliary_2,
+                    auxiliary_3=line.auxiliary_3,
                     line_no=line.line_no,
                     description=line.description,
                     debit=line.credit,   # swapped
@@ -181,6 +187,14 @@ class PostingService:
                     exchange_rate=line.exchange_rate,
                     base_amount=line.base_amount,
                     reference=line.reference,
+                    vat_rate=line.vat_rate,
+                    vat_amount=line.vat_amount,
+                    invoice_number=line.invoice_number,
+                    invoice_type=line.invoice_type,
+                    party_tax_id=line.party_tax_id,
+                    party_national_id=line.party_national_id,
+                    party_postal_code=line.party_postal_code,
+                    season_flag=line.season_flag,
                     cost_center=line.cost_center,
                     project=line.project,
                     contract=line.contract,

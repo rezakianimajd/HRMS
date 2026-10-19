@@ -712,6 +712,14 @@ class DocumentFiscalYearAndPreparerTests(TestCase):
         data = view.fiscal_years(view.request).data
         self.assertEqual(data['default'], current.id)
 
+    def test_stats_action_counts_statuses_for_year(self):
+        view = self._view(f'fiscal_year={self.y1403.id}')
+        data = view.stats(view.request).data
+        self.assertEqual(data['total'], 2)
+        self.assertEqual(data['status_counts'], {'draft': 1, 'posted': 1})
+        self.assertEqual(data['pending_documents'], 0)
+        self.assertEqual(data['posted_documents'], 1)
+
     def test_serializer_exposes_fiscal_year_and_preparer(self):
         from accounting.serializers import AccountingDocumentSerializer
 
@@ -1243,4 +1251,121 @@ class BalanceSheetClosingTests(TestCase):
         self.assertEqual(response.status_code, 200)
         numbers = [row.get('document_number') or row.get('description') for row in response.data['rows']]
         self.assertTrue(any('اختتامیه' in str(n) for n in numbers))
+
+
+
+class DocumentLifecycleIntegrityTests(TestCase):
+    """قواعد یکپارچگی چرخهٔ سند: طرف حساب، ویرایش‌ناپذیری سند ثبت‌شده و وضعیت اولیه."""
+
+    def setUp(self):
+        from datetime import date as _date
+
+        from accounting.models import (
+            Account, AccountingDocument, AccountingDocumentLine, AccountType,
+            AuxiliaryAccount, AuxiliaryCategory, FiscalYear,
+        )
+
+        self.company = make_company(schema_name='testco-lifecycle', name='شرکت چرخهٔ سند')
+        self.asset_type = AccountType.objects.create(
+            company=self.company, code='1', name='دارایی', category='asset', default_nature='debit',
+        )
+        category = AuxiliaryCategory.objects.create(
+            company=self.company, code='PARTY', name='طرف حساب',
+        )
+        self.party_account = Account.objects.create(
+            company=self.company, code='1101', name='حساب طرف حساب',
+            account_type=self.asset_type, level=1, nature='debit',
+            requires_party=True, auxiliary_category_1=category,
+        )
+        self.cash_account = Account.objects.create(
+            company=self.company, code='1102', name='صندوق',
+            account_type=self.asset_type, level=1, nature='debit',
+        )
+        self.party = AuxiliaryAccount.objects.create(
+            company=self.company, code='P-1', name='طرف آزمایشی', category=category,
+        )
+        self.year = FiscalYear.objects.create(
+            company=self.company, name='1404', start_date=_date(2025, 3, 21),
+            end_date=_date(2026, 3, 20), status='open', is_current=True,
+        )
+        self.doc = AccountingDocument.objects.create(
+            company=self.company, fiscal_year=self.year, date=_date(2025, 6, 1),
+            description='سند آزمایشی', status='draft', number='00001',
+        )
+        self.debit_line = AccountingDocumentLine.objects.create(
+            company=self.company, document=self.doc, account=self.party_account,
+            auxiliary_1=self.party, debit=100, credit=0, line_no=1,
+        )
+        AccountingDocumentLine.objects.create(
+            company=self.company, document=self.doc, account=self.cash_account,
+            debit=0, credit=100, line_no=2,
+        )
+
+    def test_requires_party_accepts_auxiliary_1(self):
+        from accounting.services import AccountingError, DocumentValidator
+
+        DocumentValidator(self.doc).validate_lines()
+
+        self.debit_line.auxiliary_1 = None
+        self.debit_line.save(update_fields=['auxiliary_1'])
+        with self.assertRaises(AccountingError):
+            DocumentValidator(self.doc).validate_lines()
+
+    def test_update_rejects_posted_document_and_ignores_status_change(self):
+        from rest_framework.exceptions import ValidationError
+
+        from accounting.serializers import AccountingDocumentSerializer
+
+        self.doc.status = 'posted'
+        self.doc.save(update_fields=['status'])
+        with self.assertRaises(ValidationError):
+            AccountingDocumentSerializer().update(self.doc, {'description': 'تغییر غیرمجاز'})
+
+        self.doc.status = 'draft'
+        self.doc.save(update_fields=['status'])
+        AccountingDocumentSerializer().update(self.doc, {'description': 'ویرایش مجاز', 'status': 'posted'})
+        self.doc.refresh_from_db()
+        self.assertEqual(self.doc.description, 'ویرایش مجاز')
+        self.assertEqual(self.doc.status, 'draft')
+
+    def test_reversal_preserves_analytical_and_tax_fields(self):
+        from accounting.services import PostingService
+
+        self.debit_line.vat_amount = 9
+        self.debit_line.vat_rate = 9
+        self.debit_line.base_amount = 100
+        self.debit_line.invoice_number = 'INV-1'
+        self.debit_line.invoice_type = 'purchase'
+        self.debit_line.season_flag = True
+        self.debit_line.save()
+        self.doc.status = 'posted'
+        self.doc.is_locked = True
+        self.doc.save(update_fields=['status', 'is_locked'])
+
+        reversal = PostingService(self.doc).reverse()
+        reversed_line = reversal.lines.get(account=self.party_account)
+        self.assertEqual(reversed_line.auxiliary_1_id, self.party.id)
+        self.assertEqual(reversed_line.vat_amount, self.debit_line.vat_amount)
+        self.assertEqual(reversed_line.invoice_number, 'INV-1')
+        self.assertTrue(reversed_line.season_flag)
+        self.assertEqual(reversed_line.credit, 100)
+        self.assertEqual(reversed_line.debit, 0)
+
+    def test_api_create_is_always_draft(self):
+        from accounting.serializers import AccountingDocumentSerializer
+
+        serializer = AccountingDocumentSerializer(data={
+            'date': '2025-07-01',
+            'description': 'سند جدید از API',
+            'status': 'posted',
+            'is_locked': True,
+            'lines': [
+                {'account': self.cash_account.id, 'debit': 50, 'credit': 0},
+                {'account': self.party_account.id, 'auxiliary_1': self.party.id, 'debit': 0, 'credit': 50},
+            ],
+        })
+        serializer.is_valid(raise_exception=True)
+        doc = serializer.save(company=self.company)
+        self.assertEqual(doc.status, 'draft')
+        self.assertFalse(doc.is_locked)
 

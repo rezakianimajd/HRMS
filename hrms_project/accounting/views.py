@@ -703,10 +703,10 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         serializer.save(company=_company(self.request))
 
     def destroy(self, request, *args, **kwargs):
-        """اسناد ثبت/قفل‌شده قابل حذف نیستند (ماندگاری)؛ فقط برگشت مجاز است."""
+        """اسناد ثبت/قفل/برگشت‌شده قابل حذف نیستند (ماندگاری)؛ فقط برگشت مجاز است."""
         obj = self.get_object()
-        if obj.status in ('posted', 'locked'):
-            return Response({'error': 'سند ثبت/قفل‌شده قابل حذف نیست؛ از برگشت سند استفاده کنید.'}, status=400)
+        if obj.status in ('posted', 'locked', 'reversed'):
+            return Response({'error': 'سند ثبت/قفل/برگشت‌شده قابل حذف نیست؛ از برگشت سند استفاده کنید.'}, status=400)
         return super().destroy(request, *args, **kwargs)
 
     def _service(self, obj):
@@ -752,6 +752,36 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             'years': rows,
             'default': default_id,
             'without_year': base.filter(fiscal_year__isnull=True).count(),
+        })
+
+    @action(detail=False, methods=['get'])
+    def stats(self, request):
+        """آمار سبک اسناد برای KPIهای فهرست — فقط یک کوئری تجمیعی.
+
+        برخلاف ``reports/dashboard-rich`` که خطوط سند را می‌خواند، اینجا فقط
+        شمارش وضعیت‌ها انجام می‌شود تا صفحهٔ فهرست اسناد سریع بماند.
+        """
+        from django.db.models import Count, Q
+        company = _company(request)
+        qs = AccountingDocument.objects.filter(company=company)
+        year_id = request.query_params.get('fiscal_year')
+        if year_id:
+            year = FiscalYear.objects.filter(pk=year_id, company=company).first()
+            if year:
+                qs = qs.filter(
+                    Q(fiscal_year_id=year.pk)
+                    | Q(fiscal_year__isnull=True, date__gte=year.start_date, date__lte=year.end_date)
+                )
+            else:
+                qs = qs.filter(fiscal_year_id=year_id)
+        rows = qs.values('status').annotate(c=Count('id', distinct=True))
+        status_counts = {row['status']: row['c'] for row in rows}
+        return Response({
+            'total': qs.count(),
+            'status_counts': status_counts,
+            'posted_documents': status_counts.get('posted', 0) + status_counts.get('locked', 0),
+            'pending_documents': status_counts.get('submitted', 0),
+            'draft_documents': status_counts.get('draft', 0),
         })
 
     @action(detail=False, methods=['get'])

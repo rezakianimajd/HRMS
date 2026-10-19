@@ -42,9 +42,10 @@ def vat_ledger(request):
     total_purchase_net = total_purchase_vat = 0.0
 
     for line in lines:
-        vat = float(line.vat_amount or 0)
+        sign = -1.0 if line.document.source_type == 'reversal' else 1.0
+        vat = sign * float(line.vat_amount or 0)
         rate = float(line.vat_rate or 0)
-        net = float(line.base_amount or 0) or (float(line.debit or 0) or float(line.credit or 0))
+        net = sign * (float(line.base_amount or 0) or (float(line.debit or 0) or float(line.credit or 0)))
 
         bucket = by_rate.setdefault(str(rate), {
             'rate': rate,
@@ -121,15 +122,16 @@ def seasonal_report(request):
                 'purchase_count': 0, 'purchase_amount': 0.0,
                 'service_count': 0, 'service_amount': 0.0,
             }
-        amount = float(line.base_amount or 0) or (float(line.debit or 0) or float(line.credit or 0))
+        sign = -1 if line.document.source_type == 'reversal' else 1
+        amount = sign * (float(line.base_amount or 0) or (float(line.debit or 0) or float(line.credit or 0)))
         if line.invoice_type in ('sale', 'export'):
-            p['sale_count'] += 1
+            p['sale_count'] += sign
             p['sale_amount'] += amount
         elif line.invoice_type in ('purchase', 'import'):
-            p['purchase_count'] += 1
+            p['purchase_count'] += sign
             p['purchase_amount'] += amount
         elif line.invoice_type == 'service':
-            p['service_count'] += 1
+            p['service_count'] += sign
             p['service_amount'] += amount
 
     rows = sorted(parties.values(), key=lambda x: -(x['sale_amount'] + x['purchase_amount']))

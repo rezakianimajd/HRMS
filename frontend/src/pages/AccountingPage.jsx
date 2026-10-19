@@ -176,7 +176,8 @@ const AccountingPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="contained" startIcon={<AddIcon />} onClick={() => navigate('/accounting/document-new')}>
+            <Button variant="contained" startIcon={<AddIcon />}
+              onClick={() => navigate('/accounting/document-new', { state: year?.id ? { fiscal_year: year.id } : undefined })}>
               سند جدید
             </Button>
           </>
@@ -293,7 +294,11 @@ const AccountingPage = () => {
               {QUICK_ACTIONS.map((action) => (
                 <Grid item xs={12} sm={6} md={4} lg={2} key={action.label}>
                   <QuickTile icon={action.icon} label={action.label} description={action.description}
-                    color={action.color} onClick={() => navigate(action.path)} />
+                    color={action.color}
+                    onClick={() => {
+                      const withYear = ['/accounting/document-new', '/accounting/documents'].includes(action.path);
+                      navigate(action.path, withYear && year?.id ? { state: { fiscal_year: year.id } } : undefined);
+                    }} />
                 </Grid>
               ))}
             </Grid>
@@ -362,7 +367,7 @@ const AccountingPage = () => {
                 <Stack spacing={0.65} sx={{ mt: 1 }}>
                   {statusData.map((item) => (
                     <Stack key={item.key} direction="row" alignItems="center" spacing={0.7} useFlexGap
-                      onClick={() => navigate('/accounting/documents', { state: { status: item.key } })}
+                      onClick={() => navigate('/accounting/documents', { state: { status: item.key, fiscal_year: year?.id } })}
                       sx={{ cursor: 'pointer', p: 0.5, borderRadius: '7px', '&:hover': { bgcolor: '#f8fafc' } }}>
                       <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: STATUS_COLORS[item.key] || '#64748b' }} />
                       <Typography sx={{ flex: 1, fontSize: 10, color: '#475569' }}>{item.name}</Typography>
@@ -547,7 +552,7 @@ const AccountingPage = () => {
           <SurfaceCard title="اسناد اخیر" icon={DescriptionIcon} color={BLUE}
             action={(
               <Button size="small" variant="text" endIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
-                onClick={() => navigate('/accounting/documents')}
+                onClick={() => navigate('/accounting/documents', { state: year?.id ? { fiscal_year: year.id } : undefined })}
                 sx={{ fontSize: 10, fontWeight: 700, textTransform: 'none' }}>
                 مشاهدهٔ همهٔ اسناد
               </Button>

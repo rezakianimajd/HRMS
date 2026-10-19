@@ -248,7 +248,8 @@ def dashboard_rich(request):
     vat_payable = 0.0
     vat_receivable = 0.0
     for line in qs.filter(season_flag=True):
-        vat = float(line.vat_amount or 0)
+        sign = -1.0 if line.document.source_type == 'reversal' else 1.0
+        vat = sign * float(line.vat_amount or 0)
         if line.invoice_type in ('sale', 'export'):
             vat_payable += vat
         elif line.invoice_type in ('purchase', 'import'):

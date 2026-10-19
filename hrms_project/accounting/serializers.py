@@ -254,6 +254,9 @@ class AccountingDocumentSerializer(BaseModelSerializer):
         lines = validated_data.pop('lines', [])
         company = validated_data.pop('company', None)
         user = self.context['request'].user if 'request' in self.context else None
+        # وضعیت فقط از مسیر اکشن‌های چرخهٔ سند تغییر می‌کند؛ ساخت API همیشه پیش‌نویس است.
+        validated_data['status'] = 'draft'
+        validated_data['is_locked'] = False
         doc = AccountingDocument.objects.create(company=company, **validated_data)
         doc.history = [{'step': 'created', 'by': user.username if user else '', 'note': 'ایجاد سند', 'at': timezone.now().isoformat()}]
         doc.save(update_fields=['history'])
@@ -265,6 +268,13 @@ class AccountingDocumentSerializer(BaseModelSerializer):
 
     def update(self, instance, validated_data):
         from django.utils import timezone
+        if instance.is_locked or instance.status in ('posted', 'locked', 'reversed'):
+            raise serializers.ValidationError({
+                'error': 'سند ثبت/قفل‌شده قابل ویرایش نیست؛ از برگشت سند استفاده کنید.',
+            })
+        # وضعیت و قفل فقط با اکشن‌های submit/approve/post/lock/reverse تغییر می‌کند.
+        validated_data.pop('status', None)
+        validated_data.pop('is_locked', None)
         lines = validated_data.pop('lines', None)
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
