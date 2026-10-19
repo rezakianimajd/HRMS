@@ -30,6 +30,7 @@ const contract = {
   end_date: '2026-04-20',
   effective_end_date: '2026-07-20',
   has_addendum: true,
+  addendums: [{ id: 7 }],
 };
 
 const addendums = [
@@ -51,6 +52,7 @@ const addendums = [
     amount_change: 150000,
     change_description: 'افزایش مبلغ و تمدید سه‌ماهه',
     provisions: [{ title: 'بند اول', text: 'متن بند' }],
+    documents: [{ id: 3, title: 'PDF الحاقیه', file_url: '/media/addendum.pdf' }],
     effect: {
       has_effect: true,
       changes: [
@@ -96,6 +98,38 @@ beforeEach(() => {
   });
 });
 
+test('contract addendums landing lists contracts with addendum counts and no avatars', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-addendums']}>
+            <ContractAddendumsPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 350));
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  }
+
+  expect(container.textContent).toContain('انتخاب قرارداد');
+  expect(container.textContent).toContain('C-۱۰۰');
+  expect(container.textContent).toContain('تعداد الحاقیه‌ها');
+  expect(container.textContent).toContain('۱ الحاقیه');
+  expect(container.querySelector('.MuiAvatar-root')).toBeNull();
+  root.unmount();
+});
+
 test('contract addendums workspace renders effective profile, timeline and editor', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
@@ -124,6 +158,7 @@ test('contract addendums workspace renders effective profile, timeline and edito
   expect(container.textContent).toContain('پروندهٔ مؤثر');
   expect(container.textContent).toContain('C-100');
   expect(container.textContent).toContain('A-7');
+  expect(container.textContent).toContain('۱ پیوست PDF');
   expect(container.textContent).toContain('خروجی');
 
   const newButton = Array.from(container.querySelectorAll('button'))
@@ -132,6 +167,8 @@ test('contract addendums workspace renders effective profile, timeline and edito
   await act(async () => { newButton.click(); });
   expect(document.body.textContent).toContain('اطلاعات پایه');
   expect(document.body.textContent).toContain('اثر زنده');
+  expect(document.body.textContent).toContain('تاریخ الحاقیه (اختیاری)');
+  expect(document.body.textContent).toContain('پیوست PDF الحاقیه');
 
   root.unmount();
 });

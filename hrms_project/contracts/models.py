@@ -218,6 +218,16 @@ def contract_document_upload_path(instance, filename):
 class ContractDocument(BaseModel):
     """A file attached to a contract case (PDF contract, attachments...)."""
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='documents', verbose_name=_('قرارداد'))
+    addendum = models.ForeignKey(
+        'Addendum', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='documents', verbose_name=_('الحاقیه'),
+        help_text=_('در صورت پیوست بودن سند به یک الحاقیه، این فیلد پر می‌شود.'),
+    )
+    guarantee = models.ForeignKey(
+        'Guarantee', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='documents', verbose_name=_('تضمین'),
+        help_text=_('در صورت پیوست بودن سند به یک تضمین، این فیلد پر می‌شود.'),
+    )
     title = models.CharField(max_length=200, verbose_name=_('عنوان سند'))
     file = models.FileField(upload_to=contract_document_upload_path, verbose_name=_('فایل'))
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_('زمان بارگذاری'))

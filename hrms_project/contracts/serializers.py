@@ -56,11 +56,50 @@ class ContractDisputeSerializer(serializers.ModelSerializer):
 
 class ContractDocumentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    addendum_number = serializers.SerializerMethodField()
+    addendum_subject = serializers.SerializerMethodField()
+    guarantee_number = serializers.SerializerMethodField()
 
     class Meta:
         model = ContractDocument
-        fields = ['id', 'contract', 'title', 'file', 'file_url', 'uploaded_at']
+        fields = [
+            'id', 'contract', 'addendum', 'addendum_number', 'addendum_subject',
+            'guarantee', 'guarantee_number', 'title', 'file', 'file_url', 'uploaded_at',
+        ]
         read_only_fields = ['id', 'company', 'is_active', 'uploaded_at', 'created_at', 'updated_at']
+
+    def validate(self, attrs):
+        contract = attrs.get('contract', getattr(self.instance, 'contract', None))
+        addendum = attrs.get('addendum', getattr(self.instance, 'addendum', None))
+        guarantee = attrs.get('guarantee', getattr(self.instance, 'guarantee', None))
+        upload = attrs.get('file')
+        if addendum and contract and addendum.contract_id != contract.pk:
+            raise serializers.ValidationError({'addendum': 'الحاقیه به این قرارداد تعلق ندارد.'})
+        if guarantee and contract and guarantee.contract_id != contract.pk:
+            raise serializers.ValidationError({'guarantee': 'تضمین به این قرارداد تعلق ندارد.'})
+        if upload and (addendum or guarantee):
+            name = str(getattr(upload, 'name', '') or '').lower()
+            content_type = str(getattr(upload, 'content_type', '') or '').lower()
+            if not name.endswith('.pdf') or (
+                content_type
+                and not content_type.startswith('application/pdf')
+                and content_type not in ('application/x-pdf', 'application/octet-stream')
+            ):
+                raise serializers.ValidationError({'file': 'برای الحاقیه فقط فایل PDF مجاز است.'})
+            if getattr(upload, 'size', 0) > 25 * 1024 * 1024:
+                raise serializers.ValidationError({'file': 'حجم فایل پیوست نباید بیشتر از ۲۵ مگابایت باشد.'})
+        return attrs
+
+    def get_addendum_number(self, obj):
+        return obj.addendum.number if obj.addendum_id else None
+
+    def get_addendum_subject(self, obj):
+        return obj.addendum.subject if obj.addendum_id else None
+
+    def get_guarantee_number(self, obj):
+        if not obj.guarantee_id:
+            return None
+        return obj.guarantee.number or obj.guarantee.guarantee_number or obj.guarantee.check_number or ''
 
     def get_file_url(self, obj):
         if obj.file:
@@ -115,6 +154,7 @@ class AddendumSerializer(serializers.ModelSerializer):
     subjects_display = serializers.CharField(read_only=True)
     subjects_detail = serializers.SerializerMethodField()
     effect = serializers.SerializerMethodField()
+    documents = ContractDocumentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Addendum
@@ -128,7 +168,7 @@ class AddendumSerializer(serializers.ModelSerializer):
             'advance_change', 'new_advance_payment', 'new_retention_percent',
             'new_guarantee_amount', 'new_exchange_rate',
             'new_end_date', 'change_description', 'provisions',
-            'effect',
+            'effect', 'documents',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at',
                             'subject_label', 'subjects_display', 'subjects_detail', 'effect']
@@ -194,6 +234,7 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     last_action_display = serializers.CharField(source='get_last_action_display', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     contract_guarantee_label = serializers.SerializerMethodField()
+    documents = ContractDocumentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Guarantee
@@ -205,7 +246,7 @@ class GuaranteeSerializer(serializers.ModelSerializer):
             'check_number', 'check_bank', 'check_due_date',
             'promissory_number', 'promissory_due_date',
             'guarantee_number', 'guarantee_expiry_date',
-            'last_action', 'last_action_display', 'last_action_date', 'note',
+            'last_action', 'last_action_display', 'last_action_date', 'note', 'documents',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 

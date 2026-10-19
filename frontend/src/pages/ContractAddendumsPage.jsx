@@ -11,6 +11,7 @@ import {
 import { alpha, useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
@@ -37,7 +38,7 @@ import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
-import ContractPicker from '../core/components/ui/ContractPicker';
+import ContractListPicker from '../core/components/ui/ContractListPicker';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
@@ -48,8 +49,8 @@ import {
 } from '../core/constants/addendumSubjects';
 import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import {
-  AmendmentCard, AmendmentTable, AmendmentTimeline, ContractSnapshotCard,
-  EffectiveProfileCard, EffectTable, EditorStepNav, EmptyState, InfoLine,
+  AmendmentCard, AmendmentTable, AmendmentTimeline, AttachmentLinks, AttachmentPicker,
+  ContractSnapshotCard, EffectiveProfileCard, EffectTable, EditorStepNav, EmptyState, InfoLine,
   SectionTitle, SubjectPill, dateLabel, dayDiff, deltaTone, effectDelta,
   groupTone, money, signedMoney, toNumber, useAddendumStyle,
 } from './contracts/AddendumWorkspaceUI';
@@ -64,6 +65,8 @@ const EMPTY = {
   change_description: '',
   provisions: [],
   subjects: [],
+  pendingFiles: [],
+  documents: [],
 };
 
 const MIRROR_KEYS = Object.values(ADDENDUM_SCHEMA.subjects)
@@ -82,21 +85,24 @@ const collectMirrors = (subjects) => {
   return mirrors;
 };
 
-const sanitize = (payload) => ({
-  ...payload,
-  contract: payload.contract || null,
-  date: payload.date || null,
-  currency: payload.currency || null,
-  provisions: Array.isArray(payload.provisions) ? payload.provisions : [],
-  subjects: (payload.subjects || []).map((item) => ({
-    type: item.type,
-    fields: Object.fromEntries(
-      Object.entries(item.fields || {}).filter(([, value]) => value !== '' && value != null),
-    ),
-  })),
-  ...collectMirrors(payload.subjects),
-  subject_type: payload.subjects?.[0]?.type || '',
-});
+const sanitize = (payload) => {
+  const { pendingFiles, documents, ...rest } = payload;
+  return {
+    ...rest,
+    contract: rest.contract || null,
+    date: rest.date || null,
+    currency: rest.currency || null,
+    provisions: Array.isArray(rest.provisions) ? rest.provisions : [],
+    subjects: (rest.subjects || []).map((item) => ({
+      type: item.type,
+      fields: Object.fromEntries(
+        Object.entries(item.fields || {}).filter(([, value]) => value !== '' && value != null),
+      ),
+    })),
+    ...collectMirrors(rest.subjects),
+    subject_type: rest.subjects?.[0]?.type || '',
+  };
+};
 
 const fieldValue = (spec, value, currency = 'ریال') => {
   if (value === null || value === undefined || value === '') return '—';
@@ -141,9 +147,19 @@ const downloadCsv = (rows) => {
 
 const validateForm = (form) => {
   if (!form.contract) return 'قرارداد را انتخاب کنید.';
-  if (!form.date) return 'تاریخ الحاقیه را وارد کنید.';
   if (!(form.subjects || []).length) return 'حداقل یک موضوع برای الحاقیه انتخاب کنید.';
   return '';
+};
+
+const uploadAddendumFiles = async (addendumId, contractId, files = []) => {
+  await Promise.all(files.map((file) => {
+    const body = new FormData();
+    body.append('contract', contractId);
+    body.append('addendum', addendumId);
+    body.append('title', (file.name.replace(/\.pdf$/i, '') || 'PDF الحاقیه').slice(0, 200));
+    body.append('file', file);
+    return axiosInstance.post('/contract-documents/', body);
+  }));
 };
 
 
@@ -377,11 +393,12 @@ const ContractAddendumsPage = () => {
       return [row.number, row.subject, row.subjects_display, row.change_description, row.subject_type_display]
         .some((value) => String(value || '').toLowerCase().includes(q));
     });
+    const dateValue = (row) => String(row.date || '0000-00-00');
     return [...rows].sort((a, b) => {
-      if (sortBy === 'oldest') return String(a.date || '').localeCompare(String(b.date || ''));
+      if (sortBy === 'oldest') return dateValue(a).localeCompare(dateValue(b));
       if (sortBy === 'amount') return Math.abs(effectDelta(b, 'amount') || 0) - Math.abs(effectDelta(a, 'amount') || 0);
       if (sortBy === 'impact') return (b.effect?.changes || []).length - (a.effect?.changes || []).length;
-      return String(b.date || '').localeCompare(String(a.date || ''));
+      return dateValue(b).localeCompare(dateValue(a));
     });
   }, [list, search, groupFilter, sortBy, getRowGroups]);
 
@@ -393,7 +410,9 @@ const ContractAddendumsPage = () => {
   const amountDelta = toNumber(effective.amount) - toNumber(baseContract.amount);
   const durationDelta = dayDiff(baseContract.end_date, effective.end_date);
   const effectCount = list.reduce((total, row) => total + (row.effect?.changes || []).length, 0);
-  const lastAmendment = [...list].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0];
+  const lastAmendment = [...list]
+    .filter((row) => row.date)
+    .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || list[0];
   const contractsWithAddendums = contractList.filter((item) => item.has_addendum || item.addendums?.length).length;
   const activeContracts = contractList.filter((item) => item.status === 'active').length;
   const totalAddendums = contractList.reduce((total, item) => total + (item.addendums?.length || 0), 0);
@@ -415,13 +434,26 @@ const ContractAddendumsPage = () => {
   }, [editorOpen, contractId, form.subjects, form.id]);
 
   const save = useMutation({
-    mutationFn: (payload) => {
+    mutationFn: async (payload) => {
       const clean = sanitize(payload);
-      return clean.id
-        ? axiosInstance.patch(`/contract-addendums/${clean.id}/`, clean)
-        : axiosInstance.post('/contract-addendums/', clean);
+      const response = clean.id
+        ? await axiosInstance.patch(`/contract-addendums/${clean.id}/`, clean)
+        : await axiosInstance.post('/contract-addendums/', clean);
+      const addendumId = response.data?.id || clean.id;
+      let uploadError = '';
+      if (payload.pendingFiles?.length) {
+        try {
+          await uploadAddendumFiles(addendumId, clean.contract, payload.pendingFiles);
+        } catch (event) {
+          const detail = event.response?.data;
+          uploadError = typeof detail === 'string'
+            ? detail
+            : (detail?.file?.[0] || detail?.detail || 'بارگذاری پیوست PDF انجام نشد');
+        }
+      }
+      return { response, uploadError };
     },
-    onSuccess: () => {
+    onSuccess: ({ uploadError }) => {
       qc.invalidateQueries({ queryKey: ['contract-addendums'] });
       qc.invalidateQueries({ queryKey: ['contract-effects'] });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
@@ -429,7 +461,9 @@ const ContractAddendumsPage = () => {
       setEditorOpen(false);
       setForm(EMPTY);
       setError('');
-      setToast('الحاقیه ذخیره شد');
+      setToast(uploadError
+        ? `الحاقیه ذخیره شد اما پیوست بارگذاری نشد: ${uploadError}`
+        : 'الحاقیه و پیوست‌های PDF ذخیره شدند');
     },
     onError: (event) => {
       const detail = event.response?.data;
@@ -487,6 +521,8 @@ const ContractAddendumsPage = () => {
       currency: row.currency || '',
       change_description: row.change_description || '',
       provisions: row.provisions || [],
+      documents: row.documents || [],
+      pendingFiles: [],
       subjects: subjectsFromRow(row).map((item) => ({
         type: item.type,
         fields: { ...(item.fields || {}) },
@@ -511,6 +547,8 @@ const ContractAddendumsPage = () => {
       currency: row.currency || '',
       change_description: row.change_description || '',
       provisions: (row.provisions || []).map((item) => ({ ...item })),
+      documents: [],
+      pendingFiles: [],
       subjects: subjectsFromRow(row).map((item) => ({
         type: item.type,
         fields: { ...(item.fields || {}) },
@@ -569,6 +607,36 @@ const ContractAddendumsPage = () => {
   const removeProvision = (index) => setForm((previous) => ({
     ...previous,
     provisions: (previous.provisions || []).filter((_, rowIndex) => rowIndex !== index),
+  }));
+
+  const addPendingFiles = (files) => {
+    const accepted = [];
+    let rejection = '';
+    (files || []).forEach((file) => {
+      const isPdf = file.name?.toLowerCase().endsWith('.pdf')
+        && (!file.type || ['application/pdf', 'application/x-pdf'].includes(file.type));
+      if (!isPdf) {
+        rejection = 'فقط فایل PDF برای پیوست الحاقیه مجاز است.';
+        return;
+      }
+      if (Number(file.size) > 25 * 1024 * 1024) {
+        rejection = 'حجم هر پیوست PDF نباید بیشتر از ۲۵ مگابایت باشد.';
+        return;
+      }
+      accepted.push(file);
+    });
+    if (accepted.length) {
+      setForm((previous) => ({
+        ...previous,
+        pendingFiles: [...(previous.pendingFiles || []), ...accepted],
+      }));
+    }
+    setError(rejection);
+  };
+
+  const removePendingFile = (index) => setForm((previous) => ({
+    ...previous,
+    pendingFiles: (previous.pendingFiles || []).filter((_, fileIndex) => fileIndex !== index),
   }));
 
   const submit = () => {
@@ -698,6 +766,8 @@ const ContractAddendumsPage = () => {
         addProvision={addProvision}
         updateProvision={updateProvision}
         removeProvision={removeProvision}
+        onAddFiles={addPendingFiles}
+        onRemovePending={removePendingFile}
         preview={preview}
         previewLoading={previewEffect.isLoading}
         warnings={warnings}
@@ -771,7 +841,15 @@ const LandingContent = ({
     <Grid container spacing={1.5}>
       <Grid item xs={12} lg={8}>
         <SurfaceCard title="انتخاب قرارداد" icon={EditNoteIcon} color={accent}>
-          <ContractPicker contracts={contractList} onSelect={onSelect} height={520} />
+          <ContractListPicker
+            contracts={contractList}
+            onSelect={onSelect}
+            height={540}
+            accent={accent}
+            countLabel="الحاقیه"
+            countHeaderLabel="تعداد الحاقیه‌ها"
+            getCount={(contract) => contract.addendums?.length || 0}
+          />
         </SurfaceCard>
       </Grid>
       <Grid item xs={12} lg={4}>
@@ -981,8 +1059,9 @@ const AddendumEditorDialog = ({
   open, onClose, form, setForm, step, setStep, steps, selectedSubjects,
   subjectOptions, filteredSubjectOptions, subjectSearch, setSubjectSearch,
   subjectGroup, setSubjectGroup, toggleSubject, updateSubjectFields, removeSubject,
-  addProvision, updateProvision, removeProvision, preview, previewLoading,
-  warnings, error, setError, onSave, saving, contract, accent, currencyLabel, currencyList,
+  addProvision, updateProvision, removeProvision, onAddFiles, onRemovePending,
+  preview, previewLoading, warnings, error, setError, onSave, saving, contract,
+  accent, currencyLabel, currencyList,
 }) => {
   const { theme, type } = useAddendumStyle();
   const subjectFor = (typeValue) => subjectOptions.find((item) => item.value === typeValue)
@@ -1055,14 +1134,14 @@ const AddendumEditorDialog = ({
 
             {step === 0 ? (
               <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-                <SectionTitle icon={EditNoteIcon} title="اطلاعات پایه" hint="شماره، تاریخ و واحد ارز الحاقیه" color={accent} />
+                <SectionTitle icon={EditNoteIcon} title="اطلاعات پایه" hint="شماره، تاریخ (اختیاری) و واحد ارز الحاقیه" color={accent} />
                 <Grid container spacing={1.5}>
                   <Grid item xs={12} md={4}>
                     <TextField size="small" fullWidth label="شماره الحاقیه" value={form.number || ''}
                       onChange={(event) => setForm((previous) => ({ ...previous, number: event.target.value }))} />
                   </Grid>
                   <Grid item xs={12} md={4}>
-                    <JalaliDatePicker fullWidth label="تاریخ الحاقیه" value={form.date || ''}
+                    <JalaliDatePicker fullWidth label="تاریخ الحاقیه (اختیاری)" value={form.date || ''}
                       onChange={(value) => setForm((previous) => ({ ...previous, date: value }))} />
                   </Grid>
                   <Grid item xs={12} md={4}>
@@ -1095,11 +1174,22 @@ const AddendumEditorDialog = ({
                     </Grid>
                   </Box>
                 ) : null}
-                {!form.date ? (
-                  <Alert severity="info" sx={{ mt: 1.5, borderRadius: '10px', py: 0.2 }}>
-                    <Typography sx={{ fontSize: 9.5 }}>تاریخ الحاقیه برای ترتیب اثرگذاری در پروندهٔ مؤثر الزامی است.</Typography>
-                  </Alert>
-                ) : null}
+                <Divider sx={{ my: 1.5 }} />
+                <SectionTitle icon={AttachFileIcon} title="پیوست PDF الحاقیه"
+                  hint="فایل امضاشده یا نسخهٔ رسمی الحاقیه را بارگذاری کنید" color="#be123c" />
+                <AttachmentPicker
+                  documents={form.documents || []}
+                  pendingFiles={form.pendingFiles || []}
+                  onAdd={onAddFiles}
+                  onRemovePending={onRemovePending}
+                  accent={accent}
+                />
+                {error ? <Alert severity="error" sx={{ mt: 1, borderRadius: '10px' }} onClose={() => setError('')}>{error}</Alert> : null}
+                <Alert severity="info" sx={{ mt: 1.5, borderRadius: '10px', py: 0.2 }}>
+                  <Typography sx={{ fontSize: 9.5 }}>
+                    تاریخ الحاقیه اختیاری است؛ ترتیب اثرگذاری در پروندهٔ مؤثر بر اساس تاریخ و شناسهٔ ثبت محاسبه می‌شود.
+                  </Typography>
+                </Alert>
               </Paper>
             ) : null}
 
@@ -1248,6 +1338,12 @@ const AddendumEditorDialog = ({
                       <InfoLine label="واحد ارز" value={currencyLabel} />
                       <InfoLine label="تعداد موضوع" value={formatPersianNumber(selectedSubjects.length)} />
                       <InfoLine label="تعداد بند" value={formatPersianNumber((form.provisions || []).length)} />
+                      <InfoLine label="پیوست PDF" value={formatPersianNumber((form.documents || []).length + (form.pendingFiles || []).length)} />
+                      {(form.documents || []).length ? (
+                        <Box sx={{ mt: 0.75 }}>
+                          <AttachmentLinks documents={form.documents} />
+                        </Box>
+                      ) : null}
                       <Divider sx={{ my: 1 }} />
                       <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
                         {selectedSubjects.map((item) => <SubjectPill key={item.type} subject={subjectFor(item.type)} compact />)}
@@ -1345,11 +1441,18 @@ const AddendumDetailDrawer = ({
               <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
                 {subjects.map((item) => <SubjectPill key={item.type} subject={item} />)}
               </Stack>
-              <InfoLine label="تاریخ" value={dateLabel(row.date)} />
+              <InfoLine label="تاریخ" value={row.date ? dateLabel(row.date) : 'بدون تاریخ'} />
               <InfoLine label="واحد ارز" value={normalizeCurrencyLabel(row.currency_name || row.currency_symbol || currencyLabel)} />
               <InfoLine label="تعداد اثر" value={formatPersianNumber((row.effect?.changes || []).length)} />
               <InfoLine label="تعداد بند" value={formatPersianNumber((row.provisions || []).length)} />
             </Paper>
+
+            {(row.documents || []).length ? (
+              <Paper elevation={0} sx={{ p: 1.5, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+                <SectionTitle icon={AttachFileIcon} title="پیوست‌های PDF" color="#be123c" />
+                <AttachmentLinks documents={row.documents} />
+              </Paper>
+            ) : null}
 
             {subjects.map((subject) => {
               const spec = subjectFor(subject.type);

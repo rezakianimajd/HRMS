@@ -86,8 +86,8 @@ class ContractViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset().select_related('party', 'signatory').prefetch_related(
-            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments',
-            'disputes', 'audit_logs',
+            'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
+            'guarantees', 'guarantees__documents', 'payments', 'disputes', 'audit_logs',
         )
         party_id = self.request.query_params.get('party')
         if party_id:
@@ -268,7 +268,13 @@ class ContractDocumentViewSet(BaseContractViewSet):
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
-        return qs
+        addendum_id = self.request.query_params.get('addendum')
+        if addendum_id:
+            qs = qs.filter(addendum_id=addendum_id)
+        guarantee_id = self.request.query_params.get('guarantee')
+        if guarantee_id:
+            qs = qs.filter(guarantee_id=guarantee_id)
+        return qs.select_related('contract', 'addendum', 'guarantee')
 
 
 class InvoiceViewSet(BaseContractViewSet):
@@ -300,7 +306,7 @@ class StatementViewSet(BaseContractViewSet):
 
 class AddendumViewSet(BaseContractViewSet):
     serializer_class = AddendumSerializer
-    queryset = Addendum.objects.select_related('contract', 'currency')
+    queryset = Addendum.objects.select_related('contract', 'currency').prefetch_related('documents')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'subject', 'change_description', 'contract__subject']
     ordering = ['-date']
@@ -364,7 +370,7 @@ class GuaranteeViewSet(BaseContractViewSet):
     ordering = ['-expiry_date']
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('contract', 'contract__party')
+        qs = super().get_queryset().select_related('contract', 'contract__party').prefetch_related('documents')
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)

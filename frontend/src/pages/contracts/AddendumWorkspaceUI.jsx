@@ -4,8 +4,9 @@ import {
   TableBody, TableCell, TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
@@ -21,6 +22,12 @@ import { formatPersianNumber, normalizeCurrencyLabel } from '../../core/utils/nu
 import { toJalali } from '../../core/utils/dateUtils';
 import { CONTRACT_TARGET_LABELS } from '../../core/constants/addendumSubjects';
 import { ProgressBar, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
+
+const formatFileSize = (size) => {
+  const bytes = Number(size) || 0;
+  if (bytes < 1024 * 1024) return `${formatPersianNumber(Math.max(1, Math.round(bytes / 1024)))} KB`;
+  return `${formatPersianNumber((bytes / 1024 / 1024).toFixed(1))} MB`;
+};
 
 export const GROUP_TONES = {
   financial: '#0f766e',
@@ -345,7 +352,7 @@ export const EffectTable = ({ effect, compact = false, currency = 'ریال' }) 
 
 const AmendmentActions = ({ onView, onEdit, onDuplicate, onDelete }) => (
   <Stack direction="row" spacing={0.15}>
-    {onView ? <Tooltip title="جزئیات"><IconButton size="small" onClick={onView}><VisibilityIcon fontSize="small" /></IconButton></Tooltip> : null}
+    {onView ? <Tooltip title="جزئیات الحاقیه"><IconButton size="small" aria-label="جزئیات الحاقیه" onClick={onView}><VisibilityIcon fontSize="small" /></IconButton></Tooltip> : null}
     {onEdit ? <Tooltip title="ویرایش"><IconButton size="small" onClick={onEdit}><EditIcon fontSize="small" /></IconButton></Tooltip> : null}
     {onDuplicate ? <Tooltip title="کپی"><IconButton size="small" onClick={onDuplicate}><ContentCopyIcon fontSize="small" /></IconButton></Tooltip> : null}
     {onDelete ? <Tooltip title="حذف"><IconButton size="small" color="error" onClick={onDelete}><DeleteOutlineIcon fontSize="small" /></IconButton></Tooltip> : null}
@@ -358,6 +365,10 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
   const amountDelta = effectDelta(row, 'amount');
   const endDelta = effectDelta(row, 'end_date');
   const changes = row.effect?.changes || [];
+  const documents = row.documents || [];
+  const changedLabels = [...new Set(changes
+    .map((change) => CONTRACT_TARGET_LABELS[change.field] || change.label)
+    .filter(Boolean))];
   return (
     <Paper elevation={0} sx={{
       height: '100%', p: 1.6, borderRadius: '16px', border: `1px solid ${theme.palette.divider}`,
@@ -383,7 +394,9 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
               {row.number ? `شماره ${row.number}` : 'بدون شماره'}
             </Typography>
             <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>·</Typography>
-            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>{dateLabel(row.date)}</Typography>
+            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+              {row.date ? dateLabel(row.date) : 'بدون تاریخ'}
+            </Typography>
           </Stack>
         </Box>
         <AmendmentActions onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
@@ -414,7 +427,29 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
           <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 13 }} />} label="بدون اثر مالی"
             sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha('#b45309', 0.07), color: '#b45309' }} />
         )}
+        {documents.length ? (
+          <Chip
+            component="a"
+            href={documents[0].file_url || documents[0].file}
+            target="_blank"
+            rel="noreferrer"
+            clickable
+            size="small"
+            icon={<PictureAsPdfIcon sx={{ fontSize: 13 }} />}
+            label={`${formatPersianNumber(documents.length)} پیوست PDF`}
+            sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }}
+          />
+        ) : null}
       </Stack>
+
+      {changedLabels.length ? (
+        <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
+          {changedLabels.slice(0, 4).map((label) => (
+            <Chip key={label} size="small" label={label}
+              sx={{ height: 20, fontSize: 8.3, fontWeight: 700, bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary }} />
+          ))}
+        </Stack>
+      ) : null}
 
       {row.change_description ? (
         <Typography sx={{
@@ -431,10 +466,14 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
         <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
           {row.provisions?.length ? `${formatPersianNumber(row.provisions.length)} بند` : 'بدون بند'}
         </Typography>
-        <Button size="small" endIcon={<ArrowForwardIcon sx={{ fontSize: 14 }} />} onClick={onView}
-          sx={{ minWidth: 0, py: 0.15, px: 0.5, fontSize: 9.5 }}>
-          مشاهدهٔ اثر
-        </Button>
+        <Stack direction="row" spacing={0.75} alignItems="center">
+          <Typography sx={{ fontSize: 8.8, color: documents.length ? '#be123c' : theme.palette.text.secondary }}>
+            {documents.length ? `${formatPersianNumber(documents.length)} پیوست` : 'بدون پیوست'}
+          </Typography>
+          <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+            {changes.length ? `${formatPersianNumber(changes.length)} اثر` : 'بدون اثر'}
+          </Typography>
+        </Stack>
       </Stack>
     </Paper>
   );
@@ -463,7 +502,9 @@ export const AmendmentTable = ({ rows, accent, currency = 'ریال', onView, on
                 <TableCell sx={{ fontSize: 9.5, fontWeight: 800, color: accent }}>{formatPersianNumber(index + 1)}</TableCell>
                 <TableCell>
                   <Typography sx={{ fontSize: 9.8, fontWeight: 800 }}>{row.number || '—'}</Typography>
-                  <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>{dateLabel(row.date)}</Typography>
+                  <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+                    {row.date ? dateLabel(row.date) : 'بدون تاریخ'}
+                  </Typography>
                 </TableCell>
                 <TableCell sx={{ maxWidth: 250 }}>
                   <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
@@ -514,7 +555,7 @@ export const AmendmentTimeline = ({ rows, accent, currency = 'ریال', onView,
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
                 <Typography sx={{ fontSize: 10.8, fontWeight: 900 }}>{row.subjects_display || row.subject || 'الحاقیه'}</Typography>
-                <Chip size="small" label={dateLabel(row.date)} sx={{ height: 19, fontSize: 8.5 }} />
+                <Chip size="small" label={row.date ? dateLabel(row.date) : 'بدون تاریخ'} sx={{ height: 19, fontSize: 8.5 }} />
               </Stack>
               <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
                 {(row.subjects_detail || []).slice(0, 2).map((item) => <SubjectPill key={item.type} subject={item} compact />)}
@@ -568,6 +609,109 @@ export const EditorStepNav = ({ steps, active, onChange, accent }) => {
           </ButtonBase>
         );
       })}
+    </Stack>
+  );
+};
+
+
+export const AttachmentPicker = ({
+  documents = [], pendingFiles = [], onAdd, onRemovePending, onRemoveDocument, accent,
+  buttonLabel = 'افزودن PDF الحاقیه', emptyText = 'فایل PDF الحاقیه را اینجا پیوست کنید.',
+  documentLabel = 'الحاقیه',
+}) => {
+  const { theme } = useAddendumStyle();
+  const handleFiles = (event) => {
+    onAdd(Array.from(event.target.files || []));
+    event.target.value = '';
+  };
+  return (
+    <Box>
+      <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
+        <Button component="label" variant="outlined" size="small" startIcon={<AttachFileIcon />}>
+          {buttonLabel}
+          <input hidden type="file" accept="application/pdf,.pdf" multiple onChange={handleFiles} />
+        </Button>
+        <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+          فقط PDF · حداکثر ۲۵ مگابایت برای هر فایل
+        </Typography>
+      </Stack>
+      {!documents.length && !pendingFiles.length ? (
+        <Box sx={{
+          py: 2, textAlign: 'center', borderRadius: '11px', border: `1px dashed ${theme.palette.divider}`,
+          bgcolor: alpha(accent || theme.palette.primary.main, 0.025),
+        }}>
+          <PictureAsPdfIcon sx={{ fontSize: 22, color: theme.palette.text.disabled, mb: 0.4 }} />
+          <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+            {emptyText}
+          </Typography>
+        </Box>
+      ) : (
+        <Stack spacing={0.6}>
+          {documents.map((document) => (
+            <Paper key={`doc-${document.id}`} elevation={0} sx={{
+              p: 0.85, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`,
+              display: 'flex', alignItems: 'center', gap: 0.75,
+            }}>
+              <PictureAsPdfIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800 }}>{document.title || 'PDF الحاقیه'}</Typography>
+                <Typography sx={{ fontSize: 8.3, color: theme.palette.text.secondary }}>
+                  {document.addendum_number || document.guarantee_number
+                    ? `${documentLabel} ${document.addendum_number || document.guarantee_number}`
+                    : 'پیوست ذخیره‌شده'}
+                </Typography>
+              </Box>
+              <Button size="small" component="a" href={document.file_url || document.file} target="_blank"
+                rel="noreferrer" sx={{ minWidth: 0, px: 0.6, fontSize: 8.8 }}>
+                مشاهده
+              </Button>
+              {onRemoveDocument ? (
+                <Tooltip title="حذف پیوست">
+                  <IconButton size="small" color="error" onClick={() => onRemoveDocument(document)}>
+                    <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
+            </Paper>
+          ))}
+          {pendingFiles.map((file, index) => (
+            <Paper key={`pending-${file.name}-${index}`} elevation={0} sx={{
+              p: 0.85, borderRadius: '10px', border: `1px dashed ${alpha(accent || theme.palette.primary.main, 0.35)}`,
+              bgcolor: alpha(accent || theme.palette.primary.main, 0.025),
+              display: 'flex', alignItems: 'center', gap: 0.75,
+            }}>
+              <PictureAsPdfIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800 }}>{file.name}</Typography>
+                <Typography sx={{ fontSize: 8.3, color: theme.palette.text.secondary }}>
+                  در انتظار ذخیره · {formatFileSize(file.size)}
+                </Typography>
+              </Box>
+              <Tooltip title="حذف از صف">
+                <IconButton size="small" color="error" onClick={() => onRemovePending(index)}>
+                  <DeleteOutlineIcon sx={{ fontSize: 16 }} />
+                </IconButton>
+              </Tooltip>
+            </Paper>
+          ))}
+        </Stack>
+      )}
+    </Box>
+  );
+};
+
+export const AttachmentLinks = ({ documents = [] }) => {
+  const { theme } = useAddendumStyle();
+  if (!documents.length) return null;
+  return (
+    <Stack spacing={0.55}>
+      {documents.map((document) => (
+        <Button key={document.id} component="a" href={document.file_url || document.file} target="_blank"
+          rel="noreferrer" variant="outlined" size="small" startIcon={<PictureAsPdfIcon />}
+          sx={{ justifyContent: 'flex-start', fontSize: 9.2, borderColor: theme.palette.divider }}>
+          {document.title || 'PDF الحاقیه'}
+        </Button>
+      ))}
     </Stack>
   );
 };

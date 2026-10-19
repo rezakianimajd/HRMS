@@ -161,6 +161,78 @@ class ContractExcelExportTests(TestCase):
         self.assertIn('amount', fields)
         self.assertIn('end_date', fields)
 
+    def test_addendum_documents_are_nested_and_pdf_only(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from contracts.models import ContractDocument
+        from contracts.serializers import AddendumSerializer, ContractDocumentSerializer
+
+        addendum = self.contract.addendums.first()
+        pdf = SimpleUploadedFile(
+            'addendum.pdf', b'%PDF-1.4\n%%EOF\n',
+            content_type='application/pdf',
+        )
+        document = ContractDocument.objects.create(
+            company=self.company, contract=self.contract, addendum=addendum,
+            title='PDF الحاقیه', file=pdf,
+        )
+        data = AddendumSerializer(addendum).data
+        self.assertEqual(len(data['documents']), 1)
+        self.assertEqual(data['documents'][0]['title'], 'PDF الحاقیه')
+        self.assertTrue(data['documents'][0]['file_url'])
+
+        bad = SimpleUploadedFile('addendum.txt', b'not-pdf', content_type='text/plain')
+        invalid = ContractDocumentSerializer(data={
+            'contract': self.contract.pk,
+            'addendum': addendum.pk,
+            'title': 'فایل غیرمجاز',
+            'file': bad,
+        })
+        self.assertFalse(invalid.is_valid())
+        self.assertIn('file', invalid.errors)
+        document.file.delete(save=False)
+
+    def test_guarantee_documents_are_nested_and_pdf_only(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from contracts.models import ContractDocument
+        from contracts.serializers import GuaranteeSerializer, ContractDocumentSerializer
+
+        guarantee = self.contract.guarantees.first()
+        pdf = SimpleUploadedFile(
+            'guarantee.pdf', b'%PDF-1.4\n%%EOF\n',
+            content_type='application/pdf',
+        )
+        document = ContractDocument.objects.create(
+            company=self.company, contract=self.contract, guarantee=guarantee,
+            title='PDF تضمین', file=pdf,
+        )
+        data = GuaranteeSerializer(guarantee).data
+        self.assertEqual(len(data['documents']), 1)
+        self.assertEqual(data['documents'][0]['title'], 'PDF تضمین')
+        self.assertTrue(data['documents'][0]['file_url'])
+
+        bad = SimpleUploadedFile('guarantee.txt', b'not-pdf', content_type='text/plain')
+        invalid = ContractDocumentSerializer(data={
+            'contract': self.contract.pk,
+            'guarantee': guarantee.pk,
+            'title': 'فایل غیرمجاز',
+            'file': bad,
+        })
+        self.assertFalse(invalid.is_valid())
+        self.assertIn('file', invalid.errors)
+        document.file.delete(save=False)
+
+    def test_addendum_date_is_optional(self):
+        from contracts.serializers import AddendumSerializer
+
+        addendum = Addendum.objects.create(
+            company=self.company, contract=self.contract, number='A-ND',
+            date=None, amount_change=100_000,
+            subjects=[{'type': 'amount', 'fields': {'amount_change': 100_000}}],
+        )
+        data = AddendumSerializer(addendum).data
+        self.assertIsNone(data['date'])
+        self.assertEqual(data['number'], 'A-ND')
+
     def test_contract_effective_engine_applies_all_addendums(self):
         from contracts.addendum_effects import contract_effects
 
