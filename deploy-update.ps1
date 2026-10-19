@@ -397,6 +397,7 @@ $FrontendFiles = @(
     'frontend/src/pages/ContractAddendumsPage.jsx',
     'frontend/src/pages/ContractProfilePage.jsx',
     'frontend/src/pages/contracts/contractSubPages.jsx',
+    'frontend/src/pages/contracts/AddendumWorkspaceUI.jsx',
     'frontend/src/core/constants/addendumSubjects.js',
     # --- تعاریف اولیهٔ پروژه ---
     'frontend/src/pages/ProjectDefinitionsPage.jsx',
