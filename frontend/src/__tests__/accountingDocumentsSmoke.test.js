@@ -115,7 +115,9 @@ test('new accounting document renders document workbook', async () => {
   expect(container.textContent).toContain('مشخصات سند');
   expect(container.textContent).toContain('آرتیکل‌های سند');
   expect(container.textContent).toContain('ACC-۰۰۰۷۲');
-  expect(container.textContent).toContain('روزنامه عمومی');
+  expect(container.textContent).toContain('تهیه‌کننده');
+  expect(container.textContent).toContain('مرکز هزینه');
+  expect(container.textContent).toContain('شناسه‌های ردیف انتخاب‌شده');
   root.unmount();
 });
 
