@@ -19,13 +19,6 @@ const documentRow = {
   total_debit: 12500000, total_credit: 12500000, open_issues_count: 2,
 };
 
-const summary = {
-  total: 12,
-  posted_documents: 7,
-  pending_documents: 2,
-  status_counts: { draft: 3, submitted: 2, approved: 1, posted: 6, locked: 1 },
-};
-
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   axiosInstance.get.mockClear();
@@ -42,7 +35,6 @@ beforeEach(() => {
     if (url === '/accounting/documents/') {
       return Promise.resolve({ data: { count: 1, results: [documentRow] } });
     }
-    if (url === '/accounting/documents/stats/') return Promise.resolve({ data: summary });
     if (url === '/accounting/documents/7/') {
       return Promise.resolve({
         data: {
@@ -100,12 +92,20 @@ const renderPage = async (element, path, routePath = null) => {
   return { container, root };
 };
 
-test('accounting documents list renders KPIs, filters and rows', async () => {
+test('accounting documents list renders header, search/filter and rows', async () => {
   const { container, root } = await renderPage(<AccountingDocumentsPage />, '/accounting/documents');
   expect(container.textContent).toContain('اسناد حسابداری');
   expect(container.textContent).toContain('فهرست اسناد');
   expect(container.textContent).toContain('سند آزمایشی حقوق');
-  expect(container.textContent).toContain('۱۲'); // total documents KPI
+  expect(container.textContent).toContain('چاپ');
+  expect(container.textContent).not.toContain('خروجی CSV');
+
+  const filterButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('فیلتر'));
+  expect(filterButton).toBeTruthy();
+  await act(async () => { filterButton.click(); });
+  expect(container.textContent).toContain('دفتر روزنامه');
+  expect(container.textContent).toContain('مرحله سند');
   root.unmount();
 });
 

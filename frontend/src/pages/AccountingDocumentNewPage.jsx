@@ -664,7 +664,6 @@ const AccountingDocumentNewPage = () => {
         if (andSubmit && saved?.id) await axiosInstance.post(`/accounting/documents/${saved.id}/submit/`);
       }
       qc.invalidateQueries({ queryKey: ['accounting-documents'] });
-      qc.invalidateQueries({ queryKey: ['doc-stats'] });
       qc.invalidateQueries({ queryKey: ['accounting-dashboard-rich'] });
       const flash = andSubmit ? 'سند ذخیره و برای تأیید ارسال شد' : 'سند با موفقیت ذخیره شد';
       if (!isEdit && saved?.id) {
@@ -707,7 +706,6 @@ const AccountingDocumentNewPage = () => {
     mutationFn: (act) => axiosInstance.post(`/accounting/documents/${id}/${act}/`).then((r) => r.data),
     onSuccess: (data, act) => {
       qc.invalidateQueries({ queryKey: ['accounting-documents'] });
-      qc.invalidateQueries({ queryKey: ['doc-stats'] });
       qc.invalidateQueries({ queryKey: ['accounting-dashboard-rich'] });
       if (act === 'reverse' && data?.id) {
         navigate(`/accounting/documents/${data.id}/edit`, {

@@ -4,14 +4,14 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Alert, Avatar, Badge, Box, Button, Chip, CircularProgress, Dialog, DialogContent,
-  DialogTitle, FormControl, Grid, IconButton, InputAdornment, InputLabel, LinearProgress,
+  DialogTitle, FormControl, IconButton, InputAdornment, InputLabel, LinearProgress,
   MenuItem, Paper, Select, Stack, Table, TableBody, TableCell, TableContainer, TableFooter,
   TableHead, TablePagination, TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import DescriptionIcon from '@mui/icons-material/Description';
 import AddIcon from '@mui/icons-material/Add';
+import PrintIcon from '@mui/icons-material/Print';
 import SearchIcon from '@mui/icons-material/Search';
-import DownloadIcon from '@mui/icons-material/Download';
 import ClearIcon from '@mui/icons-material/Clear';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -33,8 +33,6 @@ import { toJalali } from '../core/utils/dateUtils';
 import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
-import downloadFile from '../core/utils/downloadUtils';
-import InfoCard from '../core/components/ui/InfoCard';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
 import { SurfaceCard } from './accounting/AccountingDashboardUI';
@@ -42,7 +40,6 @@ import { SurfaceCard } from './accounting/AccountingDashboardUI';
 const COLOR = '#2563eb';
 const GREEN = '#0f766e';
 const RED = '#e11d48';
-const AMBER = '#d97706';
 const CYAN = '#0891b2';
 const VIOLET = '#6366f1';
 
@@ -135,6 +132,7 @@ const AccountingDocumentsPage = () => {
     location.state?.fiscal_year != null ? String(location.state.fiscal_year) : null,
   );
   const [ordering, setOrdering] = useState('-date');
+  const [filtersOpen, setFiltersOpen] = useState(Boolean(location.state?.status));
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(50);
 
@@ -183,32 +181,6 @@ const AccountingDocumentsPage = () => {
     }).then((r) => r.data),
   });
 
-  // خلاصهٔ وضعیت اسناد همان سال مالی (سبک: فقط شمارش وضعیت‌ها)
-  const { data: summaryData } = useQuery({
-    queryKey: ['doc-stats', fiscalYear],
-    queryFn: async () => {
-      const params = fiscalYear ? { fiscal_year: fiscalYear } : {};
-      try {
-        const response = await axiosInstance.get('/accounting/documents/stats/', { params });
-        return response.data;
-      } catch (error) {
-        // سازگاری با نسخه‌های قدیمی بک‌اند که هنوز اکشن stats را ندارند
-        if (![404, 405].includes(error.response?.status)) throw error;
-        const fallback = await axiosInstance.get('/accounting/reports/dashboard-rich/', { params });
-        const payload = fallback.data || {};
-        return {
-          total: payload.kpis?.total_documents ?? 0,
-          pending_documents: payload.kpis?.pending_documents ?? 0,
-          posted_documents: payload.kpis?.posted_documents ?? 0,
-          status_counts: payload.status_counts || {},
-        };
-      }
-    },
-    enabled: fiscalYear !== null || fyError,
-  });
-  const summary = summaryData || {};
-  const statusCounts = summary.status_counts || {};
-
   const { data: journals } = useQuery({
     queryKey: ['acc-doc-journals'],
     queryFn: () => axiosInstance.get('/accounting/journals/').then((r) => r.data),
@@ -225,9 +197,6 @@ const AccountingDocumentsPage = () => {
     && (defaultYear ? String(fiscalYear) !== defaultYear : Boolean(fiscalYear));
   const activeFilters = [debouncedQ, status, dateFrom, dateTo, journal].filter(Boolean).length
     + (yearFiltered ? 1 : 0);
-  const selectedYearName = fiscalYear === ''
-    ? 'همه سال‌ها'
-    : yearOptions.find((y) => String(y.id) === String(fiscalYear))?.name || 'سال مالی';
 
   const pageTotals = useMemo(() => list.reduce((acc, row) => ({
     debit: acc.debit + (Number(row.total_debit) || 0),
@@ -246,7 +215,6 @@ const AccountingDocumentsPage = () => {
 
   const refreshAll = () => {
     qc.invalidateQueries({ queryKey: ['accounting-documents'] });
-    qc.invalidateQueries({ queryKey: ['doc-stats'] });
     qc.invalidateQueries({ queryKey: ['accounting-dashboard-rich'] });
   };
 
@@ -301,30 +269,22 @@ const AccountingDocumentsPage = () => {
       <PageHeader
         icon={<DescriptionIcon />}
         title="اسناد حسابداری"
-        badge={(
-          <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
-            <Chip size="small" label={`${toPersianDigits(totalCount)} سند`} sx={{ height: 24, fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }} />
-            <Chip size="small" label={selectedYearName} sx={{ height: 24, fontWeight: 700, bgcolor: theme.palette.action.hover, color: MUTED }} />
-          </Stack>
-        )}
         actions={(
           <>
-            <Button variant="outlined" startIcon={<DownloadIcon />}
-              onClick={async () => {
-                try {
-                  await downloadFile('/accounting/documents/export/', {
-                    params: {
-                      q: debouncedQ, status, date_from: dateFrom, date_to: dateTo,
-                      journal, fiscal_year: fiscalYear, ordering,
-                    },
-                    fallbackName: 'accounting_documents.csv',
-                  });
-                } catch (e) {
-                  setActionMsg({ ok: false, text: `خطا در تهیهٔ خروجی: ${e?.message || 'نامشخص'}` });
-                }
-              }}>
-              خروجی CSV
-            </Button>
+            <FormControl size="small" sx={{ minWidth: 165 }}>
+              <InputLabel>سال مالی</InputLabel>
+              <Select value={fiscalYear ?? ''} label="سال مالی"
+                onChange={(e) => setFiscalYear(e.target.value)}
+                disabled={fiscalYear === null && !fyError}>
+                <MenuItem value="">همه سال‌ها</MenuItem>
+                {yearOptions.map((y) => (
+                  <MenuItem key={y.id} value={String(y.id)}>
+                    {y.name}{y.is_current ? ' · جاری' : ''}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Button variant="outlined" startIcon={<PrintIcon />}>چاپ</Button>
             <Button variant="contained" startIcon={<AddIcon />}
               onClick={() => navigate('/accounting/document-new', { state: fiscalYear ? { fiscal_year: fiscalYear } : undefined })}>
               سند جدید
@@ -339,102 +299,64 @@ const AccountingDocumentsPage = () => {
         </Alert>
       )}
 
-      <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<DescriptionIcon />} label="کل اسناد"
-            value={summary.total != null ? toPersianDigits(summary.total) : (isLoading ? '…' : '—')}
-            suffix="سند" color={accent} onClick={() => setStatus('')} />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<PendingActionsIcon />} label="در انتظار تأیید"
-            value={summary.pending_documents != null ? toPersianDigits(summary.pending_documents) : (isLoading ? '…' : '—')}
-            suffix="سند" color={AMBER} onClick={() => setStatus('submitted')} />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<LockIcon />} label="ثبت‌شده"
-            value={statusCounts.posted != null
-              ? toPersianDigits(statusCounts.posted)
-              : (summary.posted_documents != null ? toPersianDigits(summary.posted_documents) : (isLoading ? '…' : '—'))}
-            suffix="سند" color={GREEN} onClick={() => setStatus('posted')} />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<EditNoteIcon />} label="پیش‌نویس"
-            value={statusCounts.draft != null ? toPersianDigits(statusCounts.draft) : (isLoading ? '…' : '—')}
-            suffix="سند" color={CYAN} onClick={() => setStatus('draft')} />
-        </Grid>
-      </Grid>
-
       <Paper elevation={0} sx={{ p: 1.5, mb: 1.5, bgcolor: theme.palette.background.paper, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px', boxShadow: 'none' }}>
-        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 1.25 }}>
-          <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap>
-            <FilterAltIcon sx={{ fontSize: 18, color: accent }} />
-            <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12), fontWeight: 800, color: INK }}>فیلتر و جستجو</Typography>
-            {activeFilters > 0 ? <Chip size="small" label={`${toPersianDigits(activeFilters)} فیلتر فعال`} sx={{ height: 21, fontSize: Math.max(type.bodySize - 4, 9), fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }} /> : null}
-          </Stack>
-          <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap>
-            <Button size="small" variant="text" startIcon={<ClearIcon />} onClick={resetFilters} sx={{ fontSize: Math.max(type.bodySize - 2, 10.5) }}>پاک کردن</Button>
-            <Tooltip title="به‌روزرسانی فهرست"><IconButton size="small" onClick={() => refetch()}><RefreshIcon sx={{ fontSize: 17 }} /></IconButton></Tooltip>
-          </Stack>
+        <Stack direction="row" spacing={1} useFlexGap alignItems="center">
+          <TextField size="small" fullWidth placeholder="جستجوی شماره یا شرح سند…" value={q} onChange={(e) => setQ(e.target.value)}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+          <Button variant={filtersOpen ? 'contained' : 'outlined'} startIcon={<FilterAltIcon />}
+            onClick={() => setFiltersOpen((prev) => !prev)}
+            sx={{
+              flexShrink: 0, height: 40, minWidth: 108,
+              ...(filtersOpen
+                ? { bgcolor: accent, '&:hover': { bgcolor: accent } }
+                : { color: accent, borderColor: alpha(accent, 0.45) }),
+            }}>
+            فیلتر{activeFilters > 0 ? ` (${toPersianDigits(activeFilters)})` : ''}
+          </Button>
         </Stack>
 
-        <Box sx={{
-          display: 'grid', gap: 1,
-          gridTemplateColumns: {
-            xs: '1fr',
-            sm: 'repeat(2, minmax(0, 1fr))',
-            lg: 'minmax(230px, 1.7fr) repeat(5, minmax(128px, 1fr))',
-          },
-        }}>
-          <TextField size="small" placeholder="جستجوی شماره یا شرح سند…" value={q} onChange={(e) => setQ(e.target.value)}
-            InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-          <FormControl size="small">
-            <InputLabel>سال مالی</InputLabel>
-            <Select value={fiscalYear ?? ''} label="سال مالی" onChange={(e) => setFiscalYear(e.target.value)}
-              disabled={fiscalYear === null && !fyError}>
-              <MenuItem value="">همه سال‌ها</MenuItem>
-              {yearOptions.map((y) => (
-                <MenuItem key={y.id} value={String(y.id)}>
-                  {y.name}
-                  {` (${toPersianDigits(y.document_count || 0)} سند)`}
-                  {y.is_current ? ' · جاری' : ''}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          <FormControl size="small">
-            <InputLabel>روزنامه</InputLabel>
-            <Select value={journal} label="روزنامه" onChange={(e) => setJournal(e.target.value)}>
-              <MenuItem value="">همه</MenuItem>
-              {journalList.map((j) => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: '100%' }} />
-          <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: '100%' }} />
-          <FormControl size="small">
-            <InputLabel>مرتب‌سازی</InputLabel>
-            <Select value={ordering} label="مرتب‌سازی" onChange={(e) => setOrdering(e.target.value)}>
-              {SORT_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
-            </Select>
-          </FormControl>
-        </Box>
-
-        <Box sx={{ display: 'flex', gap: 0.65, flexWrap: 'wrap', alignItems: 'center', mt: 1.25, pt: 1.15, borderTop: `1px solid ${theme.palette.divider}` }}>
-          {[{ key: '', label: 'همه', color: accent, count: summary.total },
-            ...Object.entries(statusMeta).map(([key, meta]) => ({ key, ...meta, count: statusCounts[key] }))].map((item) => {
-            const selected = status === item.key;
-            return (
-              <Chip key={item.key || 'all'} onClick={() => setStatus(item.key)}
-                label={`${item.label}${item.count != null ? ` · ${toPersianDigits(item.count)}` : ''}`}
-                sx={{
-                  height: 24, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, cursor: 'pointer',
-                  bgcolor: selected ? alpha(item.color, 0.08) : theme.palette.background.paper,
-                  color: selected ? item.color : MUTED,
-                  border: `1px solid ${selected ? alpha(item.color, 0.27) : CARD_BORDER}`,
-                  '&:hover': { bgcolor: alpha(item.color, 0.05) },
-                }} />
-            );
-          })}
-        </Box>
+        {filtersOpen ? (
+          <Box sx={{ mt: 1.25, pt: 1.25, borderTop: `1px solid ${CARD_BORDER}` }}>
+            <Box sx={{
+              display: 'grid', gap: 1,
+              gridTemplateColumns: {
+                xs: '1fr',
+                sm: 'repeat(2, minmax(0, 1fr))',
+                lg: 'repeat(5, minmax(0, 1fr))',
+              },
+            }}>
+              <FormControl size="small">
+                <InputLabel>دفتر روزنامه</InputLabel>
+                <Select value={journal} label="دفتر روزنامه" onChange={(e) => setJournal(e.target.value)}>
+                  <MenuItem value="">همه</MenuItem>
+                  {journalList.map((j) => <MenuItem key={j.id} value={j.id}>{j.name}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <JalaliDatePicker noHelper label="از تاریخ" value={dateFrom} onChange={setDateFrom} sx={{ width: '100%' }} />
+              <JalaliDatePicker noHelper label="تا تاریخ" value={dateTo} onChange={setDateTo} sx={{ width: '100%' }} />
+              <FormControl size="small">
+                <InputLabel>مرتب‌سازی</InputLabel>
+                <Select value={ordering} label="مرتب‌سازی" onChange={(e) => setOrdering(e.target.value)}>
+                  {SORT_OPTIONS.map((o) => <MenuItem key={o.value} value={o.value}>{o.label}</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small">
+                <InputLabel>مرحله سند</InputLabel>
+                <Select value={status} label="مرحله سند" onChange={(e) => setStatus(e.target.value)}>
+                  <MenuItem value="">همه</MenuItem>
+                  {Object.entries(statusMeta).map(([key, meta]) => (
+                    <MenuItem key={key} value={key}>{meta.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Box>
+            {activeFilters > 0 ? (
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                <Button size="small" startIcon={<ClearIcon />} onClick={resetFilters}>پاک کردن فیلترها</Button>
+              </Box>
+            ) : null}
+          </Box>
+        ) : null}
       </Paper>
 
       <SurfaceCard
