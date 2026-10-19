@@ -1197,6 +1197,38 @@ def financial_statements(request):
         })
         total_equity = _round2(total_equity + net_profit)
 
+    # --- ریز گروه‌های سود و زیانی برای یادداشت‌های توضیحی ---
+    # هر یادداشت باید از همان گروه‌هایی ساخته شود که جمع آن در صورت سود و زیان
+    # استفاده می‌شود؛ بنابراین ریز حساب/گروه را نیز برگردانده و در یادداشت‌ها
+    # و صورت‌های اصلی از یک منبع واحد استفاده می‌کنیم.
+    pnl_detail = {'revenue': {}, 'cost_of_sales': {}, 'expense': {}}
+    for line in lines:
+        category = line.account.account_type.category
+        if category not in pnl_detail:
+            continue
+        debit = float(line.debit or 0)
+        credit = float(line.credit or 0)
+        amount = (credit - debit) if category == 'revenue' else (debit - credit)
+        rec = pnl_detail[category].setdefault(line.account_id, {
+            'id': line.account_id,
+            'code': line.account.code,
+            'name': line.account.name,
+            'group': line.account.group.name if line.account.group else '',
+            'group_code': line.account.group.code if line.account.group else '',
+            'balance': 0.0,
+        })
+        rec['balance'] += amount
+
+    def pnl_rows(category):
+        rows = sorted(pnl_detail[category].values(), key=lambda row: row['code'])
+        rows = [{**row, 'balance': _round2(row['balance'])} for row in rows]
+        total = _round2(sum(row['balance'] for row in rows))
+        return rows, total, _grouped_rows(rows, total)
+
+    revenue_rows, revenue_total, revenue_groups = pnl_rows('revenue')
+    cost_rows, cost_total, cost_groups = pnl_rows('cost_of_sales')
+    expense_rows, expense_total, expense_groups = pnl_rows('expense')
+
     operating_in = operating_out = investing = financing = 0.0
     for line in lines:
         category = line.account.account_type.category
@@ -1229,6 +1261,16 @@ def financial_statements(request):
             'expenses': expense,
             'expense_details': [{'group': g, 'amount': v} for g, v in expense_by_group.items()],
             'net_profit': net_profit,
+            # ریز گروه‌های درآمد/بهای تمام‌شده/هزینه برای یادداشت‌های ۵ تا ۱۳
+            'revenue_rows': revenue_rows,
+            'revenue_groups': revenue_groups,
+            'revenue_total': revenue_total,
+            'cost_rows': cost_rows,
+            'cost_groups': cost_groups,
+            'cost_total': cost_total,
+            'expense_rows': expense_rows,
+            'expense_groups': expense_groups,
+            'expense_total': expense_total,
         },
         'cash_flow': {
             'operating': operating,

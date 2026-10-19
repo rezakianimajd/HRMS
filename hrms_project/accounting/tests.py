@@ -1256,6 +1256,9 @@ class BalanceSheetClosingTests(TestCase):
         self.assertAlmostEqual(data['income_statement']['expenses'], 300)
         self.assertAlmostEqual(data['income_statement']['net_profit'], 700)
         self.assertAlmostEqual(data['cash_flow']['operating'], 700)
+        # ریز گروه‌های سود و زیانی باید برای ساخت یادداشت‌های ۵ تا ۱۳ برگردند.
+        self.assertTrue(data['income_statement']['revenue_groups'])
+        self.assertTrue(data['income_statement']['expense_groups'])
 
     def test_ledger_still_shows_closing_document(self):
         """دفتر کل باید سند اختتامیه را نشان دهد تا رد حسابرسی حفظ شود."""

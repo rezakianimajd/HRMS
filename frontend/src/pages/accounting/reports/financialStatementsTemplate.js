@@ -79,9 +79,9 @@ export const REPORT_PAGES = [
     noteRefs: '۴۳، ۴۴',
   },
   {
-    id: 'notes', kind: 'notes', title: 'یادداشت‌های توضیحی', short: 'یادداشت‌ها', page: '۱۰-۷۹',
-    group: 'یادداشت‌ها', icon: 'notes', subtitle: 'افشای تکمیلی و رویه‌های حسابداری',
-    noteRefs: '۱۴ سرفصل',
+    id: 'notes', kind: 'notes', title: 'فهرست یادداشت‌های توضیحی', short: 'یادداشت‌ها', page: '۱۰-۵۷+',
+    group: 'یادداشت‌ها', icon: 'notes', subtitle: 'افشای تکمیلی، جداول و رویه‌های حسابداری',
+    noteRefs: 'صفحات ۱۰ تا ۵۷',
   },
 ];
 
@@ -394,6 +394,9 @@ const num = (value) => {
 const round = (value) => Math.round((Number(value) || 0) * 100) / 100;
 
 const pair = (current, prior) => ({ current: num(current), prior: num(prior) });
+const triple = (current, prior, opening) => ({
+  current: num(current), prior: num(prior), opening: num(opening),
+});
 
 const valueOf = (values, rowId, columnKey) => {
   const row = values?.[rowId];
@@ -401,31 +404,54 @@ const valueOf = (values, rowId, columnKey) => {
   return num(row[columnKey]);
 };
 
-const norm = (value) => String(value || '')
+export const normText = (value) => String(value || '')
   .replace(/\u200c/g, '')
   .replace(/[يى]/g, 'ی')
   .replace(/ك/g, 'ک')
   .replace(/\s+/g, '');
 
-const ASSET_MATCHERS = [
-  { id: 'fixed_assets', words: ['دارایی ثابت', 'اموال', 'ماشین', 'تجهیزات', 'ساختمان'] },
+const norm = normText;
+
+export const ASSET_MATCHERS = [
+  {
+    id: 'fixed_assets',
+    words: [
+      'دارایی ثابت', 'داراییهای ثابت', 'دارایی‌های ثابت', 'اموال', 'ماشین', 'تجهیزات',
+      'ساختمان', 'ابنیه', 'اثاثه', 'وسایل نقلیه', 'تاسیسات', 'تأسیسات', 'در جریان تکمیل',
+    ],
+  },
   { id: 'investment_property', words: ['املاک', 'سرمایه‌گذاری در املاک'] },
   { id: 'intangible_assets', words: ['نامشهود'] },
-  { id: 'long_term_receivables', words: ['دریافتنی بلندمدت', 'دریافتنی‌های بلندمدت'] },
-  { id: 'long_term_investments', words: ['سرمایه‌گذاری بلندمدت', 'سرمایه‌گذاری‌های بلندمدت'] },
+  {
+    id: 'long_term_receivables',
+    words: ['دریافتنی بلندمدت', 'دریافتنی‌های بلندمدت', 'دریافتنیهای بلندمدت'],
+  },
+  {
+    id: 'long_term_investments',
+    words: ['سرمایه‌گذاری بلندمدت', 'سرمایه‌گذاری‌های بلندمدت', 'سرمایهگذاریهای بلندمدت'],
+  },
   { id: 'deferred_tax_asset', words: ['مالیات انتقالی', 'مالیات معوق'] },
   { id: 'prepayments', words: ['پیش‌پرداخت', 'پیش پرداخت'] },
   { id: 'cash', words: ['موجودی نقد', 'نقد', 'بانک', 'صندوق', 'تنخواه'] },
   { id: 'inventory', words: ['موجودی مواد', 'موجودی کالا', 'موجودی‌ها'] },
   { id: 'contract_assets', words: ['قرارداد'] },
   { id: 'trade_receivables', words: ['دریافتنی', 'مطالبات'] },
-  { id: 'short_term_investments', words: ['سرمایه‌گذاری کوتاه', 'سرمایه‌گذاری‌های کوتاه'] },
+  {
+    id: 'short_term_investments',
+    words: ['سرمایه‌گذاری کوتاه', 'سرمایه‌گذاری‌های کوتاه', 'سرمایهگذاریهای کوتاه'],
+  },
   { id: 'assets_held_for_sale', words: ['نگهداری برای فروش', 'نگهداری‌شده برای فروش'] },
 ];
 
-const LIABILITY_MATCHERS = [
-  { id: 'long_term_payables', words: ['پرداختنی بلندمدت', 'پرداختنی‌های بلندمدت'] },
-  { id: 'long_term_facilities', words: ['تسهیلات بلندمدت', 'تسهیلات مالی بلندمدت'] },
+export const LIABILITY_MATCHERS = [
+  {
+    id: 'long_term_payables',
+    words: ['پرداختنی بلندمدت', 'پرداختنی‌های بلندمدت', 'پرداختنیهای بلندمدت'],
+  },
+  {
+    id: 'long_term_facilities',
+    words: ['تسهیلات بلندمدت', 'تسهیلات مالی بلندمدت', 'تسهیلات مالی بلند مدت'],
+  },
   { id: 'employee_benefits', words: ['مزایای پایان خدمت', 'ذخیره مزایا'] },
   { id: 'deferred_tax_liability', words: ['مالیات انتقالی', 'مالیات معوق'] },
   { id: 'tax_payable', words: ['مالیات پرداختنی'] },
@@ -438,7 +464,7 @@ const LIABILITY_MATCHERS = [
   { id: 'liabilities_held_for_sale', words: ['نگهداری برای فروش', 'نگهداری‌شده برای فروش'] },
 ];
 
-const EQUITY_MATCHERS = [
+export const EQUITY_MATCHERS = [
   { id: 'capital_in_progress', words: ['افزایش سرمایه در جریان', 'سرمایه در جریان'] },
   { id: 'treasury_premium', words: ['صرف سهام خزانه'] },
   { id: 'share_premium', words: ['صرف سهام'] },
@@ -450,12 +476,12 @@ const EQUITY_MATCHERS = [
   { id: 'share_capital', words: ['سرمایه'] },
 ];
 
-const groupMatch = (group, matchers) => {
+export const groupMatch = (group, matchers) => {
   const name = norm(group?.name);
   return matchers.find((matcher) => matcher.words.some((word) => name.includes(norm(word))))?.id;
 };
 
-const currentAssetFallback = (group) => {
+export const currentAssetFallback = (group) => {
   const name = norm(group?.name);
   const code = String(group?.code || '');
   return code.startsWith('11') || /جاری|کوتاه|نقد|موجودی|دریافتنی|پیش/.test(name)
@@ -463,7 +489,7 @@ const currentAssetFallback = (group) => {
     : 'other_noncurrent_assets';
 };
 
-const currentLiabilityFallback = (group) => {
+export const currentLiabilityFallback = (group) => {
   const name = norm(group?.name);
   const code = String(group?.code || '');
   return code.startsWith('21') || /جاری|پرداختنی|مالیات|سودسهام|پیش|ذخایر/.test(name)
@@ -471,15 +497,32 @@ const currentLiabilityFallback = (group) => {
     : 'other_noncurrent_liabilities';
 };
 
-const collectGroups = (groups, matchers, fallback, target) => {
-  (groups || []).forEach((group) => {
-    const id = groupMatch(group, matchers) || fallback(group);
-    if (!id) return;
-    const amount = id === 'treasury_shares'
-      ? Math.abs(Number(group.total || 0))
-      : Number(group.total || 0);
-    target[id] = round((target[id] || 0) + amount);
-  });
+/**
+ * گروه‌های ترازنامه را یک‌بار به ردیف‌های استاندارد صورت وضعیت مالی نگاشت می‌کند.
+ * خروجی، هم برای ساخت صورت‌های اصلی و هم برای یادداشت‌های توضیحی استفاده می‌شود
+ * تا جمع یادداشت و ردیف صورت مالی همیشه از یک منبع باشد.
+ */
+export const classifyBalanceGroups = (balanceData) => {
+  const result = { assets: {}, liabilities: {}, equity: {} };
+  const add = (side, groups, matchers, fallback) => {
+    (groups || []).forEach((group) => {
+      const id = groupMatch(group, matchers) || fallback(group);
+      if (!id) return;
+      const bucket = result[side][id] || (result[side][id] = []);
+      if (!bucket.some((item) => String(item.code) === String(group.code) && item.name === group.name)) {
+        bucket.push(group);
+      }
+    });
+  };
+  add('assets', balanceData?.asset_groups, ASSET_MATCHERS, currentAssetFallback);
+  add('liabilities', balanceData?.liability_groups, LIABILITY_MATCHERS, currentLiabilityFallback);
+  add('equity', balanceData?.equity_groups, EQUITY_MATCHERS, () => 'other_equity');
+  return result;
+};
+
+export const groupTotalValue = (group) => {
+  const value = Number(group?.total || 0);
+  return Number.isFinite(value) ? value : 0;
 };
 
 const sumValues = (values) => round(Object.values(values).reduce((sum, value) => sum + Number(value || 0), 0));
@@ -488,9 +531,17 @@ const buildBalanceSide = (balanceData) => {
   const assets = {};
   const liabilities = {};
   const equity = {};
-  collectGroups(balanceData?.asset_groups, ASSET_MATCHERS, currentAssetFallback, assets);
-  collectGroups(balanceData?.liability_groups, LIABILITY_MATCHERS, currentLiabilityFallback, liabilities);
-  collectGroups(balanceData?.equity_groups, EQUITY_MATCHERS, () => 'other_equity', equity);
+  const classified = classifyBalanceGroups(balanceData);
+  const flatten = (buckets) => Object.fromEntries(Object.entries(buckets).map(([id, groups]) => [
+    id,
+    round(groups.reduce((sum, group) => {
+      const value = groupTotalValue(group);
+      return sum + (id === 'treasury_shares' ? Math.abs(value) : value);
+    }, 0)),
+  ]));
+  Object.assign(assets, flatten(classified.assets));
+  Object.assign(liabilities, flatten(classified.liabilities));
+  Object.assign(equity, flatten(classified.equity));
 
   const totalAssets = num(balanceData?.total_assets);
   if (totalAssets !== null && Math.abs(totalAssets - sumValues(assets)) >= 0.01) {
@@ -507,11 +558,13 @@ const buildBalanceSide = (balanceData) => {
   return { assets, liabilities, equity };
 };
 
-const mergeSide = (currentValues, priorValues) => {
-  const ids = new Set([...Object.keys(currentValues), ...Object.keys(priorValues)]);
-  return Object.fromEntries([...ids].map((id) => [id, {
-    current: num(currentValues[id]), prior: num(priorValues[id]),
-  }]));
+const mergeSide = (currentValues, priorValues, openingValues = {}) => {
+  const ids = new Set([
+    ...Object.keys(currentValues), ...Object.keys(priorValues), ...Object.keys(openingValues),
+  ]);
+  return Object.fromEntries([...ids].map((id) => [id, triple(
+    currentValues[id], priorValues[id], openingValues[id],
+  )]));
 };
 
 const equityColumnsFor = (side, total) => {
@@ -531,41 +584,110 @@ const equityColumnsFor = (side, total) => {
   };
 };
 
-export const buildInitialValues = (api, prior, balanceData, priorBalanceData) => {
+const pnlGroupList = (statement, key) => {
+  if (Array.isArray(statement?.[key]) && statement[key].length) return statement[key];
+  const rows = statement?.[key.replace('_groups', '_rows')] || [];
+  const buckets = {};
+  rows.forEach((row) => {
+    const bucketKey = `${row.group_code || ''}|${row.group || 'سایر'}`;
+    const bucket = buckets[bucketKey] || (buckets[bucketKey] = {
+      code: row.group_code || '', name: row.group || 'سایر حساب‌ها', total: 0,
+    });
+    bucket.total += Number(row.balance || 0);
+  });
+  return Object.values(buckets);
+};
+
+const groupSum = (groups) => round((groups || []).reduce(
+  (total, group) => total + Number(group.total || 0), 0,
+));
+
+const classifyPnlForStatement = (inc = {}) => {
+  const revenue = pnlGroupList(inc, 'revenue_groups');
+  const cost = pnlGroupList(inc, 'cost_groups');
+  const expense = pnlGroupList(inc, 'expense_groups');
+  const revenueOperating = [];
+  const otherIncome = [];
+  revenue.forEach((group) => {
+    if (['سایر', 'غیرعملیاتی', 'سود فروش', 'سود سرمایه', 'سود سپرده']
+      .some((word) => normText(group.name).includes(normText(word)))) {
+      otherIncome.push(group);
+    } else {
+      revenueOperating.push(group);
+    }
+  });
+  const split = { sga: [], impairment: [], other: [], finance: [], nonOperating: [], tax: [] };
+  expense.forEach((group) => {
+    const name = normText(group.name);
+    if (name.includes(normText('مالیات'))) split.tax.push(group);
+    else if (name.includes(normText('کاهش ارزش')) || name.includes(normText('مشکوک'))) split.impairment.push(group);
+    else if (name.includes(normText('مالی')) || name.includes(normText('بهره'))
+      || name.includes(normText('کارمزد')) || name.includes(normText('تسهیلات'))) split.finance.push(group);
+    else if (name.includes(normText('غیرعملیاتی'))) split.nonOperating.push(group);
+    else if (name.includes(normText('سایر'))) split.other.push(group);
+    else split.sga.push(group);
+  });
+  return {
+    revenue: revenue.length ? groupSum(revenue) : num(inc.revenue),
+    revenueOperating: revenue.length ? groupSum(revenueOperating) : num(inc.revenue),
+    otherIncome: revenue.length ? groupSum(otherIncome) : null,
+    cost: cost.length ? groupSum(cost) : num(inc.cost_of_sales),
+    sga: expense.length ? groupSum(split.sga) : num(inc.expenses),
+    impairment: expense.length ? groupSum(split.impairment) : null,
+    other: expense.length ? groupSum(split.other) : null,
+    finance: expense.length ? groupSum(split.finance) : null,
+    nonOperating: expense.length ? -groupSum(split.nonOperating) : null,
+    tax: expense.length ? groupSum(split.tax) : null,
+  };
+};
+
+export const buildInitialValues = (api, prior, balanceData, priorBalanceData, openingBalanceData) => {
   const inc = api?.income_statement || {};
   const pinc = prior?.income_statement || {};
+  const detail = classifyPnlForStatement(inc);
+  const pdetail = classifyPnlForStatement(pinc);
   const bs = api?.balance_sheet || {};
   const pbs = prior?.balance_sheet || {};
+  const obs = openingBalanceData || {};
   const cf = api?.cash_flow || {};
   const pcf = prior?.cash_flow || {};
   const netProfit = num(inc.net_profit);
   const totalEquity = num(bs.total_equity);
   const currentSide = buildBalanceSide(balanceData);
   const priorSide = buildBalanceSide(priorBalanceData);
+  const openingSide = buildBalanceSide(openingBalanceData);
   return {
     income: {
-      revenue: pair(inc.revenue, pinc.revenue),
-      cogs: pair(inc.cost_of_sales, pinc.cost_of_sales),
-      sga: pair(inc.expenses, pinc.expenses),
+      revenue: pair(detail.revenueOperating, pdetail.revenueOperating),
+      cogs: pair(detail.cost, pdetail.cost),
+      sga: pair(detail.sga, pdetail.sga),
+      impairment: pair(detail.impairment, pdetail.impairment),
+      other_income: pair(detail.otherIncome, pdetail.otherIncome),
+      other_expenses: pair(detail.other, pdetail.other),
+      finance_cost: pair(detail.finance, pdetail.finance),
+      non_operating: pair(detail.nonOperating, pdetail.nonOperating),
+      tax: pair(detail.tax, pdetail.tax),
     },
     comprehensive: {
       net_profit: pair(inc.net_profit, pinc.net_profit),
     },
     balanceAssets: {
-      ...mergeSide(currentSide.assets, priorSide.assets),
-      total_assets: pair(bs.total_assets, pbs.total_assets),
+      ...mergeSide(currentSide.assets, priorSide.assets, openingSide.assets),
+      total_assets: triple(bs.total_assets, pbs.total_assets, obs.total_assets),
     },
     balanceLiabilities: {
-      ...mergeSide(currentSide.liabilities, priorSide.liabilities),
-      ...mergeSide(currentSide.equity, priorSide.equity),
-      total_equity: pair(bs.total_equity, pbs.total_equity),
-      total_liabilities: pair(bs.total_liabilities, pbs.total_liabilities),
+      ...mergeSide(currentSide.liabilities, priorSide.liabilities, openingSide.liabilities),
+      ...mergeSide(currentSide.equity, priorSide.equity, openingSide.equity),
+      total_equity: triple(bs.total_equity, pbs.total_equity, obs.total_equity),
+      total_liabilities: triple(bs.total_liabilities, pbs.total_liabilities, obs.total_liabilities),
     },
     equity: {
+      opening_prior: equityColumnsFor(openingSide.equity, obs.total_equity),
       opening_current: equityColumnsFor(
         priorSide.equity,
         num(pbs.total_equity) ?? (totalEquity !== null && netProfit !== null ? round(totalEquity - netProfit) : null),
       ),
+      prior_net_profit: { retained: num(pinc.net_profit) },
       net_profit: { retained: netProfit },
       closing: equityColumnsFor(currentSide.equity, totalEquity),
     },
@@ -574,7 +696,10 @@ export const buildInitialValues = (api, prior, balanceData, priorBalanceData) =>
       operating_out: pair(cf.operating_out, pcf.operating_out),
       investing_net: pair(cf.investing, pcf.investing),
       financing_net: pair(cf.financing, pcf.financing),
-      beginning_cash: { current: num(priorSide.assets.cash), prior: null },
+      beginning_cash: {
+        current: num(priorSide.assets.cash || 0),
+        prior: num(openingSide.assets.cash || 0),
+      },
     },
   };
 };

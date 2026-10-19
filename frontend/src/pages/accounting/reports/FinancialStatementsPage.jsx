@@ -33,10 +33,11 @@ import { DEFAULT_TYPOGRAPHY } from '../../../core/theme/appearanceDefaults';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali } from '../../../core/utils/dateUtils';
 import {
-  EQUITY_COLUMNS, NOTE_SECTIONS, REPORT_EDITION, REPORT_PAGES,
+  EQUITY_COLUMNS, REPORT_EDITION, REPORT_PAGES,
   REPORT_TITLE, STATEMENTS,
-  buildInitialValues, buildNoteDefaults, parseNumericInput, recalculateStatements,
+  buildInitialValues, parseNumericInput, recalculateStatements,
 } from './financialStatementsTemplate';
+import { applyNoteOverrides, buildNotePages, NOTE_AMOUNT_COLUMNS } from './financialNotes';
 
 const ICONS = {
   book: MenuBookIcon,
@@ -55,6 +56,10 @@ const money = (value) => {
   return formatPersianNumber(value);
 };
 const labelKey = (statementId, rowId) => `${statementId}:${rowId}`;
+const pageById = (pages, id) => pages.find((page) => page.id === id)
+  || REPORT_PAGES.find((page) => page.id === id)
+  || pages[0];
+const roundPercent = (value) => Math.round((Number(value) || 0) * 1000) / 10;
 
 const PageFrame = ({ page, companyName, yearLabel, accent, children }) => {
   const theme = useTheme();
@@ -93,7 +98,7 @@ const PageFrame = ({ page, companyName, yearLabel, accent, children }) => {
               {yearLabel}
             </Typography>
             <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: accent }}>
-              صفحه {page.page}
+              صفحه {toPersianDigits(page.page)}
             </Typography>
           </Box>
         </Stack>
@@ -134,24 +139,24 @@ const MiniStat = ({ label, value, suffix = 'ریال', color }) => {
   );
 };
 
-const PageNavigator = ({ activeIndex, setActiveIndex }) => {
+const PageNavigator = ({ pages, activeIndex, setActiveIndex }) => {
   const theme = useTheme();
   const { typography } = useModulePalette();
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  const page = REPORT_PAGES[activeIndex];
+  const page = pages[activeIndex] || pages[0];
   return (
     <Stack spacing={0.9}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap>
         <Box sx={{ minWidth: 0 }}>
           <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
-            مرحله {toPersianDigits(activeIndex + 1)} از {toPersianDigits(REPORT_PAGES.length)}
+            مرحله {toPersianDigits(activeIndex + 1)} از {toPersianDigits(pages.length)}
           </Typography>
           <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary }}>
             {page.title}
           </Typography>
         </Box>
-        <Stack direction="row" spacing={0.5} sx={{ display: { xs: 'none', md: 'flex' } }}>
-          {REPORT_PAGES.map((item, index) => {
+        <Stack direction="row" spacing={0.5} sx={{ display: { xs: 'none', md: 'flex' }, overflowX: 'auto', maxWidth: '52%', py: 0.5 }}>
+          {pages.map((item, index) => {
             const active = index === activeIndex;
             const done = index < activeIndex;
             return (
@@ -175,25 +180,28 @@ const PageNavigator = ({ activeIndex, setActiveIndex }) => {
             قبلی
           </Button>
           <Button size="small" variant="outlined" endIcon={<ChevronLeftIcon />}
-            disabled={activeIndex === REPORT_PAGES.length - 1}
-            onClick={() => setActiveIndex((index) => Math.min(REPORT_PAGES.length - 1, index + 1))}
+            disabled={activeIndex === pages.length - 1}
+            onClick={() => setActiveIndex((index) => Math.min(pages.length - 1, index + 1))}
             sx={{ minWidth: 0, px: 1 }}>
             بعدی
           </Button>
         </Stack>
       </Stack>
-      <ProgressBar value={((activeIndex + 1) / REPORT_PAGES.length) * 100} height={5} />
+      <ProgressBar value={((activeIndex + 1) / Math.max(pages.length, 1)) * 100} height={5} />
     </Stack>
   );
 };
 
-const TocPage = ({ companyName, yearLabel, accent, onNavigate, activePageId }) => {
+const TocPage = ({ pages, companyName, yearLabel, accent, onNavigate, activePageId }) => {
   const theme = useTheme();
   const { typography } = useModulePalette();
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  const components = REPORT_PAGES.filter((page) => page.kind === 'statement' || page.kind === 'notes');
+  const components = pages.filter((page) => (
+    page.kind === 'statement' || page.kind === 'notes' || page.kind === 'note'
+  ));
+  const noteCount = pages.filter((page) => page.kind === 'note').length;
   return (
-    <PageFrame page={REPORT_PAGES[1]} companyName={companyName} yearLabel={yearLabel} accent={accent}>
+    <PageFrame page={pageById(pages, 'toc')} companyName={companyName} yearLabel={yearLabel} accent={accent}>
       <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900, color: theme.palette.text.primary, mb: 0.35 }}>
         اجزای صورت‌های مالی
       </Typography>
@@ -232,7 +240,7 @@ const TocPage = ({ companyName, yearLabel, accent, onNavigate, activePageId }) =
               {page.noteRefs || '—'}
             </Typography>
             <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: accent }}>
-              {page.page}
+              {toPersianDigits(page.page)}
             </Typography>
           </ButtonBase>
         ))}
@@ -245,22 +253,23 @@ const TocPage = ({ companyName, yearLabel, accent, onNavigate, activePageId }) =
               یادداشت‌های توضیحی
             </Typography>
             <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
-              بخش جدایی‌ناپذیر صورت‌های مالی — صفحات ۱۰ تا ۷۹
+              بخش جدایی‌ناپذیر صورت‌های مالی — صفحات ۱۰ تا ۵۷ و یادداشت‌های تکمیلی
             </Typography>
           </Box>
-          <Chip size="small" label={`${toPersianDigits(NOTE_SECTIONS.length)} سرفصل`}
+          <Chip size="small" label={`${toPersianDigits(noteCount)} صفحهٔ یادداشت`}
             sx={{ bgcolor: alpha(accent, 0.08), color: accent, fontWeight: 800 }} />
         </Stack>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 0.55, mt: 1.25 }}>
-          {NOTE_SECTIONS.map((note) => (
-            <Stack key={note.id} direction="row" justifyContent="space-between" spacing={1}>
+          {pages.filter((page) => page.kind === 'note').map((note) => (
+            <ButtonBase key={note.id} onClick={() => onNavigate(note.id)}
+              sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, width: '100%', textAlign: 'right', px: 0.5, py: 0.2, borderRadius: '7px' }}>
               <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.primary }}>
                 {note.number}. {note.title}
               </Typography>
               <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary, flexShrink: 0 }}>
-                {note.page}
+                {toPersianDigits(note.page)}
               </Typography>
-            </Stack>
+            </ButtonBase>
           ))}
         </Box>
       </Box>
@@ -439,7 +448,7 @@ const StatementPage = ({
   );
 };
 
-const CoverPage = ({ companyName, yearLabel, data, summary, accent, onNavigate, generatedAt }) => {
+const CoverPage = ({ pages, companyName, yearLabel, data, summary, accent, onNavigate, generatedAt }) => {
   const theme = useTheme();
   const { typography } = useModulePalette();
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
@@ -451,7 +460,7 @@ const CoverPage = ({ companyName, yearLabel, data, summary, accent, onNavigate, 
   const totalEquity = summary?.totalEquity ?? bs.total_equity;
   const netChange = summary?.netChange ?? cf.net_change;
   return (
-    <PageFrame page={REPORT_PAGES[0]} companyName={companyName} yearLabel={yearLabel} accent={accent}>
+    <PageFrame page={pageById(pages, 'cover')} companyName={companyName} yearLabel={yearLabel} accent={accent}>
       <Box sx={{
         position: 'relative', overflow: 'hidden', borderRadius: '16px', p: { xs: 2.5, md: 4 },
         background: `linear-gradient(135deg, ${accent} 0%, ${alpha(accent, 0.78)} 58%, ${alpha(accent, 0.62)} 100%)`,
@@ -493,7 +502,7 @@ const CoverPage = ({ companyName, yearLabel, data, summary, accent, onNavigate, 
           اجزای گزارش
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 0.75 }}>
-          {REPORT_PAGES.filter((page) => page.kind === 'statement' || page.kind === 'notes').map((page) => (
+          {pages.filter((page) => page.kind === 'statement' || page.kind === 'notes').map((page) => (
             <ButtonBase key={page.id} onClick={() => onNavigate(page.id)}
               sx={{
                 p: 1.1, borderRadius: '11px', border: `1px solid ${theme.palette.divider}`,
@@ -511,7 +520,7 @@ const CoverPage = ({ companyName, yearLabel, data, summary, accent, onNavigate, 
                   {page.title}
                 </Typography>
                 <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
-                  صفحه {page.page}
+                  صفحه {toPersianDigits(page.page)}
                 </Typography>
               </Box>
             </ButtonBase>
@@ -522,19 +531,19 @@ const CoverPage = ({ companyName, yearLabel, data, summary, accent, onNavigate, 
   );
 };
 
-const TocSidebar = ({ activePageId, onNavigate, accent, currentIndex }) => {
+const TocSidebar = ({ pages, activePageId, onNavigate, accent, currentIndex }) => {
   const theme = useTheme();
   const { typography } = useModulePalette();
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  const groups = [...new Set(REPORT_PAGES.map((page) => page.group))];
+  const groups = [...new Set(pages.map((page) => page.group))];
   return (
     <SurfaceCard
       title="فهرست گزارش"
       icon={ListAltIcon}
       color={accent}
-      contentSx={{ p: 0.9 }}
+      contentSx={{ p: 0.9, maxHeight: '72vh', overflowY: 'auto' }}
       action={(
-        <Chip size="small" label={`${toPersianDigits(REPORT_PAGES.length)} صفحه`}
+        <Chip size="small" label={`${toPersianDigits(pages.length)} صفحه`}
           sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
       )}
     >
@@ -547,7 +556,7 @@ const TocSidebar = ({ activePageId, onNavigate, accent, currentIndex }) => {
             }}>
               {group}
             </Typography>
-            {REPORT_PAGES.filter((page) => page.group === group).map((page) => {
+            {pages.filter((page) => page.group === group).map((page) => {
               const active = page.id === activePageId;
               const Icon = ICONS[page.icon] || DescriptionIcon;
               return (
@@ -574,7 +583,7 @@ const TocSidebar = ({ activePageId, onNavigate, accent, currentIndex }) => {
                       {page.short}
                     </Typography>
                     <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.secondary }}>
-                      صفحه {page.page}
+                      صفحه {toPersianDigits(page.page)}
                     </Typography>
                   </Box>
                   {active ? <CheckCircleIcon sx={{ fontSize: 15, color: accent }} /> : null}
@@ -589,9 +598,9 @@ const TocSidebar = ({ activePageId, onNavigate, accent, currentIndex }) => {
           پیشرفت مرور گزارش
         </Typography>
         <Box sx={{ px: 0.85, mt: 0.5 }}>
-          <ProgressBar value={((currentIndex + 1) / REPORT_PAGES.length) * 100} color={accent} height={5} />
+          <ProgressBar value={((currentIndex + 1) / Math.max(pages.length, 1)) * 100} color={accent} height={5} />
           <Typography sx={{ mt: 0.4, fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.secondary }}>
-            {toPersianDigits(currentIndex + 1)} از {toPersianDigits(REPORT_PAGES.length)} صفحه
+            {toPersianDigits(currentIndex + 1)} از {toPersianDigits(pages.length)} صفحه
           </Typography>
         </Box>
       </Box>
@@ -599,57 +608,244 @@ const TocSidebar = ({ activePageId, onNavigate, accent, currentIndex }) => {
   );
 };
 
-const NotesPage = ({ companyName, yearLabel, accent, notesText, setNote, editMode }) => {
+const NotesIndexPage = ({ pages, companyName, yearLabel, accent, onNavigate, editMode }) => {
   const theme = useTheme();
   const { typography } = useModulePalette();
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const notePages = pages.filter((page) => page.kind === 'note');
+  const withTables = notePages.filter((page) => page.tables?.some((table) => table.hasData));
   return (
-    <PageFrame page={REPORT_PAGES[REPORT_PAGES.length - 1]} companyName={companyName} yearLabel={yearLabel} accent={accent}>
+    <PageFrame page={pageById(pages, 'notes')} companyName={companyName} yearLabel={yearLabel} accent={accent}>
       <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
-        <Chip size="small" label={`${toPersianDigits(NOTE_SECTIONS.length)} سرفصل`}
+        <Chip size="small" label={`${toPersianDigits(notePages.length)} صفحهٔ یادداشت`}
           sx={{ bgcolor: alpha(accent, 0.07), color: accent, fontWeight: 700 }} />
-        <Chip size="small" label="صفحات ۱۰ تا ۷۹"
+        <Chip size="small" label={`${toPersianDigits(withTables.length)} یادداشت دارای جدول خودکار`}
           sx={{ bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary, fontWeight: 700 }} />
-        <Chip size="small" label={editMode ? 'قابل ویرایش' : 'متن خودکار'} variant="outlined" sx={{ fontWeight: 700 }} />
+        <Chip size="small" label={editMode ? 'ویرایش متن و اعداد' : 'تولید خودکار از دفاتر'} variant="outlined" sx={{ fontWeight: 700 }} />
       </Stack>
-      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))' }, gap: 1.1 }}>
-        {NOTE_SECTIONS.map((note) => (
-          <Box key={note.id} sx={{
-            p: 1.25, borderRadius: '12px', border: `1px solid ${theme.palette.divider}`,
-            bgcolor: theme.palette.background.paper, minWidth: 0,
+      <Box sx={{
+        p: 1.35, mb: 1.5, borderRadius: '12px', bgcolor: alpha(accent, 0.035),
+        border: `1px solid ${alpha(accent, 0.12)}`,
+      }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+          یادداشت‌های توضیحی، بخش جدایی‌ناپذیر صورت‌های مالی
+        </Typography>
+        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, lineHeight: 1.85 }}>
+          هر یادداشت از همان گروه‌های حساب دفاتر ساخته می‌شود که جمع آن در صورت‌های مالی اساسی استفاده شده است.
+          یادداشت‌های بدون داده به‌صورت خودکار حذف می‌شوند و یادداشت‌های الزامی رویه‌های حسابداری همیشه ارائه می‌شوند.
+        </Typography>
+      </Box>
+      <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 0.8 }}>
+        {notePages.map((note) => (
+          <ButtonBase key={note.id} onClick={() => onNavigate(note.id)} sx={{
+            display: 'block', width: '100%', textAlign: 'right', p: 1.1, borderRadius: '11px',
+            border: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper,
+            '&:hover': { bgcolor: alpha(accent, 0.035), borderColor: alpha(accent, 0.22) },
           }}>
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
               <Chip size="small" label={note.number}
                 sx={{ height: 21, minWidth: 23, fontWeight: 900, bgcolor: alpha(accent, 0.08), color: accent }} />
               <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
-                صفحه {note.page}
+                صفحه {toPersianDigits(note.page)}
               </Typography>
             </Stack>
-            <Typography sx={{ mt: 0.65, fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+            <Typography sx={{ mt: 0.6, fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
               {note.title}
             </Typography>
-            <Typography sx={{ mt: 0.2, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary, mb: 0.75 }}>
-              {note.hint}
+            <Typography noWrap sx={{ mt: 0.15, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+              {note.tables?.length ? `${toPersianDigits(note.tables.length)} جدول · ${note.tables.some((table) => table.hasData) ? 'دارای داده' : 'بدون داده'}` : 'متن استاندارد'}
             </Typography>
-            {editMode ? (
-              <TextField
-                fullWidth multiline minRows={3} size="small"
-                value={notesText?.[note.id] || ''}
-                onChange={(event) => setNote(note.id, event.target.value)}
-                placeholder="متن یادداشت را وارد کنید…"
-                inputProps={{ style: { fontSize: Math.max(type.bodySize - 1, 10.5), lineHeight: 1.9 } }}
-              />
-            ) : (
-              <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, lineHeight: 1.9 }}>
-                {notesText?.[note.id] || 'برای این یادداشت متنی ثبت نشده است.'}
-              </Typography>
-            )}
-          </Box>
+          </ButtonBase>
         ))}
       </Box>
     </PageFrame>
   );
 };
+
+const NoteTable = ({ table, accent, editMode, onCellChange }) => {
+  const theme = useTheme();
+  const { typography } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const cellSx = {
+    fontSize: Math.max(type.bodySize - 2, 9.5), borderBottom: `1px solid ${theme.palette.divider}`,
+    py: 0.45, px: 0.75, whiteSpace: 'nowrap',
+  };
+  const headSx = {
+    ...cellSx, bgcolor: theme.palette.action.hover, fontWeight: 800,
+    color: theme.palette.text.primary, fontSize: Math.max(type.bodySize - 3, 9),
+  };
+  const columns = table.columns || NOTE_AMOUNT_COLUMNS;
+  const display = (row, column) => {
+    const raw = row.values?.[column.key];
+    if (raw === '' || raw === null || raw === undefined) return '—';
+    if (row.percent) return `${formatPersianNumber(roundPercent(raw))}٪`;
+    if (table.expense) return `(${formatPersianNumber(Math.abs(Number(raw) || 0))})`;
+    return formatPersianNumber(raw);
+  };
+  return (
+    <Box sx={{ mt: 1.25 }}>
+      <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
+        <Box sx={{ width: 4, height: 16, borderRadius: 2, bgcolor: accent }} />
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+          {table.title}
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+        <Chip size="small" label="مبالغ به ریال" sx={{ height: 20, fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 700 }} />
+      </Stack>
+      <TableContainer sx={{ overflowX: 'auto', '@media print': { overflow: 'visible' } }}>
+        <Table size="small" sx={{ minWidth: Math.max(480, 190 + columns.length * 105) }}>
+          <TableHead>
+            <TableRow>
+              <TableCell sx={{ ...headSx, minWidth: 210 }}>شرح</TableCell>
+              {columns.map((column) => (
+                <TableCell key={column.key} align="left" sx={{ ...headSx, minWidth: 96 }}>
+                  {column.label}
+                </TableCell>
+              ))}
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {table.rows.map((row) => {
+              if (row.kind === 'section') {
+                return (
+                  <TableRow key={row.id}>
+                    <TableCell colSpan={columns.length + 1} sx={{
+                      ...cellSx, whiteSpace: 'normal', py: 0.65, fontWeight: 800,
+                      bgcolor: alpha(theme.palette.primary.main, 0.045), color: theme.palette.text.primary,
+                    }}>
+                      {row.label}
+                    </TableCell>
+                  </TableRow>
+                );
+              }
+              const isTotal = row.kind === 'total';
+              return (
+                <TableRow key={row.id} hover sx={{ bgcolor: isTotal ? alpha(accent, 0.055) : 'transparent' }}>
+                  <TableCell sx={{
+                    ...cellSx, whiteSpace: 'normal', minWidth: 210,
+                    fontWeight: isTotal ? 900 : 500, pl: 0.75 + (row.child ? 1.5 : 0),
+                    color: theme.palette.text.primary,
+                  }}>
+                    <Stack direction="row" spacing={0.5} alignItems="center">
+                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), fontWeight: isTotal ? 900 : 500 }}>
+                        {row.label}
+                      </Typography>
+                      {row.code ? (
+                        <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.disabled }}>
+                          {toPersianDigits(row.code)}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  </TableCell>
+                  {columns.map((column) => (
+                    <TableCell key={column.key} align="left" sx={{
+                      ...cellSx, fontVariantNumeric: 'tabular-nums',
+                      fontWeight: isTotal ? 800 : 500, color: isTotal ? theme.palette.text.primary : theme.palette.text.secondary,
+                    }}>
+                      {editMode && !isTotal && !row.child ? (
+                        <TextField
+                          variant="standard" size="small"
+                          value={row.values?.[column.key] ?? ''}
+                          onChange={(event) => onCellChange(table.id, row.id, column.key, event.target.value)}
+                          inputProps={{
+                            style: {
+                              textAlign: 'left', direction: 'ltr',
+                              fontSize: Math.max(type.bodySize - 2, 9.5), paddingLeft: 8, minWidth: 70,
+                            },
+                          }}
+                        />
+                      ) : (
+                        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), fontWeight: isTotal ? 800 : 500, direction: 'ltr', textAlign: 'left' }}>
+                          {display(row, column)}
+                        </Typography>
+                      )}
+                    </TableCell>
+                  ))}
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    </Box>
+  );
+};
+
+const isHeadingParagraph = (text) => {
+  const clean = String(text || '').trim();
+  return /^[۰-۹0-9]+\s*[-ـ]/.test(clean) || (clean.length < 110 && !/[.؛:]$/.test(clean));
+};
+
+const NotePage = ({
+  page, companyName, yearLabel, accent, editMode, onCellChange, onParagraphChange,
+}) => {
+  const theme = useTheme();
+  const { typography } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  return (
+    <PageFrame page={page} companyName={companyName} yearLabel={yearLabel} accent={accent}>
+      <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 1.5 }}>
+        <Chip size="small" label={`یادداشت ${page.number}`}
+          sx={{ bgcolor: alpha(accent, 0.08), color: accent, fontWeight: 800 }} />
+        <Chip size="small" label={`صفحه ${toPersianDigits(page.page)}`}
+          sx={{ bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary, fontWeight: 700 }} />
+        {page.supplemental ? (
+          <Chip size="small" label="یادداشت تکمیلی" variant="outlined" sx={{ fontWeight: 700 }} />
+        ) : null}
+        <Chip size="small" label={editMode ? 'قابل ویرایش' : 'تولید خودکار از دفاتر'} variant="outlined" sx={{ fontWeight: 700 }} />
+      </Stack>
+      <Divider sx={{ my: 1.1 }} />
+      {page.paragraphs?.length ? (
+        <Stack spacing={0.9}>
+          {page.paragraphs.map((paragraph, index) => (
+            editMode ? (
+              <TextField
+                key={`${page.id}-p-${index}`}
+                fullWidth multiline minRows={2} size="small"
+                value={paragraph}
+                onChange={(event) => onParagraphChange(page.page, index, event.target.value)}
+                inputProps={{ style: { fontSize: Math.max(type.bodySize - 1, 10.5), lineHeight: 1.9 } }}
+              />
+            ) : (
+              <Typography key={`${page.id}-p-${index}`} sx={{
+                fontSize: Math.max(type.bodySize - 1, 10.5),
+                fontWeight: isHeadingParagraph(paragraph) ? 800 : 400,
+                color: isHeadingParagraph(paragraph) ? theme.palette.text.primary : theme.palette.text.secondary,
+                lineHeight: 1.95, whiteSpace: 'pre-wrap',
+              }}>
+                {paragraph}
+              </Typography>
+            )
+          ))}
+        </Stack>
+      ) : (
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.secondary }}>
+          این یادداشت به‌صورت خودکار از دفاتر حسابداری تهیه شده است.
+        </Typography>
+      )}
+      {page.tables?.filter((table) => table.rows?.length).map((table) => (
+        <NoteTable
+          key={table.id}
+          table={table}
+          accent={accent}
+          editMode={editMode}
+          onCellChange={onCellChange}
+        />
+      ))}
+      {page.tables?.some((table) => table.rows?.length) ? (
+        <Box sx={{
+          mt: 1.75, p: 1, borderRadius: '9px', bgcolor: alpha(accent, 0.035),
+          border: `1px solid ${alpha(accent, 0.1)}`,
+        }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+            جمع این یادداشت با ردیف متناظر در صورت‌های مالی اساسی از یک منبع (گروه‌های حساب دفاتر) محاسبه شده است.
+          </Typography>
+        </Box>
+      ) : null}
+    </PageFrame>
+  );
+};
+
 
 const FinancialStatementsPage = () => {
   const theme = useTheme();
@@ -663,6 +859,7 @@ const FinancialStatementsPage = () => {
   const [editMode, setEditMode] = useState(false);
   const [manualValues, setManualValues] = useState({});
   const [labels, setLabels] = useState({});
+  const [noteValues, setNoteValues] = useState({});
   const [notesText, setNotesText] = useState({});
   const [loadedKey, setLoadedKey] = useState(null);
   const [lastSaved, setLastSaved] = useState(null);
@@ -689,6 +886,12 @@ const FinancialStatementsPage = () => {
       .filter((year) => year.end_date && String(year.end_date) < String(selectedYear.start_date))
       .sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0] || null;
   }, [yearList, selectedYear]);
+  const openingYear = useMemo(() => {
+    if (!priorYear?.start_date) return null;
+    return yearList
+      .filter((year) => year.end_date && String(year.end_date) < String(priorYear.start_date))
+      .sort((a, b) => String(b.end_date).localeCompare(String(a.end_date)))[0] || null;
+  }, [yearList, priorYear]);
 
   const fsQuery = useQuery({
     queryKey: ['acc-fs-workspace', yearId],
@@ -718,27 +921,55 @@ const FinancialStatementsPage = () => {
       params: { fiscal_year: priorYear.id },
     }).then((response) => response.data),
   });
+  const openingBalanceQuery = useQuery({
+    queryKey: ['acc-fs-balance-detail-opening', openingYear?.id],
+    enabled: Boolean(openingYear?.id),
+    queryFn: () => axiosInstance.get('/accounting/reports/balance-sheet/', {
+      params: { fiscal_year: openingYear.id },
+    }).then((response) => response.data),
+  });
 
   const data = fsQuery.data;
   const detailLoading = balanceQuery.isLoading
-    || (Boolean(priorYear?.id) && (priorQuery.isLoading || priorBalanceQuery.isLoading));
-  const yearName = data?.fiscal_year?.name || selectedYear?.name || '';
+    || (Boolean(priorYear?.id) && (priorQuery.isLoading || priorBalanceQuery.isLoading))
+    || (Boolean(openingYear?.id) && openingBalanceQuery.isLoading);
   const yearLabel = data?.fiscal_year?.end_date
     ? `سال مالی منتهی به ${toJalali(data.fiscal_year.end_date)}`
     : (selectedYear?.end_date ? `سال مالی منتهی به ${toJalali(selectedYear.end_date)}` : 'همهٔ دوره‌ها');
   const generatedAt = data?.generated_at ? toJalali(String(data.generated_at).slice(0, 10)) : '—';
   const storageKey = `fs-workspace:${company?.id || 'company'}:${yearId || 'all'}:v1`;
-  const activePage = REPORT_PAGES[activeIndex];
 
   const autoValues = useMemo(
-    () => buildInitialValues(data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data),
-    [data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data],
+    () => buildInitialValues(
+      data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data,
+      openingBalanceQuery.data,
+    ),
+    [data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data, openingBalanceQuery.data],
   );
+  const autoNotePages = useMemo(() => buildNotePages({
+    api: data,
+    prior: priorQuery.data,
+    balanceData: balanceQuery.data,
+    priorBalanceData: priorBalanceQuery.data,
+    openingBalanceData: openingBalanceQuery.data,
+    companyName,
+  }), [
+    data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data, openingBalanceQuery.data,
+    companyName,
+  ]);
+  const notePages = useMemo(
+    () => applyNoteOverrides(autoNotePages, noteValues, notesText),
+    [autoNotePages, noteValues, notesText],
+  );
+  const pages = useMemo(() => {
+    const base = REPORT_PAGES.filter((page) => page.kind !== 'note');
+    return [...base, ...notePages];
+  }, [notePages]);
+  const activePage = pages[activeIndex] || pages[0];
+  useEffect(() => {
+    if (activeIndex > pages.length - 1) setActiveIndex(Math.max(0, pages.length - 1));
+  }, [activeIndex, pages.length]);
   const computedValues = useMemo(() => recalculateStatements(manualValues), [manualValues]);
-  const defaultsNotes = useMemo(
-    () => buildNoteDefaults({ api: data, companyName, yearName }),
-    [data, companyName, yearName],
-  );
   const summary = useMemo(() => ({
     totalAssets: computedValues?.balanceAssets?.total_assets?.current ?? data?.balance_sheet?.total_assets,
     netProfit: computedValues?.income?.net_profit?.current ?? data?.income_statement?.net_profit,
@@ -748,7 +979,10 @@ const FinancialStatementsPage = () => {
 
   useEffect(() => {
     if (!data || detailLoading || loadedKey === storageKey) return;
-    const initial = buildInitialValues(data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data);
+    const initial = buildInitialValues(
+      data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data,
+      openingBalanceQuery.data,
+    );
     let draft = null;
     try {
       draft = JSON.parse(window.localStorage.getItem(storageKey) || 'null');
@@ -763,21 +997,26 @@ const FinancialStatementsPage = () => {
     }
     setManualValues(merged);
     setLabels(draft?.labels || {});
-    setNotesText(draft?.notes || defaultsNotes);
+    setNoteValues(draft?.noteValues || {});
+    setNotesText(draft?.notes || {});
     setLoadedKey(storageKey);
     setLastSaved(draft?.savedAt ? new Date(draft.savedAt) : null);
-  }, [data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data, detailLoading, storageKey, loadedKey, defaultsNotes]);
+  }, [
+    data, priorQuery.data, balanceQuery.data, priorBalanceQuery.data, openingBalanceQuery.data,
+    detailLoading, storageKey, loadedKey,
+  ]);
 
   useEffect(() => {
     if (loadedKey !== storageKey) return undefined;
     const timer = setTimeout(() => {
       window.localStorage.setItem(storageKey, JSON.stringify({
-        values: manualValues, labels, notes: notesText, savedAt: new Date().toISOString(),
+        values: manualValues, labels, noteValues, notes: notesText,
+        savedAt: new Date().toISOString(),
       }));
       setLastSaved(new Date());
     }, 600);
     return () => clearTimeout(timer);
-  }, [manualValues, labels, notesText, storageKey, loadedKey]);
+  }, [manualValues, labels, noteValues, notesText, storageKey, loadedKey]);
 
   const handleCellChange = (statementId, rowId, columnKey, raw) => {
     setManualValues((previous) => {
@@ -793,18 +1032,31 @@ const FinancialStatementsPage = () => {
     setLabels((previous) => ({ ...previous, [labelKey(statementId, rowId)]: value }));
   };
 
-  const handleNoteChange = (noteId, value) => {
-    setNotesText((previous) => ({ ...previous, [noteId]: value }));
+  const handleNoteCellChange = (notePage, tableId, rowId, columnKey, raw) => {
+    setNoteValues((previous) => {
+      const pageValues = { ...(previous[notePage] || {}) };
+      const tableValues = { ...(pageValues[tableId] || {}) };
+      const rowValues = { ...(tableValues[rowId] || {}) };
+      rowValues[columnKey] = parseNumericInput(raw);
+      tableValues[rowId] = rowValues;
+      pageValues[tableId] = tableValues;
+      return { ...previous, [notePage]: pageValues };
+    });
+  };
+
+  const handleParagraphChange = (notePage, index, value) => {
+    setNotesText((previous) => ({ ...previous, [`${notePage}:${index}`]: value }));
   };
 
   const goToPage = (pageId) => {
-    const index = REPORT_PAGES.findIndex((page) => page.id === pageId);
+    const index = pages.findIndex((page) => page.id === pageId);
     if (index >= 0) setActiveIndex(index);
   };
 
   const saveNow = () => {
     window.localStorage.setItem(storageKey, JSON.stringify({
-      values: manualValues, labels, notes: notesText, savedAt: new Date().toISOString(),
+      values: manualValues, labels, noteValues, notes: notesText,
+      savedAt: new Date().toISOString(),
     }));
     setLastSaved(new Date());
     setNotice({ type: 'success', text: 'پیش‌نویس گزارش در همین مرورگر ذخیره شد.' });
@@ -814,7 +1066,8 @@ const FinancialStatementsPage = () => {
     window.localStorage.removeItem(storageKey);
     setManualValues(autoValues);
     setLabels({});
-    setNotesText(defaultsNotes);
+    setNoteValues({});
+    setNotesText({});
     setLastSaved(null);
     setNotice({ type: 'success', text: 'مقادیر و ساختار گزارش به خروجی خودکار سیستم بازگشت.' });
   };
@@ -823,7 +1076,8 @@ const FinancialStatementsPage = () => {
     || fsQuery.isLoading || detailLoading;
   const isError = yearsQuery.isError || fsQuery.isError;
   const isFetching = fsQuery.isFetching || priorQuery.isFetching
-    || balanceQuery.isFetching || priorBalanceQuery.isFetching;
+    || balanceQuery.isFetching || priorBalanceQuery.isFetching
+    || openingBalanceQuery.isFetching;
   const lastSavedLabel = lastSaved
     ? lastSaved.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })
     : null;
@@ -853,6 +1107,7 @@ const FinancialStatementsPage = () => {
                 <Button variant="outlined" onClick={() => {
                   fsQuery.refetch(); priorQuery.refetch();
                   balanceQuery.refetch(); priorBalanceQuery.refetch();
+                  if (openingYear?.id) openingBalanceQuery.refetch();
                 }}
                   disabled={isFetching} sx={{ minWidth: 40, px: 1 }}>
                   <RefreshIcon fontSize="small" />
@@ -930,6 +1185,7 @@ const FinancialStatementsPage = () => {
         <Grid item xs={12} lg={3} sx={{ '@media print': { display: 'none' } }}>
           <Box sx={{ position: { lg: 'sticky' }, top: 16 }}>
             <TocSidebar
+              pages={pages}
               activePageId={activePage.id}
               onNavigate={goToPage}
               accent={accent}
@@ -943,7 +1199,7 @@ const FinancialStatementsPage = () => {
               p: 1.25, borderRadius: '16px', border: `1px solid ${theme.palette.divider}`,
               '@media print': { display: 'none' },
             }}>
-              <PageNavigator activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
+              <PageNavigator pages={pages} activeIndex={activeIndex} setActiveIndex={setActiveIndex} />
             </Paper>
 
             {isLoading ? (
@@ -953,12 +1209,15 @@ const FinancialStatementsPage = () => {
             ) : isError ? (
               <Alert severity="error" sx={{ borderRadius: '12px' }}
                 action={<Button size="small" onClick={() => {
-                  yearsQuery.refetch(); fsQuery.refetch(); balanceQuery.refetch();
+                  yearsQuery.refetch(); fsQuery.refetch(); priorQuery.refetch();
+                  balanceQuery.refetch(); priorBalanceQuery.refetch();
+                  if (openingYear?.id) openingBalanceQuery.refetch();
                 }}>تلاش دوباره</Button>}>
                 خطا در بارگذاری صورت‌های مالی. لطفاً دوباره تلاش کنید.
               </Alert>
             ) : activePage.kind === 'cover' ? (
               <CoverPage
+                pages={pages}
                 companyName={companyName}
                 yearLabel={yearLabel}
                 data={data}
@@ -969,6 +1228,7 @@ const FinancialStatementsPage = () => {
               />
             ) : activePage.kind === 'toc' ? (
               <TocPage
+                pages={pages}
                 companyName={companyName}
                 yearLabel={yearLabel}
                 accent={accent}
@@ -976,13 +1236,25 @@ const FinancialStatementsPage = () => {
                 activePageId={activePage.id}
               />
             ) : activePage.kind === 'notes' ? (
-              <NotesPage
+              <NotesIndexPage
+                pages={pages}
                 companyName={companyName}
                 yearLabel={yearLabel}
                 accent={accent}
-                notesText={notesText}
-                setNote={handleNoteChange}
+                onNavigate={goToPage}
                 editMode={editMode}
+              />
+            ) : activePage.kind === 'note' ? (
+              <NotePage
+                page={activePage}
+                companyName={companyName}
+                yearLabel={yearLabel}
+                accent={accent}
+                editMode={editMode}
+                onCellChange={(tableId, rowId, columnKey, raw) => (
+                  handleNoteCellChange(activePage.page, tableId, rowId, columnKey, raw)
+                )}
+                onParagraphChange={handleParagraphChange}
               />
             ) : (
               <StatementPage

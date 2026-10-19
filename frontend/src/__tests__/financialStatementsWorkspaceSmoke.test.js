@@ -126,6 +126,15 @@ test('financial statements workspace renders TOC, statements and edit mode', asy
   expect(notesButton).toBeTruthy();
   await act(async () => { notesButton.click(); });
   expect(container.textContent).toContain('تاریخچه و فعالیت شرکت');
+  expect(container.textContent).toContain('یادداشت دارای جدول خودکار');
+  expect(container.textContent).not.toContain('عملیات متوقف‌شده');
+
+  const revenueNoteButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('درآمدهای عملیاتی') && button.textContent.includes('صفحه'));
+  expect(revenueNoteButton).toBeTruthy();
+  await act(async () => { revenueNoteButton.click(); });
+  expect(container.textContent).toContain('درآمدهای عملیاتی به تفکیک گروه حساب');
+  expect(container.textContent).toContain('جمع');
 
   const editButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.trim() === 'ویرایش');
