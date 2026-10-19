@@ -26,6 +26,7 @@ import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import { alpha, useTheme } from '@mui/material/styles';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
@@ -33,12 +34,12 @@ import Timeline from '../core/components/ui/Timeline';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
 import downloadFile from '../core/utils/downloadUtils';
-import {
-  SurfaceCard, KpiTile, CARD_BORDER, INK, MUTED, SOFT_BG,
-} from './accounting/AccountingDashboardUI';
+import InfoCard from '../core/components/ui/InfoCard';
+import { useModulePalette } from '../core/context/ModulePaletteContext';
+import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
+import { SurfaceCard } from './accounting/AccountingDashboardUI';
 
 const COLOR = '#2563eb';
-const COLOR_DARK = '#1d4ed8';
 const GREEN = '#0f766e';
 const RED = '#e11d48';
 const AMBER = '#d97706';
@@ -75,19 +76,6 @@ const SORT_OPTIONS = [
   { value: 'number', label: 'شماره صعودی' },
 ];
 
-const headSx = {
-  fontSize: 9.8, fontWeight: 800, color: '#334155', bgcolor: '#f8fafc',
-  borderBottom: `1px solid ${CARD_BORDER}`, whiteSpace: 'nowrap', py: 1.1, px: 1,
-};
-const cellSx = {
-  fontSize: 10.5, color: '#334155', borderBottom: '1px solid #eef2f7',
-  whiteSpace: 'nowrap', py: 0.85, px: 1,
-};
-const moneySx = {
-  fontFamily: 'Vazirmatn, IRANSans, sans-serif', fontVariantNumeric: 'tabular-nums',
-  direction: 'rtl', fontWeight: 800, fontSize: 11,
-};
-
 const useDebounced = (value, delay = 320) => {
   const [debounced, setDebounced] = useState(value);
   useEffect(() => {
@@ -103,6 +91,35 @@ const AccountingDocumentsPage = () => {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
+  const theme = useTheme();
+  const { typography, getPalette } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const accent = getPalette('accounting')?.accent || '#2563eb';
+  const CARD_BORDER = theme.palette.divider;
+  const INK = theme.palette.text.primary;
+  const MUTED = theme.palette.text.secondary;
+  const SOFT_BG = theme.palette.action.hover;
+  const tableCellFont = Math.max(type.bodySize - 2, 10);
+  const tableHeadFont = Math.max(type.bodySize - 3, 9);
+  const headSx = {
+    fontSize: tableHeadFont, fontWeight: 800, color: theme.palette.text.primary,
+    bgcolor: theme.palette.action.hover, borderBottom: `1px solid ${CARD_BORDER}`,
+    whiteSpace: 'nowrap', py: 1.1, px: 1,
+  };
+  const cellSx = {
+    fontSize: tableCellFont, color: theme.palette.text.primary,
+    borderBottom: `1px solid ${CARD_BORDER}`, whiteSpace: 'nowrap', py: 0.85, px: 1,
+  };
+  const moneySx = {
+    fontFamily: theme.typography.fontFamily, fontVariantNumeric: 'tabular-nums',
+    direction: 'rtl', fontWeight: 800, fontSize: Math.max(type.bodySize - 1, 10.5),
+  };
+  const statusMeta = useMemo(
+    () => Object.fromEntries(Object.entries(STATUS_META).map(([key, meta]) => [
+      key, key === 'approved' ? { ...meta, color: accent } : meta,
+    ])),
+    [accent],
+  );
   const [actionMsg, setActionMsg] = useState(null);
   const [timeline, setTimeline] = useState(null);
   const [issuesDoc, setIssuesDoc] = useState(null);
@@ -284,7 +301,12 @@ const AccountingDocumentsPage = () => {
       <PageHeader
         icon={<DescriptionIcon />}
         title="اسناد حسابداری"
-        badge={<Chip size="small" label={`${toPersianDigits(totalCount)} سند`} sx={{ height: 24, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} />}
+        badge={(
+          <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
+            <Chip size="small" label={`${toPersianDigits(totalCount)} سند`} sx={{ height: 24, fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }} />
+            <Chip size="small" label={selectedYearName} sx={{ height: 24, fontWeight: 700, bgcolor: theme.palette.action.hover, color: MUTED }} />
+          </Stack>
+        )}
         actions={(
           <>
             <Button variant="outlined" startIcon={<DownloadIcon />}
@@ -317,42 +339,40 @@ const AccountingDocumentsPage = () => {
         </Alert>
       )}
 
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+      <Grid container spacing={1.25} sx={{ mb: 1.5 }}>
         <Grid item xs={6} md={3}>
-          <KpiTile icon={DescriptionIcon} label="کل اسناد"
+          <InfoCard icon={<DescriptionIcon />} label="کل اسناد"
             value={summary.total != null ? toPersianDigits(summary.total) : (isLoading ? '…' : '—')}
-            suffix="سند" color={COLOR} hint={selectedYearName} onClick={() => setStatus('')} />
+            suffix="سند" color={accent} onClick={() => setStatus('')} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <KpiTile icon={PendingActionsIcon} label="در انتظار تأیید"
+          <InfoCard icon={<PendingActionsIcon />} label="در انتظار تأیید"
             value={summary.pending_documents != null ? toPersianDigits(summary.pending_documents) : (isLoading ? '…' : '—')}
-            suffix="سند" color={AMBER} hint="نیازمند اقدام" onClick={() => setStatus('submitted')} />
+            suffix="سند" color={AMBER} onClick={() => setStatus('submitted')} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <KpiTile icon={LockIcon} label="ثبت‌شده"
+          <InfoCard icon={<LockIcon />} label="ثبت‌شده"
             value={statusCounts.posted != null
               ? toPersianDigits(statusCounts.posted)
               : (summary.posted_documents != null ? toPersianDigits(summary.posted_documents) : (isLoading ? '…' : '—'))}
-            suffix="سند" color={GREEN}
-            hint={statusCounts.locked ? `${toPersianDigits(statusCounts.locked)} قفل‌شده` : 'قطعی‌شده در دفاتر'}
-            onClick={() => setStatus('posted')} />
+            suffix="سند" color={GREEN} onClick={() => setStatus('posted')} />
         </Grid>
         <Grid item xs={6} md={3}>
-          <KpiTile icon={EditNoteIcon} label="پیش‌نویس"
+          <InfoCard icon={<EditNoteIcon />} label="پیش‌نویس"
             value={statusCounts.draft != null ? toPersianDigits(statusCounts.draft) : (isLoading ? '…' : '—')}
-            suffix="سند" color={CYAN} hint="قابل ویرایش" onClick={() => setStatus('draft')} />
+            suffix="سند" color={CYAN} onClick={() => setStatus('draft')} />
         </Grid>
       </Grid>
 
-      <Paper elevation={0} sx={{ p: 1.5, mb: 1.5, bgcolor: '#ffffff', border: `1px solid ${CARD_BORDER}`, borderRadius: '18px', boxShadow: 'none' }}>
+      <Paper elevation={0} sx={{ p: 1.5, mb: 1.5, bgcolor: theme.palette.background.paper, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px', boxShadow: 'none' }}>
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 1.25 }}>
           <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap>
-            <FilterAltIcon sx={{ fontSize: 18, color: COLOR }} />
-            <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: INK }}>فیلتر و جستجو</Typography>
-            {activeFilters > 0 ? <Chip size="small" label={`${toPersianDigits(activeFilters)} فیلتر فعال`} sx={{ height: 21, fontSize: 9, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} /> : null}
+            <FilterAltIcon sx={{ fontSize: 18, color: accent }} />
+            <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12), fontWeight: 800, color: INK }}>فیلتر و جستجو</Typography>
+            {activeFilters > 0 ? <Chip size="small" label={`${toPersianDigits(activeFilters)} فیلتر فعال`} sx={{ height: 21, fontSize: Math.max(type.bodySize - 4, 9), fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }} /> : null}
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap>
-            <Button size="small" variant="text" startIcon={<ClearIcon />} onClick={resetFilters} sx={{ fontSize: 10.5 }}>پاک کردن</Button>
+            <Button size="small" variant="text" startIcon={<ClearIcon />} onClick={resetFilters} sx={{ fontSize: Math.max(type.bodySize - 2, 10.5) }}>پاک کردن</Button>
             <Tooltip title="به‌روزرسانی فهرست"><IconButton size="small" onClick={() => refetch()}><RefreshIcon sx={{ fontSize: 17 }} /></IconButton></Tooltip>
           </Stack>
         </Stack>
@@ -398,19 +418,19 @@ const AccountingDocumentsPage = () => {
           </FormControl>
         </Box>
 
-        <Box sx={{ display: 'flex', gap: 0.65, flexWrap: 'wrap', alignItems: 'center', mt: 1.25, pt: 1.15, borderTop: '1px solid #eef2f7' }}>
-          {[{ key: '', label: 'همه', color: COLOR, count: summary.total },
-            ...Object.entries(STATUS_META).map(([key, meta]) => ({ key, ...meta, count: statusCounts[key] }))].map((item) => {
+        <Box sx={{ display: 'flex', gap: 0.65, flexWrap: 'wrap', alignItems: 'center', mt: 1.25, pt: 1.15, borderTop: `1px solid ${theme.palette.divider}` }}>
+          {[{ key: '', label: 'همه', color: accent, count: summary.total },
+            ...Object.entries(statusMeta).map(([key, meta]) => ({ key, ...meta, count: statusCounts[key] }))].map((item) => {
             const selected = status === item.key;
             return (
               <Chip key={item.key || 'all'} onClick={() => setStatus(item.key)}
                 label={`${item.label}${item.count != null ? ` · ${toPersianDigits(item.count)}` : ''}`}
                 sx={{
-                  height: 24, fontSize: 9.8, fontWeight: 800, cursor: 'pointer',
-                  bgcolor: selected ? `${item.color}14` : '#ffffff',
-                  color: selected ? item.color : '#64748b',
-                  border: `1px solid ${selected ? `${item.color}44` : CARD_BORDER}`,
-                  '&:hover': { bgcolor: `${item.color}0d` },
+                  height: 24, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, cursor: 'pointer',
+                  bgcolor: selected ? alpha(item.color, 0.08) : theme.palette.background.paper,
+                  color: selected ? item.color : MUTED,
+                  border: `1px solid ${selected ? alpha(item.color, 0.27) : CARD_BORDER}`,
+                  '&:hover': { bgcolor: alpha(item.color, 0.05) },
                 }} />
             );
           })}
@@ -420,11 +440,11 @@ const AccountingDocumentsPage = () => {
       <SurfaceCard
         title="فهرست اسناد"
         icon={DescriptionIcon}
-        color={COLOR}
+        color={accent}
         contentSx={{ p: 0 }}
         action={(
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
-            <Chip size="small" label={`${toPersianDigits(totalCount)} نتیجه`} sx={{ height: 23, fontSize: 9.5, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} />
+            <Chip size="small" label={`${toPersianDigits(totalCount)} نتیجه`} sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }} />
             <Tooltip title="به‌روزرسانی"><IconButton size="small" onClick={() => refetch()}><RefreshIcon sx={{ fontSize: 17 }} /></IconButton></Tooltip>
           </Stack>
         )}
@@ -438,11 +458,11 @@ const AccountingDocumentsPage = () => {
           </Box>
         ) : list.length === 0 ? (
           <Box sx={{ py: 7, px: 2, textAlign: 'center' }}>
-            <Box sx={{ width: 48, height: 48, mx: 'auto', mb: 1.1, borderRadius: '14px', bgcolor: SOFT_BG, color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box sx={{ width: 48, height: 48, mx: 'auto', mb: 1.1, borderRadius: '14px', bgcolor: SOFT_BG, color: theme.palette.text.disabled, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <DescriptionIcon sx={{ fontSize: 24 }} />
             </Box>
-            <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: INK }}>سندی با این فیلترها یافت نشد</Typography>
-            <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.3 }}>بازهٔ تاریخ، سال مالی یا عبارت جستجو را تغییر دهید.</Typography>
+            <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 800, color: INK }}>سندی با این فیلترها یافت نشد</Typography>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 10.5), color: MUTED, mt: 0.3 }}>بازهٔ تاریخ، سال مالی یا عبارت جستجو را تغییر دهید.</Typography>
             {activeFilters > 0 ? <Button size="small" startIcon={<ClearIcon />} onClick={resetFilters} sx={{ mt: 1 }}>پاک کردن فیلترها</Button> : null}
           </Box>
         ) : (
@@ -465,19 +485,19 @@ const AccountingDocumentsPage = () => {
                 <TableBody>
 
                   {list.map((row) => {
-                    const meta = STATUS_META[row.status] || { label: row.status, color: '#64748b' };
+                    const meta = statusMeta[row.status] || { label: row.status, color: '#64748b' };
                     const StatusIcon = meta.icon;
                     const issues = row.open_issues_count || 0;
                     const creator = row.created_by_name || '';
                     return (
                       <TableRow key={row.id} hover onDoubleClick={() => openDocument(row)}
-                        sx={{ cursor: 'pointer', '&:hover': { bgcolor: '#fbfdff' }, '&:last-child td': { borderBottom: 0 } }}>
+                        sx={{ cursor: 'pointer', '&:hover': { bgcolor: theme.palette.action.hover }, '&:last-child td': { borderBottom: 0 } }}>
                         <TableCell align="center" sx={cellSx}>
                           <Tooltip title={issues > 0 ? `${toPersianDigits(issues)} مورد نیازمند اصلاح — برای مشاهده کلیک کنید` : `سند ${faDocLabel(row)}`}>
                             <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.4}>
                               <Box component="span" onClick={() => issues > 0 && setIssuesDoc(row)}
                                 sx={{
-                                  fontWeight: 900, fontSize: 11, direction: 'ltr',
+                                  fontWeight: 900, fontSize: Math.max(type.bodySize - 1, 11), direction: 'ltr',
                                   color: issues > 0 ? RED : INK,
                                   cursor: issues > 0 ? 'pointer' : 'default',
                                   borderBottom: issues > 0 ? `1px dashed ${RED}` : 'none',
@@ -490,30 +510,35 @@ const AccountingDocumentsPage = () => {
                             </Stack>
                           </Tooltip>
                         </TableCell>
-                        <TableCell align="center" sx={{ ...cellSx, fontFamily: 'Vazirmatn, IRANSans, sans-serif', fontSize: 10.5 }}>{toJalali(row.date)}</TableCell>
+                        <TableCell align="center" sx={{ ...cellSx, fontFamily: 'Vazirmatn, IRANSans, sans-serif', fontSize: Math.max(type.bodySize - 2, 10.5) }}>{toJalali(row.date)}</TableCell>
                         <TableCell align="center" sx={cellSx}>
                           <Chip size="small" label={row.journal_name || '—'}
-                            sx={{ height: 20, fontSize: 9, fontWeight: 700, bgcolor: '#f8fafc', color: '#475569', border: `1px solid ${CARD_BORDER}` }} />
+                            sx={{ height: 20, fontSize: Math.max(type.bodySize - 4, 9), fontWeight: 700, bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary, border: `1px solid ${CARD_BORDER}` }} />
                         </TableCell>
                         <TableCell sx={{ ...cellSx, maxWidth: 310 }}>
                           <Tooltip title={row.description || '—'}>
-                            <Box sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 10.5 }}>{row.description || '—'}</Box>
+                            <Box sx={{ maxWidth: 300, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: tableCellFont }}>{row.description || '—'}</Box>
                           </Tooltip>
                         </TableCell>
                         <TableCell align="center" sx={cellSx}>
                           <Stack direction="row" spacing={0.55} useFlexGap alignItems="center" justifyContent="center">
-                            <Avatar sx={{ width: 22, height: 22, fontSize: 9.5, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }}>{creator ? creator.trim().charAt(0) : '—'}</Avatar>
+                            <Avatar sx={{ width: 22, height: 22, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: alpha(accent, 0.10), color: accent }}>{creator ? creator.trim().charAt(0) : '—'}</Avatar>
                             <Tooltip title={creator || 'ثبت‌کننده ثبت نشده است'}>
-                              <Typography sx={{ maxWidth: 100, fontSize: 10, color: '#475569', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creator || '—'}</Typography>
+                              <Typography sx={{ maxWidth: 100, fontSize: tableCellFont, color: theme.palette.text.secondary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{creator || '—'}</Typography>
                             </Tooltip>
                           </Stack>
                         </TableCell>
-                        <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: '#1d4ed8' }}>{formatPersianNumber(row.total_debit)}</TableCell>
+                        <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: accent }}>{formatPersianNumber(row.total_debit)}</TableCell>
                         <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: GREEN }}>{formatPersianNumber(row.total_credit)}</TableCell>
                         <TableCell align="center" sx={cellSx}>
                           <Chip size="small" icon={StatusIcon ? <StatusIcon sx={{ fontSize: '13px !important' }} /> : undefined}
                             label={meta.label}
-                            sx={{ height: 23, fontSize: 9.2, fontWeight: 800, bgcolor: `${meta.color}12`, color: meta.color, border: `1px solid ${meta.color}22`, '& .MuiChip-icon': { color: meta.color } }} />
+                            sx={{
+                              height: 23, fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 800,
+                              bgcolor: alpha(meta.color, 0.07), color: meta.color,
+                              border: `1px solid ${alpha(meta.color, 0.13)}`,
+                              '& .MuiChip-icon': { color: meta.color },
+                            }} />
                         </TableCell>
 
                         <TableCell align="center" sx={{ ...cellSx, px: 0.25 }}>
@@ -544,7 +569,7 @@ const AccountingDocumentsPage = () => {
                               <IconButton size="small" sx={{ p: 0.45 }} onClick={() => setIssuesDoc(row)}>
                                 <Badge badgeContent={issues > 0 ? toPersianDigits(issues) : 0} color="error" invisible={issues === 0}
                                   sx={{ '& .MuiBadge-badge': { fontSize: 7.5, height: 13, minWidth: 13, px: 0.3 } }}>
-                                  <ChecklistIcon sx={{ fontSize: 15, color: issues > 0 ? RED : '#94a3b8' }} />
+                                  <ChecklistIcon sx={{ fontSize: 15, color: issues > 0 ? RED : theme.palette.text.disabled }} />
                                 </Badge>
                               </IconButton>
                             </Tooltip>
@@ -559,11 +584,11 @@ const AccountingDocumentsPage = () => {
                   })}
                 </TableBody>
                 <TableFooter>
-                  <TableRow sx={{ bgcolor: '#fbfdff' }}>
+                  <TableRow sx={{ bgcolor: theme.palette.action.hover }}>
                     <TableCell colSpan={5} sx={{ ...cellSx, fontWeight: 800, color: MUTED }}>جمع صفحهٔ جاری</TableCell>
-                    <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: COLOR_DARK }}>{formatPersianNumber(pageTotals.debit)}</TableCell>
+                    <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: accent }}>{formatPersianNumber(pageTotals.debit)}</TableCell>
                     <TableCell align="center" sx={{ ...cellSx, ...moneySx, color: GREEN }}>{formatPersianNumber(pageTotals.credit)}</TableCell>
-                    <TableCell colSpan={2} align="center" sx={{ ...cellSx, fontSize: 9.5, color: MUTED }}>
+                    <TableCell colSpan={2} align="center" sx={{ ...cellSx, fontSize: Math.max(type.bodySize - 3, 9.5), color: MUTED }}>
                       {Math.abs(pageTotals.debit - pageTotals.credit) < 0.01 ? 'مبلغ صفحه متوازن است' : `اختلاف: ${formatPersianNumber(Math.abs(pageTotals.debit - pageTotals.credit))} ریال`}
                     </TableCell>
                   </TableRow>
@@ -582,10 +607,10 @@ const AccountingDocumentsPage = () => {
               labelRowsPerPage="تعداد در صفحه"
               labelDisplayedRows={({ from, to, count }) => `${toPersianDigits(from)}–${toPersianDigits(to)} از ${toPersianDigits(count)}`}
               sx={{
-                borderTop: `1px solid ${CARD_BORDER}`, bgcolor: '#ffffff',
-                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: 10.5, color: MUTED },
-                '& .MuiTablePagination-select': { fontSize: 10.5 },
-                '& .MuiTablePagination-actions button': { color: COLOR },
+                borderTop: `1px solid ${CARD_BORDER}`, bgcolor: theme.palette.background.paper,
+                '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontSize: tableCellFont, color: MUTED },
+                '& .MuiTablePagination-select': { fontSize: tableCellFont },
+                '& .MuiTablePagination-actions button': { color: accent },
               }}
             />
           </>
@@ -593,15 +618,15 @@ const AccountingDocumentsPage = () => {
       </SurfaceCard>
 
       <Dialog open={!!timeline} onClose={() => setTimeline(null)} fullWidth maxWidth="sm"
-        slotProps={{ paper: { sx: { borderRadius: '18px', background: '#ffffff', border: `1px solid ${CARD_BORDER}`, boxShadow: 'none' } } }}>
+        slotProps={{ paper: { sx: { borderRadius: '18px', background: theme.palette.background.paper, border: `1px solid ${CARD_BORDER}`, boxShadow: 'none' } } }}>
         <DialogTitle sx={{ p: 2, borderBottom: `1px solid ${CARD_BORDER}` }}>
           <Stack direction="row" alignItems="center" spacing={1} useFlexGap>
-            <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: '#eff6ff', color: COLOR_DARK, border: '1px solid #dbeafe', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: alpha(accent, 0.10), color: accent, border: `1px solid ${alpha(accent, 0.20)}`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
               <HistoryIcon sx={{ fontSize: 18 }} />
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>تایم‌لاین سند</Typography>
-              <Typography sx={{ fontSize: 10, color: MUTED }}>شماره {toPersianDigits(timeline?.number || `#${timeline?.id || ''}`)}</Typography>
+              <Typography sx={{ fontSize: type.cardSize, fontWeight: 900, color: INK }}>تایم‌لاین سند</Typography>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 10), color: MUTED }}>شماره {toPersianDigits(timeline?.number || `#${timeline?.id || ''}`)}</Typography>
             </Box>
           </Stack>
         </DialogTitle>

@@ -1,6 +1,9 @@
 import React from 'react';
 import { Box, Paper, Stack, Typography, Chip, ButtonBase } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import { useModulePalette } from '../../core/context/ModulePaletteContext';
+import { DEFAULT_TYPOGRAPHY } from '../../core/theme/appearanceDefaults';
 
 export const CARD_BG = '#ffffff';
 export const CARD_BORDER = '#e8edf4';
@@ -11,33 +14,46 @@ export const ACCOUNTING_BLUE = '#2563eb';
 
 export const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 
-export const SurfaceCard = ({ title, icon: Icon, color = ACCOUNTING_BLUE, action, children, sx, contentSx }) => (
-  <Paper elevation={0} sx={{
-    bgcolor: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px',
-    boxShadow: 'none', overflow: 'hidden', height: '100%',
-    display: 'flex', flexDirection: 'column', ...sx,
-  }}>
-    <Stack direction="row" alignItems="center" spacing={1} useFlexGap
-      sx={{ px: 2, py: 1.5, borderBottom: '1px solid #eef2f7', bgcolor: CARD_BG }}>
-      <Box sx={{
-        width: 34, height: 34, flexShrink: 0, borderRadius: '10px', color,
-        bgcolor: `${color}0f`, border: `1px solid ${color}22`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Icon sx={{ fontSize: 18 }} />
-      </Box>
-      <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 800, color: INK }}>{title}</Typography>
-      {action || null}
-    </Stack>
-    <Box sx={{ p: 2, flex: 1, minWidth: 0, ...contentSx }}>{children}</Box>
-  </Paper>
-);
+export const SurfaceCard = ({ title, icon: Icon, color, action, children, sx, contentSx }) => {
+  const theme = useTheme();
+  const { typography } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const accent = color || theme.palette.primary.main;
+  return (
+    <Paper elevation={0} sx={{
+      bgcolor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`,
+      borderRadius: '18px', boxShadow: 'none', overflow: 'hidden', height: '100%',
+      display: 'flex', flexDirection: 'column', ...sx,
+    }}>
+      <Stack direction="row" alignItems="center" spacing={1} useFlexGap
+        sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper }}>
+        <Box sx={{
+          width: 34, height: 34, flexShrink: 0, borderRadius: '10px', color: accent,
+          bgcolor: alpha(accent, 0.07), border: `1px solid ${alpha(accent, 0.16)}`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon sx={{ fontSize: 18 }} />
+        </Box>
+        <Typography sx={{
+          flex: 1, minWidth: 0, fontSize: `${type.cardSize}px`,
+          fontWeight: type.cardWeight, color: theme.palette.text.primary,
+        }}>{title}</Typography>
+        {action || null}
+      </Stack>
+      <Box sx={{ p: 2, flex: 1, minWidth: 0, ...contentSx }}>{children}</Box>
+    </Paper>
+  );
+};
 
-export const ProgressBar = ({ value, color = ACCOUNTING_BLUE, height = 8, track = '#eef2f7' }) => (
-  <Box sx={{ width: '100%', height, bgcolor: track, borderRadius: height / 2, overflow: 'hidden' }}>
-    <Box sx={{ width: `${clamp(value)}%`, height: '100%', bgcolor: color, borderRadius: height / 2 }} />
-  </Box>
-);
+export const ProgressBar = ({ value, color = ACCOUNTING_BLUE, height = 8, track }) => {
+  const theme = useTheme();
+  const trackColor = track || theme.palette.divider;
+  return (
+    <Box sx={{ width: '100%', height, bgcolor: trackColor, borderRadius: height / 2, overflow: 'hidden' }}>
+      <Box sx={{ width: `${clamp(value)}%`, height: '100%', bgcolor: color, borderRadius: height / 2 }} />
+    </Box>
+  );
+};
 
 export const DeltaChip = ({ value, inverse = false }) => {
   if (value === null || value === undefined || Number.isNaN(Number(value))) return null;

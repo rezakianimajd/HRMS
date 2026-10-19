@@ -26,29 +26,29 @@ import SendIcon from '@mui/icons-material/Send';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
 import UndoIcon from '@mui/icons-material/Undo';
+import { alpha, useTheme } from '@mui/material/styles';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import PageHeader from '../core/components/ui/PageHeader';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 import DocumentIssuesDialog from '../core/components/accounting/DocumentIssuesDialog';
-import {
-  SurfaceCard, ProgressBar, CARD_BORDER, INK, MUTED, SOFT_BG,
-} from './accounting/AccountingDashboardUI';
+import InfoCard from '../core/components/ui/InfoCard';
+import { useModulePalette } from '../core/context/ModulePaletteContext';
+import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
+import { SurfaceCard, ProgressBar } from './accounting/AccountingDashboardUI';
 
 const COLOR = '#2563eb';
-const COLOR_DARK = '#1d4ed8';
 const GREEN = '#0f766e';
 const RED = '#e11d48';
 const AMBER = '#d97706';
 const CYAN = '#0891b2';
 const VIOLET = '#6366f1';
 const ROWS = 8;
-const FONT = 'Vazirmatn, IRANSans, sans-serif';
+const FONT = 'inherit';
 
 const fieldSx = {
   '& .MuiOutlinedInput-root': {
-    borderRadius: '10px', background: '#ffffff',
-    '&.Mui-focused': { background: '#ffffff' },
+    borderRadius: '10px',
   },
 };
 
@@ -132,7 +132,7 @@ const lineNetFromApi = (line) => {
   return base > 0 ? base : Math.max(0, gross - vat);
 };
 
-const rowAccent = (active) => (active ? `inset -3px 0 0 ${COLOR}` : 'none');
+const rowAccent = (active, color) => (active ? `inset -3px 0 0 ${color}` : 'none');
 
 const Cell = React.forwardRef(({ children, center = false }, ref) => (
   <Box ref={ref} sx={{ px: 0.25, py: 0.25, display: 'flex', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', minWidth: 0 }}>
@@ -150,43 +150,41 @@ const FaField = ({ value, onChange, placeholder = '', numeric = false, center = 
       onChange(numeric ? eng.replace(/[^0-9.]/g, '') : eng);
     }}
     placeholder={placeholder}
-    InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }}
+    InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
     inputProps={{ style: { textAlign: center ? 'center' : 'right', fontFamily: FONT } }}
   />
 );
 
-const MoneyValue = ({ value, unit = true, size = 13, color = INK, weight = 900 }) => (
-  <Box component="span" sx={{ fontFamily: FONT, direction: 'rtl', unicodeBidi: 'isolate', fontVariantNumeric: 'tabular-nums', fontSize: size, fontWeight: weight, color, whiteSpace: 'nowrap' }}>
-    {formatPersianNumber(value)}
-    {unit ? <Box component="span" sx={{ mr: 0.45, fontSize: 9, fontWeight: 500, color: MUTED }}>ریال</Box> : null}
-  </Box>
-);
+const MetaPill = ({ label, value, color }) => {
+  const theme = useTheme();
+  const { typography, getPalette } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const pillColor = color || getPalette('accounting')?.accent || '#2563eb';
+  return (
+    <Box sx={{
+      display: 'flex', alignItems: 'center', gap: 0.65, minWidth: 0,
+      bgcolor: alpha(pillColor, 0.05), border: `1px solid ${alpha(pillColor, 0.12)}`,
+      borderRadius: '9px', px: 1, py: 0.45,
+    }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 800, color: pillColor, whiteSpace: 'nowrap' }}>{label}</Typography>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 700, color: theme.palette.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</Typography>
+    </Box>
+  );
+};
 
-const MetaPill = ({ label, value, color = COLOR }) => (
-  <Box sx={{
-    display: 'flex', alignItems: 'center', gap: 0.65, minWidth: 0,
-    bgcolor: `${color}08`, border: `1px solid ${color}1f`,
-    borderRadius: '9px', px: 1, py: 0.45,
-  }}>
-    <Typography sx={{ fontSize: 9.5, fontWeight: 800, color, whiteSpace: 'nowrap' }}>{label}</Typography>
-    <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: INK, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</Typography>
-  </Box>
-);
-
-const Kbd = ({ children }) => (
-  <Box component="kbd" sx={{
-    fontFamily: FONT, fontSize: 9, fontWeight: 800, color: '#475569',
-    bgcolor: '#f1f5f9', border: '1px solid #dbe4ee', borderBottomWidth: 2,
-    borderRadius: '5px', px: 0.55, py: 0.15, minWidth: 20, textAlign: 'center',
-  }}>{children}</Box>
-);
-
-const BalanceMetric = ({ label, value, color = INK, strong = false }) => (
-  <Box sx={{ p: 1, borderRadius: '10px', bgcolor: SOFT_BG, border: `1px solid ${CARD_BORDER}` }}>
-    <Typography sx={{ fontSize: 9.5, color: MUTED, fontWeight: 700, mb: 0.35 }}>{label}</Typography>
-    <MoneyValue value={value} color={color} size={strong ? 15 : 12.5} />
-  </Box>
-);
+const Kbd = ({ children }) => {
+  const theme = useTheme();
+  const { typography } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  return (
+    <Box component="kbd" sx={{
+      fontFamily: theme.typography.fontFamily, fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 800,
+      color: theme.palette.text.secondary, bgcolor: theme.palette.action.hover,
+      border: `1px solid ${theme.palette.divider}`, borderBottomWidth: 2,
+      borderRadius: '5px', px: 0.55, py: 0.15, minWidth: 20, textAlign: 'center',
+    }}>{children}</Box>
+  );
+};
 
 // سلول کد قابل تایپ دستی + باز کردن دیالوگ با Space
 const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', disabled = false }) => {
@@ -213,7 +211,7 @@ const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', 
       }}
       onBlur={commit}
       placeholder={placeholder}
-      InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }}
+      InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
       inputProps={{ style: { textAlign: 'center', fontFamily: FONT } }}
     />
   );
@@ -241,6 +239,13 @@ const AccountingDocumentNewPage = () => {
   const { id } = useParams();
   const isEdit = Boolean(id);
   const qc = useQueryClient();
+  const theme = useTheme();
+  const { typography, getPalette } = useModulePalette();
+  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
+  const accent = getPalette('accounting')?.accent || '#2563eb';
+  const cardBorder = theme.palette.divider;
+  const muted = theme.palette.text.secondary;
+  const gridFont = Math.max(type.bodySize - 1, 10);
 
   const [header, setHeader] = useState({
     number: '',
@@ -411,7 +416,10 @@ const AccountingDocumentNewPage = () => {
   }, [existingDoc]);
 
   const status = existingDoc?.status || 'draft';
-  const statusMeta = STATUS_META[status] || STATUS_META.draft;
+  const statusMeta = {
+    ...(STATUS_META[status] || STATUS_META.draft),
+    ...(status === 'approved' ? { color: accent } : {}),
+  };
   const editable = !isEdit || Boolean(existingDoc && existingDoc.status === 'draft' && !existingDoc.is_locked);
   const openIssuesCount = existingDoc?.open_issues_count || 0;
 
@@ -453,7 +461,7 @@ const AccountingDocumentNewPage = () => {
   const maxSide = Math.max(totalDebit, totalCredit);
   const balancePct = maxSide > 0 ? (Math.min(totalDebit, totalCredit) / maxSide) * 100 : 0;
   const hasAmounts = totalDebit > 0 || totalCredit > 0;
-  const balanceColor = filledCount === 0 ? COLOR : totalBalanceOk ? GREEN : RED;
+  const balanceColor = filledCount === 0 ? accent : totalBalanceOk ? GREEN : RED;
   const balanceLabel = filledCount === 0 ? 'آماده ورود' : totalBalanceOk ? 'متوازن' : 'نیازمند اصلاح';
 
   const rowIssues = (index) => {
@@ -780,9 +788,9 @@ const AccountingDocumentNewPage = () => {
         title={isEdit ? 'ویرایش سند' : 'سند جدید'}
         badge={(
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
-            {header.number ? <Chip size="small" label={`شماره ${toPersianDigits(header.number)}`} sx={{ height: 24, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} /> : null}
-            <Chip size="small" label={statusMeta.label} sx={{ height: 24, fontWeight: 800, bgcolor: `${statusMeta.color}12`, color: statusMeta.color }} />
-            {!editable ? <Chip size="small" icon={<LockIcon sx={{ fontSize: '13px !important' }} />} label="فقط مشاهده" sx={{ height: 24, fontWeight: 800, bgcolor: '#f8fafc', color: MUTED }} /> : null}
+            {header.number ? <Chip size="small" label={`شماره ${toPersianDigits(header.number)}`} sx={{ height: 24, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} /> : null}
+            <Chip size="small" label={statusMeta.label} sx={{ height: 24, fontWeight: 800, bgcolor: alpha(statusMeta.color, 0.07), color: statusMeta.color }} />
+            {!editable ? <Chip size="small" icon={<LockIcon sx={{ fontSize: '13px !important' }} />} label="فقط مشاهده" sx={{ height: 24, fontWeight: 800, bgcolor: theme.palette.action.hover, color: muted }} /> : null}
           </Stack>
         )}
         sx={{ mb: 1.5, py: 1 }}
@@ -842,12 +850,12 @@ const AccountingDocumentNewPage = () => {
           این سند در وضعیت «{statusMeta.label}» است و فقط قابل مشاهده است. ویرایش فقط برای سند پیش‌نویس مجاز است.
         </Alert>
       ) : null}
-      {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)} sx={{ mb: 1.25, borderRadius: '12px', fontSize: 12.5 }}>{msg.text}</Alert>}
+      {msg && <Alert severity={msg.ok ? 'success' : 'error'} onClose={() => setMsg(null)} sx={{ mb: 1.25, borderRadius: '12px', fontSize: Math.max(type.bodySize - 1, 12.5) }}>{msg.text}</Alert>}
 
       <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
         <Grid item xs={12} lg={8}>
-          <SurfaceCard title="مشخصات سند" icon={DescriptionIcon} color={COLOR} sx={{ height: '100%' }}
-            action={<Chip size="small" label={isEdit ? 'سند موجود' : 'سند جدید'} sx={{ height: 22, fontSize: 9.5, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} />}>
+          <SurfaceCard title="مشخصات سند" icon={DescriptionIcon} color={accent} sx={{ height: '100%' }}
+            action={<Chip size="small" label={isEdit ? 'سند موجود' : 'سند جدید'} sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />}>
             <Box sx={{
               display: 'grid', gap: 1.25,
               gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
@@ -911,39 +919,44 @@ const AccountingDocumentNewPage = () => {
         <Grid item xs={12} lg={4}>
           <SurfaceCard title="تراز سند" icon={SwapVertIcon} color={balanceColor} sx={{ height: '100%' }}
             action={<Chip size="small" label={balanceLabel}
-              sx={{ height: 22, fontSize: 9.5, fontWeight: 800, bgcolor: `${balanceColor}12`, color: balanceColor }} />}>
+              sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: `${balanceColor}12`, color: balanceColor }} />}>
             <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ mb: 1.25 }}>
               <Box sx={{ width: 34, height: 34, borderRadius: '10px', bgcolor: `${balanceColor}10`, color: balanceColor, border: `1px solid ${balanceColor}22`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {filledCount === 0 ? <SwapVertIcon sx={{ fontSize: 19 }} /> : totalBalanceOk ? <CheckCircleOutlineIcon sx={{ fontSize: 19 }} /> : <WarningAmberIcon sx={{ fontSize: 19 }} />}
               </Box>
               <Box sx={{ minWidth: 0 }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: balanceColor }}>
+                <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12), fontWeight: 900, color: balanceColor }}>
                   {filledCount === 0 ? 'در انتظار ورود آرتیکل‌ها' : totalBalanceOk ? 'سند متوازن است' : 'سند توازن ندارد'}
                 </Typography>
-                <Typography sx={{ fontSize: 9.5, color: MUTED, mt: 0.1 }}>
+                <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9.5), color: muted, mt: 0.1 }}>
                   {filledCount === 0 ? 'بدهکار و بستانکار باید برابر باشند' : `اختلاف: ${formatPersianNumber(Math.abs(diff))} ریال`}
                 </Typography>
               </Box>
             </Stack>
 
-            <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-              <BalanceMetric label="جمع بدهکار (ناخالص)" value={totalDebit} color={COLOR_DARK} />
-              <BalanceMetric label="جمع بستانکار (ناخالص)" value={totalCredit} color={GREEN} />
-            </Box>
-
-            <Box sx={{ mt: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 1 }}>
-              <BalanceMetric label="ارزش افزوده" value={vatTotal} color={AMBER} />
-              <BalanceMetric label="اختلاف تراز" value={Math.abs(diff)} color={totalBalanceOk ? GREEN : RED} strong />
-            </Box>
+            <Grid container spacing={1}>
+              <Grid item xs={6}>
+                <InfoCard icon={<SwapVertIcon />} label="بدهکار" value={formatPersianNumber(totalDebit)} suffix="ریال" color={accent} />
+              </Grid>
+              <Grid item xs={6}>
+                <InfoCard icon={<SwapVertIcon />} label="بستانکار" value={formatPersianNumber(totalCredit)} suffix="ریال" color={GREEN} />
+              </Grid>
+              <Grid item xs={6}>
+                <InfoCard icon={<ReceiptLongIcon />} label="ارزش افزوده" value={formatPersianNumber(vatTotal)} suffix="ریال" color={AMBER} />
+              </Grid>
+              <Grid item xs={6}>
+                <InfoCard icon={<WarningAmberIcon />} label="اختلاف" value={formatPersianNumber(Math.abs(diff))} suffix="ریال" color={totalBalanceOk ? GREEN : RED} />
+              </Grid>
+            </Grid>
 
             <Box sx={{ mt: 0.85 }}>
-              <ProgressBar value={balancePct} color={filledCount === 0 ? COLOR : totalBalanceOk ? GREEN : AMBER} height={6} />
+              <ProgressBar value={balancePct} color={filledCount === 0 ? accent : totalBalanceOk ? GREEN : AMBER} height={6} />
             </Box>
             <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.85 }}>
-              <Typography sx={{ fontSize: 9, color: MUTED }}>آرتیکل‌های تکمیل‌شده: {toPersianDigits(filledCount)} از {toPersianDigits(lines.length)}</Typography>
-              <Typography sx={{ fontSize: 9, color: MUTED }}>هشدار: {toPersianDigits(warningCount)}</Typography>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 9), color: muted }}>آرتیکل‌های تکمیل‌شده: {toPersianDigits(filledCount)} از {toPersianDigits(lines.length)}</Typography>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 9), color: muted }}>هشدار: {toPersianDigits(warningCount)}</Typography>
             </Stack>
-            <Typography sx={{ mt: 0.85, fontSize: 9, color: MUTED, lineHeight: 1.8 }}>
+            <Typography sx={{ mt: 0.85, fontSize: Math.max(type.bodySize - 4, 9), color: muted, lineHeight: 1.8 }}>
               مبلغ ارزش افزوده به همان طرف آرتیکل (بدهکار یا بستانکار) افزوده می‌شود و مبلغ خالص در «مبلغ پایه» ذخیره می‌گردد.
             </Typography>
           </SurfaceCard>
@@ -953,20 +966,20 @@ const AccountingDocumentNewPage = () => {
       <SurfaceCard
         title="آرتیکل‌های سند"
         icon={ReceiptLongIcon}
-        color={COLOR}
+        color={accent}
         contentSx={{ p: 0 }}
         action={(
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
             {warningCount > 0 ? (
               <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} label={`${toPersianDigits(warningCount)} هشدار`}
-                sx={{ height: 23, fontSize: 9.5, fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
+                sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
             ) : null}
             <Chip size="small" label={`${toPersianDigits(filledCount)} آرتیکل`}
-              sx={{ height: 23, fontSize: 9.5, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} />
+              sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
             {editable ? (
               <>
-                <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} sx={{ minWidth: 0, fontSize: 10.5 }}>افزودن ردیف</Button>
-                <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} color="error" sx={{ minWidth: 0, fontSize: 10.5 }}>حذف آخرین</Button>
+                <Button size="small" startIcon={<AddCircleIcon />} onClick={addRow} sx={{ minWidth: 0, fontSize: Math.max(type.buttonSize - 2, 10.5) }}>افزودن ردیف</Button>
+                <Button size="small" startIcon={<RemoveCircleIcon />} onClick={() => removeRow(lines.length - 1)} color="error" sx={{ minWidth: 0, fontSize: Math.max(type.buttonSize - 2, 10.5) }}>حذف آخرین</Button>
               </>
             ) : null}
           </Stack>
@@ -974,9 +987,9 @@ const AccountingDocumentNewPage = () => {
       >
         <Box data-doc-grid="1" sx={{ overflowX: 'auto', overflowY: 'auto', maxHeight: { xs: 420, lg: 'calc(100vh - 470px)' }, minHeight: 260 }}>
           <Box sx={{ minWidth: 1320 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, position: 'sticky', top: 0, zIndex: 3, bgcolor: '#f8fafc', borderBottom: `1px solid ${CARD_BORDER}` }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, position: 'sticky', top: 0, zIndex: 3, bgcolor: theme.palette.action.hover, borderBottom: `1px solid ${cardBorder}` }}>
               {HEADERS.map((label, index) => (
-                <Box key={index} sx={{ px: 0.8, py: 1, fontWeight: 800, fontSize: 10, color: '#334155', borderLeft: index ? '1px solid #eef2f7' : 'none', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{label}</Box>
+                <Box key={index} sx={{ px: 0.8, py: 1, fontWeight: 800, fontSize: gridFont, color: theme.palette.text.primary, borderLeft: index ? `1px solid ${theme.palette.divider}` : 'none', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{label}</Box>
               ))}
             </Box>
 
@@ -992,10 +1005,10 @@ const AccountingDocumentNewPage = () => {
                 <Box key={index} onClick={() => setActiveRow(index)}
                   sx={{
                     display: 'grid', gridTemplateColumns: gridCols, alignItems: 'center',
-                    borderBottom: '1px solid #eef2f7',
-                    bgcolor: activeRow === index ? '#eff6ff' : 'transparent',
-                    boxShadow: rowAccent(activeRow === index),
-                    '&:hover': { bgcolor: activeRow === index ? '#e8f1ff' : '#fbfdff' },
+                    borderBottom: `1px solid ${theme.palette.divider}`,
+                    bgcolor: activeRow === index ? alpha(accent, 0.08) : 'transparent',
+                    boxShadow: rowAccent(activeRow === index, accent),
+                    '&:hover': { bgcolor: activeRow === index ? alpha(accent, 0.12) : theme.palette.action.hover },
                     minHeight: 48, transition: 'background-color .12s ease',
                   }}>
                   <Stack alignItems="center" justifyContent="center" spacing={0.1}>
@@ -1004,7 +1017,7 @@ const AccountingDocumentNewPage = () => {
                         <WarningAmberIcon sx={{ fontSize: 13, color: issues.some((i) => i.hard) ? RED : AMBER, cursor: 'help' }} />
                       </Tooltip>
                     ) : null}
-                    <Typography sx={{ fontFamily: FONT, fontSize: 10, fontWeight: 800, color: activeRow === index ? COLOR_DARK : MUTED }}>{toPersianDigits(index + 1)}</Typography>
+                    <Typography sx={{ fontFamily: FONT, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, color: activeRow === index ? accent : muted }}>{toPersianDigits(index + 1)}</Typography>
                   </Stack>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Tooltip title="شامل معاملات فصلی و ارزش افزوده">
@@ -1050,7 +1063,7 @@ const AccountingDocumentNewPage = () => {
                     <TextField size="small" fullWidth variant="standard" disabled={!editable}
                       value={line.desc} onChange={(e) => setLine(index, 'desc', e.target.value)}
                       placeholder="شرح آرتیکل"
-                      InputProps={{ disableUnderline: true, sx: { fontSize: 13.5, fontFamily: FONT } }}
+                      InputProps={{ disableUnderline: true, sx: { fontFamily: FONT } }}
                       inputProps={{ style: { textAlign: 'right', fontFamily: FONT } }} />
                   </Cell>
                   <Cell center><FaField numeric center value={line.debit} disabled={!editable} onChange={(value) => setLine(index, 'debit', value)} /></Cell>
@@ -1070,23 +1083,23 @@ const AccountingDocumentNewPage = () => {
               );
             })}
 
-            <Box sx={{ px: 1.5, py: 1.1, borderTop: `1px solid ${CARD_BORDER}`, bgcolor: '#fbfdff', display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
+            <Box sx={{ px: 1.5, py: 1.1, borderTop: `1px solid ${cardBorder}`, bgcolor: theme.palette.action.hover, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }}>
               <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center', flex: 1, minWidth: 0 }}>
-                <Chip size="small" label={`ردیف فعال ${toPersianDigits(activeRow + 1)}`} sx={{ height: 23, fontSize: 9.5, fontWeight: 800, bgcolor: '#eff6ff', color: COLOR_DARK }} />
+                <Chip size="small" label={`ردیف فعال ${toPersianDigits(activeRow + 1)}`} sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
                 <MetaPill label="معین" value={activeAccount ? `${activeAccount.code} — ${activeAccount.name}` : '—'} />
                 {['تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳'].map((label, index) => (
-                  <MetaPill key={label} label={label} value={activeAuxs[index] ? `${activeAuxs[index].code} — ${activeAuxs[index].name}` : '—'} color={activeAuxs[index] ? GREEN : MUTED} />
+                  <MetaPill key={label} label={label} value={activeAuxs[index] ? `${activeAuxs[index].code} — ${activeAuxs[index].name}` : '—'} color={activeAuxs[index] ? GREEN : muted} />
                 ))}
                 <MetaPill label="جمع ردیف" value={formatPersianNumber(activeGross.debit || activeGross.credit)} color={CYAN} />
               </Box>
               {editable ? (
                 <Stack direction="row" spacing={0.55} useFlexGap alignItems="center">
-                  <KeyboardIcon sx={{ fontSize: 15, color: MUTED }} />
-                  <Typography sx={{ fontSize: 9, color: MUTED, ml: 0.2 }}>میان‌بر:</Typography>
-                  <Kbd>F2</Kbd><Typography sx={{ fontSize: 8.5, color: MUTED }}>معین</Typography>
-                  <Kbd>F3</Kbd><Typography sx={{ fontSize: 8.5, color: MUTED }}>تفصیل</Typography>
-                  <Kbd>F9</Kbd><Typography sx={{ fontSize: 8.5, color: MUTED }}>متوازن‌سازی</Typography>
-                  <Kbd>Ctrl+D</Kbd><Typography sx={{ fontSize: 8.5, color: MUTED }}>تکثیر ردیف</Typography>
+                  <KeyboardIcon sx={{ fontSize: 15, color: muted }} />
+                  <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 9), color: muted, ml: 0.2 }}>میان‌بر:</Typography>
+                  <Kbd>F2</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>معین</Typography>
+                  <Kbd>F3</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>تفصیل</Typography>
+                  <Kbd>F9</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>متوازن‌سازی</Typography>
+                  <Kbd>Ctrl+D</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>تکثیر ردیف</Typography>
                 </Stack>
               ) : null}
             </Box>
@@ -1103,7 +1116,7 @@ const AccountingDocumentNewPage = () => {
           sx={{ mt: 1.5 }}
           action={activeVatRate > 0 ? (
             <Chip size="small" label={`نرخ ارزش افزوده: ${toPersianDigits(activeVatRate.toFixed(1))}٪`}
-              sx={{ height: 22, fontSize: 9.5, fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
+              sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
           ) : null}
         >
           <Box sx={{
@@ -1144,13 +1157,13 @@ const AccountingDocumentNewPage = () => {
             ) : null}
           </Box>
           {!dimensionFields.length && !showTaxDetails ? (
-            <Typography sx={{ mt: 1, fontSize: 10, color: MUTED }}>
+            <Typography sx={{ mt: 1, fontSize: Math.max(type.bodySize - 2, 10), color: muted }}>
               این ردیف ابعاد تحلیلی یا اطلاعات فصلی اضافی نیاز ندارد.
             </Typography>
           ) : null}
           {activeAccount && (activeAccount.requires_party || activeAccount.requires_cost_center
             || activeAccount.requires_project || activeAccount.requires_contract || activeAccount.requires_employee) ? (
-            <Typography sx={{ mt: 1, fontSize: 9.5, color: AMBER }}>
+            <Typography sx={{ mt: 1, fontSize: Math.max(type.bodySize - 3, 9.5), color: AMBER }}>
               این حساب الزامات تکمیلی دارد؛ فیلدهای ستاره‌دار باید پیش از ثبت نهایی تکمیل شوند.
             </Typography>
           ) : null}
@@ -1161,7 +1174,7 @@ const AccountingDocumentNewPage = () => {
         open={Boolean(picker)}
         title={picker?.slot === 'account' ? 'انتخاب کد معین' : 'انتخاب تفصیل'}
         options={pickerOptions()}
-        color={COLOR_DARK}
+        color={accent}
         onClose={() => setPicker(null)}
         onSelect={(option) => {
           if (!picker) return;
