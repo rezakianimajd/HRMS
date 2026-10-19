@@ -1170,6 +1170,10 @@ def financial_statements(request):
     expense_by_group = {}
     for line in lines:
         category = line.account.account_type.category
+        # فقط حساب‌های سود و زیانی در این بخش جمع می‌شوند؛ خطوط دارایی،
+        # بدهی و سرمایه قبلاً در ترازنامه پردازش شده‌اند.
+        if category not in buckets:
+            continue
         net = float(line.credit or 0) - float(line.debit or 0)
         if category == 'cost_of_sales':
             net = -net

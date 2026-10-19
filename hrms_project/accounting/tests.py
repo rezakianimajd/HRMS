@@ -1241,6 +1241,22 @@ class BalanceSheetClosingTests(TestCase):
         bank_row = next(r for r in response.data['rows'] if r['account_id'] == self.bank.id)
         self.assertAlmostEqual(bank_row['balance'], 700)
 
+    def test_financial_statements_handles_non_pl_accounts(self):
+        """گزارش یکپارچه باید خطوط دارایی/بدهی/سرمایه را بدون KeyError کنار بگذارد."""
+        from accounting.report_views import financial_statements
+
+        response = self._get(financial_statements, {'fiscal_year': self.year.id})
+
+        self.assertEqual(response.status_code, 200)
+        data = response.data
+        self.assertAlmostEqual(data['balance_sheet']['total_assets'], 700)
+        self.assertAlmostEqual(data['balance_sheet']['total_equity'], 700)
+        self.assertAlmostEqual(data['balance_sheet']['total_liabilities_equity'], 700)
+        self.assertAlmostEqual(data['income_statement']['revenue'], 1000)
+        self.assertAlmostEqual(data['income_statement']['expenses'], 300)
+        self.assertAlmostEqual(data['income_statement']['net_profit'], 700)
+        self.assertAlmostEqual(data['cash_flow']['operating'], 700)
+
     def test_ledger_still_shows_closing_document(self):
         """دفتر کل باید سند اختتامیه را نشان دهد تا رد حسابرسی حفظ شود."""
         from accounting.report_views import general_ledger
