@@ -9,14 +9,25 @@
     نکتهٔ کلیدی: nginx مسیر /static/ را از /var/www/hrms/static سرو می‌کند
     (location /static/ → alias) و index.html ساختهٔ CRA به /static/js/main.<hash>.js
     اشاره می‌کند؛ پس بعد از هر بیلد، اَسِت‌های build/static باید به آن مسیر هم کپی شوند.
-    نصب آفلاین وابستگی‌های جدید: اگر پوشهٔ _transfer\wheels وجود داشته باشد، wheel ها به
-    سرور منتقل و با «pip install --no-index» (بدون هیچ اتصال به اینترنت) نصب می‌شوند؛
-    django-jazzmin و python-dotenv هر دو py3-none-any هستند و روی لینوکس نصب می‌شوند.
 
+    حالت پیشنهادی برای سرور بدون اینترنت (LAN):
+        .\\deploy-update.ps1 -Lan
+    در این حالت:
+      • بک‌اند با deploy-backend.ps1 (همهٔ فایل‌های تحت Git + فایل‌های جدید) منتقل می‌شود.
+      • فرانت‌اند روی ویندوز بیلد و فقط build به سرور منتقل می‌شود؛ روی سرور npm اجرا نمی‌شود.
+      • مایگریشن به‌صورت پیش‌فرض اجرا می‌شود (با -NoMigrate می‌توانید غیرفعال کنید).
+      • در صورت وجود _transfer\\wheels، وابستگی‌های پایتون به‌صورت آفلاین نصب می‌شوند.
+    هیچ‌کدام از این مراحل روی سرور به اینترنت نیاز ندارد.
 
+.PARAMETER Lan
+    حالت تک‌دستوری برای سرور داخلی/بدون اینترنت: بیلد محلی فرانت‌اند + انتقال بک‌اند
+    + مایگریشن + نصب آفلاین wheel ها + ری‌استارت.
+
+.PARAMETER NoMigrate
+    در حالت -Lan، اجرای migrate_schemas را غیرفعال می‌کند.
 
 .PARAMETER LocalBuild
-    بیلد روی ویندوز انجام شود و پوشهٔ build منتقل شود (پیش‌فرض: بیلد روی سرور).
+    بیلد روی ویندوز انجام شود و پوشهٔ build منتقل شود (در حالت -Lan همیشه فعال است).
 
 .PARAMETER Migrate
     اجرای migrate_schemas روی سرور — لازم پس از هر تغییر مدل
@@ -27,7 +38,19 @@
     (archive/company_x/<module>/<entity>/) منتقل می‌کند. یک‌بار و پس از -Migrate.
 
 .EXAMPLE
-    .\deploy-update.ps1                  # استقرار کامل (بک‌اند + فرانت‌اند با بیلد روی سرور)
+    .\deploy-update.ps1 -Lan              # ★ حالت پیشنهادی: آپدیت کامل سرور بدون اینترنت
+.EXAMPLE
+    .\deploy-update.ps1 -Lan -CheckOnly   # فقط بررسی اتصال/دسترسی، بدون تغییر
+.EXAMPLE
+    .\deploy-update.ps1 -Lan -NoBuild     # انتقال آخرین build موجود (بدون بیلد مجدد)
+.EXAMPLE
+    .\deploy-update.ps1 -Lan -SkipFrontend # فقط بک‌اند + مایگریشن
+.EXAMPLE
+    .\deploy-update.ps1 -Lan -SkipBackend  # فقط فرانت‌اند
+.EXAMPLE
+    .\deploy-update.ps1 -Lan -NoMigrate    # بدون اجرای migrate_schemas
+.EXAMPLE
+    .\deploy-update.ps1                  # حالت قدیمی (بیلد روی سرور)
 .EXAMPLE
     .\deploy-update.ps1 -Migrate          # همراه با اجرای مایگریشن (پس از تغییر مدل)
 .EXAMPLE
@@ -50,6 +73,8 @@ param(
     [string] $StaticDir = '/var/www/hrms/static',  # مقصد location /static/ در nginx
     [switch] $Archive,      # انتقال یک‌بارهٔ همهٔ فایل‌ها با یک آرشیو tar.gz (اکنون پیش‌فرض است)
     [switch] $PerFile,      # حالت قدیمی: انتقال تک‌تک فایل‌ها (پرسش رمز به ازای هر فایل)
+    [switch] $Lan,          # ★ حالت سرور بدون اینترنت: بیلد محلی + انتقال آرشیوی + مایگریشن
+    [switch] $NoMigrate,    # در حالت -Lan، مایگریشن را اجرا نکن
     [switch] $LocalBuild,
     [switch] $Migrate,
     [switch] $SkipBackend,
@@ -63,6 +88,108 @@ $ErrorActionPreference = 'Stop'
 $Srv      = "$User@$Server"
 $RepoRoot = $PSScriptRoot
 $UseArchive = -not $PerFile
+$WheelDir = Join-Path $RepoRoot '_transfer\wheels'
+
+function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }
+function Ok   ($m) { Write-Host "   [ok] $m" -ForegroundColor Green }
+function Warn ($m) { Write-Host "   [..] $m" -ForegroundColor Yellow }
+
+# ---------------------------------------------------------------- نصب آفلاین wheel ها
+function Install-OfflineWheels {
+    if (-not (Test-Path -LiteralPath $WheelDir)) { return }
+    $wheels = @(Get-ChildItem -Path $WheelDir -Filter '*.whl' -File -ErrorAction SilentlyContinue)
+    if ($wheels.Count -eq 0) { return }
+
+    $pkgs = @($wheels | ForEach-Object {
+        (($_.BaseName -split '-')[0]).Replace('_', '-')
+    } | Select-Object -Unique)
+    $pkgArgs = ($pkgs -join ' ')
+
+    $checkCmd = (($pkgs | ForEach-Object { "$AppDir/venv/bin/pip show '$_' >/dev/null 2>&1" }) -join ' && ')
+    $probe = @(ssh $Srv "$checkCmd && echo HAVE_ALL || echo NEED_SOME")
+    if ($LASTEXITCODE -ne 0) { throw 'بررسی وابستگی‌های آفلاین روی سرور ناموفق بود.' }
+    if ($probe -contains 'HAVE_ALL') {
+        Ok "وابستگی‌های آفلاین از قبل نصب‌اند: $pkgArgs"
+        return
+    }
+
+    Step 'نصب آفلاین وابستگی‌های پایتون (بدون اینترنت)'
+    ssh $Srv 'rm -rf /tmp/hrms-wheels && mkdir -p /tmp/hrms-wheels'
+    if ($LASTEXITCODE -ne 0) { throw 'آماده‌سازی /tmp/hrms-wheels ناموفق بود.' }
+    scp $wheels.FullName "${Srv}:/tmp/hrms-wheels/"
+    if ($LASTEXITCODE -ne 0) { throw 'انتقال wheel ها ناموفق بود.' }
+
+    ssh -t $Srv "sudo -u ${AppUser} $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels $pkgArgs"
+    if ($LASTEXITCODE -ne 0) {
+        Warn 'نصب با کاربر برنامه ناموفق بود (مالکیت venv). تلاش دوم با root...'
+        ssh -t $Srv "sudo $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels $pkgArgs; sudo chown -R ${AppUser}:${AppUser} $AppDir/venv"
+        if ($LASTEXITCODE -ne 0) {
+            ssh $Srv 'rm -rf /tmp/hrms-wheels'
+            throw 'نصب آفلاین وابستگی‌ها ناموفق بود. محتوای _transfer\wheels را بررسی کنید.'
+        }
+    }
+    ssh $Srv 'rm -rf /tmp/hrms-wheels'
+    Ok "نصب آفلاین انجام شد: $pkgArgs"
+}
+
+# ---------------------------------------------------------------- حالت LAN / بدون اینترنت
+if ($Lan) {
+    if ($SkipBackend -and $SkipFrontend) { throw 'هر دو بخش بک‌اند و فرانت‌اند رد شده‌اند؛ چیزی برای استقرار نیست.' }
+    if ($MoveFiles) { Warn 'گزینهٔ -MoveFiles در حالت -Lan اجرا نمی‌شود؛ آن را جداگانه و فقط یک‌بار اجرا کنید.' }
+
+    Step "حالت LAN — آپدیت سرور $Server بدون نیاز به اینترنت روی سرور"
+    foreach ($cmd in @('ssh', 'scp', 'git', 'tar')) {
+        if (-not (Get-Command $cmd -ErrorAction SilentlyContinue)) { throw "دستور '$cmd' در PATH پیدا نشد." }
+    }
+    $backendScript = Join-Path $RepoRoot 'deploy-backend.ps1'
+    $frontendScript = Join-Path $RepoRoot 'deploy-frontend.ps1'
+    if (-not $SkipBackend -and -not (Test-Path -LiteralPath $backendScript)) { throw "deploy-backend.ps1 پیدا نشد: $backendScript" }
+    if (-not $SkipFrontend -and -not (Test-Path -LiteralPath $frontendScript)) { throw "deploy-frontend.ps1 پیدا نشد: $frontendScript" }
+
+    if ($CheckOnly) {
+        if (-not $SkipBackend) {
+            & $backendScript -User $User -Server $Server -AppUser $AppUser -AppDir $AppDir -CheckOnly
+            if (-not $?) { throw 'بررسی بک‌اند ناموفق بود.' }
+        }
+        if (-not $SkipFrontend) {
+            & $frontendScript -User $User -Server $Server -AppDir $AppDir -StaticDir $StaticDir -CheckOnly
+            if (-not $?) { throw 'بررسی فرانت‌اند ناموفق بود.' }
+        }
+        Ok 'بررسی اتصال/دسترسی کامل شد؛ هیچ تغییری اعمال نشد.'
+        return
+    }
+
+    $dirty = @(git -C $RepoRoot status --porcelain 2>$null)
+    if ($dirty.Count -gt 0) {
+        Warn "$($dirty.Count) فایل تغییرکرده/جدید در working tree وجود دارد؛ همان‌ها منتقل می‌شوند."
+    }
+
+    if (-not $SkipFrontend -and -not $NoBuild -and -not (Test-Path (Join-Path $RepoRoot 'frontend\node_modules'))) {
+        throw 'frontend\node_modules پیدا نشد. برای بیلد محلی ابتدا یک‌بار npm install را روی ویندوز اجرا کنید یا از -NoBuild استفاده کنید.'
+    }
+
+    if (-not $SkipBackend) {
+        Install-OfflineWheels
+        $backendArgs = @{
+            User = $User; Server = $Server; AppUser = $AppUser; AppDir = $AppDir
+        }
+        if (-not $NoMigrate) { $backendArgs.Migrate = $true }
+        & $backendScript @backendArgs
+        if (-not $?) { throw 'استقرار بک‌اند ناموفق بود.' }
+    } else { Warn 'بک‌اند رد شد (-SkipBackend).' }
+
+    if (-not $SkipFrontend) {
+        $frontendArgs = @{
+            User = $User; Server = $Server; AppDir = $AppDir; StaticDir = $StaticDir
+        }
+        if ($NoBuild) { $frontendArgs.NoBuild = $true }
+        & $frontendScript @frontendArgs
+        if (-not $?) { throw 'استقرار فرانت‌اند ناموفق بود.' }
+    } else { Warn 'فرانت‌اند رد شد (-SkipFrontend).' }
+
+    Ok 'آپدیت کامل شد. در مرورگر Ctrl+Shift+R بزنید.'
+    return
+}
 
 # حالت «فقط بک‌اند» به اسکریپت اختصاصی و یک‌نشستی هدایت می‌شود تا رمز به ازای هر فایل پرسیده نشود.
 if ($SkipFrontend -and -not $SkipBackend) {
@@ -84,6 +211,7 @@ if ($SkipFrontend -and -not $SkipBackend) {
 $BackendFiles = @(
     'hrms_project/accounting/models.py',
     'hrms_project/accounting/serializers.py',
+    'hrms_project/accounting/services.py',
     'hrms_project/accounting/views.py',
     'hrms_project/accounting/constants.py',
     'hrms_project/accounting/report_views.py',
@@ -237,6 +365,7 @@ $FrontendFiles = @(
     'frontend/src/pages/AccountingCodingsPage.jsx',
     'frontend/src/pages/ProjectProfilePage.jsx',
     'frontend/src/pages/AccountingPage.jsx',
+    'frontend/src/pages/accounting/AccountingDashboardUI.jsx',
     'frontend/src/pages/AssetsPage.jsx',
     'frontend/src/pages/AssistantPage.jsx',
     'frontend/src/pages/ProjectCalendarPage.jsx',
@@ -366,13 +495,7 @@ $FrontendFiles += @(
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
-#   django-jazzmin و python-dotenv هر دو py3-none-any هستند و روی لینوکس کار می‌کنند.
-$WheelDir = Join-Path $RepoRoot '_transfer\wheels'
-
-
-function Step ($m) { Write-Host "`n===== $m =====" -ForegroundColor Cyan }
-function Ok   ($m) { Write-Host "   [ok] $m" -ForegroundColor Green }
-function Warn ($m) { Write-Host "   [..] $m" -ForegroundColor Yellow }
+#   مسیر $WheelDir در ابتدای اسکریپت تعریف شده است.
 
 Step "۱/۶ بررسی اتصال و مجوز sudo روی $Srv"
 # مهم: در دستورهای ssh از کوتیشن دوتایی و $(...) استفاده نکنید؛ کلاینت ssh ویندوز
@@ -480,42 +603,9 @@ if (-not $SkipBackend) {
 
 # ---------------------------------------------------------------- مایگریشن
 # ---------------------------------------------------------------- نصب آفلاین وابستگی‌های جدید
-# نکته: پوشهٔ venv روی سرور ممکن است مالکیت root داشته باشد؛ بنابراین اول بررسی
-# می‌کنیم بسته‌ها واقعاً غایب‌اند، و در صورت نیاز نصب را با root انجام می‌دهیم.
+# از تابع مشترک Install-OfflineWheels استفاده می‌شود (حالت -Lan هم همان را صدا می‌زند).
 if (Test-Path $WheelDir) {
-    $wheels = @(Get-ChildItem -Path $WheelDir -Filter '*.whl' -File -ErrorAction SilentlyContinue)
-    if ($wheels.Count -gt 0) {
-        Step '۲.۶/۶ نصب آفلاین وابستگی‌های پایتون (در صورت نیاز)'
-
-        # ۱) آیا هر دو بسته روی سرور import می‌شوند؟ (بدون هیچ تغییری)
-        $probeImport = @(ssh $Srv "$AppDir/venv/bin/python -c 'import jazzmin, dotenv' && echo HAVE_ALL || echo NEED_SOME")
-        if ($probeImport -contains 'HAVE_ALL') {
-            Ok 'هر دو بسته از قبل نصب‌اند (django-jazzmin + python-dotenv)؛ نیازی به نصب نیست.'
-        } else {
-            ssh $Srv 'rm -rf /tmp/hrms-wheels && mkdir -p /tmp/hrms-wheels'
-            if ($LASTEXITCODE -ne 0) { throw 'آماده‌سازی /tmp/hrms-wheels ناموفق بود.' }
-            scp $wheels.FullName "${Srv}:/tmp/hrms-wheels/"
-            if ($LASTEXITCODE -ne 0) { throw 'انتقال wheel ها ناموفق بود.' }
-
-            # تلاش ۱: نصب با کاربر برنامه (بدون --upgrade تا بسته‌های موجود دست نخورند)
-            ssh -t $Srv "sudo -u ${AppUser} $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels django-jazzmin python-dotenv"
-            $installRc = $LASTEXITCODE
-
-            if ($installRc -ne 0) {
-                # تلاش ۲: مالکیت venv احتمالاً root است → نصب با root و بازگرداندن مالکیت
-                Warn 'نصب با کاربر برنامه ناموفق بود (مالکیت venv). تلاش دوم با root...'
-                ssh -t $Srv "sudo $AppDir/venv/bin/pip install --no-index --find-links /tmp/hrms-wheels django-jazzmin python-dotenv; sudo chown -R ${AppUser}:${AppUser} $AppDir/venv"
-                $installRc = $LASTEXITCODE
-            }
-
-            ssh $Srv 'rm -rf /tmp/hrms-wheels'
-            if ($installRc -ne 0) {
-                Warn 'نصب آفلاین کامل نشد. اگر بستهٔ لازم غایب است، دستی نصب کنید (راهنما در انتهای همین اسکریپت).'
-            } else {
-                Ok 'نصب آفلاین وابستگی‌ها انجام شد.'
-            }
-        }
-    }
+    try { Install-OfflineWheels } catch { Warn "نصب آفلاین وابستگی‌ها انجام نشد: $($_.Exception.Message)" }
 }
 
 
