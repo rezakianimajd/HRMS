@@ -42,6 +42,9 @@ const AMBER = '#d97706';
 const CYAN = '#0891b2';
 const VIOLET = '#6366f1';
 const ROWS = 8;
+const ROW_HEIGHT = 42;
+const HEADER_HEIGHT = 32;
+const GRID_HEIGHT = (ROWS * ROW_HEIGHT) + HEADER_HEIGHT;
 const FONT = 'inherit';
 
 const fieldSx = {
@@ -124,7 +127,7 @@ const lineNetFromApi = (line) => {
 const rowAccent = (active, color) => (active ? `inset -3px 0 0 ${color}` : 'none');
 
 const Cell = React.forwardRef(({ children, center = false }, ref) => (
-  <Box ref={ref} sx={{ px: 0.25, py: 0.25, display: 'flex', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', minWidth: 0 }}>
+  <Box ref={ref} sx={{ px: 0.1, py: 0.1, display: 'flex', alignItems: 'center', justifyContent: center ? 'center' : 'flex-start', minWidth: 0 }}>
     {children}
   </Box>
 ));
@@ -232,6 +235,7 @@ const AccountingDocumentNewPage = () => {
   const [issuesOpen, setIssuesOpen] = useState(false);
   const [numberTouched, setNumberTouched] = useState(false);
   const defaultsApplied = useRef(false);
+  const gridRef = useRef(null);
 
   const { data: fyData } = useQuery({
     queryKey: ['doc-fiscal-years'],
@@ -494,17 +498,21 @@ const AccountingDocumentNewPage = () => {
     if (!editable) return;
     setLines((prev) => [...prev, empty()]);
     setActiveRow(lines.length);
+    setTimeout(() => {
+      const scroller = gridRef.current;
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    }, 0);
   };
 
   const removeRow = (index) => {
     if (!editable) return;
-    setLines((prev) => {
-      const next = prev.filter((_, i) => i !== index);
-      return next.length ? next : [empty()];
-    });
+    const removesRow = lines.length > ROWS;
+    setLines((prev) => (prev.length > ROWS
+      ? prev.filter((_, i) => i !== index)
+      : prev.map((line, i) => (i === index ? empty() : line))));
     setActiveRow((prev) => {
-      if (prev > index) return prev - 1;
-      return Math.min(prev, Math.max(lines.length - 2, 0));
+      if (removesRow && prev > index) return prev - 1;
+      return Math.min(prev, removesRow ? lines.length - 2 : lines.length - 1);
     });
   };
 
@@ -519,6 +527,10 @@ const AccountingDocumentNewPage = () => {
         const source = { ...lines[activeRow], account: '', aux1: '', aux2: '', aux3: '' };
         setLines((prev) => [...prev, source]);
         setActiveRow(lines.length);
+        setTimeout(() => {
+          const scroller = gridRef.current;
+          if (scroller) scroller.scrollTop = scroller.scrollHeight;
+        }, 0);
       } else if (event.key === 'F2') {
         event.preventDefault();
         setPicker({ row: activeRow, slot: 'account' });
@@ -904,11 +916,11 @@ const AccountingDocumentNewPage = () => {
           </Stack>
         )}
       >
-        <Box data-doc-grid="1" sx={{ overflowX: 'auto', overflowY: 'visible' }}>
+        <Box data-doc-grid="1" ref={gridRef} sx={{ overflowX: 'auto', overflowY: 'auto', height: GRID_HEIGHT }}>
           <Box sx={{ minWidth: gridMinWidth }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, position: 'sticky', top: 0, zIndex: 3, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${cardBorder}` }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, height: HEADER_HEIGHT, position: 'sticky', top: 0, zIndex: 3, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${cardBorder}` }}>
               {HEADERS.map((label, index) => (
-                <Box key={index} sx={{ px: 0.7, py: 0.75, fontWeight: 800, fontSize: gridFont, color: theme.palette.text.primary, borderLeft: index ? `1px solid ${theme.palette.divider}` : 'none', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{label}</Box>
+                <Box key={index} sx={{ px: 0.7, py: 0, fontWeight: 800, fontSize: gridFont, color: theme.palette.text.primary, borderLeft: index ? `1px solid ${theme.palette.divider}` : 'none', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{label}</Box>
               ))}
             </Box>
 
@@ -929,7 +941,7 @@ const AccountingDocumentNewPage = () => {
                     bgcolor: activeRow === index ? alpha(accent, 0.08) : 'transparent',
                     boxShadow: rowAccent(activeRow === index, accent),
                     '&:hover': { bgcolor: activeRow === index ? alpha(accent, 0.12) : theme.palette.action.hover },
-                    minHeight: 44, transition: 'background-color .12s ease',
+                    height: ROW_HEIGHT, transition: 'background-color .12s ease',
                   }}>
                   <Stack alignItems="center" justifyContent="center" spacing={0.1}>
                     {issues.length ? (
