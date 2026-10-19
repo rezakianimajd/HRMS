@@ -354,6 +354,8 @@ $FrontendFiles = @(
     'frontend/src/pages/accounting/reports/TreeTrialBalancePage.jsx',
     'frontend/src/pages/accounting/reports/LedgerReviewPage.jsx',
     'frontend/src/pages/accounting/reports/BalanceSheetPage.jsx',
+    'frontend/src/pages/accounting/reports/FinancialStatementsPage.jsx',
+    'frontend/src/pages/accounting/reports/financialStatementsTemplate.js',
     'frontend/src/core/utils/downloadUtils.js',
     'frontend/src/pages/ExternalContractsPage.jsx',
     'frontend/src/pages/ContractProfilePage.jsx',

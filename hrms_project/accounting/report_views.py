@@ -1135,7 +1135,9 @@ def _safe_ratio(num, den):
 @permission_classes([IsAuthenticated])
 def financial_statements(request):
     """صورت‌های مالی یکپارچه: ترازنامه + سود و زیان + جریان نقدی + نسبت‌ها."""
-    lines = _report_lines(request).select_related('account__account_type')
+    from django.utils import timezone
+
+    lines, year, as_of = _balance_scope(request)
 
     assets, liabilities, equity = {}, {}, {}
     for line in lines:
@@ -1240,4 +1242,11 @@ def financial_statements(request):
             'return_on_equity': _safe_ratio(net_profit, total_equity),
             'return_on_assets': _safe_ratio(net_profit, total_assets),
         },
+        'fiscal_year': ({
+            'id': year.id, 'name': year.name, 'status': year.status,
+            'start_date': year.start_date.isoformat(), 'end_date': year.end_date.isoformat(),
+            'is_current': year.is_current,
+        } if year else None),
+        'as_of': as_of or '',
+        'generated_at': timezone.now().isoformat(),
     })
