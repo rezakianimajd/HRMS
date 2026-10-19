@@ -20,7 +20,6 @@ import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import ReceiptLongOutlinedIcon from '@mui/icons-material/ReceiptLongOutlined';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
-import KeyboardIcon from '@mui/icons-material/Keyboard';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import LockIcon from '@mui/icons-material/Lock';
 import UndoIcon from '@mui/icons-material/Undo';
@@ -162,28 +161,18 @@ const MetaPill = ({ label, value, color }) => {
   );
 };
 
-const Kbd = ({ children }) => {
-  const theme = useTheme();
-  const { typography } = useModulePalette();
-  const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
-  return (
-    <Box component="kbd" sx={{
-      fontFamily: theme.typography.fontFamily, fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 800,
-      color: theme.palette.text.secondary, bgcolor: theme.palette.action.hover,
-      border: `1px solid ${theme.palette.divider}`, borderBottomWidth: 2,
-      borderRadius: '5px', px: 0.55, py: 0.15, minWidth: 20, textAlign: 'center',
-    }}>{children}</Box>
-  );
-};
-
 // سلول کد قابل تایپ دستی + باز کردن دیالوگ با Space
 const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', disabled = false }) => {
   const [draft, setDraft] = useState('');
   useEffect(() => { setDraft(code ? String(code) : ''); }, [code]);
 
   const commit = () => {
-    const eng = toEnglishDigits(draft);
-    if (!eng) { setDraft(code ? String(code) : ''); return; }
+    const eng = toEnglishDigits(draft).trim();
+    if (!eng) {
+      if (code) onMatch('');
+      else setDraft('');
+      return;
+    }
     const opt = options.find((o) => String(o.code) === eng);
     if (opt) onMatch(opt.id);
     else setDraft(code ? String(code) : '');
@@ -193,7 +182,11 @@ const CodeInput = ({ code, options, onMatch, onOpenPicker, placeholder = '…', 
     <TextField
       size="small" fullWidth variant="standard" disabled={disabled}
       value={toPersianDigits(draft)}
-      onChange={(e) => setDraft(toEnglishDigits(e.target.value))}
+      onChange={(e) => {
+        const next = toEnglishDigits(e.target.value);
+        setDraft(next);
+        if (!next.trim() && code) onMatch('');
+      }}
       onKeyDown={(e) => {
         if (disabled) return;
         if (e.key === ' ') { e.preventDefault(); onOpenPicker(); }
@@ -731,7 +724,10 @@ const AccountingDocumentNewPage = () => {
     workflow.mutate(act);
   };
 
-  const gridCols = '34px 30px 96px 82px 82px 82px 96px minmax(260px, 1.4fr) 96px 96px 96px';
+  // 17 رقم + جداکننده‌های هزارگان + padding
+  const amountColumn = Math.max(156, Math.ceil(type.bodySize * 12));
+  const gridCols = `40px 34px 84px 70px 70px 70px 84px minmax(160px, 1.4fr) ${amountColumn}px ${amountColumn}px ${amountColumn}px`;
+  const gridMinWidth = 612 + (amountColumn * 3);
   const HEADERS = ['ردیف', 'شمول', 'معین', 'تفصیل۱', 'تفصیل۲', 'تفصیل۳', 'مرکز هزینه', 'شرح', 'بدهکار', 'ارزش افزوده', 'بستانکار'];
 
   return (
@@ -908,11 +904,11 @@ const AccountingDocumentNewPage = () => {
           </Stack>
         )}
       >
-        <Box data-doc-grid="1" sx={{ overflowX: 'auto', overflowY: 'auto', maxHeight: { xs: 420, lg: 'calc(100vh - 470px)' }, minHeight: 260 }}>
-          <Box sx={{ minWidth: 1120 }}>
-            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, position: 'sticky', top: 0, zIndex: 3, bgcolor: theme.palette.action.hover, borderBottom: `1px solid ${cardBorder}` }}>
+        <Box data-doc-grid="1" sx={{ overflowX: 'auto', overflowY: 'visible' }}>
+          <Box sx={{ minWidth: gridMinWidth }}>
+            <Box sx={{ display: 'grid', gridTemplateColumns: gridCols, position: 'sticky', top: 0, zIndex: 3, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${cardBorder}` }}>
               {HEADERS.map((label, index) => (
-                <Box key={index} sx={{ px: 0.8, py: 1, fontWeight: 800, fontSize: gridFont, color: theme.palette.text.primary, borderLeft: index ? `1px solid ${theme.palette.divider}` : 'none', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{label}</Box>
+                <Box key={index} sx={{ px: 0.7, py: 0.75, fontWeight: 800, fontSize: gridFont, color: theme.palette.text.primary, borderLeft: index ? `1px solid ${theme.palette.divider}` : 'none', whiteSpace: 'nowrap', textAlign: 'center', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: FONT }}>{label}</Box>
               ))}
             </Box>
 
@@ -933,7 +929,7 @@ const AccountingDocumentNewPage = () => {
                     bgcolor: activeRow === index ? alpha(accent, 0.08) : 'transparent',
                     boxShadow: rowAccent(activeRow === index, accent),
                     '&:hover': { bgcolor: activeRow === index ? alpha(accent, 0.12) : theme.palette.action.hover },
-                    minHeight: 56, transition: 'background-color .12s ease',
+                    minHeight: 44, transition: 'background-color .12s ease',
                   }}>
                   <Stack alignItems="center" justifyContent="center" spacing={0.1}>
                     {issues.length ? (
@@ -1028,16 +1024,6 @@ const AccountingDocumentNewPage = () => {
           <MetaPill label="مرکز هزینه" value={activeCostCenter ? `${activeCostCenter.code} — ${activeCostCenter.name}` : '—'} color={activeCostCenter ? VIOLET : muted} />
           <MetaPill label="جمع ردیف" value={formatPersianNumber(activeGross.debit || activeGross.credit)} color={CYAN} />
         </Stack>
-        {editable ? (
-          <Stack direction="row" spacing={0.55} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 1.25 }}>
-            <KeyboardIcon sx={{ fontSize: 15, color: muted }} />
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 9), color: muted, ml: 0.2 }}>میان‌بر:</Typography>
-            <Kbd>F2</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>معین</Typography>
-            <Kbd>F3</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>تفصیل</Typography>
-            <Kbd>F9</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>متوازن‌سازی</Typography>
-            <Kbd>Ctrl+D</Kbd><Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: muted }}>تکثیر ردیف</Typography>
-          </Stack>
-        ) : null}
       </SurfaceCard>
 
       <CodePickerDialog
