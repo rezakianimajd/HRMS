@@ -419,19 +419,20 @@ def managed_document_version_upload_path(instance, filename):
     from core.engines.archive_storage_engine import resolve_upload_path
 
     try:
-        document = instance.document
-        folder = document.folder
-        fields = {
-            'category': folder.path if folder else 'عمومی',
-            'name': document.title or '',
-            'number': document.reference_number or '',
-            'id': document.pk,
-        }
+        from documents.management_storage import (
+            DOCUMENTS_STORAGE_MODULE_KEY, get_documents_storage_profile,
+            storage_fields,
+        )
+
+        get_documents_storage_profile(instance.company_id)
+        fields = storage_fields(instance.document)
+        module_key = DOCUMENTS_STORAGE_MODULE_KEY
     except Exception:  # noqa: BLE001 — سند ناقص نباید آپلود را بشکند
         fields = {}
+        module_key = 'hr.documents.management'
 
     return resolve_upload_path(
-        instance.company_id, 'hr.documents.management', fields, filename,
+        instance.company_id, module_key, fields, filename,
         fallback_dir='document_management',
     )
 

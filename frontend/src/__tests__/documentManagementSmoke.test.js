@@ -41,6 +41,7 @@ const documents = [
     status_display: 'فعال', is_locked: false, current_version: 22, version_count: 2,
     file_url: 'https://example.test/media/contract.pdf', file_name: 'contract.pdf',
     file_extension: '.pdf', file_size: 2400000, file_size_display: '2.3 MB',
+    storage_path: 'archive/company_1/documents/قراردادها_قرارداد_پیمانکاری/abc.pdf',
     mime_type: 'application/pdf', created_by_name: 'مدیر بایگانی', updated_by_name: 'مدیر بایگانی',
     is_expired: false, days_until_expiry: 200, created_at: '2026-01-10T08:00:00Z',
     versions: [
@@ -64,6 +65,12 @@ const documents = [
 const stats = {
   total: 2, active: 1, archived: 0, expiring_soon: 1, expired: 0,
   storage_bytes: 3040000, folders: 2,
+  storage_policy: {
+    module_key: 'hr.documents.management', module_name: 'مدیریت اسناد و مدارک',
+    root_folder: 'documents', entity_folder_pattern: '{folder}_{name}',
+    subfolders: ['نسخه‌ها', 'پیوست‌ها'], max_file_size_mb: 50,
+    include_company: true, path_preview: 'company_1/documents',
+  },
   recent_activity: [],
 };
 const activity = {
@@ -116,6 +123,8 @@ test('document management page renders library, folder tree, detail drawer and u
   expect(container.textContent).toContain('قرارداد پیمانکاری سالن تولید');
   expect(container.textContent).toContain('مجوز فعالیت کارگاه');
   expect(container.textContent).toContain('فضای بایگانی');
+  expect(container.textContent).toContain('سیاست ذخیره‌سازی');
+  expect(container.textContent).toContain('documents');
 
   const detailButton = Array.from(container.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'جزئیات');

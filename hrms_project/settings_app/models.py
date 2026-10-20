@@ -381,6 +381,21 @@ def default_storage_profiles():
             'subfolders': ['اسناد حسابداری', 'صورت‌حساب‌های بانکی', 'گزارش‌ها'],
             'color': '#3b82f6', 'icon': 'calculate', 'sort_order': 8,
         },
+        {
+            'module_key': 'hr.documents.management',
+            'module_name': 'مدیریت اسناد و مدارک',
+            'root_folder': 'documents',
+            'entity_folder_pattern': '{folder}_{name}',
+            'subfolders': ['نسخه‌ها', 'پیوست‌ها', 'فایل‌های موقت'],
+            'allowed_extensions': [
+                '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
+                '.txt', '.csv', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp',
+                '.zip', '.rar',
+            ],
+            'max_file_size_mb': 50,
+            'color': '#0f766e', 'icon': 'folder_copy', 'sort_order': 9,
+            'description': 'پروفایل بایگانی کتابخانهٔ مرکزی مدیریت اسناد و مدارک',
+        },
     ]
 
 

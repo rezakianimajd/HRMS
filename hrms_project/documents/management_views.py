@@ -14,6 +14,9 @@ from documents.models import (
 from documents.management_serializers import (
     DocumentActivitySerializer, DocumentFolderSerializer, ManagedDocumentSerializer,
 )
+from documents.management_storage import (
+    get_documents_storage_profile, storage_policy_dict,
+)
 
 
 def _company(request):
@@ -204,6 +207,7 @@ class DocumentManagementStatsAPIView(APIView):
         if company:
             storage_qs = storage_qs.filter(company=company)
         storage = storage_qs.aggregate(total=Sum('file_size'))['total'] or 0
+        storage_policy = storage_policy_dict(get_documents_storage_profile(getattr(company, 'pk', None)))
         live_docs = docs.exclude(status=ManagedDocument.Status.ARCHIVED)
         expiring = live_docs.filter(expiry_date__gte=today, expiry_date__lte=today + timedelta(days=30)).count()
         expired = live_docs.filter(expiry_date__lt=today).count()
@@ -218,6 +222,7 @@ class DocumentManagementStatsAPIView(APIView):
             'expiring_soon': expiring,
             'expired': expired,
             'storage_bytes': storage,
+            'storage_policy': storage_policy,
             'folders': DocumentFolder.objects.filter(company=company, is_active=True).count() if company else DocumentFolder.objects.filter(is_active=True).count(),
             'by_confidentiality': list(
                 live_docs.values('confidentiality').annotate(count=Count('id'))

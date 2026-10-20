@@ -26,7 +26,7 @@ import { INK, KpiTile, MUTED, SOFT_BG, SurfaceCard } from './accounting/Accounti
 import {
   ActivityCard, CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, DocumentCard,
   DocumentDetailDrawer, DocumentEditorDialog, DocumentTable, FolderEditorDialog,
-  FolderTree, StorageCard, formatBytes,
+  FolderTree, StorageCard, StoragePolicyCard, formatBytes,
 } from './contracts/DocumentManagementUI';
 
 const EMPTY_DOCUMENT = {
@@ -367,6 +367,7 @@ const DocumentManagementPage = () => {
               </Stack>
             </SurfaceCard>
             <StorageCard stats={stats} isLoading={statsQuery.isLoading} />
+            <StoragePolicyCard policy={stats.storage_policy} />
             <ActivityCard activities={activities} onOpen={openActivityTarget} />
           </Stack>
         </Grid>

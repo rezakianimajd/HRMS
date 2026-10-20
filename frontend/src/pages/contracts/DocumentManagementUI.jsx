@@ -22,6 +22,7 @@ import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
+import StorageOutlinedIcon from '@mui/icons-material/StorageOutlined';
 import TableChartOutlinedIcon from '@mui/icons-material/TableChartOutlined';
 import TimelineIcon from '@mui/icons-material/Timeline';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
@@ -259,6 +260,29 @@ export const StorageCard = ({ stats, isLoading }) => (
   </SurfaceCard>
 );
 
+export const StoragePolicyCard = ({ policy }) => {
+  if (!policy) return null;
+  return (
+    <SurfaceCard title="سیاست ذخیره‌سازی" icon={StorageOutlinedIcon} color="#2563eb"
+      action={<Chip size="small" label="از تنظیمات" sx={{ height: 19, fontSize: 7.5, bgcolor: '#eff6ff', color: '#2563eb' }} />}>
+      <Stack spacing={0.55}>
+        <InfoLine label="پوشهٔ ماژول" value={policy.root_folder || '—'} ltr />
+        <InfoLine label="الگوی پوشهٔ سند" value={policy.entity_folder_pattern || '—'} ltr />
+        <InfoLine label="تفکیک شرکت" value={policy.include_company ? 'فعال' : 'غیرفعال'} />
+        <InfoLine label="حداکثر حجم" value={`${toPersianDigits(policy.max_file_size_mb || 50)} MB`} />
+        {policy.subfolders?.length ? (
+          <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap" sx={{ mt: 0.2 }}>
+            {policy.subfolders.map((folder) => <Chip key={folder} size="small" label={folder} sx={{ height: 17, fontSize: 7.2, bgcolor: SOFT_BG, color: MUTED }} />)}
+          </Stack>
+        ) : null}
+        <Box sx={{ mt: 0.35, p: 0.55, borderRadius: '7px', bgcolor: SOFT_BG, direction: 'ltr' }}>
+          <Typography noWrap sx={{ fontSize: 7.4, color: MUTED, fontFamily: 'monospace' }}>{policy.path_preview || 'archive'}/…</Typography>
+        </Box>
+      </Stack>
+    </SurfaceCard>
+  );
+};
+
 export const ActivityCard = ({ activities = [], onOpen }) => (
   <SurfaceCard title="آخرین فعالیت‌ها" icon={TimelineIcon} color={VIOLET}
     action={<Chip size="small" label={formatPersianNumber(activities.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(VIOLET, 0.08), color: VIOLET }} />}>
@@ -324,6 +348,7 @@ export const DocumentDetailDrawer = ({
               <InfoLine label="شماره مرجع" value={row.reference_number || '—'} />
               <InfoLine label="ایجادکننده" value={row.created_by_name || '—'} />
               <InfoLine label="آخرین ویرایش" value={row.updated_by_name || '—'} />
+              <InfoLine label="مسیر ذخیره‌سازی" value={row.storage_path || '—'} ltr />
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>

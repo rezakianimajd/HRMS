@@ -172,7 +172,7 @@ class DocumentManagementTests(SimpleTestCase):
     @patch('core.engines.archive_storage_engine.resolve_upload_path')
     def test_managed_version_uses_documents_module_profile(self, mocked):
         mocked.return_value = 'archive/company_3/documents/x.pdf'
-        folder = SimpleNamespace(path='قراردادها / قراردادهای جاری')
+        folder = SimpleNamespace(name='قراردادهای جاری', path='قراردادها / قراردادهای جاری')
         document = SimpleNamespace(
             pk=5, folder=folder, title='قرارداد پیمانکاری',
             reference_number='REF-1405-001',
@@ -184,9 +184,22 @@ class DocumentManagementTests(SimpleTestCase):
         call_args = mocked.call_args
         self.assertEqual(call_args.args[0], 3)
         self.assertEqual(call_args.args[1], 'hr.documents.management')
-        self.assertEqual(call_args.args[2]['category'], 'قراردادها / قراردادهای جاری')
+        self.assertEqual(call_args.args[2]['folder'], 'قراردادها / قراردادهای جاری')
+        self.assertEqual(call_args.args[2]['category'], 'قراردادهای جاری')
         self.assertEqual(call_args.args[2]['id'], 5)
         self.assertEqual(call_args.kwargs['fallback_dir'], 'document_management')
+
+    def test_default_documents_storage_profile_is_registered(self):
+        from settings_app.models import default_storage_profiles
+
+        profile = next(
+            item for item in default_storage_profiles()
+            if item['module_key'] == 'hr.documents.management'
+        )
+        self.assertEqual(profile['root_folder'], 'documents')
+        self.assertEqual(profile['entity_folder_pattern'], '{folder}_{name}')
+        self.assertIn('نسخه‌ها', profile['subfolders'])
+        self.assertEqual(profile['max_file_size_mb'], 50)
 
     @patch('core.engines.archive_storage_engine.resolve_upload_path')
     def test_managed_version_survives_missing_folder(self, mocked):
@@ -199,6 +212,7 @@ class DocumentManagementTests(SimpleTestCase):
 
         managed_document_version_upload_path(version, 'scan.pdf')
 
+        self.assertEqual(mocked.call_args.args[2]['folder'], 'عمومی')
         self.assertEqual(mocked.call_args.args[2]['category'], 'عمومی')
 
 

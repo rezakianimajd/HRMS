@@ -7,6 +7,9 @@ from rest_framework import serializers
 from documents.models import (
     DocumentActivity, DocumentFolder, DocumentVersion, ManagedDocument,
 )
+from documents.management_storage import (
+    get_documents_storage_profile, validate_upload,
+)
 
 ALLOWED_EXTENSIONS = {
     '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt',
@@ -72,18 +75,20 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     file_extension = serializers.SerializerMethodField()
     file_size_display = serializers.SerializerMethodField()
+    storage_path = serializers.SerializerMethodField()
 
     class Meta:
         model = DocumentVersion
         fields = [
             'id', 'document', 'version_number', 'file', 'file_url', 'original_name',
-            'file_size', 'file_size_display', 'file_extension', 'mime_type', 'checksum',
-            'change_note', 'created_by', 'created_by_name', 'created_at',
+            'file_size', 'file_size_display', 'file_extension', 'storage_path',
+            'mime_type', 'checksum', 'change_note', 'created_by', 'created_by_name',
+            'created_at',
         ]
         read_only_fields = [
             'id', 'document', 'version_number', 'file_url', 'file_size',
-            'file_size_display', 'file_extension', 'mime_type', 'checksum',
-            'created_by', 'created_by_name', 'created_at',
+            'file_size_display', 'file_extension', 'storage_path', 'mime_type',
+            'checksum', 'created_by', 'created_by_name', 'created_at',
         ]
 
     def get_file_url(self, obj):
@@ -100,6 +105,9 @@ class DocumentVersionSerializer(serializers.ModelSerializer):
 
     def get_file_size_display(self, obj):
         return _file_size_display(obj.file_size)
+
+    def get_storage_path(self, obj):
+        return obj.file.name if obj.file else ''
 
 
 class DocumentActivitySerializer(serializers.ModelSerializer):
@@ -129,6 +137,7 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
     file_size = serializers.IntegerField(read_only=True)
     file_size_display = serializers.SerializerMethodField()
     mime_type = serializers.SerializerMethodField()
+    storage_path = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     updated_by_name = serializers.SerializerMethodField()
     is_expired = serializers.BooleanField(read_only=True)
@@ -143,14 +152,15 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
             'retention_until', 'confidentiality', 'confidentiality_display',
             'status', 'status_display', 'is_locked', 'current_version', 'version_count',
             'file', 'file_url', 'file_name', 'file_extension', 'file_size',
-            'file_size_display', 'mime_type', 'created_by', 'created_by_name',
-            'updated_by', 'updated_by_name', 'is_expired', 'days_until_expiry',
-            'versions', 'created_at', 'updated_at',
+            'file_size_display', 'mime_type', 'storage_path', 'created_by',
+            'created_by_name', 'updated_by', 'updated_by_name', 'is_expired',
+            'days_until_expiry', 'versions', 'created_at', 'updated_at',
         ]
         read_only_fields = [
             'id', 'current_version', 'version_count', 'file_url', 'file_name',
             'file_extension', 'file_size', 'file_size_display', 'mime_type',
-            'created_by', 'created_by_name', 'updated_by', 'updated_by_name',
+            'storage_path', 'created_by', 'created_by_name', 'updated_by',
+            'updated_by_name',
             'is_expired', 'days_until_expiry', 'versions', 'created_at', 'updated_at',
         ]
 
@@ -167,6 +177,9 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
     def get_mime_type(self, obj):
         return obj.current_version.mime_type if obj.current_version else ''
 
+    def get_storage_path(self, obj):
+        return obj.current_version.file.name if obj.current_version and obj.current_version.file else ''
+
     def get_created_by_name(self, obj):
         return _user_name(obj.created_by)
 
@@ -182,13 +195,11 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
     def validate_file(self, value):
         if not value:
             return value
-        extension = os.path.splitext(value.name)[1].lower()
-        if extension not in ALLOWED_EXTENSIONS:
-            raise serializers.ValidationError(
-                'فرمت فایل مجاز نیست. فرمت‌های مجاز: PDF، Word، Excel، PowerPoint، تصویر، متن و ZIP.'
-            )
-        if value.size > MAX_FILE_SIZE:
-            raise serializers.ValidationError('حجم فایل نباید بیشتر از ۵۰ مگابایت باشد.')
+        company = _company(self.context.get('request'))
+        profile = get_documents_storage_profile(getattr(company, 'pk', None))
+        error = validate_upload(profile, value, ALLOWED_EXTENSIONS)
+        if error:
+            raise serializers.ValidationError(error)
         return value
 
     def validate(self, attrs):
