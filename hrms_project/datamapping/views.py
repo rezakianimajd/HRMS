@@ -594,50 +594,78 @@ DOC_HEADERS = {
 
 
 def _parse_date(value):
-    """تبدیل تاریخ به میلادی. ورودی ممکن است شمسی متنی، میلادی متنی یا سلول تاریخ اکسل باشد.
+    """تبدیل تاریخ به میلادی با پشتیبانی از اکسل، شمسی و میلادی.
 
-    - اگر مقدار سلول اکسل از نوع date/datetime باشد، مستقیم میلادی برمی‌گردد (openpyxl
-      تاریخ را میلادی می‌دهد) و نیازی به تبدیل ندارد.
-    - اگر رشتهٔ متنی باشد: سال 1300 تا 1499 شمسی فرض شده و با jdatetime به میلادی تبدیل
-      می‌شود؛ در غیر این صورت میلادی تفسیر می‌شود.
+    ورودی‌ها می‌توانند سلول تاریخ/ساعت اکسل، سریال عددی اکسل، متن شمسی
+    (با ارقام فارسی/عربی)، متن میلادی یا ``YYYYMMDD`` باشند. خروجی همیشه
+    یک ``date`` میلادی برای ذخیره در سند حسابداری است.
     """
+    import re
+
     import jdatetime
 
     if isinstance(value, datetime):
         return value.date()
     if isinstance(value, date):
         return value
-    if not value:
-        return None
-    s = str(value).strip()
-    if not s:
+    if value is None or value == '':
         return None
 
-    # نرمال‌سازی ارقام فارسی/عربی و جداکننده‌ها
-    s = normalize(s).replace('/', '-').replace('.', '-').replace('،', '-')
+    # سریال تاریخ اکسل (مثلاً 45200) یا عدد ۸ رقمی 14031225
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        if float(value).is_integer():
+            numeric_text = str(int(value))
+            if len(numeric_text) == 8 and 1300 <= int(numeric_text[:4]) <= 1499:
+                return _parse_date(numeric_text)
+            if 20000 <= float(value) <= 2958465:
+                try:
+                    from openpyxl.utils.datetime import from_excel
 
-    # فرمت شمسی: 1403/05/12 یا 1403-05-12
-    for fmt in ('%Y-%m-%d', '%Y/%m/%d'):
-        try:
-            d = datetime.strptime(s, fmt)
-        except ValueError:
-            continue
-        if 1300 <= d.year <= 1499:
-            try:
-                return jdatetime.date(d.year, d.month, d.day).togregorian()
-            except Exception:
-                return None
-        return d.date()
+                    return from_excel(value).date()
+                except Exception:  # noqa: BLE001
+                    return None
+        value = numeric_text if 'numeric_text' in locals() else str(value)
 
-    # تاریخ هجری شمسی بدون جداکننده: 14030512
-    if s.isdigit() and len(s) in (8,):
+    text = str(value).strip()
+    if not text:
+        return None
+
+    # حذف بخش زمان؛ ورودی‌هایی مثل «1403/12/25 00:00:00» یا ISO
+    text = re.split(r'[T\s]+', text, maxsplit=1)[0]
+    text = normalize(text).replace('/', '-').replace('.', '-').strip('-')
+
+    match = re.fullmatch(r'(\d{4})-(\d{1,2})-(\d{1,2})', text)
+    if match:
+        year, month, day = (int(part) for part in match.groups())
         try:
-            y, m, d = int(s[0:4]), int(s[4:6]), int(s[6:8])
-            if 1300 <= y <= 1499:
-                return jdatetime.date(y, m, d).togregorian()
-        except Exception:
-            pass
-    return None
+            if 1300 <= year <= 1499:
+                return jdatetime.date(year, month, day).togregorian()
+            return date(year, month, day)
+        except Exception:  # noqa: BLE001
+            return None
+
+    if text.isdigit() and len(text) == 8:
+        year, month, day = int(text[:4]), int(text[4:6]), int(text[6:])
+        try:
+            if 1300 <= year <= 1499:
+                return jdatetime.date(year, month, day).togregorian()
+            return date(year, month, day)
+        except Exception:  # noqa: BLE001
+            return None
+
+    if text.isdigit() and 20000 <= int(text) <= 2958465:
+        try:
+            from openpyxl.utils.datetime import from_excel
+
+            return from_excel(int(text)).date()
+        except Exception:  # noqa: BLE001
+            return None
+
+    # آخرین تلاش: ISO میلادی با زمان
+    try:
+        return datetime.fromisoformat(text).date()
+    except ValueError:
+        return None
 
 
 def _resolve_account(company, code, source_id=None):

@@ -32,7 +32,10 @@ from accounting.serializers import (
     ApprovalPolicySerializer, ApprovalStepSerializer, FinancialStatementApprovalSerializer,
     user_full_name,
 )
-from accounting.services import PostingService, SourcePostingService, AccountingError
+from accounting.services import (
+    PostingService, SourcePostingService, AccountingError,
+    advance_document_approval,
+)
 from accounting import coding, maintenance
 
 
@@ -843,7 +846,7 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
     def approve(self, request, pk=None):
         obj = self.get_object()
         try:
-            self._service(obj).approve()
+            advance_document_approval(obj, user=request.user)
         except AccountingError as e:
             return Response({'error': str(e)}, status=400)
         self._log(obj, 'approved', 'تأیید شد')
@@ -960,12 +963,94 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                 errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': str(e)})
         return Response({'posted': posted, 'errors': errors})
 
+    @action(detail=False, methods=['post'])
+    def bulk_approve(self, request):
+        """تأیید مرحله‌ای گروهی؛ همهٔ اسناد در انتظار یا انتخاب‌شده‌ها.
+
+        هر فراخوانی فقط مرحلهٔ جاری هر سند را تأیید می‌کند. اسناد دارای
+        ApprovalStep چندمرحله‌ای تا پایان آخرین مرحله در وضعیت submitted
+        می‌مانند و سپس به approved منتقل می‌شوند.
+        """
+        ids = request.data.get('ids') or []
+        approve_all = str(request.data.get('all') or '').lower() in ('1', 'true', 'yes')
+        qs = self.get_queryset().filter(status='submitted')
+        if not approve_all:
+            if not ids:
+                return Response({'error': 'هیچ سندی انتخاب نشده است.'}, status=400)
+            qs = qs.filter(id__in=ids)
+
+        approved = staged = 0
+        details = []
+        errors = []
+        for doc in qs.select_related('company'):
+            try:
+                final, step_no = advance_document_approval(doc, user=request.user)
+                self._log(doc, 'approved', f'تأیید گروهی - مرحله {step_no}' if step_no else 'تأیید گروهی')
+                details.append({
+                    'id': doc.id, 'number': doc.number or doc.pk,
+                    'final': final, 'step': step_no,
+                })
+                if final:
+                    approved += 1
+                else:
+                    staged += 1
+            except AccountingError as e:
+                errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': str(e)})
+
+        return Response({
+            'processed': approved + staged,
+            'approved': approved,
+            'staged': staged,
+            'details': details,
+            'errors': errors,
+        })
+
+    @action(detail=False, methods=['post'])
+    def bulk_delete(self, request):
+        """حذف گروهی اسناد قابل حذف؛ اسناد ثبت/قفل/برگشت‌خورده حذف نمی‌شوند."""
+        ids = request.data.get('ids') or []
+        delete_all = str(request.data.get('all') or '').lower() in ('1', 'true', 'yes')
+        protected_statuses = ('posted', 'locked', 'reversed')
+        base = self.get_queryset()
+
+        if delete_all:
+            candidates = base.exclude(status__in=protected_statuses)
+            requested = base.filter(status__in=protected_statuses)
+            errors = [
+                {'id': doc.id, 'number': doc.number or doc.pk, 'error': 'سند ثبت/قفل/برگشت‌خورده قابل حذف نیست.'}
+                for doc in requested
+            ]
+        else:
+            if not ids:
+                return Response({'error': 'هیچ سندی انتخاب نشده است.'}, status=400)
+            candidates = base.filter(id__in=ids).exclude(status__in=protected_statuses)
+            requested = base.filter(id__in=ids, status__in=protected_statuses)
+            errors = [
+                {'id': doc.id, 'number': doc.number or doc.pk, 'error': 'سند ثبت/قفل/برگشت‌خورده قابل حذف نیست.'}
+                for doc in requested
+            ]
+
+        deleted = 0
+        deleted_ids = []
+        for doc in candidates:
+            deleted_ids.append(doc.id)
+            doc.delete()
+            deleted += 1
+
+        return Response({
+            'deleted': deleted,
+            'deleted_ids': deleted_ids,
+            'errors': errors,
+        })
+
     @action(detail=False, methods=['get'])
     def control(self, request):
         """کنترل اسناد: اسناد نامتوازن، در انتظار، آمادهٔ ثبت، قطعی و برگشتی."""
-        qs = self.get_queryset()
+        qs = self.get_queryset().prefetch_related('approval_steps')
 
         def _doc(d):
+            steps = list(d.approval_steps.all())
+            pending_steps = [s for s in steps if s.decision == ApprovalStep.Decision.PENDING]
             return {
                 'id': d.id,
                 'number': d.number or d.pk,
@@ -976,6 +1061,8 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                 'total_debit': float(d.total_debit),
                 'total_credit': float(d.total_credit),
                 'journal_name': d.journal.name if d.journal else None,
+                'approval_stage': pending_steps[0].step_no if pending_steps else 0,
+                'approval_total': len(steps),
             }
 
         unbalanced = [

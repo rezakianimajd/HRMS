@@ -206,6 +206,52 @@ class PostingService:
             return reversal
 
 
+def advance_document_approval(document, user=None, comment=''):
+    """یک مرحله از گردش‌کار تأیید را جلو می‌برد.
+
+    اگر برای سند ApprovalStep تعریف شده باشد، فقط مرحلهٔ جاری تأیید می‌شود و
+    سند تا پایان آخرین مرحله در وضعیت «در انتظار تأیید» می‌ماند. برای اسناد
+    قدیمی بدون مرحله، رفتار قبلی (تأیید مستقیم) حفظ می‌شود.
+
+    returns: (approved_final, step_no)
+    """
+    from accounting.models import ApprovalStep
+
+    if document.status != 'submitted':
+        raise AccountingError('فقط سند «در انتظار تأیید» را می‌توان تأیید کرد.')
+
+    pending = document.approval_steps.filter(
+        decision=ApprovalStep.Decision.PENDING,
+    ).order_by('step_no')
+    step = pending.first()
+    if step:
+        step.decision = ApprovalStep.Decision.APPROVED
+        step.approver = user
+        step.decided_at = timezone.now()
+        step.comment = comment or ''
+        step.save(update_fields=['decision', 'approver', 'decided_at', 'comment', 'updated_at'])
+        if not document.approval_steps.filter(decision=ApprovalStep.Decision.PENDING).exists():
+            document.status = 'approved'
+            document.approved_by = user
+            document.save(update_fields=['status', 'approved_by', 'updated_at'])
+            return True, step.step_no
+        return False, step.step_no
+
+    PostingService(document, user=user).approve()
+    return True, 0
+
+
+def advance_document_approval_to_final(document, user=None, comment=''):
+    """همهٔ مراحل باقی‌مانده را برای یک سند تأیید می‌کند (برای عملیات گروهی)."""
+    last_step = 0
+    approved = False
+    while True:
+        approved, last_step = advance_document_approval(document, user, comment)
+        if approved:
+            return True, last_step
+        document.refresh_from_db(fields=['status', 'approved_by'])
+
+
 class SourcePostingService:
     """Idempotent posting from a source transaction via a template."""
 
