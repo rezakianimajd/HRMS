@@ -617,7 +617,9 @@ export const EditorStepNav = ({ steps, active, onChange, accent }) => {
 export const AttachmentPicker = ({
   documents = [], pendingFiles = [], onAdd, onRemovePending, onRemoveDocument, accent,
   buttonLabel = 'افزودن PDF الحاقیه', emptyText = 'فایل PDF الحاقیه را اینجا پیوست کنید.',
-  documentLabel = 'الحاقیه',
+  documentLabel = 'الحاقیه', accept = 'application/pdf,.pdf',
+  hint = 'فقط PDF · حداکثر ۲۵ مگابایت برای هر فایل',
+  icon: DocumentIcon = PictureAsPdfIcon,
 }) => {
   const { theme } = useAddendumStyle();
   const handleFiles = (event) => {
@@ -629,10 +631,10 @@ export const AttachmentPicker = ({
       <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
         <Button component="label" variant="outlined" size="small" startIcon={<AttachFileIcon />}>
           {buttonLabel}
-          <input hidden type="file" accept="application/pdf,.pdf" multiple onChange={handleFiles} />
+          <input hidden type="file" accept={accept} multiple onChange={handleFiles} />
         </Button>
         <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
-          فقط PDF · حداکثر ۲۵ مگابایت برای هر فایل
+          {hint}
         </Typography>
       </Stack>
       {!documents.length && !pendingFiles.length ? (
@@ -640,7 +642,7 @@ export const AttachmentPicker = ({
           py: 2, textAlign: 'center', borderRadius: '11px', border: `1px dashed ${theme.palette.divider}`,
           bgcolor: alpha(accent || theme.palette.primary.main, 0.025),
         }}>
-          <PictureAsPdfIcon sx={{ fontSize: 22, color: theme.palette.text.disabled, mb: 0.4 }} />
+          <DocumentIcon sx={{ fontSize: 22, color: theme.palette.text.disabled, mb: 0.4 }} />
           <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
             {emptyText}
           </Typography>
@@ -652,7 +654,7 @@ export const AttachmentPicker = ({
               p: 0.85, borderRadius: '10px', border: `1px solid ${theme.palette.divider}`,
               display: 'flex', alignItems: 'center', gap: 0.75,
             }}>
-              <PictureAsPdfIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
+              <DocumentIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800 }}>{document.title || 'PDF الحاقیه'}</Typography>
                 <Typography sx={{ fontSize: 8.3, color: theme.palette.text.secondary }}>
@@ -680,7 +682,7 @@ export const AttachmentPicker = ({
               bgcolor: alpha(accent || theme.palette.primary.main, 0.025),
               display: 'flex', alignItems: 'center', gap: 0.75,
             }}>
-              <PictureAsPdfIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
+              <DocumentIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800 }}>{file.name}</Typography>
                 <Typography sx={{ fontSize: 8.3, color: theme.palette.text.secondary }}>
@@ -700,16 +702,16 @@ export const AttachmentPicker = ({
   );
 };
 
-export const AttachmentLinks = ({ documents = [] }) => {
+export const AttachmentLinks = ({ documents = [], icon: DocumentIcon = PictureAsPdfIcon, documentLabel = 'PDF الحاقیه' }) => {
   const { theme } = useAddendumStyle();
   if (!documents.length) return null;
   return (
     <Stack spacing={0.55}>
       {documents.map((document) => (
         <Button key={document.id} component="a" href={document.file_url || document.file} target="_blank"
-          rel="noreferrer" variant="outlined" size="small" startIcon={<PictureAsPdfIcon />}
+          rel="noreferrer" variant="outlined" size="small" startIcon={<DocumentIcon />}
           sx={{ justifyContent: 'flex-start', fontSize: 9.2, borderColor: theme.palette.divider }}>
-          {document.title || 'PDF الحاقیه'}
+          {document.title || documentLabel}
         </Button>
       ))}
     </Stack>

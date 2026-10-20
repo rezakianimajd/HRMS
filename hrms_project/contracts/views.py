@@ -274,7 +274,10 @@ class ContractDocumentViewSet(BaseContractViewSet):
         guarantee_id = self.request.query_params.get('guarantee')
         if guarantee_id:
             qs = qs.filter(guarantee_id=guarantee_id)
-        return qs.select_related('contract', 'addendum', 'guarantee')
+        statement_id = self.request.query_params.get('statement')
+        if statement_id:
+            qs = qs.filter(statement_id=statement_id)
+        return qs.select_related('contract', 'addendum', 'guarantee', 'statement')
 
 
 class InvoiceViewSet(BaseContractViewSet):
@@ -294,7 +297,7 @@ class InvoiceViewSet(BaseContractViewSet):
 
 class StatementViewSet(BaseContractViewSet):
     serializer_class = StatementSerializer
-    queryset = Statement.objects.all()
+    queryset = Statement.objects.select_related('contract', 'currency').prefetch_related('documents')
 
     def get_queryset(self):
         qs = super().get_queryset()

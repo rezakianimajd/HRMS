@@ -1,29 +1,54 @@
-import React, { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Button, Avatar, CircularProgress, Stack, Grid,
-  TextField, FormControl, InputLabel, Select, MenuItem, IconButton,
-  FormControlLabel, Switch, Chip, Divider, InputAdornment,
+  Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, Dialog,
+  DialogActions, DialogContent, DialogTitle, Divider, FormControl,
+  FormControlLabel, Grid, IconButton, InputAdornment, InputLabel, MenuItem,
+  Paper, Select, Snackbar, Stack, Switch, TextField, ToggleButton,
+  ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
+import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import DescriptionIcon from '@mui/icons-material/Description';
+import DownloadIcon from '@mui/icons-material/Download';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
+import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import SaveIcon from '@mui/icons-material/Save';
 import SearchIcon from '@mui/icons-material/Search';
-import PrintIcon from '@mui/icons-material/Print';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import DescriptionIcon from '@mui/icons-material/Description';
-import AddCircleIcon from '@mui/icons-material/AddCircle';
-import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
+import TaskAltIcon from '@mui/icons-material/TaskAlt';
+import TableRowsIcon from '@mui/icons-material/TableRows';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import html2canvas from 'html2canvas';
-import { formatPersianNumber, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
-import { toJalali } from '../../core/utils/dateUtils';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../../core/utils/numberUtils';
+import { getJalaliParts, toJalali } from '../../core/utils/dateUtils';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
-import ContractPicker from '../../core/components/ui/ContractPicker';
+import ContractListPicker from '../../core/components/ui/ContractListPicker';
+import MoneyInput from '../../core/components/ui/MoneyInput';
+import PageHeader from '../../core/components/ui/PageHeader';
 import useCompany from '../../core/hooks/useCompany';
+import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
+import { ColumnChart } from '../../core/components/charts/Charts';
+import { AttachmentPicker } from './AddendumWorkspaceUI';
+import {
+  ContractSnapshotCard, FinancialCoverageCard, StatusNav, StatementCard,
+  StatementDetailDrawer, StatementLanding, StatementTable, STATEMENT_ACCENT,
+  contractAmountOf, currencyFor, dateLabel, money, rowMetrics, statementStatus,
+} from './StatementWorkspaceUI';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
@@ -330,21 +355,43 @@ const Field = ({ label, value, strong, color }) => (
 /* ------------------------------------------------------------------ */
 /* Main editor page                                                    */
 /* ------------------------------------------------------------------ */
+const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+const GREEN = '#0f766e';
+const AMBER = '#b45309';
+const BLUE = '#2563eb';
+const compactMoney = (value, currency = '') => {
+  const amount = Number(value) || 0;
+  if (Math.abs(amount) >= 1000000000) return `${formatPersianNumber((amount / 1000000000).toFixed(1))} میلیارد ${currency}`.trim();
+  if (Math.abs(amount) >= 1000000) return `${formatPersianNumber((amount / 1000000).toFixed(1))} میلیون ${currency}`.trim();
+  return `${formatPersianNumber(amount)} ${currency}`.trim();
+};
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const asArray = (value) => (Array.isArray(value) ? value : value?.results || []);
+
 const StatementEditorPage = () => {
   const qc = useQueryClient();
+  const theme = useTheme();
+  const navigate = useNavigate();
   const { currentCompany } = useCompany();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlContract = searchParams.get('contract') || '';
   const [contractId, setContractId] = useState(urlContract);
   const [search, setSearch] = useState('');
-  const [mode, setMode] = useState('list');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [view, setView] = useState('cards');
+  const [detail, setDetail] = useState(null);
+  const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState({});
   const [rateOverride, setRateOverride] = useState('');
   const [printPending, setPrintPending] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
 
   const { data: companyProfile } = useQuery({
     queryKey: ['company-profile'],
-    queryFn: () => axiosInstance.get('/settings/company-profile/').then((r) => r.data),
+    queryFn: () => axiosInstance.get('/settings/company-profile/').then((response) => response.data),
   });
   const company = {
     name: companyProfile?.company_name || companyProfile?.legal_name || currentCompany?.name || '',
@@ -352,384 +399,875 @@ const StatementEditorPage = () => {
     logo_url: companyProfile?.logo_url || currentCompany?.logo_url || null,
   };
 
-  const { data: contracts } = useQuery({
-    queryKey: ['external-contracts', 'statement-editor'],
-    queryFn: () => axiosInstance.get('/external-contracts/').then((r) => r.data),
+  const { data: contracts, isLoading: contractsLoading } = useQuery({
+    queryKey: ['external-contracts', 'statement-workspace'],
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((response) => response.data),
   });
-  const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
-  const currentContract = contractList.find((c) => String(c.id) === String(contractId));
+  const contractList = asArray(contracts);
 
-  // تعاریف اولیه: اضافات، کسورات، ارزها
-  const { data: additionsDef } = useQuery({ queryKey: ['additions'], queryFn: () => axiosInstance.get('/additions/').then((r) => r.data) });
-  const { data: deductionsDef } = useQuery({ queryKey: ['deductions'], queryFn: () => axiosInstance.get('/deductions/').then((r) => r.data) });
-  const { data: currencies } = useQuery({ queryKey: ['currencies'], queryFn: () => axiosInstance.get('/currencies/').then((r) => r.data) });
-  const additionList = Array.isArray(additionsDef) ? additionsDef : additionsDef?.results || [];
-  const deductionList = Array.isArray(deductionsDef) ? deductionsDef : deductionsDef?.results || [];
-  const currencyList = Array.isArray(currencies) ? currencies : currencies?.results || [];
-
-  const { data, isLoading } = useQuery({
-    queryKey: ['statements', contractId],
-    queryFn: () => axiosInstance.get('/contract-statements/', { params: { contract: contractId } }).then((r) => r.data),
-    enabled: !!contractId,
+  const { data: statementsData, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['contract-statements'],
+    queryFn: () => axiosInstance.get('/contract-statements/', { params: { page_size: 500 } }).then((response) => response.data),
   });
-  const list = Array.isArray(data) ? data : data?.results || [];
-  const prevStatement = list.length ? [...list].sort((a, b) => (b.date || '').localeCompare(a.date || ''))[0] : null;
+  const allStatements = asArray(statementsData);
+
+  const { data: contractDetail } = useQuery({
+    queryKey: ['contract-statement-detail', contractId],
+    queryFn: () => axiosInstance.get(`/external-contracts/${contractId}/`).then((response) => response.data),
+    enabled: Boolean(contractId),
+  });
+
+  const { data: additionsDef } = useQuery({ queryKey: ['additions'], queryFn: () => axiosInstance.get('/additions/').then((response) => response.data) });
+  const { data: deductionsDef } = useQuery({ queryKey: ['deductions'], queryFn: () => axiosInstance.get('/deductions/').then((response) => response.data) });
+  const { data: currencies } = useQuery({ queryKey: ['currencies'], queryFn: () => axiosInstance.get('/currencies/').then((response) => response.data) });
+  const additionList = asArray(additionsDef);
+  const deductionList = asArray(deductionsDef);
+  const currencyList = asArray(currencies);
+
+  const { data: paymentsData, isLoading: paymentsLoading } = useQuery({
+    queryKey: ['contract-statement-payments', contractId],
+    queryFn: () => axiosInstance.get('/contract-payments/', { params: { contract: contractId, page_size: 500 } }).then((response) => response.data),
+    enabled: Boolean(contractId),
+  });
+  const payments = asArray(paymentsData);
+
+  const selectedContract = contractDetail
+    || contractList.find((contract) => String(contract.id) === String(contractId))
+    || null;
+  const scopedList = useMemo(
+    () => (contractId ? allStatements.filter((row) => String(row.contract) === String(contractId)) : []),
+    [allStatements, contractId],
+  );
+  const currenciesById = useMemo(
+    () => currencyList.reduce((map, currency) => ({ ...map, [String(currency.id)]: currency }), {}),
+    [currencyList],
+  );
+  const currencyLabel = normalizeCurrencyLabel(
+    selectedContract?.currency_name || selectedContract?.currency_symbol
+    || currenciesById[String(selectedContract?.currency)]?.name || 'ریال',
+  );
+  const selectedContractAmount = contractAmountOf(selectedContract);
+  const lastStatement = useMemo(
+    () => [...scopedList].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || null,
+    [scopedList],
+  );
+
+  const counts = useMemo(() => {
+    const next = { all: scopedList.length, approved: 0, pending: 0 };
+    scopedList.forEach((row) => {
+      if (row.is_approved) next.approved += 1;
+      else next.pending += 1;
+    });
+    return next;
+  }, [scopedList]);
+
+  const totals = useMemo(() => {
+    const metrics = scopedList.map((row) => rowMetrics(row));
+    const net = metrics.reduce((sum, item) => sum + item.net, 0);
+    const work = metrics.reduce((sum, item) => sum + item.work, 0);
+    const cumulative = lastStatement ? rowMetrics(lastStatement).amount : 0;
+    const paid = payments
+      .filter((payment) => payment.statement)
+      .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    return {
+      net, work, cumulative, paid,
+      outstanding: Math.max(0, net - paid),
+      approvedCount: counts.approved,
+      pendingCount: counts.pending,
+      overContract: Math.max(0, cumulative - selectedContractAmount),
+    };
+  }, [scopedList, payments, counts, selectedContractAmount, lastStatement]);
+  const contractProgress = selectedContractAmount > 0 ? Math.min(100, (totals.cumulative / selectedContractAmount) * 100) : 0;
+
+  const statementCountByContract = useMemo(
+    () => allStatements.reduce((acc, row) => {
+      const key = String(row.contract);
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {}),
+    [allStatements],
+  );
+
+  const pendingRows = useMemo(
+    () => [...allStatements]
+      .filter((row) => !row.is_approved)
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+      .slice(0, 6),
+    [allStatements],
+  );
+
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    let result = scopedList.filter((row) => {
+      if (statusFilter === 'approved' && !row.is_approved) return false;
+      if (statusFilter === 'pending' && row.is_approved) return false;
+      if (!query) return true;
+      return [row.number, row.contract_subject, row.description, ...(row.documents || []).map((doc) => doc.title)]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    });
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'amount') return Number(b.amount || 0) - Number(a.amount || 0);
+      if (sortBy === 'net') return rowMetrics(b).net - rowMetrics(a).net;
+      if (sortBy === 'work') return rowMetrics(b).work - rowMetrics(a).work;
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+    return result;
+  }, [scopedList, search, statusFilter, sortBy]);
+
+  const monthlyData = useMemo(() => {
+    const buckets = new Map();
+    scopedList.forEach((row) => {
+      if (!row.date) return;
+      const parts = getJalaliParts(row.date);
+      if (!parts) return;
+      const key = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+      buckets.set(key, (buckets.get(key) || 0) + rowMetrics(row).net);
+    });
+    return [...buckets.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, value]) => {
+        const month = Number(key.split('-')[1]);
+        return { label: MONTH_NAMES[month - 1] || key, value };
+      });
+  }, [scopedList]);
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['contract-statements'] });
+    qc.invalidateQueries({ queryKey: ['contract-statement-payments', contractId] });
+    qc.invalidateQueries({ queryKey: ['external-contracts'] });
+  };
+
+  const sanitizeStatement = (payload) => {
+    const additions = (Array.isArray(payload.additions) ? payload.additions : [])
+      .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Number(item.amount) || 0 }));
+    const deductions = (Array.isArray(payload.deductions) ? payload.deductions : [])
+      .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Number(item.amount) || 0 }));
+    const amount = Math.max(0, Number(payload.amount) || 0);
+    const previous = Math.max(0, Number(payload.cumulative_previous_amount) || 0);
+    const work = Math.max(0, amount - previous);
+    const valueAddedTax = Math.max(0, Number(payload.value_added_tax) || 0);
+    const otherAdditions = Math.max(0, Number(payload.other_additions) || 0);
+    const additionsTotal = additions.reduce((sum, item) => sum + item.amount, 0) + valueAddedTax + otherAdditions;
+    const deductionsTotal = deductions.reduce((sum, item) => sum + item.amount, 0);
+    return {
+      contract: Number(payload.contract) || null,
+      number: payload.number || '',
+      date: payload.date || null,
+      amount,
+      cumulative_previous_amount: previous,
+      work_done: work,
+      value_added_tax: valueAddedTax,
+      other_additions: otherAdditions,
+      additions: additions.map(({ code, description, percent, amount: itemAmount }) => ({ code, description, percent, amount: itemAmount })),
+      additions_total: additionsTotal,
+      deductions: deductions.map(({ title, description, percent, amount: itemAmount, note }) => ({ title, description, percent, amount: itemAmount, note })),
+      deductions_total: deductionsTotal,
+      net_amount: work + additionsTotal - deductionsTotal,
+      currency: payload.currency || null,
+      exchange_rate: Number(rate) || null,
+      is_approved: Boolean(payload.is_approved),
+      description: payload.description || '',
+    };
+  };
+
+  const uploadStatementFiles = async (statementId, contract, files = []) => {
+    await Promise.all(files.map((file) => {
+      const body = new FormData();
+      body.append('contract', contract);
+      body.append('statement', statementId);
+      body.append('title', (file.name.replace(/\.[^.]+$/, '') || 'مدرک صورت‌وضعیت').slice(0, 200));
+      body.append('file', file);
+      return axiosInstance.post('/contract-documents/', body);
+    }));
+  };
 
   const save = useMutation({
-    mutationFn: (p) => (p.id
-      ? axiosInstance.patch(`/contract-statements/${p.id}/`, p)
-      : axiosInstance.post('/contract-statements/', p)),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['statements'] }); setMode('list'); setForm({}); },
-  });
-  const del = useMutation({
-    mutationFn: (id) => axiosInstance.delete(`/contract-statements/${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['statements'] }),
+    mutationFn: async (payload) => {
+      const clean = sanitizeStatement(payload);
+      const response = payload.id
+        ? await axiosInstance.patch(`/contract-statements/${payload.id}/`, clean)
+        : await axiosInstance.post('/contract-statements/', clean);
+      const statementId = response.data?.id || payload.id;
+      let uploadError = '';
+      if (payload.pendingFiles?.length) {
+        try {
+          await uploadStatementFiles(statementId, clean.contract, payload.pendingFiles);
+        } catch (uploadFailure) {
+          const data = uploadFailure.response?.data;
+          uploadError = typeof data === 'string'
+            ? data
+            : (data?.file?.[0] || data?.statement?.[0] || data?.detail || 'بارگذاری مدارک انجام نشد');
+        }
+      }
+      return { response, uploadError };
+    },
+    onSuccess: ({ uploadError }) => {
+      invalidateAll();
+      setDialog(false);
+      setForm({});
+      setRateOverride('');
+      setError('');
+      setToast(uploadError
+        ? `صورت‌وضعیت ذخیره شد اما بارگذاری مدارک ناقص بود: ${uploadError}`
+        : 'صورت‌وضعیت و مدارک ذخیره شدند');
+    },
+    onError: (event) => {
+      const data = event.response?.data;
+      const first = typeof data === 'string'
+        ? data
+        : Array.isArray(data)
+          ? data[0]
+          : data && Object.values(data).flat()[0];
+      setError(typeof first === 'string' ? first : 'ذخیره صورت‌وضعیت انجام نشد.');
+    },
   });
 
-  const setField = (key, value) => setForm((p) => ({ ...p, [key]: value }));
+  const toggleApproval = useMutation({
+    mutationFn: (row) => axiosInstance.patch(`/contract-statements/${row.id}/`, { is_approved: !row.is_approved }),
+    onSuccess: (_data, row) => {
+      invalidateAll();
+      setDetail(null);
+      setToast(row.is_approved ? 'تأیید صورت‌وضعیت لغو شد' : 'صورت‌وضعیت تأیید شد');
+    },
+    onError: () => setToast('تغییر وضعیت تأیید انجام نشد'),
+  });
+
+  const remove = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/contract-statements/${id}/`),
+    onSuccess: () => {
+      invalidateAll();
+      setConfirmDelete(null);
+      setDetail(null);
+      setToast('صورت‌وضعیت حذف شد');
+    },
+    onError: () => setToast('حذف صورت‌وضعیت انجام نشد'),
+  });
+
+  const removeDocument = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/contract-documents/${id}/`),
+    onSuccess: (_data, id) => {
+      setForm((previous) => ({
+        ...previous,
+        documents: (previous.documents || []).filter((document) => document.id !== id),
+      }));
+      invalidateAll();
+      setToast('مدرک پیوست حذف شد');
+    },
+    onError: () => setError('حذف مدرک پیوست انجام نشد'),
+  });
+
+  useEffect(() => { setContractId(urlContract); }, [urlContract]);
+
+  useEffect(() => {
+    setSearch('');
+    setStatusFilter('all');
+    setSortBy('newest');
+    setView('cards');
+    setDetail(null);
+  }, [contractId]);
+
+  useEffect(() => {
+    if (dialog && printPending) {
+      const timer = setTimeout(() => { printStatement(); setPrintPending(false); }, 550);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [dialog, printPending]);
+
+  const selectContract = (contract) => {
+    const next = String(contract.id);
+    setContractId(next);
+    setSearchParams({ contract: next });
+  };
+  const clearContract = () => {
+    setContractId('');
+    setSearchParams({});
+  };
+  const selectContractById = (id) => {
+    const target = contractList.find((contract) => String(contract.id) === String(id));
+    if (target) selectContract(target);
+  };
+
+  const setField = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
 
   const additions = Array.isArray(form.additions) ? form.additions : [];
   const deductions = Array.isArray(form.deductions) ? form.deductions : [];
-  const additionsTotal = additions.reduce((s, a) => s + num(a.amount), 0);
-  const deductionsTotal = deductions.reduce((s, d) => s + num(d?.amount), 0);
+  const valueAddedTax = num(form.value_added_tax);
+  const otherAdditions = num(form.other_additions);
+  const additionsTotal = additions.reduce((sum, item) => sum + num(item.amount), 0) + valueAddedTax + otherAdditions;
+  const previewAdditions = [
+    ...additions,
+    ...(valueAddedTax ? [{ description: 'ارزش افزوده', amount: valueAddedTax }] : []),
+    ...(otherAdditions ? [{ description: 'سایر اضافات', amount: otherAdditions }] : []),
+  ];
+  const deductionsTotal = deductions.reduce((sum, item) => sum + num(item.amount), 0);
   const cumulativePrev = num(form.cumulative_previous_amount);
   const cumulativeThis = num(form.amount);
-  const workDone = cumulativeThis - cumulativePrev;
+  const workDone = Math.max(0, cumulativeThis - cumulativePrev);
   const netAmount = workDone + additionsTotal - deductionsTotal;
-
-  // نرخ ارز انتخاب‌شده (قابل ویرایش توسط کاربر؛ پیش‌فرض از ارز قرارداد)
-  const selCurrency = currencyList.find((c) => String(c.id) === String(form.currency)) || null;
-  const currencyLabel = normalizeCurrencyLabel(selCurrency?.name || selCurrency?.symbol);
-  const baseRate = num(selCurrency?.exchange_rate || 1);
+  const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
+  const formCurrencyLabel = normalizeCurrencyLabel(
+    formCurrency?.name || formCurrency?.symbol || currencyLabel,
+  );
+  const baseRate = num(formCurrency?.exchange_rate || 1);
   const rate = rateOverride !== '' && rateOverride != null ? num(rateOverride) : baseRate;
+  const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
+    || (String(form.contract) === String(contractId) ? selectedContract : null);
+  const formContractAmount = contractAmountOf(formContract);
+  const overContract = formContractAmount > 0 && cumulativeThis > formContractAmount;
+  const progress = formContractAmount > 0 ? Math.min(100, (cumulativeThis / formContractAmount) * 100) : 0;
 
   const openNew = () => {
+    const previousAmount = lastStatement ? num(lastStatement.amount) : 0;
     setForm({
       contract: contractId,
-      is_approved: false,
-      amount: 0,
-      cumulative_previous_amount: prevStatement ? Number(prevStatement.amount || 0) : 0,
-      currency: currentContract?.currency || '',
+      number: '',
+      date: todayIso(),
+      amount: previousAmount,
+      cumulative_previous_amount: previousAmount,
+      currency: selectedContract?.currency || '',
+      value_added_tax: 0,
+      other_additions: 0,
       additions: [],
       deductions: [],
+      documents: [],
+      pendingFiles: [],
+      is_approved: false,
+      description: '',
     });
     setRateOverride('');
-    setMode('form');
+    setError('');
+    setDetail(null);
+    setDialog(true);
   };
+
   const openEdit = (row) => {
     setForm({
       ...row,
-      is_approved: !!row.is_approved,
+      contract: String(row.contract || ''),
       amount: Number(row.amount || 0),
       cumulative_previous_amount: Number(row.cumulative_previous_amount || 0),
+      value_added_tax: Number(row.value_added_tax || 0),
+      other_additions: Number(row.other_additions || 0),
       additions: Array.isArray(row.additions) ? row.additions : [],
       deductions: Array.isArray(row.deductions) ? row.deductions : [],
+      documents: Array.isArray(row.documents) ? row.documents : [],
+      pendingFiles: [],
+      is_approved: Boolean(row.is_approved),
     });
     setRateOverride(row.exchange_rate != null && row.exchange_rate !== '' ? String(row.exchange_rate) : '');
-    setMode('form');
+    setError('');
+    setDetail(null);
+    setDialog(true);
   };
-  const closeForm = () => { setMode('list'); setForm({}); setRateOverride(''); };
 
-  // After opening a saved row via the list "print" button, auto-print once the
-  // preview has rendered.
-  useEffect(() => {
-    if (mode === 'form' && printPending) {
-      const t = setTimeout(() => { printStatement(); setPrintPending(false); }, 300);
-      return () => clearTimeout(t);
+  const openPrint = (row) => {
+    setPrintPending(true);
+    openEdit(row);
+  };
+
+  const closeEditor = () => {
+    if (save.isPending) return;
+    setDialog(false);
+    setForm({});
+    setRateOverride('');
+    setError('');
+    setPrintPending(false);
+  };
+
+  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, percent: 0 }]);
+  const removeDeduction = (index) => setField('deductions', deductions.filter((_, current) => current !== index));
+  const updateDeduction = (index, key, value) => {
+    setField('deductions', deductions.map((item, current) => (current === index ? { ...item, [key]: value } : item)));
+  };
+  const chooseDeduction = (definition) => {
+    const percent = Number(definition.default_percent || 0);
+    setField('deductions', [...deductions, {
+      title: definition.description || definition.code,
+      percent,
+      amount: Math.round((cumulativeThis * percent) / 100),
+    }]);
+  };
+
+  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0 }]);
+  const removeAddition = (index) => setField('additions', additions.filter((_, current) => current !== index));
+  const updateAddition = (index, key, value) => {
+    setField('additions', additions.map((item, current) => (current === index ? { ...item, [key]: value } : item)));
+  };
+  const chooseAddition = (definition) => {
+    const percent = Number(definition.default_percent || 0);
+    setField('additions', [...additions, {
+      code: definition.code,
+      description: definition.description,
+      percent,
+      amount: Math.round((cumulativeThis * percent) / 100),
+    }]);
+  };
+
+  const addFiles = (files) => {
+    const accepted = [];
+    let rejection = '';
+    (files || []).forEach((file) => {
+      const ext = String(file.name || '').toLowerCase().split('.').pop();
+      if (!['pdf', 'jpg', 'jpeg', 'png', 'webp', 'xls', 'xlsx', 'doc', 'docx', 'zip', 'rar'].includes(ext)) {
+        rejection = 'فرمت‌های مجاز: PDF، تصویر، اکسل، Word و ZIP.';
+        return;
+      }
+      if (Number(file.size) > 25 * 1024 * 1024) {
+        rejection = 'حجم هر فایل نباید بیشتر از ۲۵ مگابایت باشد.';
+        return;
+      }
+      accepted.push(file);
+    });
+    if (accepted.length) {
+      setField('pendingFiles', [...(form.pendingFiles || []), ...accepted].slice(0, 10));
     }
-  }, [mode, printPending]);
+    if (rejection) setError(rejection);
+  };
+  const removePendingFile = (index) => setField('pendingFiles', (form.pendingFiles || []).filter((_, current) => current !== index));
 
   const submit = () => {
-    const payload = {
-      ...form,
-      contract: contractId,
-      amount: cumulativeThis,
-      cumulative_previous_amount: cumulativePrev,
-      work_done: workDone,
-      additions: additions,
-      additions_total: additionsTotal,
-      deductions: deductions,
-      deductions_total: deductionsTotal,
-      net_amount: netAmount,
-      exchange_rate: rate || null,
-    };
-    save.mutate(payload);
+    if (!form.contract) { setError('قرارداد مرتبط را انتخاب کنید.'); return; }
+    if (!form.date) { setError('تاریخ صورت‌وضعیت را وارد کنید.'); return; }
+    if (cumulativeThis < cumulativePrev) {
+      setError('مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.');
+      return;
+    }
+    setError('');
+    save.mutate(form);
   };
 
-  /* کسورات */
-  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, percent: 0 }]);
-  const removeDeduction = (i) => setField('deductions', deductions.filter((_, idx) => idx !== i));
-  const updateDeduction = (i, key, val) => {
-    const next = deductions.map((d, idx) => (idx === i ? { ...d, [key]: val } : d));
-    setField('deductions', next);
-  };
-  const chooseDeduction = (def) => {
-    const item = { title: def.description || def.code, percent: Number(def.default_percent || 0), amount: Math.round((cumulativeThis * num(def.default_percent)) / 100) };
-    setField('deductions', [...deductions, item]);
-  };
-
-  /* اضافات */
-  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0 }]);
-  const removeAddition = (i) => setField('additions', additions.filter((_, idx) => idx !== i));
-  const updateAddition = (i, key, val) => {
-    const next = additions.map((a, idx) => (idx === i ? { ...a, [key]: val } : a));
-    setField('additions', next);
-  };
-  const chooseAddition = (def) => {
-    setField('additions', [...additions, { code: def.code, description: def.description, percent: Number(def.default_percent || 0), amount: Math.round((cumulativeThis * num(def.default_percent)) / 100) }]);
+  const exportCsv = () => {
+    const headers = ['شماره', 'تاریخ', 'مبلغ تجمعی', 'کارکرد دوره', 'اضافات', 'کسورات', 'قابل پرداخت', 'وضعیت', 'توضیحات'];
+    const rows = filtered.map((row) => {
+      const metrics = rowMetrics(row);
+      return [
+        row.number || '', row.date || '', metrics.amount, metrics.work,
+        metrics.additionsTotal, metrics.deductionsTotal, metrics.net,
+        row.is_approved ? 'تأیید شده' : 'در انتظار', row.description || '',
+      ];
+    });
+    const csv = [headers, ...rows]
+      .map((cells) => cells.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `contract-statements-${contractId || 'all'}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
   };
 
-  if (mode === 'list') {
-    return (
-      <Box>
-        <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', ...glass }}>
-          <Avatar sx={{ width: 56, height: 56, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}66` }}>
-            <ReceiptLongIcon sx={{ color: '#fff' }} />
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 200 }}>
-            <Typography variant="h6" fontWeight={800} sx={{ color: COLOR_DARK }}>صورت‌وضعیت‌های قرارداد</Typography>
-            <Typography variant="body2" color="textSecondary">ثبت صورت‌وضعیت با تفکیک کامل مالی و پیش‌نمایش زنده</Typography>
-          </Box>
-          <Button startIcon={<AddIcon />} variant="contained" disabled={!contractId} onClick={openNew}
-            sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 3 }}>
-            صورت‌وضعیت جدید
-          </Button>
-        </Paper>
-
-        {!contractId ? (
-          <Paper sx={{ p: 2, ...glass }}>
-            <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
-              انتخاب قرارداد ({formatPersianNumber(contractList.length)})
-            </Typography>
-            <ContractPicker
-              contracts={contractList}
-              onSelect={(c) => setContractId(String(c.id))}
-              height={520}
-            />
-          </Paper>
-        ) : (
-          <Paper sx={{ p: 2, ...glass }}>
-            <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap" sx={{ mb: 2 }}>
-              <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
-              <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
-                {currentContract?.subject || 'قرارداد'}
-              </Typography>
-              <TextField size="small" placeholder="جستجو در صورت‌وضعیت‌ها..." value={search} onChange={(e) => setSearch(e.target.value)} sx={{ minWidth: 220 }}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-              <Button startIcon={<AddIcon />} variant="contained" onClick={openNew}
-                sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px' }}>
-                صورت‌وضعیت جدید
-              </Button>
-            </Stack>
-
-            {isLoading ? (
-              <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
-            ) : list.filter(row => !search || String(row.number || '').toLowerCase().includes(search.trim().toLowerCase())).length === 0 ? (
-              <Typography variant="body2" color="textSecondary" textAlign="center" py={4}>موردی ثبت نشده است.</Typography>
-            ) : (
-              <Stack spacing={1.25}>
-                {list.filter(row => !search || String(row.number || '').toLowerCase().includes(search.trim().toLowerCase())).map((row) => (
-                  <Paper key={row.id} variant="outlined" sx={{ p: 1.6, borderRadius: '14px', display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap', background: 'rgba(255,255,255,0.55)' }}>
-                    <Box sx={{ flex: 1, minWidth: 0, display: 'flex', gap: 3, flexWrap: 'wrap' }}>
-                      <Box><Typography variant="caption" color="textSecondary" display="block">شماره</Typography><Typography variant="body2" fontWeight={700}>{row.number || '—'}</Typography></Box>
-                      <Box><Typography variant="caption" color="textSecondary" display="block">تاریخ</Typography><Typography variant="body2" fontWeight={700}>{toJalali(row.date)}</Typography></Box>
-                      <Box><Typography variant="caption" color="textSecondary" display="block">کارکرد دوره</Typography><Typography variant="body2" fontWeight={700}>{formatPersianNumber(row.work_done || 0)}</Typography></Box>
-                      <Box><Typography variant="caption" color="textSecondary" display="block">قابل پرداخت</Typography><Typography variant="body2" fontWeight={700} sx={{ color: '#059669' }}>{formatPersianNumber(row.net_amount || 0)}</Typography></Box>
-                      <Box><Typography variant="caption" color="textSecondary" display="block">تأیید</Typography><Chip size="small" label={row.is_approved ? 'تأیید شده' : 'در انتظار'} sx={{ fontWeight: 700, bgcolor: row.is_approved ? '#10b98122' : '#f59e0b22', color: row.is_approved ? '#059669' : '#b45309' }} /></Box>
-                    </Box>
-                    <IconButton size="small" onClick={() => { setPrintPending(true); openEdit(row); }} title="چاپ"><PrintIcon fontSize="small" color="primary" /></IconButton>
-                    <IconButton size="small" onClick={() => openEdit(row)} title="ویرایش"><EditIcon fontSize="small" /></IconButton>
-                    <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(row.id); }}><DeleteIcon fontSize="small" /></IconButton>
-                  </Paper>
-                ))}
-              </Stack>
-            )}
-          </Paper>
-        )}
-      </Box>
-    );
+  if (isLoading || contractsLoading) {
+    return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
   }
 
   return (
-    <Box sx={{ position: 'relative' }}>
-      <Box aria-hidden sx={{ position: 'fixed', inset: 0, zIndex: 0, pointerEvents: 'none', background: `radial-gradient(60% 50% at 85% 10%, ${COLOR}26, transparent 60%), radial-gradient(50% 45% at 12% 88%, ${COLOR}1f, transparent 60%), linear-gradient(135deg, #f6f8ff, #eef1ff)` }} />
+    <Box sx={{ pb: 1 }}>
+      <PageHeader
+        icon={<ReceiptLongIcon />}
+        title="صورت‌وضعیت‌های قرارداد"
+        badge={(
+          <Chip size="small" label={contractId ? `${formatPersianNumber(scopedList.length)} صورت‌وضعیت` : 'مدیریت صورت‌وضعیت‌ها'}
+            sx={{ height: 23, fontWeight: 800, bgcolor: alpha(STATEMENT_ACCENT, 0.08), color: STATEMENT_ACCENT }} />
+        )}
+        actions={(
+          <>
+            {contractId ? (
+              <Tooltip title="به‌روزرسانی">
+                <span>
+                  <Button variant="outlined" disabled={isFetching} onClick={() => { refetch(); qc.invalidateQueries({ queryKey: ['contract-statement-payments', contractId] }); }} sx={{ minWidth: 40, px: 1 }}>
+                    <RefreshIcon fontSize="small" />
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : null}
+            {contractId ? <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده</Button> : null}
+            {contractId ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
+            {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
+            {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>صورت‌وضعیت جدید</Button> : null}
+          </>
+        )}
+      />
 
-      <Box sx={{ position: 'relative', zIndex: 1 }}>
-        <Paper sx={{ p: 2, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap', ...glass }}>
-          <Avatar sx={{ width: 52, height: 52, background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, boxShadow: `0 8px 24px ${COLOR}66` }}>
-            <DescriptionIcon sx={{ color: '#fff' }} />
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 200 }}>
-            <Typography variant="h6" fontWeight={800} sx={{ color: COLOR_DARK }}>{form.id ? 'ویرایش صورت‌وضعیت' : 'صورت‌وضعیت جدید'}</Typography>
-            <Typography variant="body2" color="textSecondary">{currentContract?.subject || ''}</Typography>
-          </Box>
-          <Button startIcon={<PrintIcon />} variant="contained" onClick={printStatement}
-            sx={{ background: `linear-gradient(135deg,#10b981,#14b8a6)`, borderRadius: '12px' }}>
-            چاپ
-          </Button>
-          <Button startIcon={<ArrowBackIcon />} variant="outlined" onClick={closeForm} sx={{ borderRadius: '12px' }}>بازگشت به لیست</Button>
-        </Paper>
-
-        <Grid container spacing={2.5}>
-          {/* RIGHT: form */}
-          <Grid item xs={12} md={6}>
-            <Paper sx={{ p: 3, ...glass }}>
-              <Typography variant="subtitle1" fontWeight={800} sx={{ mb: 2.5, color: COLOR_DARK }}>ورود اطلاعات</Typography>
-              <Grid container spacing={2}>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>شماره صورت‌وضعیت</Typography>
-                  <TextField size="small" fullWidth value={form.number || ''} onChange={(e) => setField('number', e.target.value)} sx={fieldSx} />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>تاریخ</Typography>
-                  <JalaliDatePicker fullWidth value={form.date || ''} onChange={(v) => setField('date', v)} />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>واحد ارز</Typography>
-                  <FormControl size="small" fullWidth>
-                    <Select value={form.currency || ''} onChange={(e) => { setField('currency', e.target.value); setRateOverride(''); }} sx={{ borderRadius: '12px', background: 'rgba(255,255,255,0.55)' }}>
-                      {currencyList.map((c) => <MenuItem key={c.id} value={c.id}>{normalizeCurrencyLabel(c.name || c.symbol)} ({c.code})</MenuItem>)}
-                    </Select>
-                  </FormControl>
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>نرخ تبدیل به ریال (قابل ویرایش)</Typography>
-                  <TextField size="small" fullWidth type="number" value={rateOverride}
-                    placeholder={formatPersianNumber(baseRate)}
-                    onChange={(e) => setRateOverride(e.target.value)} sx={fieldSx} />
-                </Grid>
-
-                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="کارکرد" /></Divider></Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>مبلغ تجمعی این صورت‌وضعیت</Typography>
-                  <TextField type="number" size="small" fullWidth value={form.amount ?? 0} onChange={(e) => setField('amount', e.target.value)} sx={fieldSx} />
-                </Grid>
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>مبلغ تجمعی صورت‌وضعیت قبلی</Typography>
-                  <TextField type="number" size="small" fullWidth value={cumulativePrev} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={labelSx}>کارکرد دوره (محاسبهٔ خودکار)</Typography>
-                  <TextField type="number" size="small" fullWidth value={workDone} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Typography variant="caption" sx={labelSx}>معادل ریال (کارکرد)</Typography>
-                  <TextField type="number" size="small" fullWidth value={workDone * rate} InputProps={{ readOnly: true }} sx={readonlyFieldSx} />
-                </Grid>
-
-                {/* کادر جذاب نمایش ریالی + ارزی */}
-                <Grid item xs={12}>
-                  <Box sx={{
-                    borderRadius: '14px', p: 2,
-                    background: 'linear-gradient(135deg, rgba(16,185,129,0.10), rgba(99,102,241,0.08), rgba(255,255,255,0.5))',
-                    border: '1px solid rgba(16,185,129,0.25)',
-                    boxShadow: '0 8px 24px rgba(16,185,129,0.12)',
-                  }}>
-                    <Typography variant="caption" fontWeight={800} color="#047857" sx={{ mb: 1, display: 'block' }}>
-                      مبلغ قابل پرداخت این دوره
-                    </Typography>
-                    <Grid container spacing={1.5}>
-                      <Grid item xs={6}>
-                        <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
-                          <Typography variant="caption" color="textSecondary">مبلغ ریالی</Typography>
-                          <Typography variant="h6" fontWeight={900} color="#059669">{formatPersianNumber(netAmount)} ریال</Typography>
-                        </Box>
-                      </Grid>
-                      <Grid item xs={6}>
-                        <Box sx={{ textAlign: 'center', p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
-                          <Typography variant="caption" color="textSecondary">مبلغ ارزی ({currencyLabel || ''})</Typography>
-                          <Typography variant="h6" fontWeight={900} color="#4338ca">
-                            {formatPersianNumber(rate > 0 ? netAmount / rate : 0)}
-                          </Typography>
-                        </Box>
-                      </Grid>
-                    </Grid>
-                    <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block', textAlign: 'center' }}>
-                      نرخ ارز: {formatPersianNumber(rate)} ریال به ازای هر {currencyLabel || 'واحد'}
-                    </Typography>
-                  </Box>
-                </Grid>
-
-                <Grid item xs={12}><Divider sx={{ my: 0.5 }}><Chip size="small" label="اضافات و کسورات (از تعاریف اولیه)" /></Divider></Grid>
-
-                {/* اضافات */}
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ ...labelSx, color: '#059669' }}>اضافات</Typography>
-                  {additions.map((a, i) => (
-                    <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <TextField size="small" placeholder="شرح" value={a.description || ''} onChange={(e) => updateAddition(i, 'description', e.target.value)} sx={{ flex: 1, ...fieldSx }} />
-                      <TextField size="small" type="number" placeholder="٪" value={a.percent ?? 0} onChange={(e) => updateAddition(i, 'percent', e.target.value)} sx={{ width: 80, ...fieldSx }} />
-                      <TextField size="small" type="number" placeholder="مبلغ" value={a.amount ?? 0} onChange={(e) => updateAddition(i, 'amount', e.target.value)} sx={{ width: 130, ...fieldSx }} />
-                      <IconButton size="small" color="error" onClick={() => removeAddition(i)}><RemoveCircleIcon /></IconButton>
-                    </Stack>
-                  ))}
-                  {additionList.length > 0 && (
-                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                      {additionList.map((d) => (
-                        <Chip key={d.id} size="small" label={d.description} onClick={() => chooseAddition(d)} sx={{ bgcolor: '#10b98118', color: '#059669' }} />
-                      ))}
-                    </Stack>
-                  )}
-                  <Button size="small" startIcon={<AddCircleIcon />} onClick={addAddition} sx={{ color: '#059669' }}>افزودن اضافه</Button>
-                </Grid>
-
-                {/* کسورات */}
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={{ ...labelSx, color: '#b91c1c' }}>کسورات</Typography>
-                  {deductions.map((d, i) => (
-                    <Stack key={i} direction="row" spacing={1} alignItems="center" sx={{ mb: 1 }}>
-                      <TextField size="small" placeholder="عنوان کسور" value={d.title || ''} onChange={(e) => updateDeduction(i, 'title', e.target.value)} sx={{ flex: 1, ...fieldSx }} />
-                      <TextField size="small" type="number" placeholder="٪" value={d.percent ?? 0} onChange={(e) => updateDeduction(i, 'percent', e.target.value)} sx={{ width: 80, ...fieldSx }} />
-                      <TextField size="small" type="number" placeholder="مبلغ" value={d.amount ?? 0} onChange={(e) => updateDeduction(i, 'amount', e.target.value)} sx={{ width: 130, ...fieldSx }} />
-                      <IconButton size="small" color="error" onClick={() => removeDeduction(i)}><RemoveCircleIcon /></IconButton>
-                    </Stack>
-                  ))}
-                  {deductionList.length > 0 && (
-                    <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-                      {deductionList.map((d) => (
-                        <Chip key={d.id} size="small" label={d.description} onClick={() => chooseDeduction(d)} sx={{ bgcolor: '#ef444418', color: '#b91c1c' }} />
-                      ))}
-                    </Stack>
-                  )}
-                  <Button size="small" startIcon={<AddCircleIcon />} onClick={addDeduction} sx={{ color: '#b91c1c' }}>افزودن کسور</Button>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <FormControlLabel control={<Switch checked={!!form.is_approved} onChange={(e) => setField('is_approved', e.target.checked)} />} label={<Typography variant="body2" fontWeight={700}>تأیید شده</Typography>} />
-                </Grid>
-                <Grid item xs={12}>
-                  <Typography variant="caption" sx={labelSx}>توضیحات</Typography>
-                  <TextField size="small" fullWidth multiline rows={3} value={form.description || ''} onChange={(e) => setField('description', e.target.value)} sx={fieldSx} />
-                </Grid>
-              </Grid>
-
-              <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
-                <Button variant="contained" startIcon={save.isLoading ? null : <SaveIcon />} onClick={submit} disabled={save.isLoading} sx={{ background: `linear-gradient(135deg,${COLOR},${COLOR_DARK})`, borderRadius: '12px', px: 4 }}>
-                  {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره'}
-                </Button>
-                <Button variant="outlined" onClick={closeForm} sx={{ borderRadius: '12px' }}>انصراف</Button>
-              </Stack>
-            </Paper>
+      {!contractId ? (
+        <StatementLanding
+          contractList={contractList}
+          list={allStatements}
+          pendingRows={pendingRows}
+          counts={{ approved: allStatements.filter((row) => row.is_approved).length }}
+          totalNet={allStatements.reduce((sum, row) => sum + rowMetrics(row).net, 0)}
+          currency={normalizeCurrencyLabel(
+            contractList.find((contract) => String(contract.id) === String(allStatements[0]?.contract))?.currency_name || 'ریال',
+          )}
+          accent={STATEMENT_ACCENT}
+          onSelect={selectContract}
+          onSelectContract={selectContractById}
+        />
+      ) : (
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
+            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
+              <ContractSnapshotCard contract={selectedContract} currency={currencyLabel} accent={STATEMENT_ACCENT}
+                onBack={clearContract} statementCount={scopedList.length} />
+              <FinancialCoverageCard totals={totals} currency={currencyLabel} isLoading={paymentsLoading} accent={STATEMENT_ACCENT} />
+              <StatusNav counts={counts} active={statusFilter} onChange={setStatusFilter} accent={STATEMENT_ACCENT} />
+            </Stack>
           </Grid>
 
-          {/* LEFT: live preview */}
-          <Grid item xs={12} md={6}>
-            <Box sx={{ position: { md: 'sticky' }, top: { md: 16 } }}>
-              <StatementPreview
-                form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions, deductions }}
-                contract={currentContract}
-                company={company}
-                currencies={currencyList}
-                rate={rate}
-              />
+          <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
+            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={ReceiptLongIcon} label="تعداد صورت‌وضعیت" value={formatPersianNumber(counts.all)} suffix="مورد" color={STATEMENT_ACCENT} hint={`${formatPersianNumber(counts.pending)} در انتظار تأیید`} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={PaymentsIcon} label="مجموع قابل پرداخت" value={compactMoney(totals.net, currencyLabel)} color={GREEN} hint={`${formatPersianNumber(counts.approved)} تأییدشده`} size={16} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={EventAvailableIcon} label="پرداخت‌شده" value={compactMoney(totals.paid, currencyLabel)} color={BLUE} hint={`مانده ${compactMoney(totals.outstanding, currencyLabel)}`} size={16} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={TrendingUpIcon} label="کارکرد تجمعی" value={compactMoney(totals.cumulative, currencyLabel)} color={AMBER} hint={`پیشرفت قرارداد ${toPersianDigits(contractProgress.toFixed(0))}٪`} size={16} />
+              </Grid>
+            </Grid>
+
+            <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+                <TextField size="small" placeholder="جست‌وجو در شماره، قرارداد، توضیحات…"
+                  value={search} onChange={(event) => setSearch(event.target.value)}
+                  sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                <FormControl size="small" sx={{ minWidth: 145 }}>
+                  <InputLabel>وضعیت</InputLabel>
+                  <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
+                    <MenuItem value="all">همه ({formatPersianNumber(counts.all)})</MenuItem>
+                    <MenuItem value="approved">تأییدشده ({formatPersianNumber(counts.approved)})</MenuItem>
+                    <MenuItem value="pending">در انتظار ({formatPersianNumber(counts.pending)})</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 125 }}>
+                  <InputLabel>ترتیب</InputLabel>
+                  <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
+                    <MenuItem value="newest">جدیدترین</MenuItem>
+                    <MenuItem value="amount">بیشترین مبلغ</MenuItem>
+                    <MenuItem value="net">بیشترین قابل پرداخت</MenuItem>
+                    <MenuItem value="work">بیشترین کارکرد</MenuItem>
+                  </Select>
+                </FormControl>
+                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
+                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
+                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
+                </ToggleButtonGroup>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ display: { xs: 'none', md: 'flex' } }}>صورت‌وضعیت جدید</Button>
+              </Stack>
+            </Paper>
+
+            {overContract > 0 ? (
+              <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
+                <Typography sx={{ fontSize: 9.5 }}>مبلغ تجمعی صورت‌وضعیت‌ها از مبلغ قرارداد بیشتر است ({money(overContract, currencyLabel)}).</Typography>
+              </Alert>
+            ) : null}
+
+            {!filtered.length ? (
+              <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
+                <ReceiptLongIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>صورت‌وضعیتی با این مشخصات ثبت نشده است.</Typography>
+                <Typography sx={{ fontSize: 9, color: MUTED, mt: 0.4 }}>اولین صورت‌وضعیت را ثبت کنید تا پوشش مالی و روند شکل بگیرد.</Typography>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت صورت‌وضعیت جدید</Button>
+              </Paper>
+            ) : view === 'cards' ? (
+              <Grid container spacing={1.5}>
+                {filtered.map((row) => (
+                  <Grid item xs={12} md={6} xl={4} key={row.id}>
+                    <StatementCard row={row} contractAmount={selectedContractAmount} currency={currencyLabel} accent={STATEMENT_ACCENT}
+                      onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} onPrint={openPrint}
+                      onApprove={(selected) => toggleApproval.mutate(selected)} />
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <StatementTable rows={filtered} contractAmount={selectedContractAmount} currency={currencyLabel}
+                onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} onPrint={openPrint}
+                onApprove={(selected) => toggleApproval.mutate(selected)} />
+            )}
+
+            <Box sx={{ mt: 1.5 }}>
+              <SurfaceCard title="روند صورت‌وضعیت‌ها" icon={TrendingUpIcon} color={STATEMENT_ACCENT}
+                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(STATEMENT_ACCENT, 0.07), color: STATEMENT_ACCENT }} />}>
+                {monthlyData.some((item) => item.value > 0) ? (
+                  <ColumnChart data={monthlyData} color={STATEMENT_ACCENT} height={150} />
+                ) : (
+                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
+                )}
+              </SurfaceCard>
             </Box>
           </Grid>
         </Grid>
-      </Box>
+      )}
+
+      <StatementDetailDrawer row={detail} contract={selectedContract} currency={currencyLabel}
+        onClose={() => setDetail(null)} onEdit={openEdit} onDelete={setConfirmDelete}
+        onPrint={openPrint} onApprove={(selected) => toggleApproval.mutate(selected)} />
+
+      <StatementEditorDialog
+        open={dialog}
+        onClose={closeEditor}
+        form={form}
+        setForm={setForm}
+        contract={formContract || selectedContract}
+        company={company}
+        currencyList={currencyList}
+        additionList={additionList}
+        deductionList={deductionList}
+        additions={additions}
+        previewAdditions={previewAdditions}
+        deductions={deductions}
+        additionsTotal={additionsTotal}
+        deductionsTotal={deductionsTotal}
+        cumulativePrev={cumulativePrev}
+        cumulativeThis={cumulativeThis}
+        workDone={workDone}
+        netAmount={netAmount}
+        rate={rate}
+        rateOverride={rateOverride}
+        setRateOverride={setRateOverride}
+        baseRate={baseRate}
+        formCurrencyLabel={formCurrencyLabel}
+        overContract={overContract}
+        progress={progress}
+        error={error}
+        setError={setError}
+        saving={save.isPending}
+        onSave={submit}
+        onAddFiles={addFiles}
+        onRemovePending={removePendingFile}
+        onRemoveDocument={(document) => {
+          if (window.confirm(`مدرک «${document.title || 'پیوست'}» حذف شود؟`)) removeDocument.mutate(document.id);
+        }}
+        onAddAddition={addAddition}
+        onRemoveAddition={removeAddition}
+        onUpdateAddition={updateAddition}
+        onChooseAddition={chooseAddition}
+        onAddDeduction={addDeduction}
+        onRemoveDeduction={removeDeduction}
+        onUpdateDeduction={updateDeduction}
+        onChooseDeduction={chooseDeduction}
+      />
+
+      <Dialog open={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>حذف صورت‌وضعیت</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ borderRadius: '10px' }}>
+            صورت‌وضعیت {confirmDelete?.number || (confirmDelete ? `#${confirmDelete.id}` : 'انتخاب‌شده')} حذف شود؟ این عملیات قابل بازگشت نیست.
+          </Alert>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setConfirmDelete(null)}>انصراف</Button>
+          <Button color="error" variant="contained" disabled={remove.isPending} onClick={() => remove.mutate(confirmDelete.id)}>
+            {remove.isPending ? <CircularProgress size={18} color="inherit" /> : 'حذف'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      <Snackbar open={Boolean(toast)} autoHideDuration={3400} onClose={() => setToast('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={toast.includes('نشد') ? 'error' : 'success'} onClose={() => setToast('')}>{toast}</Alert>
+      </Snackbar>
     </Box>
+  );
+};
+
+const StatementEditorDialog = ({
+  open, onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
+  additions, previewAdditions, deductions, additionsTotal, deductionsTotal, cumulativePrev, cumulativeThis,
+  workDone, netAmount, rate, rateOverride, setRateOverride, baseRate, formCurrencyLabel,
+  overContract, progress, error, setError, saving, onSave, onAddFiles, onRemovePending,
+  onRemoveDocument, onAddAddition, onRemoveAddition, onUpdateAddition, onChooseAddition,
+  onAddDeduction, onRemoveDeduction, onUpdateDeduction, onChooseDeduction,
+}) => {
+  const theme = useTheme();
+  const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+  const documents = Array.isArray(form.documents) ? form.documents : [];
+  const pendingFiles = Array.isArray(form.pendingFiles) ? form.pendingFiles : [];
+  const totalDocs = documents.length + pendingFiles.length;
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth
+      PaperProps={{ sx: { maxHeight: '94vh', borderRadius: '18px' } }}>
+      <DialogTitle sx={{
+        display: 'flex', alignItems: 'center', gap: 1.2, px: 2.5, py: 1.7,
+        background: 'linear-gradient(120deg, rgba(99,102,241,0.13), rgba(14,165,233,0.06), rgba(255,255,255,0.5))',
+        borderBottom: `1px solid ${alpha(STATEMENT_ACCENT, 0.14)}`,
+      }}>
+        <Avatar sx={{ width: 42, height: 42, bgcolor: STATEMENT_ACCENT, color: '#fff' }}><ReceiptLongIcon /></Avatar>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش صورت‌وضعیت' : 'ثبت صورت‌وضعیت جدید'}</Typography>
+          <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{contract?.subject || 'قرارداد'} · {form.number || 'شماره‌گذاری خودکار'}</Typography>
+        </Box>
+        <Chip size="small" label={form.is_approved ? 'تأیید شده' : 'در انتظار تأیید'}
+          sx={{ height: 22, fontSize: 8.3, fontWeight: 800, bgcolor: form.is_approved ? '#ecfdf5' : '#fffbeb', color: form.is_approved ? '#0f766e' : '#b45309' }} />
+        <Tooltip title="چاپ پیش‌نمایش"><IconButton onClick={printStatement} sx={{ color: '#0f766e' }}><PrintOutlinedIcon /></IconButton></Tooltip>
+        <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
+      </DialogTitle>
+
+      <DialogContent sx={{ p: 2.2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
+        {overContract ? (
+          <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '10px', py: 0.2 }}>
+            <Typography sx={{ fontSize: 9.5 }}>مبلغ تجمعی واردشده از مبلغ قرارداد بیشتر است.</Typography>
+          </Alert>
+        ) : null}
+
+        <Box sx={{
+          display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1.5fr 1fr 1fr 1fr' }, gap: 0.7,
+          p: 1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2',
+        }}>
+          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>قرارداد</Typography><Typography noWrap sx={{ fontSize: 9.2, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مبلغ قابل پرداخت</Typography><Typography noWrap sx={{ fontSize: 9.8, fontWeight: 900, color: netAmount ? '#0f766e' : MUTED }}>{money(netAmount, formCurrencyLabel)}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>پیشرفت</Typography><Typography sx={{ fontSize: 9.8, fontWeight: 900, color: STATEMENT_ACCENT }}>{toPersianDigits(progress.toFixed(0))}٪</Typography></Box>
+          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مدارک</Typography><Typography sx={{ fontSize: 9.8, fontWeight: 900, color: totalDocs ? BLUE : MUTED }}>{formatPersianNumber(totalDocs)} فایل</Typography></Box>
+        </Box>
+
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} md={7}>
+            <Stack spacing={1.5}>
+              <Box>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
+                <Grid container spacing={1.1}>
+                  <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="شماره صورت‌وضعیت" value={form.number || ''} onChange={(event) => update('number', event.target.value)} placeholder="مثلاً ST-1405-01" /></Grid>
+                  <Grid item xs={12} sm={6}><JalaliDatePicker fullWidth label="تاریخ صورت‌وضعیت" value={form.date || ''} onChange={(value) => update('date', value)} /></Grid>
+                  <Grid item xs={12} sm={6}>
+                    <FormControl size="small" fullWidth>
+                      <InputLabel>واحد ارز</InputLabel>
+                      <Select value={form.currency || ''} label="واحد ارز" onChange={(event) => { update('currency', event.target.value); setRateOverride(''); }}>
+                        {currencyList.map((currency) => <MenuItem key={currency.id} value={currency.id}>{normalizeCurrencyLabel(currency.name || currency.symbol)} ({currency.code})</MenuItem>)}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField size="small" fullWidth type="number" label="نرخ تبدیل به ریال" value={rateOverride}
+                      placeholder={formatPersianNumber(baseRate)} onChange={(event) => setRateOverride(event.target.value)} />
+                  </Grid>
+                  <Grid item xs={12}>
+                    <FormControlLabel control={<Switch checked={Boolean(form.is_approved)} onChange={(event) => update('is_approved', event.target.checked)} />}
+                      label={<Typography sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>این صورت‌وضعیت تأیید شده است</Typography>} />
+                  </Grid>
+                </Grid>
+              </Box>
+
+              <Divider />
+              <Box>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>کارکرد و مبالغ</Typography>
+                <Grid container spacing={1.1}>
+                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="مبلغ تجمعی این صورت‌وضعیت" value={form.amount ?? 0} onChange={(value) => update('amount', value)} /></Grid>
+                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="مبلغ تجمعی دوره قبل" value={cumulativePrev} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
+                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="کارکرد این دوره (خودکار)" value={workDone} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
+                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="معادل ریال کارکرد" value={workDone * rate} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
+                </Grid>
+                <Box sx={{ mt: 1, p: 1.1, borderRadius: '12px', bgcolor: alpha('#0f766e', 0.05), border: `1px solid ${alpha('#0f766e', 0.16)}` }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                    <Box><Typography sx={{ fontSize: 8.4, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>{money(netAmount, formCurrencyLabel)}</Typography></Box>
+                    <Box sx={{ textAlign: 'left' }}><Typography sx={{ fontSize: 8.4, color: MUTED }}>معادل ارزی</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{rate > 0 ? formatPersianNumber(netAmount / rate) : '—'} {formCurrencyLabel}</Typography></Box>
+                  </Stack>
+                </Box>
+              </Box>
+
+              <Divider />
+              <Box>
+                <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
+                  <Typography sx={{ flex: 1, fontSize: 10.5, fontWeight: 900, color: '#0f766e' }}>اضافات</Typography>
+                  <Chip size="small" label={money(additionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#ecfdf5', color: '#0f766e' }} />
+                </Stack>
+                <Grid container spacing={0.8} sx={{ mb: 0.8 }}>
+                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="ارزش افزوده" value={form.value_added_tax ?? 0} onChange={(value) => update('value_added_tax', value)} /></Grid>
+                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="سایر اضافات" value={form.other_additions ?? 0} onChange={(value) => update('other_additions', value)} /></Grid>
+                </Grid>
+                {additions.map((item, index) => (
+                  <Grid container spacing={0.55} alignItems="center" key={`addition-${index}`} sx={{ mb: 0.55 }}>
+                    <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="شرح اضافه" value={item.description || ''} onChange={(event) => onUpdateAddition(index, 'description', event.target.value)} /></Grid>
+                    <Grid item xs={4} sm={2}><TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0} onChange={(event) => onUpdateAddition(index, 'percent', event.target.value)} /></Grid>
+                    <Grid item xs={6} sm={4}><MoneyInput size="small" fullWidth placeholder="مبلغ" value={item.amount ?? 0} onChange={(value) => onUpdateAddition(index, 'amount', value)} /></Grid>
+                    <Grid item xs={2} sm={1}><IconButton size="small" color="error" onClick={() => onRemoveAddition(index)}><RemoveCircleIcon fontSize="small" /></IconButton></Grid>
+                  </Grid>
+                ))}
+                {additionList.length ? (
+                  <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.7 }}>
+                    {additionList.map((definition) => (
+                      <Chip key={definition.id} size="small" label={definition.description || definition.code} onClick={() => onChooseAddition(definition)}
+                        sx={{ height: 20, fontSize: 7.9, bgcolor: '#ecfdf5', color: '#0f766e' }} />
+                    ))}
+                  </Stack>
+                ) : null}
+                <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddAddition} sx={{ color: '#0f766e', fontSize: 8.7 }}>افزودن اضافه</Button>
+              </Box>
+
+              <Divider />
+              <Box>
+                <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
+                  <Typography sx={{ flex: 1, fontSize: 10.5, fontWeight: 900, color: '#be123c' }}>کسورات</Typography>
+                  <Chip size="small" label={money(deductionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#fff1f2', color: '#be123c' }} />
+                </Stack>
+                {deductions.map((item, index) => (
+                  <Grid container spacing={0.55} alignItems="center" key={`deduction-${index}`} sx={{ mb: 0.55 }}>
+                    <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="عنوان کسور" value={item.title || ''} onChange={(event) => onUpdateDeduction(index, 'title', event.target.value)} /></Grid>
+                    <Grid item xs={4} sm={2}><TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0} onChange={(event) => onUpdateDeduction(index, 'percent', event.target.value)} /></Grid>
+                    <Grid item xs={6} sm={4}><MoneyInput size="small" fullWidth placeholder="مبلغ" value={item.amount ?? 0} onChange={(value) => onUpdateDeduction(index, 'amount', value)} /></Grid>
+                    <Grid item xs={2} sm={1}><IconButton size="small" color="error" onClick={() => onRemoveDeduction(index)}><RemoveCircleIcon fontSize="small" /></IconButton></Grid>
+                  </Grid>
+                ))}
+                {deductionList.length ? (
+                  <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.7 }}>
+                    {deductionList.map((definition) => (
+                      <Chip key={definition.id} size="small" label={definition.description || definition.code} onClick={() => onChooseDeduction(definition)}
+                        sx={{ height: 20, fontSize: 7.9, bgcolor: '#fff1f2', color: '#be123c' }} />
+                    ))}
+                  </Stack>
+                ) : null}
+                <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddDeduction} sx={{ color: '#be123c', fontSize: 8.7 }}>افزودن کسور</Button>
+              </Box>
+
+              <Divider />
+              <Box>
+                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>مدارک و پیوست‌ها</Typography>
+                <AttachmentPicker
+                  documents={documents}
+                  pendingFiles={pendingFiles}
+                  onAdd={onAddFiles}
+                  onRemovePending={onRemovePending}
+                  onRemoveDocument={onRemoveDocument}
+                  accent={STATEMENT_ACCENT}
+                  buttonLabel="افزودن مدرک صورت‌وضعیت"
+                  emptyText="صورت‌وضعیت امضاشده، تأییدیه، فاکتور یا مدارک پشتیبان را اینجا پیوست کنید."
+                  documentLabel="صورت‌وضعیت"
+                  accept=".pdf,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.doc,.docx,.zip,.rar"
+                  hint="PDF، تصویر، اکسل، Word یا ZIP · حداکثر ۲۵ مگابایت"
+                  icon={InsertDriveFileIcon}
+                />
+              </Box>
+
+              <Divider />
+              <TextField size="small" fullWidth multiline rows={2} label="توضیحات" value={form.description || ''}
+                onChange={(event) => update('description', event.target.value)} />
+            </Stack>
+          </Grid>
+
+          <Grid item xs={12} md={5}>
+            <Box sx={{ position: { md: 'sticky' }, top: 0 }}>
+              <StatementPreview form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions: previewAdditions, deductions }}
+                contract={contract} company={company} currencies={currencyList} rate={rate} />
+            </Box>
+          </Grid>
+        </Grid>
+      </DialogContent>
+
+      <DialogActions sx={{ px: 2.4, py: 1.4, borderTop: `1px solid ${theme.palette.divider}` }}>
+        <Button onClick={onClose} sx={{ fontSize: 9.5 }}>انصراف</Button>
+        <Button variant="contained" onClick={onSave} disabled={saving || !form.contract || !form.date}
+          startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <SaveIcon />}
+          sx={{ fontSize: 9.5, px: 2.5, bgcolor: STATEMENT_ACCENT, '&:hover': { bgcolor: '#4f46e5' } }}>
+          {saving ? 'در حال ذخیره…' : 'ذخیره صورت‌وضعیت'}
+        </Button>
+      </DialogActions>
+    </Dialog>
   );
 };
 

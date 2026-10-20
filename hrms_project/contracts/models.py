@@ -228,6 +228,11 @@ class ContractDocument(BaseModel):
         related_name='documents', verbose_name=_('تضمین'),
         help_text=_('در صورت پیوست بودن سند به یک تضمین، این فیلد پر می‌شود.'),
     )
+    statement = models.ForeignKey(
+        'Statement', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='documents', verbose_name=_('صورت‌وضعیت'),
+        help_text=_('در صورت پیوست بودن سند به یک صورت‌وضعیت، این فیلد پر می‌شود.'),
+    )
     title = models.CharField(max_length=200, verbose_name=_('عنوان سند'))
     file = models.FileField(upload_to=contract_document_upload_path, verbose_name=_('فایل'))
     uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_('زمان بارگذاری'))

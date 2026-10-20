@@ -59,12 +59,14 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
     addendum_number = serializers.SerializerMethodField()
     addendum_subject = serializers.SerializerMethodField()
     guarantee_number = serializers.SerializerMethodField()
+    statement_number = serializers.SerializerMethodField()
 
     class Meta:
         model = ContractDocument
         fields = [
             'id', 'contract', 'addendum', 'addendum_number', 'addendum_subject',
-            'guarantee', 'guarantee_number', 'title', 'file', 'file_url', 'uploaded_at',
+            'guarantee', 'guarantee_number', 'statement', 'statement_number',
+            'title', 'file', 'file_url', 'uploaded_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'uploaded_at', 'created_at', 'updated_at']
 
@@ -72,11 +74,14 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
         contract = attrs.get('contract', getattr(self.instance, 'contract', None))
         addendum = attrs.get('addendum', getattr(self.instance, 'addendum', None))
         guarantee = attrs.get('guarantee', getattr(self.instance, 'guarantee', None))
+        statement = attrs.get('statement', getattr(self.instance, 'statement', None))
         upload = attrs.get('file')
         if addendum and contract and addendum.contract_id != contract.pk:
             raise serializers.ValidationError({'addendum': 'الحاقیه به این قرارداد تعلق ندارد.'})
         if guarantee and contract and guarantee.contract_id != contract.pk:
             raise serializers.ValidationError({'guarantee': 'تضمین به این قرارداد تعلق ندارد.'})
+        if statement and contract and statement.contract_id != contract.pk:
+            raise serializers.ValidationError({'statement': 'صورت‌وضعیت به این قرارداد تعلق ندارد.'})
         if upload and (addendum or guarantee):
             name = str(getattr(upload, 'name', '') or '').lower()
             content_type = str(getattr(upload, 'content_type', '') or '').lower()
@@ -100,6 +105,9 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
         if not obj.guarantee_id:
             return None
         return obj.guarantee.number or obj.guarantee.guarantee_number or obj.guarantee.check_number or ''
+
+    def get_statement_number(self, obj):
+        return obj.statement.number if obj.statement_id else None
 
     def get_file_url(self, obj):
         if obj.file:
@@ -129,6 +137,7 @@ class StatementSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     exchange_rate = serializers.DecimalField(max_digits=18, decimal_places=6, required=False, allow_null=True)
+    documents = ContractDocumentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Statement
@@ -140,7 +149,7 @@ class StatementSerializer(serializers.ModelSerializer):
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
-            'is_approved', 'description',
+            'is_approved', 'description', 'documents',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
