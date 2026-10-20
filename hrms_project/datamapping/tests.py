@@ -34,6 +34,9 @@ class ImportDateParsingTests(SimpleTestCase):
         )
         self.assertEqual(_parse_date('20250315'), date(2025, 3, 15))
 
+    def test_invalid_date_is_rejected_not_replaced_with_today(self):
+        self.assertIsNone(_parse_date('تاریخ نامعتبر'))
+
     def test_excel_and_datetime_cells(self):
         from openpyxl.utils.datetime import from_excel
 

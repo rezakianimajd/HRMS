@@ -764,11 +764,15 @@ def import_documents(request):
                     return r[col_map[key]]
                 return None
 
+            raw_date = cell('date')
+            parsed_date = _parse_date(raw_date)
             rows.append({
                 'row_no': _text(cell('row_no')),
                 'doc_number': _text(cell('doc_number')),
                 'reference': _text(cell('reference')),
-                'date': _parse_date(cell('date')),
+                'date': parsed_date,
+                'date_raw': _text(raw_date),
+                'date_invalid': bool(_text(raw_date)) and parsed_date is None,
                 'doc_description': _text(cell('doc_description')),
                 'account_code': _text(cell('account_code')),
                 'auxiliary_1': _text(cell('auxiliary_1')),
@@ -806,6 +810,14 @@ def import_documents(request):
         }
         for doc_key, lines in docs.items():
             first = lines[0]
+            invalid_date_line = next((ln for ln in lines if ln.get('date_invalid')), None)
+            if invalid_date_line:
+                skipped_rows.append({
+                    'row': invalid_date_line.get('row_no') or '',
+                    'reason': 'تاریخ سند قابل تشخیص نیست؛ سند وارد نشد.',
+                    'code': invalid_date_line.get('date_raw') or '',
+                })
+                continue
             doc_date = first['date'] or date.today()
             fiscal_year = _fiscal_year_for(company, doc_date, fiscal_year_id)
             fiscal_year_pk = fiscal_year.pk if fiscal_year else None
