@@ -616,9 +616,10 @@ const DataMappingPage = () => {
             {[
               { label: 'اسناد ساخته‌شده', value: docResult.created_documents, color: '#6366f1' },
               { label: 'سطرهای ثبت‌شده', value: docResult.created_lines, color: '#10b981' },
+              { label: 'اسناد تکراری (ردشده)', value: docResult.duplicate_documents || 0, color: '#f59e0b' },
               { label: 'کدهای حل‌نشده', value: (docResult.unresolved_codes || []).length, color: '#ef4444' },
             ].map((k) => (
-              <Grid item xs={4} key={k.label}>
+              <Grid item xs={6} sm={3} key={k.label}>
                 <InfoCard label={k.label} value={k.value} color={k.color} />
               </Grid>
             ))}

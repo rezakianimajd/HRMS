@@ -16,7 +16,7 @@ import axiosInstance from '../../core/api/axiosConfig';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { INK, KpiTile, MUTED, SOFT_BG, SurfaceCard } from '../accounting/AccountingDashboardUI';
 import {
-  CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, formatBytes,
+  CONFIDENTIALITY, DMS_ACCENT, DOCUMENT_TYPE, WORKFLOW_STATUS, formatBytes,
 } from './DocumentManagementUI';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
@@ -43,6 +43,7 @@ const DocumentManagementReportsPage = () => {
     if ((stats.auto_indexed || 0) > 0) {
       qc.invalidateQueries({ queryKey: ['dms-documents'] });
       qc.invalidateQueries({ queryKey: ['dms-folders'] });
+      qc.invalidateQueries({ queryKey: ['dms-menu-folders'] });
     }
   }, [stats.auto_indexed, qc]);
   const liveDocs = useMemo(() => documents.filter((row) => row.status !== 'archived'), [documents]);
@@ -63,14 +64,15 @@ const DocumentManagementReportsPage = () => {
   const byConfidentiality = useMemo(() => Object.keys(CONFIDENTIALITY).map((key) => ({
     key, ...CONFIDENTIALITY[key], count: liveDocs.filter((row) => row.confidentiality === key).length,
   })), [liveDocs]);
-  const byStatus = useMemo(() => Object.keys(DOC_STATUS).map((key) => ({
-    key, ...DOC_STATUS[key], count: documents.filter((row) => row.status === key).length,
+  const byStatus = useMemo(() => Object.keys(WORKFLOW_STATUS).map((key) => ({
+    key, ...WORKFLOW_STATUS[key], count: documents.filter((row) => row.workflow_status === key).length,
   })), [documents]);
 
   const exportCsv = () => {
-    const headers = ['عنوان', 'پوشه', 'محرمانگی', 'وضعیت', 'نسخه', 'حجم', 'تاریخ انقضا', 'ایجادکننده'];
+    const headers = ['عنوان', 'نوع سند', 'پوشه', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'تاریخ انقضا', 'ایجادکننده'];
     const rows = documents.map((row) => [
-      row.title, row.folder_path || '', row.confidentiality_display || '', row.status_display || '',
+      row.title, DOCUMENT_TYPE[row.document_type]?.label || '', row.folder_path || '',
+      row.confidentiality_display || '', WORKFLOW_STATUS[row.workflow_status]?.label || row.workflow_status_display || '',
       row.version_count || 1, row.file_size || 0, row.expiry_date || '', row.created_by_name || '',
     ]);
     const csv = [headers, ...rows].map((cells) => cells.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
@@ -114,7 +116,7 @@ const DocumentManagementReportsPage = () => {
           </SurfaceCard>
         </Grid>
         <Grid item xs={12} md={3}>
-          <SurfaceCard title="وضعیت اسناد" icon={ArchiveOutlinedIcon} color={DMS_ACCENT}>
+          <SurfaceCard title="گردش‌کار اسناد" icon={ArchiveOutlinedIcon} color={DMS_ACCENT}>
             <Stack spacing={0.8}>
               {byStatus.map((item) => (
                 <Stack key={item.key} direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 0.8, borderRadius: '9px', bgcolor: SOFT_BG }}>
@@ -149,15 +151,16 @@ const DocumentManagementReportsPage = () => {
             <Paper elevation={0} sx={{ border: '1px solid #eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
               <Table size="small">
                 <TableHead><TableRow>
-                  {['عنوان', 'پوشه', 'محرمانگی', 'وضعیت', 'انقضا'].map((label) => <TableCell key={label} sx={{ fontSize: 8.5, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
+                  {['عنوان', 'نوع سند', 'پوشه', 'محرمانگی', 'گردش‌کار', 'انقضا'].map((label) => <TableCell key={label} sx={{ fontSize: 8.5, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
                 </TableRow></TableHead>
                 <TableBody>
                   {recent.map((row) => (
                     <TableRow key={row.id} hover>
                       <TableCell sx={{ fontSize: 8.8, fontWeight: 700 }}>{row.title}</TableCell>
+                      <TableCell sx={{ fontSize: 8.4, color: MUTED }}>{DOCUMENT_TYPE[row.document_type]?.label || '—'}</TableCell>
                       <TableCell sx={{ fontSize: 8.4, color: MUTED }}>{row.folder_path || '—'}</TableCell>
                       <TableCell><Chip size="small" label={CONFIDENTIALITY[row.confidentiality]?.label || '—'} sx={{ height: 18, fontSize: 7.4, bgcolor: CONFIDENTIALITY[row.confidentiality]?.bg, color: CONFIDENTIALITY[row.confidentiality]?.color }} /></TableCell>
-                      <TableCell><Chip size="small" label={DOC_STATUS[row.status]?.label || '—'} sx={{ height: 18, fontSize: 7.4, bgcolor: DOC_STATUS[row.status]?.bg, color: DOC_STATUS[row.status]?.color }} /></TableCell>
+                      <TableCell><Chip size="small" label={WORKFLOW_STATUS[row.workflow_status]?.label || '—'} sx={{ height: 18, fontSize: 7.4, bgcolor: WORKFLOW_STATUS[row.workflow_status]?.bg, color: WORKFLOW_STATUS[row.workflow_status]?.color }} /></TableCell>
                       <TableCell sx={{ fontSize: 8.2, color: row.is_expired ? '#be123c' : MUTED }}>{toJalali(row.expiry_date)}</TableCell>
                     </TableRow>
                   ))}

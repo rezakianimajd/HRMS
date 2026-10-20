@@ -195,11 +195,28 @@ const Layout = ({ children }) => {
   const { getPalette } = useModulePalette();
   const isAccounting = location.pathname.startsWith('/accounting') || location.pathname.startsWith('/petty-cash');
   const moduleAccent = getPalette(currentApp?.slug)?.accent || null;
-  const menu = getMenuForApp(currentApp?.slug);
+
+  // منوی کتابخانه DMS از پوشه‌های واقعی همان شرکت ساخته می‌شود.
+  const dmsFoldersQuery = useQuery({
+    queryKey: ['dms-menu-folders'],
+    queryFn: () => axiosInstance.get('/document-management/menu/').then((response) => response.data),
+    enabled: currentApp?.slug === 'documents',
+    staleTime: 60000,
+  });
+  const dmsFolders = Array.isArray(dmsFoldersQuery.data)
+    ? dmsFoldersQuery.data
+    : dmsFoldersQuery.data?.results || [];
+  const menu = getMenuForApp(currentApp?.slug, { folders: dmsFolders });
+
+  const flatMenuItems = (items = []) => items.flatMap((item) => [
+    item,
+    ...flatMenuItems(item.children || []),
+  ]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const [openGroupId, setOpenGroupId] = useState(null);
+  const [openItemId, setOpenItemId] = useState(null);
 
   const { data: profile } = useQuery({
     queryKey: ['company-profile-layout'],
@@ -234,7 +251,7 @@ const Layout = ({ children }) => {
     let bestPath = null;
     let bestScore = -1;
     menu.forEach((group) => {
-      group.items.forEach((item) => {
+      flatMenuItems(group.items).forEach((item) => {
         if (!pathMatches(item.path)) return;
         const [itemPath, itemQuery = ''] = String(item.path).split('?');
         const score = itemPath.length + (itemQuery ? 1000 : 0);
@@ -249,7 +266,8 @@ const Layout = ({ children }) => {
 
   const isActive = (path) => Boolean(activeItemPath) && path === activeItemPath;
 
-  const activeGroup = menu.find((group) => group.items.some((item) => item.path === activeItemPath));
+  const activeGroup = menu.find((group) => flatMenuItems(group.items)
+    .some((item) => item.path === activeItemPath));
 
   const fallbackShortcuts = menu
     .flatMap((group) => group.items)
@@ -288,7 +306,7 @@ const Layout = ({ children }) => {
     const allMenus = [menu, menuConfig];
     for (const m of allMenus) {
       for (const g of m) {
-        for (const it of g.items) {
+        for (const it of flatMenuItems(g.items)) {
           if (it.path === path) return { title: it.title, color: it.color };
         }
       }
@@ -306,6 +324,83 @@ const Layout = ({ children }) => {
     if (mobileOpen) setMobileOpen(false);
     goTo(path);
   };
+
+  const renderMenuItems = (items = [], accent, depth = 0) => items.map((item) => {
+    const active = isActive(item.path);
+    const isPlaceholder = item.ready === false;
+    const children = item.children || [];
+    const childActive = flatMenuItems(children).some((child) => isActive(child.path));
+    const hasChildren = children.length > 0;
+    const itemOpen = openItemId === item.id || childActive || (active && hasChildren);
+
+    return (
+      <React.Fragment key={item.id}>
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-expanded={hasChildren ? itemOpen : undefined}
+          onClick={() => {
+            if (isPlaceholder) {
+              if (mobileOpen) setMobileOpen(false);
+              navigate('/coming-soon', { state: { title: item.title } });
+              return;
+            }
+            if (hasChildren) {
+              setOpenItemId((previous) => (previous === item.id ? null : item.id));
+            }
+            navigateTo(item.path);
+          }}
+          onKeyDown={(event) => {
+            if (event.key === 'Enter' || event.key === ' ') {
+              event.preventDefault();
+              event.currentTarget.click();
+            }
+          }}
+          sx={{
+            display: 'flex', alignItems: 'center', gap: 0.75,
+            pl: 1.15 + depth * 1.15, pr: 1.15, py: depth ? 0.55 : 0.75,
+            mb: 0.2, borderRadius: '8px', cursor: 'pointer',
+            color: active ? accent : 'text.secondary',
+            bgcolor: active ? alpha(accent, 0.08) : 'transparent',
+            transition: 'background 0.16s ease, color 0.16s ease',
+            '&:hover': { color: accent, bgcolor: alpha(accent, 0.06) },
+            '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.4)}`, outlineOffset: 1 },
+          }}
+        >
+          <Typography variant="body2" noWrap sx={{
+            flex: 1,
+            fontSize: depth ? 12.5 : undefined,
+            fontWeight: active ? 500 : 400,
+          }}>
+            {item.title}
+          </Typography>
+          {isPlaceholder && (
+            <Typography sx={{ fontSize: 8.5, color: 'text.disabled', flexShrink: 0 }}>
+              به‌زودی
+            </Typography>
+          )}
+          {hasChildren && (
+            <KeyboardArrowDownIcon sx={{
+              fontSize: 15, color: childActive ? accent : ICON_COLOR,
+              opacity: 0.75,
+              transform: itemOpen ? 'rotate(180deg)' : 'none',
+              transition: 'transform 0.2s ease',
+            }} />
+          )}
+        </Box>
+        {hasChildren && (
+          <Collapse in={itemOpen} timeout={180} unmountOnExit>
+            <Box sx={{
+              mr: 1.1, pr: 0.35,
+              borderRight: `1px solid ${alpha(accent, 0.2)}`,
+            }}>
+              {renderMenuItems(children, accent, depth + 1)}
+            </Box>
+          </Collapse>
+        )}
+      </React.Fragment>
+    );
+  });
 
   const openPalette = () => {
     if (mobileOpen) setMobileOpen(false);
@@ -505,7 +600,7 @@ const Layout = ({ children }) => {
       }}>
         {menu.map((group) => {
           const open = openGroupId === group.id;
-          const containsActive = group.items.some((item) => isActive(item.path));
+          const containsActive = flatMenuItems(group.items).some((item) => isActive(item.path));
           const color = group.color || '#6366f1';
           const accent = moduleAccent || color;
 
@@ -554,54 +649,7 @@ const Layout = ({ children }) => {
                   mr: 2, pr: 1.25, my: 0.5,
                   borderRight: `2px solid ${alpha(accent, 0.45)}`,
                 }}>
-                  {group.items.map((item) => {
-                    const active = isActive(item.path);
-                    const isPlaceholder = item.ready === false;
-
-                    return (
-                      <Box
-                        key={item.id}
-                        role="button"
-                        tabIndex={0}
-                        onClick={() => {
-                          if (isPlaceholder) {
-                            if (mobileOpen) setMobileOpen(false);
-                            navigate('/coming-soon', { state: { title: item.title } });
-                          } else {
-                            navigateTo(item.path);
-                          }
-                        }}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            event.currentTarget.click();
-                          }
-                        }}
-                        sx={{
-                          display: 'flex', alignItems: 'center', gap: 0.75,
-                          px: 1.15, py: 0.75, mb: 0.2, borderRadius: '8px',
-                          cursor: 'pointer',
-                          color: active ? accent : 'text.secondary',
-                          bgcolor: active ? alpha(accent, 0.08) : 'transparent',
-                          transition: 'background 0.16s ease, color 0.16s ease',
-                          '&:hover': { color: accent, bgcolor: alpha(accent, 0.06) },
-                          '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.4)}`, outlineOffset: 1 },
-                        }}
-                      >
-                        <Typography variant="body2" noWrap sx={{
-                          flex: 1,
-                          fontWeight: active ? 500 : 400,
-                        }}>
-                          {item.title}
-                        </Typography>
-                        {isPlaceholder && (
-                          <Typography sx={{ fontSize: 8.5, color: 'text.disabled', flexShrink: 0 }}>
-                            به‌زودی
-                          </Typography>
-                        )}
-                      </Box>
-                    );
-                  })}
+                  {renderMenuItems(group.items, accent)}
                 </Box>
               </Collapse>
             </Box>

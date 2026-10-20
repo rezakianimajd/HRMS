@@ -47,6 +47,24 @@ def _profile_for_root(profiles, root_key):
     )
 
 
+def _document_type_for(module_key, module_root):
+    """نوع منطقی سند را از ماژول منبع استنباط می‌کند (نه از مسیر فیزیکی)."""
+    key = f'{module_key} {module_root}'.lower()
+    if 'contract' in key or 'قرارداد' in key:
+        return ManagedDocument.DocumentType.CONTRACT
+    if 'project' in key or 'پروژه' in key:
+        return ManagedDocument.DocumentType.PROJECT
+    if any(part in key for part in ('employee', 'personnel', 'hr.', 'hr_', 'پرسنل')):
+        return ManagedDocument.DocumentType.HR
+    if any(part in key for part in ('account', 'financ', 'treasury', 'invoice', 'حساب', 'مالی')):
+        return ManagedDocument.DocumentType.FINANCIAL
+    if 'quality' in key or 'iso' in key or 'کیفیت' in key:
+        return ManagedDocument.DocumentType.QUALITY
+    if 'document' in key or 'company' in key or 'شرکت' in key:
+        return ManagedDocument.DocumentType.COMPANY
+    return ManagedDocument.DocumentType.OTHER
+
+
 def sync_archive_files(company, max_files=5000):
     """فایل‌های موجود در archive را در DMS ایندکس می‌کند."""
     if not company:
@@ -133,8 +151,15 @@ def sync_archive_files(company, max_files=5000):
                 title=title,
                 description=f'فایل موجود در بایگانی ماژول {module_name}',
                 tags=f'{module_name}, بایگانی, واردشده',
+                document_type=_document_type_for(module_key, module_root),
+                owner_department=module_name[:150],
+                related_entity_type=module_key[:50],
+                related_entity_label=(entity_parts[-1][:200] if entity_parts else module_name[:200]),
                 confidentiality=ManagedDocument.Confidentiality.INTERNAL,
                 status=ManagedDocument.Status.ACTIVE,
+                workflow_status=ManagedDocument.WorkflowStatus.PUBLISHED,
+                is_controlled=False,
+                metadata={'legacy_indexed': True, 'source': 'archive_sync'},
                 source_module_key=module_key,
                 storage_path=relative,
                 is_indexed=True,

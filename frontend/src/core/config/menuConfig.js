@@ -626,9 +626,30 @@ const documentsMenu = [
     color: '#0ea5e9',
     items: [
       { id: 'documents-all', title: 'همه اسناد', icon: <FolderCopyIcon />, path: '/document-management/library?scope=all', color: '#0f766e', primary: false, ready: true },
-      { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management/library?status=draft', color: '#64748b', primary: false, ready: true },
+      { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management/library?workflow=draft', color: '#64748b', primary: false, ready: true },
       { id: 'documents-mine', title: 'اسناد من', icon: <PersonSearchIcon />, path: '/document-management/library?scope=mine', color: '#0ea5e9', primary: false, ready: true },
       { id: 'documents-confidential', title: 'اسناد محرمانه', icon: <LockIcon />, path: '/document-management/library?confidentiality=confidential', color: '#be123c', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'documents-organizational',
+    title: 'اسناد سازمانی',
+    color: '#2563eb',
+    items: [
+      { id: 'documents-type-company', title: 'مدارک شرکت', icon: <FolderSharedIcon />, path: '/document-management/library?type=company', color: '#0f766e', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'documents-workflow',
+    title: 'گردش‌کار اسناد',
+    color: '#7c3aed',
+    items: [
+      { id: 'documents-workflow-review', title: 'در حال بررسی', icon: <FactCheckOutlinedIcon />, path: '/document-management/library?workflow=in_review', color: '#2563eb', primary: false, ready: true },
+      { id: 'documents-workflow-approved', title: 'تأییدشده', icon: <VerifiedUserIcon />, path: '/document-management/library?workflow=approved', color: '#7c3aed', primary: false, ready: true },
+      { id: 'documents-workflow-published', title: 'منتشرشده و لازم‌الاجرا', icon: <GavelIcon />, path: '/document-management/library?workflow=published', color: '#0f766e', primary: false, ready: true },
+      { id: 'documents-workflow-rejected', title: 'ردشده / بازگشتی', icon: <HistoryIcon />, path: '/document-management/library?workflow=rejected', color: '#be123c', primary: false, ready: true },
+      { id: 'documents-workflow-withdrawn', title: 'لغوشده', icon: <LockIcon />, path: '/document-management/library?workflow=withdrawn', color: '#b45309', primary: false, ready: true },
+      { id: 'documents-workflow-superseded', title: 'جایگزین‌شده', icon: <SwapHorizIcon />, path: '/document-management/library?workflow=superseded', color: '#64748b', primary: false, ready: true },
     ],
   },
   {
@@ -638,6 +659,7 @@ const documentsMenu = [
     items: [
       { id: 'documents-archived', title: 'بایگانی اسناد', icon: <FolderSharedIcon />, path: '/document-management/library?status=archived', color: '#b45309', primary: false, ready: true },
       { id: 'documents-expiring', title: 'اسناد نزدیک انقضا', icon: <NotificationsActiveIcon />, path: '/document-management/library?scope=expiring', color: '#f59e0b', primary: false, ready: true },
+      { id: 'documents-review-due', title: 'بازنگری سررسیدشده', icon: <EventAvailableIcon />, path: '/document-management/library?review=due', color: '#7c3aed', primary: false, ready: true },
       { id: 'documents-expired', title: 'اسناد منقضی', icon: <HistoryIcon />, path: '/document-management/library?scope=expired', color: '#be123c', primary: false, ready: true },
     ],
   },
@@ -660,8 +682,81 @@ const documentsMenu = [
   },
 ];
 
-export function getMenuForApp(appSlug) {
-  if (appSlug === 'documents') return documentsMenu;
+const DOCUMENTS_COMPANY_ROOT_CODE = 'company.documents';
+const DOCUMENTS_SELF_MODULE_KEY = 'hr.documents.management';
+
+const dmsFolderPath = (id) => `/document-management/library?folder=${id}`;
+const dmsFolderItem = (folder) => ({
+  id: `dms-folder-${folder.id}`,
+  title: folder.name,
+  path: dmsFolderPath(folder.id),
+  color: folder.color || '#0f766e',
+  primary: false,
+  ready: true,
+});
+
+const dmsFolderChildren = (folders, parentId, limit = 40) => {
+  const children = folders
+    .filter((folder) => String(folder.parent || '') === String(parentId))
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fa'));
+  const items = children.slice(0, limit).map(dmsFolderItem);
+  if (children.length > limit) {
+    items.push({
+      id: `dms-more-${parentId}`,
+      title: 'مشاهده همه پوشه‌ها…',
+      path: '/document-management/folders',
+      color: '#64748b',
+      ready: true,
+    });
+  }
+  return items;
+};
+
+export function buildDocumentsMenu(folders = []) {
+  const rows = Array.isArray(folders) ? folders : [];
+  if (!rows.length) return documentsMenu;
+
+  const companyRoot = rows.find((folder) => folder.code === DOCUMENTS_COMPANY_ROOT_CODE);
+  const companyItems = companyRoot ? dmsFolderChildren(rows, companyRoot.id) : [];
+  const moduleRoots = rows
+    .filter((folder) => !folder.parent
+      && folder.code !== DOCUMENTS_COMPANY_ROOT_CODE
+      && folder.code !== DOCUMENTS_SELF_MODULE_KEY)
+    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fa'))
+    .map((root) => {
+      const children = dmsFolderChildren(rows, root.id);
+      return {
+        id: `dms-module-${root.id}`,
+        title: root.name,
+        icon: <FolderCopyIcon />,
+        path: dmsFolderPath(root.id),
+        color: root.color || '#0f766e',
+        primary: false,
+        ready: true,
+        children: children.length ? children : undefined,
+      };
+    });
+
+  return documentsMenu.map((group) => {
+    if (group.id === 'documents-library') {
+      return { ...group, items: [...group.items, ...moduleRoots] };
+    }
+    if (group.id === 'documents-organizational') {
+      return {
+        ...group,
+        items: companyItems.length ? companyItems : [
+          { id: 'documents-type-company', title: 'مدارک شرکت', icon: <FolderSharedIcon />, path: '/document-management/library?type=company', color: '#0f766e', ready: true },
+        ],
+      };
+    }
+    return group;
+  });
+}
+
+export function getMenuForApp(appSlug, options = {}) {
+  if (appSlug === 'documents') {
+    return options.folders?.length ? buildDocumentsMenu(options.folders) : documentsMenu;
+  }
   if (appSlug === 'contracts') return contractsMenu;
   if (appSlug === 'settings') return settingsMenu;
   if (appSlug === 'projects') return projectsMenu;

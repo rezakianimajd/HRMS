@@ -18,6 +18,20 @@ BACKUP_DIR="/var/backups/hrms"
 LOG_FILE="/tmp/hrms-reset-update-$STAMP.log"
 VENV="$APP_DIR/venv"
 SETTINGS="hrms_project.settings.production"
+SERVICES_STOPPED=0
+
+restart_services_after_failure() {
+  local exit_code=$?
+  if [ "$exit_code" -ne 0 ] && [ "$SERVICES_STOPPED" = "1" ]; then
+    echo "WARNING: update failed while services were stopped; attempting to restart services..." >&2
+    sudo systemctl restart gunicorn 2>/dev/null || true
+    sudo systemctl restart celery-worker 2>/dev/null || true
+    sudo systemctl restart celery-beat 2>/dev/null || true
+    sudo systemctl reload nginx 2>/dev/null || true
+  fi
+  return "$exit_code"
+}
+trap restart_services_after_failure EXIT
 
 exec > >(tee -a "$LOG_FILE") 2>&1
 
@@ -70,6 +84,7 @@ echo "--- [2/9] Stop application services ---"
 sudo systemctl stop gunicorn 2>/dev/null || true
 sudo systemctl stop celery-worker 2>/dev/null || true
 sudo systemctl stop celery-beat 2>/dev/null || true
+SERVICES_STOPPED=1
 
 # ---------------------------------------------------------------------------
 # 3) Replace source code, preserving .env and runtime data.
@@ -112,6 +127,12 @@ if ! sudo -u "$APP_USER" bash -lc "cd '$HRMS_DIR' && set -a && . ./.env && set +
 fi
 echo "core.0016 applied: yes"
 
+if ! sudo -u "$APP_USER" bash -lc "cd '$HRMS_DIR' && set -a && . ./.env && set +a && DJANGO_SETTINGS_MODULE='$SETTINGS' '$VENV/bin/python' manage.py showmigrations documents" | grep -q '\[X\] 0011_'; then
+  echo "ERROR: documents migration 0011 is not applied." >&2
+  exit 1
+fi
+echo "documents.0011 applied: yes"
+
 # ---------------------------------------------------------------------------
 # 6) Rebuild static files and frontend build.
 # ---------------------------------------------------------------------------
@@ -153,6 +174,7 @@ sudo systemctl restart celery-worker 2>/dev/null || true
 sudo systemctl restart celery-beat 2>/dev/null || true
 sudo nginx -t
 sudo systemctl reload nginx
+SERVICES_STOPPED=0
 sleep 2
 
 echo "--- [9/9] Final verification ---"

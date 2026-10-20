@@ -44,6 +44,8 @@ const PERM_LABELS = {
   can_view_sensitive_data: 'مشاهده اطلاعات حساس',
   can_manage_documents: 'مدیریت مدارک',
   can_delete_documents: 'حذف مدارک',
+  can_approve_documents: 'تأیید و رد اسناد',
+  can_publish_documents: 'انتشار و لغو انتشار اسناد',
   can_approve_leaves: 'تأیید مرخصی',
   can_edit_settings: 'ویرایش تنظیمات',
   can_manage_users: 'مدیریت کاربران',

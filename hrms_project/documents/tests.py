@@ -227,6 +227,63 @@ class DocumentManagementTests(SimpleTestCase):
 
 
 
+class DocumentManagementWorkflowTests(SimpleTestCase):
+    """قواعد گردش‌کار نباید امکان انتشار بدون تأیید را بدهد."""
+
+    def test_draft_cannot_jump_to_published(self):
+        from documents.management_workflow import can_transition
+
+        self.assertTrue(can_transition('draft', 'in_review'))
+        self.assertFalse(can_transition('draft', 'published'))
+        self.assertFalse(can_transition('draft', 'approved'))
+
+    def test_review_can_approve_or_reject(self):
+        from documents.management_workflow import can_transition
+
+        self.assertTrue(can_transition('in_review', 'approved'))
+        self.assertTrue(can_transition('in_review', 'rejected'))
+        self.assertFalse(can_transition('in_review', 'published'))
+
+    def test_only_approved_can_be_published(self):
+        from documents.management_workflow import can_transition
+
+        self.assertTrue(can_transition('approved', 'published'))
+        self.assertFalse(can_transition('rejected', 'published'))
+        self.assertFalse(can_transition('withdrawn', 'published'))
+
+    def test_published_can_be_revised_withdrawn_or_superseded(self):
+        from documents.management_workflow import can_transition
+
+        self.assertTrue(can_transition('published', 'draft'))
+        self.assertTrue(can_transition('published', 'withdrawn'))
+        self.assertTrue(can_transition('published', 'superseded'))
+        self.assertFalse(can_transition('published', 'approved'))
+
+    def test_controlled_published_document_is_not_directly_editable(self):
+        from documents.models import ManagedDocument
+
+        document = ManagedDocument(
+            title='آیین‌نامه', workflow_status='published', is_controlled=True,
+        )
+        self.assertFalse(document.is_editable_in_workflow)
+        document.workflow_status = 'draft'
+        self.assertTrue(document.is_editable_in_workflow)
+
+
+    def test_workflow_permissions_are_separate(self):
+        from core.models.user import ROLE_PERMISSIONS, UserProfile
+        from core.engines.permission_engine import ALL_PERMISSIONS
+
+        for role in ('super_admin', 'hr_manager'):
+            self.assertTrue(UserProfile.ROLE_DEFAULTS[role]['can_approve_documents'])
+            self.assertTrue(UserProfile.ROLE_DEFAULTS[role]['can_publish_documents'])
+            self.assertTrue(ROLE_PERMISSIONS[role]['can_approve_documents'])
+            self.assertTrue(ROLE_PERMISSIONS[role]['can_publish_documents'])
+        self.assertIn('can_approve_documents', ALL_PERMISSIONS)
+        self.assertIn('can_publish_documents', ALL_PERMISSIONS)
+        self.assertFalse(UserProfile.ROLE_DEFAULTS['hr_specialist']['can_approve_documents'])
+
+
 class DocumentManagementUrlTests(SimpleTestCase):
     """مسیرهای API ماژول مدیریت اسناد در دسترس باشند."""
 
@@ -237,8 +294,17 @@ class DocumentManagementUrlTests(SimpleTestCase):
         self.assertEqual(reverse('managed-document-list'), '/api/document-management/documents/')
         self.assertEqual(reverse('document-activity-list'), '/api/document-management/activities/')
         self.assertEqual(reverse('document-management-stats'), '/api/document-management/stats/')
+        self.assertEqual(reverse('document-management-menu'), '/api/document-management/menu/')
         self.assertEqual(reverse('document-management-sync-storage'), '/api/document-management/sync-storage/')
         self.assertEqual(
             reverse('managed-document-restore-version', args=[1]),
             '/api/document-management/documents/1/restore-version/',
+        )
+        self.assertEqual(
+            reverse('managed-document-workflow', args=[1]),
+            '/api/document-management/documents/1/workflow/',
+        )
+        self.assertEqual(
+            reverse('managed-document-content', args=[1]),
+            '/api/document-management/documents/1/content/',
         )

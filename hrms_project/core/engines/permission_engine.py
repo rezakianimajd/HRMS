@@ -7,7 +7,8 @@ from django.contrib.auth.models import User
 ALL_PERMISSIONS = [
     'can_view_all_employees', 'can_add_employee', 'can_change_employee',
     'can_delete_employee', 'can_view_sensitive_data', 'can_manage_documents',
-    'can_delete_documents', 'can_approve_leaves', 'can_edit_settings',
+    'can_delete_documents', 'can_approve_documents', 'can_publish_documents',
+    'can_approve_leaves', 'can_edit_settings',
     'can_manage_users', 'can_manage_roles', 'can_manage_companies',
     'can_view_audit_logs',
     # خزانه‌داری

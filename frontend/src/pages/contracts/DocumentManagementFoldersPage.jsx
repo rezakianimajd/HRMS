@@ -33,7 +33,10 @@ const DocumentManagementFoldersPage = () => {
   const folders = useMemo(() => (Array.isArray(foldersQuery.data) ? foldersQuery.data : foldersQuery.data?.results || []), [foldersQuery.data]);
   const sorted = useMemo(() => [...folders].sort((a, b) => String(a.path || '').localeCompare(String(b.path || ''), 'fa')), [folders]);
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ['dms-folders'] });
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ['dms-folders'] });
+    qc.invalidateQueries({ queryKey: ['dms-menu-folders'] });
+  };
 
   const saveFolder = useMutation({
     mutationFn: (payload) => {

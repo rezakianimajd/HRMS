@@ -2,8 +2,8 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from documents.views import DocumentViewSet, DocumentTypeViewSet, OrganizationDocumentViewSet
 from documents.management_views import (
-    DocumentActivityViewSet, DocumentFolderViewSet, DocumentManagementStatsAPIView,
-    DocumentManagementSyncAPIView, ManagedDocumentViewSet,
+    DocumentActivityViewSet, DocumentFolderViewSet, DocumentManagementMenuAPIView,
+    DocumentManagementStatsAPIView, DocumentManagementSyncAPIView, ManagedDocumentViewSet,
 )
 
 router = DefaultRouter()
@@ -27,6 +27,7 @@ urlpatterns = [
         DocumentTypeViewSet.as_view({'get': 'retrieve', 'put': 'update', 'patch': 'partial_update', 'delete': 'destroy'}),
         name='document-type-detail',
     ),
+    path('document-management/menu/', DocumentManagementMenuAPIView.as_view(), name='document-management-menu'),
     path('document-management/stats/', DocumentManagementStatsAPIView.as_view(), name='document-management-stats'),
     path('document-management/sync-storage/', DocumentManagementSyncAPIView.as_view(), name='document-management-sync-storage'),
     path('document-management/', include(management_router.urls)),

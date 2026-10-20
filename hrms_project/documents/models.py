@@ -488,6 +488,32 @@ class ManagedDocument(BaseModel):
         ACTIVE = 'active', _('فعال')
         ARCHIVED = 'archived', _('بایگانی‌شده')
 
+    class DocumentType(models.TextChoices):
+        COMPANY = 'company', _('مدارک شرکت')
+        CIRCULAR = 'circular', _('بخشنامه و ابلاغیه')
+        POLICY = 'policy', _('آیین‌نامه و مقررات')
+        PROCEDURE = 'procedure', _('روش اجرایی و دستورالعمل')
+        FORM = 'form', _('فرم و چک‌لیست')
+        MINUTES = 'minutes', _('مصوبه و صورت‌جلسه')
+        CORRESPONDENCE = 'correspondence', _('مکاتبه رسمی')
+        TEMPLATE = 'template', _('قالب و سند استاندارد')
+        QUALITY = 'quality', _('مستندات کیفیت و ISO')
+        FINANCIAL = 'financial', _('سند مالی و حسابداری')
+        HR = 'hr', _('سند منابع انسانی')
+        CONTRACT = 'contract', _('سند قرارداد')
+        PROJECT = 'project', _('سند پروژه')
+        OTHER = 'other', _('سایر')
+
+    class WorkflowStatus(models.TextChoices):
+        DRAFT = 'draft', _('پیش‌نویس')
+        IN_REVIEW = 'in_review', _('در حال بررسی')
+        APPROVED = 'approved', _('تأییدشده')
+        PUBLISHED = 'published', _('منتشرشده / لازم‌الاجرا')
+        REJECTED = 'rejected', _('ردشده / بازگشتی')
+        SUPERSEDED = 'superseded', _('جایگزین‌شده')
+        WITHDRAWN = 'withdrawn', _('لغوشده')
+        ARCHIVED = 'archived', _('بایگانی‌شده')
+
     folder = models.ForeignKey(
         DocumentFolder, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='documents', verbose_name=_('پوشه'),
@@ -501,11 +527,32 @@ class ManagedDocument(BaseModel):
     is_indexed = models.BooleanField(
         default=False, verbose_name=_('ایندکس‌شده از بایگانی'),
     )
+    document_type = models.CharField(
+        max_length=30, choices=DocumentType.choices,
+        default=DocumentType.OTHER, verbose_name=_('نوع سند'),
+    )
+    owner_department = models.CharField(
+        max_length=150, blank=True, default='', verbose_name=_('واحد مسئول'),
+    )
+    issuing_authority = models.CharField(
+        max_length=200, blank=True, default='', verbose_name=_('مرجع صدور'),
+    )
+    related_entity_type = models.CharField(
+        max_length=50, blank=True, default='', verbose_name=_('نوع موجودیت مرتبط'),
+    )
+    related_entity_id = models.CharField(
+        max_length=64, blank=True, default='', verbose_name=_('شناسه موجودیت مرتبط'),
+    )
+    related_entity_label = models.CharField(
+        max_length=200, blank=True, default='', verbose_name=_('عنوان موجودیت مرتبط'),
+    )
     title = models.CharField(max_length=250, verbose_name=_('عنوان سند'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
     tags = models.CharField(max_length=500, blank=True, verbose_name=_('برچسب‌ها'))
     reference_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع'))
     issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
+    effective_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ لازم‌الاجرا'))
+    review_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ بازنگری'))
     expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
     retention_until = models.DateField(null=True, blank=True, verbose_name=_('نگهداری تا'))
     confidentiality = models.CharField(
@@ -516,12 +563,31 @@ class ManagedDocument(BaseModel):
         max_length=20, choices=Status.choices,
         default=Status.ACTIVE, verbose_name=_('وضعیت'),
     )
+    workflow_status = models.CharField(
+        max_length=20, choices=WorkflowStatus.choices,
+        default=WorkflowStatus.PUBLISHED, verbose_name=_('وضعیت گردش‌کار'),
+    )
+    is_controlled = models.BooleanField(
+        default=True, verbose_name=_('سند کنترل‌شده'),
+    )
     is_locked = models.BooleanField(default=False, verbose_name=_('قفل ویرایش'))
     current_version = models.ForeignKey(
         'DocumentVersion', on_delete=models.SET_NULL, null=True, blank=True,
         related_name='+', verbose_name=_('نسخه جاری'),
     )
     version_count = models.PositiveIntegerField(default=0, verbose_name=_('تعداد نسخه'))
+    published_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان انتشار'))
+    published_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='managed_documents_published', verbose_name=_('منتشرکننده'),
+    )
+    superseded_by = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='supersedes', verbose_name=_('سند جایگزین'),
+    )
+    metadata = models.JSONField(
+        default=dict, blank=True, verbose_name=_('متادیتای تکمیلی'),
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='managed_documents_created', verbose_name=_('ایجادکننده'),
@@ -538,6 +604,9 @@ class ManagedDocument(BaseModel):
         indexes = [
             models.Index(fields=['company', 'folder'], name='dms_doc_company_folder_idx'),
             models.Index(fields=['company', 'status'], name='dms_doc_company_status_idx'),
+            models.Index(fields=['company', 'workflow_status'], name='dms_doc_company_workflow_idx'),
+            models.Index(fields=['company', 'document_type'], name='dms_doc_company_type_idx'),
+            models.Index(fields=['review_date'], name='dms_doc_review_idx'),
             models.Index(fields=['expiry_date'], name='dms_doc_expiry_idx'),
             models.Index(fields=['company', 'source_module_key'], name='dms_doc_source_module_idx'),
         ]
@@ -585,6 +654,17 @@ class ManagedDocument(BaseModel):
     @property
     def tags_list(self):
         return [tag.strip() for tag in (self.tags or '').split(',') if tag.strip()]
+
+    @property
+    def is_editable_in_workflow(self):
+        """اسناد منتشرشده کنترل‌شده فقط از مسیر گردش‌کار قابل تغییرند."""
+        return (
+            not self.is_controlled
+            or self.workflow_status in (
+                self.WorkflowStatus.DRAFT,
+                self.WorkflowStatus.REJECTED,
+            )
+        )
 
 
 class DocumentVersion(BaseModel):
@@ -641,6 +721,7 @@ class DocumentActivity(BaseModel):
         DELETE = 'delete', _('حذف')
         DOWNLOAD = 'download', _('دانلود')
         FOLDER = 'folder', _('تغییر پوشه')
+        WORKFLOW = 'workflow', _('تغییر وضعیت گردش‌کار')
 
     document = models.ForeignKey(
         ManagedDocument, on_delete=models.SET_NULL, null=True, blank=True,

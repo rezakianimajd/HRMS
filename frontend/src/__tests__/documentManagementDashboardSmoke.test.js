@@ -22,6 +22,18 @@ jest.mock('../core/context/ApplicationContext', () => ({
   useApplication: () => ({ currentApp: { slug: 'documents' }, applications: [] }),
 }));
 
+jest.mock('../core/hooks/useAuth', () => ({
+  __esModule: true,
+  default: () => ({
+    user: {
+      id: 1,
+      first_name: 'مدیر',
+      is_superuser: true,
+      permissions: { can_manage_documents: true },
+    },
+  }),
+}));
+
 const folders = [
   { id: 1, name: 'مدارک و مستندات شرکت', parent: null, code: 'company.documents', color: '#0f172a', documents_count: 1, children_count: 10, is_system: true },
   { id: 2, name: 'پرسنل', parent: null, code: 'hr.employees', color: '#ec4899', documents_count: 2, children_count: 6, is_system: true },

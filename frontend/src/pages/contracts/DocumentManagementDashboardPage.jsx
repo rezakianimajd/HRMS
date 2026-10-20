@@ -13,6 +13,7 @@ import SyncIcon from '@mui/icons-material/Sync';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import axiosInstance from '../../core/api/axiosConfig';
+import useAuth from '../../core/hooks/useAuth';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { INK, KpiTile, MUTED, SurfaceCard } from '../accounting/AccountingDashboardUI';
 import { formatPersianNumber } from '../../core/utils/numberUtils';
@@ -25,6 +26,8 @@ import {
 const DocumentManagementDashboardPage = () => {
   const qc = useQueryClient();
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManage = Boolean(user?.is_superuser || user?.permissions?.can_manage_documents);
 
   const statsQuery = useQuery({
     queryKey: ['dms-stats'],
@@ -59,6 +62,7 @@ const DocumentManagementDashboardPage = () => {
       qc.invalidateQueries({ queryKey: ['dms-stats'] });
       qc.invalidateQueries({ queryKey: ['dms-documents'] });
       qc.invalidateQueries({ queryKey: ['dms-folders'] });
+      qc.invalidateQueries({ queryKey: ['dms-menu-folders'] });
       qc.invalidateQueries({ queryKey: ['dms-activities'] });
     },
   });
@@ -79,17 +83,17 @@ const DocumentManagementDashboardPage = () => {
         badge={<Chip size="small" label={`${formatPersianNumber(activeDocs.length)} سند فعال`} sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}
         actions={(
           <>
-            <Button variant="outlined" startIcon={<SyncIcon />} disabled={syncStorage.isPending} onClick={() => syncStorage.mutate()}>همگام‌سازی بایگانی</Button>
+            <Button variant="outlined" startIcon={<SyncIcon />} disabled={!canManage || syncStorage.isPending} onClick={() => syncStorage.mutate()}>همگام‌سازی بایگانی</Button>
             <Button variant="outlined" startIcon={<LibraryBooksOutlinedIcon />} onClick={() => openLibrary()}>کتابخانه اسناد</Button>
-            <Button variant="contained" startIcon={<UploadFileOutlinedIcon />} onClick={() => openLibrary('?action=upload')}>آپلود سند</Button>
+            <Button variant="contained" startIcon={<UploadFileOutlinedIcon />} disabled={!canManage} onClick={() => openLibrary('?action=upload')}>آپلود سند</Button>
           </>
         )}
       />
 
       <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
         <Grid item xs={6} md={3}><KpiTile icon={FolderOpenOutlinedIcon} label="کل اسناد فعال" value={formatPersianNumber(activeDocs.length)} suffix="سند" color={DMS_ACCENT} hint={`${formatPersianNumber(archived.length)} سند بایگانی`} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={UploadFileOutlinedIcon} label="اسناد فعال" value={formatPersianNumber(activeDocs.filter((row) => row.status === 'active').length)} suffix="سند" color="#0f766e" hint={`${formatPersianNumber(activeDocs.filter((row) => row.status === 'draft').length)} پیش‌نویس`} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={WarningAmberOutlinedIcon} label="نزدیک انقضا / منقضی" value={formatPersianNumber(expiring.length)} suffix="سند" color="#be123c" hint="نیازمند بررسی" /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={UploadFileOutlinedIcon} label="در انتظار بررسی" value={formatPersianNumber(stats.pending_review || 0)} suffix="سند" color="#2563eb" hint={`${formatPersianNumber(stats.published || 0)} منتشرشده`} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={WarningAmberOutlinedIcon} label="نزدیک انقضا / منقضی" value={formatPersianNumber(expiring.length)} suffix="سند" color="#be123c" hint={`${formatPersianNumber(stats.review_due || 0)} بازنگری سررسید`} /></Grid>
         <Grid item xs={6} md={3}><KpiTile icon={ArchiveOutlinedIcon} label="فضای بایگانی" value={formatBytes(stats.storage_bytes || 0)} color="#2563eb" size={16} hint={`${formatPersianNumber(folders.length)} پوشه`} /></Grid>
       </Grid>
 

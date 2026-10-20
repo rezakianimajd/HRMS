@@ -1,7 +1,7 @@
 """نگاشت و ایمپورت داده — API."""
 from datetime import date, datetime
 
-from django.db import models
+from django.db import IntegrityError, models
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -677,6 +677,14 @@ def _resolve_auxiliary(company, code, source_id=None):
     return None
 
 
+def _normalize_import_doc_key(value):
+    """کلید پایدار سند ایمپورت؛ ۲ و 2.0 یک کلید محسوب می‌شوند."""
+    key = str(value or '').strip()
+    if key.endswith('.0') and key[:-2].isdigit():
+        key = key[:-2]
+    return key
+
+
 def _fiscal_year_for(company, doc_date, fiscal_year_id=None):
     """سال مالی: یا از id ارسالی، یا با تشخیص از بازهٔ تاریخ."""
     if fiscal_year_id:
@@ -746,7 +754,9 @@ def import_documents(request):
         from collections import OrderedDict
         docs = OrderedDict()
         for r in rows:
-            key = r['doc_number'] or (r['reference'] or (r['date'].isoformat() if r['date'] else 'doc'))
+            key = _normalize_import_doc_key(
+                r['doc_number'] or (r['reference'] or (r['date'].isoformat() if r['date'] else 'doc'))
+            )
             docs.setdefault(key, []).append(r)
 
         journal, _ = Journal.objects.get_or_create(
@@ -756,27 +766,67 @@ def import_documents(request):
 
         created_docs = 0
         created_lines = 0
+        duplicate_docs = 0
+        duplicate_document_ids = []
         unresolved_codes = set()
         skipped_rows = []
+        existing_import_docs = {
+            document.source_id: document
+            for document in AccountingDocument.objects.filter(
+                company=company, source_module='datamapping',
+            ).exclude(source_id='').only('id', 'source_id', 'fiscal_year_id')
+        }
         for doc_key, lines in docs.items():
             first = lines[0]
             doc_date = first['date'] or date.today()
             fiscal_year = _fiscal_year_for(company, doc_date, fiscal_year_id)
+            fiscal_year_pk = fiscal_year.pk if fiscal_year else None
+            import_key = f'{fiscal_year_pk or 0}:{doc_key}'
+            legacy = existing_import_docs.get(doc_key)
+            existing_doc = existing_import_docs.get(import_key) or legacy
+            existing_fy = getattr(existing_doc, 'fiscal_year_id', None)
 
-            doc = AccountingDocument.objects.create(
-                company=company,
-                journal=journal,
-                fiscal_year=fiscal_year,
-                date=doc_date,
-                description=first['doc_description'] or f'سند ایمپورت‌شده {doc_key}',
-                reference=first['reference'] or '',
-                number='',
-                status='posted' if post_now else 'draft',
-                source_module='datamapping',
-                source_type='excel',
-                source_id=str(doc_key),
-                created_by=request.user if request.user.is_authenticated else None,
-            )
+            # ایمپورت مجدد همان سال/شماره سند نباید کل عملیات را به‌خاطر
+            # UniqueConstraint(source_module, source_id) متوقف کند.
+            # کلید جدید شامل سال مالی است تا شماره‌های تکراری سال‌های مختلف
+            # با هم تداخل پیدا نکنند؛ کلید قدیمی (بدون سال) هم برای سازگاری
+            # با ایمپورت‌های قبلی بررسی می‌شود.
+            if existing_doc and existing_fy == fiscal_year_pk:
+                duplicate_docs += 1
+                duplicate_document_ids.append({
+                    'source_id': getattr(existing_doc, 'source_id', doc_key),
+                    'doc_number': first['doc_number'] or '',
+                    'date': doc_date.isoformat(),
+                    'reason': 'این سند در همین سال مالی قبلاً ایمپورت شده است.',
+                })
+                continue
+
+            try:
+                doc = AccountingDocument.objects.create(
+                    company=company,
+                    journal=journal,
+                    fiscal_year=fiscal_year,
+                    date=doc_date,
+                    description=first['doc_description'] or f'سند ایمپورت‌شده {doc_key}',
+                    reference=first['reference'] or '',
+                    number='',
+                    status='posted' if post_now else 'draft',
+                    source_module='datamapping',
+                    source_type='excel',
+                    source_id=import_key,
+                    created_by=request.user if request.user.is_authenticated else None,
+                )
+            except IntegrityError:
+                # محافظت در برابر ایمپورت هم‌زمان دو درخواست
+                duplicate_docs += 1
+                duplicate_document_ids.append({
+                    'source_id': import_key,
+                    'doc_number': first['doc_number'] or '',
+                    'date': doc_date.isoformat(),
+                    'reason': 'کلید سند تکراری است.',
+                })
+                continue
+            existing_import_docs[import_key] = doc
             created_docs += 1
             for i, ln in enumerate(lines, start=1):
                 acc = _resolve_account(company, ln['account_code'], source_id)
@@ -807,10 +857,15 @@ def import_documents(request):
                 created_lines += 1
                 _link_aux_categories(acc, aux1, aux2, aux3)
 
+        message = 'ایمپورت اسناد انجام شد'
+        if duplicate_docs:
+            message += f'؛ {duplicate_docs} سند تکراری نادیده گرفته شد.'
         return Response({
-            'message': 'ایمپورت اسناد انجام شد',
+            'message': message,
             'created_documents': created_docs,
             'created_lines': created_lines,
+            'duplicate_documents': duplicate_docs,
+            'duplicate_document_ids': duplicate_document_ids[:100],
             'post_now': post_now,
             'unresolved_codes': sorted(unresolved_codes)[:100],
             'skipped_rows': skipped_rows[:100],

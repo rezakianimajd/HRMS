@@ -24,7 +24,20 @@ jest.mock('../core/context/ApplicationContext', () => ({
 
 jest.mock('../core/hooks/useAuth', () => ({
   __esModule: true,
-  default: () => ({ user: { id: 1, first_name: 'مدیر', last_name: 'بایگانی' } }),
+  default: () => ({
+    user: {
+      id: 1,
+      first_name: 'مدیر',
+      last_name: 'بایگانی',
+      is_superuser: true,
+      permissions: {
+        can_manage_documents: true,
+        can_approve_documents: true,
+        can_publish_documents: true,
+        can_delete_documents: true,
+      },
+    },
+  }),
 }));
 
 const folders = [

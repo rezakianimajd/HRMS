@@ -20,9 +20,15 @@ class DocumentFolderAdmin(admin.ModelAdmin):
 
 @admin.register(ManagedDocument)
 class ManagedDocumentAdmin(admin.ModelAdmin):
-    list_display = ['title', 'folder', 'confidentiality', 'status', 'version_count', 'expiry_date', 'created_at']
-    list_filter = ['status', 'confidentiality', 'company']
-    search_fields = ['title', 'tags', 'reference_number', 'description']
+    list_display = [
+        'title', 'document_type', 'folder', 'workflow_status', 'confidentiality',
+        'version_count', 'review_date', 'expiry_date', 'created_at',
+    ]
+    list_filter = ['workflow_status', 'document_type', 'status', 'confidentiality', 'company']
+    search_fields = [
+        'title', 'tags', 'reference_number', 'description', 'owner_department',
+        'issuing_authority', 'related_entity_label',
+    ]
     inlines = [DocumentVersionInline]
 
 

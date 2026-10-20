@@ -54,8 +54,36 @@ export const DOC_STATUS = {
   active: { label: 'فعال', color: GREEN, bg: '#ecfdf5' },
   archived: { label: 'بایگانی‌شده', color: AMBER, bg: '#fffbeb' },
 };
+export const DOCUMENT_TYPE = {
+  company: { label: 'مدارک شرکت' },
+  circular: { label: 'بخشنامه و ابلاغیه' },
+  policy: { label: 'آیین‌نامه و مقررات' },
+  procedure: { label: 'روش اجرایی و دستورالعمل' },
+  form: { label: 'فرم و چک‌لیست' },
+  minutes: { label: 'مصوبه و صورت‌جلسه' },
+  correspondence: { label: 'مکاتبه رسمی' },
+  template: { label: 'قالب و سند استاندارد' },
+  quality: { label: 'مستندات کیفیت و ISO' },
+  financial: { label: 'سند مالی و حسابداری' },
+  hr: { label: 'سند منابع انسانی' },
+  contract: { label: 'سند قرارداد' },
+  project: { label: 'سند پروژه' },
+  other: { label: 'سایر' },
+};
+export const WORKFLOW_STATUS = {
+  draft: { label: 'پیش‌نویس', color: SLATE, bg: '#f8fafc' },
+  in_review: { label: 'در حال بررسی', color: BLUE, bg: '#eff6ff' },
+  approved: { label: 'تأییدشده', color: VIOLET, bg: '#f5f3ff' },
+  published: { label: 'منتشرشده / لازم‌الاجرا', color: GREEN, bg: '#ecfdf5' },
+  rejected: { label: 'ردشده / بازگشتی', color: RED, bg: '#fff1f2' },
+  superseded: { label: 'جایگزین‌شده', color: SLATE, bg: '#f1f5f9' },
+  withdrawn: { label: 'لغوشده', color: AMBER, bg: '#fffbeb' },
+  archived: { label: 'بایگانی‌شده', color: AMBER, bg: '#fffbeb' },
+};
 export const confidentialityMeta = (row) => CONFIDENTIALITY[row?.confidentiality] || CONFIDENTIALITY.internal;
 export const statusMeta = (row) => DOC_STATUS[row?.status] || DOC_STATUS.active;
+export const workflowMeta = (row) => WORKFLOW_STATUS[row?.workflow_status] || WORKFLOW_STATUS.draft;
+export const documentTypeMeta = (row) => DOCUMENT_TYPE[row?.document_type] || DOCUMENT_TYPE.other;
 
 export const formatBytes = (bytes) => {
   const size = Number(bytes) || 0;
@@ -189,11 +217,13 @@ export const FolderOverview = ({ folders = [], selected, onSelect }) => {
   );
 };
 
-export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRestore, onDelete }) => {
+export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRestore, onDelete, canManage = true, canDelete = true }) => {
   const theme = useTheme();
   const meta = fileMeta(row);
   const confidentiality = confidentialityMeta(row);
-  const status = statusMeta(row);
+  const workflow = workflowMeta(row);
+  const documentType = documentTypeMeta(row);
+
   const Icon = meta.icon;
   return (
     <Paper elevation={0} sx={{
@@ -215,7 +245,8 @@ export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRes
       </Stack>
 
       <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
-        <Chip size="small" label={status.label} sx={{ height: 18, fontSize: 7.4, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+        <Chip size="small" label={workflow.label} sx={{ height: 18, fontSize: 7.4, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />
+        <Chip size="small" label={documentType.label} sx={{ height: 18, fontSize: 7.3, bgcolor: alpha(SLATE, 0.06), color: SLATE }} />
         <Chip size="small" label={`v${toPersianDigits(row.version_count || 1)}`} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED }} />
         <Chip size="small" label={row.file_size_display || formatBytes(row.file_size)} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED }} />
         {row.is_indexed ? <Chip size="small" label="از بایگانی" sx={{ height: 18, fontSize: 7.3, bgcolor: '#eff6ff', color: '#2563eb' }} /> : null}
@@ -238,20 +269,20 @@ export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRes
       <Stack direction="row" alignItems="center" spacing={0.2}>
         <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 8.2, minWidth: 0 }}>جزئیات</Button>
         <Tooltip title="دانلود"><span><IconButton size="small" onClick={() => onDownload?.(row)} disabled={!row.file_url} sx={{ color: BLUE, p: 0.35 }}><DownloadOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
-        <Tooltip title="ویرایش / نسخه جدید"><IconButton size="small" onClick={() => onEdit(row)} sx={{ color: MUTED, p: 0.35 }}><EditOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+        <Tooltip title={row.is_editable_in_workflow === false ? 'سند منتشرشده؛ ابتدا از گردش‌کار برای بازنگری برگردانید' : 'ویرایش / نسخه جدید'}><span><IconButton size="small" onClick={() => onEdit(row)} disabled={!canManage || row.is_editable_in_workflow === false} sx={{ color: MUTED, p: 0.35 }}><EditOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
         <Box sx={{ flex: 1 }} />
         {row.status === 'archived' ? (
-          <Tooltip title="بازگردانی"><IconButton size="small" onClick={() => onRestore(row)} sx={{ color: GREEN, p: 0.35 }}><RestoreOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+          <Tooltip title="بازگردانی"><span><IconButton size="small" onClick={() => onRestore(row)} disabled={!canManage} sx={{ color: GREEN, p: 0.35 }}><RestoreOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
         ) : (
-          <Tooltip title="بایگانی"><IconButton size="small" onClick={() => onArchive(row)} sx={{ color: AMBER, p: 0.35 }}><ArchiveOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+          <Tooltip title="بایگانی"><span><IconButton size="small" onClick={() => onArchive(row)} disabled={!canManage} sx={{ color: AMBER, p: 0.35 }}><ArchiveOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
         )}
-        <Tooltip title="حذف"><IconButton size="small" onClick={() => onDelete(row)} sx={{ color: RED, p: 0.35 }}><DeleteOutlineIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+        <Tooltip title="حذف"><span><IconButton size="small" onClick={() => onDelete(row)} disabled={!canDelete} sx={{ color: RED, p: 0.35 }}><DeleteOutlineIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
       </Stack>
     </Paper>
   );
 };
 
-export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onRestore, onDelete }) => {
+export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onRestore, onDelete, canManage = true, canDelete = true }) => {
   const theme = useTheme();
   const headSx = { fontWeight: 800, fontSize: 8.6, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
   const cellSx = { fontSize: 8.8, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
@@ -261,7 +292,7 @@ export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onR
         <Table stickyHeader size="small">
           <TableHead>
             <TableRow>
-              {['عنوان', 'پوشه', 'محرمانگی', 'وضعیت', 'نسخه', 'حجم', 'انقضا', 'اقدام'].map((label) => (
+              {['عنوان', 'نوع سند', 'پوشه', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'انقضا', 'اقدام'].map((label) => (
                 <TableCell key={label} sx={headSx} align={label === 'اقدام' ? 'center' : 'right'}>{label}</TableCell>
               ))}
             </TableRow>
@@ -269,10 +300,12 @@ export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onR
           <TableBody>
             {rows.map((row) => {
               const confidentiality = confidentialityMeta(row);
-              const status = statusMeta(row);
+              const status = workflowMeta(row);
+              const documentType = documentTypeMeta(row);
               return (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ ...cellSx, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 800 }}>{row.title}</TableCell>
+                  <TableCell sx={cellSx}>{documentType.label}</TableCell>
                   <TableCell sx={{ ...cellSx, maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.folder_path || row.folder_name || '—'}</TableCell>
                   <TableCell sx={cellSx}><Chip size="small" label={confidentiality.label} sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} /></TableCell>
                   <TableCell sx={cellSx}><Chip size="small" label={status.label} sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: status.bg, color: status.color }} /></TableCell>
@@ -282,11 +315,11 @@ export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onR
                   <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
                     <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)} sx={{ p: 0.25, color: BLUE }}><VisibilityOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
                     <Tooltip title="دانلود"><span><IconButton size="small" onClick={() => onDownload?.(row)} disabled={!row.file_url} sx={{ p: 0.25, color: BLUE }}><DownloadOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></span></Tooltip>
-                    <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)} sx={{ p: 0.25 }}><EditOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                    <Tooltip title={row.is_editable_in_workflow === false ? 'سند منتشرشده؛ ابتدا از گردش‌کار برای بازنگری برگردانید' : 'ویرایش'}><span><IconButton size="small" onClick={() => onEdit(row)} disabled={!canManage || row.is_editable_in_workflow === false} sx={{ p: 0.25 }}><EditOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></span></Tooltip>
                     {row.status === 'archived'
-                      ? <Tooltip title="بازگردانی"><IconButton size="small" onClick={() => onRestore(row)} sx={{ p: 0.25, color: GREEN }}><RestoreOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-                      : <Tooltip title="بایگانی"><IconButton size="small" onClick={() => onArchive(row)} sx={{ p: 0.25, color: AMBER }}><ArchiveOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>}
-                    <Tooltip title="حذف"><IconButton size="small" onClick={() => onDelete(row)} sx={{ p: 0.25, color: RED }}><DeleteOutlineIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                      ? <Tooltip title="بازگردانی"><span><IconButton size="small" onClick={() => onRestore(row)} disabled={!canManage} sx={{ p: 0.25, color: GREEN }}><RestoreOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></span></Tooltip>
+                      : <Tooltip title="بایگانی"><span><IconButton size="small" onClick={() => onArchive(row)} disabled={!canManage} sx={{ p: 0.25, color: AMBER }}><ArchiveOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></span></Tooltip>}
+                    <Tooltip title="حذف"><span><IconButton size="small" onClick={() => onDelete(row)} disabled={!canDelete} sx={{ p: 0.25, color: RED }}><DeleteOutlineIcon sx={{ fontSize: 15 }} /></IconButton></span></Tooltip>
                   </TableCell>
                 </TableRow>
               );
@@ -371,12 +404,14 @@ export const ActivityCard = ({ activities = [], onOpen }) => (
 
 export const DocumentDetailDrawer = ({
   row, activities = [], onClose, onEdit, onArchive, onRestore, onDelete, onRestoreVersion,
+  onWorkflow, onVersionDownload, onPreview, canManage = true, canApprove = true, canPublish = true, canDelete = true,
 }) => {
   const theme = useTheme();
   if (!row) return null;
   const meta = fileMeta(row);
   const confidentiality = confidentialityMeta(row);
-  const status = statusMeta(row);
+  const workflow = workflowMeta(row);
+  const documentType = documentTypeMeta(row);
   const Icon = meta.icon;
   const versions = Array.isArray(row.versions) ? row.versions : [];
   return (
@@ -396,7 +431,8 @@ export const DocumentDetailDrawer = ({
           </Stack>
           <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
             <Chip size="small" label={confidentiality.label} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} />
-            <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+            <Chip size="small" label={workflow.label} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />
+            <Chip size="small" label={documentType.label} sx={{ height: 21, fontSize: 8.2, bgcolor: alpha(SLATE, 0.07), color: SLATE }} />
             <Chip size="small" label={`نسخه ${toPersianDigits(row.version_count || 1)}`} sx={{ height: 21, fontSize: 8.2, bgcolor: SOFT_BG, color: MUTED }} />
             {row.is_locked ? <Chip size="small" label="قفل" sx={{ height: 21, fontSize: 8.2, bgcolor: '#fff1f2', color: RED }} /> : null}
           </Stack>
@@ -410,15 +446,24 @@ export const DocumentDetailDrawer = ({
               <InfoLine label="حجم" value={row.file_size_display || formatBytes(row.file_size)} />
               <InfoLine label="نوع" value={row.mime_type || meta.label} />
               <InfoLine label="شماره مرجع" value={row.reference_number || '—'} />
+              <InfoLine label="نوع سند" value={documentType.label} />
+              <InfoLine label="واحد مسئول" value={row.owner_department || '—'} />
+              <InfoLine label="مرجع صدور" value={row.issuing_authority || '—'} />
+              <InfoLine label="موجودیت مرتبط" value={row.related_entity_label || row.related_entity_type || '—'} />
               <InfoLine label="ایجادکننده" value={row.created_by_name || '—'} />
               <InfoLine label="آخرین ویرایش" value={row.updated_by_name || '—'} />
               <InfoLine label="منبع" value={row.source_module_key || (row.is_indexed ? 'بایگانی موجود' : 'مدیریت اسناد')} />
               <InfoLine label="مسیر ذخیره‌سازی" value={row.storage_path || '—'} ltr />
+              {['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(String(row.file_extension || '').toLowerCase()) ? (
+                <Button size="small" variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => onPreview?.(row)} sx={{ mt: 0.6, fontSize: 8.4 }}>پیش‌نمایش فایل</Button>
+              ) : null}
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={CalendarMonthIcon} title="متادیتا و تاریخ‌ها" color={BLUE} />
               <InfoLine label="تاریخ صدور" value={toJalali(row.issue_date)} />
+              <InfoLine label="تاریخ لازم‌الاجرا" value={toJalali(row.effective_date)} />
+              <InfoLine label="تاریخ بازنگری" value={toJalali(row.review_date)} />
               <InfoLine label="تاریخ انقضا" value={toJalali(row.expiry_date)} color={row.is_expired ? RED : INK} />
               <InfoLine label="نگهداری تا" value={toJalali(row.retention_until)} />
               {row.tags_list?.length ? (
@@ -426,6 +471,38 @@ export const DocumentDetailDrawer = ({
                   {row.tags_list.map((tag) => <Chip key={tag} size="small" label={tag} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.06), color: DMS_ACCENT }} />)}
                 </Stack>
               ) : null}
+            </Paper>
+
+            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+              <SectionHeading icon={TimelineIcon} title="گردش‌کار سند" color={workflow.color}
+                action={<Chip size="small" label={workflow.label} sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />} />
+              <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
+                {row.workflow_status === 'draft' || row.workflow_status === 'rejected' ? (
+                  <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'in_review')} sx={{ fontSize: 8.4 }}>ارسال برای بررسی</Button>
+                ) : null}
+                {row.workflow_status === 'in_review' ? (
+                  <>
+                    <Button size="small" variant="contained" disabled={!canApprove} onClick={() => onWorkflow?.(row, 'approved')} sx={{ fontSize: 8.4, bgcolor: GREEN }}>تأیید</Button>
+                    <Button size="small" variant="outlined" color="error" disabled={!canApprove} onClick={() => onWorkflow?.(row, 'rejected')} sx={{ fontSize: 8.4 }}>رد / بازگشت</Button>
+                  </>
+                ) : null}
+                {row.workflow_status === 'approved' ? (
+                  <Button size="small" variant="contained" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'published')} sx={{ fontSize: 8.4, bgcolor: GREEN }}>انتشار و لازم‌الاجرا</Button>
+                ) : null}
+                {row.workflow_status === 'published' ? (
+                  <>
+                    <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'draft')} sx={{ fontSize: 8.4 }}>شروع بازنگری</Button>
+                    <Button size="small" variant="outlined" color="warning" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'withdrawn')} sx={{ fontSize: 8.4 }}>لغو انتشار</Button>
+                    <Button size="small" variant="outlined" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'superseded')} sx={{ fontSize: 8.4 }}>جایگزینی</Button>
+                  </>
+                ) : null}
+                {row.workflow_status === 'withdrawn' || row.workflow_status === 'archived' ? (
+                  <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'draft')} sx={{ fontSize: 8.4 }}>بازگشت به پیش‌نویس</Button>
+                ) : null}
+              </Stack>
+              {row.published_at ? <InfoLine label="زمان انتشار" value={toJalali(String(row.published_at).slice(0, 10))} /> : null}
+              {row.published_by_name ? <InfoLine label="منتشرکننده" value={row.published_by_name} /> : null}
+              {row.superseded_by_title ? <InfoLine label="سند جایگزین" value={row.superseded_by_title} /> : null}
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
@@ -447,7 +524,7 @@ export const DocumentDetailDrawer = ({
                           <IconButton size="small" onClick={() => onRestoreVersion?.(row, version)} sx={{ color: AMBER, p: 0.25 }}><RestoreOutlinedIcon sx={{ fontSize: 15 }} /></IconButton>
                         </Tooltip>
                       )}
-                      {version.file_url ? <IconButton size="small" component="a" href={version.file_url} target="_blank" rel="noreferrer" sx={{ color: BLUE, p: 0.25 }}><DownloadOutlinedIcon sx={{ fontSize: 15 }} /></IconButton> : null}
+                      {version.file_url ? <IconButton size="small" onClick={() => onVersionDownload?.(row, version)} sx={{ color: BLUE, p: 0.25 }}><DownloadOutlinedIcon sx={{ fontSize: 15 }} /></IconButton> : null}
                     </Stack>
                   ))}
                 </Stack>
@@ -480,11 +557,11 @@ export const DocumentDetailDrawer = ({
 
         <Divider />
         <Stack direction="row" spacing={0.55} sx={{ p: 1.35, bgcolor: theme.palette.background.paper }}>
-          <Button variant="contained" startIcon={<EditOutlinedIcon />} onClick={() => onEdit(row)} sx={{ flex: 1 }}>ویرایش</Button>
+          <Button variant="contained" startIcon={<EditOutlinedIcon />} onClick={() => onEdit(row)} disabled={!canManage || row.is_editable_in_workflow === false} sx={{ flex: 1 }}>ویرایش</Button>
           {row.status === 'archived'
-            ? <Tooltip title="بازگردانی"><Button variant="outlined" onClick={() => onRestore(row)} sx={{ minWidth: 40, px: 1 }}><RestoreOutlinedIcon fontSize="small" /></Button></Tooltip>
-            : <Tooltip title="بایگانی"><Button variant="outlined" onClick={() => onArchive(row)} sx={{ minWidth: 40, px: 1 }}><ArchiveOutlinedIcon fontSize="small" /></Button></Tooltip>}
-          <Tooltip title="حذف"><Button color="error" variant="outlined" onClick={() => onDelete(row)} sx={{ minWidth: 40, px: 1 }}><DeleteOutlineIcon fontSize="small" /></Button></Tooltip>
+            ? <Tooltip title="بازگردانی"><span><Button variant="outlined" disabled={!canManage} onClick={() => onRestore(row)} sx={{ minWidth: 40, px: 1 }}><RestoreOutlinedIcon fontSize="small" /></Button></span></Tooltip>
+            : <Tooltip title="بایگانی"><span><Button variant="outlined" disabled={!canManage} onClick={() => onArchive(row)} sx={{ minWidth: 40, px: 1 }}><ArchiveOutlinedIcon fontSize="small" /></Button></span></Tooltip>}
+          <Tooltip title="حذف"><span><Button color="error" variant="outlined" disabled={!canDelete} onClick={() => onDelete(row)} sx={{ minWidth: 40, px: 1 }}><DeleteOutlineIcon fontSize="small" /></Button></span></Tooltip>
         </Stack>
       </Stack>
     </Drawer>
@@ -514,6 +591,7 @@ export const DocumentEditorDialog = ({
 
       <DialogContent sx={{ p: 2.3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
         {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
+        {!form.id ? <Alert severity="info" sx={{ borderRadius: '10px', fontSize: 10 }}>سند جدید به‌صورت پیش‌نویس ثبت می‌شود؛ انتشار آن نیازمند طی‌کردن گردش‌کار کنترل سند است.</Alert> : null}
 
         <Box component="label" sx={{
           display: 'flex', alignItems: 'center', gap: 1, p: 1.2, borderRadius: '12px', border: `1px dashed ${alpha(DMS_ACCENT, 0.35)}`,
@@ -551,14 +629,20 @@ export const DocumentEditorDialog = ({
           </Grid>
           <Grid item xs={12} sm={6}>
             <FormControl size="small" fullWidth>
-              <InputLabel>وضعیت</InputLabel>
-              <Select value={form.status || 'active'} label="وضعیت" onChange={(event) => update('status', event.target.value)}>
-                {Object.entries(DOC_STATUS).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
+              <InputLabel>نوع سند</InputLabel>
+              <Select value={form.document_type || 'other'} label="نوع سند" onChange={(event) => update('document_type', event.target.value)}>
+                {Object.entries(DOCUMENT_TYPE).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
               </Select>
             </FormControl>
           </Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="واحد مسئول" value={form.owner_department || ''} onChange={(event) => update('owner_department', event.target.value)} /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="مرجع صدور" value={form.issuing_authority || ''} onChange={(event) => update('issuing_authority', event.target.value)} /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="موجودیت مرتبط (کارمند، قرارداد، پروژه…)" value={form.related_entity_label || ''} onChange={(event) => update('related_entity_label', event.target.value)} /></Grid>
+          <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="شناسه/نوع موجودیت مرتبط" value={form.related_entity_type || ''} onChange={(event) => update('related_entity_type', event.target.value)} placeholder="employee / contract / project" /></Grid>
 
           <Grid item xs={12} sm={4}><JalaliDatePicker fullWidth label="تاریخ صدور" value={form.issue_date || ''} onChange={(value) => update('issue_date', value)} /></Grid>
+          <Grid item xs={12} sm={4}><JalaliDatePicker fullWidth label="تاریخ لازم‌الاجرا" value={form.effective_date || ''} onChange={(value) => update('effective_date', value)} /></Grid>
+          <Grid item xs={12} sm={4}><JalaliDatePicker fullWidth label="تاریخ بازنگری" value={form.review_date || ''} onChange={(value) => update('review_date', value)} /></Grid>
           <Grid item xs={12} sm={4}><JalaliDatePicker fullWidth label="تاریخ انقضا" value={form.expiry_date || ''} onChange={(value) => update('expiry_date', value)} /></Grid>
           <Grid item xs={12} sm={4}><JalaliDatePicker fullWidth label="نگهداری تا" value={form.retention_until || ''} onChange={(value) => update('retention_until', value)} /></Grid>
           <Grid item xs={12}><TextField size="small" fullWidth label="برچسب‌ها (با کاما جدا کنید)" value={form.tags || ''} onChange={(event) => update('tags', event.target.value)} placeholder="قرارداد, مالی, ۱۴۰۵" /></Grid>
