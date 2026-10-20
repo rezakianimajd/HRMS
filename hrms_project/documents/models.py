@@ -675,7 +675,10 @@ class DocumentVersion(BaseModel):
         related_name='versions', verbose_name=_('سند'),
     )
     version_number = models.PositiveIntegerField(default=1, verbose_name=_('شماره نسخه'))
-    file = models.FileField(upload_to=managed_document_version_upload_path, verbose_name=_('فایل'))
+    file = models.FileField(
+        upload_to=managed_document_version_upload_path,
+        max_length=500, verbose_name=_('فایل'),
+    )
     original_name = models.CharField(max_length=255, blank=True, verbose_name=_('نام فایل اصلی'))
     file_size = models.BigIntegerField(default=0, verbose_name=_('حجم فایل'))
     mime_type = models.CharField(max_length=120, blank=True, verbose_name=_('نوع فایل'))

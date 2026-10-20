@@ -284,6 +284,14 @@ class DocumentManagementWorkflowTests(SimpleTestCase):
         self.assertFalse(UserProfile.ROLE_DEFAULTS['hr_specialist']['can_approve_documents'])
 
 
+    def test_document_version_file_allows_long_archive_paths(self):
+        from documents.models import DocumentVersion
+
+        self.assertGreaterEqual(
+            DocumentVersion._meta.get_field('file').max_length, 500,
+        )
+
+
 class DocumentManagementUrlTests(SimpleTestCase):
     """مسیرهای API ماژول مدیریت اسناد در دسترس باشند."""
 
