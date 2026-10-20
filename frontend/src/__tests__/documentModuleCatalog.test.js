@@ -13,13 +13,14 @@ test('documents has its own complete menu and is not embedded in HRMS menu', () 
   const documentsMenu = getMenuForApp('documents');
   const documentPaths = documentsMenu.flatMap((group) => group.items.map((item) => item.path));
   expect(documentsMenu.map((group) => group.title)).toEqual(expect.arrayContaining([
-    'خانه', 'کتابخانه اسناد', 'پایش و بایگانی', 'گزارش‌ها و تاریخچه',
+    'خانه', 'کتابخانه اسناد', 'پایش و بایگانی', 'ساختار و مدیریت', 'گزارش‌ها و تاریخچه',
   ]));
   expect(documentPaths).toEqual(expect.arrayContaining([
     '/document-management',
     '/document-management/library?scope=all',
     '/document-management/library?status=draft',
     '/document-management/library?status=archived',
+    '/document-management/folders',
     '/document-management/reports',
     '/document-management/activity',
   ]));

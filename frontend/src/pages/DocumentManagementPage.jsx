@@ -26,7 +26,7 @@ import { INK, MUTED, SOFT_BG, SurfaceCard } from './accounting/AccountingDashboa
 import {
   CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, DocumentCard,
   DocumentDetailDrawer, DocumentEditorDialog, DocumentTable, FolderEditorDialog,
-  FolderTree, StoragePolicyCard,
+  FolderTree, LibraryBreadcrumb, StoragePolicyCard,
 } from './contracts/DocumentManagementUI';
 
 const EMPTY_DOCUMENT = {
@@ -426,14 +426,12 @@ const DocumentManagementPage = () => {
             </Stack>
           </Paper>
 
-          {selectedFolder ? (
-            <Alert severity="info" icon={<FolderOpenOutlinedIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.15 }}>
-              <Stack direction="row" alignItems="center" spacing={0.7}>
-                <Typography sx={{ flex: 1, fontSize: 9.2 }}>در حال نمایش اسناد پوشه «{selectedFolder.path || selectedFolder.name}»</Typography>
-                <Button size="small" onClick={() => setFolderId('')} sx={{ fontSize: 8.5 }}>نمایش همه</Button>
-              </Stack>
-            </Alert>
-          ) : null}
+          <LibraryBreadcrumb
+            rootLabel="کتابخانه"
+            path={selectedFolder?.path || ''}
+            onHome={() => setFolderId('')}
+            count={filtered.length}
+          />
 
           {error ? <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1, borderRadius: '11px' }}>{error}</Alert> : null}
 

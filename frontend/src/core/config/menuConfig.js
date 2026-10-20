@@ -642,6 +642,14 @@ const documentsMenu = [
     ],
   },
   {
+    id: 'documents-structure',
+    title: 'ساختار و مدیریت',
+    color: '#0f766e',
+    items: [
+      { id: 'documents-folders', title: 'پوشه‌ها و ماژول‌ها', icon: <FolderCopyIcon />, path: '/document-management/folders', color: '#0f766e', primary: false, ready: true },
+    ],
+  },
+  {
     id: 'documents-reports',
     title: 'گزارش‌ها و تاریخچه',
     color: '#6366f1',

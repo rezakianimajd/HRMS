@@ -127,6 +127,23 @@ export const FolderTree = ({ folders = [], selected, onSelect, onEdit, onDelete 
   return <Stack spacing={0.1}>{renderNodes('root')}</Stack>;
 };
 
+export const LibraryBreadcrumb = ({ rootLabel = 'کتابخانه', path = '', onHome, count = 0 }) => {
+  const segments = String(path || '').split('/').map((segment) => segment.trim()).filter(Boolean);
+  return (
+    <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1, px: 0.4, flexWrap: 'wrap' }}>
+      <Chip size="small" icon={<FolderOpenOutlinedIcon sx={{ fontSize: '14px !important' }} />} label={rootLabel}
+        onClick={onHome} sx={{ height: 23, fontSize: 8, fontWeight: 800, cursor: 'pointer', bgcolor: '#f1f5f9', color: INK }} />
+      {segments.map((segment, index) => (
+        <Stack key={`${segment}-${index}`} direction="row" alignItems="center" spacing={0.5}>
+          <Typography sx={{ fontSize: 9, color: MUTED }}>/</Typography>
+          <Chip size="small" label={segment} sx={{ height: 23, fontSize: 8, bgcolor: index === segments.length - 1 ? alpha(DMS_ACCENT, 0.09) : '#f8fafc', color: index === segments.length - 1 ? DMS_ACCENT : MUTED }} />
+        </Stack>
+      ))}
+      {count > 0 ? <Chip size="small" label={`${formatPersianNumber(count)} سند`} sx={{ height: 22, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT, ml: 'auto' }} /> : null}
+    </Stack>
+  );
+};
+
 export const FolderOverview = ({ folders = [], selected, onSelect }) => {
   const roots = folders.filter((folder) => !folder.parent);
   if (!roots.length) return null;
@@ -363,8 +380,8 @@ export const DocumentDetailDrawer = ({
   const Icon = meta.icon;
   const versions = Array.isArray(row.versions) ? row.versions : [];
   return (
-    <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
-      PaperProps={{ sx: { width: { xs: '100%', sm: 460 }, bgcolor: SOFT_BG } }}>
+    <Drawer anchor="right" open={Boolean(row)} onClose={onClose}
+      PaperProps={{ sx: { width: { xs: '100%', sm: 470 }, bgcolor: SOFT_BG } }}>
       <Stack sx={{ height: '100%' }}>
         <Box sx={{ p: 1.7, bgcolor: theme.palette.background.paper, borderBottom: `1px solid ${theme.palette.divider}` }}>
           <Stack direction="row" alignItems="flex-start" spacing={1}>
