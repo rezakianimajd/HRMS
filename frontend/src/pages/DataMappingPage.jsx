@@ -574,7 +574,7 @@ const DataMappingPage = () => {
         </Box>
         <Typography variant="caption" color="textSecondary" display="block" mb={1.5}>
           ستون‌های «ردیف، تاریخ سند، شماره سند، شماره عطف، معین، تفصیل۱، تفصیل۲، تفصیل۳، شرح سطر، بدهکار، بستانکار، شرح سند» به‌صورت خودکار شناسایی می‌شوند.
-          تاریخ به‌صورت شمسی (مثلاً ۱۴۰۳/۱۲/۲۵) خوانده و به میلادی تبدیل می‌شود. کدهای معین و تفصیل از طریق نگاشت‌های انجام‌شده (یا کدهای موجود) تطبیق داده می‌شوند.
+          تاریخ سند می‌تواند شمسی (۱۴۰۳/۱۲/۲۵)، میلادی (2025-03-15) یا سلول تاریخ اکسل باشد و به میلادی تبدیل می‌شود. تاریخ نامعتبر باعث رد همان سند و نمایش دلیل در «سطرهای ردشده» می‌شود. کدهای معین و تفصیل از طریق نگاشت‌های انجام‌شده (یا کدهای موجود) تطبیق داده می‌شوند.
         </Typography>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center">
           <FormControl size="small" sx={{ minWidth: 220 }}>
@@ -636,10 +636,10 @@ const DataMappingPage = () => {
           )}
           {docResult.skipped_rows && docResult.skipped_rows.length > 0 && (
             <Box sx={{ mt: 1.5 }}>
-              <Typography variant="caption" color="#b45309" fontWeight={700}>سطرهای ردشده (معین یافت نشد):</Typography>
+              <Typography variant="caption" color="#b45309" fontWeight={700}>سطرها/اسناد ردشده (تاریخ نامعتبر یا معین یافت‌نشده):</Typography>
               <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.75, mt: 0.5 }}>
                 {docResult.skipped_rows.map((r, i) => (
-                  <Chip key={i} size="small" label={`ردیف ${toPersianDigits(r.row)} — ${r.reason}`}
+                  <Chip key={i} size="small" label={`ردیف ${toPersianDigits(r.row)} — ${r.reason}${r.code ? ` (${toPersianDigits(r.code)})` : ''}`}
                     sx={{ bgcolor: 'rgba(245,158,11,0.1)', color: '#b45309' }} />
                 ))}
               </Box>
