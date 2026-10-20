@@ -168,9 +168,16 @@ try {
     Ok "HTTP 200 — باندل زنده: $liveBundle"
 
     # Cleanup remote temp files (best effort) and local staging.
+    # Normalize 8.3 TEMP paths (e.g. R0F1F~1.KIA) before Remove-Item.
     & ssh -o BatchMode=yes $Srv "rm -rf '$remoteDir' '$remoteArchive'" 2>$null
-    if ($stage -and (Test-Path $stage)) { Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue }
-    if ($archive -and (Test-Path $archive)) { Remove-Item $archive -Force -ErrorAction SilentlyContinue }
+    if ($stage -and (Test-Path -LiteralPath $stage)) {
+        $fullStage = (Get-Item -LiteralPath $stage).FullName
+        Remove-Item -LiteralPath $fullStage -Recurse -Force -ErrorAction SilentlyContinue
+    }
+    if ($archive -and (Test-Path -LiteralPath $archive)) {
+        $fullArchive = (Get-Item -LiteralPath $archive).FullName
+        Remove-Item -LiteralPath $fullArchive -Force -ErrorAction SilentlyContinue
+    }
     Ok 'ریست/آپدیت کامل شد. در مرورگر Ctrl+Shift+R بزنید.'
     Write-Host "Local log: $LocalLog" -ForegroundColor DarkGray
 } catch {
