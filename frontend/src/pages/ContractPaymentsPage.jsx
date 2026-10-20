@@ -28,12 +28,14 @@ import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
+import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
+import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
 import ContractListPicker from '../core/components/ui/ContractListPicker';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
-import { ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { ColumnChart } from '../core/components/charts/Charts';
 import { formatPersianNumber, formatPersianPercent, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
@@ -84,6 +86,12 @@ const isSameMonth = (value, year, month) => {
   if (!value) return false;
   const date = new Date(`${String(value).slice(0, 10)}T00:00:00`);
   return !Number.isNaN(date.getTime()) && date.getFullYear() === year && date.getMonth() === month;
+};
+const fileSizeLabel = (bytes) => {
+  const size = num(bytes);
+  if (size >= 1024 * 1024) return `${formatPersianNumber((size / (1024 * 1024)).toFixed(1))} مگابایت`;
+  if (size >= 1024) return `${formatPersianNumber((size / 1024).toFixed(0))} کیلوبایت`;
+  return `${formatPersianNumber(size)} بایت`;
 };
 
 const InfoLine = ({ label, value, strong, ltr, color }) => {
@@ -283,6 +291,11 @@ const PaymentCard = ({ row, currency, onView, onEdit, onDelete }) => {
           <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`}
             sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
         ) : null}
+        {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
+          <Chip size="small" icon={<AttachFileOutlinedIcon sx={{ fontSize: '12px !important' }} />}
+            label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`}
+            sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(TEAL, 0.07), color: TEAL, '& .MuiChip-icon': { color: TEAL } }} />
+        ) : null}
       </Stack>
 
       <Typography sx={{
@@ -340,7 +353,10 @@ const PaymentTable = ({ rows, currency, onView, onEdit, onDelete }) => (
                 <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
                   {row.invoice_number ? <Chip size="small" label={`فاکتور ${row.invoice_number}`} sx={{ height: 18, fontSize: 7.2, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} /> : null}
                   {row.statement_number ? <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`} sx={{ height: 18, fontSize: 7.2, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
-                  {!row.invoice_number && !row.statement_number ? <Typography sx={{ fontSize: 8, color: MUTED }}>—</Typography> : null}
+                  {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
+                    <Chip size="small" label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`} sx={{ height: 18, fontSize: 7.2, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />
+                  ) : null}
+                  {!row.invoice_number && !row.statement_number && !num(row.attachment_count ?? asArray(row.attachments).length) ? <Typography sx={{ fontSize: 8, color: MUTED }}>—</Typography> : null}
                 </Stack>
               </TableCell>
               <TableCell>
@@ -420,6 +436,35 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
               <InfoLine label="وضعیت" value={statusLabel(contract?.status)} color={statusColor(contract?.status)} />
             </Box>
             <Divider />
+            <Box sx={{ my: 1.8 }}>
+              <SectionHeading icon={AttachFileOutlinedIcon} title="فایل‌های پیوست" color={TEAL}
+                action={<Chip size="small" label={formatPersianNumber(asArray(row.attachments).length)}
+                  sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
+              {!asArray(row.attachments).length ? (
+                <Typography sx={{ fontSize: 8.8, color: MUTED }}>فایلی پیوست نشده است.</Typography>
+              ) : (
+                <Stack spacing={0.55}>
+                  {asArray(row.attachments).map((attachment) => (
+                    <Stack key={attachment.id} direction="row" alignItems="center" spacing={0.6}
+                      sx={{ p: 0.65, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}>
+                      <InsertDriveFileOutlinedIcon sx={{ fontSize: 16, color: TEAL }} />
+                      <Box sx={{ flex: 1, minWidth: 0 }}>
+                        <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
+                        <Typography sx={{ fontSize: 7.7, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
+                      </Box>
+                      {attachment.file_url ? (
+                        <Tooltip title="دانلود">
+                          <IconButton size="small" component="a" href={attachment.file_url} target="_blank" rel="noreferrer" sx={{ color: BLUE, p: 0.35 }}>
+                            <DownloadOutlinedIcon sx={{ fontSize: 15 }} />
+                          </IconButton>
+                        </Tooltip>
+                      ) : null}
+                    </Stack>
+                  ))}
+                </Stack>
+              )}
+            </Box>
+            <Divider />
             <Box sx={{ mt: 1.8 }}>
               <SectionHeading icon={DescriptionOutlinedIcon} title="توضیحات" color={SLATE} />
               <Typography sx={{ fontSize: 9.3, color: row.note ? INK : MUTED, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
@@ -443,7 +488,8 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
 
 const PaymentEditorDialog = ({
   open, onClose, form, setForm, invoiceList, statementList, currencyList,
-  fallbackCurrency, error, saving, onSave,
+  fallbackCurrency, error, saving, onSave, pendingFiles = [], existingAttachments = [],
+  onPickFiles, onRemovePending, onDeleteAttachment, attachmentBusy, contract, uploading,
 }) => {
   const selectedCurrency = currencyList.find((item) => String(item.id) === String(form.currency));
   const label = normalizeCurrencyLabel(selectedCurrency?.name || fallbackCurrency);
@@ -457,12 +503,34 @@ const PaymentEditorDialog = ({
         <Avatar sx={{ width: 42, height: 42, bgcolor: TEAL, color: '#fff' }}><PaymentsOutlinedIcon /></Avatar>
         <Box sx={{ flex: 1 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش پرداخت' : 'ثبت پرداخت جدید'}</Typography>
-          <Typography sx={{ fontSize: 8.8, color: MUTED }}>مبلغ، ارز، تاریخ، مرجع و پیوندهای پرونده را تکمیل کنید.</Typography>
+          <Typography sx={{ fontSize: 8.8, color: MUTED }}>مبلغ، ارز، تاریخ، پیوندهای پرونده و مدارک پیوست را تکمیل کنید.</Typography>
         </Box>
         <IconButton onClick={onClose} size="small"><CloseOutlinedIcon /></IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.8 }}>
+        <Box sx={{
+          display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1.4fr 1fr 1fr' }, gap: 0.8,
+          p: 1.1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2',
+        }}>
+          <Box>
+            <Typography sx={{ fontSize: 7.8, color: MUTED }}>قرارداد</Typography>
+            <Typography noWrap sx={{ fontSize: 9.3, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography>
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: 7.8, color: MUTED }}>مبلغ پرداخت</Typography>
+            <Typography sx={{ fontSize: 10, fontWeight: 900, color: TEAL }}>
+              {form.amount ? `${formatPersianNumber(form.amount)} ${label}` : '—'}
+            </Typography>
+          </Box>
+          <Box>
+            <Typography sx={{ fontSize: 7.8, color: MUTED }}>پیوست‌ها</Typography>
+            <Typography sx={{ fontSize: 10, fontWeight: 900, color: INK }}>
+              {formatPersianNumber(pendingFiles.length + existingAttachments.length)} فایل
+            </Typography>
+          </Box>
+        </Box>
+
         {error ? <Alert severity="error" sx={{ borderRadius: '10px', fontSize: 10.5 }}>{error}</Alert> : null}
 
         <Box>
@@ -524,13 +592,96 @@ const PaymentEditorDialog = ({
             <Grid item xs={12}><TextField size="small" fullWidth label="توضیحات" multiline rows={2} value={form.note || ''} onChange={(event) => setForm((previous) => ({ ...previous, note: event.target.value }))} /></Grid>
           </Grid>
         </Box>
+
+        <Divider />
+        <Box>
+          <SectionHeading icon={AttachFileOutlinedIcon} title="پیوست فایل‌ها" color={TEAL}
+            action={<Chip size="small" label={`${formatPersianNumber(pendingFiles.length + existingAttachments.length)} فایل`}
+              sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
+          <Box component="label" sx={{
+            display: 'flex', alignItems: 'center', gap: 1, p: 1.15, borderRadius: '12px',
+            border: `1px dashed ${alpha(TEAL, 0.28)}`, bgcolor: alpha(TEAL, 0.025), cursor: 'pointer',
+            transition: 'background-color .18s ease, border-color .18s ease',
+            '&:hover': { bgcolor: alpha(TEAL, 0.05), borderColor: alpha(TEAL, 0.45) },
+          }}>
+            <input type="file" hidden multiple
+              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.zip,.rar"
+              onChange={(event) => { onPickFiles(event.target.files); event.target.value = ''; }} />
+            <Box sx={{
+              width: 34, height: 34, borderRadius: '10px', bgcolor: alpha(TEAL, 0.09), color: TEAL,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <AttachFileOutlinedIcon sx={{ fontSize: 19 }} />
+            </Box>
+            <Box sx={{ flex: 1 }}>
+              <Typography sx={{ fontSize: 9.3, fontWeight: 800, color: INK }}>انتخاب فایل پیوست</Typography>
+              <Typography sx={{ fontSize: 8, color: MUTED }}>رسید، حواله، سند بانکی، تصویر یا PDF — حداکثر ۱۰ فایل</Typography>
+            </Box>
+            <Typography sx={{ fontSize: 8.3, fontWeight: 800, color: TEAL, border: `1px solid ${alpha(TEAL, 0.3)}`, borderRadius: '8px', px: 1, py: 0.45 }}>
+              انتخاب
+            </Typography>
+          </Box>
+
+          {existingAttachments.length > 0 ? (
+            <Box sx={{ mt: 1 }}>
+              <Typography sx={{ fontSize: 8.2, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های ذخیره‌شده</Typography>
+              <Stack spacing={0.5}>
+                {existingAttachments.map((attachment) => (
+                  <Stack key={attachment.id} direction="row" alignItems="center" spacing={0.6}
+                    sx={{ p: 0.7, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}>
+                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 17, color: TEAL }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
+                      <Typography sx={{ fontSize: 7.6, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
+                    </Box>
+                    {attachment.file_url ? (
+                      <Tooltip title="دانلود">
+                        <IconButton size="small" component="a" href={attachment.file_url} target="_blank" rel="noreferrer" sx={{ color: BLUE, p: 0.3 }}>
+                          <DownloadOutlinedIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </Tooltip>
+                    ) : null}
+                    <Tooltip title="حذف فایل">
+                      <span>
+                        <IconButton size="small" disabled={attachmentBusy} onClick={() => onDeleteAttachment(attachment)} sx={{ color: RED, p: 0.3 }}>
+                          <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </span>
+                    </Tooltip>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+          ) : null}
+
+          {pendingFiles.length > 0 ? (
+            <Box sx={{ mt: 1 }}>
+              <Typography sx={{ fontSize: 8.2, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های جدید (پس از ذخیره بارگذاری می‌شوند)</Typography>
+              <Stack spacing={0.5}>
+                {pendingFiles.map((file, index) => (
+                  <Stack key={`${file.name}-${file.size}-${file.lastModified}`} direction="row" alignItems="center" spacing={0.6}
+                    sx={{ p: 0.7, borderRadius: '9px', border: `1px solid ${alpha(TEAL, 0.15)}`, bgcolor: alpha(TEAL, 0.025) }}>
+                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 17, color: TEAL }} />
+                    <Box sx={{ flex: 1, minWidth: 0 }}>
+                      <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{file.name}</Typography>
+                      <Typography sx={{ fontSize: 7.6, color: MUTED }}>{fileSizeLabel(file.size)}</Typography>
+                    </Box>
+                    <IconButton size="small" onClick={() => onRemovePending(index)} sx={{ color: RED, p: 0.3 }}>
+                      <CloseOutlinedIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Stack>
+                ))}
+              </Stack>
+            </Box>
+          ) : null}
+        </Box>
       </DialogContent>
 
       <DialogActions sx={{ px: 2.5, py: 1.6, borderTop: '1px solid #e5ebf0' }}>
         <Button onClick={onClose} sx={{ fontSize: 9.5 }}>انصراف</Button>
         <Button variant="contained" onClick={onSave} disabled={saving} startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <CheckCircleOutlineIcon />}
           sx={{ fontSize: 9.5, px: 2.5, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>
-          {saving ? 'در حال ذخیره…' : 'ذخیره پرداخت'}
+          {uploading ? 'در حال بارگذاری فایل‌ها…' : (saving ? 'در حال ذخیره…' : 'ذخیره پرداخت')}
         </Button>
       </DialogActions>
     </Dialog>
@@ -554,6 +705,9 @@ const ContractPaymentsPage = () => {
   const [toast, setToast] = useState('');
   const [error, setError] = useState('');
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [pendingFiles, setPendingFiles] = useState([]);
+  const [existingAttachments, setExistingAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
 
   const contractsQuery = useQuery({
     queryKey: ['ext-contracts-pay'],
@@ -637,6 +791,7 @@ const ContractPaymentsPage = () => {
 
   const totalPaid = list.reduce((sum, payment) => sum + num(payment.amount), 0);
   const averagePayment = list.length ? totalPaid / list.length : 0;
+  const coverage = contractAmount > 0 ? (totalPaid / contractAmount) * 100 : 0;
   const lastPayment = [...list].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
   const linkedInvoices = new Set(list.map((payment) => payment.invoice).filter(Boolean)).size;
   const linkedStatements = new Set(list.map((payment) => payment.statement).filter(Boolean)).size;
@@ -682,6 +837,8 @@ const ContractPaymentsPage = () => {
       currency: selectedContract?.currency || '',
     });
     setError('');
+    setPendingFiles([]);
+    setExistingAttachments([]);
     setDialog(true);
   };
 
@@ -700,15 +857,48 @@ const ContractPaymentsPage = () => {
       note: payment.note || '',
     });
     setError('');
+    setPendingFiles([]);
+    setExistingAttachments(asArray(payment.attachments));
     setDetail(null);
     setDialog(true);
   };
 
   const closeEditor = () => {
-    if (save.isPending) return;
+    if (save.isPending || uploading) return;
     setDialog(false);
     setForm(EMPTY);
+    setPendingFiles([]);
+    setExistingAttachments([]);
     setError('');
+  };
+
+  const pickFiles = (fileList) => {
+    const files = Array.from(fileList || []).slice(0, 10);
+    setPendingFiles((previous) => {
+      const known = new Set(previous.map((file) => `${file.name}:${file.size}:${file.lastModified}`));
+      const next = files.filter((file) => !known.has(`${file.name}:${file.size}:${file.lastModified}`));
+      return [...previous, ...next].slice(0, 10);
+    });
+  };
+
+  const removePendingFile = (index) => {
+    setPendingFiles((previous) => previous.filter((_, current) => current !== index));
+  };
+
+  const deleteAttachment = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/contract-payment-attachments/${id}/`),
+    onSuccess: (_data, id) => {
+      setExistingAttachments((previous) => previous.filter((attachment) => attachment.id !== id));
+      qc.invalidateQueries({ queryKey: ['contract-payments'] });
+      setToast('فایل پیوست حذف شد');
+    },
+    onError: () => setError('حذف فایل پیوست ناموفق بود'),
+  });
+
+  const removeAttachmentFile = (attachment) => {
+    if (window.confirm(`فایل «${attachment.title || attachment.file_name || 'پیوست'}» حذف شود؟`)) {
+      deleteAttachment.mutate(attachment.id);
+    }
   };
 
 
@@ -727,16 +917,43 @@ const ContractPaymentsPage = () => {
   const save = useMutation({
     mutationFn: (payload) => {
       const clean = sanitize(payload);
-      return payload.id
+      return (payload.id
         ? axiosInstance.patch(`/contract-payments/${payload.id}/`, clean)
-        : axiosInstance.post('/contract-payments/', clean);
+        : axiosInstance.post('/contract-payments/', clean)).then((response) => response.data);
     },
-    onSuccess: () => {
+    onSuccess: async (saved) => {
+      const wasEdit = Boolean(form.id);
+      if (pendingFiles.length) {
+        setUploading(true);
+        const uploaded = [];
+        try {
+          for (const file of pendingFiles) {
+            const body = new FormData();
+            body.append('payment', saved.id);
+            body.append('title', file.name);
+            body.append('file', file, file.name);
+            // eslint-disable-next-line no-await-in-loop
+            const response = await axiosInstance.post('/contract-payment-attachments/', body);
+            uploaded.push(response.data);
+          }
+        } catch {
+          qc.invalidateQueries({ queryKey: ['contract-payments'] });
+          setForm((previous) => ({ ...previous, id: saved.id }));
+          setExistingAttachments((previous) => [...uploaded, ...previous]);
+          setPendingFiles([]);
+          setUploading(false);
+          setError('پرداخت ذخیره شد، اما بارگذاری برخی فایل‌ها ناموفق بود. فایل‌ها را دوباره انتخاب کنید.');
+          return;
+        }
+        setUploading(false);
+      }
       qc.invalidateQueries({ queryKey: ['contract-payments'] });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
       setDialog(false);
       setForm(EMPTY);
-      setToast(form.id ? 'پرداخت ویرایش شد' : 'پرداخت ثبت شد');
+      setPendingFiles([]);
+      setExistingAttachments([]);
+      setToast(wasEdit ? 'پرداخت ویرایش شد' : 'پرداخت ثبت شد');
     },
     onError: (requestError) => {
       const body = requestError.response?.data;
@@ -892,21 +1109,33 @@ const ContractPaymentsPage = () => {
         </>
       ) : (
         <>
-        <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-          <Grid item xs={12} lg={5}>
-            <ContractSnapshotCard contract={selectedContract} currency={contractCurrency} navigate={navigate} onBack={clearContract} />
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} lg={3}>
+            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
+              <ContractSnapshotCard contract={selectedContract} currency={contractCurrency} navigate={navigate} onBack={clearContract} />
+              <CoverageCard totalPaid={totalPaid} contractAmount={contractAmount} paymentCount={list.length}
+                invoiceCount={linkedInvoices} statementCount={linkedStatements} currency={contractCurrency}
+                averagePayment={averagePayment} lastPayment={lastPayment} />
+              <MethodsCard methods={methods} activeMethod={methodFilter} onSelect={setMethodFilter} />
+            </Stack>
           </Grid>
-          <Grid item xs={12} md={6} lg={4}>
-            <CoverageCard totalPaid={totalPaid} contractAmount={contractAmount} paymentCount={list.length}
-              invoiceCount={linkedInvoices} statementCount={linkedStatements} currency={contractCurrency}
-              averagePayment={averagePayment} lastPayment={lastPayment} />
-          </Grid>
-          <Grid item xs={12} md={6} lg={3}>
-            <MethodsCard methods={methods} activeMethod={methodFilter} onSelect={setMethodFilter} />
-          </Grid>
-        </Grid>
 
-        <Box>
+          <Grid item xs={12} lg={9}>
+            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={PaymentsOutlinedIcon} label="مجموع پرداخت‌ها" value={compactMoney(totalPaid)} suffix={contractCurrency} hint={`${formatPersianNumber(list.length)} فقره پرداخت`} color={TEAL} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={CheckCircleOutlineIcon} label="تعداد پرداخت" value={formatPersianNumber(list.length)} suffix="فقره" hint={`${formatPersianNumber(linkedInvoices)} فاکتور پیوندی`} color={GREEN} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={AccountBalanceWalletOutlinedIcon} label="میانگین پرداخت" value={compactMoney(averagePayment)} suffix={contractCurrency} hint={`پوشش ${formatPersianPercent(coverage)}`} color={BLUE} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={CalendarMonthOutlinedIcon} label="آخرین پرداخت" value={lastPayment ? toJalali(lastPayment.date) : '—'} hint={lastPayment?.method || 'بدون پرداخت'} color={AMBER} />
+              </Grid>
+            </Grid>
+
             <Paper elevation={0} sx={{ p: 1.2, mb: 1.5, borderRadius: '14px', border: '1px solid #e5edf1', bgcolor: '#fff' }}>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }}>
                 <TextField size="small" placeholder="جست‌وجو در مرجع، روش، فاکتور یا توضیحات…" value={search}
@@ -966,7 +1195,8 @@ const ContractPaymentsPage = () => {
                 ) : <ColumnChart data={monthlyData} height={160} />}
               </SurfaceCard>
             </Box>
-        </Box>
+          </Grid>
+        </Grid>
         </>
       )}
 
@@ -977,7 +1207,11 @@ const ContractPaymentsPage = () => {
 
       <PaymentEditorDialog open={dialog} onClose={closeEditor} form={form} setForm={setForm}
         invoiceList={invoiceList} statementList={statementList} currencyList={currencyList}
-        fallbackCurrency={contractCurrency} error={error} saving={save.isPending} onSave={submit} />
+        fallbackCurrency={contractCurrency} error={error} saving={save.isPending || uploading} onSave={submit}
+        contract={selectedContract} pendingFiles={pendingFiles} existingAttachments={existingAttachments}
+        onPickFiles={pickFiles} onRemovePending={removePendingFile}
+        onDeleteAttachment={removeAttachmentFile} attachmentBusy={deleteAttachment.isPending}
+        uploading={uploading} />
 
       <Dialog open={Boolean(deleteTarget)} onClose={() => { setDeleteTarget(null); setError(''); }} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontSize: 13, fontWeight: 900, color: INK }}>حذف پرداخت</DialogTitle>

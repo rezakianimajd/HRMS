@@ -52,6 +52,11 @@ const payment = {
   invoice_number: 'INV-100',
   statement: 1,
   statement_number: 'ST-100',
+  attachment_count: 1,
+  attachments: [{
+    id: 5, title: 'رسید بانکی', file_name: 'receipt.pdf', size: 2048,
+    file_url: 'http://localhost/media/payment_attachments/receipt.pdf',
+  }],
 };
 
 const wait = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -104,6 +109,17 @@ test('contract payments page renders financial summary, linked details and detai
   expect(container.textContent).toContain('INV-100');
   expect(container.textContent).toContain('ST-100');
   expect(container.textContent).toContain('مشاهده جزئیات');
+  expect(container.textContent).toContain('۱ فایل');
+
+  const newButton = Array.from(container.querySelectorAll('button'))
+    .find((element) => element.textContent.trim() === 'پرداخت جدید');
+  expect(newButton).toBeTruthy();
+  await act(async () => { newButton.click(); await wait(220); });
+  expect(document.body.textContent).toContain('پیوست فایل‌ها');
+  expect(document.body.textContent).toContain('انتخاب فایل پیوست');
+  const cancelButton = Array.from(document.querySelectorAll('button'))
+    .find((element) => element.textContent.trim() === 'انصراف');
+  await act(async () => { cancelButton.click(); await wait(180); });
 
   const card = Array.from(container.querySelectorAll('[role="button"]'))
     .find((element) => element.textContent.includes('مشاهده جزئیات'));
@@ -113,6 +129,8 @@ test('contract payments page renders financial summary, linked details and detai
   expect(document.body.textContent).toContain('جزئیات پرداخت قرارداد');
   expect(document.body.textContent).toContain('اطلاعات پرداخت');
   expect(document.body.textContent).toContain('پیوندهای پرونده');
+  expect(document.body.textContent).toContain('فایل‌های پیوست');
+  expect(document.body.textContent).toContain('رسید بانکی');
   expect(document.body.textContent).toContain('پرداخت اولیه صورت‌وضعیت');
 
   root.unmount();

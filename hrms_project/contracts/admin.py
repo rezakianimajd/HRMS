@@ -1,7 +1,7 @@
 from django.contrib import admin
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement, Addendum, Guarantee,
-    Payment, ContractDispute, ContractTypeMaster, SupplierEvaluation,
+    Payment, PaymentAttachment, ContractDispute, ContractTypeMaster, SupplierEvaluation,
     ContractApprovalWorkflow, ContractApprovalStep,
 )
 
@@ -60,6 +60,7 @@ admin.site.register(Statement)
 admin.site.register(Addendum)
 admin.site.register(Guarantee)
 admin.site.register(Payment)
+admin.site.register(PaymentAttachment)
 
 
 @admin.register(ContractDispute)

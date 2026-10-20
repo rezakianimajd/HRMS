@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from contracts.views import (
     ContractPartyViewSet, ContractViewSet, ContractDocumentViewSet,
     InvoiceViewSet, StatementViewSet, AddendumViewSet, GuaranteeViewSet,
-    PaymentViewSet, ContractDisputeViewSet,
+    PaymentViewSet, PaymentAttachmentViewSet, ContractDisputeViewSet,
     ContractTypeMasterViewSet, SupplierEvaluationViewSet,
     ContractTemplateViewSet, ContractDraftViewSet, ContractApprovalViewSet,
     ContractApprovalWorkflowViewSet, ContractApprovalStepViewSet,
@@ -18,6 +18,7 @@ router.register(r'contract-statements', StatementViewSet, basename='contract-sta
 router.register(r'contract-addendums', AddendumViewSet, basename='contract-addendum')
 router.register(r'contract-guarantees', GuaranteeViewSet, basename='contract-guarantee')
 router.register(r'contract-payments', PaymentViewSet, basename='contract-payment')
+router.register(r'contract-payment-attachments', PaymentAttachmentViewSet, basename='contract-payment-attachment')
 router.register(r'contract-disputes', ContractDisputeViewSet, basename='contract-dispute')
 router.register(r'contract-types-master', ContractTypeMasterViewSet, basename='contract-type-master')
 router.register(r'supplier-evaluations', SupplierEvaluationViewSet, basename='supplier-evaluation')

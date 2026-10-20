@@ -4,7 +4,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment, ContractDispute,
+    Addendum, Guarantee, Payment, PaymentAttachment, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
@@ -13,7 +13,7 @@ from contracts.models import (
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
     InvoiceSerializer, StatementSerializer, AddendumSerializer,
-    GuaranteeSerializer, PaymentSerializer, ContractDisputeSerializer,
+    GuaranteeSerializer, PaymentSerializer, PaymentAttachmentSerializer, ContractDisputeSerializer,
     ContractTypeMasterSerializer, SupplierEvaluationSerializer,
     ContractTemplateSerializer, ContractDraftSerializer, ContractApprovalSerializer,
     ContractApprovalWorkflowSerializer, ContractApprovalStepSerializer,
@@ -428,7 +428,7 @@ class GuaranteeViewSet(BaseContractViewSet):
 
 class PaymentViewSet(BaseContractViewSet):
     serializer_class = PaymentSerializer
-    queryset = Payment.objects.select_related('contract', 'currency', 'invoice', 'statement')
+    queryset = Payment.objects.select_related('contract', 'currency', 'invoice', 'statement').prefetch_related('attachments')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['reference', 'method', 'note', 'contract__subject', 'invoice__number', 'statement__number']
     ordering = ['-date']
@@ -448,6 +448,21 @@ class PaymentViewSet(BaseContractViewSet):
         except Exception:
             pass
         return obj
+
+
+class PaymentAttachmentViewSet(BaseContractViewSet):
+    serializer_class = PaymentAttachmentSerializer
+    queryset = PaymentAttachment.objects.select_related('payment', 'payment__contract')
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    filter_backends = [filters.OrderingFilter]
+    ordering = ['-uploaded_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        payment_id = self.request.query_params.get('payment')
+        if payment_id:
+            qs = qs.filter(payment_id=payment_id)
+        return qs
 
 
 class ContractDisputeViewSet(BaseContractViewSet):

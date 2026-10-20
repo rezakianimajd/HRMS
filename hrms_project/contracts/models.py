@@ -569,6 +569,47 @@ class Payment(BaseModel):
         return f'{self.date} - {self.amount}'
 
 
+def payment_attachment_upload_path(instance, filename):
+    """مسیر فایل پیوست پرداخت در بایگانی قرارداد."""
+    from core.engines.archive_storage_engine import resolve_upload_path
+
+    try:
+        payment = instance.payment
+        contract = payment.contract
+        fields = {
+            'number': getattr(contract, 'number', '') or '',
+            'name': getattr(contract, 'subject', '') or '',
+            'id': payment.pk,
+        }
+    except Exception:  # noqa: BLE001 — پرداخت ذخیره‌نشده نباید آپلود را بشکند
+        fields = {}
+
+    return resolve_upload_path(
+        instance.company_id, 'hrms.contracts', fields, filename,
+        fallback_dir='payment_attachments', subfolder='payments',
+    )
+
+
+class PaymentAttachment(BaseModel):
+    """فایل پیوست یک پرداخت قرارداد (رسید، حواله، سند بانکی و...)."""
+
+    payment = models.ForeignKey(
+        Payment, on_delete=models.CASCADE, related_name='attachments',
+        verbose_name=_('پرداخت'),
+    )
+    title = models.CharField(max_length=200, blank=True, verbose_name=_('عنوان فایل'))
+    file = models.FileField(upload_to=payment_attachment_upload_path, verbose_name=_('فایل'))
+    uploaded_at = models.DateTimeField(auto_now_add=True, verbose_name=_('زمان بارگذاری'))
+
+    class Meta:
+        verbose_name = _('پیوست پرداخت')
+        verbose_name_plural = _('پیوست‌های پرداخت')
+        ordering = ['-uploaded_at']
+
+    def __str__(self):
+        return self.title or self.file.name
+
+
 class ContractDispute(BaseModel):
     """اختلاف / دعوای مرتبط با قرارداد (Risk Management)."""
 

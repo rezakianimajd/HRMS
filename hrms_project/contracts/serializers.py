@@ -2,7 +2,7 @@
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment, ContractDispute,
+    Addendum, Guarantee, Payment, PaymentAttachment, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
@@ -267,12 +267,55 @@ class GuaranteeSerializer(serializers.ModelSerializer):
         return label
 
 
+class PaymentAttachmentSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    file_name = serializers.SerializerMethodField()
+    size = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PaymentAttachment
+        fields = ['id', 'payment', 'title', 'file', 'file_url', 'file_name', 'size', 'uploaded_at']
+        read_only_fields = ['id', 'company', 'uploaded_at', 'file_url', 'file_name', 'size']
+
+    def get_file_url(self, obj):
+        if not obj.file:
+            return None
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.file.url) if request else obj.file.url
+
+    def get_file_name(self, obj):
+        try:
+            return obj.file.name.rsplit('/', 1)[-1]
+        except Exception:  # noqa: BLE001
+            return ''
+
+    def get_size(self, obj):
+        try:
+            return obj.file.size
+        except Exception:  # noqa: BLE001
+            return 0
+
+    def validate_payment(self, value):
+        request = self.context.get('request')
+        company = getattr(request, 'tenant', None) or getattr(request, 'company', None) if request else None
+        if company and value.company_id != company.id:
+            raise serializers.ValidationError('پرداخت انتخاب‌شده متعلق به این شرکت نیست.')
+        return value
+
+    def validate_file(self, value):
+        if value and value.size > 25 * 1024 * 1024:
+            raise serializers.ValidationError('حجم فایل پیوست نباید بیشتر از ۲۵ مگابایت باشد.')
+        return value
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     invoice_number = serializers.CharField(source='invoice.number', read_only=True)
     statement_number = serializers.CharField(source='statement.number', read_only=True)
+    attachments = PaymentAttachmentSerializer(many=True, read_only=True)
+    attachment_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Payment
@@ -280,8 +323,12 @@ class PaymentSerializer(serializers.ModelSerializer):
             'id', 'contract', 'contract_subject', 'invoice', 'invoice_number', 'statement', 'statement_number',
             'date', 'currency', 'currency_name', 'currency_symbol',
             'amount', 'reference', 'method', 'note',
+            'attachments', 'attachment_count',
         ]
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at', 'attachments', 'attachment_count']
+
+    def get_attachment_count(self, obj):
+        return obj.attachments.count()
 
 
 class ContractPartySerializer(serializers.ModelSerializer):
