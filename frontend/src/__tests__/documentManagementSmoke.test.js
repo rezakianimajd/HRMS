@@ -22,6 +22,11 @@ jest.mock('../core/context/ApplicationContext', () => ({
   useApplication: () => ({ currentApp: { slug: 'documents' }, applications: [] }),
 }));
 
+jest.mock('../core/hooks/useAuth', () => ({
+  __esModule: true,
+  default: () => ({ user: { id: 1, first_name: 'مدیر', last_name: 'بایگانی' } }),
+}));
+
 const folders = [
   { id: 1, name: 'قراردادها', parent: null, path: 'قراردادها', color: '#0f766e', documents_count: 1, children_count: 1 },
   { id: 2, name: 'قراردادهای جاری', parent: 1, path: 'قراردادها / قراردادهای جاری', color: '#2563eb', documents_count: 1, children_count: 0 },
@@ -105,7 +110,7 @@ test('document management page renders library, folder tree, detail drawer and u
     await act(async () => { await wait(180); });
   }
 
-  expect(container.textContent).toContain('مدیریت اسناد و مدارک');
+  expect(container.textContent).toContain('کتابخانه اسناد');
   expect(container.textContent).toContain('پوشه‌های اسناد');
   expect(container.textContent).toContain('قراردادها');
   expect(container.textContent).toContain('قرارداد پیمانکاری سالن تولید');

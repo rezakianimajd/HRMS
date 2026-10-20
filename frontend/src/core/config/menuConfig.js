@@ -136,14 +136,6 @@ const menuConfig = [
     ],
   },
   {
-    id: 'document-management',
-    title: 'مدیریت اسناد و مدارک',
-    color: '#0f766e',
-    items: [
-      { id: 'document-library', title: 'کتابخانه اسناد', icon: <FolderCopyIcon />, path: '/document-management', color: '#0f766e', primary: false, ready: true },
-    ],
-  },
-  {
     id: 'insights',
     title: 'بینش و دستیار هوشمند',
     color: '#f43f5e',
@@ -599,14 +591,6 @@ const contractsMenu = [
     ],
   },
   {
-    id: 'contracts-document-management',
-    title: 'مدیریت اسناد و مدارک',
-    color: '#0f766e',
-    items: [
-      { id: 'contracts-document-library', title: 'کتابخانه اسناد', icon: <FolderCopyIcon />, path: '/document-management', color: '#0f766e', primary: false, ready: true },
-    ],
-  },
-  {
     id: 'contracts-config',
     title: 'پیکربندی',
     color: '#64748b',
@@ -627,7 +611,49 @@ const contractsMenu = [
   },
 ];
 
+const documentsMenu = [
+  {
+    id: 'documents-home',
+    title: 'خانه',
+    color: '#0f766e',
+    items: [
+      { id: 'documents-dashboard', title: 'داشبورد اسناد', icon: <DashboardIcon />, path: '/document-management', color: '#0f766e', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'documents-library',
+    title: 'کتابخانه اسناد',
+    color: '#0ea5e9',
+    items: [
+      { id: 'documents-all', title: 'همه اسناد', icon: <FolderCopyIcon />, path: '/document-management?scope=all', color: '#0f766e', primary: false, ready: true },
+      { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management?status=draft', color: '#64748b', primary: false, ready: true },
+      { id: 'documents-mine', title: 'اسناد من', icon: <PersonSearchIcon />, path: '/document-management?scope=mine', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'documents-confidential', title: 'اسناد محرمانه', icon: <LockIcon />, path: '/document-management?confidentiality=confidential', color: '#be123c', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'documents-control',
+    title: 'پایش و بایگانی',
+    color: '#f59e0b',
+    items: [
+      { id: 'documents-archived', title: 'بایگانی اسناد', icon: <FolderSharedIcon />, path: '/document-management?status=archived', color: '#b45309', primary: false, ready: true },
+      { id: 'documents-expiring', title: 'اسناد نزدیک انقضا', icon: <NotificationsActiveIcon />, path: '/document-management?scope=expiring', color: '#f59e0b', primary: false, ready: true },
+      { id: 'documents-expired', title: 'اسناد منقضی', icon: <HistoryIcon />, path: '/document-management?scope=expired', color: '#be123c', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'documents-reports',
+    title: 'گزارش‌ها و تاریخچه',
+    color: '#6366f1',
+    items: [
+      { id: 'documents-report', title: 'گزارش جامع اسناد', icon: <InsightsIcon />, path: '/document-management/reports', color: '#6366f1', primary: false, ready: true },
+      { id: 'documents-activity', title: 'تاریخچه فعالیت', icon: <HistoryIcon />, path: '/document-management/activity', color: '#8b5cf6', primary: false, ready: true },
+    ],
+  },
+];
+
 export function getMenuForApp(appSlug) {
+  if (appSlug === 'documents') return documentsMenu;
   if (appSlug === 'contracts') return contractsMenu;
   if (appSlug === 'settings') return settingsMenu;
   if (appSlug === 'projects') return projectsMenu;

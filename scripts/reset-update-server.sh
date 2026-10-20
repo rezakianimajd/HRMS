@@ -134,7 +134,14 @@ sudo chown -R "$APP_USER:$APP_USER" "$FRONTEND_DIR/build"
 sudo mkdir -p "$STATIC_DIR"
 sudo rm -rf "$STATIC_DIR/js" "$STATIC_DIR/css"
 sudo cp -a "$FRONTEND_DIR/build/static/." "$STATIC_DIR/"
-sudo chown -R "$APP_USER:www-data" "$STATIC_DIR" 2>/dev/null || true
+# Keep deploy user (hradmin) able to publish future builds while nginx
+# (www-data/other) can still read static assets.
+STATIC_GROUP="${SUDO_USER:-hradmin}"
+if ! getent group "$STATIC_GROUP" >/dev/null 2>&1; then
+  STATIC_GROUP="$APP_USER"
+fi
+sudo chown -R "$APP_USER:$STATIC_GROUP" "$STATIC_DIR"
+sudo chmod -R u=rwX,g=rwX,o=rX "$STATIC_DIR"
 
 # ---------------------------------------------------------------------------
 # 7) Restart and verify services.

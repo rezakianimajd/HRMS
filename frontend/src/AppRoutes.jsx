@@ -23,6 +23,8 @@ import DataImportPage from './pages/DataImportPage';
 import AppearancePage from './pages/AppearancePage';
 import CompanyDocumentsPage from './pages/CompanyDocumentsPage';
 import DocumentManagementPage from './pages/DocumentManagementPage';
+import DocumentManagementReportsPage from './pages/contracts/DocumentManagementReportsPage';
+import DocumentManagementActivityPage from './pages/contracts/DocumentManagementActivityPage';
 import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
 import DataEntryPage from './pages/DataEntryPage';
@@ -336,6 +338,8 @@ const AppRoutes = () => {
       <Route path="/appraisal" element={<ProtectedLayout><AppraisalPage /></ProtectedLayout>} />
       <Route path="/documents" element={<ProtectedLayout><CompanyDocumentsPage /></ProtectedLayout>} />
       <Route path="/document-management" element={<ProtectedLayout><DocumentManagementPage /></ProtectedLayout>} />
+      <Route path="/document-management/reports" element={<ProtectedLayout><DocumentManagementReportsPage /></ProtectedLayout>} />
+      <Route path="/document-management/activity" element={<ProtectedLayout><DocumentManagementActivityPage /></ProtectedLayout>} />
       <Route path="/users" element={<ProtectedLayout><UsersPage /></ProtectedLayout>} />
       <Route path="/audit" element={<ProtectedLayout><AuditPage /></ProtectedLayout>} />
       <Route path="/data-import" element={<ProtectedLayout><DataImportPage /></ProtectedLayout>} />

@@ -1,6 +1,8 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useSearchParams } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
+import useAuth from '../core/hooks/useAuth';
 import {
   Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton,
@@ -36,10 +38,13 @@ const EMPTY_FOLDER = { id: null, name: '', parent: '', color: '#0f766e', descrip
 
 const DocumentManagementPage = () => {
   const qc = useQueryClient();
-  const [search, setSearch] = useState('');
-  const [folderId, setFolderId] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all');
-  const [confidentialityFilter, setConfidentialityFilter] = useState('all');
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const [search, setSearch] = useState(() => searchParams.get('q') || '');
+  const [folderId, setFolderId] = useState(() => searchParams.get('folder') || '');
+  const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all');
+  const [confidentialityFilter, setConfidentialityFilter] = useState(() => searchParams.get('confidentiality') || 'all');
+  const [scope, setScope] = useState(() => searchParams.get('scope') || 'all');
   const [sortBy, setSortBy] = useState('newest');
   const [view, setView] = useState('cards');
   const [detail, setDetail] = useState(null);
@@ -53,6 +58,16 @@ const DocumentManagementPage = () => {
   const [confirmFolderDelete, setConfirmFolderDelete] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+
+  const searchParamsKey = searchParams.toString();
+  useEffect(() => {
+    const params = new URLSearchParams(searchParamsKey);
+    setStatusFilter(params.get('status') || 'all');
+    setConfidentialityFilter(params.get('confidentiality') || 'all');
+    setScope(params.get('scope') || 'all');
+    setSearch(params.get('q') || '');
+    setFolderId(params.get('folder') || '');
+  }, [searchParamsKey]);
 
   const foldersQuery = useQuery({
     queryKey: ['dms-folders'],
@@ -116,6 +131,9 @@ const DocumentManagementPage = () => {
         if (row.status === 'archived') return false;
       } else if (row.status !== statusFilter) return false;
       if (confidentialityFilter !== 'all' && row.confidentiality !== confidentialityFilter) return false;
+      if (scope === 'mine' && String(row.created_by) !== String(user?.id)) return false;
+      if (scope === 'expiring' && !(row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30)) return false;
+      if (scope === 'expired' && !row.is_expired) return false;
       if (!query) return true;
       return [row.title, row.description, row.tags, row.reference_number, row.folder_path, row.file_name]
         .some((value) => String(value || '').toLowerCase().includes(query));
@@ -127,13 +145,26 @@ const DocumentManagementPage = () => {
       return String(b.created_at || '').localeCompare(String(a.created_at || ''));
     });
     return result;
-  }, [documents, folderIds, statusFilter, confidentialityFilter, search, sortBy]);
+  }, [documents, folderIds, statusFilter, confidentialityFilter, scope, user?.id, search, sortBy]);
 
   const activeDocuments = documents.filter((row) => row.status !== 'archived');
   const activeCount = activeDocuments.filter((row) => row.status === 'active').length;
   const archivedCount = documents.filter((row) => row.status === 'archived').length;
   const expiringCount = activeDocuments.filter((row) => row.is_expired || (row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30)).length;
   const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
+  const viewMeta = scope === 'mine'
+    ? { title: 'اسناد من', subtitle: 'اسنادی که شما ایجاد کرده‌اید' }
+    : scope === 'expiring'
+      ? { title: 'اسناد نزدیک انقضا', subtitle: 'اسناد دارای تاریخ انقضا در ۳۰ روز آینده' }
+      : scope === 'expired'
+        ? { title: 'اسناد منقضی', subtitle: 'اسنادی که تاریخ انقضای آن‌ها گذشته است' }
+        : statusFilter === 'archived'
+          ? { title: 'بایگانی اسناد', subtitle: 'اسناد بایگانی‌شده و قابل بازگردانی' }
+          : statusFilter === 'draft'
+            ? { title: 'پیش‌نویس‌های اسناد', subtitle: 'اسناد در حال تکمیل و پیش‌نویس' }
+            : confidentialityFilter !== 'all'
+              ? { title: 'اسناد محرمانه', subtitle: 'اسناد با سطح دسترسی محدود' }
+              : { title: 'کتابخانه اسناد', subtitle: 'کتابخانه مرکزی اسناد با پوشه‌بندی، نسخه‌بندی، متادیتا و تاریخچه' };
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['dms-folders'] });
@@ -300,8 +331,8 @@ const DocumentManagementPage = () => {
     <Box sx={{ pb: 1 }}>
       <PageHeader
         icon={<FolderOpenOutlinedIcon />}
-        title="مدیریت اسناد و مدارک"
-        subtitle="کتابخانه مرکزی اسناد با پوشه‌بندی، نسخه‌بندی، متادیتا، محرمانگی و تاریخچه فعالیت"
+        title={viewMeta.title}
+        subtitle={viewMeta.subtitle}
         badge={<Chip size="small" label={`${formatPersianNumber(activeDocuments.length)} سند فعال`}
           sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}
         actions={(
