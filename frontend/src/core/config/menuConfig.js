@@ -625,10 +625,10 @@ const documentsMenu = [
     title: 'کتابخانه اسناد',
     color: '#0ea5e9',
     items: [
-      { id: 'documents-all', title: 'همه اسناد', icon: <FolderCopyIcon />, path: '/document-management?scope=all', color: '#0f766e', primary: false, ready: true },
-      { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management?status=draft', color: '#64748b', primary: false, ready: true },
-      { id: 'documents-mine', title: 'اسناد من', icon: <PersonSearchIcon />, path: '/document-management?scope=mine', color: '#0ea5e9', primary: false, ready: true },
-      { id: 'documents-confidential', title: 'اسناد محرمانه', icon: <LockIcon />, path: '/document-management?confidentiality=confidential', color: '#be123c', primary: false, ready: true },
+      { id: 'documents-all', title: 'همه اسناد', icon: <FolderCopyIcon />, path: '/document-management/library?scope=all', color: '#0f766e', primary: false, ready: true },
+      { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management/library?status=draft', color: '#64748b', primary: false, ready: true },
+      { id: 'documents-mine', title: 'اسناد من', icon: <PersonSearchIcon />, path: '/document-management/library?scope=mine', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'documents-confidential', title: 'اسناد محرمانه', icon: <LockIcon />, path: '/document-management/library?confidentiality=confidential', color: '#be123c', primary: false, ready: true },
     ],
   },
   {
@@ -636,9 +636,9 @@ const documentsMenu = [
     title: 'پایش و بایگانی',
     color: '#f59e0b',
     items: [
-      { id: 'documents-archived', title: 'بایگانی اسناد', icon: <FolderSharedIcon />, path: '/document-management?status=archived', color: '#b45309', primary: false, ready: true },
-      { id: 'documents-expiring', title: 'اسناد نزدیک انقضا', icon: <NotificationsActiveIcon />, path: '/document-management?scope=expiring', color: '#f59e0b', primary: false, ready: true },
-      { id: 'documents-expired', title: 'اسناد منقضی', icon: <HistoryIcon />, path: '/document-management?scope=expired', color: '#be123c', primary: false, ready: true },
+      { id: 'documents-archived', title: 'بایگانی اسناد', icon: <FolderSharedIcon />, path: '/document-management/library?status=archived', color: '#b45309', primary: false, ready: true },
+      { id: 'documents-expiring', title: 'اسناد نزدیک انقضا', icon: <NotificationsActiveIcon />, path: '/document-management/library?scope=expiring', color: '#f59e0b', primary: false, ready: true },
+      { id: 'documents-expired', title: 'اسناد منقضی', icon: <HistoryIcon />, path: '/document-management/library?scope=expired', color: '#be123c', primary: false, ready: true },
     ],
   },
   {

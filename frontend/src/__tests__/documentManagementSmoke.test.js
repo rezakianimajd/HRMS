@@ -120,12 +120,10 @@ test('document management page renders library, folder tree, detail drawer and u
 
   expect(container.textContent).toContain('کتابخانه اسناد');
   expect(container.textContent).toContain('پوشه‌های اسناد');
-  expect(container.textContent).toContain('ساختار کتابخانه');
   expect(container.textContent).toContain('مدارک و مستندات شرکت');
   expect(container.textContent).toContain('قراردادها');
   expect(container.textContent).toContain('قرارداد پیمانکاری سالن تولید');
   expect(container.textContent).toContain('مجوز فعالیت کارگاه');
-  expect(container.textContent).toContain('فضای بایگانی');
   expect(container.textContent).toContain('سیاست ذخیره‌سازی');
   expect(container.textContent).toContain('documents');
 

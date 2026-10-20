@@ -17,9 +17,9 @@ test('documents has its own complete menu and is not embedded in HRMS menu', () 
   ]));
   expect(documentPaths).toEqual(expect.arrayContaining([
     '/document-management',
-    '/document-management?scope=all',
-    '/document-management?status=draft',
-    '/document-management?status=archived',
+    '/document-management/library?scope=all',
+    '/document-management/library?status=draft',
+    '/document-management/library?status=archived',
     '/document-management/reports',
     '/document-management/activity',
   ]));

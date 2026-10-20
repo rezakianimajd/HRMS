@@ -20,14 +20,13 @@ import SyncIcon from '@mui/icons-material/Sync';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
-import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
-import { INK, KpiTile, MUTED, SOFT_BG, SurfaceCard } from './accounting/AccountingDashboardUI';
+import { INK, MUTED, SOFT_BG, SurfaceCard } from './accounting/AccountingDashboardUI';
 import {
-  ActivityCard, CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, DocumentCard,
+  CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, DocumentCard,
   DocumentDetailDrawer, DocumentEditorDialog, DocumentTable, FolderEditorDialog,
-  FolderOverview, FolderTree, StorageCard, StoragePolicyCard, formatBytes,
+  FolderTree, StoragePolicyCard,
 } from './contracts/DocumentManagementUI';
 
 const EMPTY_DOCUMENT = {
@@ -95,12 +94,6 @@ const DocumentManagementPage = () => {
   });
   const stats = statsQuery.data || {};
 
-  const activitiesQuery = useQuery({
-    queryKey: ['dms-activities'],
-    queryFn: () => axiosInstance.get('/document-management/activities/', { params: { page_size: 20 } }).then((response) => response.data),
-  });
-  const activities = Array.isArray(activitiesQuery.data) ? activitiesQuery.data : activitiesQuery.data?.results || [];
-
   const detailActivitiesQuery = useQuery({
     queryKey: ['dms-detail-activities', detail?.id],
     queryFn: () => axiosInstance.get('/document-management/activities/', { params: { document: detail.id, page_size: 50 } }).then((response) => response.data),
@@ -150,9 +143,6 @@ const DocumentManagementPage = () => {
   }, [documents, folderIds, statusFilter, confidentialityFilter, scope, user?.id, search, sortBy]);
 
   const activeDocuments = documents.filter((row) => row.status !== 'archived');
-  const activeCount = activeDocuments.filter((row) => row.status === 'active').length;
-  const archivedCount = documents.filter((row) => row.status === 'archived').length;
-  const expiringCount = activeDocuments.filter((row) => row.is_expired || (row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30)).length;
   const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
   const viewMeta = scope === 'mine'
     ? { title: 'اسناد من', subtitle: 'اسنادی که شما ایجاد کرده‌اید' }
@@ -349,11 +339,6 @@ const DocumentManagementPage = () => {
     URL.revokeObjectURL(link.href);
   };
 
-  const openActivityTarget = (documentId) => {
-    const found = documents.find((row) => String(row.id) === String(documentId));
-    if (found) setDetail(found);
-  };
-
   if (documentsQuery.isLoading || foldersQuery.isLoading) {
     return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
   }
@@ -368,7 +353,7 @@ const DocumentManagementPage = () => {
           sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}
         actions={(
           <>
-            <Tooltip title="به‌روزرسانی"><span><Button variant="outlined" disabled={documentsQuery.isFetching} onClick={() => { documentsQuery.refetch(); statsQuery.refetch(); activitiesQuery.refetch(); }} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span></Tooltip>
+            <Tooltip title="به‌روزرسانی"><span><Button variant="outlined" disabled={documentsQuery.isFetching} onClick={() => { documentsQuery.refetch(); statsQuery.refetch(); foldersQuery.refetch(); }} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span></Tooltip>
             <Button variant="outlined" startIcon={<SyncIcon />} disabled={syncStorage.isPending} onClick={() => syncStorage.mutate()}>
               {syncStorage.isPending ? 'در حال همگام‌سازی…' : 'همگام‌سازی بایگانی'}
             </Button>
@@ -400,24 +385,11 @@ const DocumentManagementPage = () => {
                 )}
               </Stack>
             </SurfaceCard>
-            <StorageCard stats={stats} isLoading={statsQuery.isLoading} />
             <StoragePolicyCard policy={stats.storage_policy} />
-            <ActivityCard activities={activities} onOpen={openActivityTarget} />
           </Stack>
         </Grid>
 
         <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-          <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-            <Grid item xs={6} md={3}><KpiTile icon={FolderOpenOutlinedIcon} label="کل اسناد فعال" value={formatPersianNumber(activeDocuments.length)} suffix="سند" color={DMS_ACCENT} hint={`${formatPersianNumber(archivedCount)} سند بایگانی`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={UploadFileOutlinedIcon} label="اسناد فعال" value={formatPersianNumber(activeCount)} suffix="سند" color="#0f766e" hint={`${formatPersianNumber(activeDocuments.length - activeCount)} پیش‌نویس`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={WarningAmberOutlinedIcon} label="نزدیک انقضا / منقضی" value={formatPersianNumber(expiringCount)} suffix="سند" color="#be123c" hint="نیازمند بررسی" /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={DownloadIcon} label="فضای بایگانی" value={formatBytes(stats.storage_bytes || 0)} color="#2563eb" size={16} hint={`${formatPersianNumber(stats.folders || folders.length)} پوشه`} /></Grid>
-          </Grid>
-
-          <Box sx={{ mb: 1.5 }}>
-            <FolderOverview folders={folders} selected={folderId} onSelect={setFolderId} />
-          </Box>
-
           <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: '1px solid #e5edf1' }}>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
               <TextField size="small" placeholder="جست‌وجو در عنوان، برچسب، شماره مرجع یا نام فایل…"
