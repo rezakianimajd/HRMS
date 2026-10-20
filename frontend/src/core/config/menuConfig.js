@@ -55,7 +55,6 @@ import RuleIcon from '@mui/icons-material/Rule';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AssessmentIcon from '@mui/icons-material/Assessment';
-import WarningIcon from '@mui/icons-material/Warning';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import HubIcon from '@mui/icons-material/Hub';
@@ -583,10 +582,9 @@ const contractsMenu = [
   },
   {
     id: 'contracts-risks',
-    title: 'مدیریت ریسک',
-    color: '#ef4444',
+    title: 'پایش قراردادها',
+    color: '#f59e0b',
     items: [
-      { id: 'contracts-risk', title: 'ریسک، هشدار و دعاوی', icon: <WarningIcon />, path: '/contracts-risk', color: '#ef4444', primary: false, ready: true },
       { id: 'contracts-expiring', title: 'قراردادهای رو به انقضا', icon: <NotificationsActiveIcon />, path: '/contracts-expiring', color: '#f59e0b', primary: false, ready: true },
       { id: 'contracts-disputes', title: 'اختلافات و دعاوی', icon: <GavelIcon />, path: '/contracts-disputes', color: '#8b5cf6', primary: false, ready: true },
     ],

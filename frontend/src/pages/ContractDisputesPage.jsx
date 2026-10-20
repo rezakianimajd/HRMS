@@ -1,175 +1,377 @@
 import React, { useMemo, useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Button, Avatar, Grid, CircularProgress, Stack,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
-  InputLabel, Select, MenuItem, Chip, IconButton, InputAdornment,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, FormControl, Grid, InputAdornment, InputLabel,
+  MenuItem, Paper, Select, Snackbar, Stack, TextField, ToggleButton,
+  ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
-import GavelIcon from '@mui/icons-material/Gavel';
+import { alpha } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import EditNoteIcon from '@mui/icons-material/EditNote';
-import DeleteIcon from '@mui/icons-material/Delete';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import DownloadIcon from '@mui/icons-material/Download';
+import GavelIcon from '@mui/icons-material/Gavel';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
-import { formatPersianNumber } from '../core/utils/numberUtils';
-import { toJalali } from '../core/utils/dateUtils';
-import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-import { glassPaper } from '../core/theme/tokens';
+import TableRowsIcon from '@mui/icons-material/TableRows';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { getJalaliParts } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
+import { ColumnChart } from '../core/components/charts/Charts';
+import { KpiTile, SurfaceCard } from './accounting/AccountingDashboardUI';
+import {
+  DISPUTE_ACCENT, DISPUTE_STATUSES, DISPUTE_TYPES, SEVERITIES, DisputeCard,
+  DisputeContractsCard, DisputeDetailDrawer, DisputeEditorDialog, DisputeSeverityCard,
+  DisputeStatusCard, DisputeTable, disputeStatusMeta, severityMeta,
+} from './contracts/DisputeWorkspaceUI';
 
-const DISPUTE_TYPES = {
-  financial: 'مالی', technical: 'فنی', timeline: 'زمان‌بندی / تأخیر',
-  quality: 'کیفیت', legal: 'حقوقی', other: 'سایر',
-};
-
-const DISPUTE_STATUS = {
-  open: { label: 'باز', color: '#ef4444' },
-  under_review: { label: 'در حال بررسی', color: '#f59e0b' },
-  resolved: { label: 'حل‌شده', color: '#10b981' },
-  escalated: { label: 'ارجاع بالاتر', color: '#8b5cf6' },
-  closed: { label: 'بسته', color: '#64748b' },
-};
-
-const SEVERITY = {
-  low: { label: 'کم', color: '#10b981' },
-  medium: { label: 'متوسط', color: '#f59e0b' },
-  high: { label: 'زیاد', color: '#f97316' },
-  critical: { label: 'بحرانی', color: '#ef4444' },
+const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+const n = (value) => Number(value) || 0;
+const todayIso = () => new Date().toISOString().slice(0, 10);
+const compactClaim = (value) => {
+  const amount = Number(value) || 0;
+  if (amount >= 1000000000) return `${formatPersianNumber((amount / 1000000000).toFixed(1))} میلیارد ریال`;
+  if (amount >= 1000000) return `${formatPersianNumber((amount / 1000000).toFixed(1))} میلیون ریال`;
+  return `${formatPersianNumber(amount)} ریال`;
 };
 
 const ContractDisputesPage = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [severityFilter, setSeverityFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [view, setView] = useState('cards');
+  const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState({});
-  const [search, setSearch] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
 
-  const { data: contracts } = useQuery({
+  const { data: contracts, isLoading: contractsLoading } = useQuery({
     queryKey: ['ext-contracts-disp'],
-    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((response) => response.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
-  const { data, isLoading } = useQuery({
+  const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['contract-disputes'],
-    queryFn: () => axiosInstance.get('/contract-disputes/', { params: { page_size: 500 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/contract-disputes/', { params: { page_size: 500 } }).then((response) => response.data),
   });
   const list = Array.isArray(data) ? data : data?.results || [];
 
+  const counts = useMemo(() => list.reduce((acc, row) => {
+    acc[row.status] = (acc[row.status] || 0) + 1;
+    return acc;
+  }, { all: list.length }), [list]);
+  const severityCounts = useMemo(() => list.reduce((acc, row) => {
+    acc[row.severity] = (acc[row.severity] || 0) + 1;
+    return acc;
+  }, {}), [list]);
+  const totalClaim = useMemo(() => list.reduce((sum, row) => sum + n(row.claim_amount), 0), [list]);
+  const criticalCount = severityCounts.critical || 0;
+  const activeCount = (counts.open || 0) + (counts.under_review || 0) + (counts.escalated || 0);
+  const resolvedCount = (counts.resolved || 0) + (counts.closed || 0);
+
   const filtered = useMemo(() => {
-    const q = (search || '').trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(d => (d.title || '').toLowerCase().includes(q) || (d.contract_subject || '').toLowerCase().includes(q));
-  }, [list, search]);
+    const query = search.trim().toLowerCase();
+    let result = list.filter((row) => {
+      if (statusFilter !== 'all' && row.status !== statusFilter) return false;
+      if (severityFilter !== 'all' && row.severity !== severityFilter) return false;
+      if (!query) return true;
+      return [row.title, row.contract_subject, row.description, row.resolution]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    });
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'claim') return n(b.claim_amount) - n(a.claim_amount);
+      if (sortBy === 'severity') {
+        const order = { critical: 4, high: 3, medium: 2, low: 1 };
+        return (order[b.severity] || 0) - (order[a.severity] || 0);
+      }
+      if (sortBy === 'oldest') return String(a.opened_date || '').localeCompare(String(b.opened_date || ''));
+      return String(b.opened_date || '').localeCompare(String(a.opened_date || ''));
+    });
+    return result;
+  }, [list, search, statusFilter, severityFilter, sortBy]);
+
+  const topContracts = useMemo(() => {
+    const map = new Map();
+    list.forEach((row) => {
+      const key = String(row.contract);
+      const current = map.get(key) || { id: row.contract, subject: row.contract_subject, count: 0, claim: 0 };
+      current.count += 1;
+      current.claim += n(row.claim_amount);
+      map.set(key, current);
+    });
+    return [...map.values()].sort((a, b) => b.count - a.count || b.claim - a.claim).slice(0, 4);
+  }, [list]);
+
+  const monthlyData = useMemo(() => {
+    const buckets = new Map();
+    list.forEach((row) => {
+      if (!row.opened_date) return;
+      const parts = getJalaliParts(row.opened_date);
+      if (!parts) return;
+      const key = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+      buckets.set(key, (buckets.get(key) || 0) + 1);
+    });
+    return [...buckets.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, value]) => {
+        const month = Number(key.split('-')[1]);
+        return { label: MONTH_NAMES[month - 1] || key, value };
+      });
+  }, [list]);
+
+  const sanitize = (payload) => ({
+    contract: Number(payload.contract) || null,
+    title: payload.title || '',
+    dispute_type: payload.dispute_type || 'other',
+    severity: payload.severity || 'medium',
+    status: payload.status || 'open',
+    claim_amount: payload.claim_amount === '' || payload.claim_amount == null ? null : Math.max(0, n(payload.claim_amount)),
+    opened_date: payload.opened_date || null,
+    resolved_date: payload.resolved_date || null,
+    description: payload.description || '',
+    resolution: payload.resolution || '',
+  });
 
   const save = useMutation({
-    mutationFn: (p) => p.id ? axiosInstance.patch(`/contract-disputes/${p.id}/`, p) : axiosInstance.post('/contract-disputes/', p),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['contract-disputes'] }); setDialog(false); setForm({}); },
-  });
-  const del = useMutation({
-    mutationFn: (id) => axiosInstance.delete(`/contract-disputes/${id}/`),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['contract-disputes'] }),
+    mutationFn: (payload) => {
+      const clean = sanitize(payload);
+      return payload.id
+        ? axiosInstance.patch(`/contract-disputes/${payload.id}/`, clean)
+        : axiosInstance.post('/contract-disputes/', clean);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contract-disputes'] });
+      setDialog(false);
+      setForm({});
+      setError('');
+      setToast(form.id ? 'اختلاف ویرایش شد' : 'اختلاف ثبت شد');
+    },
+    onError: (event) => {
+      const data = event.response?.data;
+      let message = 'ذخیره اختلاف انجام نشد.';
+      if (typeof data === 'string') message = data;
+      else if (Array.isArray(data)) message = data[0];
+      else if (data?.detail) message = data.detail;
+      else if (data?.non_field_errors) message = data.non_field_errors[0];
+      else if (data && typeof data === 'object') {
+        const first = Object.values(data).flat()[0];
+        if (first) message = first;
+      }
+      setError(message);
+    },
   });
 
-  if (isLoading) return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
+  const remove = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/contract-disputes/${id}/`),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['contract-disputes'] });
+      setConfirmDelete(null);
+      setDetail(null);
+      setToast('اختلاف حذف شد');
+    },
+    onError: () => setToast('حذف اختلاف انجام نشد'),
+  });
+
+  const openNew = () => {
+    setForm({ opened_date: todayIso(), dispute_type: 'other', severity: 'medium', status: 'open', claim_amount: 0 });
+    setError('');
+    setDetail(null);
+    setDialog(true);
+  };
+  const openEdit = (row) => {
+    setForm({ ...row, contract: String(row.contract || ''), claim_amount: n(row.claim_amount) });
+    setError('');
+    setDetail(null);
+    setDialog(true);
+  };
+  const closeEditor = () => {
+    if (save.isPending) return;
+    setDialog(false);
+    setForm({});
+    setError('');
+  };
+  const submit = () => {
+    if (!form.contract) { setError('قرارداد مرتبط را انتخاب کنید.'); return; }
+    if (!form.title) { setError('موضوع اختلاف را وارد کنید.'); return; }
+    setError('');
+    save.mutate(form);
+  };
+
+  const exportCsv = () => {
+    const headers = ['موضوع', 'قرارداد', 'نوع', 'شدت', 'وضعیت', 'مبلغ ادعا', 'تاریخ طرح', 'تاریخ حل', 'شرح'];
+    const body = filtered.map((row) => [
+      row.title || '', row.contract_subject || '', DISPUTE_TYPES[row.dispute_type] || '',
+      severityMeta(row).label, disputeStatusMeta(row).label, row.claim_amount || 0,
+      row.opened_date || '', row.resolved_date || '', row.description || '',
+    ]);
+    const csv = [headers, ...body]
+      .map((cells) => cells.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'contract-disputes.csv';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  if (isLoading || contractsLoading) return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
 
   return (
-    <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(139,92,246,0.12), rgba(239,68,68,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(139,92,246,0.18)', borderRadius: '12px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg,#8b5cf6,#ef4444)', boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
-          <GavelIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#7c3aed">اختلافات و دعاوی</Typography>
-          <Typography variant="body2" color="textSecondary">مدیریت دعاوی قراردادها، شدت و وضعیت رسیدگی</Typography>
-        </Box>
-        <Button variant="contained" startIcon={<AddIcon />} onClick={() => { setForm({}); setDialog(true); }}
-          sx={{ background: 'linear-gradient(135deg,#8b5cf6,#ef4444)', borderRadius: '10px' }}>
-          اختلاف جدید
-        </Button>
-      </Paper>
+    <Box sx={{ pb: 1 }}>
+      <PageHeader
+        icon={<GavelIcon />}
+        title="اختلافات و دعاوی"
+        subtitle="ثبت، پیگیری و مدیریت دعاوی قراردادها بر اساس شدت و وضعیت رسیدگی"
+        badge={<Chip size="small" label={`${formatPersianNumber(list.length)} دعوا`} sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DISPUTE_ACCENT, 0.09), color: '#7c3aed' }} />}
+        actions={(
+          <>
+            <Tooltip title="به‌روزرسانی"><span><Button variant="outlined" disabled={isFetching} onClick={() => refetch()} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span></Tooltip>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>اختلاف جدید</Button>
+          </>
+        )}
+      />
 
-      <TextField size="small" fullWidth placeholder="جستجو (موضوع، قرارداد)..." value={search}
-        onChange={e => setSearch(e.target.value)} sx={{ mb: 2 }}
-        InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-
-      {filtered.length === 0 ? (
-        <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
-          <GavelIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-          <Typography variant="body2" color="textSecondary">اختلافی ثبت نشده است.</Typography>
-        </Paper>
-      ) : (
-        <Grid container spacing={2}>
-          {filtered.map(d => (
-            <Grid item xs={12} md={6} key={d.id}>
-              <Paper sx={{ ...glassPaper, p: 2 }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                  <GavelIcon sx={{ color: SEVERITY[d.severity]?.color }} />
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography variant="body2" fontWeight={800}>{d.title}</Typography>
-                    <Typography variant="caption" color="textSecondary">{d.contract_subject}</Typography>
-                  </Box>
-                  <Chip size="small" label={DISPUTE_STATUS[d.status]?.label} sx={{ bgcolor: `${DISPUTE_STATUS[d.status]?.color}22`, color: DISPUTE_STATUS[d.status]?.color, fontWeight: 700 }} />
-                  <Chip size="small" label={SEVERITY[d.severity]?.label} sx={{ bgcolor: `${SEVERITY[d.severity]?.color}22`, color: SEVERITY[d.severity]?.color, fontWeight: 700 }} />
-                </Box>
-                <Stack spacing={0.25}>
-                  <Typography variant="caption" color="textSecondary">نوع: {DISPUTE_TYPES[d.dispute_type]} · تاریخ: {toJalali(d.opened_date)}</Typography>
-                  {d.claim_amount ? <Typography variant="caption" fontWeight={700}>مبلغ ادعا: {formatPersianNumber(d.claim_amount)} ریال</Typography> : null}
-                </Stack>
-                <Box sx={{ display: 'flex', gap: 0.5, mt: 1 }}>
-                  <IconButton size="small" onClick={() => { setForm({ ...d }); setDialog(true); }}><EditNoteIcon fontSize="small" /></IconButton>
-                  <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف؟')) del.mutate(d.id); }}><DeleteIcon fontSize="small" /></IconButton>
-                </Box>
-              </Paper>
-            </Grid>
-          ))}
+      <Grid container spacing={1.5}>
+        <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
+          <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
+            <DisputeStatusCard counts={counts} active={statusFilter} onChange={setStatusFilter} />
+            <DisputeSeverityCard counts={severityCounts} total={list.length} />
+            <DisputeContractsCard rows={topContracts} onOpen={(id) => navigate(`/external-contracts/${id}`)} />
+          </Stack>
         </Grid>
-      )}
 
-      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>{form.id ? 'ویرایش اختلاف' : 'اختلاف جدید'}</DialogTitle>
-        <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <FormControl size="small" fullWidth><InputLabel>قرارداد *</InputLabel>
-            <Select value={form.contract || ''} label="قرارداد *" onChange={e => setForm(p => ({ ...p, contract: e.target.value }))}>
-              {contractList.map(c => <MenuItem key={c.id} value={c.id}>{c.subject || c.number}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <TextField size="small" label="موضوع *" value={form.title || ''} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} />
-          <Grid container spacing={1.5}>
-            <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>نوع</InputLabel>
-                <Select value={form.dispute_type || 'other'} label="نوع" onChange={e => setForm(p => ({ ...p, dispute_type: e.target.value }))}>
-                  {Object.entries(DISPUTE_TYPES).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>شدت</InputLabel>
-                <Select value={form.severity || 'medium'} label="شدت" onChange={e => setForm(p => ({ ...p, severity: e.target.value }))}>
-                  {Object.entries(SEVERITY).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}>
-              <FormControl size="small" fullWidth><InputLabel>وضعیت</InputLabel>
-                <Select value={form.status || 'open'} label="وضعیت" onChange={e => setForm(p => ({ ...p, status: e.target.value }))}>
-                  {Object.entries(DISPUTE_STATUS).map(([k, v]) => <MenuItem key={k} value={k}>{v.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={6}><TextField size="small" label="مبلغ ادعا" type="number" value={form.claim_amount ?? ''} onChange={e => setForm(p => ({ ...p, claim_amount: e.target.value }))} /></Grid>
+        <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
+          <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+            <Grid item xs={6} md={3}><KpiTile icon={GavelIcon} label="کل دعاوی" value={formatPersianNumber(list.length)} suffix="مورد" color={DISPUTE_ACCENT} hint={`${formatPersianNumber(activeCount)} پرونده فعال`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={WarningAmberIcon} label="باز و در بررسی" value={formatPersianNumber((counts.open || 0) + (counts.under_review || 0))} suffix="مورد" color="#b45309" hint={`${formatPersianNumber(counts.escalated || 0)} ارجاع بالاتر`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="حل‌شده / بسته" value={formatPersianNumber(resolvedCount)} suffix="مورد" color="#0f766e" hint={`${formatPersianNumber(counts.resolved || 0)} حل‌شده`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="مجموع مبلغ ادعا" value={compactClaim(totalClaim)} color="#be123c" size={15} hint={`${formatPersianNumber(criticalCount)} مورد بحرانی`} /></Grid>
           </Grid>
-          <JalaliDatePicker fullWidth label="تاریخ طرح" value={form.opened_date} onChange={(g) => setForm(p => ({ ...p, opened_date: g }))} />
-          <TextField size="small" label="شرح" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
-          <TextField size="small" label="اقدام / نتیجه" multiline rows={2} value={form.resolution || ''} onChange={e => setForm(p => ({ ...p, resolution: e.target.value }))} />
+
+          <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: '1px solid #e5edf1' }}>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+              <TextField size="small" placeholder="جست‌وجو در موضوع، قرارداد، شرح یا نتیجه…"
+                value={search} onChange={(event) => setSearch(event.target.value)}
+                sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+              <FormControl size="small" sx={{ minWidth: 145 }}>
+                <InputLabel>وضعیت</InputLabel>
+                <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
+                  <MenuItem value="all">همه ({formatPersianNumber(list.length)})</MenuItem>
+                  {Object.entries(DISPUTE_STATUSES).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label} ({formatPersianNumber(counts[key] || 0)})</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 125 }}>
+                <InputLabel>شدت</InputLabel>
+                <Select value={severityFilter} label="شدت" onChange={(event) => setSeverityFilter(event.target.value)}>
+                  <MenuItem value="all">همه</MenuItem>
+                  {Object.entries(SEVERITIES).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label} ({formatPersianNumber(severityCounts[key] || 0)})</MenuItem>)}
+                </Select>
+              </FormControl>
+              <FormControl size="small" sx={{ minWidth: 125 }}>
+                <InputLabel>ترتیب</InputLabel>
+                <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
+                  <MenuItem value="newest">جدیدترین</MenuItem>
+                  <MenuItem value="oldest">قدیمی‌ترین</MenuItem>
+                  <MenuItem value="claim">بیشترین مبلغ ادعا</MenuItem>
+                  <MenuItem value="severity">بیشترین شدت</MenuItem>
+                </Select>
+              </FormControl>
+              <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
+                <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
+                <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
+              </ToggleButtonGroup>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ display: { xs: 'none', md: 'flex' } }}>اختلاف جدید</Button>
+            </Stack>
+          </Paper>
+
+          {criticalCount > 0 ? (
+            <Alert severity="error" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
+              <Typography sx={{ fontSize: 9.5 }}>{formatPersianNumber(criticalCount)} دعوای بحرانی نیازمند پیگیری فوری است.</Typography>
+            </Alert>
+          ) : null}
+
+          {!filtered.length ? (
+            <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
+              <GavelIcon sx={{ fontSize: 38, color: '#cbd5e1', mb: 1 }} />
+              <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>اختلافی با این مشخصات پیدا نشد.</Typography>
+              <Typography sx={{ fontSize: 9, color: '#64748b', mt: 0.4 }}>فیلترها یا عبارت جست‌وجو را تغییر دهید.</Typography>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت اختلاف جدید</Button>
+            </Paper>
+          ) : view === 'cards' ? (
+            <Grid container spacing={1.5}>
+              {filtered.map((row) => (
+                <Grid item xs={12} md={6} xl={4} key={row.id}>
+                  <DisputeCard row={row} onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} />
+                </Grid>
+              ))}
+            </Grid>
+          ) : (
+            <DisputeTable rows={filtered} onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} />
+          )}
+
+          <Box sx={{ mt: 1.5 }}>
+            <SurfaceCard title="روند ثبت دعاوی" icon={TrendingUpIcon} color={DISPUTE_ACCENT}
+              action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(DISPUTE_ACCENT, 0.07), color: DISPUTE_ACCENT }} />}>
+              {monthlyData.length ? <ColumnChart data={monthlyData} color={DISPUTE_ACCENT} height={150} /> : (
+                <Box sx={{ py: 3, textAlign: 'center', color: '#64748b', fontSize: 9.4 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
+              )}
+            </SurfaceCard>
+          </Box>
+        </Grid>
+      </Grid>
+
+      <DisputeDetailDrawer row={detail} onClose={() => setDetail(null)}
+        contract={contractList.find((contract) => String(contract.id) === String(detail?.contract))}
+        onEdit={openEdit} onDelete={setConfirmDelete} />
+
+      <DisputeEditorDialog
+        open={dialog}
+        onClose={closeEditor}
+        form={form}
+        setForm={setForm}
+        contractList={contractList}
+        error={error}
+        setError={setError}
+        saving={save.isPending}
+        onSave={submit}
+      />
+
+      <Dialog open={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>حذف اختلاف</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ borderRadius: '10px' }}>
+            اختلاف «{confirmDelete?.title || (confirmDelete ? `#${confirmDelete.id}` : 'انتخاب‌شده')}» حذف شود؟ این عملیات قابل بازگشت نیست.
+          </Alert>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setDialog(false)}>انصراف</Button>
-          <Button variant="contained" disabled={!form.title || !form.contract}
-            onClick={() => save.mutate({ ...form, claim_amount: form.claim_amount === '' ? null : Number(form.claim_amount) || null, opened_date: form.opened_date || null })}
-            sx={{ background: 'linear-gradient(135deg,#8b5cf6,#ef4444)', borderRadius: '10px' }}>ذخیره</Button>
+          <Button onClick={() => setConfirmDelete(null)}>انصراف</Button>
+          <Button color="error" variant="contained" disabled={remove.isPending} onClick={() => remove.mutate(confirmDelete.id)}>
+            {remove.isPending ? <CircularProgress size={18} color="inherit" /> : 'حذف'}
+          </Button>
         </DialogActions>
       </Dialog>
+
+      <Snackbar open={Boolean(toast)} autoHideDuration={3400} onClose={() => setToast('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={toast.includes('نشد') ? 'error' : 'success'} onClose={() => setToast('')}>{toast}</Alert>
+      </Snackbar>
     </Box>
   );
 };
