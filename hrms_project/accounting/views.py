@@ -996,6 +996,8 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                     staged += 1
             except AccountingError as e:
                 errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': str(e)})
+            except Exception as e:  # noqa: BLE001 — یک سند نباید کل عملیات گروهی را متوقف کند
+                errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': f'خطای غیرمنتظره: {str(e)[:150]}'})
 
         return Response({
             'processed': approved + staged,
@@ -1033,9 +1035,13 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         deleted = 0
         deleted_ids = []
         for doc in candidates:
-            deleted_ids.append(doc.id)
-            doc.delete()
-            deleted += 1
+            try:
+                doc_id = doc.id
+                doc.delete()
+                deleted_ids.append(doc_id)
+                deleted += 1
+            except Exception as e:  # noqa: BLE001
+                errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': f'حذف ناموفق: {str(e)[:150]}'})
 
         return Response({
             'deleted': deleted,
