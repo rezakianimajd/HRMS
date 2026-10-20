@@ -1,6 +1,7 @@
 import AppsOutlinedIcon from '@mui/icons-material/AppsOutlined';
 import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
+import FolderCopyOutlinedIcon from '@mui/icons-material/FolderCopyOutlined';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
 import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
@@ -20,6 +21,7 @@ import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalance
 export const MODULE_ICONS = {
   hrms: BadgeOutlinedIcon,
   contracts: DescriptionOutlinedIcon,
+  documents: FolderCopyOutlinedIcon,
   projects: AccountTreeOutlinedIcon,
   inventory: Inventory2OutlinedIcon,
   accounting: CalculateOutlinedIcon,
@@ -42,6 +44,7 @@ export const getModuleIcon = (slug) => MODULE_ICONS[slug] || AppsOutlinedIcon;
 export const MODULE_LANDING_PATHS = {
   hrms: '/dashboard',
   contracts: '/contracts-dashboard',
+  documents: '/document-management',
   projects: '/projects/dashboard',
   accounting: '/accounting',
   assets: '/assets',

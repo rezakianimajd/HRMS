@@ -10,6 +10,7 @@ import { DEFAULT_TYPOGRAPHY } from '../theme/appearanceDefaults';
 export const MODULE_DEFAULT_ACCENTS = {
   hrms: '#6366f1',
   contracts: '#f59e0b',
+  documents: '#0f766e',
   projects: '#8b5cf6',
   inventory: '#10b981',
   accounting: '#0ea5e9',
