@@ -142,6 +142,14 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
   expect(document.body.textContent).toContain('افزودن مدرک صورت‌وضعیت');
   expect(document.body.textContent).toContain('مبلغ تجمعی این صورت‌وضعیت');
   expect(document.body.textContent).toContain('ذخیره صورت‌وضعیت');
+  expect(document.body.textContent).toContain('بازگشت به لیست');
+  expect(document.querySelector('[role="dialog"]')).toBeNull();
+
+  const backButton = Array.from(document.querySelectorAll('button'))
+    .find((element) => element.textContent.trim() === 'بازگشت به لیست');
+  expect(backButton).toBeTruthy();
+  await act(async () => { backButton.click(); await wait(260); });
+  expect(container.textContent).toContain('روند صورت‌وضعیت‌ها');
 
   root.unmount();
   container.remove();

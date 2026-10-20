@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
-  Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, Dialog,
+  Alert, Box, Button, Chip, CircularProgress, Dialog,
   DialogActions, DialogContent, DialogTitle, Divider, FormControl,
   FormControlLabel, Grid, IconButton, InputAdornment, InputLabel, MenuItem,
   Paper, Select, Snackbar, Stack, Switch, TextField, ToggleButton,
@@ -14,7 +14,6 @@ import AddIcon from '@mui/icons-material/Add';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -41,13 +40,13 @@ import ContractListPicker from '../../core/components/ui/ContractListPicker';
 import MoneyInput from '../../core/components/ui/MoneyInput';
 import PageHeader from '../../core/components/ui/PageHeader';
 import useCompany from '../../core/hooks/useCompany';
-import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
+import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
 import { ColumnChart } from '../../core/components/charts/Charts';
 import { AttachmentPicker } from './AddendumWorkspaceUI';
 import {
   ContractSnapshotCard, FinancialCoverageCard, StatusNav, StatementCard,
   StatementDetailDrawer, StatementLanding, StatementTable, STATEMENT_ACCENT,
-  contractAmountOf, currencyFor, dateLabel, money, rowMetrics, statementStatus,
+  contractAmountOf, dateLabel, money, rowMetrics,
 } from './StatementWorkspaceUI';
 
 const COLOR = '#6366f1';
@@ -381,7 +380,7 @@ const StatementEditorPage = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [view, setView] = useState('cards');
   const [detail, setDetail] = useState(null);
-  const [dialog, setDialog] = useState(false);
+  const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
   const [rateOverride, setRateOverride] = useState('');
   const [printPending, setPrintPending] = useState(false);
@@ -604,7 +603,7 @@ const StatementEditorPage = () => {
     },
     onSuccess: ({ uploadError }) => {
       invalidateAll();
-      setDialog(false);
+      setMode('list');
       setForm({});
       setRateOverride('');
       setError('');
@@ -668,12 +667,12 @@ const StatementEditorPage = () => {
   }, [contractId]);
 
   useEffect(() => {
-    if (dialog && printPending) {
+    if (mode === 'form' && printPending) {
       const timer = setTimeout(() => { printStatement(); setPrintPending(false); }, 550);
       return () => clearTimeout(timer);
     }
     return undefined;
-  }, [dialog, printPending]);
+  }, [mode, printPending]);
 
   const selectContract = (contract) => {
     const next = String(contract.id);
@@ -739,7 +738,7 @@ const StatementEditorPage = () => {
     setRateOverride('');
     setError('');
     setDetail(null);
-    setDialog(true);
+    setMode('form');
   };
 
   const openEdit = (row) => {
@@ -759,7 +758,7 @@ const StatementEditorPage = () => {
     setRateOverride(row.exchange_rate != null && row.exchange_rate !== '' ? String(row.exchange_rate) : '');
     setError('');
     setDetail(null);
-    setDialog(true);
+    setMode('form');
   };
 
   const openPrint = (row) => {
@@ -769,7 +768,7 @@ const StatementEditorPage = () => {
 
   const closeEditor = () => {
     if (save.isPending) return;
-    setDialog(false);
+    setMode('list');
     setForm({});
     setRateOverride('');
     setError('');
@@ -858,6 +857,54 @@ const StatementEditorPage = () => {
     link.click();
     URL.revokeObjectURL(link.href);
   };
+
+  if (mode === 'form') {
+    return (
+      <StatementEditorView
+        onClose={closeEditor}
+        form={form}
+        setForm={setForm}
+        contract={formContract || selectedContract}
+        company={company}
+        currencyList={currencyList}
+        additionList={additionList}
+        deductionList={deductionList}
+        additions={additions}
+        previewAdditions={previewAdditions}
+        deductions={deductions}
+        additionsTotal={additionsTotal}
+        deductionsTotal={deductionsTotal}
+        cumulativePrev={cumulativePrev}
+        cumulativeThis={cumulativeThis}
+        workDone={workDone}
+        netAmount={netAmount}
+        rate={rate}
+        rateOverride={rateOverride}
+        setRateOverride={setRateOverride}
+        baseRate={baseRate}
+        formCurrencyLabel={formCurrencyLabel}
+        overContract={overContract}
+        progress={progress}
+        error={error}
+        setError={setError}
+        saving={save.isPending}
+        onSave={submit}
+        onAddFiles={addFiles}
+        onRemovePending={removePendingFile}
+        onRemoveDocument={(document) => {
+          if (window.confirm(`مدرک «${document.title || 'پیوست'}» حذف شود؟`)) removeDocument.mutate(document.id);
+        }}
+        onAddAddition={addAddition}
+        onRemoveAddition={removeAddition}
+        onUpdateAddition={updateAddition}
+        onChooseAddition={chooseAddition}
+        onAddDeduction={addDeduction}
+        onRemoveDeduction={removeDeduction}
+        onUpdateDeduction={updateDeduction}
+        onChooseDeduction={chooseDeduction}
+      />
+    );
+  }
 
   if (isLoading || contractsLoading) {
     return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
@@ -1010,50 +1057,7 @@ const StatementEditorPage = () => {
         onClose={() => setDetail(null)} onEdit={openEdit} onDelete={setConfirmDelete}
         onPrint={openPrint} onApprove={(selected) => toggleApproval.mutate(selected)} />
 
-      <StatementEditorDialog
-        open={dialog}
-        onClose={closeEditor}
-        form={form}
-        setForm={setForm}
-        contract={formContract || selectedContract}
-        company={company}
-        currencyList={currencyList}
-        additionList={additionList}
-        deductionList={deductionList}
-        additions={additions}
-        previewAdditions={previewAdditions}
-        deductions={deductions}
-        additionsTotal={additionsTotal}
-        deductionsTotal={deductionsTotal}
-        cumulativePrev={cumulativePrev}
-        cumulativeThis={cumulativeThis}
-        workDone={workDone}
-        netAmount={netAmount}
-        rate={rate}
-        rateOverride={rateOverride}
-        setRateOverride={setRateOverride}
-        baseRate={baseRate}
-        formCurrencyLabel={formCurrencyLabel}
-        overContract={overContract}
-        progress={progress}
-        error={error}
-        setError={setError}
-        saving={save.isPending}
-        onSave={submit}
-        onAddFiles={addFiles}
-        onRemovePending={removePendingFile}
-        onRemoveDocument={(document) => {
-          if (window.confirm(`مدرک «${document.title || 'پیوست'}» حذف شود؟`)) removeDocument.mutate(document.id);
-        }}
-        onAddAddition={addAddition}
-        onRemoveAddition={removeAddition}
-        onUpdateAddition={updateAddition}
-        onChooseAddition={chooseAddition}
-        onAddDeduction={addDeduction}
-        onRemoveDeduction={removeDeduction}
-        onUpdateDeduction={updateDeduction}
-        onChooseDeduction={chooseDeduction}
-      />
+
 
       <Dialog open={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>حذف صورت‌وضعیت</DialogTitle>
@@ -1077,8 +1081,8 @@ const StatementEditorPage = () => {
   );
 };
 
-const StatementEditorDialog = ({
-  open, onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
+const StatementEditorView = ({
+  onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal, cumulativePrev, cumulativeThis,
   workDone, netAmount, rate, rateOverride, setRateOverride, baseRate, formCurrencyLabel,
   overContract, progress, error, setError, saving, onSave, onAddFiles, onRemovePending,
@@ -1091,25 +1095,33 @@ const StatementEditorDialog = ({
   const pendingFiles = Array.isArray(form.pendingFiles) ? form.pendingFiles : [];
   const totalDocs = documents.length + pendingFiles.length;
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth
-      PaperProps={{ sx: { maxHeight: '94vh', borderRadius: '18px' } }}>
-      <DialogTitle sx={{
-        display: 'flex', alignItems: 'center', gap: 1.2, px: 2.5, py: 1.7,
-        background: 'linear-gradient(120deg, rgba(99,102,241,0.13), rgba(14,165,233,0.06), rgba(255,255,255,0.5))',
-        borderBottom: `1px solid ${alpha(STATEMENT_ACCENT, 0.14)}`,
-      }}>
-        <Avatar sx={{ width: 42, height: 42, bgcolor: STATEMENT_ACCENT, color: '#fff' }}><ReceiptLongIcon /></Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش صورت‌وضعیت' : 'ثبت صورت‌وضعیت جدید'}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{contract?.subject || 'قرارداد'} · {form.number || 'شماره‌گذاری خودکار'}</Typography>
-        </Box>
-        <Chip size="small" label={form.is_approved ? 'تأیید شده' : 'در انتظار تأیید'}
-          sx={{ height: 22, fontSize: 8.3, fontWeight: 800, bgcolor: form.is_approved ? '#ecfdf5' : '#fffbeb', color: form.is_approved ? '#0f766e' : '#b45309' }} />
-        <Tooltip title="چاپ پیش‌نمایش"><IconButton onClick={printStatement} sx={{ color: '#0f766e' }}><PrintOutlinedIcon /></IconButton></Tooltip>
-        <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
-      </DialogTitle>
+    <Box sx={{ pb: 1 }}>
+      <PageHeader
+        icon={<ReceiptLongIcon />}
+        title={form.id ? 'ویرایش صورت‌وضعیت' : 'ثبت صورت‌وضعیت جدید'}
+        subtitle={`${contract?.subject || 'قرارداد'} · ${contract?.number || 'بدون شماره'} · ${form.number || 'شماره‌گذاری خودکار'}`}
+        badge={<Chip size="small" label={form.is_approved ? 'تأیید شده' : 'در انتظار تأیید'}
+          sx={{ height: 23, fontWeight: 800, bgcolor: form.is_approved ? '#ecfdf5' : '#fffbeb', color: form.is_approved ? '#0f766e' : '#b45309' }} />}
+        actions={(
+          <>
+            <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={printStatement}>چاپ</Button>
+            <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={onClose}>بازگشت به لیست</Button>
+            <Button variant="contained" startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <SaveIcon />}
+              onClick={onSave} disabled={saving || !form.contract || !form.date}>
+              {saving ? 'در حال ذخیره…' : 'ذخیره صورت‌وضعیت'}
+            </Button>
+          </>
+        )}
+      />
 
-      <DialogContent sx={{ p: 2.2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+        <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmount, formCurrencyLabel)} color="#0f766e" size={16} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDone, formCurrencyLabel)} color={BLUE} size={16} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="پیشرفت قرارداد" value={`${toPersianDigits(progress.toFixed(0))}٪`} color={STATEMENT_ACCENT} hint={`کارکرد تجمعی ${compactMoney(cumulativeThis, formCurrencyLabel)}`} size={17} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
+      </Grid>
+
+      <Stack spacing={1.5}>
         {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
         {overContract ? (
           <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '10px', py: 0.2 }}>
@@ -1117,18 +1129,12 @@ const StatementEditorDialog = ({
           </Alert>
         ) : null}
 
-        <Box sx={{
-          display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1.5fr 1fr 1fr 1fr' }, gap: 0.7,
-          p: 1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2',
-        }}>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>قرارداد</Typography><Typography noWrap sx={{ fontSize: 9.2, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مبلغ قابل پرداخت</Typography><Typography noWrap sx={{ fontSize: 9.8, fontWeight: 900, color: netAmount ? '#0f766e' : MUTED }}>{money(netAmount, formCurrencyLabel)}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>پیشرفت</Typography><Typography sx={{ fontSize: 9.8, fontWeight: 900, color: STATEMENT_ACCENT }}>{toPersianDigits(progress.toFixed(0))}٪</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مدارک</Typography><Typography sx={{ fontSize: 9.8, fontWeight: 900, color: totalDocs ? BLUE : MUTED }}>{formatPersianNumber(totalDocs)} فایل</Typography></Box>
-        </Box>
-
         <Grid container spacing={1.5}>
-          <Grid item xs={12} md={7}>
+          <Grid item xs={12} lg={8}>
+            <Paper elevation={0} sx={{
+              p: { xs: 1.5, md: 2 }, borderRadius: '18px',
+              border: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper,
+            }}>
             <Stack spacing={1.5}>
               <Box>
                 <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
@@ -1248,26 +1254,40 @@ const StatementEditorDialog = ({
               <TextField size="small" fullWidth multiline rows={2} label="توضیحات" value={form.description || ''}
                 onChange={(event) => update('description', event.target.value)} />
             </Stack>
+            </Paper>
           </Grid>
 
-          <Grid item xs={12} md={5}>
-            <Box sx={{ position: { md: 'sticky' }, top: 0 }}>
-              <StatementPreview form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions: previewAdditions, deductions }}
-                contract={contract} company={company} currencies={currencyList} rate={rate} />
+          <Grid item xs={12} lg={4}>
+            <Box sx={{ position: { lg: 'sticky' }, top: 16 }}>
+              <SurfaceCard title="پیش‌نمایش صورت‌وضعیت" icon={ReceiptLongIcon} color={STATEMENT_ACCENT}
+                action={<Chip size="small" label="A4" sx={{ height: 20, fontSize: 7.7, bgcolor: SOFT_BG, color: MUTED }} />}
+                contentSx={{ p: 1 }}>
+                <StatementPreview form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions: previewAdditions, deductions }}
+                  contract={contract} company={company} currencies={currencyList} rate={rate} />
+              </SurfaceCard>
             </Box>
           </Grid>
         </Grid>
-      </DialogContent>
+      </Stack>
 
-      <DialogActions sx={{ px: 2.4, py: 1.4, borderTop: `1px solid ${theme.palette.divider}` }}>
-        <Button onClick={onClose} sx={{ fontSize: 9.5 }}>انصراف</Button>
-        <Button variant="contained" onClick={onSave} disabled={saving || !form.contract || !form.date}
-          startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <SaveIcon />}
-          sx={{ fontSize: 9.5, px: 2.5, bgcolor: STATEMENT_ACCENT, '&:hover': { bgcolor: '#4f46e5' } }}>
-          {saving ? 'در حال ذخیره…' : 'ذخیره صورت‌وضعیت'}
-        </Button>
-      </DialogActions>
-    </Dialog>
+      <Paper elevation={0} sx={{
+        mt: 1.5, p: 1.35, borderRadius: '15px', border: `1px solid ${theme.palette.divider}`,
+        position: 'sticky', bottom: 8, bgcolor: alpha(theme.palette.background.paper, 0.96),
+        backdropFilter: 'blur(10px)', zIndex: 2,
+      }}>
+        <Stack direction="row" spacing={0.8} alignItems="center">
+          <Typography sx={{ flex: 1, fontSize: 9, color: MUTED }}>
+            {form.id ? 'در حال ویرایش صورت‌وضعیت موجود' : 'صورت‌وضعیت جدید برای قرارداد انتخاب‌شده'}
+          </Typography>
+          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={onClose}>بازگشت به لیست</Button>
+          <Button variant="contained" onClick={onSave} disabled={saving || !form.contract || !form.date}
+            startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <SaveIcon />}
+            sx={{ px: 2.5, bgcolor: STATEMENT_ACCENT, '&:hover': { bgcolor: '#4f46e5' } }}>
+            {saving ? 'در حال ذخیره…' : 'ذخیره صورت‌وضعیت'}
+          </Button>
+        </Stack>
+      </Paper>
+    </Box>
   );
 };
 
