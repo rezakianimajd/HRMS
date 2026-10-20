@@ -963,6 +963,29 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                 errors.append({'id': doc.id, 'number': doc.number or doc.pk, 'error': str(e)})
         return Response({'posted': posted, 'errors': errors})
 
+    def _bulk_scope(self, params):
+        """QuerySet پایهٔ عملیات گروهی با احترام به سال مالی/وضعیت/جستجو."""
+        from django.db.models import Q
+
+        qs = super().get_queryset().select_related('company', 'journal', 'fiscal_year')
+        fiscal_year = params.get('fiscal_year')
+        if fiscal_year:
+            year = FiscalYear.objects.filter(pk=fiscal_year, company=_company(self.request)).first()
+            if year:
+                qs = qs.filter(
+                    Q(fiscal_year_id=year.pk)
+                    | Q(fiscal_year__isnull=True, date__gte=year.start_date, date__lte=year.end_date)
+                )
+            else:
+                qs = qs.filter(fiscal_year_id=fiscal_year)
+        status = params.get('status')
+        if status:
+            qs = qs.filter(status=status)
+        q = params.get('q')
+        if q:
+            qs = qs.filter(Q(number__icontains=q) | Q(description__icontains=q))
+        return qs
+
     @action(detail=False, methods=['post'])
     def bulk_approve(self, request):
         """تأیید مرحله‌ای گروهی؛ همهٔ اسناد در انتظار یا انتخاب‌شده‌ها.
@@ -973,7 +996,8 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         """
         ids = request.data.get('ids') or []
         approve_all = str(request.data.get('all') or '').lower() in ('1', 'true', 'yes')
-        qs = self.get_queryset().filter(status='submitted')
+        params = request.data if hasattr(request.data, 'get') else {}
+        qs = self._bulk_scope(params).filter(status='submitted')
         if not approve_all:
             if not ids:
                 return Response({'error': 'هیچ سندی انتخاب نشده است.'}, status=400)
@@ -1013,7 +1037,8 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         ids = request.data.get('ids') or []
         delete_all = str(request.data.get('all') or '').lower() in ('1', 'true', 'yes')
         protected_statuses = ('posted', 'locked', 'reversed')
-        base = self.get_queryset()
+        params = request.data if hasattr(request.data, 'get') else {}
+        base = self._bulk_scope(params)
 
         if delete_all:
             candidates = base.exclude(status__in=protected_statuses)
@@ -1050,8 +1075,29 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
 
     @action(detail=False, methods=['get'])
     def control(self, request):
-        """کنترل اسناد: اسناد نامتوازن، در انتظار، آمادهٔ ثبت، قطعی و برگشتی."""
-        qs = self.get_queryset().prefetch_related('approval_steps')
+        """کنترل اسناد: فهرست کل اسناد با فیلتر سال مالی/وضعیت + کارت‌های وضعیت."""
+        from django.db.models import Count, Q
+
+        base = super().get_queryset().select_related(
+            'journal', 'fiscal_year',
+        ).prefetch_related('approval_steps')
+        year_id = request.query_params.get('fiscal_year')
+        if year_id:
+            year = FiscalYear.objects.filter(pk=year_id, company=_company(request)).first()
+            if year:
+                base = base.filter(
+                    Q(fiscal_year_id=year.pk)
+                    | Q(fiscal_year__isnull=True, date__gte=year.start_date, date__lte=year.end_date)
+                )
+            else:
+                base = base.filter(fiscal_year_id=year_id)
+
+        q = request.query_params.get('q')
+        if q:
+            base = base.filter(Q(number__icontains=q) | Q(description__icontains=q))
+
+        status = request.query_params.get('status')
+        scoped = base.filter(status=status) if status else base
 
         def _doc(d):
             steps = list(d.approval_steps.all())
@@ -1070,14 +1116,20 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                 'approval_total': len(steps),
             }
 
+        status_counts = {
+            row['status']: row['c']
+            for row in base.values('status').annotate(c=Count('id', distinct=True))
+        }
         unbalanced = [
-            _doc(d) for d in qs.filter(status__in=['draft', 'submitted', 'approved'])
+            _doc(d) for d in scoped.filter(status__in=['draft', 'submitted', 'approved'])
             if d.total_debit != d.total_credit
         ]
-        pending = qs.filter(status='submitted')
-        ready = qs.filter(status='approved')
-        posted = qs.filter(status__in=['posted', 'locked'])
-        reversed_docs = qs.filter(status='reversed')
+        pending = scoped.filter(status='submitted')
+        ready = scoped.filter(status='approved')
+        posted = scoped.filter(status__in=['posted', 'locked'])
+        reversed_docs = scoped.filter(status='reversed')
+        total_documents = scoped.count()
+        documents = [_doc(d) for d in scoped.order_by('-date', '-created_at')[:1000]]
 
         return Response({
             'unbalanced': unbalanced,
@@ -1085,12 +1137,17 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             'ready_to_post': [_doc(d) for d in ready[:100]],
             'posted': [_doc(d) for d in posted[:100]],
             'reversed': [_doc(d) for d in reversed_docs[:100]],
+            'documents': documents,
+            'documents_total': total_documents,
+            'documents_truncated': total_documents > len(documents),
+            'status_counts': status_counts,
             'counts': {
                 'unbalanced': len(unbalanced),
-                'pending': pending.count(),
-                'ready_to_post': ready.count(),
-                'posted': posted.count(),
-                'reversed': reversed_docs.count(),
+                'pending': status_counts.get('submitted', 0),
+                'ready_to_post': status_counts.get('approved', 0),
+                'posted': status_counts.get('posted', 0) + status_counts.get('locked', 0),
+                'reversed': status_counts.get('reversed', 0),
+                'total': total_documents,
             },
         })
 
