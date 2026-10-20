@@ -400,6 +400,7 @@ $FrontendFiles = @(
     'frontend/src/pages/OrgChartPage.jsx',
     'frontend/src/pages/CorrespondencesPage.jsx',
     'frontend/src/pages/ContractsDashboardPage.jsx',
+    'frontend/src/pages/DashboardPage.jsx',
     'frontend/src/pages/ContractAddendumsPage.jsx',
     'frontend/src/pages/GuaranteesPage.jsx',
     'frontend/src/pages/ContractCalendarPage.jsx',

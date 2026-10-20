@@ -141,7 +141,6 @@ const menuConfig = [
     color: '#f43f5e',
     items: [
       { id: 'scoring', title: 'امتیازدهی و ارزیابی', icon: <LeaderboardIcon />, path: '/scoring', color: '#3b82f6', primary: true, ready: true },
-      { id: 'management-analytics', title: 'داشبورد مدیریتی', icon: <InsightsIcon />, path: '/management-analytics', color: '#3b82f6', primary: false, ready: true },
       { id: 'appraisal', title: 'ارزیابی عملکرد', icon: <FactCheckOutlinedIcon />, path: '/appraisal', color: '#10b981', primary: false, ready: true },
       { id: 'assistant', title: 'دستیار هوشمند', icon: <PsychologyIcon />, path: '/assistant', color: '#8b5cf6', primary: false, ready: true },
     ],
