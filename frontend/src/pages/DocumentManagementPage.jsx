@@ -27,7 +27,7 @@ import { INK, KpiTile, MUTED, SOFT_BG, SurfaceCard } from './accounting/Accounti
 import {
   ActivityCard, CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, DocumentCard,
   DocumentDetailDrawer, DocumentEditorDialog, DocumentTable, FolderEditorDialog,
-  FolderTree, StorageCard, StoragePolicyCard, formatBytes,
+  FolderOverview, FolderTree, StorageCard, StoragePolicyCard, formatBytes,
 } from './contracts/DocumentManagementUI';
 
 const EMPTY_DOCUMENT = {
@@ -413,6 +413,10 @@ const DocumentManagementPage = () => {
             <Grid item xs={6} md={3}><KpiTile icon={WarningAmberOutlinedIcon} label="نزدیک انقضا / منقضی" value={formatPersianNumber(expiringCount)} suffix="سند" color="#be123c" hint="نیازمند بررسی" /></Grid>
             <Grid item xs={6} md={3}><KpiTile icon={DownloadIcon} label="فضای بایگانی" value={formatBytes(stats.storage_bytes || 0)} color="#2563eb" size={16} hint={`${formatPersianNumber(stats.folders || folders.length)} پوشه`} /></Grid>
           </Grid>
+
+          <Box sx={{ mb: 1.5 }}>
+            <FolderOverview folders={folders} selected={folderId} onSelect={setFolderId} />
+          </Box>
 
           <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: '1px solid #e5edf1' }}>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">

@@ -55,6 +55,10 @@ def sync_archive_files(company, max_files=5000):
     try:
         from core.engines.archive_storage_engine import archive_engine
         from settings_app.models import StorageProfile
+
+        from documents.management_folders import ensure_default_document_folders
+
+        ensure_default_document_folders(company)
     except Exception:  # noqa: BLE001
         return {'scanned': 0, 'created': 0, 'skipped': 0, 'truncated': False}
 

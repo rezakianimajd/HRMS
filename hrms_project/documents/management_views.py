@@ -5,6 +5,7 @@ from datetime import date, timedelta
 from django.db.models import Count, Q, Sum
 from rest_framework import parsers, status, viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -18,6 +19,7 @@ from documents.management_storage import (
     get_documents_storage_profile, storage_policy_dict,
 )
 from documents.management_sync import sync_archive_files
+from documents.management_folders import ensure_default_document_folders
 
 
 def _company(request):
@@ -33,11 +35,17 @@ class DocumentFolderViewSet(viewsets.ModelViewSet):
         qs = super().get_queryset().select_related('parent')
         company = _company(self.request)
         if company:
+            ensure_default_document_folders(company)
             qs = qs.filter(company=company)
         return qs
 
     def perform_create(self, serializer):
         serializer.save(company=_company(self.request))
+
+    def perform_destroy(self, instance):
+        if instance.is_system:
+            raise ValidationError('پوشه‌های سیستمی ساختار کتابخانه قابل حذف نیستند.')
+        instance.delete()
 
 
 class ManagedDocumentViewSet(viewsets.ModelViewSet):
@@ -200,6 +208,8 @@ class DocumentActivityViewSet(viewsets.ReadOnlyModelViewSet):
 class DocumentManagementStatsAPIView(APIView):
     def get(self, request):
         company = _company(request)
+        if company:
+            ensure_default_document_folders(company)
         docs = ManagedDocument.objects.filter(is_active=True)
         if company:
             docs = docs.filter(company=company)

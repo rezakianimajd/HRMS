@@ -18,6 +18,7 @@ import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
+import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
 import ImageOutlinedIcon from '@mui/icons-material/ImageOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import PictureAsPdfOutlinedIcon from '@mui/icons-material/PictureAsPdfOutlined';
@@ -116,7 +117,7 @@ export const FolderTree = ({ folders = [], selected, onSelect, onEdit, onDelete 
             <Typography sx={{ flex: 1, minWidth: 0, fontSize: 8.8, fontWeight: 700, color: INK }} noWrap>{folder.name}</Typography>
             <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 7.5, bgcolor: SOFT_BG, color: MUTED }} />
             {onEdit ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(folder); }} sx={{ p: 0.15, color: MUTED }}><EditOutlinedIcon sx={{ fontSize: 12 }} /></IconButton> : null}
-            {onDelete ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(folder); }} sx={{ p: 0.15, color: RED }}><DeleteOutlineIcon sx={{ fontSize: 12 }} /></IconButton> : null}
+            {onDelete && !folder.is_system ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(folder); }} sx={{ p: 0.15, color: RED }}><DeleteOutlineIcon sx={{ fontSize: 12 }} /></IconButton> : null}
           </Stack>
         </Box>
         {hasChildren && isExpanded ? renderNodes(String(folder.id), depth + 1) : null}
@@ -124,6 +125,51 @@ export const FolderTree = ({ folders = [], selected, onSelect, onEdit, onDelete 
     );
   });
   return <Stack spacing={0.1}>{renderNodes('root')}</Stack>;
+};
+
+export const FolderOverview = ({ folders = [], selected, onSelect }) => {
+  const roots = folders.filter((folder) => !folder.parent);
+  if (!roots.length) return null;
+  return (
+    <SurfaceCard title="ساختار کتابخانه" icon={FolderSharedOutlinedIcon} color={DMS_ACCENT}
+      action={<Chip size="small" label={`${formatPersianNumber(roots.length)} پوشهٔ اصلی`} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}>
+      <Grid container spacing={0.7}>
+        {roots.map((folder) => {
+          const isCompany = folder.code === 'company.documents';
+          const isSelected = String(selected) === String(folder.id);
+          const color = folder.color || DMS_ACCENT;
+          const Icon = isCompany ? FolderSharedOutlinedIcon : FolderOpenOutlinedIcon;
+          return (
+            <Grid item xs={6} sm={4} md={3} key={folder.id}>
+              <Box role="button" tabIndex={0}
+                onClick={() => onSelect(folder.id)}
+                onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); onSelect(folder.id); } }}
+                sx={{
+                  p: 0.75, height: '100%', minHeight: 73, borderRadius: '11px', cursor: 'pointer',
+                  border: `1px solid ${isSelected ? alpha(color, 0.38) : alpha(color, 0.15)}`,
+                  bgcolor: isSelected ? alpha(color, 0.09) : alpha(color, 0.035),
+                  transition: 'transform .15s ease, border-color .15s ease',
+                  '&:hover': { transform: 'translateY(-1px)', borderColor: alpha(color, 0.4) },
+                  '&:focus-visible': { outline: `2px solid ${alpha(color, 0.4)}`, outlineOffset: 1 },
+                }}>
+                <Stack direction="row" alignItems="flex-start" spacing={0.6}>
+                  <Icon sx={{ fontSize: 19, color, mt: 0.1 }} />
+                  <Box sx={{ flex: 1, minWidth: 0 }}>
+                    <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 900, color: INK }}>{folder.name}</Typography>
+                    <Typography noWrap sx={{ fontSize: 7.4, color: MUTED }}>{folder.children_count ? `${formatPersianNumber(folder.children_count)} زیرپوشه` : 'پوشهٔ اصلی'}</Typography>
+                  </Box>
+                </Stack>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.65 }}>
+                  <Typography sx={{ fontSize: 7.5, color: isCompany ? '#be123c' : MUTED }}>{isCompany ? 'مستندات شرکت' : 'ماژول'}</Typography>
+                  <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 7.3, fontWeight: 800, bgcolor: '#fff', color }} />
+                </Stack>
+              </Box>
+            </Grid>
+          );
+        })}
+      </Grid>
+    </SurfaceCard>
+  );
 };
 
 export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRestore, onDelete }) => {

@@ -64,7 +64,20 @@ class DocumentFolderSerializer(serializers.ModelSerializer):
         return value
 
     def get_documents_count(self, obj):
-        return obj.documents.filter(is_active=True).exclude(status=ManagedDocument.Status.ARCHIVED).count()
+        """تعداد اسناد فعال خود پوشه و همهٔ زیرپوشه‌ها."""
+        folder_ids = [obj.id]
+        pending = [obj.id]
+        while pending:
+            current = pending.pop()
+            child_ids = list(
+                DocumentFolder.objects.filter(parent_id=current, is_active=True)
+                .values_list('id', flat=True)
+            )
+            folder_ids.extend(child_ids)
+            pending.extend(child_ids)
+        return ManagedDocument.objects.filter(
+            folder_id__in=set(folder_ids), is_active=True,
+        ).exclude(status=ManagedDocument.Status.ARCHIVED).count()
 
     def get_children_count(self, obj):
         return obj.children.filter(is_active=True).count()

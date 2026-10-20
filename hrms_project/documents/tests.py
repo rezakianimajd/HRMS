@@ -189,6 +189,16 @@ class DocumentManagementTests(SimpleTestCase):
         self.assertEqual(call_args.args[2]['id'], 5)
         self.assertEqual(call_args.kwargs['fallback_dir'], 'document_management')
 
+    def test_company_document_folder_catalog(self):
+        from documents.management_folders import (
+            COMPANY_DOCUMENTS_FOLDER, COMPANY_DOCUMENT_SUBFOLDERS,
+        )
+
+        self.assertEqual(COMPANY_DOCUMENTS_FOLDER, 'مدارک و مستندات شرکت')
+        names = [name for name, _color in COMPANY_DOCUMENT_SUBFOLDERS]
+        for expected in ('روزنامه‌های رسمی', 'مدارک هیئت مدیره', 'مدارک ثبت شرکت'):
+            self.assertIn(expected, names)
+
     def test_default_documents_storage_profile_is_registered(self):
         from settings_app.models import default_storage_profiles
 

@@ -30,6 +30,7 @@ jest.mock('../core/hooks/useAuth', () => ({
 const folders = [
   { id: 1, name: 'قراردادها', parent: null, path: 'قراردادها', color: '#0f766e', documents_count: 1, children_count: 1 },
   { id: 2, name: 'قراردادهای جاری', parent: 1, path: 'قراردادها / قراردادهای جاری', color: '#2563eb', documents_count: 1, children_count: 0 },
+  { id: 3, name: 'مدارک و مستندات شرکت', parent: null, code: 'company.documents', path: 'مدارک و مستندات شرکت', color: '#0f172a', documents_count: 0, children_count: 10, is_system: true },
 ];
 const documents = [
   {
@@ -119,6 +120,8 @@ test('document management page renders library, folder tree, detail drawer and u
 
   expect(container.textContent).toContain('کتابخانه اسناد');
   expect(container.textContent).toContain('پوشه‌های اسناد');
+  expect(container.textContent).toContain('ساختار کتابخانه');
+  expect(container.textContent).toContain('مدارک و مستندات شرکت');
   expect(container.textContent).toContain('قراردادها');
   expect(container.textContent).toContain('قرارداد پیمانکاری سالن تولید');
   expect(container.textContent).toContain('مجوز فعالیت کارگاه');
