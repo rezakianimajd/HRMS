@@ -133,6 +133,12 @@ if ! sudo -u "$APP_USER" bash -lc "cd '$HRMS_DIR' && set -a && . ./.env && set +
 fi
 echo "documents.0011 applied: yes"
 
+if ! sudo -u "$APP_USER" bash -lc "cd '$HRMS_DIR' && set -a && . ./.env && set +a && DJANGO_SETTINGS_MODULE='$SETTINGS' '$VENV/bin/python' manage.py showmigrations documents" | grep -q '\[X\] 0012_'; then
+  echo "ERROR: documents migration 0012 is not applied." >&2
+  exit 1
+fi
+echo "documents.0012 applied: yes"
+
 # ---------------------------------------------------------------------------
 # 6) Rebuild static files and frontend build.
 # ---------------------------------------------------------------------------
