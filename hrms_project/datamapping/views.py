@@ -818,7 +818,15 @@ def import_documents(request):
                     'code': invalid_date_line.get('date_raw') or '',
                 })
                 continue
-            doc_date = first['date'] or date.today()
+            doc_date = first['date'] or next((ln['date'] for ln in lines if ln['date']), None)
+            if 'date' in col_map and doc_date is None:
+                skipped_rows.append({
+                    'row': first.get('row_no') or '',
+                    'reason': 'تاریخ سند خالی است؛ سند وارد نشد.',
+                    'code': first.get('date_raw') or '',
+                })
+                continue
+            doc_date = doc_date or date.today()
             fiscal_year = _fiscal_year_for(company, doc_date, fiscal_year_id)
             fiscal_year_pk = fiscal_year.pk if fiscal_year else None
             import_key = f'{fiscal_year_pk or 0}:{doc_key}'
