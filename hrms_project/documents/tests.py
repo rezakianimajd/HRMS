@@ -9,8 +9,9 @@ from unittest.mock import patch
 from django.test import SimpleTestCase
 
 from documents.models import (
-    DEPENDENTS_FOLDER, DocumentType, OrganizationDocument,
-    document_upload_path, is_dependent_label, organization_document_upload_path,
+    DEPENDENTS_FOLDER, DocumentFolder, DocumentType, OrganizationDocument,
+    document_upload_path, is_dependent_label, managed_document_version_upload_path,
+    organization_document_upload_path,
 )
 
 
@@ -153,3 +154,66 @@ class OrganizationDependentPathTests(SimpleTestCase):
         call_args = mocked.call_args
         self.assertEqual(call_args.args[1], 'hrms.organization_documents')
         self.assertEqual(call_args.kwargs['subfolder'], '')
+
+
+class DocumentManagementTests(SimpleTestCase):
+    """مسیر بایگانی و پوشه‌بندی درختی ماژول مدیریت اسناد."""
+
+    def test_folder_path_includes_ancestors(self):
+        root = DocumentFolder(name='قراردادها')
+        root.pk = 1
+        child = DocumentFolder(name='قراردادهای جاری', parent=root)
+        child.pk = 2
+        grandchild = DocumentFolder(name='۱۴۰۵', parent=child)
+        grandchild.pk = 3
+
+        self.assertEqual(grandchild.path, 'قراردادها / قراردادهای جاری / ۱۴۰۵')
+
+    @patch('core.engines.archive_storage_engine.resolve_upload_path')
+    def test_managed_version_uses_documents_module_profile(self, mocked):
+        mocked.return_value = 'archive/company_3/documents/x.pdf'
+        folder = SimpleNamespace(path='قراردادها / قراردادهای جاری')
+        document = SimpleNamespace(
+            pk=5, folder=folder, title='قرارداد پیمانکاری',
+            reference_number='REF-1405-001',
+        )
+        version = SimpleNamespace(company_id=3, document=document)
+
+        managed_document_version_upload_path(version, 'contract.pdf')
+
+        call_args = mocked.call_args
+        self.assertEqual(call_args.args[0], 3)
+        self.assertEqual(call_args.args[1], 'hr.documents.management')
+        self.assertEqual(call_args.args[2]['category'], 'قراردادها / قراردادهای جاری')
+        self.assertEqual(call_args.args[2]['id'], 5)
+        self.assertEqual(call_args.kwargs['fallback_dir'], 'document_management')
+
+    @patch('core.engines.archive_storage_engine.resolve_upload_path')
+    def test_managed_version_survives_missing_folder(self, mocked):
+        mocked.return_value = 'archive/company_3/documents/x.pdf'
+        document = SimpleNamespace(
+            pk=6, folder=None, title='سند بدون پوشه',
+            reference_number='',
+        )
+        version = SimpleNamespace(company_id=3, document=document)
+
+        managed_document_version_upload_path(version, 'scan.pdf')
+
+        self.assertEqual(mocked.call_args.args[2]['category'], 'عمومی')
+
+
+
+class DocumentManagementUrlTests(SimpleTestCase):
+    """مسیرهای API ماژول مدیریت اسناد در دسترس باشند."""
+
+    def test_management_endpoints_reverse(self):
+        from django.urls import reverse
+
+        self.assertEqual(reverse('document-folder-list'), '/api/document-management/folders/')
+        self.assertEqual(reverse('managed-document-list'), '/api/document-management/documents/')
+        self.assertEqual(reverse('document-activity-list'), '/api/document-management/activities/')
+        self.assertEqual(reverse('document-management-stats'), '/api/document-management/stats/')
+        self.assertEqual(
+            reverse('managed-document-restore-version', args=[1]),
+            '/api/document-management/documents/1/restore-version/',
+        )

@@ -25,6 +25,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
+import FolderCopyIcon from '@mui/icons-material/FolderCopy';
 import LeaderboardIcon from '@mui/icons-material/Leaderboard';
 import InsightsIcon from '@mui/icons-material/Insights';
 import PsychologyIcon from '@mui/icons-material/Psychology';
@@ -132,6 +133,14 @@ const menuConfig = [
       { id: 'correspondences', title: 'مکاتبات اداری', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
       { id: 'bale-messaging', title: 'اطلاع‌رسانی و پیام بله', icon: <ChatBubbleOutlineIcon />, path: '/bale-messaging', color: '#10b981', primary: false, ready: true },
       { id: 'company-documents', title: 'بایگانی اسناد سازمان', icon: <FolderSharedIcon />, path: '/documents', color: '#f97316', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'document-management',
+    title: 'مدیریت اسناد و مدارک',
+    color: '#0f766e',
+    items: [
+      { id: 'document-library', title: 'کتابخانه اسناد', icon: <FolderCopyIcon />, path: '/document-management', color: '#0f766e', primary: false, ready: true },
     ],
   },
   {
@@ -587,6 +596,14 @@ const contractsMenu = [
     items: [
       { id: 'contracts-expiring', title: 'قراردادهای رو به انقضا', icon: <NotificationsActiveIcon />, path: '/contracts-expiring', color: '#f59e0b', primary: false, ready: true },
       { id: 'contracts-disputes', title: 'اختلافات و دعاوی', icon: <GavelIcon />, path: '/contracts-disputes', color: '#8b5cf6', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'contracts-document-management',
+    title: 'مدیریت اسناد و مدارک',
+    color: '#0f766e',
+    items: [
+      { id: 'contracts-document-library', title: 'کتابخانه اسناد', icon: <FolderCopyIcon />, path: '/document-management', color: '#0f766e', primary: false, ready: true },
     ],
   },
   {

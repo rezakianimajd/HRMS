@@ -1,0 +1,263 @@
+"""Serializers for the Document Management (DMS) module."""
+import hashlib
+import os
+
+from rest_framework import serializers
+
+from documents.models import (
+    DocumentActivity, DocumentFolder, DocumentVersion, ManagedDocument,
+)
+
+ALLOWED_EXTENSIONS = {
+    '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx', '.txt',
+    '.csv', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp', '.zip', '.rar',
+}
+MAX_FILE_SIZE = 50 * 1024 * 1024
+
+
+def _user(request):
+    user = getattr(request, 'user', None)
+    return user if user and user.is_authenticated else None
+
+
+def _company(request):
+    return getattr(request, 'tenant', None) or getattr(request, 'company', None)
+
+
+def _user_name(user):
+    if not user:
+        return ''
+    return ' '.join(part for part in [user.first_name, user.last_name] if part).strip() or user.username
+
+
+def _file_size_display(size):
+    size = int(size or 0)
+    if size < 1024:
+        return f'{size} B'
+    if size < 1024 * 1024:
+        return f'{size / 1024:.1f} KB'
+    return f'{size / (1024 * 1024):.1f} MB'
+
+
+class DocumentFolderSerializer(serializers.ModelSerializer):
+    path = serializers.CharField(read_only=True)
+    parent_name = serializers.CharField(source='parent.name', read_only=True)
+    documents_count = serializers.SerializerMethodField()
+    children_count = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentFolder
+        fields = [
+            'id', 'name', 'code', 'parent', 'parent_name', 'path', 'description',
+            'color', 'icon', 'order', 'is_system', 'documents_count', 'children_count',
+            'created_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'path', 'parent_name', 'documents_count', 'children_count']
+
+    def validate_parent(self, value):
+        company = _company(self.context.get('request'))
+        if value and company and value.company_id != company.pk:
+            raise serializers.ValidationError('پوشه والد متعلق به شرکت جاری نیست.')
+        return value
+
+    def get_documents_count(self, obj):
+        return obj.documents.filter(is_active=True).exclude(status=ManagedDocument.Status.ARCHIVED).count()
+
+    def get_children_count(self, obj):
+        return obj.children.filter(is_active=True).count()
+
+
+class DocumentVersionSerializer(serializers.ModelSerializer):
+    file_url = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    file_extension = serializers.SerializerMethodField()
+    file_size_display = serializers.SerializerMethodField()
+
+    class Meta:
+        model = DocumentVersion
+        fields = [
+            'id', 'document', 'version_number', 'file', 'file_url', 'original_name',
+            'file_size', 'file_size_display', 'file_extension', 'mime_type', 'checksum',
+            'change_note', 'created_by', 'created_by_name', 'created_at',
+        ]
+        read_only_fields = [
+            'id', 'document', 'version_number', 'file_url', 'file_size',
+            'file_size_display', 'file_extension', 'mime_type', 'checksum',
+            'created_by', 'created_by_name', 'created_at',
+        ]
+
+    def get_file_url(self, obj):
+        if not obj.file:
+            return None
+        request = self.context.get('request')
+        return request.build_absolute_uri(obj.file.url) if request else obj.file.url
+
+    def get_created_by_name(self, obj):
+        return _user_name(obj.created_by)
+
+    def get_file_extension(self, obj):
+        return os.path.splitext(obj.file.name)[1].lower() if obj.file else ''
+
+    def get_file_size_display(self, obj):
+        return _file_size_display(obj.file_size)
+
+
+class DocumentActivitySerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    user_name = serializers.SerializerMethodField()
+    document_title = serializers.CharField(source='document.title', read_only=True)
+
+    class Meta:
+        model = DocumentActivity
+        fields = ['id', 'document', 'document_title', 'action', 'action_display', 'user', 'user_name', 'details', 'created_at']
+        read_only_fields = fields
+
+    def get_user_name(self, obj):
+        return _user_name(obj.user)
+
+
+class ManagedDocumentSerializer(serializers.ModelSerializer):
+    file = serializers.FileField(write_only=True, required=False, allow_null=True)
+    folder_name = serializers.CharField(source='folder.name', read_only=True)
+    folder_path = serializers.CharField(source='folder.path', read_only=True)
+    confidentiality_display = serializers.CharField(source='get_confidentiality_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    tags_list = serializers.ListField(read_only=True)
+    file_url = serializers.SerializerMethodField()
+    file_name = serializers.CharField(read_only=True)
+    file_extension = serializers.CharField(read_only=True)
+    file_size = serializers.IntegerField(read_only=True)
+    file_size_display = serializers.SerializerMethodField()
+    mime_type = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    updated_by_name = serializers.SerializerMethodField()
+    is_expired = serializers.BooleanField(read_only=True)
+    days_until_expiry = serializers.IntegerField(read_only=True)
+    versions = DocumentVersionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ManagedDocument
+        fields = [
+            'id', 'title', 'folder', 'folder_name', 'folder_path', 'description',
+            'tags', 'tags_list', 'reference_number', 'issue_date', 'expiry_date',
+            'retention_until', 'confidentiality', 'confidentiality_display',
+            'status', 'status_display', 'is_locked', 'current_version', 'version_count',
+            'file', 'file_url', 'file_name', 'file_extension', 'file_size',
+            'file_size_display', 'mime_type', 'created_by', 'created_by_name',
+            'updated_by', 'updated_by_name', 'is_expired', 'days_until_expiry',
+            'versions', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'current_version', 'version_count', 'file_url', 'file_name',
+            'file_extension', 'file_size', 'file_size_display', 'mime_type',
+            'created_by', 'created_by_name', 'updated_by', 'updated_by_name',
+            'is_expired', 'days_until_expiry', 'versions', 'created_at', 'updated_at',
+        ]
+
+    def get_file_url(self, obj):
+        version = obj.current_version
+        if version and version.file:
+            request = self.context.get('request')
+            return request.build_absolute_uri(version.file.url) if request else version.file.url
+        return None
+
+    def get_file_size_display(self, obj):
+        return _file_size_display(obj.file_size)
+
+    def get_mime_type(self, obj):
+        return obj.current_version.mime_type if obj.current_version else ''
+
+    def get_created_by_name(self, obj):
+        return _user_name(obj.created_by)
+
+    def get_updated_by_name(self, obj):
+        return _user_name(obj.updated_by)
+
+    def validate_folder(self, value):
+        company = _company(self.context.get('request'))
+        if value and company and value.company_id != company.pk:
+            raise serializers.ValidationError('پوشه انتخاب‌شده متعلق به شرکت جاری نیست.')
+        return value
+
+    def validate_file(self, value):
+        if not value:
+            return value
+        extension = os.path.splitext(value.name)[1].lower()
+        if extension not in ALLOWED_EXTENSIONS:
+            raise serializers.ValidationError(
+                'فرمت فایل مجاز نیست. فرمت‌های مجاز: PDF، Word، Excel، PowerPoint، تصویر، متن و ZIP.'
+            )
+        if value.size > MAX_FILE_SIZE:
+            raise serializers.ValidationError('حجم فایل نباید بیشتر از ۵۰ مگابایت باشد.')
+        return value
+
+    def validate(self, attrs):
+        if not self.instance and not attrs.get('file'):
+            raise serializers.ValidationError({'file': 'فایل سند الزامی است.'})
+        if self.instance and self.instance.is_locked and attrs.get('is_locked', True):
+            raise serializers.ValidationError({'is_locked': 'این سند قفل شده است؛ ابتدا قفل ویرایش را باز کنید.'})
+        return attrs
+
+    def create(self, validated_data):
+        request = self.context.get('request')
+        upload = validated_data.pop('file', None)
+        user = _user(request)
+        document = ManagedDocument.objects.create(**validated_data, created_by=user, updated_by=user)
+        if upload:
+            self._add_version(document, upload, user, 'نسخه اولیه سند')
+        self._log(document, DocumentActivity.Action.CREATE, user, {'title': document.title})
+        return document
+
+    def update(self, instance, validated_data):
+        request = self.context.get('request')
+        upload = validated_data.pop('file', None)
+        user = _user(request)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.updated_by = user
+        instance.save()
+        if upload:
+            self._add_version(instance, upload, user, 'ثبت نسخه جدید')
+        self._log(instance, DocumentActivity.Action.UPDATE, user, {'title': instance.title})
+        return instance
+
+    def _add_version(self, document, upload, user, change_note=''):
+        hasher = hashlib.sha256()
+        for chunk in upload.chunks():
+            hasher.update(chunk)
+        try:
+            upload.seek(0)
+        except Exception:  # noqa: BLE001
+            pass
+        last = document.versions.order_by('-version_number').first()
+        version_number = (last.version_number + 1) if last else 1
+        version = DocumentVersion.objects.create(
+            company=document.company,
+            document=document,
+            version_number=version_number,
+            file=upload,
+            original_name=os.path.basename(upload.name),
+            file_size=getattr(upload, 'size', 0),
+            mime_type=getattr(upload, 'content_type', '') or '',
+            checksum=hasher.hexdigest(),
+            change_note=change_note or '',
+            created_by=user,
+        )
+        document.current_version = version
+        document.version_count = version_number
+        document.save(update_fields=['current_version', 'version_count', 'updated_at'])
+        self._log(document, DocumentActivity.Action.VERSION, user, {
+            'version': version_number,
+            'file_name': version.original_name,
+        })
+        return version
+
+    def _log(self, document, action, user, details=None):
+        DocumentActivity.objects.create(
+            company=document.company,
+            document=document,
+            action=action,
+            user=user,
+            details=details or {},
+        )
+

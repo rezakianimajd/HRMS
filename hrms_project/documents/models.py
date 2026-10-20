@@ -1,7 +1,9 @@
 """
 Models for the Documents module.
 """
+import mimetypes
 import os
+from django.conf import settings
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
@@ -406,3 +408,238 @@ class Document(BaseModel):
             delta = self.expiry_date - date.today()
             return delta.days
         return None
+
+
+# ---------------------------------------------------------------------------
+# Document Management (DMS): folders, versioned documents, activity log
+# ---------------------------------------------------------------------------
+
+def managed_document_version_upload_path(instance, filename):
+    """مسیر نسخه‌های سند در بایگانی مدیریت اسناد."""
+    from core.engines.archive_storage_engine import resolve_upload_path
+
+    try:
+        document = instance.document
+        folder = document.folder
+        fields = {
+            'category': folder.path if folder else 'عمومی',
+            'name': document.title or '',
+            'number': document.reference_number or '',
+            'id': document.pk,
+        }
+    except Exception:  # noqa: BLE001 — سند ناقص نباید آپلود را بشکند
+        fields = {}
+
+    return resolve_upload_path(
+        instance.company_id, 'hr.documents.management', fields, filename,
+        fallback_dir='document_management',
+    )
+
+
+class DocumentFolder(BaseModel):
+    """پوشه/دستهٔ درختی کتابخانهٔ اسناد."""
+
+    name = models.CharField(max_length=150, verbose_name=_('نام پوشه'))
+    code = models.CharField(max_length=50, blank=True, verbose_name=_('کد پوشه'))
+    parent = models.ForeignKey(
+        'self', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='children', verbose_name=_('پوشه والد'),
+    )
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    color = models.CharField(max_length=20, blank=True, default='#0f766e', verbose_name=_('رنگ'))
+    icon = models.CharField(max_length=50, blank=True, verbose_name=_('آیکن'))
+    order = models.PositiveIntegerField(default=0, verbose_name=_('ترتیب'))
+    is_system = models.BooleanField(default=False, verbose_name=_('پوشه سیستمی'))
+
+    class Meta:
+        verbose_name = _('پوشه اسناد')
+        verbose_name_plural = _('پوشه‌های اسناد')
+        ordering = ['order', 'name']
+        unique_together = [('company', 'parent', 'name')]
+        indexes = [models.Index(fields=['company', 'parent'], name='dms_folder_company_parent_idx')]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def path(self):
+        parts = []
+        node = self
+        visited = set()
+        while node is not None and node.pk not in visited:
+            visited.add(node.pk)
+            parts.append(node.name)
+            node = node.parent
+        return ' / '.join(reversed(parts))
+
+
+class ManagedDocument(BaseModel):
+    """سند مدیریت‌شده با متادیتا، محرمانگی و نسخه‌بندی."""
+
+    class Confidentiality(models.TextChoices):
+        PUBLIC = 'public', _('عمومی')
+        INTERNAL = 'internal', _('داخلی')
+        CONFIDENTIAL = 'confidential', _('محرمانه')
+        SECRET = 'secret', _('سری')
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('پیش‌نویس')
+        ACTIVE = 'active', _('فعال')
+        ARCHIVED = 'archived', _('بایگانی‌شده')
+
+    folder = models.ForeignKey(
+        DocumentFolder, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='documents', verbose_name=_('پوشه'),
+    )
+    title = models.CharField(max_length=250, verbose_name=_('عنوان سند'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    tags = models.CharField(max_length=500, blank=True, verbose_name=_('برچسب‌ها'))
+    reference_number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع'))
+    issue_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ صدور'))
+    expiry_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ انقضا'))
+    retention_until = models.DateField(null=True, blank=True, verbose_name=_('نگهداری تا'))
+    confidentiality = models.CharField(
+        max_length=20, choices=Confidentiality.choices,
+        default=Confidentiality.INTERNAL, verbose_name=_('سطح محرمانگی'),
+    )
+    status = models.CharField(
+        max_length=20, choices=Status.choices,
+        default=Status.ACTIVE, verbose_name=_('وضعیت'),
+    )
+    is_locked = models.BooleanField(default=False, verbose_name=_('قفل ویرایش'))
+    current_version = models.ForeignKey(
+        'DocumentVersion', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', verbose_name=_('نسخه جاری'),
+    )
+    version_count = models.PositiveIntegerField(default=0, verbose_name=_('تعداد نسخه'))
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='managed_documents_created', verbose_name=_('ایجادکننده'),
+    )
+    updated_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='managed_documents_updated', verbose_name=_('آخرین ویرایش‌کننده'),
+    )
+
+    class Meta:
+        verbose_name = _('سند مدیریت‌شده')
+        verbose_name_plural = _('اسناد مدیریت‌شده')
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['company', 'folder'], name='dms_doc_company_folder_idx'),
+            models.Index(fields=['company', 'status'], name='dms_doc_company_status_idx'),
+            models.Index(fields=['expiry_date'], name='dms_doc_expiry_idx'),
+        ]
+
+    def __str__(self):
+        return self.title
+
+    @property
+    def file_extension(self):
+        version = self.current_version
+        if version and version.file:
+            return os.path.splitext(version.file.name)[1].lower()
+        return ''
+
+    @property
+    def file_name(self):
+        version = self.current_version
+        if not version:
+            return ''
+        return version.original_name or os.path.basename(version.file.name)
+
+    @property
+    def file_size(self):
+        return self.current_version.file_size if self.current_version else 0
+
+    @property
+    def is_expired(self):
+        from datetime import date
+        return bool(self.expiry_date and self.expiry_date < date.today())
+
+    @property
+    def days_until_expiry(self):
+        from datetime import date
+        if not self.expiry_date:
+            return None
+        return (self.expiry_date - date.today()).days
+
+    @property
+    def tags_list(self):
+        return [tag.strip() for tag in (self.tags or '').split(',') if tag.strip()]
+
+
+class DocumentVersion(BaseModel):
+    """نسخهٔ فایل سند؛ فایل جاری سند از همین رکورد خوانده می‌شود."""
+
+    document = models.ForeignKey(
+        ManagedDocument, on_delete=models.CASCADE,
+        related_name='versions', verbose_name=_('سند'),
+    )
+    version_number = models.PositiveIntegerField(default=1, verbose_name=_('شماره نسخه'))
+    file = models.FileField(upload_to=managed_document_version_upload_path, verbose_name=_('فایل'))
+    original_name = models.CharField(max_length=255, blank=True, verbose_name=_('نام فایل اصلی'))
+    file_size = models.BigIntegerField(default=0, verbose_name=_('حجم فایل'))
+    mime_type = models.CharField(max_length=120, blank=True, verbose_name=_('نوع فایل'))
+    checksum = models.CharField(max_length=64, blank=True, verbose_name=_('چک‌سام'))
+    change_note = models.TextField(blank=True, verbose_name=_('توضیح تغییرات'))
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='document_versions_created', verbose_name=_('ایجادکننده'),
+    )
+
+    class Meta:
+        verbose_name = _('نسخه سند')
+        verbose_name_plural = _('نسخه‌های سند')
+        ordering = ['-version_number']
+        unique_together = [('document', 'version_number')]
+        indexes = [models.Index(fields=['document', 'version_number'], name='dms_version_doc_num_idx')]
+
+    def __str__(self):
+        return f'{self.document.title} - v{self.version_number}'
+
+    def save(self, *args, **kwargs):
+        if self.file:
+            try:
+                self.file_size = self.file.size
+            except Exception:  # noqa: BLE001
+                self.file_size = self.file_size or 0
+            if not self.original_name:
+                self.original_name = os.path.basename(self.file.name)
+            if not self.mime_type:
+                self.mime_type = mimetypes.guess_type(self.file.name)[0] or ''
+        super().save(*args, **kwargs)
+
+
+class DocumentActivity(BaseModel):
+    """تاریخچه فعالیت روی اسناد برای حسابرسی و پیگیری."""
+
+    class Action(models.TextChoices):
+        CREATE = 'create', _('ایجاد سند')
+        UPDATE = 'update', _('ویرایش اطلاعات')
+        VERSION = 'new_version', _('ثبت نسخه جدید')
+        ARCHIVE = 'archive', _('بایگانی')
+        RESTORE = 'restore', _('بازگردانی')
+        DELETE = 'delete', _('حذف')
+        DOWNLOAD = 'download', _('دانلود')
+        FOLDER = 'folder', _('تغییر پوشه')
+
+    document = models.ForeignKey(
+        ManagedDocument, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='activities', verbose_name=_('سند'),
+    )
+    action = models.CharField(max_length=30, choices=Action.choices, verbose_name=_('اقدام'))
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='document_activities', verbose_name=_('کاربر'),
+    )
+    details = models.JSONField(default=dict, blank=True, verbose_name=_('جزئیات'))
+
+    class Meta:
+        verbose_name = _('فعالیت سند')
+        verbose_name_plural = _('فعالیت‌های اسناد')
+        ordering = ['-created_at']
+        indexes = [models.Index(fields=['company', 'document'], name='dms_activity_company_doc_idx')]
+
+    def __str__(self):
+        return f'{self.get_action_display()} - {self.document_id}'
