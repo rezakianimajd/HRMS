@@ -882,6 +882,7 @@ const ContractPaymentsPage = () => {
                 selectedId={contractId}
                 countLabel="پرداخت"
                 countByContract={paymentCountByContract}
+                getCount={(contract) => Number(paymentCountByContract[String(contract.id)] || 0)}
                 height={520}
                 accent={TEAL}
               />
