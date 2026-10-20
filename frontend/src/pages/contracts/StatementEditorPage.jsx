@@ -1130,7 +1130,7 @@ const StatementEditorView = ({
         ) : null}
 
         <Grid container spacing={1.5}>
-          <Grid item xs={12} lg={8}>
+          <Grid item xs={12} lg={6}>
             <Paper elevation={0} sx={{
               p: { xs: 1.5, md: 2 }, borderRadius: '18px',
               border: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper,
@@ -1257,7 +1257,7 @@ const StatementEditorView = ({
             </Paper>
           </Grid>
 
-          <Grid item xs={12} lg={4}>
+          <Grid item xs={12} lg={6}>
             <Box sx={{ position: { lg: 'sticky' }, top: 16 }}>
               <SurfaceCard title="پیش‌نمایش صورت‌وضعیت" icon={ReceiptLongIcon} color={STATEMENT_ACCENT}
                 action={<Chip size="small" label="A4" sx={{ height: 20, fontSize: 7.7, bgcolor: SOFT_BG, color: MUTED }} />}
@@ -1270,23 +1270,6 @@ const StatementEditorView = ({
         </Grid>
       </Stack>
 
-      <Paper elevation={0} sx={{
-        mt: 1.5, p: 1.35, borderRadius: '15px', border: `1px solid ${theme.palette.divider}`,
-        position: 'sticky', bottom: 8, bgcolor: alpha(theme.palette.background.paper, 0.96),
-        backdropFilter: 'blur(10px)', zIndex: 2,
-      }}>
-        <Stack direction="row" spacing={0.8} alignItems="center">
-          <Typography sx={{ flex: 1, fontSize: 9, color: MUTED }}>
-            {form.id ? 'در حال ویرایش صورت‌وضعیت موجود' : 'صورت‌وضعیت جدید برای قرارداد انتخاب‌شده'}
-          </Typography>
-          <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={onClose}>بازگشت به لیست</Button>
-          <Button variant="contained" onClick={onSave} disabled={saving || !form.contract || !form.date}
-            startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <SaveIcon />}
-            sx={{ px: 2.5, bgcolor: STATEMENT_ACCENT, '&:hover': { bgcolor: '#4f46e5' } }}>
-            {saving ? 'در حال ذخیره…' : 'ذخیره صورت‌وضعیت'}
-          </Button>
-        </Stack>
-      </Paper>
     </Box>
   );
 };
