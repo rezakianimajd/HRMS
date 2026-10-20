@@ -227,6 +227,7 @@ class DocumentManagementUrlTests(SimpleTestCase):
         self.assertEqual(reverse('managed-document-list'), '/api/document-management/documents/')
         self.assertEqual(reverse('document-activity-list'), '/api/document-management/activities/')
         self.assertEqual(reverse('document-management-stats'), '/api/document-management/stats/')
+        self.assertEqual(reverse('document-management-sync-storage'), '/api/document-management/sync-storage/')
         self.assertEqual(
             reverse('managed-document-restore-version', args=[1]),
             '/api/document-management/documents/1/restore-version/',

@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import React, { useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Button, Chip, CircularProgress, Grid, Paper, Stack, Table,
   TableBody, TableCell, TableHead, TableRow, Typography,
@@ -22,6 +22,7 @@ import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUti
 import { toJalali } from '../../core/utils/dateUtils';
 
 const DocumentManagementReportsPage = () => {
+  const qc = useQueryClient();
   const statsQuery = useQuery({
     queryKey: ['dms-stats'],
     queryFn: () => axiosInstance.get('/document-management/stats/').then((response) => response.data),
@@ -38,6 +39,12 @@ const DocumentManagementReportsPage = () => {
   const documents = useMemo(() => (Array.isArray(documentsQuery.data) ? documentsQuery.data : documentsQuery.data?.results || []), [documentsQuery.data]);
   const folders = useMemo(() => (Array.isArray(foldersQuery.data) ? foldersQuery.data : foldersQuery.data?.results || []), [foldersQuery.data]);
   const stats = statsQuery.data || {};
+  useEffect(() => {
+    if ((stats.auto_indexed || 0) > 0) {
+      qc.invalidateQueries({ queryKey: ['dms-documents'] });
+      qc.invalidateQueries({ queryKey: ['dms-folders'] });
+    }
+  }, [stats.auto_indexed, qc]);
   const liveDocs = useMemo(() => documents.filter((row) => row.status !== 'archived'), [documents]);
   const expiring = liveDocs
     .filter((row) => row.is_expired || (row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30))

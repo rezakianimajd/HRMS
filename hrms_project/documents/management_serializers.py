@@ -151,17 +151,18 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
             'tags', 'tags_list', 'reference_number', 'issue_date', 'expiry_date',
             'retention_until', 'confidentiality', 'confidentiality_display',
             'status', 'status_display', 'is_locked', 'current_version', 'version_count',
+            'source_module_key', 'is_indexed',
             'file', 'file_url', 'file_name', 'file_extension', 'file_size',
             'file_size_display', 'mime_type', 'storage_path', 'created_by',
             'created_by_name', 'updated_by', 'updated_by_name', 'is_expired',
             'days_until_expiry', 'versions', 'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'current_version', 'version_count', 'file_url', 'file_name',
-            'file_extension', 'file_size', 'file_size_display', 'mime_type',
-            'storage_path', 'created_by', 'created_by_name', 'updated_by',
-            'updated_by_name',
-            'is_expired', 'days_until_expiry', 'versions', 'created_at', 'updated_at',
+            'id', 'current_version', 'version_count', 'source_module_key',
+            'is_indexed', 'file_url', 'file_name', 'file_extension', 'file_size',
+            'file_size_display', 'mime_type', 'storage_path', 'created_by',
+            'created_by_name', 'updated_by', 'updated_by_name', 'is_expired',
+            'days_until_expiry', 'versions', 'created_at', 'updated_at',
         ]
 
     def get_file_url(self, obj):

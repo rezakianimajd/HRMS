@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from documents.views import DocumentViewSet, DocumentTypeViewSet, OrganizationDocumentViewSet
 from documents.management_views import (
     DocumentActivityViewSet, DocumentFolderViewSet, DocumentManagementStatsAPIView,
-    ManagedDocumentViewSet,
+    DocumentManagementSyncAPIView, ManagedDocumentViewSet,
 )
 
 router = DefaultRouter()
@@ -28,6 +28,7 @@ urlpatterns = [
         name='document-type-detail',
     ),
     path('document-management/stats/', DocumentManagementStatsAPIView.as_view(), name='document-management-stats'),
+    path('document-management/sync-storage/', DocumentManagementSyncAPIView.as_view(), name='document-management-sync-storage'),
     path('document-management/', include(management_router.urls)),
     path('', include(router.urls)),
 ]

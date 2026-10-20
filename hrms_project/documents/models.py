@@ -492,6 +492,15 @@ class ManagedDocument(BaseModel):
         DocumentFolder, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='documents', verbose_name=_('پوشه'),
     )
+    source_module_key = models.CharField(
+        max_length=80, blank=True, default='', verbose_name=_('کلید ماژول منبع'),
+    )
+    storage_path = models.CharField(
+        max_length=500, blank=True, default='', verbose_name=_('مسیر ذخیره‌سازی'),
+    )
+    is_indexed = models.BooleanField(
+        default=False, verbose_name=_('ایندکس‌شده از بایگانی'),
+    )
     title = models.CharField(max_length=250, verbose_name=_('عنوان سند'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
     tags = models.CharField(max_length=500, blank=True, verbose_name=_('برچسب‌ها'))
@@ -530,6 +539,14 @@ class ManagedDocument(BaseModel):
             models.Index(fields=['company', 'folder'], name='dms_doc_company_folder_idx'),
             models.Index(fields=['company', 'status'], name='dms_doc_company_status_idx'),
             models.Index(fields=['expiry_date'], name='dms_doc_expiry_idx'),
+            models.Index(fields=['company', 'source_module_key'], name='dms_doc_source_module_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'storage_path'],
+                condition=~models.Q(storage_path=''),
+                name='dms_doc_unique_storage_path',
+            ),
         ]
 
     def __str__(self):

@@ -16,6 +16,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
+import SyncIcon from '@mui/icons-material/Sync';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
@@ -58,6 +59,7 @@ const DocumentManagementPage = () => {
   const [confirmFolderDelete, setConfirmFolderDelete] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
+  const [autoSynced, setAutoSynced] = useState(false);
 
   const searchParamsKey = searchParams.toString();
   useEffect(() => {
@@ -173,6 +175,35 @@ const DocumentManagementPage = () => {
     qc.invalidateQueries({ queryKey: ['dms-activities'] });
     qc.invalidateQueries({ queryKey: ['dms-detail-activities'] });
   };
+
+  const syncStorage = useMutation({
+    mutationFn: () => axiosInstance.post('/document-management/sync-storage/'),
+    onSuccess: (response) => {
+      const count = response.data?.created || 0;
+      invalidateAll();
+      setToast(count
+        ? `${formatPersianNumber(count)} فایل موجود در بایگانی ماژول‌ها ایندکس شد`
+        : 'فایل جدیدی برای ایندکس پیدا نشد');
+    },
+    onError: () => setToast('همگام‌سازی بایگانی انجام نشد'),
+  });
+
+  // بار اول، فایل‌های موجود در بایگانی ماژول‌ها را بدون نیاز به کلیک ایندکس کن.
+  useEffect(() => {
+    if (!autoSynced && statsQuery.isSuccess && (stats.total || 0) === 0) {
+      setAutoSynced(true);
+      syncStorage.mutate();
+    }
+  }, [autoSynced, statsQuery.isSuccess, stats.total, syncStorage]);
+
+  // اگر بک‌اند در stats فایل‌های موجود را ایندکس کرد، کتابخانه را دوباره بارگذاری کن.
+  useEffect(() => {
+    if ((stats.auto_indexed || 0) > 0) {
+      qc.invalidateQueries({ queryKey: ['dms-documents'] });
+      qc.invalidateQueries({ queryKey: ['dms-folders'] });
+      qc.invalidateQueries({ queryKey: ['dms-activities'] });
+    }
+  }, [stats.auto_indexed, qc]);
 
   const saveDocument = useMutation({
     mutationFn: (payload) => {
@@ -338,6 +369,9 @@ const DocumentManagementPage = () => {
         actions={(
           <>
             <Tooltip title="به‌روزرسانی"><span><Button variant="outlined" disabled={documentsQuery.isFetching} onClick={() => { documentsQuery.refetch(); statsQuery.refetch(); activitiesQuery.refetch(); }} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span></Tooltip>
+            <Button variant="outlined" startIcon={<SyncIcon />} disabled={syncStorage.isPending} onClick={() => syncStorage.mutate()}>
+              {syncStorage.isPending ? 'در حال همگام‌سازی…' : 'همگام‌سازی بایگانی'}
+            </Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="outlined" startIcon={<CreateNewFolderOutlinedIcon />} onClick={openFolderNew}>پوشه جدید</Button>
             <Button variant="contained" startIcon={<UploadFileOutlinedIcon />} onClick={openNew}>آپلود سند</Button>

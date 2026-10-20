@@ -17,6 +17,7 @@ from documents.management_serializers import (
 from documents.management_storage import (
     get_documents_storage_profile, storage_policy_dict,
 )
+from documents.management_sync import sync_archive_files
 
 
 def _company(request):
@@ -202,6 +203,17 @@ class DocumentManagementStatsAPIView(APIView):
         docs = ManagedDocument.objects.filter(is_active=True)
         if company:
             docs = docs.filter(company=company)
+
+        # اولین بار: فایل‌های موجود در بایگانی ماژول‌ها را در کتابخانه ایندکس کن.
+        auto_indexed = 0
+        if company and not docs.exists():
+            try:
+                auto_indexed = sync_archive_files(company).get('created', 0)
+                if auto_indexed:
+                    docs = ManagedDocument.objects.filter(is_active=True, company=company)
+            except Exception:  # noqa: BLE001 — ایندکس خودکار نباید آمار را بشکند
+                auto_indexed = 0
+
         today = date.today()
         storage_qs = DocumentVersion.objects.filter(document__is_active=True)
         if company:
@@ -218,6 +230,7 @@ class DocumentManagementStatsAPIView(APIView):
         return Response({
             'total': live_docs.count(),
             'active': docs.filter(status=ManagedDocument.Status.ACTIVE).count(),
+            'auto_indexed': auto_indexed,
             'archived': docs.filter(status=ManagedDocument.Status.ARCHIVED).count(),
             'expiring_soon': expiring,
             'expired': expired,
@@ -230,4 +243,15 @@ class DocumentManagementStatsAPIView(APIView):
             'recent_documents': ManagedDocumentSerializer(recent_docs, many=True, context={'request': request}).data,
             'recent_activity': DocumentActivitySerializer(activities[:10], many=True, context={'request': request}).data,
         })
+
+
+class DocumentManagementSyncAPIView(APIView):
+    """همگام‌سازی دستی فایل‌های موجود در بایگانی همهٔ ماژول‌ها."""
+
+    def post(self, request):
+        company = _company(request)
+        if not company:
+            return Response({'error': 'شرکت جاری یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        result = sync_archive_files(company)
+        return Response(result)
 

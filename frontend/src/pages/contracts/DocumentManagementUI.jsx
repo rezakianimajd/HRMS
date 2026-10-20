@@ -155,6 +155,7 @@ export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRes
         <Chip size="small" label={status.label} sx={{ height: 18, fontSize: 7.4, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
         <Chip size="small" label={`v${toPersianDigits(row.version_count || 1)}`} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED }} />
         <Chip size="small" label={row.file_size_display || formatBytes(row.file_size)} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED }} />
+        {row.is_indexed ? <Chip size="small" label="از بایگانی" sx={{ height: 18, fontSize: 7.3, bgcolor: '#eff6ff', color: '#2563eb' }} /> : null}
         {row.is_expired ? <Chip size="small" icon={<WarningAmberOutlinedIcon sx={{ fontSize: '12px !important' }} />} label="منقضی" sx={{ height: 18, fontSize: 7.4, bgcolor: '#fff1f2', color: RED, '& .MuiChip-icon': { color: RED } }} /> : null}
       </Stack>
 
@@ -348,6 +349,7 @@ export const DocumentDetailDrawer = ({
               <InfoLine label="شماره مرجع" value={row.reference_number || '—'} />
               <InfoLine label="ایجادکننده" value={row.created_by_name || '—'} />
               <InfoLine label="آخرین ویرایش" value={row.updated_by_name || '—'} />
+              <InfoLine label="منبع" value={row.source_module_key || (row.is_indexed ? 'بایگانی موجود' : 'مدیریت اسناد')} />
               <InfoLine label="مسیر ذخیره‌سازی" value={row.storage_path || '—'} ltr />
             </Paper>
 
