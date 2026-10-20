@@ -1017,11 +1017,8 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
 
         if delete_all:
             candidates = base.exclude(status__in=protected_statuses)
-            requested = base.filter(status__in=protected_statuses)
-            errors = [
-                {'id': doc.id, 'number': doc.number or doc.pk, 'error': 'سند ثبت/قفل/برگشت‌خورده قابل حذف نیست.'}
-                for doc in requested
-            ]
+            protected_count = base.filter(status__in=protected_statuses).count()
+            errors = []
         else:
             if not ids:
                 return Response({'error': 'هیچ سندی انتخاب نشده است.'}, status=400)
@@ -1031,6 +1028,7 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                 {'id': doc.id, 'number': doc.number or doc.pk, 'error': 'سند ثبت/قفل/برگشت‌خورده قابل حذف نیست.'}
                 for doc in requested
             ]
+            protected_count = len(errors)
 
         deleted = 0
         deleted_ids = []
@@ -1046,6 +1044,7 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         return Response({
             'deleted': deleted,
             'deleted_ids': deleted_ids,
+            'protected': protected_count,
             'errors': errors,
         })
 
