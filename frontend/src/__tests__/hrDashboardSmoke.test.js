@@ -11,11 +11,6 @@ jest.mock('../core/api/axiosConfig', () => ({
   default: { get: jest.fn(), post: jest.fn(), put: jest.fn(), patch: jest.fn(), delete: jest.fn() },
 }));
 
-jest.mock('../core/hooks/useAuth', () => ({
-  __esModule: true,
-  default: () => ({ user: { first_name: 'علی', last_name: 'رضایی', username: 'ali' } }),
-}));
-
 jest.mock('../core/context/ModulePaletteContext', () => ({
   __esModule: true,
   useModulePalette: () => ({ getPalette: () => null, typography: {} }),
@@ -42,6 +37,10 @@ const responses = {
     { id: 1, user: 'admin', action: 'ایجاد', description: 'ثبت پرسنل جدید', timestamp: '2026-10-19T09:10:00Z' },
   ],
   '/reports/employees-by-gender/': [{ gender: 'male', count: 70 }, { gender: 'female', count: 50 }],
+  '/reports/upcoming-birthdays/': [{
+    id: 8, full_name: 'سارا محمدی', employee_id: 'E8', department_name: 'مالی',
+    birth_jalali: '1370/07/29', days_until: 2, is_today: false,
+  }],
   '/management/kpis/': {
     total_active: 120, male_ratio: 58.3, female_ratio: 41.7, avg_age: 34.5,
     avg_tenure_years: 5.2, avg_salary: 250000000, avg_performance: 82.4,
@@ -103,11 +102,14 @@ test('HR dashboard merges management analytics into overview, people and finance
   const { container, root } = await mount();
 
   expect(container.textContent).toContain('داشبورد منابع انسانی');
-  expect(container.textContent).toContain('علی رضایی');
+  expect(container.textContent).toContain('سرمایه انسانی در یک نگاه');
   expect(container.textContent).toContain('مرکز هشدارها');
+  expect(container.textContent).toContain('تولدهای ۷ روز آینده');
+  expect(container.textContent).toContain('سارا محمدی');
   expect(container.textContent).toContain('ترکیب جنسیتی');
   expect(container.textContent).toContain('توزیع نیرو در دپارتمان‌ها');
   expect(container.textContent).toContain('روند حضور و غیاب');
+  expect(container.textContent).not.toContain('آخرین به‌روزرسانی');
   expect(container.textContent).not.toContain('داشبورد مدیریتی');
 
   const peopleTab = Array.from(container.querySelectorAll('button')).find((button) => button.textContent.includes('سرمایه انسانی'));

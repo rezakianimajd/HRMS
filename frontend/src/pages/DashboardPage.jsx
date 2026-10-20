@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, Divider,
+  Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider,
   Grid, InputAdornment, LinearProgress, Paper, Skeleton, Stack,
   Tab, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TableSortLabel, Tabs, TextField, Tooltip, Typography, alpha,
@@ -42,8 +42,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { BarChart, ColumnChart, DonutChart, MultiLineChart } from '../core/components/charts/Charts';
 import { formatPersianNumber, formatPersianPercent, toPersianDigits } from '../core/utils/numberUtils';
-import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
-import useAuth from '../core/hooks/useAuth';
+import { toJalali } from '../core/utils/dateUtils';
 
 const BLUE = '#6366f1';
 const TEAL = '#0f766e';
@@ -53,9 +52,6 @@ const PINK = '#be185d';
 const VIOLET = '#7c3aed';
 const GREEN = '#15803d';
 const CYAN = '#0e7490';
-
-const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
-const WEEKDAYS = ['یکشنبه', 'دوشنبه', 'سه‌شنبه', 'چهارشنبه', 'پنجشنبه', 'جمعه', 'شنبه'];
 
 const TABS = [
   { key: 'overview', label: 'نمای کلی', icon: DashboardOutlinedIcon },
@@ -69,20 +65,6 @@ const QUICK_ACTIONS = [
   { label: 'مرخصی', path: '/leaves', icon: BeachAccessOutlinedIcon, color: TEAL },
   { label: 'فیش حقوق', path: '/payslips', icon: ReceiptLongOutlinedIcon, color: VIOLET },
 ];
-
-const todayLabel = () => {
-  const now = new Date();
-  const parts = getJalaliParts(now.toISOString().slice(0, 10));
-  if (!parts) return '—';
-  return `${WEEKDAYS[now.getDay()]}، ${toPersianDigits(parts[2])} ${JALALI_MONTHS[(parts[1] || 1) - 1]} ${toPersianDigits(parts[0])}`;
-};
-
-const greetingForHour = (hour = new Date().getHours()) => {
-  if (hour >= 5 && hour < 11) return 'صبح بخیر';
-  if (hour >= 11 && hour < 15) return 'ظهر بخیر';
-  if (hour >= 15 && hour < 20) return 'عصر بخیر';
-  return 'شب بخیر';
-};
 
 const asArray = (value) => (Array.isArray(value) ? value : []);
 const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
@@ -539,6 +521,56 @@ const GenderPanel = ({ data, total }) => (
   </SurfaceCard>
 );
 
+const BirthdayPanel = ({ birthdays, navigate }) => {
+  const list = asArray(birthdays);
+  return (
+    <SurfaceCard title="تولدهای ۷ روز آینده" icon={CakeOutlinedIcon} color={PINK}
+      action={<Chip size="small" label={formatPersianNumber(list.length)}
+        sx={{ height: 20, fontSize: 8, fontWeight: 800, bgcolor: alpha(PINK, 0.07), color: PINK }} />}>
+      {!list.length ? (
+        <EmptyState icon={CakeOutlinedIcon} text="در ۷ روز آینده تولدی نیست"
+          hint="با ثبت تاریخ تولد پرسنل، این کارت فعال می‌شود." color={PINK} />
+      ) : (
+        <Stack spacing={0.5} sx={{ maxHeight: 274, overflowY: 'auto', pr: 0.25 }}>
+          {list.slice(0, 8).map((birthday) => (
+            <ButtonBase
+              key={birthday.id}
+              onClick={() => navigate(`/employees/${birthday.id}`)}
+              sx={{
+                width: '100%', p: 0.7, borderRadius: '10px', gap: 0.8, textAlign: 'right',
+                justifyContent: 'flex-start', border: '1px solid #f3e8ee',
+                bgcolor: birthday.is_today ? alpha(PINK, 0.04) : '#fff',
+                '&:hover': { bgcolor: alpha(PINK, 0.06), borderColor: alpha(PINK, 0.28) },
+              }}
+            >
+              <Box sx={{
+                width: 29, height: 29, borderRadius: '50%', flexShrink: 0,
+                bgcolor: alpha(PINK, 0.09), color: PINK, fontSize: 10, fontWeight: 900,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                {birthday.full_name?.trim()?.charAt(0) || '—'}
+              </Box>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>{birthday.full_name}</Typography>
+                <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>
+                  {birthday.department_name || 'بدون دپارتمان'}
+                  {birthday.birth_jalali ? ` · ${toPersianDigits(birthday.birth_jalali)}` : ''}
+                </Typography>
+              </Box>
+              <Chip size="small"
+                label={birthday.is_today ? 'امروز 🎂' : `${toPersianDigits(birthday.days_until)} روز`}
+                sx={{
+                  height: 19, fontSize: 7.7, fontWeight: 800,
+                  bgcolor: alpha(PINK, birthday.is_today ? 0.13 : 0.07), color: PINK,
+                }} />
+            </ButtonBase>
+          ))}
+        </Stack>
+      )}
+    </SurfaceCard>
+  );
+};
+
 const DepartmentDistribution = ({ data, navigate }) => (
   <SurfaceCard title="توزیع نیرو در دپارتمان‌ها" icon={AccountTreeOutlinedIcon} color={BLUE}
     action={<Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/dashboard?tab=people')}
@@ -652,9 +684,6 @@ const DashboardSkeleton = () => (
 const DashboardPage = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const { user } = useAuth();
-  const [lastUpdated, setLastUpdated] = useState(new Date());
-
   const statsQ = useQuery({
     queryKey: ['dashboard-stats'],
     queryFn: () => axiosInstance.get('/dashboard/stats/').then((response) => response.data),
@@ -664,6 +693,7 @@ const DashboardPage = () => {
   const alertsQ = useQuery({ queryKey: ['dashboard-alerts'], queryFn: () => axiosInstance.get('/dashboard/alerts/').then((response) => response.data), staleTime: 60 * 1000 });
   const activitiesQ = useQuery({ queryKey: ['dashboard-activities'], queryFn: () => axiosInstance.get('/dashboard/recent-activities/').then((response) => response.data), staleTime: 60 * 1000 });
   const genderQ = useQuery({ queryKey: ['dashboard-gender'], queryFn: () => axiosInstance.get('/reports/employees-by-gender/').then((response) => response.data), staleTime: 60 * 1000 });
+  const birthdaysQ = useQuery({ queryKey: ['dashboard-birthdays'], queryFn: () => axiosInstance.get('/reports/upcoming-birthdays/').then((response) => response.data), staleTime: 60 * 1000 });
   const kpisQ = useQuery({ queryKey: ['mgmt-kpis'], queryFn: () => axiosInstance.get('/management/kpis/').then((response) => response.data), staleTime: 60 * 1000 });
   const deptQ = useQuery({ queryKey: ['mgmt-dept'], queryFn: () => axiosInstance.get('/management/department-analytics/').then((response) => response.data), staleTime: 60 * 1000 });
   const costQ = useQuery({ queryKey: ['mgmt-cost'], queryFn: () => axiosInstance.get('/management/payroll-cost-trend/').then((response) => response.data), staleTime: 60 * 1000 });
@@ -675,7 +705,7 @@ const DashboardPage = () => {
   const loansQ = useQuery({ queryKey: ['mgmt-loans'], queryFn: () => axiosInstance.get('/management/loan-summary/').then((response) => response.data), staleTime: 60 * 1000 });
   const absQ = useQuery({ queryKey: ['mgmt-abs'], queryFn: () => axiosInstance.get('/management/absenteeism-summary/').then((response) => response.data), staleTime: 60 * 1000 });
 
-  const allQueries = [statsQ, alertsQ, activitiesQ, genderQ, kpisQ, deptQ, costQ, eduQ, cityQ, perfQ, leaveQ, assetsQ, loansQ, absQ];
+  const allQueries = [statsQ, alertsQ, activitiesQ, genderQ, birthdaysQ, kpisQ, deptQ, costQ, eduQ, cityQ, perfQ, leaveQ, assetsQ, loansQ, absQ];
   const initialLoading = statsQ.isLoading || kpisQ.isLoading || deptQ.isLoading;
   const refreshing = allQueries.some((query) => query.isFetching);
   const queryError = allQueries.find((query) => query.isError);
@@ -685,6 +715,7 @@ const DashboardPage = () => {
   const kpis = kpisQ.data || {};
   const alerts = alertsQ.data || {};
   const activities = asArray(activitiesQ.data);
+  const birthdays = asArray(birthdaysQ.data);
   const departments = asArray(deptQ.data);
   const costMonths = asArray(costQ.data?.months);
   const absMonths = asArray(absQ.data?.months);
@@ -747,15 +778,8 @@ const DashboardPage = () => {
     setSearchParams(next, { replace: true });
   };
 
-  const fullName = [user?.first_name, user?.last_name].filter(Boolean).join(' ').trim()
-    || user?.full_name || user?.username || 'کاربر گرامی';
-  const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}` || user?.username?.[0] || 'ک';
-  const greeting = greetingForHour();
-
-
   const refreshAll = () => {
     allQueries.forEach((query) => query.refetch());
-    setLastUpdated(new Date());
   };
 
   const exportSummary = () => {
@@ -826,7 +850,7 @@ const DashboardPage = () => {
       ) : null}
 
       <Paper elevation={0} sx={{
-        p: { xs: 1.6, md: 2.1 }, mb: 1.5, borderRadius: '18px',
+        p: { xs: 1.6, md: 2 }, mb: 1.5, borderRadius: '18px',
         border: '1px solid #e6ebf5', position: 'relative', overflow: 'hidden',
         background: 'linear-gradient(135deg, rgba(99,102,241,0.10), rgba(236,72,153,0.055) 45%, rgba(14,116,144,0.055) 100%), #fff',
         '&::after': {
@@ -835,34 +859,24 @@ const DashboardPage = () => {
         },
       }}>
         <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} alignItems={{ lg: 'center' }} sx={{ position: 'relative', zIndex: 1 }}>
-          <Stack direction="row" spacing={1.4} alignItems="flex-start" sx={{ flex: 1, minWidth: 0 }}>
-            <Avatar sx={{
-              width: 48, height: 48, flexShrink: 0, fontSize: 14, fontWeight: 900,
-              color: '#fff', background: `linear-gradient(135deg, ${BLUE}, ${PINK})`,
-              boxShadow: `0 9px 22px -13px ${BLUE}`,
-            }}>{initials}</Avatar>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 9.2, fontWeight: 700, color: MUTED, mb: 0.25 }}>
-                {todayLabel()} · آخرین به‌روزرسانی {lastUpdated.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}
-              </Typography>
-              <Typography sx={{ fontSize: { xs: 18, md: 23 }, fontWeight: 900, color: INK, letterSpacing: '-0.025em' }}>
-                {greeting}، {fullName}
-              </Typography>
-              <Typography sx={{ mt: 0.35, fontSize: 10.4, color: MUTED }}>
-                تصویر لحظه‌ای از سرمایه انسانی، بهره‌وری، رفاه و عملیات سازمان.
-              </Typography>
-              <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                <Chip size="small" label={`${formatPersianNumber(totalActive)} نفر فعال`}
-                  sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
-                <Chip size="small" label={`${formatPersianNumber(onLeave)} در مرخصی`}
-                  sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(AMBER, 0.07), color: AMBER }} />
-                <Chip size="small" label={`${formatPersianNumber(pendingApprovals)} در انتظار تأیید`}
-                  sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
-                <Chip size="small" label={`${formatPersianNumber(alertsTotal)} هشدار فعال`}
-                  sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
-              </Stack>
-            </Box>
-          </Stack>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Typography sx={{ fontSize: { xs: 16, md: 19 }, fontWeight: 900, color: INK, letterSpacing: '-0.02em' }}>
+              سرمایه انسانی در یک نگاه
+            </Typography>
+            <Typography sx={{ mt: 0.3, fontSize: 9.8, color: MUTED }}>
+              وضعیت جاری پرسنل، درخواست‌ها و هشدارهای سازمان.
+            </Typography>
+            <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              <Chip size="small" label={`${formatPersianNumber(totalActive)} نفر فعال`}
+                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+              <Chip size="small" label={`${formatPersianNumber(onLeave)} در مرخصی`}
+                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(AMBER, 0.07), color: AMBER }} />
+              <Chip size="small" label={`${formatPersianNumber(pendingApprovals)} در انتظار تأیید`}
+                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
+              <Chip size="small" label={`${formatPersianNumber(alertsTotal)} هشدار فعال`}
+                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
+            </Stack>
+          </Box>
 
           <Box sx={{
             width: { xs: '100%', lg: 324 }, flexShrink: 0,
@@ -963,8 +977,9 @@ const DashboardPage = () => {
         <Grid container spacing={1.5}>
           <Grid item xs={12} lg={7}><AlertCenter alerts={alerts} navigate={navigate} /></Grid>
           <Grid item xs={12} lg={5}><ActivityFeed activities={activities} /></Grid>
-          <Grid item xs={12} md={4}><GenderPanel data={genderData} total={genderTotal} /></Grid>
-          <Grid item xs={12} md={8}><DepartmentDistribution data={departmentData} navigate={navigate} /></Grid>
+          <Grid item xs={12} md={5}><BirthdayPanel birthdays={birthdays} navigate={navigate} /></Grid>
+          <Grid item xs={12} md={7}><GenderPanel data={genderData} total={genderTotal} /></Grid>
+          <Grid item xs={12}><DepartmentDistribution data={departmentData} navigate={navigate} /></Grid>
           <Grid item xs={12}><AttendancePanel months={absMonths} /></Grid>
         </Grid>
       ) : null}
