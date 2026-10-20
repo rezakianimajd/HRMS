@@ -149,7 +149,7 @@ const CompanyProfilePage = () => {
           </Box>
 
           <Box sx={{ flex: 1, minWidth: 240 }}>
-            <Typography sx={{ fontSize: 17, fontWeight: 900, mb: 0.5 }}>{toPersianDigits(form.company_name) || 'نام شرکت'}</Typography>
+            <Typography sx={{ fontSize: 17, fontWeight: 900, mb: 0.5 }}>{toPersianDigits(form.legal_name) || 'نام شرکت'}</Typography>
             <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
               {form.economic_code && <Chip size="small" label={`کد اقتصادی: ${toPersianDigits(form.economic_code)}`} variant="outlined" />}
               {form.national_id && <Chip size="small" label={`شناسه ملی: ${toPersianDigits(form.national_id)}`} variant="outlined" />}

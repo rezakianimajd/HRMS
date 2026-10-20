@@ -273,7 +273,7 @@ const Layout = ({ children }) => {
     setOpenGroupId((prev) => (prev === id ? null : id));
   };
 
-  const companyName = profile?.company_name || profile?.legal_name || currentCompany?.name ||
+  const companyName = profile?.legal_name || currentCompany?.name ||
     t('app.shortName');
   const companyLogo = profile?.logo_url || null;
   const fullName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.username || '';

@@ -7,48 +7,10 @@ import { alpha } from '@mui/material/styles';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import CheckRoundedIcon from '@mui/icons-material/CheckRounded';
 import AppsOutlinedIcon from '@mui/icons-material/AppsOutlined';
-import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
-import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
-import Inventory2OutlinedIcon from '@mui/icons-material/Inventory2Outlined';
-import CalculateOutlinedIcon from '@mui/icons-material/CalculateOutlined';
-import HomeWorkOutlinedIcon from '@mui/icons-material/HomeWorkOutlined';
-import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlined';
-import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
-import ShoppingCartOutlinedIcon from '@mui/icons-material/ShoppingCartOutlined';
-import SellOutlinedIcon from '@mui/icons-material/SellOutlined';
-import FactoryOutlinedIcon from '@mui/icons-material/FactoryOutlined';
-import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
-import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import { useApplication } from '../../context/ApplicationContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
 import { toPersianDigits } from '../../utils/numberUtils';
-
-const LANDING_PATH = {
-  hrms: '/dashboard',
-  contracts: '/contracts-dashboard',
-  settings: '/settings',
-  projects: '/projects',
-  pettycash: '/petty-cash/dashboard',
-  accounting: '/accounting',
-};
-
-// آیکون‌های اوت‌لاین و یک‌دست هر ماژول (هم‌راستا با آیکون‌های سایدبار)
-const MODULE_ICONS = {
-  hrms: BadgeOutlinedIcon,
-  contracts: DescriptionOutlinedIcon,
-  projects: AccountTreeOutlinedIcon,
-  inventory: Inventory2OutlinedIcon,
-  accounting: CalculateOutlinedIcon,
-  assets: HomeWorkOutlinedIcon,
-  treasury: AccountBalanceOutlinedIcon,
-  crm: PeopleAltOutlinedIcon,
-  procurement: ShoppingCartOutlinedIcon,
-  sales: SellOutlinedIcon,
-  production: FactoryOutlinedIcon,
-  settings: SettingsOutlinedIcon,
-  pettycash: AccountBalanceWalletOutlinedIcon,
-};
+import { MODULE_ICONS, getModuleLandingPath } from '../../constants/moduleIcons';
 
 const renderIcon = (app, size, color = 'text.secondary') => {
   const Icon = MODULE_ICONS[app?.slug] || AppsOutlinedIcon;
@@ -87,7 +49,7 @@ const AppSwitcher = () => {
     setAnchor(null);
     if (currentApp?.id === app.id) return;
     await switchApplication(app);
-    navigate(LANDING_PATH[app.slug] || '/dashboard');
+    navigate(getModuleLandingPath(app.slug));
   };
 
   if (applications.length <= 1) return null;

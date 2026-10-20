@@ -145,12 +145,40 @@ def login_users_view(request):
 @permission_classes([AllowAny])
 @_public_schema
 def login_companies_view(request):
-    """Public list of active companies for the login page."""
-    companies = Company.objects.filter(is_active=True).order_by('name')
-    return Response([
-        {'id': c.id, 'name': c.name, 'code': c.code}
-        for c in companies
-    ])
+    """Public company choices for the login page.
+
+    The tenant database name is intentionally not exposed. Each choice uses
+    the legal name and logo entered in the tenant's company profile so the
+    login screen mirrors what the organization configured in the app.
+    """
+    from settings_app.models import CompanyProfile
+
+    companies = list(Company.objects.filter(is_active=True).order_by('name'))
+    data = []
+    for company in companies:
+        profile = None
+        try:
+            with schema_context(company.schema_name):
+                profile = CompanyProfile.objects.filter(company_id=company.id).first()
+        except Exception:  # noqa: BLE001 — a missing profile/schema must not break login
+            profile = None
+
+        legal_name = (getattr(profile, 'legal_name', '') or '').strip()
+        logo_url = None
+        if profile and profile.logo:
+            try:
+                logo_url = profile.logo.url
+            except (ValueError, AttributeError):
+                logo_url = None
+
+        data.append({
+            'id': company.id,
+            'code': company.code,
+            'display_name': legal_name,
+            'legal_name': legal_name,
+            'logo_url': logo_url,
+        })
+    return Response(data)
 
 
 # =============================================================================
