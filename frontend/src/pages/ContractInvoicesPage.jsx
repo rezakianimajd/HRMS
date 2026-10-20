@@ -1,274 +1,527 @@
-import React, { useMemo, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Typography, Paper, Button, Avatar, Grid, CircularProgress, Stack, Chip,
-  Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
-  InputLabel, Select, MenuItem, InputAdornment, IconButton, Snackbar, Alert, Divider, Switch, FormControlLabel,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, FormControl, Grid, IconButton, InputAdornment,
+  InputLabel, MenuItem, Paper, Select, Snackbar, Stack, TextField,
+  ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
-import ReceiptIcon from '@mui/icons-material/Receipt';
+import { alpha, useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import SearchIcon from '@mui/icons-material/Search';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import { formatPersianNumber, normalizeCurrencyLabel } from '../core/utils/numberUtils';
-import { toJalali } from '../core/utils/dateUtils';
-import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-import ContractPicker from '../core/components/ui/ContractPicker';
-import MoneyInput from '../core/components/ui/MoneyInput';
-import { glassPaper } from '../core/theme/tokens';
+import DescriptionIcon from '@mui/icons-material/Description';
+import DownloadIcon from '@mui/icons-material/Download';
+import EventBusyIcon from '@mui/icons-material/EventBusy';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
+import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
+import TableRowsIcon from '@mui/icons-material/TableRows';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
+import { getJalaliParts } from '../core/utils/dateUtils';
+import PageHeader from '../core/components/ui/PageHeader';
+import { ColumnChart } from '../core/components/charts/Charts';
+import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import {
+  INVOICE_ACCENT, InvoiceCard, InvoiceContractCard, InvoiceDetailDrawer,
+  InvoiceEditorDialog, InvoiceFinancialCard, InvoiceLanding, InvoiceStatusNav,
+  InvoiceTable, invoiceCurrency, invoiceMetrics, invoiceStatus,
+} from './contracts/InvoiceWorkspaceUI';
 
+const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+const GREEN = '#0f766e';
+const AMBER = '#b45309';
+const RED = '#be123c';
+const BLUE = '#2563eb';
+const n = (value) => Number(value) || 0;
+const compactMoney = (value, currency = '') => {
+  const amount = Number(value) || 0;
+  if (Math.abs(amount) >= 1000000000) return `${formatPersianNumber((amount / 1000000000).toFixed(1))} میلیارد ${currency}`.trim();
+  if (Math.abs(amount) >= 1000000) return `${formatPersianNumber((amount / 1000000).toFixed(1))} میلیون ${currency}`.trim();
+  return `${formatPersianNumber(amount)} ${currency}`.trim();
+};
 const EMPTY = {
   id: null, contract: '', number: '', subject: '', date: '', due_date: '',
-  currency: '', amount: '', vat: '', is_paid: false, description: '',
+  currency: '', amount: 0, vat: 0, is_paid: false, description: '',
 };
 
 const ContractInvoicesPage = () => {
   const qc = useQueryClient();
-  const [searchParams] = useSearchParams();
+  const theme = useTheme();
+  const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const urlContract = searchParams.get('contract') || '';
   const [contractId, setContractId] = useState(urlContract);
   const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('newest');
+  const [view, setView] = useState('cards');
+  const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
-  const [toast, setToast] = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(null);
   const [error, setError] = useState('');
+  const [toast, setToast] = useState('');
 
-  const { data: contracts } = useQuery({
+  const { data: contracts, isLoading: contractsLoading } = useQuery({
     queryKey: ['ext-contracts-inv'],
-    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((response) => response.data),
   });
   const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
 
   const { data: currencies } = useQuery({
     queryKey: ['currencies-inv'],
-    queryFn: () => axiosInstance.get('/currencies/', { params: { page_size: 100 } }).then(r => r.data),
+    queryFn: () => axiosInstance.get('/currencies/', { params: { page_size: 100 } }).then((response) => response.data),
   });
   const currencyList = Array.isArray(currencies) ? currencies : currencies?.results || [];
 
-  const { data, isLoading } = useQuery({
-    queryKey: ['contract-invoices', contractId],
-    queryFn: () => axiosInstance.get('/contract-invoices/', { params: { contract: contractId, page_size: 500 } }).then(r => r.data),
-    enabled: !!contractId,
+  const { data: invoicesData, isLoading, isFetching, refetch } = useQuery({
+    queryKey: ['contract-invoices'],
+    queryFn: () => axiosInstance.get('/contract-invoices/', { params: { page_size: 500 } }).then((response) => response.data),
   });
-  const list = Array.isArray(data) ? data : data?.results || [];
+  const allInvoices = Array.isArray(invoicesData) ? invoicesData : invoicesData?.results || [];
+
+  const { data: paymentsData, isLoading: paymentsLoading } = useQuery({
+    queryKey: ['contract-invoice-payments', contractId],
+    queryFn: () => axiosInstance.get('/contract-payments/', { params: { contract: contractId, page_size: 500 } }).then((response) => response.data),
+    enabled: Boolean(contractId),
+  });
+  const payments = Array.isArray(paymentsData) ? paymentsData : paymentsData?.results || [];
+
+  const selectedContract = contractList.find((contract) => String(contract.id) === String(contractId)) || null;
+  const scopedList = useMemo(
+    () => (contractId ? allInvoices.filter((row) => String(row.contract) === String(contractId)) : []),
+    [allInvoices, contractId],
+  );
+  const paidByInvoice = useMemo(() => payments.reduce((map, payment) => {
+    if (!payment.invoice) return map;
+    const key = String(payment.invoice);
+    map[key] = (map[key] || 0) + n(payment.amount);
+    return map;
+  }, {}), [payments]);
+
+  const currencyLabel = normalizeCurrencyLabel(
+    selectedContract?.currency_name || selectedContract?.currency_symbol
+    || scopedList[0]?.currency_name || scopedList[0]?.currency_symbol || 'ریال',
+  );
+  const landingCurrency = normalizeCurrencyLabel(
+    contractList[0]?.currency_name || contractList[0]?.currency_symbol || 'ریال',
+  );
+
+  const counts = useMemo(() => {
+    const next = { all: scopedList.length, paid: 0, pending: 0, overdue: 0 };
+    scopedList.forEach((row) => {
+      const key = invoiceStatus(row, paidByInvoice[String(row.id)]).key;
+      next[key] = (next[key] || 0) + 1;
+    });
+    return next;
+  }, [scopedList, paidByInvoice]);
+
+  const totals = useMemo(() => {
+    const metrics = scopedList.map((row) => invoiceMetrics(row, paidByInvoice[String(row.id)]));
+    return {
+      total: metrics.reduce((sum, item) => sum + item.total, 0),
+      paid: metrics.reduce((sum, item) => sum + item.paid, 0),
+      outstanding: metrics.reduce((sum, item) => sum + item.outstanding, 0),
+      vat: metrics.reduce((sum, item) => sum + item.vat, 0),
+      paidCount: counts.paid,
+      pendingCount: counts.pending,
+      overdueCount: counts.overdue,
+    };
+  }, [scopedList, paidByInvoice, counts]);
+
+  const dueRows = useMemo(
+    () => [...allInvoices]
+      .filter((row) => !row.is_paid)
+      .sort((a, b) => String(a.due_date || a.date || '9999').localeCompare(String(b.due_date || b.date || '9999')))
+      .slice(0, 6),
+    [allInvoices],
+  );
 
   const filtered = useMemo(() => {
-    const q = (search || '').trim().toLowerCase();
-    if (!q) return list;
-    return list.filter(x =>
-      (x.number || '').toLowerCase().includes(q) ||
-      (x.subject || '').toLowerCase().includes(q) ||
-      (x.description || '').toLowerCase().includes(q));
-  }, [list, search]);
+    const query = search.trim().toLowerCase();
+    let result = scopedList.filter((row) => {
+      if (statusFilter !== 'all' && invoiceStatus(row, paidByInvoice[String(row.id)]).key !== statusFilter) return false;
+      if (!query) return true;
+      return [row.number, row.subject, row.description, row.contract_subject]
+        .some((value) => String(value || '').toLowerCase().includes(query));
+    });
+    result = [...result].sort((a, b) => {
+      if (sortBy === 'amount') return invoiceMetrics(b, paidByInvoice[String(b.id)]).total - invoiceMetrics(a, paidByInvoice[String(a.id)]).total;
+      if (sortBy === 'due') return String(a.due_date || '9999').localeCompare(String(b.due_date || '9999'));
+      if (sortBy === 'paid') return Number(b.is_paid) - Number(a.is_paid);
+      return String(b.date || '').localeCompare(String(a.date || ''));
+    });
+    return result;
+  }, [scopedList, search, statusFilter, sortBy, paidByInvoice]);
 
-  const selCurrency = currencyList.find(c => String(c.id) === String(form.currency));
-  const currencyLabel = normalizeCurrencyLabel(
-    selCurrency?.name || contractList.find(c => String(c.id) === String(contractId))?.currency_name
+  const monthlyData = useMemo(() => {
+    const buckets = new Map();
+    scopedList.forEach((row) => {
+      if (!row.date) return;
+      const parts = getJalaliParts(row.date);
+      if (!parts) return;
+      const key = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
+      buckets.set(key, (buckets.get(key) || 0) + invoiceMetrics(row, paidByInvoice[String(row.id)]).total);
+    });
+    return [...buckets.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([key, value]) => {
+        const month = Number(key.split('-')[1]);
+        return { label: MONTH_NAMES[month - 1] || key, value };
+      });
+  }, [scopedList, paidByInvoice]);
+
+  const totalAmountAll = useMemo(
+    () => allInvoices.reduce((sum, row) => sum + invoiceMetrics(row, 0).total, 0),
+    [allInvoices],
   );
-  const totalCalc = (Number(form.amount) || 0) + (Number(form.vat) || 0);
 
-  const sanitize = (p) => ({
-    ...p,
-    contract: p.contract || null,
-    amount: p.amount === '' || p.amount == null ? 0 : Number(p.amount),
-    vat: p.vat === '' || p.vat == null ? 0 : Number(p.vat),
-    total: (Number(p.amount) || 0) + (Number(p.vat) || 0),
-    date: p.date || null,
-    due_date: p.due_date || null,
-    currency: p.currency || null,
-    is_paid: !!p.is_paid,
-  });
+  useEffect(() => { setContractId(urlContract); }, [urlContract]);
+  useEffect(() => {
+    setSearch('');
+    setStatusFilter('all');
+    setSortBy('newest');
+    setView('cards');
+    setDetail(null);
+  }, [contractId]);
+
+  const selectContract = (contract) => {
+    const next = String(contract.id);
+    setContractId(next);
+    setSearchParams({ contract: next });
+  };
+  const clearContract = () => {
+    setContractId('');
+    setSearchParams({});
+  };
+  const selectContractById = (id) => {
+    const target = contractList.find((contract) => String(contract.id) === String(id));
+    if (target) selectContract(target);
+  };
+
+  const invalidateAll = () => {
+    qc.invalidateQueries({ queryKey: ['contract-invoices'] });
+    qc.invalidateQueries({ queryKey: ['contract-invoice-payments', contractId] });
+    qc.invalidateQueries({ queryKey: ['external-contracts'] });
+  };
+
+  const sanitize = (payload) => {
+    const amount = Math.max(0, n(payload.amount));
+    const vat = Math.max(0, n(payload.vat));
+    return {
+      contract: Number(payload.contract) || null,
+      number: payload.number || '',
+      subject: payload.subject || '',
+      date: payload.date || null,
+      due_date: payload.due_date || null,
+      currency: payload.currency || null,
+      amount,
+      vat,
+      total: amount + vat,
+      is_paid: Boolean(payload.is_paid),
+      description: payload.description || '',
+    };
+  };
 
   const save = useMutation({
-    mutationFn: (p) => {
-      const clean = sanitize(p);
-      return clean.id
-        ? axiosInstance.patch(`/contract-invoices/${clean.id}/`, clean)
+    mutationFn: async (payload) => {
+      const clean = sanitize(payload);
+      return payload.id
+        ? axiosInstance.patch(`/contract-invoices/${payload.id}/`, clean)
         : axiosInstance.post('/contract-invoices/', clean);
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['contract-invoices'] });
-      qc.invalidateQueries({ queryKey: ['external-contracts'] });
-      setDialog(false); setForm(EMPTY); setToast('ذخیره شد');
+      invalidateAll();
+      setDialog(false);
+      setForm(EMPTY);
+      setError('');
+      setToast(form.id ? 'فاکتور ویرایش شد' : 'فاکتور ثبت شد');
     },
-    onError: (e) => {
-      const d = e.response?.data;
-      let msg = 'خطا در ذخیره';
-      if (d) {
-        if (typeof d === 'string') msg = d;
-        else if (Array.isArray(d)) msg = d[0];
-        else if (d.detail) msg = d.detail;
-        else if (d.error) msg = d.error;
-        else if (d.non_field_errors) msg = d.non_field_errors[0];
-        else { const first = Object.values(d).flat()[0]; if (first) msg = first; }
+    onError: (event) => {
+      const data = event.response?.data;
+      let message = 'ذخیره فاکتور انجام نشد.';
+      if (typeof data === 'string') message = data;
+      else if (Array.isArray(data)) message = data[0];
+      else if (data?.detail) message = data.detail;
+      else if (data?.non_field_errors) message = data.non_field_errors[0];
+      else if (data && typeof data === 'object') {
+        const first = Object.values(data).flat()[0];
+        if (first) message = first;
       }
-      setError(msg);
+      setError(message);
     },
   });
 
-  const del = useMutation({
-    mutationFn: (id) => axiosInstance.delete(`/contract-invoices/${id}/`),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['contract-invoices'] }); setToast('حذف شد'); },
+  const togglePaid = useMutation({
+    mutationFn: (row) => axiosInstance.patch(`/contract-invoices/${row.id}/`, { is_paid: !row.is_paid }),
+    onSuccess: (_data, row) => {
+      invalidateAll();
+      setDetail(null);
+      setToast(row.is_paid ? 'وضعیت پرداخت فاکتور لغو شد' : 'فاکتور پرداخت‌شده ثبت شد');
+    },
+    onError: () => setToast('تغییر وضعیت پرداخت انجام نشد'),
   });
+
+  const remove = useMutation({
+    mutationFn: (id) => axiosInstance.delete(`/contract-invoices/${id}/`),
+    onSuccess: () => {
+      invalidateAll();
+      setConfirmDelete(null);
+      setDetail(null);
+      setToast('فاکتور حذف شد');
+    },
+    onError: () => setToast('حذف فاکتور انجام نشد'),
+  });
+
+  const openNew = () => {
+    setForm({
+      ...EMPTY,
+      contract: contractId,
+      date: new Date().toISOString().slice(0, 10),
+      currency: selectedContract?.currency || '',
+    });
+    setError('');
+    setDetail(null);
+    setDialog(true);
+  };
+  const openEdit = (row) => {
+    setForm({
+      ...EMPTY,
+      ...row,
+      contract: String(row.contract || ''),
+      amount: n(row.amount),
+      vat: n(row.vat),
+      is_paid: Boolean(row.is_paid),
+    });
+    setError('');
+    setDetail(null);
+    setDialog(true);
+  };
+  const closeEditor = () => {
+    if (save.isPending) return;
+    setDialog(false);
+    setForm(EMPTY);
+    setError('');
+  };
+  const submit = () => {
+    if (!form.contract) { setError('قرارداد مرتبط را انتخاب کنید.'); return; }
+    if (n(form.amount) <= 0) { setError('مبلغ فاکتور باید بزرگ‌تر از صفر باشد.'); return; }
+    setError('');
+    save.mutate(form);
+  };
+
+  const exportCsv = () => {
+    const headers = ['شماره', 'شرح', 'تاریخ', 'سررسید', 'مبلغ', 'مالیات', 'کل', 'پرداخت‌شده', 'وضعیت', 'توضیحات'];
+    const rows = filtered.map((row) => {
+      const paid = paidByInvoice[String(row.id)] || 0;
+      const metrics = invoiceMetrics(row, paid);
+      return [
+        row.number || '', row.subject || '', row.date || '', row.due_date || '',
+        metrics.amount, metrics.vat, metrics.total, metrics.paid,
+        invoiceStatus(row, paid).label, row.description || '',
+      ];
+    });
+    const csv = [headers, ...rows]
+      .map((cells) => cells.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `contract-invoices-${contractId || 'all'}.csv`;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  };
+
+  if (isLoading || contractsLoading) {
+    return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
+  }
 
   return (
-    <Box>
-      <Paper sx={{ p: 2.5, mb: 2.5, display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap',
-        background: 'linear-gradient(120deg, rgba(139,92,246,0.12), rgba(99,102,241,0.06), rgba(255,255,255,0.3))',
-        border: '1px solid rgba(139,92,246,0.18)', borderRadius: '12px' }}>
-        <Avatar sx={{ width: 56, height: 56, background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', boxShadow: '0 8px 24px rgba(139,92,246,0.4)' }}>
-          <ReceiptIcon sx={{ color: '#fff', fontSize: 28 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 200 }}>
-          <Typography variant="h6" fontWeight={800} color="#6d28d9">فاکتورهای قرارداد</Typography>
-          <Typography variant="body2" color="textSecondary">ثبت فاکتور با مبلغ، مالیات، ارز و وضعیت پرداخت</Typography>
-        </Box>
-      </Paper>
+    <Box sx={{ pb: 1 }}>
+      <PageHeader
+        icon={<ReceiptLongIcon />}
+        title="فاکتورهای قرارداد"
+        badge={(
+          <Chip size="small" label={contractId ? `${formatPersianNumber(scopedList.length)} فاکتور` : 'مدیریت فاکتورها'}
+            sx={{ height: 23, fontWeight: 800, bgcolor: alpha(INVOICE_ACCENT, 0.08), color: INVOICE_ACCENT }} />
+        )}
+        actions={(
+          <>
+            {contractId ? (
+              <Tooltip title="به‌روزرسانی">
+                <span>
+                  <Button variant="outlined" disabled={isFetching} onClick={() => { refetch(); qc.invalidateQueries({ queryKey: ['contract-invoice-payments', contractId] }); }} sx={{ minWidth: 40, px: 1 }}>
+                    <RefreshIcon fontSize="small" />
+                  </Button>
+                </span>
+              </Tooltip>
+            ) : null}
+            {contractId ? <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده</Button> : null}
+            {contractId ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
+            {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
+            {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>فاکتور جدید</Button> : null}
+          </>
+        )}
+      />
 
       {!contractId ? (
-        <Paper sx={{ ...glassPaper, p: 2 }}>
-          <Typography variant="subtitle2" fontWeight={800} sx={{ mb: 1.5 }}>
-            انتخاب قرارداد ({formatPersianNumber(contractList.length)})
-          </Typography>
-          <ContractPicker contracts={contractList} onSelect={(c) => setContractId(String(c.id))} height={520} />
-        </Paper>
+        <InvoiceLanding
+          contractList={contractList}
+          invoices={allInvoices}
+          dueRows={dueRows}
+          paidByInvoice={paidByInvoice}
+          totalAmount={totalAmountAll}
+          currency={landingCurrency}
+          onSelect={selectContract}
+          onSelectContract={selectContractById}
+        />
       ) : (
-        <>
-          <Paper sx={{ ...glassPaper, p: 1.5, mb: 2, display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
-            <Button size="small" startIcon={<ArrowBackIcon />} variant="outlined" onClick={() => setContractId('')}>تغییر قرارداد</Button>
-            <Typography variant="body2" fontWeight={800} sx={{ flex: 1, minWidth: 160 }}>
-              {contractList.find(c => String(c.id) === String(contractId))?.subject || 'قرارداد'}
-            </Typography>
-            <TextField size="small" placeholder="جستجو در فاکتورها..." value={search} onChange={e => setSearch(e.target.value)} sx={{ minWidth: 220 }}
-              InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-            <Button variant="contained" startIcon={<AddIcon />}
-              onClick={() => { setForm({ ...EMPTY, contract: contractId }); setError(''); setDialog(true); }}
-              sx={{ background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', borderRadius: '10px' }}>
-              فاکتور جدید
-            </Button>
-          </Paper>
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
+            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
+              <InvoiceContractCard contract={selectedContract} currency={currencyLabel}
+                invoiceCount={scopedList.length} onBack={clearContract} />
+              <InvoiceFinancialCard totals={totals} currency={currencyLabel} isLoading={paymentsLoading} />
+              <InvoiceStatusNav counts={counts} active={statusFilter} onChange={setStatusFilter} />
+            </Stack>
+          </Grid>
 
-          {isLoading ? (
-            <Box sx={{ py: 5, textAlign: 'center' }}><CircularProgress /></Box>
-          ) : filtered.length === 0 ? (
-            <Paper sx={{ ...glassPaper, p: 4, textAlign: 'center' }}>
-              <ReceiptIcon sx={{ fontSize: 48, color: 'text.disabled', mb: 1 }} />
-              <Typography variant="body2" color="textSecondary">فاکتوری ثبت نشده است.</Typography>
-            </Paper>
-          ) : (
-            <Grid container spacing={2}>
-              {filtered.map(x => (
-                <Grid item xs={12} md={6} key={x.id}>
-                  <Paper sx={{ ...glassPaper, p: 2, position: 'relative', overflow: 'hidden' }}>
-                    <Box sx={{ position: 'absolute', top: -30, left: -30, width: 100, height: 100, borderRadius: '50%', background: 'radial-gradient(circle, rgba(139,92,246,0.14), transparent 70%)', pointerEvents: 'none' }} />
-                    <Box sx={{ position: 'relative', display: 'flex', alignItems: 'flex-start', gap: 1.5, mb: 1 }}>
-                      <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#8b5cf6,#6366f1)' }}>
-                        <ReceiptIcon sx={{ color: '#fff' }} />
-                      </Avatar>
-                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography variant="body1" fontWeight={800}>{x.subject || x.number || 'فاکتور'}</Typography>
-                        <Typography variant="caption" color="textSecondary">
-                          {x.number ? `شماره: ${x.number} · ` : ''}{toJalali(x.date)}
-                        </Typography>
-                      </Box>
-                      <Chip size="small" icon={x.is_paid ? <CheckCircleIcon /> : null} label={x.is_paid ? 'پرداخت شده' : 'در انتظار'}
-                        sx={{ bgcolor: x.is_paid ? 'rgba(16,185,129,0.1)' : 'rgba(245,158,11,0.1)', color: x.is_paid ? '#047857' : '#b45309', fontWeight: 700 }} />
-                      <Box>
-                        <IconButton size="small" onClick={() => { setForm({ ...x }); setError(''); setDialog(true); }}><EditIcon fontSize="small" /></IconButton>
-                        <IconButton size="small" color="error" onClick={() => { if (window.confirm('حذف این فاکتور؟')) del.mutate(x.id); }}><DeleteIcon fontSize="small" /></IconButton>
-                      </Box>
-                    </Box>
-
-                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                      <Chip size="small" icon={<AttachMoneyIcon />} label={`مبلغ: ${formatPersianNumber(x.amount || 0)}`} sx={{ bgcolor: 'rgba(139,92,246,0.1)', color: '#6d28d9', fontWeight: 700 }} />
-                      <Chip size="small" label={`مالیات: ${formatPersianNumber(x.vat || 0)}`} sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca', fontWeight: 700 }} />
-                      <Chip size="small" label={`کل: ${formatPersianNumber(x.total || 0)} ${normalizeCurrencyLabel(x.currency_name || currencyLabel)}`} sx={{ bgcolor: 'rgba(16,185,129,0.1)', color: '#047857', fontWeight: 700 }} />
-                      {x.due_date && <Chip size="small" icon={<CalendarMonthIcon />} label={`سررسید: ${toJalali(x.due_date)}`} sx={{ bgcolor: 'rgba(59,130,246,0.1)', color: '#1d4ed8' }} />}
-                    </Box>
-
-                    {x.description && <Typography variant="body2" color="textSecondary">{x.description}</Typography>}
-                  </Paper>
-                </Grid>
-              ))}
+          <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
+            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={ReceiptLongIcon} label="تعداد فاکتور" value={formatPersianNumber(counts.all)} suffix="مورد" color={INVOICE_ACCENT} hint={`${formatPersianNumber(counts.pending)} در انتظار پرداخت`} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={PaymentsIcon} label="مجموع مبالغ" value={compactMoney(totals.total, currencyLabel)} color={BLUE} size={16} hint={`${formatPersianNumber(counts.paid)} پرداخت‌شده`} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={CheckCircleIcon} label="پرداخت‌شده" value={compactMoney(totals.paid, currencyLabel)} color={GREEN} size={16} hint={`پوشش ${totals.total ? toPersianDigits(((totals.paid / totals.total) * 100).toFixed(0)) : '۰'}٪`} />
+              </Grid>
+              <Grid item xs={6} md={3}>
+                <KpiTile icon={EventBusyIcon} label="مانده پرداخت" value={compactMoney(totals.outstanding, currencyLabel)} color={totals.overdueCount ? RED : AMBER} size={16} hint={`${formatPersianNumber(counts.overdue)} سررسید گذشته`} />
+              </Grid>
             </Grid>
-          )}
-        </>
-      )}
 
-      <Dialog open={dialog} onClose={() => setDialog(false)} maxWidth="md" fullWidth>
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1.5, px: 3, py: 2,
-          background: 'linear-gradient(120deg, rgba(139,92,246,0.12), rgba(99,102,241,0.08), rgba(255,255,255,0.4))',
-          borderBottom: '1px solid rgba(139,92,246,0.15)' }}>
-          <Avatar sx={{ width: 44, height: 44, background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', boxShadow: '0 6px 18px rgba(139,92,246,0.4)' }}>
-            <ReceiptIcon sx={{ color: '#fff' }} />
-          </Avatar>
-          <Box>
-            <Typography variant="h6" fontWeight={800}>{form.id ? 'ویرایش فاکتور' : 'فاکتور جدید'}</Typography>
-            <Typography variant="caption" color="textSecondary">ثبت فاکتور با جزئیات مالی و ارز</Typography>
-          </Box>
-        </DialogTitle>
-
-        <DialogContent sx={{ p: 3, display: 'flex', flexDirection: 'column', gap: 2 }}>
-          <Box>
-            <Typography variant="caption" fontWeight={700} color="#6d28d9" sx={{ mb: 1, display: 'block' }}>اطلاعات پایه</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}><TextField size="small" fullWidth label="شماره فاکتور" value={form.number || ''} onChange={e => setForm(p => ({ ...p, number: e.target.value }))} /></Grid>
-              <Grid item xs={12} md={8}><TextField size="small" fullWidth label="شرح فاکتور" value={form.subject || ''} onChange={e => setForm(p => ({ ...p, subject: e.target.value }))} /></Grid>
-              <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ فاکتور" value={form.date} onChange={(g) => setForm(p => ({ ...p, date: g }))} /></Grid>
-              <Grid item xs={12} md={6}><JalaliDatePicker fullWidth label="تاریخ سررسید" value={form.due_date} onChange={(g) => setForm(p => ({ ...p, due_date: g }))} /></Grid>
-            </Grid>
-          </Box>
-
-          <Divider />
-
-          <Box>
-            <Typography variant="caption" fontWeight={700} color="#047857" sx={{ mb: 1, display: 'block' }}>مبالغ و ارز</Typography>
-            <Grid container spacing={2}>
-              <Grid item xs={12} md={4}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>واحد ارز</InputLabel>
-                  <Select value={form.currency || ''} label="واحد ارز" onChange={e => setForm(p => ({ ...p, currency: e.target.value }))}>
-                    <MenuItem value="">—</MenuItem>
-                    {currencyList.map(c => <MenuItem key={c.id} value={c.id}>{normalizeCurrencyLabel(c.name || c.symbol)} ({c.code})</MenuItem>)}
+            <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
+              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
+                <TextField size="small" placeholder="جست‌وجو در شماره، شرح، توضیحات…"
+                  value={search} onChange={(event) => setSearch(event.target.value)}
+                  sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
+                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
+                <FormControl size="small" sx={{ minWidth: 145 }}>
+                  <InputLabel>وضعیت</InputLabel>
+                  <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
+                    <MenuItem value="all">همه ({formatPersianNumber(counts.all)})</MenuItem>
+                    <MenuItem value="paid">پرداخت‌شده ({formatPersianNumber(counts.paid)})</MenuItem>
+                    <MenuItem value="pending">در انتظار ({formatPersianNumber(counts.pending)})</MenuItem>
+                    <MenuItem value="overdue">سررسید گذشته ({formatPersianNumber(counts.overdue)})</MenuItem>
                   </Select>
                 </FormControl>
+                <FormControl size="small" sx={{ minWidth: 125 }}>
+                  <InputLabel>ترتیب</InputLabel>
+                  <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
+                    <MenuItem value="newest">جدیدترین</MenuItem>
+                    <MenuItem value="amount">بیشترین مبلغ</MenuItem>
+                    <MenuItem value="due">نزدیک‌ترین سررسید</MenuItem>
+                    <MenuItem value="paid">پرداخت‌شده‌ها</MenuItem>
+                  </Select>
+                </FormControl>
+                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
+                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
+                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
+                </ToggleButtonGroup>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ display: { xs: 'none', md: 'flex' } }}>فاکتور جدید</Button>
+              </Stack>
+            </Paper>
+
+            {counts.overdue ? (
+              <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
+                <Typography sx={{ fontSize: 9.5 }}>{formatPersianNumber(counts.overdue)} فاکتور از تاریخ سررسید گذشته و هنوز پرداخت نشده است.</Typography>
+              </Alert>
+            ) : null}
+
+            {!filtered.length ? (
+              <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
+                <ReceiptLongIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>فاکتوری با این مشخصات ثبت نشده است.</Typography>
+                <Typography sx={{ fontSize: 9, color: MUTED, mt: 0.4 }}>اولین فاکتور را ثبت کنید تا پوشش مالی و وضعیت پرداخت شکل بگیرد.</Typography>
+                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت فاکتور جدید</Button>
+              </Paper>
+            ) : view === 'cards' ? (
+              <Grid container spacing={1.5}>
+                {filtered.map((row) => (
+                  <Grid item xs={12} md={6} xl={4} key={row.id}>
+                    <InvoiceCard row={row} currency={invoiceCurrency(row, selectedContract)}
+                      paidAmount={paidByInvoice[String(row.id)] || 0}
+                      onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete}
+                      onTogglePaid={(selected) => togglePaid.mutate(selected)} />
+                  </Grid>
+                ))}
               </Grid>
-              <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label={`مبلغ (${currencyLabel})`} value={form.amount} onChange={(v) => setForm(p => ({ ...p, amount: v }))} /></Grid>
-              <Grid item xs={12} md={4}><MoneyInput size="small" fullWidth label={`مالیات (${currencyLabel})`} value={form.vat} onChange={(v) => setForm(p => ({ ...p, vat: v }))} /></Grid>
-              <Grid item xs={12}>
-                <Paper sx={{ p: 1.5, borderRadius: '10px', background: 'rgba(16,185,129,0.06)', border: '1px solid rgba(16,185,129,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <Typography variant="body2" fontWeight={700} color="#047857">مبلغ کل</Typography>
-                  <Typography variant="h6" fontWeight={800} color="#047857">{formatPersianNumber(totalCalc)} {currencyLabel}</Typography>
-                </Paper>
-              </Grid>
-            </Grid>
-          </Box>
+            ) : (
+              <InvoiceTable rows={filtered} currency={currencyLabel} paidByInvoice={paidByInvoice}
+                onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete}
+                onTogglePaid={(selected) => togglePaid.mutate(selected)} />
+            )}
 
-          <Divider />
+            <Box sx={{ mt: 1.5 }}>
+              <SurfaceCard title="روند فاکتورها" icon={TrendingUpIcon} color={INVOICE_ACCENT}
+                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(INVOICE_ACCENT, 0.07), color: INVOICE_ACCENT }} />}>
+                {monthlyData.some((item) => item.value > 0) ? (
+                  <ColumnChart data={monthlyData} color={INVOICE_ACCENT} height={150} />
+                ) : (
+                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
+                )}
+              </SurfaceCard>
+            </Box>
+          </Grid>
+        </Grid>
+      )}
 
-          <FormControlLabel control={<Switch checked={!!form.is_paid} onChange={e => setForm(p => ({ ...p, is_paid: e.target.checked }))} />} label={<Typography variant="body2" fontWeight={700}>پرداخت شده</Typography>} />
-          <TextField size="small" fullWidth label="توضیحات" multiline rows={2} value={form.description || ''} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} />
+      <InvoiceDetailDrawer row={detail} contract={selectedContract} currency={currencyLabel}
+        paidAmount={detail ? paidByInvoice[String(detail.id)] || 0 : 0}
+        payments={payments} onClose={() => setDetail(null)} onEdit={openEdit}
+        onDelete={setConfirmDelete} onTogglePaid={(selected) => togglePaid.mutate(selected)} />
 
-          {error && <Alert severity="error" onClose={() => setError('')}>{error}</Alert>}
+      <InvoiceEditorDialog
+        open={dialog}
+        onClose={closeEditor}
+        form={form}
+        setForm={setForm}
+        currencyList={currencyList}
+        contract={contractList.find((contract) => String(contract.id) === String(form.contract)) || selectedContract}
+        paidAmount={form.id ? paidByInvoice[String(form.id)] || 0 : 0}
+        error={error}
+        setError={setError}
+        saving={save.isPending}
+        onSave={submit}
+      />
+
+      <Dialog open={Boolean(confirmDelete)} onClose={() => setConfirmDelete(null)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>حذف فاکتور</DialogTitle>
+        <DialogContent>
+          <Alert severity="warning" sx={{ borderRadius: '10px' }}>
+            فاکتور {confirmDelete?.number || (confirmDelete ? `#${confirmDelete.id}` : 'انتخاب‌شده')} حذف شود؟ این عملیات قابل بازگشت نیست.
+          </Alert>
         </DialogContent>
-
-        <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid rgba(139,92,246,0.12)' }}>
-          <Button onClick={() => setDialog(false)} sx={{ borderRadius: '10px' }}>انصراف</Button>
-          <Button variant="contained" onClick={() => save.mutate(form)}
-            sx={{ background: 'linear-gradient(135deg,#8b5cf6,#6366f1)', borderRadius: '10px', px: 3, boxShadow: '0 8px 22px rgba(139,92,246,0.35)' }}>
-            {save.isLoading ? <CircularProgress size={20} color="inherit" /> : 'ذخیره'}
+        <DialogActions>
+          <Button onClick={() => setConfirmDelete(null)}>انصراف</Button>
+          <Button color="error" variant="contained" disabled={remove.isPending} onClick={() => remove.mutate(confirmDelete.id)}>
+            {remove.isPending ? <CircularProgress size={18} color="inherit" /> : 'حذف'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar open={!!toast} autoHideDuration={3000} onClose={() => setToast('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="success" onClose={() => setToast('')}>{toast}</Alert>
+      <Snackbar open={Boolean(toast)} autoHideDuration={3400} onClose={() => setToast('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity={toast.includes('نشد') ? 'error' : 'success'} onClose={() => setToast('')}>{toast}</Alert>
       </Snackbar>
     </Box>
   );
