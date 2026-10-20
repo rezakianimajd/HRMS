@@ -33,7 +33,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import ContractListPicker from '../core/components/ui/ContractListPicker';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
-import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { ColumnChart } from '../core/components/charts/Charts';
 import { formatPersianNumber, formatPersianPercent, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
@@ -154,7 +154,7 @@ const ContractSnapshotCard = ({ contract, currency, navigate, onBack }) => {
   );
 };
 
-const CoverageCard = ({ totalPaid, contractAmount, paymentCount, invoiceCount, statementCount, currency }) => {
+const CoverageCard = ({ totalPaid, contractAmount, paymentCount, invoiceCount, statementCount, currency, averagePayment, lastPayment }) => {
   const coverage = contractAmount > 0 ? (totalPaid / contractAmount) * 100 : 0;
   const remaining = Math.max(0, contractAmount - totalPaid);
   return (
@@ -171,6 +171,8 @@ const CoverageCard = ({ totalPaid, contractAmount, paymentCount, invoiceCount, s
         <InfoLine label="مجموع پرداخت‌شده" value={`${compactMoney(totalPaid)} ${currency}`} strong color={TEAL} />
         <InfoLine label="مانده پرداخت" value={`${compactMoney(remaining)} ${currency}`} color={remaining > 0 ? AMBER : GREEN} />
         <InfoLine label="تعداد پرداخت" value={`${formatPersianNumber(paymentCount)} فقره`} />
+        <InfoLine label="میانگین پرداخت" value={`${compactMoney(averagePayment)} ${currency}`} />
+        <InfoLine label="آخرین پرداخت" value={lastPayment ? toJalali(lastPayment.date) : '—'} />
       </Box>
       <Divider sx={{ my: 0.6 }} />
       <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
@@ -194,7 +196,7 @@ const MethodsCard = ({ methods, activeMethod, onSelect, accent = TEAL }) => {
         <Typography sx={{ py: 2, textAlign: 'center', fontSize: 9, color: MUTED }}>روشی ثبت نشده است</Typography>
       ) : (
         <Stack spacing={0.75}>
-          {methods.slice(0, 6).map((item) => (
+          {methods.slice(0, 4).map((item) => (
             <ButtonBase key={item.name} onClick={() => onSelect(activeMethod === item.name ? '' : item.name)}
               sx={{
                 width: '100%', display: 'block', textAlign: 'right', p: 0.65, borderRadius: '9px',
@@ -635,7 +637,6 @@ const ContractPaymentsPage = () => {
 
   const totalPaid = list.reduce((sum, payment) => sum + num(payment.amount), 0);
   const averagePayment = list.length ? totalPaid / list.length : 0;
-  const coverage = contractAmount > 0 ? (totalPaid / contractAmount) * 100 : 0;
   const lastPayment = [...list].sort((a, b) => new Date(b.date || 0) - new Date(a.date || 0))[0];
   const linkedInvoices = new Set(list.map((payment) => payment.invoice).filter(Boolean)).size;
   const linkedStatements = new Set(list.map((payment) => payment.statement).filter(Boolean)).size;
@@ -890,44 +891,23 @@ const ContractPaymentsPage = () => {
           </SurfaceCard>
         </>
       ) : (
-
-
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-              <ContractSnapshotCard contract={selectedContract} currency={contractCurrency} navigate={navigate} onBack={clearContract} />
-              <CoverageCard totalPaid={totalPaid} contractAmount={contractAmount} paymentCount={list.length}
-                invoiceCount={linkedInvoices} statementCount={linkedStatements} currency={contractCurrency} />
-              <MethodsCard methods={methods} activeMethod={methodFilter} onSelect={setMethodFilter} />
-            </Stack>
+        <>
+        <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+          <Grid item xs={12} lg={5}>
+            <ContractSnapshotCard contract={selectedContract} currency={contractCurrency} navigate={navigate} onBack={clearContract} />
           </Grid>
+          <Grid item xs={12} md={6} lg={4}>
+            <CoverageCard totalPaid={totalPaid} contractAmount={contractAmount} paymentCount={list.length}
+              invoiceCount={linkedInvoices} statementCount={linkedStatements} currency={contractCurrency}
+              averagePayment={averagePayment} lastPayment={lastPayment} />
+          </Grid>
+          <Grid item xs={12} md={6} lg={3}>
+            <MethodsCard methods={methods} activeMethod={methodFilter} onSelect={setMethodFilter} />
+          </Grid>
+        </Grid>
 
-          <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={PaymentsOutlinedIcon} label="مجموع پرداخت‌ها" value={compactMoney(totalPaid)} suffix={contractCurrency} hint={`${formatPersianNumber(list.length)} فقره پرداخت`} color={TEAL} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={CheckCircleOutlineIcon} label="تعداد پرداخت" value={formatPersianNumber(list.length)} suffix="فقره" hint={`${formatPersianNumber(linkedInvoices)} فاکتور پیوندی`} color={GREEN} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={AccountBalanceWalletOutlinedIcon} label="میانگین پرداخت" value={compactMoney(averagePayment)} suffix={contractCurrency} hint={`پوشش ${formatPersianPercent(coverage)}`} color={BLUE} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={CalendarMonthOutlinedIcon} label="آخرین پرداخت" value={lastPayment ? toJalali(lastPayment.date) : '—'} hint={lastPayment?.method || 'بدون پرداخت'} color={AMBER} />
-              </Grid>
-            </Grid>
-
-            <SurfaceCard title="روند پرداخت‌ها" icon={TrendingUpOutlinedIcon} color={VIOLET}
-              action={<Chip size="small" label={`${formatPersianNumber(list.length)} پرداخت در ${formatPersianNumber(monthlyData.filter((item) => item.value > 0).length)} ماه`}
-                sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />}>
-              {!monthlyData.some((item) => item.value > 0) ? (
-                <Box sx={{ py: 4, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>پرداختی در ۶ ماه اخیر ثبت نشده است.</Box>
-              ) : <ColumnChart data={monthlyData} height={190} />}
-            </SurfaceCard>
-
-
-            <Paper elevation={0} sx={{ p: 1.2, mt: 1.5, mb: 1.5, borderRadius: '14px', border: '1px solid #e5edf1', bgcolor: '#fff' }}>
+        <Box>
+            <Paper elevation={0} sx={{ p: 1.2, mb: 1.5, borderRadius: '14px', border: '1px solid #e5edf1', bgcolor: '#fff' }}>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }}>
                 <TextField size="small" placeholder="جست‌وجو در مرجع، روش، فاکتور یا توضیحات…" value={search}
                   onChange={(event) => setSearch(event.target.value)}
@@ -966,7 +946,7 @@ const ContractPaymentsPage = () => {
             ) : view === 'cards' ? (
               <Grid container spacing={1.5}>
                 {filtered.map((payment) => (
-                  <Grid item xs={12} md={6} xl={4} key={payment.id}>
+                  <Grid item xs={12} sm={6} lg={4} xl={3} key={payment.id}>
                     <PaymentCard row={payment} currency={contractCurrency} onView={setDetail}
                       onEdit={openEdit} onDelete={(row) => { setDeleteTarget(row); setDetail(null); }} />
                   </Grid>
@@ -976,8 +956,18 @@ const ContractPaymentsPage = () => {
               <PaymentTable rows={filtered} currency={contractCurrency} onView={setDetail}
                 onEdit={openEdit} onDelete={(row) => { setDeleteTarget(row); setDetail(null); }} />
             )}
-          </Grid>
-        </Grid>
+
+            <Box sx={{ mt: 1.5 }}>
+              <SurfaceCard title="روند پرداخت‌ها" icon={TrendingUpOutlinedIcon} color={VIOLET}
+                action={<Chip size="small" label={`${formatPersianNumber(list.length)} پرداخت در ${formatPersianNumber(monthlyData.filter((item) => item.value > 0).length)} ماه`}
+                  sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />}>
+                {!monthlyData.some((item) => item.value > 0) ? (
+                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>پرداختی در ۶ ماه اخیر ثبت نشده است.</Box>
+                ) : <ColumnChart data={monthlyData} height={160} />}
+              </SurfaceCard>
+            </Box>
+        </Box>
+        </>
       )}
 
 

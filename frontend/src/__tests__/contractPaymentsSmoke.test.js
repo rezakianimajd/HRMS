@@ -98,7 +98,7 @@ test('contract payments page renders financial summary, linked details and detai
   expect(container.textContent).toContain('پوشش مالی پرداخت‌ها');
   expect(container.textContent).toContain('روش‌های پرداخت');
   expect(container.textContent).toContain('روند پرداخت‌ها');
-  expect(container.textContent).toContain('مجموع پرداخت‌ها');
+  expect(container.textContent).toContain('مجموع پرداخت‌شده');
   expect(container.textContent).toContain('REF-100');
   expect(container.textContent).toContain('حواله بانکی');
   expect(container.textContent).toContain('INV-100');
