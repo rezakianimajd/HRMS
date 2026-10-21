@@ -367,6 +367,13 @@ const compactMoney = (value, currency = '') => {
 const todayIso = () => new Date().toISOString().slice(0, 10);
 const asArray = (value) => (Array.isArray(value) ? value : value?.results || []);
 
+/** ترتیب قطعی صورت‌وضعیت‌ها: تاریخ، سپس شناسه (برای تاریخ‌های یکسان) */
+const compareStatements = (a, b) => {
+  const dateCompare = String(a?.date || '').localeCompare(String(b?.date || ''));
+  if (dateCompare) return dateCompare;
+  return Number(a?.id || 0) - Number(b?.id || 0);
+};
+
 const StatementEditorPage = () => {
   const qc = useQueryClient();
   const theme = useTheme();
@@ -447,7 +454,7 @@ const StatementEditorPage = () => {
   );
   const selectedContractAmount = contractAmountOf(selectedContract);
   const lastStatement = useMemo(
-    () => [...scopedList].sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || null,
+    () => [...scopedList].sort(compareStatements).slice(-1)[0] || null,
     [scopedList],
   );
 
@@ -490,7 +497,7 @@ const StatementEditorPage = () => {
   const pendingRows = useMemo(
     () => [...allStatements]
       .filter((row) => !row.is_approved)
-      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))
+      .sort((a, b) => compareStatements(b, a))
       .slice(0, 6),
     [allStatements],
   );
@@ -508,7 +515,7 @@ const StatementEditorPage = () => {
       if (sortBy === 'amount') return Number(b.amount || 0) - Number(a.amount || 0);
       if (sortBy === 'net') return rowMetrics(b).net - rowMetrics(a).net;
       if (sortBy === 'work') return rowMetrics(b).work - rowMetrics(a).work;
-      return String(b.date || '').localeCompare(String(a.date || ''));
+      return compareStatements(b, a);
     });
     return result;
   }, [scopedList, search, statusFilter, sortBy]);
@@ -718,13 +725,20 @@ const StatementEditorPage = () => {
   const progress = formContractAmount > 0 ? Math.min(100, (cumulativeThis / formContractAmount) * 100) : 0;
 
   const openNew = () => {
-    const previousAmount = lastStatement ? num(lastStatement.amount) : 0;
+    const newDate = todayIso();
+    const priorRows = scopedList.filter((row) => !row.date || String(row.date) <= newDate);
+    const lastPrior = [...priorRows].sort(compareStatements).slice(-1)[0] || null;
+    const previousAmount = lastPrior ? num(lastPrior.amount) : 0;
+    // اگر کارکرد دوره‌های قبل ثبت شده باشد، جمع آن‌ها مبنای کامل‌تری برای
+    // «مبلغ تجمعی دوره قبل» است؛ در داده‌های صحیح با مبلغ تجمعی آخرین سند برابر است.
+    const previousWork = priorRows.reduce((sum, row) => sum + rowMetrics(row).work, 0);
+    const previousCumulative = Math.max(previousAmount, previousWork);
     setForm({
       contract: contractId,
       number: '',
-      date: todayIso(),
-      amount: previousAmount,
-      cumulative_previous_amount: previousAmount,
+      date: newDate,
+      amount: previousCumulative,
+      cumulative_previous_amount: previousCumulative,
       currency: selectedContract?.currency || '',
       value_added_tax: 0,
       other_additions: 0,

@@ -1,4 +1,7 @@
 """Serializers for the Contracts module."""
+from decimal import Decimal
+
+from django.db.models import Q
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
@@ -152,6 +155,61 @@ class StatementSerializer(serializers.ModelSerializer):
             'is_approved', 'description', 'documents',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def _previous_cumulative(self, contract, statement_date):
+        """مبلغ تجمیعی آخرین صورت‌وضعیت قبل از این دوره (بر اساس تاریخ و شناسه)."""
+        if not contract:
+            return Decimal('0')
+        qs = Statement.objects.filter(contract=contract)
+        if self.instance is not None:
+            qs = qs.exclude(pk=self.instance.pk)
+            if statement_date:
+                qs = qs.filter(
+                    Q(date__lt=statement_date)
+                    | Q(date=statement_date, pk__lt=self.instance.pk)
+                )
+        elif statement_date:
+            qs = qs.filter(date__lte=statement_date)
+        previous = qs.order_by('-date', '-pk').only('amount').first()
+        return Decimal(previous.amount or 0) if previous else Decimal('0')
+
+    def validate(self, attrs):
+        """مبلغ تجمعی دوره قبل و کارکرد دوره را در سمت سرور معتبر می‌کند.
+
+        کلاینت ممکن است لیست کهنه‌ای داشته باشد یا دو صورت‌وضعیت هم‌تاریخ
+        باشند؛ بنابراین مبنای «دوره قبل» را همین‌جا از دیتابیس تعیین می‌کنیم.
+        """
+        instance = self.instance
+        contract = attrs.get('contract') or getattr(instance, 'contract', None)
+        statement_date = attrs.get('date') or getattr(instance, 'date', None)
+        previous = self._previous_cumulative(contract, statement_date)
+        amount_value = attrs.get('amount', getattr(instance, 'amount', 0))
+        try:
+            amount = Decimal(str(amount_value or 0))
+        except Exception:  # noqa: BLE001
+            amount = Decimal('0')
+        if amount < previous:
+            raise serializers.ValidationError({
+                'amount': 'مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.',
+            })
+        attrs['cumulative_previous_amount'] = previous
+        attrs['work_done'] = amount - previous
+        additions = attrs.get('additions') or getattr(instance, 'additions', []) or []
+        deductions = attrs.get('deductions') or getattr(instance, 'deductions', []) or []
+        additions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in additions if isinstance(item, dict)),
+            Decimal('0'),
+        ) + Decimal(str(attrs.get('value_added_tax', getattr(instance, 'value_added_tax', 0)) or 0)) + Decimal(
+            str(attrs.get('other_additions', getattr(instance, 'other_additions', 0)) or 0)
+        )
+        deductions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in deductions if isinstance(item, dict)),
+            Decimal('0'),
+        )
+        attrs['additions_total'] = additions_total
+        attrs['deductions_total'] = deductions_total
+        attrs['net_amount'] = amount - previous + additions_total - deductions_total
+        return attrs
 
 
 class AddendumSerializer(serializers.ModelSerializer):
