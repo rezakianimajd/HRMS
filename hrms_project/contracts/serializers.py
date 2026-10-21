@@ -180,6 +180,10 @@ class StatementSerializer(serializers.ModelSerializer):
         باشند؛ بنابراین مبنای «دوره قبل» را همین‌جا از دیتابیس تعیین می‌کنیم.
         """
         instance = self.instance
+        if instance is not None and not any(
+            key in attrs for key in ('amount', 'date', 'contract', 'additions', 'deductions', 'value_added_tax', 'other_additions')
+        ):
+            return attrs
         contract = attrs.get('contract') or getattr(instance, 'contract', None)
         statement_date = attrs.get('date') or getattr(instance, 'date', None)
         previous = self._previous_cumulative(contract, statement_date)
