@@ -455,8 +455,3 @@ const AccountingControlPage = () => {
 };
 
 export default AccountingControlPage;
-
-
-
-
-
