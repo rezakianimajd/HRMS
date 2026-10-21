@@ -36,7 +36,7 @@ def _report_lines(request, *, include_annual_closing=False):
     qs = AccountingDocumentLine.objects.filter(
         document__company=_company(request),
         document__status__in=REPORTABLE_DOCUMENT_STATUSES,
-    ).select_related('account')
+    ).select_related('account', 'document')
     if not include_annual_closing:
         qs = qs.exclude(
             document__source_module='annual', document__source_type='closing',
@@ -928,29 +928,56 @@ def matrix_report(request):
     _SLOT_LEVEL = {'aux1': 3, 'aux2': 4, 'aux3': 5}
 
     # --- گره‌های تفصیلی (تفصیل ۱/۲/۳) با مسیر کامل ---
+    # به‌جای پیمایش خط‌به‌خط، گردش را در دیتابیس بر اساس مسیر حساب/تفصیلی‌ها
+    # تجمیع می‌کنیم؛ سپس فقط یک بار برای هر مسیر یکتا گره می‌سازیم.
+    # این کار از N+1 روی document و از ساخت میلیون‌ها شیء پایتونی جلوگیری می‌کند.
+    opening_filter = Q(document__date__lt=date_from) if date_from else Q(pk__in=[])
+    aggregated = list(
+        lines.values('account_id', 'auxiliary_1_id', 'auxiliary_2_id', 'auxiliary_3_id')
+        .annotate(
+            opening_debit=Sum('debit', filter=opening_filter),
+            opening_credit=Sum('credit', filter=opening_filter),
+            total_debit=Sum('debit'),
+            total_credit=Sum('credit'),
+        )
+        .order_by('account_id', 'auxiliary_1_id', 'auxiliary_2_id', 'auxiliary_3_id')
+    )
+    aux_ids = set()
+    for row in aggregated:
+        for key in ('auxiliary_1_id', 'auxiliary_2_id', 'auxiliary_3_id'):
+            if row.get(key):
+                aux_ids.add(row[key])
+    aux_by_id = {
+        aux.id: aux
+        for aux in AuxiliaryAccount.objects.filter(company=company, id__in=aux_ids)
+        .only('id', 'code', 'name')
+    }
+
     aux_nodes = {}
-    for line in lines:
-        aid = line.account_id
+    for row in aggregated:
+        aid = row['account_id']
         if aid not in acc_nodes:
             # سطر متعلق به حساب غیرفعال/ناموجود — در گزارش لحاظ نمی‌شود
             continue
-        debit = float(line.debit or 0)
-        credit = float(line.credit or 0)
-        # اسناد پیش از «از تاریخ» به‌عنوان ماندهٔ ابتدای دوره تفکیک می‌شوند
-        opening = _is_before(line.document.date, date_from)
-        if opening:
-            acc_nodes[aid]['opening_debit'] += debit
-            acc_nodes[aid]['opening_credit'] += credit
-        else:
-            acc_nodes[aid]['debit'] += debit
-            acc_nodes[aid]['credit'] += credit
+        total_debit = float(row['total_debit'] or 0)
+        total_credit = float(row['total_credit'] or 0)
+        opening_debit = float(row['opening_debit'] or 0)
+        opening_credit = float(row['opening_credit'] or 0)
+        debit = total_debit - opening_debit
+        credit = total_credit - opening_credit
+
+        acc_nodes[aid]['opening_debit'] += opening_debit
+        acc_nodes[aid]['opening_credit'] += opening_credit
+        acc_nodes[aid]['debit'] += debit
+        acc_nodes[aid]['credit'] += credit
 
         path = []
-        for slot, aux_obj in (
-            ('aux1', line.auxiliary_1),
-            ('aux2', line.auxiliary_2),
-            ('aux3', line.auxiliary_3),
+        for slot, aux_key in (
+            ('aux1', 'auxiliary_1_id'),
+            ('aux2', 'auxiliary_2_id'),
+            ('aux3', 'auxiliary_3_id'),
         ):
+            aux_obj = aux_by_id.get(row.get(aux_key))
             if aux_obj is not None:
                 path.append((slot, aux_obj))
 
@@ -961,7 +988,7 @@ def matrix_report(request):
                 'kind': slot,
                 'code': aux_obj.code,
                 'name': aux_obj.name,
-                'nature': acc_nodes[aid]['nature'] if aid in acc_nodes else 'debit',
+                'nature': acc_nodes[aid]['nature'],
                 'level': _SLOT_LEVEL[slot],
                 'debit': 0.0,
                 'credit': 0.0,
@@ -969,12 +996,10 @@ def matrix_report(request):
                 'opening_credit': 0.0,
                 'children': [],
             })
-            if opening:
-                node['opening_debit'] += debit
-                node['opening_credit'] += credit
-            else:
-                node['debit'] += debit
-                node['credit'] += credit
+            node['opening_debit'] += opening_debit
+            node['opening_credit'] += opening_credit
+            node['debit'] += debit
+            node['credit'] += credit
     # --- اتصال حساب‌ها: معین زیر کل، کل زیر گروه ---
     account_roots = []
     for a in accounts:

@@ -1,10 +1,10 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../../core/api/axiosConfig';
 import {
   Box, Button, Checkbox, Chip, FormControlLabel, InputAdornment, Paper, Stack,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, TextField,
-  Tooltip, Typography,
+  Table, TableBody, TableCell, TableContainer, TableHead, TablePagination,
+  TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
 import GridViewIcon from '@mui/icons-material/GridView';
 import PrintIcon from '@mui/icons-material/Print';
@@ -132,9 +132,14 @@ const MatrixReportPage = () => {
   const [dateTo, setDateTo] = useState('');
   const [search, setSearch] = useState('');
   const [ledgerNode, setLedgerNode] = useState(null);
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(100);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['acc-report-matrix', dateFrom, dateTo],
+    staleTime: 5 * 60 * 1000,
+    gcTime: 30 * 60 * 1000,
+    refetchOnWindowFocus: false,
     queryFn: () => axiosInstance.get('/accounting/reports/matrix/', {
       params: { date_from: dateFrom || undefined, date_to: dateTo || undefined },
     }).then((r) => r.data),
@@ -182,6 +187,20 @@ const MatrixReportPage = () => {
     }
     return true;
   }), [baseRows, fromCode, toCode, onlyWithActivity, search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [level, subLevel, fromCode, toCode, onlyWithActivity, search, dateFrom, dateTo]);
+
+  useEffect(() => {
+    const maxPage = Math.max(0, Math.ceil(visibleRows.length / rowsPerPage) - 1);
+    if (page > maxPage) setPage(maxPage);
+  }, [visibleRows.length, page, rowsPerPage]);
+
+  const pageRows = useMemo(
+    () => visibleRows.slice(page * rowsPerPage, (page + 1) * rowsPerPage),
+    [visibleRows, page, rowsPerPage],
+  );
 
   const columnTotals = useMemo(() => visibleRows.reduce((t, r) => {
     t.debit += r.debit || 0;
@@ -463,7 +482,7 @@ const MatrixReportPage = () => {
                       </TableRow>
                     </TableHead>
                     <TableBody>
-                      {visibleRows.map(renderRow)}
+                      {pageRows.map((row, index) => renderRow(row, page * rowsPerPage + index))}
                       {/* سطر جمع ستونی — همیشه چسبان در پایینِ ناحیهٔ اسکرول */}
                       <TableRow sx={{
                         height: FOOTER_H,
@@ -474,12 +493,30 @@ const MatrixReportPage = () => {
                       }}>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
                         <TableCell sx={{ fontWeight: 900, color: 'text.secondary' }}>—</TableCell>
-                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع ستونی</TableCell>
+                        <TableCell sx={{ fontWeight: 900, color: COLOR_DARK, fontFamily: FONT }}>جمع ستونی (کل نتایج)</TableCell>
                         {renderAmountCells(columnTotals, true)}
                       </TableRow>
                     </TableBody>
                   </Table>
                 </TableContainer>
+                <TablePagination
+                  component="div"
+                  count={visibleRows.length}
+                  page={page}
+                  onPageChange={(event, next) => setPage(next)}
+                  rowsPerPage={rowsPerPage}
+                  onRowsPerPageChange={(event) => {
+                    setRowsPerPage(parseInt(event.target.value, 10));
+                    setPage(0);
+                  }}
+                  rowsPerPageOptions={[50, 100, 200, 500]}
+                  labelRowsPerPage="ردیف در صفحه"
+                  labelDisplayedRows={({ from, to, count }) => `${toPersianDigits(from)}–${toPersianDigits(to)} از ${toPersianDigits(count)}`}
+                  sx={{
+                    borderTop: '1px solid rgba(148,163,184,0.25)',
+                    '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': { fontFamily: FONT },
+                  }}
+                />
               </div>
             )}
           </Box>
