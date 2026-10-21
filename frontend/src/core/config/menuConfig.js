@@ -66,6 +66,7 @@ import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
+import { DOCUMENT_LIBRARY_MODULES, moduleRootFolders } from './documentLibraryModules';
 
 const menuConfig = [
   {
@@ -132,7 +133,6 @@ const menuConfig = [
     items: [
       { id: 'correspondences', title: 'مکاتبات اداری', icon: <MailOutlineIcon />, path: '/correspondences', color: '#06b6d4', primary: false, ready: true },
       { id: 'bale-messaging', title: 'اطلاع‌رسانی و پیام بله', icon: <ChatBubbleOutlineIcon />, path: '/bale-messaging', color: '#10b981', primary: false, ready: true },
-      { id: 'company-documents', title: 'بایگانی اسناد سازمان', icon: <FolderSharedIcon />, path: '/documents', color: '#f97316', primary: false, ready: true },
     ],
   },
   {
@@ -611,6 +611,56 @@ const contractsMenu = [
   },
 ];
 
+const DOCUMENT_MODULE_ICONS = {
+  people: <PeopleIcon />,
+  person: <PeopleIcon />,
+  person_search: <PersonSearchIcon />,
+  contract: <HandshakeIcon />,
+  project: <AccountTreeIcon />,
+  pettycash: <AccountBalanceWalletIcon />,
+  payroll: <PaymentsIcon />,
+  accounting: <CalculateIcon />,
+  procurement: <ShoppingCartIcon />,
+  treasury: <AccountBalanceIcon />,
+  organization: <FolderSharedIcon />,
+  correspondence: <MailOutlineIcon />,
+};
+
+const documentLibraryPath = (module, root) => (
+  root
+    ? `/document-management/library?folder=${root.id}`
+    : `/document-management/library?module=${module.key}`
+);
+
+const documentLibraryItem = (module, folders = []) => {
+  const roots = moduleRootFolders(folders, module.key);
+  const children = (module.children || []).map((child) => {
+    const childRoots = moduleRootFolders(folders, child.key);
+    return {
+      id: `dms-library-${child.key}`,
+      title: child.label,
+      icon: DOCUMENT_MODULE_ICONS[child.icon] || <FolderCopyIcon />,
+      path: documentLibraryPath(child, childRoots[0]),
+      color: child.color || module.color,
+      ready: true,
+    };
+  });
+  return {
+    id: `dms-library-${module.key}`,
+    title: module.label,
+    icon: DOCUMENT_MODULE_ICONS[module.icon] || <FolderCopyIcon />,
+    path: module.children?.length ? `/document-management/library?module=${module.key}` : documentLibraryPath(module, roots[0]),
+    color: module.color,
+    primary: false,
+    ready: true,
+    children: children.length ? children : undefined,
+  };
+};
+
+export const buildLibraryModuleItems = (folders = []) => (
+  DOCUMENT_LIBRARY_MODULES.map((module) => documentLibraryItem(module, folders))
+);
+
 const documentsMenu = [
   {
     id: 'documents-home',
@@ -621,9 +671,9 @@ const documentsMenu = [
     ],
   },
   {
-    id: 'documents-library',
-    title: 'کتابخانه اسناد',
-    color: '#0ea5e9',
+    id: 'documents-overview',
+    title: 'نمای کلی',
+    color: '#64748b',
     items: [
       { id: 'documents-all', title: 'همه اسناد', icon: <FolderCopyIcon />, path: '/document-management/library?scope=all', color: '#0f766e', primary: false, ready: true },
       { id: 'documents-drafts', title: 'پیش‌نویس‌ها', icon: <FactCheckIcon />, path: '/document-management/library?workflow=draft', color: '#64748b', primary: false, ready: true },
@@ -632,12 +682,10 @@ const documentsMenu = [
     ],
   },
   {
-    id: 'documents-organizational',
-    title: 'اسناد سازمانی',
-    color: '#2563eb',
-    items: [
-      { id: 'documents-type-company', title: 'مدارک شرکت', icon: <FolderSharedIcon />, path: '/document-management/library?type=company', color: '#0f766e', primary: false, ready: true },
-    ],
+    id: 'documents-library',
+    title: 'کتابخانه اسناد',
+    color: '#0ea5e9',
+    items: buildLibraryModuleItems([]),
   },
   {
     id: 'documents-workflow',
@@ -683,7 +731,6 @@ const documentsMenu = [
 ];
 
 const DOCUMENTS_COMPANY_ROOT_CODE = 'company.documents';
-const DOCUMENTS_SELF_MODULE_KEY = 'hr.documents.management';
 
 const dmsFolderPath = (id) => `/document-management/library?folder=${id}`;
 const dmsFolderItem = (folder) => ({
@@ -716,41 +763,19 @@ export function buildDocumentsMenu(folders = []) {
   const rows = Array.isArray(folders) ? folders : [];
   if (!rows.length) return documentsMenu;
 
-  const companyRoot = rows.find((folder) => folder.code === DOCUMENTS_COMPANY_ROOT_CODE);
-  const companyItems = companyRoot ? dmsFolderChildren(rows, companyRoot.id) : [];
-  const moduleRoots = rows
-    .filter((folder) => !folder.parent
-      && folder.code !== DOCUMENTS_COMPANY_ROOT_CODE
-      && folder.code !== DOCUMENTS_SELF_MODULE_KEY)
-    .sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0) || String(a.name || '').localeCompare(String(b.name || ''), 'fa'))
-    .map((root) => {
-      const children = dmsFolderChildren(rows, root.id);
-      return {
-        id: `dms-module-${root.id}`,
-        title: root.name,
-        icon: <FolderCopyIcon />,
-        path: dmsFolderPath(root.id),
-        color: root.color || '#0f766e',
-        primary: false,
-        ready: true,
-        children: children.length ? children : undefined,
-      };
-    });
+  const items = buildLibraryModuleItems(rows);
+  const companyRoot = rows.find((folder) => folder.code === DOCUMENTS_COMPANY_ROOT_CODE)
+    || moduleRootFolders(rows, 'organization')[0];
+  const organizationItem = items.find((item) => item.id === 'dms-library-organization');
+  if (organizationItem && companyRoot) {
+    const children = dmsFolderChildren(rows, companyRoot.id);
+    organizationItem.path = dmsFolderPath(companyRoot.id);
+    organizationItem.children = children.length ? children : undefined;
+  }
 
-  return documentsMenu.map((group) => {
-    if (group.id === 'documents-library') {
-      return { ...group, items: [...group.items, ...moduleRoots] };
-    }
-    if (group.id === 'documents-organizational') {
-      return {
-        ...group,
-        items: companyItems.length ? companyItems : [
-          { id: 'documents-type-company', title: 'مدارک شرکت', icon: <FolderSharedIcon />, path: '/document-management/library?type=company', color: '#0f766e', ready: true },
-        ],
-      };
-    }
-    return group;
-  });
+  return documentsMenu.map((group) => (
+    group.id === 'documents-library' ? { ...group, items } : group
+  ));
 }
 
 export function getMenuForApp(appSlug, options = {}) {

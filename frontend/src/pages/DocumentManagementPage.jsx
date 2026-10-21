@@ -31,6 +31,10 @@ import {
 } from './contracts/DocumentManagementUI';
 import { PersonnelDocumentCard, PersonnelDocumentsDialog } from './contracts/PersonnelDocumentUI';
 import { buildPersonnelRows, fileFormat, groupPersonnelDocuments, normalizeText } from './contracts/personnelDocuments';
+import {
+  documentMatchesModuleText, findDocumentModule, findModuleForFolder,
+  folderDescendants, moduleFolderIds, scopedLibraryFolders,
+} from '../core/config/documentLibraryModules';
 
 const EMPTY_DOCUMENT = {
   id: null, title: '', folder: '', description: '', tags: '', reference_number: '',
@@ -77,6 +81,7 @@ const DocumentManagementPage = () => {
   const [searchParams] = useSearchParams();
   const [search, setSearch] = useState(() => searchParams.get('q') || '');
   const [folderId, setFolderId] = useState(() => searchParams.get('folder') || '');
+  const [moduleFilter, setModuleFilter] = useState(() => searchParams.get('module') || '');
   const [statusFilter, setStatusFilter] = useState(() => searchParams.get('status') || 'all');
   const [confidentialityFilter, setConfidentialityFilter] = useState(() => searchParams.get('confidentiality') || 'all');
   const [typeFilter, setTypeFilter] = useState(() => searchParams.get('type') || 'all');
@@ -114,6 +119,7 @@ const DocumentManagementPage = () => {
     setScope(params.get('scope') || 'all');
     setSearch(params.get('q') || '');
     setFolderId(params.get('folder') || '');
+    setModuleFilter(params.get('module') || '');
   }, [searchParamsKey]);
 
   const foldersQuery = useQuery({
@@ -147,25 +153,30 @@ const DocumentManagementPage = () => {
   });
   const detailActivities = Array.isArray(detailActivitiesQuery.data) ? detailActivitiesQuery.data : detailActivitiesQuery.data?.results || [];
 
+  const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
   const folderIds = useMemo(() => {
     if (!folderId) return null;
-    const selected = String(folderId);
-    const ids = new Set([selected]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const folder of folders) {
-        if (folder.parent && ids.has(String(folder.parent)) && !ids.has(String(folder.id))) {
-          ids.add(String(folder.id));
-          changed = true;
-        }
-      }
-    }
-    return ids;
+    return folderDescendants(folders, [folderId]);
   }, [folderId, folders]);
 
+  const scopedLibrary = useMemo(
+    () => scopedLibraryFolders(folders, { moduleKey: moduleFilter, folderId }),
+    [folders, moduleFilter, folderId],
+  );
+  const activeModule = scopedLibrary.module
+    || findModuleForFolder(selectedFolder, folders)
+    || (moduleFilter ? findDocumentModule(moduleFilter) : null);
+  const activeModuleKey = moduleFilter || activeModule?.key || '';
+  const scopedModuleIds = useMemo(
+    () => (activeModuleKey ? moduleFolderIds(folders, activeModuleKey) : null),
+    [activeModuleKey, folders],
+  );
+  const scopedFolders = scopedLibrary.folders;
+
   const matchesDocumentFilters = (row) => {
-    if (folderIds && !folderIds.has(String(row.folder))) return false;
+    const scopeIds = folderIds || scopedModuleIds;
+    if (scopeIds && !scopeIds.has(String(row.folder))) return false;
+    if (!scopeIds && activeModuleKey && !documentMatchesModuleText(row, activeModuleKey)) return false;
     if (statusFilter === 'all') {
       if (workflowFilter === 'all' && row.status === 'archived') return false;
     } else if (row.status !== statusFilter) return false;
@@ -203,15 +214,16 @@ const DocumentManagementPage = () => {
       return String(b.created_at || '').localeCompare(String(a.created_at || ''));
     });
     return result;
-  }, [documents, folderIds, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id, search, sortBy]);
+  }, [documents, folderIds, scopedModuleIds, activeModuleKey, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id, search, sortBy]);
 
   const personnelDocuments = useMemo(
     () => documents.filter(matchesDocumentFilters),
-    [documents, folderIds, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id],
+    [documents, folderIds, scopedModuleIds, activeModuleKey, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id],
   );
 
-  const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
-  const personnelMode = isPersonnelFolder(selectedFolder);
+  const personnelMode = activeModuleKey === 'employees'
+    || findModuleForFolder(selectedFolder, folders)?.key === 'employees'
+    || isPersonnelFolder(selectedFolder);
   const personnelEmployeesQuery = useQuery({
     queryKey: ['dms-personnel-employees'],
     queryFn: fetchAllEmployees,
@@ -249,12 +261,20 @@ const DocumentManagementPage = () => {
   const replacementOptions = supersedeRow
     ? documents.filter((row) => String(row.id) !== String(supersedeRow.id) && ['approved', 'published'].includes(row.workflow_status))
     : [];
+  const activeModuleMeta = findModuleForFolder(selectedFolder, folders)
+    || scopedLibrary.module
+    || (moduleFilter ? findDocumentModule(moduleFilter) : null);
   const viewMeta = personnelMode
     ? {
-      title: `کتابخانه اسناد · ${selectedFolder?.name || 'پرسنل'}`,
+      title: `کتابخانه اسناد · ${activeModuleMeta?.label || 'پرسنل'}`,
       subtitle: 'پرونده‌های پرسنلی؛ با کلیک روی هر کارت، همهٔ مدارک به تفکیک نوع و قالب نمایش داده می‌شود',
     }
-    : scope === 'mine'
+    : activeModuleMeta
+      ? {
+        title: `کتابخانه اسناد · ${activeModuleMeta.label}`,
+        subtitle: 'فایل‌ها و پوشه‌های همین ماژول؛ برای دیدن جزئیات هر سند روی کارت آن کلیک کنید',
+      }
+      : scope === 'mine'
     ? { title: 'اسناد من', subtitle: 'اسنادی که شما ایجاد کرده‌اید' }
     : scope === 'expiring'
       ? { title: 'اسناد نزدیک انقضا', subtitle: 'اسناد دارای تاریخ انقضا در ۳۰ روز آینده' }
@@ -531,6 +551,7 @@ const DocumentManagementPage = () => {
     saveDocument.mutate(form);
   };
   const openFolderNew = () => { setFolderEditing(false); setFolderForm(EMPTY_FOLDER); setFolderError(''); setFolderDialog(true); };
+  const clearScope = () => { setFolderId(''); setModuleFilter(''); navigate('/document-management/library'); };
   const openFolderEdit = (folder) => {
     setFolderEditing(true);
     setFolderForm({ id: folder.id, name: folder.name || '', parent: folder.parent || '', color: folder.color || '#0f766e', description: folder.description || '' });
@@ -568,7 +589,7 @@ const DocumentManagementPage = () => {
         subtitle={viewMeta.subtitle}
         badge={<Chip size="small" label={personnelMode
           ? `${formatPersianNumber(personnel.rows.length)} پرسنل · ${formatPersianNumber(personnelFileCount)} فایل`
-          : `${formatPersianNumber(activeDocuments.length)} سند فعال`}
+          : `${formatPersianNumber(filtered.length)} سند فعال`}
           sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}
         actions={(
           <>
@@ -586,21 +607,46 @@ const DocumentManagementPage = () => {
       <Grid container spacing={1.5}>
         <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
           <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-            <SurfaceCard title="پوشه‌های اسناد" icon={FolderOpenOutlinedIcon} color={DMS_ACCENT}
-              action={<IconButton size="small" onClick={openFolderNew} sx={{ color: DMS_ACCENT }}><AddIcon fontSize="small" /></IconButton>}>
+            <SurfaceCard title={activeModuleMeta ? `پوشه‌های ${activeModuleMeta.label}` : 'پوشه‌های اسناد'}
+              icon={FolderOpenOutlinedIcon} color={activeModuleMeta?.color || DMS_ACCENT}
+              action={<IconButton size="small" onClick={openFolderNew} sx={{ color: activeModuleMeta?.color || DMS_ACCENT }}><AddIcon fontSize="small" /></IconButton>}>
               <Stack spacing={0.6}>
-                <ButtonBase onClick={() => setFolderId('')}
-                  sx={{ width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'flex-start', textAlign: 'right', bgcolor: !folderId ? alpha(DMS_ACCENT, 0.08) : 'transparent', border: `1px solid ${!folderId ? alpha(DMS_ACCENT, 0.2) : 'transparent'}` }}>
+                <ButtonBase onClick={clearScope}
+                  sx={{
+                    width: '100%', p: 0.7, borderRadius: '10px', justifyContent: 'flex-start', textAlign: 'right',
+                    bgcolor: !folderId && !moduleFilter ? alpha(DMS_ACCENT, 0.08) : 'transparent',
+                    border: `1px solid ${!folderId && !moduleFilter ? alpha(DMS_ACCENT, 0.2) : 'transparent'}`,
+                  }}>
                   <Stack direction="row" alignItems="center" spacing={0.6} sx={{ width: '100%' }}>
                     <FolderOpenOutlinedIcon sx={{ fontSize: 17, color: DMS_ACCENT }} />
                     <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 800, color: INK }}>همه اسناد</Typography>
                     <Chip size="small" label={formatPersianNumber(activeDocuments.length)} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
                   </Stack>
                 </ButtonBase>
+                {activeModuleMeta ? (
+                  <Stack direction="row" alignItems="center" spacing={0.65} sx={{
+                    p: 0.7, borderRadius: '10px', bgcolor: alpha(activeModuleMeta.color || DMS_ACCENT, 0.07),
+                    border: `1px solid ${alpha(activeModuleMeta.color || DMS_ACCENT, 0.16)}`,
+                  }}>
+                    <Box sx={{
+                      width: 27, height: 27, borderRadius: '8px', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', bgcolor: alpha(activeModuleMeta.color || DMS_ACCENT, 0.14),
+                      color: activeModuleMeta.color || DMS_ACCENT,
+                    }}>
+                      <FolderOpenOutlinedIcon sx={{ fontSize: 16 }} />
+                    </Box>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{activeModuleMeta.label}</Typography>
+                      <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>فقط درخت‌وارهٔ همین ماژول</Typography>
+                    </Box>
+                  </Stack>
+                ) : null}
                 <Divider />
-                {folders.length ? <FolderTree folders={folders} selected={folderId} onSelect={setFolderId}
+                {scopedFolders.length ? <FolderTree folders={scopedFolders} selected={folderId} onSelect={setFolderId}
                   onEdit={openFolderEdit} onDelete={setConfirmFolderDelete} /> : (
-                  <Typography sx={{ fontSize: 12, color: MUTED, py: 1 }}>پوشه‌ای ساخته نشده است.</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, py: 1 }}>
+                    {activeModuleMeta ? 'برای این ماژول هنوز پوشه‌ای ساخته نشده است.' : 'پوشه‌ای ساخته نشده است.'}
+                  </Typography>
                 )}
               </Stack>
             </SurfaceCard>
@@ -670,8 +716,8 @@ const DocumentManagementPage = () => {
 
           <LibraryBreadcrumb
             rootLabel="کتابخانه"
-            path={selectedFolder?.path || ''}
-            onHome={() => setFolderId('')}
+            path={selectedFolder?.path || activeModuleMeta?.label || ''}
+            onHome={clearScope}
             count={personnelMode ? personnel.rows.length : filtered.length}
           />
 

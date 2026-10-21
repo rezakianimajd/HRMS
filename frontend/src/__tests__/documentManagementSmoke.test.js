@@ -233,3 +233,33 @@ test('personnel library shows employee cards and grouped document dialog', async
   root.unmount();
   container.remove();
 });
+
+
+test('selecting a library module limits the folder tree to that module', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/document-management/library?module=hr']}>
+          <DocumentManagementPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(900);
+  });
+  for (let index = 0; index < 2; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  expect(container.textContent).toContain('کتابخانه اسناد · منابع انسانی');
+  expect(container.textContent).toContain('پوشه‌های منابع انسانی');
+  expect(container.textContent).not.toContain('قرارداد پیمانکاری سالن تولید');
+
+  root.unmount();
+  container.remove();
+});

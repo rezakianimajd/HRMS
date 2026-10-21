@@ -10,7 +10,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import ArchiveOutlinedIcon from '@mui/icons-material/ArchiveOutlined';
 import AudioFileOutlinedIcon from '@mui/icons-material/AudioFileOutlined';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ExpandMoreOutlinedIcon from '@mui/icons-material/ExpandMoreOutlined';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
@@ -115,13 +115,23 @@ export const FolderTree = ({ folders = [], selected, onSelect, onEdit, onDelete 
     });
     return map;
   }, [folders]);
+
+  const toggleFolder = (folderId) => {
+    setExpanded((previous) => ({ ...previous, [folderId]: previous[folderId] === false }));
+  };
+
   const renderNodes = (parent, depth = 0) => (childrenByParent.get(parent) || []).map((folder) => {
     const hasChildren = (childrenByParent.get(String(folder.id)) || []).length > 0;
     const isExpanded = expanded[folder.id] !== false;
     const isSelected = String(selected) === String(folder.id);
+    const color = folder.color || DMS_ACCENT;
     return (
-      <Box key={folder.id}>
-        <Box role="button" tabIndex={0} aria-label={`پوشه ${folder.name}`}
+      <Box key={folder.id} sx={{ position: 'relative' }}>
+        <Box
+          role="button"
+          tabIndex={0}
+          aria-label={`پوشه ${folder.name}`}
+          aria-expanded={hasChildren ? isExpanded : undefined}
           onClick={() => onSelect(folder.id)}
           onKeyDown={(event) => {
             if (event.key === 'Enter' || event.key === ' ') {
@@ -130,29 +140,80 @@ export const FolderTree = ({ folders = [], selected, onSelect, onEdit, onDelete 
             }
           }}
           sx={{
-            width: '100%', p: 0.6, pl: 0.6 + depth * 1.1, borderRadius: '9px', textAlign: 'right',
-            cursor: 'pointer', bgcolor: isSelected ? alpha(folder.color || DMS_ACCENT, 0.09) : 'transparent',
-            border: `1px solid ${isSelected ? alpha(folder.color || DMS_ACCENT, 0.22) : 'transparent'}`,
-            '&:hover': { bgcolor: 'rgba(15,118,110,0.04)' },
-            '&:focus-visible': { outline: `2px solid ${alpha(folder.color || DMS_ACCENT, 0.35)}`, outlineOffset: 1 },
+            display: 'flex', alignItems: 'center', gap: 0.45, width: '100%',
+            pr: 0.5 + depth * 1.35, pl: 0.45, py: 0.48, borderRadius: '10px',
+            cursor: 'pointer', textAlign: 'right',
+            bgcolor: isSelected ? alpha(color, 0.11) : 'transparent',
+            border: `1px solid ${isSelected ? alpha(color, 0.26) : 'transparent'}`,
+            transition: 'background .16s ease, border-color .16s ease',
+            '&:hover': { bgcolor: alpha(color, 0.055), borderColor: alpha(color, 0.14) },
+            '&:focus-visible': { outline: `2px solid ${alpha(color, 0.35)}`, outlineOffset: 1 },
+            '& .folder-actions': { opacity: 0, transition: 'opacity .15s ease' },
+            '&:hover .folder-actions, &:focus-within .folder-actions': { opacity: 1 },
           }}>
-          <Stack direction="row" alignItems="center" spacing={0.35} sx={{ width: '100%' }}>
-            <IconButton size="small" onClick={(event) => { event.stopPropagation(); setExpanded((previous) => ({ ...previous, [folder.id]: !isExpanded })); }}
-              sx={{ p: 0.1, visibility: hasChildren ? 'visible' : 'hidden', transform: isExpanded ? 'rotate(90deg)' : 'none', transition: 'transform .15s ease' }}>
-              <ChevronRightIcon sx={{ fontSize: 14 }} />
-            </IconButton>
-            <FolderOutlinedIcon sx={{ fontSize: 16, color: folder.color || DMS_ACCENT }} />
-            <Typography sx={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: INK }} noWrap>{folder.name}</Typography>
-            <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
-            {onEdit ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(folder); }} sx={{ p: 0.15, color: MUTED }}><EditOutlinedIcon sx={{ fontSize: 12 }} /></IconButton> : null}
-            {onDelete && !folder.is_system ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(folder); }} sx={{ p: 0.15, color: RED }}><DeleteOutlineIcon sx={{ fontSize: 12 }} /></IconButton> : null}
-          </Stack>
+          <IconButton
+            size="small"
+            aria-label={isExpanded ? 'بستن پوشه' : 'باز کردن پوشه'}
+            onClick={(event) => { event.stopPropagation(); toggleFolder(folder.id); }}
+            sx={{
+              p: 0.08, ml: 0.05, visibility: hasChildren ? 'visible' : 'hidden',
+              transform: isExpanded ? 'rotate(0deg)' : 'rotate(-90deg)',
+              transition: 'transform .16s ease', color: isSelected ? color : MUTED,
+            }}>
+            <ExpandMoreOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+          <Box sx={{
+            width: 27, height: 27, borderRadius: '8px', flexShrink: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            bgcolor: alpha(color, isSelected ? 0.18 : 0.08), color: isSelected ? color : MUTED,
+          }}>
+            {hasChildren ? <FolderOpenOutlinedIcon sx={{ fontSize: 16 }} /> : <FolderOutlinedIcon sx={{ fontSize: 16 }} />}
+          </Box>
+          <Typography noWrap sx={{
+            flex: 1, minWidth: 0, fontSize: 12,
+            fontWeight: isSelected ? 900 : 700,
+            color: isSelected ? INK : '#334155',
+          }}>
+            {folder.name}
+          </Typography>
+          <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)}
+            sx={{
+              height: 18, fontSize: 12, flexShrink: 0,
+              bgcolor: isSelected ? '#fff' : alpha(color, 0.07),
+              color: isSelected ? color : MUTED,
+            }} />
+          {onEdit || (onDelete && !folder.is_system) ? (
+            <Stack className="folder-actions" direction="row" spacing={0.05} sx={{ flexShrink: 0 }}>
+              {onEdit ? (
+                <Tooltip title="ویرایش پوشه">
+                  <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(folder); }}
+                    sx={{ p: 0.12, color: MUTED }}>
+                    <EditOutlinedIcon sx={{ fontSize: 12 }} />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
+              {onDelete && !folder.is_system ? (
+                <Tooltip title="حذف پوشه">
+                  <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(folder); }}
+                    sx={{ p: 0.12, color: RED }}>
+                    <DeleteOutlineIcon sx={{ fontSize: 12 }} />
+                  </IconButton>
+                </Tooltip>
+              ) : null}
+            </Stack>
+          ) : null}
         </Box>
-        {hasChildren && isExpanded ? renderNodes(String(folder.id), depth + 1) : null}
+        {hasChildren && isExpanded ? (
+          <Box sx={{
+            mr: 1.55, pr: 0.25, borderRight: `1px solid ${alpha(color, 0.18)}`,
+          }}>
+            {renderNodes(String(folder.id), depth + 1)}
+          </Box>
+        ) : null}
       </Box>
     );
   });
-  return <Stack spacing={0.1}>{renderNodes('root')}</Stack>;
+  return <Stack spacing={0.12}>{renderNodes('root')}</Stack>;
 };
 
 export const LibraryBreadcrumb = ({ rootLabel = 'کتابخانه', path = '', onHome, count = 0 }) => {

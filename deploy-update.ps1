@@ -513,7 +513,11 @@ $FrontendFiles += @(
     # کتابخانهٔ اسناد پرسنل: کارت‌های پرسنلی و نمایش گروه‌بندی‌شدهٔ مدارک
     'frontend/src/pages/DocumentManagementPage.jsx',
     'frontend/src/pages/contracts/PersonnelDocumentUI.jsx',
-    'frontend/src/pages/contracts/personnelDocuments.js'
+    'frontend/src/pages/contracts/personnelDocuments.js',
+    # منوی ماژول‌محور کتابخانه و درخت‌وارهٔ محدود به ماژول
+    'frontend/src/core/config/documentLibraryModules.js',
+    'frontend/src/core/config/menuConfig.js',
+    'frontend/src/pages/contracts/DocumentManagementUI.jsx'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
