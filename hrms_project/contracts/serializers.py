@@ -1,5 +1,5 @@
 """Serializers for the Contracts module."""
-from decimal import Decimal
+from decimal import Decimal, ROUND_HALF_UP
 
 from django.db.models import Q, Sum
 from rest_framework import serializers
@@ -200,21 +200,56 @@ class StatementSerializer(serializers.ModelSerializer):
             })
         attrs['cumulative_previous_amount'] = previous
         attrs['work_done'] = amount - previous
-        additions = attrs.get('additions') or getattr(instance, 'additions', []) or []
-        deductions = attrs.get('deductions') or getattr(instance, 'deductions', []) or []
-        additions_total = sum(
-            (Decimal(str(item.get('amount') or 0)) for item in additions if isinstance(item, dict)),
-            Decimal('0'),
-        ) + Decimal(str(attrs.get('value_added_tax', getattr(instance, 'value_added_tax', 0)) or 0)) + Decimal(
-            str(attrs.get('other_additions', getattr(instance, 'other_additions', 0)) or 0)
+        work = amount - previous
+
+        def normalize_items(items):
+            if not isinstance(items, (list, tuple)):
+                return []
+            normalized = []
+            for item in items:
+                if not isinstance(item, dict):
+                    continue
+                try:
+                    percent = Decimal(str(item.get('percent') or 0))
+                    item_amount = Decimal(str(item.get('amount') or 0))
+                except Exception:  # noqa: BLE001
+                    percent, item_amount = Decimal('0'), Decimal('0')
+                if percent > 0 and item.get('mode') != 'amount':
+                    item_amount = (work * percent / 100).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+                normalized.append({
+                    **item,
+                    'percent': float(percent),
+                    'amount': float(item_amount),
+                })
+            return normalized
+
+        additions = normalize_items(
+            attrs['additions'] if 'additions' in attrs else getattr(instance, 'additions', []) or []
         )
+        deductions = normalize_items(
+            attrs['deductions'] if 'deductions' in attrs else getattr(instance, 'deductions', []) or []
+        )
+        attrs['additions'] = additions
+        attrs['deductions'] = deductions
+        value_added_tax = (
+            attrs['value_added_tax'] if 'value_added_tax' in attrs
+            else getattr(instance, 'value_added_tax', 0)
+        )
+        other_additions = (
+            attrs['other_additions'] if 'other_additions' in attrs
+            else getattr(instance, 'other_additions', 0)
+        )
+        additions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in additions),
+            Decimal('0'),
+        ) + Decimal(str(value_added_tax or 0)) + Decimal(str(other_additions or 0))
         deductions_total = sum(
-            (Decimal(str(item.get('amount') or 0)) for item in deductions if isinstance(item, dict)),
+            (Decimal(str(item.get('amount') or 0)) for item in deductions),
             Decimal('0'),
         )
         attrs['additions_total'] = additions_total
         attrs['deductions_total'] = deductions_total
-        attrs['net_amount'] = amount - previous + additions_total - deductions_total
+        attrs['net_amount'] = work + additions_total - deductions_total
         return attrs
 
 

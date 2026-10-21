@@ -544,6 +544,11 @@ const StatementEditorPage = () => {
     qc.invalidateQueries({ queryKey: ['external-contracts'] });
   };
 
+  const withCalculationMode = (items) => (Array.isArray(items) ? items : []).map((item) => ({
+    ...item,
+    mode: item?.mode || (Number(item?.percent || 0) > 0 ? 'percent' : 'amount'),
+  }));
+
   const sanitizeStatement = (payload) => {
     const additions = (Array.isArray(payload.additions) ? payload.additions : [])
       .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Number(item.amount) || 0 }));
@@ -565,9 +570,9 @@ const StatementEditorPage = () => {
       work_done: work,
       value_added_tax: valueAddedTax,
       other_additions: otherAdditions,
-      additions: additions.map(({ code, description, percent, amount: itemAmount }) => ({ code, description, percent, amount: itemAmount })),
+      additions: additions.map(({ code, description, percent, amount: itemAmount, mode }) => ({ code, description, percent, amount: itemAmount, mode })),
       additions_total: additionsTotal,
-      deductions: deductions.map(({ title, description, percent, amount: itemAmount, note }) => ({ title, description, percent, amount: itemAmount, note })),
+      deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
       deductions_total: deductionsTotal,
       net_amount: work + additionsTotal - deductionsTotal,
       currency: payload.currency || null,
@@ -712,6 +717,41 @@ const StatementEditorPage = () => {
   const cumulativeThis = num(form.amount);
   const workDone = Math.max(0, cumulativeThis - cumulativePrev);
   const netAmount = workDone + additionsTotal - deductionsTotal;
+
+  // آیتم‌هایی که با درصد وارد شده‌اند، با تغییر کارکرد دوره دوباره محاسبه می‌شوند.
+  useEffect(() => {
+    setForm((previous) => {
+      if (!previous || !Object.keys(previous).length) return previous;
+      const recalc = (items) => (Array.isArray(items) ? items : []).map((item) => (
+        item?.mode === 'percent'
+          ? { ...item, amount: Math.round((workDone * Number(item.percent || 0)) / 100) }
+          : item
+      ));
+      const additionsNext = recalc(previous.additions);
+      const deductionsNext = recalc(previous.deductions);
+      const taxNext = previous.value_added_tax_mode === 'percent'
+        ? Math.round((workDone * Number(previous.value_added_tax_percent || 0)) / 100)
+        : previous.value_added_tax;
+      const otherNext = previous.other_additions_mode === 'percent'
+        ? Math.round((workDone * Number(previous.other_additions_percent || 0)) / 100)
+        : previous.other_additions;
+      if (
+        JSON.stringify(additionsNext) === JSON.stringify(previous.additions)
+        && JSON.stringify(deductionsNext) === JSON.stringify(previous.deductions)
+        && taxNext === previous.value_added_tax
+        && otherNext === previous.other_additions
+      ) {
+        return previous;
+      }
+      return {
+        ...previous,
+        additions: additionsNext,
+        deductions: deductionsNext,
+        value_added_tax: taxNext,
+        other_additions: otherNext,
+      };
+    });
+  }, [workDone, setForm]);
   const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
   const formCurrencyLabel = normalizeCurrencyLabel(
     formCurrency?.name || formCurrency?.symbol || currencyLabel,
@@ -742,6 +782,10 @@ const StatementEditorPage = () => {
       currency: selectedContract?.currency || '',
       value_added_tax: 0,
       other_additions: 0,
+      value_added_tax_percent: 0,
+      other_additions_percent: 0,
+      value_added_tax_mode: 'amount',
+      other_additions_mode: 'amount',
       additions: [],
       deductions: [],
       documents: [],
@@ -756,6 +800,10 @@ const StatementEditorPage = () => {
   };
 
   const openEdit = (row) => {
+    const editWork = Math.max(0, Number(row.amount || 0) - Number(row.cumulative_previous_amount || 0));
+    const percentOfWork = (value) => (
+      editWork > 0 ? Math.round((Number(value || 0) / editWork) * 10000) / 100 : 0
+    );
     setForm({
       ...row,
       contract: String(row.contract || ''),
@@ -763,8 +811,12 @@ const StatementEditorPage = () => {
       cumulative_previous_amount: Number(row.cumulative_previous_amount || 0),
       value_added_tax: Number(row.value_added_tax || 0),
       other_additions: Number(row.other_additions || 0),
-      additions: Array.isArray(row.additions) ? row.additions : [],
-      deductions: Array.isArray(row.deductions) ? row.deductions : [],
+      value_added_tax_percent: percentOfWork(row.value_added_tax),
+      other_additions_percent: percentOfWork(row.other_additions),
+      value_added_tax_mode: 'amount',
+      other_additions_mode: 'amount',
+      additions: withCalculationMode(row.additions),
+      deductions: withCalculationMode(row.deductions),
       documents: Array.isArray(row.documents) ? row.documents : [],
       pendingFiles: [],
       is_approved: Boolean(row.is_approved),
@@ -789,24 +841,49 @@ const StatementEditorPage = () => {
     setPrintPending(false);
   };
 
-  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, percent: 0 }]);
+  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, percent: 0, mode: 'amount' }]);
   const removeDeduction = (index) => setField('deductions', deductions.filter((_, current) => current !== index));
   const updateDeduction = (index, key, value) => {
-    setField('deductions', deductions.map((item, current) => (current === index ? { ...item, [key]: value } : item)));
+    setField('deductions', deductions.map((item, current) => {
+      if (current !== index) return item;
+      if (key === 'percent') {
+        const percent = Math.max(0, Number(value) || 0);
+        return { ...item, percent, amount: Math.round((workDone * percent) / 100), mode: 'percent' };
+      }
+      if (key === 'amount') {
+        const amount = Math.max(0, Number(value) || 0);
+        const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
+        return { ...item, amount, percent, mode: 'amount' };
+      }
+      return { ...item, [key]: value };
+    }));
   };
   const chooseDeduction = (definition) => {
     const percent = Number(definition.default_percent || 0);
     setField('deductions', [...deductions, {
       title: definition.description || definition.code,
       percent,
-      amount: Math.round((cumulativeThis * percent) / 100),
+      amount: Math.round((workDone * percent) / 100),
+      mode: 'percent',
     }]);
   };
 
-  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0 }]);
+  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0, mode: 'amount' }]);
   const removeAddition = (index) => setField('additions', additions.filter((_, current) => current !== index));
   const updateAddition = (index, key, value) => {
-    setField('additions', additions.map((item, current) => (current === index ? { ...item, [key]: value } : item)));
+    setField('additions', additions.map((item, current) => {
+      if (current !== index) return item;
+      if (key === 'percent') {
+        const percent = Math.max(0, Number(value) || 0);
+        return { ...item, percent, amount: Math.round((workDone * percent) / 100), mode: 'percent' };
+      }
+      if (key === 'amount') {
+        const amount = Math.max(0, Number(value) || 0);
+        const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
+        return { ...item, amount, percent, mode: 'amount' };
+      }
+      return { ...item, [key]: value };
+    }));
   };
   const chooseAddition = (definition) => {
     const percent = Number(definition.default_percent || 0);
@@ -814,7 +891,8 @@ const StatementEditorPage = () => {
       code: definition.code,
       description: definition.description,
       percent,
-      amount: Math.round((cumulativeThis * percent) / 100),
+      amount: Math.round((workDone * percent) / 100),
+      mode: 'percent',
     }]);
   };
 
@@ -1105,6 +1183,24 @@ const StatementEditorView = ({
 }) => {
   const theme = useTheme();
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
+  const updateFixedAddition = (field, key, value) => {
+    const percentKey = `${field}_percent`;
+    const modeKey = `${field}_mode`;
+    setForm((previous) => {
+      if (key === 'percent') {
+        const percent = Math.max(0, Number(value) || 0);
+        return {
+          ...previous,
+          [percentKey]: percent,
+          [field]: Math.round((Math.max(0, Number(workDone) || 0) * percent) / 100),
+          [modeKey]: 'percent',
+        };
+      }
+      const amount = Math.max(0, Number(value) || 0);
+      const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
+      return { ...previous, [field]: amount, [percentKey]: percent, [modeKey]: 'amount' };
+    });
+  };
   const documents = Array.isArray(form.documents) ? form.documents : [];
   const pendingFiles = Array.isArray(form.pendingFiles) ? form.pendingFiles : [];
   const totalDocs = documents.length + pendingFiles.length;
@@ -1197,9 +1293,26 @@ const StatementEditorView = ({
                   <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#0f766e' }}>اضافات</Typography>
                   <Chip size="small" label={money(additionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
                 </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
+                  درصد اضافات بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.
+                </Typography>
                 <Grid container spacing={0.8} sx={{ mb: 0.8 }}>
-                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="ارزش افزوده" value={form.value_added_tax ?? 0} onChange={(value) => update('value_added_tax', value)} /></Grid>
-                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="سایر اضافات" value={form.other_additions ?? 0} onChange={(value) => update('other_additions', value)} /></Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Stack direction="row" spacing={0.6} alignItems="center">
+                      <MoneyInput size="small" fullWidth label="ارزش افزوده" value={form.value_added_tax ?? 0} onChange={(value) => updateFixedAddition('value_added_tax', 'amount', value)} />
+                      <TextField size="small" type="number" label="٪" value={form.value_added_tax_percent ?? 0}
+                        onChange={(event) => updateFixedAddition('value_added_tax', 'percent', event.target.value)}
+                        sx={{ width: 82, flex: '0 0 82px' }} />
+                    </Stack>
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <Stack direction="row" spacing={0.6} alignItems="center">
+                      <MoneyInput size="small" fullWidth label="سایر اضافات" value={form.other_additions ?? 0} onChange={(value) => updateFixedAddition('other_additions', 'amount', value)} />
+                      <TextField size="small" type="number" label="٪" value={form.other_additions_percent ?? 0}
+                        onChange={(event) => updateFixedAddition('other_additions', 'percent', event.target.value)}
+                        sx={{ width: 82, flex: '0 0 82px' }} />
+                    </Stack>
+                  </Grid>
                 </Grid>
                 {additions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`addition-${index}`} sx={{ mb: 0.55 }}>
@@ -1226,6 +1339,9 @@ const StatementEditorView = ({
                   <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#be123c' }}>کسورات</Typography>
                   <Chip size="small" label={money(deductionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
                 </Stack>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
+                  درصد کسورات (از جمله پیش‌پرداخت) بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.
+                </Typography>
                 {deductions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`deduction-${index}`} sx={{ mb: 0.55 }}>
                     <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="عنوان کسور" value={item.title || ''} onChange={(event) => onUpdateDeduction(index, 'title', event.target.value)} /></Grid>

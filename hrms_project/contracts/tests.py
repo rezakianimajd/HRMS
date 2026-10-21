@@ -1,10 +1,12 @@
 """تست خروجی اکسل جامع قراردادها (اجرا روی سرور با PostgreSQL)."""
 from datetime import date
+from decimal import Decimal
 
 from django.test import TestCase
 
 from contracts.excel_export import build_contracts_workbook
 from contracts.models import Addendum, Contract, ContractParty, Guarantee, Invoice, Payment, Statement
+from contracts.serializers import StatementSerializer
 from core.models import Company
 from settings_app.models import Currency, Signatory
 
@@ -558,3 +560,65 @@ class GuaranteeKindOptionsTests(TestCase):
         self.assertTrue(pairs, 'گزینه‌های guarantee_kind در addendumSubjects.js خوانده نشد.')
         self.assertEqual(pairs, [(code, str(label)) for code, label in Contract.GuaranteeKind.choices])
 
+
+class StatementCalculationTests(TestCase):
+    """محاسبهٔ خودکار کارکرد دوره و آیتم‌های درصدی صورت‌وضعیت."""
+
+    def setUp(self):
+        self.company = make_company(schema_name='testco-stmt', name='شرکت تست صورت‌وضعیت')
+        self.party = ContractParty.objects.create(
+            company=self.company, name='پیمانکار تست', party_type='contractor',
+        )
+        self.currency = Currency.objects.create(
+            company=self.company, code='IRR', name='ریال', symbol='﷼', exchange_rate=1,
+        )
+        self.contract = Contract.objects.create(
+            company=self.company, number='C-STMT', subject='قرارداد محاسبه صورت‌وضعیت',
+            party=self.party, contract_type='construction', status='active', amount=10_000_000,
+            currency=self.currency, start_date=date(2025, 3, 21), end_date=date(2026, 3, 20),
+        )
+
+    def _payload(self, **overrides):
+        payload = {
+            'contract': self.contract.pk,
+            'number': 'S-TEST',
+            'date': '2025-08-01',
+            'amount': 5_000_000,
+        }
+        payload.update(overrides)
+        return payload
+
+    def test_percentage_items_use_current_period_work(self):
+        Statement.objects.create(
+            company=self.company, contract=self.contract, number='S-PRIOR',
+            date=date(2025, 7, 1), amount=2_000_000,
+        )
+        serializer = StatementSerializer(data=self._payload(
+            additions=[{'code': 'vat', 'description': 'ارزش افزوده', 'percent': 10, 'amount': 0, 'mode': 'percent'}],
+            deductions=[{'title': 'پیش‌پرداخت', 'percent': 5, 'amount': 0, 'mode': 'percent'}],
+        ))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        validated = serializer.validated_data
+        self.assertEqual(validated['work_done'], Decimal('3000000'))
+        self.assertEqual(validated['additions'][0]['amount'], 300_000.0)
+        self.assertEqual(validated['deductions'][0]['amount'], 150_000.0)
+        self.assertEqual(validated['additions_total'], Decimal('300000'))
+        self.assertEqual(validated['deductions_total'], Decimal('150000'))
+        self.assertEqual(validated['net_amount'], Decimal('3150000'))
+
+    def test_reported_amount_is_kept_when_item_is_entered_as_amount(self):
+        serializer = StatementSerializer(data=self._payload(
+            additions=[{'code': 'other', 'description': 'سایر', 'percent': 10, 'amount': 123_456, 'mode': 'amount'}],
+        ))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['additions'][0]['amount'], 123_456.0)
+        self.assertEqual(serializer.validated_data['additions_total'], Decimal('123456'))
+
+    def test_amount_cannot_be_less_than_previous_statement(self):
+        Statement.objects.create(
+            company=self.company, contract=self.contract, number='S-OLD',
+            date=date(2025, 7, 1), amount=6_000_000,
+        )
+        serializer = StatementSerializer(data=self._payload(number='S-NEW', amount=5_000_000))
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('amount', serializer.errors)
