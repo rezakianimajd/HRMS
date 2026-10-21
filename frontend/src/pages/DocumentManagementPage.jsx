@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import useAuth from '../core/hooks/useAuth';
 import {
@@ -14,6 +14,7 @@ import AddIcon from '@mui/icons-material/Add';
 import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
+import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import SyncIcon from '@mui/icons-material/Sync';
@@ -28,6 +29,8 @@ import {
   DocumentDetailDrawer, DocumentEditorDialog, DocumentTable, FolderEditorDialog,
   FolderTree, LibraryBreadcrumb, StoragePolicyCard, WORKFLOW_STATUS,
 } from './contracts/DocumentManagementUI';
+import { PersonnelDocumentCard, PersonnelDocumentsDialog } from './contracts/PersonnelDocumentUI';
+import { buildPersonnelRows, fileFormat, groupPersonnelDocuments, normalizeText } from './contracts/personnelDocuments';
 
 const EMPTY_DOCUMENT = {
   id: null, title: '', folder: '', description: '', tags: '', reference_number: '',
@@ -39,8 +42,32 @@ const EMPTY_DOCUMENT = {
 };
 const EMPTY_FOLDER = { id: null, name: '', parent: '', color: '#0f766e', description: '' };
 
+const PERSONNEL_WORDS = ['پرسنل', 'کارکنان', 'employees', 'employee', 'personnel', 'منابعانسانی'];
+const isPersonnelFolder = (folder) => {
+  if (!folder) return false;
+  const text = normalizeText(`${folder.name || ''} ${folder.path || ''} ${folder.code || ''}`);
+  return PERSONNEL_WORDS.some((word) => text.includes(normalizeText(word)));
+};
+
+const fetchAllEmployees = async () => {
+  const rows = [];
+  let page = 1;
+  let hasNext = true;
+  while (hasNext && page <= 20) {
+    const response = await axiosInstance.get('/employees/', { params: { page_size: 100, page } });
+    const payload = response.data;
+    if (Array.isArray(payload)) return payload;
+    rows.push(...(payload.results || []));
+    hasNext = Boolean(payload.next);
+    page += 1;
+  }
+  return rows;
+};
+
+
 const DocumentManagementPage = () => {
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const permissions = user?.permissions || {};
   const canManage = Boolean(user?.is_superuser || permissions.can_manage_documents);
@@ -59,6 +86,7 @@ const DocumentManagementPage = () => {
   const [sortBy, setSortBy] = useState('newest');
   const [view, setView] = useState('cards');
   const [detail, setDetail] = useState(null);
+  const [personnelDetail, setPersonnelDetail] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_DOCUMENT);
   const [folderDialog, setFolderDialog] = useState(false);
@@ -136,27 +164,32 @@ const DocumentManagementPage = () => {
     return ids;
   }, [folderId, folders]);
 
+  const matchesDocumentFilters = (row) => {
+    if (folderIds && !folderIds.has(String(row.folder))) return false;
+    if (statusFilter === 'all') {
+      if (workflowFilter === 'all' && row.status === 'archived') return false;
+    } else if (row.status !== statusFilter) return false;
+    if (typeFilter !== 'all' && row.document_type !== typeFilter) return false;
+    if (workflowFilter !== 'all' && row.workflow_status !== workflowFilter) return false;
+    if (confidentialityFilter !== 'all' && row.confidentiality !== confidentialityFilter) return false;
+    if (scope === 'mine' && String(row.created_by) !== String(user?.id)) return false;
+    if (scope === 'expiring' && !(row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30)) return false;
+    if (scope === 'expired' && !row.is_expired) return false;
+    if (reviewFilter === 'due') {
+      if (!row.review_date || String(row.review_date) > new Date().toISOString().slice(0, 10)) return false;
+    }
+    if (reviewFilter === 'soon') {
+      const today = new Date().toISOString().slice(0, 10);
+      const limit = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+      if (!row.review_date || String(row.review_date) < today || String(row.review_date) > limit) return false;
+    }
+    return true;
+  };
+
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     let result = documents.filter((row) => {
-      if (folderIds && !folderIds.has(String(row.folder))) return false;
-      if (statusFilter === 'all') {
-        if (workflowFilter === 'all' && row.status === 'archived') return false;
-      } else if (row.status !== statusFilter) return false;
-      if (typeFilter !== 'all' && row.document_type !== typeFilter) return false;
-      if (workflowFilter !== 'all' && row.workflow_status !== workflowFilter) return false;
-      if (confidentialityFilter !== 'all' && row.confidentiality !== confidentialityFilter) return false;
-      if (scope === 'mine' && String(row.created_by) !== String(user?.id)) return false;
-      if (scope === 'expiring' && !(row.days_until_expiry != null && row.days_until_expiry >= 0 && row.days_until_expiry <= 30)) return false;
-      if (scope === 'expired' && !row.is_expired) return false;
-      if (reviewFilter === 'due') {
-        if (!row.review_date || String(row.review_date) > new Date().toISOString().slice(0, 10)) return false;
-      }
-      if (reviewFilter === 'soon') {
-        const today = new Date().toISOString().slice(0, 10);
-        const limit = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
-        if (!row.review_date || String(row.review_date) < today || String(row.review_date) > limit) return false;
-      }
+      if (!matchesDocumentFilters(row)) return false;
       if (!query) return true;
       return [row.title, row.description, row.tags, row.reference_number, row.folder_path, row.file_name]
         .some((value) => String(value || '').toLowerCase().includes(query));
@@ -172,12 +205,56 @@ const DocumentManagementPage = () => {
     return result;
   }, [documents, folderIds, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id, search, sortBy]);
 
+  const personnelDocuments = useMemo(
+    () => documents.filter(matchesDocumentFilters),
+    [documents, folderIds, statusFilter, typeFilter, workflowFilter, reviewFilter, confidentialityFilter, scope, user?.id],
+  );
+
+  const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
+  const personnelMode = isPersonnelFolder(selectedFolder);
+  const personnelEmployeesQuery = useQuery({
+    queryKey: ['dms-personnel-employees'],
+    queryFn: fetchAllEmployees,
+    enabled: personnelMode,
+    staleTime: 5 * 60 * 1000,
+  });
+  const personnelEmployees = Array.isArray(personnelEmployeesQuery.data) ? personnelEmployeesQuery.data : [];
+  const personnel = useMemo(
+    () => (personnelMode ? buildPersonnelRows(personnelEmployees, personnelDocuments, search) : { rows: [], unassigned: [] }),
+    [personnelMode, personnelEmployees, personnelDocuments, search],
+  );
+  const personnelFileCount = personnel.rows.reduce((total, row) => total + row.count, 0)
+    + personnel.unassigned.length;
+  const unassignedPersonnel = useMemo(() => {
+    const rows = personnel.unassigned || [];
+    if (!rows.length) return null;
+    const formats = {};
+    rows.forEach((row) => {
+      const format = fileFormat(row);
+      formats[format.key] = (formats[format.key] || 0) + 1;
+    });
+    return {
+      employee: {
+        id: 'unassigned', full_name: 'مدارک بدون پرسنل قابل تطبیق',
+        employee_id: '—', department_name: 'نیازمند تخصیص',
+      },
+      documents: rows,
+      groups: groupPersonnelDocuments(rows),
+      formats,
+      count: rows.length,
+    };
+  }, [personnel.unassigned]);
   const activeDocuments = documents.filter((row) => row.status !== 'archived');
+
   const replacementOptions = supersedeRow
     ? documents.filter((row) => String(row.id) !== String(supersedeRow.id) && ['approved', 'published'].includes(row.workflow_status))
     : [];
-  const selectedFolder = folders.find((folder) => String(folder.id) === String(folderId));
-  const viewMeta = scope === 'mine'
+  const viewMeta = personnelMode
+    ? {
+      title: `کتابخانه اسناد · ${selectedFolder?.name || 'پرسنل'}`,
+      subtitle: 'پرونده‌های پرسنلی؛ با کلیک روی هر کارت، همهٔ مدارک به تفکیک نوع و قالب نمایش داده می‌شود',
+    }
+    : scope === 'mine'
     ? { title: 'اسناد من', subtitle: 'اسنادی که شما ایجاد کرده‌اید' }
     : scope === 'expiring'
       ? { title: 'اسناد نزدیک انقضا', subtitle: 'اسناد دارای تاریخ انقضا در ۳۰ روز آینده' }
@@ -486,10 +563,12 @@ const DocumentManagementPage = () => {
   return (
     <Box sx={{ pb: 1 }}>
       <PageHeader
-        icon={<FolderOpenOutlinedIcon />}
+        icon={personnelMode ? <PeopleAltOutlinedIcon /> : <FolderOpenOutlinedIcon />}
         title={viewMeta.title}
         subtitle={viewMeta.subtitle}
-        badge={<Chip size="small" label={`${formatPersianNumber(activeDocuments.length)} سند فعال`}
+        badge={<Chip size="small" label={personnelMode
+          ? `${formatPersianNumber(personnel.rows.length)} پرسنل · ${formatPersianNumber(personnelFileCount)} فایل`
+          : `${formatPersianNumber(activeDocuments.length)} سند فعال`}
           sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}
         actions={(
           <>
@@ -532,7 +611,9 @@ const DocumentManagementPage = () => {
         <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
           <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: '1px solid #e5edf1' }}>
             <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-              <TextField size="small" placeholder="جست‌وجو در عنوان، برچسب، شماره مرجع یا نام فایل…"
+              <TextField size="small" placeholder={personnelMode
+                ? 'جست‌وجوی نام، شماره پرسنلی، عنوان مدرک یا توضیحات…'
+                : 'جست‌وجو در عنوان، برچسب، شماره مرجع یا نام فایل…'}
                 value={search} onChange={(event) => setSearch(event.target.value)}
                 sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
                 InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
@@ -575,10 +656,15 @@ const DocumentManagementPage = () => {
                   <MenuItem value="size">بیشترین حجم</MenuItem>
                 </Select>
               </FormControl>
-              <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
-                <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-              </ToggleButtonGroup>
+              {personnelMode ? (
+                <Chip size="small" label="نمای پرسنلی"
+                  sx={{ height: 24, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.09), color: DMS_ACCENT, fontWeight: 800 }} />
+              ) : (
+                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
+                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
+                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
+                </ToggleButtonGroup>
+              )}
             </Stack>
           </Paper>
 
@@ -586,12 +672,52 @@ const DocumentManagementPage = () => {
             rootLabel="کتابخانه"
             path={selectedFolder?.path || ''}
             onHome={() => setFolderId('')}
-            count={filtered.length}
+            count={personnelMode ? personnel.rows.length : filtered.length}
           />
 
           {error ? <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1, borderRadius: '11px' }}>{error}</Alert> : null}
 
-          {!filtered.length ? (
+          {personnelMode ? (
+            personnelEmployeesQuery.isLoading ? (
+              <Box sx={{ py: 7, textAlign: 'center' }}><CircularProgress size={28} /></Box>
+            ) : (
+              <>
+                {personnelEmployeesQuery.isError ? (
+                  <Alert severity="warning" sx={{ mb: 1.2, borderRadius: '11px' }}>
+                    فهرست پرسنل دریافت نشد؛ مدارک بر اساس نام پوشه نمایش داده می‌شوند.
+                  </Alert>
+                ) : null}
+                {!personnel.rows.length && !unassignedPersonnel ? (
+                  <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
+                    <PeopleAltOutlinedIcon sx={{ fontSize: 42, color: '#cbd5e1', mb: 1 }} />
+                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>پرسنلی با مدرک در این پوشه پیدا نشد.</Typography>
+                    <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>
+                      فیلترها یا عبارت جست‌وجو را تغییر دهید یا از دکمهٔ «همگام‌سازی بایگانی» استفاده کنید.
+                    </Typography>
+                  </Paper>
+                ) : (
+                  <Grid container spacing={1.5}>
+                    {personnel.rows.map((person) => (
+                      <Grid item xs={12} sm={6} md={4} xl={3} key={person.employee.id}>
+                        <PersonnelDocumentCard
+                          person={person}
+                          onOpen={() => setPersonnelDetail(person)}
+                          onEdit={(employee) => navigate(`/employees/${employee.id}/edit`)}
+                          onOpenProfile={(employee) => navigate(`/employees/${employee.id}`)}
+                        />
+                      </Grid>
+                    ))}
+                    {unassignedPersonnel ? (
+                      <Grid item xs={12} sm={6} md={4} xl={3} key="unassigned-personnel">
+                        <PersonnelDocumentCard person={unassignedPersonnel}
+                          onOpen={() => setPersonnelDetail(unassignedPersonnel)} />
+                      </Grid>
+                    ) : null}
+                  </Grid>
+                )}
+              </>
+            )
+          ) : !filtered.length ? (
             <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
               <FolderOpenOutlinedIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 1 }} />
               <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>سندی با این مشخصات پیدا نشد.</Typography>
@@ -624,6 +750,17 @@ const DocumentManagementPage = () => {
         onPreview={(row) => previewDocument.mutate(row)}
         onVersionDownload={(row, version) => downloadVersion.mutate({ row, version })}
         onRestoreVersion={(row, version) => restoreVersion.mutate({ row, version })} />
+
+      <PersonnelDocumentsDialog
+        person={personnelDetail}
+        onClose={() => setPersonnelDetail(null)}
+        onPreview={(row) => (row.isEmployeePhoto ? window.open(row.file_url, '_blank', 'noopener,noreferrer') : previewDocument.mutate(row))}
+        onDownload={(row) => (row.isEmployeePhoto ? window.open(row.file_url, '_blank', 'noopener,noreferrer') : downloadDocument.mutate(row))}
+        onEditDocument={(row) => { setPersonnelDetail(null); openEdit(row); }}
+        onEditEmployee={(employee) => { setPersonnelDetail(null); navigate(`/employees/${employee.id}/edit`); }}
+        onOpenProfile={(employee) => { setPersonnelDetail(null); navigate(`/employees/${employee.id}`); }}
+      />
+
 
       <DocumentEditorDialog open={editorOpen} onClose={() => { setEditorOpen(false); setError(''); }}
         form={form} setForm={setForm} folderList={folders} error={error} setError={setError}

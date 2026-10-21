@@ -44,6 +44,7 @@ const folders = [
   { id: 1, name: 'قراردادها', parent: null, path: 'قراردادها', color: '#0f766e', documents_count: 1, children_count: 1 },
   { id: 2, name: 'قراردادهای جاری', parent: 1, path: 'قراردادها / قراردادهای جاری', color: '#2563eb', documents_count: 1, children_count: 0 },
   { id: 3, name: 'مدارک و مستندات شرکت', parent: null, code: 'company.documents', path: 'مدارک و مستندات شرکت', color: '#0f172a', documents_count: 0, children_count: 10, is_system: true },
+  { id: 4, name: 'پرسنل', parent: null, code: 'archive.employees', path: 'پرسنل', color: '#0ea5e9', documents_count: 4, children_count: 0 },
 ];
 const documents = [
   {
@@ -75,6 +76,25 @@ const documents = [
     created_by_name: 'مدیر بایگانی', updated_by_name: '', is_expired: false,
     days_until_expiry: 20, created_at: '2026-01-09T08:00:00Z', versions: [],
   },
+  ...[
+    ['عکس پرسنلی', 'photo.jpg', '.jpg', 'photo', 100],
+    ['شناسنامه', 'birth.pdf', '.pdf', 'birth', 101],
+    ['کارت ملی', 'national-id.jpg', '.jpg', 'national', 102],
+    ['مدرک تحصیلی', 'degree.pdf', '.pdf', 'education', 103],
+  ].map(([title, fileName, ext, key, id]) => ({
+    id, title, folder: 4, folder_name: '1001_علی_رضایی',
+    folder_path: 'پرسنل / 1001_علی_رضایی', description: `${title} ثبت‌شده در پرونده`,
+    tags: 'پرسنل', confidentiality: 'internal', confidentiality_display: 'داخلی',
+    status: 'active', status_display: 'فعال', workflow_status: 'published',
+    workflow_status_display: 'منتشرشده', document_type: 'hr',
+    document_type_display: 'سند منابع انسانی', is_locked: false,
+    current_version: 200 + id, version_count: 1,
+    file_url: `https://example.test/media/${fileName}`, file_name: fileName,
+    file_extension: ext, file_size: 180000, file_size_display: '176 KB',
+    related_entity_type: 'archive.employees', related_entity_label: '1001_علی_رضایی',
+    created_by_name: 'مدیر بایگانی', updated_by_name: '', is_expired: false,
+    created_at: '2025-12-01T08:00:00Z', versions: [], key,
+  })),
 ];
 const stats = {
   total: 2, active: 1, archived: 0, expiring_soon: 1, expired: 0,
@@ -92,6 +112,11 @@ const activity = {
   action: 'new_version', action_display: 'ثبت نسخه جدید', user_name: 'مدیر بایگانی',
   created_at: '2026-01-12T08:00:00Z',
 };
+const employees = [{
+  id: 7, employee_id: '1001', full_name: 'علی رضایی',
+  first_name: 'علی', last_name: 'رضایی', department_name: 'فنی',
+  job_title_name: 'کارشناس', photo_url: 'https://example.test/media/employee-photo.jpg',
+}];
 
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -106,6 +131,7 @@ beforeEach(() => {
     if (url === '/document-management/documents/') return Promise.resolve({ data: documents });
     if (url === '/document-management/stats/') return Promise.resolve({ data: stats });
     if (url === '/document-management/activities/') return Promise.resolve({ data: [activity] });
+    if (url === '/employees/') return Promise.resolve({ data: { count: employees.length, next: null, results: employees } });
     return Promise.resolve({ data: [] });
   });
 });
@@ -162,6 +188,47 @@ test('document management page renders library, folder tree, detail drawer and u
   expect(document.body.textContent).toContain('آپلود سند جدید');
   expect(document.body.textContent).toContain('عنوان سند *');
   expect(document.body.textContent).toContain('سطح محرمانگی');
+
+  root.unmount();
+  container.remove();
+});
+
+test('personnel library shows employee cards and grouped document dialog', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/document-management/library?folder=4']}>
+          <DocumentManagementPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(900);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  expect(container.textContent).toContain('کتابخانه اسناد · پرسنل');
+  expect(container.textContent).toContain('علی رضایی');
+  expect(container.textContent).toContain('شماره پرسنلی: ۱۰۰۱');
+  expect(container.textContent).toContain('مشاهده');
+
+  const viewButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'مشاهده');
+  expect(viewButton).toBeTruthy();
+  await act(async () => { viewButton.click(); await wait(300); });
+
+  expect(document.body.textContent).toContain('عکس پرسنلی');
+  expect(document.body.textContent).toContain('شناسنامه');
+  expect(document.body.textContent).toContain('کارت ملی');
+  expect(document.body.textContent).toContain('مدرک تحصیلی');
+  expect(document.body.textContent).toContain('ثبت‌شده در پرونده');
 
   root.unmount();
   container.remove();

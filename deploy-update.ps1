@@ -509,7 +509,11 @@ $FrontendFiles += @(
     'frontend/src/pages/EmployeeListPage.jsx',
     'frontend/src/pages/EmployeeForm.jsx',
     'frontend/src/core/components/ui/EmployeeAvatar.jsx',
-    'frontend/src/core/components/employee/DocumentsTab.jsx'
+    'frontend/src/core/components/employee/DocumentsTab.jsx',
+    # کتابخانهٔ اسناد پرسنل: کارت‌های پرسنلی و نمایش گروه‌بندی‌شدهٔ مدارک
+    'frontend/src/pages/DocumentManagementPage.jsx',
+    'frontend/src/pages/contracts/PersonnelDocumentUI.jsx',
+    'frontend/src/pages/contracts/personnelDocuments.js'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)
