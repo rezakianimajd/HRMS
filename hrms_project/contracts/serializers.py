@@ -1,7 +1,7 @@
 """Serializers for the Contracts module."""
 from decimal import Decimal
 
-from django.db.models import Q
+from django.db.models import Q, Sum
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
@@ -171,7 +171,9 @@ class StatementSerializer(serializers.ModelSerializer):
         elif statement_date:
             qs = qs.filter(date__lte=statement_date)
         previous = qs.order_by('-date', '-pk').only('amount').first()
-        return Decimal(previous.amount or 0) if previous else Decimal('0')
+        prior_work = qs.aggregate(total=Sum('work_done'))['total'] or 0
+        previous_amount = Decimal(previous.amount or 0) if previous else Decimal('0')
+        return max(previous_amount, Decimal(str(prior_work or 0)))
 
     def validate(self, attrs):
         """مبلغ تجمعی دوره قبل و کارکرد دوره را در سمت سرور معتبر می‌کند.
