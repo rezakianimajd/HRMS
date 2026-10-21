@@ -14,8 +14,14 @@ import { BLUE, COLOR_DARK, GREEN, glass } from './reportHelpers';
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 const KIND_LABEL = {
-  group: 'گروه حساب', account: 'حساب', aux1: 'تفصیلی ۱', aux2: 'تفصیلی ۲', aux3: 'تفصیلی ۳',
+  group: 'گروه حساب', account: 'حساب', aux1: 'تفصیلی ۴', aux2: 'تفصیلی ۵', aux3: 'تفصیلی ۶',
 };
+
+/** مسیر نمایشی گره برای عنوان دیالوگ */
+const pathOf = (node) => [
+  ...(node?.__parents || []).map((parent) => parent.name),
+  node?.name,
+].filter(Boolean).join(' / ');
 
 /** پارامترهای API «ریز گردش» بر اساس نوع گره (حساب / گروه / تفصیلی) */
 const buildParams = (node) => {
@@ -25,7 +31,7 @@ const buildParams = (node) => {
     params.kind = 'group';
   } else if (node.kind && node.kind.startsWith('aux')) {
     params.kind = node.kind;
-    const account = (node.__parents || []).find((p) => p.kind === 'account');
+    const account = (node.__parents || []).filter((p) => p.kind === 'account').slice(-1)[0];
     if (account) params.account = account.id;
     (node.__parents || [])
       .filter((p) => p.kind && p.kind.startsWith('aux'))
@@ -49,7 +55,7 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
   );
 
   const { data, isLoading, isError } = useQuery({
-    queryKey: ['acc-drill-ledger', node?.kind, node?.id, params.account || '', params.aux1 || '', params.aux2 || '', dateFrom, dateTo],
+    queryKey: ['acc-drill-ledger', node?.kind, node?.id, params.account || '', params.aux1 || '', params.aux2 || '', params.aux3 || '', dateFrom, dateTo],
     queryFn: () => axiosInstance
       .get(`/accounting/reports/account-ledger/${node.id}/`, { params })
       .then((r) => r.data),
@@ -71,8 +77,8 @@ const LedgerDrillDialog = ({ node, dateFrom, dateTo, onClose }) => {
             <Typography variant="subtitle1" fontWeight={800} sx={{ color: COLOR_DARK, fontFamily: FONT }}>
               ریز گردش {node?.code != null ? toPersianDigits(node.code) : ''} — {node?.name || ''}
             </Typography>
-            <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT }}>
-              {KIND_LABEL[node?.kind] || 'حساب'} · بازه: {range}
+            <Typography variant="caption" color="textSecondary" sx={{ fontFamily: FONT, display: 'block' }}>
+              {KIND_LABEL[node?.kind] || 'حساب'} · {pathOf(node)} · بازه: {range}
             </Typography>
           </Box>
           <Chip size="small" label={acc.nature === 'credit' ? 'ماهیت: بستانکار' : 'ماهیت: بدهکار'}
