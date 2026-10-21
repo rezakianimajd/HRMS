@@ -34,7 +34,7 @@ from accounting.serializers import (
 )
 from accounting.services import (
     PostingService, SourcePostingService, AccountingError,
-    advance_document_approval,
+    advance_document_approval, advance_document_approval_to_final,
 )
 from accounting import coding, maintenance
 
@@ -968,6 +968,7 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         from django.db.models import Q
 
         qs = super().get_queryset().select_related('company', 'journal', 'fiscal_year')
+        qs = qs.exclude(status='reversed')
         fiscal_year = params.get('fiscal_year')
         if fiscal_year:
             year = FiscalYear.objects.filter(pk=fiscal_year, company=_company(self.request)).first()
@@ -985,6 +986,77 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         if q:
             qs = qs.filter(Q(number__icontains=q) | Q(description__icontains=q))
         return qs
+
+    @action(detail=False, methods=['post'])
+    def bulk_advance(self, request):
+        """انتقال گروهی یک مرحله به جلو: پیش‌نویس → بررسی → ثبت → قفل.
+
+        برای اسناد «در انتظار بررسی»، تمام مراحل تأیید همان سند انجام می‌شود
+        تا وضعیت قابل مشاهده به «بررسی‌شده» برسد. اسناد قفل‌شده و برگشتی
+        وارد این عملیات نمی‌شوند.
+        """
+        from django.db import transaction
+
+        ids = request.data.get('ids') or []
+        advance_all = str(request.data.get('all') or '').lower() in ('1', 'true', 'yes')
+        params = request.data if hasattr(request.data, 'get') else {}
+        qs = self._bulk_scope(params)
+        if not advance_all:
+            if not ids:
+                return Response({'error': 'هیچ سندی انتخاب نشده است.'}, status=400)
+            qs = qs.filter(id__in=ids)
+
+        advanced = 0
+        skipped = 0
+        details = []
+        errors = []
+        for listed in qs.order_by('date', 'id'):
+            try:
+                with transaction.atomic():
+                    doc = AccountingDocument.objects.select_for_update().get(pk=listed.pk)
+                    before = doc.status
+                    step_no = 0
+                    if before == 'draft':
+                        PostingService(doc, user=request.user).submit()
+                        self._build_approval_steps(doc)
+                        log_step, log_note = 'submitted', 'ارسال گروهی برای بررسی'
+                    elif before == 'submitted':
+                        final, step_no = advance_document_approval_to_final(doc, user=request.user)
+                        log_step, log_note = ('approved' if final else 'review_step', 'بررسی گروهی')
+                    elif before == 'approved':
+                        PostingService(doc, user=request.user).post()
+                        log_step, log_note = 'posted', 'ثبت نهایی گروهی'
+                    elif before == 'posted':
+                        PostingService(doc, user=request.user).lock()
+                        log_step, log_note = 'locked', 'قفل گروهی'
+                    else:
+                        skipped += 1
+                        details.append({
+                            'id': doc.id, 'number': doc.number or doc.pk,
+                            'from': before, 'to': before, 'step': 0, 'skipped': True,
+                        })
+                        continue
+                    doc.refresh_from_db()
+                    self._log(
+                        doc, log_step,
+                        f'{log_note} - مرحله {step_no}' if step_no else log_note,
+                    )
+                    advanced += 1
+                    details.append({
+                        'id': doc.id, 'number': doc.number or doc.pk,
+                        'from': before, 'to': doc.status, 'step': step_no, 'skipped': False,
+                    })
+            except AccountingError as e:
+                errors.append({'id': listed.id, 'number': listed.number or listed.pk, 'error': str(e)})
+            except Exception as e:  # noqa: BLE001 — یک سند نباید کل عملیات گروهی را متوقف کند
+                errors.append({'id': listed.id, 'number': listed.number or listed.pk, 'error': f'خطای غیرمنتظره: {str(e)[:150]}'})
+
+        return Response({
+            'advanced': advanced,
+            'skipped': skipped,
+            'details': details,
+            'errors': errors,
+        })
 
     @action(detail=False, methods=['post'])
     def bulk_approve(self, request):
@@ -1080,7 +1152,7 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
 
         base = super().get_queryset().select_related(
             'journal', 'fiscal_year',
-        ).prefetch_related('approval_steps')
+        ).prefetch_related('approval_steps').exclude(status='reversed')
         year_id = request.query_params.get('fiscal_year')
         if year_id:
             year = FiscalYear.objects.filter(pk=year_id, company=_company(request)).first()
@@ -1127,7 +1199,6 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
         pending = scoped.filter(status='submitted')
         ready = scoped.filter(status='approved')
         posted = scoped.filter(status__in=['posted', 'locked'])
-        reversed_docs = scoped.filter(status='reversed')
         total_documents = scoped.count()
         documents = [_doc(d) for d in scoped.order_by('-date', '-created_at')[:1000]]
 
@@ -1136,7 +1207,6 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
             'pending': [_doc(d) for d in pending[:100]],
             'ready_to_post': [_doc(d) for d in ready[:100]],
             'posted': [_doc(d) for d in posted[:100]],
-            'reversed': [_doc(d) for d in reversed_docs[:100]],
             'documents': documents,
             'documents_total': total_documents,
             'documents_truncated': total_documents > len(documents),
@@ -1145,8 +1215,8 @@ class AccountingDocumentViewSet(CompanyScopedViewSet):
                 'unbalanced': len(unbalanced),
                 'pending': status_counts.get('submitted', 0),
                 'ready_to_post': status_counts.get('approved', 0),
-                'posted': status_counts.get('posted', 0) + status_counts.get('locked', 0),
-                'reversed': status_counts.get('reversed', 0),
+                'posted': status_counts.get('posted', 0),
+                'locked': status_counts.get('locked', 0),
                 'total': total_documents,
             },
         })
