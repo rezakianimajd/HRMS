@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
-import MatrixReportPage from '../pages/accounting/reports/MatrixReportPage';
+import LedgerReviewPage from '../pages/accounting/reports/LedgerReviewPage';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -55,7 +55,7 @@ beforeEach(() => {
   });
 });
 
-test('matrix report shows search results and party involvement levels', async () => {
+test('ledger review shows search results and party involvement levels', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -64,8 +64,8 @@ test('matrix report shows search results and party involvement levels', async ()
   await act(async () => {
     root.render(
       <QueryClientProvider client={client}>
-        <MemoryRouter initialEntries={['/accounting/reports/matrix']}>
-          <MatrixReportPage />
+        <MemoryRouter initialEntries={['/accounting/reports/ledger-review']}>
+          <LedgerReviewPage />
         </MemoryRouter>
       </QueryClientProvider>,
     );
@@ -76,7 +76,7 @@ test('matrix report shows search results and party involvement levels', async ()
     await act(async () => { await wait(180); });
   }
 
-  expect(container.textContent).toContain('مرور ترکیبی (ماتریس)');
+  expect(container.textContent).toContain('مرور پله‌ای دفاتر');
   expect(container.textContent).toContain('پلکان سطح‌ها');
 
   const search = container.querySelector('input[placeholder*="جستجوی طرف حساب"]');

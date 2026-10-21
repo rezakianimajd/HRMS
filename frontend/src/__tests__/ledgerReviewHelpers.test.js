@@ -1,4 +1,4 @@
-import { buildCatalog, flattenTree, scopeRows, searchCatalog } from '../pages/accounting/reports/matrixHelpers';
+import { buildCatalog, flattenTree, scopeRows, searchCatalog } from '../pages/accounting/reports/ledgerReviewHelpers';
 
 const amounts = (debit) => ({
   debit, credit: 0, balance_debit: debit, balance_credit: 0,
@@ -42,7 +42,7 @@ const makeTree = () => ([{
   ],
 }]);
 
-describe('matrix report path drill-down', () => {
+describe('ledger review path drill-down', () => {
   const { flat, byKey } = flattenTree(makeTree());
   const catalog = buildCatalog(flat);
   const party = catalog.find((entry) => entry.id === 100 && entry.kind === 'aux1');
