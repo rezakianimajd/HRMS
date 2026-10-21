@@ -32,7 +32,7 @@ const CompanyLogo = ({ company, size = 40, radius = '11px', sx }) => {
         bgcolor: '#eef2ff',
         color: '#4f46e5',
         fontWeight: 900,
-        fontSize: size * 0.4,
+        fontSize: Math.max(12, size * 0.4),
         border: '1px solid rgba(79,70,229,0.14)',
         '& img': { objectFit: 'contain', p: size > 48 ? 0.5 : 0.25, bgcolor: '#fff' },
         ...sx,

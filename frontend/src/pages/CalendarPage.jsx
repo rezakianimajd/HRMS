@@ -190,7 +190,7 @@ const CalendarPage = () => {
                     }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         <Avatar sx={{ width: 24, height: 24, bgcolor: meta.color }}>{meta.icon}</Avatar>
-                        <Chip size="small" label={meta.label} sx={{ bgcolor: `${meta.color}20`, color: meta.color, height: 18, fontSize: 10 }} />
+                        <Chip size="small" label={meta.label} sx={{ bgcolor: `${meta.color}20`, color: meta.color, height: 18, fontSize: 12 }} />
                       </Box>
                       <Typography variant="body2" fontWeight={700} sx={{ mt: 0.5 }}>{ev.title}</Typography>
                       {ev.company && <Typography variant="caption" color="textSecondary">{ev.company}</Typography>}

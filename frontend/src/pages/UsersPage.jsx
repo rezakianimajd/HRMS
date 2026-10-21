@@ -74,8 +74,8 @@ const ModuleCard = ({ app, checked, disabled, onToggle }) => (
       {app.icon || '📦'}
     </Avatar>
     <Box sx={{ flex: 1, minWidth: 0 }}>
-      <Typography sx={{ fontSize: 11.5, fontWeight: 800 }} noWrap>{app.title}</Typography>
-      <Typography sx={{ fontSize: 9.5, color: 'text.secondary' }} noWrap>
+      <Typography sx={{ fontSize: 12, fontWeight: 800 }} noWrap>{app.title}</Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>
         {app.is_coming_soon ? 'به‌زودی' : (app.description || app.slug)}
       </Typography>
     </Box>
@@ -176,7 +176,7 @@ const UsersPage = () => {
             onClick={() => { setErr(''); setOpenAdd(true); }}
             sx={{
               bgcolor: SOFT.slate, borderRadius: '9px', boxShadow: 'none',
-              fontSize: 11.5, '&:hover': { bgcolor: '#8494a8' },
+              fontSize: 12, '&:hover': { bgcolor: '#8494a8' },
             }}
           >
             افزودن کاربر
@@ -221,7 +221,7 @@ const UsersPage = () => {
                   size="small"
                   label={`${formatPersianNumber(userList.length)} کاربر`}
                   sx={{
-                    height: 20, fontSize: 10, fontWeight: 800,
+                    height: 20, fontSize: 12, fontWeight: 800,
                     bgcolor: `${SOFT.slate}1f`, color: SOFT.slate,
                   }}
                 />
@@ -233,9 +233,9 @@ const UsersPage = () => {
               <Box sx={{ p: 5, textAlign: 'center' }}><Typography color="textSecondary">کاربری یافت نشد</Typography></Box>
             ) : (
               <TableContainer>
-                <Table size="small" sx={{ '& td': { fontSize: 11, py: 1 } }}>
+                <Table size="small" sx={{ '& td': { fontSize: 12, py: 1 } }}>
                   <TableHead>
-                    <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5, fontWeight: 800, textAlign: 'center' } }}>
+                    <TableRow sx={{ '& th': { bgcolor: 'rgba(100,116,139,0.05)', fontSize: 12, fontWeight: 800, textAlign: 'center' } }}>
                       <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>کاربر</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>نام کاربری</TableCell>
                       <TableCell align="center" sx={{ fontWeight: 700, textAlign: 'center' }}>نقش</TableCell>
@@ -252,7 +252,7 @@ const UsersPage = () => {
                               {(u.first_name?.charAt(0) || u.username?.charAt(0) || 'U')}
                             </Avatar>
                             <Box>
-                              <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{u.first_name} {u.last_name}</Typography>
+                              <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{u.first_name} {u.last_name}</Typography>
                             </Box>
                           </Stack>
                         </TableCell>
@@ -260,8 +260,8 @@ const UsersPage = () => {
                         <TableCell align="center" sx={{ width: 150 }}>
                           <FormControl size="small" sx={{
                             width: 128,
-                            '& .MuiInputLabel-root': { fontSize: 11 },
-                            '& .MuiSelect-select': { fontSize: 11, py: 0.75 },
+                            '& .MuiInputLabel-root': { fontSize: 12 },
+                            '& .MuiSelect-select': { fontSize: 12, py: 0.75 },
                           }}>
                             <InputLabel>نقش</InputLabel>
                             <Select value={u.role} label="نقش" onChange={e => setRoleMutation.mutate({ id: u.id, role: e.target.value })}>
@@ -272,13 +272,13 @@ const UsersPage = () => {
                         <TableCell align="center">
                           {u.is_superuser ? (
                             <Chip size="small" label="همهٔ ماژول‌ها"
-                              sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${SOFT.violet}1f`, color: SOFT.violet }} />
+                              sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: `${SOFT.violet}1f`, color: SOFT.violet }} />
                           ) : (u.applications || []).length > 0 ? (
                             <Chip size="small" label={`${formatPersianNumber((u.applications || []).length)} ماژول`}
-                              sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${SOFT.indigo}1f`, color: SOFT.indigo }} />
+                              sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: `${SOFT.indigo}1f`, color: SOFT.indigo }} />
                           ) : (
                             <Chip size="small" label="طبق نقش" variant="outlined"
-                              sx={{ height: 20, fontSize: 10, fontWeight: 700 }} />
+                              sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
                           )}
                         </TableCell>
                         <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
@@ -322,12 +322,12 @@ const UsersPage = () => {
               {roleList.map(role => (
                 <Paper key={role.role} variant="outlined" sx={{ ...SURFACE, p: 1.75 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', mb: 1.5 }}>
-                    <Avatar sx={{ width: 28, height: 28, mr: 1, fontSize: 11, fontWeight: 800, bgcolor: `${ROLE_COLORS[role.role] || SOFT.slate}1f`, color: ROLE_COLORS[role.role] || SOFT.slate }}>
+                    <Avatar sx={{ width: 28, height: 28, mr: 1, fontSize: 12, fontWeight: 800, bgcolor: `${ROLE_COLORS[role.role] || SOFT.slate}1f`, color: ROLE_COLORS[role.role] || SOFT.slate }}>
                       {role.label.charAt(0)}
                     </Avatar>
                     <Typography sx={{ fontSize: 12.5, fontWeight: 800, flex: 1 }}>{role.label}</Typography>
                     <Button size="small" variant="contained" startIcon={<SaveIcon fontSize="small" />}
-                      sx={{ bgcolor: ROLE_COLORS[role.role] || SOFT.slate, boxShadow: 'none', fontSize: 10.5 }}
+                      sx={{ bgcolor: ROLE_COLORS[role.role] || SOFT.slate, boxShadow: 'none', fontSize: 12 }}
                       onClick={() => {
                         const perms = (permEdits[role.role] && Object.keys(permEdits[role.role]).length)
                           ? permEdits[role.role] : role.permissions;
@@ -344,7 +344,7 @@ const UsersPage = () => {
                   <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(240px,1fr))', gap: 1 }}>
                     {Object.keys(role.permissions).map(key => (
                       <Box key={key} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', px: 0.5 }}>
-                        <Typography sx={{ fontSize: 11 }}>{PERM_LABELS[key] || key}</Typography>
+                        <Typography sx={{ fontSize: 12 }}>{PERM_LABELS[key] || key}</Typography>
                         <Switch
                           size="small"
                           checked={permEdits[role.role]?.[key] ?? role.permissions[key]}
@@ -429,7 +429,7 @@ const UsersPage = () => {
                   <Typography variant="h6">
                     {viewUser.first_name} {viewUser.last_name}
                   </Typography>
-                  <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>@{viewUser.username}</Typography>
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>@{viewUser.username}</Typography>
                 </Box>
               </Stack>
               {[
@@ -443,8 +443,8 @@ const UsersPage = () => {
               ].map(([key, value]) => (
                 <Stack key={key} direction="row" justifyContent="space-between"
                   sx={{ py: 0.5, borderBottom: '1px dashed', borderColor: 'divider' }}>
-                  <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>{key}</Typography>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>{value}</Typography>
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{key}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{value}</Typography>
                 </Stack>
               ))}
             </Stack>
@@ -483,7 +483,7 @@ const UsersPage = () => {
             </Select>
           </FormControl>
           <Divider sx={{ my: 0.5 }} />
-          <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.secondary' }}>
             دسترسی ماژول‌ها (خالی یعنی طبق نقش)
           </Typography>
           <Grid container spacing={1}>

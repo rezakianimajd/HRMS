@@ -190,7 +190,7 @@ const ScoringPage = () => {
                           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                             <Typography component="span" sx={{ fontSize: 15 }}>{CRITERIA_ICONS[k] || '•'}</Typography>
                             <Typography variant="caption" color="textSecondary">{CRITERIA_LABELS[k] || k}</Typography>
-                            <Chip size="small" label={`وزن ${formatPersianNumber(weight)}٪`} sx={{ height: 16, fontSize: 10 }} />
+                            <Chip size="small" label={`وزن ${formatPersianNumber(weight)}٪`} sx={{ height: 16, fontSize: 12 }} />
                           </Box>
                           <Typography variant="caption" fontWeight={800}>{formatPersianNumber(v)}</Typography>
                         </Box>

@@ -298,7 +298,7 @@ const ProjectSchedulePage = () => {
                           width: band.count * dayWidth, borderLeft: '1px solid rgba(0,0,0,0.08)',
                           textAlign: 'center', py: 0.25, bgcolor: 'rgba(139,92,246,0.05)',
                         }}>
-                          <Typography variant="caption" sx={{ fontSize: 10, fontWeight: 700 }}>
+                          <Typography variant="caption" sx={{ fontSize: 12, fontWeight: 700 }}>
                             {JALALI_MONTHS[band.jm - 1]} {toPersianDigits(band.jy)}
                           </Typography>
                         </Box>
@@ -312,7 +312,7 @@ const ProjectSchedulePage = () => {
                             borderLeft: '1px solid rgba(0,0,0,0.04)',
                             bgcolor: day.jm % 2 ? 'rgba(248,250,252,0.9)' : 'rgba(255,255,255,0.9)',
                           }}>
-                            <Typography sx={{ fontSize: 8 }}>{toPersianDigits(day.jd)}</Typography>
+                            <Typography sx={{ fontSize: 12 }}>{toPersianDigits(day.jd)}</Typography>
                           </Box>
                         ))}
                       </Box>
@@ -489,9 +489,9 @@ const ProjectSchedulePage = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={evm.curve} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                      <XAxis dataKey="month_short" reversed tick={{ fontSize: 11 }}
+                      <XAxis dataKey="month_short" reversed tick={{ fontSize: 12 }}
                         tickFormatter={(v) => toPersianDigits(String(v))} />
-                      <YAxis orientation="right" tick={{ fontSize: 11 }} width={90}
+                      <YAxis orientation="right" tick={{ fontSize: 12 }} width={90}
                         tickFormatter={(v) => formatPersianNumber(v)} />
                       <ReTooltip
                         formatter={(v) => formatPersianNumber(v)}
@@ -545,9 +545,9 @@ const ProjectSchedulePage = () => {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={cashflow.rows} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                        <XAxis dataKey="month_short" reversed tick={{ fontSize: 11 }}
+                        <XAxis dataKey="month_short" reversed tick={{ fontSize: 12 }}
                           tickFormatter={(v) => toPersianDigits(String(v))} />
-                        <YAxis orientation="right" tick={{ fontSize: 11 }} width={90}
+                        <YAxis orientation="right" tick={{ fontSize: 12 }} width={90}
                           tickFormatter={(v) => formatPersianNumber(v)} />
                         <ReTooltip formatter={(v) => formatPersianNumber(v)}
                           labelFormatter={(label, payload) => payload?.[0]?.payload?.month_label
@@ -631,9 +631,9 @@ const ProjectSchedulePage = () => {
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={histogram.days} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                       <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                      <XAxis dataKey="date" reversed tick={{ fontSize: 9 }}
+                      <XAxis dataKey="date" reversed tick={{ fontSize: 12 }}
                         tickFormatter={(v) => toJalali(v)} interval="preserveStartEnd" />
-                      <YAxis orientation="right" tick={{ fontSize: 10 }} width={60}
+                      <YAxis orientation="right" tick={{ fontSize: 12 }} width={60}
                         tickFormatter={(v) => formatPersianNumber(v)} />
                       <ReTooltip formatter={(v) => formatPersianNumber(v)}
                         labelFormatter={(label) => toJalali(label)}

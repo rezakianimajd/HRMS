@@ -78,8 +78,8 @@ const BiDashboardPage = () => {
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={monthly} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Legend />
                 <Line type="monotone" dataKey="revenue" name="درآمد" stroke="#059669" strokeWidth={2} />
@@ -96,8 +96,8 @@ const BiDashboardPage = () => {
             <ResponsiveContainer width="100%" height={280}>
               <BarChart data={categories} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(0,0,0,0.08)" />
-                <XAxis dataKey="label" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
+                <XAxis dataKey="label" tick={{ fontSize: 12 }} />
+                <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip />
                 <Bar dataKey="value" name="مبلغ" fill="#8b5cf6" radius={[6, 6, 0, 0]} />
               </BarChart>

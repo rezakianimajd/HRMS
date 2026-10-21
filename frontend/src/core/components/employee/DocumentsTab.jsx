@@ -75,11 +75,11 @@ const CompanyLinkedDocs = ({ employeeId }) => {
             <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 1 }}>
               {doc.category_display && (
                 <Chip label={doc.category_display} size="small" variant="outlined"
-                  sx={{ height: 20, fontSize: '0.65rem', color: accent, borderColor: `${soft}0.3)` }} />
+                  sx={{ height: 20, fontSize: '0.75rem', color: accent, borderColor: `${soft}0.3)` }} />
               )}
               {isDep && (
                 <Chip label="افراد تحت تکفل" size="small"
-                  sx={{ height: 20, fontSize: '0.65rem', color: '#7c3aed', bgcolor: 'rgba(124,58,237,0.1)', fontWeight: 700 }} />
+                  sx={{ height: 20, fontSize: '0.75rem', color: '#7c3aed', bgcolor: 'rgba(124,58,237,0.1)', fontWeight: 700 }} />
               )}
             </Stack>
             {doc.reference_number && (
@@ -96,7 +96,7 @@ const CompanyLinkedDocs = ({ employeeId }) => {
               <Box sx={{ mt: 1 }}>
                 <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
                   startIcon={<DownloadIcon fontSize="small" />}
-                  sx={{ color: accent, fontSize: '0.72rem' }}>
+                  sx={{ color: accent, fontSize: '0.75rem' }}>
                   دریافت
                 </Button>
               </Box>

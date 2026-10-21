@@ -66,20 +66,20 @@ export const ExpiryCard = ({ contract, onOpen }) => {
           <Icon sx={{ fontSize: 19 }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 10.6, fontWeight: 900, color: INK }}>{contract.subject || 'قرارداد'}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.3, color: MUTED }}>{contract.number || 'بدون شماره'} · {contract.party_name || 'طرف قرارداد'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{contract.subject || 'قرارداد'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{contract.number || 'بدون شماره'} · {contract.party_name || 'طرف قرارداد'}</Typography>
         </Box>
-        <Chip size="small" label={meta.label} sx={{ height: 21, fontSize: 8.3, fontWeight: 800, bgcolor: meta.bg, color: meta.color }} />
+        <Chip size="small" label={meta.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: meta.bg, color: meta.color }} />
       </Stack>
 
       <Box sx={{ borderRadius: '11px', p: 0.9, bgcolor: alpha(meta.color, 0.035), border: `1px solid ${alpha(meta.color, 0.13)}` }}>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
           <Box>
-            <Typography sx={{ fontSize: 8.1, color: MUTED }}>تاریخ پایان مؤثر</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>تاریخ پایان مؤثر</Typography>
             <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: meta.color }}>{dateLabel(end)}</Typography>
           </Box>
           <Chip size="small" label={days === null ? '—' : days < 0 ? `${toPersianDigits(Math.abs(days))} روز گذشته` : days === 0 ? 'امروز' : `${toPersianDigits(days)} روز مانده`}
-            sx={{ height: 22, fontSize: 8.5, fontWeight: 900, bgcolor: meta.bg, color: meta.color }} />
+            sx={{ height: 22, fontSize: 12, fontWeight: 900, bgcolor: meta.bg, color: meta.color }} />
         </Stack>
       </Box>
 
@@ -90,28 +90,28 @@ export const ExpiryCard = ({ contract, onOpen }) => {
 
       <Box>
         <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.35 }}>
-          <Typography sx={{ fontSize: 7.9, color: MUTED }}>درجه فوریت</Typography>
-          <Typography sx={{ fontSize: 8, fontWeight: 800, color: meta.color }}>{toPersianDigits(urgency(days).toFixed(0))}٪</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>درجه فوریت</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: meta.color }}>{toPersianDigits(urgency(days).toFixed(0))}٪</Typography>
         </Stack>
         <ProgressBar value={urgency(days)} color={meta.color} height={5} />
       </Box>
 
       <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 'auto' }}>
         <Chip size="small" label={contract.status_display || contract.status || 'بدون وضعیت'}
-          sx={{ height: 18, fontSize: 7.4, bgcolor: alpha(CONTRACT_STATUS_COLORS[contract.status] || MUTED, 0.08), color: CONTRACT_STATUS_COLORS[contract.status] || MUTED }} />
+          sx={{ height: 18, fontSize: 12, bgcolor: alpha(CONTRACT_STATUS_COLORS[contract.status] || MUTED, 0.08), color: CONTRACT_STATUS_COLORS[contract.status] || MUTED }} />
         <Chip size="small" icon={<CalendarMonthIcon sx={{ fontSize: '12px !important' }} />} label={`شروع ${dateLabel(contract.start_date)}`}
-          sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED, '& .MuiChip-icon': { color: MUTED } }} />
+          sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED, '& .MuiChip-icon': { color: MUTED } }} />
       </Stack>
 
-      <Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => onOpen(contract)} sx={{ alignSelf: 'flex-start', fontSize: 8.3, minWidth: 0 }}>پرونده قرارداد</Button>
+      <Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => onOpen(contract)} sx={{ alignSelf: 'flex-start', fontSize: 12, minWidth: 0 }}>پرونده قرارداد</Button>
     </Paper>
   );
 };
 
 export const ExpiryTable = ({ rows, onOpen }) => {
   const theme = useTheme();
-  const headSx = { fontWeight: 800, fontSize: 8.6, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
-  const cellSx = { fontSize: 8.8, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
+  const headSx = { fontWeight: 800, fontSize: 12, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
+  const cellSx = { fontSize: 12, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
   return (
     <Paper elevation={0} sx={{ borderRadius: '16px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
       <TableContainer sx={{ maxHeight: 560 }}>
@@ -130,14 +130,14 @@ export const ExpiryTable = ({ rows, onOpen }) => {
               const meta = expiryMeta(days);
               return (
                 <TableRow key={contract.id} hover>
-                  <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{contract.subject || '—'}<Typography component="span" sx={{ display: 'block', fontSize: 7.6, color: MUTED, fontWeight: 500 }}>{contract.number || '—'}</Typography></TableCell>
+                  <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{contract.subject || '—'}<Typography component="span" sx={{ display: 'block', fontSize: 12, color: MUTED, fontWeight: 500 }}>{contract.number || '—'}</Typography></TableCell>
                   <TableCell sx={cellSx}>{contract.party_name || '—'}</TableCell>
                   <TableCell sx={cellSx}>{dateLabel(end)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: meta.color, fontWeight: 800 }}>{days === null ? '—' : days < 0 ? `${toPersianDigits(Math.abs(days))} روز گذشته` : `${toPersianDigits(days)} روز`}</TableCell>
                   <TableCell sx={cellSx}>{money(effAmount(contract), contract.currency_name || contract.currency_symbol || 'ریال')}</TableCell>
                   <TableCell sx={cellSx}>{formatPersianNumber(Array.isArray(contract.addendums) ? contract.addendums.length : 0)}</TableCell>
-                  <TableCell sx={cellSx}><Chip size="small" label={meta.label} sx={{ height: 19, fontSize: 7.9, bgcolor: meta.bg, color: meta.color, fontWeight: 800 }} /></TableCell>
-                  <TableCell sx={{ ...cellSx, textAlign: 'center' }}><Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => onOpen(contract)} sx={{ fontSize: 8.2 }}>پرونده</Button></TableCell>
+                  <TableCell sx={cellSx}><Chip size="small" label={meta.label} sx={{ height: 19, fontSize: 12, bgcolor: meta.bg, color: meta.color, fontWeight: 800 }} /></TableCell>
+                  <TableCell sx={{ ...cellSx, textAlign: 'center' }}><Button size="small" endIcon={<ArrowForwardIcon />} onClick={() => onOpen(contract)} sx={{ fontSize: 12 }}>پرونده</Button></TableCell>
                 </TableRow>
               );
             })}
@@ -157,7 +157,7 @@ export const ExpirySummaryCard = ({ counts, total, laterCount, isLoading }) => {
   ];
   return (
     <SurfaceCard title="توزیع بازه‌های انقضا" icon={NotificationsActiveIcon} color={EXPIRING_ACCENT}
-      action={<Chip size="small" label={`${formatPersianNumber(total)} قرارداد`} sx={{ height: 21, fontSize: 8.4, bgcolor: alpha(EXPIRING_ACCENT, 0.08), color: AMBER, fontWeight: 800 }} />}>
+      action={<Chip size="small" label={`${formatPersianNumber(total)} قرارداد`} sx={{ height: 21, fontSize: 12, bgcolor: alpha(EXPIRING_ACCENT, 0.08), color: AMBER, fontWeight: 800 }} />}>
       {isLoading ? <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={20} /></Box> : (
         <Stack spacing={0.85}>
           {ranges.map((range) => {
@@ -166,15 +166,15 @@ export const ExpirySummaryCard = ({ counts, total, laterCount, isLoading }) => {
             return (
               <Box key={range.key}>
                 <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.3 }}>
-                  <Typography sx={{ fontSize: 8.6, color: INK, fontWeight: 700 }}>{range.label}</Typography>
-                  <Typography sx={{ fontSize: 8.4, color: range.color, fontWeight: 900 }}>{formatPersianNumber(count)}</Typography>
+                  <Typography sx={{ fontSize: 12, color: INK, fontWeight: 700 }}>{range.label}</Typography>
+                  <Typography sx={{ fontSize: 12, color: range.color, fontWeight: 900 }}>{formatPersianNumber(count)}</Typography>
                 </Stack>
                 <ProgressBar value={percent} color={range.color} height={5} />
               </Box>
             );
           })}
           {laterCount > 0 ? (
-            <Typography sx={{ fontSize: 8, color: MUTED, pt: 0.2 }}>{formatPersianNumber(laterCount)} قرارداد بیش از ۹۰ روز اعتبار دارد.</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED, pt: 0.2 }}>{formatPersianNumber(laterCount)} قرارداد بیش از ۹۰ روز اعتبار دارد.</Typography>
           ) : null}
         </Stack>
       )}
@@ -184,7 +184,7 @@ export const ExpirySummaryCard = ({ counts, total, laterCount, isLoading }) => {
 
 export const ExpiryUrgentCard = ({ rows, onOpen }) => (
   <SurfaceCard title="فوری‌ترین قراردادها" icon={WarningAmberIcon} color={RED}
-    action={<Chip size="small" label={formatPersianNumber(rows.length)} sx={{ height: 20, fontSize: 8.2, bgcolor: '#fff1f2', color: RED, fontWeight: 800 }} />}>
+    action={<Chip size="small" label={formatPersianNumber(rows.length)} sx={{ height: 20, fontSize: 12, bgcolor: '#fff1f2', color: RED, fontWeight: 800 }} />}>
     {rows.length ? (
       <Stack spacing={0.5}>
         {rows.map((contract) => {
@@ -199,11 +199,11 @@ export const ExpiryUrgentCard = ({ rows, onOpen }) => (
                   <Icon sx={{ fontSize: 15 }} />
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 9.2, fontWeight: 800, color: INK }}>{contract.subject || 'قرارداد'}</Typography>
-                  <Typography noWrap sx={{ fontSize: 8, color: MUTED }}>{dateLabel(effEnd(contract))} · {contract.party_name || '—'}</Typography>
+                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract.subject || 'قرارداد'}</Typography>
+                  <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{dateLabel(effEnd(contract))} · {contract.party_name || '—'}</Typography>
                 </Box>
                 <Chip size="small" label={days === null ? '—' : days < 0 ? `${toPersianDigits(Math.abs(days))} روز گذشته` : `${toPersianDigits(days)} روز`}
-                  sx={{ height: 19, fontSize: 7.7, bgcolor: meta.bg, color: meta.color, fontWeight: 800 }} />
+                  sx={{ height: 19, fontSize: 12, bgcolor: meta.bg, color: meta.color, fontWeight: 800 }} />
               </Stack>
             </ButtonBase>
           );
@@ -212,7 +212,7 @@ export const ExpiryUrgentCard = ({ rows, onOpen }) => (
     ) : (
       <Box sx={{ py: 4, textAlign: 'center' }}>
         <CalendarMonthIcon sx={{ fontSize: 30, color: GREEN, mb: 0.6 }} />
-        <Typography sx={{ fontSize: 9.4, color: MUTED }}>قرارداد فوری در بازه ۹۰ روز وجود ندارد.</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>قرارداد فوری در بازه ۹۰ روز وجود ندارد.</Typography>
       </Box>
     )}
   </SurfaceCard>

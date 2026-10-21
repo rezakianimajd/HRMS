@@ -444,15 +444,15 @@ const ContractInvoicesPage = () => {
 
             {counts.overdue ? (
               <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 9.5 }}>{formatPersianNumber(counts.overdue)} فاکتور از تاریخ سررسید گذشته و هنوز پرداخت نشده است.</Typography>
+                <Typography sx={{ fontSize: 12 }}>{formatPersianNumber(counts.overdue)} فاکتور از تاریخ سررسید گذشته و هنوز پرداخت نشده است.</Typography>
               </Alert>
             ) : null}
 
             {!filtered.length ? (
               <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
                 <ReceiptLongIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>فاکتوری با این مشخصات ثبت نشده است.</Typography>
-                <Typography sx={{ fontSize: 9, color: MUTED, mt: 0.4 }}>اولین فاکتور را ثبت کنید تا پوشش مالی و وضعیت پرداخت شکل بگیرد.</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>فاکتوری با این مشخصات ثبت نشده است.</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.4 }}>اولین فاکتور را ثبت کنید تا پوشش مالی و وضعیت پرداخت شکل بگیرد.</Typography>
                 <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت فاکتور جدید</Button>
               </Paper>
             ) : view === 'cards' ? (
@@ -474,11 +474,11 @@ const ContractInvoicesPage = () => {
 
             <Box sx={{ mt: 1.5 }}>
               <SurfaceCard title="روند فاکتورها" icon={TrendingUpIcon} color={INVOICE_ACCENT}
-                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(INVOICE_ACCENT, 0.07), color: INVOICE_ACCENT }} />}>
+                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(INVOICE_ACCENT, 0.07), color: INVOICE_ACCENT }} />}>
                 {monthlyData.some((item) => item.value > 0) ? (
                   <ColumnChart data={monthlyData} color={INVOICE_ACCENT} height={150} />
                 ) : (
-                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
+                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 12 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
                 )}
               </SurfaceCard>
             </Box>

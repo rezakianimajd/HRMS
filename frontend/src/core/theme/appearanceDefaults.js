@@ -23,12 +23,21 @@ export const DEFAULT_TYPOGRAPHY = {
   statWeight: 500,
 };
 
+export const MIN_FONT_SIZE = 12;
+export const MIN_TYPOGRAPHY_SIZES = {
+  headerSize: 14,
+  cardSize: 12,
+  bodySize: 12,
+  buttonSize: 12,
+  statSize: 12,
+};
+
 export const SIZE_RANGES = {
   headerSize: { min: 14, max: 32 },
   cardSize: { min: 12, max: 24 },
-  bodySize: { min: 10, max: 18 },
-  buttonSize: { min: 10, max: 18 },
-  statSize: { min: 11, max: 24 },
+  bodySize: { min: 12, max: 18 },
+  buttonSize: { min: 12, max: 18 },
+  statSize: { min: 12, max: 24 },
 };
 
 export const WEIGHT_OPTIONS = [300, 400, 500, 600, 700];

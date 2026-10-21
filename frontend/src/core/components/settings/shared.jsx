@@ -115,7 +115,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
             </Avatar>
             <Box sx={{ minWidth: 0 }}>
               <Typography variant="h6" noWrap>{title}</Typography>
-              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>
                 {formatPersianNumber(items.length)} رکورد ثبت‌شده
               </Typography>
             </Box>
@@ -149,7 +149,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
             <InboxOutlinedIcon />
           </Avatar>
           <Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>داده‌ای برای نمایش نیست</Typography>
-          <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
             {items.length === 0 ? 'با دکمهٔ «افزودن» اولین رکورد را ثبت کنید.' : 'عبارت جستجو را تغییر دهید.'}
           </Typography>
         </Box>
@@ -157,7 +157,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
         <TableContainer>
           <Table size="small" sx={{
             '& th': {
-              fontSize: 11, fontWeight: 900, color: 'text.secondary',
+              fontSize: 12, fontWeight: 900, color: 'text.secondary',
               bgcolor: alpha(ACCENT, 0.04),
               borderBottom: '1px solid', borderColor: 'divider',
             },
@@ -184,7 +184,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                       {f === 'name' ? (
                         <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
                           <Avatar sx={{
-                            width: 28, height: 28, fontSize: 11, fontWeight: 800,
+                            width: 28, height: 28, fontSize: 12, fontWeight: 800,
                             bgcolor: alpha(ACCENT, 0.12), color: ACCENT,
                           }}>
                             {String(item.name || '?').trim().charAt(0)}
@@ -193,7 +193,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                         </Stack>
                       ) : f === 'code' ? (
                         <Chip size="small" label={item.code} sx={{
-                          height: 20, fontSize: 10.5, fontFamily: 'monospace', fontWeight: 700,
+                          height: 20, fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
                           bgcolor: alpha(ACCENT, 0.08), color: ACCENT,
                         }} />
                       ) : item[f]}
@@ -212,17 +212,17 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
                           <Chip size="small" label={
                             value === 'executive' ? 'مدیریتی' : value === 'expert' ? 'کارشناسی'
                               : value === 'operational' ? 'عملیاتی' : (value || '—')
-                          } sx={{ height: 20, fontSize: 10.5, fontWeight: 700 }} />
+                          } sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
                         ) : f === 'archive_folder' ? (
                           value ? (
                             <Chip size="small" variant="outlined" label={value}
-                              sx={{ height: 20, fontSize: 10.5, color: '#7c3aed', borderColor: alpha('#7c3aed', 0.45), fontWeight: 700 }} />
+                              sx={{ height: 20, fontSize: 12, color: '#7c3aed', borderColor: alpha('#7c3aed', 0.45), fontWeight: 700 }} />
                           ) : '—'
                         ) : isOptions ? (
                           <Chip size="small" label={optionLabel || value || '—'}
-                            sx={{ height: 20, fontSize: 10.5, fontWeight: 700, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }} />
+                            sx={{ height: 20, fontSize: 12, fontWeight: 700, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }} />
                         ) : (
-                          <Typography sx={{ fontSize: 11.5, color: value ? 'text.primary' : 'text.disabled' }} noWrap>
+                          <Typography sx={{ fontSize: 12, color: value ? 'text.primary' : 'text.disabled' }} noWrap>
                             {value || '—'}
                           </Typography>
                         )}
@@ -251,10 +251,10 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
           px: 2, py: 1, display: 'flex', justifyContent: 'space-between',
           borderTop: '1px solid', borderColor: 'divider',
         }}>
-          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
             نمایش {formatPersianNumber(filtered.length)} از {formatPersianNumber(items.length)} رکورد
           </Typography>
-          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>{endpoint}</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>{endpoint}</Typography>
         </Box>
       ) : null}
 
@@ -267,7 +267,7 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
           {editing ? 'ویرایش رکورد' : 'افزودن رکورد جدید'}
         </DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 0.5 }}>{title}</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 0.5 }}>{title}</Typography>
           {error && <Alert severity="error" sx={{ mt: 1 }}>{error}</Alert>}
           {fields.map((f) => (
             <TextField key={f} fullWidth size="small" label={fieldLabel(f)} value={form[f] || ''}

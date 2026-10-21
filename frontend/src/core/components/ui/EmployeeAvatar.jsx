@@ -59,7 +59,7 @@ const EmployeeAvatar = ({ employee, size = 40, fontSize, name, gender, sx = {} }
       sx={{
         width: size,
         height: size,
-        fontSize: fontSize || Math.max(13, Math.round(size * 0.4)),
+        fontSize: Math.max(12, fontSize || Math.round(size * 0.4)),
         fontWeight: 700,
         background,
         flexShrink: 0,

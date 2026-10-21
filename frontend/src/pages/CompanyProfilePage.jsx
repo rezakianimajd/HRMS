@@ -33,7 +33,7 @@ const SectionHeader = ({ icon, title, subtitle, color }) => (
     <Box sx={{ minWidth: 0 }}>
       <Typography variant="h6">{title}</Typography>
       {subtitle ? (
-        <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>{subtitle}</Typography>
+        <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{subtitle}</Typography>
       ) : null}
     </Box>
   </Box>
@@ -111,7 +111,7 @@ const CompanyProfilePage = () => {
             onClick={() => updateMutation.mutate(form)}
             disabled={updateMutation.isLoading}
             sx={{
-              bgcolor: SOFT.indigo, borderRadius: '9px', px: 2.5, fontSize: 11.5,
+              bgcolor: SOFT.indigo, borderRadius: '9px', px: 2.5, fontSize: 12,
               boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' },
             }}
           >

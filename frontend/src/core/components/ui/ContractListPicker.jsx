@@ -33,12 +33,12 @@ const TYPE_LABELS = {
 };
 
 const headCellSx = {
-  fontWeight: 800, fontSize: 10.5, color: '#334155', whiteSpace: 'nowrap',
+  fontWeight: 800, fontSize: 12, color: '#334155', whiteSpace: 'nowrap',
   bgcolor: '#f8fafc', borderBottom: '1px solid rgba(15,23,42,0.12)', py: 1,
 };
 
 const bodyCellSx = {
-  whiteSpace: 'nowrap', fontSize: 10.8,
+  whiteSpace: 'nowrap', fontSize: 12,
   borderBottom: '1px solid rgba(15,23,42,0.06)', py: 0.85,
 };
 
@@ -96,7 +96,7 @@ const ContractListPicker = ({
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} align="center" sx={{ py: 6, color: theme.palette.text.secondary, fontSize: 10.5 }}>
+                  <TableCell colSpan={8} align="center" sx={{ py: 6, color: theme.palette.text.secondary, fontSize: 12 }}>
                     قراردادی با این مشخصات یافت نشد.
                   </TableCell>
                 </TableRow>
@@ -118,58 +118,58 @@ const ContractListPicker = ({
                     }}
                   >
                     <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                      <Typography sx={{ fontWeight: 800, fontSize: 10.8, color: '#334155' }}>
+                      <Typography sx={{ fontWeight: 800, fontSize: 12, color: '#334155' }}>
                         {toPersianDigits(contract.number || '—')}
                       </Typography>
                     </TableCell>
                     <TableCell align="right" sx={{ ...bodyCellSx, maxWidth: 170 }}>
                       <Tooltip title={contract.party_name || ''}>
-                        <Typography noWrap sx={{ fontWeight: 700, fontSize: 10.5, color: '#7c2d12' }}>
+                        <Typography noWrap sx={{ fontWeight: 700, fontSize: 12, color: '#7c2d12' }}>
                           {contract.party_name || '—'}
                         </Typography>
                       </Tooltip>
                     </TableCell>
                     <TableCell align="right" sx={{ ...bodyCellSx, maxWidth: 280 }}>
                       <Tooltip title={contract.subject || ''}>
-                        <Typography noWrap sx={{ fontWeight: 800, fontSize: 10.8, color: '#0f172a' }}>
+                        <Typography noWrap sx={{ fontWeight: 800, fontSize: 12, color: '#0f172a' }}>
                           {contract.subject || '—'}
                         </Typography>
                       </Tooltip>
-                      <Typography noWrap sx={{ fontSize: 9.2, color: '#64748b' }}>
+                      <Typography noWrap sx={{ fontSize: 12, color: '#64748b' }}>
                         {contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || '—'}
                       </Typography>
                     </TableCell>
                     <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                       <Chip size="small" label={STATUS_LABELS[contract.status] || contract.status || '—'}
                         sx={{
-                          height: 21, fontSize: 8.8, fontWeight: 800,
+                          height: 21, fontSize: 12, fontWeight: 800,
                           bgcolor: alpha(STATUS_COLORS[contract.status] || '#64748b', 0.09),
                           color: STATUS_COLORS[contract.status] || '#64748b',
                         }} />
                     </TableCell>
                     <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                      <Typography sx={{ fontSize: 9.8, fontWeight: 700, color: '#334155' }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>
                         {endDate ? toJalali(endDate) : '—'}
                       </Typography>
                     </TableCell>
                     <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                       <Chip size="small" label={`${formatPersianNumber(count)} ${countLabel}`}
                         sx={{
-                          height: 22, fontSize: 8.8, fontWeight: 800,
+                          height: 22, fontSize: 12, fontWeight: 800,
                           bgcolor: count > 0 ? alpha(accent, 0.08) : '#f1f5f9',
                           color: count > 0 ? accent : '#64748b',
                         }} />
                     </TableCell>
                     <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                      <Typography sx={{ fontSize: 10.8, fontWeight: 900, color: '#b45309' }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#b45309' }}>
                         {formatPersianNumber(amount)}
                       </Typography>
-                      <Typography sx={{ fontSize: 8.7, color: '#64748b', fontWeight: 700 }}>{currency}</Typography>
+                      <Typography sx={{ fontSize: 12, color: '#64748b', fontWeight: 700 }}>{currency}</Typography>
                     </TableCell>
                     <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                       <Button size="small" variant={selected ? 'contained' : 'outlined'}
                         onClick={(event) => { event.stopPropagation(); onSelect(contract); }}
-                        sx={{ minWidth: 58, fontSize: 9, px: 0.9 }}>
+                        sx={{ minWidth: 58, fontSize: 12, px: 0.9 }}>
                         انتخاب
                       </Button>
                     </TableCell>
@@ -181,7 +181,7 @@ const ContractListPicker = ({
         </TableContainer>
       </Paper>
       <Stack direction="row" spacing={1} sx={{ mt: 0.8 }}>
-        <Typography sx={{ fontSize: 8.8, color: '#64748b' }}>{formatPersianNumber(filtered.length)} قرارداد</Typography>
+        <Typography sx={{ fontSize: 12, color: '#64748b' }}>{formatPersianNumber(filtered.length)} قرارداد</Typography>
       </Stack>
     </Box>
   );

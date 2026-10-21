@@ -210,7 +210,7 @@ const ContractProfilePage = () => {
                 <BusinessIcon sx={{ fontSize: 26 }} />
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography sx={{ fontSize: 10.5, color: MUTED, mb: 0.35 }}>موضوع قرارداد</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.35 }}>موضوع قرارداد</Typography>
                 <Typography sx={{ fontSize: 17, fontWeight: 900, color: INK, lineHeight: 1.45, wordBreak: 'break-word' }}>
                   {c.subject || '—'}
                 </Typography>
@@ -218,9 +218,9 @@ const ContractProfilePage = () => {
                   طرف قرارداد: {c.party_name || '—'}
                 </Typography>
                 <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-                  <Chip size="small" icon={<BusinessIcon />} label={contractTypeLabel} variant="outlined" sx={{ height: 23, fontSize: 10.5 }} />
-                  {c.category ? <Chip size="small" label={c.category} variant="outlined" sx={{ height: 23, fontSize: 10.5 }} /> : null}
-                  {c.signatory_name ? <Chip size="small" label={`امضاکننده: ${c.signatory_name}`} variant="outlined" sx={{ height: 23, fontSize: 10.5 }} /> : null}
+                  <Chip size="small" icon={<BusinessIcon />} label={contractTypeLabel} variant="outlined" sx={{ height: 23, fontSize: 12 }} />
+                  {c.category ? <Chip size="small" label={c.category} variant="outlined" sx={{ height: 23, fontSize: 12 }} /> : null}
+                  {c.signatory_name ? <Chip size="small" label={`امضاکننده: ${c.signatory_name}`} variant="outlined" sx={{ height: 23, fontSize: 12 }} /> : null}
                 </Stack>
               </Box>
             </Stack>
@@ -228,7 +228,7 @@ const ContractProfilePage = () => {
             <Box sx={{ mt: 2, p: 1.5, borderRadius: '14px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
                 <Box sx={{ textAlign: 'right' }}>
-                  <Typography sx={{ fontSize: 9.8, color: MUTED }}>شروع قرارداد</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>شروع قرارداد</Typography>
                   <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: INK }}>{toJalali(c.start_date)}</Typography>
                 </Box>
                 <Box sx={{ flex: 1, position: 'relative', height: 18, mx: 1 }}>
@@ -237,7 +237,7 @@ const ContractProfilePage = () => {
                   <Box sx={{ position: 'absolute', top: 5, left: 0, width: 8, height: 8, borderRadius: '50%', bgcolor: '#94a3b8' }} />
                 </Box>
                 <Box sx={{ textAlign: 'left' }}>
-                  <Typography sx={{ fontSize: 9.8, color: MUTED }}>پایان مؤثر</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>پایان مؤثر</Typography>
                   <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: INK }}>{toJalali(endDateWithAddendum)}</Typography>
                 </Box>
               </Stack>
@@ -248,7 +248,7 @@ const ContractProfilePage = () => {
                       : remainingDays === 0 ? 'آخرین روز قرارداد'
                         : `${toPersianDigits(remainingDays)} روز تا پایان`}
                   sx={{
-                    height: 22, fontSize: 10, fontWeight: 700,
+                    height: 22, fontSize: 12, fontWeight: 700,
                     bgcolor: remainingDays !== null && remainingDays < 0 ? '#fff1f2' : '#eff6ff',
                     color: remainingDays !== null && remainingDays < 0 ? '#be123c' : '#1d4ed8',
                   }} />
@@ -260,20 +260,20 @@ const ContractProfilePage = () => {
             <Box sx={{ p: 1.75, borderRadius: '16px', bgcolor: '#fff', border: '1px solid #fde9c8' }}>
               <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1.5} useFlexGap>
                 <Box>
-                  <Typography sx={{ fontSize: 10.5, color: '#9a3412', fontWeight: 600 }}>مبلغ قرارداد با اعمال الحاقیه‌ها</Typography>
+                  <Typography sx={{ fontSize: 12, color: '#9a3412', fontWeight: 600 }}>مبلغ قرارداد با اعمال الحاقیه‌ها</Typography>
                   <Typography sx={{ mt: 0.4, fontSize: { xs: 24, sm: 30 }, fontWeight: 900, color: '#b45309', direction: 'rtl', lineHeight: 1.2 }}>
                     {formatPersianNumber(amountWithAddendum)} <Box component="span" sx={{ fontSize: 12, fontWeight: 600, color: '#9a3412' }}>{currencyLabel}</Box>
                   </Typography>
-                  <Typography sx={{ fontSize: 10.5, color: MUTED }}>مبلغ پایه: {formatPersianNumber(c.amount || 0)} {currencyLabel}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ پایه: {formatPersianNumber(c.amount || 0)} {currencyLabel}</Typography>
                 </Box>
                 <Chip size="small" label={`${toPersianDigits(progressPercent)}٪ پرداخت‌شده`}
-                  sx={{ height: 24, fontSize: 10.5, fontWeight: 800, bgcolor: '#fff', color: '#b45309', border: '1px solid #fcd9a4' }} />
+                  sx={{ height: 24, fontSize: 12, fontWeight: 800, bgcolor: '#fff', color: '#b45309', border: '1px solid #fcd9a4' }} />
               </Stack>
 
               <Box sx={{ mt: 1.4 }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.55 }}>
-                  <Typography sx={{ fontSize: 10, color: '#9a3412' }}>پیشرفت پرداخت</Typography>
-                  <Typography sx={{ fontSize: 10, color: '#9a3412', fontWeight: 700 }}>
+                  <Typography sx={{ fontSize: 12, color: '#9a3412' }}>پیشرفت پرداخت</Typography>
+                  <Typography sx={{ fontSize: 12, color: '#9a3412', fontWeight: 700 }}>
                     {formatPersianNumber(totalPaid)} از {formatPersianNumber(amountWithAddendum)}
                   </Typography>
                 </Stack>
@@ -283,19 +283,19 @@ const ContractProfilePage = () => {
               <Grid container spacing={1} sx={{ mt: 1 }}>
                 <Grid item xs={12} sm={4}>
                   <Box sx={{ p: 1, borderRadius: '11px', bgcolor: '#fff', border: '1px solid #f5e6cf' }}>
-                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>پرداخت‌شده</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>پرداخت‌شده</Typography>
                     <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#0f172a', direction: 'ltr' }}>{formatPersianNumber(totalPaid)}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <Box sx={{ p: 1, borderRadius: '11px', bgcolor: '#fff', border: '1px solid #f5e6cf' }}>
-                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>مانده پرداخت</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>مانده پرداخت</Typography>
                     <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#0f172a', direction: 'ltr' }}>{formatPersianNumber(remaining)}</Typography>
                   </Box>
                 </Grid>
                 <Grid item xs={12} sm={4}>
                   <Box sx={{ p: 1, borderRadius: '11px', bgcolor: '#fff', border: '1px solid #f5e6cf' }}>
-                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>جمع فاکتورها</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>جمع فاکتورها</Typography>
                     <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#0f172a', direction: 'ltr' }}>{formatPersianNumber(totalInvoices)}</Typography>
                   </Box>
                 </Grid>
@@ -328,7 +328,7 @@ const ContractProfilePage = () => {
 
       {/* دسترسی سریع */}
       <SectionCard title="دسترسی سریع" icon={HubIcon} color="#6366f1" sx={{ mb: 2 }}
-        action={<Chip size="small" label="پروندهٔ قرارداد" sx={{ height: 22, fontSize: 10, bgcolor: '#f1f5f9', color: '#475569' }} />}>
+        action={<Chip size="small" label="پروندهٔ قرارداد" sx={{ height: 22, fontSize: 12, bgcolor: '#f1f5f9', color: '#475569' }} />}>
         <Grid container spacing={1}>
           {quickLinks.map((a) => (
             <Grid item xs={12} sm={6} md={4} lg={3} key={a.label}>
@@ -345,9 +345,9 @@ const ContractProfilePage = () => {
         action={(
           <Stack direction="row" spacing={0.6} useFlexGap>
             <Chip size="small" label={`${toPersianDigits(effects?.addendum_count ?? addendumCount)} الحاقیه`}
-              sx={{ height: 22, fontSize: 10, bgcolor: '#eef2ff', color: '#4338ca', fontWeight: 700 }} />
+              sx={{ height: 22, fontSize: 12, bgcolor: '#eef2ff', color: '#4338ca', fontWeight: 700 }} />
             <Chip size="small" label={effectsChanged.length ? 'دارای تغییر مؤثر' : 'بدون تغییر'}
-              sx={{ height: 22, fontSize: 10, bgcolor: effectsChanged.length ? '#fff7ed' : '#f1f5f9', color: effectsChanged.length ? '#c2410c' : '#475569', fontWeight: 700 }} />
+              sx={{ height: 22, fontSize: 12, bgcolor: effectsChanged.length ? '#fff7ed' : '#f1f5f9', color: effectsChanged.length ? '#c2410c' : '#475569', fontWeight: 700 }} />
           </Stack>
         )}>
         <Grid container spacing={1.25}>
@@ -379,16 +379,16 @@ const ContractProfilePage = () => {
           <Box sx={{ mt: 1.5, p: 1.4, borderRadius: '13px', bgcolor: '#fbfcfe', border: '1px solid #eef2f7' }}>
             <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap sx={{ mb: 1 }}>
               <CompareArrowsIcon sx={{ fontSize: 16, color: '#6366f1' }} />
-              <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>ردیابی تغییرات پرونده</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>ردیابی تغییرات پرونده</Typography>
               <Chip size="small" label={`${toPersianDigits((effects.changes || []).length)} تغییر`}
-                sx={{ height: 19, fontSize: 9.5, bgcolor: '#eef2ff', color: '#4338ca' }} />
+                sx={{ height: 19, fontSize: 12, bgcolor: '#eef2ff', color: '#4338ca' }} />
             </Stack>
             <Grid container spacing={1}>
               {(effects.changes || []).map((change, index) => (
                 <Grid item xs={12} md={6} key={`${change.field}-${index}`}>
                   <Box sx={{ p: 1.1, borderRadius: '10px', bgcolor: '#fff', border: '1px solid #eef2f7' }}>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: '#334155', mb: 0.25 }}>{change.label}</Typography>
-                    <Typography sx={{ fontSize: 10, color: MUTED, direction: 'rtl' }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#334155', mb: 0.25 }}>{change.label}</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED, direction: 'rtl' }}>
                       {change.field === 'end_date'
                         ? `${toJalali(change.from)} ← ${toJalali(change.to)}`
                         : `${formatPersianNumber(change.from || 0)} ← ${formatPersianNumber(change.to || 0)}`}
@@ -403,7 +403,7 @@ const ContractProfilePage = () => {
 
         {(effects?.warnings || []).map((warning) => (
           <Alert key={warning} severity="warning" sx={{ mt: 1.2, borderRadius: '10px', py: 0 }}>
-            <Typography sx={{ fontSize: 10.5 }}>{warning}</Typography>
+            <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
           </Alert>
         ))}
       </SectionCard>
@@ -457,13 +457,13 @@ const ContractProfilePage = () => {
 
             <SectionCard title="پروژه‌ها و درصد تخصیص" icon={BusinessIcon} color="#3b82f6"
               action={<Chip size="small" label={`${toPersianDigits((c.project_allocations_display || []).length || (c.project_name ? 1 : 0))} پروژه`}
-                sx={{ height: 22, fontSize: 10, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
+                sx={{ height: 22, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
               {(c.project_allocations_display || []).length === 0 ? (
                 c.project_name ? (
                   <Box>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.75 }}>
                       <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{c.project_name}</Typography>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: '#1d4ed8' }}>{toPersianDigits(100)}٪</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#1d4ed8' }}>{toPersianDigits(100)}٪</Typography>
                     </Stack>
                     <ProgressBar value={100} color="#3b82f6" height={7} />
                   </Box>
@@ -473,8 +473,8 @@ const ContractProfilePage = () => {
                   {c.project_allocations_display.map((pa, i) => (
                     <Box key={`${pa.project_name}-${i}`}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.55 }}>
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: '#334155', wordBreak: 'break-word' }}>{pa.project_name || '—'}</Typography>
-                        <Typography sx={{ fontSize: 11, fontWeight: 900, color: '#1d4ed8', whiteSpace: 'nowrap' }}>{formatPersianNumber(pa.percentage || 0)}٪</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#334155', wordBreak: 'break-word' }}>{pa.project_name || '—'}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#1d4ed8', whiteSpace: 'nowrap' }}>{formatPersianNumber(pa.percentage || 0)}٪</Typography>
                       </Stack>
                       <ProgressBar value={pa.percentage || 0} color={['#3b82f6', '#8b5cf6', '#f59e0b', '#0891b2'][i % 4]} height={6} />
                     </Box>
@@ -486,14 +486,14 @@ const ContractProfilePage = () => {
             <Grid container spacing={2}>
               <Grid item xs={12} md={6}>
                 <SectionCard title="شرایط پرداخت" icon={PaymentsIcon} color="#0891b2">
-                  <Typography sx={{ fontSize: 11.5, color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+                  <Typography sx={{ fontSize: 12, color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
                     {c.payment_terms || 'شرایط پرداختی ثبت نشده است.'}
                   </Typography>
                 </SectionCard>
               </Grid>
               <Grid item xs={12} md={6}>
                 <SectionCard title="شرایط تحویل" icon={StorefrontIcon} color="#f97316">
-                  <Typography sx={{ fontSize: 11.5, color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+                  <Typography sx={{ fontSize: 12, color: '#334155', lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
                     {c.delivery_terms || 'شرایط تحویلی ثبت نشده است.'}
                   </Typography>
                 </SectionCard>
@@ -507,7 +507,7 @@ const ContractProfilePage = () => {
 
             <SectionCard title="تحلیل مالی" icon={InsightsIcon} color="#0ea5e9"
               action={<Chip size="small" label={`${toPersianDigits(progressPercent)}٪ پیشرفت`}
-                sx={{ height: 22, fontSize: 10, bgcolor: '#eff6ff', color: '#0369a1', fontWeight: 800 }} />}>
+                sx={{ height: 22, fontSize: 12, bgcolor: '#eff6ff', color: '#0369a1', fontWeight: 800 }} />}>
               <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} alignItems="center" useFlexGap>
                 <Box sx={{ display: 'flex', justifyContent: 'center', width: { xs: '100%', sm: 'auto' } }}>
                   <FinancialDonut paid={totalPaid} remaining={remaining} />
@@ -523,20 +523,20 @@ const ContractProfilePage = () => {
               <Box sx={{ mt: 1.75, p: 1.25, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
                   <Box>
-                    <Typography sx={{ fontSize: 10, color: MUTED }}>ماندهٔ تعهد مالی قرارداد</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>ماندهٔ تعهد مالی قرارداد</Typography>
                     <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK, direction: 'rtl', textAlign: 'right' }}>
-                      {formatPersianNumber(remaining)} <Box component="span" sx={{ fontSize: 10, color: MUTED, fontWeight: 500 }}>{currencyLabel}</Box>
+                      {formatPersianNumber(remaining)} <Box component="span" sx={{ fontSize: 12, color: MUTED, fontWeight: 500 }}>{currencyLabel}</Box>
                     </Typography>
                   </Box>
                   <Chip size="small" label={`${toPersianDigits(100 - progressPercent)}٪ باقی‌مانده`}
-                    sx={{ height: 22, fontSize: 9.5, bgcolor: '#fff', color: '#475569', border: '1px solid #e2e8f0' }} />
+                    sx={{ height: 22, fontSize: 12, bgcolor: '#fff', color: '#475569', border: '1px solid #e2e8f0' }} />
                 </Stack>
               </Box>
             </SectionCard>
 
             <SectionCard title="تایم‌لاین قرارداد" icon={ScheduleIcon} color="#8b5cf6"
               action={<Chip size="small" label={`${toPersianDigits(timeline.length)} رویداد`}
-                sx={{ height: 22, fontSize: 10, bgcolor: '#f5f3ff', color: '#6d28d9', fontWeight: 700 }} />}>
+                sx={{ height: 22, fontSize: 12, bgcolor: '#f5f3ff', color: '#6d28d9', fontWeight: 700 }} />}>
               {timeline.length === 0 ? (
                 <EmptyState icon={ScheduleIcon} text="رویدادی برای این قرارداد ثبت نشده است." />
               ) : (
@@ -557,7 +557,7 @@ const ContractProfilePage = () => {
       <Grid container spacing={2} sx={{ mb: 2 }}>
         <Grid item xs={12} lg={6}>
           <SectionCard title="ترکیب پرونده" icon={AccountBalanceIcon} color="#3b82f6"
-            action={<Chip size="small" label={`${toPersianDigits(itemsTotal)} قلم`} sx={{ height: 22, fontSize: 10, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
+            action={<Chip size="small" label={`${toPersianDigits(itemsTotal)} قلم`} sx={{ height: 22, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
             <Grid container spacing={1}>
               {itemsDist.map((item) => (
                 <Grid item xs={6} sm={4} key={item.label}>
@@ -567,8 +567,8 @@ const ContractProfilePage = () => {
             </Grid>
             <Box sx={{ mt: 1.5 }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.6 }}>
-                <Typography sx={{ fontSize: 10.5, color: MUTED }}>توزیع اقلام پرونده</Typography>
-                <Typography sx={{ fontSize: 10.5, color: INK, fontWeight: 800 }}>{toPersianDigits(itemsTotal)} مورد</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>توزیع اقلام پرونده</Typography>
+                <Typography sx={{ fontSize: 12, color: INK, fontWeight: 800 }}>{toPersianDigits(itemsTotal)} مورد</Typography>
               </Stack>
               <Box sx={{ display: 'flex', width: '100%', height: 9, borderRadius: 5, overflow: 'hidden', bgcolor: '#eef2f7' }}>
                 {itemsDist.filter((item) => item.value > 0).map((item) => (
@@ -580,7 +580,7 @@ const ContractProfilePage = () => {
                 {itemsDist.map((item) => (
                   <Stack key={item.label} direction="row" alignItems="center" spacing={0.4} useFlexGap>
                     <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: item.color }} />
-                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>{item.label}</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>{item.label}</Typography>
                   </Stack>
                 ))}
               </Stack>
@@ -590,7 +590,7 @@ const ContractProfilePage = () => {
 
         <Grid item xs={12} lg={6}>
           <SectionCard title="الحاقیه‌ها" icon={EditNoteIcon} color="#ec4899"
-            action={<Chip size="small" label={`${toPersianDigits(addendumCount)} الحاقیه`} sx={{ height: 22, fontSize: 10, bgcolor: '#fdf2f8', color: '#be185d' }} />}>
+            action={<Chip size="small" label={`${toPersianDigits(addendumCount)} الحاقیه`} sx={{ height: 22, fontSize: 12, bgcolor: '#fdf2f8', color: '#be185d' }} />}>
             {addendumCount === 0 ? (
               <EmptyState icon={EditNoteIcon} text="الحاقیه‌ای برای این قرارداد ثبت نشده است." />
             ) : (
@@ -599,26 +599,26 @@ const ContractProfilePage = () => {
                   {(c.addendums || []).map((x) => (
                     <Box key={x.id} sx={{ p: 1.25, borderRadius: '12px', bgcolor: '#fbfcfe', border: '1px solid #eef2f7', borderRight: '3px solid #ec4899' }}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>{x.number || '—'}</Typography>
-                        <Typography sx={{ fontSize: 9.5, color: MUTED }}>{toJalali(x.date)}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{x.number || '—'}</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>{toJalali(x.date)}</Typography>
                       </Stack>
                       {x.subject_type_display ? (
-                        <Typography sx={{ mt: 0.25, fontSize: 10, fontWeight: 700, color: '#be185d' }}>
+                        <Typography sx={{ mt: 0.25, fontSize: 12, fontWeight: 700, color: '#be185d' }}>
                           {x.subject_type_display}{x.subject ? ` — ${x.subject}` : ''}
                         </Typography>
                       ) : null}
                       <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.6 }}>
                         {x.amount_change != null && x.amount_change !== '' && (
                           <Chip size="small" label={`${Number(x.amount_change) >= 0 ? '+' : ''}${formatPersianNumber(x.amount_change)}`}
-                            sx={{ height: 19, fontSize: 9, fontWeight: 700, bgcolor: Number(x.amount_change) >= 0 ? '#eff6ff' : '#fff1f2', color: Number(x.amount_change) >= 0 ? '#1d4ed8' : '#be123c' }} />
+                            sx={{ height: 19, fontSize: 12, fontWeight: 700, bgcolor: Number(x.amount_change) >= 0 ? '#eff6ff' : '#fff1f2', color: Number(x.amount_change) >= 0 ? '#1d4ed8' : '#be123c' }} />
                         )}
                         {x.percent_change != null && x.percent_change !== '' && (
                           <Chip size="small" label={`${toPersianDigits(x.percent_change)}٪`}
-                            sx={{ height: 19, fontSize: 9, bgcolor: '#f5f3ff', color: '#6d28d9' }} />
+                            sx={{ height: 19, fontSize: 12, bgcolor: '#f5f3ff', color: '#6d28d9' }} />
                         )}
                         {x.new_end_date && (
                           <Chip size="small" label={`پایان جدید: ${toJalali(x.new_end_date)}`}
-                            sx={{ height: 19, fontSize: 9, bgcolor: '#fdf2f8', color: '#be185d' }} />
+                            sx={{ height: 19, fontSize: 12, bgcolor: '#fdf2f8', color: '#be185d' }} />
                         )}
                       </Stack>
                     </Box>
@@ -632,7 +632,7 @@ const ContractProfilePage = () => {
 
       {/* قراردادهای هم‌پروژه */}
       <SectionCard title="قراردادهای هم‌پروژه" icon={HubIcon} color="#3b82f6"
-        action={<Chip size="small" label={`${toPersianDigits(relatedContracts.length)} قرارداد`} sx={{ height: 22, fontSize: 10, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
+        action={<Chip size="small" label={`${toPersianDigits(relatedContracts.length)} قرارداد`} sx={{ height: 22, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
         {relatedContracts.length === 0 ? (
           <EmptyState icon={HubIcon} text="قرارداد مرتبطی در همین پروژه‌ها یافت نشد." />
         ) : (
@@ -645,20 +645,20 @@ const ContractProfilePage = () => {
                   '&:hover': { borderColor: '#93c5fd', bgcolor: '#fbfdff' },
                 }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
-                    <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: INK }}>{toPersianDigits(rc.number || '—')}</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{toPersianDigits(rc.number || '—')}</Typography>
                     <Chip size="small" label={STATUS_LABELS[rc.status] || '—'}
-                      sx={{ height: 19, fontSize: 8.5, fontWeight: 700, bgcolor: `${STATUS_COLORS[rc.status] || '#64748b'}18`, color: STATUS_COLORS[rc.status] || '#64748b' }} />
+                      sx={{ height: 19, fontSize: 12, fontWeight: 700, bgcolor: `${STATUS_COLORS[rc.status] || '#64748b'}18`, color: STATUS_COLORS[rc.status] || '#64748b' }} />
                   </Stack>
-                  <Typography sx={{ mt: 0.6, fontSize: 11, fontWeight: 700, color: '#334155', lineHeight: 1.5, minHeight: 33, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                  <Typography sx={{ mt: 0.6, fontSize: 12, fontWeight: 700, color: '#334155', lineHeight: 1.5, minHeight: 33, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                     {rc.subject || '—'}
                   </Typography>
-                  <Typography sx={{ mt: 0.3, fontSize: 9.5, color: MUTED }}>{rc.party_name || '—'}</Typography>
+                  <Typography sx={{ mt: 0.3, fontSize: 12, color: MUTED }}>{rc.party_name || '—'}</Typography>
                   <Box sx={{ mt: 1, pt: 1, borderTop: '1px solid #eef2f7' }}>
                     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
-                      <Typography sx={{ fontSize: 10, fontWeight: 800, color: '#b45309', direction: 'ltr' }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#b45309', direction: 'ltr' }}>
                         {formatPersianNumber(rc.effective_amount ?? rc.amount ?? 0)}
                       </Typography>
-                      <Typography sx={{ fontSize: 9.5, color: MUTED }}>{toJalali(rc.effective_end_date || rc.end_date)}</Typography>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>{toJalali(rc.effective_end_date || rc.end_date)}</Typography>
                     </Stack>
                   </Box>
                 </Paper>

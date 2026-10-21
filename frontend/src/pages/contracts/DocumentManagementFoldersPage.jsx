@@ -90,19 +90,19 @@ const DocumentManagementFoldersPage = () => {
         </Grid>
         <Grid item xs={12} lg={8}>
           <SurfaceCard title="فهرست پوشه‌ها" icon={FolderOutlinedIcon} color={DMS_ACCENT}
-            action={<Chip size="small" label={formatPersianNumber(folders.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#f1f5f9', color: MUTED }} />}>
+            action={<Chip size="small" label={formatPersianNumber(folders.length)} sx={{ height: 19, fontSize: 12, bgcolor: '#f1f5f9', color: MUTED }} />}>
             <Paper elevation={0} sx={{ border: '1px solid #eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
               <Table size="small">
                 <TableHead><TableRow>
-                  {['مسیر', 'نوع', 'اسناد', 'زیرپوشه‌ها', 'اقدام'].map((label) => <TableCell key={label} sx={{ fontSize: 8.5, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
+                  {['مسیر', 'نوع', 'اسناد', 'زیرپوشه‌ها', 'اقدام'].map((label) => <TableCell key={label} sx={{ fontSize: 12, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
                 </TableRow></TableHead>
                 <TableBody>
                   {sorted.map((folder) => (
                     <TableRow key={folder.id} hover>
-                      <TableCell sx={{ fontSize: 8.8, color: INK }}>{folder.path || folder.name}</TableCell>
-                      <TableCell><Chip size="small" label={folder.code === 'company.documents' ? 'مستندات شرکت' : folder.is_system ? 'سیستمی' : 'دستی'} sx={{ height: 18, fontSize: 7.4, bgcolor: '#f8fafc', color: MUTED }} /></TableCell>
-                      <TableCell sx={{ fontSize: 8.6, fontWeight: 800, color: DMS_ACCENT }}>{formatPersianNumber(folder.documents_count || 0)}</TableCell>
-                      <TableCell sx={{ fontSize: 8.6, color: MUTED }}>{formatPersianNumber(folder.children_count || 0)}</TableCell>
+                      <TableCell sx={{ fontSize: 12, color: INK }}>{folder.path || folder.name}</TableCell>
+                      <TableCell><Chip size="small" label={folder.code === 'company.documents' ? 'مستندات شرکت' : folder.is_system ? 'سیستمی' : 'دستی'} sx={{ height: 18, fontSize: 12, bgcolor: '#f8fafc', color: MUTED }} /></TableCell>
+                      <TableCell sx={{ fontSize: 12, fontWeight: 800, color: DMS_ACCENT }}>{formatPersianNumber(folder.documents_count || 0)}</TableCell>
+                      <TableCell sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(folder.children_count || 0)}</TableCell>
                       <TableCell>
                         <Button size="small" startIcon={<EditOutlinedIcon fontSize="small" />} onClick={() => openEdit(folder)}>ویرایش</Button>
                         {!folder.is_system ? <Button size="small" color="error" startIcon={<DeleteOutlineIcon fontSize="small" />} onClick={() => setConfirmDelete(folder)}>حذف</Button> : null}

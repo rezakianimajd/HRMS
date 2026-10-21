@@ -411,8 +411,8 @@ const ProjectProfilePage = () => {
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={monthly} margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                  <XAxis dataKey="month_short" reversed tick={{ fontSize: 11 }} tickFormatter={faLabel} />
-                  <YAxis orientation="right" tick={{ fontSize: 11 }} width={80} tickFormatter={faNum} />
+                  <XAxis dataKey="month_short" reversed tick={{ fontSize: 12 }} tickFormatter={faLabel} />
+                  <YAxis orientation="right" tick={{ fontSize: 12 }} width={80} tickFormatter={faNum} />
                   <ReTooltip formatter={(v) => money(v)}
                     labelFormatter={(label, payload) => payload?.[0]?.payload?.month_label || faLabel(label)}
                     contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
@@ -439,7 +439,7 @@ const ProjectProfilePage = () => {
                       {costPie.map((c) => <Cell key={c.name} fill={c.color} />)}
                     </Pie>
                     <ReTooltip formatter={(v) => money(v)} contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
-                    <Legend align="right" wrapperStyle={{ ...legendStyle, fontSize: 11 }} />
+                    <Legend align="right" wrapperStyle={{ ...legendStyle, fontSize: 12 }} />
                   </PieChart>
                 </ResponsiveContainer>
               </Box>
@@ -457,8 +457,8 @@ const ProjectProfilePage = () => {
                   <BarChart data={byStatus.map(r => ({ name: STATUS_LABELS[r.status] || r.status, amount: r.amount }))}
                     margin={{ top: 5, right: 8, left: 8, bottom: 5 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                    <XAxis dataKey="name" reversed tick={{ fontSize: 11 }} />
-                    <YAxis orientation="right" tick={{ fontSize: 11 }} width={70} tickFormatter={faNum} />
+                    <XAxis dataKey="name" reversed tick={{ fontSize: 12 }} />
+                    <YAxis orientation="right" tick={{ fontSize: 12 }} width={70} tickFormatter={faNum} />
                     <ReTooltip formatter={(v) => money(v)} contentStyle={rtlTip} itemStyle={{ fontFamily: FONT }} />
                     <Bar dataKey="amount" name="مبلغ" radius={[6, 6, 0, 0]}>
                       {byStatus.map((r, i) => <Cell key={r.status} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}

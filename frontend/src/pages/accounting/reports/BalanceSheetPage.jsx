@@ -58,10 +58,10 @@ const InfoField = ({ label, value, color }) => {
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
   return (
     <Box>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary, mb: 0.2 }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary, mb: 0.2 }}>
         {label}
       </Typography>
-      <Typography sx={{ fontSize: Math.max(type.bodySize, 11.5), fontWeight: 800, color: color || theme.palette.text.primary }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize, 12), fontWeight: 800, color: color || theme.palette.text.primary }}>
         {value}
       </Typography>
     </Box>
@@ -86,7 +86,7 @@ const MetricTile = ({ icon: Icon, label, value, hint, color, progress, progressL
           <Icon sx={{ fontSize: 18 }} />
         </Box>
         <Typography sx={{
-          flex: 1, minWidth: 0, fontSize: Math.max(type.bodySize - 1, 10.5),
+          flex: 1, minWidth: 0, fontSize: Math.max(type.bodySize - 1, 12),
           color: theme.palette.text.secondary, fontWeight: 600, lineHeight: 1.45,
         }}>
           {label}
@@ -99,12 +99,12 @@ const MetricTile = ({ icon: Icon, label, value, hint, color, progress, progressL
         }}>
           {value}
         </Typography>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
           ریال
         </Typography>
       </Box>
       {hint ? (
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
           {hint}
         </Typography>
       ) : null}
@@ -112,7 +112,7 @@ const MetricTile = ({ icon: Icon, label, value, hint, color, progress, progressL
         <Box sx={{ mt: 0.15 }}>
           <ProgressBar value={progress} color={color} height={5} />
           {progressLabel ? (
-            <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+            <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
               {progressLabel}
             </Typography>
           ) : null}
@@ -136,7 +136,7 @@ const BalanceStatus = ({ balanced, difference, compact = false, short = false })
       icon={balanced ? <CheckCircleIcon /> : <WarningAmberIcon />}
       label={label}
       sx={{
-        height: compact ? 25 : 28, fontSize: Math.max(type.bodySize - 2, 10), fontWeight: 800,
+        height: compact ? 25 : 28, fontSize: Math.max(type.bodySize - 2, 12), fontWeight: 800,
         bgcolor: alpha(color, 0.08), color, border: `1px solid ${alpha(color, 0.22)}`,
         '& .MuiChip-icon': { color, fontSize: 15 },
       }}
@@ -158,14 +158,14 @@ const MetaItem = ({ icon: Icon, label, value, hint, color }) => {
         <Icon sx={{ fontSize: 16 }} />
       </Box>
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
           {label}
         </Typography>
-        <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary }}>
+        <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: theme.palette.text.primary }}>
           {value}
         </Typography>
         {hint ? (
-          <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+          <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
             {hint}
           </Typography>
         ) : null}
@@ -223,12 +223,12 @@ const BalanceSection = ({ title, subtitle, icon, tone, total, groups, emptyText,
     0,
   );
   const headSx = {
-    fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, color: theme.palette.text.primary,
+    fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, color: theme.palette.text.primary,
     bgcolor: theme.palette.action.hover, borderBottom: `1px solid ${theme.palette.divider}`,
     whiteSpace: 'nowrap', py: 0.9, px: 1,
   };
   const cellSx = {
-    fontSize: Math.max(type.bodySize - 2, 10.5), borderBottom: `1px solid ${theme.palette.divider}`,
+    fontSize: Math.max(type.bodySize - 2, 12), borderBottom: `1px solid ${theme.palette.divider}`,
     whiteSpace: 'nowrap', py: 0.55, px: 1, color: theme.palette.text.primary,
   };
   return (
@@ -243,25 +243,25 @@ const BalanceSection = ({ title, subtitle, icon, tone, total, groups, emptyText,
           <Chip
             size="small"
             label={`${toPersianDigits(groups.length)} گروه`}
-            sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, bgcolor: alpha(color, 0.08), color }}
+            sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, bgcolor: alpha(color, 0.08), color }}
           />
           <Chip
             size="small"
             label={`${toPersianDigits(accountCount)} حساب`}
-            sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 700, bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary }}
+            sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 700, bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary }}
           />
         </Stack>
       )}
     >
       <Box sx={{ px: 1.5, py: 1, borderBottom: `1px solid ${theme.palette.divider}` }}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 10), color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
           {subtitle}
         </Typography>
       </Box>
       {groups.length === 0 ? (
         <Box sx={{ py: 5, px: 2, textAlign: 'center', flex: 1 }}>
           <DescriptionIcon sx={{ fontSize: 26, color: theme.palette.text.disabled, mb: 0.75 }} />
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.secondary }}>
             {emptyText}
           </Typography>
         </Box>
@@ -296,7 +296,7 @@ const BalanceSection = ({ title, subtitle, icon, tone, total, groups, emptyText,
                       <Chip
                         size="small"
                         label={pct(group.percent)}
-                        sx={{ height: 20, fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 800, bgcolor: alpha(color, 0.08), color }}
+                        sx={{ height: 20, fontSize: Math.max(type.bodySize - 4, 12), fontWeight: 800, bgcolor: alpha(color, 0.08), color }}
                       />
                     </TableCell>
                   </TableRow>
@@ -314,20 +314,20 @@ const BalanceSection = ({ title, subtitle, icon, tone, total, groups, emptyText,
                     <TableRow key={row.id} hover>
                       <TableCell align="center" sx={{
                         ...cellSx, color: theme.palette.text.secondary, direction: 'ltr',
-                        fontSize: Math.max(type.bodySize - 3, 9.5),
+                        fontSize: Math.max(type.bodySize - 3, 12),
                       }}>
                         {row.code ? toPersianDigits(row.code) : '—'}
                       </TableCell>
                       <TableCell sx={{ ...cellSx, pl: 2.25, whiteSpace: 'normal' }}>
                         <Stack direction="row" spacing={0.5} alignItems="center" useFlexGap flexWrap="wrap">
-                          <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.primary }}>
+                          <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.primary }}>
                             {row.name}
                           </Typography>
                           {row.is_synthetic ? (
                             <Chip
                               size="small"
                               label="محاسبه‌شده"
-                              sx={{ height: 18, fontSize: 8.5, fontWeight: 700, bgcolor: alpha(TONE.warning, 0.08), color: TONE.warning }}
+                              sx={{ height: 18, fontSize: 12, fontWeight: 700, bgcolor: alpha(TONE.warning, 0.08), color: TONE.warning }}
                             />
                           ) : null}
                         </Stack>
@@ -354,11 +354,11 @@ const BalanceSection = ({ title, subtitle, icon, tone, total, groups, emptyText,
         bgcolor: alpha(color, 0.035), display: 'flex', alignItems: 'center',
         justifyContent: 'space-between', gap: 1, flexWrap: 'wrap',
       }}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize, 11), fontWeight: 800, color: theme.palette.text.primary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize, 12), fontWeight: 800, color: theme.palette.text.primary }}>
           جمع {title}
         </Typography>
         <Typography sx={{ fontSize: Math.max(type.cardSize, 13), fontWeight: 900, color, fontVariantNumeric: 'tabular-nums' }}>
-          {money(total)} <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), fontWeight: 500, color: theme.palette.text.secondary }}>ریال</Typography>
+          {money(total)} <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 2, 12), fontWeight: 500, color: theme.palette.text.secondary }}>ریال</Typography>
         </Typography>
       </Box>
     </SurfaceCard>
@@ -376,7 +376,7 @@ const IntegrityItem = ({ icon: Icon, label, value, tone }) => {
     }}>
       <Stack direction="row" spacing={0.5} alignItems="center" useFlexGap>
         <Icon sx={{ fontSize: 14, color: tone, flexShrink: 0 }} />
-        <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+        <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
           {label}
         </Typography>
       </Stack>
@@ -420,7 +420,7 @@ const AuditCard = ({ audit, audited, onRecord }) => {
         <Chip
           size="small"
           label={approval?.status_display || 'بدون تأیید'}
-          sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, bgcolor: alpha(tone, 0.08), color: tone }}
+          sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, bgcolor: alpha(tone, 0.08), color: tone }}
         />
       )}
     >
@@ -436,7 +436,7 @@ const AuditCard = ({ audit, audited, onRecord }) => {
           <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900, color: theme.palette.text.primary }}>
             {statusText}
           </Typography>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, mt: 0.2 }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary, mt: 0.2 }}>
             {subtitle}
           </Typography>
         </Box>
@@ -451,7 +451,7 @@ const AuditCard = ({ audit, audited, onRecord }) => {
           {approval.opinion_note ? (
             <Grid item xs={12}>
               <Box sx={{ p: 1.1, borderRadius: '11px', bgcolor: theme.palette.action.hover, border: `1px dashed ${theme.palette.divider}` }}>
-                <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.primary, lineHeight: 1.9 }}>
+                <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.primary, lineHeight: 1.9 }}>
                   {approval.opinion_note}
                 </Typography>
               </Box>
@@ -460,7 +460,7 @@ const AuditCard = ({ audit, audited, onRecord }) => {
         </Grid>
       ) : (
         <Box sx={{ mt: 1.25, p: 1, borderRadius: '11px', bgcolor: theme.palette.action.hover, border: `1px dashed ${theme.palette.divider}` }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, lineHeight: 1.9 }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary, lineHeight: 1.9 }}>
             پس از کنترل اسناد و مانده‌ها، تأیید حسابرس را ثبت کنید تا مهر تأیید روی این صورت مالی درج شود.
           </Typography>
         </Box>
@@ -469,13 +469,13 @@ const AuditCard = ({ audit, audited, onRecord }) => {
       <Divider sx={{ my: 1.5 }} />
       <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.8 }}>
         <ShieldIcon sx={{ fontSize: 16, color: TONE.audit }} />
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: theme.palette.text.primary }}>
           کنترل صحت داده‌های مبنا
         </Typography>
         <Chip
           size="small"
           label={isClean ? 'پاک' : 'نیازمند بررسی'}
-          sx={{ height: 20, fontSize: 8.5, fontWeight: 800, bgcolor: alpha(isClean ? TONE.equity : TONE.warning, 0.08), color: isClean ? TONE.equity : TONE.warning }}
+          sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(isClean ? TONE.equity : TONE.warning, 0.08), color: isClean ? TONE.equity : TONE.warning }}
         />
       </Stack>
       <Box sx={{ display: 'grid', gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' }, gap: 0.75 }}>
@@ -487,12 +487,12 @@ const AuditCard = ({ audit, audited, onRecord }) => {
 
       <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} useFlexGap flexWrap="wrap">
         <Button size="small" variant="contained" startIcon={<AddIcon />} onClick={onRecord}
-          sx={{ borderRadius: '9px', fontSize: Math.max(type.buttonSize - 1, 10.5) }}>
+          sx={{ borderRadius: '9px', fontSize: Math.max(type.buttonSize - 1, 12) }}>
           ثبت تأیید حسابرسی
         </Button>
         {approval ? (
           <Chip size="small" label={approval.is_final ? 'تأیید نهایی' : 'غیرنهایی'}
-            sx={{ height: 22, fontSize: 9, fontWeight: 800, bgcolor: alpha(approval.is_final ? TONE.equity : TONE.warning, 0.08), color: approval.is_final ? TONE.equity : TONE.warning }} />
+            sx={{ height: 22, fontSize: 12, fontWeight: 800, bgcolor: alpha(approval.is_final ? TONE.equity : TONE.warning, 0.08), color: approval.is_final ? TONE.equity : TONE.warning }} />
         ) : null}
       </Stack>
     </SurfaceCard>
@@ -506,10 +506,10 @@ const RatioLine = ({ label, value, color, hint }) => {
   return (
     <Box>
       <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.primary, fontWeight: 700 }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.primary, fontWeight: 700 }}>
           {label}
         </Typography>
-        <Typography sx={{ fontSize: Math.max(type.bodySize, 11.5), fontWeight: 900, color }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize, 12), fontWeight: 900, color }}>
           {pct(value)}
         </Typography>
       </Stack>
@@ -517,7 +517,7 @@ const RatioLine = ({ label, value, color, hint }) => {
         <ProgressBar value={Math.min(Math.abs(value || 0), 100)} color={color} height={7} />
       </Box>
       {hint ? (
-        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
           {hint}
         </Typography>
       ) : null}
@@ -545,7 +545,7 @@ const AnalysisCard = ({ data, balanced }) => {
       contentSx={{ p: 2 }}
       action={(
         <Chip size="small" label={balanced ? 'تراز' : 'ناتراز'}
-          sx={{ height: 22, fontSize: 9, fontWeight: 800, bgcolor: alpha(balanced ? TONE.equity : theme.palette.error.main, 0.08), color: balanced ? TONE.equity : theme.palette.error.main }} />
+          sx={{ height: 22, fontSize: 12, fontWeight: 800, bgcolor: alpha(balanced ? TONE.equity : theme.palette.error.main, 0.08), color: balanced ? TONE.equity : theme.palette.error.main }} />
       )}
     >
       <Stack spacing={1.35}>
@@ -560,19 +560,19 @@ const AnalysisCard = ({ data, balanced }) => {
         gap: 0.75,
       }}>
         <Box sx={{ p: 0.9, borderRadius: '11px', bgcolor: theme.palette.action.hover, border: `1px solid ${theme.palette.divider}` }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>اهرم مالی</Typography>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>اهرم مالی</Typography>
           <Typography sx={{ mt: 0.15, fontSize: Math.max(type.statSize, 13), fontWeight: 900, color: TONE.neutral }}>
             {ratioText(leverage)}×
           </Typography>
         </Box>
         <Box sx={{ p: 0.9, borderRadius: '11px', bgcolor: alpha(netColor, 0.05), border: `1px solid ${alpha(netColor, 0.16)}` }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>سود / زیان دوره</Typography>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>سود / زیان دوره</Typography>
           <Typography sx={{ mt: 0.15, fontSize: Math.max(type.statSize, 13), fontWeight: 900, color: netColor, fontVariantNumeric: 'tabular-nums' }}>
             {money(netProfit)}
           </Typography>
         </Box>
         <Box sx={{ p: 0.9, borderRadius: '11px', bgcolor: theme.palette.action.hover, border: `1px solid ${theme.palette.divider}` }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>اختلاف تراز</Typography>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>اختلاف تراز</Typography>
           <Typography sx={{ mt: 0.15, fontSize: Math.max(type.statSize, 13), fontWeight: 900, color: balanced ? TONE.equity : theme.palette.error.main, fontVariantNumeric: 'tabular-nums' }}>
             {money(difference)}
           </Typography>
@@ -583,14 +583,14 @@ const AnalysisCard = ({ data, balanced }) => {
         mt: 1.5, p: 1.15, borderRadius: '11px', bgcolor: theme.palette.action.hover,
         border: `1px dashed ${theme.palette.divider}`,
       }}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, color: theme.palette.text.secondary }}>
           معادلهٔ حسابداری
         </Typography>
-        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.primary, fontVariantNumeric: 'tabular-nums', lineHeight: 1.9 }}>
+        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.primary, fontVariantNumeric: 'tabular-nums', lineHeight: 1.9 }}>
           {money(data?.total_assets)} {balanced ? '=' : '≠'} {money(data?.total_liabilities)} + {money(data?.total_equity)}
         </Typography>
         {Math.abs(netProfit) >= 0.01 ? (
-          <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+          <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
             سود (زیان) دوره به‌صورت خودکار در حقوق صاحبان سهام لحاظ شده است.
           </Typography>
         ) : null}
@@ -881,7 +881,7 @@ const BalanceSheetPage = () => {
               <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900, color: theme.palette.text.primary }}>
                 ثبت تأیید حسابرسی ترازنامه
               </Typography>
-              <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, mt: 0.15 }}>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary, mt: 0.15 }}>
                 اطلاعات حسابرس، مرجع گزارش و متن نظر را تکمیل کنید.
               </Typography>
             </Box>
@@ -945,9 +945,9 @@ const BalanceSheetPage = () => {
           </Grid>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpen(false)} sx={{ fontSize: Math.max(type.buttonSize, 11) }}>انصراف</Button>
+          <Button onClick={() => setOpen(false)} sx={{ fontSize: Math.max(type.buttonSize, 12) }}>انصراف</Button>
           <Button variant="contained" onClick={submitApproval} disabled={saveApproval.isPending}
-            startIcon={<VerifiedIcon />} sx={{ borderRadius: '9px', fontSize: Math.max(type.buttonSize, 11) }}>
+            startIcon={<VerifiedIcon />} sx={{ borderRadius: '9px', fontSize: Math.max(type.buttonSize, 12) }}>
             {saveApproval.isPending ? 'در حال ثبت…' : 'ثبت تأیید'}
           </Button>
         </DialogActions>

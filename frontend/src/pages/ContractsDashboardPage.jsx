@@ -101,8 +101,8 @@ const daysChip = (days) => {
 const EmptyState = ({ icon: Icon = HandshakeOutlinedIcon, text, hint, color = MUTED }) => (
   <Box sx={{ py: 4.5, textAlign: 'center' }}>
     <Icon sx={{ fontSize: 30, color: alpha(color, 0.55), mb: 0.7 }} />
-    <Typography sx={{ fontSize: 10.4, fontWeight: 800, color: INK }}>{text}</Typography>
-    {hint ? <Typography sx={{ mt: 0.35, fontSize: 9.2, color: MUTED }}>{hint}</Typography> : null}
+    <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{text}</Typography>
+    {hint ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
   </Box>
 );
 
@@ -126,12 +126,12 @@ const MiniMetric = ({ icon: Icon, label, value, suffix, hint, color, onClick }) 
       <Icon sx={{ fontSize: 17 }} />
     </Box>
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 8.9, color: MUTED }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, color: MUTED }}>{label}</Typography>
       <Typography sx={{ fontSize: 13.5, fontWeight: 900, color: INK, lineHeight: 1.35 }}>
         {value}
-        {suffix ? <Box component="span" sx={{ fontSize: 8.8, fontWeight: 700, color: MUTED, mr: 0.4 }}>{suffix}</Box> : null}
+        {suffix ? <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED, mr: 0.4 }}>{suffix}</Box> : null}
       </Typography>
-      {hint ? <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>{hint}</Typography> : null}
+      {hint ? <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
     </Box>
   </Paper>
 );
@@ -154,8 +154,8 @@ const ActionTile = ({ icon: Icon, label, caption, color, onClick }) => (
       <Icon sx={{ fontSize: 17 }} />
     </Box>
     <Box sx={{ minWidth: 0, textAlign: 'right' }}>
-      <Typography noWrap sx={{ fontSize: 9.3, fontWeight: 800, color: INK }}>{label}</Typography>
-      <Typography noWrap sx={{ fontSize: 7.8, color: MUTED }}>{caption}</Typography>
+      <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{label}</Typography>
+      <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{caption}</Typography>
     </Box>
   </ButtonBase>
 );
@@ -180,7 +180,7 @@ const TypePanel = ({ data }) => (
 
 const TrendPanel = ({ data }) => (
   <SurfaceCard title="روند ماهانه قراردادها" icon={TrendingUpOutlinedIcon} color={CYAN}
-    action={<Chip size="small" label="۶ ماه اخیر" sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(CYAN, 0.07), color: CYAN }} />}>
+    action={<Chip size="small" label="۶ ماه اخیر" sx={{ height: 20, fontSize: 12, bgcolor: alpha(CYAN, 0.07), color: CYAN }} />}>
     {!data.some((item) => item.value > 0) ? (
       <EmptyState icon={TrendingUpOutlinedIcon} text="داده‌ای برای روند ثبت نشده است" color={CYAN} />
     ) : <ColumnChart data={data} height={210} />}
@@ -192,7 +192,7 @@ const ExpiringPanel = ({ contracts, navigate }) => (
   <SurfaceCard title="قراردادهای رو به انقضا" icon={EventBusyOutlinedIcon} color={RED}
     action={(
       <Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/contracts-expiring')}
-        sx={{ minWidth: 0, px: 0.8, fontSize: 8.7 }}>مشاهده همه</Button>
+        sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>مشاهده همه</Button>
     )}>
     {!contracts.length ? (
       <EmptyState icon={CheckCircleOutlineIcon} text="قرارداد نزدیک به انقضا وجود ندارد"
@@ -221,15 +221,15 @@ const ExpiringPanel = ({ contracts, navigate }) => (
                 <EventBusyOutlinedIcon sx={{ fontSize: 15 }} />
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>{contract.subject}</Typography>
-                <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract.subject}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                   {contract.party_name || '—'} · پایان {toJalali(end)}
                 </Typography>
               </Box>
               <Box sx={{ textAlign: 'left', flexShrink: 0 }}>
                 <Chip size="small" label={chip.label}
-                  sx={{ height: 19, fontSize: 7.7, fontWeight: 800, bgcolor: alpha(chip.color, 0.08), color: chip.color }} />
-                <Typography sx={{ mt: 0.15, fontSize: 7.8, color: MUTED }}>
+                  sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(chip.color, 0.08), color: chip.color }} />
+                <Typography sx={{ mt: 0.15, fontSize: 12, color: MUTED }}>
                   {compactMoney(effectiveAmount(contract))} {currencyLabel(contract)}
                 </Typography>
               </Box>
@@ -246,12 +246,12 @@ const FinancePanel = ({ invoiced, paid, outstanding, collectionRate, guarantees,
   <SurfaceCard title="سلامت مالی پرونده‌ها" icon={AccountBalanceWalletOutlinedIcon} color={GREEN}
     action={(
       <Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/external-contracts')}
-        sx={{ minWidth: 0, px: 0.8, fontSize: 8.7 }}>پرونده‌ها</Button>
+        sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>پرونده‌ها</Button>
     )}>
     <Stack spacing={1.2}>
       <Box>
         <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.4 }}>
-          <Typography sx={{ fontSize: 9.5, color: MUTED }}>نرخ وصول پرداخت‌ها</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>نرخ وصول پرداخت‌ها</Typography>
           <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: collectionRate >= 70 ? GREEN : collectionRate >= 40 ? AMBER : RED }}>
             {formatPersianPercent(collectionRate)}
           </Typography>
@@ -261,36 +261,36 @@ const FinancePanel = ({ invoiced, paid, outstanding, collectionRate, guarantees,
       <Grid container spacing={0.8}>
         <Grid item xs={6}>
           <Box sx={{ p: 0.9, borderRadius: '10px', bgcolor: alpha(BLUE, 0.045), border: `1px solid ${alpha(BLUE, 0.1)}` }}>
-            <Typography sx={{ fontSize: 8.1, color: MUTED }}>صورت‌وضعیت / فاکتور</Typography>
-            <Typography sx={{ fontSize: 10.6, fontWeight: 900, color: BLUE }}>{compactMoney(invoiced)} <Box component="span" sx={{ fontSize: 7.2, color: MUTED }}>ریال</Box></Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>صورت‌وضعیت / فاکتور</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: BLUE }}>{compactMoney(invoiced)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>ریال</Box></Typography>
           </Box>
         </Grid>
         <Grid item xs={6}>
           <Box sx={{ p: 0.9, borderRadius: '10px', bgcolor: alpha(GREEN, 0.045), border: `1px solid ${alpha(GREEN, 0.1)}` }}>
-            <Typography sx={{ fontSize: 8.1, color: MUTED }}>پرداخت‌شده</Typography>
-            <Typography sx={{ fontSize: 10.6, fontWeight: 900, color: GREEN }}>{compactMoney(paid)} <Box component="span" sx={{ fontSize: 7.2, color: MUTED }}>ریال</Box></Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>پرداخت‌شده</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: GREEN }}>{compactMoney(paid)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>ریال</Box></Typography>
           </Box>
         </Grid>
         <Grid item xs={6}>
           <Box sx={{ p: 0.9, borderRadius: '10px', bgcolor: alpha(AMBER, 0.045), border: `1px solid ${alpha(AMBER, 0.1)}` }}>
-            <Typography sx={{ fontSize: 8.1, color: MUTED }}>مانده تسویه</Typography>
-            <Typography sx={{ fontSize: 10.6, fontWeight: 900, color: AMBER }}>{compactMoney(outstanding)} <Box component="span" sx={{ fontSize: 7.2, color: MUTED }}>ریال</Box></Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>مانده تسویه</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: AMBER }}>{compactMoney(outstanding)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>ریال</Box></Typography>
           </Box>
         </Grid>
         <Grid item xs={6}>
           <Box sx={{ p: 0.9, borderRadius: '10px', bgcolor: alpha(VIOLET, 0.045), border: `1px solid ${alpha(VIOLET, 0.1)}` }}>
-            <Typography sx={{ fontSize: 8.1, color: MUTED }}>تضامین فعال</Typography>
-            <Typography sx={{ fontSize: 10.6, fontWeight: 900, color: VIOLET }}>{compactMoney(guarantees)} <Box component="span" sx={{ fontSize: 7.2, color: MUTED }}>ریال</Box></Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>تضامین فعال</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: VIOLET }}>{compactMoney(guarantees)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>ریال</Box></Typography>
           </Box>
         </Grid>
       </Grid>
       <Divider />
       <Stack direction="row" alignItems="center" spacing={0.6} useFlexGap flexWrap="wrap">
         <Chip size="small" label={`${formatPersianNumber(guaranteeCount)} تضمین فعال`}
-          sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
+          sx={{ height: 19, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
         <Chip size="small" label={`${formatPersianNumber(overdue)} فاکتور معوق`}
-          sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(overdue ? RED : GREEN, 0.07), color: overdue ? RED : GREEN }} />
-        <Typography sx={{ fontSize: 7.8, color: MUTED }}>
+          sx={{ height: 19, fontSize: 12, bgcolor: alpha(overdue ? RED : GREEN, 0.07), color: overdue ? RED : GREEN }} />
+        <Typography sx={{ fontSize: 12, color: MUTED }}>
           بر پایه {formatPersianNumber(sourceCount)} قرارداد بارگذاری‌شده
         </Typography>
       </Stack>
@@ -303,7 +303,7 @@ const TopPartiesPanel = ({ data, totalAmount, navigate }) => (
   <SurfaceCard title="پیمانکاران و تأمین‌کنندگان کلیدی" icon={StorefrontOutlinedIcon} color={CYAN}
     action={(
       <Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/contract-parties')}
-        sx={{ minWidth: 0, px: 0.8, fontSize: 8.7 }}>طرف‌ها</Button>
+        sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>طرف‌ها</Button>
     )}>
     {!data.length ? (
       <EmptyState icon={StorefrontOutlinedIcon} text="طرف قراردادی ثبت نشده است" color={CYAN} />
@@ -317,11 +317,11 @@ const TopPartiesPanel = ({ data, totalAmount, navigate }) => (
                 bgcolor: alpha(PALETTE[index % PALETTE.length], 0.08),
                 color: PALETTE[index % PALETTE.length],
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 9, fontWeight: 900,
+                fontSize: 12, fontWeight: 900,
               }}>{party.name.trim()?.charAt(0) || '?'}</Box>
-              <Typography noWrap sx={{ flex: 1, fontSize: 9.2, fontWeight: 800, color: INK }}>{party.name}</Typography>
-              <Typography sx={{ fontSize: 8.2, color: MUTED }}>{formatPersianNumber(party.count)} قرارداد</Typography>
-              <Typography sx={{ fontSize: 8.2, color: CYAN, fontWeight: 800 }}>{compactMoney(party.amount)}</Typography>
+              <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 800, color: INK }}>{party.name}</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(party.count)} قرارداد</Typography>
+              <Typography sx={{ fontSize: 12, color: CYAN, fontWeight: 800 }}>{compactMoney(party.amount)}</Typography>
             </Stack>
             <ProgressBar value={totalAmount ? (party.amount / totalAmount) * 100 : 0}
               color={PALETTE[index % PALETTE.length]} height={4} />
@@ -383,7 +383,7 @@ const ContractTable = ({ contracts, navigate }) => {
     <SurfaceCard title="قراردادهای اخیر" icon={HandshakeOutlinedIcon} color={AMBER}
       action={(
         <Button size="small" startIcon={<DownloadOutlinedIcon />} onClick={exportCsv}
-          sx={{ minWidth: 0, px: 0.8, fontSize: 8.6 }}>خروجی</Button>
+          sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>خروجی</Button>
       )}>
       <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }} sx={{ mb: 1.1 }}>
         <TextField
@@ -394,23 +394,23 @@ const ContractTable = ({ contracts, navigate }) => {
           InputProps={{
             startAdornment: <InputAdornment position="start"><SearchOutlinedIcon sx={{ fontSize: 17, color: '#94a3b8' }} /></InputAdornment>,
           }}
-          sx={{ width: { xs: '100%', md: 300 }, '& .MuiOutlinedInput-root': { height: 33, borderRadius: '9px', fontSize: 10 } }}
+          sx={{ width: { xs: '100%', md: 300 }, '& .MuiOutlinedInput-root': { height: 33, borderRadius: '9px', fontSize: 12 } }}
         />
         <TextField select size="small" label="وضعیت" value={status}
           onChange={(event) => setStatus(event.target.value)}
-          sx={{ width: { xs: '100%', md: 150 }, '& .MuiOutlinedInput-root': { height: 33, borderRadius: '9px', fontSize: 9.5 } }}>
+          sx={{ width: { xs: '100%', md: 150 }, '& .MuiOutlinedInput-root': { height: 33, borderRadius: '9px', fontSize: 12 } }}>
           <MenuItem value="">همه وضعیت‌ها</MenuItem>
           {Object.entries(STATUS_LABELS).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
         </TextField>
         <TextField select size="small" label="مرتب‌سازی" value={sort}
           onChange={(event) => setSort(event.target.value)}
-          sx={{ width: { xs: '100%', md: 160 }, '& .MuiOutlinedInput-root': { height: 33, borderRadius: '9px', fontSize: 9.5 } }}>
+          sx={{ width: { xs: '100%', md: 160 }, '& .MuiOutlinedInput-root': { height: 33, borderRadius: '9px', fontSize: 12 } }}>
           <MenuItem value="newest">جدیدترین</MenuItem>
           <MenuItem value="end">نزدیک‌ترین پایان</MenuItem>
           <MenuItem value="amount">بیشترین مبلغ</MenuItem>
         </TextField>
         <Box sx={{ flex: 1 }} />
-        <Typography sx={{ fontSize: 8.5, color: MUTED }}>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>
           {formatPersianNumber(rows.length)} قرارداد
         </Typography>
       </Stack>
@@ -442,32 +442,32 @@ const ContractTable = ({ contracts, navigate }) => {
                     <TableRow key={contract.id} hover onClick={() => navigate(`/external-contracts/${contract.id}`)}
                       sx={{ cursor: 'pointer', '& td': { py: 0.75, borderBottom: '1px solid #f2f5f9' } }}>
                       <TableCell>
-                        <Typography noWrap sx={{ fontSize: 9.4, fontWeight: 800, color: INK }}>{contract.subject}</Typography>
-                        <Typography noWrap sx={{ fontSize: 8, color: MUTED }}>
+                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract.subject}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                           {contract.party_name || '—'}{contract.number ? ` · ${contract.number}` : ''}
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography noWrap sx={{ fontSize: 8.7, color: MUTED }}>
+                        <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                           {contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || '—'}
                         </Typography>
                       </TableCell>
                       <TableCell align="center">
                         <Chip size="small" label={statusLabel(contract.status)}
-                          sx={{ height: 19, fontSize: 7.6, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
+                          sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
                       </TableCell>
                       <TableCell align="center">
-                        <Typography sx={{ fontSize: 8.8, color: INK, fontWeight: 800 }}>{compactMoney(effectiveAmount(contract))}</Typography>
-                        <Typography sx={{ fontSize: 7.5, color: MUTED }}>{currencyLabel(contract)}</Typography>
+                        <Typography sx={{ fontSize: 12, color: INK, fontWeight: 800 }}>{compactMoney(effectiveAmount(contract))}</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>{currencyLabel(contract)}</Typography>
                       </TableCell>
                       <TableCell align="center">
-                        <Typography sx={{ fontSize: 8.6, color: INK }}>{toJalali(end)}</Typography>
+                        <Typography sx={{ fontSize: 12, color: INK }}>{toJalali(end)}</Typography>
                       </TableCell>
                       <TableCell align="center">
                         {showDays ? (
                           <Chip size="small" label={chip.label}
-                            sx={{ height: 19, fontSize: 7.5, fontWeight: 800, bgcolor: alpha(chip.color, 0.07), color: chip.color }} />
-                        ) : <Typography sx={{ fontSize: 8.5, color: MUTED }}>—</Typography>}
+                            sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(chip.color, 0.07), color: chip.color }} />
+                        ) : <Typography sx={{ fontSize: 12, color: MUTED }}>—</Typography>}
                       </TableCell>
                     </TableRow>
                   );
@@ -476,7 +476,7 @@ const ContractTable = ({ contracts, navigate }) => {
             </Table>
           </TableContainer>
           {rows.length > 12 ? (
-            <Typography sx={{ mt: 0.8, fontSize: 8.3, color: MUTED, textAlign: 'left' }}>
+            <Typography sx={{ mt: 0.8, fontSize: 12, color: MUTED, textAlign: 'left' }}>
               نمایش ۱۲ مورد از {formatPersianNumber(rows.length)} قرارداد
             </Typography>
           ) : null}
@@ -701,7 +701,7 @@ const ContractsDashboardPage = () => {
       />
 
       {hasError ? (
-        <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 11 }}
+        <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 12 }}
           action={<Button size="small" onClick={refreshAll}>تلاش دوباره</Button>}>
           بخشی از داده‌های قراردادها دریافت نشد؛ سایر بخش‌ها قابل استفاده هستند.
         </Alert>
@@ -721,18 +721,18 @@ const ContractsDashboardPage = () => {
             <Typography sx={{ fontSize: { xs: 16, md: 19 }, fontWeight: 900, color: INK, letterSpacing: '-0.02em' }}>
               پرتفوی قراردادها در یک نگاه
             </Typography>
-            <Typography sx={{ mt: 0.3, fontSize: 9.8, color: MUTED }}>
+            <Typography sx={{ mt: 0.3, fontSize: 12, color: MUTED }}>
               از تعهد و الحاقیه تا صورت‌وضعیت، تضامین و تسویه؛ همه‌چیز قابل پیگیری.
             </Typography>
             <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
               <Chip size="small" label={`${formatPersianNumber(totalCount)} قرارداد`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(AMBER, 0.07), color: AMBER }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(AMBER, 0.07), color: AMBER }} />
               <Chip size="small" label={`${formatPersianNumber(num(counters.active))} در حال اجرا`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(GREEN, 0.07), color: GREEN }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(GREEN, 0.07), color: GREEN }} />
               <Chip size="small" label={`${formatPersianNumber(data.expiringCount)} رو به انقضا`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
               <Chip size="small" label={`${compactMoney(data.totalAmount)} ریال`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
             </Stack>
           </Box>
 
@@ -800,7 +800,7 @@ const ContractsDashboardPage = () => {
         <Grid item xs={12} lg={7}>
           <SurfaceCard title="توزیع قراردادها در پروژه‌ها" icon={FolderOutlinedIcon} color={CYAN}
             action={<Chip size="small" label={`${formatPersianNumber(data.projectData.length)} پروژه`}
-              sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(CYAN, 0.07), color: CYAN }} />}>
+              sx={{ height: 20, fontSize: 12, bgcolor: alpha(CYAN, 0.07), color: CYAN }} />}>
             {!data.projectData.length ? (
               <EmptyState icon={FolderOutlinedIcon} text="قراردادی به پروژه تخصیص نیافته است" color={CYAN} />
             ) : <BarChart data={data.projectData} height={220} />}

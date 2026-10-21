@@ -72,20 +72,20 @@ export const KpiCard = ({ icon: Icon, label, value, suffix, hint, color = '#f59e
       }}>
         <Icon sx={{ fontSize: 20 }} />
       </Box>
-      {hint ? <Chip size="small" label={hint} sx={{ height: 21, fontSize: 10, fontWeight: 700, bgcolor: `${color}10`, color }} /> : null}
+      {hint ? <Chip size="small" label={hint} sx={{ height: 21, fontSize: 12, fontWeight: 700, bgcolor: `${color}10`, color }} /> : null}
     </Stack>
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 10.8, color: MUTED, mb: 0.2 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.2 }}>{label}</Typography>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }}>
-        <Typography sx={{ fontSize: size, fontWeight: 900, color: INK, direction: 'ltr', lineHeight: 1.2, wordBreak: 'break-word' }}>
+        <Typography sx={{ fontSize: Math.max(12, size), fontWeight: 900, color: INK, direction: 'ltr', lineHeight: 1.2, wordBreak: 'break-word' }}>
           {toPersianDigits(value)}
         </Typography>
-        {suffix ? <Typography sx={{ fontSize: 10, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
+        {suffix ? <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
       </Box>
       {progress !== undefined && progress !== null ? (
         <Box sx={{ mt: 0.7 }}>
           <ProgressBar value={progress} color={color} height={5} />
-          {progressLabel ? <Typography sx={{ fontSize: 9.5, color: MUTED, mt: 0.35 }}>{progressLabel}</Typography> : null}
+          {progressLabel ? <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.35 }}>{progressLabel}</Typography> : null}
         </Box>
       ) : null}
     </Box>
@@ -94,7 +94,7 @@ export const KpiCard = ({ icon: Icon, label, value, suffix, hint, color = '#f59e
 
 export const DetailTile = ({ label, value, ltr }) => (
   <Box sx={{ p: 1.25, minHeight: 60, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #eef2f7', minWidth: 0 }}>
-    <Typography sx={{ fontSize: 10.5, color: MUTED, mb: 0.3 }}>{label}</Typography>
+    <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.3 }}>{label}</Typography>
     <Typography sx={{
       fontSize: 12.2, fontWeight: 700, color: INK, wordBreak: 'break-word',
       direction: 'rtl', textAlign: 'right',
@@ -122,7 +122,7 @@ export const FinancialDonut = ({ paid = 0, remaining = 0, size = 168, thickness 
       </svg>
       <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
         <Typography sx={{ fontSize: 24, fontWeight: 900, color: INK, lineHeight: 1.1 }}>{toPersianDigits(percent)}٪</Typography>
-        <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.3 }}>پرداخت‌شده</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.3 }}>پرداخت‌شده</Typography>
       </Box>
     </Box>
   );
@@ -135,9 +135,9 @@ export const MoneyBar = ({ label, value, total, color, suffix }) => {
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.5 }}>
         <Stack direction="row" alignItems="center" spacing={0.6} useFlexGap>
           <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: color }} />
-          <Typography sx={{ fontSize: 11, color: '#475569', fontWeight: 600 }}>{label}</Typography>
+          <Typography sx={{ fontSize: 12, color: '#475569', fontWeight: 600 }}>{label}</Typography>
         </Stack>
-        <Typography sx={{ fontSize: 11.5, color: INK, fontWeight: 800, whiteSpace: 'nowrap' }}>
+        <Typography sx={{ fontSize: 12, color: INK, fontWeight: 800, whiteSpace: 'nowrap' }}>
           {formatPersianNumber(value)} <Box component="span" sx={{ color: MUTED, fontWeight: 500 }}>{suffix}</Box>
         </Typography>
       </Stack>
@@ -162,27 +162,27 @@ export const EffectMetric = ({ label, value, base, rawValue = 0, rawBase = 0, co
           }}>
             <Icon sx={{ fontSize: 16 }} />
           </Box>
-          <Typography sx={{ fontSize: 10.5, color: MUTED, fontWeight: 600 }}>{label}</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED, fontWeight: 600 }}>{label}</Typography>
         </Stack>
         {delta !== null ? (
           <Chip size="small" label={`${delta >= 0 ? '+' : ''}${toPersianDigits(delta)}٪`}
-            sx={{ height: 19, fontSize: 9.5, fontWeight: 800, bgcolor: delta >= 0 ? '#eff6ff' : '#fff1f2', color: delta >= 0 ? '#1d4ed8' : '#be123c' }} />
+            sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: delta >= 0 ? '#eff6ff' : '#fff1f2', color: delta >= 0 ? '#1d4ed8' : '#be123c' }} />
         ) : null}
       </Stack>
 
       <Typography sx={{ mt: 1, fontSize: 15, fontWeight: 900, color: INK, direction: 'rtl', textAlign: 'right' }}>
         {value}
       </Typography>
-      <Typography sx={{ mt: 0.3, fontSize: 9.5, color: MUTED }}>پایه: {base}</Typography>
+      <Typography sx={{ mt: 0.3, fontSize: 12, color: MUTED }}>پایه: {base}</Typography>
 
       {isDate ? null : (
         <Stack spacing={0.45} sx={{ mt: 0.8 }}>
           <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap>
-            <Typography sx={{ width: 25, fontSize: 9.5, color: MUTED }}>پایه</Typography>
+            <Typography sx={{ width: 25, fontSize: 12, color: MUTED }}>پایه</Typography>
             <Box sx={{ flex: 1 }}><ProgressBar value={basePercent} color="#cbd5e1" height={4} /></Box>
           </Stack>
           <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap>
-            <Typography sx={{ width: 25, fontSize: 9.5, color: MUTED }}>مؤثر</Typography>
+            <Typography sx={{ width: 25, fontSize: 12, color: MUTED }}>مؤثر</Typography>
             <Box sx={{ flex: 1 }}><ProgressBar value={currentPercent} color={color} height={4} /></Box>
           </Stack>
         </Stack>
@@ -206,7 +206,7 @@ export const ActionTile = ({ icon: Icon, label, count = 0, color, onClick }) => 
     </Box>
     <Box sx={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
       <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{label}</Typography>
-      <Typography sx={{ fontSize: 10, color: MUTED, mt: 0.15 }}>{toPersianDigits(count)} مورد</Typography>
+      <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.15 }}>{toPersianDigits(count)} مورد</Typography>
     </Box>
     <ChevronLeftIcon sx={{ fontSize: 17, color: '#cbd5e1', flexShrink: 0 }} />
   </ButtonBase>
@@ -220,7 +220,7 @@ export const CountTile = ({ icon: Icon, label, value, color }) => (
       </Box>
       <Typography sx={{ fontSize: 18, fontWeight: 900, color: INK }}>{toPersianDigits(value)}</Typography>
     </Stack>
-    <Typography sx={{ mt: 0.6, fontSize: 10.5, color: MUTED }}>{label}</Typography>
+    <Typography sx={{ mt: 0.6, fontSize: 12, color: MUTED }}>{label}</Typography>
   </Box>
 );
 
@@ -229,7 +229,7 @@ export const EmptyState = ({ icon: Icon = DescriptionOutlinedIcon, text }) => (
     <Box sx={{ width: 46, height: 46, mx: 'auto', mb: 1, borderRadius: '14px', bgcolor: SOFT_BG, color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <Icon sx={{ fontSize: 22 }} />
     </Box>
-    <Typography sx={{ fontSize: 11.5, color: MUTED }}>{text}</Typography>
+    <Typography sx={{ fontSize: 12, color: MUTED }}>{text}</Typography>
   </Box>
 );
 
@@ -275,9 +275,9 @@ export const TimelineList = ({ events = [], maxHeight = 420 }) => (
           <Box sx={{ flex: 1, minWidth: 0, p: 1.15, borderRadius: '11px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
             <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
               <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{ev.title}</Typography>
-              <Typography sx={{ fontSize: 9.5, color: MUTED, whiteSpace: 'nowrap' }}>{toJalali(ev.date)}</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap' }}>{toJalali(ev.date)}</Typography>
             </Stack>
-            {ev.extra ? <Typography sx={{ mt: 0.25, fontSize: 10, color: MUTED }}>{ev.extra}</Typography> : null}
+            {ev.extra ? <Typography sx={{ mt: 0.25, fontSize: 12, color: MUTED }}>{ev.extra}</Typography> : null}
           </Box>
         </Box>
       );

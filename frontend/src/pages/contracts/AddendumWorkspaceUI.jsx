@@ -114,7 +114,7 @@ export const SectionTitle = ({ icon: Icon, title, hint, action, color }) => {
           {title}
         </Typography>
         {hint ? (
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
             {hint}
           </Typography>
         ) : null}
@@ -128,11 +128,11 @@ export const InfoLine = ({ label, value, ltr = false, strong = false, color }) =
   const { theme, type } = useAddendumStyle();
   return (
     <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1} useFlexGap sx={{ py: 0.45 }}>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.secondary }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.secondary }}>
         {label}
       </Typography>
       <Typography sx={{
-        fontSize: Math.max(type.bodySize - 0.5, 10.8), fontWeight: strong ? 900 : 700,
+        fontSize: Math.max(type.bodySize - 0.5, 12), fontWeight: strong ? 900 : 700,
         color: color || theme.palette.text.primary, direction: ltr ? 'ltr' : 'rtl', textAlign: 'left',
         fontVariantNumeric: 'tabular-nums', wordBreak: 'break-word',
       }}>
@@ -175,7 +175,7 @@ export const EmptyState = ({ title, description, action }) => {
       <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900, color: theme.palette.text.primary }}>
         {title}
       </Typography>
-      <Typography sx={{ mt: 0.5, mb: action ? 2 : 0, fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.secondary }}>
+      <Typography sx={{ mt: 0.5, mb: action ? 2 : 0, fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.secondary }}>
         {description}
       </Typography>
       {action || null}
@@ -208,7 +208,7 @@ export const ContractSnapshotCard = ({ contract, accent, onBack }) => {
             <EditNoteIcon sx={{ fontSize: 20 }} />
           </Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+            <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
               {contract.number ? `قرارداد ${contract.number}` : 'پروندهٔ قرارداد'}
             </Typography>
             <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12), fontWeight: 900, color: theme.palette.text.primary, lineHeight: 1.5 }}>
@@ -216,7 +216,7 @@ export const ContractSnapshotCard = ({ contract, accent, onBack }) => {
             </Typography>
           </Box>
           <Chip size="small" label={contract.status_display || '—'}
-            sx={{ height: 21, fontSize: 9, fontWeight: 800, bgcolor: alpha(accent, 0.07), color: accent }} />
+            sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(accent, 0.07), color: accent }} />
         </Stack>
         <Divider sx={{ my: 0.75 }} />
         <InfoLine label="طرف قرارداد" value={contract.party_name} />
@@ -227,8 +227,8 @@ export const ContractSnapshotCard = ({ contract, accent, onBack }) => {
         <InfoLine label="تاریخ پایان مؤثر" value={dateLabel(contract.effective_end_date || contract.end_date)} />
         <Box sx={{ mt: 1 }}>
           <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.4 }}>
-            <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>پیش‌پرداخت</Typography>
-            <Typography sx={{ fontSize: 9.5, fontWeight: 800, color: theme.palette.text.primary }}>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>پیش‌پرداخت</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 800, color: theme.palette.text.primary }}>
               {money(advance, currency)}
             </Typography>
           </Stack>
@@ -271,27 +271,27 @@ export const EffectiveProfileCard = ({ base, effective, accent, currency = 'ری
           return (
             <Box key={key}>
               <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
-                <Typography sx={{ fontSize: 9.8, color: theme.palette.text.secondary }}>{label}</Typography>
-                <Typography sx={{ fontSize: 10.8, fontWeight: 900, color: changed ? '#0f766e' : theme.palette.text.primary }}>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>{label}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: changed ? '#0f766e' : theme.palette.text.primary }}>
                   {key === 'end_date' ? dateLabel(after) : (isMoney ? money(after, currency) : `${toNumber(after)}٪`)}
                 </Typography>
               </Stack>
               <Stack direction="row" justifyContent="space-between" alignItems="center">
-                <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary, direction: 'ltr' }}>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary, direction: 'ltr' }}>
                   {key === 'end_date' ? dateLabel(before) : (isMoney ? money(before, currency) : `${toNumber(before)}٪`)}
                 </Typography>
                 {changed ? (
                   <Chip size="small" label={key === 'end_date'
                     ? `${delta > 0 ? '+' : ''}${formatPersianNumber(delta)} روز`
                     : (isMoney ? signedMoney(delta, currency) : `${delta > 0 ? '+' : ''}${formatPersianNumber(delta)}٪`)}
-                    sx={{ height: 18, fontSize: 8.5, fontWeight: 800, bgcolor: alpha('#0f766e', 0.08), color: '#0f766e' }} />
+                    sx={{ height: 18, fontSize: 12, fontWeight: 800, bgcolor: alpha('#0f766e', 0.08), color: '#0f766e' }} />
                 ) : null}
               </Stack>
             </Box>
           );
         })}
       </Stack>
-      <Typography sx={{ mt: 1, fontSize: 8.8, color: theme.palette.text.secondary }}>
+      <Typography sx={{ mt: 1, fontSize: 12, color: theme.palette.text.secondary }}>
         محاسبه بر اساس تاریخ و ترتیب الحاقیه‌ها؛ مبلغ قرارداد بازنویسی نمی‌شود.
       </Typography>
     </Paper>
@@ -315,7 +315,7 @@ export const EffectTable = ({ effect, compact = false, currency = 'ریال' }) 
       <TableHead>
         <TableRow>
           {['مورد', 'پایه', 'پس از الحاقیه', 'تغییر'].map((label) => (
-            <TableCell key={label} sx={{ fontWeight: 900, fontSize: 9.5, color: theme.palette.text.secondary }}>{label}</TableCell>
+            <TableCell key={label} sx={{ fontWeight: 900, fontSize: 12, color: theme.palette.text.secondary }}>{label}</TableCell>
           ))}
         </TableRow>
       </TableHead>
@@ -327,14 +327,14 @@ export const EffectTable = ({ effect, compact = false, currency = 'ریال' }) 
           const delta = isDate ? dayDiff(base[field], effective[field]) : toNumber(deltas[field]);
           return (
             <TableRow key={field} sx={{ bgcolor: isChanged ? alpha('#0f766e', 0.035) : 'transparent' }}>
-              <TableCell sx={{ fontSize: 9.5 }}>{label}</TableCell>
-              <TableCell sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>
+              <TableCell sx={{ fontSize: 12 }}>{label}</TableCell>
+              <TableCell sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                 {isDate ? dateLabel(base[field]) : money(base[field], currency)}
               </TableCell>
-              <TableCell sx={{ fontSize: 9.5, fontWeight: isChanged ? 900 : 500 }}>
+              <TableCell sx={{ fontSize: 12, fontWeight: isChanged ? 900 : 500 }}>
                 {isDate ? dateLabel(effective[field]) : money(effective[field], currency)}
               </TableCell>
-              <TableCell sx={{ fontSize: 9.5, fontWeight: 800, color: isChanged ? '#0f766e' : theme.palette.text.secondary }}>
+              <TableCell sx={{ fontSize: 12, fontWeight: 800, color: isChanged ? '#0f766e' : theme.palette.text.secondary }}>
                 {!isChanged ? '—' : isDate
                   ? `${delta > 0 ? '+' : ''}${formatPersianNumber(delta)} روز`
                   : signedMoney(delta, currency)}
@@ -381,20 +381,20 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
           width: 35, height: 35, borderRadius: '10px', flexShrink: 0,
           bgcolor: alpha(accent, 0.08), color: accent, border: `1px solid ${alpha(accent, 0.16)}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          fontSize: 11, fontWeight: 900,
+          fontSize: 12, fontWeight: 900,
         }}>
           {formatPersianNumber(index + 1)}
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize + 0.5, 11.5), fontWeight: 900, color: theme.palette.text.primary, lineHeight: 1.5 }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize + 0.5, 12), fontWeight: 900, color: theme.palette.text.primary, lineHeight: 1.5 }}>
             {row.subjects_display || row.subject_type_display || row.subject || 'الحاقیه'}
           </Typography>
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 0.2 }}>
-            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
               {row.number ? `شماره ${row.number}` : 'بدون شماره'}
             </Typography>
-            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>·</Typography>
-            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>·</Typography>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
               {row.date ? dateLabel(row.date) : 'بدون تاریخ'}
             </Typography>
           </Stack>
@@ -404,7 +404,7 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
 
       <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ minHeight: 22 }}>
         {subjects.slice(0, 3).map((item) => <SubjectPill key={item.type} subject={item} compact />)}
-        {subjects.length > 3 ? <Chip size="small" label={`+${formatPersianNumber(subjects.length - 3)}`} sx={{ height: 22, fontSize: 9 }} /> : null}
+        {subjects.length > 3 ? <Chip size="small" label={`+${formatPersianNumber(subjects.length - 3)}`} sx={{ height: 22, fontSize: 12 }} /> : null}
         {!subjects.length && row.subject ? <SubjectPill subject={{ label: row.subject, group: 'other' }} compact /> : null}
       </Stack>
 
@@ -412,20 +412,20 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
         {amountDelta !== null ? (
           <Chip size="small" icon={<TrendingUpIcon sx={{ fontSize: 13 }} />}
             label={signedMoney(amountDelta, currency)}
-            sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha(deltaTone(amountDelta), 0.08), color: deltaTone(amountDelta) }} />
+            sx={{ height: 23, fontSize: 12, fontWeight: 800, bgcolor: alpha(deltaTone(amountDelta), 0.08), color: deltaTone(amountDelta) }} />
         ) : null}
         {endDelta?.days ? (
           <Chip size="small" icon={<CalendarMonthIcon sx={{ fontSize: 13 }} />}
             label={`${endDelta.days > 0 ? '+' : ''}${formatPersianNumber(endDelta.days)} روز`}
-            sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha('#2563eb', 0.07), color: '#2563eb' }} />
+            sx={{ height: 23, fontSize: 12, fontWeight: 800, bgcolor: alpha('#2563eb', 0.07), color: '#2563eb' }} />
         ) : null}
         {changes.length ? (
           <Chip size="small" icon={<CheckCircleIcon sx={{ fontSize: 13 }} />}
             label={`${formatPersianNumber(changes.length)} اثر`}
-            sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha('#0f766e', 0.07), color: '#0f766e' }} />
+            sx={{ height: 23, fontSize: 12, fontWeight: 800, bgcolor: alpha('#0f766e', 0.07), color: '#0f766e' }} />
         ) : (
           <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 13 }} />} label="بدون اثر مالی"
-            sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha('#b45309', 0.07), color: '#b45309' }} />
+            sx={{ height: 23, fontSize: 12, fontWeight: 800, bgcolor: alpha('#b45309', 0.07), color: '#b45309' }} />
         )}
         {documents.length ? (
           <Chip
@@ -437,7 +437,7 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
             size="small"
             icon={<PictureAsPdfIcon sx={{ fontSize: 13 }} />}
             label={`${formatPersianNumber(documents.length)} پیوست PDF`}
-            sx={{ height: 23, fontSize: 9, fontWeight: 800, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }}
+            sx={{ height: 23, fontSize: 12, fontWeight: 800, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }}
           />
         ) : null}
       </Stack>
@@ -446,14 +446,14 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
         <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
           {changedLabels.slice(0, 4).map((label) => (
             <Chip key={label} size="small" label={label}
-              sx={{ height: 20, fontSize: 8.3, fontWeight: 700, bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary }} />
+              sx={{ height: 20, fontSize: 12, fontWeight: 700, bgcolor: theme.palette.action.hover, color: theme.palette.text.secondary }} />
           ))}
         </Stack>
       ) : null}
 
       {row.change_description ? (
         <Typography sx={{
-          fontSize: 9.6, color: theme.palette.text.secondary, lineHeight: 1.7,
+          fontSize: 12, color: theme.palette.text.secondary, lineHeight: 1.7,
           display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
         }}>
           {row.change_description}
@@ -463,14 +463,14 @@ export const AmendmentCard = ({ row, index, accent, currency = 'ریال', onVie
       <Box sx={{ flex: 1 }} />
       <Divider />
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
-        <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
           {row.provisions?.length ? `${formatPersianNumber(row.provisions.length)} بند` : 'بدون بند'}
         </Typography>
         <Stack direction="row" spacing={0.75} alignItems="center">
-          <Typography sx={{ fontSize: 8.8, color: documents.length ? '#be123c' : theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: 12, color: documents.length ? '#be123c' : theme.palette.text.secondary }}>
             {documents.length ? `${formatPersianNumber(documents.length)} پیوست` : 'بدون پیوست'}
           </Typography>
-          <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
             {changes.length ? `${formatPersianNumber(changes.length)} اثر` : 'بدون اثر'}
           </Typography>
         </Stack>
@@ -489,7 +489,7 @@ export const AmendmentTable = ({ rows, accent, currency = 'ریال', onView, on
         <TableHead>
           <TableRow sx={{ bgcolor: SOFT_BG }}>
             {['#', 'شماره / تاریخ', 'موضوع‌ها', 'تغییر مبلغ', 'مدت', 'اثر', ''].map((label) => (
-              <TableCell key={label || 'actions'} sx={{ fontSize: 9.5, fontWeight: 900, color: theme.palette.text.secondary }}>{label}</TableCell>
+              <TableCell key={label || 'actions'} sx={{ fontSize: 12, fontWeight: 900, color: theme.palette.text.secondary }}>{label}</TableCell>
             ))}
           </TableRow>
         </TableHead>
@@ -499,10 +499,10 @@ export const AmendmentTable = ({ rows, accent, currency = 'ریال', onView, on
             const endDelta = effectDelta(row, 'end_date');
             return (
               <TableRow key={row.id} hover>
-                <TableCell sx={{ fontSize: 9.5, fontWeight: 800, color: accent }}>{formatPersianNumber(index + 1)}</TableCell>
+                <TableCell sx={{ fontSize: 12, fontWeight: 800, color: accent }}>{formatPersianNumber(index + 1)}</TableCell>
                 <TableCell>
-                  <Typography sx={{ fontSize: 9.8, fontWeight: 800 }}>{row.number || '—'}</Typography>
-                  <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{row.number || '—'}</Typography>
+                  <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                     {row.date ? dateLabel(row.date) : 'بدون تاریخ'}
                   </Typography>
                 </TableCell>
@@ -510,17 +510,17 @@ export const AmendmentTable = ({ rows, accent, currency = 'ریال', onView, on
                   <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
                     {(row.subjects_detail || []).slice(0, 2).map((item) => <SubjectPill key={item.type} subject={item} compact />)}
                     {(row.subjects_detail || []).length > 2 ? (
-                      <Chip size="small" label={`+${formatPersianNumber(row.subjects_detail.length - 2)}`} sx={{ height: 21, fontSize: 8.5 }} />
+                      <Chip size="small" label={`+${formatPersianNumber(row.subjects_detail.length - 2)}`} sx={{ height: 21, fontSize: 12 }} />
                     ) : null}
                   </Stack>
                 </TableCell>
-                <TableCell sx={{ fontSize: 9.5, fontWeight: 800, color: amountDelta === null ? theme.palette.text.secondary : deltaTone(amountDelta) }}>
+                <TableCell sx={{ fontSize: 12, fontWeight: 800, color: amountDelta === null ? theme.palette.text.secondary : deltaTone(amountDelta) }}>
                   {amountDelta === null ? '—' : signedMoney(amountDelta, currency)}
                 </TableCell>
-                <TableCell sx={{ fontSize: 9.5, color: endDelta?.days ? '#2563eb' : theme.palette.text.secondary }}>
+                <TableCell sx={{ fontSize: 12, color: endDelta?.days ? '#2563eb' : theme.palette.text.secondary }}>
                   {endDelta?.days ? `${endDelta.days > 0 ? '+' : ''}${formatPersianNumber(endDelta.days)} روز` : '—'}
                 </TableCell>
-                <TableCell sx={{ fontSize: 9.5 }}>{formatPersianNumber((row.effect?.changes || []).length)}</TableCell>
+                <TableCell sx={{ fontSize: 12 }}>{formatPersianNumber((row.effect?.changes || []).length)}</TableCell>
                 <TableCell align="left">
                   <AmendmentActions onView={onView} onEdit={onEdit} onDuplicate={onDuplicate} onDelete={onDelete} />
                 </TableCell>
@@ -548,26 +548,26 @@ export const AmendmentTimeline = ({ rows, accent, currency = 'ریال', onView,
             <Box sx={{
               width: 23, height: 23, borderRadius: '50%', flexShrink: 0, zIndex: 1,
               bgcolor: alpha(accent, 0.1), color: accent, border: `1px solid ${alpha(accent, 0.24)}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 8.5, fontWeight: 900,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900,
             }}>
               {formatPersianNumber(index + 1)}
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
-                <Typography sx={{ fontSize: 10.8, fontWeight: 900 }}>{row.subjects_display || row.subject || 'الحاقیه'}</Typography>
-                <Chip size="small" label={row.date ? dateLabel(row.date) : 'بدون تاریخ'} sx={{ height: 19, fontSize: 8.5 }} />
+                <Typography sx={{ fontSize: 12, fontWeight: 900 }}>{row.subjects_display || row.subject || 'الحاقیه'}</Typography>
+                <Chip size="small" label={row.date ? dateLabel(row.date) : 'بدون تاریخ'} sx={{ height: 19, fontSize: 12 }} />
               </Stack>
               <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
                 {(row.subjects_detail || []).slice(0, 2).map((item) => <SubjectPill key={item.type} subject={item} compact />)}
                 {effectDelta(row, 'amount') !== null ? (
                   <Chip size="small" label={signedMoney(effectDelta(row, 'amount'), currency)}
-                    sx={{ height: 21, fontSize: 8.5, fontWeight: 800, bgcolor: alpha('#0f766e', 0.07), color: '#0f766e' }} />
+                    sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha('#0f766e', 0.07), color: '#0f766e' }} />
                 ) : null}
               </Stack>
               <Stack direction="row" spacing={0.25} sx={{ mt: 0.25 }}>
-                <Button size="small" onClick={onView} sx={{ minWidth: 0, fontSize: 8.8, py: 0 }}>جزئیات</Button>
-                <Button size="small" onClick={onEdit} sx={{ minWidth: 0, fontSize: 8.8, py: 0 }}>ویرایش</Button>
-                <Button size="small" color="error" onClick={onDelete} sx={{ minWidth: 0, fontSize: 8.8, py: 0 }}>حذف</Button>
+                <Button size="small" onClick={onView} sx={{ minWidth: 0, fontSize: 12, py: 0 }}>جزئیات</Button>
+                <Button size="small" onClick={onEdit} sx={{ minWidth: 0, fontSize: 12, py: 0 }}>ویرایش</Button>
+                <Button size="small" color="error" onClick={onDelete} sx={{ minWidth: 0, fontSize: 12, py: 0 }}>حذف</Button>
               </Stack>
             </Box>
           </Stack>
@@ -596,15 +596,15 @@ export const EditorStepNav = ({ steps, active, onChange, accent }) => {
               width: 24, height: 24, borderRadius: '8px', flexShrink: 0,
               bgcolor: done ? alpha('#0f766e', 0.1) : (current ? alpha(accent, 0.1) : theme.palette.action.hover),
               color: done ? '#0f766e' : (current ? accent : theme.palette.text.secondary),
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9.5, fontWeight: 900,
+              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900,
             }}>
               {done ? <CheckCircleIcon sx={{ fontSize: 14 }} /> : formatPersianNumber(index + 1)}
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography sx={{ fontSize: 9.8, fontWeight: current ? 900 : 700, color: theme.palette.text.primary }}>
+              <Typography sx={{ fontSize: 12, fontWeight: current ? 900 : 700, color: theme.palette.text.primary }}>
                 {step.title}
               </Typography>
-              <Typography sx={{ fontSize: 8.5, color: theme.palette.text.secondary }}>{step.hint}</Typography>
+              <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>{step.hint}</Typography>
             </Box>
           </ButtonBase>
         );
@@ -633,7 +633,7 @@ export const AttachmentPicker = ({
           {buttonLabel}
           <input hidden type="file" accept={accept} multiple onChange={handleFiles} />
         </Button>
-        <Typography sx={{ fontSize: 8.8, color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
           {hint}
         </Typography>
       </Stack>
@@ -643,7 +643,7 @@ export const AttachmentPicker = ({
           bgcolor: alpha(accent || theme.palette.primary.main, 0.025),
         }}>
           <DocumentIcon sx={{ fontSize: 22, color: theme.palette.text.disabled, mb: 0.4 }} />
-          <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
             {emptyText}
           </Typography>
         </Box>
@@ -656,15 +656,15 @@ export const AttachmentPicker = ({
             }}>
               <DocumentIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800 }}>{document.title || 'PDF الحاقیه'}</Typography>
-                <Typography sx={{ fontSize: 8.3, color: theme.palette.text.secondary }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{document.title || 'PDF الحاقیه'}</Typography>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                   {document.addendum_number || document.guarantee_number
                     ? `${documentLabel} ${document.addendum_number || document.guarantee_number}`
                     : 'پیوست ذخیره‌شده'}
                 </Typography>
               </Box>
               <Button size="small" component="a" href={document.file_url || document.file} target="_blank"
-                rel="noreferrer" sx={{ minWidth: 0, px: 0.6, fontSize: 8.8 }}>
+                rel="noreferrer" sx={{ minWidth: 0, px: 0.6, fontSize: 12 }}>
                 مشاهده
               </Button>
               {onRemoveDocument ? (
@@ -684,8 +684,8 @@ export const AttachmentPicker = ({
             }}>
               <DocumentIcon sx={{ fontSize: 18, color: '#be123c', flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800 }}>{file.name}</Typography>
-                <Typography sx={{ fontSize: 8.3, color: theme.palette.text.secondary }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{file.name}</Typography>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                   در انتظار ذخیره · {formatFileSize(file.size)}
                 </Typography>
               </Box>
@@ -710,7 +710,7 @@ export const AttachmentLinks = ({ documents = [], icon: DocumentIcon = PictureAs
       {documents.map((document) => (
         <Button key={document.id} component="a" href={document.file_url || document.file} target="_blank"
           rel="noreferrer" variant="outlined" size="small" startIcon={<DocumentIcon />}
-          sx={{ justifyContent: 'flex-start', fontSize: 9.2, borderColor: theme.palette.divider }}>
+          sx={{ justifyContent: 'flex-start', fontSize: 12, borderColor: theme.palette.divider }}>
           {document.title || documentLabel}
         </Button>
       ))}

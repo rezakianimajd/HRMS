@@ -296,9 +296,9 @@ const MatrixReportPage = () => {
           <Typography variant="caption" fontWeight={700}
             sx={{ fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
             {row.name}
-            {path ? <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 10, ml: 1 }}>‹ {path}</Box> : null}
+            {path ? <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 12, ml: 1 }}>‹ {path}</Box> : null}
             {merged ? (
-              <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 10, ml: 1 }}>
+              <Box component="span" sx={{ color: 'text.secondary', fontWeight: 400, fontSize: 12, ml: 1 }}>
                 ({toPersianDigits(String(row.nodes.length))} شاخه)
               </Box>
             ) : null}
@@ -370,7 +370,7 @@ const MatrixReportPage = () => {
                         boxShadow: active ? `0 8px 18px ${CYAN}44` : 'none' }}>
                       <span>{l.label}</span>
                       <Chip size="small" label={toPersianDigits(String(count))}
-                        sx={{ height: 18, fontSize: 11, fontFamily: FONT,
+                        sx={{ height: 18, fontSize: 12, fontFamily: FONT,
                           bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
                           color: active ? '#fff' : 'text.secondary' }} />
                     </Button>
@@ -415,7 +415,7 @@ const MatrixReportPage = () => {
                         boxShadow: active ? '0 8px 18px rgba(245,158,11,0.35)' : 'none' }}>
                       <span>{`ریز ${l.label}`}</span>
                       <Chip size="small" label={toPersianDigits(String(count))}
-                        sx={{ height: 18, fontSize: 11, fontFamily: FONT,
+                        sx={{ height: 18, fontSize: 12, fontFamily: FONT,
                           bgcolor: active ? 'rgba(255,255,255,0.28)' : 'rgba(148,163,184,0.18)',
                           color: active ? '#fff' : 'text.secondary' }} />
                     </Button>

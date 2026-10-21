@@ -70,7 +70,7 @@ const DocumentManagementActivityPage = () => {
               {Object.entries(ACTION_LABELS).map(([key, label]) => <MenuItem key={key} value={key}>{label}</MenuItem>)}
             </Select>
           </FormControl>
-          <Chip size="small" label={`${formatPersianNumber(filtered.length)} نتیجه`} sx={{ height: 23, fontSize: 8, bgcolor: SOFT_BG, color: MUTED }} />
+          <Chip size="small" label={`${formatPersianNumber(filtered.length)} نتیجه`} sx={{ height: 23, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
         </Stack>
       </Paper>
 
@@ -78,21 +78,21 @@ const DocumentManagementActivityPage = () => {
         <Paper elevation={0} sx={{ border: '1px solid #eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
           <Table size="small">
             <TableHead><TableRow>
-              {['اقدام', 'سند', 'کاربر', 'تاریخ', 'جزئیات'].map((label) => <TableCell key={label} sx={{ fontSize: 8.5, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
+              {['اقدام', 'سند', 'کاربر', 'تاریخ', 'جزئیات'].map((label) => <TableCell key={label} sx={{ fontSize: 12, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
             </TableRow></TableHead>
             <TableBody>
               {filtered.map((row) => (
                 <TableRow key={row.id} hover>
-                  <TableCell><Chip size="small" label={row.action_display || ACTION_LABELS[row.action] || row.action} sx={{ height: 19, fontSize: 7.6, bgcolor: '#f5f3ff', color: '#7c3aed' }} /></TableCell>
-                  <TableCell sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{row.document_title || '—'}</TableCell>
-                  <TableCell sx={{ fontSize: 8.5, color: MUTED }}>{row.user_name || 'سیستم'}</TableCell>
-                  <TableCell sx={{ fontSize: 8.2, color: MUTED }}>{toJalali(String(row.created_at || '').slice(0, 10))} · {toPersianDigits(String(row.created_at || '').slice(11, 16))}</TableCell>
-                  <TableCell sx={{ fontSize: 8.2, color: MUTED }}>{formatDetails(row.details)}</TableCell>
+                  <TableCell><Chip size="small" label={row.action_display || ACTION_LABELS[row.action] || row.action} sx={{ height: 19, fontSize: 12, bgcolor: '#f5f3ff', color: '#7c3aed' }} /></TableCell>
+                  <TableCell sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{row.document_title || '—'}</TableCell>
+                  <TableCell sx={{ fontSize: 12, color: MUTED }}>{row.user_name || 'سیستم'}</TableCell>
+                  <TableCell sx={{ fontSize: 12, color: MUTED }}>{toJalali(String(row.created_at || '').slice(0, 10))} · {toPersianDigits(String(row.created_at || '').slice(11, 16))}</TableCell>
+                  <TableCell sx={{ fontSize: 12, color: MUTED }}>{formatDetails(row.details)}</TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
-          {!filtered.length ? <Typography sx={{ p: 2.5, fontSize: 9, color: MUTED, textAlign: 'center' }}>رویدادی با این مشخصات پیدا نشد.</Typography> : null}
+          {!filtered.length ? <Typography sx={{ p: 2.5, fontSize: 12, color: MUTED, textAlign: 'center' }}>رویدادی با این مشخصات پیدا نشد.</Typography> : null}
         </Paper>
       </SurfaceCard>
     </Box>

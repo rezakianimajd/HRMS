@@ -276,16 +276,16 @@ const OrgChartPage = () => {
         }}>
           <Typography variant="body2" fontWeight={700} sx={{ fontSize: 12.5, lineHeight: 1.35, color: '#1e293b' }}>{node.title}</Typography>
           {node.department_name && (
-            <Typography variant="caption" sx={{ fontSize: 10, color: 'textSecondary', display: 'block', mb: 0.25 }}>{node.department_name}</Typography>
+            <Typography variant="caption" sx={{ fontSize: 12, color: 'textSecondary', display: 'block', mb: 0.25 }}>{node.department_name}</Typography>
           )}
 
           {hasEmployees && (
             <Box sx={{ mt: 0.75, pt: 0.75, borderTop: `1px solid ${color}22`, display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: 0.3 }}>
               {node.employees.slice(0, 4).map(emp => (
                 <Chip key={emp.id} label={emp.full_name} size="small"
-                  sx={{ fontSize: 9.5, height: 20, bgcolor: `${color}1c`, color: '#1e293b' }} />
+                  sx={{ fontSize: 12, height: 20, bgcolor: `${color}1c`, color: '#1e293b' }} />
               ))}
-              {node.employees.length > 4 && <Chip label={`+${node.employees.length - 4}`} size="small" variant="outlined" sx={{ fontSize: 9.5, height: 20 }} />}
+              {node.employees.length > 4 && <Chip label={`+${node.employees.length - 4}`} size="small" variant="outlined" sx={{ fontSize: 12, height: 20 }} />}
             </Box>
           )}
 

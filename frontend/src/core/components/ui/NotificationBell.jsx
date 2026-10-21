@@ -96,7 +96,7 @@ const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
         overlap="circular"
         max={99}
         invisible={!unread}
-        sx={{ '& .MuiBadge-badge': { fontSize: 10, fontWeight: 700, height: 18, minWidth: 18 } }}
+        sx={{ '& .MuiBadge-badge': { fontSize: 12, fontWeight: 700, height: 18, minWidth: 18 } }}
       >
         {icon}
       </Badge>
@@ -155,7 +155,7 @@ const NotificationBell = ({ glass = false, compact = false, iconColor }) => {
                           size="small"
                           label={CATEGORY_LABELS[n.category] || n.category_display}
                           sx={{
-                            fontSize: 10.5, height: 20,
+                            fontSize: 12, height: 20,
                             bgcolor: `${CATEGORY_COLORS[n.category] || '#6366f1'}1a`,
                             color: CATEGORY_COLORS[n.category] || '#6366f1',
                           }}

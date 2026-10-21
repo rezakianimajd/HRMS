@@ -253,7 +253,7 @@ const ProjectCalendarPage = () => {
                           </Tooltip>
                         ))}
                         {evs.length > 4 && (
-                          <Typography variant="caption" sx={{ fontSize: 8, color: 'textSecondary' }}>
+                          <Typography variant="caption" sx={{ fontSize: 12, color: 'textSecondary' }}>
                             +{toPersianDigits(evs.length - 4)}
                           </Typography>
                         )}
@@ -288,10 +288,10 @@ const ProjectCalendarPage = () => {
                       <Stack direction="row" alignItems="center" spacing={1}>
                         <Avatar sx={{ width: 26, height: 26, bgcolor: meta.color }}>{meta.icon}</Avatar>
                         <Chip size="small" label={meta.label}
-                          sx={{ bgcolor: `${meta.color}20`, color: meta.color, height: 18, fontSize: 10 }} />
+                          sx={{ bgcolor: `${meta.color}20`, color: meta.color, height: 18, fontSize: 12 }} />
                         {ev.project?.code ? (
                           <Chip size="small" label={ev.project.code}
-                            sx={{ height: 18, fontSize: 10, bgcolor: 'rgba(139,92,246,0.12)', color: '#5b21b6' }} />
+                            sx={{ height: 18, fontSize: 12, bgcolor: 'rgba(139,92,246,0.12)', color: '#5b21b6' }} />
                         ) : null}
                       </Stack>
                       <Typography variant="body2" fontWeight={800} sx={{ mt: 0.5 }}>{ev.title}</Typography>

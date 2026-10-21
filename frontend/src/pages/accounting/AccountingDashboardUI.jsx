@@ -63,7 +63,7 @@ export const DeltaChip = ({ value, inverse = false }) => {
     <Chip size="small"
       label={`${numeric >= 0 ? '+' : ''}${numeric.toLocaleString('en-US', { maximumFractionDigits: 1 })}٪`}
       sx={{
-        height: 21, fontSize: 9.5, fontWeight: 800,
+        height: 21, fontSize: 12, fontWeight: 800,
         bgcolor: positive ? '#eff6ff' : '#fff1f2',
         color: positive ? '#1d4ed8' : '#be123c',
       }} />
@@ -93,18 +93,18 @@ export const KpiTile = ({
         <DeltaChip value={delta} inverse={inverseDelta} />
       </Stack>
       <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 10.8, color: MUTED, mb: 0.2 }}>{label}</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.2 }}>{label}</Typography>
         <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }}>
-          <Typography sx={{ fontSize: size, fontWeight: 900, color: INK, direction: 'rtl', lineHeight: 1.25, wordBreak: 'break-word' }}>
+          <Typography sx={{ fontSize: Math.max(12, size), fontWeight: 900, color: INK, direction: 'rtl', lineHeight: 1.25, wordBreak: 'break-word' }}>
             {value}
           </Typography>
-          {suffix ? <Typography sx={{ fontSize: 9.5, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
+          {suffix ? <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
         </Box>
-        {hint ? <Typography sx={{ mt: 0.2, fontSize: 9.5, color: MUTED }}>{hint}</Typography> : null}
+        {hint ? <Typography sx={{ mt: 0.2, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
         {progress !== undefined && progress !== null ? (
           <Box sx={{ mt: 0.7 }}>
             <ProgressBar value={progress} color={color} height={5} />
-            {progressLabel ? <Typography sx={{ mt: 0.35, fontSize: 9.5, color: MUTED }}>{progressLabel}</Typography> : null}
+            {progressLabel ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{progressLabel}</Typography> : null}
           </Box>
         ) : null}
       </Box>
@@ -116,8 +116,8 @@ export const KpiTile = ({
 export const RatioRow = ({ label, value, max = 100, color = ACCOUNTING_BLUE, suffix = '٪' }) => (
   <Box>
     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.45 }}>
-      <Typography sx={{ fontSize: 10.5, color: '#475569' }}>{label}</Typography>
-      <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{value}{suffix}</Typography>
+      <Typography sx={{ fontSize: 12, color: '#475569' }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{value}{suffix}</Typography>
     </Stack>
     <ProgressBar value={(Number(value) / (max || 1)) * 100} color={color} height={6} />
   </Box>
@@ -137,8 +137,8 @@ export const QuickTile = ({ icon: Icon, label, description, color, onClick }) =>
       <Icon sx={{ fontSize: 19 }} />
     </Box>
     <Box sx={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-      <Typography sx={{ fontSize: 11.8, fontWeight: 800, color: INK }}>{label}</Typography>
-      {description ? <Typography sx={{ mt: 0.15, fontSize: 9.5, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</Typography> : null}
+      <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{label}</Typography>
+      {description ? <Typography sx={{ mt: 0.15, fontSize: 12, color: MUTED, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{description}</Typography> : null}
     </Box>
     <ChevronLeftIcon sx={{ fontSize: 17, color: '#cbd5e1', flexShrink: 0 }} />
   </ButtonBase>

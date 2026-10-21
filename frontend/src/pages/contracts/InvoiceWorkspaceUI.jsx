@@ -70,7 +70,7 @@ export const invoiceCurrency = (row, contract) => normalizeCurrencyLabel(
 
 export const InvoiceStatusChip = ({ row, paidAmount = 0 }) => {
   const status = invoiceStatus(row, paidAmount);
-  return <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 8.6, fontWeight: 800, bgcolor: status.bg, color: status.color }} />;
+  return <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />;
 };
 
 export const InvoiceCard = ({
@@ -95,18 +95,18 @@ export const InvoiceCard = ({
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}><ReceiptLongIcon sx={{ fontSize: 19 }} /></Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 10.6, fontWeight: 900, color: INK }}>{row.number || `فاکتور #${row.id}`}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.3, color: MUTED }}>{row.subject || row.contract_subject || 'فاکتور قرارداد'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{row.number || `فاکتور #${row.id}`}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.subject || row.contract_subject || 'فاکتور قرارداد'}</Typography>
         </Box>
-        <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 8.4, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+        <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
       </Stack>
 
       <Box sx={{ borderRadius: '11px', p: 0.9, bgcolor: alpha(status.color, 0.035), border: `1px solid ${alpha(status.color, 0.13)}` }}>
-        <Typography sx={{ fontSize: 8.1, color: MUTED }}>مبلغ کل فاکتور</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ کل فاکتور</Typography>
         <Typography noWrap sx={{ fontSize: 14.5, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{money(metrics.total, currency)}</Typography>
         <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.25 }}>
-          <Typography sx={{ fontSize: 7.8, color: MUTED }}>پرداخت‌شده: {money(metrics.paid, currency)}</Typography>
-          <Typography sx={{ fontSize: 7.8, color: metrics.outstanding ? RED : GREEN }}>مانده: {money(metrics.outstanding, currency)}</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>پرداخت‌شده: {money(metrics.paid, currency)}</Typography>
+          <Typography sx={{ fontSize: 12, color: metrics.outstanding ? RED : GREEN }}>مانده: {money(metrics.outstanding, currency)}</Typography>
         </Stack>
       </Box>
 
@@ -117,22 +117,22 @@ export const InvoiceCard = ({
 
       <Box>
         <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.35 }}>
-          <Typography sx={{ fontSize: 7.9, color: MUTED }}>پیشرفت پرداخت</Typography>
-          <Typography sx={{ fontSize: 8, fontWeight: 800, color: status.color }}>{toPersianDigits(metrics.progress.toFixed(0))}٪</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>پیشرفت پرداخت</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: status.color }}>{toPersianDigits(metrics.progress.toFixed(0))}٪</Typography>
         </Stack>
         <ProgressBar value={metrics.progress} color={status.color} height={5} />
       </Box>
 
       <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
         <Chip size="small" icon={<CalendarMonthIcon sx={{ fontSize: '12px !important' }} />}
-          label={`تاریخ ${dateLabel(row.date)}`} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED, '& .MuiChip-icon': { color: MUTED } }} />
+          label={`تاریخ ${dateLabel(row.date)}`} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED, '& .MuiChip-icon': { color: MUTED } }} />
         {row.due_date ? <Chip size="small" icon={<EventBusyIcon sx={{ fontSize: '12px !important' }} />}
-          label={`سررسید ${dateLabel(row.due_date)}`} sx={{ height: 18, fontSize: 7.4, bgcolor: alpha(status.color, 0.06), color: status.color, '& .MuiChip-icon': { color: status.color } }} /> : null}
+          label={`سررسید ${dateLabel(row.due_date)}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(status.color, 0.06), color: status.color, '& .MuiChip-icon': { color: status.color } }} /> : null}
       </Stack>
 
       <Divider sx={{ mt: 'auto' }} />
       <Stack direction="row" alignItems="center" spacing={0.2}>
-        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 8.2, minWidth: 0 }}>جزئیات</Button>
+        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 12, minWidth: 0 }}>جزئیات</Button>
         <Tooltip title={row.is_paid ? 'لغو پرداخت' : 'ثبت به‌عنوان پرداخت‌شده'}>
           <IconButton size="small" onClick={() => onTogglePaid(row)} sx={{ color: row.is_paid ? GREEN : AMBER, p: 0.35 }}>
             {row.is_paid ? <CheckCircleIcon sx={{ fontSize: 16 }} /> : <TaskAltIcon sx={{ fontSize: 16 }} />}
@@ -148,8 +148,8 @@ export const InvoiceCard = ({
 
 export const InvoiceTable = ({ rows, currency, paidByInvoice, onView, onEdit, onDelete, onTogglePaid }) => {
   const theme = useTheme();
-  const headSx = { fontWeight: 800, fontSize: 8.6, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
-  const cellSx = { fontSize: 8.8, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
+  const headSx = { fontWeight: 800, fontSize: 12, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
+  const cellSx = { fontSize: 12, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
   return (
     <Paper elevation={0} sx={{ borderRadius: '16px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
       <TableContainer sx={{ maxHeight: 560 }}>
@@ -195,14 +195,14 @@ export const InvoiceTable = ({ rows, currency, paidByInvoice, onView, onEdit, on
 
 export const InvoiceContractCard = ({ contract, currency, invoiceCount = 0, onBack }) => (
   <SurfaceCard title="قرارداد" icon={DescriptionIcon} color={INVOICE_ACCENT}
-    action={<Button size="small" startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ minWidth: 0, fontSize: 9 }}>تغییر</Button>}>
+    action={<Button size="small" startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ minWidth: 0, fontSize: 12 }}>تغییر</Button>}>
     <Stack spacing={0.75}>
       <Box>
         <Typography sx={{ fontSize: 12.2, fontWeight: 900, color: INK, lineHeight: 1.6 }}>{contract?.subject || 'قرارداد'}</Typography>
         <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
           <Chip size="small" label={contract?.number || 'بدون شماره'}
-            sx={{ height: 20, fontSize: 8.5, fontWeight: 800, bgcolor: alpha(INVOICE_ACCENT, 0.07), color: INVOICE_ACCENT }} />
-          {contract?.status_display ? <Chip size="small" label={contract.status_display} sx={{ height: 20, fontSize: 8.5, bgcolor: SOFT_BG, color: MUTED }} /> : null}
+            sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(INVOICE_ACCENT, 0.07), color: INVOICE_ACCENT }} />
+          {contract?.status_display ? <Chip size="small" label={contract.status_display} sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} /> : null}
         </Stack>
       </Box>
       <Divider />
@@ -221,12 +221,12 @@ export const InvoiceFinancialCard = ({ totals, currency, isLoading }) => {
   return (
     <SurfaceCard title="پوشش مالی فاکتورها" icon={PaymentsIcon} color={INVOICE_ACCENT}
       action={<Chip size="small" label={`${toPersianDigits(coverage.toFixed(0))}٪`}
-        sx={{ height: 21, fontSize: 8.8, fontWeight: 900, bgcolor: alpha(color, 0.08), color }} />}>
+        sx={{ height: 21, fontSize: 12, fontWeight: 900, bgcolor: alpha(color, 0.08), color }} />}>
       {isLoading ? <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={20} /></Box> : (
         <Stack spacing={1}>
           <Box>
             <Typography sx={{ fontSize: 27, fontWeight: 900, color, lineHeight: 1.1 }}>{toPersianDigits(coverage.toFixed(0))}٪</Typography>
-            <Typography sx={{ fontSize: 8.2, color: MUTED, mt: 0.2 }}>نسبت مبالغ پرداخت‌شده به کل فاکتورها</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.2 }}>نسبت مبالغ پرداخت‌شده به کل فاکتورها</Typography>
             <Box sx={{ mt: 0.7 }}><ProgressBar value={coverage} color={color} height={7} /></Box>
           </Box>
           <Grid container spacing={0.6}>
@@ -236,9 +236,9 @@ export const InvoiceFinancialCard = ({ totals, currency, isLoading }) => {
             <Grid item xs={6}><MetricBox label="مالیات" value={money(totals.vat, currency)} color={BLUE} /></Grid>
           </Grid>
           <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
-            <Chip size="small" label={`${formatPersianNumber(totals.paidCount)} پرداخت‌شده`} sx={{ height: 19, fontSize: 8.1, bgcolor: '#ecfdf5', color: GREEN }} />
-            <Chip size="small" label={`${formatPersianNumber(totals.pendingCount)} در انتظار`} sx={{ height: 19, fontSize: 8.1, bgcolor: '#fffbeb', color: AMBER }} />
-            {totals.overdueCount ? <Chip size="small" label={`${formatPersianNumber(totals.overdueCount)} سررسید گذشته`} sx={{ height: 19, fontSize: 8.1, bgcolor: '#fff1f2', color: RED }} /> : null}
+            <Chip size="small" label={`${formatPersianNumber(totals.paidCount)} پرداخت‌شده`} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} />
+            <Chip size="small" label={`${formatPersianNumber(totals.pendingCount)} در انتظار`} sx={{ height: 19, fontSize: 12, bgcolor: '#fffbeb', color: AMBER }} />
+            {totals.overdueCount ? <Chip size="small" label={`${formatPersianNumber(totals.overdueCount)} سررسید گذشته`} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: RED }} /> : null}
           </Stack>
         </Stack>
       )}
@@ -271,8 +271,8 @@ export const InvoiceStatusNav = ({ counts, active, onChange }) => {
                 <Box sx={{ width: 27, height: 27, borderRadius: '8px', bgcolor: alpha(item.color, 0.08), color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <Icon sx={{ fontSize: 15 }} />
                 </Box>
-                <Typography sx={{ flex: 1, fontSize: 8.7, fontWeight: selected ? 900 : 700, color: INK }}>{item.label}</Typography>
-                <Chip size="small" label={formatPersianNumber(counts[item.key] || 0)} sx={{ height: 19, fontSize: 8, bgcolor: alpha(item.color, 0.08), color: item.color, fontWeight: 900 }} />
+                <Typography sx={{ flex: 1, fontSize: 12, fontWeight: selected ? 900 : 700, color: INK }}>{item.label}</Typography>
+                <Chip size="small" label={formatPersianNumber(counts[item.key] || 0)} sx={{ height: 19, fontSize: 12, bgcolor: alpha(item.color, 0.08), color: item.color, fontWeight: 900 }} />
               </Stack>
             </ButtonBase>
           );
@@ -317,7 +317,7 @@ export const InvoiceLanding = ({
         </Grid>
         <Grid item xs={12} lg={4}>
           <SurfaceCard title="در انتظار پرداخت" icon={EventBusyIcon} color={AMBER}
-            action={<Chip size="small" label={formatPersianNumber(dueRows.length)} sx={{ height: 21, fontSize: 8.8, bgcolor: '#fffbeb', color: AMBER, fontWeight: 900 }} />}>
+            action={<Chip size="small" label={formatPersianNumber(dueRows.length)} sx={{ height: 21, fontSize: 12, bgcolor: '#fffbeb', color: AMBER, fontWeight: 900 }} />}>
             {dueRows.length ? (
               <Stack spacing={0.55}>
                 {dueRows.map((row) => {
@@ -335,10 +335,10 @@ export const InvoiceLanding = ({
                           <StatusIcon sx={{ fontSize: 15 }} />
                         </Box>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontSize: 9.4, fontWeight: 800, color: INK }}>{row.number || `فاکتور #${row.id}`} · {row.subject || 'فاکتور'}</Typography>
-                          <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>{dateLabel(row.due_date || row.date)} · {money(invoiceMetrics(row, paidByInvoice[String(row.id)]).total, currency)}</Typography>
+                          <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.number || `فاکتور #${row.id}`} · {row.subject || 'فاکتور'}</Typography>
+                          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{dateLabel(row.due_date || row.date)} · {money(invoiceMetrics(row, paidByInvoice[String(row.id)]).total, currency)}</Typography>
                         </Box>
-                        <Chip size="small" label={status.label} sx={{ height: 19, fontSize: 7.9, bgcolor: status.bg, color: status.color, fontWeight: 800 }} />
+                        <Chip size="small" label={status.label} sx={{ height: 19, fontSize: 12, bgcolor: status.bg, color: status.color, fontWeight: 800 }} />
                       </Stack>
                     </ButtonBase>
                   );
@@ -347,7 +347,7 @@ export const InvoiceLanding = ({
             ) : (
               <Box sx={{ py: 4, textAlign: 'center' }}>
                 <CheckCircleIcon sx={{ fontSize: 30, color: GREEN, mb: 0.6 }} />
-                <Typography sx={{ fontSize: 9.5, color: MUTED }}>فاکتور در انتظار پرداختی وجود ندارد.</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>فاکتور در انتظار پرداختی وجود ندارد.</Typography>
               </Box>
             )}
           </SurfaceCard>
@@ -384,14 +384,14 @@ export const InvoiceDetailDrawer = ({
             }}><StatusIcon sx={{ fontSize: 21 }} /></Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{row.number || `فاکتور #${row.id}`}</Typography>
-              <Typography noWrap sx={{ fontSize: 9.3, color: MUTED }}>{row.subject || row.contract_subject || 'فاکتور قرارداد'} · {dateLabel(row.date)}</Typography>
+              <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.subject || row.contract_subject || 'فاکتور قرارداد'} · {dateLabel(row.date)}</Typography>
             </Box>
-            <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 8.5, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+            <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
             <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-            <Chip size="small" label={money(metrics.total, currency)} sx={{ height: 21, fontSize: 8.5, fontWeight: 900, bgcolor: alpha(status.color, 0.08), color: status.color }} />
-            {row.due_date ? <Chip size="small" label={`سررسید ${dateLabel(row.due_date)}`} sx={{ height: 21, fontSize: 8.2, bgcolor: alpha(status.color, 0.06), color: status.color }} /> : null}
+            <Chip size="small" label={money(metrics.total, currency)} sx={{ height: 21, fontSize: 12, fontWeight: 900, bgcolor: alpha(status.color, 0.08), color: status.color }} />
+            {row.due_date ? <Chip size="small" label={`سررسید ${dateLabel(row.due_date)}`} sx={{ height: 21, fontSize: 12, bgcolor: alpha(status.color, 0.06), color: status.color }} /> : null}
           </Stack>
         </Box>
 
@@ -400,7 +400,7 @@ export const InvoiceDetailDrawer = ({
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={PaymentsIcon} title="مشخصات مالی" color={status.color} />
               <Box sx={{ p: 1, borderRadius: '11px', bgcolor: alpha(status.color, 0.04), border: `1px solid ${alpha(status.color, 0.12)}`, mb: 0.8 }}>
-                <Typography sx={{ fontSize: 8.2, color: MUTED }}>مبلغ کل فاکتور</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ کل فاکتور</Typography>
                 <Typography sx={{ fontSize: 18, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{money(metrics.total, currency)}</Typography>
                 <Box sx={{ mt: 0.6 }}><ProgressBar value={metrics.progress} color={status.color} height={6} /></Box>
               </Box>
@@ -428,27 +428,27 @@ export const InvoiceDetailDrawer = ({
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={PaymentsIcon} title="پرداخت‌های مرتبط" color={GREEN}
-                action={<Chip size="small" label={formatPersianNumber(linkedPayments.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#ecfdf5', color: GREEN }} />} />
+                action={<Chip size="small" label={formatPersianNumber(linkedPayments.length)} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} />} />
               {linkedPayments.length ? (
                 <Stack spacing={0.5}>
                   {linkedPayments.map((payment) => (
                     <Stack key={payment.id} direction="row" alignItems="center" spacing={0.6} sx={{ p: 0.6, borderRadius: '9px', bgcolor: '#fff', border: '1px solid #eef2f7' }}>
                       <Box sx={{ width: 26, height: 26, borderRadius: '7px', bgcolor: '#ecfdf5', color: GREEN, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><PaymentsIcon sx={{ fontSize: 14 }} /></Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 800, color: INK }}>{payment.reference || payment.method || 'پرداخت'}</Typography>
-                        <Typography sx={{ fontSize: 7.8, color: MUTED }}>{dateLabel(payment.date)}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{payment.reference || payment.method || 'پرداخت'}</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>{dateLabel(payment.date)}</Typography>
                       </Box>
-                      <Typography sx={{ fontSize: 8.8, fontWeight: 900, color: GREEN }}>{money(payment.amount, currency)}</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 900, color: GREEN }}>{money(payment.amount, currency)}</Typography>
                     </Stack>
                   ))}
                 </Stack>
-              ) : <Typography sx={{ fontSize: 8.5, color: MUTED }}>پرداختی به این فاکتور پیوند نشده است.</Typography>}
+              ) : <Typography sx={{ fontSize: 12, color: MUTED }}>پرداختی به این فاکتور پیوند نشده است.</Typography>}
             </Paper>
 
             {row.description ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={DescriptionIcon} title="توضیحات" color={MUTED} />
-                <Typography sx={{ fontSize: 8.9, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.description}</Typography>
+                <Typography sx={{ fontSize: 12, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.description}</Typography>
               </Paper>
             ) : null}
           </Stack>
@@ -489,24 +489,24 @@ export const InvoiceEditorDialog = ({
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش فاکتور' : 'ثبت فاکتور جدید'}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{contract?.subject || 'قرارداد'} · {form.number || 'شماره‌گذاری خودکار'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{contract?.subject || 'قرارداد'} · {form.number || 'شماره‌گذاری خودکار'}</Typography>
         </Box>
         <Chip size="small" label={form.is_paid ? 'پرداخت شده' : 'در انتظار پرداخت'}
-          sx={{ height: 22, fontSize: 8.3, fontWeight: 800, bgcolor: form.is_paid ? '#ecfdf5' : '#fffbeb', color: form.is_paid ? GREEN : AMBER }} />
+          sx={{ height: 22, fontSize: 12, fontWeight: 800, bgcolor: form.is_paid ? '#ecfdf5' : '#fffbeb', color: form.is_paid ? GREEN : AMBER }} />
         <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 2.3, display: 'flex', flexDirection: 'column', gap: 1.6 }}>
-        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
+        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
 
         <Box sx={{
           display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1.4fr 1fr 1fr 1fr' }, gap: 0.7,
           p: 1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2',
         }}>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>قرارداد</Typography><Typography noWrap sx={{ fontSize: 9.2, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مبلغ کل</Typography><Typography noWrap sx={{ fontSize: 9.8, fontWeight: 900, color: INVOICE_ACCENT }}>{money(total, currencyLabel)}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>پرداخت‌شده</Typography><Typography noWrap sx={{ fontSize: 9.8, fontWeight: 900, color: GREEN }}>{money(effectivePaid, currencyLabel)}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مانده</Typography><Typography sx={{ fontSize: 9.8, fontWeight: 900, color: outstanding ? RED : GREEN }}>{money(outstanding, currencyLabel)}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>قرارداد</Typography><Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ کل</Typography><Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INVOICE_ACCENT }}>{money(total, currencyLabel)}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>پرداخت‌شده</Typography><Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: GREEN }}>{money(effectivePaid, currencyLabel)}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مانده</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: outstanding ? RED : GREEN }}>{money(outstanding, currencyLabel)}</Typography></Box>
         </Box>
 
         <Box>
@@ -536,8 +536,8 @@ export const InvoiceEditorDialog = ({
             <Grid item xs={12} sm={4}><MoneyInput size="small" fullWidth label={`مالیات (${currencyLabel})`} value={form.vat ?? 0} onChange={(value) => update('vat', value)} /></Grid>
             <Grid item xs={12}>
               <Box sx={{ p: 1.15, borderRadius: '12px', bgcolor: alpha(GREEN, 0.05), border: `1px solid ${alpha(GREEN, 0.16)}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box><Typography sx={{ fontSize: 8.4, color: MUTED }}>مبلغ کل فاکتور</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: GREEN }}>{money(total, currencyLabel)}</Typography></Box>
-                <Box sx={{ textAlign: 'left' }}><Typography sx={{ fontSize: 8.4, color: MUTED }}>مانده پرداخت</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: outstanding ? RED : GREEN }}>{money(outstanding, currencyLabel)}</Typography></Box>
+                <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ کل فاکتور</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: GREEN }}>{money(total, currencyLabel)}</Typography></Box>
+                <Box sx={{ textAlign: 'left' }}><Typography sx={{ fontSize: 12, color: MUTED }}>مانده پرداخت</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: outstanding ? RED : GREEN }}>{money(outstanding, currencyLabel)}</Typography></Box>
               </Box>
             </Grid>
           </Grid>
@@ -546,7 +546,7 @@ export const InvoiceEditorDialog = ({
         <Divider />
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.2} alignItems={{ sm: 'center' }}>
           <FormControlLabel control={<Switch checked={Boolean(form.is_paid)} onChange={(event) => update('is_paid', event.target.checked)} />}
-            label={<Typography sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>این فاکتور پرداخت شده است</Typography>} />
+            label={<Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>این فاکتور پرداخت شده است</Typography>} />
           <Box sx={{ flex: 1 }} />
           <TextField size="small" sx={{ minWidth: { xs: '100%', sm: 360 } }} label="توضیحات" value={form.description || ''}
             onChange={(event) => update('description', event.target.value)} />

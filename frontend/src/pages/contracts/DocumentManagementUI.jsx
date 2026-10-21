@@ -142,8 +142,8 @@ export const FolderTree = ({ folders = [], selected, onSelect, onEdit, onDelete 
               <ChevronRightIcon sx={{ fontSize: 14 }} />
             </IconButton>
             <FolderOutlinedIcon sx={{ fontSize: 16, color: folder.color || DMS_ACCENT }} />
-            <Typography sx={{ flex: 1, minWidth: 0, fontSize: 8.8, fontWeight: 700, color: INK }} noWrap>{folder.name}</Typography>
-            <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 7.5, bgcolor: SOFT_BG, color: MUTED }} />
+            <Typography sx={{ flex: 1, minWidth: 0, fontSize: 12, fontWeight: 700, color: INK }} noWrap>{folder.name}</Typography>
+            <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
             {onEdit ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(folder); }} sx={{ p: 0.15, color: MUTED }}><EditOutlinedIcon sx={{ fontSize: 12 }} /></IconButton> : null}
             {onDelete && !folder.is_system ? <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(folder); }} sx={{ p: 0.15, color: RED }}><DeleteOutlineIcon sx={{ fontSize: 12 }} /></IconButton> : null}
           </Stack>
@@ -160,14 +160,14 @@ export const LibraryBreadcrumb = ({ rootLabel = 'کتابخانه', path = '', o
   return (
     <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 1, px: 0.4, flexWrap: 'wrap' }}>
       <Chip size="small" icon={<FolderOpenOutlinedIcon sx={{ fontSize: '14px !important' }} />} label={rootLabel}
-        onClick={onHome} sx={{ height: 23, fontSize: 8, fontWeight: 800, cursor: 'pointer', bgcolor: '#f1f5f9', color: INK }} />
+        onClick={onHome} sx={{ height: 23, fontSize: 12, fontWeight: 800, cursor: 'pointer', bgcolor: '#f1f5f9', color: INK }} />
       {segments.map((segment, index) => (
         <Stack key={`${segment}-${index}`} direction="row" alignItems="center" spacing={0.5}>
-          <Typography sx={{ fontSize: 9, color: MUTED }}>/</Typography>
-          <Chip size="small" label={segment} sx={{ height: 23, fontSize: 8, bgcolor: index === segments.length - 1 ? alpha(DMS_ACCENT, 0.09) : '#f8fafc', color: index === segments.length - 1 ? DMS_ACCENT : MUTED }} />
+          <Typography sx={{ fontSize: 12, color: MUTED }}>/</Typography>
+          <Chip size="small" label={segment} sx={{ height: 23, fontSize: 12, bgcolor: index === segments.length - 1 ? alpha(DMS_ACCENT, 0.09) : '#f8fafc', color: index === segments.length - 1 ? DMS_ACCENT : MUTED }} />
         </Stack>
       ))}
-      {count > 0 ? <Chip size="small" label={`${formatPersianNumber(count)} سند`} sx={{ height: 22, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT, ml: 'auto' }} /> : null}
+      {count > 0 ? <Chip size="small" label={`${formatPersianNumber(count)} سند`} sx={{ height: 22, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT, ml: 'auto' }} /> : null}
     </Stack>
   );
 };
@@ -177,7 +177,7 @@ export const FolderOverview = ({ folders = [], selected, onSelect }) => {
   if (!roots.length) return null;
   return (
     <SurfaceCard title="ساختار کتابخانه" icon={FolderSharedOutlinedIcon} color={DMS_ACCENT}
-      action={<Chip size="small" label={`${formatPersianNumber(roots.length)} پوشهٔ اصلی`} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}>
+      action={<Chip size="small" label={`${formatPersianNumber(roots.length)} پوشهٔ اصلی`} sx={{ height: 19, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}>
       <Grid container spacing={0.7}>
         {roots.map((folder) => {
           const isCompany = folder.code === 'company.documents';
@@ -200,13 +200,13 @@ export const FolderOverview = ({ folders = [], selected, onSelect }) => {
                 <Stack direction="row" alignItems="flex-start" spacing={0.6}>
                   <Icon sx={{ fontSize: 19, color, mt: 0.1 }} />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 900, color: INK }}>{folder.name}</Typography>
-                    <Typography noWrap sx={{ fontSize: 7.4, color: MUTED }}>{folder.children_count ? `${formatPersianNumber(folder.children_count)} زیرپوشه` : 'پوشهٔ اصلی'}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{folder.name}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{folder.children_count ? `${formatPersianNumber(folder.children_count)} زیرپوشه` : 'پوشهٔ اصلی'}</Typography>
                   </Box>
                 </Stack>
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mt: 0.65 }}>
-                  <Typography sx={{ fontSize: 7.5, color: isCompany ? '#be123c' : MUTED }}>{isCompany ? 'مستندات شرکت' : 'ماژول'}</Typography>
-                  <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 7.3, fontWeight: 800, bgcolor: '#fff', color }} />
+                  <Typography sx={{ fontSize: 12, color: isCompany ? '#be123c' : MUTED }}>{isCompany ? 'مستندات شرکت' : 'ماژول'}</Typography>
+                  <Chip size="small" label={formatPersianNumber(folder.documents_count || 0)} sx={{ height: 18, fontSize: 12, fontWeight: 800, bgcolor: '#fff', color }} />
                 </Stack>
               </Box>
             </Grid>
@@ -238,19 +238,19 @@ export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRes
           <Icon sx={{ fontSize: 20 }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 900, color: INK }}>{row.title}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.1, color: MUTED }}>{row.folder_path || row.folder_name || 'بدون پوشه'} · {row.file_name || 'فایل'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{row.title}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.folder_path || row.folder_name || 'بدون پوشه'} · {row.file_name || 'فایل'}</Typography>
         </Box>
-        <Chip size="small" label={confidentiality.label} sx={{ height: 20, fontSize: 7.8, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} />
+        <Chip size="small" label={confidentiality.label} sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} />
       </Stack>
 
       <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
-        <Chip size="small" label={workflow.label} sx={{ height: 18, fontSize: 7.4, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />
-        <Chip size="small" label={documentType.label} sx={{ height: 18, fontSize: 7.3, bgcolor: alpha(SLATE, 0.06), color: SLATE }} />
-        <Chip size="small" label={`v${toPersianDigits(row.version_count || 1)}`} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED }} />
-        <Chip size="small" label={row.file_size_display || formatBytes(row.file_size)} sx={{ height: 18, fontSize: 7.4, bgcolor: SOFT_BG, color: MUTED }} />
-        {row.is_indexed ? <Chip size="small" label="از بایگانی" sx={{ height: 18, fontSize: 7.3, bgcolor: '#eff6ff', color: '#2563eb' }} /> : null}
-        {row.is_expired ? <Chip size="small" icon={<WarningAmberOutlinedIcon sx={{ fontSize: '12px !important' }} />} label="منقضی" sx={{ height: 18, fontSize: 7.4, bgcolor: '#fff1f2', color: RED, '& .MuiChip-icon': { color: RED } }} /> : null}
+        <Chip size="small" label={workflow.label} sx={{ height: 18, fontSize: 12, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />
+        <Chip size="small" label={documentType.label} sx={{ height: 18, fontSize: 12, bgcolor: alpha(SLATE, 0.06), color: SLATE }} />
+        <Chip size="small" label={`v${toPersianDigits(row.version_count || 1)}`} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
+        <Chip size="small" label={row.file_size_display || formatBytes(row.file_size)} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
+        {row.is_indexed ? <Chip size="small" label="از بایگانی" sx={{ height: 18, fontSize: 12, bgcolor: '#eff6ff', color: '#2563eb' }} /> : null}
+        {row.is_expired ? <Chip size="small" icon={<WarningAmberOutlinedIcon sx={{ fontSize: '12px !important' }} />} label="منقضی" sx={{ height: 18, fontSize: 12, bgcolor: '#fff1f2', color: RED, '& .MuiChip-icon': { color: RED } }} /> : null}
       </Stack>
 
       <Grid container spacing={0.55}>
@@ -260,14 +260,14 @@ export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRes
 
       {row.tags_list?.length ? (
         <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
-          {row.tags_list.slice(0, 3).map((tag) => <Chip key={tag} size="small" label={tag} sx={{ height: 17, fontSize: 7.2, bgcolor: alpha(DMS_ACCENT, 0.05), color: DMS_ACCENT }} />)}
-          {row.tags_list.length > 3 ? <Chip size="small" label={`+${toPersianDigits(row.tags_list.length - 3)}`} sx={{ height: 17, fontSize: 7.2, bgcolor: SOFT_BG, color: MUTED }} /> : null}
+          {row.tags_list.slice(0, 3).map((tag) => <Chip key={tag} size="small" label={tag} sx={{ height: 17, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.05), color: DMS_ACCENT }} />)}
+          {row.tags_list.length > 3 ? <Chip size="small" label={`+${toPersianDigits(row.tags_list.length - 3)}`} sx={{ height: 17, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} /> : null}
         </Stack>
       ) : null}
 
       <Divider sx={{ mt: 'auto' }} />
       <Stack direction="row" alignItems="center" spacing={0.2}>
-        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 8.2, minWidth: 0 }}>جزئیات</Button>
+        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 12, minWidth: 0 }}>جزئیات</Button>
         <Tooltip title="دانلود"><span><IconButton size="small" onClick={() => onDownload?.(row)} disabled={!row.file_url} sx={{ color: BLUE, p: 0.35 }}><DownloadOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
         <Tooltip title={row.is_editable_in_workflow === false ? 'سند منتشرشده؛ ابتدا از گردش‌کار برای بازنگری برگردانید' : 'ویرایش / نسخه جدید'}><span><IconButton size="small" onClick={() => onEdit(row)} disabled={!canManage || row.is_editable_in_workflow === false} sx={{ color: MUTED, p: 0.35 }}><EditOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></span></Tooltip>
         <Box sx={{ flex: 1 }} />
@@ -284,8 +284,8 @@ export const DocumentCard = ({ row, onView, onEdit, onDownload, onArchive, onRes
 
 export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onRestore, onDelete, canManage = true, canDelete = true }) => {
   const theme = useTheme();
-  const headSx = { fontWeight: 800, fontSize: 8.6, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
-  const cellSx = { fontSize: 8.8, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
+  const headSx = { fontWeight: 800, fontSize: 12, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
+  const cellSx = { fontSize: 12, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
   return (
     <Paper elevation={0} sx={{ borderRadius: '16px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
       <TableContainer sx={{ maxHeight: 580 }}>
@@ -307,8 +307,8 @@ export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onR
                   <TableCell sx={{ ...cellSx, maxWidth: 240, overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 800 }}>{row.title}</TableCell>
                   <TableCell sx={cellSx}>{documentType.label}</TableCell>
                   <TableCell sx={{ ...cellSx, maxWidth: 190, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.folder_path || row.folder_name || '—'}</TableCell>
-                  <TableCell sx={cellSx}><Chip size="small" label={confidentiality.label} sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} /></TableCell>
-                  <TableCell sx={cellSx}><Chip size="small" label={status.label} sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: status.bg, color: status.color }} /></TableCell>
+                  <TableCell sx={cellSx}><Chip size="small" label={confidentiality.label} sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} /></TableCell>
+                  <TableCell sx={cellSx}><Chip size="small" label={status.label} sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} /></TableCell>
                   <TableCell sx={cellSx}>v{toPersianDigits(row.version_count || 1)}</TableCell>
                   <TableCell sx={cellSx}>{row.file_size_display || formatBytes(row.file_size)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: row.is_expired ? RED : MUTED }}>{toJalali(row.expiry_date)}</TableCell>
@@ -333,12 +333,12 @@ export const DocumentTable = ({ rows, onView, onEdit, onDownload, onArchive, onR
 
 export const StorageCard = ({ stats, isLoading }) => (
   <SurfaceCard title="فضای بایگانی" icon={FolderOpenOutlinedIcon} color={DMS_ACCENT}
-    action={<Chip size="small" label={formatBytes(stats?.storage_bytes || 0)} sx={{ height: 21, fontSize: 8.3, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}>
+    action={<Chip size="small" label={formatBytes(stats?.storage_bytes || 0)} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}>
     {isLoading ? <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={20} /></Box> : (
       <Stack spacing={1}>
         <Box>
           <Typography sx={{ fontSize: 26, fontWeight: 900, color: DMS_ACCENT }}>{formatBytes(stats?.storage_bytes || 0)}</Typography>
-          <Typography sx={{ fontSize: 8.2, color: MUTED }}>حجم کل فایل‌های بایگانی‌شده</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>حجم کل فایل‌های بایگانی‌شده</Typography>
         </Box>
         <Grid container spacing={0.55}>
           <Grid item xs={6}><MetricBox label="کل اسناد" value={formatPersianNumber(stats?.total || 0)} color={DMS_ACCENT} /></Grid>
@@ -348,8 +348,8 @@ export const StorageCard = ({ stats, isLoading }) => (
         </Grid>
         {(stats?.expiring_soon || stats?.expired) ? (
           <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
-            {stats.expiring_soon ? <Chip size="small" label={`${formatPersianNumber(stats.expiring_soon)} انقضا تا ۳۰ روز`} sx={{ height: 19, fontSize: 7.8, bgcolor: '#fffbeb', color: AMBER }} /> : null}
-            {stats.expired ? <Chip size="small" label={`${formatPersianNumber(stats.expired)} منقضی`} sx={{ height: 19, fontSize: 7.8, bgcolor: '#fff1f2', color: RED }} /> : null}
+            {stats.expiring_soon ? <Chip size="small" label={`${formatPersianNumber(stats.expiring_soon)} انقضا تا ۳۰ روز`} sx={{ height: 19, fontSize: 12, bgcolor: '#fffbeb', color: AMBER }} /> : null}
+            {stats.expired ? <Chip size="small" label={`${formatPersianNumber(stats.expired)} منقضی`} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: RED }} /> : null}
           </Stack>
         ) : null}
       </Stack>
@@ -361,7 +361,7 @@ export const StoragePolicyCard = ({ policy }) => {
   if (!policy) return null;
   return (
     <SurfaceCard title="سیاست ذخیره‌سازی" icon={StorageOutlinedIcon} color="#2563eb"
-      action={<Chip size="small" label="از تنظیمات" sx={{ height: 19, fontSize: 7.5, bgcolor: '#eff6ff', color: '#2563eb' }} />}>
+      action={<Chip size="small" label="از تنظیمات" sx={{ height: 19, fontSize: 12, bgcolor: '#eff6ff', color: '#2563eb' }} />}>
       <Stack spacing={0.55}>
         <InfoLine label="پوشهٔ ماژول" value={policy.root_folder || '—'} ltr />
         <InfoLine label="الگوی پوشهٔ سند" value={policy.entity_folder_pattern || '—'} ltr />
@@ -369,11 +369,11 @@ export const StoragePolicyCard = ({ policy }) => {
         <InfoLine label="حداکثر حجم" value={`${toPersianDigits(policy.max_file_size_mb || 50)} MB`} />
         {policy.subfolders?.length ? (
           <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap" sx={{ mt: 0.2 }}>
-            {policy.subfolders.map((folder) => <Chip key={folder} size="small" label={folder} sx={{ height: 17, fontSize: 7.2, bgcolor: SOFT_BG, color: MUTED }} />)}
+            {policy.subfolders.map((folder) => <Chip key={folder} size="small" label={folder} sx={{ height: 17, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />)}
           </Stack>
         ) : null}
         <Box sx={{ mt: 0.35, p: 0.55, borderRadius: '7px', bgcolor: SOFT_BG, direction: 'ltr' }}>
-          <Typography noWrap sx={{ fontSize: 7.4, color: MUTED, fontFamily: 'monospace' }}>{policy.path_preview || 'archive'}/…</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED, fontFamily: 'monospace' }}>{policy.path_preview || 'archive'}/…</Typography>
         </Box>
       </Stack>
     </SurfaceCard>
@@ -382,7 +382,7 @@ export const StoragePolicyCard = ({ policy }) => {
 
 export const ActivityCard = ({ activities = [], onOpen }) => (
   <SurfaceCard title="آخرین فعالیت‌ها" icon={TimelineIcon} color={VIOLET}
-    action={<Chip size="small" label={formatPersianNumber(activities.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(VIOLET, 0.08), color: VIOLET }} />}>
+    action={<Chip size="small" label={formatPersianNumber(activities.length)} sx={{ height: 19, fontSize: 12, bgcolor: alpha(VIOLET, 0.08), color: VIOLET }} />}>
     {activities.length ? (
       <Stack spacing={0.45}>
         {activities.slice(0, 6).map((activity) => (
@@ -391,14 +391,14 @@ export const ActivityCard = ({ activities = [], onOpen }) => (
             <Stack direction="row" alignItems="center" spacing={0.55} sx={{ width: '100%' }}>
               <Box sx={{ width: 25, height: 25, borderRadius: '7px', bgcolor: alpha(VIOLET, 0.08), color: VIOLET, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><TimelineIcon sx={{ fontSize: 13 }} /></Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 8.5, fontWeight: 800, color: INK }}>{activity.action_display} · {activity.document_title || 'سند'}</Typography>
-                <Typography noWrap sx={{ fontSize: 7.5, color: MUTED }}>{activity.user_name || 'سیستم'} · {toJalali(String(activity.created_at || '').slice(0, 10))}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{activity.action_display} · {activity.document_title || 'سند'}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{activity.user_name || 'سیستم'} · {toJalali(String(activity.created_at || '').slice(0, 10))}</Typography>
               </Box>
             </Stack>
           </ButtonBase>
         ))}
       </Stack>
-    ) : <Typography sx={{ fontSize: 8.6, color: MUTED }}>فعالیتی ثبت نشده است.</Typography>}
+    ) : <Typography sx={{ fontSize: 12, color: MUTED }}>فعالیتی ثبت نشده است.</Typography>}
   </SurfaceCard>
 );
 
@@ -425,16 +425,16 @@ export const DocumentDetailDrawer = ({
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography noWrap sx={{ fontSize: 12.8, fontWeight: 900, color: INK }}>{row.title}</Typography>
-              <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{row.folder_path || row.folder_name || 'بدون پوشه'} · {row.file_name || meta.label}</Typography>
+              <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.folder_path || row.folder_name || 'بدون پوشه'} · {row.file_name || meta.label}</Typography>
             </Box>
             <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-            <Chip size="small" label={confidentiality.label} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} />
-            <Chip size="small" label={workflow.label} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />
-            <Chip size="small" label={documentType.label} sx={{ height: 21, fontSize: 8.2, bgcolor: alpha(SLATE, 0.07), color: SLATE }} />
-            <Chip size="small" label={`نسخه ${toPersianDigits(row.version_count || 1)}`} sx={{ height: 21, fontSize: 8.2, bgcolor: SOFT_BG, color: MUTED }} />
-            {row.is_locked ? <Chip size="small" label="قفل" sx={{ height: 21, fontSize: 8.2, bgcolor: '#fff1f2', color: RED }} /> : null}
+            <Chip size="small" label={confidentiality.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: confidentiality.bg, color: confidentiality.color }} />
+            <Chip size="small" label={workflow.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />
+            <Chip size="small" label={documentType.label} sx={{ height: 21, fontSize: 12, bgcolor: alpha(SLATE, 0.07), color: SLATE }} />
+            <Chip size="small" label={`نسخه ${toPersianDigits(row.version_count || 1)}`} sx={{ height: 21, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
+            {row.is_locked ? <Chip size="small" label="قفل" sx={{ height: 21, fontSize: 12, bgcolor: '#fff1f2', color: RED }} /> : null}
           </Stack>
         </Box>
 
@@ -455,7 +455,7 @@ export const DocumentDetailDrawer = ({
               <InfoLine label="منبع" value={row.source_module_key || (row.is_indexed ? 'بایگانی موجود' : 'مدیریت اسناد')} />
               <InfoLine label="مسیر ذخیره‌سازی" value={row.storage_path || '—'} ltr />
               {['.pdf', '.jpg', '.jpeg', '.png', '.gif', '.webp', '.bmp'].includes(String(row.file_extension || '').toLowerCase()) ? (
-                <Button size="small" variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => onPreview?.(row)} sx={{ mt: 0.6, fontSize: 8.4 }}>پیش‌نمایش فایل</Button>
+                <Button size="small" variant="outlined" startIcon={<VisibilityOutlinedIcon />} onClick={() => onPreview?.(row)} sx={{ mt: 0.6, fontSize: 12 }}>پیش‌نمایش فایل</Button>
               ) : null}
             </Paper>
 
@@ -468,36 +468,36 @@ export const DocumentDetailDrawer = ({
               <InfoLine label="نگهداری تا" value={toJalali(row.retention_until)} />
               {row.tags_list?.length ? (
                 <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
-                  {row.tags_list.map((tag) => <Chip key={tag} size="small" label={tag} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.06), color: DMS_ACCENT }} />)}
+                  {row.tags_list.map((tag) => <Chip key={tag} size="small" label={tag} sx={{ height: 19, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.06), color: DMS_ACCENT }} />)}
                 </Stack>
               ) : null}
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={TimelineIcon} title="گردش‌کار سند" color={workflow.color}
-                action={<Chip size="small" label={workflow.label} sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />} />
+                action={<Chip size="small" label={workflow.label} sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: workflow.bg, color: workflow.color }} />} />
               <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
                 {row.workflow_status === 'draft' || row.workflow_status === 'rejected' ? (
-                  <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'in_review')} sx={{ fontSize: 8.4 }}>ارسال برای بررسی</Button>
+                  <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'in_review')} sx={{ fontSize: 12 }}>ارسال برای بررسی</Button>
                 ) : null}
                 {row.workflow_status === 'in_review' ? (
                   <>
-                    <Button size="small" variant="contained" disabled={!canApprove} onClick={() => onWorkflow?.(row, 'approved')} sx={{ fontSize: 8.4, bgcolor: GREEN }}>تأیید</Button>
-                    <Button size="small" variant="outlined" color="error" disabled={!canApprove} onClick={() => onWorkflow?.(row, 'rejected')} sx={{ fontSize: 8.4 }}>رد / بازگشت</Button>
+                    <Button size="small" variant="contained" disabled={!canApprove} onClick={() => onWorkflow?.(row, 'approved')} sx={{ fontSize: 12, bgcolor: GREEN }}>تأیید</Button>
+                    <Button size="small" variant="outlined" color="error" disabled={!canApprove} onClick={() => onWorkflow?.(row, 'rejected')} sx={{ fontSize: 12 }}>رد / بازگشت</Button>
                   </>
                 ) : null}
                 {row.workflow_status === 'approved' ? (
-                  <Button size="small" variant="contained" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'published')} sx={{ fontSize: 8.4, bgcolor: GREEN }}>انتشار و لازم‌الاجرا</Button>
+                  <Button size="small" variant="contained" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'published')} sx={{ fontSize: 12, bgcolor: GREEN }}>انتشار و لازم‌الاجرا</Button>
                 ) : null}
                 {row.workflow_status === 'published' ? (
                   <>
-                    <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'draft')} sx={{ fontSize: 8.4 }}>شروع بازنگری</Button>
-                    <Button size="small" variant="outlined" color="warning" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'withdrawn')} sx={{ fontSize: 8.4 }}>لغو انتشار</Button>
-                    <Button size="small" variant="outlined" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'superseded')} sx={{ fontSize: 8.4 }}>جایگزینی</Button>
+                    <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'draft')} sx={{ fontSize: 12 }}>شروع بازنگری</Button>
+                    <Button size="small" variant="outlined" color="warning" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'withdrawn')} sx={{ fontSize: 12 }}>لغو انتشار</Button>
+                    <Button size="small" variant="outlined" disabled={!canPublish} onClick={() => onWorkflow?.(row, 'superseded')} sx={{ fontSize: 12 }}>جایگزینی</Button>
                   </>
                 ) : null}
                 {row.workflow_status === 'withdrawn' || row.workflow_status === 'archived' ? (
-                  <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'draft')} sx={{ fontSize: 8.4 }}>بازگشت به پیش‌نویس</Button>
+                  <Button size="small" variant="outlined" disabled={!canManage} onClick={() => onWorkflow?.(row, 'draft')} sx={{ fontSize: 12 }}>بازگشت به پیش‌نویس</Button>
                 ) : null}
               </Stack>
               {row.published_at ? <InfoLine label="زمان انتشار" value={toJalali(String(row.published_at).slice(0, 10))} /> : null}
@@ -507,18 +507,18 @@ export const DocumentDetailDrawer = ({
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={RestoreOutlinedIcon} title="نسخه‌ها" color={VIOLET}
-                action={<Chip size="small" label={formatPersianNumber(versions.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(VIOLET, 0.08), color: VIOLET }} />} />
+                action={<Chip size="small" label={formatPersianNumber(versions.length)} sx={{ height: 19, fontSize: 12, bgcolor: alpha(VIOLET, 0.08), color: VIOLET }} />} />
               {versions.length ? (
                 <Stack spacing={0.45}>
                   {versions.map((version) => (
                     <Stack key={version.id} direction="row" alignItems="center" spacing={0.55} sx={{ p: 0.65, borderRadius: '9px', border: '1px solid #eef2f7', bgcolor: '#fff' }}>
                       <Box sx={{ width: 26, height: 26, borderRadius: '7px', bgcolor: alpha(VIOLET, 0.08), color: VIOLET, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><RestoreOutlinedIcon sx={{ fontSize: 14 }} /></Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography noWrap sx={{ fontSize: 8.7, fontWeight: 800, color: INK }}>نسخه {toPersianDigits(version.version_number)} · {version.original_name}</Typography>
-                        <Typography sx={{ fontSize: 7.6, color: MUTED }}>{version.file_size_display} · {version.created_by_name || 'سیستم'} · {toJalali(String(version.created_at || '').slice(0, 10))}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>نسخه {toPersianDigits(version.version_number)} · {version.original_name}</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>{version.file_size_display} · {version.created_by_name || 'سیستم'} · {toJalali(String(version.created_at || '').slice(0, 10))}</Typography>
                       </Box>
                       {String(version.id) === String(row.current_version) ? (
-                        <Chip size="small" label="جاری" sx={{ height: 18, fontSize: 7.4, bgcolor: '#ecfdf5', color: GREEN }} />
+                        <Chip size="small" label="جاری" sx={{ height: 18, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} />
                       ) : (
                         <Tooltip title="بازگردانی این نسخه">
                           <IconButton size="small" onClick={() => onRestoreVersion?.(row, version)} sx={{ color: AMBER, p: 0.25 }}><RestoreOutlinedIcon sx={{ fontSize: 15 }} /></IconButton>
@@ -528,7 +528,7 @@ export const DocumentDetailDrawer = ({
                     </Stack>
                   ))}
                 </Stack>
-              ) : <Typography sx={{ fontSize: 8.5, color: MUTED }}>نسخه‌ای ثبت نشده است.</Typography>}
+              ) : <Typography sx={{ fontSize: 12, color: MUTED }}>نسخه‌ای ثبت نشده است.</Typography>}
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
@@ -538,18 +538,18 @@ export const DocumentDetailDrawer = ({
                   {activities.map((activity) => (
                     <Stack key={activity.id} direction="row" alignItems="center" spacing={0.55}>
                       <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: VIOLET, flexShrink: 0 }} />
-                      <Typography sx={{ flex: 1, fontSize: 8.2, color: INK }}>{activity.action_display} · {activity.user_name || 'سیستم'}</Typography>
-                      <Typography sx={{ fontSize: 7.5, color: MUTED }}>{toJalali(String(activity.created_at || '').slice(0, 10))}</Typography>
+                      <Typography sx={{ flex: 1, fontSize: 12, color: INK }}>{activity.action_display} · {activity.user_name || 'سیستم'}</Typography>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>{toJalali(String(activity.created_at || '').slice(0, 10))}</Typography>
                     </Stack>
                   ))}
                 </Stack>
-              ) : <Typography sx={{ fontSize: 8.5, color: MUTED }}>فعالیتی ثبت نشده است.</Typography>}
+              ) : <Typography sx={{ fontSize: 12, color: MUTED }}>فعالیتی ثبت نشده است.</Typography>}
             </Paper>
 
             {row.description ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={DescriptionOutlinedIcon} title="توضیحات" color={MUTED} />
-                <Typography sx={{ fontSize: 8.9, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.description}</Typography>
+                <Typography sx={{ fontSize: 12, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.description}</Typography>
               </Paper>
             ) : null}
           </Stack>
@@ -584,14 +584,14 @@ export const DocumentEditorDialog = ({
         <Box sx={{ width: 42, height: 42, borderRadius: '12px', bgcolor: DMS_ACCENT, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UploadFileOutlinedIcon /></Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش سند / ثبت نسخه جدید' : 'آپلود سند جدید'}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{selectedFolder?.path || 'کتابخانه اسناد'} · {form.file?.name || form.file_name || 'انتخاب فایل برای بایگانی'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{selectedFolder?.path || 'کتابخانه اسناد'} · {form.file?.name || form.file_name || 'انتخاب فایل برای بایگانی'}</Typography>
         </Box>
         <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 2.3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
-        {!form.id ? <Alert severity="info" sx={{ borderRadius: '10px', fontSize: 10 }}>سند جدید به‌صورت پیش‌نویس ثبت می‌شود؛ انتشار آن نیازمند طی‌کردن گردش‌کار کنترل سند است.</Alert> : null}
+        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
+        {!form.id ? <Alert severity="info" sx={{ borderRadius: '10px', fontSize: 12 }}>سند جدید به‌صورت پیش‌نویس ثبت می‌شود؛ انتشار آن نیازمند طی‌کردن گردش‌کار کنترل سند است.</Alert> : null}
 
         <Box component="label" sx={{
           display: 'flex', alignItems: 'center', gap: 1, p: 1.2, borderRadius: '12px', border: `1px dashed ${alpha(DMS_ACCENT, 0.35)}`,
@@ -601,10 +601,10 @@ export const DocumentEditorDialog = ({
             accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.jpg,.jpeg,.png,.gif,.webp,.bmp,.zip,.rar" />
           <Box sx={{ width: 38, height: 38, borderRadius: '10px', bgcolor: alpha(DMS_ACCENT, 0.09), color: DMS_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><UploadFileOutlinedIcon /></Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography noWrap sx={{ fontSize: 9.4, fontWeight: 800, color: INK }}>{file ? file.name : form.file_name || 'انتخاب فایل سند'}</Typography>
-            <Typography sx={{ fontSize: 8, color: MUTED }}>{file ? formatBytes(file.size) : 'PDF، Word، Excel، PowerPoint، تصویر، متن یا ZIP · حداکثر ۵۰ مگابایت'}</Typography>
+            <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{file ? file.name : form.file_name || 'انتخاب فایل سند'}</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>{file ? formatBytes(file.size) : 'PDF، Word، Excel، PowerPoint، تصویر، متن یا ZIP · حداکثر ۵۰ مگابایت'}</Typography>
           </Box>
-          <Chip size="small" label={form.id ? 'نسخه جدید' : 'انتخاب'} sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />
+          <Chip size="small" label={form.id ? 'نسخه جدید' : 'انتخاب'} sx={{ height: 20, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />
         </Box>
 
         <Grid container spacing={1.1}>
@@ -649,7 +649,7 @@ export const DocumentEditorDialog = ({
           <Grid item xs={12}><TextField size="small" fullWidth multiline rows={2} label="توضیحات" value={form.description || ''} onChange={(event) => update('description', event.target.value)} /></Grid>
           <Grid item xs={12}>
             <FormControlLabel control={<Switch checked={Boolean(form.is_locked)} onChange={(event) => update('is_locked', event.target.checked)} />}
-              label={<Typography sx={{ fontSize: 9.2, fontWeight: 700, color: INK }}>قفل ویرایش سند پس از ثبت</Typography>} />
+              label={<Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>قفل ویرایش سند پس از ثبت</Typography>} />
           </Grid>
         </Grid>
       </DialogContent>
@@ -674,7 +674,7 @@ export const FolderEditorDialog = ({
     <Dialog open={open} onClose={onClose} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '18px' } }}>
       <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>{editing ? 'ویرایش پوشه' : 'پوشه جدید'}</DialogTitle>
       <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.2, pt: 1 }}>
-        {error ? <Alert severity="error" sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
+        {error ? <Alert severity="error" sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
         <TextField size="small" fullWidth label="نام پوشه *" value={form.name || ''} onChange={(event) => update('name', event.target.value)} />
         <FormControl size="small" fullWidth>
           <InputLabel>پوشه والد</InputLabel>

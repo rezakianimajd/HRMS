@@ -104,7 +104,7 @@ const DocumentManagementDashboardPage = () => {
       <Grid container spacing={1.5}>
         <Grid item xs={12} lg={7}>
           <SurfaceCard title="آخرین اسناد" icon={FolderOpenOutlinedIcon} color={DMS_ACCENT}
-            action={<Button size="small" onClick={() => openLibrary()} sx={{ fontSize: 8.5 }}>مشاهده همه</Button>}>
+            action={<Button size="small" onClick={() => openLibrary()} sx={{ fontSize: 12 }}>مشاهده همه</Button>}>
             <Stack spacing={0.55}>
               {recent.map((row) => (
                 <Stack key={row.id} direction="row" alignItems="center" spacing={0.6}
@@ -112,13 +112,13 @@ const DocumentManagementDashboardPage = () => {
                   onClick={() => openLibrary(`?q=${encodeURIComponent(row.title)}`)}>
                   <Box sx={{ width: 28, height: 28, borderRadius: '8px', bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FolderOpenOutlinedIcon sx={{ fontSize: 14 }} /></Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography noWrap sx={{ fontSize: 8.9, fontWeight: 800, color: INK }}>{row.title}</Typography>
-                    <Typography noWrap sx={{ fontSize: 7.6, color: MUTED }}>{row.folder_path || 'بدون پوشه'} · {toJalali(row.created_at?.slice(0, 10))}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.title}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.folder_path || 'بدون پوشه'} · {toJalali(row.created_at?.slice(0, 10))}</Typography>
                   </Box>
-                  <Chip size="small" label={formatBytes(row.file_size)} sx={{ height: 18, fontSize: 7.4, bgcolor: '#f1f5f9', color: MUTED }} />
+                  <Chip size="small" label={formatBytes(row.file_size)} sx={{ height: 18, fontSize: 12, bgcolor: '#f1f5f9', color: MUTED }} />
                 </Stack>
               ))}
-              {!recent.length ? <Typography sx={{ py: 2, fontSize: 9, color: MUTED, textAlign: 'center' }}>سندی ثبت نشده است.</Typography> : null}
+              {!recent.length ? <Typography sx={{ py: 2, fontSize: 12, color: MUTED, textAlign: 'center' }}>سندی ثبت نشده است.</Typography> : null}
             </Stack>
           </SurfaceCard>
         </Grid>

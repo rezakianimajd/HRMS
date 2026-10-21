@@ -375,7 +375,7 @@ const Layout = ({ children }) => {
             {item.title}
           </Typography>
           {isPlaceholder && (
-            <Typography sx={{ fontSize: 8.5, color: 'text.disabled', flexShrink: 0 }}>
+            <Typography sx={{ fontSize: 12, color: 'text.disabled', flexShrink: 0 }}>
               به‌زودی
             </Typography>
           )}
@@ -551,7 +551,7 @@ const Layout = ({ children }) => {
             onClick={(event) => setUserMenuAnchor(event.currentTarget)}
             sx={{
               mt: 1.2, width: 34, height: 34, flexShrink: 0,
-              cursor: 'pointer', fontSize: 11, fontWeight: 800,
+              cursor: 'pointer', fontSize: 12, fontWeight: 800,
               bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
               color: 'primary.main',
               border: '2px solid', borderColor: 'background.paper',
@@ -586,7 +586,7 @@ const Layout = ({ children }) => {
 
       <Typography sx={{
         px: 2, pt: 1.5, pb: 0.5,
-        fontSize: 10, fontWeight: 500, letterSpacing: '0.08em',
+        fontSize: 12, fontWeight: 500, letterSpacing: '0.08em',
         color: 'text.disabled',
       }}>
         منوی اصلی
@@ -682,21 +682,21 @@ const Layout = ({ children }) => {
       >
         <Box sx={{ px: 2, py: 1 }}>
           <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{fullName}</Typography>
-          <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+          <Typography noWrap sx={{ fontSize: 12, color: 'text.secondary' }}>
             @{user?.username}
           </Typography>
         </Box>
         <Divider />
         <MenuItem
           onClick={() => { setUserMenuAnchor(null); navigateTo('/settings'); }}
-          sx={{ fontSize: 11.5, gap: 1, py: 0.9 }}
+          sx={{ fontSize: 12, gap: 1, py: 0.9 }}
         >
           <SettingsIcon sx={{ fontSize: 17, color: 'text.secondary' }} />
           تنظیمات
         </MenuItem>
         <MenuItem
           onClick={() => { setUserMenuAnchor(null); handleLogout(); }}
-          sx={{ fontSize: 11.5, gap: 1, py: 0.9, color: 'error.main' }}
+          sx={{ fontSize: 12, gap: 1, py: 0.9, color: 'error.main' }}
         >
           <LogoutIcon sx={{ fontSize: 17 }} />
           {t('nav.logout')}

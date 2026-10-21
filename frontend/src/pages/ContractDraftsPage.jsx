@@ -127,7 +127,7 @@ const ContractDraftsPage = () => {
                       <TableCell>{d.template_name || '—'}</TableCell>
                       <TableCell>{d.submitted_by || '—'}</TableCell>
                       <TableCell>{d.updated_at ? toJalali(String(d.updated_at).slice(0, 10)) : '—'}</TableCell>
-                      <TableCell><Chip size="small" label={sm.label} sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 11 }} /></TableCell>
+                      <TableCell><Chip size="small" label={sm.label} sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 12 }} /></TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         {d.status === 'draft' && (
                           <Tooltip title="ارسال برای تأیید"><IconButton size="small" color="warning" onClick={() => submit.mutate(d.id)}><SendIcon fontSize="small" /></IconButton></Tooltip>

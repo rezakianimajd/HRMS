@@ -91,7 +91,7 @@ const InfoCard = ({
         <Typography
           noWrap
           sx={{
-            fontSize: `${Math.max(type.statSize - 1, 10)}px`,
+            fontSize: `${Math.max(type.statSize - 1, 12)}px`,
             fontWeight: 400,
             color: 'text.secondary',
             flexShrink: 1,
@@ -118,7 +118,7 @@ const InfoCard = ({
           <Typography
             noWrap
             sx={{
-              fontSize: `${Math.max(type.statSize - 2, 9)}px`,
+              fontSize: `${Math.max(type.statSize - 2, 12)}px`,
               fontWeight: 400,
               color: 'text.secondary',
               flexShrink: 1,

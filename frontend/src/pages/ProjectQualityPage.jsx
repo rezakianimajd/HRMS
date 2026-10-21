@@ -85,7 +85,7 @@ const chipOf = (map, key) => {
   const meta = map[key] || { label: key || '—', color: '#64748b' };
   return (
     <Chip size="small" label={meta.label}
-      sx={{ fontWeight: 700, fontSize: 11.5, bgcolor: `${meta.color}22`, color: meta.color }} />
+      sx={{ fontWeight: 700, fontSize: 12, bgcolor: `${meta.color}22`, color: meta.color }} />
   );
 };
 
@@ -531,7 +531,7 @@ const ProjectQualityPage = () => {
             <LinearProgress variant="determinate" value={kpiPunch.percent || 0}
               sx={{ height: 7, borderRadius: 4, my: 0.5, bgcolor: '#e2e8f0',
                 '& .MuiLinearProgress-bar': { bgcolor: '#f59e0b' } }} />
-            <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+            <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
               {toPersianDigits(kpiPunch.verified || 0)} تأییدشده از {toPersianDigits(kpiPunch.total || 0)} — معوق: {toPersianDigits(kpiPunch.overdue || 0)}
             </Typography>
           </Paper>
@@ -834,14 +834,14 @@ const ProjectQualityPage = () => {
                                 setNoteDialog({ kind: 'ncr', id: ncr.id, target: status, label: ncr.number });
                                 setNoteText('');
                               }}
-                              sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                              sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                               {(NCR_STATUS[status] || {}).label || status}
                             </Button>
                           ))}
                           {ncr.status !== 'closed' && ncr.status !== 'cancelled' ? (
                             <Button size="small" color="success" variant="contained"
                               onClick={() => ncrStatus.mutate({ id: ncr.id, status: 'closed', note: '' })}
-                              sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                              sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                               بستن
                             </Button>
                           ) : null}
@@ -957,28 +957,28 @@ const ProjectQualityPage = () => {
                           {row.status === 'open' || row.status === 'rejected' ? (
                             <Button size="small" variant="outlined" color="info"
                               onClick={() => punchStatus.mutate({ id: row.id, status: 'in_progress' })}
-                              sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                              sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                               شروع رفع
                             </Button>
                           ) : null}
                           {row.status !== 'fixed' && row.status !== 'verified' ? (
                             <Button size="small" variant="outlined"
                               onClick={() => punchStatus.mutate({ id: row.id, status: 'fixed' })}
-                              sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                              sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                               رفع شد
                             </Button>
                           ) : null}
                           {row.status === 'fixed' ? (
                             <Button size="small" variant="contained" color="success"
                               onClick={() => { setVerifyTarget(row); setVerifiedBy(''); }}
-                              sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                              sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                               تأیید
                             </Button>
                           ) : null}
                           {row.status !== 'rejected' && row.status !== 'verified' ? (
                             <Button size="small" variant="outlined" color="error"
                               onClick={() => punchStatus.mutate({ id: row.id, status: 'rejected' })}
-                              sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                              sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                               رد
                             </Button>
                           ) : null}
@@ -1115,14 +1115,14 @@ const ProjectQualityPage = () => {
                                   setNoteDialog({ kind: 'hse', id: row.id, target: status, label: row.number });
                                   setNoteText('');
                                 }}
-                                sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                                sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                                 {(HSE_STATUS[status] || {}).label || status}
                               </Button>
                             ))}
                             {row.status !== 'closed' ? (
                               <Button size="small" color="success" variant="contained"
                                 onClick={() => hseStatus.mutate({ id: row.id, status: 'closed', note: '' })}
-                                sx={{ borderRadius: '8px', fontSize: 11, fontWeight: 700, minWidth: 0, px: 1 }}>
+                                sx={{ borderRadius: '8px', fontSize: 12, fontWeight: 700, minWidth: 0, px: 1 }}>
                                 بستن
                               </Button>
                             ) : null}

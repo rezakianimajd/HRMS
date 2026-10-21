@@ -225,8 +225,8 @@ const AssetsPage = () => {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={deptData} layout="vertical" margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="rgba(100,116,139,0.15)" />
-                  <XAxis type="number" reversed allowDecimals={false} tick={{ fontSize: 11 }} stroke="transparent" />
-                  <YAxis type="category" dataKey="name" orientation="right" width={110} tick={{ fontSize: 11, fill: '#475569' }} stroke="transparent" />
+                  <XAxis type="number" reversed allowDecimals={false} tick={{ fontSize: 12 }} stroke="transparent" />
+                  <YAxis type="category" dataKey="name" orientation="right" width={110} tick={{ fontSize: 12, fill: '#475569' }} stroke="transparent" />
                   <ReTooltip cursor={{ fill: 'rgba(99,102,241,0.06)' }} contentStyle={{ direction: 'rtl', textAlign: 'right' }} formatter={(v) => [formatPersianNumber(v), 'تعداد']} />
                   <Bar dataKey="count" radius={[6, 0, 0, 6]} barSize={18}>
                     {deptData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
@@ -248,8 +248,8 @@ const AssetsPage = () => {
               <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={typeData} margin={{ top: 0, right: 8, left: 0, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(100,116,139,0.15)" />
-                  <XAxis dataKey="name" reversed tick={{ fontSize: 10, fill: '#475569' }} stroke="transparent" interval={0} angle={20} textAnchor="start" height={50} />
-                  <YAxis orientation="right" allowDecimals={false} tick={{ fontSize: 11 }} stroke="transparent" />
+                  <XAxis dataKey="name" reversed tick={{ fontSize: 12, fill: '#475569' }} stroke="transparent" interval={0} angle={20} textAnchor="start" height={50} />
+                  <YAxis orientation="right" allowDecimals={false} tick={{ fontSize: 12 }} stroke="transparent" />
                   <ReTooltip cursor={{ fill: 'rgba(16,185,129,0.06)' }} contentStyle={{ direction: 'rtl', textAlign: 'right' }} formatter={(v) => [formatPersianNumber(v), 'تعداد']} />
                   <Bar dataKey="count" radius={[6, 6, 0, 0]} barSize={22}>
                     {typeData.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
@@ -325,7 +325,7 @@ const AssetsPage = () => {
                       </TableCell>
                       <TableCell>
                         <Chip size="small" label={a.asset_type_display || tm.label}
-                          sx={{ bgcolor: `${tm.color}18`, color: tm.color, fontWeight: 700, fontSize: 11 }} />
+                          sx={{ bgcolor: `${tm.color}18`, color: tm.color, fontWeight: 700, fontSize: 12 }} />
                       </TableCell>
                       <TableCell>{a.serial_number ? toPersianDigits(a.serial_number) : '—'}</TableCell>
                       <TableCell>
@@ -339,7 +339,7 @@ const AssetsPage = () => {
                       <TableCell>{a.assigned_date ? toJalali(a.assigned_date) : '—'}</TableCell>
                       <TableCell>
                         <Chip size="small" label={a.status_display || sm.label}
-                          sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 11 }} />
+                          sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 12 }} />
                       </TableCell>
                       <TableCell sx={{ whiteSpace: 'nowrap' }}>
                         <Tooltip title="جزئیات">
@@ -458,7 +458,7 @@ const AssetsPage = () => {
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="h6" fontWeight={800}>{viewAsset.name}</Typography>
                     <Chip size="small" label={viewAsset.status_display || sm.label}
-                      sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 11, mt: 0.25 }} />
+                      sx={{ bgcolor: `${sm.color}18`, color: sm.color, fontWeight: 700, fontSize: 12, mt: 0.25 }} />
                   </Box>
                 </Box>
                 <Grid container spacing={1.5}>

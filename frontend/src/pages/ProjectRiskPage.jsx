@@ -78,7 +78,7 @@ const levelChip = (level) => {
   const meta = LEVELS[level] || { label: level, color: '#64748b' };
   return (
     <Chip size="small" label={meta.label}
-      sx={{ fontWeight: 800, fontSize: 11.5, bgcolor: `${meta.color}22`, color: meta.color }} />
+      sx={{ fontWeight: 800, fontSize: 12, bgcolor: `${meta.color}22`, color: meta.color }} />
   );
 };
 
@@ -470,7 +470,7 @@ const ProjectRiskPage = () => {
                       <Typography sx={{ fontSize: 16, fontWeight: 800, fontFamily: FONT }}>
                         {cell?.count ? toPersianDigits(cell.count) : '—'}
                       </Typography>
-                      <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: levelMeta.color,
+                      <Typography sx={{ fontSize: 12, fontWeight: 700, color: levelMeta.color,
                         fontFamily: FONT }}>
                         {toPersianDigits(probability * impact)}
                       </Typography>
@@ -485,7 +485,7 @@ const ProjectRiskPage = () => {
           {LEVEL_ORDER.slice().reverse().map((level) => (
             <Stack key={level} direction="row" spacing={0.5} alignItems="center">
               <Box sx={{ width: 12, height: 12, borderRadius: '3px', bgcolor: LEVELS[level].color }} />
-              <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: '#475569', fontFamily: FONT }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#475569', fontFamily: FONT }}>
                 {LEVELS[level].label}
               </Typography>
             </Stack>
@@ -517,7 +517,7 @@ const ProjectRiskPage = () => {
                   whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                   {risk.title}
                 </Typography>
-                <Typography sx={{ fontFamily: FONT, fontSize: 11, color: '#94a3b8' }}>
+                <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                   {risk.number} — {(RISK_STATUS[risk.status] || {}).label || risk.status}
                 </Typography>
               </Box>
@@ -631,7 +631,7 @@ const ProjectRiskPage = () => {
             <LinearProgress variant="determinate" value={kpis?.actions?.percent || 0}
               sx={{ height: 7, borderRadius: 4, my: 0.5, bgcolor: '#e2e8f0',
                 '& .MuiLinearProgress-bar': { bgcolor: '#0ea5e9' } }} />
-            <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+            <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
               {toPersianDigits(kpis?.actions?.done || 0)} انجام‌شده از {toPersianDigits(kpis?.actions?.total || 0)} اقدام
             </Typography>
           </Paper>
@@ -740,7 +740,7 @@ const ProjectRiskPage = () => {
                         <TableCell sx={numSx}>{risk.due_date_jalali || '—'}</TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Chip size="small" label={statusMeta.label}
-                            sx={{ fontWeight: 700, fontSize: 11.5,
+                            sx={{ fontWeight: 700, fontSize: 12,
                               bgcolor: `${statusMeta.color}22`, color: statusMeta.color }} />
                         </TableCell>
                         <TableCell sx={numSx}>
@@ -825,7 +825,7 @@ const ProjectRiskPage = () => {
                         <TableCell sx={numSx}>{action.due_date_jalali || '—'}</TableCell>
                         <TableCell sx={{ textAlign: 'center' }}>
                           <Chip size="small" label={meta.label}
-                            sx={{ fontWeight: 700, fontSize: 11.5,
+                            sx={{ fontWeight: 700, fontSize: 12,
                               bgcolor: `${meta.color}22`, color: meta.color }} />
                         </TableCell>
                         <TableCell sx={numSx}>{money(action.cost)}</TableCell>
@@ -1069,7 +1069,7 @@ const ProjectRiskPage = () => {
                   ['نشانهٔ وقوع', detailRisk.trigger || '—'],
                 ].map(([label, value]) => (
                   <Grid item xs={6} md={3} key={label}>
-                    <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+                    <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                       {label}
                     </Typography>
                     <Typography sx={{ fontFamily: FONT, fontSize: 13, fontWeight: 700 }}>
@@ -1078,7 +1078,7 @@ const ProjectRiskPage = () => {
                   </Grid>
                 ))}
                 <Grid item xs={12} md={6}>
-                  <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+                  <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                     شرح ریسک
                   </Typography>
                   <Typography sx={{ fontFamily: FONT, fontSize: 12.5 }}>
@@ -1086,7 +1086,7 @@ const ProjectRiskPage = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+                  <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                     علت ریشه‌ای
                   </Typography>
                   <Typography sx={{ fontFamily: FONT, fontSize: 12.5 }}>
@@ -1094,7 +1094,7 @@ const ProjectRiskPage = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+                  <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                     برنامهٔ کاهش/پاسخ
                   </Typography>
                   <Typography sx={{ fontFamily: FONT, fontSize: 12.5 }}>
@@ -1102,7 +1102,7 @@ const ProjectRiskPage = () => {
                   </Typography>
                 </Grid>
                 <Grid item xs={12} md={6}>
-                  <Typography sx={{ fontFamily: FONT, fontSize: 11.5, color: '#94a3b8' }}>
+                  <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                     برنامهٔ واکنش اضطراری
                   </Typography>
                   <Typography sx={{ fontFamily: FONT, fontSize: 12.5 }}>
@@ -1176,14 +1176,14 @@ const ProjectRiskPage = () => {
                         <Typography sx={{ fontFamily: FONT, fontSize: 12.5, fontWeight: 700 }}>
                           {action.title}
                         </Typography>
-                        <Typography sx={{ fontFamily: FONT, fontSize: 11, color: '#94a3b8' }}>
+                        <Typography sx={{ fontFamily: FONT, fontSize: 12, color: '#94a3b8' }}>
                           {action.owner_name || action.owner_full_name || '—'}
                           {' — سررسید: '}{action.due_date_jalali || '—'}
                           {' — هزینه: '}{money(action.cost)}
                         </Typography>
                       </Box>
                       <Chip size="small" label={meta.label}
-                        sx={{ fontWeight: 700, fontSize: 11, bgcolor: `${meta.color}22`, color: meta.color }} />
+                        sx={{ fontWeight: 700, fontSize: 12, bgcolor: `${meta.color}22`, color: meta.color }} />
                       {action.status !== 'done' ? (
                         <Tooltip title="انجام شد">
                           <IconButton size="small" color="success"

@@ -246,7 +246,7 @@ const CompanyDocumentsPage = () => {
                             {fileIcon(doc.file_extension)}
                           </Avatar>
                           <Chip size="small" label={doc.category_display || cat.label}
-                            sx={{ fontSize: '0.68rem', fontWeight: 700, bgcolor: `${cat.color}18`, color: cat.color }} />
+                            sx={{ fontSize: '0.75rem', fontWeight: 700, bgcolor: `${cat.color}18`, color: cat.color }} />
                         </Box>
                         <Tooltip title={doc.title || ''}>
                           <Typography variant="subtitle1" fontWeight={700} noWrap>{doc.title || 'بدون عنوان'}</Typography>
@@ -281,7 +281,7 @@ const CompanyDocumentsPage = () => {
                           </Box>
                           {doc.file_url && (
                             <Button size="small" component="a" href={doc.file_url} target="_blank" rel="noreferrer"
-                              sx={{ color: cat.color, fontSize: '0.7rem' }}>دریافت</Button>
+                              sx={{ color: cat.color, fontSize: '0.75rem' }}>دریافت</Button>
                           )}
                         </Box>
                       </Box>
@@ -367,7 +367,7 @@ const CompanyDocumentsPage = () => {
                             </Box>
                           </Box>
                         </Box>
-                        <Chip label={doc.document_type_name} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.65rem', color: typeColor, borderColor: `${typeColor}40` }} />
+                        <Chip label={doc.document_type_name} size="small" variant="outlined" sx={{ height: 20, fontSize: '0.75rem', color: typeColor, borderColor: `${typeColor}40` }} />
                         {doc.issue_date && (
                           <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.75 }}>
                             صدور: {toJalali(doc.issue_date)}
@@ -379,13 +379,13 @@ const CompanyDocumentsPage = () => {
                               label={doc.is_expired ? 'منقضی' : doc.days_until_expiry <= 30 ? 'در آستانه انقضا' : 'معتبر'}
                               color={doc.is_expired ? 'error' : doc.days_until_expiry <= 30 ? 'warning' : 'success'}
                               variant={doc.is_expired || doc.days_until_expiry <= 30 ? 'filled' : 'outlined'}
-                              sx={{ height: 20, fontSize: '0.65rem' }} />
+                              sx={{ height: 20, fontSize: '0.75rem' }} />
                           </Box>
                         )}
                         <Box sx={{ mt: 1, pt: 1, borderTop: `1px solid ${typeColor}15`, display: 'flex', justifyContent: 'flex-end' }}>
                           {doc.file && (
                             <Button size="small" component="a" href={doc.file} target="_blank" rel="noreferrer"
-                              sx={{ color: typeColor, fontSize: '0.7rem' }}>دریافت / مشاهده</Button>
+                              sx={{ color: typeColor, fontSize: '0.75rem' }}>دریافت / مشاهده</Button>
                           )}
                         </Box>
                       </Paper>

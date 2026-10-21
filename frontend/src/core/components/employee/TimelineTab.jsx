@@ -170,7 +170,7 @@ const TimelineTab = ({ employeeId }) => {
                         size="small"
                         label={meta.label}
                         sx={{
-                          height: 20, fontSize: 11, fontWeight: 700,
+                          height: 20, fontSize: 12, fontWeight: 700,
                           bgcolor: `${meta.color}20`, color: meta.color,
                         }}
                       />

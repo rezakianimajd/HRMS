@@ -514,14 +514,14 @@ const DocumentManagementPage = () => {
                   sx={{ width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'flex-start', textAlign: 'right', bgcolor: !folderId ? alpha(DMS_ACCENT, 0.08) : 'transparent', border: `1px solid ${!folderId ? alpha(DMS_ACCENT, 0.2) : 'transparent'}` }}>
                   <Stack direction="row" alignItems="center" spacing={0.6} sx={{ width: '100%' }}>
                     <FolderOpenOutlinedIcon sx={{ fontSize: 17, color: DMS_ACCENT }} />
-                    <Typography sx={{ flex: 1, fontSize: 8.9, fontWeight: 800, color: INK }}>همه اسناد</Typography>
-                    <Chip size="small" label={formatPersianNumber(activeDocuments.length)} sx={{ height: 18, fontSize: 7.5, bgcolor: SOFT_BG, color: MUTED }} />
+                    <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 800, color: INK }}>همه اسناد</Typography>
+                    <Chip size="small" label={formatPersianNumber(activeDocuments.length)} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
                   </Stack>
                 </ButtonBase>
                 <Divider />
                 {folders.length ? <FolderTree folders={folders} selected={folderId} onSelect={setFolderId}
                   onEdit={openFolderEdit} onDelete={setConfirmFolderDelete} /> : (
-                  <Typography sx={{ fontSize: 8.6, color: MUTED, py: 1 }}>پوشه‌ای ساخته نشده است.</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, py: 1 }}>پوشه‌ای ساخته نشده است.</Typography>
                 )}
               </Stack>
             </SurfaceCard>
@@ -594,8 +594,8 @@ const DocumentManagementPage = () => {
           {!filtered.length ? (
             <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
               <FolderOpenOutlinedIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 1 }} />
-              <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>سندی با این مشخصات پیدا نشد.</Typography>
-              <Typography sx={{ fontSize: 9, color: '#64748b', mt: 0.4 }}>پوشه، فیلترها یا عبارت جست‌وجو را تغییر دهید.</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>سندی با این مشخصات پیدا نشد.</Typography>
+              <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>پوشه، فیلترها یا عبارت جست‌وجو را تغییر دهید.</Typography>
               <Button variant="contained" startIcon={<UploadFileOutlinedIcon />} onClick={openNew} disabled={!canManage} sx={{ mt: 1.5 }}>آپلود سند جدید</Button>
             </Paper>
           ) : view === 'cards' ? (
@@ -665,7 +665,7 @@ const DocumentManagementPage = () => {
       <Dialog open={Boolean(rejectRow)} onClose={() => setRejectRow(null)} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>رد / بازگشت سند</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 9.5, color: MUTED, mb: 1.2 }}>دلیل بازگشت سند «{rejectRow?.title}» را ثبت کنید.</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED, mb: 1.2 }}>دلیل بازگشت سند «{rejectRow?.title}» را ثبت کنید.</Typography>
           <TextField size="small" fullWidth multiline rows={3} label="دلیل بازنگری *" value={rejectNote}
             onChange={(event) => setRejectNote(event.target.value)} />
         </DialogContent>
@@ -679,7 +679,7 @@ const DocumentManagementPage = () => {
       <Dialog open={Boolean(supersedeRow)} onClose={() => { setSupersedeRow(null); setReplacementId(''); }} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>ثبت جایگزینی سند</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 9.5, color: MUTED, mb: 1.2 }}>
+          <Typography sx={{ fontSize: 12, color: MUTED, mb: 1.2 }}>
             سند «{supersedeRow?.title}» جایگزین‌شده علامت می‌خورد و سند جدید به‌عنوان نسخهٔ لازم‌الاجرا معرفی می‌شود.
           </Typography>
           <FormControl size="small" fullWidth>

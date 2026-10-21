@@ -50,9 +50,9 @@ const fieldSx = {
     '&.Mui-focused fieldset': { borderColor: ACCENT, borderWidth: '1.2px' },
     '&.Mui-disabled': { bgcolor: '#f8fafc' },
   },
-  '& .MuiInputLabel-root': { fontSize: 11.5, color: MUTED },
+  '& .MuiInputLabel-root': { fontSize: 12, color: MUTED },
   '& .MuiInputLabel-root.Mui-focused': { color: ACCENT },
-  '& .MuiFormHelperText-root': { fontSize: 8.8, mr: 0.4 },
+  '& .MuiFormHelperText-root': { fontSize: 12, mr: 0.4 },
 };
 
 const mapLoginError = (err, fallback) => {
@@ -71,7 +71,7 @@ const BrandMark = ({ size = 40 }) => (
     background: 'linear-gradient(135deg, #818cf8 0%, #6366f1 45%, #0ea5e9 100%)',
     color: '#fff', flexShrink: 0,
     display: 'flex', alignItems: 'center', justifyContent: 'center',
-    fontSize: size * 0.42, fontWeight: 900, letterSpacing: '-0.06em',
+    fontSize: Math.max(12, size * 0.42), fontWeight: 900, letterSpacing: '-0.06em',
     border: '1px solid rgba(255,255,255,0.22)',
     boxShadow: '0 14px 30px -16px rgba(79,70,229,0.9)',
   }}>K</Box>
@@ -83,7 +83,7 @@ const ProductName = ({ dark = false }) => (
       سامانه یکپارچه مدیریت کسب و کار کیان
     </Typography>
     <Typography sx={{
-      fontSize: 8, fontWeight: 700, letterSpacing: '0.12em',
+      fontSize: 12, fontWeight: 700, letterSpacing: '0.12em',
       color: dark ? 'rgba(255,255,255,0.44)' : '#94a3b8', mt: 0.25,
     }}>
       KIAN BUSINESS SUITE
@@ -137,7 +137,7 @@ const BrandPanel = ({ company }) => {
         <ProductName dark />
         <Box sx={{ flex: 1 }} />
         <Chip label="نسخهٔ سازمانی" sx={{
-          height: 24, fontSize: 8.3, fontWeight: 800,
+          height: 24, fontSize: 12, fontWeight: 800,
           color: 'rgba(226,232,240,0.76)', bgcolor: 'rgba(255,255,255,0.06)',
           border: '1px solid rgba(255,255,255,0.09)',
         }} />
@@ -145,7 +145,7 @@ const BrandPanel = ({ company }) => {
 
       <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 590, py: { md: 4, lg: 5.5 } }}>
         <Chip label="پلتفرم یکپارچه مدیریت سازمان" sx={{
-          mb: 2.2, height: 27, fontSize: 9.5, fontWeight: 800,
+          mb: 2.2, height: 27, fontSize: 12, fontWeight: 800,
           color: '#c7d2fe', bgcolor: 'rgba(129,140,248,0.12)',
           border: '1px solid rgba(129,140,248,0.20)',
         }} />
@@ -192,8 +192,8 @@ const BrandPanel = ({ company }) => {
                   <Icon sx={{ fontSize: 18 }} />
                 </Box>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 9.7, fontWeight: 800, color: '#fff' }}>{item.title}</Typography>
-                  <Typography noWrap sx={{ mt: 0.15, fontSize: 7.9, color: 'rgba(226,232,240,0.45)' }}>{item.caption}</Typography>
+                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{item.title}</Typography>
+                  <Typography noWrap sx={{ mt: 0.15, fontSize: 12, color: 'rgba(226,232,240,0.45)' }}>{item.caption}</Typography>
                 </Box>
               </Box>
             );
@@ -203,7 +203,7 @@ const BrandPanel = ({ company }) => {
         <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap" sx={{ mt: 2.1 }}>
           {['دسترسی نقش‌محور', 'داده‌های یکپارچه', 'گزارش‌های لحظه‌ای'].map((label) => (
             <Chip key={label} size="small" label={label} sx={{
-              height: 22, fontSize: 7.9, fontWeight: 700,
+              height: 22, fontSize: 12, fontWeight: 700,
               color: 'rgba(226,232,240,0.62)', bgcolor: 'rgba(255,255,255,0.035)',
               border: '1px solid rgba(255,255,255,0.07)',
             }} />
@@ -224,11 +224,11 @@ const BrandPanel = ({ company }) => {
               <CompanyLogo company={company} size={42} radius="11px"
                 sx={{ bgcolor: 'rgba(255,255,255,0.94)', borderColor: 'rgba(255,255,255,0.24)' }} />
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography sx={{ fontSize: 7.7, fontWeight: 700, color: 'rgba(255,255,255,0.38)', mb: 0.15 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.38)', mb: 0.15 }}>
                   سازمان انتخاب‌شده
                 </Typography>
-                <Typography noWrap sx={{ fontSize: 10.8, fontWeight: 800, color: '#fff' }}>{name}</Typography>
-                <Typography noWrap sx={{ fontSize: 8, color: 'rgba(255,255,255,0.40)', direction: 'ltr', textAlign: 'right' }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{name}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', direction: 'ltr', textAlign: 'right' }}>
                   {company.code || 'COMPANY PROFILE'}
                 </Typography>
               </Box>
@@ -243,11 +243,11 @@ const BrandPanel = ({ company }) => {
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
           <Stack direction="row" alignItems="center" spacing={0.65}>
             <ShieldOutlinedIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.35)' }} />
-            <Typography sx={{ fontSize: 8.3, color: 'rgba(255,255,255,0.36)' }}>
+            <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.36)' }}>
               دسترسی امن · محیط یکپارچه سازمانی
             </Typography>
           </Stack>
-          <Typography sx={{ fontSize: 8.3, color: 'rgba(255,255,255,0.28)' }}>KIAN ERP · 1.0</Typography>
+          <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }}>KIAN ERP · 1.0</Typography>
         </Stack>
       </Stack>
     </Box>
@@ -471,12 +471,12 @@ const Login = () => {
             icon={<ShieldOutlinedIcon sx={{ fontSize: '14px !important' }} />}
             label="ورود امن"
             sx={{
-              height: 24, fontSize: 8.3, fontWeight: 800,
+              height: 24, fontSize: 12, fontWeight: 800,
               color: '#475569', bgcolor: '#fff', border: `1px solid ${BORDER}`,
               '& .MuiChip-icon': { color: '#64748b', ml: 0.65 },
             }}
           />
-          <Typography sx={{ fontSize: 8.2, fontWeight: 700, color: '#94a3b8', direction: 'ltr' }}>
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#94a3b8', direction: 'ltr' }}>
             KIAN ERP · 1.0
           </Typography>
         </Stack>
@@ -490,7 +490,7 @@ const Login = () => {
             <Box sx={{ width: '100%', maxWidth: 442 }}>
               <Box sx={{ mb: 2.6 }}>
                 <Typography sx={{
-                  fontSize: 9.2, fontWeight: 800, letterSpacing: '0.08em',
+                  fontSize: 12, fontWeight: 800, letterSpacing: '0.08em',
                   color: ACCENT, mb: 0.75,
                 }}>
                   ورود به حساب کاربری
@@ -501,7 +501,7 @@ const Login = () => {
                 }}>
                   خوش آمدید
                 </Typography>
-                <Typography sx={{ mt: 0.8, fontSize: 11.3, color: MUTED, lineHeight: 1.9 }}>
+                <Typography sx={{ mt: 0.8, fontSize: 12, color: MUTED, lineHeight: 1.9 }}>
                   برای ادامه، سازمان و اطلاعات حساب کاربری خود را وارد کنید.
                 </Typography>
               </Box>
@@ -516,20 +516,20 @@ const Login = () => {
               }}>
                 <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1} sx={{ mb: 2 }}>
                   <Box>
-                    <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: INK }}>اطلاعات ورود</Typography>
-                    <Typography sx={{ mt: 0.25, fontSize: 8.7, color: '#94a3b8' }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>اطلاعات ورود</Typography>
+                    <Typography sx={{ mt: 0.25, fontSize: 12, color: '#94a3b8' }}>
                       دسترسی شما بر اساس نقش سازمانی تعیین می‌شود.
                     </Typography>
                   </Box>
                   <Chip label="مرحله ۱ از ۲" sx={{
-                    height: 22, fontSize: 7.9, fontWeight: 800,
+                    height: 22, fontSize: 12, fontWeight: 800,
                     bgcolor: alpha(ACCENT, 0.055), color: ACCENT,
                     border: `1px solid ${alpha(ACCENT, 0.10)}`,
                   }} />
                 </Stack>
 
                 {error ? (
-                  <Alert severity="error" sx={{ mb: 1.8, borderRadius: '11px', fontSize: 10.8, py: 0.35 }}>
+                  <Alert severity="error" sx={{ mb: 1.8, borderRadius: '11px', fontSize: 12, py: 0.35 }}>
                     {error}
                   </Alert>
                 ) : null}
@@ -589,11 +589,11 @@ const Login = () => {
                           }}>
                             <CompanyLogo company={option} size={30} radius="8px" />
                             <Box sx={{ flex: 1, minWidth: 0 }}>
-                              <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>
+                              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
                                 {companyDisplayName(option) || 'شرکت'}
                               </Typography>
                               {option.code ? (
-                                <Typography noWrap sx={{ fontSize: 8, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
+                                <Typography noWrap sx={{ fontSize: 12, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
                                   {option.code}
                                 </Typography>
                               ) : null}
@@ -658,14 +658,14 @@ const Login = () => {
                             borderRadius: '9px', mx: 0.5, my: 0.15, p: '7px 9px !important',
                           }}>
                             <Avatar sx={{
-                              width: 29, height: 29, fontSize: 10, fontWeight: 800,
+                              width: 29, height: 29, fontSize: 12, fontWeight: 800,
                               bgcolor: alpha(ACCENT, 0.08), color: ACCENT,
                             }}>{initial}</Avatar>
                             <Box sx={{ minWidth: 0 }}>
-                              <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>
+                              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
                                 {option.full_name || option.username}
                               </Typography>
-                              <Typography noWrap sx={{ fontSize: 8, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
+                              <Typography noWrap sx={{ fontSize: 12, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
                                 @{option.username}
                               </Typography>
                             </Box>
@@ -711,7 +711,7 @@ const Login = () => {
                       {capsLock ? (
                         <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.6, px: 0.5 }}>
                           <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#f59e0b' }} />
-                          <Typography sx={{ fontSize: 8.5, color: '#b45309', fontWeight: 700 }}>
+                          <Typography sx={{ fontSize: 12, color: '#b45309', fontWeight: 700 }}>
                             Caps Lock روشن است.
                           </Typography>
                         </Stack>
@@ -753,7 +753,7 @@ const Login = () => {
                   mt: 1.8, pt: 1.4, borderTop: `1px solid ${BORDER}`,
                 }}>
                   <ShieldOutlinedIcon sx={{ fontSize: 14, color: '#94a3b8' }} />
-                  <Typography sx={{ fontSize: 8.5, color: '#94a3b8', lineHeight: 1.7 }}>
+                  <Typography sx={{ fontSize: 12, color: '#94a3b8', lineHeight: 1.7 }}>
                     اطلاعات ورود شما محافظت می‌شود و دسترسی‌ها بر اساس نقش سازمانی اعمال می‌گردد.
                   </Typography>
                 </Stack>
@@ -761,7 +761,7 @@ const Login = () => {
 
               <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.6} sx={{ mt: 1.8 }}>
                 <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: '#10b981' }} />
-                <Typography sx={{ fontSize: 8.5, color: '#94a3b8' }}>
+                <Typography sx={{ fontSize: 12, color: '#94a3b8' }}>
                   اتصال امن به محیط سازمانی
                 </Typography>
               </Stack>
@@ -776,10 +776,10 @@ const Login = () => {
           spacing={0.5}
           sx={{ px: { xs: 2.2, sm: 4 }, py: 1.8, borderTop: `1px solid ${BORDER}`, position: 'relative', zIndex: 1 }}
         >
-          <Typography sx={{ fontSize: 8.5, color: '#94a3b8' }}>
+          <Typography sx={{ fontSize: 12, color: '#94a3b8' }}>
             © 2026 KIAN ERP — سامانه یکپارچه مدیریت کسب و کار
           </Typography>
-          <Typography sx={{ fontSize: 8.2, color: '#cbd5e1' }}>
+          <Typography sx={{ fontSize: 12, color: '#cbd5e1' }}>
             دسترسی سازمانی · نسخهٔ ۱.۰
           </Typography>
         </Stack>

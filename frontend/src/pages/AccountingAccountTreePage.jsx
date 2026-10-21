@@ -28,7 +28,7 @@ const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
 // چیپ‌های کوچک (وضعیت/رنگ) — ریزتر از چیپ پیش‌فرض
 const miniChip = (bgcolor, color) => ({
-  height: 18, fontSize: 10, fontWeight: 700, bgcolor, color,
+  height: 18, fontSize: 12, fontWeight: 700, bgcolor, color,
   '& .MuiChip-label': { px: 0.75, lineHeight: 1.6 },
 });
 

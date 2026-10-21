@@ -177,7 +177,7 @@ const presetRange = (raw) => {
 
 const InfoLine = ({ label, value, strong, ltr }) => (
   <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ py: 0.4 }}>
-    <Typography sx={{ fontSize: 9.4, color: MUTED, flexShrink: 0 }}>{label}</Typography>
+    <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{label}</Typography>
     <Typography sx={{
       fontSize: strong ? 10.8 : 9.9, fontWeight: strong ? 900 : 700, color: INK,
       direction: ltr ? 'ltr' : 'rtl', textAlign: 'left', minWidth: 0,
@@ -192,7 +192,7 @@ const StatusChip = ({ contract }) => {
   const color = STATUS_COLORS[contract?.status] || '#64748b';
   return (
     <Chip size="small" label={STATUS_LABELS[contract?.status] || contract?.status_display || '—'}
-      sx={{ height: 20, fontSize: 8.5, fontWeight: 800, bgcolor: alpha(color, 0.08), color }} />
+      sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(color, 0.08), color }} />
   );
 };
 
@@ -219,15 +219,15 @@ const SearchResults = ({ query, summary, results, onOpen, onClear }) => {
     <SurfaceCard title="نتایج جست‌وجو" icon={SearchIcon} color="#2563eb"
       action={<Stack direction="row" spacing={0.5} alignItems="center">
         <Chip size="small" label={`${formatPersianNumber(results.length)} نتیجه`}
-          sx={{ height: 21, fontSize: 8.8, fontWeight: 800, bgcolor: '#eff6ff', color: '#1d4ed8' }} />
+          sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: '#eff6ff', color: '#1d4ed8' }} />
         <IconButton size="small" onClick={onClear}><CloseIcon sx={{ fontSize: 17 }} /></IconButton>
       </Stack>}>
       <Stack spacing={0.6}>
-        <Typography sx={{ fontSize: 9.3, color: MUTED }}>{summary}</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>{summary}</Typography>
         {!results.length ? (
           <Box sx={{ py: 3, textAlign: 'center' }}>
             <WarningAmberIcon sx={{ fontSize: 27, color: theme.palette.text.disabled, mb: 0.5 }} />
-            <Typography sx={{ fontSize: 9.5, color: MUTED }}>رویدادی با این مشخصات پیدا نشد.</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>رویدادی با این مشخصات پیدا نشد.</Typography>
           </Box>
         ) : (
           <Stack spacing={0.45}>
@@ -245,12 +245,12 @@ const SearchResults = ({ query, summary, results, onOpen, onClear }) => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}><Icon sx={{ fontSize: 14 }} /></Box>
                   <Box sx={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-                    <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>{event.title}</Typography>
-                    <Typography noWrap sx={{ fontSize: 8.4, color: MUTED }}>
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{event.title}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                       {toJalali(event.date)} · {event.contract?.subject || '—'} · {meta.label}
                     </Typography>
                   </Box>
-                  <Typography sx={{ fontSize: 8.5, color: MUTED, flexShrink: 0 }}>{event.kindLabel}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{event.kindLabel}</Typography>
                 </ButtonBase>
               );
             })}
@@ -285,7 +285,7 @@ const MonthView = ({ year, month, eventsByDate, selectedJ, todayJ, onSelect, onO
       <Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(7, minmax(0, 1fr))', gap: 0.5, mb: 0.5 }}>
         {WEEKDAYS.map((weekday, index) => (
           <Typography key={weekday} align="center" sx={{
-            py: 0.7, fontSize: 8.8, fontWeight: 800,
+            py: 0.7, fontSize: 12, fontWeight: 800,
             color: index === 6 ? '#be123c' : MUTED,
           }}>{weekday}</Typography>
         ))}
@@ -308,17 +308,17 @@ const MonthView = ({ year, month, eventsByDate, selectedJ, todayJ, onSelect, onO
             }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ px: 0.35, mb: 0.35 }}>
                 <Typography sx={{
-                  fontSize: 9.5, fontWeight: isToday || isSelected ? 900 : 700,
+                  fontSize: 12, fontWeight: isToday || isSelected ? 900 : 700,
                   color: isFriday ? '#be123c' : isToday ? '#1d4ed8' : INK,
                 }}>{toPersianDigits(day)}</Typography>
                 {dayEvents.length ? (
-                  <Typography sx={{ fontSize: 7.6, color: MUTED }}>{toPersianDigits(dayEvents.length)}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>{toPersianDigits(dayEvents.length)}</Typography>
                 ) : null}
               </Stack>
               <Stack spacing={0.25}>
                 {dayEvents.slice(0, 2).map((event) => <EventPill key={event.id} event={event} onOpen={onOpen} dense />)}
                 {dayEvents.length > 2 ? (
-                  <Typography sx={{ fontSize: 7.5, color: MUTED, pr: 0.4 }}>+{toPersianDigits(dayEvents.length - 2)} رویداد</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, pr: 0.4 }}>+{toPersianDigits(dayEvents.length - 2)} رویداد</Typography>
                 ) : null}
               </Stack>
             </Box>
@@ -348,21 +348,21 @@ const WeekView = ({ weekDays, eventsByDate, selectedJ, todayJ, onSelect, onOpen 
             }}>
               <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.75 }}>
                 <Box>
-                  <Typography sx={{ fontSize: 8.5, fontWeight: 800, color: index === 6 ? '#be123c' : MUTED }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: index === 6 ? '#be123c' : MUTED }}>
                     {WEEKDAYS[index]}
                   </Typography>
                   <Typography sx={{ fontSize: 13, fontWeight: 900, color: isToday ? '#1d4ed8' : INK }}>
                     {toPersianDigits(day.day)}
-                    <Box component="span" sx={{ fontSize: 8.5, fontWeight: 700, color: MUTED, mr: 0.4 }}>{MONTHS[day.month - 1]}</Box>
+                    <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED, mr: 0.4 }}>{MONTHS[day.month - 1]}</Box>
                   </Typography>
                 </Box>
                 <Chip size="small" label={toPersianDigits(events.length)}
-                  sx={{ height: 18, fontSize: 7.8, bgcolor: events.length ? alpha('#2563eb', 0.08) : '#f1f5f9', color: events.length ? '#1d4ed8' : MUTED }} />
+                  sx={{ height: 18, fontSize: 12, bgcolor: events.length ? alpha('#2563eb', 0.08) : '#f1f5f9', color: events.length ? '#1d4ed8' : MUTED }} />
               </Stack>
               <Stack spacing={0.35}>
                 {events.slice(0, 8).map((event) => <EventPill key={event.id} event={event} onOpen={onOpen} />)}
-                {events.length > 8 ? <Typography sx={{ fontSize: 7.8, color: MUTED }}>+{toPersianDigits(events.length - 8)} رویداد</Typography> : null}
-                {!events.length ? <Typography sx={{ fontSize: 8.3, color: theme.palette.text.disabled, textAlign: 'center', py: 2 }}>—</Typography> : null}
+                {events.length > 8 ? <Typography sx={{ fontSize: 12, color: MUTED }}>+{toPersianDigits(events.length - 8)} رویداد</Typography> : null}
+                {!events.length ? <Typography sx={{ fontSize: 12, color: theme.palette.text.disabled, textAlign: 'center', py: 2 }}>—</Typography> : null}
               </Stack>
             </Box>
           );
@@ -387,7 +387,7 @@ const AgendaView = ({ events, onOpen }) => {
     return (
       <Box sx={{ py: 5, textAlign: 'center' }}>
         <CalendarMonthIcon sx={{ fontSize: 34, color: '#cbd5e1', mb: 0.75 }} />
-        <Typography sx={{ fontSize: 10.5, color: MUTED }}>رویدادی با فیلترهای فعلی وجود ندارد.</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>رویدادی با فیلترهای فعلی وجود ندارد.</Typography>
       </Box>
     );
   }
@@ -398,9 +398,9 @@ const AgendaView = ({ events, onOpen }) => {
         <Paper key={group.key} elevation={0} sx={{ borderRadius: '12px', border: '1px solid #e8edf4', overflow: 'hidden' }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between"
             sx={{ px: 1.1, py: 0.65, bgcolor: SOFT_BG, borderBottom: '1px solid #eef2f7' }}>
-            <Typography sx={{ fontSize: 9.5, fontWeight: 900, color: INK }}>{toJalali(group.date)}</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{toJalali(group.date)}</Typography>
             <Chip size="small" label={`${formatPersianNumber(group.items.length)} رویداد`}
-              sx={{ height: 18, fontSize: 7.8, bgcolor: '#fff', color: MUTED }} />
+              sx={{ height: 18, fontSize: 12, bgcolor: '#fff', color: MUTED }} />
           </Stack>
           <Stack>
             {group.items.map((event) => {
@@ -417,12 +417,12 @@ const AgendaView = ({ events, onOpen }) => {
                     display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                   }}><Icon sx={{ fontSize: 15 }} /></Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography noWrap sx={{ fontSize: 9.8, fontWeight: 800, color: INK }}>{event.title}</Typography>
-                    <Typography noWrap sx={{ fontSize: 8.4, color: MUTED }}>{event.contract?.subject || '—'} · {event.subtitle}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{event.title}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{event.contract?.subject || '—'} · {event.subtitle}</Typography>
                   </Box>
                   <Chip size="small" label={meta.label}
-                    sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(meta.color, 0.07), color: meta.color }} />
-                  <Typography sx={{ fontSize: 8.7, fontWeight: 800, color: '#b45309', minWidth: 80, textAlign: 'left' }}>
+                    sx={{ height: 19, fontSize: 12, bgcolor: alpha(meta.color, 0.07), color: meta.color }} />
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#b45309', minWidth: 80, textAlign: 'left' }}>
                     {event.amount ? eventAmount(event) : ''}
                   </Typography>
                 </ButtonBase>
@@ -438,12 +438,12 @@ const AgendaView = ({ events, onOpen }) => {
 const SelectedDayPanel = ({ selectedJ, events, onOpen }) => (
   <SurfaceCard title="رویدادهای روز" icon={CalendarTodayIcon} color="#2563eb"
     action={<Chip size="small" label={formatPersianNumber(events.length)}
-      sx={{ height: 21, fontSize: 8.8, fontWeight: 800, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
-    <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.8 }}>{toPersianDigits(selectedJ)}</Typography>
+      sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
+    <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.8 }}>{toPersianDigits(selectedJ)}</Typography>
     {!events.length ? (
       <Box sx={{ py: 3.5, textAlign: 'center' }}>
         <EventBusyIcon sx={{ fontSize: 28, color: '#cbd5e1', mb: 0.5 }} />
-        <Typography sx={{ fontSize: 9.2, color: MUTED }}>رویدادی در این روز ثبت نشده است.</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>رویدادی در این روز ثبت نشده است.</Typography>
       </Box>
     ) : (
       <Stack spacing={0.55}>
@@ -460,8 +460,8 @@ const SelectedDayPanel = ({ selectedJ, events, onOpen }) => (
                 display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
               }}><Icon sx={{ fontSize: 14 }} /></Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 9.3, fontWeight: 800, color: INK }}>{event.title}</Typography>
-                <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>{event.contract?.subject || '—'}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{event.title}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{event.contract?.subject || '—'}</Typography>
               </Box>
               <ArrowForwardIcon sx={{ fontSize: 14, color: meta.color }} />
             </ButtonBase>
@@ -477,7 +477,7 @@ const KindFilterPanel = ({ counts, selectedKinds, onToggle, onAll }) => {
   const theme = useTheme();
   return (
     <SurfaceCard title="نوع رویداد" icon={FilterListIcon} color="#7c3aed"
-      action={<Button size="small" onClick={onAll} sx={{ minWidth: 0, fontSize: 8.8 }}>همه</Button>}>
+      action={<Button size="small" onClick={onAll} sx={{ minWidth: 0, fontSize: 12 }}>همه</Button>}>
       <Stack spacing={0.15}>
         {Object.entries(EVENT_TYPES).map(([key, meta]) => {
           const active = selectedKinds.length === 0 || selectedKinds.includes(key);
@@ -494,14 +494,14 @@ const KindFilterPanel = ({ counts, selectedKinds, onToggle, onAll }) => {
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
                 }}><Icon sx={{ fontSize: 12 }} /></Box>
                 <Typography sx={{
-                  fontSize: 9, fontWeight: selectedKinds.includes(key) ? 900 : 700,
+                  fontSize: 12, fontWeight: selectedKinds.includes(key) ? 900 : 700,
                   color: active ? theme.palette.text.primary : theme.palette.text.disabled,
                 }}>{meta.label}</Typography>
               </Stack>
               <Stack direction="row" alignItems="center" spacing={0.4}>
                 {selectedKinds.includes(key) ? <CheckCircleIcon sx={{ fontSize: 12, color: meta.color }} /> : null}
                 <Chip size="small" label={formatPersianNumber(counts[key] || 0)}
-                  sx={{ height: 17, fontSize: 7.7, bgcolor: theme.palette.action.hover }} />
+                  sx={{ height: 17, fontSize: 12, bgcolor: theme.palette.action.hover }} />
               </Stack>
             </ButtonBase>
           );
@@ -514,9 +514,9 @@ const KindFilterPanel = ({ counts, selectedKinds, onToggle, onAll }) => {
 const UpcomingPanel = ({ events, onOpen }) => (
   <SurfaceCard title="رویدادهای پیش‌رو" icon={ScheduleIcon} color="#0f766e"
     action={<Chip size="small" label={formatPersianNumber(events.length)}
-      sx={{ height: 21, fontSize: 8.5, bgcolor: '#ecfdf5', color: '#0f766e', fontWeight: 800 }} />}>
+      sx={{ height: 21, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e', fontWeight: 800 }} />}>
     {!events.length ? (
-      <Typography sx={{ py: 2.5, textAlign: 'center', fontSize: 9.2, color: MUTED }}>رویداد نزدیکی وجود ندارد.</Typography>
+      <Typography sx={{ py: 2.5, textAlign: 'center', fontSize: 12, color: MUTED }}>رویداد نزدیکی وجود ندارد.</Typography>
     ) : (
       <Stack spacing={0.45}>
         {events.slice(0, 6).map((event) => {
@@ -528,8 +528,8 @@ const UpcomingPanel = ({ events, onOpen }) => (
             }}>
               <Box sx={{ width: 5, height: 5, borderRadius: '50%', bgcolor: meta.color, flexShrink: 0 }} />
               <Box sx={{ flex: 1, minWidth: 0, textAlign: 'right' }}>
-                <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 800, color: INK }}>{event.title}</Typography>
-                <Typography noWrap sx={{ fontSize: 7.8, color: MUTED }}>{toJalali(event.date)} · {event.contract?.subject || '—'}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{event.title}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{toJalali(event.date)} · {event.contract?.subject || '—'}</Typography>
               </Box>
             </ButtonBase>
           );
@@ -558,13 +558,13 @@ const EventDrawer = ({ event, onClose, onOpenContract, onOpenModule }) => {
             }}><Icon sx={{ fontSize: 21 }} /></Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>{event.title}</Typography>
-              <Typography sx={{ fontSize: 9.2, color: MUTED }}>{meta.label} · {toJalali(event.date)}</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>{meta.label} · {toJalali(event.date)}</Typography>
             </Box>
             <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
             <Chip size="small" label={meta.label}
-              sx={{ height: 21, fontSize: 8.5, bgcolor: alpha(meta.color, 0.08), color: meta.color, fontWeight: 800 }} />
+              sx={{ height: 21, fontSize: 12, bgcolor: alpha(meta.color, 0.08), color: meta.color, fontWeight: 800 }} />
             <StatusChip contract={event.contract} />
           </Stack>
         </Box>
@@ -572,7 +572,7 @@ const EventDrawer = ({ event, onClose, onOpenContract, onOpenModule }) => {
         <Box sx={{ p: 1.5, flex: 1, overflowY: 'auto' }}>
           <Stack spacing={1.3}>
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '13px', border: `1px solid ${theme.palette.divider}` }}>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.6 }}>قرارداد</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.6 }}>قرارداد</Typography>
               <InfoLine label="موضوع" value={event.contract?.subject} strong />
               <InfoLine label="طرف حساب" value={event.contract?.party_name} />
               <InfoLine label="شماره" value={event.contract?.number} />
@@ -580,7 +580,7 @@ const EventDrawer = ({ event, onClose, onOpenContract, onOpenModule }) => {
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '13px', border: `1px solid ${theme.palette.divider}` }}>
-              <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.6 }}>مشخصات رویداد</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.6 }}>مشخصات رویداد</Typography>
               <InfoLine label="تاریخ شمسی" value={toJalali(event.date)} />
               <InfoLine label="تاریخ میلادی" value={event.date} ltr />
               <InfoLine label="نوع" value={meta.label} />
@@ -590,7 +590,7 @@ const EventDrawer = ({ event, onClose, onOpenContract, onOpenModule }) => {
 
             {event.contract?.effective_amount != null || event.contract?.amount != null ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '13px', border: `1px solid ${theme.palette.divider}` }}>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.6 }}>وضعیت مالی قرارداد</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.6 }}>وضعیت مالی قرارداد</Typography>
                 <InfoLine label="مبلغ پایه" value={`${formatPersianNumber(event.contract?.amount || 0)} ${normalizeCurrencyLabel(event.contract?.currency_name || event.contract?.currency_symbol)}`} ltr />
                 <InfoLine label="مبلغ مؤثر" value={`${formatPersianNumber(event.contract?.effective_amount || event.contract?.amount || 0)} ${normalizeCurrencyLabel(event.contract?.currency_name || event.contract?.currency_symbol)}`} strong ltr />
               </Paper>
@@ -1009,16 +1009,16 @@ const ContractCalendarPage = () => {
               <ToggleButton value="agenda" aria-label="نمای فهرست"><Tooltip title="فهرست"><ViewAgendaIcon fontSize="small" /></Tooltip></ToggleButton>
             </ToggleButtonGroup>
             {(selectedKinds.length || statusFilter !== 'all' || scopeFilter !== 'all' || search) ? (
-              <Button size="small" onClick={resetFilters} sx={{ fontSize: 9 }}>پاک‌کردن فیلترها</Button>
+              <Button size="small" onClick={resetFilters} sx={{ fontSize: 12 }}>پاک‌کردن فیلترها</Button>
             ) : null}
           </Stack>
           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" alignItems="center">
             {['امروز', 'این هفته', 'این ماه', 'ماه آینده'].map((presetLabel) => (
               <Chip key={presetLabel} size="small" label={presetLabel} clickable
                 onClick={() => setSearch(presetLabel)}
-                sx={{ height: 21, fontSize: 8.6, bgcolor: '#f8fafc', color: '#475569' }} />
+                sx={{ height: 21, fontSize: 12, bgcolor: '#f8fafc', color: '#475569' }} />
             ))}
-            <Typography sx={{ fontSize: 8.5, color: MUTED }}>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>
               جست‌وجو روی موضوع، طرف، شماره، نوع رویداد و تاریخ شمسی
             </Typography>
           </Stack>
@@ -1040,7 +1040,7 @@ const ContractCalendarPage = () => {
             action={(
               <Stack direction="row" spacing={0.15} alignItems="center">
                 <Tooltip title="دوره قبل"><IconButton size="small" onClick={() => shiftPeriod(-1)}><ChevronRightIcon fontSize="small" /></IconButton></Tooltip>
-                <Button size="small" onClick={goToday} sx={{ minWidth: 0, px: 0.8, fontSize: 8.8 }}>امروز</Button>
+                <Button size="small" onClick={goToday} sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>امروز</Button>
                 <Tooltip title="دوره بعد"><IconButton size="small" onClick={() => shiftPeriod(1)}><ChevronLeftIcon fontSize="small" /></IconButton></Tooltip>
               </Stack>
             )}
@@ -1059,9 +1059,9 @@ const ContractCalendarPage = () => {
                 </Select>
               </FormControl>
               <Chip size="small" label={`${formatPersianNumber(monthEvents.length)} رویداد این ماه`}
-                sx={{ height: 22, fontSize: 8.8, bgcolor: '#eff6ff', color: '#1d4ed8', fontWeight: 800 }} />
+                sx={{ height: 22, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8', fontWeight: 800 }} />
               <Box sx={{ flex: 1 }} />
-              <Typography sx={{ fontSize: 8.5, color: MUTED }}>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>
                 {view === 'month' ? 'نمای ماهانه' : view === 'week' ? 'نمای هفتگی' : 'فهرست رویدادها'}
               </Typography>
             </Stack>

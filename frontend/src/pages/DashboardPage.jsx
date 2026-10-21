@@ -72,8 +72,8 @@ const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 const EmptyState = ({ icon: Icon = CheckCircleOutlineIcon, text, hint, color = MUTED }) => (
   <Box sx={{ py: 4.5, textAlign: 'center' }}>
     <Icon sx={{ fontSize: 30, color: alpha(color, 0.55), mb: 0.7 }} />
-    <Typography sx={{ fontSize: 10.4, fontWeight: 800, color: INK }}>{text}</Typography>
-    {hint ? <Typography sx={{ mt: 0.35, fontSize: 9.2, color: MUTED }}>{hint}</Typography> : null}
+    <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{text}</Typography>
+    {hint ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
   </Box>
 );
 
@@ -97,12 +97,12 @@ const MiniMetric = ({ icon: Icon, label, value, suffix, hint, color, onClick }) 
       <Icon sx={{ fontSize: 17 }} />
     </Box>
     <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 8.9, color: MUTED }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, color: MUTED }}>{label}</Typography>
       <Typography sx={{ fontSize: 13.5, fontWeight: 900, color: INK, lineHeight: 1.35 }}>
         {value}
-        {suffix ? <Box component="span" sx={{ fontSize: 8.8, fontWeight: 700, color: MUTED, mr: 0.4 }}>{suffix}</Box> : null}
+        {suffix ? <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED, mr: 0.4 }}>{suffix}</Box> : null}
       </Typography>
-      {hint ? <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>{hint}</Typography> : null}
+      {hint ? <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
     </Box>
   </Paper>
 );
@@ -125,7 +125,7 @@ const QuickAction = ({ action, onClick }) => {
       }}>
         <Icon sx={{ fontSize: 15 }} />
       </Box>
-      <Typography noWrap sx={{ fontSize: 9.4, fontWeight: 800 }}>{action.label}</Typography>
+      <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{action.label}</Typography>
     </ButtonBase>
   );
 };
@@ -150,10 +150,10 @@ const AlertCenter = ({ alerts, navigate }) => {
       icon={WarningAmberOutlinedIcon}
       color={AMBER}
       action={<Chip size="small" label={`${formatPersianNumber(total)} مورد`}
-        sx={{ height: 21, fontSize: 8.8, fontWeight: 800, bgcolor: alpha(AMBER, 0.08), color: AMBER }} />}
+        sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(AMBER, 0.08), color: AMBER }} />}
     >
       <Tabs value={kind} onChange={(_event, value) => setKind(value)} variant="fullWidth"
-        sx={{ minHeight: 30, mb: 1, '& .MuiTab-root': { minHeight: 30, py: 0.3, fontSize: 9, fontWeight: 800 } }}>
+        sx={{ minHeight: 30, mb: 1, '& .MuiTab-root': { minHeight: 30, py: 0.3, fontSize: 12, fontWeight: 800 } }}>
         <Tab value="documents" label={`مدارک (${toPersianDigits(documents.length)})`} />
         <Tab value="contracts" label={`قراردادها (${toPersianDigits(contracts.length)})`} />
       </Tabs>
@@ -183,17 +183,17 @@ const AlertCenter = ({ alerts, navigate }) => {
                   {kind === 'documents' ? <DescriptionOutlinedIcon sx={{ fontSize: 15 }} /> : <AssignmentOutlinedIcon sx={{ fontSize: 15 }} />}
                 </Box>
                 <Box sx={{ flex: 1, minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>
+                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
                     {kind === 'documents' ? item.title : item.full_name}
                   </Typography>
-                  <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>
+                  <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                     {kind === 'documents'
                       ? `${item.employee_name || '—'} · انقضا ${toJalali(item.expiry_date)}`
                       : `قرارداد · پایان ${toJalali(item.contract_end_date)}`}
                   </Typography>
                 </Box>
                 <Chip size="small" label={days.label}
-                  sx={{ height: 19, fontSize: 7.7, fontWeight: 800, bgcolor: alpha(days.color, 0.08), color: days.color }} />
+                  sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(days.color, 0.08), color: days.color }} />
               </ButtonBase>
             );
           })}
@@ -218,7 +218,7 @@ const formatWhen = (timestamp) => {
 const ActivityFeed = ({ activities }) => (
   <SurfaceCard title="فعالیت‌های اخیر" icon={HistoryOutlinedIcon} color={TEAL}
     action={<Chip size="small" label={formatPersianNumber(asArray(activities).length)}
-      sx={{ height: 20, fontSize: 8, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
+      sx={{ height: 20, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
     {!asArray(activities).length ? (
       <EmptyState icon={HistoryOutlinedIcon} text="فعالیتی ثبت نشده است" color={TEAL} />
     ) : (
@@ -227,10 +227,10 @@ const ActivityFeed = ({ activities }) => (
           <Stack key={activity.id} direction="row" spacing={0.8} sx={{ py: 0.55, borderBottom: '1px solid #f3f6fa' }}>
             <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: TEAL, mt: 0.8, flexShrink: 0 }} />
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography noWrap sx={{ fontSize: 9.3, fontWeight: 700, color: INK }}>
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: INK }}>
                 {activity.description || activity.action}
               </Typography>
-              <Typography noWrap sx={{ fontSize: 8, color: MUTED }}>
+              <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                 {activity.user} · {activity.action} · {formatWhen(activity.timestamp)}
               </Typography>
             </Box>
@@ -256,9 +256,9 @@ const AttendancePanel = ({ months }) => {
       action={hasData ? (
         <Stack direction="row" spacing={0.5}>
           <Chip size="small" label={`حضور ${formatPersianPercent(latest.present_rate)}`}
-            sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(GREEN, 0.08), color: GREEN }} />
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(GREEN, 0.08), color: GREEN }} />
           <Chip size="small" label={`غیبت ${formatPersianPercent(latest.absenteeism_rate)}`}
-            sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(RED, 0.08), color: RED }} />
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(RED, 0.08), color: RED }} />
         </Stack>
       ) : null}>
       {!hasData ? (
@@ -279,7 +279,7 @@ const LeavePanel = ({ leave, navigate }) => {
     <SurfaceCard title="مانده و مصرف مرخصی" icon={BeachAccessOutlinedIcon} color={TEAL}
       action={(
         <Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/leaves')}
-          sx={{ minWidth: 0, px: 0.8, fontSize: 8.8 }}>
+          sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>
           مدیریت مرخصی
         </Button>
       )}>
@@ -289,25 +289,25 @@ const LeavePanel = ({ leave, navigate }) => {
         <Stack spacing={1.2}>
           <Box>
             <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.4 }}>
-              <Typography sx={{ fontSize: 9.5, color: MUTED }}>نرخ مصرف مرخصی</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>نرخ مصرف مرخصی</Typography>
               <Typography sx={{ fontSize: 12, fontWeight: 900, color: TEAL }}>{formatPersianPercent(utilization)}</Typography>
             </Stack>
             <ProgressBar value={Math.min(100, utilization)} color={TEAL} height={7} />
             <Stack direction="row" spacing={1.2} sx={{ mt: 0.7 }} useFlexGap flexWrap="wrap">
-              <Typography sx={{ fontSize: 8.5, color: MUTED }}>استحقاق: {formatPersianNumber(data.entitlement)} روز</Typography>
-              <Typography sx={{ fontSize: 8.5, color: MUTED }}>مصرف: {formatPersianNumber(data.total_used)} روز</Typography>
-              <Typography sx={{ fontSize: 8.5, color: MUTED }}>مانده: {formatPersianNumber(data.total_remaining)} روز</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>استحقاق: {formatPersianNumber(data.entitlement)} روز</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>مصرف: {formatPersianNumber(data.total_used)} روز</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>مانده: {formatPersianNumber(data.total_remaining)} روز</Typography>
             </Stack>
           </Box>
           <Divider />
           <Stack spacing={0.45}>
             {details.slice(0, 6).map((item) => (
               <Stack key={item.employee_id} direction="row" alignItems="center" spacing={0.6}>
-                <Typography noWrap sx={{ flex: 1, fontSize: 9.2, fontWeight: 700, color: INK }}>{item.employee}</Typography>
-                <Typography noWrap sx={{ fontSize: 8, color: MUTED, maxWidth: 86 }}>{item.department || '—'}</Typography>
+                <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 700, color: INK }}>{item.employee}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: MUTED, maxWidth: 86 }}>{item.department || '—'}</Typography>
                 <Chip size="small" label={`${formatPersianNumber(item.remaining)} روز`}
                   sx={{
-                    height: 18, fontSize: 7.5, fontWeight: 800,
+                    height: 18, fontSize: 12, fontWeight: 800,
                     bgcolor: alpha(item.remaining <= 5 ? RED : TEAL, 0.07),
                     color: item.remaining <= 5 ? RED : TEAL,
                   }} />
@@ -326,7 +326,7 @@ const LoansPanel = ({ loans, navigate }) => {
   return (
     <SurfaceCard title="وام و تسهیلات" icon={PaymentsOutlinedIcon} color={VIOLET}
       action={<Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/loans')}
-        sx={{ minWidth: 0, px: 0.8, fontSize: 8.8 }}>مدیریت وام‌ها</Button>}>
+        sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>مدیریت وام‌ها</Button>}>
       <Grid container spacing={1}>
         <Grid item xs={6}><MiniMetric icon={RequestQuoteOutlinedIcon} label="وام فعال" value={formatPersianNumber(data.active_count)} suffix="مورد" color={VIOLET} /></Grid>
         <Grid item xs={6}><MiniMetric icon={PaymentsOutlinedIcon} label="مانده کل" value={formatPersianNumber(data.total_amount)} suffix="ریال" color={AMBER} /></Grid>
@@ -349,7 +349,7 @@ const AssetsPanel = ({ assets }) => {
   return (
     <SurfaceCard title="اموال و تجهیزات" icon={Inventory2OutlinedIcon} color={GREEN}
       action={<Chip size="small" label={`${formatPersianNumber(data.total)} دارایی`}
-        sx={{ height: 20, fontSize: 8, bgcolor: alpha(GREEN, 0.08), color: GREEN }} />}>
+        sx={{ height: 20, fontSize: 12, bgcolor: alpha(GREEN, 0.08), color: GREEN }} />}>
       {!byType.length ? (
         <EmptyState icon={Inventory2OutlinedIcon} text="دارایی فعالی ثبت نشده است" color={GREEN} />
       ) : (
@@ -358,7 +358,7 @@ const AssetsPanel = ({ assets }) => {
           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
             {byStatus.map((item) => (
               <Chip key={item.status} size="small" label={`${item.status}: ${formatPersianNumber(item.count)}`}
-                sx={{ height: 19, fontSize: 7.7, bgcolor: SOFT_BG, color: MUTED }} />
+                sx={{ height: 19, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
             ))}
           </Stack>
         </Stack>
@@ -415,7 +415,7 @@ const DepartmentTable = ({ rows }) => {
       active={sort.key === key}
       direction={sort.key === key ? sort.dir : 'desc'}
       onClick={() => handleSort(key)}
-      sx={{ '&.MuiTableSortLabel-root': { color: '#475569', fontSize: 9, fontWeight: 800 } }}
+      sx={{ '&.MuiTableSortLabel-root': { color: '#475569', fontSize: 12, fontWeight: 800 } }}
     >
       {label}
     </TableSortLabel>
@@ -426,7 +426,7 @@ const DepartmentTable = ({ rows }) => {
     <SurfaceCard title="تحلیل دپارتمان‌ها" icon={AccountTreeOutlinedIcon} color={BLUE}
       action={(
         <Button size="small" startIcon={<DownloadOutlinedIcon />} onClick={exportCsv}
-          sx={{ minWidth: 0, px: 0.8, fontSize: 8.6 }}>خروجی</Button>
+          sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>خروجی</Button>
       )}>
       <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} alignItems={{ sm: 'center' }} sx={{ mb: 1.1 }}>
         <TextField
@@ -437,13 +437,13 @@ const DepartmentTable = ({ rows }) => {
           InputProps={{
             startAdornment: <InputAdornment position="start"><SearchOutlinedIcon sx={{ fontSize: 17, color: '#94a3b8' }} /></InputAdornment>,
           }}
-          sx={{ width: { xs: '100%', sm: 250 }, '& .MuiOutlinedInput-root': { height: 32, borderRadius: '9px', fontSize: 10 } }}
+          sx={{ width: { xs: '100%', sm: 250 }, '& .MuiOutlinedInput-root': { height: 32, borderRadius: '9px', fontSize: 12 } }}
         />
-        <Typography sx={{ fontSize: 8.6, color: MUTED }}>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>
           {formatPersianNumber(data.length)} دپارتمان
         </Typography>
         <Box sx={{ flex: 1 }} />
-        <Typography sx={{ fontSize: 8.2, color: MUTED }}>برای مرتب‌سازی روی عنوان ستون بزنید</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>برای مرتب‌سازی روی عنوان ستون بزنید</Typography>
       </Stack>
 
       {!data.length ? (
@@ -474,31 +474,31 @@ const DepartmentTable = ({ rows }) => {
                         <Box sx={{
                           width: 24, height: 24, borderRadius: '7px', color: accent,
                           bgcolor: alpha(accent, 0.08),
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, fontWeight: 900,
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 900,
                         }}>
                           {(row.department || '?').trim().charAt(0)}
                         </Box>
-                        <Typography sx={{ fontSize: 9.4, fontWeight: 800, color: INK }}>{row.department}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.department}</Typography>
                       </Stack>
                     </TableCell>
                     <TableCell align="center">
                       <Chip size="small" label={formatPersianNumber(row.headcount)}
-                        sx={{ height: 19, fontSize: 7.8, fontWeight: 800, bgcolor: alpha(BLUE, 0.06), color: BLUE }} />
+                        sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(BLUE, 0.06), color: BLUE }} />
                     </TableCell>
                     <TableCell align="center">
-                      <Typography sx={{ fontSize: 8.8, color: INK, direction: 'ltr' }}>{formatPersianNumber(row.avg_salary)}</Typography>
+                      <Typography sx={{ fontSize: 12, color: INK, direction: 'ltr' }}>{formatPersianNumber(row.avg_salary)}</Typography>
                     </TableCell>
                     <TableCell align="center" sx={{ minWidth: 105 }}>
                       <Stack direction="row" alignItems="center" spacing={0.6}>
                         <Box sx={{ flex: 1, minWidth: 45 }}>
                           <ProgressBar value={Math.min(100, performance)} color={performanceColor} height={5} />
                         </Box>
-                        <Typography sx={{ fontSize: 8, color: performanceColor, fontWeight: 800 }}>{formatPersianNumber(performance)}</Typography>
+                        <Typography sx={{ fontSize: 12, color: performanceColor, fontWeight: 800 }}>{formatPersianNumber(performance)}</Typography>
                       </Stack>
                     </TableCell>
-                    <TableCell align="center"><Typography sx={{ fontSize: 8.8, color: INK }}>{formatPersianNumber(row.avg_satisfaction)}</Typography></TableCell>
-                    <TableCell align="center"><Typography sx={{ fontSize: 8.8, color: MUTED }}>{formatPersianNumber(row.avg_age)}</Typography></TableCell>
-                    <TableCell align="center"><Typography sx={{ fontSize: 8.8, color: MUTED }}>{formatPersianNumber(row.avg_tenure_years)}</Typography></TableCell>
+                    <TableCell align="center"><Typography sx={{ fontSize: 12, color: INK }}>{formatPersianNumber(row.avg_satisfaction)}</Typography></TableCell>
+                    <TableCell align="center"><Typography sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(row.avg_age)}</Typography></TableCell>
+                    <TableCell align="center"><Typography sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(row.avg_tenure_years)}</Typography></TableCell>
                   </TableRow>
                 );
               })}
@@ -526,7 +526,7 @@ const BirthdayPanel = ({ birthdays, navigate }) => {
   return (
     <SurfaceCard title="تولدهای ۷ روز آینده" icon={CakeOutlinedIcon} color={PINK}
       action={<Chip size="small" label={formatPersianNumber(list.length)}
-        sx={{ height: 20, fontSize: 8, fontWeight: 800, bgcolor: alpha(PINK, 0.07), color: PINK }} />}>
+        sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(PINK, 0.07), color: PINK }} />}>
       {!list.length ? (
         <EmptyState icon={CakeOutlinedIcon} text="در ۷ روز آینده تولدی نیست"
           hint="با ثبت تاریخ تولد پرسنل، این کارت فعال می‌شود." color={PINK} />
@@ -545,14 +545,14 @@ const BirthdayPanel = ({ birthdays, navigate }) => {
             >
               <Box sx={{
                 width: 29, height: 29, borderRadius: '50%', flexShrink: 0,
-                bgcolor: alpha(PINK, 0.09), color: PINK, fontSize: 10, fontWeight: 900,
+                bgcolor: alpha(PINK, 0.09), color: PINK, fontSize: 12, fontWeight: 900,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
               }}>
                 {birthday.full_name?.trim()?.charAt(0) || '—'}
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>{birthday.full_name}</Typography>
-                <Typography noWrap sx={{ fontSize: 8.2, color: MUTED }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{birthday.full_name}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                   {birthday.department_name || 'بدون دپارتمان'}
                   {birthday.birth_jalali ? ` · ${toPersianDigits(birthday.birth_jalali)}` : ''}
                 </Typography>
@@ -560,7 +560,7 @@ const BirthdayPanel = ({ birthdays, navigate }) => {
               <Chip size="small"
                 label={birthday.is_today ? 'امروز 🎂' : `${toPersianDigits(birthday.days_until)} روز`}
                 sx={{
-                  height: 19, fontSize: 7.7, fontWeight: 800,
+                  height: 19, fontSize: 12, fontWeight: 800,
                   bgcolor: alpha(PINK, birthday.is_today ? 0.13 : 0.07), color: PINK,
                 }} />
             </ButtonBase>
@@ -574,7 +574,7 @@ const BirthdayPanel = ({ birthdays, navigate }) => {
 const DepartmentDistribution = ({ data, navigate }) => (
   <SurfaceCard title="توزیع نیرو در دپارتمان‌ها" icon={AccountTreeOutlinedIcon} color={BLUE}
     action={<Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/dashboard?tab=people')}
-      sx={{ minWidth: 0, px: 0.8, fontSize: 8.7 }}>جدول کامل</Button>}>
+      sx={{ minWidth: 0, px: 0.8, fontSize: 12 }}>جدول کامل</Button>}>
     {!data.length ? (
       <EmptyState icon={AccountTreeOutlinedIcon} text="دپارتمانی ثبت نشده است" color={BLUE} />
     ) : (
@@ -626,9 +626,9 @@ const PayrollPanel = ({ months, navigate }) => {
       action={(
         <Stack direction="row" spacing={0.5} alignItems="center">
           {latest.label ? <Chip size="small" label={`آخرین ماه: ${latest.label}`}
-            sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
           <Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/payslips')}
-            sx={{ minWidth: 0, px: 0.6, fontSize: 8.6 }}>فیش‌ها</Button>
+            sx={{ minWidth: 0, px: 0.6, fontSize: 12 }}>فیش‌ها</Button>
         </Stack>
       )}>
       {!hasData ? (
@@ -639,10 +639,10 @@ const PayrollPanel = ({ months, navigate }) => {
             {latestItems.map((item) => (
               <Grid item xs={6} md={3} key={item.label}>
                 <Box sx={{ p: 1, borderRadius: '10px', bgcolor: alpha(item.color, 0.045), border: `1px solid ${alpha(item.color, 0.1)}` }}>
-                  <Typography sx={{ fontSize: 8.2, color: MUTED }}>{item.label}</Typography>
-                  <Typography sx={{ fontSize: 11, fontWeight: 900, color: item.color, direction: 'rtl' }}>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>{item.label}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: item.color, direction: 'rtl' }}>
                     {formatPersianNumber(item.value)}
-                    <Box component="span" sx={{ fontSize: 7.3, color: MUTED, mr: 0.3 }}>ریال</Box>
+                    <Box component="span" sx={{ fontSize: 12, color: MUTED, mr: 0.3 }}>ریال</Box>
                   </Typography>
                 </Box>
               </Grid>
@@ -843,7 +843,7 @@ const DashboardPage = () => {
 
       {refreshing ? <LinearProgress sx={{ height: 2.5, borderRadius: 2, mb: 1, bgcolor: alpha(BLUE, 0.08) }} /> : null}
       {queryError ? (
-        <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 11 }}
+        <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 12 }}
           action={<Button size="small" onClick={refreshAll}>تلاش دوباره</Button>}>
           بخشی از داده‌های داشبورد دریافت نشد؛ سایر بخش‌ها قابل استفاده هستند.
         </Alert>
@@ -863,18 +863,18 @@ const DashboardPage = () => {
             <Typography sx={{ fontSize: { xs: 16, md: 19 }, fontWeight: 900, color: INK, letterSpacing: '-0.02em' }}>
               سرمایه انسانی در یک نگاه
             </Typography>
-            <Typography sx={{ mt: 0.3, fontSize: 9.8, color: MUTED }}>
+            <Typography sx={{ mt: 0.3, fontSize: 12, color: MUTED }}>
               وضعیت جاری پرسنل، درخواست‌ها و هشدارهای سازمان.
             </Typography>
             <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
               <Chip size="small" label={`${formatPersianNumber(totalActive)} نفر فعال`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
               <Chip size="small" label={`${formatPersianNumber(onLeave)} در مرخصی`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(AMBER, 0.07), color: AMBER }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(AMBER, 0.07), color: AMBER }} />
               <Chip size="small" label={`${formatPersianNumber(pendingApprovals)} در انتظار تأیید`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
               <Chip size="small" label={`${formatPersianNumber(alertsTotal)} هشدار فعال`}
-                sx={{ height: 21, fontSize: 8, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
+                sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(RED, 0.07), color: RED }} />
             </Stack>
           </Box>
 
@@ -959,7 +959,7 @@ const DashboardPage = () => {
             minHeight: 38,
             '& .MuiTabs-indicator': { height: 2.5, borderRadius: 2, bgcolor: BLUE },
             '& .MuiTab-root': {
-              minHeight: 38, py: 0.35, px: 1.5, fontSize: 10.2, fontWeight: 800,
+              minHeight: 38, py: 0.35, px: 1.5, fontSize: 12, fontWeight: 800,
               color: MUTED, gap: 0.5,
               '&.Mui-selected': { color: BLUE },
             },

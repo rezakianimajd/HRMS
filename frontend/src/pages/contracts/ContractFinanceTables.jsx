@@ -79,12 +79,12 @@ export const statementMetrics = (row, fallbackRate = 0) => {
 };
 
 const headSx = {
-  px: 0.8, py: 1, fontSize: 10.5, fontWeight: 800, color: '#334155',
+  px: 0.8, py: 1, fontSize: 12, fontWeight: 800, color: '#334155',
   bgcolor: '#f1f5f9', borderBottom: '1px solid #dbe4ee', whiteSpace: 'nowrap',
   textAlign: 'center', verticalAlign: 'middle',
 };
 const cellSx = {
-  px: 0.8, py: 0.75, fontSize: 10.5, color: '#334155',
+  px: 0.8, py: 0.75, fontSize: 12, color: '#334155',
   borderBottom: '1px solid #eef2f7', whiteSpace: 'nowrap', textAlign: 'center',
   fontVariantNumeric: 'tabular-nums',
 };
@@ -142,7 +142,7 @@ export const StatementsTable = ({ statements = [], currencyLabel = 'ریال', f
           </TableRow>
           <TableRow>
             {deductionColumns.map(([key, label]) => (
-              <TableCell key={key} sx={{ ...headSx, minWidth: 100, fontSize: 9.5 }}>{label}</TableCell>
+              <TableCell key={key} sx={{ ...headSx, minWidth: 100, fontSize: 12 }}>{label}</TableCell>
             ))}
           </TableRow>
         </TableHead>
@@ -152,10 +152,10 @@ export const StatementsTable = ({ statements = [], currencyLabel = 'ریال', f
               <TableCell sx={cellSx}>{toPersianDigits(index + 1)}</TableCell>
               <TableCell sx={{ ...cellSx, textAlign: 'right', minWidth: 210, whiteSpace: 'normal' }}>
                 <Stack direction="row" alignItems="center" spacing={0.6} useFlexGap flexWrap="wrap">
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{row.number || `صورت‌وضعیت ${toPersianDigits(index + 1)}`}</Typography>
-                  {row.is_approved ? <Chip size="small" label="تأییدشده" sx={{ height: 17, fontSize: 8.5, bgcolor: '#eff6ff', color: '#1d4ed8' }} /> : null}
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.number || `صورت‌وضعیت ${toPersianDigits(index + 1)}`}</Typography>
+                  {row.is_approved ? <Chip size="small" label="تأییدشده" sx={{ height: 17, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} /> : null}
                 </Stack>
-                <Typography sx={{ fontSize: 9.5, color: MUTED, mt: 0.2 }}>{toJalali(row.date)}</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.2 }}>{toJalali(row.date)}</Typography>
               </TableCell>
               <TableCell sx={cellSx}>{metrics.foreignGross != null ? money(metrics.foreignGross) : '—'}</TableCell>
               <TableCell sx={cellSx}>{metrics.rate > 1 ? money(metrics.rate) : '—'}</TableCell>
@@ -177,7 +177,7 @@ export const StatementsTable = ({ statements = [], currencyLabel = 'ریال', f
             <TableCell sx={moneySx}>{money(totals.gross)}</TableCell>
             <TableCell sx={moneySx}>{money(totals.vat)}</TableCell>
             {deductionColumns.map(([key]) => (
-              <TableCell key={key} sx={{ ...moneySx, fontSize: 9.5 }}>{money(totals.buckets[key])}</TableCell>
+              <TableCell key={key} sx={{ ...moneySx, fontSize: 12 }}>{money(totals.buckets[key])}</TableCell>
             ))}
             <TableCell sx={{ ...moneySx, color: '#be123c' }}>{money(totals.deductions)}</TableCell>
             <TableCell sx={{ ...moneySx, color: '#1d4ed8', bgcolor: '#fff7ed' }}>{money(totals.net)}</TableCell>
@@ -240,11 +240,11 @@ export const AdvanceTable = ({ rows = [], total = 0, amortized = 0, remaining = 
       renderRow={(row, index) => [
         toPersianDigits(index + 1),
         <Box key="desc">
-          <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: INK }}>{row.step || row.description || `مرحله ${toPersianDigits(index + 1)}`}</Typography>
-          {row.note ? <Typography sx={{ fontSize: 9, color: MUTED }}>{row.note}</Typography> : null}
+          <Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{row.step || row.description || `مرحله ${toPersianDigits(index + 1)}`}</Typography>
+          {row.note ? <Typography sx={{ fontSize: 12, color: MUTED }}>{row.note}</Typography> : null}
         </Box>,
-        <Typography key="amount" sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>
-          {money(row.amount)} <Box component="span" sx={{ fontSize: 9, color: MUTED, fontWeight: 500 }}>{currency}</Box>
+        <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
+          {money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED, fontWeight: 500 }}>{currency}</Box>
         </Typography>,
       ]}
     />
@@ -256,9 +256,9 @@ export const AdvanceTable = ({ rows = [], total = 0, amortized = 0, remaining = 
         { label: 'باقی‌مانده', value: remaining, color: '#1d4ed8' },
       ].map((item) => (
         <Box key={item.label} sx={{ p: 1, borderRadius: '10px', bgcolor: '#f8fafc', border: '1px solid #eef2f7' }}>
-          <Typography sx={{ fontSize: 9.5, color: MUTED }}>{item.label}</Typography>
-          <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: item.color }}>{money(item.value)}</Typography>
-          <Typography sx={{ fontSize: 8.5, color: MUTED }}>{currency}</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>{item.label}</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 900, color: item.color }}>{money(item.value)}</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>{currency}</Typography>
         </Box>
       ))}
     </Box>
@@ -282,15 +282,15 @@ export const InvoicesTable = ({ invoices = [], currency = 'ریال' }) => (
     emptyText="فاکتوری برای این قرارداد ثبت نشده است."
     minWidth={1080}
     renderRow={(row) => [
-      <Typography key="number" sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{toPersianDigits(row.number || '—')}</Typography>,
-      <Typography key="subject" sx={{ fontSize: 10.5, color: '#334155', textAlign: 'right' }}>{row.subject || '—'}</Typography>,
-      <Typography key="date" sx={{ fontSize: 10 }}>{toJalali(row.date)}</Typography>,
-      <Typography key="due" sx={{ fontSize: 10, color: MUTED }}>{toJalali(row.due_date)}</Typography>,
-      <Typography key="amount" sx={{ fontSize: 10.5, fontWeight: 700 }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 8.5, color: MUTED }}>{currency}</Box></Typography>,
-      <Typography key="vat" sx={{ fontSize: 10.5 }}>{money(row.vat)}</Typography>,
-      <Typography key="total" sx={{ fontSize: 10.5, fontWeight: 900, color: INK }}>{money(row.total)}</Typography>,
+      <Typography key="number" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{toPersianDigits(row.number || '—')}</Typography>,
+      <Typography key="subject" sx={{ fontSize: 12, color: '#334155', textAlign: 'right' }}>{row.subject || '—'}</Typography>,
+      <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
+      <Typography key="due" sx={{ fontSize: 12, color: MUTED }}>{toJalali(row.due_date)}</Typography>,
+      <Typography key="amount" sx={{ fontSize: 12, fontWeight: 700 }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
+      <Typography key="vat" sx={{ fontSize: 12 }}>{money(row.vat)}</Typography>,
+      <Typography key="total" sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{money(row.total)}</Typography>,
       <Chip key="status" size="small" label={row.is_paid ? 'پرداخت‌شده' : 'باز'}
-        sx={{ height: 20, fontSize: 9, bgcolor: row.is_paid ? '#eff6ff' : '#fffbeb', color: row.is_paid ? '#1d4ed8' : '#b45309' }} />,
+        sx={{ height: 20, fontSize: 12, bgcolor: row.is_paid ? '#eff6ff' : '#fffbeb', color: row.is_paid ? '#1d4ed8' : '#b45309' }} />,
     ]}
   />
 );
@@ -311,13 +311,13 @@ export const PaymentsTable = ({ payments = [], currency = 'ریال' }) => (
     emptyText="پرداختی برای این قرارداد ثبت نشده است."
     minWidth={980}
     renderRow={(row) => [
-      <Typography key="date" sx={{ fontSize: 10.5 }}>{toJalali(row.date)}</Typography>,
-      <Typography key="amount" sx={{ fontSize: 11, fontWeight: 800, color: INK }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 8.5, color: MUTED }}>{currency}</Box></Typography>,
-      <Typography key="method" sx={{ fontSize: 10 }}>{row.method || '—'}</Typography>,
-      <Typography key="ref" sx={{ fontSize: 10, color: MUTED }}>{row.reference || '—'}</Typography>,
-      <Typography key="invoice" sx={{ fontSize: 10 }}>{row.invoice_number || '—'}</Typography>,
-      <Typography key="statement" sx={{ fontSize: 10 }}>{row.statement_number || '—'}</Typography>,
-      <Typography key="note" sx={{ fontSize: 10, color: MUTED, textAlign: 'right' }}>{row.note || '—'}</Typography>,
+      <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
+      <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
+      <Typography key="method" sx={{ fontSize: 12 }}>{row.method || '—'}</Typography>,
+      <Typography key="ref" sx={{ fontSize: 12, color: MUTED }}>{row.reference || '—'}</Typography>,
+      <Typography key="invoice" sx={{ fontSize: 12 }}>{row.invoice_number || '—'}</Typography>,
+      <Typography key="statement" sx={{ fontSize: 12 }}>{row.statement_number || '—'}</Typography>,
+      <Typography key="note" sx={{ fontSize: 12, color: MUTED, textAlign: 'right' }}>{row.note || '—'}</Typography>,
     ]}
   />
 );
@@ -337,17 +337,17 @@ export const AddendumsTable = ({ addendums = [], currency = 'ریال' }) => (
     emptyText="الحاقیه‌ای برای این قرارداد ثبت نشده است."
     minWidth={880}
     renderRow={(row) => [
-      <Typography key="number" sx={{ fontSize: 10.5, fontWeight: 800 }}>{toPersianDigits(row.number || '—')}</Typography>,
-      <Typography key="date" sx={{ fontSize: 10 }}>{toJalali(row.date)}</Typography>,
+      <Typography key="number" sx={{ fontSize: 12, fontWeight: 800 }}>{toPersianDigits(row.number || '—')}</Typography>,
+      <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
       <Box key="subject" sx={{ textAlign: 'right' }}>
-        <Typography sx={{ fontSize: 10.5, fontWeight: 700, color: '#334155' }}>{row.subject_type_display || row.subject || '—'}</Typography>
-        {row.subject && row.subject_type_display ? <Typography sx={{ fontSize: 9, color: MUTED }}>{row.subject}</Typography> : null}
+        <Typography sx={{ fontSize: 12, fontWeight: 700, color: '#334155' }}>{row.subject_type_display || row.subject || '—'}</Typography>
+        {row.subject && row.subject_type_display ? <Typography sx={{ fontSize: 12, color: MUTED }}>{row.subject}</Typography> : null}
       </Box>,
-      <Typography key="amount" sx={{ fontSize: 10.5, fontWeight: 800, color: toNum(row.amount_change) >= 0 ? '#1d4ed8' : '#be123c' }}>
-        {toNum(row.amount_change) >= 0 ? '+' : ''}{money(row.amount_change)} <Box component="span" sx={{ fontSize: 8.5, color: MUTED }}>{currency}</Box>
+      <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800, color: toNum(row.amount_change) >= 0 ? '#1d4ed8' : '#be123c' }}>
+        {toNum(row.amount_change) >= 0 ? '+' : ''}{money(row.amount_change)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box>
       </Typography>,
-      <Typography key="newAmount" sx={{ fontSize: 10.5, fontWeight: 800 }}>{money(row.new_amount)}</Typography>,
-      <Typography key="newEnd" sx={{ fontSize: 10 }}>{row.new_end_date ? toJalali(row.new_end_date) : '—'}</Typography>,
+      <Typography key="newAmount" sx={{ fontSize: 12, fontWeight: 800 }}>{money(row.new_amount)}</Typography>,
+      <Typography key="newEnd" sx={{ fontSize: 12 }}>{row.new_end_date ? toJalali(row.new_end_date) : '—'}</Typography>,
     ]}
   />
 );
@@ -369,15 +369,15 @@ export const GuaranteesTable = ({ guarantees = [], currency = 'ریال' }) => (
     emptyText="تضمینی برای این قرارداد ثبت نشده است."
     minWidth={980}
     renderRow={(row) => [
-      <Typography key="type" sx={{ fontSize: 10.5, fontWeight: 700 }}>{row.guarantee_type_display || '—'}</Typography>,
-      <Typography key="instrument" sx={{ fontSize: 10 }}>{row.instrument_type_display || '—'}</Typography>,
-      <Typography key="number" sx={{ fontSize: 10 }}>{toPersianDigits(row.number || '—')}</Typography>,
-      <Typography key="amount" sx={{ fontSize: 10.5, fontWeight: 800 }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 8.5, color: MUTED }}>{currency}</Box></Typography>,
-      <Typography key="issue" sx={{ fontSize: 10 }}>{toJalali(row.issue_date)}</Typography>,
-      <Typography key="expiry" sx={{ fontSize: 10 }}>{toJalali(row.expiry_date)}</Typography>,
-      <Typography key="bank" sx={{ fontSize: 10 }}>{row.bank || '—'}</Typography>,
+      <Typography key="type" sx={{ fontSize: 12, fontWeight: 700 }}>{row.guarantee_type_display || '—'}</Typography>,
+      <Typography key="instrument" sx={{ fontSize: 12 }}>{row.instrument_type_display || '—'}</Typography>,
+      <Typography key="number" sx={{ fontSize: 12 }}>{toPersianDigits(row.number || '—')}</Typography>,
+      <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800 }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
+      <Typography key="issue" sx={{ fontSize: 12 }}>{toJalali(row.issue_date)}</Typography>,
+      <Typography key="expiry" sx={{ fontSize: 12 }}>{toJalali(row.expiry_date)}</Typography>,
+      <Typography key="bank" sx={{ fontSize: 12 }}>{row.bank || '—'}</Typography>,
       <Chip key="status" size="small" label={row.is_released ? 'آزادشده' : (row.last_action_display || 'فعال')}
-        sx={{ height: 20, fontSize: 9, bgcolor: row.is_released ? '#f1f5f9' : '#eff6ff', color: row.is_released ? '#475569' : '#1d4ed8' }} />,
+        sx={{ height: 20, fontSize: 12, bgcolor: row.is_released ? '#f1f5f9' : '#eff6ff', color: row.is_released ? '#475569' : '#1d4ed8' }} />,
     ]}
   />
 );

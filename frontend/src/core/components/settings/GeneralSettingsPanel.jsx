@@ -59,7 +59,7 @@ const SettingRow = ({ meta, value, onSave }) => {
       <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, flexWrap: 'wrap' }}>
         <Box sx={{ flex: 1, minWidth: 180 }}>
           <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
-          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>{meta.desc}</Typography>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>{meta.desc}</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
           {savedTick && <Chip size="small" label="ثبت شد ✓" color="success" />}
@@ -75,11 +75,11 @@ const SettingRow = ({ meta, value, onSave }) => {
     return (
       <Box>
         <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
-        <Typography sx={{ fontSize: 10.5, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
+        <Typography sx={{ fontSize: 12, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
           {arr.map(ext => (
             <Chip key={ext} size="small" label={ext}
-              sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(SOFT.indigo, 0.1), color: SOFT.indigo, border: '1px solid ' + alpha(SOFT.indigo, 0.22), fontWeight: 700 }} />
+              sx={{ height: 20, fontSize: 12, bgcolor: alpha(SOFT.indigo, 0.1), color: SOFT.indigo, border: '1px solid ' + alpha(SOFT.indigo, 0.22), fontWeight: 700 }} />
           ))}
         </Stack>
       </Box>
@@ -89,7 +89,7 @@ const SettingRow = ({ meta, value, onSave }) => {
   return (
     <Box>
       <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{meta.label}</Typography>
-      <Typography sx={{ fontSize: 10.5, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', display: 'block' }}>{meta.desc}</Typography>
       <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 1 }} useFlexGap>
         <TextField
           size="small" fullWidth

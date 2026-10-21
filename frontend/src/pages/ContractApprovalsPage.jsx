@@ -98,7 +98,7 @@ const ContractApprovalsPage = () => {
                         const s = APPROVAL_STATUS[a.status] || APPROVAL_STATUS.pending;
                         return (
                           <Chip key={a.id} size="small" label={`${a.approver} · ${s.label}`}
-                            sx={{ bgcolor: `${s.color}18`, color: s.color, fontWeight: 700, fontSize: 11 }} />
+                            sx={{ bgcolor: `${s.color}18`, color: s.color, fontWeight: 700, fontSize: 12 }} />
                         );
                       })
                     )}
@@ -132,9 +132,9 @@ const ContractApprovalsPage = () => {
                   return (
                     <Paper key={a.id} variant="outlined" sx={{ p: 1.25, borderRadius: '10px', borderColor: `${s.color}44`, background: 'rgba(255,255,255,0.6)' }}>
                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Chip size="small" label={`مرحله ${toPersianDigits(a.step)}`} sx={{ fontWeight: 800, bgcolor: `${s.color}18`, color: s.color, fontSize: 11 }} />
+                        <Chip size="small" label={`مرحله ${toPersianDigits(a.step)}`} sx={{ fontWeight: 800, bgcolor: `${s.color}18`, color: s.color, fontSize: 12 }} />
                         <Typography variant="body2" fontWeight={700} sx={{ flex: 1 }}>{a.approver}</Typography>
-                        <Chip size="small" label={s.label} sx={{ bgcolor: `${s.color}18`, color: s.color, fontWeight: 700, fontSize: 11 }} />
+                        <Chip size="small" label={s.label} sx={{ bgcolor: `${s.color}18`, color: s.color, fontWeight: 700, fontSize: 12 }} />
                       </Box>
                       {a.comment && <Typography variant="caption" color="textSecondary" sx={{ display: 'block', mt: 0.5 }}>{a.comment}</Typography>}
                       {a.status === 'pending' && (

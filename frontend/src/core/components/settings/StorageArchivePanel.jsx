@@ -280,7 +280,7 @@ const ArchiveBrowser = ({ profile, open, onClose, flash, onChanged }) => {
                       <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
                         <FolderIcon sx={{ fontSize: 20, color: '#f59e0b' }} />
                         <Typography variant="body2" fontWeight={700}>{dir.name}</Typography>
-                        {dir.record_id && <Chip size="small" label="ثبت‌شده" sx={{ height: 18, fontSize: 10 }} />}
+                        {dir.record_id && <Chip size="small" label="ثبت‌شده" sx={{ height: 18, fontSize: 12 }} />}
                       </Stack>
                     </TableCell>
                     <TableCell><Chip size="small" label="پوشه" /></TableCell>
@@ -449,8 +449,8 @@ const StorageArchivePanel = () => {
           border: '1px solid', borderColor: 'divider',
         }}>
           <Stack direction="row" justifyContent="space-between" mb={0.5}>
-            <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>مصرف دیسک سرور</Typography>
-            <Typography sx={{ fontSize: 10.5, fontWeight: 700 }}>
+            <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>مصرف دیسک سرور</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
               {formatBytes(disk.used)} از {formatBytes(disk.total)}
             </Typography>
           </Stack>
@@ -476,18 +476,18 @@ const StorageArchivePanel = () => {
             <Typography variant="h6">پوشه‌های بایگانی ماژول‌ها</Typography>
           </Box>
           <Button size="small" startIcon={<RefreshIcon sx={{ fontSize: 16 }} />} onClick={invalidate}
-            sx={{ fontSize: 11 }}>به‌روزرسانی</Button>
+            sx={{ fontSize: 12 }}>به‌روزرسانی</Button>
           <Button size="small" variant="contained" startIcon={<AddIcon sx={{ fontSize: 16 }} />} onClick={openCreate}
             sx={{
-              bgcolor: COLOR, borderRadius: '9px', fontSize: 11, boxShadow: 'none',
+              bgcolor: COLOR, borderRadius: '9px', fontSize: 12, boxShadow: 'none',
               '&:hover': { bgcolor: '#6f7ecb' },
             }}>ماژول جدید</Button>
         </Stack>
 
         <TableContainer>
           <Table size="small" sx={{
-            '& th': { fontSize: 10.5, fontWeight: 800, color: 'text.secondary', bgcolor: alpha(COLOR, 0.04) },
-            '& td': { fontSize: 11, py: 1 },
+            '& th': { fontSize: 12, fontWeight: 800, color: 'text.secondary', bgcolor: alpha(COLOR, 0.04) },
+            '& td': { fontSize: 12, py: 1 },
           }}>
             <TableHead>
               <TableRow>

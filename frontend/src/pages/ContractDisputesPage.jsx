@@ -304,15 +304,15 @@ const ContractDisputesPage = () => {
 
           {criticalCount > 0 ? (
             <Alert severity="error" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-              <Typography sx={{ fontSize: 9.5 }}>{formatPersianNumber(criticalCount)} دعوای بحرانی نیازمند پیگیری فوری است.</Typography>
+              <Typography sx={{ fontSize: 12 }}>{formatPersianNumber(criticalCount)} دعوای بحرانی نیازمند پیگیری فوری است.</Typography>
             </Alert>
           ) : null}
 
           {!filtered.length ? (
             <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
               <GavelIcon sx={{ fontSize: 38, color: '#cbd5e1', mb: 1 }} />
-              <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>اختلافی با این مشخصات پیدا نشد.</Typography>
-              <Typography sx={{ fontSize: 9, color: '#64748b', mt: 0.4 }}>فیلترها یا عبارت جست‌وجو را تغییر دهید.</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>اختلافی با این مشخصات پیدا نشد.</Typography>
+              <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>فیلترها یا عبارت جست‌وجو را تغییر دهید.</Typography>
               <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت اختلاف جدید</Button>
             </Paper>
           ) : view === 'cards' ? (
@@ -329,9 +329,9 @@ const ContractDisputesPage = () => {
 
           <Box sx={{ mt: 1.5 }}>
             <SurfaceCard title="روند ثبت دعاوی" icon={TrendingUpIcon} color={DISPUTE_ACCENT}
-              action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(DISPUTE_ACCENT, 0.07), color: DISPUTE_ACCENT }} />}>
+              action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(DISPUTE_ACCENT, 0.07), color: DISPUTE_ACCENT }} />}>
               {monthlyData.length ? <ColumnChart data={monthlyData} color={DISPUTE_ACCENT} height={150} /> : (
-                <Box sx={{ py: 3, textAlign: 'center', color: '#64748b', fontSize: 9.4 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
+                <Box sx={{ py: 3, textAlign: 'center', color: '#64748b', fontSize: 12 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
               )}
             </SurfaceCard>
           </Box>

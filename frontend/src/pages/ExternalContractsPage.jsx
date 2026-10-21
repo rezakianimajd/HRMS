@@ -315,7 +315,7 @@ const ExternalContractsPage = () => {
                               {c.subject || '—'}
                             </Typography>
                           </Tooltip>
-                          <Typography variant="caption" noWrap display="block" sx={{ color: '#64748b', fontSize: 10.5 }}>
+                          <Typography variant="caption" noWrap display="block" sx={{ color: '#64748b', fontSize: 12 }}>
                             {typeLabel(c)}
                           </Typography>
                         </TableCell>
@@ -324,7 +324,7 @@ const ExternalContractsPage = () => {
                             sx={{
                               bgcolor: `${STATUS_COLORS[c.status] || '#64748b'}18`,
                               color: STATUS_COLORS[c.status] || '#64748b',
-                              fontWeight: 800, fontSize: 11, height: 22,
+                              fontWeight: 800, fontSize: 12, height: 22,
                             }} />
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
@@ -342,7 +342,7 @@ const ExternalContractsPage = () => {
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Chip size="small" label={remain.label}
-                            sx={{ bgcolor: remain.bg, color: remain.color, fontWeight: 800, fontSize: 11, height: 22 }} />
+                            sx={{ bgcolor: remain.bg, color: remain.color, fontWeight: 800, fontSize: 12, height: 22 }} />
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Tooltip title={`پایه: ${formatPersianNumber(baseAmount)}${Number(amount) !== Number(baseAmount)

@@ -85,7 +85,7 @@ const AssistantPage = () => {
                   {birthdays.slice(0, 5).map(b => (
                     <Box key={b.id} sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                       <Chip size="small" label={b.is_today ? 'امروز' : `${toPersianDigits(b.days_until)} روز`}
-                        sx={{ bgcolor: b.is_today ? '#f43f5e' : '#f59e0b18', color: b.is_today ? '#fff' : '#b45309', fontWeight: 700, fontSize: 10, height: 20 }} />
+                        sx={{ bgcolor: b.is_today ? '#f43f5e' : '#f59e0b18', color: b.is_today ? '#fff' : '#b45309', fontWeight: 700, fontSize: 12, height: 20 }} />
                       <Typography variant="body2" fontWeight={700} noWrap>{b.full_name}</Typography>
                       {b.department_name && <Typography variant="caption" color="textSecondary" noWrap>({b.department_name})</Typography>}
                     </Box>

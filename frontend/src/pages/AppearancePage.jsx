@@ -184,7 +184,7 @@ const PaletteColorInput = ({ label, value, fallback, onChange, onClear }) => (
       </Box>
     </Tooltip>
     <Typography sx={{
-      fontSize: 9, direction: 'ltr', minWidth: 52,
+      fontSize: 12, direction: 'ltr', minWidth: 52,
       color: value ? 'text.secondary' : 'text.disabled',
     }}>
       {value || 'پیش‌فرض'}
@@ -229,7 +229,7 @@ const ModulePaletteRow = ({ app }) => {
           <Typography variant="body2" sx={{ fontWeight: 400 }}>{app.title}</Typography>
           {customized && (
             <Chip size="small" label="سفارشی" sx={{
-              height: 17, fontSize: 8.5, fontWeight: 800,
+              height: 17, fontSize: 12, fontWeight: 800,
               bgcolor: alpha(displayAccent, 0.1), color: displayAccent,
             }} />
           )}
@@ -354,7 +354,7 @@ const TypographyCard = ({
         size="small"
         label={canEdit ? (saving ? 'در حال ذخیره…' : savedTick ? 'ذخیره شد' : 'ذخیره خودکار') : 'فقط مدیر ارشد'}
         sx={{
-          height: 20, fontSize: 10, fontWeight: 500,
+          height: 20, fontSize: 12, fontWeight: 500,
           bgcolor: canEdit ? `${SOFT.green}1f` : 'action.hover',
           color: canEdit ? SOFT.green : 'text.secondary',
         }}
@@ -464,13 +464,13 @@ const TypographyCard = ({
             دکمهٔ هدر
           </Box>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75, mt: 1 }}>
-            <Typography sx={{ fontSize: Math.max(type.statSize - 1, 10), color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: Math.max(type.statSize - 1, 12), color: 'text.secondary' }}>
               تعداد پرسنل:
             </Typography>
             <Typography sx={{ fontSize: `${type.statSize}px`, fontWeight: type.statWeight }}>
               ۱۲۸
             </Typography>
-            <Typography sx={{ fontSize: Math.max(type.statSize - 2, 9), color: 'text.secondary' }}>
+            <Typography sx={{ fontSize: Math.max(type.statSize - 2, 12), color: 'text.secondary' }}>
               نفر
             </Typography>
           </Box>
@@ -548,7 +548,7 @@ const AppearancePage = () => {
             size="small"
             label={`${formatPersianNumber(THEME_MODES.length)} پوسته`}
             sx={{
-              height: 20, fontSize: 10, fontWeight: 800,
+              height: 20, fontSize: 12, fontWeight: 800,
               bgcolor: `${SOFT.violet}1f`, color: SOFT.violet,
             }}
           />
@@ -581,7 +581,7 @@ const AppearancePage = () => {
                 <Typography variant="body2" sx={{ color: 'text.secondary', mt: 1 }}>
                   {MODE_DESC[m.key]?.desc || ''}
                 </Typography>
-                <Chip size="small" label={MODE_DESC[m.key]?.tagline || ''} variant="outlined" sx={{ mt: 0.8, height: 20, fontSize: 9.5 }} />
+                <Chip size="small" label={MODE_DESC[m.key]?.tagline || ''} variant="outlined" sx={{ mt: 0.8, height: 20, fontSize: 12 }} />
                 <Stack direction="row" spacing={0.5} sx={{ mt: 1 }} useFlexGap>
                   {(MODE_DESC[m.key]?.swatch || []).map((c, idx) => (
                     <Box key={idx} sx={{ width: 16, height: 16, borderRadius: '50%', background: c, border: '1px solid rgba(0,0,0,0.12)' }} />
@@ -612,14 +612,14 @@ const AppearancePage = () => {
           <Chip
             size="small"
             label={`${formatPersianNumber(moduleApps.length)} ماژول`}
-            sx={{ height: 20, fontSize: 10, fontWeight: 800, bgcolor: `${SOFT.teal}1f`, color: SOFT.teal }}
+            sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: `${SOFT.teal}1f`, color: SOFT.teal }}
           />
           <Chip
             size="small"
             variant="outlined"
             label={canEdit ? 'ذخیره خودکار' : 'فقط مدیر ارشد'}
             sx={{
-              height: 20, fontSize: 10, fontWeight: 500, ml: 'auto',
+              height: 20, fontSize: 12, fontWeight: 500, ml: 'auto',
               color: canEdit ? 'text.secondary' : 'warning.main',
             }}
           />
@@ -644,7 +644,7 @@ const AppearancePage = () => {
             </Typography>
 
             {moduleApps.length === 0 ? (
-              <Typography sx={{ fontSize: 11, color: 'text.disabled', py: 2, textAlign: 'center' }}>
+              <Typography sx={{ fontSize: 12, color: 'text.disabled', py: 2, textAlign: 'center' }}>
                 ماژولی برای تنظیم یافت نشد.
               </Typography>
             ) : (
@@ -699,7 +699,7 @@ const AppearancePage = () => {
                 width: 14, height: 14, borderRadius: '50%',
                 background: neonColor, boxShadow: `0 0 8px ${neonColor}`,
               }} />
-              <Typography sx={{ fontSize: 10.5, color: 'text.secondary', direction: 'ltr' }}>
+              <Typography sx={{ fontSize: 12, color: 'text.secondary', direction: 'ltr' }}>
                 {neonColor}
               </Typography>
             </Box>

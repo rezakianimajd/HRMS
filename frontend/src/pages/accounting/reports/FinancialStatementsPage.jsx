@@ -85,7 +85,7 @@ const PageFrame = ({ page, companyName, yearLabel, accent, children }) => {
               <PageIcon sx={{ fontSize: 20 }} />
             </Box>
             <Box sx={{ minWidth: 0 }}>
-              <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+              <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
                 {companyName}
               </Typography>
               <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900, color: theme.palette.text.primary }}>
@@ -94,10 +94,10 @@ const PageFrame = ({ page, companyName, yearLabel, accent, children }) => {
             </Box>
           </Stack>
           <Box sx={{ textAlign: 'left', flexShrink: 0 }}>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
               {yearLabel}
             </Typography>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: accent }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: accent }}>
               صفحه {toPersianDigits(page.page)}
             </Typography>
           </Box>
@@ -105,10 +105,10 @@ const PageFrame = ({ page, companyName, yearLabel, accent, children }) => {
         {children}
         <Divider sx={{ my: 2 }} />
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
             یادداشت‌های توضیحی، بخش جدایی‌ناپذیر صورت‌های مالی است.
           </Typography>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
             {REPORT_EDITION}
           </Typography>
         </Stack>
@@ -126,14 +126,14 @@ const MiniStat = ({ label, value, suffix = 'ریال', color }) => {
       p: 1.25, borderRadius: '12px', bgcolor: alpha(color, 0.045),
       border: `1px solid ${alpha(color, 0.14)}`, height: '100%',
     }}>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
         {label}
       </Typography>
       <Typography sx={{
         mt: 0.25, fontSize: Math.max(type.cardSize + 1, 15), fontWeight: 900,
         color, fontVariantNumeric: 'tabular-nums', lineHeight: 1.35,
       }}>
-        {value} <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 500, color: theme.palette.text.secondary }}>{suffix}</Typography>
+        {value} <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 500, color: theme.palette.text.secondary }}>{suffix}</Typography>
       </Typography>
     </Box>
   );
@@ -148,10 +148,10 @@ const PageNavigator = ({ pages, activeIndex, setActiveIndex }) => {
     <Stack spacing={0.9}>
       <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap>
         <Box sx={{ minWidth: 0 }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
             مرحله {toPersianDigits(activeIndex + 1)} از {toPersianDigits(pages.length)}
           </Typography>
-          <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary }}>
+          <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: theme.palette.text.primary }}>
             {page.title}
           </Typography>
         </Box>
@@ -205,7 +205,7 @@ const TocPage = ({ pages, companyName, yearLabel, accent, onNavigate, activePage
       <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900, color: theme.palette.text.primary, mb: 0.35 }}>
         اجزای صورت‌های مالی
       </Typography>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, mb: 1.5 }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary, mb: 1.5 }}>
         فهرست زیر بر اساس ساختار استاندارد صورت‌های مالی تهیه شده و هر ردیف قابل انتخاب است.
       </Typography>
 
@@ -213,7 +213,7 @@ const TocPage = ({ pages, companyName, yearLabel, accent, onNavigate, activePage
         <Box sx={{
           display: 'grid', gridTemplateColumns: '42px minmax(0, 1fr) 90px 70px',
           bgcolor: theme.palette.action.hover, px: 1.25, py: 0.75,
-          fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, color: theme.palette.text.secondary,
+          fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, color: theme.palette.text.secondary,
         }}>
           <span>#</span><span>عنوان</span><span>یادداشت</span><span>صفحه</span>
         </Box>
@@ -225,21 +225,21 @@ const TocPage = ({ pages, companyName, yearLabel, accent, onNavigate, activePage
             bgcolor: activePageId === page.id ? alpha(accent, 0.055) : 'transparent',
             '&:hover': { bgcolor: alpha(accent, 0.035) },
           }}>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), fontWeight: 800, color: accent }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), fontWeight: 800, color: accent }}>
               {toPersianDigits(index + 1)}
             </Typography>
             <Box sx={{ minWidth: 0 }}>
-              <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary }}>
+              <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: theme.palette.text.primary }}>
                 {page.title}
               </Typography>
-              <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+              <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
                 {page.subtitle}
               </Typography>
             </Box>
-            <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+            <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
               {page.noteRefs || '—'}
             </Typography>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: accent }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 900, color: accent }}>
               {toPersianDigits(page.page)}
             </Typography>
           </ButtonBase>
@@ -249,10 +249,10 @@ const TocPage = ({ pages, companyName, yearLabel, accent, onNavigate, activePage
       <Box sx={{ mt: 2, p: 1.5, borderRadius: '12px', bgcolor: alpha(accent, 0.035), border: `1px solid ${alpha(accent, 0.12)}` }}>
         <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
           <Box>
-            <Typography sx={{ fontSize: Math.max(type.bodySize, 11), fontWeight: 900, color: theme.palette.text.primary }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize, 12), fontWeight: 900, color: theme.palette.text.primary }}>
               یادداشت‌های توضیحی
             </Typography>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
               بخش جدایی‌ناپذیر صورت‌های مالی — صفحات ۱۰ تا ۵۷ و یادداشت‌های تکمیلی
             </Typography>
           </Box>
@@ -263,10 +263,10 @@ const TocPage = ({ pages, companyName, yearLabel, accent, onNavigate, activePage
           {pages.filter((page) => page.kind === 'note').map((note) => (
             <ButtonBase key={note.id} onClick={() => onNavigate(note.id)}
               sx={{ display: 'flex', justifyContent: 'space-between', gap: 1, width: '100%', textAlign: 'right', px: 0.5, py: 0.2, borderRadius: '7px' }}>
-              <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.primary }}>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.primary }}>
                 {note.number}. {note.title}
               </Typography>
-              <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary, flexShrink: 0 }}>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary, flexShrink: 0 }}>
                 {toPersianDigits(note.page)}
               </Typography>
             </ButtonBase>
@@ -286,12 +286,12 @@ const StatementTable = ({
   const columns = definition.columns;
   const statementValues = values?.[statementId] || {};
   const cellSx = {
-    fontSize: Math.max(type.bodySize - 2, 10), borderBottom: `1px solid ${theme.palette.divider}`,
+    fontSize: Math.max(type.bodySize - 2, 12), borderBottom: `1px solid ${theme.palette.divider}`,
     whiteSpace: 'nowrap', py: 0.5, px: 0.9,
   };
   const headSx = {
     ...cellSx, bgcolor: theme.palette.action.hover, fontWeight: 800,
-    color: theme.palette.text.primary, fontSize: Math.max(type.bodySize - 3, 9),
+    color: theme.palette.text.primary, fontSize: Math.max(type.bodySize - 3, 12),
   };
   const displayLabel = (row) => labels[labelKey(statementId, row.id)] ?? row.label;
   const displayValue = (row, columnKey) => {
@@ -329,7 +329,7 @@ const StatementTable = ({
                   }}>
                     {displayLabel(row)}
                     {row.standard ? (
-                      <Typography component="span" sx={{ mr: 1, fontSize: Math.max(type.bodySize - 3, 8.5), color: theme.palette.text.secondary }}>
+                      <Typography component="span" sx={{ mr: 1, fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
                         ({row.standard})
                       </Typography>
                     ) : null}
@@ -351,11 +351,11 @@ const StatementTable = ({
                       <TextField
                         variant="standard" size="small" value={displayLabel(row)}
                         onChange={(event) => onLabelChange(row.id, event.target.value)}
-                        inputProps={{ style: { fontSize: Math.max(type.bodySize - 2, 10) } }}
-                        sx={{ minWidth: 190, '& .MuiInputBase-root': { fontSize: Math.max(type.bodySize - 2, 10) } }}
+                        inputProps={{ style: { fontSize: Math.max(type.bodySize - 2, 12) } }}
+                        sx={{ minWidth: 190, '& .MuiInputBase-root': { fontSize: Math.max(type.bodySize - 2, 12) } }}
                       />
                     ) : (
-                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 10), fontWeight: isStrong ? 900 : 500 }}>
+                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), fontWeight: isStrong ? 900 : 500 }}>
                         {displayLabel(row)}
                       </Typography>
                     )}
@@ -387,14 +387,14 @@ const StatementTable = ({
                           inputMode: 'decimal',
                           style: {
                             textAlign: 'left', direction: 'ltr',
-                            fontSize: Math.max(type.bodySize - 2, 10),
+                            fontSize: Math.max(type.bodySize - 2, 12),
                             paddingLeft: 12, minWidth: 74,
                           },
                         }}
                       />
                     ) : (
                       <Typography sx={{
-                        fontSize: Math.max(type.bodySize - 2, 10), fontWeight: isStrong ? 800 : 500,
+                        fontSize: Math.max(type.bodySize - 2, 12), fontWeight: isStrong ? 800 : 500,
                         direction: 'ltr', textAlign: 'left',
                       }}>
                         {displayValue(row, column.key)}
@@ -432,7 +432,7 @@ const StatementPage = ({
           <Chip size="small" icon={<CheckCircleIcon sx={{ fontSize: 14 }} />} label="مقادیر خودکار" variant="outlined" sx={{ fontWeight: 700 }} />
         )}
       </Stack>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary, mb: 0.6 }}>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary, mb: 0.6 }}>
         {page.noteRefs ? `یادداشت‌های مرتبط: ${page.noteRefs}` : definition.footnote}
       </Typography>
       <StatementTable
@@ -473,7 +473,7 @@ const CoverPage = ({ pages, companyName, yearLabel, data, summary, accent, onNav
         <Box sx={{ position: 'relative', zIndex: 1 }}>
           <Chip size="small" label={REPORT_EDITION}
             sx={{ bgcolor: 'rgba(255,255,255,0.15)', color: '#fff', fontWeight: 800, mb: 2 }} />
-          <Typography sx={{ fontSize: Math.max(type.bodySize, 11.5), opacity: 0.8 }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize, 12), opacity: 0.8 }}>
             {companyName}
           </Typography>
           <Typography sx={{ fontSize: { xs: 27, md: 38 }, fontWeight: 900, mt: 0.5, lineHeight: 1.35 }}>
@@ -498,7 +498,7 @@ const CoverPage = ({ pages, companyName, yearLabel, data, summary, accent, onNav
       </Grid>
 
       <Box sx={{ mt: 2.5 }}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary, mb: 1 }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: theme.palette.text.primary, mb: 1 }}>
           اجزای گزارش
         </Typography>
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' }, gap: 0.75 }}>
@@ -516,10 +516,10 @@ const CoverPage = ({ pages, companyName, yearLabel, data, summary, accent, onNav
                 {React.createElement(ICONS[page.icon] || DescriptionIcon, { sx: { fontSize: 16 } })}
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 800, color: theme.palette.text.primary }}>
+                <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 800, color: theme.palette.text.primary }}>
                   {page.title}
                 </Typography>
-                <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+                <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
                   صفحه {toPersianDigits(page.page)}
                 </Typography>
               </Box>
@@ -544,14 +544,14 @@ const TocSidebar = ({ pages, activePageId, onNavigate, accent, currentIndex }) =
       contentSx={{ p: 0.9, maxHeight: '72vh', overflowY: 'auto' }}
       action={(
         <Chip size="small" label={`${toPersianDigits(pages.length)} صفحه`}
-          sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
+          sx={{ height: 22, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
       )}
     >
       <Stack spacing={0.25}>
         {groups.map((group) => (
           <Box key={group}>
             <Typography sx={{
-              px: 0.85, pt: 1, pb: 0.5, fontSize: Math.max(type.bodySize - 3, 9),
+              px: 0.85, pt: 1, pb: 0.5, fontSize: Math.max(type.bodySize - 3, 12),
               fontWeight: 800, color: theme.palette.text.secondary,
             }}>
               {group}
@@ -577,12 +577,12 @@ const TocSidebar = ({ pages, activePageId, onNavigate, accent, currentIndex }) =
                   </Box>
                   <Box sx={{ flex: 1, minWidth: 0 }}>
                     <Typography noWrap sx={{
-                      fontSize: Math.max(type.bodySize - 2, 9.8), fontWeight: active ? 900 : 600,
+                      fontSize: Math.max(type.bodySize - 2, 12), fontWeight: active ? 900 : 600,
                       color: active ? accent : theme.palette.text.primary,
                     }}>
                       {page.short}
                     </Typography>
-                    <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.secondary }}>
+                    <Typography noWrap sx={{ fontSize: Math.max(type.bodySize - 4, 12), color: theme.palette.text.secondary }}>
                       صفحه {toPersianDigits(page.page)}
                     </Typography>
                   </Box>
@@ -594,12 +594,12 @@ const TocSidebar = ({ pages, activePageId, onNavigate, accent, currentIndex }) =
         ))}
       </Stack>
       <Box sx={{ mt: 1, pt: 1, borderTop: `1px solid ${theme.palette.divider}` }}>
-        <Typography sx={{ px: 0.85, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+        <Typography sx={{ px: 0.85, fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
           پیشرفت مرور گزارش
         </Typography>
         <Box sx={{ px: 0.85, mt: 0.5 }}>
           <ProgressBar value={((currentIndex + 1) / Math.max(pages.length, 1)) * 100} color={accent} height={5} />
-          <Typography sx={{ mt: 0.4, fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.secondary }}>
+          <Typography sx={{ mt: 0.4, fontSize: Math.max(type.bodySize - 4, 12), color: theme.palette.text.secondary }}>
             {toPersianDigits(currentIndex + 1)} از {toPersianDigits(pages.length)} صفحه
           </Typography>
         </Box>
@@ -627,10 +627,10 @@ const NotesIndexPage = ({ pages, companyName, yearLabel, accent, onNavigate, edi
         p: 1.35, mb: 1.5, borderRadius: '12px', bgcolor: alpha(accent, 0.035),
         border: `1px solid ${alpha(accent, 0.12)}`,
       }}>
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 900, color: theme.palette.text.primary }}>
           یادداشت‌های توضیحی، بخش جدایی‌ناپذیر صورت‌های مالی
         </Typography>
-        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 2, 9.8), color: theme.palette.text.secondary, lineHeight: 1.85 }}>
+        <Typography sx={{ mt: 0.35, fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary, lineHeight: 1.85 }}>
           هر یادداشت از همان گروه‌های حساب دفاتر ساخته می‌شود که جمع آن در صورت‌های مالی اساسی استفاده شده است.
           یادداشت‌های بدون داده به‌صورت خودکار حذف می‌شوند و یادداشت‌های الزامی رویه‌های حسابداری همیشه ارائه می‌شوند.
         </Typography>
@@ -645,14 +645,14 @@ const NotesIndexPage = ({ pages, companyName, yearLabel, accent, onNavigate, edi
             <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1}>
               <Chip size="small" label={note.number}
                 sx={{ height: 21, minWidth: 23, fontWeight: 900, bgcolor: alpha(accent, 0.08), color: accent }} />
-              <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+              <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
                 صفحه {toPersianDigits(note.page)}
               </Typography>
             </Stack>
-            <Typography sx={{ mt: 0.6, fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+            <Typography sx={{ mt: 0.6, fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 900, color: theme.palette.text.primary }}>
               {note.title}
             </Typography>
-            <Typography noWrap sx={{ mt: 0.15, fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+            <Typography noWrap sx={{ mt: 0.15, fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
               {note.tables?.length ? `${toPersianDigits(note.tables.length)} جدول · ${note.tables.some((table) => table.hasData) ? 'دارای داده' : 'بدون داده'}` : 'متن استاندارد'}
             </Typography>
           </ButtonBase>
@@ -667,12 +667,12 @@ const NoteTable = ({ table, accent, editMode, onCellChange }) => {
   const { typography } = useModulePalette();
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
   const cellSx = {
-    fontSize: Math.max(type.bodySize - 2, 9.5), borderBottom: `1px solid ${theme.palette.divider}`,
+    fontSize: Math.max(type.bodySize - 2, 12), borderBottom: `1px solid ${theme.palette.divider}`,
     py: 0.45, px: 0.75, whiteSpace: 'nowrap',
   };
   const headSx = {
     ...cellSx, bgcolor: theme.palette.action.hover, fontWeight: 800,
-    color: theme.palette.text.primary, fontSize: Math.max(type.bodySize - 3, 9),
+    color: theme.palette.text.primary, fontSize: Math.max(type.bodySize - 3, 12),
   };
   const columns = table.columns || NOTE_AMOUNT_COLUMNS;
   const display = (row, column) => {
@@ -686,11 +686,11 @@ const NoteTable = ({ table, accent, editMode, onCellChange }) => {
     <Box sx={{ mt: 1.25 }}>
       <Stack direction="row" spacing={0.75} alignItems="center" sx={{ mb: 0.5 }}>
         <Box sx={{ width: 4, height: 16, borderRadius: 2, bgcolor: accent }} />
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 900, color: theme.palette.text.primary }}>
           {table.title}
         </Typography>
         <Box sx={{ flex: 1 }} />
-        <Chip size="small" label="مبالغ به ریال" sx={{ height: 20, fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 700 }} />
+        <Chip size="small" label="مبالغ به ریال" sx={{ height: 20, fontSize: Math.max(type.bodySize - 4, 12), fontWeight: 700 }} />
       </Stack>
       <TableContainer sx={{ overflowX: 'auto', '@media print': { overflow: 'visible' } }}>
         <Table size="small" sx={{ minWidth: Math.max(480, 190 + columns.length * 105) }}>
@@ -727,11 +727,11 @@ const NoteTable = ({ table, accent, editMode, onCellChange }) => {
                     color: theme.palette.text.primary,
                   }}>
                     <Stack direction="row" spacing={0.5} alignItems="center">
-                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), fontWeight: isTotal ? 900 : 500 }}>
+                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), fontWeight: isTotal ? 900 : 500 }}>
                         {row.label}
                       </Typography>
                       {row.code ? (
-                        <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.disabled }}>
+                        <Typography component="span" sx={{ fontSize: Math.max(type.bodySize - 4, 12), color: theme.palette.text.disabled }}>
                           {toPersianDigits(row.code)}
                         </Typography>
                       ) : null}
@@ -750,12 +750,12 @@ const NoteTable = ({ table, accent, editMode, onCellChange }) => {
                           inputProps={{
                             style: {
                               textAlign: 'left', direction: 'ltr',
-                              fontSize: Math.max(type.bodySize - 2, 9.5), paddingLeft: 8, minWidth: 70,
+                              fontSize: Math.max(type.bodySize - 2, 12), paddingLeft: 8, minWidth: 70,
                             },
                           }}
                         />
                       ) : (
-                        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), fontWeight: isTotal ? 800 : 500, direction: 'ltr', textAlign: 'left' }}>
+                        <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), fontWeight: isTotal ? 800 : 500, direction: 'ltr', textAlign: 'left' }}>
                           {display(row, column)}
                         </Typography>
                       )}
@@ -794,7 +794,7 @@ const NoteSummary = ({ tables, accent }) => {
           sx={{
             height: 'auto', py: 0.55, borderRadius: '8px', fontWeight: 700,
             bgcolor: alpha(accent, 0.055), color: theme.palette.text.primary,
-            '& .MuiChip-label': { whiteSpace: 'normal', lineHeight: 1.6, fontSize: Math.max(type.bodySize - 3, 9) },
+            '& .MuiChip-label': { whiteSpace: 'normal', lineHeight: 1.6, fontSize: Math.max(type.bodySize - 3, 12) },
           }}
         />
       ))}
@@ -816,7 +816,7 @@ const ExcelNoteGrid = ({ grid, editMode, onCellChange }) => {
     }
   }));
   const cellSx = {
-    fontSize: Math.max(type.bodySize - 2, 9.2),
+    fontSize: Math.max(type.bodySize - 2, 12),
     border: `1px solid ${theme.palette.divider}`,
     py: 0.4, px: 0.55, verticalAlign: 'middle', whiteSpace: 'normal',
   };
@@ -871,12 +871,12 @@ const ExcelNoteGrid = ({ grid, editMode, onCellChange }) => {
                         inputProps={{
                           style: {
                             textAlign: 'left', direction: 'ltr',
-                            fontSize: Math.max(type.bodySize - 2, 9.2), paddingLeft: 6, minWidth: 54,
+                            fontSize: Math.max(type.bodySize - 2, 12), paddingLeft: 6, minWidth: 54,
                           },
                         }}
                       />
                     ) : (
-                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.2), direction: 'ltr', textAlign: 'left' }}>
+                      <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), direction: 'ltr', textAlign: 'left' }}>
                         {cell.v === null || cell.v === undefined || cell.v === '' ? '—' : formatPersianNumber(cell.v)}
                       </Typography>
                     )}
@@ -937,11 +937,11 @@ const NotePage = ({
                 fullWidth multiline minRows={2} size="small"
                 value={paragraph}
                 onChange={(event) => onParagraphChange(page.page, index, event.target.value)}
-                inputProps={{ style: { fontSize: Math.max(type.bodySize - 1, 10.5), lineHeight: 1.9 } }}
+                inputProps={{ style: { fontSize: Math.max(type.bodySize - 1, 12), lineHeight: 1.9 } }}
               />
             ) : (
               <Typography key={`${page.id}-p-${index}`} sx={{
-                fontSize: Math.max(type.bodySize - 1, 10.5),
+                fontSize: Math.max(type.bodySize - 1, 12),
                 fontWeight: isHeadingParagraph(paragraph) ? 800 : 400,
                 color: isHeadingParagraph(paragraph) ? theme.palette.text.primary : theme.palette.text.secondary,
                 lineHeight: 1.95, whiteSpace: 'pre-wrap',
@@ -952,7 +952,7 @@ const NotePage = ({
           ))}
         </Stack>
       ) : (
-        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), color: theme.palette.text.secondary }}>
+        <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), color: theme.palette.text.secondary }}>
           این یادداشت به‌صورت خودکار از دفاتر حسابداری تهیه شده است.
         </Typography>
       )}
@@ -975,14 +975,14 @@ const NotePage = ({
         ))
       )}
       {page.grid?.hasNumber ? (
-        <Typography sx={{ mt: 0.75, fontSize: Math.max(type.bodySize - 4, 8.5), color: theme.palette.text.secondary }}>
+        <Typography sx={{ mt: 0.75, fontSize: Math.max(type.bodySize - 4, 12), color: theme.palette.text.secondary }}>
           ساختار ردیف‌ها، ستون‌ها و ادغام‌ها عیناً از فایل ۳۸۴-v1 آمده است. علامت «—» یعنی مقدار آن خانه از دفاتر قابل استخراج نبوده و در حالت ویرایش قابل تکمیل است.
         </Typography>
       ) : null}
       {page.grid?.hasNumber && page.grid.coverage < 0.35
         && page.tables?.some((table) => table.rows?.length) ? (
           <Box sx={{ mt: 1.75 }}>
-            <Typography sx={{ mb: 0.5, fontSize: Math.max(type.bodySize - 2, 9.8), fontWeight: 800, color: theme.palette.text.secondary }}>
+            <Typography sx={{ mb: 0.5, fontSize: Math.max(type.bodySize - 2, 12), fontWeight: 800, color: theme.palette.text.secondary }}>
               جمع‌بندی خودکار از گروه‌های حساب (برای کنترل و تکمیل جدول بالا)
             </Typography>
             {page.tables.filter((table) => table.rows?.length).map((table) => (
@@ -1001,7 +1001,7 @@ const NotePage = ({
           mt: 1.75, p: 1, borderRadius: '9px', bgcolor: alpha(accent, 0.035),
           border: `1px solid ${alpha(accent, 0.1)}`,
         }}>
-          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9), color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), color: theme.palette.text.secondary }}>
             جمع این یادداشت با ردیف متناظر در صورت‌های مالی اساسی از یک منبع (گروه‌های حساب دفاتر) محاسبه شده است.
           </Typography>
         </Box>
@@ -1336,10 +1336,10 @@ const FinancialStatementsPage = () => {
             <DescriptionIcon sx={{ fontSize: 20 }} />
           </Box>
           <Box sx={{ minWidth: 0 }}>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 10.5), fontWeight: 900, color: theme.palette.text.primary }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 1, 12), fontWeight: 900, color: theme.palette.text.primary }}>
               {companyName}
             </Typography>
-            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 9.5), color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: Math.max(type.bodySize - 2, 12), color: theme.palette.text.secondary }}>
               {yearLabel} · {REPORT_EDITION}
             </Typography>
           </Box>

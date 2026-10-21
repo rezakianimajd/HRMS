@@ -394,7 +394,7 @@ const BaleAudiencePanel = () => {
                         <Box key={c.chat_id} sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
                           <Checkbox size="small" checked={selected.includes(c.chat_id)} onChange={() => toggle(c.chat_id)} />
                           <Typography variant="body2" noWrap>{c.name}</Typography>
-                          {c.tag && <Chip size="small" label={c.tag} sx={{ height: 18, fontSize: 10 }} color="secondary" />}
+                          {c.tag && <Chip size="small" label={c.tag} sx={{ height: 18, fontSize: 12 }} color="secondary" />}
                           <Typography variant="caption" color="textSecondary">{c.chat_id}</Typography>
                           <IconButton size="small" onClick={() => { setContactForm({ id: c.id, name: c.name, chat_id: c.chat_id, category: c.category, tag: c.tag || '' }); setContactDialog(true); }}><EditIcon fontSize="small" /></IconButton>
                           <IconButton size="small" color="error" onClick={() => deleteContact.mutate(c.id)}><DeleteIcon fontSize="small" /></IconButton>

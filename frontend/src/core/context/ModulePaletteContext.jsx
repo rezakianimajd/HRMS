@@ -4,7 +4,7 @@ import React, {
 import axiosInstance from '../api/axiosConfig';
 import useAuth from '../hooks/useAuth';
 import useCompany from '../hooks/useCompany';
-import { DEFAULT_TYPOGRAPHY } from '../theme/appearanceDefaults';
+import { DEFAULT_TYPOGRAPHY, MIN_TYPOGRAPHY_SIZES } from '../theme/appearanceDefaults';
 
 // رنگ تاکیدی پیشنهادی هر ماژول (فقط برای نمایش در انتخاب‌گر؛ تا ذخیره نشود اعمال نمی‌شود)
 export const MODULE_DEFAULT_ACCENTS = {
@@ -45,7 +45,15 @@ const normalizeTypography = (raw) => {
   const value = raw && typeof raw === 'object' ? raw : {};
   const safe = {};
   Object.keys(DEFAULT_TYPOGRAPHY).forEach((key) => {
-    safe[key] = value[key] ?? DEFAULT_TYPOGRAPHY[key];
+    const candidate = value[key] ?? DEFAULT_TYPOGRAPHY[key];
+    if (MIN_TYPOGRAPHY_SIZES[key] != null) {
+      const numeric = Number(candidate);
+      safe[key] = Number.isFinite(numeric)
+        ? Math.max(MIN_TYPOGRAPHY_SIZES[key], numeric)
+        : DEFAULT_TYPOGRAPHY[key];
+    } else {
+      safe[key] = candidate;
+    }
   });
   return safe;
 };

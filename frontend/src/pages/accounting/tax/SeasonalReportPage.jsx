@@ -82,7 +82,7 @@ const SeasonalReportPage = () => {
                     <TableCell>
                       {p.sale_count > 0 ? (
                         <>
-                          <Chip size="small" label={`${toPersianDigits(p.sale_count)} فاکتور`} sx={{ height: 18, fontSize: 10, mb: 0.25, display: 'block' }} />
+                          <Chip size="small" label={`${toPersianDigits(p.sale_count)} فاکتور`} sx={{ height: 18, fontSize: 12, mb: 0.25, display: 'block' }} />
                           <Typography variant="body2" color={GREEN}>{formatPersianNumber(p.sale_amount)}</Typography>
                         </>
                       ) : '—'}
@@ -90,7 +90,7 @@ const SeasonalReportPage = () => {
                     <TableCell>
                       {p.purchase_count > 0 ? (
                         <>
-                          <Chip size="small" label={`${toPersianDigits(p.purchase_count)} فاکتور`} sx={{ height: 18, fontSize: 10, mb: 0.25, display: 'block' }} />
+                          <Chip size="small" label={`${toPersianDigits(p.purchase_count)} فاکتور`} sx={{ height: 18, fontSize: 12, mb: 0.25, display: 'block' }} />
                           <Typography variant="body2" color={RED}>{formatPersianNumber(p.purchase_amount)}</Typography>
                         </>
                       ) : '—'}
@@ -98,7 +98,7 @@ const SeasonalReportPage = () => {
                     <TableCell>
                       {p.service_count > 0 ? (
                         <>
-                          <Chip size="small" label={`${toPersianDigits(p.service_count)}`} sx={{ height: 18, fontSize: 10, mb: 0.25, display: 'block' }} />
+                          <Chip size="small" label={`${toPersianDigits(p.service_count)}`} sx={{ height: 18, fontSize: 12, mb: 0.25, display: 'block' }} />
                           <Typography variant="body2" color={BLUE}>{formatPersianNumber(p.service_amount)}</Typography>
                         </>
                       ) : '—'}

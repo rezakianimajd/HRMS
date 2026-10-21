@@ -98,7 +98,7 @@ const ContractTemplatesPage = () => {
                   <TableRow key={t.id} hover>
                     <TableCell><Typography variant="body2" fontWeight={700}>{t.name}</Typography></TableCell>
                     <TableCell>
-                      <Chip size="small" label={t.contract_type_name || '—'} sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca', fontWeight: 700, fontSize: 11 }} />
+                      <Chip size="small" label={t.contract_type_name || '—'} sx={{ bgcolor: 'rgba(99,102,241,0.1)', color: '#4338ca', fontWeight: 700, fontSize: 12 }} />
                     </TableCell>
                     <TableCell><Typography variant="caption" color="textSecondary">{t.description ? t.description.slice(0, 60) : '—'}</Typography></TableCell>
                     <TableCell sx={{ whiteSpace: 'nowrap' }}>

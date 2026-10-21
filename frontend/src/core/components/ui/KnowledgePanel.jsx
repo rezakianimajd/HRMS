@@ -164,7 +164,7 @@ const KnowledgePanel = () => {
             <Paper key={k.id} variant="outlined" sx={{ p: 1.25, borderRadius: '10px', background: 'rgba(255,255,255,0.6)' }}>
               <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1 }}>
                 <Chip size="small" label={k.category_display || CATEGORIES[k.category] || k.category}
-                  sx={{ bgcolor: `${CATEGORY_COLORS[k.category] || '#64748b'}18`, color: CATEGORY_COLORS[k.category] || '#64748b', fontWeight: 700, fontSize: 10, height: 20 }} />
+                  sx={{ bgcolor: `${CATEGORY_COLORS[k.category] || '#64748b'}18`, color: CATEGORY_COLORS[k.category] || '#64748b', fontWeight: 700, fontSize: 12, height: 20 }} />
                 <Typography variant="body2" fontWeight={800} sx={{ flex: 1 }}>{k.title}</Typography>
                 <Box sx={{ display: 'flex', gap: 0.25 }}>
                   <Tooltip title="ویرایش">

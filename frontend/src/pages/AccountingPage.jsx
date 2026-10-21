@@ -64,12 +64,12 @@ const CATEGORY_COLORS = {
 };
 
 const tableHeadSx = {
-  px: 1, py: 1, fontSize: 10.5, fontWeight: 800, color: '#334155',
+  px: 1, py: 1, fontSize: 12, fontWeight: 800, color: '#334155',
   bgcolor: '#f1f5f9', borderBottom: '1px solid #dbe4ee', whiteSpace: 'nowrap',
   textAlign: 'center',
 };
 const tableCellSx = {
-  px: 1, py: 0.8, fontSize: 10.5, color: '#334155',
+  px: 1, py: 0.8, fontSize: 12, color: '#334155',
   borderBottom: '1px solid #eef2f7', whiteSpace: 'nowrap',
   textAlign: 'center', fontVariantNumeric: 'tabular-nums',
 };
@@ -208,14 +208,14 @@ const AccountingPage = () => {
                   </Box>
                   <Box sx={{ minWidth: 0 }}>
                     <Typography sx={{ fontSize: 16, fontWeight: 900, color: INK }}>نبض مالی سازمان</Typography>
-                    <Typography sx={{ mt: 0.25, fontSize: 10.5, color: MUTED, lineHeight: 1.8 }}>
+                    <Typography sx={{ mt: 0.25, fontSize: 12, color: MUTED, lineHeight: 1.8 }}>
                       جمع‌بندی وضعیت دفتر کل، عملکرد ماه جاری و سلامت اسناد
                     </Typography>
                     <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.75 }}>
                       <Chip size="small" label={eq.balanced ? 'دفاتر تراز است' : 'اختلاف تراز'}
-                        sx={{ height: 21, fontSize: 9.5, fontWeight: 800, bgcolor: eq.balanced ? '#eff6ff' : '#fff1f2', color: eq.balanced ? '#1d4ed8' : '#be123c' }} />
+                        sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: eq.balanced ? '#eff6ff' : '#fff1f2', color: eq.balanced ? '#1d4ed8' : '#be123c' }} />
                       <Chip size="small" label={`${toPersianDigits(Math.round(postingRate))}٪ ثبت نهایی`}
-                        sx={{ height: 21, fontSize: 9.5, bgcolor: '#f8fafc', color: '#475569' }} />
+                        sx={{ height: 21, fontSize: 12, bgcolor: '#f8fafc', color: '#475569' }} />
                     </Stack>
                   </Box>
                 </Stack>
@@ -234,12 +234,12 @@ const AccountingPage = () => {
                             <Box sx={{ width: 26, height: 26, borderRadius: '8px', bgcolor: '#fff', color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e8edf4' }}>
                               <item.icon sx={{ fontSize: 15 }} />
                             </Box>
-                            <Typography sx={{ fontSize: 9.5, color: MUTED }}>{item.label}</Typography>
+                            <Typography sx={{ fontSize: 12, color: MUTED }}>{item.label}</Typography>
                           </Stack>
                           <Chip size="small"
                             label={item.delta == null ? '—' : `${Number(item.delta) >= 0 ? '+' : ''}${toPersianDigits(item.delta)}٪`}
                             sx={{
-                              height: 19, fontSize: 9, fontWeight: 800,
+                              height: 19, fontSize: 12, fontWeight: 800,
                               bgcolor: item.delta == null ? '#fff' : (item.inverse ? Number(item.delta) <= 0 : Number(item.delta) >= 0) ? '#eff6ff' : '#fff1f2',
                               color: item.delta == null ? MUTED : (item.inverse ? Number(item.delta) <= 0 : Number(item.delta) >= 0) ? '#1d4ed8' : '#be123c',
                             }} />
@@ -247,7 +247,7 @@ const AccountingPage = () => {
                         <Typography sx={{ mt: 0.75, fontSize: 15, fontWeight: 900, color: item.color, direction: 'rtl' }}>
                           {formatPersianNumber(item.value)}
                         </Typography>
-                        <Typography sx={{ fontSize: 9, color: MUTED }}>ریال</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>ریال</Typography>
                       </Box>
                     </Grid>
                   ))}
@@ -289,7 +289,7 @@ const AccountingPage = () => {
           {/* دسترسی سریع */}
           <SurfaceCard title="میز کار حسابداری" icon={HubIcon} color={VIOLET} sx={{ mb: 2 }}
             action={<Chip size="small" label={`${toPersianDigits(QUICK_ACTIONS.length)} میان‌بر`}
-              sx={{ height: 22, fontSize: 10, bgcolor: '#f5f3ff', color: '#6d28d9' }} />}>
+              sx={{ height: 22, fontSize: 12, bgcolor: '#f5f3ff', color: '#6d28d9' }} />}>
             <Grid container spacing={1}>
               {QUICK_ACTIONS.map((action) => (
                 <Grid item xs={12} sm={6} md={4} lg={2} key={action.label}>
@@ -310,14 +310,14 @@ const AccountingPage = () => {
               <SurfaceCard title="روند درآمد و هزینه" icon={ShowChartIcon} color={BLUE}
                 action={(
                   <Stack direction="row" spacing={0.5} useFlexGap>
-                    <Chip size="small" label={`درآمد: ${formatPersianNumber(revenueMonth)}`} sx={{ height: 21, fontSize: 9.5, bgcolor: '#eff6ff', color: '#1d4ed8' }} />
-                    <Chip size="small" label={`هزینه: ${formatPersianNumber(expenseMonth)}`} sx={{ height: 21, fontSize: 9.5, bgcolor: '#fff1f2', color: '#be123c' }} />
+                    <Chip size="small" label={`درآمد: ${formatPersianNumber(revenueMonth)}`} sx={{ height: 21, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} />
+                    <Chip size="small" label={`هزینه: ${formatPersianNumber(expenseMonth)}`} sx={{ height: 21, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
                   </Stack>
                 )}>
                 {trend.length === 0 ? (
                   <Box sx={{ py: 6, textAlign: 'center' }}>
                     <ShowChartIcon sx={{ fontSize: 42, color: '#cbd5e1', mb: 1 }} />
-                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>داده‌ای برای روند ماهانه ثبت نشده است.</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>داده‌ای برای روند ماهانه ثبت نشده است.</Typography>
                   </Box>
                 ) : (
                   <ResponsiveContainer width="100%" height={310}>
@@ -333,9 +333,9 @@ const AccountingPage = () => {
                         </linearGradient>
                       </defs>
                       <CartesianGrid strokeDasharray="3 3" stroke="#eef2f7" vertical={false} />
-                      <XAxis dataKey="label" reversed tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} />
-                      <YAxis orientation="right" tick={{ fontSize: 9.5, fill: '#64748b' }} tickFormatter={(value) => formatPersianNumber(value)} axisLine={false} tickLine={false} width={74} />
-                      <ReTooltip formatter={(value) => formatPersianNumber(value)} contentStyle={{ direction: 'rtl', textAlign: 'right', borderRadius: 10, border: '1px solid #e8edf4', fontSize: 11 }} />
+                      <XAxis dataKey="label" reversed tick={{ fontSize: 12, fill: '#64748b' }} axisLine={false} tickLine={false} />
+                      <YAxis orientation="right" tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(value) => formatPersianNumber(value)} axisLine={false} tickLine={false} width={74} />
+                      <ReTooltip formatter={(value) => formatPersianNumber(value)} contentStyle={{ direction: 'rtl', textAlign: 'right', borderRadius: 10, border: '1px solid #e8edf4', fontSize: 12 }} />
                       <Area type="monotone" dataKey="revenue" name="درآمد" stroke={GREEN} fill="url(#accRevenue)" strokeWidth={2.2} />
                       <Area type="monotone" dataKey="expense" name="هزینه" stroke={RED} fill="url(#accExpense)" strokeWidth={2.2} />
                       <Line type="monotone" dataKey="net" name="سود خالص" stroke={AMBER} strokeWidth={2} dot={{ r: 2.5, fill: AMBER }} />
@@ -348,7 +348,7 @@ const AccountingPage = () => {
 
             <Grid item xs={12} lg={4}>
               <SurfaceCard title="وضعیت اسناد" icon={PieChartIcon} color={CYAN}
-                action={<Chip size="small" label={`${toPersianDigits(totalDocuments)} سند`} sx={{ height: 22, fontSize: 10, bgcolor: '#ecfeff', color: '#0e7490' }} />}>
+                action={<Chip size="small" label={`${toPersianDigits(totalDocuments)} سند`} sx={{ height: 22, fontSize: 12, bgcolor: '#ecfeff', color: '#0e7490' }} />}>
                 <Box sx={{ position: 'relative', height: 230 }}>
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -356,12 +356,12 @@ const AccountingPage = () => {
                         paddingAngle={3} startAngle={90} endAngle={450}>
                         {statusData.map((item) => <Cell key={item.key} fill={STATUS_COLORS[item.key] || '#64748b'} />)}
                       </Pie>
-                      <ReTooltip formatter={(value) => formatPersianNumber(value)} contentStyle={{ direction: 'rtl', textAlign: 'right', borderRadius: 10, border: '1px solid #e8edf4', fontSize: 11 }} />
+                      <ReTooltip formatter={(value) => formatPersianNumber(value)} contentStyle={{ direction: 'rtl', textAlign: 'right', borderRadius: 10, border: '1px solid #e8edf4', fontSize: 12 }} />
                     </PieChart>
                   </ResponsiveContainer>
                   <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
                     <Typography sx={{ fontSize: 24, fontWeight: 900, color: INK }}>{toPersianDigits(statusTotal)}</Typography>
-                    <Typography sx={{ fontSize: 9.5, color: MUTED }}>کل اسناد</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>کل اسناد</Typography>
                   </Box>
                 </Box>
                 <Stack spacing={0.65} sx={{ mt: 1 }}>
@@ -370,14 +370,14 @@ const AccountingPage = () => {
                       onClick={() => navigate('/accounting/documents', { state: { status: item.key, fiscal_year: year?.id } })}
                       sx={{ cursor: 'pointer', p: 0.5, borderRadius: '7px', '&:hover': { bgcolor: '#f8fafc' } }}>
                       <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: STATUS_COLORS[item.key] || '#64748b' }} />
-                      <Typography sx={{ flex: 1, fontSize: 10, color: '#475569' }}>{item.name}</Typography>
-                      <Typography sx={{ fontSize: 10, fontWeight: 800, color: INK }}>{toPersianDigits(item.value)}</Typography>
-                      <Typography sx={{ width: 34, textAlign: 'left', fontSize: 9, color: MUTED }}>
+                      <Typography sx={{ flex: 1, fontSize: 12, color: '#475569' }}>{item.name}</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{toPersianDigits(item.value)}</Typography>
+                      <Typography sx={{ width: 34, textAlign: 'left', fontSize: 12, color: MUTED }}>
                         {toPersianDigits(Math.round((item.value / Math.max(statusTotal, 1)) * 100))}٪
                       </Typography>
                     </Stack>
                   ))}
-                  {statusData.length === 0 ? <Typography sx={{ fontSize: 10.5, color: MUTED, textAlign: 'center' }}>سندی ثبت نشده است.</Typography> : null}
+                  {statusData.length === 0 ? <Typography sx={{ fontSize: 12, color: MUTED, textAlign: 'center' }}>سندی ثبت نشده است.</Typography> : null}
                 </Stack>
               </SurfaceCard>
             </Grid>
@@ -391,12 +391,12 @@ const AccountingPage = () => {
                 <Box sx={{ p: 1.4, borderRadius: '13px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
                   <Stack direction="row" alignItems="center" spacing={1} useFlexGap>
                     <Box sx={{ flex: 1, textAlign: 'center' }}>
-                      <Typography sx={{ fontSize: 9.5, color: MUTED }}>دارایی‌ها</Typography>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>دارایی‌ها</Typography>
                       <Typography sx={{ mt: 0.25, fontSize: 14, fontWeight: 900, color: BLUE }}>{formatPersianNumber(eq.assets)}</Typography>
                     </Box>
                     <Typography sx={{ fontSize: 20, color: '#94a3b8', fontWeight: 300 }}>=</Typography>
                     <Box sx={{ flex: 1, textAlign: 'center' }}>
-                      <Typography sx={{ fontSize: 9.5, color: MUTED }}>بدهی + حقوق مالکانه</Typography>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>بدهی + حقوق مالکانه</Typography>
                       <Typography sx={{ mt: 0.25, fontSize: 14, fontWeight: 900, color: VIOLET }}>{formatPersianNumber(eq.liabilities_equity)}</Typography>
                     </Box>
                   </Stack>
@@ -406,11 +406,11 @@ const AccountingPage = () => {
                 </Box>
                 <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap sx={{ mt: 1 }}>
                   <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: eq.balanced ? BLUE : RED }} />
-                  <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: eq.balanced ? '#1d4ed8' : '#be123c' }}>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: eq.balanced ? '#1d4ed8' : '#be123c' }}>
                     {eq.balanced ? 'دفاتر تراز است' : `اختلاف تراز: ${formatPersianNumber(eq.difference)}`}
                   </Typography>
                 </Stack>
-                <Typography sx={{ mt: 1, fontSize: 9.5, color: MUTED, lineHeight: 1.8 }}>
+                <Typography sx={{ mt: 1, fontSize: 12, color: MUTED, lineHeight: 1.8 }}>
                   نسبت حقوق مالکانه به دارایی‌ها: {toPersianDigits(Math.round(equityRatio))}٪ · نسبت بدهی: {toPersianDigits(Math.round(liabilityRatio))}٪
                 </Typography>
               </SurfaceCard>
@@ -427,15 +427,15 @@ const AccountingPage = () => {
                         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.4 }}>
                           <Stack direction="row" alignItems="center" spacing={0.55} useFlexGap>
                             <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color }} />
-                            <Typography sx={{ fontSize: 10, color: '#475569' }}>{item.label}</Typography>
+                            <Typography sx={{ fontSize: 12, color: '#475569' }}>{item.label}</Typography>
                           </Stack>
-                          <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{formatPersianNumber(value)}</Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{formatPersianNumber(value)}</Typography>
                         </Stack>
                         <ProgressBar value={(Math.abs(value) / categoryMax) * 100} color={color} height={5} />
                       </Box>
                     );
                   })}
-                  {categories.length === 0 ? <Typography sx={{ fontSize: 10.5, color: MUTED, textAlign: 'center', py: 3 }}>طبقه‌ای ثبت نشده است.</Typography> : null}
+                  {categories.length === 0 ? <Typography sx={{ fontSize: 12, color: MUTED, textAlign: 'center', py: 3 }}>طبقه‌ای ثبت نشده است.</Typography> : null}
                 </Stack>
               </SurfaceCard>
             </Grid>
@@ -443,21 +443,21 @@ const AccountingPage = () => {
             <Grid item xs={12} sm={6} lg={4}>
               <SurfaceCard title="ارزش افزوده" icon={ReceiptLongIcon} color={AMBER}
                 action={<Chip size="small" label={vatNet >= 0 ? 'قابل پرداخت' : 'قابل استرداد'}
-                  sx={{ height: 21, fontSize: 9.5, bgcolor: vatNet >= 0 ? '#fff1f2' : '#eff6ff', color: vatNet >= 0 ? '#be123c' : '#1d4ed8' }} />}>
+                  sx={{ height: 21, fontSize: 12, bgcolor: vatNet >= 0 ? '#fff1f2' : '#eff6ff', color: vatNet >= 0 ? '#be123c' : '#1d4ed8' }} />}>
                 <Box sx={{ p: 1.4, borderRadius: '13px', bgcolor: SOFT_BG, border: '1px solid #eef2f7', textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: 9.5, color: MUTED }}>خالص ارزش افزوده دوره</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>خالص ارزش افزوده دوره</Typography>
                   <Typography sx={{ mt: 0.3, fontSize: 20, fontWeight: 900, color: vatNet >= 0 ? '#be123c' : '#1d4ed8' }}>{formatPersianNumber(Math.abs(vatNet))}</Typography>
-                  <Typography sx={{ fontSize: 9, color: MUTED }}>ریال · {vatNet >= 0 ? 'بدهی مالیاتی' : 'اعتبار مالیاتی'}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>ریال · {vatNet >= 0 ? 'بدهی مالیاتی' : 'اعتبار مالیاتی'}</Typography>
                 </Box>
                 <Stack spacing={0.9} sx={{ mt: 1.2 }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
-                    <Typography sx={{ fontSize: 10, color: MUTED }}>قابل پرداخت (فروش)</Typography>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: '#be123c' }}>{formatPersianNumber(vat.payable || 0)}</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>قابل پرداخت (فروش)</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#be123c' }}>{formatPersianNumber(vat.payable || 0)}</Typography>
                   </Stack>
                   <ProgressBar value={(Number(vat.payable || 0) / Math.max(Number(vat.payable || 0) + Number(vat.receivable || 0), 1)) * 100} color={RED} height={5} />
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
-                    <Typography sx={{ fontSize: 10, color: MUTED }}>قابل استرداد (خرید)</Typography>
-                    <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: '#1d4ed8' }}>{formatPersianNumber(vat.receivable || 0)}</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>قابل استرداد (خرید)</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#1d4ed8' }}>{formatPersianNumber(vat.receivable || 0)}</Typography>
                   </Stack>
                   <ProgressBar value={(Number(vat.receivable || 0) / Math.max(Number(vat.payable || 0) + Number(vat.receivable || 0), 1)) * 100} color={BLUE} height={5} />
                 </Stack>
@@ -470,9 +470,9 @@ const AccountingPage = () => {
           <Grid container spacing={2} sx={{ mb: 2 }}>
             <Grid item xs={12} lg={5}>
               <SurfaceCard title="حساب‌های پرگردش" icon={AssessmentIcon} color={VIOLET}
-                action={<Chip size="small" label="۵ حساب برتر" sx={{ height: 21, fontSize: 9.5, bgcolor: '#f5f3ff', color: '#6d28d9' }} />}>
+                action={<Chip size="small" label="۵ حساب برتر" sx={{ height: 21, fontSize: 12, bgcolor: '#f5f3ff', color: '#6d28d9' }} />}>
                 {topAccounts.length === 0 ? (
-                  <Typography sx={{ fontSize: 10.5, color: MUTED, textAlign: 'center', py: 4 }}>گردشی ثبت نشده است.</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, textAlign: 'center', py: 4 }}>گردشی ثبت نشده است.</Typography>
                 ) : (
                   <Stack spacing={1.1}>
                     {topAccounts.map((account, index) => (
@@ -482,13 +482,13 @@ const AccountingPage = () => {
                             width: 22, height: 22, flexShrink: 0, borderRadius: '7px',
                             bgcolor: index === 0 ? '#eff6ff' : '#f8fafc', color: index === 0 ? BLUE : MUTED,
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
-                            fontSize: 9.5, fontWeight: 800,
+                            fontSize: 12, fontWeight: 800,
                           }}>{toPersianDigits(index + 1)}</Box>
                           <Box sx={{ flex: 1, minWidth: 0 }}>
-                            <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }} noWrap>{account.name}</Typography>
-                            <Typography sx={{ fontSize: 9, color: MUTED }}>{toPersianDigits(account.code || '—')}</Typography>
+                            <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }} noWrap>{account.name}</Typography>
+                            <Typography sx={{ fontSize: 12, color: MUTED }}>{toPersianDigits(account.code || '—')}</Typography>
                           </Box>
-                          <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: '#b45309', whiteSpace: 'nowrap' }}>
+                          <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#b45309', whiteSpace: 'nowrap' }}>
                             {formatPersianNumber(account.turnover || 0)}
                           </Typography>
                         </Stack>
@@ -519,14 +519,14 @@ const AccountingPage = () => {
                   return (
                     <Box key={side} sx={{ mb: side === 'receivable' ? 1.5 : 0 }}>
                       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.6 }}>
-                        <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: config.color }}>{config.label}</Typography>
-                        <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK }}>{formatPersianNumber(total)}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 800, color: config.color }}>{config.label}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{formatPersianNumber(total)}</Typography>
                       </Stack>
                       {buckets.map(([label, value]) => (
                         <Stack key={label} direction="row" alignItems="center" spacing={0.75} useFlexGap sx={{ mb: 0.45 }}>
-                          <Typography sx={{ width: 84, fontSize: 9, color: MUTED }}>{label}</Typography>
+                          <Typography sx={{ width: 84, fontSize: 12, color: MUTED }}>{label}</Typography>
                           <Box sx={{ flex: 1 }}><ProgressBar value={total > 0 ? (Number(value || 0) / total) * 100 : 0} color={config.color} height={4} /></Box>
-                          <Typography sx={{ width: 62, textAlign: 'left', fontSize: 9, fontWeight: 700, color: INK }}>{formatPersianNumber(value || 0)}</Typography>
+                          <Typography sx={{ width: 62, textAlign: 'left', fontSize: 12, fontWeight: 700, color: INK }}>{formatPersianNumber(value || 0)}</Typography>
                         </Stack>
                       ))}
                     </Box>
@@ -553,7 +553,7 @@ const AccountingPage = () => {
             action={(
               <Button size="small" variant="text" endIcon={<OpenInNewIcon sx={{ fontSize: 15 }} />}
                 onClick={() => navigate('/accounting/documents', { state: year?.id ? { fiscal_year: year.id } : undefined })}
-                sx={{ fontSize: 10, fontWeight: 700, textTransform: 'none' }}>
+                sx={{ fontSize: 12, fontWeight: 700, textTransform: 'none' }}>
                 مشاهدهٔ همهٔ اسناد
               </Button>
             )}>
@@ -590,7 +590,7 @@ const AccountingPage = () => {
                       <TableCell sx={tableCellSx}>
                         <Chip size="small" label={document.status_display || STATUS_LABELS[document.status] || '—'}
                           sx={{
-                            height: 20, fontSize: 9, fontWeight: 700,
+                            height: 20, fontSize: 12, fontWeight: 700,
                             bgcolor: `${STATUS_COLORS[document.status] || '#64748b'}18`,
                             color: STATUS_COLORS[document.status] || '#64748b',
                           }} />

@@ -329,14 +329,14 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
 const Row = ({ label, value, strong, red, green, highlight, foreign, foreignSymbol }) => (
   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, py: 0.35, px: 1, mb: 0.35, borderRadius: '8px', background: 'rgba(255,255,255,0.55)', border: '1px solid rgba(15,23,42,0.05)' }}>
-    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>{label}</Typography>
+    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>{label}</Typography>
     <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
       <Typography variant="body2" fontWeight={strong || highlight ? 800 : 700} fontSize={13}
         sx={{ direction: 'rtl', color: red ? '#b91c1c' : green ? '#059669' : highlight ? '#0ea5e9' : strong ? COLOR_DARK : 'text.primary' }}>
         {formatPersianNumber(value)}
       </Typography>
       {foreign != null && (
-        <Typography variant="caption" color="textSecondary" sx={{ direction: 'rtl', whiteSpace: 'nowrap', fontSize: 11 }}>
+        <Typography variant="caption" color="textSecondary" sx={{ direction: 'rtl', whiteSpace: 'nowrap', fontSize: 12 }}>
           ≈ {formatPersianNumber(foreign)} {foreignSymbol || ''}
         </Typography>
       )}
@@ -346,7 +346,7 @@ const Row = ({ label, value, strong, red, green, highlight, foreign, foreignSymb
 
 const Field = ({ label, value, strong, color }) => (
   <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }}>
-    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap', fontSize: 11 }}>{label}:</Typography>
+    <Typography variant="caption" color="textSecondary" sx={{ whiteSpace: 'nowrap', fontSize: 12 }}>{label}:</Typography>
     <Typography variant="body2" fontWeight={strong ? 800 : 700} sx={{ color: color || '#1e293b', fontSize: 13 }} noWrap>{value}</Typography>
   </Box>
 );
@@ -1012,15 +1012,15 @@ const StatementEditorPage = () => {
 
             {overContract > 0 ? (
               <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 9.5 }}>مبلغ تجمعی صورت‌وضعیت‌ها از مبلغ قرارداد بیشتر است ({money(overContract, currencyLabel)}).</Typography>
+                <Typography sx={{ fontSize: 12 }}>مبلغ تجمعی صورت‌وضعیت‌ها از مبلغ قرارداد بیشتر است ({money(overContract, currencyLabel)}).</Typography>
               </Alert>
             ) : null}
 
             {!filtered.length ? (
               <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
                 <ReceiptLongIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>صورت‌وضعیتی با این مشخصات ثبت نشده است.</Typography>
-                <Typography sx={{ fontSize: 9, color: MUTED, mt: 0.4 }}>اولین صورت‌وضعیت را ثبت کنید تا پوشش مالی و روند شکل بگیرد.</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>صورت‌وضعیتی با این مشخصات ثبت نشده است.</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.4 }}>اولین صورت‌وضعیت را ثبت کنید تا پوشش مالی و روند شکل بگیرد.</Typography>
                 <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت صورت‌وضعیت جدید</Button>
               </Paper>
             ) : view === 'cards' ? (
@@ -1041,11 +1041,11 @@ const StatementEditorPage = () => {
 
             <Box sx={{ mt: 1.5 }}>
               <SurfaceCard title="روند صورت‌وضعیت‌ها" icon={TrendingUpIcon} color={STATEMENT_ACCENT}
-                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(STATEMENT_ACCENT, 0.07), color: STATEMENT_ACCENT }} />}>
+                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(STATEMENT_ACCENT, 0.07), color: STATEMENT_ACCENT }} />}>
                 {monthlyData.some((item) => item.value > 0) ? (
                   <ColumnChart data={monthlyData} color={STATEMENT_ACCENT} height={150} />
                 ) : (
-                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
+                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 12 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
                 )}
               </SurfaceCard>
             </Box>
@@ -1122,10 +1122,10 @@ const StatementEditorView = ({
       </Grid>
 
       <Stack spacing={1.5}>
-        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
+        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
         {overContract ? (
           <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '10px', py: 0.2 }}>
-            <Typography sx={{ fontSize: 9.5 }}>مبلغ تجمعی واردشده از مبلغ قرارداد بیشتر است.</Typography>
+            <Typography sx={{ fontSize: 12 }}>مبلغ تجمعی واردشده از مبلغ قرارداد بیشتر است.</Typography>
           </Alert>
         ) : null}
 
@@ -1137,7 +1137,7 @@ const StatementEditorView = ({
             }}>
             <Stack spacing={1.5}>
               <Box>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
                 <Grid container spacing={1.1}>
                   <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="شماره صورت‌وضعیت" value={form.number || ''} onChange={(event) => update('number', event.target.value)} placeholder="مثلاً ST-1405-01" /></Grid>
                   <Grid item xs={12} sm={6}><JalaliDatePicker fullWidth label="تاریخ صورت‌وضعیت" value={form.date || ''} onChange={(value) => update('date', value)} /></Grid>
@@ -1155,14 +1155,14 @@ const StatementEditorView = ({
                   </Grid>
                   <Grid item xs={12}>
                     <FormControlLabel control={<Switch checked={Boolean(form.is_approved)} onChange={(event) => update('is_approved', event.target.checked)} />}
-                      label={<Typography sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>این صورت‌وضعیت تأیید شده است</Typography>} />
+                      label={<Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>این صورت‌وضعیت تأیید شده است</Typography>} />
                   </Grid>
                 </Grid>
               </Box>
 
               <Divider />
               <Box>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>کارکرد و مبالغ</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>کارکرد و مبالغ</Typography>
                 <Grid container spacing={1.1}>
                   <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="مبلغ تجمعی این صورت‌وضعیت" value={form.amount ?? 0} onChange={(value) => update('amount', value)} /></Grid>
                   <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="مبلغ تجمعی دوره قبل" value={cumulativePrev} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
@@ -1171,8 +1171,8 @@ const StatementEditorView = ({
                 </Grid>
                 <Box sx={{ mt: 1, p: 1.1, borderRadius: '12px', bgcolor: alpha('#0f766e', 0.05), border: `1px solid ${alpha('#0f766e', 0.16)}` }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Box><Typography sx={{ fontSize: 8.4, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>{money(netAmount, formCurrencyLabel)}</Typography></Box>
-                    <Box sx={{ textAlign: 'left' }}><Typography sx={{ fontSize: 8.4, color: MUTED }}>معادل ارزی</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{rate > 0 ? formatPersianNumber(netAmount / rate) : '—'} {formCurrencyLabel}</Typography></Box>
+                    <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>{money(netAmount, formCurrencyLabel)}</Typography></Box>
+                    <Box sx={{ textAlign: 'left' }}><Typography sx={{ fontSize: 12, color: MUTED }}>معادل ارزی</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{rate > 0 ? formatPersianNumber(netAmount / rate) : '—'} {formCurrencyLabel}</Typography></Box>
                   </Stack>
                 </Box>
               </Box>
@@ -1180,8 +1180,8 @@ const StatementEditorView = ({
               <Divider />
               <Box>
                 <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
-                  <Typography sx={{ flex: 1, fontSize: 10.5, fontWeight: 900, color: '#0f766e' }}>اضافات</Typography>
-                  <Chip size="small" label={money(additionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#ecfdf5', color: '#0f766e' }} />
+                  <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#0f766e' }}>اضافات</Typography>
+                  <Chip size="small" label={money(additionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
                 </Stack>
                 <Grid container spacing={0.8} sx={{ mb: 0.8 }}>
                   <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="ارزش افزوده" value={form.value_added_tax ?? 0} onChange={(value) => update('value_added_tax', value)} /></Grid>
@@ -1199,18 +1199,18 @@ const StatementEditorView = ({
                   <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.7 }}>
                     {additionList.map((definition) => (
                       <Chip key={definition.id} size="small" label={definition.description || definition.code} onClick={() => onChooseAddition(definition)}
-                        sx={{ height: 20, fontSize: 7.9, bgcolor: '#ecfdf5', color: '#0f766e' }} />
+                        sx={{ height: 20, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
                     ))}
                   </Stack>
                 ) : null}
-                <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddAddition} sx={{ color: '#0f766e', fontSize: 8.7 }}>افزودن اضافه</Button>
+                <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddAddition} sx={{ color: '#0f766e', fontSize: 12 }}>افزودن اضافه</Button>
               </Box>
 
               <Divider />
               <Box>
                 <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
-                  <Typography sx={{ flex: 1, fontSize: 10.5, fontWeight: 900, color: '#be123c' }}>کسورات</Typography>
-                  <Chip size="small" label={money(deductionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#fff1f2', color: '#be123c' }} />
+                  <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#be123c' }}>کسورات</Typography>
+                  <Chip size="small" label={money(deductionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
                 </Stack>
                 {deductions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`deduction-${index}`} sx={{ mb: 0.55 }}>
@@ -1224,16 +1224,16 @@ const StatementEditorView = ({
                   <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.7 }}>
                     {deductionList.map((definition) => (
                       <Chip key={definition.id} size="small" label={definition.description || definition.code} onClick={() => onChooseDeduction(definition)}
-                        sx={{ height: 20, fontSize: 7.9, bgcolor: '#fff1f2', color: '#be123c' }} />
+                        sx={{ height: 20, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
                     ))}
                   </Stack>
                 ) : null}
-                <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddDeduction} sx={{ color: '#be123c', fontSize: 8.7 }}>افزودن کسور</Button>
+                <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddDeduction} sx={{ color: '#be123c', fontSize: 12 }}>افزودن کسور</Button>
               </Box>
 
               <Divider />
               <Box>
-                <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: INK, mb: 0.7 }}>مدارک و پیوست‌ها</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>مدارک و پیوست‌ها</Typography>
                 <AttachmentPicker
                   documents={documents}
                   pendingFiles={pendingFiles}
@@ -1260,7 +1260,7 @@ const StatementEditorView = ({
           <Grid item xs={12} lg={6}>
             <Box sx={{ position: { lg: 'sticky' }, top: 16 }}>
               <SurfaceCard title="پیش‌نمایش صورت‌وضعیت" icon={ReceiptLongIcon} color={STATEMENT_ACCENT}
-                action={<Chip size="small" label="A4" sx={{ height: 20, fontSize: 7.7, bgcolor: SOFT_BG, color: MUTED }} />}
+                action={<Chip size="small" label="A4" sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />}
                 contentSx={{ p: 1 }}>
                 <StatementPreview form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions: previewAdditions, deductions }}
                   contract={contract} company={company} currencies={currencyList} rate={rate} />

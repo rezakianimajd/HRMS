@@ -369,8 +369,8 @@ const ThemedApp = () => {
       body1: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.8 },
       body2: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.8 },
       button: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, textTransform: 'none' },
-      caption: { fontSize: '11px', fontWeight: 400, lineHeight: 1.7 },
-      overline: { fontSize: '10px', fontWeight: 500, letterSpacing: '0.08em' },
+      caption: { fontSize: '12px', fontWeight: 400, lineHeight: 1.7 },
+      overline: { fontSize: '12px', fontWeight: 500, letterSpacing: '0.08em' },
     },
     shape: { borderRadius: 1 },
     components: {
@@ -415,7 +415,7 @@ const ThemedApp = () => {
         styleOverrides: { root: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight } },
       },
       MuiFormHelperText: {
-        styleOverrides: { root: { fontSize: '11px', fontWeight: 400 } },
+        styleOverrides: { root: { fontSize: '12px', fontWeight: 400 } },
       },
       MuiTableCell: {
         styleOverrides: {
@@ -442,7 +442,7 @@ const ThemedApp = () => {
         styleOverrides: { root: { borderRadius: '10px', fontWeight: 400, fontSize: '12px' } },
       },
       MuiTooltip: {
-        styleOverrides: { tooltip: { fontSize: '11px', fontWeight: 400 } },
+        styleOverrides: { tooltip: { fontSize: '12px', fontWeight: 400 } },
       },
       MuiListItemButton: {
         styleOverrides: {

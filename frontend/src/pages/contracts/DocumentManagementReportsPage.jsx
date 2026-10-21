@@ -122,9 +122,9 @@ const DocumentManagementReportsPage = () => {
                 <Stack key={item.key} direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 0.8, borderRadius: '9px', bgcolor: SOFT_BG }}>
                   <Stack direction="row" alignItems="center" spacing={0.6}>
                     <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: item.color }} />
-                    <Typography sx={{ fontSize: 8.8, color: INK }}>{item.label}</Typography>
+                    <Typography sx={{ fontSize: 12, color: INK }}>{item.label}</Typography>
                   </Stack>
-                  <Typography sx={{ fontSize: 10, fontWeight: 900, color: item.color }}>{formatPersianNumber(item.count)}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: item.color }}>{formatPersianNumber(item.count)}</Typography>
                 </Stack>
               ))}
             </Stack>
@@ -135,11 +135,11 @@ const DocumentManagementReportsPage = () => {
             <Stack spacing={0.55}>
               {byFolder.map((folder) => (
                 <Stack key={folder.id} direction="row" alignItems="center" justifyContent="space-between" sx={{ p: 0.55, borderBottom: '1px solid #eef2f7' }}>
-                  <Typography noWrap sx={{ fontSize: 8.7, color: INK }}>{folder.path || folder.name}</Typography>
-                  <Chip size="small" label={formatPersianNumber(folder.count)} sx={{ height: 18, fontSize: 7.5, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />
+                  <Typography noWrap sx={{ fontSize: 12, color: INK }}>{folder.path || folder.name}</Typography>
+                  <Chip size="small" label={formatPersianNumber(folder.count)} sx={{ height: 18, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />
                 </Stack>
               ))}
-              {!byFolder.length ? <Typography sx={{ fontSize: 8.6, color: MUTED }}>پوشه‌ای وجود ندارد.</Typography> : null}
+              {!byFolder.length ? <Typography sx={{ fontSize: 12, color: MUTED }}>پوشه‌ای وجود ندارد.</Typography> : null}
             </Stack>
           </SurfaceCard>
         </Grid>
@@ -151,40 +151,40 @@ const DocumentManagementReportsPage = () => {
             <Paper elevation={0} sx={{ border: '1px solid #eef2f7', borderRadius: '10px', overflow: 'hidden' }}>
               <Table size="small">
                 <TableHead><TableRow>
-                  {['عنوان', 'نوع سند', 'پوشه', 'محرمانگی', 'گردش‌کار', 'انقضا'].map((label) => <TableCell key={label} sx={{ fontSize: 8.5, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
+                  {['عنوان', 'نوع سند', 'پوشه', 'محرمانگی', 'گردش‌کار', 'انقضا'].map((label) => <TableCell key={label} sx={{ fontSize: 12, fontWeight: 800, bgcolor: SOFT_BG }}>{label}</TableCell>)}
                 </TableRow></TableHead>
                 <TableBody>
                   {recent.map((row) => (
                     <TableRow key={row.id} hover>
-                      <TableCell sx={{ fontSize: 8.8, fontWeight: 700 }}>{row.title}</TableCell>
-                      <TableCell sx={{ fontSize: 8.4, color: MUTED }}>{DOCUMENT_TYPE[row.document_type]?.label || '—'}</TableCell>
-                      <TableCell sx={{ fontSize: 8.4, color: MUTED }}>{row.folder_path || '—'}</TableCell>
-                      <TableCell><Chip size="small" label={CONFIDENTIALITY[row.confidentiality]?.label || '—'} sx={{ height: 18, fontSize: 7.4, bgcolor: CONFIDENTIALITY[row.confidentiality]?.bg, color: CONFIDENTIALITY[row.confidentiality]?.color }} /></TableCell>
-                      <TableCell><Chip size="small" label={WORKFLOW_STATUS[row.workflow_status]?.label || '—'} sx={{ height: 18, fontSize: 7.4, bgcolor: WORKFLOW_STATUS[row.workflow_status]?.bg, color: WORKFLOW_STATUS[row.workflow_status]?.color }} /></TableCell>
-                      <TableCell sx={{ fontSize: 8.2, color: row.is_expired ? '#be123c' : MUTED }}>{toJalali(row.expiry_date)}</TableCell>
+                      <TableCell sx={{ fontSize: 12, fontWeight: 700 }}>{row.title}</TableCell>
+                      <TableCell sx={{ fontSize: 12, color: MUTED }}>{DOCUMENT_TYPE[row.document_type]?.label || '—'}</TableCell>
+                      <TableCell sx={{ fontSize: 12, color: MUTED }}>{row.folder_path || '—'}</TableCell>
+                      <TableCell><Chip size="small" label={CONFIDENTIALITY[row.confidentiality]?.label || '—'} sx={{ height: 18, fontSize: 12, bgcolor: CONFIDENTIALITY[row.confidentiality]?.bg, color: CONFIDENTIALITY[row.confidentiality]?.color }} /></TableCell>
+                      <TableCell><Chip size="small" label={WORKFLOW_STATUS[row.workflow_status]?.label || '—'} sx={{ height: 18, fontSize: 12, bgcolor: WORKFLOW_STATUS[row.workflow_status]?.bg, color: WORKFLOW_STATUS[row.workflow_status]?.color }} /></TableCell>
+                      <TableCell sx={{ fontSize: 12, color: row.is_expired ? '#be123c' : MUTED }}>{toJalali(row.expiry_date)}</TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
-              {!recent.length ? <Typography sx={{ p: 2, fontSize: 8.8, color: MUTED }}>سندی ثبت نشده است.</Typography> : null}
+              {!recent.length ? <Typography sx={{ p: 2, fontSize: 12, color: MUTED }}>سندی ثبت نشده است.</Typography> : null}
             </Paper>
           </SurfaceCard>
         </Grid>
         <Grid item xs={12} lg={5}>
           <SurfaceCard title="اسناد نیازمند اقدام" icon={WarningAmberOutlinedIcon} color="#be123c"
-            action={<Chip size="small" label={formatPersianNumber(expiring.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: '#fff1f2', color: '#be123c' }} />}>
+            action={<Chip size="small" label={formatPersianNumber(expiring.length)} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />}>
             <Stack spacing={0.55}>
               {expiring.slice(0, 8).map((row) => (
                 <Stack key={row.id} direction="row" alignItems="center" spacing={0.6} sx={{ p: 0.65, borderRadius: '9px', border: '1px solid #f1f5f9' }}>
                   <WarningAmberOutlinedIcon sx={{ fontSize: 14, color: row.is_expired ? '#be123c' : '#b45309' }} />
                   <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography noWrap sx={{ fontSize: 8.7, fontWeight: 800, color: INK }}>{row.title}</Typography>
-                    <Typography sx={{ fontSize: 7.5, color: MUTED }}>{row.folder_path || 'بدون پوشه'} · {toJalali(row.expiry_date)}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.title}</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>{row.folder_path || 'بدون پوشه'} · {toJalali(row.expiry_date)}</Typography>
                   </Box>
-                  <Chip size="small" label={row.is_expired ? 'منقضی' : `${toPersianDigits(row.days_until_expiry)} روز`} sx={{ height: 18, fontSize: 7.3, bgcolor: row.is_expired ? '#fff1f2' : '#fffbeb', color: row.is_expired ? '#be123c' : '#b45309' }} />
+                  <Chip size="small" label={row.is_expired ? 'منقضی' : `${toPersianDigits(row.days_until_expiry)} روز`} sx={{ height: 18, fontSize: 12, bgcolor: row.is_expired ? '#fff1f2' : '#fffbeb', color: row.is_expired ? '#be123c' : '#b45309' }} />
                 </Stack>
               ))}
-              {!expiring.length ? <Typography sx={{ fontSize: 8.6, color: MUTED }}>سند نیازمند اقدامی وجود ندارد.</Typography> : null}
+              {!expiring.length ? <Typography sx={{ fontSize: 12, color: MUTED }}>سند نیازمند اقدامی وجود ندارد.</Typography> : null}
             </Stack>
           </SurfaceCard>
         </Grid>
@@ -196,8 +196,8 @@ const DocumentManagementReportsPage = () => {
 const DistributionRow = ({ label, count, percent, color }) => (
   <Box>
     <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.35 }}>
-      <Typography sx={{ fontSize: 8.6, color: INK }}>{label}</Typography>
-      <Typography sx={{ fontSize: 8.4, fontWeight: 800, color }}>{formatPersianNumber(count)} · {toPersianDigits(percent)}٪</Typography>
+      <Typography sx={{ fontSize: 12, color: INK }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 800, color }}>{formatPersianNumber(count)} · {toPersianDigits(percent)}٪</Typography>
     </Stack>
     <Box sx={{ height: 5, borderRadius: 999, bgcolor: '#eef2f7', overflow: 'hidden' }}>
       <Box sx={{ height: '100%', width: `${percent}%`, bgcolor: color, borderRadius: 999 }} />

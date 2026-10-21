@@ -144,7 +144,7 @@ const BasicInfoTab = ({ employee }) => {
                   {(ins.dependents || []).map(dep => (
                     <Box key={dep.id} sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
                       <Typography variant="caption">{dep.first_name} {dep.last_name}</Typography>
-                      <Chip size="small" label={dep.relation_display || dep.relation} sx={{ height: 20, fontSize: 10 }} />
+                      <Chip size="small" label={dep.relation_display || dep.relation} sx={{ height: 20, fontSize: 12 }} />
                     </Box>
                   ))}
                 </Box>

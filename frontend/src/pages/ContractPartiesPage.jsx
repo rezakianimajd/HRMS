@@ -253,7 +253,7 @@ const ContractPartiesPage = () => {
                             {p.mobile && <Typography variant="caption" color="textSecondary" noWrap>{toPersianDigits(p.mobile)}</Typography>}
                           </Box>
                           <Box sx={{ textAlign: 'left', flexShrink: 0 }}>
-                            <Chip size="small" label={active ? 'فعال' : 'غیرفعال'} color={active ? 'success' : 'default'} variant="outlined" sx={{ height: 20, fontSize: 10 }} />
+                            <Chip size="small" label={active ? 'فعال' : 'غیرفعال'} color={active ? 'success' : 'default'} variant="outlined" sx={{ height: 20, fontSize: 12 }} />
                           </Box>
                         </Box>
                       </Paper>

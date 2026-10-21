@@ -158,8 +158,8 @@ const MetaPill = ({ label, value, color }) => {
       bgcolor: alpha(pillColor, 0.05), border: `1px solid ${alpha(pillColor, 0.12)}`,
       borderRadius: '9px', px: 1, py: 0.45,
     }}>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 8.5), fontWeight: 800, color: pillColor, whiteSpace: 'nowrap' }}>{label}</Typography>
-      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 700, color: theme.palette.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</Typography>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 4, 12), fontWeight: 800, color: pillColor, whiteSpace: 'nowrap' }}>{label}</Typography>
+      <Typography sx={{ fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 700, color: theme.palette.text.primary, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{value || '—'}</Typography>
     </Box>
   );
 };
@@ -215,7 +215,7 @@ const AccountingDocumentNewPage = () => {
   const accent = getPalette('accounting')?.accent || '#2563eb';
   const cardBorder = theme.palette.divider;
   const muted = theme.palette.text.secondary;
-  const gridFont = Math.max(type.bodySize - 1, 10);
+  const gridFont = Math.max(type.bodySize - 1, 12);
 
   const [header, setHeader] = useState({
     number: '',
@@ -895,7 +895,7 @@ const AccountingDocumentNewPage = () => {
           <Stack direction="row" spacing={0.75} useFlexGap alignItems="center">
             {warningCount > 0 ? (
               <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 14 }} />} label={`${toPersianDigits(warningCount)} هشدار`}
-                sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
+                sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, bgcolor: '#fffbeb', color: '#b45309' }} />
             ) : null}
             {editable ? (
               <>
@@ -947,7 +947,7 @@ const AccountingDocumentNewPage = () => {
                         <WarningAmberIcon sx={{ fontSize: 13, color: issues.some((i) => i.hard) ? RED : AMBER, cursor: 'help' }} />
                       </Tooltip>
                     ) : null}
-                    <Typography sx={{ fontFamily: FONT, fontSize: Math.max(type.bodySize - 3, 9), fontWeight: 800, color: activeRow === index ? accent : muted }}>{toPersianDigits(index + 1)}</Typography>
+                    <Typography sx={{ fontFamily: FONT, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, color: activeRow === index ? accent : muted }}>{toPersianDigits(index + 1)}</Typography>
                   </Stack>
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <Tooltip title="شامل معاملات فصلی و ارزش افزوده">
@@ -1026,7 +1026,7 @@ const AccountingDocumentNewPage = () => {
         sx={{ mt: 1.5 }}
       >
         <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
-          <Chip size="small" label={`ردیف ${toPersianDigits(activeRow + 1)}`} sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 9.5), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
+          <Chip size="small" label={`ردیف ${toPersianDigits(activeRow + 1)}`} sx={{ height: 23, fontSize: Math.max(type.bodySize - 3, 12), fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
           <MetaPill label="معین" value={activeAccount ? `${activeAccount.code} — ${activeAccount.name}` : '—'} />
           {['تفصیل ۱', 'تفصیل ۲', 'تفصیل ۳'].map((label, index) => (
             <MetaPill key={label} label={label} value={activeAuxs[index] ? `${activeAuxs[index].code} — ${activeAuxs[index].name}` : '—'} color={activeAuxs[index] ? GREEN : muted} />

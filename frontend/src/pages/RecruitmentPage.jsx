@@ -377,7 +377,7 @@ const RecruitmentPage = () => {
                         <TableCell>{formatPersianNumber(r.headcount)} نفر</TableCell>
                         <TableCell>
                           <Chip size="small" label={REQ_STATUS[r.status] || r.status}
-                            sx={{ bgcolor: `${REQ_STATUS_COLORS[r.status] || '#64748b'}18`, color: REQ_STATUS_COLORS[r.status] || '#64748b', fontWeight: 700, fontSize: 11 }} />
+                            sx={{ bgcolor: `${REQ_STATUS_COLORS[r.status] || '#64748b'}18`, color: REQ_STATUS_COLORS[r.status] || '#64748b', fontWeight: 700, fontSize: 12 }} />
                         </TableCell>
                         <TableCell>{formatPersianNumber(r.candidates_count || 0)}</TableCell>
                         <TableCell>
@@ -436,7 +436,7 @@ const RecruitmentPage = () => {
                         {STAGE_LABELS[stage]}
                       </Typography>
                       <Chip size="small" label={toPersianDigits(inStage.length)}
-                        sx={{ bgcolor: `${STAGE_COLORS[stage]}18`, color: STAGE_COLORS[stage], fontWeight: 800, fontSize: 11, height: 20 }} />
+                        sx={{ bgcolor: `${STAGE_COLORS[stage]}18`, color: STAGE_COLORS[stage], fontWeight: 800, fontSize: 12, height: 20 }} />
                     </Box>
                     <Stack spacing={1}>
                       {inStage.map(c => (
@@ -547,11 +547,11 @@ const RecruitmentPage = () => {
                           <Typography variant="body1" fontWeight={800} noWrap>{i.candidate_full_name || `کاندید #${i.candidate}`}</Typography>
                           {cand && (
                             <Chip size="small" label={STAGE_LABELS[cand.stage] || cand.stage}
-                              sx={{ bgcolor: `${STAGE_COLORS[cand.stage] || '#64748b'}18`, color: STAGE_COLORS[cand.stage] || '#64748b', fontWeight: 700, fontSize: 10, height: 18, mt: 0.25 }} />
+                              sx={{ bgcolor: `${STAGE_COLORS[cand.stage] || '#64748b'}18`, color: STAGE_COLORS[cand.stage] || '#64748b', fontWeight: 700, fontSize: 12, height: 18, mt: 0.25 }} />
                           )}
                         </Box>
                         <Chip size="small" label={OUTCOME[i.outcome] || i.outcome}
-                          sx={{ bgcolor: `${OUTCOME_COLORS[i.outcome] || '#64748b'}18`, color: OUTCOME_COLORS[i.outcome] || '#64748b', fontWeight: 700, fontSize: 11 }} />
+                          sx={{ bgcolor: `${OUTCOME_COLORS[i.outcome] || '#64748b'}18`, color: OUTCOME_COLORS[i.outcome] || '#64748b', fontWeight: 700, fontSize: 12 }} />
                       </Box>
                       <Box sx={{ mt: 1.5, display: 'flex', flexDirection: 'column', gap: 0.5 }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.75 }}>
@@ -700,9 +700,9 @@ const RecruitmentPage = () => {
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, flexWrap: 'wrap' }}>
                 <Typography variant="h6" fontWeight={800} color="#0369a1">{viewReq.title}</Typography>
                 <Chip size="small" label={REQ_STATUS[viewReq.status] || viewReq.status}
-                  sx={{ bgcolor: `${REQ_STATUS_COLORS[viewReq.status] || '#64748b'}18`, color: REQ_STATUS_COLORS[viewReq.status] || '#64748b', fontWeight: 700, fontSize: 11 }} />
+                  sx={{ bgcolor: `${REQ_STATUS_COLORS[viewReq.status] || '#64748b'}18`, color: REQ_STATUS_COLORS[viewReq.status] || '#64748b', fontWeight: 700, fontSize: 12 }} />
                 <Chip size="small" variant="outlined" label={`${formatPersianNumber(viewReq.candidates_count || 0)} کاندید`}
-                  sx={{ fontWeight: 700, fontSize: 11 }} />
+                  sx={{ fontWeight: 700, fontSize: 12 }} />
               </Box>
               <Grid container spacing={1.5}>
                 {[
@@ -881,7 +881,7 @@ const RecruitmentPage = () => {
                     <Box sx={{ flex: 1, minWidth: 0 }}>
                       <Typography variant="body2" fontWeight={800}>{sel.full_name}</Typography>
                       <Chip size="small" label={STAGE_LABELS[sel.stage] || sel.stage}
-                        sx={{ bgcolor: `${STAGE_COLORS[sel.stage] || '#64748b'}18`, color: STAGE_COLORS[sel.stage] || '#64748b', fontWeight: 700, fontSize: 10, height: 18, mt: 0.25 }} />
+                        sx={{ bgcolor: `${STAGE_COLORS[sel.stage] || '#64748b'}18`, color: STAGE_COLORS[sel.stage] || '#64748b', fontWeight: 700, fontSize: 12, height: 18, mt: 0.25 }} />
                     </Box>
                   </Box>
                   <Grid container spacing={1} sx={{ mt: 1 }}>
@@ -972,7 +972,7 @@ const RecruitmentPage = () => {
                   <Box sx={{ flex: 1 }}>
                     <Typography variant="body1" fontWeight={800}>{viewInterview.candidate_full_name || `کاندید #${viewInterview.candidate}`}</Typography>
                     <Chip size="small" label={OUTCOME[viewInterview.outcome] || viewInterview.outcome}
-                      sx={{ bgcolor: `${OUTCOME_COLORS[viewInterview.outcome] || '#64748b'}18`, color: OUTCOME_COLORS[viewInterview.outcome] || '#64748b', fontWeight: 700, fontSize: 11, mt: 0.25 }} />
+                      sx={{ bgcolor: `${OUTCOME_COLORS[viewInterview.outcome] || '#64748b'}18`, color: OUTCOME_COLORS[viewInterview.outcome] || '#64748b', fontWeight: 700, fontSize: 12, mt: 0.25 }} />
                   </Box>
                 </Box>
                 {cand && (

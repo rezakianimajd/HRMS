@@ -81,7 +81,7 @@ export const TabsCard = ({ tabs = [], value, onChange, activeColor = SOFT.indigo
                 <Chip
                   size="small" label={tab.badge}
                   sx={{
-                    height: 17, fontSize: 9.5, fontWeight: 800,
+                    height: 17, fontSize: 12, fontWeight: 800,
                     bgcolor: alpha(activeColor, 0.12), color: activeColor,
                     '& .MuiChip-label': { px: 0.6 },
                   }}

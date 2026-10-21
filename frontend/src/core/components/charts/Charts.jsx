@@ -107,7 +107,7 @@ export const ColumnChart = ({ data, color = '#10b981', height = 200 }) => {
             borderRadius: '6px 6px 0 0',
             transition: 'height 0.6s ease',
           }} />
-          <Typography variant="caption" sx={{ mt: 0.5, fontSize: 10, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
+          <Typography variant="caption" sx={{ mt: 0.5, fontSize: 12, textAlign: 'center', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: '100%' }}>
             {d.label}
           </Typography>
         </Box>
@@ -155,7 +155,7 @@ export const MultiLineChart = ({ series = [], labels = [], height = 220 }) => {
       {labels.length > 0 && (
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
           {labels.map((l, i) => (
-            <Typography key={i} variant="caption" fontSize={10}>{l}</Typography>
+            <Typography key={i} variant="caption" fontSize={12}>{l}</Typography>
           ))}
         </Box>
       )}
@@ -204,7 +204,7 @@ export const LineChart = ({ data, color = '#3b82f6', height = 200, labels }) => 
       {labels && (
         <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 0.5 }}>
           {labels.map((l, i) => (
-            <Typography key={i} variant="caption" fontSize={10}>{l}</Typography>
+            <Typography key={i} variant="caption" fontSize={12}>{l}</Typography>
           ))}
         </Box>
       )}

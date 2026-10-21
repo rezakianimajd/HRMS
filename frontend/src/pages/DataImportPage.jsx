@@ -144,7 +144,7 @@ const DataImportPage = () => {
         </Alert>
       )}
       {result?.validation_errors?.length > 0 && (
-        <Paper sx={{ mb: 2, p: 1.5, maxHeight: 130, overflow: 'auto', fontSize: '0.72rem' }}>
+        <Paper sx={{ mb: 2, p: 1.5, maxHeight: 130, overflow: 'auto', fontSize: '0.75rem' }}>
           {result.validation_errors.slice(0, 10).map((v, i) => (
             <Typography key={i} variant="caption" color="error" display="block">
               ردیف {v.row}: {v.errors.join(' — ')}

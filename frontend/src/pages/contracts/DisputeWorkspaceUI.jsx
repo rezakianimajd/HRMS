@@ -70,19 +70,19 @@ export const DisputeCard = ({ row, onView, onEdit, onDelete }) => {
           <Icon sx={{ fontSize: 19 }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 10.6, fontWeight: 900, color: INK }}>{row.title || 'اختلاف قرارداد'}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.3, color: MUTED }}>{row.contract_subject || 'قرارداد'} · {DISPUTE_TYPES[row.dispute_type] || 'سایر'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{row.title || 'اختلاف قرارداد'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.contract_subject || 'قرارداد'} · {DISPUTE_TYPES[row.dispute_type] || 'سایر'}</Typography>
         </Box>
-        <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+        <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
       </Stack>
 
       <Box sx={{ borderRadius: '11px', p: 0.9, bgcolor: alpha(severity.color, 0.035), border: `1px solid ${alpha(severity.color, 0.13)}` }}>
         <Stack direction="row" justifyContent="space-between" alignItems="flex-start" spacing={1}>
           <Box>
-            <Typography sx={{ fontSize: 8.1, color: MUTED }}>مبلغ ادعا</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ ادعا</Typography>
             <Typography sx={{ fontSize: 13, fontWeight: 900, color: row.claim_amount ? severity.color : MUTED }}>{row.claim_amount ? money(row.claim_amount, 'ریال') : 'ثبت نشده'}</Typography>
           </Box>
-          <Chip size="small" label={`شدت ${severity.label}`} sx={{ height: 21, fontSize: 8.2, fontWeight: 800, bgcolor: severity.bg, color: severity.color }} />
+          <Chip size="small" label={`شدت ${severity.label}`} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: severity.bg, color: severity.color }} />
         </Stack>
       </Box>
 
@@ -92,12 +92,12 @@ export const DisputeCard = ({ row, onView, onEdit, onDelete }) => {
       </Grid>
 
       {row.description ? (
-        <Typography sx={{ fontSize: 8.4, color: MUTED, lineHeight: 1.8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{row.description}</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED, lineHeight: 1.8, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{row.description}</Typography>
       ) : null}
 
       <Divider sx={{ mt: 'auto' }} />
       <Stack direction="row" alignItems="center" spacing={0.2}>
-        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 8.2, minWidth: 0 }}>جزئیات</Button>
+        <Button size="small" startIcon={<VisibilityOutlinedIcon />} onClick={() => onView(row)} sx={{ fontSize: 12, minWidth: 0 }}>جزئیات</Button>
         <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)} sx={{ color: MUTED, p: 0.35 }}><EditOutlinedIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
         <Box sx={{ flex: 1 }} />
         <Tooltip title="حذف"><IconButton size="small" onClick={() => onDelete(row)} sx={{ color: RED, p: 0.35 }}><DeleteOutlineIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
@@ -108,8 +108,8 @@ export const DisputeCard = ({ row, onView, onEdit, onDelete }) => {
 
 export const DisputeTable = ({ rows, onView, onEdit, onDelete }) => {
   const theme = useTheme();
-  const headSx = { fontWeight: 800, fontSize: 8.6, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
-  const cellSx = { fontSize: 8.8, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
+  const headSx = { fontWeight: 800, fontSize: 12, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
+  const cellSx = { fontSize: 12, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
   return (
     <Paper elevation={0} sx={{ borderRadius: '16px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
       <TableContainer sx={{ maxHeight: 560 }}>
@@ -130,8 +130,8 @@ export const DisputeTable = ({ rows, onView, onEdit, onDelete }) => {
                   <TableCell sx={{ ...cellSx, fontWeight: 800, maxWidth: 230, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.title || '—'}</TableCell>
                   <TableCell sx={{ ...cellSx, maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}>{row.contract_subject || '—'}</TableCell>
                   <TableCell sx={cellSx}>{DISPUTE_TYPES[row.dispute_type] || 'سایر'}</TableCell>
-                  <TableCell sx={cellSx}><Chip size="small" label={severity.label} sx={{ height: 19, fontSize: 7.9, bgcolor: severity.bg, color: severity.color, fontWeight: 800 }} /></TableCell>
-                  <TableCell sx={cellSx}><Chip size="small" label={status.label} sx={{ height: 19, fontSize: 7.9, bgcolor: status.bg, color: status.color, fontWeight: 800 }} /></TableCell>
+                  <TableCell sx={cellSx}><Chip size="small" label={severity.label} sx={{ height: 19, fontSize: 12, bgcolor: severity.bg, color: severity.color, fontWeight: 800 }} /></TableCell>
+                  <TableCell sx={cellSx}><Chip size="small" label={status.label} sx={{ height: 19, fontSize: 12, bgcolor: status.bg, color: status.color, fontWeight: 800 }} /></TableCell>
                   <TableCell sx={cellSx}>{row.claim_amount ? money(row.claim_amount, 'ریال') : '—'}</TableCell>
                   <TableCell sx={cellSx}>{dateLabel(row.opened_date)}</TableCell>
                   <TableCell sx={{ ...cellSx, textAlign: 'center' }}>
@@ -165,8 +165,8 @@ export const DisputeStatusCard = ({ counts, active, onChange }) => {
               sx={{ width: '100%', p: 0.65, borderRadius: '10px', justifyContent: 'flex-start', textAlign: 'right', border: `1px solid ${selected ? alpha(item.color, 0.3) : '#eef2f7'}`, bgcolor: selected ? alpha(item.color, 0.05) : '#fff', '&:hover': { bgcolor: alpha(item.color, 0.04) } }}>
               <Stack direction="row" alignItems="center" spacing={0.6} sx={{ width: '100%' }}>
                 <Box sx={{ width: 26, height: 26, borderRadius: '8px', bgcolor: alpha(item.color, 0.08), color: item.color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Icon sx={{ fontSize: 14 }} /></Box>
-                <Typography sx={{ flex: 1, fontSize: 8.5, fontWeight: selected ? 900 : 700, color: INK }}>{item.label}</Typography>
-                <Chip size="small" label={formatPersianNumber(counts[item.key] || 0)} sx={{ height: 18, fontSize: 7.8, bgcolor: alpha(item.color, 0.08), color: item.color, fontWeight: 900 }} />
+                <Typography sx={{ flex: 1, fontSize: 12, fontWeight: selected ? 900 : 700, color: INK }}>{item.label}</Typography>
+                <Chip size="small" label={formatPersianNumber(counts[item.key] || 0)} sx={{ height: 18, fontSize: 12, bgcolor: alpha(item.color, 0.08), color: item.color, fontWeight: 900 }} />
               </Stack>
             </ButtonBase>
           );
@@ -187,8 +187,8 @@ export const DisputeSeverityCard = ({ counts, total }) => {
           return (
             <Box key={key}>
               <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.25 }}>
-                <Typography sx={{ fontSize: 8.4, color: INK }}>{meta.label}</Typography>
-                <Typography sx={{ fontSize: 8.2, fontWeight: 900, color: meta.color }}>{formatPersianNumber(count)}</Typography>
+                <Typography sx={{ fontSize: 12, color: INK }}>{meta.label}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: meta.color }}>{formatPersianNumber(count)}</Typography>
               </Stack>
               <ProgressBar value={percent} color={meta.color} height={5} />
             </Box>
@@ -201,7 +201,7 @@ export const DisputeSeverityCard = ({ counts, total }) => {
 
 export const DisputeContractsCard = ({ rows, onOpen }) => (
   <SurfaceCard title="قراردادهای دارای دعوا" icon={DescriptionIcon} color={DISPUTE_ACCENT}
-    action={<Chip size="small" label={formatPersianNumber(rows.length)} sx={{ height: 19, fontSize: 7.8, bgcolor: alpha(DISPUTE_ACCENT, 0.08), color: DISPUTE_ACCENT }} />}>
+    action={<Chip size="small" label={formatPersianNumber(rows.length)} sx={{ height: 19, fontSize: 12, bgcolor: alpha(DISPUTE_ACCENT, 0.08), color: DISPUTE_ACCENT }} />}>
     {rows.length ? (
       <Stack spacing={0.5}>
         {rows.map((item) => (
@@ -210,15 +210,15 @@ export const DisputeContractsCard = ({ rows, onOpen }) => (
             <Stack direction="row" alignItems="center" spacing={0.6} sx={{ width: '100%' }}>
               <Box sx={{ width: 26, height: 26, borderRadius: '8px', bgcolor: alpha(DISPUTE_ACCENT, 0.08), color: DISPUTE_ACCENT, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><GavelIcon sx={{ fontSize: 14 }} /></Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 800, color: INK }}>{item.subject || 'قرارداد'}</Typography>
-                <Typography sx={{ fontSize: 7.6, color: MUTED }}>{formatPersianNumber(item.count)} دعوا · {money(item.claim, 'ریال')}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{item.subject || 'قرارداد'}</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(item.count)} دعوا · {money(item.claim, 'ریال')}</Typography>
               </Box>
               <ArrowForwardIcon sx={{ fontSize: 14, color: MUTED }} />
             </Stack>
           </ButtonBase>
         ))}
       </Stack>
-    ) : <Typography sx={{ fontSize: 8.6, color: MUTED }}>دعوایی ثبت نشده است.</Typography>}
+    ) : <Typography sx={{ fontSize: 12, color: MUTED }}>دعوایی ثبت نشده است.</Typography>}
   </SurfaceCard>
 );
 
@@ -239,14 +239,14 @@ export const DisputeDetailDrawer = ({ row, contract, onClose, onEdit, onDelete }
             </Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 12.8, fontWeight: 900, color: INK }}>{row.title || 'اختلاف قرارداد'}</Typography>
-              <Typography noWrap sx={{ fontSize: 9.2, color: MUTED }}>{row.contract_subject || contract?.subject || '—'}</Typography>
+              <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.contract_subject || contract?.subject || '—'}</Typography>
             </Box>
             <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-            <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 8.3, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
-            <Chip size="small" label={`شدت ${severity.label}`} sx={{ height: 21, fontSize: 8.3, fontWeight: 800, bgcolor: severity.bg, color: severity.color }} />
-            <Chip size="small" label={DISPUTE_TYPES[row.dispute_type] || 'سایر'} sx={{ height: 21, fontSize: 8.2, bgcolor: SOFT_BG, color: MUTED }} />
+            <Chip size="small" label={status.label} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+            <Chip size="small" label={`شدت ${severity.label}`} sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: severity.bg, color: severity.color }} />
+            <Chip size="small" label={DISPUTE_TYPES[row.dispute_type] || 'سایر'} sx={{ height: 21, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
           </Stack>
         </Box>
 
@@ -255,7 +255,7 @@ export const DisputeDetailDrawer = ({ row, contract, onClose, onEdit, onDelete }
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={GavelIcon} title="اطلاعات دعوا" color={severity.color} />
               <Box sx={{ p: 1, borderRadius: '11px', bgcolor: alpha(severity.color, 0.04), border: `1px solid ${alpha(severity.color, 0.12)}`, mb: 0.8 }}>
-                <Typography sx={{ fontSize: 8.2, color: MUTED }}>مبلغ ادعا</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ ادعا</Typography>
                 <Typography sx={{ fontSize: 17, fontWeight: 900, color: row.claim_amount ? severity.color : MUTED, lineHeight: 1.4 }}>{row.claim_amount ? money(row.claim_amount, 'ریال') : 'ثبت نشده'}</Typography>
               </Box>
               <InfoLine label="نوع اختلاف" value={DISPUTE_TYPES[row.dispute_type] || 'سایر'} />
@@ -275,14 +275,14 @@ export const DisputeDetailDrawer = ({ row, contract, onClose, onEdit, onDelete }
             {row.description ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={DescriptionIcon} title="شرح اختلاف" color={MUTED} />
-                <Typography sx={{ fontSize: 8.9, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.description}</Typography>
+                <Typography sx={{ fontSize: 12, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.description}</Typography>
               </Paper>
             ) : null}
 
             {row.resolution ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={CheckCircleIcon} title="اقدام / نتیجه" color={GREEN} />
-                <Typography sx={{ fontSize: 8.9, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.resolution}</Typography>
+                <Typography sx={{ fontSize: 12, color: INK, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>{row.resolution}</Typography>
               </Paper>
             ) : null}
           </Stack>
@@ -315,20 +315,20 @@ export const DisputeEditorDialog = ({
         <Box sx={{ width: 42, height: 42, borderRadius: '12px', bgcolor: DISPUTE_ACCENT, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><GavelIcon /></Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش اختلاف' : 'ثبت اختلاف جدید'}</Typography>
-          <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{selectedContract?.subject || 'انتخاب قرارداد و ثبت جزئیات دعوا'}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{selectedContract?.subject || 'انتخاب قرارداد و ثبت جزئیات دعوا'}</Typography>
         </Box>
-        <Chip size="small" label={status.label} sx={{ height: 22, fontSize: 8.2, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+        <Chip size="small" label={status.label} sx={{ height: 22, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
         <IconButton onClick={onClose} size="small"><CloseIcon /></IconButton>
       </DialogTitle>
 
       <DialogContent sx={{ p: 2.3, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 10 }}>{error}</Alert> : null}
+        {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
 
         <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1.4fr 1fr 1fr 1fr' }, gap: 0.7, p: 1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2' }}>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>قرارداد</Typography><Typography noWrap sx={{ fontSize: 9.1, fontWeight: 800, color: INK }}>{selectedContract?.subject || '—'}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>شدت</Typography><Typography sx={{ fontSize: 9.6, fontWeight: 900, color: severity.color }}>{severity.label}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>وضعیت</Typography><Typography sx={{ fontSize: 9.6, fontWeight: 900, color: status.color }}>{status.label}</Typography></Box>
-          <Box><Typography sx={{ fontSize: 7.7, color: MUTED }}>مبلغ ادعا</Typography><Typography noWrap sx={{ fontSize: 9.6, fontWeight: 900, color: form.claim_amount ? severity.color : MUTED }}>{form.claim_amount ? money(form.claim_amount, 'ریال') : '—'}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>قرارداد</Typography><Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{selectedContract?.subject || '—'}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>شدت</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: severity.color }}>{severity.label}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>وضعیت</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: status.color }}>{status.label}</Typography></Box>
+          <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ ادعا</Typography><Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: form.claim_amount ? severity.color : MUTED }}>{form.claim_amount ? money(form.claim_amount, 'ریال') : '—'}</Typography></Box>
         </Box>
 
         <Grid container spacing={1.1}>

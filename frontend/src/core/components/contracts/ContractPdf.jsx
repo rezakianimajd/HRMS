@@ -41,7 +41,7 @@ const ContractPdf = ({ textValue, companyLogo, profile }) => {
           variant="caption"
           align="center"
           display="block"
-          sx={{ color: 'text.secondary', fontSize: 10, mb: 1 }}
+          sx={{ color: 'text.secondary', fontSize: 12, mb: 1 }}
         >
           {companyAddress}
         </Typography>

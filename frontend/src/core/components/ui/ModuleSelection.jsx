@@ -31,7 +31,7 @@ const BrandMark = ({ size = 38 }) => (
     width: size, height: size, borderRadius: '11px', flexShrink: 0,
     bgcolor: '#0f172a', color: '#fff', display: 'flex',
     alignItems: 'center', justifyContent: 'center',
-    fontSize: size * 0.42, fontWeight: 900, letterSpacing: '-0.06em',
+    fontSize: Math.max(12, size * 0.42), fontWeight: 900, letterSpacing: '-0.06em',
     boxShadow: '0 8px 20px -12px rgba(15,23,42,0.65)',
   }}>K</Box>
 );
@@ -46,7 +46,7 @@ const CompanyIdentity = ({ company, compact = false }) => {
           {label}
         </Typography>
         {company?.code ? (
-          <Typography sx={{ fontSize: 8.5, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
+          <Typography sx={{ fontSize: 12, color: '#94a3b8', direction: 'ltr', textAlign: 'right' }}>
             {company.code}
           </Typography>
         ) : null}
@@ -85,7 +85,7 @@ const ModuleSelection = ({
               <Typography sx={{ fontSize: 14, fontWeight: 900, color: '#0f172a', lineHeight: 1.25 }}>
                 کیان
               </Typography>
-              <Typography sx={{ fontSize: 8.2, color: '#94a3b8', letterSpacing: '0.08em', fontWeight: 700 }}>
+              <Typography sx={{ fontSize: 12, color: '#94a3b8', letterSpacing: '0.08em', fontWeight: 700 }}>
                 KIAN BUSINESS SUITE
               </Typography>
             </Box>
@@ -96,19 +96,19 @@ const ModuleSelection = ({
             {company ? <Divider orientation="vertical" flexItem sx={{ my: 0.5 }} /> : null}
             <Stack direction="row" alignItems="center" spacing={0.7} sx={{ minWidth: 0 }}>
               <Avatar sx={{
-                width: 30, height: 30, fontSize: 10, fontWeight: 900,
+                width: 30, height: 30, fontSize: 12, fontWeight: 900,
                 bgcolor: '#eef2ff', color: '#4f46e5',
               }}>
                 {initialsOf(user)}
               </Avatar>
-              <Typography noWrap sx={{ fontSize: 10, fontWeight: 800, color: '#334155', maxWidth: 150 }}>
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: '#334155', maxWidth: 150 }}>
                 {fullName}
               </Typography>
             </Stack>
             {onBack ? (
               <Button size="small" variant="outlined" startIcon={<ArrowForwardIcon />} onClick={onBack}
                 sx={{
-                  height: 32, px: 1.2, fontSize: 9.5, fontWeight: 800, color: '#475569',
+                  height: 32, px: 1.2, fontSize: 12, fontWeight: 800, color: '#475569',
                   borderColor: 'rgba(15,23,42,0.12)', borderRadius: '9px',
                   '&:hover': { borderColor: 'rgba(15,23,42,0.28)', bgcolor: '#fff' },
                 }}>
@@ -122,7 +122,7 @@ const ModuleSelection = ({
           <Chip
             label={`${greeting} · ${new Date().toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' })}`}
             sx={{
-              mb: 1.4, height: 25, fontSize: 9.5, fontWeight: 800,
+              mb: 1.4, height: 25, fontSize: 12, fontWeight: 800,
               bgcolor: 'rgba(15,23,42,0.05)', color: '#475569',
             }}
           />
@@ -149,7 +149,7 @@ const ModuleSelection = ({
           <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#0f172a' }}>
             انتخاب ماژول
           </Typography>
-          <Typography sx={{ fontSize: 9.5, color: '#94a3b8' }}>
+          <Typography sx={{ fontSize: 12, color: '#94a3b8' }}>
             {toPersianDigits(activeApps.length)} ماژول فعال از {toPersianDigits(count)}
           </Typography>
         </Stack>
@@ -160,17 +160,17 @@ const ModuleSelection = ({
         {loading ? (
           <Box sx={{ py: 9, textAlign: 'center' }}>
             <CircularProgress size={28} sx={{ color: '#4f46e5' }} />
-            <Typography sx={{ mt: 1.5, fontSize: 11, color: '#64748b' }}>در حال دریافت ماژول‌ها…</Typography>
+            <Typography sx={{ mt: 1.5, fontSize: 12, color: '#64748b' }}>در حال دریافت ماژول‌ها…</Typography>
           </Box>
         ) : !count ? (
           <Box sx={{
             py: 8, textAlign: 'center', bgcolor: '#fff', borderRadius: '16px',
             border: '1px solid rgba(15,23,42,0.07)',
           }}>
-            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: '#334155' }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#334155' }}>
               ماژولی در دسترس نیست
             </Typography>
-            <Typography sx={{ mt: 0.4, fontSize: 9.5, color: '#94a3b8' }}>
+            <Typography sx={{ mt: 0.4, fontSize: 12, color: '#94a3b8' }}>
               دسترسی‌های کاربری خود را بررسی کنید.
             </Typography>
           </Box>
@@ -254,7 +254,7 @@ const ModuleSelection = ({
                     {active ? (
                       <Chip icon={<CheckCircleRoundedIcon />} label="فعال" size="small"
                         sx={{
-                          height: 20, fontSize: 7.7, fontWeight: 800,
+                          height: 20, fontSize: 12, fontWeight: 800,
                           bgcolor: alpha(accent, 0.08), color: accent,
                           '& .MuiChip-icon': { fontSize: 12, color: accent },
                         }} />
@@ -276,7 +276,7 @@ const ModuleSelection = ({
                     <Chip size="small" label={app.is_coming_soon ? 'به‌زودی' : 'عدم دسترسی'}
                       sx={{
                         mt: 0.7, alignSelf: 'flex-start', height: 19,
-                        fontSize: 7.6, fontWeight: 700, color: '#94a3b8',
+                        fontSize: 12, fontWeight: 700, color: '#94a3b8',
                         bgcolor: 'rgba(15,23,42,0.045)',
                       }} />
                   ) : null}

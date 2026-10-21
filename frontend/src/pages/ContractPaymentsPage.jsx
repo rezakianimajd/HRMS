@@ -98,7 +98,7 @@ const InfoLine = ({ label, value, strong, ltr, color }) => {
   const display = value === null || value === undefined || value === '' ? '—' : value;
   return (
     <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ py: 0.42 }}>
-      <Typography sx={{ fontSize: 9.2, color: MUTED, flexShrink: 0 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{label}</Typography>
       <Typography sx={{
         fontSize: strong ? 10.5 : 9.6, fontWeight: strong ? 900 : 700, color: color || INK,
         textAlign: 'left', direction: ltr ? 'ltr' : 'rtl', minWidth: 0,
@@ -118,7 +118,7 @@ const SectionHeading = ({ icon: Icon, title, color = TEAL, action }) => (
         <Icon sx={{ fontSize: 15 }} />
       </Box>
     ) : null}
-    <Typography sx={{ flex: 1, fontSize: 10.7, fontWeight: 900, color: INK }}>{title}</Typography>
+    <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>{title}</Typography>
     {action || null}
   </Stack>
 );
@@ -126,8 +126,8 @@ const SectionHeading = ({ icon: Icon, title, color = TEAL, action }) => (
 const EmptyState = ({ icon: Icon = PaymentsOutlinedIcon, title, hint, color = TEAL, action }) => (
   <Paper elevation={0} sx={{ p: 4.5, borderRadius: '16px', border: '1px dashed #dbe5ea', textAlign: 'center', bgcolor: '#fbfdfd' }}>
     <Icon sx={{ fontSize: 34, color: alpha(color, 0.55), mb: 1 }} />
-    <Typography sx={{ fontSize: 11, fontWeight: 900, color: INK }}>{title}</Typography>
-    {hint ? <Typography sx={{ mt: 0.35, fontSize: 9.2, color: MUTED }}>{hint}</Typography> : null}
+    <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{title}</Typography>
+    {hint ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
     {action ? <Box sx={{ mt: 1.4 }}>{action}</Box> : null}
   </Paper>
 );
@@ -137,13 +137,13 @@ const ContractSnapshotCard = ({ contract, currency, navigate, onBack }) => {
   if (!contract) return null;
   return (
     <SurfaceCard title="پرونده قرارداد" icon={DescriptionOutlinedIcon} color={TEAL}
-      action={<Chip size="small" label={contract.number || '—'} sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
-      <Typography sx={{ fontSize: 11, fontWeight: 900, color: INK, lineHeight: 1.6 }}>{contract.subject}</Typography>
+      action={<Chip size="small" label={contract.number || '—'} sx={{ height: 20, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
+      <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, lineHeight: 1.6 }}>{contract.subject}</Typography>
       <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 0.7, mb: 1 }}>
         <Chip size="small" label={statusLabel(contract.status)}
-          sx={{ height: 19, fontSize: 7.6, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
+          sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
         <Chip size="small" label={contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || 'قرارداد'}
-          sx={{ height: 19, fontSize: 7.6, bgcolor: SOFT_BG, color: MUTED }} />
+          sx={{ height: 19, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
       </Stack>
       <Divider />
       <Box sx={{ py: 0.5 }}>
@@ -154,9 +154,9 @@ const ContractSnapshotCard = ({ contract, currency, navigate, onBack }) => {
       </Box>
       <Divider />
       <Stack direction="row" spacing={0.7} sx={{ mt: 1 }}>
-        <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={onBack} sx={{ flex: 1, fontSize: 8.7 }}>تغییر</Button>
+        <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={onBack} sx={{ flex: 1, fontSize: 12 }}>تغییر</Button>
         <Button size="small" variant="contained" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate(`/external-contracts/${contract.id}`)}
-          sx={{ flex: 1, fontSize: 8.7, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>پرونده</Button>
+          sx={{ flex: 1, fontSize: 12, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>پرونده</Button>
       </Stack>
     </SurfaceCard>
   );
@@ -168,7 +168,7 @@ const CoverageCard = ({ totalPaid, contractAmount, paymentCount, invoiceCount, s
   return (
     <SurfaceCard title="پوشش مالی پرداخت‌ها" icon={AccountBalanceWalletOutlinedIcon} color={BLUE}>
       <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 0.5 }}>
-        <Typography sx={{ fontSize: 9.4, color: MUTED }}>نسبت پرداخت‌شده به مبلغ قرارداد</Typography>
+        <Typography sx={{ fontSize: 12, color: MUTED }}>نسبت پرداخت‌شده به مبلغ قرارداد</Typography>
         <Typography sx={{ fontSize: 13, fontWeight: 900, color: coverage >= 70 ? GREEN : coverage >= 40 ? AMBER : BLUE }}>
           {formatPersianPercent(coverage)}
         </Typography>
@@ -185,9 +185,9 @@ const CoverageCard = ({ totalPaid, contractAmount, paymentCount, invoiceCount, s
       <Divider sx={{ my: 0.6 }} />
       <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
         <Chip size="small" label={`${formatPersianNumber(invoiceCount)} فاکتور پیوندی`}
-          sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
+          sx={{ height: 19, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
         <Chip size="small" label={`${formatPersianNumber(statementCount)} صورت‌وضعیت پیوندی`}
-          sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+          sx={{ height: 19, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
       </Stack>
     </SurfaceCard>
   );
@@ -198,10 +198,10 @@ const MethodsCard = ({ methods, activeMethod, onSelect, accent = TEAL }) => {
   return (
     <SurfaceCard title="روش‌های پرداخت" icon={PaymentsOutlinedIcon} color={accent}
       action={activeMethod ? (
-        <Button size="small" onClick={() => onSelect('')} sx={{ minWidth: 0, px: 0.6, fontSize: 8.2 }}>همه</Button>
+        <Button size="small" onClick={() => onSelect('')} sx={{ minWidth: 0, px: 0.6, fontSize: 12 }}>همه</Button>
       ) : null}>
       {!methods.length ? (
-        <Typography sx={{ py: 2, textAlign: 'center', fontSize: 9, color: MUTED }}>روشی ثبت نشده است</Typography>
+        <Typography sx={{ py: 2, textAlign: 'center', fontSize: 12, color: MUTED }}>روشی ثبت نشده است</Typography>
       ) : (
         <Stack spacing={0.75}>
           {methods.slice(0, 4).map((item) => (
@@ -213,8 +213,8 @@ const MethodsCard = ({ methods, activeMethod, onSelect, accent = TEAL }) => {
               }}>
               <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mb: 0.35 }}>
                 <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: item.color }} />
-                <Typography noWrap sx={{ flex: 1, fontSize: 8.9, fontWeight: 700, color: INK }}>{item.name || 'نامشخص'}</Typography>
-                <Typography sx={{ fontSize: 8.2, color: MUTED }}>{formatPersianNumber(item.count)}</Typography>
+                <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 700, color: INK }}>{item.name || 'نامشخص'}</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(item.count)}</Typography>
               </Stack>
               <ProgressBar value={(item.count / maxCount) * 100} color={item.color} height={4} />
             </ButtonBase>
@@ -254,9 +254,9 @@ const PaymentCard = ({ row, currency, onView, onEdit, onDelete }) => {
         <Box sx={{ flex: 1, minWidth: 0 }}>
           <Typography sx={{ fontSize: 13.5, fontWeight: 900, color: TEAL, lineHeight: 1.35 }}>
             {formatPersianNumber(row.amount || 0)}
-            <Box component="span" sx={{ fontSize: 8.7, fontWeight: 700, color: MUTED, mr: 0.4 }}>{label}</Box>
+            <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED, mr: 0.4 }}>{label}</Box>
           </Typography>
-          <Typography sx={{ mt: 0.15, fontSize: 8.7, color: MUTED }}>
+          <Typography sx={{ mt: 0.15, fontSize: 12, color: MUTED }}>
             تاریخ پرداخت: {toJalali(row.date)}
           </Typography>
         </Box>
@@ -277,36 +277,36 @@ const PaymentCard = ({ row, currency, onView, onEdit, onDelete }) => {
       <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
         {row.method ? (
           <Chip size="small" label={row.method}
-            sx={{ height: 20, fontSize: 7.7, fontWeight: 800, bgcolor: alpha(color, 0.07), color }} />
+            sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(color, 0.07), color }} />
         ) : null}
         {row.reference ? (
           <Chip size="small" icon={<LinkOutlinedIcon sx={{ fontSize: '12px !important' }} />} label={row.reference}
-            sx={{ height: 20, fontSize: 7.7, bgcolor: SOFT_BG, color: SLATE, '& .MuiChip-icon': { color: SLATE } }} />
+            sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: SLATE, '& .MuiChip-icon': { color: SLATE } }} />
         ) : null}
         {row.invoice_number ? (
           <Chip size="small" label={`فاکتور ${row.invoice_number}`}
-            sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
         ) : null}
         {row.statement_number ? (
           <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`}
-            sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
         ) : null}
         {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
           <Chip size="small" icon={<AttachFileOutlinedIcon sx={{ fontSize: '12px !important' }} />}
             label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`}
-            sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(TEAL, 0.07), color: TEAL, '& .MuiChip-icon': { color: TEAL } }} />
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL, '& .MuiChip-icon': { color: TEAL } }} />
         ) : null}
       </Stack>
 
       <Typography sx={{
-        mt: 0.8, fontSize: 8.6, color: row.note ? MUTED : '#cbd5e1', lineHeight: 1.8,
+        mt: 0.8, fontSize: 12, color: row.note ? MUTED : '#cbd5e1', lineHeight: 1.8,
         minHeight: 30, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
       }}>
         {row.note || 'بدون توضیحات'}
       </Typography>
 
       <Stack direction="row" alignItems="center" spacing={0.35} sx={{ mt: 0.8, color: TEAL }}>
-        <Typography sx={{ fontSize: 8.4, fontWeight: 800 }}>مشاهده جزئیات</Typography>
+        <Typography sx={{ fontSize: 12, fontWeight: 800 }}>مشاهده جزئیات</Typography>
         <ArrowForwardOutlinedIcon sx={{ fontSize: 13 }} />
       </Stack>
     </Paper>
@@ -334,33 +334,33 @@ const PaymentTable = ({ rows, currency, onView, onEdit, onDelete }) => (
             <TableRow key={row.id} hover onClick={() => onView(row)}
               sx={{ cursor: 'pointer', '& td': { py: 0.8, borderBottom: '1px solid #f2f5f9' } }}>
               <TableCell>
-                <Typography sx={{ fontSize: 9.2, fontWeight: 700, color: INK }}>{toJalali(row.date)}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{toJalali(row.date)}</Typography>
               </TableCell>
               <TableCell>
-                <Typography sx={{ fontSize: 9.4, fontWeight: 900, color: TEAL }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: TEAL }}>
                   {formatPersianNumber(row.amount || 0)}
-                  <Box component="span" sx={{ fontSize: 7.6, color: MUTED, mr: 0.35 }}>{paymentCurrency(row, currency)}</Box>
+                  <Box component="span" sx={{ fontSize: 12, color: MUTED, mr: 0.35 }}>{paymentCurrency(row, currency)}</Box>
                 </Typography>
               </TableCell>
               <TableCell>
                 <Stack direction="row" alignItems="center" spacing={0.45}>
                   <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
-                  <Typography sx={{ fontSize: 8.8, color: INK }}>{row.method || '—'}</Typography>
-                  <Typography sx={{ fontSize: 8, color: MUTED }}>{row.reference ? `· ${row.reference}` : ''}</Typography>
+                  <Typography sx={{ fontSize: 12, color: INK }}>{row.method || '—'}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>{row.reference ? `· ${row.reference}` : ''}</Typography>
                 </Stack>
               </TableCell>
               <TableCell>
                 <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
-                  {row.invoice_number ? <Chip size="small" label={`فاکتور ${row.invoice_number}`} sx={{ height: 18, fontSize: 7.2, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} /> : null}
-                  {row.statement_number ? <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`} sx={{ height: 18, fontSize: 7.2, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
+                  {row.invoice_number ? <Chip size="small" label={`فاکتور ${row.invoice_number}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} /> : null}
+                  {row.statement_number ? <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
                   {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
-                    <Chip size="small" label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`} sx={{ height: 18, fontSize: 7.2, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />
+                    <Chip size="small" label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />
                   ) : null}
-                  {!row.invoice_number && !row.statement_number && !num(row.attachment_count ?? asArray(row.attachments).length) ? <Typography sx={{ fontSize: 8, color: MUTED }}>—</Typography> : null}
+                  {!row.invoice_number && !row.statement_number && !num(row.attachment_count ?? asArray(row.attachments).length) ? <Typography sx={{ fontSize: 12, color: MUTED }}>—</Typography> : null}
                 </Stack>
               </TableCell>
               <TableCell>
-                <Typography noWrap sx={{ maxWidth: 180, fontSize: 8.4, color: MUTED }}>{row.note || '—'}</Typography>
+                <Typography noWrap sx={{ maxWidth: 180, fontSize: 12, color: MUTED }}>{row.note || '—'}</Typography>
               </TableCell>
               <TableCell align="center">
                 <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(row); }} sx={{ color: BLUE, p: 0.35 }}>
@@ -399,15 +399,15 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
                 <PaymentsOutlinedIcon sx={{ fontSize: 22 }} />
               </Box>
               <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography sx={{ fontSize: 8.6, color: 'rgba(255,255,255,0.6)' }}>جزئیات پرداخت قرارداد</Typography>
-                <Typography sx={{ fontSize: 16, fontWeight: 900 }}>{formatPersianNumber(row.amount || 0)} <Box component="span" sx={{ fontSize: 8.5, color: 'rgba(255,255,255,0.6)' }}>{label}</Box></Typography>
-                <Typography sx={{ mt: 0.2, fontSize: 8.5, color: 'rgba(255,255,255,0.58)' }}>{toJalali(row.date)}</Typography>
+                <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>جزئیات پرداخت قرارداد</Typography>
+                <Typography sx={{ fontSize: 16, fontWeight: 900 }}>{formatPersianNumber(row.amount || 0)} <Box component="span" sx={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>{label}</Box></Typography>
+                <Typography sx={{ mt: 0.2, fontSize: 12, color: 'rgba(255,255,255,0.58)' }}>{toJalali(row.date)}</Typography>
               </Box>
               <IconButton size="small" onClick={onClose} sx={{ color: 'rgba(255,255,255,0.8)', mt: -0.4 }}><CloseOutlinedIcon fontSize="small" /></IconButton>
             </Stack>
             <Stack direction="row" spacing={0.5} sx={{ mt: 1.2, position: 'relative', zIndex: 1 }}>
-              <Chip size="small" label="پرداخت ثبت‌شده" sx={{ height: 20, fontSize: 7.7, fontWeight: 800, bgcolor: 'rgba(255,255,255,0.13)', color: '#fff' }} />
-              {row.method ? <Chip size="small" label={row.method} sx={{ height: 20, fontSize: 7.7, bgcolor: 'rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.8)' }} /> : null}
+              <Chip size="small" label="پرداخت ثبت‌شده" sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: 'rgba(255,255,255,0.13)', color: '#fff' }} />
+              {row.method ? <Chip size="small" label={row.method} sx={{ height: 20, fontSize: 12, bgcolor: 'rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.8)' }} /> : null}
             </Stack>
           </Box>
 
@@ -439,9 +439,9 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
             <Box sx={{ my: 1.8 }}>
               <SectionHeading icon={AttachFileOutlinedIcon} title="فایل‌های پیوست" color={TEAL}
                 action={<Chip size="small" label={formatPersianNumber(asArray(row.attachments).length)}
-                  sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
+                  sx={{ height: 19, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
               {!asArray(row.attachments).length ? (
-                <Typography sx={{ fontSize: 8.8, color: MUTED }}>فایلی پیوست نشده است.</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>فایلی پیوست نشده است.</Typography>
               ) : (
                 <Stack spacing={0.55}>
                   {asArray(row.attachments).map((attachment) => (
@@ -449,8 +449,8 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
                       sx={{ p: 0.65, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}>
                       <InsertDriveFileOutlinedIcon sx={{ fontSize: 16, color: TEAL }} />
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
-                        <Typography sx={{ fontSize: 7.7, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
                       </Box>
                       {attachment.file_url ? (
                         <Tooltip title="دانلود">
@@ -467,7 +467,7 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
             <Divider />
             <Box sx={{ mt: 1.8 }}>
               <SectionHeading icon={DescriptionOutlinedIcon} title="توضیحات" color={SLATE} />
-              <Typography sx={{ fontSize: 9.3, color: row.note ? INK : MUTED, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
+              <Typography sx={{ fontSize: 12, color: row.note ? INK : MUTED, lineHeight: 1.9, whiteSpace: 'pre-wrap' }}>
                 {row.note || 'برای این پرداخت توضیحی ثبت نشده است.'}
               </Typography>
             </Box>
@@ -475,9 +475,9 @@ const PaymentDetailDrawer = ({ payment, currency, contract, onClose, onEdit, onD
 
           <Stack direction="row" spacing={0.8} sx={{ p: 1.6, borderTop: '1px solid #e5ebf0', bgcolor: '#fff' }}>
             <Button fullWidth variant="outlined" startIcon={<EditOutlinedIcon />} onClick={() => onEdit(row)}
-              sx={{ fontSize: 9, color: BLUE, borderColor: alpha(BLUE, 0.25) }}>ویرایش</Button>
+              sx={{ fontSize: 12, color: BLUE, borderColor: alpha(BLUE, 0.25) }}>ویرایش</Button>
             <Button fullWidth variant="outlined" color="error" startIcon={<DeleteOutlineIcon />} onClick={() => onDelete(row)}
-              sx={{ fontSize: 9 }}>حذف</Button>
+              sx={{ fontSize: 12 }}>حذف</Button>
           </Stack>
         </Box>
       ) : null}
@@ -503,7 +503,7 @@ const PaymentEditorDialog = ({
         <Avatar sx={{ width: 42, height: 42, bgcolor: TEAL, color: '#fff' }}><PaymentsOutlinedIcon /></Avatar>
         <Box sx={{ flex: 1 }}>
           <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش پرداخت' : 'ثبت پرداخت جدید'}</Typography>
-          <Typography sx={{ fontSize: 8.8, color: MUTED }}>مبلغ، ارز، تاریخ، پیوندهای پرونده و مدارک پیوست را تکمیل کنید.</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ، ارز، تاریخ، پیوندهای پرونده و مدارک پیوست را تکمیل کنید.</Typography>
         </Box>
         <IconButton onClick={onClose} size="small"><CloseOutlinedIcon /></IconButton>
       </DialogTitle>
@@ -514,24 +514,24 @@ const PaymentEditorDialog = ({
           p: 1.1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2',
         }}>
           <Box>
-            <Typography sx={{ fontSize: 7.8, color: MUTED }}>قرارداد</Typography>
-            <Typography noWrap sx={{ fontSize: 9.3, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>قرارداد</Typography>
+            <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography>
           </Box>
           <Box>
-            <Typography sx={{ fontSize: 7.8, color: MUTED }}>مبلغ پرداخت</Typography>
-            <Typography sx={{ fontSize: 10, fontWeight: 900, color: TEAL }}>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ پرداخت</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: TEAL }}>
               {form.amount ? `${formatPersianNumber(form.amount)} ${label}` : '—'}
             </Typography>
           </Box>
           <Box>
-            <Typography sx={{ fontSize: 7.8, color: MUTED }}>پیوست‌ها</Typography>
-            <Typography sx={{ fontSize: 10, fontWeight: 900, color: INK }}>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>پیوست‌ها</Typography>
+            <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
               {formatPersianNumber(pendingFiles.length + existingAttachments.length)} فایل
             </Typography>
           </Box>
         </Box>
 
-        {error ? <Alert severity="error" sx={{ borderRadius: '10px', fontSize: 10.5 }}>{error}</Alert> : null}
+        {error ? <Alert severity="error" sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
 
         <Box>
           <SectionHeading icon={CalendarMonthOutlinedIcon} title="اطلاعات اصلی" color={TEAL} />
@@ -563,7 +563,7 @@ const PaymentEditorDialog = ({
         <Divider />
         <Box>
           <SectionHeading icon={AccountBalanceWalletOutlinedIcon} title="مبلغ و واحد ارز" color={BLUE}
-            action={form.amount ? <Chip size="small" label={`${formatPersianNumber(form.amount)} ${label}`} sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null} />
+            action={form.amount ? <Chip size="small" label={`${formatPersianNumber(form.amount)} ${label}`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null} />
           <Grid container spacing={1.4}>
             <Grid item xs={12} md={4}>
               <FormControl size="small" fullWidth>
@@ -597,7 +597,7 @@ const PaymentEditorDialog = ({
         <Box>
           <SectionHeading icon={AttachFileOutlinedIcon} title="پیوست فایل‌ها" color={TEAL}
             action={<Chip size="small" label={`${formatPersianNumber(pendingFiles.length + existingAttachments.length)} فایل`}
-              sx={{ height: 19, fontSize: 7.5, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
+              sx={{ height: 19, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
           <Box component="label" sx={{
             display: 'flex', alignItems: 'center', gap: 1, p: 1.15, borderRadius: '12px',
             border: `1px dashed ${alpha(TEAL, 0.28)}`, bgcolor: alpha(TEAL, 0.025), cursor: 'pointer',
@@ -614,25 +614,25 @@ const PaymentEditorDialog = ({
               <AttachFileOutlinedIcon sx={{ fontSize: 19 }} />
             </Box>
             <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: 9.3, fontWeight: 800, color: INK }}>انتخاب فایل پیوست</Typography>
-              <Typography sx={{ fontSize: 8, color: MUTED }}>رسید، حواله، سند بانکی، تصویر یا PDF — حداکثر ۱۰ فایل</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>انتخاب فایل پیوست</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>رسید، حواله، سند بانکی، تصویر یا PDF — حداکثر ۱۰ فایل</Typography>
             </Box>
-            <Typography sx={{ fontSize: 8.3, fontWeight: 800, color: TEAL, border: `1px solid ${alpha(TEAL, 0.3)}`, borderRadius: '8px', px: 1, py: 0.45 }}>
+            <Typography sx={{ fontSize: 12, fontWeight: 800, color: TEAL, border: `1px solid ${alpha(TEAL, 0.3)}`, borderRadius: '8px', px: 1, py: 0.45 }}>
               انتخاب
             </Typography>
           </Box>
 
           {existingAttachments.length > 0 ? (
             <Box sx={{ mt: 1 }}>
-              <Typography sx={{ fontSize: 8.2, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های ذخیره‌شده</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های ذخیره‌شده</Typography>
               <Stack spacing={0.5}>
                 {existingAttachments.map((attachment) => (
                   <Stack key={attachment.id} direction="row" alignItems="center" spacing={0.6}
                     sx={{ p: 0.7, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}>
                     <InsertDriveFileOutlinedIcon sx={{ fontSize: 17, color: TEAL }} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
-                      <Typography sx={{ fontSize: 7.6, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
+                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
                     </Box>
                     {attachment.file_url ? (
                       <Tooltip title="دانلود">
@@ -656,15 +656,15 @@ const PaymentEditorDialog = ({
 
           {pendingFiles.length > 0 ? (
             <Box sx={{ mt: 1 }}>
-              <Typography sx={{ fontSize: 8.2, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های جدید (پس از ذخیره بارگذاری می‌شوند)</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های جدید (پس از ذخیره بارگذاری می‌شوند)</Typography>
               <Stack spacing={0.5}>
                 {pendingFiles.map((file, index) => (
                   <Stack key={`${file.name}-${file.size}-${file.lastModified}`} direction="row" alignItems="center" spacing={0.6}
                     sx={{ p: 0.7, borderRadius: '9px', border: `1px solid ${alpha(TEAL, 0.15)}`, bgcolor: alpha(TEAL, 0.025) }}>
                     <InsertDriveFileOutlinedIcon sx={{ fontSize: 17, color: TEAL }} />
                     <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 8.8, fontWeight: 700, color: INK }}>{file.name}</Typography>
-                      <Typography sx={{ fontSize: 7.6, color: MUTED }}>{fileSizeLabel(file.size)}</Typography>
+                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{file.name}</Typography>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>{fileSizeLabel(file.size)}</Typography>
                     </Box>
                     <IconButton size="small" onClick={() => onRemovePending(index)} sx={{ color: RED, p: 0.3 }}>
                       <CloseOutlinedIcon sx={{ fontSize: 15 }} />
@@ -678,9 +678,9 @@ const PaymentEditorDialog = ({
       </DialogContent>
 
       <DialogActions sx={{ px: 2.5, py: 1.6, borderTop: '1px solid #e5ebf0' }}>
-        <Button onClick={onClose} sx={{ fontSize: 9.5 }}>انصراف</Button>
+        <Button onClick={onClose} sx={{ fontSize: 12 }}>انصراف</Button>
         <Button variant="contained" onClick={onSave} disabled={saving} startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <CheckCircleOutlineIcon />}
-          sx={{ fontSize: 9.5, px: 2.5, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>
+          sx={{ fontSize: 12, px: 2.5, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>
           {uploading ? 'در حال بارگذاری فایل‌ها…' : (saving ? 'در حال ذخیره…' : 'ذخیره پرداخت')}
         </Button>
       </DialogActions>
@@ -1039,10 +1039,10 @@ const ContractPaymentsPage = () => {
       />
 
       {contractsQuery.isError ? (
-        <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 10.5 }}>فهرست قراردادها دریافت نشد.</Alert>
+        <Alert severity="warning" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 12 }}>فهرست قراردادها دریافت نشد.</Alert>
       ) : null}
       {contractId && paymentsQuery.isError ? (
-        <Alert severity="error" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 10.5 }}
+        <Alert severity="error" sx={{ mb: 1.5, borderRadius: '11px', fontSize: 12 }}
           action={<Button size="small" onClick={() => paymentsQuery.refetch()}>تلاش دوباره</Button>}>
           پرداخت‌های این قرارداد دریافت نشدند.
         </Alert>
@@ -1061,27 +1061,27 @@ const ContractPaymentsPage = () => {
                 <Typography sx={{ fontSize: { xs: 16, md: 20 }, fontWeight: 900, color: INK, letterSpacing: '-0.025em' }}>
                   پرداخت‌ها را دقیق، قابل پیگیری و متصل به پرونده مدیریت کنید.
                 </Typography>
-                <Typography sx={{ mt: 0.5, fontSize: 9.8, color: MUTED, lineHeight: 1.9 }}>
+                <Typography sx={{ mt: 0.5, fontSize: 12, color: MUTED, lineHeight: 1.9 }}>
                   مبلغ، ارز، تاریخ، روش و مرجع هر پرداخت را ثبت کنید و آن را به فاکتور و صورت‌وضعیت مرتبط پیوند دهید.
                 </Typography>
                 <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 1.1 }}>
                   <Chip size="small" icon={<LinkOutlinedIcon sx={{ fontSize: '13px !important' }} />} label="پیوند فاکتور و صورت‌وضعیت"
-                    sx={{ height: 22, fontSize: 7.9, fontWeight: 700, bgcolor: alpha(TEAL, 0.07), color: TEAL, '& .MuiChip-icon': { color: TEAL } }} />
+                    sx={{ height: 22, fontSize: 12, fontWeight: 700, bgcolor: alpha(TEAL, 0.07), color: TEAL, '& .MuiChip-icon': { color: TEAL } }} />
                   <Chip size="small" icon={<AccountBalanceWalletOutlinedIcon sx={{ fontSize: '13px !important' }} />} label="پوشش مالی قرارداد"
-                    sx={{ height: 22, fontSize: 7.9, fontWeight: 700, bgcolor: alpha(BLUE, 0.07), color: BLUE, '& .MuiChip-icon': { color: BLUE } }} />
+                    sx={{ height: 22, fontSize: 12, fontWeight: 700, bgcolor: alpha(BLUE, 0.07), color: BLUE, '& .MuiChip-icon': { color: BLUE } }} />
                   <Chip size="small" icon={<TrendingUpOutlinedIcon sx={{ fontSize: '13px !important' }} />} label="روند و تحلیل پرداخت‌ها"
-                    sx={{ height: 22, fontSize: 7.9, fontWeight: 700, bgcolor: alpha(VIOLET, 0.07), color: VIOLET, '& .MuiChip-icon': { color: VIOLET } }} />
+                    sx={{ height: 22, fontSize: 12, fontWeight: 700, bgcolor: alpha(VIOLET, 0.07), color: VIOLET, '& .MuiChip-icon': { color: VIOLET } }} />
                 </Stack>
               </Box>
               <Box sx={{
                 width: { xs: '100%', md: 360 }, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 0.75,
               }}>
                 <Box sx={{ p: 1.2, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.84)', border: '1px solid #e5edf1' }}>
-                  <Typography sx={{ fontSize: 8.2, color: MUTED }}>پرداخت‌های ثبت‌شده</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>پرداخت‌های ثبت‌شده</Typography>
                   <Typography sx={{ mt: 0.1, fontSize: 17, fontWeight: 900, color: TEAL }}>{formatPersianNumber(allPayments.length)}</Typography>
                 </Box>
                 <Box sx={{ p: 1.2, borderRadius: '12px', bgcolor: 'rgba(255,255,255,0.84)', border: '1px solid #e5edf1' }}>
-                  <Typography sx={{ fontSize: 8.2, color: MUTED }}>مجموع مبالغ</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>مجموع مبالغ</Typography>
                   <Typography sx={{ mt: 0.1, fontSize: 14, fontWeight: 900, color: BLUE }}>{compactMoney(allPaymentsTotal)}</Typography>
                 </Box>
               </Box>
@@ -1090,7 +1090,7 @@ const ContractPaymentsPage = () => {
 
           <SurfaceCard title="انتخاب قرارداد" icon={DescriptionOutlinedIcon} color={TEAL}
             action={<Chip size="small" label={`${formatPersianNumber(contractList.length)} قرارداد`}
-              sx={{ height: 20, fontSize: 7.8, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
+              sx={{ height: 20, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
             {contractsQuery.isLoading ? (
               <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress size={29} /></Box>
             ) : (
@@ -1141,17 +1141,17 @@ const ContractPaymentsPage = () => {
                 <TextField size="small" placeholder="جست‌وجو در مرجع، روش، فاکتور یا توضیحات…" value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   InputProps={{ startAdornment: <InputAdornment position="start"><SearchOutlinedIcon fontSize="small" /></InputAdornment> }}
-                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { height: 35, borderRadius: '9px', fontSize: 10.5 } }} />
+                  sx={{ flex: 1, '& .MuiOutlinedInput-root': { height: 35, borderRadius: '9px', fontSize: 12 } }} />
                 <FormControl size="small" sx={{ minWidth: 145 }}>
                   <InputLabel>روش پرداخت</InputLabel>
-                  <Select label="روش پرداخت" value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)} sx={{ height: 35, borderRadius: '9px', fontSize: 10 }}>
+                  <Select label="روش پرداخت" value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)} sx={{ height: 35, borderRadius: '9px', fontSize: 12 }}>
                     <MenuItem value="">همه روش‌ها</MenuItem>
                     {methods.map((item) => <MenuItem key={item.name} value={item.name}>{item.name}</MenuItem>)}
                   </Select>
                 </FormControl>
                 <FormControl size="small" sx={{ minWidth: 135 }}>
                   <InputLabel>ترتیب</InputLabel>
-                  <Select label="ترتیب" value={sortBy} onChange={(event) => setSortBy(event.target.value)} sx={{ height: 35, borderRadius: '9px', fontSize: 10 }}>
+                  <Select label="ترتیب" value={sortBy} onChange={(event) => setSortBy(event.target.value)} sx={{ height: 35, borderRadius: '9px', fontSize: 12 }}>
                     <MenuItem value="newest">جدیدترین</MenuItem>
                     <MenuItem value="oldest">قدیمی‌ترین</MenuItem>
                     <MenuItem value="amount">بیشترین مبلغ</MenuItem>
@@ -1189,9 +1189,9 @@ const ContractPaymentsPage = () => {
             <Box sx={{ mt: 1.5 }}>
               <SurfaceCard title="روند پرداخت‌ها" icon={TrendingUpOutlinedIcon} color={VIOLET}
                 action={<Chip size="small" label={`${formatPersianNumber(list.length)} پرداخت در ${formatPersianNumber(monthlyData.filter((item) => item.value > 0).length)} ماه`}
-                  sx={{ height: 20, fontSize: 7.7, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />}>
+                  sx={{ height: 20, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />}>
                 {!monthlyData.some((item) => item.value > 0) ? (
-                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 9.4 }}>پرداختی در ۶ ماه اخیر ثبت نشده است.</Box>
+                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 12 }}>پرداختی در ۶ ماه اخیر ثبت نشده است.</Box>
                 ) : <ColumnChart data={monthlyData} height={160} />}
               </SurfaceCard>
             </Box>
@@ -1216,14 +1216,14 @@ const ContractPaymentsPage = () => {
       <Dialog open={Boolean(deleteTarget)} onClose={() => { setDeleteTarget(null); setError(''); }} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontSize: 13, fontWeight: 900, color: INK }}>حذف پرداخت</DialogTitle>
         <DialogContent>
-          <Typography sx={{ fontSize: 10.5, color: MUTED, lineHeight: 1.9 }}>
+          <Typography sx={{ fontSize: 12, color: MUTED, lineHeight: 1.9 }}>
             آیا از حذف پرداخت
             <Box component="span" sx={{ mx: 0.5, fontWeight: 900, color: INK }}>
               {formatPersianNumber(deleteTarget?.amount || 0)} {deleteTarget ? paymentCurrency(deleteTarget, contractCurrency) : ''}
             </Box>
             مطمئن هستید؟ این عملیات قابل بازگشت نیست.
           </Typography>
-          {error ? <Alert severity="error" sx={{ mt: 1.2, fontSize: 9.5 }}>{error}</Alert> : null}
+          {error ? <Alert severity="error" sx={{ mt: 1.2, fontSize: 12 }}>{error}</Alert> : null}
         </DialogContent>
         <DialogActions sx={{ px: 2.2, pb: 2 }}>
           <Button size="small" onClick={() => setDeleteTarget(null)}>انصراف</Button>
@@ -1235,7 +1235,7 @@ const ContractPaymentsPage = () => {
       </Dialog>
 
       <Snackbar open={Boolean(toast)} autoHideDuration={3000} onClose={() => setToast('')} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert severity="success" onClose={() => setToast('')} sx={{ fontSize: 10 }}>{toast}</Alert>
+        <Alert severity="success" onClose={() => setToast('')} sx={{ fontSize: 12 }}>{toast}</Alert>
       </Snackbar>
     </Box>
   );

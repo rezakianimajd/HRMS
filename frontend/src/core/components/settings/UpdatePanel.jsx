@@ -435,7 +435,7 @@ const UpdatePanel = () => {
           <Typography sx={{ fontSize: 12.5, fontWeight: 700, textAlign: 'center', width: '100%' }}>
             فایل بسته را انتخاب یا رها کنید
           </Typography>
-          <Typography sx={{ fontSize: 10.5, color: 'text.secondary', textAlign: 'center', width: '100%', mt: 0.25 }}>
+          <Typography sx={{ fontSize: 12, color: 'text.secondary', textAlign: 'center', width: '100%', mt: 0.25 }}>
             فرمت‌های مجاز: zip · tar.gz · tgz
           </Typography>
         </Box>
@@ -443,7 +443,7 @@ const UpdatePanel = () => {
         {uploading && (
           <Box sx={{ mt: 2 }}>
             <Stack direction="row" justifyContent="space-between" sx={{ mb: 0.5 }}>
-              <Typography noWrap sx={{ fontSize: 10.5, maxWidth: 380 }}>{fileName}</Typography>
+              <Typography noWrap sx={{ fontSize: 12, maxWidth: 380 }}>{fileName}</Typography>
               <Typography variant="caption" fontWeight={700}>{toPersianDigits(progress)}٪</Typography>
             </Stack>
             <LinearProgress variant="determinate" value={progress} sx={{ height: 8, borderRadius: 4 }} />
@@ -487,7 +487,7 @@ const UpdatePanel = () => {
                     <TableCell>
                       <Typography sx={{ fontSize: 13, fontWeight: 400 }}>{toPersianDigits(release.version)}</Typography>
                       {release.min_app_version && (
-                        <Typography sx={{ fontSize: 9.5, color: 'text.secondary', display: 'block' }}>
+                        <Typography sx={{ fontSize: 12, color: 'text.secondary', display: 'block' }}>
                           حداقل نسخهٔ مبدأ: {toPersianDigits(release.min_app_version)}
                         </Typography>
                       )}
@@ -498,7 +498,7 @@ const UpdatePanel = () => {
                         variant={release.channel === status.channel ? 'filled' : 'outlined'}
                         color={release.channel === status.channel ? 'default' : 'warning'}
                         label={release.channel === 'beta' ? 'آزمایشی' : 'پایدار'}
-                        sx={{ fontSize: 10.5, height: 20 }} />
+                        sx={{ fontSize: 12, height: 20 }} />
                     </TableCell>
                     <TableCell>{signatureChip(release.signature_status)}</TableCell>
                     <TableCell>{formatBytes(release.size)}</TableCell>
@@ -516,11 +516,11 @@ const UpdatePanel = () => {
                       <Button size="small" variant="contained" startIcon={<PlayArrowIcon />}
                         disabled={!status.apply_enabled || release.status === 'applied'}
                         onClick={() => { setConfirmText(''); setApplyTarget(release); }}
-                        sx={{ mr: 1, bgcolor: COLOR, fontSize: 10.5, borderRadius: '8px' }}>
+                        sx={{ mr: 1, bgcolor: COLOR, fontSize: 12, borderRadius: '8px' }}>
                         نصب
                       </Button>
                       <Button size="small" color="error" startIcon={<DeleteIcon />}
-                        sx={{ fontSize: 10.5, borderRadius: '8px' }}
+                        sx={{ fontSize: 12, borderRadius: '8px' }}
                         onClick={() => removeRelease(release)}>
                         حذف
                       </Button>

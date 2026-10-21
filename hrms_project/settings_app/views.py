@@ -35,7 +35,7 @@ HEX_COLOR = re.compile(r'^#[0-9a-fA-F]{6}$')
 FONT_FAMILIES = {'vazirmatn', 'iransans', 'tahoma', 'system'}
 SIZE_RANGES = {
     'headerSize': (14, 32), 'cardSize': (12, 24),
-    'bodySize': (10, 18), 'buttonSize': (10, 18), 'statSize': (11, 24),
+    'bodySize': (12, 18), 'buttonSize': (12, 18), 'statSize': (12, 24),
 }
 WEIGHT_OPTIONS = {300, 400, 500, 600, 700}
 DEFAULT_TYPOGRAPHY = {

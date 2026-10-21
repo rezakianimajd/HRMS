@@ -52,7 +52,7 @@ const AuditPage = () => {
               size="small"
               label={`${formatPersianNumber(logs.length)} فعالیت`}
               sx={{
-                height: 20, fontSize: 10, fontWeight: 800,
+                height: 20, fontSize: 12, fontWeight: 800,
                 bgcolor: `${SOFT.slate}1f`, color: SOFT.slate,
               }}
             />
@@ -67,11 +67,11 @@ const AuditPage = () => {
           </Box>
         ) : (
           <TableContainer>
-            <Table size="small" sx={{ '& td': { fontSize: 11, py: 1 } }}>
+            <Table size="small" sx={{ '& td': { fontSize: 12, py: 1 } }}>
               <TableHead>
                 <TableRow sx={{
                   '& th': {
-                    bgcolor: 'rgba(100,116,139,0.05)', fontSize: 10.5,
+                    bgcolor: 'rgba(100,116,139,0.05)', fontSize: 12,
                     fontWeight: 800, textAlign: 'center',
                   },
                 }}>
@@ -86,24 +86,24 @@ const AuditPage = () => {
                 {logs.map((l, i) => (
                   <TableRow key={l.id || i} hover>
                     <TableCell>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 700 }}>
                         {l.user_full_name || l.user_username || '—'}
                       </Typography>
                     </TableCell>
                     <TableCell align="center">
                       <Chip size="small" label={l.action_display || l.action || '—'} variant="outlined"
-                        sx={{ height: 20, fontSize: 10, fontWeight: 700, color: SOFT.slate, borderColor: `${SOFT.slate}55` }} />
+                        sx={{ height: 20, fontSize: 12, fontWeight: 700, color: SOFT.slate, borderColor: `${SOFT.slate}55` }} />
                     </TableCell>
                     <TableCell align="center">
-                      <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }} noWrap>
+                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }} noWrap>
                         {l.model_display || l.model_name || '—'}
                       </Typography>
                     </TableCell>
                     <TableCell sx={{ maxWidth: 340 }}>
-                      <Typography sx={{ fontSize: 11 }} noWrap>{l.description || ''}</Typography>
+                      <Typography sx={{ fontSize: 12 }} noWrap>{l.description || ''}</Typography>
                     </TableCell>
                     <TableCell align="center" sx={{ whiteSpace: 'nowrap' }}>
-                      <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                      <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
                         {formatStamp(l.timestamp)}
                       </Typography>
                     </TableCell>

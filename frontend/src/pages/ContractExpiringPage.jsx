@@ -175,15 +175,15 @@ const ContractExpiringPage = () => {
 
           {(counts.expired || 0) > 0 ? (
             <Alert severity="error" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-              <Typography sx={{ fontSize: 9.5 }}>{formatPersianNumber(counts.expired)} قرارداد منقضی شده است؛ وضعیت آن‌ها را بررسی کنید.</Typography>
+              <Typography sx={{ fontSize: 12 }}>{formatPersianNumber(counts.expired)} قرارداد منقضی شده است؛ وضعیت آن‌ها را بررسی کنید.</Typography>
             </Alert>
           ) : null}
 
           {!filtered.length ? (
             <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
               <NotificationsActiveIcon sx={{ fontSize: 38, color: '#cbd5e1', mb: 1 }} />
-              <Typography sx={{ fontSize: 11, fontWeight: 800, color: '#0f172a' }}>قراردادی در این بازه پیدا نشد.</Typography>
-              <Typography sx={{ fontSize: 9, color: '#64748b', mt: 0.4 }}>فیلتر بازه یا عبارت جست‌وجو را تغییر دهید.</Typography>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>قراردادی در این بازه پیدا نشد.</Typography>
+              <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>فیلتر بازه یا عبارت جست‌وجو را تغییر دهید.</Typography>
             </Paper>
           ) : view === 'cards' ? (
             <Grid container spacing={1.5}>

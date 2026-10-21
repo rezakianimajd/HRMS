@@ -114,7 +114,7 @@ const InfoLine = ({ label, value, strong, ltr }) => {
   const display = value === null || value === undefined || value === '' ? '—' : value;
   return (
     <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ py: 0.38 }}>
-      <Typography sx={{ fontSize: 9.4, color: MUTED, flexShrink: 0 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{label}</Typography>
       <Typography sx={{
         fontSize: strong ? 10.6 : 9.8, fontWeight: strong ? 900 : 700, color: INK,
         textAlign: 'left', direction: ltr ? 'ltr' : 'rtl', minWidth: 0,
@@ -136,7 +136,7 @@ const SectionHeading = ({ icon: Icon, title, color = '#2563eb', action }) => (
         <Icon sx={{ fontSize: 15 }} />
       </Box>
     ) : null}
-    <Typography sx={{ flex: 1, fontSize: 10.7, fontWeight: 900, color: INK }}>{title}</Typography>
+    <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>{title}</Typography>
     {action || null}
   </Stack>
 );
@@ -145,7 +145,7 @@ const StatusChip = ({ row }) => {
   const status = statusOf(row);
   return (
     <Chip size="small" label={status.label}
-      sx={{ height: 21, fontSize: 8.8, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
+      sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: status.bg, color: status.color }} />
   );
 };
 
@@ -154,7 +154,7 @@ const InstrumentPill = ({ row }) => {
   const Icon = meta.icon;
   return (
     <Chip size="small" icon={<Icon sx={{ fontSize: 12 }} />} label={meta.label}
-      sx={{ height: 21, fontSize: 8.8, fontWeight: 800, bgcolor: alpha(meta.color, 0.07), color: meta.color }} />
+      sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(meta.color, 0.07), color: meta.color }} />
   );
 };
 
@@ -225,10 +225,10 @@ const GuaranteeCard = ({ row, currency, accent, onView, onEdit, onDelete, onActi
           <Icon sx={{ fontSize: 20 }} />
         </Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color: INK }}>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
             {numberFor(row)}
           </Typography>
-          <Typography noWrap sx={{ fontSize: 9.2, color: MUTED }}>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
             {row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}
           </Typography>
         </Box>
@@ -239,27 +239,27 @@ const GuaranteeCard = ({ row, currency, accent, onView, onEdit, onDelete, onActi
         <InstrumentPill row={row} />
         {row.contract_guarantee_label ? (
           <Chip size="small" label={row.contract_guarantee_label}
-            sx={{ height: 21, fontSize: 8.4, maxWidth: 190, bgcolor: alpha(accent, 0.06), color: accent }} />
+            sx={{ height: 21, fontSize: 12, maxWidth: 190, bgcolor: alpha(accent, 0.06), color: accent }} />
         ) : null}
         {documents.length ? (
           <Chip component="a" href={documents[0].file_url || documents[0].file}
             target="_blank" rel="noreferrer" clickable size="small"
             icon={<PictureAsPdfIcon sx={{ fontSize: 12 }} />}
             label={`${formatPersianNumber(documents.length)} پیوست`}
-            sx={{ height: 21, fontSize: 8.4, fontWeight: 800, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }} />
+            sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }} />
         ) : null}
       </Stack>
 
       <Stack direction="row" alignItems="flex-end" justifyContent="space-between" spacing={1}>
         <Box>
-          <Typography sx={{ fontSize: 8.7, color: MUTED }}>مبلغ تضمین</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ تضمین</Typography>
           <Typography sx={{ fontSize: 13.5, fontWeight: 900, color: INK, direction: 'rtl' }}>
             {money(row.amount, currency)}
           </Typography>
         </Box>
         <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontSize: 8.7, color: MUTED }}>سررسید / انقضا</Typography>
-          <Typography sx={{ fontSize: 9.8, fontWeight: 800, color: days !== null && days < 0 ? '#be123c' : INK }}>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>سررسید / انقضا</Typography>
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: days !== null && days < 0 ? '#be123c' : INK }}>
             {dateLabel(due)}
           </Typography>
         </Box>
@@ -269,7 +269,7 @@ const GuaranteeCard = ({ row, currency, accent, onView, onEdit, onDelete, onActi
         <Box sx={{ p: 0.75, borderRadius: '9px', bgcolor: alpha(status.color, 0.045), border: `1px solid ${alpha(status.color, 0.12)}` }}>
           <Stack direction="row" alignItems="center" spacing={0.6}>
             <ScheduleIcon sx={{ fontSize: 13, color: status.color }} />
-            <Typography sx={{ fontSize: 8.9, color: status.color, fontWeight: 800 }}>
+            <Typography sx={{ fontSize: 12, color: status.color, fontWeight: 800 }}>
               {days < 0 ? `${toPersianDigits(Math.abs(days))} روز از انقضا گذشته` : days === 0 ? 'امروز منقضی می‌شود' : `${toPersianDigits(days)} روز تا انقضا`}
             </Typography>
           </Stack>
@@ -280,8 +280,8 @@ const GuaranteeCard = ({ row, currency, accent, onView, onEdit, onDelete, onActi
       <Divider />
       <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
         <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 8.8, color: MUTED }}>{row.bank || 'بدون بانک'}</Typography>
-          <Typography sx={{ fontSize: 8.3, color: MUTED }}>صدور: {dateLabel(row.issue_date)}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.bank || 'بدون بانک'}</Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>صدور: {dateLabel(row.issue_date)}</Typography>
         </Box>
         <Stack direction="row" spacing={0.1} alignItems="center">
           <LifecycleActions row={row} onAction={onAction} compact />
@@ -309,13 +309,13 @@ const GuaranteeTable = ({ rows, currency, onView, onEdit, onDelete, onAction }) 
         <Table size="small" stickyHeader sx={{ '& td, & th': { px: 1.25, py: 0.85 } }}>
           <TableHead>
             <TableRow>
-              <TableCell sx={{ fontWeight: 800, fontSize: 9.2 }}>ابزار / نوع</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 9.2 }}>شماره</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 9.2 }}>مبلغ</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 9.2 }}>ضمانت قرارداد</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 9.2 }}>سررسید</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, fontSize: 9.2 }}>وضعیت</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, fontSize: 9.2 }}>عملیات</TableCell>
+              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>ابزار / نوع</TableCell>
+              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>شماره</TableCell>
+              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>مبلغ</TableCell>
+              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>ضمانت قرارداد</TableCell>
+              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>سررسید</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 800, fontSize: 12 }}>وضعیت</TableCell>
+              <TableCell align="center" sx={{ fontWeight: 800, fontSize: 12 }}>عملیات</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -331,21 +331,21 @@ const GuaranteeTable = ({ rows, currency, onView, onEdit, onDelete, onAction }) 
                         bgcolor: alpha(meta.color, 0.08), display: 'flex', alignItems: 'center', justifyContent: 'center',
                       }}><Icon sx={{ fontSize: 14 }} /></Box>
                       <Box>
-                        <Typography sx={{ fontSize: 9.5, fontWeight: 800 }}>{meta.label}</Typography>
-                        <Typography sx={{ fontSize: 8.4, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
+                        <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{meta.label}</Typography>
+                        <Typography sx={{ fontSize: 12, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
                       </Box>
                     </Stack>
                   </TableCell>
-                  <TableCell sx={{ fontSize: 9.5, fontWeight: 800 }}>{numberFor(row)}</TableCell>
-                  <TableCell sx={{ fontSize: 9.5, direction: 'ltr', textAlign: 'right' }}>{money(row.amount, currency)}</TableCell>
+                  <TableCell sx={{ fontSize: 12, fontWeight: 800 }}>{numberFor(row)}</TableCell>
+                  <TableCell sx={{ fontSize: 12, direction: 'ltr', textAlign: 'right' }}>{money(row.amount, currency)}</TableCell>
                   <TableCell sx={{ maxWidth: 210 }}>
-                    <Typography noWrap title={row.contract_guarantee_label || ''} sx={{ fontSize: 9, color: MUTED }}>
+                    <Typography noWrap title={row.contract_guarantee_label || ''} sx={{ fontSize: 12, color: MUTED }}>
                       {row.contract_guarantee_label || '—'}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography sx={{ fontSize: 9.2, fontWeight: 700 }}>{dateLabel(dueOf(row))}</Typography>
-                    <Typography sx={{ fontSize: 8.3, color: statusOf(row).color }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{dateLabel(dueOf(row))}</Typography>
+                    <Typography sx={{ fontSize: 12, color: statusOf(row).color }}>
                       {statusOf(row).key === 'expiring' ? `${toPersianDigits(daysUntil(dueOf(row)))} روز` : ''}
                     </Typography>
                   </TableCell>
@@ -370,7 +370,7 @@ const GuaranteeTable = ({ rows, currency, onView, onEdit, onDelete, onAction }) 
 
 const ContractSnapshotCard = ({ contract, accent, onBack, currency, guaranteeCount = 0 }) => (
   <SurfaceCard title="قرارداد" icon={DescriptionIcon} color={accent}
-    action={<Button size="small" startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ minWidth: 0, fontSize: 9 }}>تغییر</Button>}>
+    action={<Button size="small" startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ minWidth: 0, fontSize: 12 }}>تغییر</Button>}>
     <Stack spacing={0.75}>
       <Box>
         <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK, lineHeight: 1.6 }}>
@@ -378,10 +378,10 @@ const ContractSnapshotCard = ({ contract, accent, onBack, currency, guaranteeCou
         </Typography>
         <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
           <Chip size="small" label={contract?.number || 'بدون شماره'}
-            sx={{ height: 20, fontSize: 8.6, fontWeight: 800, bgcolor: alpha(accent, 0.07), color: accent }} />
+            sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(accent, 0.07), color: accent }} />
           {contract?.status_display ? (
             <Chip size="small" label={contract.status_display}
-              sx={{ height: 20, fontSize: 8.6, bgcolor: SOFT_BG, color: MUTED }} />
+              sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
           ) : null}
         </Stack>
       </Box>
@@ -402,7 +402,7 @@ const CoveragePanel = ({ status, accent, isLoading }) => {
   return (
     <SurfaceCard title="پوشش تضامین" icon={VerifiedUserIcon} color={accent}
       action={<Chip size="small" label={`${toPersianDigits(coverage)}٪`}
-        sx={{ height: 21, fontSize: 8.8, fontWeight: 900, bgcolor: alpha(coverageColor, 0.08), color: coverageColor }} />}>
+        sx={{ height: 21, fontSize: 12, fontWeight: 900, bgcolor: alpha(coverageColor, 0.08), color: coverageColor }} />}>
       {isLoading ? <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={20} /></Box> : (
         <Stack spacing={1}>
           <Box>
@@ -420,8 +420,8 @@ const CoveragePanel = ({ status, accent, isLoading }) => {
             ].map(([label, value, color]) => (
               <Grid item xs={6} key={label}>
                 <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
-                  <Typography sx={{ fontSize: 8.3, color: MUTED }}>{label}</Typography>
-                  <Typography sx={{ fontSize: 9.8, fontWeight: 900, color, direction: 'ltr', textAlign: 'right' }}>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>{label}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color, direction: 'ltr', textAlign: 'right' }}>
                     {formatPersianNumber(value || 0)}
                   </Typography>
                 </Box>
@@ -430,19 +430,19 @@ const CoveragePanel = ({ status, accent, isLoading }) => {
           </Grid>
           <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
             <Chip size="small" label={`${toPersianDigits(summary.provided_count || 0)} تأمین‌شده`}
-              sx={{ height: 19, fontSize: 8.2, bgcolor: '#ecfdf5', color: '#0f766e' }} />
-            {Number(summary.partial_count) > 0 ? <Chip size="small" label={`${toPersianDigits(summary.partial_count)} ناقص`} sx={{ height: 19, fontSize: 8.2, bgcolor: '#fffbeb', color: '#b45309' }} /> : null}
-            {Number(summary.missing_count) > 0 ? <Chip size="small" label={`${toPersianDigits(summary.missing_count)} تأمین‌نشده`} sx={{ height: 19, fontSize: 8.2, bgcolor: '#fff1f2', color: '#be123c' }} /> : null}
+              sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
+            {Number(summary.partial_count) > 0 ? <Chip size="small" label={`${toPersianDigits(summary.partial_count)} ناقص`} sx={{ height: 19, fontSize: 12, bgcolor: '#fffbeb', color: '#b45309' }} /> : null}
+            {Number(summary.missing_count) > 0 ? <Chip size="small" label={`${toPersianDigits(summary.missing_count)} تأمین‌نشده`} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} /> : null}
           </Stack>
           {requirements.length ? (
             <Box sx={{ pt: 0.3 }}>
-              <Typography sx={{ fontSize: 8.8, color: MUTED, mb: 0.5 }}>اقلام تضمین قرارداد</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.5 }}>اقلام تضمین قرارداد</Typography>
               <Stack spacing={0.55}>
                 {requirements.slice(0, 4).map((req) => (
                   <Box key={`${req.index}-${req.type}`}>
                     <Stack direction="row" justifyContent="space-between" spacing={1}>
-                      <Typography noWrap sx={{ fontSize: 8.6, color: '#475569' }}>{req.label}</Typography>
-                      <Typography sx={{ fontSize: 8.4, fontWeight: 800, color: req.status === 'provided' ? '#0f766e' : req.status === 'partial' ? '#b45309' : '#be123c' }}>
+                      <Typography noWrap sx={{ fontSize: 12, color: '#475569' }}>{req.label}</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 800, color: req.status === 'provided' ? '#0f766e' : req.status === 'partial' ? '#b45309' : '#be123c' }}>
                         {toPersianDigits(req.coverage_percent || 0)}٪
                       </Typography>
                     </Stack>
@@ -482,12 +482,12 @@ const StatusNav = ({ counts, active, onChange, accent }) => {
           }}>
             <Stack direction="row" alignItems="center" spacing={0.65}>
               <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: color }} />
-              <Typography sx={{ fontSize: 9.4, fontWeight: active === key ? 900 : 700, color: active === key ? color : theme.palette.text.primary }}>
+              <Typography sx={{ fontSize: 12, fontWeight: active === key ? 900 : 700, color: active === key ? color : theme.palette.text.primary }}>
                 {label}
               </Typography>
             </Stack>
             <Chip size="small" label={formatPersianNumber(counts[key] || 0)}
-              sx={{ height: 18, fontSize: 8.2, bgcolor: theme.palette.action.hover }} />
+              sx={{ height: 18, fontSize: 12, bgcolor: theme.palette.action.hover }} />
           </ButtonBase>
         ))}
       </Stack>
@@ -543,7 +543,7 @@ const LandingContent = ({
         <Grid item xs={12} lg={4}>
           <SurfaceCard title="تضامین نزدیک انقضا" icon={EventBusyIcon} color="#b45309"
             action={<Chip size="small" label={formatPersianNumber(expiringRows.length)}
-              sx={{ height: 21, fontSize: 8.8, bgcolor: '#fffbeb', color: '#b45309', fontWeight: 900 }} />}>
+              sx={{ height: 21, fontSize: 12, bgcolor: '#fffbeb', color: '#b45309', fontWeight: 900 }} />}>
             {expiringRows.length ? (
               <Stack spacing={0.55}>
                 {expiringRows.map((row) => {
@@ -561,15 +561,15 @@ const LandingContent = ({
                           display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
                         }}><ScheduleIcon sx={{ fontSize: 15 }} /></Box>
                         <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontSize: 9.5, fontWeight: 800, color: INK }}>
+                          <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
                             {numberFor(row)} · {instrumentMeta(row).label}
                           </Typography>
-                          <Typography noWrap sx={{ fontSize: 8.4, color: MUTED }}>
+                          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                             {row.contract_subject || 'قرارداد'} · {dateLabel(dueOf(row))}
                           </Typography>
                         </Box>
                         <Chip size="small" label={days === 0 ? 'امروز' : `${toPersianDigits(days)} روز`}
-                          sx={{ height: 19, fontSize: 8.2, bgcolor: '#fff7ed', color: '#c2410c', fontWeight: 800 }} />
+                          sx={{ height: 19, fontSize: 12, bgcolor: '#fff7ed', color: '#c2410c', fontWeight: 800 }} />
                       </Stack>
                     </ButtonBase>
                   );
@@ -578,7 +578,7 @@ const LandingContent = ({
             ) : (
               <Box sx={{ py: 4, textAlign: 'center' }}>
                 <CheckCircleIcon sx={{ fontSize: 30, color: '#0f766e', mb: 0.6 }} />
-                <Typography sx={{ fontSize: 9.5, color: MUTED }}>تضمینی در ۳۰ روز آینده منقضی نمی‌شود.</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>تضمینی در ۳۰ روز آینده منقضی نمی‌شود.</Typography>
               </Box>
             )}
           </SurfaceCard>
@@ -609,14 +609,14 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
             }}><Icon sx={{ fontSize: 21 }} /></Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
               <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{numberFor(row)}</Typography>
-              <Typography sx={{ fontSize: 9.4, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
+              <Typography sx={{ fontSize: 12, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
             </Box>
             <StatusChip row={row} />
             <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
             <InstrumentPill row={row} />
-            {row.contract_guarantee_label ? <Chip size="small" label={row.contract_guarantee_label} sx={{ height: 21, fontSize: 8.4, bgcolor: alpha(accent, 0.06), color: accent }} /> : null}
+            {row.contract_guarantee_label ? <Chip size="small" label={row.contract_guarantee_label} sx={{ height: 21, fontSize: 12, bgcolor: alpha(accent, 0.06), color: accent }} /> : null}
           </Stack>
         </Box>
 
@@ -658,7 +658,7 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
             {row.note ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={NoteAltIcon} title="یادداشت" color="#7c3aed" />
-                <Typography sx={{ fontSize: 9.5, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{row.note}</Typography>
+                <Typography sx={{ fontSize: 12, color: '#475569', lineHeight: 1.8, whiteSpace: 'pre-wrap' }}>{row.note}</Typography>
               </Paper>
             ) : null}
 
@@ -684,7 +684,7 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
                     return (
                       <Button key={key} size="small" variant="outlined" startIcon={<ActionIcon />}
                         onClick={() => onAction({ row, action: key })}
-                        sx={{ fontSize: 9, borderColor: alpha(action.color, 0.35), color: action.color }}>
+                        sx={{ fontSize: 12, borderColor: alpha(action.color, 0.35), color: action.color }}>
                         {action.label}
                       </Button>
                     );
@@ -777,7 +777,7 @@ const GuaranteeEditorDialog = ({
                 </FormControl>
               </Grid>
               <Grid item xs={12}>
-                <Typography sx={{ fontSize: 9.2, color: MUTED, mb: 0.6 }}>نوع ابزار تضمین</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.6 }}>نوع ابزار تضمین</Typography>
                 <Box sx={{ display: 'flex', gap: 0.65, flexWrap: 'wrap' }}>
                   {Object.entries(INSTRUMENT_META).map(([key, meta]) => {
                     const active = form.instrument_type === key;
@@ -786,7 +786,7 @@ const GuaranteeEditorDialog = ({
                       <Chip key={key} icon={<Icon sx={{ fontSize: 13 }} />} label={meta.label}
                         onClick={() => update('instrument_type', key)}
                         sx={{
-                          cursor: 'pointer', borderRadius: '9px', fontWeight: 800, fontSize: 9.2,
+                          cursor: 'pointer', borderRadius: '9px', fontWeight: 800, fontSize: 12,
                           bgcolor: active ? meta.color : alpha(meta.color, 0.07),
                           color: active ? '#fff' : meta.color,
                           border: `1px solid ${active ? meta.color : alpha(meta.color, 0.25)}`,
@@ -1364,7 +1364,7 @@ const GuaranteesPage = () => {
 
             {warnings.slice(0, 3).map((warning) => (
               <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 9.5 }}>{warning}</Typography>
+                <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
               </Alert>
             ))}
 
@@ -1372,7 +1372,7 @@ const GuaranteesPage = () => {
             {!filtered.length ? (
               <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
                 <LockIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>تضمینی با این مشخصات ثبت نشده است.</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>تضمینی با این مشخصات ثبت نشده است.</Typography>
                 <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت تضمین جدید</Button>
               </Paper>
             ) : view === 'cards' ? (

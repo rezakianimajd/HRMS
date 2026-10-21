@@ -213,7 +213,7 @@ const SubjectEditor = ({ item, subject, onChangeFields, onRemove }) => {
         <Box sx={{ flex: 1 }} />
         {subject?.fields?.some((field) => field.effect) ? (
           <Chip size="small" label="اثرگذار بر پروندهٔ قرارداد"
-            sx={{ height: 21, fontSize: 8.8, fontWeight: 800, bgcolor: alpha(tone, 0.08), color: tone }} />
+            sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha(tone, 0.08), color: tone }} />
         ) : null}
         <Tooltip title="حذف موضوع">
           <IconButton size="small" color="error" onClick={onRemove}><RemoveCircleIcon fontSize="small" /></IconButton>
@@ -231,7 +231,7 @@ const SubjectEditor = ({ item, subject, onChangeFields, onRemove }) => {
         ))}
       </Grid>
       {subject?.fields?.some((field) => field.effect) ? (
-        <Typography sx={{ mt: 1, fontSize: 8.8, color: MUTED }}>
+        <Typography sx={{ mt: 1, fontSize: 12, color: MUTED }}>
           اثر مستقیم: {subject.fields.filter((field) => field.effect)
             .map((field) => `${field.label} → ${CONTRACT_TARGET_LABELS[field.effect[0]] || field.effect[0]}`)
             .join(' · ')}
@@ -865,11 +865,11 @@ const LandingContent = ({
                   width: 25, height: 25, borderRadius: '8px', flexShrink: 0,
                   bgcolor: alpha(accent, 0.08), color: accent,
                   display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 10, fontWeight: 900,
+                  fontSize: 12, fontWeight: 900,
                 }}>{number}</Box>
                 <Box>
-                  <Typography sx={{ fontSize: 10.8, fontWeight: 800, color: INK }}>{title}</Typography>
-                  <Typography sx={{ fontSize: 9.5, color: MUTED, lineHeight: 1.7 }}>{description}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{title}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED, lineHeight: 1.7 }}>{description}</Typography>
                 </Box>
               </Stack>
             ))}
@@ -900,8 +900,8 @@ const WorkspaceContent = ({
                 width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'space-between',
                 bgcolor: groupFilter === 'all' ? alpha(accent, 0.07) : 'transparent',
               }}>
-                <Typography sx={{ fontSize: 9.8, fontWeight: 800 }}>همهٔ موضوع‌ها</Typography>
-                <Chip size="small" label={formatPersianNumber(groupCounts.all || 0)} sx={{ height: 19, fontSize: 8.5 }} />
+                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>همهٔ موضوع‌ها</Typography>
+                <Chip size="small" label={formatPersianNumber(groupCounts.all || 0)} sx={{ height: 19, fontSize: 12 }} />
               </ButtonBase>
               {Object.entries(ADDENDUM_GROUPS).map(([key, label]) => (
                 <ButtonBase key={key} onClick={() => setGroupFilter(key)} sx={{
@@ -910,20 +910,20 @@ const WorkspaceContent = ({
                 }}>
                   <Stack direction="row" alignItems="center" spacing={0.6}>
                     <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: groupTone(key) }} />
-                    <Typography sx={{ fontSize: 9.5, fontWeight: groupFilter === key ? 900 : 600, color: theme.palette.text.primary }}>
+                    <Typography sx={{ fontSize: 12, fontWeight: groupFilter === key ? 900 : 600, color: theme.palette.text.primary }}>
                       {label}
                     </Typography>
                   </Stack>
-                  <Chip size="small" label={formatPersianNumber(groupCounts[key] || 0)} sx={{ height: 19, fontSize: 8.5 }} />
+                  <Chip size="small" label={formatPersianNumber(groupCounts[key] || 0)} sx={{ height: 19, fontSize: 12 }} />
                 </ButtonBase>
               ))}
             </Stack>
           </SurfaceCard>
           {lastAmendment ? (
             <Paper elevation={0} sx={{ p: 1.25, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
-              <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>آخرین الحاقیه</Typography>
-              <Typography sx={{ mt: 0.2, fontSize: 10.5, fontWeight: 800 }}>{dateLabel(lastAmendment.date)}</Typography>
-              <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+              <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>آخرین الحاقیه</Typography>
+              <Typography sx={{ mt: 0.2, fontSize: 12, fontWeight: 800 }}>{dateLabel(lastAmendment.date)}</Typography>
+              <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                 {lastAmendment.number ? `شماره ${lastAmendment.number}` : lastAmendment.subjects_display || 'بدون عنوان'}
               </Typography>
             </Paper>
@@ -986,7 +986,7 @@ const WorkspaceContent = ({
 
           {warnings.map((warning) => (
             <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '12px', py: 0.35 }}>
-              <Typography sx={{ fontSize: 10 }}>{warning}</Typography>
+              <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
             </Alert>
           ))}
 
@@ -1041,10 +1041,10 @@ const WorkspaceContent = ({
           )}
 
           <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
-            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
               نمایش {formatPersianNumber(filtered.length)} از {formatPersianNumber(list.length)} الحاقیه
             </Typography>
-            <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
               مبلغ پایه هرگز بازنویسی نمی‌شود؛ همهٔ اثرها مشتق‌شده و قابل برگشت‌اند.
             </Typography>
           </Stack>
@@ -1087,7 +1087,7 @@ const AddendumEditorDialog = ({
           <Typography sx={{ fontSize: Math.max(type.cardSize - 1, 12.5), fontWeight: 900 }}>
             {form.id ? 'ویرایش الحاقیه' : 'ثبت الحاقیهٔ جدید'}
           </Typography>
-          <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>
+          <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
             {contract?.number ? `قرارداد ${contract.number} · ` : ''}{contract?.subject || 'پروندهٔ قرارداد'}
           </Typography>
         </Box>
@@ -1112,7 +1112,7 @@ const AddendumEditorDialog = ({
                 {previewLoading ? <CircularProgress size={18} sx={{ color: accent }} /> : (
                   <Stack spacing={0.4}>
                     {!changed.size ? (
-                      <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary }}>هنوز اثر مالی ثبت نشده است.</Typography>
+                      <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>هنوز اثر مالی ثبت نشده است.</Typography>
                     ) : Object.entries(CONTRACT_TARGET_LABELS).filter(([field]) => changed.has(field)).map(([field, label]) => (
                       <InfoLine key={field} label={label}
                         value={field === 'end_date' ? dateLabel(preview?.effective?.[field]) : money(preview?.effective?.[field], currencyLabel)}
@@ -1121,7 +1121,7 @@ const AddendumEditorDialog = ({
                   </Stack>
                 )}
                 {warnings.slice(0, 2).map((warning) => (
-                  <Typography key={warning} sx={{ mt: 0.75, fontSize: 8.8, color: '#b45309', lineHeight: 1.6 }}>
+                  <Typography key={warning} sx={{ mt: 0.75, fontSize: 12, color: '#b45309', lineHeight: 1.6 }}>
                     ⚠ {warning}
                   </Typography>
                 ))}
@@ -1165,7 +1165,7 @@ const AddendumEditorDialog = ({
                 </Grid>
                 {contract ? (
                   <Box sx={{ mt: 1.5, p: 1.25, borderRadius: '12px', bgcolor: alpha(accent, 0.035), border: `1px solid ${alpha(accent, 0.12)}` }}>
-                    <Typography sx={{ fontSize: 9.5, fontWeight: 800, mb: 0.5 }}>مرجع قرارداد</Typography>
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, mb: 0.5 }}>مرجع قرارداد</Typography>
                     <Grid container spacing={1}>
                       <Grid item xs={6} md={3}><InfoLine label="طرف" value={contract.party_name} /></Grid>
                       <Grid item xs={6} md={3}><InfoLine label="مبلغ پایه" value={money(contract.amount, currencyLabel)} ltr /></Grid>
@@ -1186,7 +1186,7 @@ const AddendumEditorDialog = ({
                 />
                 {error ? <Alert severity="error" sx={{ mt: 1, borderRadius: '10px' }} onClose={() => setError('')}>{error}</Alert> : null}
                 <Alert severity="info" sx={{ mt: 1.5, borderRadius: '10px', py: 0.2 }}>
-                  <Typography sx={{ fontSize: 9.5 }}>
+                  <Typography sx={{ fontSize: 12 }}>
                     تاریخ الحاقیه اختیاری است؛ ترتیب اثرگذاری در پروندهٔ مؤثر بر اساس تاریخ و شناسهٔ ثبت محاسبه می‌شود.
                   </Typography>
                 </Alert>
@@ -1206,13 +1206,13 @@ const AddendumEditorDialog = ({
                       onChange={(event) => setSubjectSearch(event.target.value)} sx={{ flex: 1, minWidth: 200 }}
                       InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
                     <ButtonBase onClick={() => setSubjectGroup('all')} sx={{
-                      px: 1, py: 0.55, borderRadius: '8px', fontSize: 9.5, fontWeight: 800,
+                      px: 1, py: 0.55, borderRadius: '8px', fontSize: 12, fontWeight: 800,
                       bgcolor: subjectGroup === 'all' ? alpha(accent, 0.08) : theme.palette.action.hover,
                       color: subjectGroup === 'all' ? accent : theme.palette.text.secondary,
                     }}>همه</ButtonBase>
                     {Object.entries(ADDENDUM_GROUPS).map(([key, label]) => (
                       <ButtonBase key={key} onClick={() => setSubjectGroup(key)} sx={{
-                        px: 1, py: 0.55, borderRadius: '8px', fontSize: 9, fontWeight: 800,
+                        px: 1, py: 0.55, borderRadius: '8px', fontSize: 12, fontWeight: 800,
                         bgcolor: subjectGroup === key ? alpha(groupTone(key), 0.1) : theme.palette.action.hover,
                         color: subjectGroup === key ? groupTone(key) : theme.palette.text.secondary,
                       }}>{label}</ButtonBase>
@@ -1239,16 +1239,16 @@ const AddendumEditorDialog = ({
                                 {selected ? <CheckCircleIcon sx={{ fontSize: 16 }} /> : <AddCircleIcon sx={{ fontSize: 16 }} />}
                               </Box>
                               <Box sx={{ minWidth: 0, flex: 1 }}>
-                                <Typography sx={{ fontSize: 9.8, fontWeight: 800, lineHeight: 1.55, color: theme.palette.text.primary }}>
+                                <Typography sx={{ fontSize: 12, fontWeight: 800, lineHeight: 1.55, color: theme.palette.text.primary }}>
                                   {option.label}
                                 </Typography>
                                 <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap" sx={{ mt: 0.35 }}>
-                                  <Typography sx={{ fontSize: 8.5, color: tone }}>{option.group_label}</Typography>
-                                  <Typography sx={{ fontSize: 8.5, color: theme.palette.text.secondary }}>
+                                  <Typography sx={{ fontSize: 12, color: tone }}>{option.group_label}</Typography>
+                                  <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                                     {formatPersianNumber((option.fields || []).length)} فیلد
                                   </Typography>
                                   {(option.fields || []).some((field) => field.effect) ? (
-                                    <Typography sx={{ fontSize: 8.5, color: '#0f766e', fontWeight: 800 }}>اثرگذار</Typography>
+                                    <Typography sx={{ fontSize: 12, color: '#0f766e', fontWeight: 800 }}>اثرگذار</Typography>
                                   ) : null}
                                 </Stack>
                               </Box>
@@ -1259,7 +1259,7 @@ const AddendumEditorDialog = ({
                     })}
                   </Grid>
                   {!filteredSubjectOptions.length ? (
-                    <Typography sx={{ py: 2, textAlign: 'center', fontSize: 10, color: theme.palette.text.secondary }}>
+                    <Typography sx={{ py: 2, textAlign: 'center', fontSize: 12, color: theme.palette.text.secondary }}>
                       موضوعی با این جست‌وجو پیدا نشد.
                     </Typography>
                   ) : null}
@@ -1267,7 +1267,7 @@ const AddendumEditorDialog = ({
 
                 {!selectedSubjects.length ? (
                   <Alert severity="info" sx={{ borderRadius: '12px' }}>
-                    <Typography sx={{ fontSize: 10 }}>با انتخاب موضوع‌ها، فیلدهای تخصصی و اثرشان روی پروندهٔ قرارداد نمایش داده می‌شود.</Typography>
+                    <Typography sx={{ fontSize: 12 }}>با انتخاب موضوع‌ها، فیلدهای تخصصی و اثرشان روی پروندهٔ قرارداد نمایش داده می‌شود.</Typography>
                   </Alert>
                 ) : (
                   <Stack spacing={1.25}>
@@ -1294,7 +1294,7 @@ const AddendumEditorDialog = ({
                   color={accent} />
                 {!(form.provisions || []).length ? (
                   <Alert severity="info" sx={{ borderRadius: '12px' }}>
-                    <Typography sx={{ fontSize: 10 }}>بندی ثبت نشده است؛ می‌توانید متن کامل مفاد الحاقیه را در بخش «شرح تغییرات» مرحلهٔ بازبینی وارد کنید.</Typography>
+                    <Typography sx={{ fontSize: 12 }}>بندی ثبت نشده است؛ می‌توانید متن کامل مفاد الحاقیه را در بخش «شرح تغییرات» مرحلهٔ بازبینی وارد کنید.</Typography>
                   </Alert>
                 ) : (
                   <Stack spacing={1.1}>
@@ -1350,24 +1350,24 @@ const AddendumEditorDialog = ({
                       </Stack>
                     </Grid>
                     <Grid item xs={12} md={7}>
-                      <Typography sx={{ fontSize: 9.5, fontWeight: 800, mb: 0.5 }}>اثر نهایی بر پروندهٔ قرارداد</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 800, mb: 0.5 }}>اثر نهایی بر پروندهٔ قرارداد</Typography>
                       {previewLoading ? (
                         <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={22} sx={{ color: accent }} /></Box>
                       ) : preview ? (
                         <EffectTable effect={preview} compact currency={currencyLabel} />
                       ) : (
-                        <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>هنوز پیش‌نمایشی محاسبه نشده است.</Typography>
+                        <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>هنوز پیش‌نمایشی محاسبه نشده است.</Typography>
                       )}
                     </Grid>
                   </Grid>
                   {warnings.map((warning) => (
                     <Alert key={warning} severity="warning" sx={{ mt: 1, borderRadius: '10px', py: 0.2 }}>
-                      <Typography sx={{ fontSize: 9.5 }}>{warning}</Typography>
+                      <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
                     </Alert>
                   ))}
                 </Paper>
                 <Paper elevation={0} sx={{ p: { xs: 1.5, md: 2 }, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-                  <Typography sx={{ fontSize: 9.5, fontWeight: 800, mb: 0.75 }}>شرح تغییرات</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, mb: 0.75 }}>شرح تغییرات</Typography>
                   <TextField size="small" fullWidth multiline rows={4} placeholder="خلاصهٔ تغییر، دلیل و مستندات پشتوانه..."
                     value={form.change_description || ''}
                     onChange={(event) => setForm((previous) => ({ ...previous, change_description: event.target.value }))} />
@@ -1429,7 +1429,7 @@ const AddendumDetailDrawer = ({
           }}><EditNoteIcon sx={{ fontSize: 20 }} /></Box>
           <Box sx={{ flex: 1, minWidth: 0 }}>
             <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>جزئیات الحاقیه</Typography>
-            <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>
+            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
               {row.number || 'بدون شماره'} · {dateLabel(row.date)}
             </Typography>
           </Box>
@@ -1462,7 +1462,7 @@ const AddendumDetailDrawer = ({
                 <Paper key={subject.type} elevation={0} sx={{ p: 1.5, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                   <SectionTitle title={spec.label} hint={spec.group_label} color={groupTone(spec.group)} />
                   {!filled.length ? (
-                    <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>فیلد تخصصی پر نشده است.</Typography>
+                    <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>فیلد تخصصی پر نشده است.</Typography>
                   ) : filled.map((field) => (
                     <InfoLine key={field.key} label={field.label}
                       value={fieldValue(field, values[field.key], currencyLabel)}
@@ -1476,13 +1476,13 @@ const AddendumDetailDrawer = ({
             <Paper elevation={0} sx={{ p: 1.5, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionTitle title="اثر اعمال‌شده" hint="این الحاقیه روی پروندهٔ قرارداد" color="#0f766e" />
               {!(row.effect?.changes || []).length ? (
-                <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary }}>این الحاقیه اثر مالی مستقیم ندارد.</Typography>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>این الحاقیه اثر مالی مستقیم ندارد.</Typography>
               ) : (
                 <Table size="small">
                   <TableHead>
                     <TableRow>
                       {['مورد', 'از', 'به', 'تغییر'].map((label) => (
-                        <TableCell key={label} sx={{ fontSize: 9, fontWeight: 900, color: theme.palette.text.secondary }}>{label}</TableCell>
+                        <TableCell key={label} sx={{ fontSize: 12, fontWeight: 900, color: theme.palette.text.secondary }}>{label}</TableCell>
                       ))}
                     </TableRow>
                   </TableHead>
@@ -1492,14 +1492,14 @@ const AddendumDetailDrawer = ({
                       const delta = isDate ? dayDiff(change.from, change.to) : toNumber(change.to) - toNumber(change.from);
                       return (
                         <TableRow key={`${change.field}-${change.source_field}`}>
-                          <TableCell sx={{ fontSize: 9 }}>{change.label || CONTRACT_TARGET_LABELS[change.field] || change.field}</TableCell>
-                          <TableCell sx={{ fontSize: 9, color: theme.palette.text.secondary }}>
+                          <TableCell sx={{ fontSize: 12 }}>{change.label || CONTRACT_TARGET_LABELS[change.field] || change.field}</TableCell>
+                          <TableCell sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
                             {isDate ? dateLabel(change.from) : money(change.from, currencyLabel)}
                           </TableCell>
-                          <TableCell sx={{ fontSize: 9, fontWeight: 800 }}>
+                          <TableCell sx={{ fontSize: 12, fontWeight: 800 }}>
                             {isDate ? dateLabel(change.to) : money(change.to, currencyLabel)}
                           </TableCell>
-                          <TableCell sx={{ fontSize: 9, fontWeight: 800, color: '#0f766e' }}>
+                          <TableCell sx={{ fontSize: 12, fontWeight: 800, color: '#0f766e' }}>
                             {isDate ? `${delta > 0 ? '+' : ''}${formatPersianNumber(delta)} روز` : signedMoney(delta, currencyLabel)}
                           </TableCell>
                         </TableRow>
@@ -1516,10 +1516,10 @@ const AddendumDetailDrawer = ({
                 <Stack spacing={1}>
                   {row.provisions.map((provision, index) => (
                     <Box key={index}>
-                      <Typography sx={{ fontSize: 9.8, fontWeight: 800 }}>
+                      <Typography sx={{ fontSize: 12, fontWeight: 800 }}>
                         {formatPersianNumber(index + 1)}. {provision.title || 'بدون عنوان'}
                       </Typography>
-                      <Typography sx={{ fontSize: 9.2, color: theme.palette.text.secondary, lineHeight: 1.8 }}>
+                      <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary, lineHeight: 1.8 }}>
                         {provision.text || '—'}
                       </Typography>
                     </Box>
@@ -1531,7 +1531,7 @@ const AddendumDetailDrawer = ({
             {row.change_description ? (
               <Paper elevation={0} sx={{ p: 1.5, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionTitle title="شرح تغییرات" color="#b45309" />
-                <Typography sx={{ fontSize: 9.5, color: theme.palette.text.secondary, lineHeight: 1.9 }}>{row.change_description}</Typography>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary, lineHeight: 1.9 }}>{row.change_description}</Typography>
               </Paper>
             ) : null}
           </Stack>
