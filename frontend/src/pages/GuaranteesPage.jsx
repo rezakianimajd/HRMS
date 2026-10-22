@@ -6,8 +6,7 @@ import {
   Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, Drawer, FormControl, FormHelperText,
   Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
-  Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -47,6 +46,7 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import ContractListPicker from '../core/components/ui/ContractListPicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import PageHeader from '../core/components/ui/PageHeader';
+import DataTable from '../core/components/ui/DataTable';
 import { GUARANTEE_TYPES, GUARANTEE_TYPE_LABELS as TYPE_LABELS } from '../core/constants/guaranteeTypes';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { AttachmentLinks, AttachmentPicker } from './contracts/AddendumWorkspaceUI';
@@ -301,72 +301,92 @@ const GuaranteeCard = ({ row, currency, accent, onView, onEdit, onDelete, onActi
 };
 
 
-const GuaranteeTable = ({ rows, currency, onView, onEdit, onDelete, onAction }) => {
-  const theme = useTheme();
-  return (
-    <Paper elevation={0} sx={{ borderRadius: '16px', border: `1px solid ${theme.palette.divider}`, overflow: 'hidden' }}>
-      <TableContainer sx={{ maxHeight: 'calc(100vh - 330px)' }}>
-        <Table size="small" stickyHeader sx={{ '& td, & th': { px: 1.25, py: 0.85 } }}>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>ابزار / نوع</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>شماره</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>مبلغ</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>ضمانت قرارداد</TableCell>
-              <TableCell sx={{ fontWeight: 800, fontSize: 12 }}>سررسید</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, fontSize: 12 }}>وضعیت</TableCell>
-              <TableCell align="center" sx={{ fontWeight: 800, fontSize: 12 }}>عملیات</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {rows.map((row) => {
-              const meta = instrumentMeta(row);
-              const Icon = meta.icon;
-              return (
-                <TableRow key={row.id} hover>
-                  <TableCell>
-                    <Stack direction="row" alignItems="center" spacing={0.6}>
-                      <Box sx={{
-                        width: 25, height: 25, borderRadius: '7px', color: meta.color,
-                        bgcolor: alpha(meta.color, 0.08), display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}><Icon sx={{ fontSize: 14 }} /></Box>
-                      <Box>
-                        <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{meta.label}</Typography>
-                        <Typography sx={{ fontSize: 12, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
-                      </Box>
-                    </Stack>
-                  </TableCell>
-                  <TableCell sx={{ fontSize: 12, fontWeight: 800 }}>{numberFor(row)}</TableCell>
-                  <TableCell sx={{ fontSize: 12, direction: 'ltr', textAlign: 'right' }}>{money(row.amount, currency)}</TableCell>
-                  <TableCell sx={{ maxWidth: 210 }}>
-                    <Typography noWrap title={row.contract_guarantee_label || ''} sx={{ fontSize: 12, color: MUTED }}>
-                      {row.contract_guarantee_label || '—'}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{dateLabel(dueOf(row))}</Typography>
-                    <Typography sx={{ fontSize: 12, color: statusOf(row).color }}>
-                      {statusOf(row).key === 'expiring' ? `${toPersianDigits(daysUntil(dueOf(row)))} روز` : ''}
-                    </Typography>
-                  </TableCell>
-                  <TableCell align="center"><StatusChip row={row} /></TableCell>
-                  <TableCell align="center">
-                    <Stack direction="row" spacing={0.1} justifyContent="center">
-                      <LifecycleActions row={row} onAction={onAction} compact />
-                      <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-                      <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-                      <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-                    </Stack>
-                  </TableCell>
-                </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Paper>
-  );
-};
+const GuaranteeTable = ({ rows, currency, onView, onEdit, onDelete, onAction }) => (
+  <DataTable
+    rows={rows}
+    getRowId={(row) => row.id}
+    maxHeight="calc(100vh - 330px)"
+    stickyHeader
+    ariaLabel="فهرست ضمانت‌ها"
+    tableSx={{ '& td, & th': { px: 1.25, py: 0.85 } }}
+    columns={[
+      {
+        key: 'instrument',
+        label: 'ابزار / نوع',
+        render: (row) => {
+          const meta = instrumentMeta(row);
+          const Icon = meta.icon;
+          return (
+            <Stack direction="row" alignItems="center" spacing={0.6}>
+              <Box sx={{
+                width: 25, height: 25, borderRadius: '7px', color: meta.color,
+                bgcolor: alpha(meta.color, 0.08), display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}><Icon sx={{ fontSize: 14 }} /></Box>
+              <Box>
+                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{meta.label}</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
+              </Box>
+            </Stack>
+          );
+        },
+      },
+      {
+        key: 'number',
+        label: 'شماره',
+        cellSx: { fontSize: 12, fontWeight: 800 },
+        render: (row) => numberFor(row),
+      },
+      {
+        key: 'amount',
+        label: 'مبلغ',
+        cellSx: { fontSize: 12, direction: 'ltr', textAlign: 'right' },
+        render: (row) => money(row.amount, currency),
+      },
+      {
+        key: 'contract',
+        label: 'ضمانت قرارداد',
+        cellSx: { maxWidth: 210 },
+        render: (row) => (
+          <Typography noWrap title={row.contract_guarantee_label || ''} sx={{ fontSize: 12, color: MUTED }}>
+            {row.contract_guarantee_label || '—'}
+          </Typography>
+        ),
+      },
+      {
+        key: 'due',
+        label: 'سررسید',
+        render: (row) => (
+          <>
+            <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{dateLabel(dueOf(row))}</Typography>
+            <Typography sx={{ fontSize: 12, color: statusOf(row).color }}>
+              {statusOf(row).key === 'expiring' ? `${toPersianDigits(daysUntil(dueOf(row)))} روز` : ''}
+            </Typography>
+          </>
+        ),
+      },
+      {
+        key: 'status',
+        label: 'وضعیت',
+        align: 'center',
+        render: (row) => <StatusChip row={row} />,
+      },
+      {
+        key: 'actions',
+        label: 'عملیات',
+        align: 'center',
+        cellSx: { whiteSpace: 'nowrap' },
+        render: (row) => (
+          <Stack direction="row" spacing={0.1} justifyContent="center">
+            <LifecycleActions row={row} onAction={onAction} compact />
+            <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+            <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+            <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+          </Stack>
+        ),
+      },
+    ]}
+  />
+);
 
 const ContractSnapshotCard = ({ contract, accent, onBack, currency, guaranteeCount = 0 }) => (
   <SurfaceCard title="قرارداد" icon={DescriptionIcon} color={accent}
