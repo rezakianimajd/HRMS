@@ -3,6 +3,7 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from core.engines.search_engine import SearchEngine
+from core.module_search import module_search
 from employees.serializers import EmployeeListSerializer
 from documents.serializers import DocumentListSerializer
 
@@ -80,3 +81,18 @@ def global_search_view(request):
         results['documents'] = DocumentListSerializer(results['documents'], many=True).data
 
     return Response(results)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def module_search_view(request):
+    """جستجوی محدود به ماژول فعال (قراردادها، منابع انسانی، حسابداری، ...).
+
+    پارامترها:
+      - ``q``: عبارت جستجو (حداقل ۲ نویسه)
+      - ``module``: slug ماژول فعال؛ مثل ``contracts`` یا ``hrms``
+    """
+    query = request.query_params.get('q', '').strip()
+    module = request.query_params.get('module', 'hr')
+    company = _get_company(request)
+    return Response(module_search(query, module, company))

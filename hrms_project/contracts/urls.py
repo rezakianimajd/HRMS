@@ -7,6 +7,7 @@ from contracts.views import (
     ContractTypeMasterViewSet, SupplierEvaluationViewSet,
     ContractTemplateViewSet, ContractDraftViewSet, ContractApprovalViewSet,
     ContractApprovalWorkflowViewSet, ContractApprovalStepViewSet,
+    ContractAccountMappingViewSet,
 )
 
 router = DefaultRouter()
@@ -21,6 +22,7 @@ router.register(r'contract-payments', PaymentViewSet, basename='contract-payment
 router.register(r'contract-payment-attachments', PaymentAttachmentViewSet, basename='contract-payment-attachment')
 router.register(r'contract-disputes', ContractDisputeViewSet, basename='contract-dispute')
 router.register(r'contract-types-master', ContractTypeMasterViewSet, basename='contract-type-master')
+router.register(r'contract-account-mappings', ContractAccountMappingViewSet, basename='contract-account-mapping')
 router.register(r'supplier-evaluations', SupplierEvaluationViewSet, basename='supplier-evaluation')
 router.register(r'contract-templates', ContractTemplateViewSet, basename='contract-template')
 router.register(r'contract-drafts', ContractDraftViewSet, basename='contract-draft')

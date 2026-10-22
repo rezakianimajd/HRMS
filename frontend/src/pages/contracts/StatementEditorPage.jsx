@@ -374,6 +374,25 @@ const compareStatements = (a, b) => {
   return Number(a?.id || 0) - Number(b?.id || 0);
 };
 
+/**
+ * مبنای «مبلغ تجمعی دوره قبل» در فرم.
+ * ترتیب زنجیره بر اساس ترتیب ثبت (شناسه) است؛ ویرایش تاریخ نباید
+ * باعث صفر شدن مبلغ دوره قبل شود.
+ */
+const previousCumulativeFor = (rows, { excludeId = null } = {}) => {
+  const candidates = (Array.isArray(rows) ? rows : [])
+    .filter((row) => String(row?.id || '') !== String(excludeId || ''));
+  const prior = candidates
+    .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  if (!prior.length) return null;
+  const last = prior[prior.length - 1];
+  return Math.max(
+    num(last?.amount),
+    prior.reduce((sum, row) => sum + rowMetrics(row).work, 0),
+  );
+};
+
 const StatementEditorPage = () => {
   const qc = useQueryClient();
   const theme = useTheme();
@@ -454,7 +473,7 @@ const StatementEditorPage = () => {
   );
   const selectedContractAmount = contractAmountOf(selectedContract);
   const lastStatement = useMemo(
-    () => [...scopedList].sort(compareStatements).slice(-1)[0] || null,
+    () => [...scopedList].sort((a, b) => Number(a.id || 0) - Number(b.id || 0)).slice(-1)[0] || null,
     [scopedList],
   );
 
@@ -766,13 +785,7 @@ const StatementEditorPage = () => {
 
   const openNew = () => {
     const newDate = todayIso();
-    const priorRows = scopedList.filter((row) => !row.date || String(row.date) <= newDate);
-    const lastPrior = [...priorRows].sort(compareStatements).slice(-1)[0] || null;
-    const previousAmount = lastPrior ? num(lastPrior.amount) : 0;
-    // اگر کارکرد دوره‌های قبل ثبت شده باشد، جمع آن‌ها مبنای کامل‌تری برای
-    // «مبلغ تجمعی دوره قبل» است؛ در داده‌های صحیح با مبلغ تجمعی آخرین سند برابر است.
-    const previousWork = priorRows.reduce((sum, row) => sum + rowMetrics(row).work, 0);
-    const previousCumulative = Math.max(previousAmount, previousWork);
+    const previousCumulative = previousCumulativeFor(scopedList) ?? 0;
     setForm({
       contract: contractId,
       number: '',
@@ -804,11 +817,18 @@ const StatementEditorPage = () => {
     const percentOfWork = (value) => (
       editWork > 0 ? Math.round((Number(value || 0) / editWork) * 10000) / 100 : 0
     );
+    const calculatedPrevious = previousCumulativeFor(
+      allStatements.filter((item) => String(item.contract) === String(row.contract)),
+      { excludeId: row.id },
+    );
+    const previousCumulative = calculatedPrevious == null
+      ? Number(row.cumulative_previous_amount || 0)
+      : calculatedPrevious;
     setForm({
       ...row,
       contract: String(row.contract || ''),
       amount: Number(row.amount || 0),
-      cumulative_previous_amount: Number(row.cumulative_previous_amount || 0),
+      cumulative_previous_amount: previousCumulative,
       value_added_tax: Number(row.value_added_tax || 0),
       other_additions: Number(row.other_additions || 0),
       value_added_tax_percent: percentOfWork(row.value_added_tax),
@@ -826,6 +846,19 @@ const StatementEditorPage = () => {
     setDetail(null);
     setMode('form');
   };
+
+  // با تغییر تاریخ/قرارداد در فرم، «مبلغ تجمعی دوره قبل» را دوباره از
+  // داده‌های موجود محاسبه می‌کنیم تا صفرِ ناشی از تاریخ قدیمی باقی نماند.
+  useEffect(() => {
+    if (mode !== 'form' || !form.contract || !form.date) return;
+    const rows = allStatements.filter((item) => String(item.contract) === String(form.contract));
+    const next = previousCumulativeFor(rows, { excludeId: form.id });
+    if (next == null) return;
+    setForm((previous) => {
+      if (!previous || Number(previous.cumulative_previous_amount || 0) === next) return previous;
+      return { ...previous, cumulative_previous_amount: next };
+    });
+  }, [mode, form.contract, form.date, form.id, allStatements]);
 
   const openPrint = (row) => {
     setPrintPending(true);

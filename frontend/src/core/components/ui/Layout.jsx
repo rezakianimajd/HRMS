@@ -32,6 +32,7 @@ import LoopOutlinedIcon from '@mui/icons-material/LoopOutlined';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import CardGiftcardOutlinedIcon from '@mui/icons-material/CardGiftcardOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
+import FolderSharedOutlinedIcon from '@mui/icons-material/FolderSharedOutlined';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import SettingsOutlinedIcon from '@mui/icons-material/SettingsOutlined';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
@@ -65,7 +66,9 @@ import NotificationBell from './NotificationBell';
 import AppSwitcher from './AppSwitcher';
 import WorkspaceTabs from './WorkspaceTabs';
 import CommandPalette from './CommandPalette';
+import ModuleLibraryDrawer from './ModuleLibraryDrawer';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
+import { libraryModuleForApplication, libraryModuleLabel } from '../../config/documentLibraryModules';
 import { useApplication } from '../../context/ApplicationContext';
 import { useWorkspaceTabs } from '../../context/WorkspaceTabsContext';
 import { useThemeMode } from '../../context/ThemeContext';
@@ -195,6 +198,11 @@ const Layout = ({ children }) => {
   const { getPalette } = useModulePalette();
   const isAccounting = location.pathname.startsWith('/accounting') || location.pathname.startsWith('/petty-cash');
   const moduleAccent = getPalette(currentApp?.slug)?.accent || null;
+  const moduleLibraryKey = libraryModuleForApplication(currentApp?.slug) || '';
+  const moduleLibraryTitle = currentApp?.slug === 'documents'
+    ? 'مدیریت اسناد و مدارک'
+    : libraryModuleLabel(moduleLibraryKey, currentApp?.title || 'کتابخانهٔ اسناد');
+  const moduleLibraryAccent = moduleAccent || getPalette(moduleLibraryKey)?.accent || '#0f766e';
 
   // منوی کتابخانه DMS از پوشه‌های واقعی همان شرکت ساخته می‌شود.
   const dmsFoldersQuery = useQuery({
@@ -214,7 +222,12 @@ const Layout = ({ children }) => {
   ]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
+  const openLibrary = () => {
+    setMobileOpen(false);
+    setLibraryOpen(true);
+  };
   const [openGroupId, setOpenGroupId] = useState(null);
   const [openItemId, setOpenItemId] = useState(null);
 
@@ -486,6 +499,24 @@ const Layout = ({ children }) => {
 
         <Box sx={{ flex: 1, minHeight: 12 }} />
         <Divider sx={{ width: 24, my: 1, flexShrink: 0 }} />
+
+        <Tooltip title={`پوشهٔ ${moduleLibraryTitle}`} placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={() => openLibrary()}
+            aria-label={`پوشهٔ ${moduleLibraryTitle}`}
+            sx={{
+              color: libraryOpen ? moduleLibraryAccent : ICON_COLOR,
+              bgcolor: libraryOpen ? alpha(moduleLibraryAccent, 0.12) : 'transparent',
+              border: '1px solid',
+              borderColor: libraryOpen ? alpha(moduleLibraryAccent, 0.3) : 'transparent',
+              mb: 0.35,
+              '&:hover': { bgcolor: alpha(moduleLibraryAccent, 0.08), color: moduleLibraryAccent },
+            }}
+          >
+            <FolderSharedOutlinedIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
 
         <Tooltip title="جستجوی سریع (Ctrl+K)" placement="left" arrow>
           <IconButton
@@ -766,6 +797,14 @@ const Layout = ({ children }) => {
           <Typography variant="body2" noWrap sx={{ flex: 1, fontWeight: 500 }}>
             {companyName}
           </Typography>
+          <IconButton
+            size="small"
+            onClick={() => openLibrary()}
+            aria-label={`پوشهٔ ${moduleLibraryTitle}`}
+            sx={{ color: ICON_COLOR }}
+          >
+            <FolderSharedOutlinedIcon fontSize="small" />
+          </IconButton>
           <NotificationBell compact iconColor={ICON_COLOR} />
         </Box>
 
@@ -778,6 +817,13 @@ const Layout = ({ children }) => {
         <WorkspaceTabs />
       </Box>
       <CommandPalette />
+      <ModuleLibraryDrawer
+        open={libraryOpen}
+        onClose={() => setLibraryOpen(false)}
+        moduleKey={moduleLibraryKey}
+        moduleTitle={moduleLibraryTitle}
+        accent={moduleLibraryAccent}
+      />
     </Box>
   );
 };

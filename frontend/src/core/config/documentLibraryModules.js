@@ -197,3 +197,35 @@ export const documentMatchesModuleText = (row, moduleKey) => {
   ].filter(Boolean).join(' '));
   return (module.keywords || []).some((keyword) => text.includes(normalize(keyword)));
 };
+
+/**
+ * نگاشت slug ماژول برنامه به کلید ماژول کتابخانهٔ اسناد.
+ * ماژول «مدیریت اسناد» همهٔ پوشه‌ها را می‌بیند و اسناد سازمانی به
+ * پوشهٔ organization نگاشت می‌شود.
+ */
+export const APPLICATION_LIBRARY_MODULES = {
+  hrms: 'hr',
+  hr: 'hr',
+  contracts: 'contracts',
+  contract: 'contracts',
+  projects: 'projects',
+  project: 'projects',
+  accounting: 'accounting',
+  payroll: 'payroll',
+  pettycash: 'pettycash',
+  'petty-cash': 'pettycash',
+  procurement: 'procurement',
+  treasury: 'treasury',
+  documents: 'documents',
+  document: 'documents',
+  correspondence: 'correspondence',
+  settings: 'organization',
+};
+
+export const libraryModuleForApplication = (appSlug) => (
+  APPLICATION_LIBRARY_MODULES[appSlug] || ''
+);
+
+export const libraryModuleLabel = (moduleKey, fallback = '') => (
+  findDocumentModule(moduleKey)?.label || fallback || moduleKey || 'کتابخانه'
+);

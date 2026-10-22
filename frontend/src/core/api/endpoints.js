@@ -31,6 +31,7 @@ const endpoints = {
   // Audit Logs
   auditLogs: `${API_BASE}/audit-logs/`,
   globalSearch: `${API_BASE}/search/global/`,
+  moduleSearch: `${API_BASE}/search/module/`,
   // Future HR module endpoints (placeholder)
   employees: {
     list: `${API_BASE}/employees/`,

@@ -43,6 +43,12 @@ def enqueue_pettycash_transaction(company, tx):
 
 def enqueue_contract_payment(company, payment):
     """پرداخت قرارداد -> صف ثبت حسابداری."""
+    mapping = None
+    try:
+        from contracts.accounting_mapping import resolve_event_mapping
+        mapping = resolve_event_mapping(company, 'payment')
+    except Exception:  # noqa: BLE001 — نبود پیکربندی نباید ثبت پرداخت را بشکند
+        mapping = None
     return enqueue(
         company=company,
         source_module='contracts',
@@ -53,6 +59,7 @@ def enqueue_contract_payment(company, payment):
             'date': payment.date.isoformat() if payment.date else None,
             'method': payment.method,
             'reference': payment.reference,
+            'accounting_mapping': mapping,
         },
     )
 

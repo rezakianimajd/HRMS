@@ -866,3 +866,119 @@ class ContractAuditLog(BaseModel):
 
     def __str__(self):
         return f'{self.contract_id} - {self.get_action_display()} - {self.field}'
+
+
+class ContractAccountMapping(BaseModel):
+    """نگاشت حساب‌های مالی قرارداد و کنترل تفصیل‌ها.
+
+    برای هر «نقطهٔ مالی» قرارداد (حسن انجام کار، سپرده بیمه، پرداختنی،
+    دریافتنی و ...) یک حساب معین و حداکثر سه تفصیل تعیین می‌شود. موتور
+    حسابداری قرارداد این تنظیمات را از همین رکورد می‌خواند.
+    """
+
+    class Key(models.TextChoices):
+        BASE = 'base_subsidiary', _('حساب معین پایه')
+        RETENTION = 'retention', _('حسن انجام کار')
+        INSURANCE_DEPOSIT = 'insurance_deposit', _('سپرده بیمه')
+        PAYABLE = 'payable', _('پرداختنی‌ها')
+        RECEIVABLE = 'receivable', _('دریافتنی‌ها')
+        ADVANCE = 'advance', _('پیش‌پرداخت')
+        TAX = 'tax', _('مالیات و عوارض')
+        PENALTY = 'penalty', _('جریمه و خسارت')
+        FEE = 'fee', _('کارمزد و خدمات')
+        REVENUE = 'revenue', _('درآمد صورت‌وضعیت')
+        COST = 'cost', _('هزینه و مصالح')
+        GUARANTEE = 'guarantee', _('تضامین و ضمانت‌نامه‌ها')
+        OTHER = 'other', _('سایر')
+
+    class AuxSource(models.TextChoices):
+        AUTO = 'auto', _('از دستهٔ تفصیلی (خودکار)')
+        NONE = 'none', _('بدون تفصیل')
+        CONTRACT = 'contract', _('قرارداد همین سند')
+        PARTY = 'party', _('طرف حساب / پیمانکار')
+        SUPPLIER = 'supplier', _('تأمین‌کننده')
+        EMPLOYEE = 'employee', _('پرسنل')
+        PROJECT = 'project', _('پروژه')
+        BANK = 'bank', _('بانک')
+        CASH = 'cash', _('صندوق')
+        FIXED = 'fixed', _('تفصیل ثابت')
+
+    class ControlMode(models.TextChoices):
+        SOFT = 'soft', _('کنترل نرم (هشدار)')
+        STRICT = 'strict', _('کنترل سخت (مسدودسازی)')
+
+    key = models.CharField(max_length=40, choices=Key.choices, verbose_name=_('نقطهٔ مالی'))
+    title = models.CharField(max_length=200, blank=True, verbose_name=_('عنوان نمایشی'))
+    subsidiary_account = models.ForeignKey(
+        'accounting.Account', on_delete=models.PROTECT, null=True, blank=True,
+        related_name='contract_account_mappings', verbose_name=_('حساب معین'),
+    )
+    auxiliary_source_1 = models.CharField(
+        max_length=20, choices=AuxSource.choices, default=AuxSource.NONE,
+        verbose_name=_('منبع تفصیل یک'),
+    )
+    auxiliary_category_1 = models.ForeignKey(
+        'accounting.AuxiliaryCategory', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_mapping_slot_1', verbose_name=_('دستهٔ تفصیل یک'),
+    )
+    auxiliary_1 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_mapping_fixed_1', verbose_name=_('تفصیل ثابت یک'),
+    )
+    auxiliary_source_2 = models.CharField(
+        max_length=20, choices=AuxSource.choices, default=AuxSource.NONE,
+        verbose_name=_('منبع تفصیل دو'),
+    )
+    auxiliary_category_2 = models.ForeignKey(
+        'accounting.AuxiliaryCategory', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_mapping_slot_2', verbose_name=_('دستهٔ تفصیل دو'),
+    )
+    auxiliary_2 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_mapping_fixed_2', verbose_name=_('تفصیل ثابت دو'),
+    )
+    auxiliary_source_3 = models.CharField(
+        max_length=20, choices=AuxSource.choices, default=AuxSource.NONE,
+        verbose_name=_('منبع تفصیل سه'),
+    )
+    auxiliary_category_3 = models.ForeignKey(
+        'accounting.AuxiliaryCategory', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_mapping_slot_3', verbose_name=_('دستهٔ تفصیل سه'),
+    )
+    auxiliary_3 = models.ForeignKey(
+        'accounting.AuxiliaryAccount', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='contract_mapping_fixed_3', verbose_name=_('تفصیل ثابت سه'),
+    )
+    auto_create_auxiliaries = models.BooleanField(
+        default=True, verbose_name=_('ساخت خودکار تفصیل‌ها'),
+        help_text=_('اگر تفصیل متناظر پیدا نشد، سیستم آن را بسازد.'),
+    )
+    enforce_auxiliary = models.BooleanField(
+        default=False, verbose_name=_('الزام تفصیل هنگام ثبت'),
+        help_text=_('در صورت فعال بودن، ثبت مالی بدون تفصیل‌های تعیین‌شده مسدود می‌شود.'),
+    )
+    control_mode = models.CharField(
+        max_length=10, choices=ControlMode.choices, default=ControlMode.SOFT,
+        verbose_name=_('حالت کنترل'),
+    )
+    notes = models.TextField(blank=True, verbose_name=_('توضیحات و کنترل‌ها'))
+    sort_order = models.PositiveSmallIntegerField(default=0, verbose_name=_('ترتیب نمایش'))
+
+    class Meta:
+        verbose_name = _('نگاشت حساب قرارداد')
+        verbose_name_plural = _('نگاشت‌های حساب قرارداد')
+        unique_together = [('company', 'key')]
+        ordering = ['sort_order', 'key']
+
+    def __str__(self):
+        return f'{self.get_key_display()} - {self.subsidiary_account or "بدون حساب"}'
+
+    @property
+    def general_account(self):
+        """ریشهٔ سلسله‌مراتبی حساب معین (حساب کل)."""
+        account = self.subsidiary_account
+        seen = set()
+        while account is not None and getattr(account, 'parent_id', None) and account.pk not in seen:
+            seen.add(account.pk)
+            account = account.parent
+        return account

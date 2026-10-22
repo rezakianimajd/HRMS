@@ -7,4 +7,5 @@ urlpatterns = [
     path('employees/', search_views.search_employees_view, name='api-search-employees'),
     path('documents/', search_views.search_documents_view, name='api-search-documents'),
     path('global/', search_views.global_search_view, name='api-global-search'),
+    path('module/', search_views.module_search_view, name='api-module-search'),
 ]

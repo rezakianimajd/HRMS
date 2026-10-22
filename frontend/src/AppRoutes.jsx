@@ -78,6 +78,7 @@ import ContractExpiringPage from './pages/ContractExpiringPage';
 import ContractDisputesPage from './pages/ContractDisputesPage';
 import ContractCalendarPage from './pages/ContractCalendarPage';
 import ContractTypesPage from './pages/ContractTypesPage';
+import ContractAccountingMappingPage from './pages/ContractAccountingMappingPage';
 import SupplierEvaluationsPage from './pages/SupplierEvaluationsPage';
 import ContractWorkflowPage from './pages/ContractWorkflowPage';
 import ContractInvoicesPage from './pages/ContractInvoicesPage';
@@ -310,6 +311,7 @@ const AppRoutes = () => {
       <Route path="/contracts-disputes" element={<ProtectedLayout><ContractDisputesPage /></ProtectedLayout>} />
       <Route path="/contracts-calendar" element={<ProtectedLayout><ContractCalendarPage /></ProtectedLayout>} />
       <Route path="/contracts-settings" element={<ProtectedLayout><ContractTypesPage /></ProtectedLayout>} />
+      <Route path="/contracts-accounting-mapping" element={<ProtectedLayout><ContractAccountingMappingPage /></ProtectedLayout>} />
       <Route path="/contracts-evaluations" element={<ProtectedLayout><SupplierEvaluationsPage /></ProtectedLayout>} />
       <Route path="/contracts-workflow" element={<ProtectedLayout><ContractWorkflowPage /></ProtectedLayout>} />
       <Route path="/contracts-definitions" element={<ProtectedLayout><ContractDefinitionsPage /></ProtectedLayout>} />

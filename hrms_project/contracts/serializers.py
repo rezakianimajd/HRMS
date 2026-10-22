@@ -1,7 +1,7 @@
 """Serializers for the Contracts module."""
 from decimal import Decimal, ROUND_HALF_UP
 
-from django.db.models import Q, Sum
+from django.db.models import Sum
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
@@ -9,8 +9,9 @@ from contracts.models import (
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
-    ContractAuditLog,
+    ContractAuditLog, ContractAccountMapping,
 )
+from contracts.accounting_mapping import account_brief, mapping_payload, missing_fields
 
 
 class ContractTypeMasterSerializer(serializers.ModelSerializer):
@@ -156,22 +157,23 @@ class StatementSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
-    def _previous_cumulative(self, contract, statement_date):
-        """مبلغ تجمیعی آخرین صورت‌وضعیت قبل از این دوره (بر اساس تاریخ و شناسه)."""
+    def _previous_cumulative(self, contract):
+        """مبلغ تجمیعی آخرین صورت‌وضعیت ثبت‌شدهٔ قبلی.
+
+        مبنای زنجیره، «ترتیب ثبت» (شناسه) است؛ تاریخ صورت‌وضعیت فقط
+        برای نمایش/فیلتر استفاده می‌شود. بنابراین ویرایش تاریخ باعث
+        نمی‌شود صورت‌وضعیت‌های بعدی، دورهٔ قبل را از دست بدهند و صفر
+        نمایش دهند.
+        """
         if not contract:
             return Decimal('0')
-        qs = Statement.objects.filter(contract=contract)
-        if self.instance is not None:
-            qs = qs.exclude(pk=self.instance.pk)
-            if statement_date:
-                qs = qs.filter(
-                    Q(date__lt=statement_date)
-                    | Q(date=statement_date, pk__lt=self.instance.pk)
-                )
-        elif statement_date:
-            qs = qs.filter(date__lte=statement_date)
-        previous = qs.order_by('-date', '-pk').only('amount').first()
-        prior_work = qs.aggregate(total=Sum('work_done'))['total'] or 0
+        queryset = Statement.objects.filter(contract=contract)
+        current_pk = getattr(self.instance, 'pk', None)
+        prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
+        if not prior.exists():
+            return Decimal('0')
+        previous = prior.order_by('-pk').only('amount').first()
+        prior_work = prior.aggregate(total=Sum('work_done'))['total'] or 0
         previous_amount = Decimal(previous.amount or 0) if previous else Decimal('0')
         return max(previous_amount, Decimal(str(prior_work or 0)))
 
@@ -187,8 +189,7 @@ class StatementSerializer(serializers.ModelSerializer):
         ):
             return attrs
         contract = attrs.get('contract') or getattr(instance, 'contract', None)
-        statement_date = attrs.get('date') or getattr(instance, 'date', None)
-        previous = self._previous_cumulative(contract, statement_date)
+        previous = self._previous_cumulative(contract)
         amount_value = attrs.get('amount', getattr(instance, 'amount', 0))
         try:
             amount = Decimal(str(amount_value or 0))
@@ -611,3 +612,111 @@ class ContractApprovalWorkflowSerializer(serializers.ModelSerializer):
         model = ContractApprovalWorkflow
         fields = ['id', 'name', 'contract_type', 'contract_type_name', 'description', 'is_active', 'steps']
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+
+class ContractAccountMappingSerializer(serializers.ModelSerializer):
+    """نگاشت حساب معین و تفصیل‌های کنترل قرارداد."""
+
+    key_display = serializers.CharField(source='get_key_display', read_only=True)
+    control_mode_display = serializers.CharField(source='get_control_mode_display', read_only=True)
+    subsidiary_account_detail = serializers.SerializerMethodField()
+    general_account_detail = serializers.SerializerMethodField()
+    auxiliary_category_1_name = serializers.CharField(source='auxiliary_category_1.name', read_only=True)
+    auxiliary_category_2_name = serializers.CharField(source='auxiliary_category_2.name', read_only=True)
+    auxiliary_category_3_name = serializers.CharField(source='auxiliary_category_3.name', read_only=True)
+    auxiliary_1_name = serializers.CharField(source='auxiliary_1.name', read_only=True)
+    auxiliary_2_name = serializers.CharField(source='auxiliary_2.name', read_only=True)
+    auxiliary_3_name = serializers.CharField(source='auxiliary_3.name', read_only=True)
+    auxiliary_slots = serializers.SerializerMethodField()
+    missing = serializers.SerializerMethodField()
+    is_complete = serializers.SerializerMethodField()
+
+    class Meta:
+        model = ContractAccountMapping
+        fields = [
+            'id', 'key', 'key_display', 'title', 'subsidiary_account',
+            'subsidiary_account_detail', 'general_account_detail',
+            'auxiliary_source_1', 'auxiliary_category_1', 'auxiliary_category_1_name',
+            'auxiliary_1', 'auxiliary_1_name',
+            'auxiliary_source_2', 'auxiliary_category_2', 'auxiliary_category_2_name',
+            'auxiliary_2', 'auxiliary_2_name',
+            'auxiliary_source_3', 'auxiliary_category_3', 'auxiliary_category_3_name',
+            'auxiliary_3', 'auxiliary_3_name',
+            'auxiliary_slots', 'auto_create_auxiliaries', 'enforce_auxiliary',
+            'control_mode', 'control_mode_display', 'notes', 'sort_order',
+            'is_active', 'missing', 'is_complete', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'company', 'key_display', 'subsidiary_account_detail',
+            'general_account_detail', 'auxiliary_category_1_name',
+            'auxiliary_category_2_name', 'auxiliary_category_3_name',
+            'auxiliary_1_name', 'auxiliary_2_name', 'auxiliary_3_name',
+            'auxiliary_slots', 'missing', 'is_complete', 'created_at', 'updated_at',
+        ]
+
+    def get_subsidiary_account_detail(self, obj):
+        return account_brief(obj.subsidiary_account)
+
+    def get_general_account_detail(self, obj):
+        return account_brief(obj.general_account)
+
+    def get_auxiliary_slots(self, obj):
+        return mapping_payload(obj).get('auxiliary_slots', []) if obj else []
+
+    def get_missing(self, obj):
+        return missing_fields(obj) if obj else []
+
+    def get_is_complete(self, obj):
+        return not missing_fields(obj) if obj else False
+
+    def _check_company(self, value):
+        company = self.context.get('company')
+        if value is not None and company and getattr(value, 'company_id', None) != company.pk:
+            raise serializers.ValidationError('انتخاب‌شده متعلق به شرکت جاری نیست.')
+        return value
+
+    def validate_subsidiary_account(self, value):
+        return self._check_company(value)
+
+    def validate_auxiliary_category_1(self, value):
+        return self._check_company(value)
+
+    def validate_auxiliary_category_2(self, value):
+        return self._check_company(value)
+
+    def validate_auxiliary_category_3(self, value):
+        return self._check_company(value)
+
+    def validate_auxiliary_1(self, value):
+        return self._check_company(value)
+
+    def validate_auxiliary_2(self, value):
+        return self._check_company(value)
+
+    def validate_auxiliary_3(self, value):
+        return self._check_company(value)
+
+    def validate(self, attrs):
+        instance = self.instance
+        for slot in (1, 2, 3):
+            source = attrs.get(
+                f'auxiliary_source_{slot}',
+                getattr(instance, f'auxiliary_source_{slot}', None) if instance else ContractAccountMapping.AuxSource.NONE,
+            )
+            category = attrs.get(
+                f'auxiliary_category_{slot}',
+                getattr(instance, f'auxiliary_category_{slot}', None) if instance else None,
+            )
+            auxiliary = attrs.get(
+                f'auxiliary_{slot}',
+                getattr(instance, f'auxiliary_{slot}', None) if instance else None,
+            )
+            if source == ContractAccountMapping.AuxSource.AUTO and not category:
+                raise serializers.ValidationError({
+                    f'auxiliary_category_{slot}': 'برای منبع «از دستهٔ تفصیلی» انتخاب دسته الزامی است.',
+                })
+            if source == ContractAccountMapping.AuxSource.FIXED and not auxiliary:
+                raise serializers.ValidationError({
+                    f'auxiliary_{slot}': 'برای منبع «تفصیل ثابت» انتخاب تفصیل الزامی است.',
+                })
+        return attrs

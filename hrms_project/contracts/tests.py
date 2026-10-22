@@ -622,3 +622,38 @@ class StatementCalculationTests(TestCase):
         serializer = StatementSerializer(data=self._payload(number='S-NEW', amount=5_000_000))
         self.assertFalse(serializer.is_valid())
         self.assertIn('amount', serializer.errors)
+
+    def test_date_edit_falls_back_to_registration_order(self):
+        first = Statement.objects.create(
+            company=self.company, contract=self.contract, number='S-1',
+            date=date(2025, 8, 1), amount=2_000_000,
+        )
+        second = Statement.objects.create(
+            company=self.company, contract=self.contract, number='S-2',
+            date=date(2025, 9, 1), amount=5_000_000,
+        )
+        serializer = StatementSerializer(
+            second,
+            data={'date': '2025-01-01', 'amount': 5_000_000},
+            partial=True,
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['cumulative_previous_amount'], Decimal('2000000'))
+        self.assertEqual(serializer.validated_data['work_done'], Decimal('3000000'))
+
+    def test_chain_recalculation_updates_later_statements(self):
+        first = Statement.objects.create(
+            company=self.company, contract=self.contract, number='S-CHAIN-1',
+            date=date(2025, 7, 1), amount=2_000_000,
+        )
+        second = Statement.objects.create(
+            company=self.company, contract=self.contract, number='S-CHAIN-2',
+            date=date(2025, 8, 1), amount=5_000_000,
+        )
+        first.date = date(2025, 1, 1)
+        first.save(update_fields=['date'])
+        from contracts.statement_totals import recalculate_contract_statements
+        recalculate_contract_statements(self.contract)
+        second.refresh_from_db()
+        self.assertEqual(second.cumulative_previous_amount, Decimal('2000000'))
+        self.assertEqual(second.work_done, Decimal('3000000'))

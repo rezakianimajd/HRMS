@@ -255,9 +255,14 @@ $BackendFiles = @(
     'hrms_project/core/models/__init__.py',
     'hrms_project/contracts/models.py',
     'hrms_project/contracts/serializers.py',
+    'hrms_project/contracts/statement_totals.py',
     'hrms_project/contracts/views.py',
+    'hrms_project/contracts/urls.py',
     'hrms_project/contracts/excel_export.py',
     'hrms_project/contracts/tests.py',
+    'hrms_project/contracts/accounting_mapping.py',
+    'hrms_project/contracts/test_account_mapping.py',
+    'hrms_project/accounting/integrations.py',
     'hrms_project/contracts/addendum_schema.py',
     'hrms_project/contracts/addendum_effects.py',
     'hrms_project/contracts/guarantee_status.py',
@@ -267,6 +272,9 @@ $BackendFiles = @(
     'hrms_project/contracts/migrations/0026_guarantee_contract_guarantee_index.py',
     'hrms_project/contracts/migrations/0027_contractdocument_addendum.py',
     'hrms_project/contracts/migrations/0028_contractdocument_guarantee.py',
+    'hrms_project/contracts/migrations/0030_contractdocument_statement.py',
+    'hrms_project/contracts/migrations/0031_contractaccountmapping.py',
+    'hrms_project/contracts/migrations/0032_recalculate_statement_totals.py',
     'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',
     'hrms_project/projects/migrations/0005_wbstemplatenode_budgetline_created_by_and_more.py',
     'hrms_project/contracts/migrations/0021_contract_contract_alloc_gin_idx_and_more.py',
@@ -485,7 +493,11 @@ $BackendFiles += @(
     'hrms_project/employees/serializers.py',
     'hrms_project/employees/views.py',
     # پرسنل: آواتار جنسیت‌محور + حذف عکس
-    'hrms_project/employees/phonebook_views.py'
+    'hrms_project/employees/phonebook_views.py',
+    # جستجوی ماژول‌محور نوار کنار سایدبار
+    'hrms_project/core/module_search.py',
+    'hrms_project/core/search_views.py',
+    'hrms_project/core/urls_search.py'
 )
 $FrontendFiles += @(
     'frontend/src/core/components/settings/StorageArchivePanel.jsx',
@@ -517,7 +529,17 @@ $FrontendFiles += @(
     # منوی ماژول‌محور کتابخانه و درخت‌وارهٔ محدود به ماژول
     'frontend/src/core/config/documentLibraryModules.js',
     'frontend/src/core/config/menuConfig.js',
-    'frontend/src/pages/contracts/DocumentManagementUI.jsx'
+    'frontend/src/pages/contracts/DocumentManagementUI.jsx',
+    # نگاشت و کنترل حساب‌های قرارداد
+    'frontend/src/pages/ContractAccountingMappingPage.jsx',
+    'frontend/src/pages/contracts/StatementEditorPage.jsx',
+    'frontend/src/__tests__/contractAccountingMappingSmoke.test.js',
+    # پوشهٔ ماژول و جستجوی محدود به ماژول در نوار کنار سایدبار
+    'frontend/src/core/components/ui/CommandPalette.jsx',
+    'frontend/src/core/components/ui/ModuleLibraryDrawer.jsx',
+    'frontend/src/core/hooks/useModuleSearch.js',
+    'frontend/src/core/api/endpoints.js',
+    'frontend/src/__tests__/moduleSearchSmoke.test.js'
 )
 
 # وابستگی‌های پایتونی جدید (سرور اینترنت ندارد → نصب آفلاین از wheel های محلی)

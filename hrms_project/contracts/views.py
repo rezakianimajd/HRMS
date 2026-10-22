@@ -1,4 +1,5 @@
 """Views for the Contracts module."""
+from django.db import transaction
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -8,7 +9,7 @@ from contracts.models import (
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
-    ContractAuditLog,
+    ContractAuditLog, ContractAccountMapping,
 )
 from contracts.serializers import (
     ContractPartySerializer, ContractSerializer, ContractDocumentSerializer,
@@ -17,8 +18,14 @@ from contracts.serializers import (
     ContractTypeMasterSerializer, SupplierEvaluationSerializer,
     ContractTemplateSerializer, ContractDraftSerializer, ContractApprovalSerializer,
     ContractApprovalWorkflowSerializer, ContractApprovalStepSerializer,
-    ContractAuditLogSerializer,
+    ContractAuditLogSerializer, ContractAccountMappingSerializer,
 )
+from contracts.accounting_mapping import (
+    AUXILIARY_SOURCES, CONTROL_MODES, MAPPING_DEFINITIONS, MAPPING_BY_KEY,
+    contract_mapping_rows, contract_mapping_summary, resolve_contract_mapping,
+    resolve_event_mapping,
+)
+from contracts.statement_totals import recalculate_contract_statements
 
 
 def _company(request):
@@ -298,6 +305,10 @@ class InvoiceViewSet(BaseContractViewSet):
 class StatementViewSet(BaseContractViewSet):
     serializer_class = StatementSerializer
     queryset = Statement.objects.select_related('contract', 'currency').prefetch_related('documents')
+    _recalc_fields = {
+        'amount', 'date', 'contract', 'additions', 'deductions',
+        'value_added_tax', 'other_additions', 'cumulative_previous_amount', 'work_done',
+    }
 
     def get_queryset(self):
         qs = super().get_queryset()
@@ -305,6 +316,28 @@ class StatementViewSet(BaseContractViewSet):
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
         return qs
+
+    def perform_create(self, serializer):
+        with transaction.atomic():
+            statement = serializer.save(company=_company(self.request))
+            recalculate_contract_statements(statement.contract)
+
+    def perform_update(self, serializer):
+        with transaction.atomic():
+            old_contract = serializer.instance.contract
+            statement = serializer.save()
+            # ویرایش صرفاً «تأیید» نباید مبالغ را دوباره محاسبه کند؛ بقیهٔ
+            # تغییرهای مؤثر روی زنجیره باید دوره‌های بعدی را هم اصلاح کنند.
+            if any(field in serializer.validated_data for field in self._recalc_fields):
+                recalculate_contract_statements(statement.contract)
+                if old_contract and old_contract.pk != statement.contract_id:
+                    recalculate_contract_statements(old_contract)
+
+    def perform_destroy(self, instance):
+        with transaction.atomic():
+            contract = instance.contract
+            instance.delete()
+            recalculate_contract_statements(contract)
 
 
 class AddendumViewSet(BaseContractViewSet):
@@ -605,3 +638,84 @@ class ContractApprovalStepViewSet(BaseContractViewSet):
         return qs
         obj.save(update_fields=['status', 'comment', 'acted_at', 'updated_at'])
         return Response(ContractApprovalSerializer(obj).data)
+
+
+class ContractAccountMappingViewSet(viewsets.GenericViewSet):
+    """پیکربندی «نگاشت و کنترل» حساب‌های مالی قراردادها."""
+
+    serializer_class = ContractAccountMappingSerializer
+
+    def _company(self):
+        return _company(self.request)
+
+    def list(self, request):
+        company = self._company()
+        if not company:
+            return Response({'definitions': MAPPING_DEFINITIONS, 'mappings': [], 'summary': {}})
+        return Response({
+            'definitions': MAPPING_DEFINITIONS,
+            'mappings': contract_mapping_rows(company),
+            'sources': AUXILIARY_SOURCES,
+            'control_modes': CONTROL_MODES,
+            'summary': contract_mapping_summary(company),
+        })
+
+    def _validated_payload(self, item):
+        allowed = {
+            'key', 'title', 'subsidiary_account',
+            'auxiliary_source_1', 'auxiliary_category_1', 'auxiliary_1',
+            'auxiliary_source_2', 'auxiliary_category_2', 'auxiliary_2',
+            'auxiliary_source_3', 'auxiliary_category_3', 'auxiliary_3',
+            'auto_create_auxiliaries', 'enforce_auxiliary', 'control_mode',
+            'notes', 'sort_order', 'is_active',
+        }
+        data = {key: value for key, value in item.items() if key in allowed}
+        serializer = self.get_serializer(data=data, context={
+            'request': self.request, 'company': self._company(),
+        })
+        serializer.is_valid(raise_exception=True)
+        return serializer.validated_data
+
+    @action(detail=False, methods=['put'], url_path='bulk')
+    def bulk(self, request):
+        company = self._company()
+        if not company:
+            return Response({'detail': 'شرکت جاری مشخص نیست.'}, status=400)
+        items = request.data.get('items')
+        if not isinstance(items, list):
+            return Response({'detail': 'فهرست نگاشت‌ها ارسال نشده است.'}, status=400)
+
+        normalized = []
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            key = item.get('key')
+            if key not in MAPPING_BY_KEY:
+                return Response({'detail': f'کلید نگاشت نامعتبر است: {key}'}, status=400)
+            normalized.append(item)
+
+        with transaction.atomic():
+            for item in normalized:
+                payload = self._validated_payload(item)
+                key = payload.pop('key')
+                ContractAccountMapping.objects.update_or_create(
+                    company=company, key=key, defaults=payload,
+                )
+
+        return self.list(request)
+
+    @action(detail=False, methods=['get'], url_path='resolve')
+    def resolve(self, request):
+        company = self._company()
+        if not company:
+            return Response({'detail': 'شرکت جاری مشخص نیست.'}, status=400)
+        event = request.query_params.get('event')
+        if event:
+            return Response(resolve_event_mapping(company, event))
+        key = request.query_params.get('key')
+        if not key:
+            return Response({'detail': 'key یا event لازم است.'}, status=400)
+        mapping = resolve_contract_mapping(company, key)
+        if mapping is None:
+            return Response({'detail': 'کلید نگاشت یافت نشد.'}, status=404)
+        return Response(mapping)

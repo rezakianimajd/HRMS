@@ -237,6 +237,7 @@ const settingsMenu = [
     color: '#f59e0b',
     items: [
       { id: 'contracts-definitions', title: 'تعاریف اولیه', icon: <CategoryIcon />, path: '/contracts-definitions', color: '#f59e0b', primary: true, ready: true },
+      { id: 'contracts-account-mapping-menu', title: 'نگاشت و کنترل', icon: <AccountTreeIcon />, path: '/contracts-accounting-mapping', color: '#0f766e', primary: false, ready: true },
       { id: 'contracts-settings-menu', title: 'انواع قرارداد و ارزیابی', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
     ],
   },
@@ -596,6 +597,7 @@ const contractsMenu = [
     color: '#64748b',
     items: [
       { id: 'contracts-types', title: 'انواع قرارداد', icon: <CategoryIcon />, path: '/contracts-settings', color: '#14b8a6', primary: false, ready: true },
+      { id: 'contracts-account-mapping', title: 'نگاشت و کنترل', icon: <AccountTreeIcon />, path: '/contracts-accounting-mapping', color: '#0f766e', primary: false, ready: true },
       { id: 'contracts-evaluations', title: 'ارزیابی تأمین‌کنندگان', icon: <AssessmentIcon />, path: '/contracts-evaluations', color: '#f97316', primary: false, ready: true },
       { id: 'contracts-workflow', title: 'گردشکار تأیید', icon: <SwapHorizIcon />, path: '/contracts-workflow', color: '#6366f1', primary: false, ready: true },
     ],

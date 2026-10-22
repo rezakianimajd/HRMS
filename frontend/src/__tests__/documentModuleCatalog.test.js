@@ -1,7 +1,7 @@
 import { getModuleIcon, getModuleLandingPath, MODULE_ICONS } from '../core/constants/moduleIcons';
 import { MODULE_DEFAULT_ACCENTS } from '../core/context/ModulePaletteContext';
 import menuConfig, { buildDocumentsMenu, getMenuForApp } from '../core/config/menuConfig';
-import { moduleRootFolders, scopedLibraryFolders } from '../core/config/documentLibraryModules';
+import { libraryModuleForApplication, libraryModuleLabel, moduleRootFolders, scopedLibraryFolders } from '../core/config/documentLibraryModules';
 
 test('documents module is registered for selector, switcher and landing route', () => {
   expect(MODULE_ICONS.documents).toBeTruthy();
@@ -57,6 +57,18 @@ test('library folder scope only includes the selected module tree', () => {
   expect([...scopedLibraryFolders(folders, { moduleKey: 'hr' }).folders].map((folder) => folder.id).sort()).toEqual([20, 21, 50]);
   expect([...scopedLibraryFolders(folders, { folderId: 21 }).folders].map((folder) => folder.id).sort()).toEqual([20, 21]);
   expect([...scopedLibraryFolders(folders, { moduleKey: 'contracts' }).folders].map((folder) => folder.id)).toEqual([30]);
+});
+
+test('each application gets its own document library module', () => {
+  expect(libraryModuleForApplication('hrms')).toBe('hr');
+  expect(libraryModuleForApplication('hr')).toBe('hr');
+  expect(libraryModuleForApplication('contracts')).toBe('contracts');
+  expect(libraryModuleForApplication('accounting')).toBe('accounting');
+  expect(libraryModuleForApplication('projects')).toBe('projects');
+  expect(libraryModuleForApplication('documents')).toBe('documents');
+  expect(libraryModuleForApplication('settings')).toBe('organization');
+  expect(libraryModuleForApplication('unknown')).toBe('');
+  expect(libraryModuleLabel('contracts')).toBe('مدیریت قراردادها');
 });
 
 test('documents has its own complete menu and is not embedded in HRMS menu', () => {
