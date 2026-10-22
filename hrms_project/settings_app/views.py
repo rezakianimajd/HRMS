@@ -9,6 +9,7 @@ from rest_framework.permissions import IsAuthenticated
 from settings_app.models import SystemSetting, CompanyProfile
 from settings_app.serializers import SystemSettingSerializer, CompanyProfileSerializer
 from settings_app.engines.settings_engine import SettingsEngine
+from settings_app.appearance_schema import sanitize_design, typography_from_design
 from core.models.user import UserProfile, ROLE_PERMISSIONS
 
 
@@ -97,7 +98,12 @@ def _sanitize_appearance(payload):
             if value in WEIGHT_OPTIONS:
                 typography[key] = value
 
-    return {'palettes': palettes, 'typography': typography}
+    design = sanitize_design(
+        data.get('design') or data.get('tokens'),
+        raw_typography if isinstance(raw_typography, dict) else None,
+    )
+    typography = typography_from_design(design)
+    return {'palettes': palettes, 'typography': typography, 'design': design}
 
 
 def _read_appearance(company):
@@ -114,7 +120,7 @@ def _read_appearance(company):
 @permission_classes([IsAuthenticated])
 def appearance_settings_view(request):
     """
-    GET  → پالت‌ها و تنظیمات فونت برای همهٔ کاربران شرکت.
+    GET  → پالت‌ها، توکن‌های طراحی و تنظیمات فونت برای همهٔ کاربران شرکت.
     PUT  → فقط مدیر ارشد سیستم؛ تنظیمات برای همهٔ کاربران اعمال می‌شود.
     """
     company = _get_company(request)
@@ -130,7 +136,7 @@ def appearance_settings_view(request):
         clean = _sanitize_appearance(request.data)
         SettingsEngine.set_setting(
             APPEARANCE_SETTINGS_KEY, clean, company,
-            description='ظاهر، پالت رنگی و فونت (سراسری برای همهٔ کاربران)',
+            description='ظاهر، توکن‌های طراحی، پالت رنگی و فونت (سراسری برای همهٔ کاربران)',
             data_type='json', is_editable=False,
         )
         return Response({**clean, 'can_edit': True, 'message': 'تنظیمات ظاهر ذخیره شد'})

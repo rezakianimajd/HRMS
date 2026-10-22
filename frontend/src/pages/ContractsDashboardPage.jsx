@@ -3,8 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
   Alert, Box, Button, ButtonBase, Chip, CircularProgress, Divider, Grid,
-  InputAdornment, MenuItem, Paper, Skeleton, Stack, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, TextField, Typography, alpha,
+  InputAdornment, MenuItem, Paper, Skeleton, Stack, TextField, Typography, alpha,
 } from '@mui/material';
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
@@ -30,6 +29,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
+import DataTable from '../core/components/ui/DataTable';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { BarChart, ColumnChart, DonutChart } from '../core/components/charts/Charts';
 import { formatPersianNumber, formatPersianPercent, toPersianDigits } from '../core/utils/numberUtils';
@@ -420,61 +420,88 @@ const ContractTable = ({ contracts, navigate }) => {
           hint="فیلترها یا عبارت جست‌وجو را تغییر دهید." color={AMBER} />
       ) : (
         <>
-          <TableContainer sx={{ maxHeight: 480, borderRadius: '10px', border: '1px solid #eef2f7' }}>
-            <Table size="small" stickyHeader>
-              <TableHead>
-                <TableRow sx={{ '& th': { bgcolor: SOFT_BG, borderBottom: '1px solid #e8edf4', py: 0.75 } }}>
-                  <TableCell>موضوع / طرف قرارداد</TableCell>
-                  <TableCell>نوع</TableCell>
-                  <TableCell align="center">وضعیت</TableCell>
-                  <TableCell align="center">مبلغ مؤثر</TableCell>
-                  <TableCell align="center">پایان مؤثر</TableCell>
-                  <TableCell align="center">زمان‌بندی</TableCell>
-                </TableRow>
-              </TableHead>
-              <TableBody>
-                {rows.slice(0, 12).map((contract) => {
-                  const end = effectiveEnd(contract);
-                  const days = daysUntil(end);
+          <DataTable
+            rows={rows.slice(0, 12)}
+            getRowId={(contract) => contract.id}
+            onRowClick={(contract) => navigate(`/external-contracts/${contract.id}`)}
+            maxHeight={480}
+            stickyHeader
+            ariaLabel="قراردادهای اخیر"
+            paperSx={{
+              borderRadius: 'var(--hrms-radius-medium, 10px)',
+              border: 'var(--hrms-border-table, 1px solid #eef2f7)',
+              boxShadow: 'none',
+            }}
+            tableSx={{
+              '& th': { bgcolor: SOFT_BG, borderBottom: '1px solid #e8edf4', py: 0.75 },
+              '& td': { py: 0.75, borderBottom: '1px solid #f2f5f9' },
+            }}
+            columns={[
+              {
+                key: 'subject',
+                label: 'موضوع / طرف قرارداد',
+                render: (contract) => (
+                  <>
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract.subject}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
+                      {contract.party_name || '—'}{contract.number ? ` · ${contract.number}` : ''}
+                    </Typography>
+                  </>
+                ),
+              },
+              {
+                key: 'type',
+                label: 'نوع',
+                render: (contract) => (
+                  <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
+                    {contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || '—'}
+                  </Typography>
+                ),
+              },
+              {
+                key: 'status',
+                label: 'وضعیت',
+                align: 'center',
+                render: (contract) => (
+                  <Chip size="small" label={statusLabel(contract.status)}
+                    sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
+                ),
+              },
+              {
+                key: 'amount',
+                label: 'مبلغ مؤثر',
+                align: 'center',
+                render: (contract) => (
+                  <>
+                    <Typography sx={{ fontSize: 12, color: INK, fontWeight: 800 }}>{compactMoney(effectiveAmount(contract))}</Typography>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>{currencyLabel(contract)}</Typography>
+                  </>
+                ),
+              },
+              {
+                key: 'end',
+                label: 'پایان مؤثر',
+                align: 'center',
+                render: (contract) => (
+                  <Typography sx={{ fontSize: 12, color: INK }}>{toJalali(effectiveEnd(contract))}</Typography>
+                ),
+              },
+              {
+                key: 'timing',
+                label: 'زمان‌بندی',
+                align: 'center',
+                render: (contract) => {
+                  const days = daysUntil(effectiveEnd(contract));
                   const chip = daysChip(days);
                   const showDays = contract.status === 'active' && days !== null;
-                  return (
-                    <TableRow key={contract.id} hover onClick={() => navigate(`/external-contracts/${contract.id}`)}
-                      sx={{ cursor: 'pointer', '& td': { py: 0.75, borderBottom: '1px solid #f2f5f9' } }}>
-                      <TableCell>
-                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract.subject}</Typography>
-                        <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
-                          {contract.party_name || '—'}{contract.number ? ` · ${contract.number}` : ''}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
-                          {contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || '—'}
-                        </Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Chip size="small" label={statusLabel(contract.status)}
-                          sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography sx={{ fontSize: 12, color: INK, fontWeight: 800 }}>{compactMoney(effectiveAmount(contract))}</Typography>
-                        <Typography sx={{ fontSize: 12, color: MUTED }}>{currencyLabel(contract)}</Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        <Typography sx={{ fontSize: 12, color: INK }}>{toJalali(end)}</Typography>
-                      </TableCell>
-                      <TableCell align="center">
-                        {showDays ? (
-                          <Chip size="small" label={chip.label}
-                            sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(chip.color, 0.07), color: chip.color }} />
-                        ) : <Typography sx={{ fontSize: 12, color: MUTED }}>—</Typography>}
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </TableContainer>
+                  return showDays ? (
+                    <Chip size="small" label={chip.label}
+                      sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(chip.color, 0.07), color: chip.color }} />
+                  ) : <Typography sx={{ fontSize: 12, color: MUTED }}>—</Typography>;
+                },
+              },
+            ]}
+          />
           {rows.length > 12 ? (
             <Typography sx={{ mt: 0.8, fontSize: 12, color: MUTED, textAlign: 'left' }}>
               نمایش ۱۲ مورد از {formatPersianNumber(rows.length)} قرارداد

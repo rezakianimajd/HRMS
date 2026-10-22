@@ -1,7 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, Grid, Chip, Stack, Avatar, IconButton, Tooltip, Button,
-  Alert, TextField, MenuItem,
+  Alert, TextField, MenuItem, Tabs, Tab,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PaletteIcon from '@mui/icons-material/Palette';
@@ -491,11 +491,316 @@ const TypographyCard = ({
   </Paper>
 );
 
+const STUDIO_COLORS = [
+  ['primary', 'رنگ اصلی'], ['secondary', 'رنگ مکمل'],
+  ['success', 'موفقیت'], ['warning', 'هشدار'], ['danger', 'خطا'], ['info', 'اطلاعات'],
+  ['background', 'پس‌زمینهٔ صفحه'], ['surface', 'سطح کارت'],
+  ['textPrimary', 'متن اصلی'], ['textSecondary', 'متن کم‌رنگ'],
+];
+
+const STUDIO_SURFACES = [
+  ['pageHeader', 'هدر صفحه'], ['card', 'کارت'], ['table', 'جدول'], ['dialog', 'دیالوگ'],
+];
+
+const STUDIO_ROLES = [
+  ['pageHeader', 'هدر صفحه'], ['sectionTitle', 'عنوان بخش'], ['cardTitle', 'عنوان کارت'],
+  ['cardSubtitle', 'زیرعنوان کارت'], ['cardValue', 'مقدار کارت'], ['tableHeader', 'هدر جدول'],
+  ['tableCell', 'سلول جدول'], ['formLabel', 'برچسب فرم'], ['input', 'ورودی'],
+  ['body', 'متن اصلی'], ['button', 'دکمه'], ['chip', 'چیپ'], ['navItem', 'منوی ناوبری'],
+  ['caption', 'زیرنویس'], ['tooltip', 'راهنما'],
+];
+
+const STUDIO_WEIGHTS = [300, 400, 500, 600, 700];
+
+const StudioColorField = ({ label, value, onChange, disabled }) => (
+  <Stack direction="row" spacing={0.9} alignItems="center" sx={{ minWidth: 0 }}>
+    <Box
+      component="input"
+      type="color"
+      value={value || '#000000'}
+      disabled={disabled}
+      onChange={(event) => onChange(event.target.value)}
+      sx={{
+        width: 32, height: 32, p: 0, border: '1px solid', borderColor: 'divider',
+        borderRadius: '9px', bgcolor: 'transparent', cursor: disabled ? 'not-allowed' : 'pointer',
+      }}
+    />
+    <Box sx={{ minWidth: 0 }}>
+      <Typography sx={{ fontSize: 12, color: 'text.secondary', lineHeight: 1.4 }}>{label}</Typography>
+      <Typography sx={{ fontSize: 11, direction: 'ltr', fontFamily: 'monospace', color: 'text.primary' }}>
+        {value}
+      </Typography>
+    </Box>
+  </Stack>
+);
+
+const StudioNumberField = ({
+  label, value, onChange, min = 0, max = 999, step = 1, disabled, sx,
+}) => (
+  <TextField
+    size="small"
+    type="number"
+    label={label}
+    value={value}
+    disabled={disabled}
+    onChange={(event) => {
+      const next = Number(event.target.value);
+      if (Number.isFinite(next)) onChange(Math.min(max, Math.max(min, next)));
+    }}
+    inputProps={{ min, max, step }}
+    InputLabelProps={{ shrink: true }}
+    sx={{ width: 132, ...sx }}
+  />
+);
+
+
+const ThemeStudioCard = ({
+  canEdit, design, onChange, onReset, saving, savedTick,
+}) => {
+  const [tab, setTab] = useState(0);
+  const disabled = !canEdit;
+  const setColor = (key, value) => onChange({ colors: { [key]: value } });
+  const setSurface = (key, field, value) => onChange({ surfaces: { [key]: { [field]: value } } });
+  const setRole = (key, field, value) => onChange({ typography: { roles: { [key]: { [field]: value } } } });
+
+  return (
+    <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1.25, flexWrap: 'wrap',
+        px: 1.75, py: 1.25, borderBottom: '1px solid', borderColor: 'divider',
+        background: `linear-gradient(135deg, ${SOFT.amber}16, transparent)`,
+      }}>
+        <Avatar variant="rounded" sx={{
+          width: 30, height: 30, borderRadius: '9px',
+          bgcolor: `${SOFT.amber}24`, color: SOFT.amber,
+        }}>
+          <PaletteIcon sx={{ fontSize: 17 }} />
+        </Avatar>
+        <Typography variant="h6">استودیوی تم</Typography>
+        <Chip
+          size="small"
+          label={canEdit ? (saving ? 'در حال ذخیره…' : savedTick ? 'ذخیره شد' : 'ذخیره خودکار') : 'فقط مدیر ارشد'}
+          sx={{
+            height: 20, fontSize: 12, fontWeight: 500,
+            bgcolor: canEdit ? `${SOFT.green}1f` : 'action.hover',
+            color: canEdit ? SOFT.green : 'text.secondary',
+          }}
+        />
+        <Button
+          size="small"
+          startIcon={<RestartAltIcon />}
+          onClick={onReset}
+          disabled={disabled}
+          sx={{ ml: 'auto', fontSize: 13, fontWeight: 400 }}
+        >
+          بازنشانی استودیو
+        </Button>
+      </Box>
+
+      <Tabs
+        value={tab}
+        onChange={(_event, value) => setTab(value)}
+        variant="scrollable"
+        scrollButtons="auto"
+        sx={{
+          px: 1, borderBottom: '1px solid', borderColor: 'divider',
+          '& .MuiTab-root': { fontSize: 13, minHeight: 48, fontWeight: 400 },
+        }}
+      >
+        <Tab label="رنگ‌ها" />
+        <Tab label="سطح‌ها و سایه" />
+        <Tab label="تایپوگرافی" />
+        <Tab label="چیدمان و تراکم" />
+      </Tabs>
+
+      <Typography sx={{ px: 1.75, pt: 1, fontSize: 11, color: 'text.secondary' }}>
+        این مقادیر پایه برای تم روشن ذخیره می‌شوند؛ تم‌های تاریک و F-Mode پالت اختصاصی خود را حفظ می‌کنند.
+      </Typography>
+
+      <Box sx={{ p: 1.75, pointerEvents: canEdit ? 'auto' : 'none', opacity: canEdit ? 1 : 0.65 }}>
+        {tab === 0 && (
+          <Grid container spacing={1.5}>
+            {STUDIO_COLORS.map(([key, label]) => (
+              <Grid item xs={12} sm={6} md={4} lg={3} key={key}>
+                <StudioColorField
+                  label={label}
+                  value={design.colors[key]}
+                  disabled={disabled}
+                  onChange={(value) => setColor(key, value)}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        )}
+
+        {tab === 1 && (
+          <Stack spacing={1.25}>
+            {STUDIO_SURFACES.map(([key, label]) => {
+              const surface = design.surfaces[key] || {};
+              return (
+                <Box key={key} sx={{
+                  p: 1.25, borderRadius: '12px', border: '1px solid', borderColor: 'divider',
+                }}>
+                  <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>{label}</Typography>
+                  <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                    <StudioColorField
+                      label="پس‌زمینه"
+                      value={surface.background}
+                      disabled={disabled}
+                      onChange={(value) => setSurface(key, 'background', value)}
+                    />
+                    {surface.radius != null && (
+                      <StudioNumberField
+                        label="شعاع گوشه"
+                        value={surface.radius}
+                        min={0}
+                        max={40}
+                        disabled={disabled}
+                        onChange={(value) => setSurface(key, 'radius', value)}
+                      />
+                    )}
+                    <TextField
+                      select size="small" label="سایه"
+                      value={surface.shadow || 'none'}
+                      disabled={disabled}
+                      onChange={(event) => setSurface(key, 'shadow', event.target.value)}
+                      sx={{ width: 150 }}
+                      InputLabelProps={{ shrink: true }}
+                    >
+                      {Object.keys(design.shadows).map((shadow) => (
+                        <MenuItem key={shadow} value={shadow}>{shadow}</MenuItem>
+                      ))}
+                    </TextField>
+                    {key === 'table' && (
+                      <StudioColorField
+                        label="پس‌زمینهٔ هدر"
+                        value={surface.headerBackground}
+                        disabled={disabled}
+                        onChange={(value) => setSurface(key, 'headerBackground', value)}
+                      />
+                    )}
+                  </Stack>
+                </Box>
+              );
+            })}
+          </Stack>
+        )}
+
+
+
+
+
+        {tab === 2 && (
+          <Grid container spacing={1.25}>
+            {STUDIO_ROLES.map(([key, label]) => {
+              const role = design.typography.roles[key] || {};
+              return (
+                <Grid item xs={12} sm={6} md={4} key={key}>
+                  <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap alignItems="center" sx={{
+                    p: 1, borderRadius: '10px', bgcolor: 'action.hover',
+                  }}>
+                    <Typography sx={{ fontSize: 12, minWidth: 86 }}>{label}</Typography>
+                    <StudioNumberField
+                      label="اندازه" value={role.size} min={10} max={40} step={0.5}
+                      sx={{ width: 104 }} disabled={disabled}
+                      onChange={(value) => setRole(key, 'size', value)}
+                    />
+                    <TextField
+                      select size="small" label="وزن" value={role.weight}
+                      disabled={disabled}
+                      onChange={(event) => setRole(key, 'weight', Number(event.target.value))}
+                      sx={{ width: 90 }}
+                      InputLabelProps={{ shrink: true }}
+                    >
+                      {STUDIO_WEIGHTS.map((weight) => (
+                        <MenuItem key={weight} value={weight}>{weight}</MenuItem>
+                      ))}
+                    </TextField>
+                    <StudioNumberField
+                      label="ارتفاع خط" value={role.lineHeight} min={0.8} max={3} step={0.1}
+                      sx={{ width: 104 }} disabled={disabled}
+                      onChange={(value) => setRole(key, 'lineHeight', value)}
+                    />
+                  </Stack>
+                </Grid>
+              );
+            })}
+          </Grid>
+        )}
+
+
+
+        {tab === 3 && (
+          <Stack spacing={1.75}>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>شعاع گوشه‌ها</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
+                {Object.entries(design.shape).map(([key, value]) => (
+                  <StudioNumberField
+                    key={key} label={key} value={value} min={0} max={999}
+                    disabled={disabled}
+                    onChange={(next) => onChange({ shape: { [key]: next } })}
+                  />
+                ))}
+              </Stack>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>فاصله‌ها</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap>
+                {Object.entries(design.spacing).map(([key, value]) => (
+                  <StudioNumberField
+                    key={key} label={key} value={value} min={0} max={80}
+                    disabled={disabled}
+                    onChange={(next) => onChange({ spacing: { [key]: next } })}
+                  />
+                ))}
+              </Stack>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>تراکم</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <TextField
+                  select size="small" label="حالت" value={design.density.mode}
+                  disabled={disabled}
+                  onChange={(event) => onChange({ density: { mode: event.target.value } })}
+                  sx={{ width: 150 }} InputLabelProps={{ shrink: true }}
+                >
+                  <MenuItem value="compact">فشرده</MenuItem>
+                  <MenuItem value="comfortable">متعادل</MenuItem>
+                  <MenuItem value="spacious">جادار</MenuItem>
+                </TextField>
+                <StudioNumberField
+                  label="ارتفاع ردیف جدول" value={design.density.tableRowHeight}
+                  min={24} max={64} disabled={disabled}
+                  onChange={(value) => onChange({ density: { tableRowHeight: value } })}
+                />
+                <StudioNumberField
+                  label="ارتفاع ورودی" value={design.density.inputHeight}
+                  min={28} max={64} disabled={disabled}
+                  onChange={(value) => onChange({ density: { inputHeight: value } })}
+                />
+                <StudioNumberField
+                  label="ارتفاع دکمه" value={design.density.buttonHeight}
+                  min={24} max={64} disabled={disabled}
+                  onChange={(value) => onChange({ density: { buttonHeight: value } })}
+                />
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+      </Box>
+    </Paper>
+  );
+};
+
+
+
 const AppearancePage = () => {
   const { mode, setMode, neonColor, setNeonColor } = useThemeMode();
   const { applications, loadApplications } = useApplication();
   const {
     canEdit, typography, setTypography, resetTypography, resetPalettes,
+    designTokens, setDesignTokens, resetDesign,
     saving, savedTick, error,
   } = useModulePalette();
 
@@ -674,6 +979,15 @@ const AppearancePage = () => {
         type={{ ...DEFAULT_TYPOGRAPHY, ...(typography || {}) }}
         onChange={setTypography}
         onReset={resetTypography}
+        saving={saving}
+        savedTick={savedTick}
+      />
+
+      <ThemeStudioCard
+        canEdit={canEdit}
+        design={designTokens}
+        onChange={setDesignTokens}
+        onReset={resetDesign}
         saving={saving}
         savedTick={savedTick}
       />

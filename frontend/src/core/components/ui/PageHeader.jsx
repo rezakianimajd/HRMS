@@ -156,7 +156,7 @@ const semantic = ':not(.MuiButton-containedError):not(.MuiButton-containedWarnin
  *  - بدون توضیح زیر عنوان
  *  - دکمه‌های هدر با رنگ تاکیدی، متن سفید و فونت مستقلِ قابل تنظیم
  */
-const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, ...rest }) => {
+const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, className, ...rest }) => {
   const theme = useTheme();
   const { currentApp } = useApplication();
   const { getPalette, typography } = useModulePalette();
@@ -169,6 +169,7 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, ...r
     <Paper
       elevation={0}
       {...rest}
+      className={`hrms-page-header${className ? ` ${className}` : ''}`}
       sx={{
         mb: 1.75,
         px: { xs: 1.5, md: 1.75 },
@@ -177,11 +178,10 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, ...r
         alignItems: 'center',
         gap: 1.5,
         flexWrap: 'wrap',
-        borderRadius: '16px',
-        border: '1px solid',
-        borderColor: 'divider',
-        bgcolor: 'background.paper',
-        boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
+        borderRadius: 'var(--hrms-radius-large, 16px)',
+        border: 'var(--hrms-border-page-header, 1px solid rgba(15,23,42,0.06))',
+        bgcolor: 'var(--hrms-region-header-bg, #ffffff)',
+        boxShadow: 'var(--hrms-shadow-page-header, 0 4px 18px rgba(15,23,42,0.04))',
         [`& .MuiButton-contained${semantic}`]: {
           backgroundColor: `${accent} !important`,
           color: '#ffffff !important',

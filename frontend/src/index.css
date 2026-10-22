@@ -7,6 +7,109 @@
   font-display: swap;
 }
 
+/*
+ * Design-token fallbacks. App.jsx مقادیر مؤثر (تم + ماژول) را در زمان اجرا
+ * روی همین متغیرها می‌نویسد؛ این بلوک فقط برای اولین رندر و کامپوننت‌های
+ * بیرون از ThemeProvider است.
+ */
+:root {
+  --hrms-font-family: 'Vazirmatn', 'IRANSans', Tahoma, sans-serif;
+  --hrms-font-page-header-size: 20px;
+  --hrms-font-section-title-size: 16px;
+  --hrms-font-card-title-size: 16px;
+  --hrms-font-card-subtitle-size: 12px;
+  --hrms-font-card-value-size: 14px;
+  --hrms-font-table-header-size: 13px;
+  --hrms-font-table-cell-size: 13px;
+  --hrms-font-form-label-size: 13px;
+  --hrms-font-input-size: 13px;
+  --hrms-font-body-size: 13px;
+  --hrms-font-button-size: 13px;
+  --hrms-font-chip-size: 12px;
+  --hrms-font-nav-size: 12.5px;
+  --hrms-font-caption-size: 12px;
+  --hrms-font-tooltip-size: 12px;
+  --hrms-color-primary: #6366f1;
+  --hrms-color-module-accent: #6366f1;
+  --hrms-color-secondary: #ec4899;
+  --hrms-color-success: #10b981;
+  --hrms-color-warning: #f59e0b;
+  --hrms-color-danger: #ef4444;
+  --hrms-color-info: #0ea5e9;
+  --hrms-color-background: #f8fafc;
+  --hrms-color-surface: #ffffff;
+  --hrms-color-text-primary: #1e293b;
+  --hrms-color-text-secondary: #64748b;
+  --hrms-color-border: #e8edf4;
+  --hrms-color-divider: #eef2f7;
+  --hrms-color-hover: #f5f7fb;
+  --hrms-color-selected: #eef2ff;
+  --hrms-region-page-bg: #f8fafc;
+  --hrms-region-app-header-bg: #ffffff;
+  --hrms-region-sidebar-bg: #ffffff;
+  --hrms-region-header-bg: #ffffff;
+  --hrms-region-card-bg: #ffffff;
+  --hrms-region-table-bg: #ffffff;
+  --hrms-region-table-header-bg: #f8fafc;
+  --hrms-region-dialog-bg: #ffffff;
+  --hrms-region-drawer-bg: #ffffff;
+  --hrms-border-page-header: 1px solid #e8edf4;
+  --hrms-border-card: 1px solid #e8edf4;
+  --hrms-border-table: 1px solid #e8edf4;
+  --hrms-shadow-page-header: 0 4px 18px rgba(15,23,42,0.04);
+  --hrms-shadow-card: none;
+  --hrms-shadow-table: none;
+  --hrms-shadow-dialog: 0 24px 80px rgba(15,23,42,0.18);
+  --hrms-shadow-drawer: 0 18px 45px rgba(15,23,42,0.12);
+  --hrms-shadow-focus: 0 0 0 3px rgba(99,102,241,0.12);
+  --hrms-radius-small: 8px;
+  --hrms-radius-medium: 10px;
+  --hrms-radius-large: 16px;
+  --hrms-radius-pill: 999px;
+  --hrms-page-padding: 24px;
+  --hrms-section-gap: 14px;
+  --hrms-card-padding: 16px;
+  --hrms-table-cell-padding: 8px;
+  --hrms-table-row-height: 38px;
+  --hrms-input-height: 40px;
+  --hrms-button-height: 36px;
+}
+
+/* Utility classes for components that should not depend on MUI sx values. */
+.hrms-surface {
+  background: var(--hrms-region-card-bg);
+  border: var(--hrms-border-card);
+  border-radius: var(--hrms-radius-large);
+  box-shadow: var(--hrms-shadow-card);
+}
+
+.hrms-card {
+  background: var(--hrms-region-card-bg);
+  border: var(--hrms-border-card);
+  border-radius: var(--hrms-radius-large);
+  box-shadow: var(--hrms-shadow-card);
+  padding: var(--hrms-card-padding);
+}
+
+.hrms-table {
+  background: var(--hrms-region-table-bg);
+  border: var(--hrms-border-table);
+  border-radius: var(--hrms-radius-large);
+  box-shadow: var(--hrms-shadow-table);
+}
+
+.hrms-font-page-header { font-size: var(--hrms-font-page-header-size); }
+.hrms-font-section-title { font-size: var(--hrms-font-section-title-size); }
+.hrms-font-card-title { font-size: var(--hrms-font-card-title-size); }
+.hrms-font-card-value { font-size: var(--hrms-font-card-value-size); }
+.hrms-font-table-header { font-size: var(--hrms-font-table-header-size); }
+.hrms-font-table-cell { font-size: var(--hrms-font-table-cell-size); }
+.hrms-font-input { font-size: var(--hrms-font-input-size); }
+.hrms-font-button { font-size: var(--hrms-font-button-size); }
+.hrms-font-caption { font-size: var(--hrms-font-caption-size); }
+
+
+
 * {
   margin: 0;
   padding: 0;
@@ -14,13 +117,13 @@
 }
 
 body {
-  font-family: 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif;
-  font-size: 13px;
+  font-family: var(--hrms-font-family, 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif);
+  font-size: var(--hrms-font-body-size, 13px);
   font-weight: 400;
   line-height: 1.8;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  background-color: #f8fafc;
+  background-color: var(--hrms-region-page-bg, #f8fafc);
 }
 
 button, input, select, textarea {
@@ -37,7 +140,7 @@ html {
 }
 
 [dir="rtl"] {
-  font-family: 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif;
+  font-family: var(--hrms-font-family, 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif);
   direction: rtl;
   text-align: right;
 }
@@ -56,7 +159,7 @@ html {
 }
 
 [dir="ltr"] {
-  font-family: 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif;
+  font-family: var(--hrms-font-family, 'Vazirmatn', 'IRANSans', 'Tahoma', sans-serif);
 }
 
 /* Scrollbar styling */

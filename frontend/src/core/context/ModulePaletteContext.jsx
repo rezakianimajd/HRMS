@@ -5,6 +5,13 @@ import axiosInstance from '../api/axiosConfig';
 import useAuth from '../hooks/useAuth';
 import useCompany from '../hooks/useCompany';
 import { DEFAULT_TYPOGRAPHY, MIN_TYPOGRAPHY_SIZES } from '../theme/appearanceDefaults';
+import {
+  DEFAULT_DESIGN_TOKENS,
+  legacyTypographyFromDesign,
+  mergeDesignTokens,
+  normalizeDesignTokens,
+  syncDesignWithLegacyTypography,
+} from '../theme/designTokens';
 
 // رنگ تاکیدی پیشنهادی هر ماژول (فقط برای نمایش در انتخاب‌گر؛ تا ذخیره نشود اعمال نمی‌شود)
 export const MODULE_DEFAULT_ACCENTS = {
@@ -27,6 +34,7 @@ export const MODULE_DEFAULT_ACCENTS = {
 const AppearanceContext = createContext({
   palettes: {},
   typography: DEFAULT_TYPOGRAPHY,
+  designTokens: DEFAULT_DESIGN_TOKENS,
   canEdit: false,
   loading: false,
   saving: false,
@@ -39,6 +47,8 @@ const AppearanceContext = createContext({
   resetAll: () => {},
   setTypography: () => {},
   resetTypography: () => {},
+  setDesignTokens: () => {},
+  resetDesign: () => {},
 });
 
 const normalizeTypography = (raw) => {
@@ -70,6 +80,7 @@ export const ModulePaletteProvider = ({ children }) => {
 
   const [palettes, setPalettes] = useState({});
   const [typography, setTypographyState] = useState(DEFAULT_TYPOGRAPHY);
+  const [designTokens, setDesignTokensState] = useState(DEFAULT_DESIGN_TOKENS);
   const [canEdit, setCanEdit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -89,8 +100,10 @@ export const ModulePaletteProvider = ({ children }) => {
     axiosInstance.get('/settings/appearance/')
       .then(({ data }) => {
         if (!alive) return;
+        const nextTypography = normalizeTypography(data?.typography);
         setPalettes(normalizePalettes(data?.palettes));
-        setTypographyState(normalizeTypography(data?.typography));
+        setTypographyState(nextTypography);
+        setDesignTokensState(syncDesignWithLegacyTypography(data?.design, nextTypography));
         setCanEdit(Boolean(data?.can_edit));
         setError('');
         dirtyRef.current = false;
@@ -107,7 +120,7 @@ export const ModulePaletteProvider = ({ children }) => {
   useEffect(() => {
     if (!canEdit || !dirtyRef.current) return undefined;
     clearTimeout(saveTimer.current);
-    const payload = { palettes, typography };
+    const payload = { palettes, typography, design: designTokens };
     saveTimer.current = setTimeout(() => {
       setSaving(true);
       axiosInstance.put('/settings/appearance/', payload)
@@ -118,6 +131,7 @@ export const ModulePaletteProvider = ({ children }) => {
           dirtyRef.current = false;
           if (data?.typography) setTypographyState(normalizeTypography(data.typography));
           if (data?.palettes) setPalettes(normalizePalettes(data.palettes));
+          if (data?.design) setDesignTokensState(normalizeDesignTokens(data.design));
           setTimeout(() => setSavedTick(false), 1800);
         })
         .catch((err) => {
@@ -126,7 +140,7 @@ export const ModulePaletteProvider = ({ children }) => {
         });
     }, 500);
     return () => clearTimeout(saveTimer.current);
-  }, [palettes, typography, canEdit]);
+  }, [palettes, typography, designTokens, canEdit]);
 
   const getPalette = useCallback((slug) => {
     if (!slug) return null;
@@ -175,17 +189,39 @@ export const ModulePaletteProvider = ({ children }) => {
     if (!canEdit) return;
     setPalettes({});
     setTypographyState(DEFAULT_TYPOGRAPHY);
+    setDesignTokensState(DEFAULT_DESIGN_TOKENS);
     dirtyRef.current = true;
   }, [canEdit]);
 
   const setTypography = useCallback((patch) => {
     if (!canEdit) return;
-    setTypographyState((prev) => normalizeTypography({ ...prev, ...patch }));
+    const nextTypography = normalizeTypography({ ...typography, ...patch });
+    setTypographyState(nextTypography);
+    setDesignTokensState((prev) => syncDesignWithLegacyTypography(prev, nextTypography));
     dirtyRef.current = true;
-  }, [canEdit]);
+  }, [canEdit, typography]);
 
   const resetTypography = useCallback(() => {
     if (!canEdit) return;
+    setTypographyState(DEFAULT_TYPOGRAPHY);
+    setDesignTokensState((prev) => syncDesignWithLegacyTypography(prev, DEFAULT_TYPOGRAPHY));
+    dirtyRef.current = true;
+  }, [canEdit]);
+
+  const setDesignTokens = useCallback((patch) => {
+    if (!canEdit) return;
+    const next = typeof patch === 'function'
+      ? normalizeDesignTokens(patch(designTokens))
+      : normalizeDesignTokens(mergeDesignTokens(designTokens, patch));
+    setDesignTokensState(next);
+    const legacy = legacyTypographyFromDesign(next);
+    setTypographyState((current) => normalizeTypography({ ...current, ...legacy }));
+    dirtyRef.current = true;
+  }, [canEdit, designTokens]);
+
+  const resetDesign = useCallback(() => {
+    if (!canEdit) return;
+    setDesignTokensState(DEFAULT_DESIGN_TOKENS);
     setTypographyState(DEFAULT_TYPOGRAPHY);
     dirtyRef.current = true;
   }, [canEdit]);
@@ -195,6 +231,7 @@ export const ModulePaletteProvider = ({ children }) => {
       value={{
         palettes,
         typography,
+        designTokens,
         canEdit,
         loading,
         saving,
@@ -207,6 +244,8 @@ export const ModulePaletteProvider = ({ children }) => {
         resetAll,
         setTypography,
         resetTypography,
+        setDesignTokens,
+        resetDesign,
       }}
     >
       {children}

@@ -19,6 +19,13 @@ import SystemBroadcastGate from './core/components/ui/SystemBroadcastGate';
 import ErrorBoundary from './core/components/ui/ErrorBoundary';
 import { mixHex } from './core/theme/tokens';
 import { DEFAULT_TYPOGRAPHY, fontStack } from './core/theme/appearanceDefaults';
+import {
+  applyDesignCssVariables,
+  designCssVariables,
+  legacyTypographyFromDesign,
+  resolveDesignTokens,
+} from './core/theme/designTokens';
+import { designComponentOverrides, mergeThemeComponents } from './core/theme/themeAdapter';
 import './core/engines/languageEngine';
 
 const queryClient = new QueryClient({
@@ -51,7 +58,7 @@ const WHITE_SURFACES = {
           boxShadow: 'none',
         },
         '&.MuiMenu-paper, &.MuiPopover-paper, &.MuiDialog-paper': {
-          boxShadow: '0 18px 45px rgba(15,23,42,0.16)',
+          boxShadow: 'var(--hrms-shadow-dialog, 0 18px 45px rgba(15,23,42,0.16))',
         },
       },
     },
@@ -75,7 +82,7 @@ const WHITE_SURFACES = {
   MuiDrawer: {
     styleOverrides: {
       paper: {
-        background: '#ffffff !important',
+        background: 'var(--hrms-region-drawer-bg, #ffffff) !important',
         borderLeft: '1px solid rgba(15,23,42,0.06)',
         backdropFilter: 'none',
         WebkitBackdropFilter: 'none',
@@ -128,13 +135,13 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
         fontWeight: `${type.cardWeight} !important`,
         lineHeight: 1.6,
       },
-      '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root), .hrms-page .MuiCard-root': {
-        boxShadow: 'none !important',
+      '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root):not(.hrms-page-header), .hrms-page .MuiCard-root': {
+        boxShadow: 'var(--hrms-shadow-card, none) !important',
         animation: 'none !important',
         transition: 'none !important',
         '&:hover': {
           transform: 'none !important',
-          boxShadow: 'none !important',
+          boxShadow: 'var(--hrms-shadow-card, none) !important',
         },
       },
       '.hrms-page .MuiBox-root, .hrms-page .MuiAvatar-root': {
@@ -179,8 +186,8 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
       },
       ...(whiteCards
         ? {
-          '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root), .hrms-page .MuiCard-root': {
-            backgroundColor: '#ffffff !important',
+          '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root):not(.hrms-page-header), .hrms-page .MuiCard-root': {
+            backgroundColor: 'var(--hrms-region-card-bg, #ffffff) !important',
             backgroundImage: 'none !important',
             backdropFilter: 'none !important',
             WebkitBackdropFilter: 'none !important',
@@ -256,6 +263,26 @@ const getPalettes = (mode, neonColor) => {
  * اعمال پالت هر ماژول روی پالت پایه: رنگ تاکیدی + پس‌زمینه.
  * در F مود و کوراساوا رنگ تاکیدی سراسری دست‌نخورده می‌ماند.
  */
+const applyDesignPalette = (palette, design, mode) => {
+  const next = {
+    ...palette,
+    primary: { ...palette.primary, main: design.colors.primary },
+    secondary: { ...palette.secondary, main: design.colors.secondary },
+    success: { ...palette.success, main: design.colors.success },
+    warning: { ...palette.warning, main: design.colors.warning },
+    error: { ...palette.error, main: design.colors.danger },
+    info: { ...(palette.info || {}), main: design.colors.info },
+    background: { default: design.colors.background, paper: design.colors.surface },
+    text: { primary: design.colors.textPrimary, secondary: design.colors.textSecondary },
+    divider: design.colors.divider,
+  };
+  // رنگ نئون انتخابی کاربر در F-Mode اولویت دارد.
+  if (mode === 'fmode') {
+    next.primary = { main: palette.primary.main, light: palette.primary.light, dark: palette.primary.dark };
+  }
+  return next;
+};
+
 const applyModulePalette = (palette, mode, modulePalette) => {
   if (!modulePalette) return palette;
   const next = {
@@ -297,7 +324,7 @@ const getComponents = (mode, neonColor, modulePalette, type = DEFAULT_TYPOGRAPHY
       MuiCard: {
         styleOverrides: { root: { background: 'rgba(5,5,5,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: `1px solid ${neonColor}40`, borderRadius: '10px', transition: 'none', '&:hover': { transform: 'none', boxShadow: 'none' } } },
       },
-      MuiDrawer: { styleOverrides: { paper: { background: 'rgba(5,5,5,0.85) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: `1px solid ${neonColor}33` } } },
+      MuiDrawer: { styleOverrides: { paper: { background: 'var(--hrms-region-drawer-bg, rgba(5,5,5,0.85)) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: `1px solid ${neonColor}33` } } },
       MuiTextField: { styleOverrides: { root: { '& .MuiOutlinedInput-root': { borderRadius: '10px', background: 'rgba(0,255,255,0.03)', border: `1px solid ${neonColor}33`, '&:hover': { border: `1px solid ${neonColor}66` }, '&.Mui-focused': { boxShadow: `0 0 12px ${neonColor}4d` } } } } },
       MuiTab: { styleOverrides: { root: { color: '#e0e0e0', '&.Mui-selected': { color: neonColor, fontWeight: 700 } } } },
       MuiTabs: { styleOverrides: { indicator: { backgroundColor: neonColor } } },
@@ -318,7 +345,7 @@ const getComponents = (mode, neonColor, modulePalette, type = DEFAULT_TYPOGRAPHY
       MuiCssBaseline: cssBase(bodyBg, false, type),
       MuiPaper: { styleOverrides: { root: { background: 'rgba(30,41,59,0.75)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(148,163,184,0.12)', boxShadow: 'none', borderRadius: '10px' } } },
       MuiCard: { styleOverrides: { root: { background: 'rgba(30,41,59,0.6)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', border: '1px solid rgba(148,163,184,0.12)', borderRadius: '10px', transition: 'none', '&:hover': { transform: 'none', boxShadow: 'none' } } } },
-      MuiDrawer: { styleOverrides: { paper: { background: 'rgba(15,23,42,0.85) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: '1px solid rgba(148,163,184,0.08)' } } },
+      MuiDrawer: { styleOverrides: { paper: { background: 'var(--hrms-region-drawer-bg, rgba(15,23,42,0.85)) !important', backdropFilter: 'blur(24px)', WebkitBackdropFilter: 'blur(24px)', borderLeft: '1px solid rgba(148,163,184,0.08)' } } },
       MuiTextField: { styleOverrides: { root: { '& .MuiOutlinedInput-root': { borderRadius: '10px', background: 'rgba(15,23,42,0.5)', '&:hover': { background: 'rgba(15,23,42,0.8)' }, '&.Mui-focused': { background: 'rgba(15,23,42,0.9)', boxShadow: '0 0 0 3px rgba(99,102,241,0.15)' } } } } },
       MuiTab: { styleOverrides: { root: { color: '#cbd5e1', '&.Mui-selected': { color: '#ffffff', fontWeight: 700 } } } },
       MuiTabs: { styleOverrides: { indicator: { backgroundColor: '#818cf8' } } },
@@ -335,9 +362,20 @@ const ThemedApp = () => {
   const { direction } = useLanguage();
   const { mode, neonColor } = useThemeMode();
   const { currentApp } = useApplication();
-  const { getPalette, typography: moduleTypography } = useModulePalette();
+  const { getPalette, typography: moduleTypography, designTokens } = useModulePalette();
   const modulePalette = getPalette(currentApp?.slug);
-  const type = { ...DEFAULT_TYPOGRAPHY, ...(moduleTypography || {}) };
+  const resolvedDesign = React.useMemo(
+    () => resolveDesignTokens({
+      design: designTokens,
+      typography: moduleTypography,
+      mode,
+      modulePalette,
+      neonColor,
+    }),
+    [designTokens, moduleTypography, mode, modulePalette?.accent, modulePalette?.background, neonColor],
+  );
+  const type = legacyTypographyFromDesign(resolvedDesign);
+  const roles = resolvedDesign.typography.roles;
 
   React.useEffect(() => {
     document.documentElement.dir = direction;
@@ -345,12 +383,17 @@ const ThemedApp = () => {
   }, [direction]);
 
   React.useEffect(() => {
+    applyDesignCssVariables(designCssVariables(resolvedDesign));
+  }, [resolvedDesign]);
+
+  React.useEffect(() => {
     const root = document.getElementById('root');
     if (root) root.style.filter = mode === 'kurosawa' ? 'grayscale(1)' : 'none';
     document.body.classList.toggle('fmode-light-candy', mode === 'fmode_light');
   }, [mode]);
 
-  const palettes = applyModulePalette(getPalettes(mode, neonColor), mode, modulePalette);
+  const basePalettes = applyDesignPalette(getPalettes(mode, neonColor), resolvedDesign, mode);
+  const palettes = applyModulePalette(basePalettes, mode, modulePalette);
   const components = getComponents(mode, neonColor, modulePalette, type);
 
   const theme = createTheme({
@@ -358,27 +401,27 @@ const ThemedApp = () => {
     palette: palettes,
     typography: {
       fontFamily: fontStack(type.family),
-      h1: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
-      h2: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
-      h3: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
-      h4: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5, letterSpacing: 0 },
-      h5: { fontSize: `${type.headerSize}px`, fontWeight: type.headerWeight, lineHeight: 1.5 },
-      h6: { fontSize: `${type.cardSize}px`, fontWeight: type.cardWeight, lineHeight: 1.6 },
-      subtitle1: { fontSize: `${type.cardSize}px`, fontWeight: type.cardWeight, lineHeight: 1.6 },
-      subtitle2: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.7 },
-      body1: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.8 },
-      body2: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, lineHeight: 1.8 },
-      button: { fontSize: `${type.bodySize}px`, fontWeight: type.bodyWeight, textTransform: 'none' },
-      caption: { fontSize: '12px', fontWeight: 400, lineHeight: 1.7 },
-      overline: { fontSize: '12px', fontWeight: 500, letterSpacing: '0.08em' },
+      h1: { fontSize: `${roles.pageHeader.size}px`, fontWeight: roles.pageHeader.weight, lineHeight: roles.pageHeader.lineHeight },
+      h2: { fontSize: `${roles.pageHeader.size}px`, fontWeight: roles.pageHeader.weight, lineHeight: roles.pageHeader.lineHeight },
+      h3: { fontSize: `${roles.pageHeader.size}px`, fontWeight: roles.pageHeader.weight, lineHeight: roles.pageHeader.lineHeight },
+      h4: { fontSize: `${roles.pageHeader.size}px`, fontWeight: roles.pageHeader.weight, lineHeight: roles.pageHeader.lineHeight, letterSpacing: 0 },
+      h5: { fontSize: `${roles.pageHeader.size}px`, fontWeight: roles.pageHeader.weight, lineHeight: roles.pageHeader.lineHeight },
+      h6: { fontSize: `${roles.cardTitle.size}px`, fontWeight: roles.cardTitle.weight, lineHeight: roles.cardTitle.lineHeight },
+      subtitle1: { fontSize: `${roles.cardTitle.size}px`, fontWeight: roles.cardTitle.weight, lineHeight: roles.cardTitle.lineHeight },
+      subtitle2: { fontSize: `${roles.body.size}px`, fontWeight: roles.body.weight, lineHeight: roles.body.lineHeight },
+      body1: { fontSize: `${roles.body.size}px`, fontWeight: roles.body.weight, lineHeight: roles.body.lineHeight },
+      body2: { fontSize: `${roles.body.size}px`, fontWeight: roles.body.weight, lineHeight: roles.body.lineHeight },
+      button: { fontSize: `${roles.button.size}px`, fontWeight: roles.button.weight, textTransform: 'none' },
+      caption: { fontSize: `${roles.caption.size}px`, fontWeight: roles.caption.weight, lineHeight: roles.caption.lineHeight },
+      overline: { fontSize: `${roles.caption.size}px`, fontWeight: 500, letterSpacing: '0.08em' },
     },
-    shape: { borderRadius: 1 },
-    components: {
+    shape: { borderRadius: resolvedDesign.shape.medium },
+    components: mergeThemeComponents({
       ...components,
       MuiButton: {
         styleOverrides: {
           root: {
-            textTransform: 'none', fontWeight: type.bodyWeight, fontSize: `${type.bodySize}px`, borderRadius: '10px', padding: '8px 20px', transition: 'all 0.2s ease',
+            textTransform: 'none', fontWeight: roles.button.weight, fontSize: `${roles.button.size}px`, borderRadius: `${resolvedDesign.shape.medium}px`, padding: '8px 20px', transition: 'all 0.2s ease',
             '& .MuiButton-startIcon, & .MuiButton-endIcon': { display: 'none' },
           },
           contained: {
@@ -453,7 +496,7 @@ const ThemedApp = () => {
           },
         },
       },
-    },
+    }, designComponentOverrides(resolvedDesign)),
   });
 
   return (

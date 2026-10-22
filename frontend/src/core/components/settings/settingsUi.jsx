@@ -23,11 +23,10 @@ export const SOFT = {
 };
 
 const CARD_SX = {
-  borderRadius: '16px',
-  border: '1px solid',
-  borderColor: 'divider',
-  bgcolor: 'background.paper',
-  boxShadow: '0 4px 18px rgba(15,23,42,0.04)',
+  borderRadius: 'var(--hrms-radius-large, 16px)',
+  border: 'var(--hrms-border-card, 1px solid #e8edf4)',
+  bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
+  boxShadow: 'var(--hrms-shadow-card, 0 4px 18px rgba(15,23,42,0.04))',
 };
 
 /** استایل مشترک کارت سفید برای صفحات تنظیمات/کاربران/ظاهر */
@@ -62,7 +61,7 @@ export const TabsCard = ({ tabs = [], value, onChange, activeColor = SOFT.indigo
         '& .MuiTabs-indicator': { height: 3, borderRadius: 2, bgcolor: activeColor },
         '& .MuiTab-root': {
           minHeight: 54, minWidth: 0, px: 1.75,
-          textTransform: 'none', fontWeight: 400, fontSize: 13,
+          textTransform: 'none', fontWeight: 400, fontSize: 'var(--hrms-font-button-size, 13px)',
           color: 'text.secondary', gap: 0.75,
         },
         '& .MuiTab-root.Mui-selected': { color: activeColor, fontWeight: 500 },

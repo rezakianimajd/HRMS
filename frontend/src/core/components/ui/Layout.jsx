@@ -430,7 +430,7 @@ const Layout = ({ children }) => {
     <Box sx={{
       height: '100%',
       display: 'flex',
-      bgcolor: 'background.paper',
+      bgcolor: 'var(--hrms-region-sidebar-bg, #ffffff)',
       overflow: 'hidden',
     }}>
       {/* ---------- ریل میانبرهای ماژول ---------- */}
@@ -445,7 +445,7 @@ const Layout = ({ children }) => {
         px: 0.75,
         borderInlineEnd: '1px solid',
         borderColor: 'divider',
-        bgcolor: 'background.paper',
+        bgcolor: 'var(--hrms-region-sidebar-bg, #ffffff)',
         overflowY: 'auto',
         overflowX: 'hidden',
         '&::-webkit-scrollbar': { width: 0 },
@@ -777,7 +777,7 @@ const Layout = ({ children }) => {
           alignItems: 'center', gap: 1,
           px: 1.5, py: 0.9,
           borderBottom: '1px solid', borderColor: 'divider',
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--hrms-region-app-header-bg, #ffffff)',
         }}>
           <IconButton
             size="small"

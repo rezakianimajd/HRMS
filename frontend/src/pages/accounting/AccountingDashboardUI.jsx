@@ -21,12 +21,13 @@ export const SurfaceCard = ({ title, icon: Icon, color, action, children, sx, co
   const accent = color || theme.palette.primary.main;
   return (
     <Paper elevation={0} sx={{
-      bgcolor: theme.palette.background.paper, border: `1px solid ${theme.palette.divider}`,
-      borderRadius: '18px', boxShadow: 'none', overflow: 'hidden', height: '100%',
+      bgcolor: 'var(--hrms-region-card-bg, #ffffff)',
+      border: 'var(--hrms-border-card, 1px solid #e8edf4)',
+      borderRadius: 'var(--hrms-radius-large, 18px)', boxShadow: 'var(--hrms-shadow-card, none)', overflow: 'hidden', height: '100%',
       display: 'flex', flexDirection: 'column', ...sx,
     }}>
       <Stack direction="row" alignItems="center" spacing={1} useFlexGap
-        sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: theme.palette.background.paper }}>
+        sx={{ px: 2, py: 1.5, borderBottom: `1px solid ${theme.palette.divider}`, bgcolor: 'var(--hrms-region-card-bg, #ffffff)' }}>
         <Box sx={{
           width: 34, height: 34, flexShrink: 0, borderRadius: '10px', color: accent,
           bgcolor: alpha(accent, 0.07), border: `1px solid ${alpha(accent, 0.16)}`,

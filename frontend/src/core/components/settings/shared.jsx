@@ -5,7 +5,7 @@ import axiosInstance from '../../api/axiosConfig';
 import {
   Box, Typography, Paper, Button, IconButton, TextField, Avatar,
   Dialog, DialogTitle, DialogContent, DialogActions, CircularProgress,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, FormControl,
+  FormControl,
   InputLabel, Select, MenuItem, Chip, Grid, Alert, InputAdornment, alpha, Stack,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,6 +18,7 @@ import CategoryOutlinedIcon from '@mui/icons-material/CategoryOutlined';
 import InboxOutlinedIcon from '@mui/icons-material/InboxOutlined';
 import { formatPersianNumber } from '../../utils/numberUtils';
 import { SOFT } from './settingsUi';
+import DataTable from '../ui/DataTable';
 
 export const ENDPOINTS = {
   departments: '/departments/',
@@ -95,6 +96,97 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
     ));
   }, [items, search, extraFields]);
 
+  const tableColumns = [
+    ...fields.map((f) => ({
+      key: f,
+      label: fieldLabel(f),
+      render: (item) => {
+        if (f === 'name') {
+          return (
+            <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
+              <Avatar sx={{
+                width: 28, height: 28, fontSize: 12, fontWeight: 800,
+                bgcolor: alpha(ACCENT, 0.12), color: ACCENT,
+              }}>
+                {String(item.name || '?').trim().charAt(0)}
+              </Avatar>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>{item.name}</Typography>
+            </Stack>
+          );
+        }
+        if (f === 'code') {
+          return (
+            <Chip size="small" label={item.code} sx={{
+              height: 20, fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
+              bgcolor: alpha(ACCENT, 0.08), color: ACCENT,
+            }} />
+          );
+        }
+        return item[f] ?? '—';
+      },
+    })),
+    ...Object.keys(extraFields).map((f) => {
+      const extra = extraFields[f];
+      const headerLabel = (extra && typeof extra === 'object') ? extra.label : extra;
+      return {
+        key: f,
+        label: headerLabel,
+        render: (item) => {
+          const value = item[f];
+          const isOptions = extra && typeof extra === 'object' && Array.isArray(extra.options);
+          const optionLabel = isOptions
+            ? (extra.options.find((option) => option.value === value) || {}).label
+            : null;
+          if (f === 'level') {
+            return (
+              <Chip size="small" label={
+                value === 'executive' ? 'مدیریتی' : value === 'expert' ? 'کارشناسی'
+                  : value === 'operational' ? 'عملیاتی' : (value || '—')
+              } sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
+            );
+          }
+          if (f === 'archive_folder') {
+            return value ? (
+              <Chip size="small" variant="outlined" label={value}
+                sx={{ height: 20, fontSize: 12, color: '#7c3aed', borderColor: alpha('#7c3aed', 0.45), fontWeight: 700 }} />
+            ) : '—';
+          }
+          if (isOptions) {
+            return (
+              <Chip size="small" label={optionLabel || value || '—'}
+                sx={{ height: 20, fontSize: 12, fontWeight: 700, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }} />
+            );
+          }
+          return (
+            <Typography sx={{ fontSize: 12, color: value ? 'text.primary' : 'text.disabled' }} noWrap>
+              {value || '—'}
+            </Typography>
+          );
+        },
+      };
+    }),
+    {
+      key: '__actions',
+      label: t('common.actions'),
+      align: 'left',
+      width: 90,
+      cellSx: { whiteSpace: 'nowrap' },
+      render: (item) => (
+        <>
+          <IconButton size="small" onClick={() => handleOpen(item)}
+            sx={{ color: ACCENT, '&:hover': { bgcolor: alpha(ACCENT, 0.1) } }}>
+            <EditIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" color="error" onClick={() => deleteMutation.mutate(item.id)}
+            sx={{ '&:hover': { bgcolor: alpha('#ef4444', 0.1) } }}>
+            <DeleteIcon fontSize="small" />
+          </IconButton>
+        </>
+      ),
+    },
+  ];
+
+
   return (
     <Paper elevation={0} sx={{
       borderRadius: '18px', overflow: 'hidden',
@@ -154,96 +246,18 @@ export const EntityManager = ({ endpoint, fields = ['name', 'code'], extraFields
           </Typography>
         </Box>
       ) : (
-        <TableContainer>
-          <Table size="small" sx={{
-            '& th': {
-              fontSize: 12, fontWeight: 900, color: 'text.secondary',
-              bgcolor: alpha(ACCENT, 0.04),
-              borderBottom: '1px solid', borderColor: 'divider',
-            },
+        <DataTable
+          rows={filtered}
+          columns={tableColumns}
+          getRowId={(item) => item.id}
+          ariaLabel={title}
+          paperSx={{ border: 0, borderRadius: 0, boxShadow: 'none', bgcolor: 'transparent' }}
+          tableSx={{
+            '& th': { fontSize: 12, fontWeight: 900, color: 'text.secondary', bgcolor: alpha(ACCENT, 0.04) },
             '& td': { py: 1.05, borderColor: 'divider' },
-          }}>
-            <TableHead>
-              <TableRow>
-                {fields.map((f) => (
-                  <TableCell key={f}>{fieldLabel(f)}</TableCell>
-                ))}
-                {Object.keys(extraFields).map((f) => {
-                  const extra = extraFields[f];
-                  const headerLabel = (extra && typeof extra === 'object') ? extra.label : extra;
-                  return <TableCell key={f}>{headerLabel}</TableCell>;
-                })}
-                <TableCell align="left" width={90}>{t('common.actions')}</TableCell>
-              </TableRow>
-            </TableHead>
-            <TableBody>
-              {filtered.map((item) => (
-                <TableRow key={item.id} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
-                  {fields.map((f) => (
-                    <TableCell key={f}>
-                      {f === 'name' ? (
-                        <Stack direction="row" spacing={1} alignItems="center" useFlexGap>
-                          <Avatar sx={{
-                            width: 28, height: 28, fontSize: 12, fontWeight: 800,
-                            bgcolor: alpha(ACCENT, 0.12), color: ACCENT,
-                          }}>
-                            {String(item.name || '?').trim().charAt(0)}
-                          </Avatar>
-                          <Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>{item.name}</Typography>
-                        </Stack>
-                      ) : f === 'code' ? (
-                        <Chip size="small" label={item.code} sx={{
-                          height: 20, fontSize: 12, fontFamily: 'monospace', fontWeight: 700,
-                          bgcolor: alpha(ACCENT, 0.08), color: ACCENT,
-                        }} />
-                      ) : item[f]}
-                    </TableCell>
-                  ))}
-                  {Object.keys(extraFields).map((f) => {
-                    const value = item[f];
-                    const extra = extraFields[f];
-                    const isOptions = extra && typeof extra === 'object' && Array.isArray(extra.options);
-                    const optionLabel = isOptions
-                      ? (extra.options.find((o) => o.value === value) || {}).label
-                      : null;
-                    return (
-                      <TableCell key={f}>
-                        {f === 'level' ? (
-                          <Chip size="small" label={
-                            value === 'executive' ? 'مدیریتی' : value === 'expert' ? 'کارشناسی'
-                              : value === 'operational' ? 'عملیاتی' : (value || '—')
-                          } sx={{ height: 20, fontSize: 12, fontWeight: 700 }} />
-                        ) : f === 'archive_folder' ? (
-                          value ? (
-                            <Chip size="small" variant="outlined" label={value}
-                              sx={{ height: 20, fontSize: 12, color: '#7c3aed', borderColor: alpha('#7c3aed', 0.45), fontWeight: 700 }} />
-                          ) : '—'
-                        ) : isOptions ? (
-                          <Chip size="small" label={optionLabel || value || '—'}
-                            sx={{ height: 20, fontSize: 12, fontWeight: 700, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }} />
-                        ) : (
-                          <Typography sx={{ fontSize: 12, color: value ? 'text.primary' : 'text.disabled' }} noWrap>
-                            {value || '—'}
-                          </Typography>
-                        )}
-                      </TableCell>
-                    );
-                  })}
-                  <TableCell align="left">
-                    <IconButton size="small" onClick={() => handleOpen(item)}
-                      sx={{ color: ACCENT, '&:hover': { bgcolor: alpha(ACCENT, 0.1) } }}>
-                      <EditIcon fontSize="small" />
-                    </IconButton>
-                    <IconButton size="small" color="error" onClick={() => deleteMutation.mutate(item.id)}
-                      sx={{ '&:hover': { bgcolor: alpha('#ef4444', 0.1) } }}>
-                      <DeleteIcon fontSize="small" />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </TableContainer>
+          }}
+          getRowSx={() => ({ '&:last-child td': { borderBottom: 0 } })}
+        />
       )}
 
       {filtered.length > 0 ? (
