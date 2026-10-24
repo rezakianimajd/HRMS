@@ -74,6 +74,25 @@ def _q(value: Any) -> str:
     return quote(str(value or ''), safe='')
 
 
+def _row_value(row: Any, key: str, default: Any = '') -> Any:
+    """Read a search result field from either a dict or a model instance."""
+    if isinstance(row, dict):
+        return row.get(key, default)
+    try:
+        return getattr(row, key, default)
+    except Exception:  # noqa: BLE001
+        return default
+
+
+def _row_pk(row: Any):
+    return _row_value(row, 'pk', None) or _row_value(row, 'id', None)
+
+
+def _related_name(obj: Any, relation: str, *attrs: str) -> str:
+    related = _row_value(obj, relation, None)
+    return _first(related, *attrs) if related is not None else ''
+
+
 @dataclass(frozen=True)
 class SearchProvider:
     model: str
@@ -543,56 +562,68 @@ def _hr_results(query: str, company) -> list:
         data = SearchEngine.global_search(query, company)
     except Exception:  # noqa: BLE001
         return []
+    if not isinstance(data, dict):
+        return []
 
     color = MODULE_COLORS['hr']
     results = []
     for row in data.get('employees', [])[:RESULT_LIMIT]:
+        employee_pk = _row_pk(row)
+        employee_name = _row_value(row, 'full_name') or _first(row, 'first_name', 'last_name') or 'پرسنل'
         results.append({
-            'id': f"employee-{row.get('id')}", 'type': 'employee',
-            'title': row.get('full_name') or row.get('first_name') or 'پرسنل',
-            'subtitle': _parts(row.get('department_name'), row.get('job_title_name')),
-            'path': f"/employees/{row.get('id')}", 'section': 'پرسنل',
+            'id': f"employee-{employee_pk}", 'type': 'employee',
+            'title': employee_name,
+            'subtitle': _parts(
+                _row_value(row, 'department_name') or _related_name(row, 'department', 'name'),
+                _row_value(row, 'job_title_name') or _related_name(row, 'job_title', 'name'),
+            ),
+            'path': f"/employees/{employee_pk}", 'section': 'پرسنل',
             'icon': 'person', 'color': color,
         })
     for row in data.get('documents', [])[:RESULT_LIMIT]:
-        employee_id = row.get('employee')
-        title = row.get('title') or 'مدرک'
+        document_pk = _row_pk(row)
+        document_employee = _row_value(row, 'employee', None)
+        employee_pk = _row_pk(document_employee) if not isinstance(document_employee, (int, str)) else document_employee
+        title = _row_value(row, 'title') or _first(row, 'name', 'subject') or 'مدرک'
         results.append({
-            'id': f"document-{row.get('id')}", 'type': 'document', 'title': title,
-            'subtitle': _parts(row.get('document_type_name'), row.get('employee_name')),
-            'path': f'/employees/{employee_id}' if employee_id else f'/document-management/library?q={_q(title)}',
+            'id': f"document-{document_pk}", 'type': 'document', 'title': title,
+            'subtitle': _parts(
+                _row_value(row, 'document_type_name') or _related_name(row, 'document_type', 'name'),
+                _row_value(row, 'employee_name') or _row_value(document_employee, 'full_name'),
+            ),
+            'path': f'/employees/{employee_pk}' if employee_pk else f'/document-management/library?q={_q(title)}',
             'section': 'مدارک', 'icon': 'document', 'color': '#14b8a6',
         })
     for row in data.get('letters', [])[:RESULT_LIMIT]:
-        subject = row.get('subject') or row.get('number') or 'نامه'
+        subject = _row_value(row, 'subject') or _row_value(row, 'number') or 'نامه'
         results.append({
-            'id': f"letter-{row.get('kind')}-{row.get('id')}", 'type': 'letter',
-            'title': subject, 'subtitle': _parts(row.get('number'), row.get('counterparty')),
+            'id': f"letter-{_row_value(row, 'kind')}-{_row_pk(row)}", 'type': 'letter',
+            'title': subject, 'subtitle': _parts(_row_value(row, 'number'), _row_value(row, 'counterparty')),
             'path': f'/correspondences?q={_q(subject)}', 'section': 'نامه‌ها',
             'icon': 'mail', 'color': '#06b6d4',
         })
     for row in data.get('hr_requests', [])[:RESULT_LIMIT]:
         results.append({
-            'id': f"hr-request-{row.get('id')}", 'type': 'hr-request',
-            'title': row.get('employee_name') or 'درخواست اداری',
-            'subtitle': _parts(row.get('request_type'), row.get('status')),
-            'path': f'/requests?q={_q(row.get("request_type") or row.get("employee_name"))}',
+            'id': f"hr-request-{_row_pk(row)}", 'type': 'hr-request',
+            'title': _row_value(row, 'employee_name') or 'درخواست اداری',
+            'subtitle': _parts(_row_value(row, 'request_type'), _row_value(row, 'status')),
+            'path': f'/requests?q={_q(_row_value(row, "request_type") or _row_value(row, "employee_name"))}',
             'section': 'درخواست‌های اداری', 'icon': 'request', 'color': '#8b5cf6',
         })
     for row in data.get('leave_requests', [])[:RESULT_LIMIT]:
         results.append({
-            'id': f"leave-{row.get('id')}", 'type': 'leave-request',
-            'title': row.get('employee_name') or 'مرخصی',
-            'subtitle': _parts(row.get('leave_type'), row.get('status')),
-            'path': f'/leaves?q={_q(row.get("leave_type") or row.get("employee_name"))}',
+            'id': f"leave-{_row_pk(row)}", 'type': 'leave-request',
+            'title': _row_value(row, 'employee_name') or 'مرخصی',
+            'subtitle': _parts(_row_value(row, 'leave_type'), _row_value(row, 'status')),
+            'path': f'/leaves?q={_q(_row_value(row, "leave_type") or _row_value(row, "employee_name"))}',
             'section': 'مرخصی‌ها', 'icon': 'leave', 'color': '#f59e0b',
         })
     for row in data.get('salary_records', [])[:RESULT_LIMIT]:
         results.append({
-            'id': f"salary-{row.get('id')}", 'type': 'salary-record',
-            'title': row.get('employee_name') or 'فیش حقوق',
-            'subtitle': _parts(row.get('period'), 'فیش حقوق'),
-            'path': f'/payslips?q={_q(row.get("employee_name"))}', 'section': 'فیش‌های حقوق',
+            'id': f"salary-{_row_pk(row)}", 'type': 'salary-record',
+            'title': _row_value(row, 'employee_name') or 'فیش حقوق',
+            'subtitle': _parts(_row_value(row, 'period'), 'فیش حقوق'),
+            'path': f'/payslips?q={_q(_row_value(row, "employee_name"))}', 'section': 'فیش‌های حقوق',
             'icon': 'payroll', 'color': '#10b981',
         })
     return results

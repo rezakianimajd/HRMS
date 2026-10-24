@@ -506,6 +506,7 @@ $BackendFiles += @(
     # جستجوی ماژول‌محور نوار کنار سایدبار
     'hrms_project/core/module_search.py',
     'hrms_project/core/search_views.py',
+    'hrms_project/core/tests_module_search.py',
     'hrms_project/core/urls_search.py'
 )
 $FrontendFiles += @(

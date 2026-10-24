@@ -1,4 +1,6 @@
 """Views for the advanced search API."""
+import logging
+
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -6,6 +8,8 @@ from core.engines.search_engine import SearchEngine
 from core.module_search import module_search
 from employees.serializers import EmployeeListSerializer
 from documents.serializers import DocumentListSerializer
+
+logger = logging.getLogger(__name__)
 
 
 def _get_company(request):
@@ -95,4 +99,15 @@ def module_search_view(request):
     query = request.query_params.get('q', '').strip()
     module = request.query_params.get('module', 'hr')
     company = _get_company(request)
-    return Response(module_search(query, module, company))
+    try:
+        result = module_search(query, module, company)
+    except Exception:  # noqa: BLE001
+        logger.exception('Module search failed for module=%s query=%r', module, query)
+        result = {
+            'module': module,
+            'module_label': module,
+            'query': query,
+            'results': [],
+            'sections': [],
+        }
+    return Response(result)
