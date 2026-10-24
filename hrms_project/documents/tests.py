@@ -284,12 +284,46 @@ class DocumentManagementWorkflowTests(SimpleTestCase):
         self.assertFalse(UserProfile.ROLE_DEFAULTS['hr_specialist']['can_approve_documents'])
 
 
-    def test_document_version_file_allows_long_archive_paths(self):
+    def test_managed_version_file_allows_long_archive_paths(self):
         from documents.models import DocumentVersion
 
         self.assertGreaterEqual(
             DocumentVersion._meta.get_field('file').max_length, 500,
         )
+
+    def test_library_index_is_directly_linked_to_source_records(self):
+        from django.db import models
+        from documents.models import ManagedDocument
+
+        employee_link = ManagedDocument._meta.get_field('source_document')
+        organization_link = ManagedDocument._meta.get_field('source_organization_document')
+        self.assertIs(employee_link.remote_field.on_delete, models.CASCADE)
+        self.assertIs(organization_link.remote_field.on_delete, models.CASCADE)
+        self.assertTrue(employee_link.null)
+        self.assertTrue(organization_link.null)
+
+    def test_managed_serializer_exposes_source_document_type(self):
+        from documents.management_serializers import ManagedDocumentSerializer
+
+        fields = ManagedDocumentSerializer().get_fields()
+        for name in (
+            'source_document', 'source_organization_document',
+            'source_document_type_name', 'document_type_name',
+            'source_document_employee_id',
+        ):
+            self.assertIn(name, fields)
+        self.assertEqual(fields['source_document'].source, 'source_document_id')
+        self.assertEqual(
+            fields['source_organization_document'].source,
+            'source_organization_document_id',
+        )
+        self.assertTrue(fields['source_document'].allow_null)
+        self.assertEqual(fields['source_document'].to_representation(7), 7)
+
+    def test_archive_paths_are_normalized_before_matching_sources(self):
+        from documents.management_sync import _normalize_path
+
+        self.assertEqual(_normalize_path('/archive/company_1/a.pdf/'), 'archive/company_1/a.pdf')
 
 
 class DocumentManagementUrlTests(SimpleTestCase):

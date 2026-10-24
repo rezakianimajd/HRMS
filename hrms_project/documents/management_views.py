@@ -1,4 +1,5 @@
 """Views/API for the Document Management (DMS) module."""
+import logging
 import os
 from datetime import date, timedelta
 
@@ -22,9 +23,12 @@ from documents.management_serializers import (
 from documents.management_storage import (
     get_documents_storage_profile, storage_policy_dict,
 )
-from documents.management_sync import sync_archive_files
+from documents.management_sync import reconcile_indexed_sources, sync_archive_files
 from documents.management_folders import ensure_default_document_folders
 from documents.management_workflow import can_transition, valid_workflow_targets
+
+
+logger = logging.getLogger(__name__)
 
 
 def _company(request):
@@ -118,9 +122,17 @@ class ManagedDocumentViewSet(viewsets.ModelViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
+        company = _company(self.request)
+        if company:
+            try:
+                reconcile_indexed_sources(company)
+            except Exception:  # noqa: BLE001 — ترمیم نباید فهرست اسناد را بشکند
+                logger.exception('DMS source reconciliation failed')
         qs = _accessible_documents(self.request).select_related(
             'folder', 'current_version', 'created_by', 'updated_by',
             'published_by', 'superseded_by',
+            'source_document__document_type', 'source_document__employee',
+            'source_organization_document',
         ).prefetch_related('versions')
         params = self.request.query_params
         folder = params.get('folder')
@@ -442,6 +454,10 @@ class DocumentManagementStatsAPIView(APIView):
         company = _company(request)
         if company:
             ensure_default_document_folders(company)
+            try:
+                reconcile_indexed_sources(company)
+            except Exception:  # noqa: BLE001 — ترمیم نباید آمار را بشکند
+                logger.exception('DMS source reconciliation failed')
         docs = _accessible_documents(request).filter(is_active=True)
 
         # اولین بار: فایل‌های موجود در بایگانی ماژول‌ها را در کتابخانه ایندکس کن.
@@ -464,7 +480,10 @@ class DocumentManagementStatsAPIView(APIView):
         live_docs = docs.exclude(status=ManagedDocument.Status.ARCHIVED)
         expiring = live_docs.filter(expiry_date__gte=today, expiry_date__lte=today + timedelta(days=30)).count()
         expired = live_docs.filter(expiry_date__lt=today).count()
-        recent_docs = live_docs.select_related('folder', 'current_version', 'created_by').order_by('-created_at')[:6]
+        recent_docs = live_docs.select_related(
+            'folder', 'current_version', 'created_by',
+            'source_document__document_type', 'source_organization_document',
+        ).order_by('-created_at')[:6]
         activities = DocumentActivity.objects.filter(
             document__in=docs,
         ).select_related('document', 'user')

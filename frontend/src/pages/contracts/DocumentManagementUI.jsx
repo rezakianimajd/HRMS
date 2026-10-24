@@ -83,7 +83,11 @@ export const WORKFLOW_STATUS = {
 export const confidentialityMeta = (row) => CONFIDENTIALITY[row?.confidentiality] || CONFIDENTIALITY.internal;
 export const statusMeta = (row) => DOC_STATUS[row?.status] || DOC_STATUS.active;
 export const workflowMeta = (row) => WORKFLOW_STATUS[row?.workflow_status] || WORKFLOW_STATUS.draft;
-export const documentTypeMeta = (row) => DOCUMENT_TYPE[row?.document_type] || DOCUMENT_TYPE.other;
+export const documentTypeMeta = (row) => {
+  const sourceType = row?.source_document_type_name || row?.document_type_name;
+  if (sourceType) return { label: sourceType };
+  return DOCUMENT_TYPE[row?.document_type] || DOCUMENT_TYPE.other;
+};
 
 export const formatBytes = (bytes) => {
   const size = Number(bytes) || 0;

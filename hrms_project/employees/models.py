@@ -932,7 +932,39 @@ class ContractVersion(BaseModel):
         return f"{self.employee.full_name} - نسخه {self.version} ({self.year})"
 
 
+def supplementary_dependent_attachment_path(instance, filename):
+    """مسیر پیوست فرد تحت تکفل در بایگانی پرسنل همان بیمه."""
+    import uuid
+    from pathlib import Path
+
+    from core.engines.archive_storage_engine import ArchiveStorageEngine, resolve_upload_path
+
+    try:
+        insurance = instance.insurance
+        employee = insurance.employee
+        fields = {
+            'code': getattr(employee, 'employee_id', '') or '',
+            'name': getattr(employee, 'first_name', '') or '',
+            'last_name': getattr(employee, 'last_name', '') or '',
+            'id': employee.pk,
+            'national_id': getattr(employee, 'national_id', '') or '',
+        }
+        relative = resolve_upload_path(
+            insurance.company_id, 'hr.employees', fields, filename,
+            fallback_dir=f'company_{insurance.company_id}/employee_{employee.pk}/supplementary_insurance',
+            subfolder='افراد تحت تکفل',
+        )
+        # نام اصلی فایل را حفظ می‌کنیم تا در فهرست پیوست‌ها خوانا باشد.
+        original = Path(filename or 'file')
+        safe_stem = ArchiveStorageEngine.sanitize(original.stem) or 'file'
+        readable_name = f'{safe_stem[:80]}_{uuid.uuid4().hex[:8]}{original.suffix.lower()}'
+        return str(Path(relative).parent / readable_name)
+    except Exception:  # noqa: BLE001 — بیمهٔ ناقص نباید آپلود را بشکند
+        return f'employees/supplementary_dependents/{filename}'
+
+
 class SupplementaryInsurance(BaseModel):
+
     """
     بیمه تکمیلی کارکنان (درمان، بازنشستگی تکمیلی و ...).
     """
@@ -1016,6 +1048,14 @@ class SupplementaryInsuranceDependent(models.Model):
             ('mother', _('مادر')),
             ('other', _('سایر')),
         ],
+    )
+    attachment = models.FileField(
+        upload_to=supplementary_dependent_attachment_path,
+        max_length=500,
+        blank=True,
+        null=True,
+        verbose_name=_('پیوست'),
+        help_text=_('مدارک هویتی یا بیمه‌ای فرد تحت تکفل'),
     )
 
     class Meta:

@@ -56,6 +56,9 @@ export const useDeleteDocument = () => {
     mutationFn: deleteDocument,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['dms-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['dms-stats'] });
+      queryClient.invalidateQueries({ queryKey: ['dms-folders'] });
     },
   });
 };

@@ -10,13 +10,170 @@ from __future__ import annotations
 import mimetypes
 import os
 import re
+import time
+
+from django.core.files.storage import default_storage
 
 from documents.models import (
-    DocumentActivity, DocumentFolder, DocumentVersion, ManagedDocument,
+    Document, DocumentActivity, DocumentFolder, DocumentVersion,
+    ManagedDocument, OrganizationDocument,
 )
 from documents.management_storage import DOCUMENTS_STORAGE_MODULE_KEY
 
 _HASHED_NAME = re.compile(r'^[0-9a-f]{24,}$', re.IGNORECASE)
+_RECONCILE_CACHE = {}
+
+
+def _normalize_path(value):
+    return str(value or '').replace('\\', '/').strip('/')
+
+
+def _source_maps(company_id):
+    """نگاشت مسیر فیزیکی فایل به رکورد منبع (پرسنلی/سازمانی)."""
+    employee_documents = {}
+    queryset = (
+        Document.objects.filter(company_id=company_id)
+        .exclude(file='')
+        .select_related('employee', 'document_type')
+    )
+    for document in queryset.iterator(chunk_size=500):
+        path = _normalize_path(document.file.name)
+        if path:
+            employee_documents[path] = document
+
+    organization_documents = {}
+    queryset = (
+        OrganizationDocument.objects.filter(company_id=company_id)
+        .exclude(file='')
+        .select_related('employee')
+    )
+    for document in queryset.iterator(chunk_size=500):
+        path = _normalize_path(document.file.name)
+        if path:
+            organization_documents[path] = document
+
+    return employee_documents, organization_documents
+
+
+def _employee_label(document):
+    employee = getattr(document, 'employee', None)
+    if not employee:
+        return document.title[:200]
+    return (
+        getattr(employee, 'full_name', '')
+        or f'{employee.first_name} {employee.last_name}'.strip()
+        or document.title
+    )[:200]
+
+
+def _employee_type_name(document):
+    document_type = getattr(document, 'document_type', None)
+    return str(getattr(document_type, 'name', '') or '')[:150]
+
+
+def reconcile_indexed_sources(company, *, purge_missing=True, force=False, max_age=60):
+    """اتصال رکوردهای ایندکس‌شده به منبع و حذف ایندکس‌های فایل‌نداشته.
+
+    حذف مدرک پرسنلی از مسیر FK منبع به‌صورت آبشاری انجام می‌شود؛ این تابع
+    رکوردهای قدیمی (قبل از ایجاد رابطه) و ایندکس‌های یتیم را ترمیم می‌کند.
+    """
+    company_id = getattr(company, 'pk', company)
+    empty = {'linked': 0, 'purged': 0}
+    if not company_id:
+        return empty
+
+    now = time.monotonic()
+    if not force and now - _RECONCILE_CACHE.get(company_id, 0) < max_age:
+        return empty
+    _RECONCILE_CACHE[company_id] = now
+
+    employee_documents, organization_documents = _source_maps(company_id)
+    stale_ids = []
+    updates = []
+    linked = 0
+
+    queryset = (
+        ManagedDocument.objects.filter(company_id=company_id, is_indexed=True)
+        .select_related('current_version')
+    )
+    for managed in queryset.iterator(chunk_size=500):
+        path = _normalize_path(managed.storage_path)
+        if not path and managed.current_version_id:
+            path = _normalize_path(managed.current_version.file.name)
+
+        if path and purge_missing:
+            try:
+                file_exists = default_storage.exists(path)
+            except Exception:  # noqa: BLE001 — خطای استوریج نباید فهرست را بشکند
+                file_exists = True
+            if not file_exists:
+                stale_ids.append(managed.pk)
+                continue
+
+        document = employee_documents.get(path) if path else None
+        organization_document = organization_documents.get(path) if path else None
+        changed = False
+
+        if document:
+            label = _employee_label(document)
+            if managed.source_document_id != document.pk:
+                managed.source_document_id = document.pk
+                changed = True
+            if managed.source_organization_document_id:
+                managed.source_organization_document_id = None
+                changed = True
+            if managed.related_entity_type != 'employee':
+                managed.related_entity_type = 'employee'
+                changed = True
+            related_id = str(document.employee_id or '')
+            if managed.related_entity_id != related_id:
+                managed.related_entity_id = related_id
+                changed = True
+            if managed.related_entity_label != label:
+                managed.related_entity_label = label
+                changed = True
+            if managed.document_type != ManagedDocument.DocumentType.HR:
+                managed.document_type = ManagedDocument.DocumentType.HR
+                changed = True
+        elif organization_document:
+            label = (organization_document.title or '')[:200]
+            if managed.source_organization_document_id != organization_document.pk:
+                managed.source_organization_document_id = organization_document.pk
+                changed = True
+            if managed.source_document_id:
+                managed.source_document_id = None
+                changed = True
+            if managed.related_entity_type != 'organization_document':
+                managed.related_entity_type = 'organization_document'
+                changed = True
+            related_id = str(organization_document.pk)
+            if managed.related_entity_id != related_id:
+                managed.related_entity_id = related_id
+                changed = True
+            if managed.related_entity_label != label:
+                managed.related_entity_label = label
+                changed = True
+
+        if changed:
+            updates.append(managed)
+            linked += 1
+
+    if updates:
+        ManagedDocument.objects.bulk_update(
+            updates,
+            [
+                'source_document', 'source_organization_document',
+                'related_entity_type', 'related_entity_id',
+                'related_entity_label', 'document_type',
+            ],
+            batch_size=500,
+        )
+
+    if stale_ids:
+        ManagedDocument.objects.filter(pk__in=stale_ids).delete()
+
+    return {'linked': linked, 'purged': len(stale_ids)}
+
 
 
 def _get_or_create_folder(company_id, parent, name, code='', color='#64748b'):
@@ -85,6 +242,10 @@ def sync_archive_files(company, max_files=5000):
     if not os.path.isdir(company_root):
         return {'scanned': 0, 'created': 0, 'skipped': 0, 'truncated': False}
 
+    # ابتدا رکوردهای قدیمی را به منبع متصل و ایندکس‌های فایل‌نداشته را پاک کن.
+    reconcile_indexed_sources(company, force=True)
+    employee_documents, organization_documents = _source_maps(company_id)
+
     profiles = list(StorageProfile.objects.filter(company_id=company_id, is_active=True))
     existing = set(
         ManagedDocument.objects.filter(company_id=company_id)
@@ -137,7 +298,29 @@ def sync_archive_files(company, max_files=5000):
                     company_id, folder, segment, code='', color=color,
                 )
 
-            title = _display_title(filename, entity_parts, module_name)
+            employee_document = employee_documents.get(relative)
+            organization_document = organization_documents.get(relative)
+            title = (
+                (employee_document.title if employee_document else '')
+                or (organization_document.title if organization_document else '')
+                or _display_title(filename, entity_parts, module_name)
+            )[:250]
+            type_name = _employee_type_name(employee_document) if employee_document else ''
+            if employee_document:
+                related_entity_type = 'employee'
+                related_entity_id = str(employee_document.employee_id or '')
+                related_entity_label = _employee_label(employee_document)
+            elif organization_document:
+                related_entity_type = 'organization_document'
+                related_entity_id = str(organization_document.pk)
+                related_entity_label = (organization_document.title or '')[:200]
+            else:
+                related_entity_type = module_key[:50]
+                related_entity_id = ''
+                related_entity_label = (
+                    entity_parts[-1][:200] if entity_parts else module_name[:200]
+                )
+
             try:
                 size = os.path.getsize(absolute)
                 mime = mimetypes.guess_type(filename)[0] or ''
@@ -145,21 +328,39 @@ def sync_archive_files(company, max_files=5000):
                 skipped += 1
                 continue
 
+            description = f'فایل موجود در بایگانی ماژول {module_name}'
+            if type_name:
+                description = f'{description} · نوع مدرک: {type_name}'
+            tags = f'{module_name}, بایگانی, واردشده'
+            if type_name:
+                tags = f'{tags}, {type_name}'
+
             document = ManagedDocument.objects.create(
                 company_id=company_id,
                 folder=folder,
                 title=title,
-                description=f'فایل موجود در بایگانی ماژول {module_name}',
-                tags=f'{module_name}, بایگانی, واردشده',
-                document_type=_document_type_for(module_key, module_root),
+                description=description,
+                tags=tags,
+                document_type=(
+                    ManagedDocument.DocumentType.HR
+                    if employee_document
+                    else _document_type_for(module_key, module_root)
+                ),
                 owner_department=module_name[:150],
-                related_entity_type=module_key[:50],
-                related_entity_label=(entity_parts[-1][:200] if entity_parts else module_name[:200]),
+                related_entity_type=related_entity_type[:50],
+                related_entity_id=related_entity_id,
+                related_entity_label=related_entity_label,
+                source_document=employee_document,
+                source_organization_document=organization_document,
                 confidentiality=ManagedDocument.Confidentiality.INTERNAL,
                 status=ManagedDocument.Status.ACTIVE,
                 workflow_status=ManagedDocument.WorkflowStatus.PUBLISHED,
                 is_controlled=False,
-                metadata={'legacy_indexed': True, 'source': 'archive_sync'},
+                metadata={
+                    'legacy_indexed': True,
+                    'source': 'archive_sync',
+                    'source_document_type_name': type_name,
+                },
                 source_module_key=module_key,
                 storage_path=relative,
                 is_indexed=True,

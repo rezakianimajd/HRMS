@@ -267,7 +267,7 @@ const DocumentManagementPage = () => {
   const viewMeta = personnelMode
     ? {
       title: `کتابخانه اسناد · ${activeModuleMeta?.label || 'پرسنل'}`,
-      subtitle: 'پرونده‌های پرسنلی؛ با کلیک روی هر کارت، همهٔ مدارک به تفکیک نوع و قالب نمایش داده می‌شود',
+      subtitle: 'پرونده‌های پرسنلی؛ مدارک بر اساس نوع تعریف‌شده در «تعاریف اولیه ← انواع مدارک» گروه‌بندی می‌شوند',
     }
     : activeModuleMeta
       ? {

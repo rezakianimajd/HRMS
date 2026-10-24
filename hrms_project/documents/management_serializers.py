@@ -192,6 +192,17 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
     file_size_display = serializers.SerializerMethodField()
     mime_type = serializers.SerializerMethodField()
     storage_path = serializers.SerializerMethodField()
+    source_document = serializers.IntegerField(
+        source='source_document_id', read_only=True, allow_null=True,
+    )
+    source_organization_document = serializers.IntegerField(
+        source='source_organization_document_id', read_only=True, allow_null=True,
+    )
+    source_document_type_name = serializers.SerializerMethodField()
+    source_document_type_code = serializers.SerializerMethodField()
+    source_document_employee_id = serializers.SerializerMethodField()
+    source_document_employee_name = serializers.SerializerMethodField()
+    document_type_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     updated_by_name = serializers.SerializerMethodField()
     is_expired = serializers.BooleanField(read_only=True)
@@ -212,6 +223,10 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
             'published_at', 'published_by', 'published_by_name', 'superseded_by',
             'superseded_by_title', 'metadata', 'is_locked', 'current_version',
             'version_count', 'source_module_key', 'is_indexed',
+            'source_document', 'source_organization_document',
+            'source_document_type_name', 'source_document_type_code',
+            'source_document_employee_id', 'source_document_employee_name',
+            'document_type_name',
             'file', 'file_url', 'file_name', 'file_extension', 'file_size',
             'file_size_display', 'mime_type', 'storage_path', 'created_by',
             'created_by_name', 'updated_by', 'updated_by_name', 'is_expired',
@@ -219,7 +234,11 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'id', 'current_version', 'version_count', 'source_module_key',
-            'is_indexed', 'document_type_display', 'workflow_status_display',
+            'is_indexed', 'source_document', 'source_organization_document',
+            'source_document_type_name', 'source_document_type_code',
+            'source_document_employee_id', 'source_document_employee_name',
+            'document_type_name',
+            'document_type_display', 'workflow_status_display',
             'is_editable_in_workflow', 'status', 'workflow_status', 'is_controlled',
             'published_at', 'published_by',
             'published_by_name', 'superseded_by', 'superseded_by_title',
@@ -250,6 +269,48 @@ class ManagedDocumentSerializer(serializers.ModelSerializer):
         if not _can_view_storage(self.context):
             return ''
         return obj.current_version.file.name if obj.current_version and obj.current_version.file else ''
+
+    @staticmethod
+    def _source_type_name(obj):
+        if obj.source_document_id:
+            document_type = getattr(obj.source_document, 'document_type', None)
+            return str(getattr(document_type, 'name', '') or '')
+        if obj.source_organization_document_id:
+            try:
+                return obj.source_organization_document.get_category_display()
+            except Exception:  # noqa: BLE001
+                return ''
+        return str((obj.metadata or {}).get('source_document_type_name') or '')
+
+    def get_source_document_type_name(self, obj):
+        return self._source_type_name(obj)
+
+    def get_document_type_name(self, obj):
+        """نام نوع مدرک در تعاریف اولیه؛ برای گروه‌بندی پروندهٔ پرسنلی."""
+        return self._source_type_name(obj)
+
+    def get_source_document_type_code(self, obj):
+        if not obj.source_document_id:
+            return ''
+        document_type = getattr(obj.source_document, 'document_type', None)
+        return str(getattr(document_type, 'code', '') or '')
+
+    def get_source_document_employee_id(self, obj):
+        if not obj.source_document_id:
+            return ''
+        # شناسهٔ داخلی پرسنل (pk)؛ برای تطبیق قطعی مدرک با کارت پرسنلی.
+        return str(getattr(obj.source_document, 'employee_id', '') or '')
+
+    def get_source_document_employee_name(self, obj):
+        if not obj.source_document_id:
+            return ''
+        employee = getattr(obj.source_document, 'employee', None)
+        if not employee:
+            return ''
+        return (
+            getattr(employee, 'full_name', '')
+            or f'{employee.first_name} {employee.last_name}'.strip()
+        )
 
     def get_created_by_name(self, obj):
         return _user_name(obj.created_by)

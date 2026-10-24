@@ -45,6 +45,39 @@ export const CATEGORY_RULES = [
 
 export const CATEGORY_ORDER = CATEGORY_RULES.map((rule) => rule.key);
 
+export const documentTypeLabel = (row) => String(
+  row?.source_document_type_name || row?.document_type_name || '',
+).trim();
+
+const categoryForType = (typeName, row) => {
+  const haystack = normalizeText(typeName);
+  if (haystack) {
+    const matched = CATEGORY_RULES.find((rule) => (
+      rule.keywords.length
+      && rule.keywords.some((keyword) => haystack.includes(normalizeText(keyword)))
+    ));
+    if (matched) return matched;
+  }
+  return classifyDocument({ ...row, source_document_type_name: '', document_type_name: '' });
+};
+
+export const documentGroup = (row) => {
+  const typeName = documentTypeLabel(row);
+  if (!typeName) {
+    const category = classifyDocument(row);
+    return { ...category, iconKey: category.key };
+  }
+  const category = categoryForType(typeName, row);
+  return {
+    key: `type:${normalizeText(typeName) || category.key}`,
+    label: typeName,
+    color: category.color,
+    iconKey: category.key,
+    typeName,
+    isTypeGroup: true,
+  };
+};
+
 export const normalizeText = (value) => String(value ?? '')
   .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
   .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
@@ -88,6 +121,8 @@ export const classifyDocument = (row) => {
     row?.title, row?.description, row?.file_name, row?.original_name,
     row?.folder_name, row?.folder_path, row?.document_type_display,
     row?.document_type, row?.related_entity_label, row?.source_module_key,
+    row?.source_document_type_name, row?.document_type_name,
+    row?.source_document_type_code,
   ].filter(Boolean).join(' '));
   const found = CATEGORY_RULES.find((rule) => (
     rule.keywords.length && rule.keywords.some((keyword) => haystack.includes(normalizeText(keyword)))
@@ -97,13 +132,14 @@ export const classifyDocument = (row) => {
 
 export const documentSourceLabel = (row) => {
   if (row?.isEmployeePhoto) return 'پروندهٔ پرسنلی';
-  return row?.document_type_display || row?.folder_name || row?.source_module_key || 'کتابخانهٔ اسناد';
+  return row?.folder_path || row?.folder_name || row?.related_entity_label
+    || row?.source_module_key || 'کتابخانهٔ اسناد';
 };
 
 export const documentSearchText = (row) => normalizeText([
   row?.title, row?.description, row?.file_name, row?.original_name,
   row?.folder_path, row?.related_entity_label, row?.document_type_display,
-  row?.document_type, row?.tags,
+  row?.document_type, row?.tags, documentTypeLabel(row),
 ].filter(Boolean).join(' '));
 
 const employeeName = (employee) => (
@@ -114,7 +150,11 @@ const documentBelongsToEmployee = (employee, row) => {
   const relatedId = String(row?.related_entity_id || '').trim();
   const employeeId = String(employee?.id || '').trim();
   const personnelNumber = normalizeText(employee?.employee_id);
-  if (relatedId && (relatedId === employeeId || relatedId === personnelNumber)) return true;
+  const sourceEmployeeId = String(row?.source_document_employee_id || '').trim();
+  // اگر مدرک به رکورد پرسنلی منبع متصل است، فقط شناسهٔ داخلی همان پرسنل
+  // ملاک است؛ مقایسه با شمارهٔ پرسنلی باعث تطبیق‌های اشتباه می‌شود.
+  if (sourceEmployeeId) return sourceEmployeeId === employeeId;
+  if (relatedId && relatedId === employeeId) return true;
 
   const haystack = normalizeText([
     row?.related_entity_label, row?.folder_path, row?.folder_name,
@@ -146,19 +186,26 @@ const employeePhotoRow = (employee) => {
 };
 
 const buildGroups = (documents) => {
-  const grouped = new Map(CATEGORY_ORDER.map((key) => [key, []]));
+  const grouped = new Map();
   documents.forEach((row) => {
-    const category = classifyDocument(row);
-    grouped.get(category.key).push(row);
+    const group = documentGroup(row);
+    if (!grouped.has(group.key)) {
+      grouped.set(group.key, { ...group, files: [] });
+    }
+    grouped.get(group.key).files.push(row);
   });
-  return CATEGORY_RULES
-    .map((category) => ({
-      ...category,
-      files: (grouped.get(category.key) || []).sort((a, b) => (
+  const rank = (group) => {
+    const index = CATEGORY_ORDER.indexOf(group.iconKey || group.key);
+    return index === -1 ? CATEGORY_ORDER.length : index;
+  };
+  return [...grouped.values()]
+    .map((group) => ({
+      ...group,
+      files: group.files.sort((a, b) => (
         String(b.created_at || b.issue_date || '').localeCompare(String(a.created_at || a.issue_date || ''))
       )),
     }))
-    .filter((category) => category.files.length);
+    .sort((a, b) => rank(a) - rank(b) || String(a.label).localeCompare(String(b.label), 'fa'));
 };
 
 export const groupPersonnelDocuments = buildGroups;

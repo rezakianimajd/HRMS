@@ -1,5 +1,6 @@
 import {
-  buildPersonnelRows, classifyDocument, fileFormat, groupPersonnelDocuments,
+  buildPersonnelRows, classifyDocument, documentGroup, documentTypeLabel,
+  fileFormat, groupPersonnelDocuments,
 } from '../pages/contracts/personnelDocuments';
 
 const employees = [
@@ -67,4 +68,44 @@ test('filters personnel cards by employee or document text', () => {
   const byDocument = buildPersonnelRows(employees, documents, 'کارت ملی');
   expect(byDocument.rows).toHaveLength(1);
   expect(byDocument.rows[0].employee.id).toBe(7);
+});
+
+test('uses document type definitions instead of guessing from filenames', () => {
+  const rows = [
+    {
+      id: 10, title: 'scan-001.jpg', file_name: 'scan-001.jpg',
+      source_document_type_name: 'کارت ملی', source_document_type_code: 'NATIONAL_ID',
+    },
+    {
+      id: 11, title: 'scan-002.pdf', file_name: 'scan-002.pdf',
+      source_document_type_name: 'گواهی اشتغال', source_document_type_code: 'EMPLOYMENT',
+    },
+  ];
+
+  expect(documentTypeLabel(rows[0])).toBe('کارت ملی');
+  expect(documentGroup(rows[0]).key).not.toBe('national_id');
+  expect(documentGroup(rows[1]).iconKey).toBe('certificate');
+
+  const groups = groupPersonnelDocuments(rows);
+  expect(groups.map((group) => group.label)).toEqual(['کارت ملی', 'گواهی اشتغال']);
+  expect(groups.every((group) => group.isTypeGroup)).toBe(true);
+});
+
+test('does not confuse internal employee id with another employee personnel number', () => {
+  const collisionEmployees = [
+    { id: 16, employee_id: '1', full_name: 'دانیال گلپایگانی', first_name: 'دانیال', last_name: 'گلپایگانی' },
+    { id: 1, employee_id: '200016', full_name: 'رضا کیانی مجد', first_name: 'رضا', last_name: 'کیانی مجد' },
+  ];
+  const result = buildPersonnelRows(collisionEmployees, [{
+    id: 40, title: 'کارت ملی رضا کیانی مجد', file_name: 'reza.pdf',
+    source_document_employee_id: '1', related_entity_type: 'employee',
+    related_entity_id: '1', related_entity_label: 'رضا کیانی مجد',
+    folder_path: 'پرسنل / 200016_کیانی_مجد', source_document_type_name: 'کارت ملی',
+  }]);
+
+  const reza = result.rows.find((row) => row.employee.id === 1);
+  const danial = result.rows.find((row) => row.employee.id === 16);
+  expect(reza?.count).toBe(1);
+  expect(danial).toBeUndefined();
+  expect(result.unassigned).toHaveLength(0);
 });

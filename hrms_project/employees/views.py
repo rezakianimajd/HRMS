@@ -421,7 +421,9 @@ class SupplementaryInsuranceViewSet(BaseCompanyViewSet):
     pagination_class = None
 
     def get_queryset(self):
-        qs = super().get_queryset()
+        qs = super().get_queryset().select_related(
+            'employee', 'employee__department', 'employee__job_title',
+        ).prefetch_related('dependents')
         employee_id = self.request.query_params.get('employee_id')
         if employee_id:
             qs = qs.filter(employee_id=employee_id)
@@ -433,6 +435,7 @@ class SupplementaryInsuranceDependentViewSet(viewsets.ModelViewSet):
     serializer_class = SupplementaryInsuranceDependentSerializer
     queryset = SupplementaryInsuranceDependent.objects.all()
     pagination_class = None
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
 
     def get_queryset(self):
         qs = super().get_queryset()

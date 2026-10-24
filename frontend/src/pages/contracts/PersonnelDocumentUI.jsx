@@ -28,7 +28,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import EmployeeAvatar from '../../core/components/ui/EmployeeAvatar';
 import { toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
-import { documentSourceLabel, fileFormat } from './personnelDocuments';
+import { documentSourceLabel, documentTypeLabel, fileFormat } from './personnelDocuments';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 const ACCENT = '#0f766e';
@@ -79,9 +79,31 @@ const FormatBadge = ({ row, size = 16 }) => {
   );
 };
 
+const CategorySummaryChip = ({ group }) => {
+  const Icon = CATEGORY_ICONS[group.iconKey || group.key] || FolderOutlinedIcon;
+  return (
+    <Chip
+      size="small"
+      icon={<Icon sx={{ fontSize: '13px !important' }} />}
+      label={`${group.label} · ${toPersianDigits(group.files?.length || 0)}`}
+      sx={{
+        height: 23, maxWidth: 190, fontSize: 11, fontFamily: FONT, fontWeight: 700,
+        bgcolor: `${group.color}0d`, color: group.color,
+        border: `1px solid ${group.color}22`,
+        '& .MuiChip-icon': { color: group.color },
+        '& .MuiChip-label': { px: 0.7 },
+      }}
+    />
+  );
+};
+
 export const PersonnelDocumentCard = ({ person, onOpen, onEdit, onOpenProfile }) => {
   const employee = person.employee;
   const formats = Object.entries(person.formats || {});
+  const groups = person.groups || [];
+  const visibleGroups = groups.slice(0, 3);
+  const hiddenGroups = Math.max(0, groups.length - visibleGroups.length);
+  const unassigned = employee.id === 'unassigned';
   return (
     <Paper
       elevation={0}
@@ -90,50 +112,85 @@ export const PersonnelDocumentCard = ({ person, onOpen, onEdit, onOpenProfile })
       tabIndex={0}
       onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onOpen?.(); }}
       sx={{
-        height: '100%', minHeight: 292, display: 'flex', flexDirection: 'column',
+        height: '100%', minHeight: 286, display: 'flex', flexDirection: 'column',
         overflow: 'hidden', borderRadius: '18px', border: '1px solid #e2e8f0',
-        bgcolor: '#fff', cursor: 'pointer', transition: 'transform .18s ease, box-shadow .18s ease',
-        boxShadow: '0 7px 22px rgba(15,23,42,0.045)',
-        '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 14px 30px rgba(15,23,42,0.10)', borderColor: `${ACCENT}55` },
+        bgcolor: '#fff', cursor: 'pointer',
+        transition: 'transform .18s ease, box-shadow .18s ease, border-color .18s ease',
+        boxShadow: '0 8px 24px rgba(15,23,42,0.05)',
+        '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 16px 34px rgba(15,23,42,0.11)', borderColor: `${ACCENT}55` },
         '&:focus-visible': { outline: `2px solid ${ACCENT}`, outlineOffset: 2 },
       }}
     >
-      <Box sx={{ height: 4, background: 'linear-gradient(90deg,#0ea5e9,#0f766e,#14b8a6)' }} />
-      <Box sx={{ px: 1.5, pt: 1.7, textAlign: 'center' }}>
-        <Box sx={{
-          width: 104, height: 104, mx: 'auto', borderRadius: '50%', p: 0.45,
-          background: 'linear-gradient(135deg,#0ea5e9,#0f766e)',
-          boxShadow: '0 8px 20px rgba(14,116,144,0.20)',
-        }}>
-          <EmployeeAvatar employee={employee} size={94}
-            sx={{ border: '3px solid #fff', bgcolor: '#f1f5f9', boxShadow: 'inset 0 0 0 1px #e2e8f0' }} />
-        </Box>
-        <Typography noWrap title={employeeName(employee)} sx={{
-          mt: 1.15, fontSize: 14, fontWeight: 900, color: INK, fontFamily: FONT,
-        }}>
-          {employeeName(employee)}
-        </Typography>
-        <Typography sx={{ mt: 0.2, fontSize: 12, color: MUTED, fontFamily: FONT }}>
-          شماره پرسنلی: {toPersianDigits(employee.employee_id || '—')}
-        </Typography>
-        {(employee.department_name || employee.job_title_name) ? (
-          <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap" justifyContent="center" sx={{ mt: 0.7 }}>
-            {employee.department_name ? <Chip size="small" label={employee.department_name}
-              sx={{ height: 19, fontSize: 12, bgcolor: '#f0fdfa', color: ACCENT, fontFamily: FONT }} /> : null}
-            {employee.job_title_name ? <Chip size="small" label={employee.job_title_name}
-              sx={{ height: 19, fontSize: 12, bgcolor: '#f8fafc', color: MUTED, fontFamily: FONT }} /> : null}
-          </Stack>
-        ) : null}
+      <Box sx={{ height: 3, background: 'linear-gradient(90deg,#0ea5e9,#0f766e,#14b8a6)' }} />
+      <Box sx={{ p: 1.45, pb: 0 }}>
+        <Stack direction="row" spacing={1.1} alignItems="flex-start">
+          <Box sx={{
+            p: 0.35, flexShrink: 0, borderRadius: '20px',
+            bgcolor: '#f8fafc', border: '1px solid #e2e8f0',
+          }}>
+            <EmployeeAvatar employee={employee} size={72}
+              sx={{ borderRadius: '16px', bgcolor: '#e2e8f0' }} />
+          </Box>
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Stack direction="row" alignItems="flex-start" spacing={0.7}>
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography noWrap title={employeeName(employee)} sx={{
+                  fontSize: 15, fontWeight: 900, color: INK, fontFamily: FONT,
+                }}>
+                  {employeeName(employee)}
+                </Typography>
+                <Typography noWrap sx={{ mt: 0.25, fontSize: 11.5, color: MUTED, fontFamily: FONT }}>
+                  شماره پرسنلی: {toPersianDigits(employee.employee_id || '—')}
+                </Typography>
+              </Box>
+              <Chip size="small"
+                label={unassigned ? 'تخصیص نیافته' : `${toPersianDigits(person.count)} فایل`}
+                sx={{
+                  height: 22, flexShrink: 0, fontSize: 11, fontWeight: 900, fontFamily: FONT,
+                  bgcolor: unassigned ? '#fff7ed' : `${ACCENT}0f`,
+                  color: unassigned ? '#b45309' : ACCENT,
+                  border: `1px solid ${unassigned ? '#fed7aa' : `${ACCENT}22`}`,
+                }} />
+            </Stack>
+            <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ mt: 0.85 }}>
+              {employee.department_name ? <Chip size="small" label={employee.department_name}
+                sx={{ height: 19, fontSize: 11, fontFamily: FONT, bgcolor: '#f0fdfa', color: ACCENT, border: '1px solid #ccfbf1' }} /> : null}
+              {employee.job_title_name ? <Chip size="small" label={employee.job_title_name}
+                sx={{ height: 19, fontSize: 11, fontFamily: FONT, bgcolor: '#f8fafc', color: MUTED, border: '1px solid #e2e8f0' }} /> : null}
+            </Stack>
+          </Box>
+        </Stack>
+
+        <Divider sx={{ my: 1.15 }} />
+
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+          <Typography sx={{ fontSize: 11, fontWeight: 800, color: MUTED, fontFamily: FONT }}>
+            انواع مدارک
+          </Typography>
+          <Typography sx={{ fontSize: 11, color: MUTED, fontFamily: FONT }}>
+            {groups.length ? `${toPersianDigits(groups.length)} نوع` : 'بدون نوع مشخص'}
+          </Typography>
+        </Stack>
+        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.6, minHeight: 24 }}>
+          {visibleGroups.map((group) => <CategorySummaryChip key={group.key} group={group} />)}
+          {hiddenGroups ? <Chip size="small" label={`+${toPersianDigits(hiddenGroups)} نوع`}
+            sx={{ height: 23, fontSize: 11, fontFamily: FONT, bgcolor: '#f1f5f9', color: MUTED }} /> : null}
+          {!groups.length ? (
+            <Typography sx={{ fontSize: 11.5, color: '#94a3b8', fontFamily: FONT, py: 0.4 }}>
+              نوع مدرک هنوز به این پرونده متصل نشده است.
+            </Typography>
+          ) : null}
+        </Stack>
       </Box>
 
-      <Box sx={{ mt: 'auto', px: 1.25, pb: 1.2 }}>
+      <Box sx={{ mt: 'auto', px: 1.35, pb: 1.2, pt: 1.2 }}>
         <Paper variant="outlined" sx={{
-          p: 0.5, borderRadius: '12px', borderColor: '#e2e8f0', bgcolor: '#f8fafc',
-          display: 'flex', alignItems: 'center', gap: 0.35,
+          p: 0.45, borderRadius: '12px', borderColor: '#e2e8f0', bgcolor: '#f8fafc',
+          display: 'flex', alignItems: 'center', gap: 0.3,
         }}>
           <Button size="small" fullWidth startIcon={<VisibilityOutlinedIcon sx={{ fontSize: 16 }} />}
             onClick={(event) => { event.stopPropagation(); onOpen?.(); }}
-            sx={{ fontSize: 12, fontWeight: 800, color: ACCENT, fontFamily: FONT, whiteSpace: 'nowrap' }}>
+            sx={{ fontSize: 11.5, fontWeight: 900, color: ACCENT, fontFamily: FONT, whiteSpace: 'nowrap' }}>
             مشاهده
           </Button>
           {onEdit ? (
@@ -141,7 +198,7 @@ export const PersonnelDocumentCard = ({ person, onOpen, onEdit, onOpenProfile })
               <Divider orientation="vertical" flexItem />
               <Button size="small" fullWidth startIcon={<EditOutlinedIcon sx={{ fontSize: 16 }} />}
                 onClick={(event) => { event.stopPropagation(); onEdit(employee); }}
-                sx={{ fontSize: 12, fontWeight: 800, color: '#475569', fontFamily: FONT, whiteSpace: 'nowrap' }}>
+                sx={{ fontSize: 11.5, fontWeight: 800, color: '#475569', fontFamily: FONT, whiteSpace: 'nowrap' }}>
                 ویرایش
               </Button>
             </>
@@ -155,12 +212,15 @@ export const PersonnelDocumentCard = ({ person, onOpen, onEdit, onOpenProfile })
             </Tooltip>
           ) : null}
         </Paper>
-        <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mt: 0.7, minWidth: 0 }}>
-          <Chip size="small" label={`${toPersianDigits(person.count)} فایل`}
-            sx={{ height: 20, fontSize: 12, flexShrink: 0, bgcolor: `${ACCENT}0f`, color: ACCENT, fontFamily: FONT }} />
-          <Typography noWrap sx={{ flex: 1, fontSize: 12, color: MUTED, fontFamily: FONT, direction: 'ltr', textAlign: 'right' }}>
+        <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mt: 0.7, minWidth: 0 }}>
+          <Typography noWrap sx={{ flex: 1, fontSize: 10.5, color: MUTED, fontFamily: FONT, direction: 'ltr', textAlign: 'right' }}>
             {formats.map(([key, count]) => `${FORMAT_LABELS[key] || key} ${toPersianDigits(count)}`).join(' · ')}
           </Typography>
+          {person.lastUpdated ? (
+            <Typography noWrap sx={{ fontSize: 10.5, color: '#94a3b8', fontFamily: FONT }}>
+              {formatDate(person.lastUpdated)}
+            </Typography>
+          ) : null}
         </Stack>
       </Box>
     </Paper>
@@ -171,6 +231,7 @@ export const PersonnelDocumentCard = ({ person, onOpen, onEdit, onOpenProfile })
 const PersonnelDocumentRow = ({ file, onPreview, onDownload, onEdit }) => {
   const format = fileFormat(file);
   const source = documentSourceLabel(file);
+  const typeLabel = documentTypeLabel(file);
   const version = Number(file.version_count || file.version || 1);
   return (
     <Paper variant="outlined" sx={{
@@ -200,7 +261,12 @@ const PersonnelDocumentRow = ({ file, onPreview, onDownload, onEdit }) => {
           {file.description?.trim() ? `توضیحات: ${file.description.trim()}` : 'بدون توضیح'}
         </Typography>
         <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
-          <Chip size="small" label={source} sx={{ height: 18, fontSize: 12, bgcolor: '#f1f5f9', color: MUTED, maxWidth: 190 }} />
+          {typeLabel ? (
+            <Chip size="small" label={typeLabel}
+              sx={{ height: 18, fontSize: 11, fontWeight: 800, bgcolor: '#eef2ff', color: '#4338ca', maxWidth: 190 }} />
+          ) : null}
+          <Chip size="small" label={source} title={source}
+            sx={{ height: 18, fontSize: 11, bgcolor: '#f1f5f9', color: MUTED, maxWidth: 190 }} />
           {file.issue_date ? <Chip size="small" label={`صدور ${formatDate(file.issue_date)}`}
             sx={{ height: 18, fontSize: 12, bgcolor: '#f8fafc', color: MUTED }} /> : null}
           {file.file_size_display ? <Chip size="small" label={file.file_size_display}
@@ -246,7 +312,7 @@ export const PersonnelDocumentsDialog = ({
       PaperProps={{ sx: { borderRadius: '18px', overflow: 'hidden', bgcolor: '#f8fafc' } }}>
       <DialogTitle component="div" sx={{ p: 0 }}>
         <Box sx={{
-          position: 'relative', px: 2, py: 1.6, textAlign: 'center',
+          position: 'relative', px: 1.8, py: 1.45,
           background: 'linear-gradient(135deg, rgba(14,165,233,0.12), rgba(15,118,110,0.10))',
           borderBottom: '1px solid #e2e8f0',
         }}>
@@ -254,26 +320,35 @@ export const PersonnelDocumentsDialog = ({
             sx={{ position: 'absolute', top: 8, left: 8, color: MUTED }}>
             <CloseIcon fontSize="small" />
           </IconButton>
-          <Box sx={{
-            width: 76, height: 76, mx: 'auto', p: 0.35, borderRadius: '50%',
-            background: 'linear-gradient(135deg,#0ea5e9,#0f766e)',
-          }}>
-            <EmployeeAvatar employee={employee} size={68} sx={{ border: '2px solid #fff' }} />
-          </Box>
-          <Typography sx={{ mt: 0.7, fontFamily: FONT, fontSize: 16, fontWeight: 900, color: INK }}>
-            {employeeName(employee)}
-          </Typography>
-          <Typography sx={{ fontFamily: FONT, fontSize: 12, color: MUTED, mt: 0.1 }}>
-            شماره پرسنلی: {toPersianDigits(employee.employee_id || '—')}
-            {employee.department_name ? ` · ${employee.department_name}` : ''}
-            {employee.job_title_name ? ` · ${employee.job_title_name}` : ''}
-          </Typography>
-          <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" justifyContent="center" sx={{ mt: 0.8 }}>
-            <Chip size="small" label={`${toPersianDigits(person.count)} فایل`}
-              sx={{ height: 20, fontSize: 12, bgcolor: '#fff', color: ACCENT, fontWeight: 800 }} />
+          <Stack direction="row" spacing={1.2} alignItems="center" sx={{ pl: 3.6 }}>
+            <Box sx={{
+              p: 0.3, borderRadius: '18px', flexShrink: 0,
+              bgcolor: 'rgba(255,255,255,0.8)', border: '1px solid rgba(15,118,110,0.16)',
+            }}>
+              <EmployeeAvatar employee={employee} size={58}
+                sx={{ borderRadius: '14px', bgcolor: '#e2e8f0' }} />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography noWrap title={employeeName(employee)} sx={{ fontFamily: FONT, fontSize: 16, fontWeight: 900, color: INK }}>
+                {employeeName(employee)}
+              </Typography>
+              <Typography noWrap sx={{ fontFamily: FONT, fontSize: 11.5, color: MUTED, mt: 0.15 }}>
+                شماره پرسنلی: {toPersianDigits(employee.employee_id || '—')}
+                {employee.department_name ? ` · ${employee.department_name}` : ''}
+                {employee.job_title_name ? ` · ${employee.job_title_name}` : ''}
+              </Typography>
+            </Box>
+            <Stack alignItems="flex-end" spacing={0.35} sx={{ flexShrink: 0 }}>
+              <Chip size="small" label={`${toPersianDigits(person.count)} فایل`}
+                sx={{ height: 22, fontSize: 11, bgcolor: '#fff', color: ACCENT, fontWeight: 800 }} />
+              <Chip size="small" label={`${toPersianDigits(person.groups.length)} نوع مدرک`}
+                sx={{ height: 22, fontSize: 11, bgcolor: 'rgba(255,255,255,0.72)', color: MUTED }} />
+            </Stack>
+          </Stack>
+          <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 0.9, pl: 3.6 }}>
             {formats.map(([key, count]) => (
               <Chip key={key} size="small" label={`${FORMAT_LABELS[key] || key} ${toPersianDigits(count)}`}
-                sx={{ height: 20, fontSize: 12, bgcolor: '#fff', color: MUTED }} />
+                sx={{ height: 20, fontSize: 11, bgcolor: 'rgba(255,255,255,0.72)', color: MUTED }} />
             ))}
           </Stack>
         </Box>
@@ -281,7 +356,7 @@ export const PersonnelDocumentsDialog = ({
       <DialogContent sx={{ p: 1.25 }}>
         <Stack spacing={1}>
           {person.groups.map((group) => {
-            const CategoryIcon = CATEGORY_ICONS[group.key] || FolderOutlinedIcon;
+            const CategoryIcon = CATEGORY_ICONS[group.iconKey || group.key] || FolderOutlinedIcon;
             return (
               <Paper key={group.key} variant="outlined" sx={{
                 borderRadius: '13px', borderColor: '#e2e8f0', overflow: 'hidden', bgcolor: '#fff',

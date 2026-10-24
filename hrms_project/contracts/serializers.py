@@ -1,4 +1,5 @@
 """Serializers for the Contracts module."""
+import os
 from decimal import Decimal, ROUND_HALF_UP
 
 from django.db.models import Sum
@@ -60,6 +61,13 @@ class ContractDisputeSerializer(serializers.ModelSerializer):
 
 class ContractDocumentSerializer(serializers.ModelSerializer):
     file_url = serializers.SerializerMethodField()
+    file_name = serializers.SerializerMethodField()
+    file_extension = serializers.SerializerMethodField()
+    file_size = serializers.SerializerMethodField()
+    file_size_display = serializers.SerializerMethodField()
+    contract_number = serializers.CharField(source='contract.number', read_only=True)
+    contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    contract_party_name = serializers.CharField(source='contract.party.name', read_only=True)
     addendum_number = serializers.SerializerMethodField()
     addendum_subject = serializers.SerializerMethodField()
     guarantee_number = serializers.SerializerMethodField()
@@ -68,9 +76,11 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
     class Meta:
         model = ContractDocument
         fields = [
-            'id', 'contract', 'addendum', 'addendum_number', 'addendum_subject',
+            'id', 'contract', 'contract_number', 'contract_subject', 'contract_party_name',
+            'addendum', 'addendum_number', 'addendum_subject',
             'guarantee', 'guarantee_number', 'statement', 'statement_number',
-            'title', 'file', 'file_url', 'uploaded_at',
+            'title', 'file', 'file_url', 'file_name', 'file_extension',
+            'file_size', 'file_size_display', 'uploaded_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'uploaded_at', 'created_at', 'updated_at']
 
@@ -118,6 +128,30 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
             request = self.context.get('request')
             return request.build_absolute_uri(obj.file.url) if request else obj.file.url
         return None
+
+    def get_file_name(self, obj):
+        return os.path.basename(obj.file.name) if obj.file else ''
+
+    def get_file_extension(self, obj):
+        return os.path.splitext(obj.file.name)[1].lower() if obj.file else ''
+
+    def get_file_size(self, obj):
+        if not obj.file:
+            return 0
+        try:
+            return int(obj.file.size)
+        except Exception:  # noqa: BLE001 — حجم فایل نباید فهرست را بشکند
+            return 0
+
+    def get_file_size_display(self, obj):
+        size = self.get_file_size(obj)
+        if size <= 0:
+            return ''
+        if size < 1024:
+            return f'{size} B'
+        if size < 1024 * 1024:
+            return f'{size / 1024:.1f} KB'
+        return f'{size / (1024 * 1024):.2f} MB'
 
 
 class InvoiceSerializer(serializers.ModelSerializer):

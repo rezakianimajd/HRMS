@@ -527,6 +527,16 @@ class ManagedDocument(BaseModel):
     is_indexed = models.BooleanField(
         default=False, verbose_name=_('ایندکس‌شده از بایگانی'),
     )
+    # ارجاع مستقیم به رکورد منبع؛ با حذف مدرک پرسنلی/سند سازمانی، نسخهٔ
+    # ایندکس‌شده در کتابخانه هم حذف می‌شود و رکورد یتیم باقی نمی‌ماند.
+    source_document = models.ForeignKey(
+        'Document', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='managed_documents', verbose_name=_('مدرک پرسنلی منبع'),
+    )
+    source_organization_document = models.ForeignKey(
+        'OrganizationDocument', on_delete=models.CASCADE, null=True, blank=True,
+        related_name='managed_documents', verbose_name=_('سند سازمانی منبع'),
+    )
     document_type = models.CharField(
         max_length=30, choices=DocumentType.choices,
         default=DocumentType.OTHER, verbose_name=_('نوع سند'),

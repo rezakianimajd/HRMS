@@ -4,7 +4,7 @@ Views for the Documents module.
 from rest_framework import viewsets, status, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
-from documents.models import Document, DocumentType, OrganizationDocument
+from documents.models import Document, DocumentType, ManagedDocument, OrganizationDocument
 from documents.serializers import (
     DocumentSerializer, DocumentListSerializer, DocumentUploadSerializer,
     DocumentTypeSerializer, OrganizationDocumentSerializer,
@@ -109,9 +109,16 @@ class DocumentViewSet(viewsets.ModelViewSet):
         serializer.save(company=company)
 
     def destroy(self, request, *args, **kwargs):
-        """Delete document record and physical file."""
+        """Delete document record, its physical file and its library index."""
         document = self.get_object()
         import os
+        file_name = document.file.name.replace('\\', '/') if document.file else ''
+        # رکوردهای کتابخانه که پیش از ایجاد رابطهٔ FK ایندکس شده‌اند نیز
+        # بر اساس همان مسیر فیزیکی حذف می‌شوند.
+        if file_name:
+            ManagedDocument.objects.filter(
+                company_id=document.company_id, storage_path=file_name,
+            ).delete()
         if document.file:
             if hasattr(document.file, 'path') and os.path.exists(document.file.path):
                 os.remove(document.file.path)

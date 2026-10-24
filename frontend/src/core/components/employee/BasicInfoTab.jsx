@@ -4,6 +4,7 @@ import { Grid, Paper, Typography, Divider, Box, Avatar, Stack, Chip } from '@mui
 import { useTranslation } from 'react-i18next';
 import PersonIcon from '@mui/icons-material/Person';
 import BadgeIcon from '@mui/icons-material/Badge';
+import AttachFileIcon from '@mui/icons-material/AttachFile';
 import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import CallIcon from '@mui/icons-material/Call';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
@@ -134,9 +135,22 @@ const BasicInfoTab = ({ employee }) => {
                 <Box sx={{ mt: 1 }}>
                   <Typography variant="caption" fontWeight={700} color="#8b5cf6">افراد تحت تکفل:</Typography>
                   {(ins.dependents || []).map(dep => (
-                    <Box key={dep.id} sx={{ display: 'flex', gap: 1, mt: 0.5 }}>
+                    <Box key={dep.id} sx={{ display: 'flex', gap: 1, mt: 0.5, alignItems: 'center', flexWrap: 'wrap' }}>
                       <Typography variant="caption">{dep.first_name} {dep.last_name}</Typography>
                       <Chip size="small" label={dep.relation_display || dep.relation} sx={{ height: 20, fontSize: 12 }} />
+                      {dep.attachment_url ? (
+                        <Chip
+                          component="a"
+                          href={dep.attachment_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          clickable
+                          size="small"
+                          icon={<AttachFileIcon sx={{ fontSize: 12 }} />}
+                          label={dep.attachment_name || 'پیوست'}
+                          sx={{ height: 20, fontSize: 11, maxWidth: 170, bgcolor: 'rgba(190,18,60,0.06)', color: '#be123c' }}
+                        />
+                      ) : null}
                     </Box>
                   ))}
                 </Box>
