@@ -25,6 +25,29 @@ export function toPersianDigits(input) {
 }
 
 /**
+ * شماره صورت‌وضعیت را استاندارد می‌کند: ارقام فارسی/عربی به لاتین تبدیل
+ * و شماره‌های عددی به حداقل دو رقم با صفر پیشرو (مثلاً 3 → 03) تبدیل می‌شوند.
+ */
+export function normalizeStatementNumber(value) {
+  if (value == null) return '';
+  const text = toEnglishDigits(String(value)).trim();
+  if (!text) return '';
+  if (/^\d+$/.test(text)) {
+    const digits = text.replace(/^0+(?=\d)/, '');
+    return digits.padStart(2, '0');
+  }
+  return text;
+}
+
+/**
+ * نمایش شماره صورت‌وضعیت با ارقام فارسی و استاندارد دو رقمی.
+ */
+export function formatStatementNumber(value) {
+  const normalized = normalizeStatementNumber(value);
+  return normalized ? toPersianDigits(normalized) : '';
+}
+
+/**
  * Format a number with thousands separators and Persian digits.
  * Example: 1234567 -> "۱٬۲۳۴٬۵۶۷"
  */

@@ -51,7 +51,7 @@ const payment = {
   invoice: 1,
   invoice_number: 'INV-100',
   statement: 1,
-  statement_number: 'ST-100',
+  statement_number: '3',
   statement_amount: 400000000,
   statement_net_amount: 350000000,
   statement_exchange_rate: 1,
@@ -76,7 +76,7 @@ beforeEach(() => {
     if (url === '/external-contracts/') return Promise.resolve({ data: [contract] });
     if (url === '/currencies/') return Promise.resolve({ data: [{ id: 1, name: 'ریال ایران', symbol: '﷼', code: 'IRR' }] });
     if (url === '/contract-invoices/') return Promise.resolve({ data: [{ id: 1, number: 'INV-100' }] });
-    if (url === '/contract-statements/') return Promise.resolve({ data: [{ id: 1, number: 'ST-100' }] });
+    if (url === '/contract-statements/') return Promise.resolve({ data: [{ id: 1, number: '3' }] });
     if (url === '/contract-payments/') return Promise.resolve({ data: [payment] });
     return Promise.resolve({ data: null });
   });
@@ -193,7 +193,7 @@ test('contract payments page renders financial summary, linked details and detai
   expect(container.textContent).toContain('REF-100');
   expect(container.textContent).toContain('حواله بانکی');
   expect(container.textContent).toContain('INV-100');
-  expect(container.textContent).toContain('ST-100');
+  expect(container.textContent).toContain('۰۳');
   expect(container.textContent).toContain('قابل پرداخت صورت‌وضعیت');
   expect(container.textContent).not.toContain('≈');
   expect(container.textContent).toContain('مشاهده جزئیات');

@@ -48,7 +48,7 @@ const statement = {
   contract: 1,
   contract_number: 'C-100',
   contract_subject: 'قرارداد ساخت سالن تولید',
-  number: 'ST-100',
+  number: '3',
   date: '2026-10-01',
   amount: 500000000,
   cumulative_previous_amount: 300000000,
@@ -117,7 +117,7 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
   expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
   expect(container.textContent).toContain('پوشش مالی صورت‌وضعیت‌ها');
   expect(container.textContent).toContain('روند صورت‌وضعیت‌ها');
-  expect(container.textContent).toContain('ST-100');
+  expect(container.textContent).toContain('۰۳');
   expect(container.textContent).toContain('تأیید شده');
   expect(container.textContent).toContain('۱ پیوست');
   expect(container.textContent).toContain('جزئیات');

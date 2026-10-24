@@ -4,7 +4,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import ContractSubEntityPage from './ContractSubEntityPage';
-import { formatPersianNumber } from '../../core/utils/numberUtils';
+import { formatPersianNumber, formatStatementNumber } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { ADDENDUM_SUBJECTS } from '../../core/constants/addendumSubjects';
 
@@ -55,7 +55,7 @@ export const ContractStatementsPage = () => (
       splitPreview: true,
       previewTitle: 'پیش‌نمایش صورت‌وضعیت',
       listColumns: [
-        { key: 'number', label: 'شماره' },
+        { key: 'number', label: 'شماره', render: (value) => formatStatementNumber(value) || '—' },
         { key: 'date', label: 'تاریخ', render: (v) => toJalali(v) },
         { key: 'amount', label: 'مبلغ', render: (v) => formatPersianNumber(v || 0) },
         { key: 'is_approved', label: 'تأیید', render: (v) => (v ? 'تأیید شده' : 'در انتظار') },

@@ -116,6 +116,7 @@ class ContractExcelExportTests(TestCase):
         self.assertEqual(data['فاکتور 1 — شماره'], 'F-1')
         self.assertEqual(data['فاکتور 1 — مبلغ کل'], 1_090_000.0)
         self.assertEqual(data['صورت‌وضعیت 1 — مبلغ کل / قابل پرداخت'], 980_000.0)
+        self.assertEqual(data['صورت‌وضعیت 1 — شماره'], 'S-۱')
         self.assertEqual(data['اضافهٔ صورت‌وضعیت 1 — عنوان'], 'اضافه: ارزش افزوده')
         self.assertEqual(data['کسور صورت‌وضعیت 1 — عنوان'], 'کسور: بیمه')
         self.assertEqual(data['پرداخت 1 — مبلغ'], 980_000.0)
@@ -587,6 +588,17 @@ class StatementCalculationTests(TestCase):
         }
         payload.update(overrides)
         return payload
+
+    def test_statement_number_is_normalized_to_two_digits(self):
+        serializer = StatementSerializer(data=self._payload(number='۳'))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        statement = serializer.save(company=self.company)
+        self.assertEqual(statement.number, '03')
+        self.assertEqual(Statement.objects.get(pk=statement.pk).number, '03')
+
+        longer = StatementSerializer(data=self._payload(number='۱۰۳', amount=6_000_000))
+        self.assertTrue(longer.is_valid(), longer.errors)
+        self.assertEqual(longer.save(company=self.company).number, '103')
 
     def test_percentage_items_use_current_period_work(self):
         Statement.objects.create(

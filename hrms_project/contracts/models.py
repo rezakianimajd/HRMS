@@ -8,6 +8,7 @@ from django.db import models
 from django.contrib.postgres.indexes import GinIndex
 from django.utils.translation import gettext_lazy as _
 from core.models.base_model import BaseModel
+from contracts.numbering import normalize_statement_number
 
 
 class GuaranteeKind(models.TextChoices):
@@ -346,6 +347,15 @@ class Statement(BaseModel):
         indexes = [
             models.Index(fields=['contract', 'date'], name='stmt_contract_date_idx'),
         ]
+
+    def save(self, *args, **kwargs):
+        normalized = normalize_statement_number(self.number)
+        if normalized != self.number:
+            self.number = normalized
+            update_fields = kwargs.get('update_fields')
+            if update_fields is not None:
+                kwargs['update_fields'] = set(update_fields) | {'number'}
+        return super().save(*args, **kwargs)
 
     def __str__(self):
         return f'{self.number or "—"} ({self.amount})'

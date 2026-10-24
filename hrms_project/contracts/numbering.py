@@ -1,0 +1,39 @@
+"""ابزارهای استانداردسازی و نمایش شمارهٔ صورت‌وضعیت."""
+from __future__ import annotations
+
+_DIGIT_MAP = str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789')
+_PERSIAN_DIGITS = '۰۱۲۳۴۵۶۷۸۹'
+
+
+def to_ascii_digits(value) -> str:
+    """ارقام فارسی/عربی را به لاتین تبدیل می‌کند."""
+    if value is None:
+        return ''
+    return str(value).translate(_DIGIT_MAP)
+
+
+def to_persian_digits(value) -> str:
+    """همهٔ ارقام لاتین متن را به فارسی تبدیل می‌کند."""
+    if value is None:
+        return ''
+    return ''.join(
+        _PERSIAN_DIGITS[int(char)] if char.isdigit() and char in '0123456789' else char
+        for char in str(value)
+    )
+
+
+def normalize_statement_number(value) -> str:
+    """شمارهٔ عددی را حداقل دو رقمی می‌کند؛ متن‌های غیرعددی حفظ می‌شوند."""
+    text = to_ascii_digits(value).strip()
+    if not text:
+        return ''
+    if text.isdigit():
+        digits = text.lstrip('0') or '0'
+        return digits.zfill(2)
+    return text
+
+
+def display_statement_number(value) -> str:
+    """شمارهٔ استاندارد با ارقام فارسی برای نمایش/خروجی."""
+    normalized = normalize_statement_number(value)
+    return to_persian_digits(normalized) if normalized else ''

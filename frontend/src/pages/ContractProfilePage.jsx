@@ -24,7 +24,7 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import InsightsIcon from '@mui/icons-material/Insights';
 import HubIcon from '@mui/icons-material/Hub';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
+import { formatPersianNumber, formatStatementNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS } from '../core/theme/tokens';
@@ -115,7 +115,7 @@ const ContractProfilePage = () => {
     push(c.start_date, 'start', 'شروع قرارداد', '');
     push(c.end_date, 'end', 'پایان / انقضای قرارداد', '');
     (c.invoices || []).forEach(x => push(x.date, 'invoice', 'ثبت فاکتور', `${x.number || '—'} · ${formatPersianNumber(x.total || 0)} ریال`));
-    (c.statements || []).forEach(x => push(x.date, 'statement', 'ثبت صورت‌وضعیت', `${x.number || '—'} · ${formatPersianNumber(x.amount || 0)} ریال`));
+    (c.statements || []).forEach(x => push(x.date, 'statement', 'ثبت صورت‌وضعیت', `${formatStatementNumber(x.number) || '—'} · ${formatPersianNumber(x.amount || 0)} ریال`));
     (c.addendums || []).forEach(x => push(x.date, 'addendum', 'ثبت الحاقیه', x.subject_type_display || x.number || x.change_description?.slice(0, 40)));
     (c.guarantees || []).forEach(x => push(x.issue_date, 'guarantee', 'صدور تضمین', x.guarantee_type_display));
     (c.guarantees || []).forEach(x => push(x.expiry_date, 'guarantee-expiry', 'انقضای تضمین', x.number || ''));

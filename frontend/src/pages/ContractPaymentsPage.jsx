@@ -36,7 +36,7 @@ import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { ColumnChart } from '../core/components/charts/Charts';
-import { formatPersianNumber, formatPersianPercent, normalizeCurrencyLabel } from '../core/utils/numberUtils';
+import { formatPersianNumber, formatPersianPercent, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
 import {
   CONTRACT_STATUS_LABELS as STATUS_LABELS,
@@ -337,7 +337,7 @@ const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete
             sx={{ height: 20, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
         ) : null}
         {row.statement_number ? (
-          <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`}
+          <Chip size="small" label={`صورت‌وضعیت ${formatStatementNumber(row.statement_number)}`}
             sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
         ) : null}
         {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
@@ -423,7 +423,7 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
               <TableCell>
                 <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
                   {row.invoice_number ? <Chip size="small" label={`فاکتور ${row.invoice_number}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} /> : null}
-                  {row.statement_number ? <Chip size="small" label={`صورت‌وضعیت ${row.statement_number}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
+                  {row.statement_number ? <Chip size="small" label={`صورت‌وضعیت ${formatStatementNumber(row.statement_number)}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
                   {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
                     <Chip size="small" label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />
                   ) : null}
@@ -504,7 +504,7 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
             <Box sx={{ my: 1.8 }}>
               <SectionHeading icon={LinkOutlinedIcon} title="پیوندهای پرونده" color={VIOLET} />
               <InfoLine label="فاکتور مرتبط" value={row.invoice_number || '—'} />
-              <InfoLine label="صورت‌وضعیت مرتبط" value={row.statement_number || '—'} />
+              <InfoLine label="صورت‌وضعیت مرتبط" value={formatStatementNumber(row.statement_number) || '—'} />
               {row.statement_amount ? (
                 <InfoLine label="مبلغ تجمعی صورت‌وضعیت (ریال)" value={`${formatPersianNumber(row.statement_amount)} ریال`} />
               ) : null}
@@ -682,7 +682,7 @@ const PaymentEditorDialog = ({
                       : null;
                     return (
                       <MenuItem key={statement.id} value={statement.id}>
-                        {statement.number || `صورت‌وضعیت ${statement.id}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
+                        {formatStatementNumber(statement.number) || `صورت‌وضعیت ${toPersianDigits(statement.id)}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
                         {cumulativeForeign !== null ? ` · ${formatPersianNumber(cumulativeForeign)} ${info.currency}` : ''}
                       </MenuItem>
                     );
@@ -697,7 +697,7 @@ const PaymentEditorDialog = ({
             <Stack direction="row" alignItems="center" spacing={0.8} sx={{ mb: 0.8 }}>
               <LinkOutlinedIcon sx={{ fontSize: 17, color: BLUE }} />
               <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>
-                صورت‌وضعیت {selectedStatement.number || selectedStatement.id}
+                صورت‌وضعیت {formatStatementNumber(selectedStatement.number) || toPersianDigits(selectedStatement.id)}
               </Typography>
               <Chip size="small" label={selectedStatementInfo.showForeign ? selectedStatementInfo.currency : 'ریالی'}
                 sx={{ height: 19, fontSize: 12, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
@@ -957,7 +957,7 @@ const ContractPaymentsPage = () => {
     const rows = list.filter((payment) => {
       if (methodFilter && (payment.method || 'نامشخص') !== methodFilter) return false;
       if (!query) return true;
-      return [payment.reference, payment.method, payment.note, payment.invoice_number, payment.statement_number]
+      return [payment.reference, payment.method, payment.note, payment.invoice_number, payment.statement_number, formatStatementNumber(payment.statement_number)]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
     return [...rows].sort((a, b) => {
@@ -1176,7 +1176,7 @@ const ContractPaymentsPage = () => {
     const body = filtered.map((payment) => [
       payment.date || '', payment.amount || 0, paymentCurrency(payment, contractCurrency),
       payment.method || '', payment.reference || '', payment.invoice_number || '',
-      payment.statement_number || '', payment.note || '',
+      payment.statement_number ? formatStatementNumber(payment.statement_number) : '', payment.note || '',
     ]);
     const csv = [header, ...body]
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))

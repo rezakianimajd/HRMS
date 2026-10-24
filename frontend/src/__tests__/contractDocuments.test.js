@@ -48,5 +48,6 @@ test('counts relations and file types and searches metadata', () => {
 test('labels relation options for addenda, guarantees and statements', () => {
   expect(relationOptionLabel('addendum', { number: 'A-1', subject: 'تمدید' })).toBe('A-1 — تمدید');
   expect(relationOptionLabel('guarantee', { number: 'G-1', guarantee_type_display: 'حسن انجام کار' })).toContain('G-1');
-  expect(relationOptionLabel('statement', { number: 'S-3' })).toBe('صورت‌وضعیت S-3');
+  expect(relationOptionLabel('statement', { number: '3' })).toBe('صورت‌وضعیت ۰۳');
+  expect(relationOptionLabel('statement', { number: 'S-3' })).toBe('صورت‌وضعیت S-۳');
 });

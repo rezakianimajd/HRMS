@@ -8,6 +8,8 @@
 """
 from decimal import Decimal
 
+from contracts.numbering import display_statement_number
+
 try:  # تاریخ شمسی (همان الگوی ماژول پروژه‌ها)
     from jdatetime import date as jdate
 except ImportError:  # pragma: no cover
@@ -230,7 +232,7 @@ def _bundle(contract):
         'payments_by_invoice': payments_by_invoice,
         'payments_by_statement': payments_by_statement,
         'invoice_numbers': {getattr(i, 'id', None): getattr(i, 'number', '') for i in invoices},
-        'statement_numbers': {getattr(s, 'id', None): getattr(s, 'number', '') for s in statements},
+        'statement_numbers': {getattr(s, 'id', None): display_statement_number(getattr(s, 'number', '')) for s in statements},
         'invoice_total': _sum_of(invoices, 'total', 'amount'),
         'statement_total': _sum_of(statements, 'net_amount', 'amount'),
         'payment_total': _sum_of(payments, 'amount'),
@@ -266,7 +268,7 @@ def _statement_slots(bundle):
     for statement in bundle['statements']:
         linked = bundle['payments_by_statement'].get(getattr(statement, 'id', None), [])
         slots.append({
-            'number': _attr(statement, 'number'),
+            'number': display_statement_number(getattr(statement, 'number', '')),
             'date': _fa_date(getattr(statement, 'date', None)),
             'cumulative': _num(getattr(statement, 'cumulative_previous_amount', None)),
             'work_done': _num(getattr(statement, 'work_done', None)),
@@ -290,7 +292,7 @@ def _statement_extra_slots(bundle, field, prefix):
             if not isinstance(item, dict):
                 continue
             slots.append({
-                'statement': _attr(statement, 'number'),
+                'statement': display_statement_number(getattr(statement, 'number', '')),
                 'title': f"{prefix}{item.get('title') or item.get('description') or ''}".strip(),
                 'amount': _num(item.get('amount')),
                 'percent': _num(item.get('percent')),

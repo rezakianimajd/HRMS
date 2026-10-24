@@ -27,7 +27,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../../core/utils/numberUtils';
+import { formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import ContractListPicker from '../../core/components/ui/ContractListPicker';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
@@ -172,7 +172,7 @@ export const StatementCard = ({
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}><ReceiptLongIcon sx={{ fontSize: 19 }} /></Box>
         <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{row.number || `صورت‌وضعیت #${row.id}`}</Typography>
+          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{formatStatementNumber(row.number) || `صورت‌وضعیت #${toPersianDigits(row.id)}`}</Typography>
           <Typography sx={{ fontSize: 12, color: MUTED }}>{dateLabel(row.date)} · {row.contract_subject || 'قرارداد'}</Typography>
         </Box>
         <StatusChip row={row} />
@@ -249,7 +249,7 @@ export const StatementTable = ({ rows, contractAmount, currency, fallbackRate = 
               const documents = Array.isArray(row.documents) ? row.documents : [];
               return (
                 <TableRow key={row.id} hover>
-                  <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{row.number || '—'}</TableCell>
+                  <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{formatStatementNumber(row.number) || '—'}</TableCell>
                   <TableCell sx={cellSx}>{dateLabel(row.date)}</TableCell>
                   <TableCell sx={cellSx} title={`${money(metrics.work, RIAL_LABEL)}`}>{statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: GREEN }}>{statementMoney(row, metrics.additionsTotal, currency, fallbackRate)}</TableCell>
@@ -423,7 +423,7 @@ export const StatementLanding = ({
                         <ScheduleIcon sx={{ fontSize: 15 }} />
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
-                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.number || `صورت‌وضعیت #${row.id}`} · {row.contract_subject || 'قرارداد'}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{formatStatementNumber(row.number) || `صورت‌وضعیت #${toPersianDigits(row.id)}`} · {row.contract_subject || 'قرارداد'}</Typography>
                         <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{dateLabel(row.date)} · {statementMoney(row, rowMetrics(row).net, row.currency_name || row.currency_symbol || currency)}</Typography>
                       </Box>
                       <Chip size="small" label="در انتظار" sx={{ height: 19, fontSize: 12, bgcolor: '#fff7ed', color: '#c2410c', fontWeight: 800 }} />
@@ -469,7 +469,7 @@ export const StatementDetailDrawer = ({
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}><StatusIcon sx={{ fontSize: 21 }} /></Box>
             <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{row.number || `صورت‌وضعیت #${row.id}`}</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{formatStatementNumber(row.number) || `صورت‌وضعیت #${toPersianDigits(row.id)}`}</Typography>
               <Typography sx={{ fontSize: 12, color: MUTED }}>{row.contract_subject || contract?.subject || '—'} · {dateLabel(row.date)}</Typography>
             </Box>
             <StatusChip row={row} />

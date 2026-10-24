@@ -1,5 +1,5 @@
 /** ابزارهای خالصِ صفحهٔ بایگانی اسناد قرارداد. */
-import { toPersianDigits } from '../../core/utils/numberUtils';
+import { formatStatementNumber, toPersianDigits } from '../../core/utils/numberUtils';
 
 export const DOC_ACCENT = '#0f766e';
 
@@ -61,7 +61,7 @@ export const relationTargetLabel = (row = {}) => {
     return [row.addendum_number, row.addendum_subject].filter(Boolean).join(' — ') || 'الحاقیه';
   }
   if (key === 'guarantee') return row.guarantee_number || 'تضمین';
-  if (key === 'statement') return row.statement_number ? `صورت‌وضعیت ${row.statement_number}` : 'صورت‌وضعیت';
+  if (key === 'statement') return row.statement_number ? `صورت‌وضعیت ${formatStatementNumber(row.statement_number)}` : 'صورت‌وضعیت';
   return 'مستندات عمومی قرارداد';
 };
 
@@ -86,6 +86,7 @@ export const documentSearchText = (row = {}) => [
   row.title, row.file_name, row.contract_number, row.contract_subject,
   row.contract_party_name, row.addendum_number, row.addendum_subject,
   row.guarantee_number, row.statement_number,
+  row.statement_number ? formatStatementNumber(row.statement_number) : '',
 ].filter(Boolean).join(' ').toLowerCase();
 
 export const matchesDocumentSearch = (row, query) => {
@@ -115,6 +116,6 @@ export const relationOptionLabel = (type, item = {}) => {
     return [item.number || item.guarantee_number || item.check_number, item.guarantee_type_display]
       .filter(Boolean).join(' — ') || 'تضمین';
   }
-  if (type === 'statement') return item.number ? `صورت‌وضعیت ${item.number}` : 'صورت‌وضعیت';
+  if (type === 'statement') return item.number ? `صورت‌وضعیت ${formatStatementNumber(item.number)}` : 'صورت‌وضعیت';
   return item.subject || item.number || 'قرارداد';
 };

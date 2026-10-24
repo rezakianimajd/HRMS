@@ -33,7 +33,10 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import html2canvas from 'html2canvas';
-import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../../core/utils/numberUtils';
+import {
+  formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel,
+  normalizeStatementNumber, toEnglishDigits, toPersianDigits,
+} from '../../core/utils/numberUtils';
 import { getJalaliParts, toJalali } from '../../core/utils/dateUtils';
 import JalaliDatePicker from '../../core/components/ui/JalaliDatePicker';
 import ContractListPicker from '../../core/components/ui/ContractListPicker';
@@ -250,7 +253,7 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
       {/* Section 1: statement number + date + currency */}
       <Grid container spacing={1.5}>
-        <Grid item xs={4}><Field label="شماره صورت‌وضعیت" value={form.number || '—'} /></Grid>
+        <Grid item xs={4}><Field label="شماره صورت‌وضعیت" value={formatStatementNumber(form.number) || '—'} /></Grid>
         <Grid item xs={4}><Field label="تاریخ" value={form.date ? toJalali(form.date) : '—'} /></Grid>
         <Grid item xs={4}><Field label="واحد ارز" value={currencyLabel || '—'} /></Grid>
       </Grid>
@@ -580,7 +583,7 @@ const StatementEditorPage = () => {
       if (statusFilter === 'approved' && !row.is_approved) return false;
       if (statusFilter === 'pending' && row.is_approved) return false;
       if (!query) return true;
-      return [row.number, row.contract_subject, row.description, ...(row.documents || []).map((doc) => doc.title)]
+      return [row.number, formatStatementNumber(row.number), row.contract_subject, row.description, ...(row.documents || []).map((doc) => doc.title)]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
     result = [...result].sort((a, b) => {
@@ -636,7 +639,7 @@ const StatementEditorPage = () => {
     const deductionsTotal = deductions.reduce((sum, item) => sum + item.amount, 0);
     return {
       contract: Number(payload.contract) || null,
-      number: payload.number || '',
+      number: normalizeStatementNumber(payload.number),
       date: payload.date || null,
       amount,
       foreign_amount: Math.max(0, Number(payload.amount_foreign) || 0),
@@ -1188,7 +1191,7 @@ const StatementEditorPage = () => {
     const rows = filtered.map((row) => {
       const metrics = rowMetrics(row);
       return [
-        row.number || '', row.date || '', metrics.amount, metrics.work,
+        row.number ? formatStatementNumber(row.number) : '', row.date || '', metrics.amount, metrics.work,
         metrics.additionsTotal, metrics.deductionsTotal, metrics.net,
         row.is_approved ? 'تأیید شده' : 'در انتظار', row.description || '',
       ];
@@ -1423,7 +1426,7 @@ const StatementEditorPage = () => {
         <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>حذف صورت‌وضعیت</DialogTitle>
         <DialogContent>
           <Alert severity="warning" sx={{ borderRadius: '10px' }}>
-            صورت‌وضعیت {confirmDelete?.number || (confirmDelete ? `#${confirmDelete.id}` : 'انتخاب‌شده')} حذف شود؟ این عملیات قابل بازگشت نیست.
+            صورت‌وضعیت {formatStatementNumber(confirmDelete?.number) || (confirmDelete ? `#${toPersianDigits(confirmDelete.id)}` : 'انتخاب‌شده')} حذف شود؟ این عملیات قابل بازگشت نیست.
           </Alert>
         </DialogContent>
         <DialogActions>
@@ -1486,7 +1489,7 @@ const StatementEditorView = ({
       <PageHeader
         icon={<ReceiptLongIcon />}
         title={form.id ? 'ویرایش صورت‌وضعیت' : 'ثبت صورت‌وضعیت جدید'}
-        subtitle={`${contract?.subject || 'قرارداد'} · ${contract?.number || 'بدون شماره'} · ${form.number || 'شماره‌گذاری خودکار'}`}
+        subtitle={`${contract?.subject || 'قرارداد'} · ${contract?.number || 'بدون شماره'} · ${form.number ? formatStatementNumber(form.number) : 'شماره‌گذاری خودکار'}`}
         badge={<Chip size="small" label={form.is_approved ? 'تأیید شده' : 'در انتظار تأیید'}
           sx={{ height: 23, fontWeight: 800, bgcolor: form.is_approved ? '#ecfdf5' : '#fffbeb', color: form.is_approved ? '#0f766e' : '#b45309' }} />}
         actions={(
@@ -1526,7 +1529,14 @@ const StatementEditorView = ({
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
                 <Grid container spacing={1.1}>
-                  <Grid item xs={12} sm={6}><TextField size="small" fullWidth label="شماره صورت‌وضعیت" value={form.number || ''} onChange={(event) => update('number', event.target.value)} placeholder="مثلاً ST-1405-01" /></Grid>
+                  <Grid item xs={12} sm={6}>
+                    <TextField size="small" fullWidth label="شماره صورت‌وضعیت"
+                      value={toPersianDigits(form.number || '')}
+                      onChange={(event) => update('number', toEnglishDigits(event.target.value))}
+                      onBlur={(event) => update('number', normalizeStatementNumber(event.target.value))}
+                      placeholder="مثلاً ۰۳"
+                      helperText="شماره به‌صورت دو رقمی ذخیره می‌شود؛ مثلاً ۳ به ۰۳ تبدیل می‌شود." />
+                  </Grid>
                   <Grid item xs={12} sm={6}><JalaliDatePicker fullWidth label="تاریخ صورت‌وضعیت" value={form.date || ''} onChange={(value) => update('date', value)} /></Grid>
                   <Grid item xs={12} sm={6}>
                     <FormControl size="small" fullWidth>

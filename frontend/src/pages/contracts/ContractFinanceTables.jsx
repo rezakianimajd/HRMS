@@ -4,7 +4,7 @@ import {
   Typography, Chip, Stack,
 } from '@mui/material';
 import TableRowsIcon from '@mui/icons-material/TableRows';
-import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
+import { formatPersianNumber, formatStatementNumber, toPersianDigits, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { EmptyState, INK, MUTED } from './ContractProfileUI';
 
@@ -154,7 +154,7 @@ export const StatementsTable = ({ statements = [], currencyLabel = 'ریال', f
               <TableCell sx={cellSx}>{toPersianDigits(index + 1)}</TableCell>
               <TableCell sx={{ ...cellSx, textAlign: 'right', minWidth: 210, whiteSpace: 'normal' }}>
                 <Stack direction="row" alignItems="center" spacing={0.6} useFlexGap flexWrap="wrap">
-                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.number || `صورت‌وضعیت ${toPersianDigits(index + 1)}`}</Typography>
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{formatStatementNumber(row.number) || `صورت‌وضعیت ${toPersianDigits(index + 1)}`}</Typography>
                   {row.is_approved ? <Chip size="small" label="تأییدشده" sx={{ height: 17, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} /> : null}
                 </Stack>
                 <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.2 }}>{toJalali(row.date)}</Typography>
@@ -318,7 +318,7 @@ export const PaymentsTable = ({ payments = [], currency = 'ریال' }) => (
       <Typography key="method" sx={{ fontSize: 12 }}>{row.method || '—'}</Typography>,
       <Typography key="ref" sx={{ fontSize: 12, color: MUTED }}>{row.reference || '—'}</Typography>,
       <Typography key="invoice" sx={{ fontSize: 12 }}>{row.invoice_number || '—'}</Typography>,
-      <Typography key="statement" sx={{ fontSize: 12 }}>{row.statement_number || '—'}</Typography>,
+      <Typography key="statement" sx={{ fontSize: 12 }}>{formatStatementNumber(row.statement_number) || '—'}</Typography>,
       <Typography key="note" sx={{ fontSize: 12, color: MUTED, textAlign: 'right' }}>{row.note || '—'}</Typography>,
     ]}
   />
