@@ -623,6 +623,20 @@ class StatementCalculationTests(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('amount', serializer.errors)
 
+    def test_exchange_rate_accepts_six_decimals_and_rejects_zero(self):
+        serializer = StatementSerializer(data=self._payload(exchange_rate='2097200.123456'))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['exchange_rate'], Decimal('2097200.123456'))
+
+        invalid = StatementSerializer(data=self._payload(exchange_rate='0'))
+        self.assertFalse(invalid.is_valid())
+        self.assertIn('exchange_rate', invalid.errors)
+
+    def test_rial_amounts_do_not_accept_fractional_values(self):
+        serializer = StatementSerializer(data=self._payload(amount='5000000.5'))
+        self.assertFalse(serializer.is_valid())
+        self.assertIn('amount', serializer.errors)
+
     def test_date_edit_falls_back_to_registration_order(self):
         first = Statement.objects.create(
             company=self.company, contract=self.contract, number='S-1',

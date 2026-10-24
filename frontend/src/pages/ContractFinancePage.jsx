@@ -98,6 +98,15 @@ const ContractFinancePage = () => {
   const baseAmount = toNum(contract?.amount);
   const addendumAmount = amount - baseAmount;
   const currencyLabel = normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
+  const statementRate = [...sortedStatements]
+    .reverse()
+    .map((row) => toNum(row.exchange_rate))
+    .find((rate) => rate > 1) || 0;
+  const contractRate = toNum(contract?.exchange_rate) > 1
+    ? toNum(contract.exchange_rate)
+    : (statementRate || 1);
+  const displayRate = contractRate > 1 ? contractRate : 1;
+  const amountRial = amount * displayRate;
 
   const statementRows = useMemo(
     () => sortedStatements.map((row) => ({ row, metrics: statementMetrics(row, contract?.exchange_rate) })),
@@ -134,13 +143,27 @@ const ContractFinancePage = () => {
   const advanceRowsFinal = advanceRows.length
     ? advanceRows
     : [{ id: 'advance-base', step: 'پیش‌پرداخت قرارداد', amount: advanceTotal, note: '' }];
-  const advanceAmortized = Math.min(totals.prepayment, advanceTotal);
+  const totalsDisplay = {
+    ...totals,
+    gross: totals.foreign || totals.gross / displayRate,
+    net: totals.net / displayRate,
+    deductions: totals.deductions / displayRate,
+    payments: totals.payments / displayRate,
+    prepayment: totals.prepayment / displayRate,
+    retention: totals.retention / displayRate,
+    insurance: totals.insurance / displayRate,
+    statementAdvance: totals.statementAdvance / displayRate,
+    otherAdvance: totals.otherAdvance / displayRate,
+    materials: totals.materials / displayRate,
+    other: totals.other / displayRate,
+  };
+  const advanceAmortized = Math.min(totalsDisplay.prepayment, advanceTotal);
   const advanceRemaining = Math.max(advanceTotal - advanceAmortized, 0);
 
-  const paidRatio = amount > 0 ? Math.min(100, (totals.payments / amount) * 100) : 0;
-  const workRatio = amount > 0 ? Math.min(100, (totals.gross / amount) * 100) : 0;
-  const netRatio = amount > 0 ? Math.min(100, (totals.net / amount) * 100) : 0;
-  const remainingContract = Math.max(amount - totals.gross, 0);
+  const paidRatio = amountRial > 0 ? Math.min(100, (totals.payments / amountRial) * 100) : 0;
+  const workRatio = amountRial > 0 ? Math.min(100, (totals.gross / amountRial) * 100) : 0;
+  const netRatio = amountRial > 0 ? Math.min(100, (totals.net / amountRial) * 100) : 0;
+  const remainingContract = Math.max(amount - totalsDisplay.gross, 0);
 
   const exportExcel = async () => {
     if (!selected?.id || exporting) return;
@@ -295,16 +318,16 @@ const ContractFinancePage = () => {
               <KpiCard icon={AccountBalanceIcon} label="مبلغ قرارداد" value={formatPersianNumber(amount)} suffix={currencyLabel} color="#f59e0b" size={15} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={ReceiptLongIcon} label="کارکرد صورت‌وضعیت" value={formatPersianNumber(totals.gross)} suffix={currencyLabel} color="#3b82f6" progress={workRatio} progressLabel={`${toPersianDigits(Math.round(workRatio))}٪ پیشرفت`} size={15} />
+              <KpiCard icon={ReceiptLongIcon} label="کارکرد صورت‌وضعیت" value={formatPersianNumber(totalsDisplay.gross)} suffix={currencyLabel} color="#3b82f6" progress={workRatio} progressLabel={`${toPersianDigits(Math.round(workRatio))}٪ پیشرفت`} size={15} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={ReceiptIcon} label="خالص صورت‌وضعیت" value={formatPersianNumber(totals.net)} suffix={currencyLabel} color="#6366f1" progress={netRatio} progressLabel="خالص تجمعی" size={15} />
+              <KpiCard icon={ReceiptIcon} label="خالص صورت‌وضعیت" value={formatPersianNumber(totalsDisplay.net)} suffix={currencyLabel} color="#6366f1" progress={netRatio} progressLabel="خالص تجمعی" size={15} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={LockIcon} label="جمع کسورات" value={formatPersianNumber(totals.deductions)} suffix={currencyLabel} color="#be123c" hint={`${toPersianDigits(sortedStatements.length)} دوره`} size={15} />
+              <KpiCard icon={LockIcon} label="جمع کسورات" value={formatPersianNumber(totalsDisplay.deductions)} suffix={currencyLabel} color="#be123c" hint={`${toPersianDigits(sortedStatements.length)} دوره`} size={15} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={PaymentsIcon} label="پرداخت‌شده" value={formatPersianNumber(totals.payments)} suffix={currencyLabel} color="#0891b2" progress={paidRatio} progressLabel={`${toPersianDigits(Math.round(paidRatio))}٪ از قرارداد`} size={15} />
+              <KpiCard icon={PaymentsIcon} label="پرداخت‌شده" value={formatPersianNumber(totalsDisplay.payments)} suffix={currencyLabel} color="#0891b2" progress={paidRatio} progressLabel={`${toPersianDigits(Math.round(paidRatio))}٪ از قرارداد`} size={15} />
             </Grid>
             <Grid item xs={6} md={4} lg={2}>
               <KpiCard icon={CalendarMonthIcon} label="مانده قرارداد" value={formatPersianNumber(remainingContract)} suffix={currencyLabel} color="#64748b" progress={100 - workRatio} progressLabel="کار باقی‌مانده" size={15} />
@@ -334,9 +357,9 @@ const ContractFinancePage = () => {
                 <Grid container spacing={2}>
                   <Grid item xs={12} sm={6}>
                     <Stack spacing={1.4}>
-                      <MoneyBar label="پیشرفت کارکرد" value={totals.gross} total={amount || 1} color="#3b82f6" suffix={currencyLabel} />
-                      <MoneyBar label="خالص صورت‌وضعیت" value={totals.net} total={amount || 1} color="#6366f1" suffix={currencyLabel} />
-                      <MoneyBar label="پرداخت‌شده" value={totals.payments} total={amount || 1} color="#0891b2" suffix={currencyLabel} />
+                      <MoneyBar label="پیشرفت کارکرد" value={totalsDisplay.gross} total={amount || 1} color="#3b82f6" suffix={currencyLabel} />
+                      <MoneyBar label="خالص صورت‌وضعیت" value={totalsDisplay.net} total={amount || 1} color="#6366f1" suffix={currencyLabel} />
+                      <MoneyBar label="پرداخت‌شده" value={totalsDisplay.payments} total={amount || 1} color="#0891b2" suffix={currencyLabel} />
                     </Stack>
                   </Grid>
                   <Grid item xs={12} sm={6}>
@@ -344,11 +367,11 @@ const ContractFinancePage = () => {
                       <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK, mb: 1 }}>ترکیب کسورات</Typography>
                       <Stack spacing={0.85}>
                         {[
-                          ['حسن انجام کار', totals.retention, '#f59e0b'],
-                          ['بیمه', totals.insurance, '#3b82f6'],
-                          ['پیش‌پرداخت', totals.prepayment, '#8b5cf6'],
-                          ['علی‌الحساب‌ها', totals.statementAdvance + totals.otherAdvance + totals.materials, '#ec4899'],
-                          ['سایر', totals.other, '#64748b'],
+                          ['حسن انجام کار', totalsDisplay.retention, '#f59e0b'],
+                          ['بیمه', totalsDisplay.insurance, '#3b82f6'],
+                          ['پیش‌پرداخت', totalsDisplay.prepayment, '#8b5cf6'],
+                          ['علی‌الحساب‌ها', totalsDisplay.statementAdvance + totalsDisplay.otherAdvance + totalsDisplay.materials, '#ec4899'],
+                          ['سایر', totalsDisplay.other, '#64748b'],
                         ].map(([label, value, color]) => (
                           <Stack key={label} direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
                             <Stack direction="row" alignItems="center" spacing={0.5} useFlexGap>

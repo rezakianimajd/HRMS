@@ -48,6 +48,9 @@ import {
   StatementDetailDrawer, StatementLanding, StatementTable, STATEMENT_ACCENT,
   contractAmountOf, dateLabel, money, rowMetrics,
 } from './StatementWorkspaceUI';
+import {
+  displayAmount, fromRial, isRialCurrency, normalizeRate, rateOfStatement, toRial,
+} from './statementCurrency';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
@@ -476,6 +479,17 @@ const StatementEditorPage = () => {
     () => [...scopedList].sort((a, b) => Number(a.id || 0) - Number(b.id || 0)).slice(-1)[0] || null,
     [scopedList],
   );
+  const statementFallbackRate = useMemo(() => {
+    const foreignRows = scopedList.filter((row) => Number(row.exchange_rate) > 1);
+    const latestForeign = [...foreignRows].sort((a, b) => Number(b.id || 0) - Number(a.id || 0))[0];
+    return latestForeign?.exchange_rate || 0;
+  }, [scopedList]);
+  const selectedContractRate = normalizeRate(
+    statementFallbackRate
+    || selectedContract?.exchange_rate
+    || currencyList.find((currency) => String(currency.id) === String(selectedContract?.currency))?.exchange_rate
+    || 1,
+  );
 
   const counts = useMemo(() => {
     const next = { all: scopedList.length, approved: 0, pending: 0 };
@@ -491,18 +505,36 @@ const StatementEditorPage = () => {
     const net = metrics.reduce((sum, item) => sum + item.net, 0);
     const work = metrics.reduce((sum, item) => sum + item.work, 0);
     const cumulative = lastStatement ? rowMetrics(lastStatement).amount : 0;
+    const foreignOf = (row, value) => displayAmount(row, value, selectedContractRate);
+    const netForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).net), 0);
+    const workForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).work), 0);
+    const cumulativeForeign = lastStatement ? foreignOf(lastStatement, cumulative) : 0;
     const paid = payments
       .filter((payment) => payment.statement)
       .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    const paidForeign = selectedContractRate > 1 ? paid / selectedContractRate : paid;
     return {
-      net, work, cumulative, paid,
+      net, work, cumulative, paid, netForeign, workForeign, cumulativeForeign, paidForeign,
       outstanding: Math.max(0, net - paid),
+      outstandingForeign: Math.max(0, netForeign - paidForeign),
       approvedCount: counts.approved,
       pendingCount: counts.pending,
-      overContract: Math.max(0, cumulative - selectedContractAmount),
+      overContract: Math.max(0, cumulative - selectedContractAmount * selectedContractRate),
+      overContractForeign: Math.max(0, cumulativeForeign - selectedContractAmount),
     };
-  }, [scopedList, payments, counts, selectedContractAmount, lastStatement]);
-  const contractProgress = selectedContractAmount > 0 ? Math.min(100, (totals.cumulative / selectedContractAmount) * 100) : 0;
+  }, [scopedList, payments, counts, selectedContractAmount, selectedContractRate, lastStatement]);
+  const contractProgress = selectedContractAmount > 0
+    ? Math.min(100, (totals.cumulativeForeign / selectedContractAmount) * 100)
+    : 0;
+  const displayTotals = {
+    ...totals,
+    net: totals.netForeign,
+    work: totals.workForeign,
+    cumulative: totals.cumulativeForeign,
+    paid: totals.paidForeign,
+    outstanding: totals.outstandingForeign,
+    overContract: totals.overContractForeign,
+  };
 
   const statementCountByContract = useMemo(
     () => allStatements.reduce((acc, row) => {
@@ -570,14 +602,15 @@ const StatementEditorPage = () => {
 
   const sanitizeStatement = (payload) => {
     const additions = (Array.isArray(payload.additions) ? payload.additions : [])
-      .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Number(item.amount) || 0 }));
+      .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Math.round(Number(item.amount) || 0) }));
     const deductions = (Array.isArray(payload.deductions) ? payload.deductions : [])
-      .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Number(item.amount) || 0 }));
-    const amount = Math.max(0, Number(payload.amount) || 0);
-    const previous = Math.max(0, Number(payload.cumulative_previous_amount) || 0);
+      .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Math.round(Number(item.amount) || 0) }));
+    // تمام فیلدهای مالی در دیتابیس ریالی و بدون اعشار ذخیره می‌شوند.
+    const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
+    const previous = Math.max(0, Math.round(Number(payload.cumulative_previous_amount) || 0));
     const work = Math.max(0, amount - previous);
-    const valueAddedTax = Math.max(0, Number(payload.value_added_tax) || 0);
-    const otherAdditions = Math.max(0, Number(payload.other_additions) || 0);
+    const valueAddedTax = Math.max(0, Math.round(Number(payload.value_added_tax) || 0));
+    const otherAdditions = Math.max(0, Math.round(Number(payload.other_additions) || 0));
     const additionsTotal = additions.reduce((sum, item) => sum + item.amount, 0) + valueAddedTax + otherAdditions;
     const deductionsTotal = deductions.reduce((sum, item) => sum + item.amount, 0);
     return {
@@ -593,9 +626,9 @@ const StatementEditorPage = () => {
       additions_total: additionsTotal,
       deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
       deductions_total: deductionsTotal,
-      net_amount: work + additionsTotal - deductionsTotal,
+      net_amount: Math.round(work + additionsTotal - deductionsTotal),
       currency: payload.currency || null,
-      exchange_rate: Number(rate) || null,
+      exchange_rate: normalizeRate(rate),
       is_approved: Boolean(payload.is_approved),
       description: payload.description || '',
     };
@@ -736,16 +769,104 @@ const StatementEditorPage = () => {
   const cumulativeThis = num(form.amount);
   const workDone = Math.max(0, cumulativeThis - cumulativePrev);
   const netAmount = workDone + additionsTotal - deductionsTotal;
+  const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
+  const formCurrencyLabel = normalizeCurrencyLabel(
+    formCurrency?.name || formCurrency?.symbol || currencyLabel,
+  );
+  const isRial = isRialCurrency(formCurrencyLabel);
+  const baseRate = normalizeRate(formCurrency?.exchange_rate || 1);
+  const rate = rateOverride !== '' && rateOverride != null ? normalizeRate(rateOverride) : baseRate;
+  const displayRate = isRial ? 1 : rate;
+  const displayValue = (rialValue) => (displayRate > 1 ? fromRial(rialValue, displayRate) : num(rialValue));
+  const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
+    || (String(form.contract) === String(contractId) ? selectedContract : null);
+  const formContractAmount = contractAmountOf(formContract);
+  const contractAmountRial = formContractAmount * displayRate;
+  const overContract = contractAmountRial > 0 && cumulativeThis > contractAmountRial;
+  const progress = contractAmountRial > 0 ? Math.min(100, (cumulativeThis / contractAmountRial) * 100) : 0;
 
-  // آیتم‌هایی که با درصد وارد شده‌اند، با تغییر کارکرد دوره دوباره محاسبه می‌شوند.
+  /**
+   * با تغییر نرخ ارز، مبالغ ارزی واردشده حفظ می‌شوند و فقط معادل ریالی
+   * (و آیتم‌های درصدی بر مبنای کارکرد جدید) دوباره محاسبه می‌شود.
+   */
+  const syncFormAmounts = (previous, nextRateValue) => {
+    if (!previous || !Object.keys(previous).length) return previous;
+    const nextRate = normalizeRate(nextRateValue);
+    const amountForeign = previous.amount_foreign != null
+      ? previous.amount_foreign
+      : fromRial(previous.amount, nextRate);
+    const amount = toRial(amountForeign, nextRate);
+    const previousRial = num(previous.cumulative_previous_amount);
+    const nextWork = Math.max(0, amount - previousRial);
+    const recalcItem = (item) => {
+      if (item?.mode === 'percent') {
+        const itemRial = Math.round((nextWork * Number(item.percent || 0)) / 100);
+        return { ...item, amount: itemRial, amount_foreign: fromRial(itemRial, nextRate) };
+      }
+      const foreign = item?.amount_foreign != null ? item.amount_foreign : fromRial(item.amount, nextRate);
+      return { ...item, amount: toRial(foreign, nextRate), amount_foreign: foreign };
+    };
+    const taxMode = previous.value_added_tax_mode;
+    const taxForeign = previous.value_added_tax_foreign != null
+      ? previous.value_added_tax_foreign
+      : fromRial(previous.value_added_tax, nextRate);
+    const tax = taxMode === 'percent'
+      ? Math.round((nextWork * Number(previous.value_added_tax_percent || 0)) / 100)
+      : toRial(taxForeign, nextRate);
+    const otherMode = previous.other_additions_mode;
+    const otherForeign = previous.other_additions_foreign != null
+      ? previous.other_additions_foreign
+      : fromRial(previous.other_additions, nextRate);
+    const other = otherMode === 'percent'
+      ? Math.round((nextWork * Number(previous.other_additions_percent || 0)) / 100)
+      : toRial(otherForeign, nextRate);
+    return {
+      ...previous,
+      amount_foreign: amountForeign,
+      amount,
+      cumulative_previous_foreign: fromRial(previousRial, nextRate),
+      additions: (previous.additions || []).map(recalcItem),
+      deductions: (previous.deductions || []).map(recalcItem),
+      value_added_tax_foreign: taxMode === 'percent' ? fromRial(tax, nextRate) : taxForeign,
+      value_added_tax: tax,
+      other_additions_foreign: otherMode === 'percent' ? fromRial(other, nextRate) : otherForeign,
+      other_additions: other,
+    };
+  };
+
+  const updateAmountForeign = (field, value) => {
+    setForm((previous) => ({
+      ...previous,
+      [`${field}_foreign`]: value,
+      [field]: toRial(value, displayRate),
+    }));
+  };
+
+  const changeCurrency = (currencyId) => {
+    const nextCurrency = currencyList.find((currency) => String(currency.id) === String(currencyId));
+    const baseNextRate = normalizeRate(nextCurrency?.exchange_rate || 1);
+    const nextRate = baseNextRate > 1
+      ? baseNextRate
+      : (String(currencyId) === String(selectedContract?.currency) ? selectedContractRate : baseNextRate);
+    setRateOverride(nextRate > 1 ? String(nextRate) : '');
+    setForm((previous) => syncFormAmounts({ ...previous, currency: currencyId }, nextRate));
+  };
+
+  const changeRate = (value) => {
+    setRateOverride(value);
+    const nextRate = value === '' || value == null ? baseRate : normalizeRate(value);
+    setForm((previous) => syncFormAmounts(previous, nextRate));
+  };
+
+
   useEffect(() => {
     setForm((previous) => {
       if (!previous || !Object.keys(previous).length) return previous;
-      const recalc = (items) => (Array.isArray(items) ? items : []).map((item) => (
-        item?.mode === 'percent'
-          ? { ...item, amount: Math.round((workDone * Number(item.percent || 0)) / 100) }
-          : item
-      ));
+      const recalc = (items) => (Array.isArray(items) ? items : []).map((item) => {
+        if (item?.mode !== 'percent') return item;
+        const itemRial = Math.round((workDone * Number(item.percent || 0)) / 100);
+        return { ...item, amount: itemRial, amount_foreign: fromRial(itemRial, displayRate) };
+      });
       const additionsNext = recalc(previous.additions);
       const deductionsNext = recalc(previous.deductions);
       const taxNext = previous.value_added_tax_mode === 'percent'
@@ -754,11 +875,19 @@ const StatementEditorPage = () => {
       const otherNext = previous.other_additions_mode === 'percent'
         ? Math.round((workDone * Number(previous.other_additions_percent || 0)) / 100)
         : previous.other_additions;
+      const taxForeignNext = previous.value_added_tax_mode === 'percent'
+        ? fromRial(taxNext, displayRate)
+        : previous.value_added_tax_foreign;
+      const otherForeignNext = previous.other_additions_mode === 'percent'
+        ? fromRial(otherNext, displayRate)
+        : previous.other_additions_foreign;
       if (
         JSON.stringify(additionsNext) === JSON.stringify(previous.additions)
         && JSON.stringify(deductionsNext) === JSON.stringify(previous.deductions)
         && taxNext === previous.value_added_tax
         && otherNext === previous.other_additions
+        && taxForeignNext === previous.value_added_tax_foreign
+        && otherForeignNext === previous.other_additions_foreign
       ) {
         return previous;
       }
@@ -768,33 +897,34 @@ const StatementEditorPage = () => {
         deductions: deductionsNext,
         value_added_tax: taxNext,
         other_additions: otherNext,
+        value_added_tax_foreign: taxForeignNext,
+        other_additions_foreign: otherForeignNext,
       };
     });
-  }, [workDone, setForm]);
-  const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
-  const formCurrencyLabel = normalizeCurrencyLabel(
-    formCurrency?.name || formCurrency?.symbol || currencyLabel,
-  );
-  const baseRate = num(formCurrency?.exchange_rate || 1);
-  const rate = rateOverride !== '' && rateOverride != null ? num(rateOverride) : baseRate;
-  const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
-    || (String(form.contract) === String(contractId) ? selectedContract : null);
-  const formContractAmount = contractAmountOf(formContract);
-  const overContract = formContractAmount > 0 && cumulativeThis > formContractAmount;
-  const progress = formContractAmount > 0 ? Math.min(100, (cumulativeThis / formContractAmount) * 100) : 0;
+  }, [workDone, displayRate, setForm]);
 
   const openNew = () => {
     const newDate = todayIso();
     const previousCumulative = previousCumulativeFor(scopedList) ?? 0;
+    const initialCurrency = currencyList.find(
+      (currency) => String(currency.id) === String(selectedContract?.currency),
+    ) || null;
+    const initialRate = normalizeRate(
+      selectedContractRate > 1 ? selectedContractRate : (initialCurrency?.exchange_rate || selectedContract?.exchange_rate || 1),
+    );
     setForm({
       contract: contractId,
       number: '',
       date: newDate,
       amount: previousCumulative,
+      amount_foreign: fromRial(previousCumulative, initialRate),
       cumulative_previous_amount: previousCumulative,
+      cumulative_previous_foreign: fromRial(previousCumulative, initialRate),
       currency: selectedContract?.currency || '',
       value_added_tax: 0,
+      value_added_tax_foreign: 0,
       other_additions: 0,
+      other_additions_foreign: 0,
       value_added_tax_percent: 0,
       other_additions_percent: 0,
       value_added_tax_mode: 'amount',
@@ -806,13 +936,21 @@ const StatementEditorPage = () => {
       is_approved: false,
       description: '',
     });
-    setRateOverride('');
+    setRateOverride(initialRate > 1 ? String(initialRate) : '');
     setError('');
     setDetail(null);
     setMode('form');
   };
 
   const openEdit = (row) => {
+    const rowContract = contractList.find((contract) => String(contract.id) === String(row.contract))
+      || selectedContract;
+    const rowCurrency = currencyList.find((currency) => String(currency.id) === String(row.currency))
+      || currencyList.find((currency) => String(currency.id) === String(rowContract?.currency));
+    const editRate = rateOfStatement(
+      row,
+      rowCurrency?.exchange_rate || rowContract?.exchange_rate || selectedContractRate || 1,
+    );
     const editWork = Math.max(0, Number(row.amount || 0) - Number(row.cumulative_previous_amount || 0));
     const percentOfWork = (value) => (
       editWork > 0 ? Math.round((Number(value || 0) / editWork) * 10000) / 100 : 0
@@ -824,24 +962,32 @@ const StatementEditorPage = () => {
     const previousCumulative = calculatedPrevious == null
       ? Number(row.cumulative_previous_amount || 0)
       : calculatedPrevious;
+    const withForeignAmount = (items) => withCalculationMode(items).map((item) => ({
+      ...item,
+      amount_foreign: fromRial(item.amount, editRate),
+    }));
     setForm({
       ...row,
       contract: String(row.contract || ''),
       amount: Number(row.amount || 0),
+      amount_foreign: fromRial(row.amount, editRate),
       cumulative_previous_amount: previousCumulative,
+      cumulative_previous_foreign: fromRial(previousCumulative, editRate),
       value_added_tax: Number(row.value_added_tax || 0),
+      value_added_tax_foreign: fromRial(row.value_added_tax, editRate),
       other_additions: Number(row.other_additions || 0),
+      other_additions_foreign: fromRial(row.other_additions, editRate),
       value_added_tax_percent: percentOfWork(row.value_added_tax),
       other_additions_percent: percentOfWork(row.other_additions),
       value_added_tax_mode: 'amount',
       other_additions_mode: 'amount',
-      additions: withCalculationMode(row.additions),
-      deductions: withCalculationMode(row.deductions),
+      additions: withForeignAmount(row.additions),
+      deductions: withForeignAmount(row.deductions),
       documents: Array.isArray(row.documents) ? row.documents : [],
       pendingFiles: [],
       is_approved: Boolean(row.is_approved),
     });
-    setRateOverride(row.exchange_rate != null && row.exchange_rate !== '' ? String(row.exchange_rate) : '');
+    setRateOverride(editRate > 1 ? String(editRate) : '');
     setError('');
     setDetail(null);
     setMode('form');
@@ -856,9 +1002,13 @@ const StatementEditorPage = () => {
     if (next == null) return;
     setForm((previous) => {
       if (!previous || Number(previous.cumulative_previous_amount || 0) === next) return previous;
-      return { ...previous, cumulative_previous_amount: next };
+      return {
+        ...previous,
+        cumulative_previous_amount: next,
+        cumulative_previous_foreign: fromRial(next, displayRate),
+      };
     });
-  }, [mode, form.contract, form.date, form.id, allStatements]);
+  }, [mode, form.contract, form.date, form.id, allStatements, displayRate]);
 
   const openPrint = (row) => {
     setPrintPending(true);
@@ -874,57 +1024,69 @@ const StatementEditorPage = () => {
     setPrintPending(false);
   };
 
-  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, percent: 0, mode: 'amount' }]);
+  const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, amount_foreign: 0, percent: 0, mode: 'amount' }]);
   const removeDeduction = (index) => setField('deductions', deductions.filter((_, current) => current !== index));
   const updateDeduction = (index, key, value) => {
     setField('deductions', deductions.map((item, current) => {
       if (current !== index) return item;
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
-        return { ...item, percent, amount: Math.round((workDone * percent) / 100), mode: 'percent' };
+        const amount = Math.round((workDone * percent) / 100);
+        return {
+          ...item, percent, amount, amount_foreign: fromRial(amount, displayRate), mode: 'percent',
+        };
       }
       if (key === 'amount') {
-        const amount = Math.max(0, Number(value) || 0);
+        const amountForeign = Math.max(0, Number(value) || 0);
+        const amount = toRial(amountForeign, displayRate);
         const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
-        return { ...item, amount, percent, mode: 'amount' };
+        return { ...item, amount_foreign: amountForeign, amount, percent, mode: 'amount' };
       }
       return { ...item, [key]: value };
     }));
   };
   const chooseDeduction = (definition) => {
     const percent = Number(definition.default_percent || 0);
+    const amount = Math.round((workDone * percent) / 100);
     setField('deductions', [...deductions, {
       title: definition.description || definition.code,
       percent,
-      amount: Math.round((workDone * percent) / 100),
+      amount,
+      amount_foreign: fromRial(amount, displayRate),
       mode: 'percent',
     }]);
   };
 
-  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0, mode: 'amount' }]);
+  const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' }]);
   const removeAddition = (index) => setField('additions', additions.filter((_, current) => current !== index));
   const updateAddition = (index, key, value) => {
     setField('additions', additions.map((item, current) => {
       if (current !== index) return item;
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
-        return { ...item, percent, amount: Math.round((workDone * percent) / 100), mode: 'percent' };
+        const amount = Math.round((workDone * percent) / 100);
+        return {
+          ...item, percent, amount, amount_foreign: fromRial(amount, displayRate), mode: 'percent',
+        };
       }
       if (key === 'amount') {
-        const amount = Math.max(0, Number(value) || 0);
+        const amountForeign = Math.max(0, Number(value) || 0);
+        const amount = toRial(amountForeign, displayRate);
         const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
-        return { ...item, amount, percent, mode: 'amount' };
+        return { ...item, amount_foreign: amountForeign, amount, percent, mode: 'amount' };
       }
       return { ...item, [key]: value };
     }));
   };
   const chooseAddition = (definition) => {
     const percent = Number(definition.default_percent || 0);
+    const amount = Math.round((workDone * percent) / 100);
     setField('additions', [...additions, {
       code: definition.code,
       description: definition.description,
       percent,
-      amount: Math.round((workDone * percent) / 100),
+      amount,
+      amount_foreign: fromRial(amount, displayRate),
       mode: 'percent',
     }]);
   };
@@ -954,6 +1116,10 @@ const StatementEditorPage = () => {
   const submit = () => {
     if (!form.contract) { setError('قرارداد مرتبط را انتخاب کنید.'); return; }
     if (!form.date) { setError('تاریخ صورت‌وضعیت را وارد کنید.'); return; }
+    if (!isRial && normalizeRate(rate) <= 1) {
+      setError('برای قرارداد ارزی، نرخ تبدیل به ریال را وارد کنید.');
+      return;
+    }
     if (cumulativeThis < cumulativePrev) {
       setError('مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.');
       return;
@@ -983,6 +1149,13 @@ const StatementEditorPage = () => {
     URL.revokeObjectURL(link.href);
   };
 
+  const cumulativePrevForeign = displayValue(cumulativePrev);
+  const cumulativeThisForeign = displayValue(cumulativeThis);
+  const workDoneForeign = Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
+  const additionsTotalForeign = displayValue(additionsTotal);
+  const deductionsTotalForeign = displayValue(deductionsTotal);
+  const netAmountForeign = workDoneForeign + additionsTotalForeign - deductionsTotalForeign;
+
   if (mode === 'form') {
     return (
       <StatementEditorView
@@ -1000,12 +1173,21 @@ const StatementEditorPage = () => {
         additionsTotal={additionsTotal}
         deductionsTotal={deductionsTotal}
         cumulativePrev={cumulativePrev}
+        cumulativePrevForeign={cumulativePrevForeign}
         cumulativeThis={cumulativeThis}
+        cumulativeThisForeign={cumulativeThisForeign}
         workDone={workDone}
+        workDoneForeign={workDoneForeign}
         netAmount={netAmount}
+        netAmountForeign={netAmountForeign}
+        additionsTotalForeign={additionsTotalForeign}
+        deductionsTotalForeign={deductionsTotalForeign}
         rate={rate}
         rateOverride={rateOverride}
-        setRateOverride={setRateOverride}
+        onRateChange={changeRate}
+        onCurrencyChange={changeCurrency}
+        onAmountChange={updateAmountForeign}
+        isRial={isRial}
         baseRate={baseRate}
         formCurrencyLabel={formCurrencyLabel}
         overContract={overContract}
@@ -1070,9 +1252,7 @@ const StatementEditorPage = () => {
           pendingRows={pendingRows}
           counts={{ approved: allStatements.filter((row) => row.is_approved).length }}
           totalNet={allStatements.reduce((sum, row) => sum + rowMetrics(row).net, 0)}
-          currency={normalizeCurrencyLabel(
-            contractList.find((contract) => String(contract.id) === String(allStatements[0]?.contract))?.currency_name || 'ریال',
-          )}
+          currency="ریال"
           accent={STATEMENT_ACCENT}
           onSelect={selectContract}
           onSelectContract={selectContractById}
@@ -1083,7 +1263,7 @@ const StatementEditorPage = () => {
             <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
               <ContractSnapshotCard contract={selectedContract} currency={currencyLabel} accent={STATEMENT_ACCENT}
                 onBack={clearContract} statementCount={scopedList.length} />
-              <FinancialCoverageCard totals={totals} currency={currencyLabel} isLoading={paymentsLoading} accent={STATEMENT_ACCENT} />
+              <FinancialCoverageCard totals={displayTotals} currency={currencyLabel} isLoading={paymentsLoading} accent={STATEMENT_ACCENT} />
               <StatusNav counts={counts} active={statusFilter} onChange={setStatusFilter} accent={STATEMENT_ACCENT} />
             </Stack>
           </Grid>
@@ -1094,13 +1274,13 @@ const StatementEditorPage = () => {
                 <KpiTile icon={ReceiptLongIcon} label="تعداد صورت‌وضعیت" value={formatPersianNumber(counts.all)} suffix="مورد" color={STATEMENT_ACCENT} hint={`${formatPersianNumber(counts.pending)} در انتظار تأیید`} />
               </Grid>
               <Grid item xs={6} md={3}>
-                <KpiTile icon={PaymentsIcon} label="مجموع قابل پرداخت" value={compactMoney(totals.net, currencyLabel)} color={GREEN} hint={`${formatPersianNumber(counts.approved)} تأییدشده`} size={16} />
+                <KpiTile icon={PaymentsIcon} label="مجموع قابل پرداخت" value={compactMoney(displayTotals.net, currencyLabel)} color={GREEN} hint={`${formatPersianNumber(counts.approved)} تأییدشده`} size={16} />
               </Grid>
               <Grid item xs={6} md={3}>
-                <KpiTile icon={EventAvailableIcon} label="پرداخت‌شده" value={compactMoney(totals.paid, currencyLabel)} color={BLUE} hint={`مانده ${compactMoney(totals.outstanding, currencyLabel)}`} size={16} />
+                <KpiTile icon={EventAvailableIcon} label="پرداخت‌شده" value={compactMoney(displayTotals.paid, currencyLabel)} color={BLUE} hint={`مانده ${compactMoney(displayTotals.outstanding, currencyLabel)}`} size={16} />
               </Grid>
               <Grid item xs={6} md={3}>
-                <KpiTile icon={TrendingUpIcon} label="کارکرد تجمعی" value={compactMoney(totals.cumulative, currencyLabel)} color={AMBER} hint={`پیشرفت قرارداد ${toPersianDigits(contractProgress.toFixed(0))}٪`} size={16} />
+                <KpiTile icon={TrendingUpIcon} label="کارکرد تجمعی" value={compactMoney(displayTotals.cumulative, currencyLabel)} color={AMBER} hint={`پیشرفت قرارداد ${toPersianDigits(contractProgress.toFixed(0))}٪`} size={16} />
               </Grid>
             </Grid>
 
@@ -1135,9 +1315,9 @@ const StatementEditorPage = () => {
               </Stack>
             </Paper>
 
-            {overContract > 0 ? (
+            {displayTotals.overContract > 0 ? (
               <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 12 }}>مبلغ تجمعی صورت‌وضعیت‌ها از مبلغ قرارداد بیشتر است ({money(overContract, currencyLabel)}).</Typography>
+                <Typography sx={{ fontSize: 12 }}>مبلغ تجمعی صورت‌وضعیت‌ها از مبلغ قرارداد بیشتر است ({money(displayTotals.overContract, currencyLabel)}).</Typography>
               </Alert>
             ) : null}
 
@@ -1152,7 +1332,8 @@ const StatementEditorPage = () => {
               <Grid container spacing={1.5}>
                 {filtered.map((row) => (
                   <Grid item xs={12} md={6} xl={4} key={row.id}>
-                    <StatementCard row={row} contractAmount={selectedContractAmount} currency={currencyLabel} accent={STATEMENT_ACCENT}
+                    <StatementCard row={row} contractAmount={selectedContractAmount} currency={currencyLabel}
+                      fallbackRate={selectedContractRate} accent={STATEMENT_ACCENT}
                       onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} onPrint={openPrint}
                       onApprove={(selected) => toggleApproval.mutate(selected)} />
                   </Grid>
@@ -1160,6 +1341,7 @@ const StatementEditorPage = () => {
               </Grid>
             ) : (
               <StatementTable rows={filtered} contractAmount={selectedContractAmount} currency={currencyLabel}
+                fallbackRate={selectedContractRate}
                 onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} onPrint={openPrint}
                 onApprove={(selected) => toggleApproval.mutate(selected)} />
             )}
@@ -1179,6 +1361,7 @@ const StatementEditorPage = () => {
       )}
 
       <StatementDetailDrawer row={detail} contract={selectedContract} currency={currencyLabel}
+        fallbackRate={selectedContractRate}
         onClose={() => setDetail(null)} onEdit={openEdit} onDelete={setConfirmDelete}
         onPrint={openPrint} onApprove={(selected) => toggleApproval.mutate(selected)} />
 
@@ -1208,13 +1391,17 @@ const StatementEditorPage = () => {
 
 const StatementEditorView = ({
   onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
-  additions, previewAdditions, deductions, additionsTotal, deductionsTotal, cumulativePrev, cumulativeThis,
-  workDone, netAmount, rate, rateOverride, setRateOverride, baseRate, formCurrencyLabel,
+  additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
+  cumulativePrev, cumulativePrevForeign, cumulativeThis, cumulativeThisForeign,
+  workDone, workDoneForeign, netAmount, netAmountForeign,
+  additionsTotalForeign, deductionsTotalForeign,
+  rate, rateOverride, onRateChange, onCurrencyChange, onAmountChange, isRial, baseRate, formCurrencyLabel,
   overContract, progress, error, setError, saving, onSave, onAddFiles, onRemovePending,
   onRemoveDocument, onAddAddition, onRemoveAddition, onUpdateAddition, onChooseAddition,
   onAddDeduction, onRemoveDeduction, onUpdateDeduction, onChooseDeduction,
 }) => {
   const theme = useTheme();
+  const displayRate = isRial ? 1 : rate;
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
   const updateFixedAddition = (field, key, value) => {
     const percentKey = `${field}_percent`;
@@ -1222,16 +1409,21 @@ const StatementEditorView = ({
     setForm((previous) => {
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
+        const amount = Math.round((Math.max(0, Number(workDone) || 0) * percent) / 100);
         return {
           ...previous,
           [percentKey]: percent,
-          [field]: Math.round((Math.max(0, Number(workDone) || 0) * percent) / 100),
+          [field]: amount,
+          [`${field}_foreign`]: fromRial(amount, displayRate),
           [modeKey]: 'percent',
         };
       }
-      const amount = Math.max(0, Number(value) || 0);
+      const amountForeign = Math.max(0, Number(value) || 0);
+      const amount = toRial(amountForeign, displayRate);
       const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
-      return { ...previous, [field]: amount, [percentKey]: percent, [modeKey]: 'amount' };
+      return {
+        ...previous, [field]: amount, [`${field}_foreign`]: amountForeign, [percentKey]: percent, [modeKey]: 'amount',
+      };
     });
   };
   const documents = Array.isArray(form.documents) ? form.documents : [];
@@ -1258,9 +1450,9 @@ const StatementEditorView = ({
       />
 
       <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmount, formCurrencyLabel)} color="#0f766e" size={16} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDone, formCurrencyLabel)} color={BLUE} size={16} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="پیشرفت قرارداد" value={`${toPersianDigits(progress.toFixed(0))}٪`} color={STATEMENT_ACCENT} hint={`کارکرد تجمعی ${compactMoney(cumulativeThis, formCurrencyLabel)}`} size={17} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color="#0f766e" size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDoneForeign, formCurrencyLabel)} color={BLUE} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(workDone, 'ریال')}`} /></Grid>
+        <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="پیشرفت قرارداد" value={`${toPersianDigits(progress.toFixed(0))}٪`} color={STATEMENT_ACCENT} hint={`کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} size={17} /></Grid>
         <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
       </Grid>
 
@@ -1287,14 +1479,16 @@ const StatementEditorView = ({
                   <Grid item xs={12} sm={6}>
                     <FormControl size="small" fullWidth>
                       <InputLabel>واحد ارز</InputLabel>
-                      <Select value={form.currency || ''} label="واحد ارز" onChange={(event) => { update('currency', event.target.value); setRateOverride(''); }}>
+                      <Select value={form.currency || ''} label="واحد ارز" onChange={(event) => onCurrencyChange(event.target.value)}>
                         {currencyList.map((currency) => <MenuItem key={currency.id} value={currency.id}>{normalizeCurrencyLabel(currency.name || currency.symbol)} ({currency.code})</MenuItem>)}
                       </Select>
                     </FormControl>
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <TextField size="small" fullWidth type="number" label="نرخ تبدیل به ریال" value={rateOverride}
-                      placeholder={formatPersianNumber(baseRate)} onChange={(event) => setRateOverride(event.target.value)} />
+                      inputProps={{ step: 'any', min: 0 }} disabled={isRial}
+                      helperText={isRial ? 'برای ریال نرخ تبدیل ۱ است.' : 'نرخ می‌تواند اعشار داشته باشد (تا ۶ رقم).'}
+                      placeholder={formatPersianNumber(baseRate)} onChange={(event) => onRateChange(event.target.value)} />
                   </Grid>
                   <Grid item xs={12}>
                     <FormControlLabel control={<Switch checked={Boolean(form.is_approved)} onChange={(event) => update('is_approved', event.target.checked)} />}
@@ -1307,15 +1501,43 @@ const StatementEditorView = ({
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>کارکرد و مبالغ</Typography>
                 <Grid container spacing={1.1}>
-                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="مبلغ تجمعی این صورت‌وضعیت" value={form.amount ?? 0} onChange={(value) => update('amount', value)} /></Grid>
-                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="مبلغ تجمعی دوره قبل" value={cumulativePrev} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
-                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="کارکرد این دوره (خودکار)" value={workDone} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
-                  <Grid item xs={12} sm={6}><MoneyInput size="small" fullWidth label="معادل ریال کارکرد" value={workDone * rate} onChange={() => {}} InputProps={{ readOnly: true }} /></Grid>
+                  <Grid item xs={12} sm={6}>
+                    <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                      label={`مبلغ تجمعی این صورت‌وضعیت (${formCurrencyLabel})`}
+                      value={form.amount_foreign ?? cumulativeThisForeign}
+                      onChange={(value) => onAmountChange('amount', value)} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <MoneyInput size="small" fullWidth allowDecimals={false} label="معادل ریالی مبلغ تجمعی"
+                      value={form.amount ?? 0} onChange={() => {}} InputProps={{ readOnly: true }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                      label={`مبلغ تجمعی دوره قبل (${formCurrencyLabel})`}
+                      value={form.cumulative_previous_foreign ?? cumulativePrevForeign}
+                      onChange={() => {}} InputProps={{ readOnly: true }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ تجمعی دوره قبل (ریال)"
+                      value={cumulativePrev} onChange={() => {}} InputProps={{ readOnly: true }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                      label={`کارکرد این دوره (${formCurrencyLabel})`}
+                      value={workDoneForeign} onChange={() => {}} InputProps={{ readOnly: true }} />
+                  </Grid>
+                  <Grid item xs={12} sm={6}>
+                    <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد این دوره (ریال)"
+                      value={workDone} onChange={() => {}} InputProps={{ readOnly: true }} />
+                  </Grid>
                 </Grid>
                 <Box sx={{ mt: 1, p: 1.1, borderRadius: '12px', bgcolor: alpha('#0f766e', 0.05), border: `1px solid ${alpha('#0f766e', 0.16)}` }}>
                   <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>{money(netAmount, formCurrencyLabel)}</Typography></Box>
-                    <Box sx={{ textAlign: 'left' }}><Typography sx={{ fontSize: 12, color: MUTED }}>معادل ارزی</Typography><Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{rate > 0 ? formatPersianNumber(netAmount / rate) : '—'} {formCurrencyLabel}</Typography></Box>
+                    <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>{money(netAmountForeign, formCurrencyLabel)}</Typography></Box>
+                    <Box sx={{ textAlign: 'left' }}>
+                      <Typography sx={{ fontSize: 12, color: MUTED }}>{isRial ? 'واحد پول' : 'معادل ریالی'}</Typography>
+                      <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{isRial ? formCurrencyLabel : money(netAmount, 'ریال')}</Typography>
+                    </Box>
                   </Stack>
                 </Box>
               </Box>
@@ -1324,7 +1546,7 @@ const StatementEditorView = ({
               <Box>
                 <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
                   <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#0f766e' }}>اضافات</Typography>
-                  <Chip size="small" label={money(additionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
+                  <Chip size="small" label={`${formatPersianNumber(additionsTotalForeign)} ${formCurrencyLabel}`} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
                 </Stack>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
                   درصد اضافات بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.
@@ -1332,16 +1554,22 @@ const StatementEditorView = ({
                 <Grid container spacing={0.8} sx={{ mb: 0.8 }}>
                   <Grid item xs={12} sm={6}>
                     <Stack direction="row" spacing={0.6} alignItems="center">
-                      <MoneyInput size="small" fullWidth label="ارزش افزوده" value={form.value_added_tax ?? 0} onChange={(value) => updateFixedAddition('value_added_tax', 'amount', value)} />
+                      <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                        label={`ارزش افزوده (${formCurrencyLabel})`} value={form.value_added_tax_foreign ?? 0}
+                        onChange={(value) => updateFixedAddition('value_added_tax', 'amount', value)} />
                       <TextField size="small" type="number" label="٪" value={form.value_added_tax_percent ?? 0}
+                        inputProps={{ step: 'any', min: 0 }}
                         onChange={(event) => updateFixedAddition('value_added_tax', 'percent', event.target.value)}
                         sx={{ width: 82, flex: '0 0 82px' }} />
                     </Stack>
                   </Grid>
                   <Grid item xs={12} sm={6}>
                     <Stack direction="row" spacing={0.6} alignItems="center">
-                      <MoneyInput size="small" fullWidth label="سایر اضافات" value={form.other_additions ?? 0} onChange={(value) => updateFixedAddition('other_additions', 'amount', value)} />
+                      <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                        label={`سایر اضافات (${formCurrencyLabel})`} value={form.other_additions_foreign ?? 0}
+                        onChange={(value) => updateFixedAddition('other_additions', 'amount', value)} />
                       <TextField size="small" type="number" label="٪" value={form.other_additions_percent ?? 0}
+                        inputProps={{ step: 'any', min: 0 }}
                         onChange={(event) => updateFixedAddition('other_additions', 'percent', event.target.value)}
                         sx={{ width: 82, flex: '0 0 82px' }} />
                     </Stack>
@@ -1350,8 +1578,8 @@ const StatementEditorView = ({
                 {additions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`addition-${index}`} sx={{ mb: 0.55 }}>
                     <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="شرح اضافه" value={item.description || ''} onChange={(event) => onUpdateAddition(index, 'description', event.target.value)} /></Grid>
-                    <Grid item xs={4} sm={2}><TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0} onChange={(event) => onUpdateAddition(index, 'percent', event.target.value)} /></Grid>
-                    <Grid item xs={6} sm={4}><MoneyInput size="small" fullWidth placeholder="مبلغ" value={item.amount ?? 0} onChange={(value) => onUpdateAddition(index, 'amount', value)} /></Grid>
+                    <Grid item xs={4} sm={2}><TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0} inputProps={{ step: 'any', min: 0 }} onChange={(event) => onUpdateAddition(index, 'percent', event.target.value)} /></Grid>
+                    <Grid item xs={6} sm={4}><MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4} placeholder="مبلغ" value={item.amount_foreign ?? 0} onChange={(value) => onUpdateAddition(index, 'amount', value)} /></Grid>
                     <Grid item xs={2} sm={1}><IconButton size="small" color="error" onClick={() => onRemoveAddition(index)}><RemoveCircleIcon fontSize="small" /></IconButton></Grid>
                   </Grid>
                 ))}
@@ -1370,7 +1598,7 @@ const StatementEditorView = ({
               <Box>
                 <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
                   <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#be123c' }}>کسورات</Typography>
-                  <Chip size="small" label={money(deductionsTotal, formCurrencyLabel)} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
+                  <Chip size="small" label={`${formatPersianNumber(deductionsTotalForeign)} ${formCurrencyLabel}`} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
                 </Stack>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
                   درصد کسورات (از جمله پیش‌پرداخت) بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.
@@ -1378,8 +1606,8 @@ const StatementEditorView = ({
                 {deductions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`deduction-${index}`} sx={{ mb: 0.55 }}>
                     <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="عنوان کسور" value={item.title || ''} onChange={(event) => onUpdateDeduction(index, 'title', event.target.value)} /></Grid>
-                    <Grid item xs={4} sm={2}><TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0} onChange={(event) => onUpdateDeduction(index, 'percent', event.target.value)} /></Grid>
-                    <Grid item xs={6} sm={4}><MoneyInput size="small" fullWidth placeholder="مبلغ" value={item.amount ?? 0} onChange={(value) => onUpdateDeduction(index, 'amount', value)} /></Grid>
+                    <Grid item xs={4} sm={2}><TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0} inputProps={{ step: 'any', min: 0 }} onChange={(event) => onUpdateDeduction(index, 'percent', event.target.value)} /></Grid>
+                    <Grid item xs={6} sm={4}><MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4} placeholder="مبلغ" value={item.amount_foreign ?? 0} onChange={(value) => onUpdateDeduction(index, 'amount', value)} /></Grid>
                     <Grid item xs={2} sm={1}><IconButton size="small" color="error" onClick={() => onRemoveDeduction(index)}><RemoveCircleIcon fontSize="small" /></IconButton></Grid>
                   </Grid>
                 ))}

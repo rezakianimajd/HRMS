@@ -59,7 +59,9 @@ export const statementMetrics = (row, fallbackRate = 0) => {
   const vat = toNum(row?.value_added_tax) || vatFromAdditions;
   const gross = toNum(row?.work_done)
     || Math.max(0, toNum(row?.amount) - toNum(row?.cumulative_previous_amount));
-  const rate = toNum(row?.exchange_rate) || toNum(fallbackRate) || 0;
+  const rowRate = toNum(row?.exchange_rate);
+  const fallback = toNum(fallbackRate);
+  const rate = rowRate > 1 ? rowRate : (fallback > 1 ? fallback : rowRate || 1);
   const foreign = Boolean(row?.currency_name) && normalizeCurrencyLabel(row.currency_name) !== 'ریال';
   const foreignGross = foreign && rate > 0 ? gross / rate : null;
   const net = row?.net_amount !== null && row?.net_amount !== undefined && row?.net_amount !== ''

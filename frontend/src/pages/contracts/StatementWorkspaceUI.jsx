@@ -32,6 +32,9 @@ import { toJalali } from '../../core/utils/dateUtils';
 import ContractListPicker from '../../core/components/ui/ContractListPicker';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
 import { AttachmentLinks } from './AddendumWorkspaceUI';
+import {
+  RIAL_LABEL, displayAmount, hasForeignAmount, isRialCurrency, rateOfStatement,
+} from './statementCurrency';
 
 export const STATEMENT_ACCENT = '#6366f1';
 export const STATEMENT_DARK = '#4f46e5';
@@ -45,6 +48,24 @@ const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 
 export const dateLabel = (value) => (value ? toJalali(value) : '—');
 export const money = (value, currency = 'ریال') => `${formatPersianNumber(n(value))} ${currency}`;
+
+/**
+ * نمایش مبلغ یک صورت‌وضعیت:
+ *  - برای قرارداد ارزی، معادل ارزی (بر اساس نرخ همان دوره) نمایش داده می‌شود.
+ *  - مبلغ ذخیره‌شده در دیتابیس همیشه ریالی است.
+ */
+export const statementMoney = (row, rialValue, currency = RIAL_LABEL, fallbackRate = 1) => {
+  const rate = rateOfStatement(row, fallbackRate);
+  if (rate > 1 && !isRialCurrency(currency)) {
+    return money(displayAmount(row, rialValue, fallbackRate), currency);
+  }
+  return money(rialValue, RIAL_LABEL);
+};
+
+export const statementAmount = (row, rialValue, fallbackRate = 1) => (
+  displayAmount(row, rialValue, fallbackRate)
+);
+
 export const currencyFor = (row, contract) => normalizeCurrencyLabel(
   row?.currency_name || row?.currency_symbol || contract?.currency_name
   || contract?.currency_symbol || 'ریال',
@@ -113,13 +134,16 @@ export const MetricBox = ({ label, value, color = INK, hint }) => (
 );
 
 export const StatementCard = ({
-  row, contractAmount, currency, accent = STATEMENT_ACCENT,
+  row, contractAmount, currency, fallbackRate = 1, accent = STATEMENT_ACCENT,
   onView, onEdit, onDelete, onPrint, onApprove,
 }) => {
   const theme = useTheme();
   const metrics = rowMetrics(row);
   const status = statementStatus(row);
-  const progress = contractAmount > 0 ? clamp((metrics.amount / contractAmount) * 100) : 0;
+  const rate = rateOfStatement(row, fallbackRate);
+  const contractAmountRial = Math.max(0, n(contractAmount)) * rate;
+  const progress = contractAmountRial > 0 ? clamp((metrics.amount / contractAmountRial) * 100) : 0;
+  const foreign = hasForeignAmount(row, fallbackRate);
   const documents = Array.isArray(row.documents) ? row.documents : [];
   return (
     <Paper elevation={0} sx={{
@@ -144,12 +168,15 @@ export const StatementCard = ({
 
       <Box sx={{ borderRadius: '11px', p: 0.9, bgcolor: alpha(status.color, 0.035), border: `1px solid ${alpha(status.color, 0.13)}` }}>
         <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography>
-        <Typography noWrap sx={{ fontSize: 14.5, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{money(metrics.net, currency)}</Typography>
+        <Typography noWrap sx={{ fontSize: 14.5, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{statementMoney(row, metrics.net, currency, fallbackRate)}</Typography>
+        {foreign ? (
+          <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>معادل ریالی: {money(metrics.net, RIAL_LABEL)}</Typography>
+        ) : null}
       </Box>
 
       <Grid container spacing={0.55}>
-        <Grid item xs={6}><MetricBox label="کارکرد دوره" value={money(metrics.work, currency)} color={BLUE} /></Grid>
-        <Grid item xs={6}><MetricBox label="جمع کسورات" value={money(metrics.deductionsTotal, currency)} color={metrics.deductionsTotal ? RED : INK} /></Grid>
+        <Grid item xs={6}><MetricBox label="کارکرد دوره" value={statementMoney(row, metrics.work, currency, fallbackRate)} color={BLUE} /></Grid>
+        <Grid item xs={6}><MetricBox label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} color={metrics.deductionsTotal ? RED : INK} /></Grid>
       </Grid>
 
       <Box>
@@ -161,7 +188,7 @@ export const StatementCard = ({
       </Box>
 
       <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
-        {metrics.additionsTotal > 0 ? <Chip size="small" label={`اضافات ${formatPersianNumber(metrics.additionsTotal)}`} sx={{ height: 18, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} /> : null}
+        {metrics.additionsTotal > 0 ? <Chip size="small" label={`اضافات ${formatPersianNumber(statementAmount(row, metrics.additionsTotal, fallbackRate))} ${foreign ? currency : RIAL_LABEL}`} sx={{ height: 18, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} /> : null}
         {documents.length ? <Chip size="small" label={`${formatPersianNumber(documents.length)} پیوست`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
         {!metrics.additionsTotal && !documents.length ? <Chip size="small" label="بدون پیوست" sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} /> : null}
       </Stack>
@@ -183,7 +210,7 @@ export const StatementCard = ({
   );
 };
 
-export const StatementTable = ({ rows, contractAmount, currency, onView, onEdit, onDelete, onPrint, onApprove }) => {
+export const StatementTable = ({ rows, contractAmount, currency, fallbackRate = 1, onView, onEdit, onDelete, onPrint, onApprove }) => {
   const theme = useTheme();
   const headSx = { fontWeight: 800, fontSize: 12, color: '#334155', bgcolor: '#f8fafc', whiteSpace: 'nowrap', py: 1 };
   const cellSx = { fontSize: 12, whiteSpace: 'nowrap', py: 0.8, borderBottom: '1px solid #eef2f7' };
@@ -202,16 +229,18 @@ export const StatementTable = ({ rows, contractAmount, currency, onView, onEdit,
             {rows.map((row) => {
               const metrics = rowMetrics(row);
               const status = statementStatus(row);
-              const progress = contractAmount > 0 ? clamp((metrics.amount / contractAmount) * 100) : 0;
+              const rate = rateOfStatement(row, fallbackRate);
+              const contractAmountRial = Math.max(0, n(contractAmount)) * rate;
+              const progress = contractAmountRial > 0 ? clamp((metrics.amount / contractAmountRial) * 100) : 0;
               const documents = Array.isArray(row.documents) ? row.documents : [];
               return (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{row.number || '—'}</TableCell>
                   <TableCell sx={cellSx}>{dateLabel(row.date)}</TableCell>
-                  <TableCell sx={cellSx}>{money(metrics.work, currency)}</TableCell>
-                  <TableCell sx={{ ...cellSx, color: GREEN }}>{formatPersianNumber(metrics.additionsTotal)}</TableCell>
-                  <TableCell sx={{ ...cellSx, color: metrics.deductionsTotal ? RED : MUTED }}>{formatPersianNumber(metrics.deductionsTotal)}</TableCell>
-                  <TableCell sx={{ ...cellSx, color: status.color, fontWeight: 900 }}>{money(metrics.net, currency)}</TableCell>
+                  <TableCell sx={cellSx} title={`${money(metrics.work, RIAL_LABEL)}`}>{statementMoney(row, metrics.work, currency, fallbackRate)}</TableCell>
+                  <TableCell sx={{ ...cellSx, color: GREEN }}>{statementMoney(row, metrics.additionsTotal, currency, fallbackRate)}</TableCell>
+                  <TableCell sx={{ ...cellSx, color: metrics.deductionsTotal ? RED : MUTED }}>{statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)}</TableCell>
+                  <TableCell sx={{ ...cellSx, color: status.color, fontWeight: 900 }} title={`${money(metrics.net, RIAL_LABEL)}`}>{statementMoney(row, metrics.net, currency, fallbackRate)}</TableCell>
                   <TableCell sx={cellSx}>
                     <Stack direction="row" alignItems="center" spacing={0.45}>
                       <Box sx={{ width: 48 }}><ProgressBar value={progress} color={status.color} height={4} /></Box>
@@ -381,7 +410,7 @@ export const StatementLanding = ({
                       </Box>
                       <Box sx={{ flex: 1, minWidth: 0 }}>
                         <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.number || `صورت‌وضعیت #${row.id}`} · {row.contract_subject || 'قرارداد'}</Typography>
-                        <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{dateLabel(row.date)} · {money(rowMetrics(row).net, currency)}</Typography>
+                        <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{dateLabel(row.date)} · {statementMoney(row, rowMetrics(row).net, row.currency_name || row.currency_symbol || currency)}</Typography>
                       </Box>
                       <Chip size="small" label="در انتظار" sx={{ height: 19, fontSize: 12, bgcolor: '#fff7ed', color: '#c2410c', fontWeight: 800 }} />
                     </Stack>
@@ -402,7 +431,7 @@ export const StatementLanding = ({
 };
 
 export const StatementDetailDrawer = ({
-  row, contract, currency, accent = STATEMENT_ACCENT,
+  row, contract, currency, fallbackRate = 1, accent = STATEMENT_ACCENT,
   onClose, onEdit, onDelete, onPrint, onApprove,
 }) => {
   const theme = useTheme();
@@ -410,6 +439,8 @@ export const StatementDetailDrawer = ({
   const metrics = rowMetrics(row);
   const status = statementStatus(row);
   const StatusIcon = status.icon;
+  const rate = rateOfStatement(row, fallbackRate);
+  const foreign = hasForeignAmount(row, fallbackRate);
   const documents = Array.isArray(row.documents) ? row.documents : [];
   return (
     <Drawer anchor="left" open={Boolean(row)} onClose={onClose}
@@ -431,7 +462,7 @@ export const StatementDetailDrawer = ({
             <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
           </Stack>
           <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-            <Chip size="small" label={money(metrics.net, currency)} sx={{ height: 21, fontSize: 12, fontWeight: 900, bgcolor: alpha(status.color, 0.08), color: status.color }} />
+            <Chip size="small" label={statementMoney(row, metrics.net, currency, fallbackRate)} sx={{ height: 21, fontSize: 12, fontWeight: 900, bgcolor: alpha(status.color, 0.08), color: status.color }} />
             {documents.length ? <Chip size="small" label={`${formatPersianNumber(documents.length)} پیوست`} sx={{ height: 21, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
           </Stack>
         </Box>
@@ -442,28 +473,29 @@ export const StatementDetailDrawer = ({
               <SectionHeading icon={PaymentsIcon} title="مشخصات مالی" color={status.color} />
               <Box sx={{ p: 1, borderRadius: '11px', bgcolor: alpha(status.color, 0.04), border: `1px solid ${alpha(status.color, 0.12)}`, mb: 0.8 }}>
                 <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography>
-                <Typography sx={{ fontSize: 18, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{money(metrics.net, currency)}</Typography>
+                <Typography sx={{ fontSize: 18, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{statementMoney(row, metrics.net, currency, fallbackRate)}</Typography>
+                {foreign ? <Typography sx={{ fontSize: 11, color: MUTED }}>معادل ریالی: {money(metrics.net, RIAL_LABEL)}</Typography> : null}
               </Box>
-              <InfoLine label="مبلغ تجمعی این صورت‌وضعیت" value={money(metrics.amount, currency)} ltr />
-              <InfoLine label="مبلغ تجمعی دوره قبل" value={money(metrics.previous, currency)} ltr />
-              <InfoLine label="کارکرد این دوره" value={money(metrics.work, currency)} ltr strong />
-              <InfoLine label="جمع اضافات" value={money(metrics.additionsTotal, currency)} ltr color={GREEN} />
-              <InfoLine label="جمع کسورات" value={money(metrics.deductionsTotal, currency)} ltr color={metrics.deductionsTotal ? RED : INK} />
-              <InfoLine label="نرخ ارز" value={row.exchange_rate ? `${formatPersianNumber(row.exchange_rate)} ریال` : '—'} />
+              <InfoLine label="مبلغ تجمعی این صورت‌وضعیت" value={statementMoney(row, metrics.amount, currency, fallbackRate)} ltr />
+              <InfoLine label="مبلغ تجمعی دوره قبل" value={statementMoney(row, metrics.previous, currency, fallbackRate)} ltr />
+              <InfoLine label="کارکرد این دوره" value={statementMoney(row, metrics.work, currency, fallbackRate)} ltr strong />
+              <InfoLine label="جمع اضافات" value={statementMoney(row, metrics.additionsTotal, currency, fallbackRate)} ltr color={GREEN} />
+              <InfoLine label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} ltr color={metrics.deductionsTotal ? RED : INK} />
+              <InfoLine label="نرخ ارز" value={rate > 1 ? `${formatPersianNumber(rate)} ریال` : '—'} />
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={TrendingUpIcon} title="اضافات و کسورات" color={accent} />
               <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 800, mb: 0.35 }}>اضافات</Typography>
               {metrics.additions.length ? metrics.additions.map((item, index) => (
-                <InfoLine key={`add-${index}`} label={item.description || item.title || 'اضافه'} value={money(item.amount, currency)} ltr color={GREEN} />
+                <InfoLine key={`add-${index}`} label={item.description || item.title || 'اضافه'} value={statementMoney(row, item.amount, currency, fallbackRate)} ltr color={GREEN} />
               )) : <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.6 }}>اضافه‌ای ثبت نشده است.</Typography>}
-              {n(row.value_added_tax) ? <InfoLine label="ارزش افزوده" value={money(row.value_added_tax, currency)} ltr color={GREEN} /> : null}
-              {n(row.other_additions) ? <InfoLine label="سایر اضافات" value={money(row.other_additions, currency)} ltr color={GREEN} /> : null}
+              {n(row.value_added_tax) ? <InfoLine label="ارزش افزوده" value={statementMoney(row, row.value_added_tax, currency, fallbackRate)} ltr color={GREEN} /> : null}
+              {n(row.other_additions) ? <InfoLine label="سایر اضافات" value={statementMoney(row, row.other_additions, currency, fallbackRate)} ltr color={GREEN} /> : null}
               <Divider sx={{ my: 0.6 }} />
               <Typography sx={{ fontSize: 12, color: RED, fontWeight: 800, mb: 0.35 }}>کسورات</Typography>
               {metrics.deductions.length ? metrics.deductions.map((item, index) => (
-                <InfoLine key={`ded-${index}`} label={item.title || item.description || 'کسور'} value={money(item.amount, currency)} ltr color={RED} />
+                <InfoLine key={`ded-${index}`} label={item.title || item.description || 'کسور'} value={statementMoney(row, item.amount, currency, fallbackRate)} ltr color={RED} />
               )) : <Typography sx={{ fontSize: 12, color: MUTED }}>کسوری ثبت نشده است.</Typography>}
             </Paper>
 
