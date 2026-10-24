@@ -64,7 +64,11 @@ import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import AutoFixHighOutlinedIcon from '@mui/icons-material/AutoFixHighOutlined';
 import { useApplication } from '../../context/ApplicationContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
+import { useDesignTokens } from '../../context/DesignTokenContext';
 import { DEFAULT_TYPOGRAPHY } from '../../theme/appearanceDefaults';
+import {
+  colorWithAlpha, headerBackground, shadowValue,
+} from '../../theme/designTokens';
 import { mixHex } from '../../theme/tokens';
 
 const OUTLINE_BY_NAME = {
@@ -156,14 +160,97 @@ const semantic = ':not(.MuiButton-containedError):not(.MuiButton-containedWarnin
  *  - بدون توضیح زیر عنوان
  *  - دکمه‌های هدر با رنگ تاکیدی، متن سفید و فونت مستقلِ قابل تنظیم
  */
-const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, className, ...rest }) => {
+const PageHeader = ({
+  icon,
+  title,
+  badge,
+  actions,
+  action,
+  subtitle,
+  color,
+  className,
+  variant,
+  surface,
+  align,
+  accentMode,
+  showIcon,
+  showSubtitle,
+  subtitlePosition,
+  showBadge,
+  iconPosition,
+  glassOpacity,
+  glassBlur,
+  tint,
+  ...rest
+}) => {
   const theme = useTheme();
   const { currentApp } = useApplication();
   const { getPalette, typography } = useModulePalette();
+  const { tokens } = useDesignTokens();
+  const headerCfg = {
+    ...(tokens.headers || {}),
+    ...(variant !== undefined ? { variant } : {}),
+    ...(surface !== undefined ? { surface } : {}),
+    ...(align !== undefined ? { align } : {}),
+    ...(accentMode !== undefined ? { accentMode } : {}),
+    ...(showIcon !== undefined ? { showIcon } : {}),
+    ...(showSubtitle !== undefined ? { showSubtitle } : {}),
+    ...(subtitlePosition !== undefined ? { subtitlePosition } : {}),
+    ...(showBadge !== undefined ? { showBadge } : {}),
+    ...(iconPosition !== undefined ? { iconPosition } : {}),
+    ...(glassOpacity !== undefined ? { glassOpacity } : {}),
+    ...(glassBlur !== undefined ? { glassBlur } : {}),
+    ...(tint !== undefined ? { tint } : {}),
+  };
   const type = { ...DEFAULT_TYPOGRAPHY, ...(typography || {}) };
   const moduleAccent = getPalette(currentApp?.slug)?.accent;
-  const accent = moduleAccent || color || theme.palette.primary.main;
+  const accent = headerCfg.accentMode === 'theme'
+    ? theme.palette.primary.main
+    : moduleAccent || color || theme.palette.primary.main;
   const actionNode = actions || action || null;
+  const isCentered = headerCfg.variant === 'centered' || headerCfg.align === 'center';
+  const isMinimal = headerCfg.variant === 'minimal';
+  const isCompact = headerCfg.variant === 'compact' || isMinimal;
+  const showHeaderIcon = headerCfg.showIcon !== false && !isMinimal;
+  const showHeaderBadge = headerCfg.showBadge !== false;
+  const showHeaderSubtitle = headerCfg.showSubtitle !== false && Boolean(subtitle);
+  const isGlass = headerCfg.variant === 'glass' || headerCfg.surface === 'glass';
+  const isTinted = headerCfg.surface === 'tinted';
+  const headerBg = isTinted
+    ? `linear-gradient(135deg, ${colorWithAlpha(accent, (headerCfg.tint ?? 8) / 100)}, ${tokens.surfaces.pageHeader.background})`
+    : headerBackground(tokens, { ...headerCfg, surface: isGlass ? 'glass' : headerCfg.surface });
+  const iconSize = isCompact ? 34 : 40;
+  const iconBox = showHeaderIcon ? (
+    <Box sx={{
+      width: iconSize, height: iconSize, flexShrink: 0,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      borderRadius: 'var(--hrms-radius-small, 12px)',
+      bgcolor: alpha(accent, 0.09),
+      border: `1px solid ${alpha(accent, 0.16)}`,
+      color: accent,
+    }}>
+      <OutlineIcon icon={icon} size={isCompact ? 18 : 20} />
+    </Box>
+  ) : null;
+  const subtitleNode = showHeaderSubtitle ? (
+    <Typography sx={{ fontSize: `${Math.max(type.bodySize - 1, 11)}px`, color: 'text.secondary' }}>
+      {subtitle}
+    </Typography>
+  ) : null;
+  const titleBlock = (
+    <Box sx={{
+      flex: 1, minWidth: 0,
+      display: 'flex', flexDirection: 'column', alignItems: isCentered ? 'center' : 'flex-start',
+      gap: 0.35,
+    }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap', justifyContent: isCentered ? 'center' : 'flex-start' }}>
+        <Typography variant="h4">{title}</Typography>
+        {showHeaderBadge ? badge : null}
+        {headerCfg.subtitlePosition === 'inline' ? subtitleNode : null}
+      </Box>
+      {headerCfg.subtitlePosition !== 'inline' ? subtitleNode : null}
+    </Box>
+  );
 
   return (
     <Paper
@@ -172,16 +259,21 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, clas
       className={`hrms-page-header${className ? ` ${className}` : ''}`}
       sx={{
         mb: 1.75,
-        px: { xs: 1.5, md: 1.75 },
-        py: 1.5,
+        px: { xs: 1.5, md: isCompact ? 1.4 : 1.75 },
+        py: isCompact ? 1 : 1.5,
         display: 'flex',
         alignItems: 'center',
-        gap: 1.5,
+        justifyContent: isCentered ? 'center' : 'flex-start',
+        gap: isCompact ? 1 : 1.5,
         flexWrap: 'wrap',
-        borderRadius: 'var(--hrms-radius-large, 16px)',
-        border: 'var(--hrms-border-page-header, 1px solid rgba(15,23,42,0.06))',
-        bgcolor: 'var(--hrms-region-header-bg, #ffffff)',
-        boxShadow: 'var(--hrms-shadow-page-header, 0 4px 18px rgba(15,23,42,0.04))',
+        borderRadius: 'var(--hrms-header-radius, 16px)',
+        border: isTinted || isGlass
+          ? `1px solid ${colorWithAlpha(accent, isGlass ? 0.24 : 0.18)}`
+          : 'var(--hrms-border-page-header, 1px solid rgba(15,23,42,0.06))',
+        background: headerBg,
+        boxShadow: shadowValue(tokens, headerCfg.shadow || 'header'),
+        backdropFilter: isGlass ? `blur(${headerCfg.glassBlur ?? 14}px)` : 'none',
+        WebkitBackdropFilter: isGlass ? `blur(${headerCfg.glassBlur ?? 14}px)` : 'none',
         [`& .MuiButton-contained${semantic}`]: {
           backgroundColor: `${accent} !important`,
           color: '#ffffff !important',
@@ -209,25 +301,9 @@ const PageHeader = ({ icon, title, badge, actions, action, subtitle, color, clas
         ...rest.sx,
       }}
     >
-      <Box sx={{
-        width: 40, height: 40, flexShrink: 0,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        borderRadius: '12px',
-        bgcolor: alpha(accent, 0.09),
-        border: `1px solid ${alpha(accent, 0.16)}`,
-        color: accent,
-      }}>
-        <OutlineIcon icon={icon} size={20} />
-      </Box>
-
-      <Box sx={{
-        flex: 1, minWidth: 0,
-        display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap',
-      }}>
-        <Typography variant="h4">{title}</Typography>
-        {badge}
-      </Box>
-
+      {headerCfg.iconPosition === 'end' ? null : iconBox}
+      {titleBlock}
+      {headerCfg.iconPosition === 'end' ? iconBox : null}
       {actionNode ? (
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap alignItems="center">
           {actionNode}

@@ -69,10 +69,35 @@
   --hrms-page-padding: 24px;
   --hrms-section-gap: 14px;
   --hrms-card-padding: 16px;
-  --hrms-table-cell-padding: 8px;
-  --hrms-table-row-height: 38px;
   --hrms-input-height: 40px;
   --hrms-button-height: 36px;
+  --hrms-info-card-bg: #ffffff;
+  --hrms-info-card-border: 1px solid #e8edf4;
+  --hrms-info-card-radius: 16px;
+  --hrms-info-card-padding: 12px;
+  --hrms-info-card-shadow: none;
+  --hrms-info-card-backdrop: none;
+  --hrms-info-card-divider: rgba(99,102,241,0.12);
+  --hrms-header-surface-bg: #ffffff;
+  --hrms-header-radius: 16px;
+  --hrms-header-padding: 16px;
+  --hrms-header-shadow: 0 4px 18px rgba(15,23,42,0.04);
+  --hrms-header-backdrop: none;
+  --hrms-table-surface-bg: #ffffff;
+  --hrms-table-header-bg: #f8fafc;
+  --hrms-table-row-alt-bg: transparent;
+  --hrms-table-border-color: #e8edf4;
+  --hrms-table-radius: 16px;
+  --hrms-table-cell-padding: 8px;
+  --hrms-table-row-height: 38px;
+  --hrms-table-shadow: none;
+  --hrms-table-backdrop: none;
+  --hrms-list-item-padding: 8px;
+  --hrms-list-radius: 12px;
+  --hrms-list-bg: #ffffff;
+  --hrms-list-hover-bg: #f5f7fb;
+  --hrms-list-divider-color: #eef2f7;
+  --hrms-list-backdrop: none;
 }
 
 /* Utility classes for components that should not depend on MUI sx values. */

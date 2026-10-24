@@ -86,6 +86,65 @@ export const DEFAULT_DESIGN_TOKENS = {
     focus: '0 0 0 3px rgba(99,102,241,0.12)',
   },
   density: { mode: 'comfortable', tableRowHeight: 38, inputHeight: 40, buttonHeight: 36 },
+  infoCards: {
+    variant: 'inline',
+    surface: 'solid',
+    align: 'start',
+    accentMode: 'module',
+    labelPosition: 'inline',
+    iconPosition: 'start',
+    valuePosition: 'end',
+    showIcon: true,
+    showLabel: true,
+    showSub: true,
+    showDivider: false,
+    tint: 8,
+    glassOpacity: 0.55,
+    glassBlur: 14,
+    radius: 16,
+    padding: 12,
+    shadow: 'none',
+  },
+  headers: {
+    variant: 'standard',
+    surface: 'solid',
+    align: 'start',
+    accentMode: 'module',
+    showIcon: true,
+    showSubtitle: true,
+    subtitlePosition: 'below',
+    showBadge: true,
+    iconPosition: 'start',
+    tint: 8,
+    glassOpacity: 0.55,
+    glassBlur: 14,
+    radius: 16,
+    padding: 16,
+    shadow: 'header',
+  },
+  tables: {
+    variant: 'default',
+    surface: 'solid',
+    striped: false,
+    hover: true,
+    showBorders: true,
+    headerStyle: 'filled',
+    cellPadding: 8,
+    rowHeight: 38,
+    radius: 16,
+    glassOpacity: 0.5,
+    glassBlur: 12,
+  },
+  lists: {
+    variant: 'default',
+    surface: 'solid',
+    itemPadding: 8,
+    showDivider: true,
+    hover: true,
+    radius: 12,
+    glassOpacity: 0.5,
+    glassBlur: 12,
+  },
   components: {},
 };
 
@@ -292,6 +351,69 @@ export const shadowValue = (design, key) => {
   return key;
 };
 
+const parseColor = (value) => {
+  const text = String(value || '').trim();
+  const hex = text.replace('#', '');
+  if (/^[0-9a-fA-F]{6}$/.test(hex)) {
+    return [0, 2, 4].map((index) => parseInt(hex.slice(index, index + 2), 16));
+  }
+  const rgba = text.match(/^rgba?\(([^)]+)\)$/i);
+  if (rgba) {
+    const channels = rgba[1].split(',').map((part) => Number(part.trim()));
+    if (channels.length >= 3 && channels.slice(0, 3).every(Number.isFinite)) return channels.slice(0, 3);
+  }
+  return null;
+};
+
+/** رنگ HEX/RGB را به RGBA امن تبدیل می‌کند (برای شیشه‌ای و شفافیت). */
+export const colorWithAlpha = (value, alpha = 1) => {
+  const channels = parseColor(value);
+  if (!channels) return value;
+  const safeAlpha = Math.min(1, Math.max(0, Number(alpha) || 0));
+  return `rgba(${channels.join(',')},${safeAlpha})`;
+};
+
+export const infoCardBackground = (design, config = {}) => {
+  const surface = config.surface || 'solid';
+  const base = design.surfaces.card.background;
+  if (surface === 'transparent') return 'transparent';
+  if (surface === 'glass') return colorWithAlpha(base, config.glassOpacity ?? 0.55);
+  if (surface === 'tinted') {
+    return `linear-gradient(135deg, ${colorWithAlpha(design.colors.primary, (config.tint ?? 8) / 100)}, ${base})`;
+  }
+  return base;
+};
+
+export const headerBackground = (design, config = {}) => {
+  const surface = config.surface || 'solid';
+  const base = design.surfaces.pageHeader.background;
+  if (surface === 'transparent') return 'transparent';
+  if (surface === 'glass') return colorWithAlpha(base, config.glassOpacity ?? 0.55);
+  if (surface === 'tinted') {
+    return `linear-gradient(135deg, ${colorWithAlpha(design.colors.primary, (config.tint ?? 8) / 100)}, ${base})`;
+  }
+  return base;
+};
+
+export const tableBackground = (design, config = {}) => {
+  const surface = config.surface || 'solid';
+  const base = design.surfaces.table.background;
+  if (surface === 'transparent') return 'transparent';
+  if (surface === 'glass') return colorWithAlpha(base, config.glassOpacity ?? 0.5);
+  if (surface === 'tinted') {
+    return `linear-gradient(135deg, ${colorWithAlpha(design.colors.primary, 0.06)}, ${base})`;
+  }
+  return base;
+};
+
+export const listBackground = (design, config = {}) => {
+  const base = design.surfaces.card.background;
+  if (config.surface === 'transparent') return 'transparent';
+  if (config.surface === 'glass') return colorWithAlpha(base, config.glassOpacity ?? 0.5);
+  if (config.surface === 'tinted') return colorWithAlpha(design.colors.primary, 0.04);
+  return base;
+};
+
 
 const px = (value, fallback = 0) => `${Number.isFinite(Number(value)) ? Number(value) : fallback}px`;
 
@@ -300,7 +422,19 @@ export const designCssVariables = (design) => {
   const roles = design.typography.roles;
   const colors = design.colors;
   const surfaces = design.surfaces;
+  const infoCards = design.infoCards;
+  const headers = design.headers;
+  const tables = design.tables;
+  const lists = design.lists;
   const surfaceShadow = (key) => shadowValue(design, key);
+  const glassFilter = (config) => (config.surface === 'glass' ? `blur(${config.glassBlur ?? 14}px)` : 'none');
+  const tableBorder = tables.showBorders ? surfaces.table.border : 'none';
+  const tableRowAlt = tables.striped ? colorWithAlpha(colors.primary, 0.035) : 'transparent';
+  const tableIsGlass = tables.variant === 'glass' || tables.surface === 'glass';
+  const effectiveTables = { ...tables, surface: tableIsGlass ? 'glass' : tables.surface };
+  const tableCellPadding = tables.variant === 'compact' ? 6 : tables.variant === 'spacious' ? 12 : tables.cellPadding;
+  const tableRowHeight = tables.variant === 'compact' ? 32 : tables.variant === 'spacious' ? 46 : tables.rowHeight;
+  const listItemPadding = lists.variant === 'compact' ? 5 : lists.variant === 'spacious' ? 14 : lists.itemPadding;
   return {
     '--hrms-font-family': fontStack(design.typography.family),
     '--hrms-font-page-header-size': px(roles.pageHeader.size, 20),
@@ -358,10 +492,35 @@ export const designCssVariables = (design) => {
     '--hrms-page-padding': px(design.spacing.pagePadding, 24),
     '--hrms-section-gap': px(design.spacing.sectionGap, 14),
     '--hrms-card-padding': px(design.spacing.cardPadding, 16),
-    '--hrms-table-cell-padding': px(design.spacing.tableCellPadding, 8),
-    '--hrms-table-row-height': px(design.density.tableRowHeight, 38),
     '--hrms-input-height': px(design.density.inputHeight, 40),
     '--hrms-button-height': px(design.density.buttonHeight, 36),
+    '--hrms-info-card-bg': infoCardBackground(design, infoCards),
+    '--hrms-info-card-border': surfaces.card.border,
+    '--hrms-info-card-radius': px(infoCards.radius, 16),
+    '--hrms-info-card-padding': px(infoCards.padding, 12),
+    '--hrms-info-card-shadow': surfaceShadow(infoCards.shadow),
+    '--hrms-info-card-backdrop': glassFilter(infoCards),
+    '--hrms-info-card-divider': colorWithAlpha(colors.primary, 0.12),
+    '--hrms-header-surface-bg': headerBackground(design, headers),
+    '--hrms-header-radius': px(headers.radius, 16),
+    '--hrms-header-padding': px(headers.padding, 16),
+    '--hrms-header-shadow': surfaceShadow(headers.shadow),
+    '--hrms-header-backdrop': glassFilter(headers),
+    '--hrms-table-surface-bg': tableBackground(design, effectiveTables),
+    '--hrms-table-header-bg': tables.headerStyle === 'plain' ? 'transparent' : surfaces.table.headerBackground,
+    '--hrms-table-row-alt-bg': tableRowAlt,
+    '--hrms-table-border-color': tableBorder,
+    '--hrms-table-radius': px(tables.radius, 16),
+    '--hrms-table-cell-padding': px(tableCellPadding, 8),
+    '--hrms-table-row-height': px(tableRowHeight, 38),
+    '--hrms-table-shadow': surfaceShadow(surfaces.table.shadow),
+    '--hrms-table-backdrop': tableIsGlass ? `blur(${tables.glassBlur ?? 12}px)` : 'none',
+    '--hrms-list-item-padding': px(listItemPadding, 8),
+    '--hrms-list-radius': px(lists.radius, 12),
+    '--hrms-list-bg': listBackground(design, lists),
+    '--hrms-list-hover-bg': lists.hover ? colors.hover : 'transparent',
+    '--hrms-list-divider-color': lists.showDivider ? colors.divider : 'transparent',
+    '--hrms-list-backdrop': lists.surface === 'glass' ? `blur(${lists.glassBlur ?? 12}px)` : 'none',
   };
 };
 

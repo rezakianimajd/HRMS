@@ -33,6 +33,38 @@ SHAPE_KEYS = ('small', 'medium', 'large', 'pill')
 SHAPE_RANGES = {'small': (0, 24), 'medium': (0, 32), 'large': (0, 40), 'pill': (0, 999)}
 SPACING_KEYS = ('pagePadding', 'sectionGap', 'cardPadding', 'tableCellPadding')
 DENSITY_KEYS = ('mode', 'tableRowHeight', 'inputHeight', 'buttonHeight')
+INFO_CARD_VARIANTS = {'inline', 'compact', 'detailed', 'centered', 'stacked'}
+HEADER_VARIANTS = {'standard', 'compact', 'centered', 'minimal', 'glass'}
+TABLE_VARIANTS = {'default', 'compact', 'spacious', 'glass'}
+LIST_VARIANTS = {'default', 'compact', 'spacious'}
+SURFACE_STYLES = {'solid', 'glass', 'tinted', 'transparent'}
+ALIGNMENTS = {'start', 'center', 'end'}
+LABEL_POSITIONS = {'inline', 'above', 'hidden'}
+ICON_POSITIONS = {'start', 'end', 'hidden'}
+VALUE_POSITIONS = {'start', 'end'}
+SUBTITLE_POSITIONS = {'below', 'inline'}
+ACCENT_MODES = {'module', 'theme'}
+HEADER_STYLES = {'filled', 'plain'}
+
+
+INFO_CARD_KEYS = (
+    'variant', 'surface', 'align', 'accentMode', 'labelPosition',
+    'iconPosition', 'valuePosition', 'showIcon', 'showLabel', 'showSub',
+    'showDivider', 'tint', 'glassOpacity', 'glassBlur', 'radius', 'padding', 'shadow',
+)
+HEADER_KEYS = (
+    'variant', 'surface', 'align', 'accentMode', 'showIcon', 'showSubtitle',
+    'subtitlePosition', 'showBadge', 'tint', 'glassOpacity', 'glassBlur',
+    'radius', 'padding', 'shadow',
+)
+TABLE_KEYS = (
+    'variant', 'surface', 'striped', 'hover', 'showBorders', 'headerStyle',
+    'cellPadding', 'rowHeight', 'radius', 'glassOpacity', 'glassBlur',
+)
+LIST_KEYS = (
+    'variant', 'surface', 'itemPadding', 'showDivider', 'hover', 'radius',
+    'glassOpacity', 'glassBlur',
+)
 
 
 DEFAULT_DESIGN = {
@@ -88,6 +120,30 @@ DEFAULT_DESIGN = {
         'focus': '0 0 0 3px rgba(99,102,241,0.12)',
     },
     'density': {'mode': 'comfortable', 'tableRowHeight': 38, 'inputHeight': 40, 'buttonHeight': 36},
+    'infoCards': {
+        'variant': 'inline', 'surface': 'solid', 'align': 'start',
+        'accentMode': 'module', 'labelPosition': 'inline', 'iconPosition': 'start',
+        'valuePosition': 'end', 'showIcon': True, 'showLabel': True, 'showSub': True,
+        'showDivider': False, 'tint': 8, 'glassOpacity': 0.55, 'glassBlur': 14,
+        'radius': 16, 'padding': 12, 'shadow': 'none',
+    },
+    'headers': {
+        'variant': 'standard', 'surface': 'solid', 'align': 'start',
+        'accentMode': 'module', 'showIcon': True, 'showSubtitle': True,
+        'subtitlePosition': 'below', 'showBadge': True, 'iconPosition': 'start', 'tint': 8,
+        'glassOpacity': 0.55, 'glassBlur': 14, 'radius': 16, 'padding': 16,
+        'shadow': 'header',
+    },
+    'tables': {
+        'variant': 'default', 'surface': 'solid', 'striped': False, 'hover': True,
+        'showBorders': True, 'headerStyle': 'filled', 'cellPadding': 8,
+        'rowHeight': 38, 'radius': 16, 'glassOpacity': 0.5, 'glassBlur': 12,
+    },
+    'lists': {
+        'variant': 'default', 'surface': 'solid', 'itemPadding': 8,
+        'showDivider': True, 'hover': True, 'radius': 12,
+        'glassOpacity': 0.5, 'glassBlur': 12,
+    },
     'components': {},
 }
 
@@ -104,6 +160,25 @@ def _number(value, low, high, fallback, integer=False):
 
 def _color(value, fallback):
     return value.strip().lower() if isinstance(value, str) and HEX_COLOR.fullmatch(value.strip()) else fallback
+
+
+def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=()):
+    """Sanitize one structural token group (infoCards/headers/tables/lists)."""
+    if not isinstance(raw, dict):
+        return
+    for key, allowed in (enums or {}).items():
+        if key in raw and raw.get(key) in allowed:
+            base[key] = raw[key]
+    for key in booleans:
+        if key in raw and isinstance(raw.get(key), bool):
+            base[key] = raw[key]
+    for key, (low, high, integer) in (ranges or {}).items():
+        if key in raw:
+            base[key] = _number(raw.get(key), low, high, base.get(key), integer=integer)
+    for key in shadows:
+        value = raw.get(key)
+        if isinstance(value, str) and value in SHADOW_KEYS:
+            base[key] = value
 
 
 def _apply_legacy_typography(design, typography):
@@ -231,6 +306,60 @@ def sanitize_design(raw, typography=None):
             value = raw_shadows.get(key)
             if isinstance(value, str) and SHADOW_VALUE.fullmatch(value.strip()):
                 base['shadows'][key] = value.strip()
+
+    _sanitize_group(
+        base['infoCards'], source.get('infoCards'),
+        enums={
+            'variant': INFO_CARD_VARIANTS, 'surface': SURFACE_STYLES,
+            'align': ALIGNMENTS, 'accentMode': ACCENT_MODES,
+            'labelPosition': LABEL_POSITIONS, 'iconPosition': ICON_POSITIONS,
+            'valuePosition': VALUE_POSITIONS,
+        },
+        booleans=('showIcon', 'showLabel', 'showSub', 'showDivider'),
+        ranges={
+            'tint': (0, 100, False), 'glassOpacity': (0, 1, False),
+            'glassBlur': (0, 40, False), 'radius': (0, 40, False),
+            'padding': (0, 48, True),
+        },
+        shadows=('shadow',),
+    )
+    _sanitize_group(
+        base['headers'], source.get('headers'),
+        enums={
+            'variant': HEADER_VARIANTS, 'surface': SURFACE_STYLES,
+            'align': ALIGNMENTS, 'accentMode': ACCENT_MODES,
+            'subtitlePosition': SUBTITLE_POSITIONS, 'iconPosition': ICON_POSITIONS,
+        },
+        booleans=('showIcon', 'showSubtitle', 'showBadge'),
+        ranges={
+            'tint': (0, 100, False), 'glassOpacity': (0, 1, False),
+            'glassBlur': (0, 40, False), 'radius': (0, 40, False),
+            'padding': (0, 48, True),
+        },
+        shadows=('shadow',),
+    )
+    _sanitize_group(
+        base['tables'], source.get('tables'),
+        enums={
+            'variant': TABLE_VARIANTS, 'surface': SURFACE_STYLES,
+            'headerStyle': HEADER_STYLES,
+        },
+        booleans=('striped', 'hover', 'showBorders'),
+        ranges={
+            'cellPadding': (0, 32, True), 'rowHeight': (24, 64, True),
+            'radius': (0, 40, False), 'glassOpacity': (0, 1, False),
+            'glassBlur': (0, 40, False),
+        },
+    )
+    _sanitize_group(
+        base['lists'], source.get('lists'),
+        enums={'variant': LIST_VARIANTS, 'surface': SURFACE_STYLES},
+        booleans=('showDivider', 'hover'),
+        ranges={
+            'itemPadding': (0, 32, True), 'radius': (0, 40, False),
+            'glassOpacity': (0, 1, False), 'glassBlur': (0, 40, False),
+        },
+    )
 
     return _apply_legacy_typography(base, typography)
 

@@ -50,7 +50,14 @@ const COMPANY_TYPES = {
 };
 
 const InfoCard = ({ title, color, icon: Icon, children }) => (
-  <Box sx={{ borderRadius: '14px', overflow: 'hidden', border: `1px solid ${color}26`, background: '#fff', boxShadow: `0 6px 20px ${color}10` }}>
+  <Box className="hrms-info-card" sx={{
+    borderRadius: 'var(--hrms-info-card-radius, 14px)', overflow: 'hidden',
+    border: 'var(--hrms-info-card-border, 1px solid #e8edf4)',
+    background: 'var(--hrms-info-card-bg, #fff)',
+    boxShadow: 'var(--hrms-info-card-shadow, none)',
+    backdropFilter: 'var(--hrms-info-card-backdrop, none)',
+    WebkitBackdropFilter: 'var(--hrms-info-card-backdrop, none)',
+  }}>
     <Box sx={{ px: 1.75, py: 1, background: `linear-gradient(120deg, ${color}18, ${color}08)`, borderBottom: `1px solid ${color}20`, display: 'flex', alignItems: 'center', gap: 1 }}>
       <Icon sx={{ color, fontSize: 18 }} />
       <Typography variant="subtitle2" fontWeight={800} sx={{ color }}>{title}</Typography>

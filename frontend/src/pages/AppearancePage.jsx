@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Box, Typography, Paper, Grid, Chip, Stack, Avatar, IconButton, Tooltip, Button,
-  Alert, TextField, MenuItem, Tabs, Tab,
+  Alert, TextField, MenuItem, Tabs, Tab, FormControlLabel, Switch,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import PaletteIcon from '@mui/icons-material/Palette';
@@ -17,6 +17,8 @@ import {
   DEFAULT_TYPOGRAPHY, FONT_OPTIONS, SIZE_RANGES, WEIGHT_OPTIONS, fontStack,
 } from '../core/theme/appearanceDefaults';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
+import InfoCard from '../core/components/ui/InfoCard';
+import DataTable from '../core/components/ui/DataTable';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 
 /* =========================================================================
@@ -553,6 +555,56 @@ const StudioNumberField = ({
   />
 );
 
+const STUDIO_INFO_VARIANTS = [
+  ['inline', 'همه در یک خط'], ['compact', 'فشرده'], ['detailed', 'با جزئیات'],
+  ['centered', 'وسط‌چین'], ['stacked', 'چندخطی'],
+];
+const STUDIO_SURFACE_OPTIONS = [
+  ['solid', 'ساده'], ['glass', 'شیشه‌ای'], ['tinted', 'رنگ‌پذیر از تم'], ['transparent', 'شفاف'],
+];
+const STUDIO_ALIGNS = [['start', 'شروع'], ['center', 'وسط'], ['end', 'پایان']];
+const STUDIO_INFO_LABEL_POSITIONS = [['inline', 'کنار مقدار'], ['above', 'بالای مقدار'], ['hidden', 'مخفی']];
+const STUDIO_ICON_POSITIONS = [['start', 'ابتدای کارت'], ['end', 'انتهای کارت'], ['hidden', 'بدون آیکون']];
+const STUDIO_VALUE_POSITIONS = [['end', 'بعد از عنوان'], ['start', 'قبل از عنوان']];
+const STUDIO_HEADER_VARIANTS = [
+  ['standard', 'استاندارد'], ['compact', 'فشرده'], ['centered', 'وسط‌چین'],
+  ['minimal', 'مینیمال'], ['glass', 'شیشه‌ای'],
+];
+const STUDIO_TABLE_VARIANTS = [
+  ['default', 'استاندارد'], ['compact', 'فشرده'], ['spacious', 'جادار'], ['glass', 'شیشه‌ای'],
+];
+const STUDIO_HEADER_STYLES = [['filled', 'پس‌زمینه‌دار'], ['plain', 'ساده']];
+
+const StudioSelect = ({ label, value, options, onChange, disabled, sx }) => (
+  <TextField
+    select
+    size="small"
+    label={label}
+    value={value}
+    disabled={disabled}
+    onChange={(event) => onChange(event.target.value)}
+    sx={{ minWidth: 150, ...sx }}
+    InputLabelProps={{ shrink: true }}
+  >
+    {options.map(([key, text]) => <MenuItem key={key} value={key}>{text}</MenuItem>)}
+  </TextField>
+);
+
+const StudioToggle = ({ label, checked, onChange, disabled }) => (
+  <FormControlLabel
+    control={(
+      <Switch
+        size="small"
+        checked={Boolean(checked)}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.checked)}
+      />
+    )}
+    label={<Typography sx={{ fontSize: 12 }}>{label}</Typography>}
+  />
+);
+
+
 
 const ThemeStudioCard = ({
   canEdit, design, onChange, onReset, saving, savedTick,
@@ -562,6 +614,10 @@ const ThemeStudioCard = ({
   const setColor = (key, value) => onChange({ colors: { [key]: value } });
   const setSurface = (key, field, value) => onChange({ surfaces: { [key]: { [field]: value } } });
   const setRole = (key, field, value) => onChange({ typography: { roles: { [key]: { [field]: value } } } });
+  const setInfo = (key, value) => onChange({ infoCards: { [key]: value } });
+  const setHeader = (key, value) => onChange({ headers: { [key]: value } });
+  const setTable = (key, value) => onChange({ tables: { [key]: value } });
+  const setList = (key, value) => onChange({ lists: { [key]: value } });
 
   return (
     <Paper sx={{ ...SURFACE, mt: 1.75, overflow: 'hidden' }}>
@@ -611,6 +667,9 @@ const ThemeStudioCard = ({
         <Tab label="سطح‌ها و سایه" />
         <Tab label="تایپوگرافی" />
         <Tab label="چیدمان و تراکم" />
+        <Tab label="کارت‌های اطلاعات" />
+        <Tab label="هدرها" />
+        <Tab label="جدول‌ها و فهرست‌ها" />
       </Tabs>
 
       <Typography sx={{ px: 1.75, pt: 1, fontSize: 11, color: 'text.secondary' }}>
@@ -784,6 +843,202 @@ const ThemeStudioCard = ({
                   min={24} max={64} disabled={disabled}
                   onChange={(value) => onChange({ density: { buttonHeight: value } })}
                 />
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+
+        {tab === 4 && (
+          <Stack spacing={1.75}>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>پیش‌نمایش کارت‌ها</Typography>
+              <Grid container spacing={1.25}>
+                <Grid item xs={12} md={6}>
+                  <InfoCard icon={<PaletteIcon />} label="همه در یک خط" value="۱۲۴" suffix="ریال"
+                    variant="inline" surface="solid" />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <InfoCard icon={<PaletteIcon />} label="با جزئیات" value="۸۶٪" sub="روند رو به رشد"
+                    variant="detailed" surface="tinted" />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <InfoCard icon={<PaletteIcon />} label="وسط‌چین" value="۲۴" suffix="مورد"
+                    variant="centered" surface="solid" />
+                </Grid>
+                <Grid item xs={12} md={6}>
+                  <InfoCard icon={<PaletteIcon />} label="شیشه‌ای" value="۳٫۲ میلیارد" sub="شفاف و رنگ‌پذیر"
+                    variant="inline" surface="glass" />
+                </Grid>
+              </Grid>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>ساختار کارت اطلاعات</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioSelect label="نمونه" value={design.infoCards.variant} options={STUDIO_INFO_VARIANTS}
+                  disabled={disabled} onChange={(value) => setInfo('variant', value)} />
+                <StudioSelect label="سطح" value={design.infoCards.surface} options={STUDIO_SURFACE_OPTIONS}
+                  disabled={disabled} onChange={(value) => setInfo('surface', value)} />
+                <StudioSelect label="تراز" value={design.infoCards.align} options={STUDIO_ALIGNS}
+                  disabled={disabled} onChange={(value) => setInfo('align', value)} />
+                <StudioSelect label="منبع رنگ" value={design.infoCards.accentMode}
+                  options={[['module', 'رنگ ماژول'], ['theme', 'رنگ تم']]}
+                  disabled={disabled} onChange={(value) => setInfo('accentMode', value)} />
+                <StudioSelect label="جای عنوان" value={design.infoCards.labelPosition}
+                  options={STUDIO_INFO_LABEL_POSITIONS} disabled={disabled}
+                  onChange={(value) => setInfo('labelPosition', value)} />
+                <StudioSelect label="جای آیکون" value={design.infoCards.iconPosition}
+                  options={STUDIO_ICON_POSITIONS} disabled={disabled}
+                  onChange={(value) => setInfo('iconPosition', value)} />
+                <StudioSelect label="جای مقدار" value={design.infoCards.valuePosition}
+                  options={STUDIO_VALUE_POSITIONS} disabled={disabled}
+                  onChange={(value) => setInfo('valuePosition', value)} />
+              </Stack>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>جزئیات ظاهری</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioToggle label="آیکون" checked={design.infoCards.showIcon} disabled={disabled}
+                  onChange={(value) => setInfo('showIcon', value)} />
+                <StudioToggle label="عنوان" checked={design.infoCards.showLabel} disabled={disabled}
+                  onChange={(value) => setInfo('showLabel', value)} />
+                <StudioToggle label="زیرنویس/پسوند" checked={design.infoCards.showSub} disabled={disabled}
+                  onChange={(value) => setInfo('showSub', value)} />
+                <StudioToggle label="جداکننده" checked={design.infoCards.showDivider} disabled={disabled}
+                  onChange={(value) => setInfo('showDivider', value)} />
+                <StudioNumberField label="شدت رنگ" value={design.infoCards.tint} min={0} max={100}
+                  disabled={disabled} onChange={(value) => setInfo('tint', value)} />
+                <StudioNumberField label="شفافیت شیشه" value={design.infoCards.glassOpacity} min={0} max={1} step={0.05}
+                  disabled={disabled} onChange={(value) => setInfo('glassOpacity', value)} />
+                <StudioNumberField label="بلور شیشه" value={design.infoCards.glassBlur} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setInfo('glassBlur', value)} />
+                <StudioNumberField label="شعاع" value={design.infoCards.radius} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setInfo('radius', value)} />
+                <StudioNumberField label="فاصله داخلی" value={design.infoCards.padding} min={0} max={48}
+                  disabled={disabled} onChange={(value) => setInfo('padding', value)} />
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+
+        {tab === 5 && (
+          <Stack spacing={1.75}>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>پیش‌نمایش هدر</Typography>
+              <PageHeader
+                icon={<PaletteIcon />}
+                title="عنوان نمونهٔ صفحه"
+                subtitle="این توضیح زیر عنوان نمایش داده می‌شود و قابل کنترل است."
+                badge={<Chip size="small" label="نمونه" />}
+                action={<Button size="small" variant="contained">اقدام</Button>}
+              />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>ساختار هدر</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioSelect label="نمونه" value={design.headers.variant} options={STUDIO_HEADER_VARIANTS}
+                  disabled={disabled} onChange={(value) => setHeader('variant', value)} />
+                <StudioSelect label="سطح" value={design.headers.surface} options={STUDIO_SURFACE_OPTIONS}
+                  disabled={disabled} onChange={(value) => setHeader('surface', value)} />
+                <StudioSelect label="تراز" value={design.headers.align} options={STUDIO_ALIGNS}
+                  disabled={disabled} onChange={(value) => setHeader('align', value)} />
+                <StudioSelect label="جای آیکون" value={design.headers.iconPosition}
+                  options={STUDIO_ICON_POSITIONS} disabled={disabled}
+                  onChange={(value) => setHeader('iconPosition', value)} />
+                <StudioSelect label="منبع رنگ" value={design.headers.accentMode}
+                  options={[['module', 'رنگ ماژول'], ['theme', 'رنگ تم']]}
+                  disabled={disabled} onChange={(value) => setHeader('accentMode', value)} />
+                <StudioSelect label="جای توضیح" value={design.headers.subtitlePosition}
+                  options={[['below', 'زیر عنوان'], ['inline', 'کنار عنوان']]}
+                  disabled={disabled} onChange={(value) => setHeader('subtitlePosition', value)} />
+              </Stack>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>جزئیات هدر</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioToggle label="آیکون" checked={design.headers.showIcon} disabled={disabled}
+                  onChange={(value) => setHeader('showIcon', value)} />
+                <StudioToggle label="توضیح" checked={design.headers.showSubtitle} disabled={disabled}
+                  onChange={(value) => setHeader('showSubtitle', value)} />
+                <StudioToggle label="نشان" checked={design.headers.showBadge} disabled={disabled}
+                  onChange={(value) => setHeader('showBadge', value)} />
+                <StudioNumberField label="شدت رنگ" value={design.headers.tint} min={0} max={100}
+                  disabled={disabled} onChange={(value) => setHeader('tint', value)} />
+                <StudioNumberField label="شفافیت شیشه" value={design.headers.glassOpacity} min={0} max={1} step={0.05}
+                  disabled={disabled} onChange={(value) => setHeader('glassOpacity', value)} />
+                <StudioNumberField label="بلور شیشه" value={design.headers.glassBlur} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setHeader('glassBlur', value)} />
+                <StudioNumberField label="شعاع" value={design.headers.radius} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setHeader('radius', value)} />
+                <StudioNumberField label="فاصله داخلی" value={design.headers.padding} min={0} max={48}
+                  disabled={disabled} onChange={(value) => setHeader('padding', value)} />
+              </Stack>
+            </Box>
+          </Stack>
+        )}
+
+        {tab === 6 && (
+          <Stack spacing={1.75}>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>پیش‌نمایش جدول</Typography>
+              <DataTable
+                rows={[
+                  { id: 1, name: 'ردیف اول', value: '۱۲۰' },
+                  { id: 2, name: 'ردیف دوم', value: '۸۵' },
+                  { id: 3, name: 'ردیف سوم', value: '۲۴۰' },
+                ]}
+                columns={[
+                  { key: 'name', label: 'عنوان' },
+                  { key: 'value', label: 'مقدار' },
+                ]}
+                getRowId={(row) => row.id}
+                maxHeight={190}
+              />
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>ساختار جدول</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioSelect label="نمونه" value={design.tables.variant} options={STUDIO_TABLE_VARIANTS}
+                  disabled={disabled} onChange={(value) => setTable('variant', value)} />
+                <StudioSelect label="سطح" value={design.tables.surface} options={STUDIO_SURFACE_OPTIONS}
+                  disabled={disabled} onChange={(value) => setTable('surface', value)} />
+                <StudioSelect label="هدر" value={design.tables.headerStyle} options={STUDIO_HEADER_STYLES}
+                  disabled={disabled} onChange={(value) => setTable('headerStyle', value)} />
+                <StudioNumberField label="فاصله سلول" value={design.tables.cellPadding} min={0} max={32}
+                  disabled={disabled} onChange={(value) => setTable('cellPadding', value)} />
+                <StudioNumberField label="ارتفاع ردیف" value={design.tables.rowHeight} min={24} max={64}
+                  disabled={disabled} onChange={(value) => setTable('rowHeight', value)} />
+                <StudioNumberField label="شعاع" value={design.tables.radius} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setTable('radius', value)} />
+              </Stack>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mt: 1 }}>
+                <StudioToggle label="ردیف‌های یک‌درمیان" checked={design.tables.striped} disabled={disabled}
+                  onChange={(value) => setTable('striped', value)} />
+                <StudioToggle label="Hover" checked={design.tables.hover} disabled={disabled}
+                  onChange={(value) => setTable('hover', value)} />
+                <StudioToggle label="خطوط جدول" checked={design.tables.showBorders} disabled={disabled}
+                  onChange={(value) => setTable('showBorders', value)} />
+                <StudioNumberField label="شفافیت شیشه" value={design.tables.glassOpacity} min={0} max={1} step={0.05}
+                  disabled={disabled} onChange={(value) => setTable('glassOpacity', value)} />
+                <StudioNumberField label="بلور شیشه" value={design.tables.glassBlur} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setTable('glassBlur', value)} />
+              </Stack>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>فهرست‌ها</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioSelect label="نمونه" value={design.lists.variant}
+                  options={STUDIO_TABLE_VARIANTS.filter(([key]) => key !== 'glass')}
+                  disabled={disabled} onChange={(value) => setList('variant', value)} />
+                <StudioSelect label="سطح" value={design.lists.surface} options={STUDIO_SURFACE_OPTIONS}
+                  disabled={disabled} onChange={(value) => setList('surface', value)} />
+                <StudioNumberField label="فاصله آیتم" value={design.lists.itemPadding} min={0} max={32}
+                  disabled={disabled} onChange={(value) => setList('itemPadding', value)} />
+                <StudioNumberField label="شعاع" value={design.lists.radius} min={0} max={40}
+                  disabled={disabled} onChange={(value) => setList('radius', value)} />
+                <StudioToggle label="جداکننده" checked={design.lists.showDivider} disabled={disabled}
+                  onChange={(value) => setList('showDivider', value)} />
+                <StudioToggle label="Hover" checked={design.lists.hover} disabled={disabled}
+                  onChange={(value) => setList('hover', value)} />
               </Stack>
             </Box>
           </Stack>

@@ -14,7 +14,7 @@ const fontStyle = (role) => ({
  * حالت‌های مختلف تم، جای خود را به توکن بدهند.
  */
 export const designComponentOverrides = (design) => {
-  const { colors, surfaces, shape, spacing, density, typography } = design;
+  const { colors, surfaces, shape, density, typography, tables } = design;
   const roles = typography.roles;
   const cardShadow = shadowValue(design, surfaces.card.shadow);
   return {
@@ -48,16 +48,42 @@ export const designComponentOverrides = (design) => {
         },
       },
     },
+    MuiTableContainer: {
+      styleOverrides: {
+        root: {
+          background: 'var(--hrms-table-surface-bg, #ffffff)',
+          borderRadius: 'var(--hrms-table-radius, 16px)',
+          backdropFilter: 'var(--hrms-table-backdrop, none)',
+          WebkitBackdropFilter: 'var(--hrms-table-backdrop, none)',
+        },
+      },
+    },
+    MuiTable: {
+      styleOverrides: {
+        root: { backgroundColor: 'transparent' },
+      },
+    },
     MuiTableHead: {
       styleOverrides: {
-        root: { backgroundColor: surfaces.table.headerBackground },
+        root: { backgroundColor: 'var(--hrms-table-header-bg, #f8fafc)' },
+      },
+    },
+    MuiTableSortLabel: {
+      styleOverrides: {
+        root: { ...fontStyle(roles.tableHeader), color: colors.textSecondary },
+      },
+    },
+    MuiTablePagination: {
+      styleOverrides: {
+        root: fontStyle(roles.body),
       },
     },
     MuiTableRow: {
       styleOverrides: {
         root: {
-          height: px(density.tableRowHeight, 38),
-          '&:hover': { backgroundColor: colors.hover },
+          height: 'var(--hrms-table-row-height, 38px)',
+          '&:nth-of-type(odd)': { backgroundColor: 'var(--hrms-table-row-alt-bg, transparent)' },
+          ...(tables.hover ? { '&:hover': { backgroundColor: colors.hover } } : {}),
         },
       },
     },
@@ -65,13 +91,13 @@ export const designComponentOverrides = (design) => {
       styleOverrides: {
         root: {
           ...fontStyle(roles.tableCell),
-          borderBottomColor: colors.divider,
-          paddingTop: px(spacing.tableCellPadding, 8),
-          paddingBottom: px(spacing.tableCellPadding, 8),
+          borderBottomColor: 'var(--hrms-table-border-color, #e8edf4)',
+          paddingTop: 'var(--hrms-table-cell-padding, 8px)',
+          paddingBottom: 'var(--hrms-table-cell-padding, 8px)',
         },
         head: {
           ...fontStyle(roles.tableHeader),
-          backgroundColor: surfaces.table.headerBackground,
+          backgroundColor: 'var(--hrms-table-header-bg, #f8fafc)',
           color: colors.textSecondary,
         },
       },
@@ -152,6 +178,32 @@ export const designComponentOverrides = (design) => {
       styleOverrides: {
         primary: fontStyle(roles.body),
         secondary: fontStyle(roles.caption),
+      },
+    },
+    MuiList: {
+      styleOverrides: {
+        root: {
+          backgroundColor: 'var(--hrms-list-bg, #ffffff)',
+          backdropFilter: 'var(--hrms-list-backdrop, none)',
+          WebkitBackdropFilter: 'var(--hrms-list-backdrop, none)',
+        },
+      },
+    },
+    MuiListItem: {
+      styleOverrides: {
+        root: {
+          paddingTop: 'var(--hrms-list-item-padding, 8px)',
+          paddingBottom: 'var(--hrms-list-item-padding, 8px)',
+          borderBottom: '1px solid var(--hrms-list-divider-color, transparent)',
+        },
+      },
+    },
+    MuiListItemButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: 'var(--hrms-list-radius, 12px)',
+          '&:hover': { backgroundColor: 'var(--hrms-list-hover-bg, rgba(99,102,241,0.06))' },
+        },
       },
     },
     MuiTab: {

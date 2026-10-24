@@ -1,5 +1,6 @@
 import {
   DEFAULT_DESIGN_TOKENS,
+  colorWithAlpha,
   designCssVariables,
   legacyTypographyFromDesign,
   normalizeDesignTokens,
@@ -75,6 +76,29 @@ describe('design tokens', () => {
     expect(variables['--hrms-font-table-cell-size']).toBe('13px');
     expect(variables['--hrms-region-card-bg']).toBe('#ffffff');
     expect(variables['--hrms-radius-large']).toBe('16px');
+    expect(variables['--hrms-info-card-bg']).toBe('#ffffff');
+    expect(variables['--hrms-header-surface-bg']).toBe('#ffffff');
+    expect(variables['--hrms-table-surface-bg']).toBe('#ffffff');
     expect(legacyTypographyFromDesign(design).bodySize).toBe(13);
+  });
+
+  it('supports card/header/table/list settings and glass colors', () => {
+    const design = resolveDesignTokens({
+      design: {
+        infoCards: { variant: 'detailed', surface: 'glass', glassOpacity: 0.4, glassBlur: 20 },
+        headers: { variant: 'centered', showSubtitle: false, subtitlePosition: 'inline' },
+        tables: { striped: true, headerStyle: 'plain', rowHeight: 44 },
+        lists: { variant: 'compact', showDivider: false },
+      },
+    });
+    const variables = designCssVariables(design);
+    expect(design.infoCards.variant).toBe('detailed');
+    expect(design.headers.variant).toBe('centered');
+    expect(design.tables.striped).toBe(true);
+    expect(design.lists.showDivider).toBe(false);
+    expect(variables['--hrms-info-card-backdrop']).toContain('blur(20px)');
+    expect(variables['--hrms-table-header-bg']).toBe('transparent');
+    expect(variables['--hrms-table-row-height']).toBe('44px');
+    expect(colorWithAlpha('#6366f1', 0.5)).toBe('rgba(99,102,241,0.5)');
   });
 });

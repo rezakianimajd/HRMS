@@ -7,6 +7,7 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import StatusBadge from '../ui/StatusBadge';
+import BaseInfoCard from '../ui/InfoCard';
 import { toJalali } from '../../utils/dateUtils';
 import { toPersianDigits } from '../../utils/numberUtils';
 
@@ -33,16 +34,7 @@ const InfoCard = ({ fieldName, label, value }) => {
   }
   return (
     <Grid item xs={12} sm={6} md={4}>
-      <Paper sx={{
-        px: 1.5, py: 1,
-        background: 'rgba(255,255,255,0.5)',
-        backdropFilter: 'blur(8px)',
-        border: '1px solid rgba(255,255,255,0.5)',
-        borderRadius: '10px',
-      }}>
-        <Typography variant="caption" color="textSecondary" display="block">{label}</Typography>
-        <Typography variant="body2" fontWeight={600}>{display}</Typography>
-      </Paper>
+      <BaseInfoCard label={label} value={display} />
     </Grid>
   );
 };

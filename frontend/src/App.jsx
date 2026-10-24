@@ -8,6 +8,7 @@ import { CompanyProvider } from './core/context/CompanyContext';
 import { ApplicationProvider, useApplication } from './core/context/ApplicationContext';
 import { ModulePaletteProvider, useModulePalette } from './core/context/ModulePaletteContext';
 import { LanguageProvider } from './core/context/LanguageContext';
+import { DesignTokenProvider } from './core/context/DesignTokenContext';
 import { ThemeProvider as AppThemeProvider, useThemeMode } from './core/context/ThemeContext';
 import { WorkspaceTabsProvider } from './core/context/WorkspaceTabsContext';
 import useLanguage from './core/hooks/useLanguage';
@@ -135,7 +136,7 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
         fontWeight: `${type.cardWeight} !important`,
         lineHeight: 1.6,
       },
-      '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root):not(.hrms-page-header), .hrms-page .MuiCard-root': {
+      '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root):not(.hrms-page-header):not(.hrms-info-card):not(.hrms-data-table), .hrms-page .MuiCard-root': {
         boxShadow: 'var(--hrms-shadow-card, none) !important',
         animation: 'none !important',
         transition: 'none !important',
@@ -146,6 +147,23 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
       },
       '.hrms-page .MuiBox-root, .hrms-page .MuiAvatar-root': {
         boxShadow: 'none !important',
+      },
+      '.hrms-page .MuiTableContainer-root': {
+        background: 'var(--hrms-table-surface-bg, #ffffff) !important',
+        borderRadius: 'var(--hrms-table-radius, 16px) !important',
+        backdropFilter: 'var(--hrms-table-backdrop, none)',
+        WebkitBackdropFilter: 'var(--hrms-table-backdrop, none)',
+      },
+      '.hrms-page .MuiTableHead-root': {
+        backgroundColor: 'var(--hrms-table-header-bg, #f8fafc) !important',
+      },
+      '.hrms-page .MuiTableRow-root:nth-of-type(odd)': {
+        backgroundColor: 'var(--hrms-table-row-alt-bg, transparent)',
+      },
+      '.hrms-page .MuiTableCell-root': {
+        borderBottomColor: 'var(--hrms-table-border-color, #e8edf4) !important',
+        paddingTop: 'var(--hrms-table-cell-padding, 8px) !important',
+        paddingBottom: 'var(--hrms-table-cell-padding, 8px) !important',
       },
       '.accounting-page .MuiButton-contained:not(.MuiButton-containedError):not(.MuiButton-containedWarning):not(.MuiButton-containedSuccess):not(.MuiButton-containedInfo)': {
         backgroundColor: 'var(--module-accent, #2563eb) !important',
@@ -186,7 +204,7 @@ const cssBase = (bodyBg, whiteCards = false, type = DEFAULT_TYPOGRAPHY) => {
       },
       ...(whiteCards
         ? {
-          '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root):not(.hrms-page-header), .hrms-page .MuiCard-root': {
+          '.hrms-page .MuiPaper-root:not(.MuiAlert-root):not(.MuiSnackbarContent-root):not(.hrms-page-header):not(.hrms-info-card):not(.hrms-data-table), .hrms-page .MuiCard-root': {
             backgroundColor: 'var(--hrms-region-card-bg, #ffffff) !important',
             backgroundImage: 'none !important',
             backdropFilter: 'none !important',
@@ -501,14 +519,16 @@ const ThemedApp = () => {
 
   return (
     <ThemeProvider theme={theme}>
-      <CssBaseline />
-      <ErrorBoundary>
-        <GummyBearOverlay />
-        <HelpDialog />
-        <GlobalErrorSnackbar />
-        <SystemBroadcastGate />
-        <AppRoutes />
-      </ErrorBoundary>
+      <DesignTokenProvider tokens={resolvedDesign}>
+        <CssBaseline />
+        <ErrorBoundary>
+          <GummyBearOverlay />
+          <HelpDialog />
+          <GlobalErrorSnackbar />
+          <SystemBroadcastGate />
+          <AppRoutes />
+        </ErrorBoundary>
+      </DesignTokenProvider>
     </ThemeProvider>
   );
 };

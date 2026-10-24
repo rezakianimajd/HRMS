@@ -45,3 +45,47 @@ class AppearanceSchemaTests(SimpleTestCase):
         design = sanitize_design({'shape': {'small': 0}, 'spacing': {'sectionGap': 0}})
         self.assertEqual(design['shape']['small'], 0)
         self.assertEqual(design['spacing']['sectionGap'], 0)
+
+    def test_info_cards_headers_tables_and_lists_are_validated(self):
+        design = sanitize_design({
+            'infoCards': {
+                'variant': 'detailed', 'surface': 'glass', 'align': 'center',
+                'showIcon': False, 'labelPosition': 'above', 'glassOpacity': 0.7,
+                'glassBlur': 22, 'tint': 14,
+            },
+            'headers': {
+                'variant': 'centered', 'surface': 'tinted', 'showSubtitle': True,
+                'subtitlePosition': 'inline', 'showBadge': False,
+            },
+            'tables': {
+                'striped': True, 'hover': False, 'headerStyle': 'plain',
+                'cellPadding': 10, 'rowHeight': 44,
+            },
+            'lists': {'variant': 'compact', 'surface': 'glass', 'showDivider': False},
+        })
+        self.assertEqual(design['infoCards']['variant'], 'detailed')
+        self.assertEqual(design['infoCards']['surface'], 'glass')
+        self.assertEqual(design['infoCards']['align'], 'center')
+        self.assertFalse(design['infoCards']['showIcon'])
+        self.assertEqual(design['infoCards']['labelPosition'], 'above')
+        self.assertAlmostEqual(design['infoCards']['glassOpacity'], 0.7)
+        self.assertEqual(design['headers']['subtitlePosition'], 'inline')
+        self.assertFalse(design['headers']['showBadge'])
+        self.assertTrue(design['tables']['striped'])
+        self.assertFalse(design['tables']['hover'])
+        self.assertEqual(design['tables']['headerStyle'], 'plain')
+        self.assertEqual(design['tables']['rowHeight'], 44)
+        self.assertEqual(design['lists']['variant'], 'compact')
+        self.assertFalse(design['lists']['showDivider'])
+
+    def test_invalid_structural_values_fall_back(self):
+        design = sanitize_design({
+            'infoCards': {'variant': 'unknown', 'glassOpacity': 5},
+            'tables': {'headerStyle': 'gradient', 'rowHeight': 2},
+            'lists': {'variant': 'unknown'},
+        })
+        self.assertEqual(design['infoCards']['variant'], 'inline')
+        self.assertAlmostEqual(design['infoCards']['glassOpacity'], 0.55)
+        self.assertEqual(design['tables']['headerStyle'], 'filled')
+        self.assertEqual(design['tables']['rowHeight'], 38)
+        self.assertEqual(design['lists']['variant'], 'default')

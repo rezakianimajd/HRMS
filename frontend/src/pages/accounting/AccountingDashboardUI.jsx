@@ -3,7 +3,9 @@ import { Box, Paper, Stack, Typography, Chip, ButtonBase } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import { useModulePalette } from '../../core/context/ModulePaletteContext';
+import { useDesignTokens } from '../../core/context/DesignTokenContext';
 import { DEFAULT_TYPOGRAPHY } from '../../core/theme/appearanceDefaults';
+import { infoCardBackground, shadowValue } from '../../core/theme/designTokens';
 
 export const CARD_BG = '#ffffff';
 export const CARD_BORDER = '#e8edf4';
@@ -75,37 +77,56 @@ export const KpiTile = ({
   icon: Icon, label, value, suffix, color = ACCOUNTING_BLUE,
   delta, inverseDelta, hint, progress, progressLabel, onClick, size = 18,
 }) => {
+  const { tokens } = useDesignTokens();
+  const info = tokens.infoCards || {};
+  const isGlass = info.surface === 'glass';
+  const isCompact = info.variant === 'compact';
+  const isCentered = info.variant === 'centered' || info.align === 'center';
+  const align = isCentered ? 'center' : info.align === 'end' ? 'flex-end' : 'flex-start';
+  const showIcon = info.showIcon !== false;
+  const showLabel = info.showLabel !== false;
+  const showSub = info.showSub !== false;
   const content = (
     <Paper elevation={0} sx={{
-      p: 1.75, height: '100%', minHeight: 132, bgcolor: CARD_BG,
-      border: `1px solid ${CARD_BORDER}`, borderRadius: '16px', boxShadow: 'none',
-      display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 1,
+      p: `${info.padding ?? 14}px`, height: '100%', minHeight: isCompact ? 108 : 132,
+      background: infoCardBackground(tokens, info),
+      border: isGlass
+        ? `1px solid ${color}3d`
+        : 'var(--hrms-info-card-border, 1px solid #e8edf4)',
+      borderRadius: 'var(--hrms-info-card-radius, 16px)',
+      boxShadow: shadowValue(tokens, info.shadow || 'none'),
+      backdropFilter: isGlass ? `blur(${info.glassBlur ?? 14}px)` : 'none',
+      WebkitBackdropFilter: isGlass ? `blur(${info.glassBlur ?? 14}px)` : 'none',
+      display: 'flex', flexDirection: 'column', alignItems: align, justifyContent: 'space-between', gap: 1,
+      textAlign: isCentered ? 'center' : 'right',
       cursor: onClick ? 'pointer' : 'default',
-      '&:hover': onClick ? { borderColor: `${color}66`, bgcolor: '#fbfdff' } : undefined,
+      '&:hover': onClick && !isGlass ? { borderColor: `${color}66`, bgcolor: '#fbfdff' } : undefined,
     }}>
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
-        <Box sx={{
-          width: 38, height: 38, borderRadius: '11px', bgcolor: `${color}10`,
-          border: `1px solid ${color}1f`, color,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon sx={{ fontSize: 20 }} />
-        </Box>
-        <DeltaChip value={delta} inverse={inverseDelta} />
-      </Stack>
-      <Box sx={{ minWidth: 0 }}>
-        <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.2 }}>{label}</Typography>
-        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }}>
+      {showIcon ? (
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap sx={{ width: '100%' }}>
+          <Box sx={{
+            width: 38, height: 38, borderRadius: '11px', bgcolor: `${color}10`,
+            border: `1px solid ${color}1f`, color,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+          }}>
+            <Icon sx={{ fontSize: 20 }} />
+          </Box>
+          <DeltaChip value={delta} inverse={inverseDelta} />
+        </Stack>
+      ) : null}
+      <Box sx={{ minWidth: 0, width: '100%' }}>
+        {showLabel ? <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.2 }}>{label}</Typography> : null}
+        <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0, justifyContent: isCentered ? 'center' : 'flex-start' }}>
           <Typography sx={{ fontSize: Math.max(12, size), fontWeight: 900, color: INK, direction: 'rtl', lineHeight: 1.25, wordBreak: 'break-word' }}>
             {value}
           </Typography>
-          {suffix ? <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
+          {showSub && suffix ? <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
         </Box>
-        {hint ? <Typography sx={{ mt: 0.2, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
+        {showSub && hint ? <Typography sx={{ mt: 0.2, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
         {progress !== undefined && progress !== null ? (
           <Box sx={{ mt: 0.7 }}>
             <ProgressBar value={progress} color={color} height={5} />
-            {progressLabel ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{progressLabel}</Typography> : null}
+            {showSub && progressLabel ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{progressLabel}</Typography> : null}
           </Box>
         ) : null}
       </Box>

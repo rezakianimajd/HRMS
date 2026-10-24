@@ -3,6 +3,8 @@ import {
   Box, CircularProgress, Paper, Table, TableBody, TableCell,
   TableContainer, TableHead, TableRow, Typography,
 } from '@mui/material';
+import { useDesignTokens } from '../../context/DesignTokenContext';
+import { tableBackground } from '../../theme/designTokens';
 
 /**
  * جدول مشترک و توکن‌محور.
@@ -37,16 +39,29 @@ const DataTable = ({
 }) => {
   const colSpan = Math.max(columns.length, 1);
   const interactive = typeof onRowClick === 'function';
+  const { tokens } = useDesignTokens();
+  const tableCfg = tokens.tables || {};
+  const effectiveTable = { ...tableCfg, surface: tableCfg.variant === 'glass' ? 'glass' : tableCfg.surface };
+  const isGlass = effectiveTable.surface === 'glass';
+  const background = tableBackground(tokens, effectiveTable);
+  const cellPadding = tableCfg.variant === 'compact' ? 6 : tableCfg.variant === 'spacious' ? 12 : (tableCfg.cellPadding ?? 8);
+  const rowHover = tableCfg.hover !== false;
+  const showBorders = tableCfg.showBorders !== false;
+  const striped = Boolean(tableCfg.striped);
+  const stripBg = striped ? 'var(--hrms-table-row-alt-bg, transparent)' : 'transparent';
 
   return (
     <Paper
       elevation={0}
+      className="hrms-data-table"
       sx={{
-        borderRadius: 'var(--hrms-radius-large, 16px)',
+        borderRadius: 'var(--hrms-table-radius, 16px)',
         overflow: 'hidden',
-        border: 'var(--hrms-border-table, 1px solid #e8edf4)',
-        bgcolor: 'var(--hrms-region-table-bg, #ffffff)',
-        boxShadow: 'var(--hrms-shadow-table, none)',
+        border: 'var(--hrms-table-border-color, 1px solid #e8edf4)',
+        background,
+        boxShadow: 'var(--hrms-table-shadow, none)',
+        backdropFilter: isGlass ? 'var(--hrms-table-backdrop, blur(12px))' : 'none',
+        WebkitBackdropFilter: isGlass ? 'var(--hrms-table-backdrop, blur(12px))' : 'none',
         ...paperSx,
       }}
     >
@@ -66,7 +81,11 @@ const DataTable = ({
               aria-label={ariaLabel}
               sx={{
                 minWidth,
-                '& td, & th': { px: 1.25, py: 'var(--hrms-table-cell-padding, 8px)' },
+                '& td, & th': {
+                  px: 1.25,
+                  py: `${cellPadding}px`,
+                  borderBottomColor: showBorders ? 'var(--hrms-table-border-color, #e8edf4)' : 'transparent',
+                },
                 ...tableSx,
               }}
             >
@@ -80,7 +99,7 @@ const DataTable = ({
                         sx={{
                           fontWeight: 600,
                           whiteSpace: 'nowrap',
-                          bgcolor: 'var(--hrms-region-table-header-bg, #f8fafc)',
+                          bgcolor: 'var(--hrms-table-header-bg, #f8fafc)',
                           ...column.headerSx,
                         }}
                         style={column.width ? { width: column.width } : undefined}
@@ -105,7 +124,7 @@ const DataTable = ({
                   return (
                     <TableRow
                       key={rowId ?? index}
-                      hover
+                      hover={rowHover}
                       onClick={interactive ? (event) => onRowClick(row, event) : undefined}
                       onKeyDown={interactive ? (event) => {
                         if (event.key === 'Enter' || event.key === ' ') {
@@ -116,7 +135,7 @@ const DataTable = ({
                       tabIndex={interactive ? 0 : undefined}
                       sx={{
                         cursor: interactive ? 'pointer' : 'default',
-                        bgcolor: selected ? 'action.hover' : 'transparent',
+                        bgcolor: selected ? 'action.hover' : (striped && index % 2 === 1 ? stripBg : 'transparent'),
                         ...(extraSx || {}),
                       }}
                     >
