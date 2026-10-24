@@ -72,6 +72,21 @@ const compactMoney = (value) => {
 const paymentCurrency = (payment, fallback) => normalizeCurrencyLabel(
   payment?.currency_name || payment?.currency_symbol || fallback,
 );
+
+/** اطلاعات ارزی صورت‌وضعیت؛ برای صورت‌وضعیت ریالی هیچ معادل ارزی نمایش داده نمی‌شود. */
+const statementInfo = (row = {}, fallbackRate = 1, fallbackCurrency = 'ریال') => {
+  const raw = String(row?.statement_currency_name || '').trim();
+  const isRialStatement = Boolean(row?.statement) && Boolean(raw) && normalizeCurrencyLabel(raw) === 'ریال';
+  const ownRate = Number(row?.statement_exchange_rate);
+  const fallback = Number(fallbackRate);
+  const rate = isRialStatement ? 1 : (ownRate > 1 ? ownRate : (fallback > 1 ? fallback : 1));
+  return {
+    rate,
+    showForeign: rate > 1,
+    isRialStatement,
+    currency: raw ? normalizeCurrencyLabel(raw) : normalizeCurrencyLabel(fallbackCurrency),
+  };
+};
 const contractAmountOf = (contract) => num(contract?.effective_amount ?? contract?.amount);
 const statusLabel = (status) => STATUS_LABELS[status] || status || '—';
 const statusColor = (status) => STATUS_COLORS[status] || SLATE;
@@ -241,11 +256,13 @@ const MethodsCard = ({ methods, activeMethod, onSelect, accent = TEAL }) => {
 
 const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete }) => {
   const color = methodColor(row.method);
-  const rate = Number(row.statement_exchange_rate) > 1 ? Number(row.statement_exchange_rate) : contractRate;
-  const foreign = rate > 1 ? num(row.amount) / rate : null;
-  const statementForeign = rate > 1 && row.statement_amount
+  const info = statementInfo(row, contractRate, currency);
+  const rate = info.rate;
+  const foreign = info.showForeign ? num(row.amount) / rate : null;
+  const statementForeign = info.showForeign && row.statement_amount
     ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
     : null;
+  const statementNetForeign = info.showForeign && row.statement_net_amount ? num(row.statement_net_amount) / rate : null;
   return (
     <Paper
       elevation={0}
@@ -274,12 +291,18 @@ const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete
             <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED, mr: 0.4 }}>ریال</Box>
           </Typography>
           {foreign !== null ? (
-            <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(foreign)} {currency}</Typography>
+            <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(foreign)} {info.currency}</Typography>
           ) : null}
           {row.statement_amount ? (
             <Typography sx={{ mt: 0.2, fontSize: 12, color: BLUE }}>
-              صورت‌وضعیت: {formatPersianNumber(row.statement_amount)} ریال
-              {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${currency}` : ''}
+              مبلغ صورت‌وضعیت: {formatPersianNumber(row.statement_amount)} ریال
+              {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${info.currency}` : ''}
+            </Typography>
+          ) : null}
+          {row.statement_net_amount ? (
+            <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
+              قابل پرداخت صورت‌وضعیت: {formatPersianNumber(row.statement_net_amount)} ریال
+              {statementNetForeign !== null ? ` · ≈ ${formatPersianNumber(statementNetForeign)} ${info.currency}` : ''}
             </Typography>
           ) : null}
           <Typography sx={{ mt: 0.15, fontSize: 12, color: MUTED }}>
@@ -356,11 +379,13 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
       <TableBody>
         {rows.map((row) => {
           const color = methodColor(row.method);
-          const rate = Number(row.statement_exchange_rate) > 1 ? Number(row.statement_exchange_rate) : contractRate;
-          const foreign = rate > 1 ? num(row.amount) / rate : null;
-          const statementForeign = rate > 1 && row.statement_amount
-    ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
-    : null;
+          const info = statementInfo(row, contractRate, currency);
+          const rate = info.rate;
+          const foreign = info.showForeign ? num(row.amount) / rate : null;
+          const statementForeign = info.showForeign && row.statement_amount
+            ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
+            : null;
+          const statementNetForeign = info.showForeign && row.statement_net_amount ? num(row.statement_net_amount) / rate : null;
           return (
             <TableRow key={row.id} hover onClick={() => onView(row)}
               sx={{ cursor: 'pointer', '& td': { py: 0.8, borderBottom: '1px solid #f2f5f9' } }}>
@@ -373,12 +398,18 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
                   <Box component="span" sx={{ fontSize: 12, color: MUTED, mr: 0.35 }}>ریال</Box>
                 </Typography>
                 {foreign !== null ? (
-                  <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(foreign)} {currency}</Typography>
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(foreign)} {info.currency}</Typography>
                 ) : null}
                 {row.statement_amount ? (
                   <Typography sx={{ fontSize: 12, color: BLUE }}>
-                    صورت‌وضعیت: {formatPersianNumber(row.statement_amount)} ریال
-                    {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${currency}` : ''}
+                    مبلغ صورت‌وضعیت: {formatPersianNumber(row.statement_amount)} ریال
+                    {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${info.currency}` : ''}
+                  </Typography>
+                ) : null}
+                {row.statement_net_amount ? (
+                  <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
+                    قابل پرداخت: {formatPersianNumber(row.statement_net_amount)} ریال
+                    {statementNetForeign !== null ? ` · ≈ ${formatPersianNumber(statementNetForeign)} ${info.currency}` : ''}
                   </Typography>
                 ) : null}
               </TableCell>
@@ -422,11 +453,13 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
 const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, onClose, onEdit, onDelete }) => {
   const open = Boolean(payment);
   const row = payment || {};
-  const rate = Number(row.statement_exchange_rate) > 1 ? Number(row.statement_exchange_rate) : contractRate;
-  const foreign = rate > 1 ? num(row.amount) / rate : null;
-  const statementForeign = rate > 1 && row.statement_amount
+  const info = statementInfo(row, contractRate, currency);
+  const rate = info.rate;
+  const foreign = info.showForeign ? num(row.amount) / rate : null;
+  const statementForeign = info.showForeign && row.statement_amount
     ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
     : null;
+  const statementNetForeign = info.showForeign && row.statement_net_amount ? num(row.statement_net_amount) / rate : null;
   const color = methodColor(row.method);
   return (
     <Drawer anchor="left" open={open} onClose={onClose}
@@ -445,7 +478,7 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
               <Box sx={{ flex: 1, minWidth: 0 }}>
                 <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>جزئیات پرداخت قرارداد</Typography>
                 <Typography sx={{ fontSize: 16, fontWeight: 900 }}>{formatPersianNumber(row.amount || 0)} <Box component="span" sx={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }}>ریال</Box></Typography>
-                {foreign !== null ? <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.68)' }}>≈ {formatPersianNumber(foreign)} {currency}</Typography> : null}
+                {foreign !== null ? <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.68)' }}>≈ {formatPersianNumber(foreign)} {info.currency}</Typography> : null}
                 <Typography sx={{ mt: 0.2, fontSize: 12, color: 'rgba(255,255,255,0.58)' }}>{toJalali(row.date)}</Typography>
               </Box>
               <IconButton size="small" onClick={onClose} sx={{ color: 'rgba(255,255,255,0.8)', mt: -0.4 }}><CloseOutlinedIcon fontSize="small" /></IconButton>
@@ -460,12 +493,12 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
             <Box sx={{ mb: 1.8 }}>
               <SectionHeading icon={PaymentsOutlinedIcon} title="اطلاعات پرداخت" color={color} />
               <InfoLine label="مبلغ پرداخت (ریال)" value={`${formatPersianNumber(row.amount || 0)} ریال`} strong color={TEAL} />
-              {foreign !== null ? <InfoLine label="معادل ارزی پرداخت" value={`${formatPersianNumber(foreign)} ${currency}`} /> : null}
-              {rate > 1 ? <InfoLine label="نرخ تسعیر" value={`${formatPersianNumber(rate)} ریال`} /> : null}
+              {foreign !== null ? <InfoLine label="معادل ارزی پرداخت" value={`${formatPersianNumber(foreign)} ${info.currency}`} /> : null}
+              {info.showForeign ? <InfoLine label="نرخ تسعیر" value={`${formatPersianNumber(rate)} ریال`} /> : null}
               <InfoLine label="تاریخ پرداخت" value={toJalali(row.date)} />
               <InfoLine label="روش پرداخت" value={row.method || '—'} />
               <InfoLine label="شماره مرجع / سند" value={row.reference || '—'} ltr />
-              <InfoLine label="واحد ارز مرجع" value={currency} />
+              {info.showForeign ? <InfoLine label="واحد ارز مرجع" value={info.currency} /> : null}
             </Box>
             <Divider />
             <Box sx={{ my: 1.8 }}>
@@ -473,13 +506,19 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
               <InfoLine label="فاکتور مرتبط" value={row.invoice_number || '—'} />
               <InfoLine label="صورت‌وضعیت مرتبط" value={row.statement_number || '—'} />
               {row.statement_amount ? (
-                <InfoLine label="مبلغ صورت‌وضعیت (ریال)" value={`${formatPersianNumber(row.statement_amount)} ریال`} />
+                <InfoLine label="مبلغ تجمعی صورت‌وضعیت (ریال)" value={`${formatPersianNumber(row.statement_amount)} ریال`} />
               ) : null}
               {statementForeign !== null ? (
-                <InfoLine label="معادل ارزی صورت‌وضعیت" value={`${formatPersianNumber(statementForeign)} ${currency}`} />
+                <InfoLine label="معادل ارزی مبلغ تجمعی" value={`${formatPersianNumber(statementForeign)} ${info.currency}`} />
               ) : null}
-              {row.statement_exchange_rate > 1 ? (
-                <InfoLine label="نرخ صورت‌وضعیت" value={`${formatPersianNumber(row.statement_exchange_rate)} ریال`} />
+              {row.statement_net_amount ? (
+                <InfoLine label="قابل پرداخت صورت‌وضعیت (ریال)" value={`${formatPersianNumber(row.statement_net_amount)} ریال`} strong color={GREEN} />
+              ) : null}
+              {statementNetForeign !== null ? (
+                <InfoLine label="قابل پرداخت ارزی صورت‌وضعیت" value={`${formatPersianNumber(statementNetForeign)} ${info.currency}`} color={GREEN} />
+              ) : null}
+              {info.showForeign ? (
+                <InfoLine label="نرخ صورت‌وضعیت" value={`${formatPersianNumber(rate)} ریال`} />
               ) : null}
               <InfoLine label="پرونده قرارداد" value={contract?.number || '—'} ltr />
             </Box>
@@ -551,7 +590,25 @@ const PaymentEditorDialog = ({
   const selectedCurrency = currencyList.find((item) => String(item.id) === String(form.currency));
   const label = normalizeCurrencyLabel(selectedCurrency?.name || fallbackCurrency);
   const referenceRate = Number(selectedCurrency?.exchange_rate) > 1 ? Number(selectedCurrency.exchange_rate) : 1;
-  const referenceForeign = referenceRate > 1 ? num(form.amount) / referenceRate : null;
+  const selectedStatement = statementList.find((item) => String(item.id) === String(form.statement));
+  const hideReferenceForeign = Boolean(selectedStatement) && statementInfo(
+    { ...selectedStatement, statement: selectedStatement.id }, 1, label,
+  ).isRialStatement;
+  const referenceForeign = referenceRate > 1 && !hideReferenceForeign ? num(form.amount) / referenceRate : null;
+  const selectedStatementInfo = statementInfo(
+    selectedStatement ? { ...selectedStatement, statement: selectedStatement.id } : null,
+    1,
+    label,
+  );
+  const selectedStatementForeign = selectedStatementInfo.showForeign && selectedStatement?.amount
+    ? (selectedStatement.foreign_amount != null
+      ? num(selectedStatement.foreign_amount)
+      : num(selectedStatement.amount) / selectedStatementInfo.rate)
+    : null;
+  const selectedStatementNetForeign = selectedStatementInfo.showForeign && selectedStatement?.net_amount
+    ? num(selectedStatement.net_amount) / selectedStatementInfo.rate
+    : null;
+  const selectedStatementPayable = selectedStatement?.net_amount ?? selectedStatement?.amount;
   return (
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
       <DialogTitle sx={{
@@ -615,35 +672,84 @@ const PaymentEditorDialog = ({
                 <InputLabel>صورت‌وضعیت مرتبط</InputLabel>
                 <Select value={form.statement || ''} label="صورت‌وضعیت مرتبط" onChange={(event) => setForm((previous) => ({ ...previous, statement: event.target.value }))}>
                   <MenuItem value="">— بدون صورت‌وضعیت —</MenuItem>
-                  {statementList.map((statement) => (
-                    <MenuItem key={statement.id} value={statement.id}>
-                      {statement.number || `صورت‌وضعیت ${statement.id}`} · {formatPersianNumber(statement.amount || 0)} ریال
-                    </MenuItem>
-                  ))}
+                  {statementList.map((statement) => {
+                    const info = statementInfo({ ...statement, statement: statement.id }, 1, label);
+                    const payable = statement.net_amount ?? statement.amount;
+                    const cumulativeForeign = info.showForeign && statement.amount
+                      ? (statement.foreign_amount != null
+                        ? num(statement.foreign_amount)
+                        : num(statement.amount) / info.rate)
+                      : null;
+                    return (
+                      <MenuItem key={statement.id} value={statement.id}>
+                        {statement.number || `صورت‌وضعیت ${statement.id}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
+                        {cumulativeForeign !== null ? ` · ${formatPersianNumber(cumulativeForeign)} ${info.currency}` : ''}
+                      </MenuItem>
+                    );
+                  })}
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
         </Box>
+        {selectedStatement ? (
+          <Box sx={{ p: 1.1, borderRadius: '12px', bgcolor: alpha(BLUE, 0.035), border: `1px solid ${alpha(BLUE, 0.13)}` }}>
+            <Stack direction="row" alignItems="center" spacing={0.8} sx={{ mb: 0.8 }}>
+              <LinkOutlinedIcon sx={{ fontSize: 17, color: BLUE }} />
+              <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>
+                صورت‌وضعیت {selectedStatement.number || selectedStatement.id}
+              </Typography>
+              <Chip size="small" label={selectedStatementInfo.showForeign ? selectedStatementInfo.currency : 'ریالی'}
+                sx={{ height: 19, fontSize: 12, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
+            </Stack>
+            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 0.9 }}>
+              <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: '1px solid #e8eef2' }}>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ تجمعی صورت‌وضعیت</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
+                  {formatPersianNumber(selectedStatement.amount || 0)} ریال
+                </Typography>
+                {selectedStatementForeign !== null ? (
+                  <Typography sx={{ fontSize: 12, color: MUTED }}>
+                    ≈ {formatPersianNumber(selectedStatementForeign)} {selectedStatementInfo.currency}
+                  </Typography>
+                ) : null}
+              </Box>
+              <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: `1px solid ${alpha(GREEN, 0.2)}` }}>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: GREEN }}>
+                  {formatPersianNumber(selectedStatementPayable || 0)} ریال
+                </Typography>
+                {selectedStatementNetForeign !== null ? (
+                  <Typography sx={{ fontSize: 12, color: GREEN }}>
+                    ≈ {formatPersianNumber(selectedStatementNetForeign)} {selectedStatementInfo.currency}
+                  </Typography>
+                ) : null}
+              </Box>
+            </Box>
+          </Box>
+        ) : null}
+
 
         <Divider />
         <Box>
           <SectionHeading icon={AccountBalanceWalletOutlinedIcon} title="مبلغ و واحد ارز" color={BLUE}
             action={form.amount ? <Chip size="small" label={`${formatPersianNumber(form.amount)} ریال`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null} />
           <Grid container spacing={1.4}>
-            <Grid item xs={12} md={4}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>واحد ارز مرجع</InputLabel>
-                <Select value={form.currency || ''} label="واحد ارز مرجع" onChange={(event) => setForm((previous) => ({ ...previous, currency: event.target.value }))}>
-                  <MenuItem value="">—</MenuItem>
-                  {currencyList.map((currency) => (
-                    <MenuItem key={currency.id} value={currency.id}>{normalizeCurrencyLabel(currency.name || currency.symbol)} ({currency.code})</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Typography sx={{ mt: 0.4, fontSize: 12, color: MUTED }}>پرداخت نهایی به ریال ثبت می‌شود؛ این واحد فقط برای نمایش معادل ارزی است.</Typography>
-            </Grid>
-            <Grid item xs={12} md={8}>
+            {hideReferenceForeign ? null : (
+              <Grid item xs={12} md={4}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>واحد ارز مرجع</InputLabel>
+                  <Select value={form.currency || ''} label="واحد ارز مرجع" onChange={(event) => setForm((previous) => ({ ...previous, currency: event.target.value }))}>
+                    <MenuItem value="">—</MenuItem>
+                    {currencyList.map((currency) => (
+                      <MenuItem key={currency.id} value={currency.id}>{normalizeCurrencyLabel(currency.name || currency.symbol)} ({currency.code})</MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Typography sx={{ mt: 0.4, fontSize: 12, color: MUTED }}>پرداخت نهایی به ریال ثبت می‌شود؛ این واحد فقط برای نمایش معادل ارزی است.</Typography>
+              </Grid>
+            )}
+            <Grid item xs={12} md={hideReferenceForeign ? 12 : 8}>
               <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ پرداخت (ریال)" value={form.amount}
                 onChange={(value) => setForm((previous) => ({ ...previous, amount: value }))} />
               {referenceForeign !== null ? (

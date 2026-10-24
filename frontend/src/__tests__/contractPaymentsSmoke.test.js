@@ -52,6 +52,11 @@ const payment = {
   invoice_number: 'INV-100',
   statement: 1,
   statement_number: 'ST-100',
+  statement_amount: 400000000,
+  statement_net_amount: 350000000,
+  statement_exchange_rate: 1,
+  statement_currency_name: 'ریال ایران',
+  statement_foreign_amount: null,
   attachment_count: 1,
   attachments: [{
     id: 5, title: 'رسید بانکی', file_name: 'receipt.pdf', size: 2048,
@@ -77,7 +82,88 @@ beforeEach(() => {
   });
 });
 
+test('foreign statement shows rial amount, foreign equivalent and payable amount', async () => {
+  const foreignContract = {
+    ...contract,
+    id: 2,
+    number: 'C-200',
+    subject: 'قرارداد تجهیزات وارداتی',
+    amount: 1000,
+    effective_amount: 1000,
+    currency: 2,
+    currency_name: 'یورو',
+    exchange_rate: 2000000,
+  };
+  const foreignPayment = {
+    ...payment,
+    id: 12,
+    contract: 2,
+    currency: 2,
+    currency_name: 'یورو',
+    amount: 2000000000,
+    reference: 'REF-EUR',
+    statement_amount: 4000000000,
+    statement_net_amount: 3000000000,
+    statement_exchange_rate: 2000000,
+    statement_currency_name: 'یورو',
+    statement_foreign_amount: 2000,
+  };
+  axiosInstance.get.mockImplementation((url) => {
+    if (url === '/external-contracts/') return Promise.resolve({ data: [foreignContract] });
+    if (url === '/currencies/') {
+      return Promise.resolve({
+        data: [
+          { id: 1, name: 'ریال ایران', symbol: '﷼', code: 'IRR' },
+          { id: 2, name: 'یورو', symbol: '€', code: 'EUR', exchange_rate: 2000000 },
+        ],
+      });
+    }
+    if (url === '/contract-invoices/') return Promise.resolve({ data: [{ id: 1, number: 'INV-EUR' }] });
+    if (url === '/contract-statements/') {
+      return Promise.resolve({
+        data: [{
+          id: 2,
+          number: 'ST-EUR',
+          amount: 4000000000,
+          net_amount: 3000000000,
+          exchange_rate: 2000000,
+          currency_name: 'یورو',
+          foreign_amount: 2000,
+        }],
+      });
+    }
+    if (url === '/contract-payments/') return Promise.resolve({ data: [foreignPayment] });
+    return Promise.resolve({ data: null });
+  });
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/contracts-payments?contract=2']}>
+          <ContractPaymentsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(650);
+  });
+  for (let index = 0; index < 4; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  expect(container.textContent).toContain('قرارداد تجهیزات وارداتی');
+  expect(container.textContent).toContain('REF-EUR');
+  expect(container.textContent).toContain('قابل پرداخت صورت‌وضعیت');
+  expect(container.textContent).toContain('≈');
+});
+
 test('contract payments page renders financial summary, linked details and detail drawer', async () => {
+
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -108,6 +194,8 @@ test('contract payments page renders financial summary, linked details and detai
   expect(container.textContent).toContain('حواله بانکی');
   expect(container.textContent).toContain('INV-100');
   expect(container.textContent).toContain('ST-100');
+  expect(container.textContent).toContain('قابل پرداخت صورت‌وضعیت');
+  expect(container.textContent).not.toContain('≈');
   expect(container.textContent).toContain('مشاهده جزئیات');
   expect(container.textContent).toContain('۱ فایل');
 
