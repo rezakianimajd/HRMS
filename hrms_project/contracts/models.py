@@ -323,6 +323,19 @@ class Statement(BaseModel):
         max_digits=18, decimal_places=6, null=True, blank=True,
         verbose_name=_('نرخ ارز (به ریال)'),
     )
+    # تجمع ارزی مستقل از ریال؛ هر دوره فقط کارکرد همان دوره با نرخ خودش تبدیل می‌شود.
+    foreign_amount = models.DecimalField(
+        max_digits=18, decimal_places=4, default=0,
+        verbose_name=_('مبلغ تجمعی ارزی این صورت‌وضعیت'),
+    )
+    foreign_previous_amount = models.DecimalField(
+        max_digits=18, decimal_places=4, default=0,
+        verbose_name=_('مبلغ تجمعی ارزی دوره قبل'),
+    )
+    foreign_work_done = models.DecimalField(
+        max_digits=18, decimal_places=4, default=0,
+        verbose_name=_('کارکرد ارزی دوره'),
+    )
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 

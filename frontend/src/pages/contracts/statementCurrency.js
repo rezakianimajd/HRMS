@@ -49,5 +49,11 @@ export const displayAmount = (row, rialAmount, fallbackRate = 1) => {
   return rate > 1 ? fromRial(rialAmount, rate) : (Number(rialAmount) || 0);
 };
 
+/** تبدیل مبلغ تجمعی ارزی به ریال بدون بازمحاسبهٔ دوره‌های قبل. */
+export const cumulativeRialFromForeign = (previousRial, previousForeign, foreignAmount, rate) => (
+  (Number(previousRial) || 0)
+  + toRial(Math.max(0, (Number(foreignAmount) || 0) - (Number(previousForeign) || 0)), rate)
+);
+
 /** آیا باید معادل ارزی جداگانه نمایش داده شود؟ */
 export const hasForeignAmount = (row, fallbackRate = 1) => rateOfStatement(row, fallbackRate) > 1;

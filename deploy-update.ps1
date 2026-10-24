@@ -276,6 +276,7 @@ $BackendFiles = @(
     'hrms_project/contracts/migrations/0031_contractaccountmapping.py',
     'hrms_project/contracts/migrations/0032_recalculate_statement_totals.py',
     'hrms_project/contracts/migrations/0033_convert_foreign_statement_amounts_to_rial.py',
+    'hrms_project/contracts/migrations/0034_statement_foreign_totals.py',
     'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',
     'hrms_project/projects/migrations/0005_wbstemplatenode_budgetline_created_by_and_more.py',
     'hrms_project/contracts/migrations/0021_contract_contract_alloc_gin_idx_and_more.py',

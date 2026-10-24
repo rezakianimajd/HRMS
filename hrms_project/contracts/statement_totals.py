@@ -47,12 +47,16 @@ def recalculate_contract_statements(contract):
     rows = list(Statement.objects.filter(contract=contract).order_by('pk'))
     prior_amount = Decimal('0')
     prior_work = Decimal('0')
+    prior_foreign = Decimal('0')
 
     with transaction.atomic():
         for row in rows:
             amount = _decimal(row.amount)
             previous = max(prior_amount, prior_work)
             work = max(Decimal('0'), amount - previous)
+            rate = _decimal(row.exchange_rate) or Decimal('1')
+            work_foreign = (work / rate).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP) if rate > 0 else work
+            foreign_amount = (prior_foreign + work_foreign).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
             additions = _normalize_items(row.additions, work)
             deductions = _normalize_items(row.deductions, work)
             additions_total = sum(
@@ -68,6 +72,9 @@ def recalculate_contract_statements(contract):
             Statement.objects.filter(pk=row.pk).update(
                 cumulative_previous_amount=previous,
                 work_done=work,
+                foreign_previous_amount=prior_foreign,
+                foreign_work_done=work_foreign,
+                foreign_amount=foreign_amount,
                 additions=additions,
                 deductions=deductions,
                 additions_total=additions_total,
@@ -79,3 +86,4 @@ def recalculate_contract_statements(contract):
             # مبنا برای دورهٔ بعد، همین مقادیر تازه‌محاسبه‌شده است.
             prior_amount = amount
             prior_work += work
+            prior_foreign = foreign_amount

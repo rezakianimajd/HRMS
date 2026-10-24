@@ -243,7 +243,9 @@ const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete
   const color = methodColor(row.method);
   const rate = Number(row.statement_exchange_rate) > 1 ? Number(row.statement_exchange_rate) : contractRate;
   const foreign = rate > 1 ? num(row.amount) / rate : null;
-  const statementForeign = rate > 1 && row.statement_amount ? num(row.statement_amount) / rate : null;
+  const statementForeign = rate > 1 && row.statement_amount
+    ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
+    : null;
   return (
     <Paper
       elevation={0}
@@ -356,7 +358,9 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
           const color = methodColor(row.method);
           const rate = Number(row.statement_exchange_rate) > 1 ? Number(row.statement_exchange_rate) : contractRate;
           const foreign = rate > 1 ? num(row.amount) / rate : null;
-          const statementForeign = rate > 1 && row.statement_amount ? num(row.statement_amount) / rate : null;
+          const statementForeign = rate > 1 && row.statement_amount
+    ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
+    : null;
           return (
             <TableRow key={row.id} hover onClick={() => onView(row)}
               sx={{ cursor: 'pointer', '& td': { py: 0.8, borderBottom: '1px solid #f2f5f9' } }}>
@@ -420,7 +424,9 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
   const row = payment || {};
   const rate = Number(row.statement_exchange_rate) > 1 ? Number(row.statement_exchange_rate) : contractRate;
   const foreign = rate > 1 ? num(row.amount) / rate : null;
-  const statementForeign = rate > 1 && row.statement_amount ? num(row.statement_amount) / rate : null;
+  const statementForeign = rate > 1 && row.statement_amount
+    ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
+    : null;
   const color = methodColor(row.method);
   return (
     <Drawer anchor="left" open={open} onClose={onClose}

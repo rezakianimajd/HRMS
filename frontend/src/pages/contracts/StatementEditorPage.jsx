@@ -49,7 +49,7 @@ import {
   contractAmountOf, dateLabel, money, rowMetrics,
 } from './StatementWorkspaceUI';
 import {
-  displayAmount, fromRial, isRialCurrency, normalizeRate, rateOfStatement, toRial,
+  cumulativeRialFromForeign, displayAmount, fromRial, isRialCurrency, normalizeRate, rateOfStatement, toRial,
 } from './statementCurrency';
 
 const COLOR = '#6366f1';
@@ -214,6 +214,15 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
   const currencyLabel = normalizeCurrencyLabel(cur?.name || cur?.symbol);
   const fx = (v) => (rate > 1 ? v / rate : null);
+  const cumulativeThisForeign = rate > 1
+    ? (form.amount_foreign != null ? num(form.amount_foreign) : fx(cumulativeThis))
+    : null;
+  const cumulativePrevForeign = rate > 1
+    ? (form.cumulative_previous_foreign != null ? num(form.cumulative_previous_foreign) : fx(cumulativePrev))
+    : null;
+  const workDoneForeign = rate > 1
+    ? Math.max(0, cumulativeThisForeign - cumulativePrevForeign)
+    : null;
 
   return (
     <Box id="statement-print-area" dir="rtl" sx={{
@@ -263,9 +272,9 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
       {/* Section 3: financial breakdown */}
       <Box sx={{ borderRadius: '12px', p: 2, background: `linear-gradient(135deg, ${COLOR}0e, ${COLOR}05)`, border: `1px solid ${COLOR}22` }}>
-        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={fx(cumulativeThis)} foreignSymbol={currencyLabel} />
-        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={fx(cumulativePrev)} foreignSymbol={currencyLabel} />
-        <Row label="کارکرد دوره" value={workDone} highlight foreign={fx(workDone)} foreignSymbol={currencyLabel} />
+        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={cumulativeThisForeign} foreignSymbol={currencyLabel} />
+        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={cumulativePrevForeign} foreignSymbol={currencyLabel} />
+        <Row label="کارکرد دوره" value={workDone} highlight foreign={workDoneForeign} foreignSymbol={currencyLabel} />
       </Box>
 
       {/* Additions */}
@@ -395,6 +404,18 @@ const previousCumulativeFor = (rows, { excludeId = null } = {}) => {
     prior.reduce((sum, row) => sum + rowMetrics(row).work, 0),
   );
 };
+
+/** تجمع ارزی دوره‌های قبل؛ کارکرد هر دوره با نرخ تاریخی خودش. */
+const foreignCumulativeFor = (rows, { beforeId = null } = {}) => (
+  (Array.isArray(rows) ? rows : [])
+    .filter((row) => !beforeId || Number(row.id || 0) < Number(beforeId))
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+    .reduce((sum, row) => {
+      const rate = rateOfStatement(row, 1);
+      const work = num(row.work_done) || rowMetrics(row).work;
+      return sum + (rate > 1 ? work / rate : work);
+    }, 0)
+);
 
 const StatementEditorPage = () => {
   const qc = useQueryClient();
@@ -618,6 +639,7 @@ const StatementEditorPage = () => {
       number: payload.number || '',
       date: payload.date || null,
       amount,
+      foreign_amount: Math.max(0, Number(payload.amount_foreign) || 0),
       cumulative_previous_amount: previous,
       work_done: work,
       value_added_tax: valueAddedTax,
@@ -767,8 +789,6 @@ const StatementEditorPage = () => {
   const deductionsTotal = deductions.reduce((sum, item) => sum + num(item.amount), 0);
   const cumulativePrev = num(form.cumulative_previous_amount);
   const cumulativeThis = num(form.amount);
-  const workDone = Math.max(0, cumulativeThis - cumulativePrev);
-  const netAmount = workDone + additionsTotal - deductionsTotal;
   const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
   const formCurrencyLabel = normalizeCurrencyLabel(
     formCurrency?.name || formCurrency?.symbol || currencyLabel,
@@ -778,16 +798,26 @@ const StatementEditorPage = () => {
   const rate = rateOverride !== '' && rateOverride != null ? normalizeRate(rateOverride) : baseRate;
   const displayRate = isRial ? 1 : rate;
   const displayValue = (rialValue) => (displayRate > 1 ? fromRial(rialValue, displayRate) : num(rialValue));
+  const cumulativePrevForeign = form.cumulative_previous_foreign != null
+    ? num(form.cumulative_previous_foreign)
+    : (displayRate > 1 ? fromRial(cumulativePrev, displayRate) : cumulativePrev);
+  const cumulativeThisForeign = form.amount_foreign != null
+    ? num(form.amount_foreign)
+    : (displayRate > 1 ? fromRial(cumulativeThis, displayRate) : cumulativeThis);
+  const workDoneForeign = Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
+  const workDone = Math.max(0, cumulativeThis - cumulativePrev);
+  const netAmount = workDone + additionsTotal - deductionsTotal;
   const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
     || (String(form.contract) === String(contractId) ? selectedContract : null);
   const formContractAmount = contractAmountOf(formContract);
-  const contractAmountRial = formContractAmount * displayRate;
-  const overContract = contractAmountRial > 0 && cumulativeThis > contractAmountRial;
-  const progress = contractAmountRial > 0 ? Math.min(100, (cumulativeThis / contractAmountRial) * 100) : 0;
+  const overContract = formContractAmount > 0 && cumulativeThisForeign > formContractAmount;
+  const progress = formContractAmount > 0
+    ? Math.min(100, (cumulativeThisForeign / formContractAmount) * 100)
+    : 0;
 
   /**
-   * با تغییر نرخ ارز، مبالغ ارزی واردشده حفظ می‌شوند و فقط معادل ریالی
-   * (و آیتم‌های درصدی بر مبنای کارکرد جدید) دوباره محاسبه می‌شود.
+   * با تغییر نرخ ارز، مبالغ ارزی واردشده حفظ می‌شوند. فقط کارکرد همین دوره
+   * با نرخ جدید به ریال تبدیل می‌شود؛ ریال دوره‌های قبل دست‌نخورده می‌ماند.
    */
   const syncFormAmounts = (previous, nextRateValue) => {
     if (!previous || !Object.keys(previous).length) return previous;
@@ -795,9 +825,13 @@ const StatementEditorPage = () => {
     const amountForeign = previous.amount_foreign != null
       ? previous.amount_foreign
       : fromRial(previous.amount, nextRate);
-    const amount = toRial(amountForeign, nextRate);
     const previousRial = num(previous.cumulative_previous_amount);
-    const nextWork = Math.max(0, amount - previousRial);
+    const previousForeign = previous.cumulative_previous_foreign != null
+      ? num(previous.cumulative_previous_foreign)
+      : fromRial(previousRial, nextRate);
+    const nextWorkForeign = Math.max(0, num(amountForeign) - previousForeign);
+    const nextWork = toRial(nextWorkForeign, nextRate);
+    const amount = cumulativeRialFromForeign(previousRial, previousForeign, amountForeign, nextRate);
     const recalcItem = (item) => {
       if (item?.mode === 'percent') {
         const itemRial = Math.round((nextWork * Number(item.percent || 0)) / 100);
@@ -824,7 +858,7 @@ const StatementEditorPage = () => {
       ...previous,
       amount_foreign: amountForeign,
       amount,
-      cumulative_previous_foreign: fromRial(previousRial, nextRate),
+      cumulative_previous_foreign: previousForeign,
       additions: (previous.additions || []).map(recalcItem),
       deductions: (previous.deductions || []).map(recalcItem),
       value_added_tax_foreign: taxMode === 'percent' ? fromRial(tax, nextRate) : taxForeign,
@@ -835,11 +869,15 @@ const StatementEditorPage = () => {
   };
 
   const updateAmountForeign = (field, value) => {
-    setForm((previous) => ({
-      ...previous,
-      [`${field}_foreign`]: value,
-      [field]: toRial(value, displayRate),
-    }));
+    setForm((previous) => {
+      const previousRial = num(previous.cumulative_previous_amount);
+      const previousForeign = num(previous.cumulative_previous_foreign);
+      return {
+        ...previous,
+        [`${field}_foreign`]: value,
+        [field]: cumulativeRialFromForeign(previousRial, previousForeign, value, displayRate),
+      };
+    });
   };
 
   const changeCurrency = (currencyId) => {
@@ -906,6 +944,7 @@ const StatementEditorPage = () => {
   const openNew = () => {
     const newDate = todayIso();
     const previousCumulative = previousCumulativeFor(scopedList) ?? 0;
+    const previousForeign = foreignCumulativeFor(scopedList);
     const initialCurrency = currencyList.find(
       (currency) => String(currency.id) === String(selectedContract?.currency),
     ) || null;
@@ -917,9 +956,9 @@ const StatementEditorPage = () => {
       number: '',
       date: newDate,
       amount: previousCumulative,
-      amount_foreign: fromRial(previousCumulative, initialRate),
+      amount_foreign: previousForeign,
       cumulative_previous_amount: previousCumulative,
-      cumulative_previous_foreign: fromRial(previousCumulative, initialRate),
+      cumulative_previous_foreign: previousForeign,
       currency: selectedContract?.currency || '',
       value_added_tax: 0,
       value_added_tax_foreign: 0,
@@ -962,6 +1001,15 @@ const StatementEditorPage = () => {
     const previousCumulative = calculatedPrevious == null
       ? Number(row.cumulative_previous_amount || 0)
       : calculatedPrevious;
+    const previousForeign = row.foreign_previous_amount != null
+      ? Number(row.foreign_previous_amount || 0)
+      : foreignCumulativeFor(
+        allStatements.filter((item) => String(item.contract) === String(row.contract)),
+        { beforeId: row.id },
+      );
+    const rowForeignAmount = row.foreign_amount != null
+      ? Number(row.foreign_amount || 0)
+      : previousForeign + (editWork / editRate);
     const withForeignAmount = (items) => withCalculationMode(items).map((item) => ({
       ...item,
       amount_foreign: fromRial(item.amount, editRate),
@@ -970,9 +1018,9 @@ const StatementEditorPage = () => {
       ...row,
       contract: String(row.contract || ''),
       amount: Number(row.amount || 0),
-      amount_foreign: fromRial(row.amount, editRate),
+      amount_foreign: rowForeignAmount,
       cumulative_previous_amount: previousCumulative,
-      cumulative_previous_foreign: fromRial(previousCumulative, editRate),
+      cumulative_previous_foreign: previousForeign,
       value_added_tax: Number(row.value_added_tax || 0),
       value_added_tax_foreign: fromRial(row.value_added_tax, editRate),
       other_additions: Number(row.other_additions || 0),
@@ -1000,15 +1048,22 @@ const StatementEditorPage = () => {
     const rows = allStatements.filter((item) => String(item.contract) === String(form.contract));
     const next = previousCumulativeFor(rows, { excludeId: form.id });
     if (next == null) return;
+    const nextForeign = foreignCumulativeFor(rows, { beforeId: form.id });
     setForm((previous) => {
-      if (!previous || Number(previous.cumulative_previous_amount || 0) === next) return previous;
+      if (
+        !previous
+        || (
+          Number(previous.cumulative_previous_amount || 0) === next
+          && Number(previous.cumulative_previous_foreign || 0) === nextForeign
+        )
+      ) return previous;
       return {
         ...previous,
         cumulative_previous_amount: next,
-        cumulative_previous_foreign: fromRial(next, displayRate),
+        cumulative_previous_foreign: nextForeign,
       };
     });
-  }, [mode, form.contract, form.date, form.id, allStatements, displayRate]);
+  }, [mode, form.contract, form.date, form.id, allStatements]);
 
   const openPrint = (row) => {
     setPrintPending(true);
@@ -1149,9 +1204,6 @@ const StatementEditorPage = () => {
     URL.revokeObjectURL(link.href);
   };
 
-  const cumulativePrevForeign = displayValue(cumulativePrev);
-  const cumulativeThisForeign = displayValue(cumulativeThis);
-  const workDoneForeign = Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
   const additionsTotalForeign = displayValue(additionsTotal);
   const deductionsTotalForeign = displayValue(deductionsTotal);
   const netAmountForeign = workDoneForeign + additionsTotalForeign - deductionsTotalForeign;

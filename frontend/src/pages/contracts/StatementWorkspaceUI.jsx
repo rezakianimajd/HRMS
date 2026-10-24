@@ -66,6 +66,16 @@ export const statementAmount = (row, rialValue, fallbackRate = 1) => (
   displayAmount(row, rialValue, fallbackRate)
 );
 
+/** نمایش مبلغ با معادل ارزیِ ذخیره‌شده (برای مبالغ تجمعی و کارکرد دوره). */
+export const statementMoneyFor = (row, rialValue, foreignValue, currency = RIAL_LABEL, fallbackRate = 1) => {
+  const rate = rateOfStatement(row, fallbackRate);
+  const foreign = Number(foreignValue);
+  if (rate > 1 && !isRialCurrency(currency) && Number.isFinite(foreign)) {
+    return money(foreign, currency);
+  }
+  return statementMoney(row, rialValue, currency, fallbackRate);
+};
+
 export const currencyFor = (row, contract) => normalizeCurrencyLabel(
   row?.currency_name || row?.currency_symbol || contract?.currency_name
   || contract?.currency_symbol || 'ریال',
@@ -141,8 +151,10 @@ export const StatementCard = ({
   const metrics = rowMetrics(row);
   const status = statementStatus(row);
   const rate = rateOfStatement(row, fallbackRate);
-  const contractAmountRial = Math.max(0, n(contractAmount)) * rate;
-  const progress = contractAmountRial > 0 ? clamp((metrics.amount / contractAmountRial) * 100) : 0;
+  const cumulativeForeign = row.foreign_amount != null
+    ? n(row.foreign_amount)
+    : (rate > 1 ? metrics.amount / rate : metrics.amount);
+  const progress = n(contractAmount) > 0 ? clamp((cumulativeForeign / n(contractAmount)) * 100) : 0;
   const foreign = hasForeignAmount(row, fallbackRate);
   const documents = Array.isArray(row.documents) ? row.documents : [];
   return (
@@ -175,7 +187,7 @@ export const StatementCard = ({
       </Box>
 
       <Grid container spacing={0.55}>
-        <Grid item xs={6}><MetricBox label="کارکرد دوره" value={statementMoney(row, metrics.work, currency, fallbackRate)} color={BLUE} /></Grid>
+        <Grid item xs={6}><MetricBox label="کارکرد دوره" value={statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)} color={BLUE} /></Grid>
         <Grid item xs={6}><MetricBox label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} color={metrics.deductionsTotal ? RED : INK} /></Grid>
       </Grid>
 
@@ -230,14 +242,16 @@ export const StatementTable = ({ rows, contractAmount, currency, fallbackRate = 
               const metrics = rowMetrics(row);
               const status = statementStatus(row);
               const rate = rateOfStatement(row, fallbackRate);
-              const contractAmountRial = Math.max(0, n(contractAmount)) * rate;
-              const progress = contractAmountRial > 0 ? clamp((metrics.amount / contractAmountRial) * 100) : 0;
+              const cumulativeForeign = row.foreign_amount != null
+                ? n(row.foreign_amount)
+                : (rate > 1 ? metrics.amount / rate : metrics.amount);
+              const progress = n(contractAmount) > 0 ? clamp((cumulativeForeign / n(contractAmount)) * 100) : 0;
               const documents = Array.isArray(row.documents) ? row.documents : [];
               return (
                 <TableRow key={row.id} hover>
                   <TableCell sx={{ ...cellSx, fontWeight: 800 }}>{row.number || '—'}</TableCell>
                   <TableCell sx={cellSx}>{dateLabel(row.date)}</TableCell>
-                  <TableCell sx={cellSx} title={`${money(metrics.work, RIAL_LABEL)}`}>{statementMoney(row, metrics.work, currency, fallbackRate)}</TableCell>
+                  <TableCell sx={cellSx} title={`${money(metrics.work, RIAL_LABEL)}`}>{statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: GREEN }}>{statementMoney(row, metrics.additionsTotal, currency, fallbackRate)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: metrics.deductionsTotal ? RED : MUTED }}>{statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: status.color, fontWeight: 900 }} title={`${money(metrics.net, RIAL_LABEL)}`}>{statementMoney(row, metrics.net, currency, fallbackRate)}</TableCell>
@@ -476,9 +490,9 @@ export const StatementDetailDrawer = ({
                 <Typography sx={{ fontSize: 18, fontWeight: 900, color: status.color, lineHeight: 1.4 }}>{statementMoney(row, metrics.net, currency, fallbackRate)}</Typography>
                 {foreign ? <Typography sx={{ fontSize: 11, color: MUTED }}>معادل ریالی: {money(metrics.net, RIAL_LABEL)}</Typography> : null}
               </Box>
-              <InfoLine label="مبلغ تجمعی این صورت‌وضعیت" value={statementMoney(row, metrics.amount, currency, fallbackRate)} ltr />
-              <InfoLine label="مبلغ تجمعی دوره قبل" value={statementMoney(row, metrics.previous, currency, fallbackRate)} ltr />
-              <InfoLine label="کارکرد این دوره" value={statementMoney(row, metrics.work, currency, fallbackRate)} ltr strong />
+              <InfoLine label="مبلغ تجمعی این صورت‌وضعیت" value={statementMoneyFor(row, metrics.amount, row.foreign_amount, currency, fallbackRate)} ltr />
+              <InfoLine label="مبلغ تجمعی دوره قبل" value={statementMoneyFor(row, metrics.previous, row.foreign_previous_amount, currency, fallbackRate)} ltr />
+              <InfoLine label="کارکرد این دوره" value={statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)} ltr strong />
               <InfoLine label="جمع اضافات" value={statementMoney(row, metrics.additionsTotal, currency, fallbackRate)} ltr color={GREEN} />
               <InfoLine label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} ltr color={metrics.deductionsTotal ? RED : INK} />
               <InfoLine label="نرخ ارز" value={rate > 1 ? `${formatPersianNumber(rate)} ریال` : '—'} />

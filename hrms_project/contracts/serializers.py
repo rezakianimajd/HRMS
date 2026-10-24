@@ -179,6 +179,15 @@ class StatementSerializer(serializers.ModelSerializer):
         read_only=True, allow_null=True,
     )
     exchange_rate = serializers.DecimalField(max_digits=18, decimal_places=6, required=False, allow_null=True)
+    foreign_amount = serializers.DecimalField(
+        max_digits=18, decimal_places=4, required=False, allow_null=True,
+    )
+    foreign_previous_amount = serializers.DecimalField(
+        max_digits=18, decimal_places=4, read_only=True,
+    )
+    foreign_work_done = serializers.DecimalField(
+        max_digits=18, decimal_places=4, read_only=True,
+    )
     documents = ContractDocumentSerializer(many=True, read_only=True)
 
     class Meta:
@@ -187,6 +196,7 @@ class StatementSerializer(serializers.ModelSerializer):
             'id', 'contract', 'contract_number', 'contract_subject',
             'number', 'date', 'amount',
             'cumulative_previous_amount', 'work_done',
+            'foreign_amount', 'foreign_previous_amount', 'foreign_work_done',
             'value_added_tax', 'other_additions',
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
@@ -223,6 +233,18 @@ class StatementSerializer(serializers.ModelSerializer):
         previous_amount = Decimal(previous.amount or 0) if previous else Decimal('0')
         return max(previous_amount, Decimal(str(prior_work or 0)))
 
+    def _previous_foreign_cumulative(self, contract):
+        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت قبلی (مستقل از نرخ امروز)."""
+        if not contract:
+            return Decimal('0')
+        queryset = Statement.objects.filter(contract=contract)
+        current_pk = getattr(self.instance, 'pk', None)
+        prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
+        previous = prior.order_by('-pk').only('foreign_amount').first()
+        if not previous:
+            return Decimal('0')
+        return Decimal(previous.foreign_amount or 0)
+
     def validate(self, attrs):
         """مبلغ تجمعی دوره قبل و کارکرد دوره را در سمت سرور معتبر می‌کند.
 
@@ -231,16 +253,58 @@ class StatementSerializer(serializers.ModelSerializer):
         """
         instance = self.instance
         if instance is not None and not any(
-            key in attrs for key in ('amount', 'date', 'contract', 'additions', 'deductions', 'value_added_tax', 'other_additions')
+            key in attrs for key in (
+                'amount', 'date', 'contract', 'additions', 'deductions',
+                'value_added_tax', 'other_additions', 'currency', 'exchange_rate', 'foreign_amount',
+            )
         ):
             return attrs
         contract = attrs.get('contract') or getattr(instance, 'contract', None)
         previous = self._previous_cumulative(contract)
+        previous_foreign = self._previous_foreign_cumulative(contract)
+        currency = attrs.get('currency') or getattr(instance, 'currency', None)
+        currency_code = str(getattr(currency, 'code', '') or '').upper()
+        try:
+            rate = Decimal(str(attrs.get('exchange_rate', getattr(instance, 'exchange_rate', 0)) or 0))
+        except Exception:  # noqa: BLE001
+            rate = Decimal('0')
+        if rate <= 0:
+            rate = Decimal('1')
+        is_foreign = rate > 1 and currency_code != 'IRR'
+
         amount_value = attrs.get('amount', getattr(instance, 'amount', 0))
         try:
             amount = Decimal(str(amount_value or 0))
         except Exception:  # noqa: BLE001
             amount = Decimal('0')
+
+        if is_foreign:
+            submitted_foreign = attrs.get('foreign_amount', None)
+            if submitted_foreign is None and instance is not None and 'amount' not in attrs:
+                submitted_foreign = getattr(instance, 'foreign_amount', None)
+            if submitted_foreign is not None:
+                try:
+                    foreign_amount = Decimal(str(submitted_foreign or 0))
+                except Exception:  # noqa: BLE001
+                    foreign_amount = previous_foreign
+                if foreign_amount < previous_foreign:
+                    raise serializers.ValidationError({
+                        'foreign_amount': 'مبلغ تجمعی ارزی نمی‌تواند کمتر از مبلغ تجمعی ارزی دوره قبل باشد.',
+                    })
+                work_foreign = foreign_amount - previous_foreign
+                amount = previous + (work_foreign * rate).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+                attrs['amount'] = amount
+            else:
+                work_foreign = (amount - previous) / rate
+                foreign_amount = previous_foreign + work_foreign
+            attrs['foreign_previous_amount'] = previous_foreign
+            attrs['foreign_work_done'] = work_foreign.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
+            attrs['foreign_amount'] = foreign_amount.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
+        else:
+            attrs['foreign_previous_amount'] = previous
+            attrs['foreign_work_done'] = max(Decimal('0'), amount - previous)
+            attrs['foreign_amount'] = amount
+
         if amount < previous:
             raise serializers.ValidationError({
                 'amount': 'مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.',
@@ -481,6 +545,10 @@ class PaymentSerializer(serializers.ModelSerializer):
         source='statement.exchange_rate', max_digits=18, decimal_places=6,
         read_only=True, allow_null=True,
     )
+    statement_foreign_amount = serializers.DecimalField(
+        source='statement.foreign_amount', max_digits=18, decimal_places=4,
+        read_only=True, allow_null=True,
+    )
     statement_currency_name = serializers.SerializerMethodField()
     attachments = PaymentAttachmentSerializer(many=True, read_only=True)
     attachment_count = serializers.SerializerMethodField()
@@ -495,6 +563,7 @@ class PaymentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'contract', 'contract_subject', 'invoice', 'invoice_number', 'statement', 'statement_number',
             'statement_amount', 'statement_net_amount', 'statement_exchange_rate', 'statement_currency_name',
+            'statement_foreign_amount',
             'date', 'currency', 'currency_name', 'currency_symbol',
             'amount', 'reference', 'method', 'note',
             'attachments', 'attachment_count',

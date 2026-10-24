@@ -49,8 +49,33 @@ test('summarizes rial and foreign totals for contract statements', () => {
   expect(summary.count).toBe(2);
   expect(summary.rial.retention).toBe(30000000);
   expect(summary.foreign.retention).toBe(15);
-  expect(summary.rial.amount).toBe(600000000);
-  expect(summary.foreign.amount).toBe(300);
+  expect(summary.rial.amount).toBe(400000000);
+  expect(summary.foreign.amount).toBe(200);
+});
+
+test('keeps foreign cumulative independent from the latest rial rate', () => {
+  const rows = [
+    {
+      id: 1, amount: 200000000, cumulative_previous_amount: 0, work_done: 200000000,
+      currency_name: 'یورو', exchange_rate: 2000000,
+      foreign_amount: 100, foreign_previous_amount: 0, foreign_work_done: 100,
+    },
+    {
+      id: 2,
+      amount: 287467936567,
+      cumulative_previous_amount: 206621785468,
+      work_done: 80846151099,
+      currency_name: 'یورو',
+      exchange_rate: 1838900,
+      foreign_amount: 44064.4,
+      foreign_previous_amount: 100,
+      foreign_work_done: 43964.4,
+    },
+  ];
+  const summary = summarizeStatementFinance(rows);
+  expect(summary.foreign.amount).toBeCloseTo(44064.4, 4);
+  expect(summary.foreign.work).toBeCloseTo(44064.4, 4);
+  expect(summary.foreign.amount).not.toBeCloseTo(287467936567 / 1838900, 2);
 });
 
 test('uses the latest foreign statement rate for the contract', () => {

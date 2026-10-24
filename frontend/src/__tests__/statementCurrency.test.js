@@ -1,5 +1,5 @@
 import {
-  displayAmount, fromRial, hasForeignAmount, isRialCurrency,
+  cumulativeRialFromForeign, displayAmount, fromRial, hasForeignAmount, isRialCurrency,
   normalizeRate, rateOfStatement, toRial,
 } from '../pages/contracts/statementCurrency';
 
@@ -19,6 +19,16 @@ test('converts foreign amounts to integer rial and back', () => {
   expect(fromRial(rial, rate)).toBeCloseTo(1234.5678, 4);
   expect(toRial(150.25, 1)).toBe(150);
   expect(toRial(150.75, 1)).toBe(151);
+});
+
+test('converts only the current foreign work at the new rate', () => {
+  const previousRial = 206621785468;
+  const previousForeign = 98522.69;
+  const currentForeign = 142487.09;
+  expect(cumulativeRialFromForeign(previousRial, previousForeign, currentForeign, 1838900))
+    .toBe(287467920628);
+  expect(cumulativeRialFromForeign(1000000, 100, 150, 2000)).toBe(1100000);
+  expect(cumulativeRialFromForeign(1000000, 100, 90, 2000)).toBe(1000000);
 });
 
 test('uses the historical rate first and contract rate as fallback', () => {
