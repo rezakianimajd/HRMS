@@ -469,13 +469,32 @@ class PaymentSerializer(serializers.ModelSerializer):
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     invoice_number = serializers.CharField(source='invoice.number', read_only=True)
     statement_number = serializers.CharField(source='statement.number', read_only=True)
+    statement_amount = serializers.DecimalField(
+        source='statement.amount', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_net_amount = serializers.DecimalField(
+        source='statement.net_amount', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_exchange_rate = serializers.DecimalField(
+        source='statement.exchange_rate', max_digits=18, decimal_places=6,
+        read_only=True, allow_null=True,
+    )
+    statement_currency_name = serializers.SerializerMethodField()
     attachments = PaymentAttachmentSerializer(many=True, read_only=True)
     attachment_count = serializers.SerializerMethodField()
+
+    def get_statement_currency_name(self, obj):
+        statement = getattr(obj, 'statement', None)
+        currency = getattr(statement, 'currency', None) if statement else None
+        return getattr(currency, 'name', '') or ''
 
     class Meta:
         model = Payment
         fields = [
             'id', 'contract', 'contract_subject', 'invoice', 'invoice_number', 'statement', 'statement_number',
+            'statement_amount', 'statement_net_amount', 'statement_exchange_rate', 'statement_currency_name',
             'date', 'currency', 'currency_name', 'currency_symbol',
             'amount', 'reference', 'method', 'note',
             'attachments', 'attachment_count',

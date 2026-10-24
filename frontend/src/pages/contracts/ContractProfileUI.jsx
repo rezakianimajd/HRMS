@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Typography, Paper, Stack, Chip, ButtonBase } from '@mui/material';
+import { Box, Typography, Stack, Chip, ButtonBase } from '@mui/material';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DrawIcon from '@mui/icons-material/Draw';
@@ -14,6 +14,11 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
+import {
+  KpiTile as ThemeKpiTile,
+  ProgressBar as ThemeProgressBar,
+  SurfaceCard as ThemeSurfaceCard,
+} from '../accounting/AccountingDashboardUI';
 
 export const CARD_BG = '#ffffff';
 export const CARD_BORDER = '#e8edf4';
@@ -23,73 +28,38 @@ export const MUTED = '#64748b';
 
 export const clampPercent = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 
-export const SectionCard = ({ title, color = '#f59e0b', icon: Icon, action, children, sx }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      bgcolor: CARD_BG,
-      border: `1px solid ${CARD_BORDER}`,
-      borderRadius: '18px',
-      boxShadow: 'none',
-      overflow: 'hidden',
-      height: '100%',
-      display: 'flex',
-      flexDirection: 'column',
-      ...sx,
-    }}
+export const SectionCard = ({ title, color = '#f59e0b', icon: Icon, action, children, sx, contentSx }) => (
+  <ThemeSurfaceCard
+    title={title}
+    icon={Icon}
+    color={color}
+    action={action}
+    sx={sx}
+    contentSx={contentSx || { p: 2 }}
   >
-    <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ px: 2, py: 1.5, borderBottom: `1px solid #eef2f7`, bgcolor: CARD_BG }}>
-      <Box sx={{
-        width: 34, height: 34, flexShrink: 0, borderRadius: '10px',
-        bgcolor: `${color}0f`, border: `1px solid ${color}22`, color,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Icon sx={{ fontSize: 18 }} />
-      </Box>
-      <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 800, color: INK }}>{title}</Typography>
-      {action}
-    </Stack>
-    <Box sx={{ p: 2, flex: 1, minWidth: 0 }}>{children}</Box>
-  </Paper>
+    {children}
+  </ThemeSurfaceCard>
 );
 
 export const ProgressBar = ({ value, color = '#f59e0b', height = 8, track = '#eef2f7' }) => (
-  <Box sx={{ width: '100%', height, bgcolor: track, borderRadius: height / 2, overflow: 'hidden' }}>
-    <Box sx={{ width: `${clampPercent(value)}%`, height: '100%', bgcolor: color, borderRadius: height / 2 }} />
-  </Box>
+  <ThemeProgressBar value={value} color={color} height={height} track={track} />
 );
 
-export const KpiCard = ({ icon: Icon, label, value, suffix, hint, color = '#f59e0b', progress, progressLabel, size = 20 }) => (
-  <Paper elevation={0} sx={{
-    p: 1.75, height: '100%', minHeight: 126, bgcolor: CARD_BG,
-    border: `1px solid ${CARD_BORDER}`, borderRadius: '16px', boxShadow: 'none',
-    display: 'flex', flexDirection: 'column', justifyContent: 'space-between', gap: 1,
-  }}>
-    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
-      <Box sx={{
-        width: 38, height: 38, borderRadius: '11px', bgcolor: `${color}10`,
-        border: `1px solid ${color}1f`, color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-      }}>
-        <Icon sx={{ fontSize: 20 }} />
-      </Box>
-      {hint ? <Chip size="small" label={hint} sx={{ height: 21, fontSize: 12, fontWeight: 700, bgcolor: `${color}10`, color }} /> : null}
-    </Stack>
-    <Box sx={{ minWidth: 0 }}>
-      <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.2 }}>{label}</Typography>
-      <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, minWidth: 0 }}>
-        <Typography sx={{ fontSize: Math.max(12, size), fontWeight: 900, color: INK, direction: 'ltr', lineHeight: 1.2, wordBreak: 'break-word' }}>
-          {toPersianDigits(value)}
-        </Typography>
-        {suffix ? <Typography sx={{ fontSize: 12, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
-      </Box>
-      {progress !== undefined && progress !== null ? (
-        <Box sx={{ mt: 0.7 }}>
-          <ProgressBar value={progress} color={color} height={5} />
-          {progressLabel ? <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.35 }}>{progressLabel}</Typography> : null}
-        </Box>
-      ) : null}
-    </Box>
-  </Paper>
+export const KpiCard = ({
+  icon: Icon, label, value, suffix, hint, color = '#f59e0b',
+  progress, progressLabel, size = 20,
+}) => (
+  <ThemeKpiTile
+    icon={Icon}
+    label={label}
+    value={toPersianDigits(value)}
+    suffix={suffix}
+    hint={hint}
+    color={color}
+    progress={progress}
+    progressLabel={progressLabel}
+    size={size}
+  />
 );
 
 export const DetailTile = ({ label, value, ltr }) => (
