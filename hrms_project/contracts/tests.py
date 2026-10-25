@@ -2,13 +2,30 @@
 from datetime import date
 from decimal import Decimal
 
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 
 from contracts.excel_export import build_contracts_workbook
 from contracts.models import Addendum, Contract, ContractParty, Guarantee, Invoice, Payment, Statement
+from contracts.numbering import display_statement_number, normalize_statement_number
 from contracts.serializers import StatementSerializer
 from core.models import Company
 from settings_app.models import Currency, Signatory
+
+
+class StatementNumberingTests(SimpleTestCase):
+    """استانداردسازی دو رقمی و نمایش فارسی شمارهٔ صورت‌وضعیت."""
+
+    def test_numeric_numbers_are_padded_to_two_digits(self):
+        self.assertEqual(normalize_statement_number('3'), '03')
+        self.assertEqual(normalize_statement_number('۰۳'), '03')
+        self.assertEqual(normalize_statement_number('٠٧'), '07')
+        self.assertEqual(normalize_statement_number('003'), '03')
+        self.assertEqual(normalize_statement_number('103'), '103')
+
+    def test_non_numeric_numbers_are_preserved_and_displayed_in_persian(self):
+        self.assertEqual(normalize_statement_number('S-3'), 'S-3')
+        self.assertEqual(display_statement_number('3'), '۰۳')
+        self.assertEqual(display_statement_number('S-1'), 'S-۱')
 
 
 def make_company(schema_name='testco-ctr', name='شرکت تست قرارداد'):
