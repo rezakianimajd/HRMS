@@ -78,6 +78,25 @@ test('keeps foreign cumulative independent from the latest rial rate', () => {
   expect(summary.foreign.amount).not.toBeCloseTo(287467936567 / 1838900, 2);
 });
 
+test('keeps statement cumulative unchanged and sums signed adjustments', () => {
+  const rows = [
+    { id: 1, kind: 'statement', amount: 200000000, cumulative_previous_amount: 0, work_done: 200000000, net_amount: 200000000 },
+    { id: 2, kind: 'increase', amount: 200000000, cumulative_previous_amount: 200000000, work_done: 50000000, net_amount: 50000000, adjustment_work_done: 50000000, adjustment_amount: 50000000 },
+    { id: 3, kind: 'decrease', amount: 200000000, cumulative_previous_amount: 200000000, work_done: -20000000, net_amount: -20000000, adjustment_work_done: -20000000, adjustment_amount: 30000000 },
+    { id: 4, kind: 'statement', amount: 500000000, cumulative_previous_amount: 200000000, work_done: 300000000, net_amount: 300000000 },
+  ];
+  const summary = summarizeStatementFinance(rows);
+  expect(summary.count).toBe(4);
+  expect(summary.normalCount).toBe(2);
+  expect(summary.rial.amount).toBe(500000000);
+  expect(summary.rial.previous).toBe(200000000);
+  expect(summary.rial.work).toBe(530000000);
+  expect(summary.rial.net).toBe(530000000);
+  expect(summary.adjustments.increase).toBe(50000000);
+  expect(summary.adjustments.decrease).toBe(20000000);
+  expect(summary.adjustments.net).toBe(30000000);
+});
+
 test('uses the latest foreign statement rate for the contract', () => {
   expect(contractRateOf({}, [
     { id: 1, exchange_rate: 1800000 },

@@ -1,5 +1,6 @@
 /** ابزارهای خالصِ صفحهٔ بایگانی اسناد قرارداد. */
 import { formatStatementNumber, toPersianDigits } from '../../core/utils/numberUtils';
+import { statementDisplayTitle } from './statementKinds';
 
 export const DOC_ACCENT = '#0f766e';
 
@@ -61,7 +62,7 @@ export const relationTargetLabel = (row = {}) => {
     return [row.addendum_number, row.addendum_subject].filter(Boolean).join(' — ') || 'الحاقیه';
   }
   if (key === 'guarantee') return row.guarantee_number || 'تضمین';
-  if (key === 'statement') return row.statement_number ? `صورت‌وضعیت ${formatStatementNumber(row.statement_number)}` : 'صورت‌وضعیت';
+  if (key === 'statement') return row.statement_number ? statementDisplayTitle(row) : 'صورت‌وضعیت';
   return 'مستندات عمومی قرارداد';
 };
 
@@ -116,6 +117,6 @@ export const relationOptionLabel = (type, item = {}) => {
     return [item.number || item.guarantee_number || item.check_number, item.guarantee_type_display]
       .filter(Boolean).join(' — ') || 'تضمین';
   }
-  if (type === 'statement') return item.number ? `صورت‌وضعیت ${formatStatementNumber(item.number)}` : 'صورت‌وضعیت';
+  if (type === 'statement') return item.number ? statementDisplayTitle(item) : 'صورت‌وضعیت';
   return item.subject || item.number || 'قرارداد';
 };

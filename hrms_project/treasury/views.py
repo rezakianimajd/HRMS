@@ -10,7 +10,7 @@ from treasury.models import (
     TreasuryEntity, TreasuryTransaction, PayableItem,
     CheckBook, ReceivedCheck, IssuedCheck,
 )
-from contracts.numbering import display_statement_number
+from contracts.numbering import display_statement_title
 from treasury.serializers import (
     TreasuryEntitySerializer, TreasuryTransactionSerializer, PayableItemSerializer,
     CheckBookSerializer, ReceivedCheckSerializer, IssuedCheckSerializer,
@@ -186,7 +186,7 @@ class PayableItemViewSet(BaseViewSet):
                     source_type=PayableItem.SourceType.PROJECT_STATEMENT,
                     source_id=str(st.id),
                     defaults={
-                        'title': f'صورت‌وضعیت {display_statement_number(st.number) or st.id}',
+                        'title': display_statement_title(st),
                         'party': st.contract.party.name if getattr(st, 'contract', None) and st.contract.party else '',
                         'amount': st.net_payable,
                         'paid': 0,

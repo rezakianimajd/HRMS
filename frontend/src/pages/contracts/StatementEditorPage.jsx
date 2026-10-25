@@ -30,6 +30,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import html2canvas from 'html2canvas';
@@ -54,9 +55,18 @@ import {
 import {
   cumulativeRialFromForeign, displayAmount, fromRial, isRialCurrency, normalizeRate, rateOfStatement, toRial,
 } from './statementCurrency';
+import {
+  STATEMENT_KIND_DECREASE, STATEMENT_KIND_INCREASE, STATEMENT_KIND_STATEMENT,
+  adjustmentSummaryOf, isAdjustmentKind, latestNormalStatement, statementDisplayTitle, statementKindOf,
+} from './statementKinds';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
+const KIND_OPTIONS = [
+  { key: STATEMENT_KIND_STATEMENT, label: 'صورت‌وضعیت (پیش‌فرض)', color: '#2563eb', icon: ReceiptLongIcon },
+  { key: STATEMENT_KIND_INCREASE, label: 'تعدیل افزایشی', color: '#15803d', icon: TrendingUpIcon },
+  { key: STATEMENT_KIND_DECREASE, label: 'تعدیل کاهشی', color: '#be123c', icon: TrendingDownIcon },
+];
 
 const glass = {
   background: 'linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.34))',
@@ -196,6 +206,8 @@ const printStatement = async () => {
 /* ------------------------------------------------------------------ */
 const StatementPreview = ({ form, contract, company, currencies, rate: rateProp }) => {
   const rate = num(rateProp) || 1;
+  const kind = statementKindOf(form);
+  const isAdjustment = kind.isAdjustment;
   const addendums = contract?.addendums || [];
   const baseAmount = num(contract?.amount);
   const totalAddendumChange = addendums.reduce((s, a) => s + num(a.amount_change), 0);
@@ -212,7 +224,10 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
   const cumulativeThis = num(form.amount);
   const cumulativePrev = num(form.cumulative_previous_amount);
   const workDone = cumulativeThis - cumulativePrev;
-  const netAmount = workDone + additionsTotal - deductionsTotal;
+  const adjustmentPrevious = num(form.adjustment_previous_amount);
+  const adjustmentWork = kind.sign * Math.abs(num(form.adjustment_work_done));
+  const adjustmentAmount = adjustmentPrevious + adjustmentWork;
+  const netAmount = isAdjustment ? adjustmentWork : workDone + additionsTotal - deductionsTotal;
 
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
   const currencyLabel = normalizeCurrencyLabel(cur?.name || cur?.symbol);
@@ -225,6 +240,13 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
     : null;
   const workDoneForeign = rate > 1
     ? Math.max(0, cumulativeThisForeign - cumulativePrevForeign)
+    : null;
+  const adjustmentPreviousForeign = rate > 1 ? num(form.adjustment_previous_foreign) : null;
+  const adjustmentWorkForeign = rate > 1
+    ? kind.sign * Math.abs(num(form.adjustment_work_foreign))
+    : null;
+  const adjustmentAmountForeign = rate > 1
+    ? (adjustmentPreviousForeign || 0) + (adjustmentWorkForeign || 0)
     : null;
 
   return (
@@ -253,9 +275,10 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
       {/* Section 1: statement number + date + currency */}
       <Grid container spacing={1.5}>
-        <Grid item xs={4}><Field label="شماره صورت‌وضعیت" value={formatStatementNumber(form.number) || '—'} /></Grid>
-        <Grid item xs={4}><Field label="تاریخ" value={form.date ? toJalali(form.date) : '—'} /></Grid>
+        <Grid item xs={4}><Field label={isAdjustment ? 'شماره تعدیل' : 'شماره صورت‌وضعیت'} value={formatStatementNumber(form.number) || '—'} /></Grid>
+        <Grid item xs={4}><Field label={isAdjustment ? 'تاریخ تعدیل' : 'تاریخ'} value={form.date ? toJalali(form.date) : '—'} /></Grid>
         <Grid item xs={4}><Field label="واحد ارز" value={currencyLabel || '—'} /></Grid>
+        <Grid item xs={12}><Field label="نوع سند" value={kind.label} strong color={kind.color} /></Grid>
       </Grid>
 
       <Divider sx={{ borderStyle: 'dashed', borderColor: `${COLOR}44`, my: 1 }} />
@@ -275,12 +298,24 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
       {/* Section 3: financial breakdown */}
       <Box sx={{ borderRadius: '12px', p: 2, background: `linear-gradient(135deg, ${COLOR}0e, ${COLOR}05)`, border: `1px solid ${COLOR}22` }}>
-        <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={cumulativeThisForeign} foreignSymbol={currencyLabel} />
-        <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={cumulativePrevForeign} foreignSymbol={currencyLabel} />
-        <Row label="کارکرد دوره" value={workDone} highlight foreign={workDoneForeign} foreignSymbol={currencyLabel} />
+        {isAdjustment ? (
+          <>
+            <Row label="مبلغ تجمعی صورت‌وضعیت (بدون تغییر)" value={cumulativeThis} strong foreign={cumulativeThisForeign} foreignSymbol={currencyLabel} />
+            <Row label="تعدیل تجمعی دوره قبل" value={adjustmentPrevious} foreign={adjustmentPreviousForeign} foreignSymbol={currencyLabel} />
+            <Row label={`${kind.label} این دوره`} value={adjustmentWork} highlight foreign={adjustmentWorkForeign} foreignSymbol={currencyLabel} />
+            <Row label="تعدیل تجمعی" value={adjustmentAmount} strong foreign={adjustmentAmountForeign} foreignSymbol={currencyLabel} />
+          </>
+        ) : (
+          <>
+            <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={cumulativeThisForeign} foreignSymbol={currencyLabel} />
+            <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={cumulativePrevForeign} foreignSymbol={currencyLabel} />
+            <Row label="کارکرد دوره" value={workDone} highlight foreign={workDoneForeign} foreignSymbol={currencyLabel} />
+          </>
+        )}
       </Box>
 
       {/* Additions */}
+      {!isAdjustment ? (
       <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#059669', mb: 0.5 }}>اضافات</Typography>
         {additions.length === 0 ? (
@@ -292,8 +327,10 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           <Row label="جمع اضافات" value={additionsTotal} green strong foreign={fx(additionsTotal)} foreignSymbol={currencyLabel} />
         </Box>
       </Box>
+      ) : null}
 
       {/* Deductions */}
+      {!isAdjustment ? (
       <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#b91c1c', mb: 0.5 }}>کسورات</Typography>
         {deductions.length === 0 ? (
@@ -305,12 +342,13 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           <Row label="جمع کسورات" value={deductionsTotal} red strong foreign={fx(deductionsTotal)} foreignSymbol={currencyLabel} />
         </Box>
       </Box>
+      ) : null}
 
       <Divider sx={{ my: 1, borderStyle: 'dashed', borderColor: `${COLOR}44` }} />
 
       {/* Net payable */}
       <Box sx={{ borderRadius: '12px', p: 1.2, background: 'linear-gradient(135deg,#10b98114,#0ea5e912)', border: '1px solid #10b98140' }}>
-        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 0.8 }}>مبلغ قابل پرداخت این دوره</Typography>
+        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 0.8 }}>{isAdjustment ? `مبلغ قابل پرداخت ${kind.label}` : 'مبلغ قابل پرداخت این دوره'}</Typography>
         <Grid container spacing={1}>
           <Grid item xs={6}>
             <Box sx={{ borderRadius: '10px', p: 1, background: '#05966912', border: '1px solid #05966933', textAlign: 'center' }}>
@@ -396,6 +434,7 @@ const compareStatements = (a, b) => {
  */
 const previousCumulativeFor = (rows, { excludeId = null } = {}) => {
   const candidates = (Array.isArray(rows) ? rows : [])
+    .filter((row) => !isAdjustmentKind(row))
     .filter((row) => String(row?.id || '') !== String(excludeId || ''));
   const prior = candidates
     .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
@@ -411,6 +450,7 @@ const previousCumulativeFor = (rows, { excludeId = null } = {}) => {
 /** تجمع ارزی دوره‌های قبل؛ کارکرد هر دوره با نرخ تاریخی خودش. */
 const foreignCumulativeFor = (rows, { beforeId = null } = {}) => (
   (Array.isArray(rows) ? rows : [])
+    .filter((row) => !isAdjustmentKind(row))
     .filter((row) => !beforeId || Number(row.id || 0) < Number(beforeId))
     .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
     .reduce((sum, row) => {
@@ -418,6 +458,25 @@ const foreignCumulativeFor = (rows, { beforeId = null } = {}) => (
       const work = num(row.work_done) || rowMetrics(row).work;
       return sum + (rate > 1 ? work / rate : work);
     }, 0)
+);
+
+/** تجمع تعدیل‌ها (علامت‌دار) تا پیش از سند جاری. */
+const adjustmentCumulativeFor = (rows, { excludeId = null } = {}) => (
+  (Array.isArray(rows) ? rows : [])
+    .filter(isAdjustmentKind)
+    .filter((row) => String(row?.id || '') !== String(excludeId || ''))
+    .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+    .reduce((sum, row) => sum + num(row.adjustment_work_done ?? row.work_done), 0)
+);
+
+const adjustmentForeignCumulativeFor = (rows, { excludeId = null } = {}) => (
+  (Array.isArray(rows) ? rows : [])
+    .filter(isAdjustmentKind)
+    .filter((row) => String(row?.id || '') !== String(excludeId || ''))
+    .filter((row) => !excludeId || Number(row.id || 0) < Number(excludeId || 0))
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+    .reduce((sum, row) => sum + num(row.adjustment_foreign_work_done ?? row.foreign_work_done), 0)
 );
 
 const StatementEditorPage = () => {
@@ -499,10 +558,7 @@ const StatementEditorPage = () => {
     || currenciesById[String(selectedContract?.currency)]?.name || 'ریال',
   );
   const selectedContractAmount = contractAmountOf(selectedContract);
-  const lastStatement = useMemo(
-    () => [...scopedList].sort((a, b) => Number(a.id || 0) - Number(b.id || 0)).slice(-1)[0] || null,
-    [scopedList],
-  );
+  const lastStatement = useMemo(() => latestNormalStatement(scopedList), [scopedList]);
   const statementFallbackRate = useMemo(() => {
     const foreignRows = scopedList.filter((row) => Number(row.exchange_rate) > 1);
     const latestForeign = [...foreignRows].sort((a, b) => Number(b.id || 0) - Number(a.id || 0))[0];
@@ -516,8 +572,9 @@ const StatementEditorPage = () => {
   );
 
   const counts = useMemo(() => {
-    const next = { all: scopedList.length, approved: 0, pending: 0 };
+    const next = { all: scopedList.length, approved: 0, pending: 0, adjustments: 0 };
     scopedList.forEach((row) => {
+      if (isAdjustmentKind(row)) next.adjustments += 1;
       if (row.is_approved) next.approved += 1;
       else next.pending += 1;
     });
@@ -529,6 +586,7 @@ const StatementEditorPage = () => {
     const net = metrics.reduce((sum, item) => sum + item.net, 0);
     const work = metrics.reduce((sum, item) => sum + item.work, 0);
     const cumulative = lastStatement ? rowMetrics(lastStatement).amount : 0;
+    const adjustments = adjustmentSummaryOf(scopedList);
     const foreignOf = (row, value) => displayAmount(row, value, selectedContractRate);
     const netForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).net), 0);
     const workForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).work), 0);
@@ -538,11 +596,12 @@ const StatementEditorPage = () => {
       .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
     const paidForeign = selectedContractRate > 1 ? paid / selectedContractRate : paid;
     return {
-      net, work, cumulative, paid, netForeign, workForeign, cumulativeForeign, paidForeign,
+      net, work, cumulative, paid, netForeign, workForeign, cumulativeForeign, paidForeign, adjustments,
       outstanding: Math.max(0, net - paid),
       outstandingForeign: Math.max(0, netForeign - paidForeign),
       approvedCount: counts.approved,
       pendingCount: counts.pending,
+      adjustmentCount: counts.adjustments,
       overContract: Math.max(0, cumulative - selectedContractAmount * selectedContractRate),
       overContractForeign: Math.max(0, cumulativeForeign - selectedContractAmount),
     };
@@ -583,7 +642,7 @@ const StatementEditorPage = () => {
       if (statusFilter === 'approved' && !row.is_approved) return false;
       if (statusFilter === 'pending' && row.is_approved) return false;
       if (!query) return true;
-      return [row.number, formatStatementNumber(row.number), row.contract_subject, row.description, ...(row.documents || []).map((doc) => doc.title)]
+      return [row.number, formatStatementNumber(row.number), statementKindOf(row).label, row.contract_subject, row.description, ...(row.documents || []).map((doc) => doc.title)]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
     result = [...result].sort((a, b) => {
@@ -629,6 +688,38 @@ const StatementEditorPage = () => {
       .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Math.round(Number(item.amount) || 0) }));
     const deductions = (Array.isArray(payload.deductions) ? payload.deductions : [])
       .map((item) => ({ ...item, percent: Number(item.percent) || 0, amount: Math.round(Number(item.amount) || 0) }));
+    const kind = payload.kind || STATEMENT_KIND_STATEMENT;
+    const number = normalizeStatementNumber(payload.number);
+    if (isAdjustmentKind(kind)) {
+      const sign = statementKindOf(kind).sign;
+      const magnitudeRial = Math.abs(Math.round(Number(payload.adjustment_work_done) || 0));
+      const magnitudeForeign = Math.abs(Number(payload.adjustment_work_foreign) || 0)
+        || fromRial(magnitudeRial, displayRate);
+      return {
+        contract: Number(payload.contract) || null,
+        number,
+        kind,
+        date: payload.date || null,
+        amount: 0,
+        foreign_amount: 0,
+        cumulative_previous_amount: 0,
+        work_done: sign * magnitudeRial,
+        foreign_work_done: sign * magnitudeForeign,
+        adjustment_work_done: sign * magnitudeRial,
+        adjustment_foreign_work_done: sign * magnitudeForeign,
+        value_added_tax: 0,
+        other_additions: 0,
+        additions: [],
+        additions_total: 0,
+        deductions: [],
+        deductions_total: 0,
+        net_amount: sign * magnitudeRial,
+        currency: payload.currency || null,
+        exchange_rate: normalizeRate(rate),
+        is_approved: Boolean(payload.is_approved),
+        description: payload.description || '',
+      };
+    }
     // تمام فیلدهای مالی در دیتابیس ریالی و بدون اعشار ذخیره می‌شوند.
     const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
     const previous = Math.max(0, Math.round(Number(payload.cumulative_previous_amount) || 0));
@@ -639,7 +730,8 @@ const StatementEditorPage = () => {
     const deductionsTotal = deductions.reduce((sum, item) => sum + item.amount, 0);
     return {
       contract: Number(payload.contract) || null,
-      number: normalizeStatementNumber(payload.number),
+      number,
+      kind: STATEMENT_KIND_STATEMENT,
       date: payload.date || null,
       amount,
       foreign_amount: Math.max(0, Number(payload.amount_foreign) || 0),
@@ -807,13 +899,33 @@ const StatementEditorPage = () => {
   const cumulativeThisForeign = form.amount_foreign != null
     ? num(form.amount_foreign)
     : (displayRate > 1 ? fromRial(cumulativeThis, displayRate) : cumulativeThis);
-  const workDoneForeign = Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
-  const workDone = Math.max(0, cumulativeThis - cumulativePrev);
-  const netAmount = workDone + additionsTotal - deductionsTotal;
+  const formKind = statementKindOf(form);
+  const isAdjustmentForm = formKind.isAdjustment;
+  const adjustmentSign = formKind.sign;
+  const adjustmentWorkRial = adjustmentSign * Math.abs(num(form.adjustment_work_done));
+  const adjustmentWorkForeign = adjustmentSign * Math.abs(
+    form.adjustment_work_foreign != null
+      ? num(form.adjustment_work_foreign)
+      : (displayRate > 1 ? fromRial(num(form.adjustment_work_done), displayRate) : num(form.adjustment_work_done)),
+  );
+  const adjustmentPrevious = num(form.adjustment_previous_amount);
+  const adjustmentPreviousForeign = num(form.adjustment_previous_foreign);
+  const adjustmentCumulative = adjustmentPrevious + adjustmentWorkRial;
+  const adjustmentCumulativeForeign = adjustmentPreviousForeign + adjustmentWorkForeign;
+  const workDoneForeign = isAdjustmentForm
+    ? adjustmentWorkForeign
+    : Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
+  const workDone = isAdjustmentForm
+    ? adjustmentWorkRial
+    : Math.max(0, cumulativeThis - cumulativePrev);
+  const netAmount = isAdjustmentForm ? adjustmentWorkRial : workDone + additionsTotal - deductionsTotal;
+  const netAmountForeign = isAdjustmentForm
+    ? adjustmentWorkForeign
+    : workDoneForeign + displayValue(additionsTotal) - displayValue(deductionsTotal);
   const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
     || (String(form.contract) === String(contractId) ? selectedContract : null);
   const formContractAmount = contractAmountOf(formContract);
-  const overContract = formContractAmount > 0 && cumulativeThisForeign > formContractAmount;
+  const overContract = !isAdjustmentForm && formContractAmount > 0 && cumulativeThisForeign > formContractAmount;
   const progress = formContractAmount > 0
     ? Math.min(100, (cumulativeThisForeign / formContractAmount) * 100)
     : 0;
@@ -825,6 +937,18 @@ const StatementEditorPage = () => {
   const syncFormAmounts = (previous, nextRateValue) => {
     if (!previous || !Object.keys(previous).length) return previous;
     const nextRate = normalizeRate(nextRateValue);
+    if (isAdjustmentKind(previous)) {
+      const adjustmentForeign = Math.abs(
+        previous.adjustment_work_foreign != null
+          ? num(previous.adjustment_work_foreign)
+          : fromRial(num(previous.adjustment_work_done), nextRate),
+      );
+      return {
+        ...previous,
+        adjustment_work_foreign: adjustmentForeign,
+        adjustment_work_done: toRial(adjustmentForeign, nextRate),
+      };
+    }
     const amountForeign = previous.amount_foreign != null
       ? previous.amount_foreign
       : fromRial(previous.amount, nextRate);
@@ -879,6 +1003,51 @@ const StatementEditorPage = () => {
         ...previous,
         [`${field}_foreign`]: value,
         [field]: cumulativeRialFromForeign(previousRial, previousForeign, value, displayRate),
+      };
+    });
+  };
+
+  const updateAdjustmentForeign = (value) => {
+    const magnitude = Math.abs(num(value));
+    setForm((previous) => ({
+      ...previous,
+      adjustment_work_foreign: magnitude,
+      adjustment_work_done: toRial(magnitude, displayRate),
+    }));
+  };
+
+  const nextNumberForKind = (kind) => {
+    const rows = scopedList.filter((row) => (
+      kind === STATEMENT_KIND_STATEMENT ? !isAdjustmentKind(row) : isAdjustmentKind(row)
+    ));
+    const maxNumber = rows.reduce((max, row) => {
+      const normalized = normalizeStatementNumber(row.number);
+      return /^\d+$/.test(normalized) ? Math.max(max, Number(normalized)) : max;
+    }, 0);
+    return String(maxNumber + 1).padStart(2, '0');
+  };
+
+  const changeKind = (kind) => {
+    setForm((previous) => {
+      const adjustment = isAdjustmentKind(kind);
+      const priorAdjustment = adjustment
+        ? adjustmentCumulativeFor(scopedList, { excludeId: previous.id })
+        : 0;
+      const priorAdjustmentForeign = adjustment
+        ? adjustmentForeignCumulativeFor(scopedList, { excludeId: previous.id })
+        : 0;
+      return {
+        ...previous,
+        kind,
+        amount: adjustment ? previous.cumulative_previous_amount : previous.amount,
+        amount_foreign: adjustment ? previous.cumulative_previous_foreign : previous.amount_foreign,
+        number: previous.id || normalizeStatementNumber(previous.number)
+          ? previous.number
+          : nextNumberForKind(kind),
+        adjustment_previous_amount: priorAdjustment,
+        adjustment_previous_foreign: priorAdjustmentForeign,
+        adjustment_work_done: adjustment ? previous.adjustment_work_done || 0 : 0,
+        adjustment_work_foreign: adjustment ? previous.adjustment_work_foreign || 0 : 0,
       };
     });
   };
@@ -957,11 +1126,16 @@ const StatementEditorPage = () => {
     setForm({
       contract: contractId,
       number: '',
+      kind: STATEMENT_KIND_STATEMENT,
       date: newDate,
       amount: previousCumulative,
       amount_foreign: previousForeign,
       cumulative_previous_amount: previousCumulative,
       cumulative_previous_foreign: previousForeign,
+      adjustment_previous_amount: 0,
+      adjustment_previous_foreign: 0,
+      adjustment_work_done: 0,
+      adjustment_work_foreign: 0,
       currency: selectedContract?.currency || '',
       value_added_tax: 0,
       value_added_tax_foreign: 0,
@@ -994,6 +1168,11 @@ const StatementEditorPage = () => {
       rowCurrency?.exchange_rate || rowContract?.exchange_rate || selectedContractRate || 1,
     );
     const editWork = Math.max(0, Number(row.amount || 0) - Number(row.cumulative_previous_amount || 0));
+    const editAdjustmentWork = Math.abs(Number(row.adjustment_work_done ?? row.work_done ?? 0) || 0);
+    const editAdjustmentWorkForeign = Math.abs(
+      Number(row.adjustment_foreign_work_done ?? row.foreign_work_done ?? 0)
+      || fromRial(editAdjustmentWork, editRate),
+    );
     const percentOfWork = (value) => (
       editWork > 0 ? Math.round((Number(value || 0) / editWork) * 10000) / 100 : 0
     );
@@ -1020,10 +1199,15 @@ const StatementEditorPage = () => {
     setForm({
       ...row,
       contract: String(row.contract || ''),
+      kind: row.kind || STATEMENT_KIND_STATEMENT,
       amount: Number(row.amount || 0),
       amount_foreign: rowForeignAmount,
       cumulative_previous_amount: previousCumulative,
       cumulative_previous_foreign: previousForeign,
+      adjustment_previous_amount: Number(row.adjustment_previous_amount || 0),
+      adjustment_previous_foreign: Number(row.adjustment_foreign_previous_amount || 0),
+      adjustment_work_done: editAdjustmentWork,
+      adjustment_work_foreign: editAdjustmentWorkForeign,
       value_added_tax: Number(row.value_added_tax || 0),
       value_added_tax_foreign: fromRial(row.value_added_tax, editRate),
       other_additions: Number(row.other_additions || 0),
@@ -1049,21 +1233,26 @@ const StatementEditorPage = () => {
   useEffect(() => {
     if (mode !== 'form' || !form.contract || !form.date) return;
     const rows = allStatements.filter((item) => String(item.contract) === String(form.contract));
-    const next = previousCumulativeFor(rows, { excludeId: form.id });
-    if (next == null) return;
+    const next = previousCumulativeFor(rows, { excludeId: form.id }) ?? 0;
     const nextForeign = foreignCumulativeFor(rows, { beforeId: form.id });
+    const nextAdjustment = adjustmentCumulativeFor(rows, { excludeId: form.id });
+    const nextAdjustmentForeign = adjustmentForeignCumulativeFor(rows, { excludeId: form.id });
     setForm((previous) => {
       if (
         !previous
         || (
           Number(previous.cumulative_previous_amount || 0) === next
           && Number(previous.cumulative_previous_foreign || 0) === nextForeign
+          && Number(previous.adjustment_previous_amount || 0) === nextAdjustment
+          && Number(previous.adjustment_previous_foreign || 0) === nextAdjustmentForeign
         )
       ) return previous;
       return {
         ...previous,
         cumulative_previous_amount: next,
         cumulative_previous_foreign: nextForeign,
+        adjustment_previous_amount: nextAdjustment,
+        adjustment_previous_foreign: nextAdjustmentForeign,
       };
     });
   }, [mode, form.contract, form.date, form.id, allStatements]);
@@ -1178,7 +1367,11 @@ const StatementEditorPage = () => {
       setError('برای قرارداد ارزی، نرخ تبدیل به ریال را وارد کنید.');
       return;
     }
-    if (cumulativeThis < cumulativePrev) {
+    if (isAdjustmentForm && Math.abs(Number(form.adjustment_work_done) || 0) <= 0) {
+      setError('مبلغ تعدیل این دوره را وارد کنید.');
+      return;
+    }
+    if (!isAdjustmentForm && cumulativeThis < cumulativePrev) {
       setError('مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.');
       return;
     }
@@ -1187,11 +1380,14 @@ const StatementEditorPage = () => {
   };
 
   const exportCsv = () => {
-    const headers = ['شماره', 'تاریخ', 'مبلغ تجمعی', 'کارکرد دوره', 'اضافات', 'کسورات', 'قابل پرداخت', 'وضعیت', 'توضیحات'];
+    const headers = ['نوع', 'شماره', 'تاریخ', 'مبلغ تجمعی', 'کارکرد / تعدیل', 'تعدیل تجمعی', 'اضافات', 'کسورات', 'قابل پرداخت', 'وضعیت', 'توضیحات'];
     const rows = filtered.map((row) => {
       const metrics = rowMetrics(row);
+      const kind = statementKindOf(row);
       return [
+        kind.label,
         row.number ? formatStatementNumber(row.number) : '', row.date || '', metrics.amount, metrics.work,
+        row.adjustment_amount ?? 0,
         metrics.additionsTotal, metrics.deductionsTotal, metrics.net,
         row.is_approved ? 'تأیید شده' : 'در انتظار', row.description || '',
       ];
@@ -1209,7 +1405,6 @@ const StatementEditorPage = () => {
 
   const additionsTotalForeign = displayValue(additionsTotal);
   const deductionsTotalForeign = displayValue(deductionsTotal);
-  const netAmountForeign = workDoneForeign + additionsTotalForeign - deductionsTotalForeign;
 
   if (mode === 'form') {
     return (
@@ -1227,6 +1422,12 @@ const StatementEditorPage = () => {
         deductions={deductions}
         additionsTotal={additionsTotal}
         deductionsTotal={deductionsTotal}
+        formKind={formKind}
+        isAdjustmentForm={isAdjustmentForm}
+        adjustmentPrevious={adjustmentPrevious}
+        adjustmentPreviousForeign={adjustmentPreviousForeign}
+        adjustmentCumulative={adjustmentCumulative}
+        adjustmentCumulativeForeign={adjustmentCumulativeForeign}
         cumulativePrev={cumulativePrev}
         cumulativePrevForeign={cumulativePrevForeign}
         cumulativeThis={cumulativeThis}
@@ -1242,6 +1443,8 @@ const StatementEditorPage = () => {
         onRateChange={changeRate}
         onCurrencyChange={changeCurrency}
         onAmountChange={updateAmountForeign}
+        onAdjustmentChange={updateAdjustmentForeign}
+        onKindChange={changeKind}
         isRial={isRial}
         baseRate={baseRate}
         formCurrencyLabel={formCurrencyLabel}
@@ -1317,7 +1520,7 @@ const StatementEditorPage = () => {
           <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
             <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
               <ContractSnapshotCard contract={selectedContract} currency={currencyLabel} accent={STATEMENT_ACCENT}
-                onBack={clearContract} statementCount={scopedList.length} />
+                onBack={clearContract} statementCount={scopedList.length} adjustments={totals.adjustments} />
               <FinancialCoverageCard totals={displayTotals} currency={currencyLabel} isLoading={paymentsLoading} accent={STATEMENT_ACCENT} />
               <StatusNav counts={counts} active={statusFilter} onChange={setStatusFilter} accent={STATEMENT_ACCENT} />
             </Stack>
@@ -1447,10 +1650,13 @@ const StatementEditorPage = () => {
 const StatementEditorView = ({
   onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
+  formKind, isAdjustmentForm, adjustmentPrevious, adjustmentPreviousForeign,
+  adjustmentCumulative, adjustmentCumulativeForeign,
   cumulativePrev, cumulativePrevForeign, cumulativeThis, cumulativeThisForeign,
   workDone, workDoneForeign, netAmount, netAmountForeign,
   additionsTotalForeign, deductionsTotalForeign,
-  rate, rateOverride, onRateChange, onCurrencyChange, onAmountChange, isRial, baseRate, formCurrencyLabel,
+  rate, rateOverride, onRateChange, onCurrencyChange, onAmountChange, onAdjustmentChange, onKindChange,
+  isRial, baseRate, formCurrencyLabel,
   overContract, progress, error, setError, saving, onSave, onAddFiles, onRemovePending,
   onRemoveDocument, onAddAddition, onRemoveAddition, onUpdateAddition, onChooseAddition,
   onAddDeduction, onRemoveDeduction, onUpdateDeduction, onChooseDeduction,
@@ -1487,8 +1693,8 @@ const StatementEditorView = ({
   return (
     <Box sx={{ pb: 1 }}>
       <PageHeader
-        icon={<ReceiptLongIcon />}
-        title={form.id ? 'ویرایش صورت‌وضعیت' : 'ثبت صورت‌وضعیت جدید'}
+        icon={formKind.isAdjustment ? (formKind.key === STATEMENT_KIND_INCREASE ? <TrendingUpIcon /> : <TrendingDownIcon />) : <ReceiptLongIcon />}
+        title={form.id ? `ویرایش ${formKind.label}` : `ثبت ${formKind.label} جدید`}
         subtitle={`${contract?.subject || 'قرارداد'} · ${contract?.number || 'بدون شماره'} · ${form.number ? formatStatementNumber(form.number) : 'شماره‌گذاری خودکار'}`}
         badge={<Chip size="small" label={form.is_approved ? 'تأیید شده' : 'در انتظار تأیید'}
           sx={{ height: 23, fontWeight: 800, bgcolor: form.is_approved ? '#ecfdf5' : '#fffbeb', color: form.is_approved ? '#0f766e' : '#b45309' }} />}
@@ -1498,17 +1704,28 @@ const StatementEditorView = ({
             <Button variant="outlined" startIcon={<ArrowBackIcon />} onClick={onClose}>بازگشت به لیست</Button>
             <Button variant="contained" startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <SaveIcon />}
               onClick={onSave} disabled={saving || !form.contract || !form.date}>
-              {saving ? 'در حال ذخیره…' : 'ذخیره صورت‌وضعیت'}
+              {saving ? 'در حال ذخیره…' : `ذخیره ${formKind.label}`}
             </Button>
           </>
         )}
       />
 
       <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color="#0f766e" size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDoneForeign, formCurrencyLabel)} color={BLUE} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(workDone, 'ریال')}`} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="پیشرفت قرارداد" value={`${toPersianDigits(progress.toFixed(0))}٪`} color={STATEMENT_ACCENT} hint={`کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} size={17} /></Grid>
-        <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
+        {isAdjustmentForm ? (
+          <>
+            <Grid item xs={6} md={3}><KpiTile icon={formKind.key === STATEMENT_KIND_INCREASE ? TrendingUpIcon : TrendingDownIcon} label="مبلغ تعدیل این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="تعدیل تجمعی" value={compactMoney(adjustmentCumulativeForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(adjustmentCumulative, 'ریال')}`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="مبنای تجمعی صورت‌وضعیت" value={compactMoney(cumulativeThisForeign, formCurrencyLabel)} color={BLUE} size={17} hint="بدون تغییر با تعدیل" /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
+          </>
+        ) : (
+          <>
+            <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color="#0f766e" size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDoneForeign, formCurrencyLabel)} color={BLUE} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(workDone, 'ریال')}`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="پیشرفت قرارداد" value={`${toPersianDigits(progress.toFixed(0))}٪`} color={STATEMENT_ACCENT} hint={`کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} size={17} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
+          </>
+        )}
       </Grid>
 
       <Stack spacing={1.5}>
@@ -1529,15 +1746,35 @@ const StatementEditorView = ({
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
                 <Grid container spacing={1.1}>
+                  <Grid item xs={12}>
+                    <FormControl size="small" fullWidth>
+                      <InputLabel>نوع سند</InputLabel>
+                      <Select value={form.kind || STATEMENT_KIND_STATEMENT} label="نوع سند" onChange={(event) => onKindChange(event.target.value)}>
+                        {KIND_OPTIONS.map((option) => {
+                          const OptionIcon = option.icon;
+                          return (
+                            <MenuItem key={option.key} value={option.key}>
+                              <Stack direction="row" alignItems="center" spacing={0.7}>
+                                <OptionIcon sx={{ fontSize: 17, color: option.color }} />
+                                <Typography sx={{ fontSize: 12, fontWeight: 800, color: option.color }}>{option.label}</Typography>
+                              </Stack>
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                  </Grid>
                   <Grid item xs={12} sm={6}>
-                    <TextField size="small" fullWidth label="شماره صورت‌وضعیت"
+                    <TextField size="small" fullWidth label={isAdjustmentForm ? 'شماره تعدیل' : 'شماره صورت‌وضعیت'}
                       value={toPersianDigits(form.number || '')}
                       onChange={(event) => update('number', toEnglishDigits(event.target.value))}
                       onBlur={(event) => update('number', normalizeStatementNumber(event.target.value))}
                       placeholder="مثلاً ۰۳"
-                      helperText="شماره به‌صورت دو رقمی ذخیره می‌شود؛ مثلاً ۳ به ۰۳ تبدیل می‌شود." />
+                      helperText={isAdjustmentForm
+                        ? 'شماره تعدیل‌ها از ۰۱ شروع می‌شود؛ با تغییر نوع سند به‌صورت خودکار پیشنهاد می‌شود.'
+                        : 'شماره به‌صورت دو رقمی ذخیره می‌شود؛ مثلاً ۳ به ۰۳ تبدیل می‌شود.'} />
                   </Grid>
-                  <Grid item xs={12} sm={6}><JalaliDatePicker fullWidth label="تاریخ صورت‌وضعیت" value={form.date || ''} onChange={(value) => update('date', value)} /></Grid>
+                  <Grid item xs={12} sm={6}><JalaliDatePicker fullWidth label={isAdjustmentForm ? 'تاریخ تعدیل' : 'تاریخ صورت‌وضعیت'} value={form.date || ''} onChange={(value) => update('date', value)} /></Grid>
                   <Grid item xs={12} sm={6}>
                     <FormControl size="small" fullWidth>
                       <InputLabel>واحد ارز</InputLabel>
@@ -1554,14 +1791,70 @@ const StatementEditorView = ({
                   </Grid>
                   <Grid item xs={12}>
                     <FormControlLabel control={<Switch checked={Boolean(form.is_approved)} onChange={(event) => update('is_approved', event.target.checked)} />}
-                      label={<Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>این صورت‌وضعیت تأیید شده است</Typography>} />
+                      label={<Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{isAdjustmentForm ? 'این تعدیل تأیید شده است' : 'این صورت‌وضعیت تأیید شده است'}</Typography>} />
                   </Grid>
                 </Grid>
               </Box>
 
               <Divider />
               <Box>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>کارکرد و مبالغ</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>
+                  {isAdjustmentForm ? 'تعدیل و مبالغ' : 'کارکرد و مبالغ'}
+                </Typography>
+                {isAdjustmentForm ? (
+                  <>
+                    <Grid container spacing={1.1}>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`مبلغ تجمعی صورت‌وضعیت، بدون تغییر (${formCurrencyLabel})`}
+                          value={form.amount_foreign ?? cumulativeThisForeign}
+                          onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ تجمعی صورت‌وضعیت (ریال)"
+                          value={form.amount ?? 0} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`تعدیل تجمعی دوره قبل (${formCurrencyLabel})`}
+                          value={adjustmentPreviousForeign} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="تعدیل تجمعی دوره قبل (ریال)"
+                          value={adjustmentPrevious} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`${formKind.label} این دوره (${formCurrencyLabel})`}
+                          value={Math.abs(adjustmentWorkForeign)}
+                          onChange={onAdjustmentChange} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label={`${formKind.label} این دوره (ریال)`}
+                          value={Math.abs(adjustmentWorkRial)} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`تعدیل تجمعی پس از این سند (${formCurrencyLabel})`}
+                          value={adjustmentCumulativeForeign} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="تعدیل تجمعی پس از این سند (ریال)"
+                          value={adjustmentCumulative} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                    </Grid>
+                    <Box sx={{ mt: 1, p: 1.1, borderRadius: '12px', bgcolor: alpha(formKind.color, 0.05), border: `1px solid ${alpha(formKind.color, 0.16)}` }}>
+                      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                        <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این تعدیل</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: formKind.color }}>{money(netAmountForeign, formCurrencyLabel)}</Typography></Box>
+                        <Box sx={{ textAlign: 'left' }}>
+                          <Typography sx={{ fontSize: 12, color: MUTED }}>{isRial ? 'واحد پول' : 'معادل ریالی'}</Typography>
+                          <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{isRial ? formCurrencyLabel : money(netAmount, 'ریال')}</Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  </>
+                ) : (
+                  <>
                 <Grid container spacing={1.1}>
                   <Grid item xs={12} sm={6}>
                     <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
@@ -1602,8 +1895,12 @@ const StatementEditorView = ({
                     </Box>
                   </Stack>
                 </Box>
+                  </>
+                )}
               </Box>
 
+              {!isAdjustmentForm ? (
+                <>
               <Divider />
               <Box>
                 <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
@@ -1683,6 +1980,8 @@ const StatementEditorView = ({
                 ) : null}
                 <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddDeduction} sx={{ color: '#be123c', fontSize: 12 }}>افزودن کسور</Button>
               </Box>
+                </>
+              ) : null}
 
               <Divider />
               <Box>
@@ -1694,9 +1993,9 @@ const StatementEditorView = ({
                   onRemovePending={onRemovePending}
                   onRemoveDocument={onRemoveDocument}
                   accent={STATEMENT_ACCENT}
-                  buttonLabel="افزودن مدرک صورت‌وضعیت"
-                  emptyText="صورت‌وضعیت امضاشده، تأییدیه، فاکتور یا مدارک پشتیبان را اینجا پیوست کنید."
-                  documentLabel="صورت‌وضعیت"
+                  buttonLabel={isAdjustmentForm ? 'افزودن مدرک تعدیل' : 'افزودن مدرک صورت‌وضعیت'}
+                  emptyText={isAdjustmentForm ? 'مدارک پشتیبان تعدیل را اینجا پیوست کنید.' : 'صورت‌وضعیت امضاشده، تأییدیه، فاکتور یا مدارک پشتیبان را اینجا پیوست کنید.'}
+                  documentLabel={isAdjustmentForm ? 'تعدیل' : 'صورت‌وضعیت'}
                   accept=".pdf,.jpg,.jpeg,.png,.webp,.xls,.xlsx,.doc,.docx,.zip,.rar"
                   hint="PDF، تصویر، اکسل، Word یا ZIP · حداکثر ۲۵ مگابایت"
                   icon={InsertDriveFileIcon}

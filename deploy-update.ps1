@@ -280,6 +280,7 @@ $BackendFiles = @(
     'hrms_project/contracts/migrations/0033_convert_foreign_statement_amounts_to_rial.py',
     'hrms_project/contracts/migrations/0034_statement_foreign_totals.py',
     'hrms_project/contracts/migrations/0035_normalize_statement_numbers.py',
+    'hrms_project/contracts/migrations/0036_statement_adjustments.py',
     'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',
     'hrms_project/projects/migrations/0005_wbstemplatenode_budgetline_created_by_and_more.py',
     'hrms_project/contracts/migrations/0021_contract_contract_alloc_gin_idx_and_more.py',
@@ -570,6 +571,7 @@ $FrontendFiles += @(
     'frontend/src/pages/contracts/StatementEditorPage.jsx',
     'frontend/src/pages/contracts/StatementWorkspaceUI.jsx',
     'frontend/src/pages/contracts/statementCurrency.js',
+    'frontend/src/pages/contracts/statementKinds.js',
     'frontend/src/pages/ContractFinancePage.jsx',
     'frontend/src/pages/ContractProfilePage.jsx',
     'frontend/src/pages/ContractPaymentsPage.jsx',
@@ -583,6 +585,7 @@ $FrontendFiles += @(
     'frontend/src/__tests__/contractPaymentsSmoke.test.js',
     'frontend/src/__tests__/statementNumber.test.js',
     'frontend/src/__tests__/statementCurrency.test.js',
+    'frontend/src/__tests__/statementKinds.test.js',
     'frontend/src/__tests__/contractAccountingMappingSmoke.test.js',
     # پوشهٔ ماژول و جستجوی محدود به ماژول در نوار کنار سایدبار
     'frontend/src/core/components/ui/CommandPalette.jsx',

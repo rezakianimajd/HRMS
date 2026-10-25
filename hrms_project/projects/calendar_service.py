@@ -13,7 +13,7 @@ from django.db.models import Q, Sum
 from accounting.constants import REPORTABLE_DOCUMENT_STATUSES
 from accounting.models import AccountingDocumentLine
 from contracts.models import Addendum, Contract, Guarantee, Invoice, Payment, Statement
-from contracts.numbering import display_statement_number
+from contracts.numbering import display_statement_title
 from projects.cost_models import CommittedCost, CostTransaction, ProgressStatement
 from projects.jalali_utils import jalali_period_fields
 from projects.models import Project, ProjectPhase
@@ -157,7 +157,7 @@ def _cost_events(pmap, pids):
         project = pmap[s.project_id]
         events.append(_ev(
             f'prog-{s.id}', 'revenue', s.date,
-            f'صورت‌وضعیت {display_statement_number(s.number) or s.id}',
+            display_statement_title(s),
             f'{project.code} — {project.name} · قابل پرداخت: {float(s.net_payable or 0):,.0f}',
             project, amount=s.net_payable,
             ref_table='ProgressStatement', ref_id=s.id,
@@ -231,7 +231,7 @@ def _contract_events(contracts, pmap):
             for x in statements.get(c.id, []):
                 events.append(_ev(
                     f'stmt-{x.id}-{pid}', 'statement', x.date,
-                    f'صورت‌وضعیت {display_statement_number(x.number) or x.id}', base, project, amount=x.net_amount,
+                    display_statement_title(x), base, project, amount=x.net_amount,
                     contract_id=c.id, ref_table='Statement', ref_id=x.id,
                 ))
             for x in payments.get(c.id, []):

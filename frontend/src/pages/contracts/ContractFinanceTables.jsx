@@ -7,6 +7,7 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import { formatPersianNumber, formatStatementNumber, toPersianDigits, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { EmptyState, INK, MUTED } from './ContractProfileUI';
+import { statementKindOf } from './statementKinds';
 
 export const toNum = (value) => {
   const number = Number(value);
@@ -75,7 +76,7 @@ export const statementMetrics = (row, fallbackRate = 0) => {
     vat,
     additionsTotal,
     deductionsTotal,
-    net: Math.max(0, net),
+    net,
     buckets,
   };
 };
@@ -155,6 +156,8 @@ export const StatementsTable = ({ statements = [], currencyLabel = 'ریال', f
               <TableCell sx={{ ...cellSx, textAlign: 'right', minWidth: 210, whiteSpace: 'normal' }}>
                 <Stack direction="row" alignItems="center" spacing={0.6} useFlexGap flexWrap="wrap">
                   <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{formatStatementNumber(row.number) || `صورت‌وضعیت ${toPersianDigits(index + 1)}`}</Typography>
+                  <Chip size="small" label={statementKindOf(row).shortLabel}
+                    sx={{ height: 17, fontSize: 10, bgcolor: `${statementKindOf(row).color}14`, color: statementKindOf(row).color }} />
                   {row.is_approved ? <Chip size="small" label="تأییدشده" sx={{ height: 17, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} /> : null}
                 </Stack>
                 <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.2 }}>{toJalali(row.date)}</Typography>

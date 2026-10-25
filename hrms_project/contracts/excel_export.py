@@ -269,9 +269,12 @@ def _statement_slots(bundle):
         linked = bundle['payments_by_statement'].get(getattr(statement, 'id', None), [])
         slots.append({
             'number': display_statement_number(getattr(statement, 'number', '')),
+            'kind': _display(statement, 'kind'),
             'date': _fa_date(getattr(statement, 'date', None)),
             'cumulative': _num(getattr(statement, 'cumulative_previous_amount', None)),
             'work_done': _num(getattr(statement, 'work_done', None)),
+            'adjustment_work_done': _num(getattr(statement, 'adjustment_work_done', None)),
+            'adjustment_amount': _num(getattr(statement, 'adjustment_amount', None)),
             'amount': _num(getattr(statement, 'amount', None)),
             'vat': _num(getattr(statement, 'value_added_tax', None)),
             'additions_total': _num(getattr(statement, 'additions_total', None)),
@@ -462,8 +465,9 @@ BLOCK_SPECS = [
         ('پرداخت‌های مرتبط', 'payments'), ('توضیحات', 'description'),
     ]),
     ('صورت‌وضعیت', _statement_slots, [
-        ('شماره', 'number'), ('تاریخ', 'date'), ('تجمعی قبلی', 'cumulative'),
-        ('کارکرد دوره', 'work_done'), ('مبلغ', 'amount'), ('مالیات', 'vat'),
+        ('شماره', 'number'), ('نوع', 'kind'), ('تاریخ', 'date'), ('تجمعی قبلی', 'cumulative'),
+        ('کارکرد دوره', 'work_done'), ('تعدیل این دوره', 'adjustment_work_done'),
+        ('تعدیل تجمعی', 'adjustment_amount'), ('مبلغ', 'amount'), ('مالیات', 'vat'),
         ('جمع اضافات', 'additions_total'), ('جمع کسورات', 'deductions_total'),
         ('مبلغ کل / قابل پرداخت', 'net_amount'), ('وضعیت', 'status'),
         ('پرداخت‌های مرتبط', 'payments'), ('توضیحات', 'description'),

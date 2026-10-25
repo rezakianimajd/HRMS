@@ -13,6 +13,7 @@ from contracts.models import (
     ContractAuditLog, ContractAccountMapping,
 )
 from contracts.accounting_mapping import account_brief, mapping_payload, missing_fields
+from contracts.numbering import normalize_statement_number
 
 
 class ContractTypeMasterSerializer(serializers.ModelSerializer):
@@ -72,6 +73,8 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
     addendum_subject = serializers.SerializerMethodField()
     guarantee_number = serializers.SerializerMethodField()
     statement_number = serializers.SerializerMethodField()
+    statement_kind = serializers.SerializerMethodField()
+    statement_kind_display = serializers.SerializerMethodField()
 
     class Meta:
         model = ContractDocument
@@ -79,6 +82,7 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
             'id', 'contract', 'contract_number', 'contract_subject', 'contract_party_name',
             'addendum', 'addendum_number', 'addendum_subject',
             'guarantee', 'guarantee_number', 'statement', 'statement_number',
+            'statement_kind', 'statement_kind_display',
             'title', 'file', 'file_url', 'file_name', 'file_extension',
             'file_size', 'file_size_display', 'uploaded_at',
         ]
@@ -122,6 +126,12 @@ class ContractDocumentSerializer(serializers.ModelSerializer):
 
     def get_statement_number(self, obj):
         return obj.statement.number if obj.statement_id else None
+
+    def get_statement_kind(self, obj):
+        return obj.statement.kind if obj.statement_id else None
+
+    def get_statement_kind_display(self, obj):
+        return obj.statement.get_kind_display() if obj.statement_id else None
 
     def get_file_url(self, obj):
         if obj.file:
@@ -172,6 +182,7 @@ class InvoiceSerializer(serializers.ModelSerializer):
 class StatementSerializer(serializers.ModelSerializer):
     contract_number = serializers.CharField(source='contract.number', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     currency_exchange_rate = serializers.DecimalField(
@@ -188,15 +199,36 @@ class StatementSerializer(serializers.ModelSerializer):
     foreign_work_done = serializers.DecimalField(
         max_digits=18, decimal_places=4, read_only=True,
     )
+    adjustment_work_done = serializers.DecimalField(
+        max_digits=18, decimal_places=0, required=False, allow_null=True,
+    )
+    adjustment_foreign_work_done = serializers.DecimalField(
+        max_digits=18, decimal_places=4, required=False, allow_null=True,
+    )
+    adjustment_previous_amount = serializers.DecimalField(
+        max_digits=18, decimal_places=0, read_only=True,
+    )
+    adjustment_amount = serializers.DecimalField(
+        max_digits=18, decimal_places=0, read_only=True,
+    )
+    adjustment_foreign_previous_amount = serializers.DecimalField(
+        max_digits=18, decimal_places=4, read_only=True,
+    )
+    adjustment_foreign_amount = serializers.DecimalField(
+        max_digits=18, decimal_places=4, read_only=True,
+    )
     documents = ContractDocumentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Statement
         fields = [
             'id', 'contract', 'contract_number', 'contract_subject',
-            'number', 'date', 'amount',
+            'number', 'kind', 'kind_display', 'date', 'amount',
             'cumulative_previous_amount', 'work_done',
             'foreign_amount', 'foreign_previous_amount', 'foreign_work_done',
+            'adjustment_previous_amount', 'adjustment_work_done', 'adjustment_amount',
+            'adjustment_foreign_previous_amount', 'adjustment_foreign_work_done',
+            'adjustment_foreign_amount',
             'value_added_tax', 'other_additions',
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
@@ -213,17 +245,15 @@ class StatementSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError('نرخ تبدیل به ریال باید بزرگ‌تر از صفر باشد.')
         return value.quantize(Decimal('0.000001'))
 
-    def _previous_cumulative(self, contract):
-        """مبلغ تجمیعی آخرین صورت‌وضعیت ثبت‌شدهٔ قبلی.
+    @staticmethod
+    def _is_adjustment_kind(kind):
+        return kind in (Statement.Kind.INCREASE, Statement.Kind.DECREASE)
 
-        مبنای زنجیره، «ترتیب ثبت» (شناسه) است؛ تاریخ صورت‌وضعیت فقط
-        برای نمایش/فیلتر استفاده می‌شود. بنابراین ویرایش تاریخ باعث
-        نمی‌شود صورت‌وضعیت‌های بعدی، دورهٔ قبل را از دست بدهند و صفر
-        نمایش دهند.
-        """
+    def _previous_cumulative(self, contract):
+        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی قبلی (تعدیل‌ها وارد زنجیره نمی‌شوند)."""
         if not contract:
             return Decimal('0')
-        queryset = Statement.objects.filter(contract=contract)
+        queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.STATEMENT)
         current_pk = getattr(self.instance, 'pk', None)
         prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
         if not prior.exists():
@@ -234,16 +264,31 @@ class StatementSerializer(serializers.ModelSerializer):
         return max(previous_amount, Decimal(str(prior_work or 0)))
 
     def _previous_foreign_cumulative(self, contract):
-        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت قبلی (مستقل از نرخ امروز)."""
+        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت عادی قبلی."""
         if not contract:
             return Decimal('0')
-        queryset = Statement.objects.filter(contract=contract)
+        queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.STATEMENT)
         current_pk = getattr(self.instance, 'pk', None)
         prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
         previous = prior.order_by('-pk').only('foreign_amount').first()
         if not previous:
             return Decimal('0')
         return Decimal(previous.foreign_amount or 0)
+
+    def _previous_adjustment_cumulative(self, contract):
+        """تعدیل تجمعی علامت‌دار پیش از این رکورد (مستقل از صورت‌وضعیت)."""
+        if not contract:
+            return Decimal('0'), Decimal('0')
+        queryset = Statement.objects.filter(contract=contract).exclude(kind=Statement.Kind.STATEMENT)
+        current_pk = getattr(self.instance, 'pk', None)
+        prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
+        previous = prior.order_by('-pk').only('adjustment_amount', 'adjustment_foreign_amount').first()
+        if not previous:
+            return Decimal('0'), Decimal('0')
+        return (
+            Decimal(previous.adjustment_amount or 0),
+            Decimal(previous.adjustment_foreign_amount or 0),
+        )
 
     def validate(self, attrs):
         """مبلغ تجمعی دوره قبل و کارکرد دوره را در سمت سرور معتبر می‌کند.
@@ -254,8 +299,9 @@ class StatementSerializer(serializers.ModelSerializer):
         instance = self.instance
         if instance is not None and not any(
             key in attrs for key in (
-                'amount', 'date', 'contract', 'additions', 'deductions',
+                'amount', 'date', 'contract', 'additions', 'deductions', 'kind',
                 'value_added_tax', 'other_additions', 'currency', 'exchange_rate', 'foreign_amount',
+                'adjustment_work_done', 'adjustment_foreign_work_done',
             )
         ):
             return attrs
@@ -271,6 +317,67 @@ class StatementSerializer(serializers.ModelSerializer):
         if rate <= 0:
             rate = Decimal('1')
         is_foreign = rate > 1 and currency_code != 'IRR'
+        kind = attrs.get('kind') or getattr(instance, 'kind', Statement.Kind.STATEMENT)
+
+        if self._is_adjustment_kind(kind):
+            submitted_number = attrs.get('number', getattr(instance, 'number', ''))
+            if not str(submitted_number or '').strip():
+                prior_adjustments = Statement.objects.filter(contract=contract).exclude(kind=Statement.Kind.STATEMENT)
+                if instance is not None and instance.pk:
+                    prior_adjustments = prior_adjustments.exclude(pk=instance.pk)
+                numbers = [
+                    normalize_statement_number(value)
+                    for value in prior_adjustments.values_list('number', flat=True)
+                ]
+                numeric = [int(value) for value in numbers if value.isdigit()]
+                attrs['number'] = normalize_statement_number((max(numeric) if numeric else 0) + 1)
+            else:
+                attrs['number'] = normalize_statement_number(submitted_number)
+            sign = Decimal('-1') if kind == Statement.Kind.DECREASE else Decimal('1')
+            submitted_rial = attrs.get('adjustment_work_done')
+            submitted_foreign = attrs.get('adjustment_foreign_work_done')
+            if is_foreign and submitted_foreign is not None:
+                magnitude_foreign = abs(Decimal(str(submitted_foreign or 0)))
+                signed_foreign = (sign * magnitude_foreign).quantize(Decimal('0.0001'))
+                signed_rial = (sign * (magnitude_foreign * rate)).quantize(Decimal('1'), rounding=ROUND_HALF_UP)
+            elif submitted_rial is not None:
+                magnitude_rial = abs(Decimal(str(submitted_rial or 0)))
+                signed_rial = (sign * magnitude_rial).quantize(Decimal('1'))
+                signed_foreign = (sign * (magnitude_rial / rate)).quantize(
+                    Decimal('0.0001'), rounding=ROUND_HALF_UP,
+                )
+            else:
+                current = Decimal(str(getattr(instance, 'adjustment_work_done', 0) or 0))
+                signed_rial = (sign * abs(current)).quantize(Decimal('1'))
+                signed_foreign = (sign * (abs(current) / rate)).quantize(
+                    Decimal('0.0001'), rounding=ROUND_HALF_UP,
+                )
+
+            base_amount = self._previous_cumulative(contract)
+            base_foreign = self._previous_foreign_cumulative(contract)
+            previous_adjustment, previous_adjustment_foreign = self._previous_adjustment_cumulative(contract)
+            attrs['amount'] = base_amount
+            attrs['cumulative_previous_amount'] = base_amount
+            attrs['work_done'] = signed_rial
+            attrs['foreign_previous_amount'] = base_foreign
+            attrs['foreign_amount'] = base_foreign
+            attrs['foreign_work_done'] = signed_foreign
+            attrs['adjustment_previous_amount'] = previous_adjustment
+            attrs['adjustment_work_done'] = signed_rial
+            attrs['adjustment_amount'] = previous_adjustment + signed_rial
+            attrs['adjustment_foreign_previous_amount'] = previous_adjustment_foreign
+            attrs['adjustment_foreign_work_done'] = signed_foreign
+            attrs['adjustment_foreign_amount'] = previous_adjustment_foreign + signed_foreign
+            attrs['additions'] = []
+            attrs['deductions'] = []
+            attrs['value_added_tax'] = Decimal('0')
+            attrs['other_additions'] = Decimal('0')
+            attrs['additions_total'] = Decimal('0')
+            attrs['deductions_total'] = Decimal('0')
+            attrs['net_amount'] = signed_rial
+            return attrs
+
+        adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)
 
         amount_value = attrs.get('amount', getattr(instance, 'amount', 0))
         try:
@@ -361,6 +468,12 @@ class StatementSerializer(serializers.ModelSerializer):
         attrs['additions_total'] = additions_total
         attrs['deductions_total'] = deductions_total
         attrs['net_amount'] = work + additions_total - deductions_total
+        attrs['adjustment_previous_amount'] = adjustment_previous
+        attrs['adjustment_work_done'] = Decimal('0')
+        attrs['adjustment_amount'] = adjustment_previous
+        attrs['adjustment_foreign_previous_amount'] = adjustment_previous_foreign
+        attrs['adjustment_foreign_work_done'] = Decimal('0')
+        attrs['adjustment_foreign_amount'] = adjustment_previous_foreign
         return attrs
 
 
@@ -533,12 +646,26 @@ class PaymentSerializer(serializers.ModelSerializer):
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     invoice_number = serializers.CharField(source='invoice.number', read_only=True)
     statement_number = serializers.CharField(source='statement.number', read_only=True)
+    statement_kind = serializers.SerializerMethodField()
+    statement_kind_display = serializers.SerializerMethodField()
     statement_amount = serializers.DecimalField(
         source='statement.amount', max_digits=18, decimal_places=0,
         read_only=True, allow_null=True,
     )
     statement_net_amount = serializers.DecimalField(
         source='statement.net_amount', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_adjustment_work_done = serializers.DecimalField(
+        source='statement.adjustment_work_done', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_adjustment_amount = serializers.DecimalField(
+        source='statement.adjustment_amount', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_adjustment_foreign_amount = serializers.DecimalField(
+        source='statement.adjustment_foreign_amount', max_digits=18, decimal_places=4,
         read_only=True, allow_null=True,
     )
     statement_exchange_rate = serializers.DecimalField(
@@ -553,6 +680,14 @@ class PaymentSerializer(serializers.ModelSerializer):
     attachments = PaymentAttachmentSerializer(many=True, read_only=True)
     attachment_count = serializers.SerializerMethodField()
 
+    def get_statement_kind(self, obj):
+        statement = getattr(obj, 'statement', None)
+        return getattr(statement, 'kind', None) if statement else None
+
+    def get_statement_kind_display(self, obj):
+        statement = getattr(obj, 'statement', None)
+        return statement.get_kind_display() if statement else None
+
     def get_statement_currency_name(self, obj):
         statement = getattr(obj, 'statement', None)
         currency = getattr(statement, 'currency', None) if statement else None
@@ -562,7 +697,11 @@ class PaymentSerializer(serializers.ModelSerializer):
         model = Payment
         fields = [
             'id', 'contract', 'contract_subject', 'invoice', 'invoice_number', 'statement', 'statement_number',
-            'statement_amount', 'statement_net_amount', 'statement_exchange_rate', 'statement_currency_name',
+            'statement_kind', 'statement_kind_display',
+            'statement_amount', 'statement_net_amount',
+            'statement_adjustment_work_done', 'statement_adjustment_amount',
+            'statement_adjustment_foreign_amount',
+            'statement_exchange_rate', 'statement_currency_name',
             'statement_foreign_amount',
             'date', 'currency', 'currency_name', 'currency_symbol',
             'amount', 'reference', 'method', 'note',

@@ -1,12 +1,13 @@
 """تست خروجی اکسل جامع قراردادها (اجرا روی سرور با PostgreSQL)."""
 from datetime import date
 from decimal import Decimal
+from types import SimpleNamespace
 
 from django.test import SimpleTestCase, TestCase
 
 from contracts.excel_export import build_contracts_workbook
 from contracts.models import Addendum, Contract, ContractParty, Guarantee, Invoice, Payment, Statement
-from contracts.numbering import display_statement_number, normalize_statement_number
+from contracts.numbering import display_statement_number, display_statement_title, normalize_statement_number
 from contracts.serializers import StatementSerializer
 from core.models import Company
 from settings_app.models import Currency, Signatory
@@ -26,6 +27,14 @@ class StatementNumberingTests(SimpleTestCase):
         self.assertEqual(normalize_statement_number('S-3'), 'S-3')
         self.assertEqual(display_statement_number('3'), '۰۳')
         self.assertEqual(display_statement_number('S-1'), 'S-۱')
+        self.assertEqual(
+            display_statement_title(SimpleNamespace(kind='increase', number='3')),
+            'تعدیل افزایشی ۰۳',
+        )
+        self.assertEqual(
+            display_statement_title(SimpleNamespace(kind='decrease', number='S-2')),
+            'تعدیل کاهشی S-۲',
+        )
 
 
 def make_company(schema_name='testco-ctr', name='شرکت تست قرارداد'):
@@ -616,6 +625,51 @@ class StatementCalculationTests(TestCase):
         longer = StatementSerializer(data=self._payload(number='۱۰۳', amount=6_000_000))
         self.assertTrue(longer.is_valid(), longer.errors)
         self.assertEqual(longer.save(company=self.company).number, '103')
+
+    def test_adjustments_have_independent_signed_chain(self):
+        Statement.objects.create(
+            company=self.company, contract=self.contract, number='01',
+            date=date(2025, 7, 1), amount=2_000_000, work_done=2_000_000,
+            net_amount=2_000_000,
+        )
+        increase = StatementSerializer(data=self._payload(
+            number='', kind='increase', amount=0, adjustment_work_done=500_000,
+        ))
+        self.assertTrue(increase.is_valid(), increase.errors)
+        increase_row = increase.save(company=self.company)
+
+        decrease = StatementSerializer(data=self._payload(
+            number='', kind='decrease', amount=0, adjustment_work_done=200_000,
+        ))
+        self.assertTrue(decrease.is_valid(), decrease.errors)
+        decrease_row = decrease.save(company=self.company)
+
+        normal = StatementSerializer(data=self._payload(number='02', amount=5_000_000))
+        self.assertTrue(normal.is_valid(), normal.errors)
+        normal_row = normal.save(company=self.company)
+
+        from contracts.statement_totals import recalculate_contract_statements
+        recalculate_contract_statements(self.contract)
+        increase_row.refresh_from_db()
+        decrease_row.refresh_from_db()
+        normal_row.refresh_from_db()
+
+        self.assertEqual(increase_row.number, '01')
+        self.assertEqual(increase_row.amount, Decimal('2000000'))
+        self.assertEqual(increase_row.cumulative_previous_amount, Decimal('2000000'))
+        self.assertEqual(increase_row.work_done, Decimal('500000'))
+        self.assertEqual(increase_row.adjustment_amount, Decimal('500000'))
+        self.assertEqual(increase_row.net_amount, Decimal('500000'))
+
+        self.assertEqual(decrease_row.number, '02')
+        self.assertEqual(decrease_row.amount, Decimal('2000000'))
+        self.assertEqual(decrease_row.work_done, Decimal('-200000'))
+        self.assertEqual(decrease_row.adjustment_amount, Decimal('300000'))
+        self.assertEqual(decrease_row.net_amount, Decimal('-200000'))
+
+        self.assertEqual(normal_row.cumulative_previous_amount, Decimal('2000000'))
+        self.assertEqual(normal_row.work_done, Decimal('3000000'))
+        self.assertEqual(normal_row.adjustment_amount, Decimal('300000'))
 
     def test_percentage_items_use_current_period_work(self):
         Statement.objects.create(

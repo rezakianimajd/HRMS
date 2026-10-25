@@ -24,7 +24,7 @@ import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import InsightsIcon from '@mui/icons-material/Insights';
 import HubIcon from '@mui/icons-material/Hub';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
-import { formatPersianNumber, formatStatementNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { toJalali } from '../core/utils/dateUtils';
 import { CONTRACT_STATUS_LABELS as STATUS_LABELS, CONTRACT_STATUS_COLORS as STATUS_COLORS, CONTRACT_TYPE_LABELS as TYPE_LABELS } from '../core/theme/tokens';
@@ -34,6 +34,7 @@ import {
 } from './contracts/ContractProfileUI';
 import ContractGuarantees from './contracts/ContractGuarantees';
 import { contractRateOf, summarizeStatementFinance } from './contracts/contractFinanceSummary';
+import { statementDisplayTitle } from './contracts/statementKinds';
 
 const DualMetric = ({ label, rial, foreign, currency, color = INK }) => (
   <Box sx={{ p: 1.15, height: '100%', borderRadius: '13px', border: '1px solid #eef2f7', bgcolor: SOFT_BG, minWidth: 0 }}>
@@ -115,7 +116,7 @@ const ContractProfilePage = () => {
     push(c.start_date, 'start', 'شروع قرارداد', '');
     push(c.end_date, 'end', 'پایان / انقضای قرارداد', '');
     (c.invoices || []).forEach(x => push(x.date, 'invoice', 'ثبت فاکتور', `${x.number || '—'} · ${formatPersianNumber(x.total || 0)} ریال`));
-    (c.statements || []).forEach(x => push(x.date, 'statement', 'ثبت صورت‌وضعیت', `${formatStatementNumber(x.number) || '—'} · ${formatPersianNumber(x.amount || 0)} ریال`));
+    (c.statements || []).forEach(x => push(x.date, 'statement', 'ثبت صورت‌وضعیت', `${statementDisplayTitle(x) || '—'} · ${formatPersianNumber(x.net_amount ?? x.amount ?? 0)} ریال`));
     (c.addendums || []).forEach(x => push(x.date, 'addendum', 'ثبت الحاقیه', x.subject_type_display || x.number || x.change_description?.slice(0, 40)));
     (c.guarantees || []).forEach(x => push(x.issue_date, 'guarantee', 'صدور تضمین', x.guarantee_type_display));
     (c.guarantees || []).forEach(x => push(x.expiry_date, 'guarantee-expiry', 'انقضای تضمین', x.number || ''));
@@ -151,12 +152,16 @@ const ContractProfilePage = () => {
   const amountWithAddendumRial = amountWithAddendum * contractRate;
   const totalStatements = financial.rial.amount;
   const totalStatementsForeign = financial.foreign.amount;
+  const adjustmentNetRial = financial.adjustments.net;
+  const adjustmentNetForeign = financial.adjustments.netForeign;
+  const adjustedContractAmountRial = amountWithAddendumRial + adjustmentNetRial;
+  const adjustedContractAmount = contractRate > 1 ? adjustedContractAmountRial / contractRate : adjustedContractAmountRial;
   const totalInvoicesForeign = contractRate > 1 ? totalInvoices / contractRate : totalInvoices;
   const totalPaidForeign = contractRate > 1 ? totalPaid / contractRate : totalPaid;
-  const remainingRial = Math.max(0, amountWithAddendumRial - totalPaid);
+  const remainingRial = Math.max(0, adjustedContractAmountRial - totalPaid);
   const remaining = contractRate > 1 ? remainingRial / contractRate : remainingRial;
-  const progressPercent = amountWithAddendumRial > 0
-    ? Math.min(100, Math.round((totalPaid / amountWithAddendumRial) * 100))
+  const progressPercent = adjustedContractAmountRial > 0
+    ? Math.min(100, Math.round((totalPaid / adjustedContractAmountRial) * 100))
     : 0;
   const remainingDays = endDateWithAddendum
     ? Math.ceil((new Date(`${String(endDateWithAddendum).slice(0, 10)}T00:00:00`) - new Date()) / 86400000)
@@ -285,14 +290,14 @@ const ContractProfilePage = () => {
             <Box sx={{ p: 1.75, borderRadius: '16px', bgcolor: '#fff', border: '1px solid #fde9c8' }}>
               <Stack direction="row" alignItems="flex-start" justifyContent="space-between" spacing={1.5} useFlexGap>
                 <Box>
-                  <Typography sx={{ fontSize: 12, color: '#9a3412', fontWeight: 600 }}>مبلغ قرارداد با اعمال الحاقیه‌ها</Typography>
+                  <Typography sx={{ fontSize: 12, color: '#9a3412', fontWeight: 600 }}>مبلغ قرارداد با اعمال الحاقیه‌ها و تعدیلات</Typography>
                   <Typography sx={{ mt: 0.4, fontSize: { xs: 24, sm: 30 }, fontWeight: 900, color: '#b45309', direction: 'rtl', lineHeight: 1.2 }}>
-                    {formatPersianNumber(amountWithAddendum)} <Box component="span" sx={{ fontSize: 12, fontWeight: 600, color: '#9a3412' }}>{currencyLabel}</Box>
+                    {formatPersianNumber(adjustedContractAmount)} <Box component="span" sx={{ fontSize: 12, fontWeight: 600, color: '#9a3412' }}>{currencyLabel}</Box>
                   </Typography>
                   <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ پایه: {formatPersianNumber(c.amount || 0)} {currencyLabel}</Typography>
                   {contractRate > 1 ? (
                     <Typography sx={{ mt: 0.35, fontSize: 12, fontWeight: 800, color: '#7c2d12' }}>
-                      معادل ریالی: {formatPersianNumber(amountWithAddendumRial)} ریال
+                      معادل ریالی: {formatPersianNumber(adjustedContractAmountRial)} ریال
                     </Typography>
                   ) : null}
                 </Box>
@@ -304,7 +309,7 @@ const ContractProfilePage = () => {
                 <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.55 }}>
                   <Typography sx={{ fontSize: 12, color: '#9a3412' }}>پیشرفت پرداخت</Typography>
                   <Typography sx={{ fontSize: 12, color: '#9a3412' }}>
-                    {formatPersianNumber(totalPaid)} ریال از {formatPersianNumber(amountWithAddendumRial)} ریال
+                    {formatPersianNumber(totalPaid)} ریال از {formatPersianNumber(adjustedContractAmountRial)} ریال
                   </Typography>
                 </Stack>
                 <ProgressBar value={progressPercent} color="#f59e0b" height={10} track="#fdf1dc" />
@@ -341,9 +346,9 @@ const ContractProfilePage = () => {
       {/* شاخص‌های کلیدی */}
       <Grid container spacing={1.5} sx={{ mb: 2 }}>
         <Grid item xs={12} sm={6} lg={3}>
-          <KpiCard icon={AccountBalanceIcon} label="مبلغ قرارداد (با الحاقیه)" value={formatPersianNumber(amountWithAddendum)}
+          <KpiCard icon={AccountBalanceIcon} label="مبلغ قرارداد تعدیل‌شده" value={formatPersianNumber(adjustedContractAmount)}
             suffix={currencyLabel} color="#f59e0b"
-            hint={contractRate > 1 ? `معادل ریالی: ${formatPersianNumber(amountWithAddendumRial)} ریال` : `${toPersianDigits(addendumCount)} الحاقیه`} size={17} />
+            hint={contractRate > 1 ? `معادل ریالی: ${formatPersianNumber(adjustedContractAmountRial)} ریال` : `${toPersianDigits(addendumCount)} الحاقیه`} size={17} />
         </Grid>
         <Grid item xs={12} sm={6} lg={3}>
           <KpiCard icon={PaymentsIcon} label="پرداخت‌شده (ریال)" value={formatPersianNumber(totalPaid)}
@@ -381,18 +386,24 @@ const ContractProfilePage = () => {
                 <FinancialDonut paid={totalPaid} remaining={remainingRial} />
               </Box>
               <Box sx={{ width: '100%' }}>
-                <MoneyBar label="پرداخت‌شده (ریال)" value={totalPaid} total={amountWithAddendumRial || 1} color="#0ea5e9" suffix="ریال" />
-                <Box sx={{ mt: 1 }}><MoneyBar label="صورت‌وضعیت‌ها (ریال)" value={totalStatements} total={amountWithAddendumRial || 1} color="#3b82f6" suffix="ریال" /></Box>
-                <Box sx={{ mt: 1 }}><MoneyBar label="فاکتورها (ریال)" value={totalInvoices} total={amountWithAddendumRial || 1} color="#8b5cf6" suffix="ریال" /></Box>
+                <MoneyBar label="پرداخت‌شده (ریال)" value={totalPaid} total={adjustedContractAmountRial || 1} color="#0ea5e9" suffix="ریال" />
+                <Box sx={{ mt: 1 }}><MoneyBar label="صورت‌وضعیت‌ها (ریال)" value={totalStatements} total={adjustedContractAmountRial || 1} color="#3b82f6" suffix="ریال" /></Box>
+                <Box sx={{ mt: 1 }}><MoneyBar label="اثر خالص تعدیلات (ریال)" value={Math.abs(adjustmentNetRial)} total={adjustedContractAmountRial || 1} color={adjustmentNetRial >= 0 ? '#15803d' : '#be123c'} suffix="ریال" /></Box>
+                <Box sx={{ mt: 1 }}><MoneyBar label="فاکتورها (ریال)" value={totalInvoices} total={adjustedContractAmountRial || 1} color="#8b5cf6" suffix="ریال" /></Box>
               </Box>
             </Stack>
           </Grid>
           <Grid item xs={12} lg={8}>
             <Grid container spacing={1}>
-              <Grid item xs={6} md={3}><DualMetric label="مبلغ قرارداد" rial={amountWithAddendumRial} foreign={contractRate > 1 ? amountWithAddendum : null} currency={currencyLabel} color="#b45309" /></Grid>
+              <Grid item xs={6} md={3}><DualMetric label="مبلغ قرارداد تعدیل‌شده" rial={adjustedContractAmountRial} foreign={contractRate > 1 ? adjustedContractAmount : null} currency={currencyLabel} color="#b45309" /></Grid>
               <Grid item xs={6} md={3}><DualMetric label="جمع صورت‌وضعیت" rial={totalStatements} foreign={contractRate > 1 ? totalStatementsForeign : null} currency={currencyLabel} color="#2563eb" /></Grid>
               <Grid item xs={6} md={3}><DualMetric label="پرداخت‌شده" rial={totalPaid} foreign={contractRate > 1 ? totalPaidForeign : null} currency={currencyLabel} color="#0f766e" /></Grid>
               <Grid item xs={6} md={3}><DualMetric label="مانده قابل پرداخت" rial={remainingRial} foreign={contractRate > 1 ? remaining : null} currency={currencyLabel} color="#64748b" /></Grid>
+
+              <Grid item xs={6} md={3}><DualMetric label="تعدیل افزایشی" rial={financial.adjustments.increase} foreign={contractRate > 1 ? financial.adjustments.increaseForeign : null} currency={currencyLabel} color="#15803d" /></Grid>
+              <Grid item xs={6} md={3}><DualMetric label="تعدیل کاهشی" rial={financial.adjustments.decrease} foreign={contractRate > 1 ? financial.adjustments.decreaseForeign : null} currency={currencyLabel} color="#be123c" /></Grid>
+              <Grid item xs={6} md={3}><DualMetric label="اثر خالص تعدیلات" rial={adjustmentNetRial} foreign={contractRate > 1 ? adjustmentNetForeign : null} currency={currencyLabel} color={adjustmentNetRial >= 0 ? '#15803d' : '#be123c'} /></Grid>
+              <Grid item xs={6} md={3}><DualMetric label="تعداد تعدیل‌ها" rial={financial.adjustments.count} foreign={null} currency={currencyLabel} color="#7c3aed" /></Grid>
 
               <Grid item xs={6} md={3}><DualMetric label="حسن انجام کار" rial={financial.rial.retention} foreign={contractRate > 1 ? financial.foreign.retention : null} currency={currencyLabel} color="#b45309" /></Grid>
               <Grid item xs={6} md={3}><DualMetric label="ارزش افزوده" rial={financial.rial.vat} foreign={contractRate > 1 ? financial.foreign.vat : null} currency={currencyLabel} color="#7c3aed" /></Grid>
@@ -402,7 +413,7 @@ const ContractProfilePage = () => {
               <Grid item xs={6} md={3}><DualMetric label="علی‌الحساب و مصالح" rial={financial.rial.statementAdvance + financial.rial.otherAdvances + financial.rial.materials} foreign={contractRate > 1 ? financial.foreign.statementAdvance + financial.foreign.otherAdvances + financial.foreign.materials : null} currency={currencyLabel} color="#ec4899" /></Grid>
               <Grid item xs={6} md={3}><DualMetric label="سایر کسورات" rial={financial.rial.otherDeductions} foreign={contractRate > 1 ? financial.foreign.otherDeductions : null} currency={currencyLabel} color="#dc2626" /></Grid>
               <Grid item xs={6} md={3}><DualMetric label="سایر اضافات" rial={financial.rial.otherAdditions} foreign={contractRate > 1 ? financial.foreign.otherAdditions : null} currency={currencyLabel} color="#15803d" /></Grid>
-              <Grid item xs={6} md={3}><DualMetric label="خالص قابل پرداخت" rial={financial.rial.net} foreign={contractRate > 1 ? financial.foreign.net : null} currency={currencyLabel} color="#0f766e" /></Grid>
+              <Grid item xs={6} md={3}><DualMetric label="خالص قابل پرداخت (با تعدیل)" rial={financial.rial.net} foreign={contractRate > 1 ? financial.foreign.net : null} currency={currencyLabel} color="#0f766e" /></Grid>
             </Grid>
             <Box sx={{ mt: 1.25, p: 1.1, borderRadius: '11px', bgcolor: '#f8fafc', border: '1px solid #eef2f7' }}>
               <Typography sx={{ fontSize: 12, color: MUTED, lineHeight: 1.9 }}>

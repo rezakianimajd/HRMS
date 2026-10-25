@@ -35,7 +35,8 @@ import ViewAgendaIcon from '@mui/icons-material/ViewAgenda';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import ViewWeekIcon from '@mui/icons-material/ViewWeek';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
+import { statementDisplayTitle } from './contracts/statementKinds';
 import { toGregorian, toJalali, getJalaliParts } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
@@ -671,7 +672,7 @@ const ContractCalendarPage = () => {
         }
       });
       (contract.statements || []).forEach((statement) => {
-        add(`statement-${statement.id}`, contract, statement.date, 'statement', `صورت‌وضعیت ${formatStatementNumber(statement.number) || '—'}`, base, statement.net_amount);
+        add(`statement-${statement.id}`, contract, statement.date, 'statement', statementDisplayTitle(statement) || 'صورت‌وضعیت', base, statement.net_amount);
       });
       (contract.payments || []).forEach((payment) => {
         add(`payment-${payment.id}`, contract, payment.date, 'payment', 'پرداخت', `${base}${payment.reference ? ` · ${payment.reference}` : ''}`, payment.amount);

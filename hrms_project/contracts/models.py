@@ -278,8 +278,18 @@ class Invoice(BaseModel):
 
 class Statement(BaseModel):
     """صورت وضعیت (progress statement) for a contract."""
+
+    class Kind(models.TextChoices):
+        STATEMENT = 'statement', _('صورت‌وضعیت')
+        INCREASE = 'increase', _('تعدیل افزایشی')
+        DECREASE = 'decrease', _('تعدیل کاهشی')
+
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='statements', verbose_name=_('قرارداد'))
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره صورت‌وضعیت'))
+    kind = models.CharField(
+        max_length=20, choices=Kind.choices, default=Kind.STATEMENT,
+        verbose_name=_('نوع سند'), help_text=_('صورت‌وضعیت عادی، تعدیل افزایشی یا تعدیل کاهشی'),
+    )
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
     # «مبلغ» = مبلغ تجمعی این صورت‌وضعیت (کارکرد کل تا این دوره)
     amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ تجمعی این صورت‌وضعیت (ریال)'))
@@ -291,6 +301,19 @@ class Statement(BaseModel):
     work_done = models.DecimalField(
         max_digits=18, decimal_places=0, default=0,
         verbose_name=_('کارکرد دوره (ریال)'),
+    )
+    # زنجیرهٔ مستقل تعدیل‌ها؛ مبالغ علامت‌دار هستند (افزایشی مثبت، کاهشی منفی).
+    adjustment_previous_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('تعدیل تجمعی دوره قبل (ریال)'),
+    )
+    adjustment_work_done = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('تعدیل این دوره (ریال)'),
+    )
+    adjustment_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('تعدیل تجمعی (ریال)'),
     )
     value_added_tax = models.DecimalField(
         max_digits=18, decimal_places=0, default=0,
@@ -336,6 +359,18 @@ class Statement(BaseModel):
     foreign_work_done = models.DecimalField(
         max_digits=18, decimal_places=4, default=0,
         verbose_name=_('کارکرد ارزی دوره'),
+    )
+    adjustment_foreign_previous_amount = models.DecimalField(
+        max_digits=18, decimal_places=4, default=0,
+        verbose_name=_('تعدیل تجمعی ارزی دوره قبل'),
+    )
+    adjustment_foreign_work_done = models.DecimalField(
+        max_digits=18, decimal_places=4, default=0,
+        verbose_name=_('تعدیل ارزی این دوره'),
+    )
+    adjustment_foreign_amount = models.DecimalField(
+        max_digits=18, decimal_places=4, default=0,
+        verbose_name=_('تعدیل تجمعی ارزی'),
     )
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))

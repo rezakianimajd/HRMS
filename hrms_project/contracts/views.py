@@ -306,8 +306,9 @@ class StatementViewSet(BaseContractViewSet):
     serializer_class = StatementSerializer
     queryset = Statement.objects.select_related('contract', 'currency').prefetch_related('documents')
     _recalc_fields = {
-        'amount', 'date', 'contract', 'additions', 'deductions',
+        'amount', 'date', 'contract', 'additions', 'deductions', 'kind',
         'value_added_tax', 'other_additions', 'cumulative_previous_amount', 'work_done',
+        'adjustment_work_done', 'adjustment_foreign_work_done',
     }
 
     def get_queryset(self):
@@ -321,6 +322,7 @@ class StatementViewSet(BaseContractViewSet):
         with transaction.atomic():
             statement = serializer.save(company=_company(self.request))
             recalculate_contract_statements(statement.contract)
+            statement.refresh_from_db()
 
     def perform_update(self, serializer):
         with transaction.atomic():
@@ -332,6 +334,7 @@ class StatementViewSet(BaseContractViewSet):
                 recalculate_contract_statements(statement.contract)
                 if old_contract and old_contract.pk != statement.contract_id:
                     recalculate_contract_statements(old_contract)
+                statement.refresh_from_db()
 
     def perform_destroy(self, instance):
         with transaction.atomic():

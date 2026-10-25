@@ -44,6 +44,7 @@ import {
   CONTRACT_TYPE_LABELS as TYPE_LABELS,
 } from '../core/theme/tokens';
 import { contractRateOf } from './contracts/contractFinanceSummary';
+import { adjustmentSummaryOf, statementDisplayTitle, statementKindOf } from './contracts/statementKinds';
 
 const TEAL = '#0f766e';
 const BLUE = '#2563eb';
@@ -87,6 +88,14 @@ const statementInfo = (row = {}, fallbackRate = 1, fallbackCurrency = 'ریال'
     currency: raw ? normalizeCurrencyLabel(raw) : normalizeCurrencyLabel(fallbackCurrency),
   };
 };
+
+const paymentStatementKind = (row = {}) => statementKindOf(row.statement_kind);
+const paymentStatementTitle = (row = {}) => statementDisplayTitle(
+  { kind: row.statement_kind || 'statement', number: row.statement_number },
+);
+const paymentStatementNetLabel = (row = {}) => (
+  paymentStatementKind(row).isAdjustment ? 'قابل پرداخت تعدیل' : 'قابل پرداخت صورت‌وضعیت'
+);
 const contractAmountOf = (contract) => num(contract?.effective_amount ?? contract?.amount);
 const statusLabel = (status) => STATUS_LABELS[status] || status || '—';
 const statusColor = (status) => STATUS_COLORS[status] || SLATE;
@@ -147,7 +156,7 @@ const EmptyState = ({ icon: Icon = PaymentsOutlinedIcon, title, hint, color = TE
 );
 
 
-const ContractSnapshotCard = ({ contract, currency, contractRate = 1, navigate, onBack }) => {
+const ContractSnapshotCard = ({ contract, currency, contractRate = 1, navigate, onBack, adjustments = null }) => {
   if (!contract) return null;
   return (
     <SurfaceCard title="پرونده قرارداد" icon={DescriptionOutlinedIcon} color={TEAL}
@@ -165,6 +174,13 @@ const ContractSnapshotCard = ({ contract, currency, contractRate = 1, navigate, 
         <InfoLine label="مبلغ قرارداد" value={`${formatPersianNumber(contractAmountOf(contract))} ${currency}`} strong />
         {contractRate > 1 ? (
           <InfoLine label="معادل ریالی" value={`${formatPersianNumber(contractAmountOf(contract) * contractRate)} ریال`} />
+        ) : null}
+        {adjustments?.count ? (
+          <>
+            <InfoLine label="تعدیل افزایشی" value={`${formatPersianNumber(adjustments.increase)} ریال`} color={GREEN} />
+            <InfoLine label="تعدیل کاهشی" value={`${formatPersianNumber(adjustments.decrease)} ریال`} color="#be123c" />
+            <InfoLine label="اثر خالص تعدیلات" value={`${formatPersianNumber(adjustments.net)} ریال`} strong color={adjustments.net >= 0 ? GREEN : '#be123c'} />
+          </>
         ) : null}
         <InfoLine label="تاریخ شروع" value={toJalali(contract.start_date)} />
         <InfoLine label="تاریخ پایان" value={toJalali(contract.end_date)} />
@@ -295,13 +311,20 @@ const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete
           ) : null}
           {row.statement_amount ? (
             <Typography sx={{ mt: 0.2, fontSize: 12, color: BLUE }}>
-              مبلغ صورت‌وضعیت: {formatPersianNumber(row.statement_amount)} ریال
+              {paymentStatementKind(row).isAdjustment ? 'مبلغ تجمعی صورت‌وضعیت (بدون تغییر): ' : 'مبلغ صورت‌وضعیت: '}
+              {formatPersianNumber(row.statement_amount)} ریال
               {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${info.currency}` : ''}
+            </Typography>
+          ) : null}
+          {row.statement_adjustment_work_done ? (
+            <Typography sx={{ fontSize: 12, color: paymentStatementKind(row).color, fontWeight: 800 }}>
+              مبلغ تعدیل این دوره: {formatPersianNumber(row.statement_adjustment_work_done)} ریال
+              {row.statement_adjustment_amount ? ` · تعدیل تجمعی: ${formatPersianNumber(row.statement_adjustment_amount)} ریال` : ''}
             </Typography>
           ) : null}
           {row.statement_net_amount ? (
             <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
-              قابل پرداخت صورت‌وضعیت: {formatPersianNumber(row.statement_net_amount)} ریال
+              {paymentStatementNetLabel(row)}: {formatPersianNumber(row.statement_net_amount)} ریال
               {statementNetForeign !== null ? ` · ≈ ${formatPersianNumber(statementNetForeign)} ${info.currency}` : ''}
             </Typography>
           ) : null}
@@ -337,8 +360,8 @@ const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete
             sx={{ height: 20, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
         ) : null}
         {row.statement_number ? (
-          <Chip size="small" label={`صورت‌وضعیت ${formatStatementNumber(row.statement_number)}`}
-            sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
+          <Chip size="small" label={paymentStatementTitle(row)}
+            sx={{ height: 20, fontSize: 12, bgcolor: alpha(paymentStatementKind(row).color, 0.07), color: paymentStatementKind(row).color }} />
         ) : null}
         {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
           <Chip size="small" icon={<AttachFileOutlinedIcon sx={{ fontSize: '12px !important' }} />}
@@ -402,13 +425,20 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
                 ) : null}
                 {row.statement_amount ? (
                   <Typography sx={{ fontSize: 12, color: BLUE }}>
-                    مبلغ صورت‌وضعیت: {formatPersianNumber(row.statement_amount)} ریال
+                    {paymentStatementKind(row).isAdjustment ? 'مبلغ تجمعی صورت‌وضعیت (بدون تغییر): ' : 'مبلغ صورت‌وضعیت: '}
+                    {formatPersianNumber(row.statement_amount)} ریال
                     {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${info.currency}` : ''}
+                  </Typography>
+                ) : null}
+                {row.statement_adjustment_work_done ? (
+                  <Typography sx={{ fontSize: 12, color: paymentStatementKind(row).color, fontWeight: 800 }}>
+                    مبلغ تعدیل: {formatPersianNumber(row.statement_adjustment_work_done)} ریال
+                    {row.statement_adjustment_amount ? ` · تجمعی: ${formatPersianNumber(row.statement_adjustment_amount)} ریال` : ''}
                   </Typography>
                 ) : null}
                 {row.statement_net_amount ? (
                   <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
-                    قابل پرداخت: {formatPersianNumber(row.statement_net_amount)} ریال
+                    {paymentStatementNetLabel(row)}: {formatPersianNumber(row.statement_net_amount)} ریال
                     {statementNetForeign !== null ? ` · ≈ ${formatPersianNumber(statementNetForeign)} ${info.currency}` : ''}
                   </Typography>
                 ) : null}
@@ -423,7 +453,7 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
               <TableCell>
                 <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
                   {row.invoice_number ? <Chip size="small" label={`فاکتور ${row.invoice_number}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} /> : null}
-                  {row.statement_number ? <Chip size="small" label={`صورت‌وضعیت ${formatStatementNumber(row.statement_number)}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
+                  {row.statement_number ? <Chip size="small" label={paymentStatementTitle(row)} sx={{ height: 18, fontSize: 12, bgcolor: alpha(paymentStatementKind(row).color, 0.07), color: paymentStatementKind(row).color }} /> : null}
                   {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
                     <Chip size="small" label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />
                   ) : null}
@@ -504,18 +534,24 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
             <Box sx={{ my: 1.8 }}>
               <SectionHeading icon={LinkOutlinedIcon} title="پیوندهای پرونده" color={VIOLET} />
               <InfoLine label="فاکتور مرتبط" value={row.invoice_number || '—'} />
-              <InfoLine label="صورت‌وضعیت مرتبط" value={formatStatementNumber(row.statement_number) || '—'} />
+              <InfoLine label="صورت‌وضعیت / تعدیل مرتبط" value={paymentStatementTitle(row) || '—'} />
               {row.statement_amount ? (
-                <InfoLine label="مبلغ تجمعی صورت‌وضعیت (ریال)" value={`${formatPersianNumber(row.statement_amount)} ریال`} />
+                <InfoLine label={paymentStatementKind(row).isAdjustment ? 'مبلغ تجمعی صورت‌وضعیت (بدون تغییر)' : 'مبلغ تجمعی صورت‌وضعیت (ریال)'} value={`${formatPersianNumber(row.statement_amount)} ریال`} />
+              ) : null}
+              {row.statement_adjustment_work_done ? (
+                <InfoLine label="مبلغ تعدیل این دوره" value={`${formatPersianNumber(row.statement_adjustment_work_done)} ریال`} color={paymentStatementKind(row).color} />
+              ) : null}
+              {row.statement_adjustment_amount ? (
+                <InfoLine label="تعدیل تجمعی" value={`${formatPersianNumber(row.statement_adjustment_amount)} ریال`} color={paymentStatementKind(row).color} />
               ) : null}
               {statementForeign !== null ? (
                 <InfoLine label="معادل ارزی مبلغ تجمعی" value={`${formatPersianNumber(statementForeign)} ${info.currency}`} />
               ) : null}
               {row.statement_net_amount ? (
-                <InfoLine label="قابل پرداخت صورت‌وضعیت (ریال)" value={`${formatPersianNumber(row.statement_net_amount)} ریال`} strong color={GREEN} />
+                <InfoLine label={`${paymentStatementNetLabel(row)} (ریال)`} value={`${formatPersianNumber(row.statement_net_amount)} ریال`} strong color={GREEN} />
               ) : null}
               {statementNetForeign !== null ? (
-                <InfoLine label="قابل پرداخت ارزی صورت‌وضعیت" value={`${formatPersianNumber(statementNetForeign)} ${info.currency}`} color={GREEN} />
+                <InfoLine label="قابل پرداخت ارزی" value={`${formatPersianNumber(statementNetForeign)} ${info.currency}`} color={GREEN} />
               ) : null}
               {info.showForeign ? (
                 <InfoLine label="نرخ صورت‌وضعیت" value={`${formatPersianNumber(rate)} ریال`} />
@@ -591,6 +627,9 @@ const PaymentEditorDialog = ({
   const label = normalizeCurrencyLabel(selectedCurrency?.name || fallbackCurrency);
   const referenceRate = Number(selectedCurrency?.exchange_rate) > 1 ? Number(selectedCurrency.exchange_rate) : 1;
   const selectedStatement = statementList.find((item) => String(item.id) === String(form.statement));
+  const selectedKind = statementKindOf(selectedStatement);
+  const selectedAdjustmentWork = Number(selectedStatement?.adjustment_work_done || 0);
+  const selectedAdjustmentAmount = Number(selectedStatement?.adjustment_amount || 0);
   const hideReferenceForeign = Boolean(selectedStatement) && statementInfo(
     { ...selectedStatement, statement: selectedStatement.id }, 1, label,
   ).isRialStatement;
@@ -682,7 +721,7 @@ const PaymentEditorDialog = ({
                       : null;
                     return (
                       <MenuItem key={statement.id} value={statement.id}>
-                        {formatStatementNumber(statement.number) || `صورت‌وضعیت ${toPersianDigits(statement.id)}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
+                        {statementDisplayTitle(statement) || `صورت‌وضعیت ${toPersianDigits(statement.id)}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
                         {cumulativeForeign !== null ? ` · ${formatPersianNumber(cumulativeForeign)} ${info.currency}` : ''}
                       </MenuItem>
                     );
@@ -697,14 +736,16 @@ const PaymentEditorDialog = ({
             <Stack direction="row" alignItems="center" spacing={0.8} sx={{ mb: 0.8 }}>
               <LinkOutlinedIcon sx={{ fontSize: 17, color: BLUE }} />
               <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>
-                صورت‌وضعیت {formatStatementNumber(selectedStatement.number) || toPersianDigits(selectedStatement.id)}
+                {statementDisplayTitle(selectedStatement) || toPersianDigits(selectedStatement.id)}
               </Typography>
+              <Chip size="small" label={selectedKind.label}
+                sx={{ height: 19, fontSize: 12, bgcolor: alpha(selectedKind.color, 0.08), color: selectedKind.color }} />
               <Chip size="small" label={selectedStatementInfo.showForeign ? selectedStatementInfo.currency : 'ریالی'}
                 sx={{ height: 19, fontSize: 12, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
             </Stack>
             <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 0.9 }}>
               <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: '1px solid #e8eef2' }}>
-                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ تجمعی صورت‌وضعیت</Typography>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ تجمعی صورت‌وضعیت {selectedKind.isAdjustment ? '(بدون تغییر)' : ''}</Typography>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
                   {formatPersianNumber(selectedStatement.amount || 0)} ریال
                 </Typography>
@@ -713,14 +754,19 @@ const PaymentEditorDialog = ({
                     ≈ {formatPersianNumber(selectedStatementForeign)} {selectedStatementInfo.currency}
                   </Typography>
                 ) : null}
+                {selectedKind.isAdjustment ? (
+                  <Typography sx={{ fontSize: 12, color: selectedKind.color, fontWeight: 800 }}>
+                    تعدیل تجمعی: {formatPersianNumber(selectedAdjustmentAmount)} ریال
+                  </Typography>
+                ) : null}
               </Box>
-              <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: `1px solid ${alpha(GREEN, 0.2)}` }}>
-                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: GREEN }}>
-                  {formatPersianNumber(selectedStatementPayable || 0)} ریال
+              <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: `1px solid ${alpha(selectedKind.color, 0.2)}` }}>
+                <Typography sx={{ fontSize: 12, color: MUTED }}>{selectedKind.isAdjustment ? 'مبلغ قابل پرداخت تعدیل' : 'مبلغ قابل پرداخت این دوره'}</Typography>
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: selectedKind.isAdjustment ? selectedKind.color : GREEN }}>
+                  {formatPersianNumber(selectedKind.isAdjustment ? selectedAdjustmentWork : (selectedStatementPayable || 0))} ریال
                 </Typography>
                 {selectedStatementNetForeign !== null ? (
-                  <Typography sx={{ fontSize: 12, color: GREEN }}>
+                  <Typography sx={{ fontSize: 12, color: selectedKind.isAdjustment ? selectedKind.color : GREEN }}>
                     ≈ {formatPersianNumber(selectedStatementNetForeign)} {selectedStatementInfo.currency}
                   </Typography>
                 ) : null}
@@ -939,6 +985,7 @@ const ContractPaymentsPage = () => {
   );
   const contractAmount = contractAmountOf(selectedContract);
   const contractRate = contractRateOf(selectedContract, statementList);
+  const contractAdjustments = adjustmentSummaryOf(statementList);
   const contractAmountRial = contractAmount * contractRate;
 
   const methods = useMemo(() => {
@@ -957,7 +1004,7 @@ const ContractPaymentsPage = () => {
     const rows = list.filter((payment) => {
       if (methodFilter && (payment.method || 'نامشخص') !== methodFilter) return false;
       if (!query) return true;
-      return [payment.reference, payment.method, payment.note, payment.invoice_number, payment.statement_number, formatStatementNumber(payment.statement_number)]
+      return [payment.reference, payment.method, payment.note, payment.invoice_number, payment.statement_number, formatStatementNumber(payment.statement_number), paymentStatementKind(payment).label]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
     return [...rows].sort((a, b) => {
@@ -1176,7 +1223,7 @@ const ContractPaymentsPage = () => {
     const body = filtered.map((payment) => [
       payment.date || '', payment.amount || 0, paymentCurrency(payment, contractCurrency),
       payment.method || '', payment.reference || '', payment.invoice_number || '',
-      payment.statement_number ? formatStatementNumber(payment.statement_number) : '', payment.note || '',
+      payment.statement_number ? paymentStatementTitle(payment) : '', payment.note || '',
     ]);
     const csv = [header, ...body]
       .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
@@ -1292,7 +1339,7 @@ const ContractPaymentsPage = () => {
         <Grid container spacing={1.5}>
           <Grid item xs={12} lg={3}>
             <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-              <ContractSnapshotCard contract={selectedContract} currency={contractCurrency} contractRate={contractRate} navigate={navigate} onBack={clearContract} />
+              <ContractSnapshotCard contract={selectedContract} currency={contractCurrency} contractRate={contractRate} navigate={navigate} onBack={clearContract} adjustments={contractAdjustments} />
               <CoverageCard totalPaid={totalPaid} contractAmount={contractAmount} contractRate={contractRate} paymentCount={list.length}
                 invoiceCount={linkedInvoices} statementCount={linkedStatements} currency={contractCurrency}
                 averagePayment={averagePayment} lastPayment={lastPayment} />

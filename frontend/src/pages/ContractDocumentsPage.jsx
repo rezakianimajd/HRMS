@@ -37,7 +37,8 @@ import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import PageHeader from '../core/components/ui/PageHeader';
 import DataTable from '../core/components/ui/DataTable';
 import ContractListPicker from '../core/components/ui/ContractListPicker';
-import { formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
+import { statementDisplayTitle } from './contracts/statementKinds';
 import { toJalali } from '../core/utils/dateUtils';
 import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import {
@@ -520,7 +521,7 @@ const DocumentDetailDrawer = ({ row, onClose, onEdit, onDelete, accent }) => {
               <InfoLine label="مورد مرتبط" value={relationTargetLabel(row)} />
               {row.addendum_subject ? <InfoLine label="موضوع الحاقیه" value={row.addendum_subject} /> : null}
               {row.guarantee_number ? <InfoLine label="شماره تضمین" value={row.guarantee_number} ltr /> : null}
-              {row.statement_number ? <InfoLine label="شماره صورت‌وضعیت" value={formatStatementNumber(row.statement_number)} ltr /> : null}
+              {row.statement_number ? <InfoLine label="صورت‌وضعیت / تعدیل" value={statementDisplayTitle({ kind: row.statement_kind, number: row.statement_number })} ltr /> : null}
             </Paper>
 
             <Paper elevation={0} sx={{ p: 1.3, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>

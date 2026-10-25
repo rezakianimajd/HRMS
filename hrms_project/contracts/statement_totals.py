@@ -48,9 +48,49 @@ def recalculate_contract_statements(contract):
     prior_amount = Decimal('0')
     prior_work = Decimal('0')
     prior_foreign = Decimal('0')
+    prior_adjustment = Decimal('0')
+    prior_adjustment_foreign = Decimal('0')
 
     with transaction.atomic():
         for row in rows:
+            is_adjustment = row.kind in (Statement.Kind.INCREASE, Statement.Kind.DECREASE)
+            if is_adjustment:
+                base_amount = max(prior_amount, prior_work)
+                base_foreign = prior_foreign
+                signed_work = _decimal(row.adjustment_work_done)
+                if not signed_work:
+                    signed_work = _decimal(row.work_done)
+                signed_work = signed_work.quantize(Decimal('1'))
+                signed_foreign = _decimal(row.adjustment_foreign_work_done)
+                if not signed_foreign:
+                    signed_foreign = _decimal(row.foreign_work_done)
+                signed_foreign = signed_foreign.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
+                adjustment_amount = prior_adjustment + signed_work
+                adjustment_foreign_amount = prior_adjustment_foreign + signed_foreign
+                Statement.objects.filter(pk=row.pk).update(
+                    amount=base_amount,
+                    cumulative_previous_amount=base_amount,
+                    work_done=signed_work,
+                    foreign_previous_amount=base_foreign,
+                    foreign_work_done=signed_foreign,
+                    foreign_amount=base_foreign,
+                    adjustment_previous_amount=prior_adjustment,
+                    adjustment_work_done=signed_work,
+                    adjustment_amount=adjustment_amount,
+                    adjustment_foreign_previous_amount=prior_adjustment_foreign,
+                    adjustment_foreign_work_done=signed_foreign,
+                    adjustment_foreign_amount=adjustment_foreign_amount,
+                    additions=[],
+                    deductions=[],
+                    additions_total=Decimal('0'),
+                    deductions_total=Decimal('0'),
+                    net_amount=signed_work,
+                    updated_at=timezone.now(),
+                )
+                prior_adjustment = adjustment_amount
+                prior_adjustment_foreign = adjustment_foreign_amount
+                continue
+
             amount = _decimal(row.amount)
             previous = max(prior_amount, prior_work)
             work = max(Decimal('0'), amount - previous)
@@ -75,6 +115,12 @@ def recalculate_contract_statements(contract):
                 foreign_previous_amount=prior_foreign,
                 foreign_work_done=work_foreign,
                 foreign_amount=foreign_amount,
+                adjustment_previous_amount=prior_adjustment,
+                adjustment_work_done=Decimal('0'),
+                adjustment_amount=prior_adjustment,
+                adjustment_foreign_previous_amount=prior_adjustment_foreign,
+                adjustment_foreign_work_done=Decimal('0'),
+                adjustment_foreign_amount=prior_adjustment_foreign,
                 additions=additions,
                 deductions=deductions,
                 additions_total=additions_total,

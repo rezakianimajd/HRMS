@@ -37,3 +37,21 @@ def display_statement_number(value) -> str:
     """شمارهٔ استاندارد با ارقام فارسی برای نمایش/خروجی."""
     normalized = normalize_statement_number(value)
     return to_persian_digits(normalized) if normalized else ''
+
+
+_KIND_LABELS = {
+    'statement': 'صورت‌وضعیت',
+    'increase': 'تعدیل افزایشی',
+    'decrease': 'تعدیل کاهشی',
+}
+
+
+def statement_kind_label(value) -> str:
+    return _KIND_LABELS.get(getattr(value, 'kind', value) or 'statement', 'صورت‌وضعیت')
+
+
+def display_statement_title(value) -> str:
+    """عنوان یکپارچهٔ سند، شامل نوع و شمارهٔ فارسی."""
+    label = statement_kind_label(value)
+    number = display_statement_number(getattr(value, 'number', value))
+    return f'{label} {number}'.strip() if number else label
