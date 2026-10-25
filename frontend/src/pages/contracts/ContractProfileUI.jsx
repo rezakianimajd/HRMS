@@ -1,5 +1,6 @@
 import React from 'react';
 import { Box, Typography, Stack, Chip, ButtonBase } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import DrawIcon from '@mui/icons-material/Draw';
@@ -194,14 +195,22 @@ export const CountTile = ({ icon: Icon, label, value, color }) => (
   </Box>
 );
 
-export const EmptyState = ({ icon: Icon = DescriptionOutlinedIcon, text }) => (
-  <Box sx={{ py: 3.5, textAlign: 'center' }}>
-    <Box sx={{ width: 46, height: 46, mx: 'auto', mb: 1, borderRadius: '14px', bgcolor: SOFT_BG, color: '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-      <Icon sx={{ fontSize: 22 }} />
+export const EmptyState = ({ icon: Icon = DescriptionOutlinedIcon, text }) => {
+  const theme = useTheme();
+  return (
+    <Box sx={{ py: 3.5, textAlign: 'center' }}>
+      <Box sx={{
+        width: 46, height: 46, mx: 'auto', mb: 1, borderRadius: '14px',
+        bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.05 : 0.03),
+        color: theme.palette.text.secondary,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon sx={{ fontSize: 22 }} />
+      </Box>
+      <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>{text}</Typography>
     </Box>
-    <Typography sx={{ fontSize: 12, color: MUTED }}>{text}</Typography>
-  </Box>
-);
+  );
+};
 
 const timelineColors = {
   created: '#64748b', signing: '#0ea5e9', start: '#6366f1', end: '#e11d48',
@@ -223,35 +232,42 @@ const timelineIcons = {
   document: FolderOpenIcon,
 };
 
-export const TimelineList = ({ events = [], maxHeight = 420 }) => (
-  <Box sx={{ maxHeight, overflowY: 'auto', pr: 0.5 }}>
-    {events.map((ev, index) => {
-      const color = timelineColors[ev.type] || '#6366f1';
-      const Icon = timelineIcons[ev.type] || AddCircleOutlineIcon;
-      return (
-        <Box key={`${ev.type}-${ev.date}-${index}`} sx={{ display: 'flex', alignItems: 'stretch', gap: 1.2, pb: index === events.length - 1 ? 0 : 1.1 }}>
-          <Box sx={{ width: 32, flexShrink: 0, position: 'relative' }}>
-            {index !== events.length - 1 ? (
-              <Box sx={{ position: 'absolute', top: 32, bottom: -12, left: '50%', width: 2, bgcolor: '#eef2f7', transform: 'translateX(-50%)' }} />
-            ) : null}
+export const TimelineList = ({ events = [], maxHeight = 420 }) => {
+  const theme = useTheme();
+  return (
+    <Box sx={{ maxHeight, overflowY: 'auto', pr: 0.5 }}>
+      {events.map((ev, index) => {
+        const color = timelineColors[ev.type] || theme.palette.primary.main;
+        const Icon = timelineIcons[ev.type] || AddCircleOutlineIcon;
+        return (
+          <Box key={`${ev.type}-${ev.date}-${index}`} sx={{ display: 'flex', alignItems: 'stretch', gap: 1.2, pb: index === events.length - 1 ? 0 : 1.1 }}>
+            <Box sx={{ width: 32, flexShrink: 0, position: 'relative' }}>
+              {index !== events.length - 1 ? (
+                <Box sx={{ position: 'absolute', top: 32, bottom: -12, left: '50%', width: 2, bgcolor: theme.palette.divider, transform: 'translateX(-50%)' }} />
+              ) : null}
+              <Box sx={{
+                position: 'relative', zIndex: 1, width: 30, height: 30, borderRadius: '10px',
+                bgcolor: 'var(--hrms-region-card-bg, #ffffff)', border: `1px solid ${alpha(color, 0.28)}`, color,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <Icon sx={{ fontSize: 15 }} />
+              </Box>
+            </Box>
             <Box sx={{
-              position: 'relative', zIndex: 1, width: 30, height: 30, borderRadius: '10px',
-              bgcolor: CARD_BG, border: `1px solid ${color}44`, color,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              flex: 1, minWidth: 0, p: 1.15, borderRadius: '11px',
+              bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.045 : 0.025),
+              border: `1px solid ${theme.palette.divider}`,
             }}>
-              <Icon sx={{ fontSize: 15 }} />
+              <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: theme.palette.text.primary }}>{ev.title}</Typography>
+                <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary, whiteSpace: 'nowrap' }}>{toJalali(ev.date)}</Typography>
+              </Stack>
+              {ev.extra ? <Typography sx={{ mt: 0.25, fontSize: 12, color: theme.palette.text.secondary }}>{ev.extra}</Typography> : null}
             </Box>
           </Box>
-          <Box sx={{ flex: 1, minWidth: 0, p: 1.15, borderRadius: '11px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.75} useFlexGap>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{ev.title}</Typography>
-              <Typography sx={{ fontSize: 12, color: MUTED, whiteSpace: 'nowrap' }}>{toJalali(ev.date)}</Typography>
-            </Stack>
-            {ev.extra ? <Typography sx={{ mt: 0.25, fontSize: 12, color: MUTED }}>{ev.extra}</Typography> : null}
-          </Box>
-        </Box>
-      );
-    })}
-  </Box>
-);
+        );
+      })}
+    </Box>
+  );
+};
 

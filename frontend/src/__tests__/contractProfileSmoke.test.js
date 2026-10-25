@@ -110,10 +110,27 @@ test('foreign contract profile shows dual rial/foreign financial analysis', asyn
   }
 
   expect(container.textContent).toContain('تحلیل مالی قرارداد');
+  expect(container.textContent).toContain('شناسنامهٔ قرارداد');
+  expect(container.textContent).toContain('الحاقیه‌ها و اثرهای ثبت‌شده');
+  expect(container.textContent).toContain('دسترسی سریع');
+  expect(container.textContent).toContain('تضامین قرارداد');
+  expect(container.textContent).toContain('پوشش تعهدات');
+  expect(container.textContent).toContain('شرایط پرداخت');
+  expect(container.textContent).toContain('شرایط تحویل');
+  expect(container.textContent).toContain('قراردادهای هم‌تراز');
   expect(container.textContent).toContain('حسن انجام کار');
   expect(container.textContent).toContain('پیش‌پرداخت کسرشده');
   expect(container.textContent).toContain('۲٬۰۰۰٬۰۰۰٬۰۰۰ ریال');
   expect(container.textContent).toContain('۱٬۰۰۰ یورو');
+
+  const sectionOrder = [
+    'شناسنامهٔ قرارداد', 'دسترسی سریع', 'تحلیل مالی قرارداد', 'تایم‌لاین قرارداد',
+    'تضامین قرارداد', 'پوشش تعهدات', 'شرایط پرداخت', 'شرایط تحویل', 'قراردادهای هم‌تراز',
+  ];
+  const text = container.textContent;
+  const positions = sectionOrder.map((label) => text.indexOf(label));
+  expect(positions.every((position) => position >= 0)).toBe(true);
+  expect(positions).toEqual([...positions].sort((a, b) => a - b));
 
   root.unmount();
   container.remove();
