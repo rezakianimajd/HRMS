@@ -1428,6 +1428,8 @@ const StatementEditorPage = () => {
         adjustmentPreviousForeign={adjustmentPreviousForeign}
         adjustmentCumulative={adjustmentCumulative}
         adjustmentCumulativeForeign={adjustmentCumulativeForeign}
+        adjustmentWorkRial={adjustmentWorkRial}
+        adjustmentWorkForeign={adjustmentWorkForeign}
         cumulativePrev={cumulativePrev}
         cumulativePrevForeign={cumulativePrevForeign}
         cumulativeThis={cumulativeThis}
@@ -1652,6 +1654,7 @@ const StatementEditorView = ({
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
   formKind, isAdjustmentForm, adjustmentPrevious, adjustmentPreviousForeign,
   adjustmentCumulative, adjustmentCumulativeForeign,
+  adjustmentWorkRial, adjustmentWorkForeign,
   cumulativePrev, cumulativePrevForeign, cumulativeThis, cumulativeThisForeign,
   workDone, workDoneForeign, netAmount, netAmountForeign,
   additionsTotalForeign, deductionsTotalForeign,

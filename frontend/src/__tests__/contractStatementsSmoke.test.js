@@ -145,6 +145,24 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
   expect(document.body.textContent).toContain('بازگشت به لیست');
   expect(document.querySelector('[role="dialog"]')).toBeNull();
 
+  const kindInput = Array.from(document.querySelectorAll('input'))
+    .find((element) => element.value === 'statement');
+  expect(kindInput).toBeTruthy();
+  const kindSelect = kindInput.closest('.MuiInputBase-root')?.querySelector('[role="combobox"]')
+    || kindInput;
+  await act(async () => {
+    kindSelect.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    await wait(180);
+  });
+  const adjustmentOption = Array.from(document.querySelectorAll('[role="option"]'))
+    .find((element) => element.textContent.includes('تعدیل افزایشی'));
+  expect(adjustmentOption).toBeTruthy();
+  await act(async () => { adjustmentOption.click(); await wait(320); });
+
+  expect(document.body.textContent).toContain('تعدیل افزایشی این دوره');
+  expect(document.body.textContent).toContain('مبلغ قابل پرداخت این تعدیل');
+  expect(document.body.textContent).toContain('تعدیل تجمعی پس از این سند');
+
   const backButton = Array.from(document.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'بازگشت به لیست');
   expect(backButton).toBeTruthy();
