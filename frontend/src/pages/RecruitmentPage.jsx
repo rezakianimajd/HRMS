@@ -1044,7 +1044,7 @@ const RecruitmentPage = () => {
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
           <TextField fullWidth size="small" label="شماره پرسنلی" value={hireForm.employee_id} sx={fieldSx}
             onChange={e => setHireForm(p => ({ ...p, employee_id: e.target.value }))} />
-          <TextField fullWidth size="small" label="تاریخ استخدام" type="date" value={hireForm.hire_date}
+          <TextField fullWidth size="small" label="تاریخ استخدام (اختیاری)" type="date" value={hireForm.hire_date}
             sx={fieldSx} InputLabelProps={{ shrink: true }}
             onChange={e => setHireForm(p => ({ ...p, hire_date: e.target.value }))} />
         </DialogContent>

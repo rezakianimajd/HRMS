@@ -28,7 +28,7 @@ class EmployeeEngine:
         # Validate required fields
         required_fields = ['first_name', 'last_name', 'national_id', 'birth_date',
                           'gender', 'marital_status', 'mobile', 'employee_id',
-                          'hire_date', 'department_id', 'job_title_id',
+                          'department_id', 'job_title_id',
                           'work_location_id', 'insurance_list_id', 'contract_type']
         for field in required_fields:
             if field not in data or data[field] is None:
@@ -71,7 +71,7 @@ class EmployeeEngine:
             emergency_contact_name=data.get('emergency_contact_name'),
             emergency_contact_phone=data.get('emergency_contact_phone'),
             employee_id=data['employee_id'],
-            hire_date=data['hire_date'],
+            hire_date=data.get('hire_date'),
             probation_end_date=data.get('probation_end_date'),
             official_date=data.get('official_date'),
             department_id=data['department_id'],

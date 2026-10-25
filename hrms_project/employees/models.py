@@ -406,6 +406,8 @@ class Employee(BaseModel):
         verbose_name=_('کد پرسنلی'),
     )
     hire_date = models.DateField(
+        blank=True,
+        null=True,
         verbose_name=_('تاریخ استخدام'),
     )
     probation_end_date = models.DateField(

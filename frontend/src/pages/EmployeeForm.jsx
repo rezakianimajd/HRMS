@@ -145,7 +145,7 @@ const dateField = (label, field, value, onChange, required = false) => (
 
 /** فیلدهای الزامیِ سرور (EmployeeCreateSerializer) — تا کاربر قبل از ذخیره بداند */
 const REQUIRED_FIELDS = [
-  'first_name', 'last_name', 'national_id', 'mobile', 'employee_id', 'birth_date', 'hire_date',
+  'first_name', 'last_name', 'national_id', 'mobile', 'employee_id', 'birth_date',
 ];
 
 /** متن خطای ذخیره را از پاسخ سرور می‌سازد (همهٔ خطاهای فیلدی، نه فقط detail) */
@@ -469,7 +469,7 @@ const EmployeeForm = () => {
       <SectionCard title="اطلاعات شغلی و استخدام" icon={<WorkOutlineIcon sx={{ color: '#fff', fontSize: 18 }} />} color="#f59e0b">
         <Grid container spacing={2}>
           {textField(t('employees.employee_id'), 'employee_id', form.employee_id, handleChange, true)}
-          {dateField(t('employees.hire_date'), 'hire_date', form.hire_date, handleChange, true)}
+          {dateField(`${t('employees.hire_date')} (اختیاری)`, 'hire_date', form.hire_date, handleChange)}
           {dateField(t('employees.probation_end_date'), 'probation_end_date', form.probation_end_date, handleChange)}
           {dateField(t('employees.official_date'), 'official_date', form.official_date, handleChange)}
           {selectField(t('employees.department'), 'department', form.department, handleChange, mapOpts(departments))}

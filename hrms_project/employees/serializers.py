@@ -92,9 +92,14 @@ class EmployeeListSerializer(serializers.ModelSerializer):
 
 
 class EmployeeSerializer(serializers.ModelSerializer):
+    hire_date = serializers.DateField(required=False, allow_null=True)
+
     def to_internal_value(self, data):
         cleaned = {}
         for k, v in data.items():
+            if k == 'hire_date' and v in ('', None):
+                cleaned[k] = None
+                continue
             if v == '':
                 continue
             if k == 'photo' and isinstance(v, str):
@@ -170,9 +175,14 @@ class EmployeeSerializer(serializers.ModelSerializer):
 
 
 class EmployeeCreateSerializer(serializers.ModelSerializer):
+    hire_date = serializers.DateField(required=False, allow_null=True)
+
     def to_internal_value(self, data):
         cleaned = {}
         for k, v in data.items():
+            if k == 'hire_date' and v in ('', None):
+                cleaned[k] = None
+                continue
             if v == '':
                 continue
             if k == 'photo' and isinstance(v, str):

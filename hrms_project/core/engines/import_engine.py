@@ -122,7 +122,7 @@ class ImportEngine:
             ],
             'required': [
                 'first_name', 'last_name', 'national_id', 'birth_date',
-                'gender', 'marital_status', 'mobile', 'employee_id', 'hire_date',
+                'gender', 'marital_status', 'mobile', 'employee_id',
                 'department', 'job_title',
             ],
             'sample': [
