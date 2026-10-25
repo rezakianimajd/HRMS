@@ -356,6 +356,54 @@ class StatementSerializer(serializers.ModelSerializer):
             base_amount = self._previous_cumulative(contract)
             base_foreign = self._previous_foreign_cumulative(contract)
             previous_adjustment, previous_adjustment_foreign = self._previous_adjustment_cumulative(contract)
+
+            def normalize_adjustment_items(items):
+                if not isinstance(items, (list, tuple)):
+                    return []
+                normalized = []
+                percent_base = abs(signed_rial)
+                for item in items:
+                    if not isinstance(item, dict):
+                        continue
+                    try:
+                        percent = Decimal(str(item.get('percent') or 0))
+                        item_amount = Decimal(str(item.get('amount') or 0))
+                    except Exception:  # noqa: BLE001
+                        percent, item_amount = Decimal('0'), Decimal('0')
+                    if percent > 0 and item.get('mode') != 'amount':
+                        item_amount = (percent_base * percent / 100).quantize(
+                            Decimal('1'), rounding=ROUND_HALF_UP,
+                        )
+                    normalized.append({
+                        **item,
+                        'percent': float(percent),
+                        'amount': float(item_amount),
+                    })
+                return normalized
+
+            additions = normalize_adjustment_items(
+                attrs['additions'] if 'additions' in attrs else getattr(instance, 'additions', []) or []
+            )
+            deductions = normalize_adjustment_items(
+                attrs['deductions'] if 'deductions' in attrs else getattr(instance, 'deductions', []) or []
+            )
+            value_added_tax = (
+                attrs['value_added_tax'] if 'value_added_tax' in attrs
+                else getattr(instance, 'value_added_tax', 0)
+            )
+            other_additions = (
+                attrs['other_additions'] if 'other_additions' in attrs
+                else getattr(instance, 'other_additions', 0)
+            )
+            additions_total = sum(
+                (Decimal(str(item.get('amount') or 0)) for item in additions),
+                Decimal('0'),
+            ) + Decimal(str(value_added_tax or 0)) + Decimal(str(other_additions or 0))
+            deductions_total = sum(
+                (Decimal(str(item.get('amount') or 0)) for item in deductions),
+                Decimal('0'),
+            )
+
             attrs['amount'] = base_amount
             attrs['cumulative_previous_amount'] = base_amount
             attrs['work_done'] = signed_rial
@@ -368,13 +416,13 @@ class StatementSerializer(serializers.ModelSerializer):
             attrs['adjustment_foreign_previous_amount'] = previous_adjustment_foreign
             attrs['adjustment_foreign_work_done'] = signed_foreign
             attrs['adjustment_foreign_amount'] = previous_adjustment_foreign + signed_foreign
-            attrs['additions'] = []
-            attrs['deductions'] = []
-            attrs['value_added_tax'] = Decimal('0')
-            attrs['other_additions'] = Decimal('0')
-            attrs['additions_total'] = Decimal('0')
-            attrs['deductions_total'] = Decimal('0')
-            attrs['net_amount'] = signed_rial
+            attrs['additions'] = additions
+            attrs['deductions'] = deductions
+            attrs['value_added_tax'] = value_added_tax
+            attrs['other_additions'] = other_additions
+            attrs['additions_total'] = additions_total
+            attrs['deductions_total'] = deductions_total
+            attrs['net_amount'] = signed_rial + additions_total - deductions_total
             return attrs
 
         adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)

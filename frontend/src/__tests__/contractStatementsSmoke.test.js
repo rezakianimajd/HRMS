@@ -162,6 +162,8 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
   expect(document.body.textContent).toContain('تعدیل افزایشی این دوره');
   expect(document.body.textContent).toContain('مبلغ قابل پرداخت این تعدیل');
   expect(document.body.textContent).toContain('تعدیل تجمعی پس از این سند');
+  expect(document.body.textContent).toContain('اضافات');
+  expect(document.body.textContent).toContain('کسورات');
 
   const backButton = Array.from(document.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'بازگشت به لیست');

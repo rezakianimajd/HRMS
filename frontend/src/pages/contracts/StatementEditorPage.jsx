@@ -227,7 +227,9 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
   const adjustmentPrevious = num(form.adjustment_previous_amount);
   const adjustmentWork = kind.sign * Math.abs(num(form.adjustment_work_done));
   const adjustmentAmount = adjustmentPrevious + adjustmentWork;
-  const netAmount = isAdjustment ? adjustmentWork : workDone + additionsTotal - deductionsTotal;
+  const netAmount = isAdjustment
+    ? adjustmentWork + additionsTotal - deductionsTotal
+    : workDone + additionsTotal - deductionsTotal;
 
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
   const currencyLabel = normalizeCurrencyLabel(cur?.name || cur?.symbol);
@@ -315,7 +317,6 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
       </Box>
 
       {/* Additions */}
-      {!isAdjustment ? (
       <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#059669', mb: 0.5 }}>اضافات</Typography>
         {additions.length === 0 ? (
@@ -327,10 +328,8 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           <Row label="جمع اضافات" value={additionsTotal} green strong foreign={fx(additionsTotal)} foreignSymbol={currencyLabel} />
         </Box>
       </Box>
-      ) : null}
 
       {/* Deductions */}
-      {!isAdjustment ? (
       <Box sx={{ mt: 2 }}>
         <Typography variant="subtitle2" fontWeight={800} sx={{ color: '#b91c1c', mb: 0.5 }}>کسورات</Typography>
         {deductions.length === 0 ? (
@@ -342,7 +341,6 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           <Row label="جمع کسورات" value={deductionsTotal} red strong foreign={fx(deductionsTotal)} foreignSymbol={currencyLabel} />
         </Box>
       </Box>
-      ) : null}
 
       <Divider sx={{ my: 1, borderStyle: 'dashed', borderColor: `${COLOR}44` }} />
 
@@ -918,7 +916,9 @@ const StatementEditorPage = () => {
   const workDone = isAdjustmentForm
     ? adjustmentWorkRial
     : Math.max(0, cumulativeThis - cumulativePrev);
-  const netAmount = isAdjustmentForm ? adjustmentWorkRial : workDone + additionsTotal - deductionsTotal;
+  const netAmount = isAdjustmentForm
+    ? adjustmentWorkRial + additionsTotal - deductionsTotal
+    : workDone + additionsTotal - deductionsTotal;
   const netAmountForeign = isAdjustmentForm
     ? adjustmentWorkForeign
     : workDoneForeign + displayValue(additionsTotal) - displayValue(deductionsTotal);
@@ -943,10 +943,40 @@ const StatementEditorPage = () => {
           ? num(previous.adjustment_work_foreign)
           : fromRial(num(previous.adjustment_work_done), nextRate),
       );
+      const adjustmentRial = toRial(adjustmentForeign, nextRate);
+      const percentBase = Math.abs(adjustmentRial);
+      const recalcAdjustmentItem = (item) => {
+        if (item?.mode === 'percent') {
+          const itemRial = Math.round((percentBase * Number(item.percent || 0)) / 100);
+          return { ...item, amount: itemRial, amount_foreign: fromRial(itemRial, nextRate) };
+        }
+        const foreign = item?.amount_foreign != null ? item.amount_foreign : fromRial(item.amount, nextRate);
+        return { ...item, amount: toRial(foreign, nextRate), amount_foreign: foreign };
+      };
+      const taxMode = previous.value_added_tax_mode;
+      const taxForeign = previous.value_added_tax_foreign != null
+        ? previous.value_added_tax_foreign
+        : fromRial(previous.value_added_tax, nextRate);
+      const tax = taxMode === 'percent'
+        ? Math.round((percentBase * Number(previous.value_added_tax_percent || 0)) / 100)
+        : toRial(taxForeign, nextRate);
+      const otherMode = previous.other_additions_mode;
+      const otherForeign = previous.other_additions_foreign != null
+        ? previous.other_additions_foreign
+        : fromRial(previous.other_additions, nextRate);
+      const other = otherMode === 'percent'
+        ? Math.round((percentBase * Number(previous.other_additions_percent || 0)) / 100)
+        : toRial(otherForeign, nextRate);
       return {
         ...previous,
         adjustment_work_foreign: adjustmentForeign,
-        adjustment_work_done: toRial(adjustmentForeign, nextRate),
+        adjustment_work_done: adjustmentRial,
+        additions: (previous.additions || []).map(recalcAdjustmentItem),
+        deductions: (previous.deductions || []).map(recalcAdjustmentItem),
+        value_added_tax_foreign: taxMode === 'percent' ? fromRial(tax, nextRate) : taxForeign,
+        value_added_tax: tax,
+        other_additions_foreign: otherMode === 'percent' ? fromRial(other, nextRate) : otherForeign,
+        other_additions: other,
       };
     }
     const amountForeign = previous.amount_foreign != null
@@ -1072,18 +1102,19 @@ const StatementEditorPage = () => {
   useEffect(() => {
     setForm((previous) => {
       if (!previous || !Object.keys(previous).length) return previous;
+      const percentBase = Math.abs(workDone);
       const recalc = (items) => (Array.isArray(items) ? items : []).map((item) => {
         if (item?.mode !== 'percent') return item;
-        const itemRial = Math.round((workDone * Number(item.percent || 0)) / 100);
+        const itemRial = Math.round((percentBase * Number(item.percent || 0)) / 100);
         return { ...item, amount: itemRial, amount_foreign: fromRial(itemRial, displayRate) };
       });
       const additionsNext = recalc(previous.additions);
       const deductionsNext = recalc(previous.deductions);
       const taxNext = previous.value_added_tax_mode === 'percent'
-        ? Math.round((workDone * Number(previous.value_added_tax_percent || 0)) / 100)
+        ? Math.round((percentBase * Number(previous.value_added_tax_percent || 0)) / 100)
         : previous.value_added_tax;
       const otherNext = previous.other_additions_mode === 'percent'
-        ? Math.round((workDone * Number(previous.other_additions_percent || 0)) / 100)
+        ? Math.round((percentBase * Number(previous.other_additions_percent || 0)) / 100)
         : previous.other_additions;
       const taxForeignNext = previous.value_added_tax_mode === 'percent'
         ? fromRial(taxNext, displayRate)
@@ -1274,11 +1305,12 @@ const StatementEditorPage = () => {
   const addDeduction = () => setField('deductions', [...deductions, { title: '', amount: 0, amount_foreign: 0, percent: 0, mode: 'amount' }]);
   const removeDeduction = (index) => setField('deductions', deductions.filter((_, current) => current !== index));
   const updateDeduction = (index, key, value) => {
+    const percentBase = Math.abs(workDone);
     setField('deductions', deductions.map((item, current) => {
       if (current !== index) return item;
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
-        const amount = Math.round((workDone * percent) / 100);
+        const amount = Math.round((percentBase * percent) / 100);
         return {
           ...item, percent, amount, amount_foreign: fromRial(amount, displayRate), mode: 'percent',
         };
@@ -1286,7 +1318,7 @@ const StatementEditorPage = () => {
       if (key === 'amount') {
         const amountForeign = Math.max(0, Number(value) || 0);
         const amount = toRial(amountForeign, displayRate);
-        const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
+        const percent = percentBase > 0 ? Math.round((amount / percentBase) * 10000) / 100 : 0;
         return { ...item, amount_foreign: amountForeign, amount, percent, mode: 'amount' };
       }
       return { ...item, [key]: value };
@@ -1294,7 +1326,8 @@ const StatementEditorPage = () => {
   };
   const chooseDeduction = (definition) => {
     const percent = Number(definition.default_percent || 0);
-    const amount = Math.round((workDone * percent) / 100);
+    const percentBase = Math.abs(workDone);
+    const amount = Math.round((percentBase * percent) / 100);
     setField('deductions', [...deductions, {
       title: definition.description || definition.code,
       percent,
@@ -1307,11 +1340,12 @@ const StatementEditorPage = () => {
   const addAddition = () => setField('additions', [...additions, { code: '', description: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' }]);
   const removeAddition = (index) => setField('additions', additions.filter((_, current) => current !== index));
   const updateAddition = (index, key, value) => {
+    const percentBase = Math.abs(workDone);
     setField('additions', additions.map((item, current) => {
       if (current !== index) return item;
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
-        const amount = Math.round((workDone * percent) / 100);
+        const amount = Math.round((percentBase * percent) / 100);
         return {
           ...item, percent, amount, amount_foreign: fromRial(amount, displayRate), mode: 'percent',
         };
@@ -1319,7 +1353,7 @@ const StatementEditorPage = () => {
       if (key === 'amount') {
         const amountForeign = Math.max(0, Number(value) || 0);
         const amount = toRial(amountForeign, displayRate);
-        const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
+        const percent = percentBase > 0 ? Math.round((amount / percentBase) * 10000) / 100 : 0;
         return { ...item, amount_foreign: amountForeign, amount, percent, mode: 'amount' };
       }
       return { ...item, [key]: value };
@@ -1327,7 +1361,8 @@ const StatementEditorPage = () => {
   };
   const chooseAddition = (definition) => {
     const percent = Number(definition.default_percent || 0);
-    const amount = Math.round((workDone * percent) / 100);
+    const percentBase = Math.abs(workDone);
+    const amount = Math.round((percentBase * percent) / 100);
     setField('additions', [...additions, {
       code: definition.code,
       description: definition.description,
@@ -1670,10 +1705,11 @@ const StatementEditorView = ({
   const updateFixedAddition = (field, key, value) => {
     const percentKey = `${field}_percent`;
     const modeKey = `${field}_mode`;
+    const percentBase = Math.abs(Number(workDone) || 0);
     setForm((previous) => {
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
-        const amount = Math.round((Math.max(0, Number(workDone) || 0) * percent) / 100);
+        const amount = Math.round((percentBase * percent) / 100);
         return {
           ...previous,
           [percentKey]: percent,
@@ -1684,7 +1720,7 @@ const StatementEditorView = ({
       }
       const amountForeign = Math.max(0, Number(value) || 0);
       const amount = toRial(amountForeign, displayRate);
-      const percent = workDone > 0 ? Math.round((amount / workDone) * 10000) / 100 : 0;
+      const percent = percentBase > 0 ? Math.round((amount / percentBase) * 10000) / 100 : 0;
       return {
         ...previous, [field]: amount, [`${field}_foreign`]: amountForeign, [percentKey]: percent, [modeKey]: 'amount',
       };
@@ -1716,7 +1752,7 @@ const StatementEditorView = ({
       <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
         {isAdjustmentForm ? (
           <>
-            <Grid item xs={6} md={3}><KpiTile icon={formKind.key === STATEMENT_KIND_INCREASE ? TrendingUpIcon : TrendingDownIcon} label="مبلغ تعدیل این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
+            <Grid item xs={6} md={3}><KpiTile icon={formKind.key === STATEMENT_KIND_INCREASE ? TrendingUpIcon : TrendingDownIcon} label="مبلغ قابل پرداخت تعدیل" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
             <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="تعدیل تجمعی" value={compactMoney(adjustmentCumulativeForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(adjustmentCumulative, 'ریال')}`} /></Grid>
             <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="مبنای تجمعی صورت‌وضعیت" value={compactMoney(cumulativeThisForeign, formCurrencyLabel)} color={BLUE} size={17} hint="بدون تغییر با تعدیل" /></Grid>
             <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
@@ -1902,8 +1938,6 @@ const StatementEditorView = ({
                 )}
               </Box>
 
-              {!isAdjustmentForm ? (
-                <>
               <Divider />
               <Box>
                 <Stack direction="row" alignItems="center" sx={{ mb: 0.6 }}>
@@ -1911,7 +1945,9 @@ const StatementEditorView = ({
                   <Chip size="small" label={`${formatPersianNumber(additionsTotalForeign)} ${formCurrencyLabel}`} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
                 </Stack>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
-                  درصد اضافات بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.
+                  {isAdjustmentForm
+                    ? 'درصد اضافات و کسورات بر مبنای مبلغ تعدیل همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.'
+                    : 'درصد اضافات بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.'}
                 </Typography>
                 <Grid container spacing={0.8} sx={{ mb: 0.8 }}>
                   <Grid item xs={12} sm={6}>
@@ -1983,8 +2019,6 @@ const StatementEditorView = ({
                 ) : null}
                 <Button size="small" startIcon={<AddCircleIcon />} onClick={onAddDeduction} sx={{ color: '#be123c', fontSize: 12 }}>افزودن کسور</Button>
               </Box>
-                </>
-              ) : null}
 
               <Divider />
               <Box>

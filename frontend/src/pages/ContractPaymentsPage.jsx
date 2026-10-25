@@ -674,7 +674,6 @@ const PaymentEditorDialog = ({
   const referenceRate = Number(selectedCurrency?.exchange_rate) > 1 ? Number(selectedCurrency.exchange_rate) : 1;
   const selectedStatement = statementList.find((item) => String(item.id) === String(form.statement));
   const selectedKind = statementKindOf(selectedStatement);
-  const selectedAdjustmentWork = Number(selectedStatement?.adjustment_work_done || 0);
   const selectedAdjustmentAmount = Number(selectedStatement?.adjustment_amount || 0);
   const hideReferenceForeign = Boolean(selectedStatement) && statementInfo(
     { ...selectedStatement, statement: selectedStatement.id }, 1, label,
@@ -832,7 +831,7 @@ const PaymentEditorDialog = ({
               <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: `1px solid ${alpha(selectedKind.color, 0.2)}` }}>
                 <Typography sx={{ fontSize: 12, color: MUTED }}>{selectedKind.isAdjustment ? 'مبلغ قابل پرداخت تعدیل' : 'مبلغ قابل پرداخت این دوره'}</Typography>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: selectedKind.isAdjustment ? selectedKind.color : GREEN }}>
-                  {formatPersianNumber(selectedKind.isAdjustment ? selectedAdjustmentWork : (selectedStatementPayable || 0))} ریال
+                  {formatPersianNumber(selectedStatementPayable || 0)} ریال
                 </Typography>
                 {selectedStatementNetForeign !== null ? (
                   <Typography sx={{ fontSize: 12, color: selectedKind.isAdjustment ? selectedKind.color : GREEN }}>

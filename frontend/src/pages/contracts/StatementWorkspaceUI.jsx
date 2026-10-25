@@ -210,9 +210,10 @@ export const StatementCard = ({
 
       <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
         {isAdjustment ? <Chip size="small" label={kind.shortLabel} sx={{ height: 18, fontSize: 12, bgcolor: alpha(kind.color, 0.08), color: kind.color }} /> : null}
-        {!isAdjustment && metrics.additionsTotal > 0 ? <Chip size="small" label={`اضافات ${formatPersianNumber(statementAmount(row, metrics.additionsTotal, fallbackRate))} ${foreign ? currency : RIAL_LABEL}`} sx={{ height: 18, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} /> : null}
+        {metrics.additionsTotal ? <Chip size="small" label={`اضافات ${formatPersianNumber(statementAmount(row, metrics.additionsTotal, fallbackRate))} ${foreign ? currency : RIAL_LABEL}`} sx={{ height: 18, fontSize: 12, bgcolor: '#ecfdf5', color: GREEN }} /> : null}
+        {metrics.deductionsTotal ? <Chip size="small" label={`کسورات ${formatPersianNumber(statementAmount(row, metrics.deductionsTotal, fallbackRate))} ${foreign ? currency : RIAL_LABEL}`} sx={{ height: 18, fontSize: 12, bgcolor: '#fff1f2', color: RED }} /> : null}
         {documents.length ? <Chip size="small" label={`${formatPersianNumber(documents.length)} پیوست`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null}
-        {!isAdjustment && !metrics.additionsTotal && !documents.length ? <Chip size="small" label="بدون پیوست" sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} /> : null}
+        {!isAdjustment && !metrics.additionsTotal && !metrics.deductionsTotal && !documents.length ? <Chip size="small" label="بدون پیوست" sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} /> : null}
       </Stack>
 
       <Divider sx={{ mt: 'auto' }} />
@@ -530,16 +531,13 @@ export const StatementDetailDrawer = ({
                   <InfoLine label="تعدیل تجمعی" value={statementMoneyFor(row, row.adjustment_amount, row.adjustment_foreign_amount, currency, fallbackRate)} ltr strong color={kind.color} />
                 </>
               ) : (
-                <>
-                  <InfoLine label="کارکرد این دوره" value={statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)} ltr strong />
-                  <InfoLine label="جمع اضافات" value={statementMoney(row, metrics.additionsTotal, currency, fallbackRate)} ltr color={GREEN} />
-                  <InfoLine label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} ltr color={metrics.deductionsTotal ? RED : INK} />
-                </>
+                <InfoLine label="کارکرد این دوره" value={statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)} ltr strong />
               )}
+              <InfoLine label="جمع اضافات" value={statementMoney(row, metrics.additionsTotal, currency, fallbackRate)} ltr color={GREEN} />
+              <InfoLine label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} ltr color={metrics.deductionsTotal ? RED : INK} />
               <InfoLine label="نرخ ارز" value={rate > 1 ? `${formatPersianNumber(rate)} ریال` : '—'} />
             </Paper>
 
-            {!isAdjustment ? (
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={TrendingUpIcon} title="اضافات و کسورات" color={accent} />
               <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 800, mb: 0.35 }}>اضافات</Typography>
@@ -554,7 +552,6 @@ export const StatementDetailDrawer = ({
                 <InfoLine key={`ded-${index}`} label={item.title || item.description || 'کسور'} value={statementMoney(row, item.amount, currency, fallbackRate)} ltr color={RED} />
               )) : <Typography sx={{ fontSize: 12, color: MUTED }}>کسوری ثبت نشده است.</Typography>}
             </Paper>
-            ) : null}
 
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={DescriptionIcon} title="قرارداد و تاریخ‌ها" color={BLUE} />

@@ -67,6 +67,17 @@ def recalculate_contract_statements(contract):
                 signed_foreign = signed_foreign.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
                 adjustment_amount = prior_adjustment + signed_work
                 adjustment_foreign_amount = prior_adjustment_foreign + signed_foreign
+                additions = _normalize_items(row.additions, abs(signed_work))
+                deductions = _normalize_items(row.deductions, abs(signed_work))
+                additions_total = sum(
+                    (_decimal(item.get('amount')) for item in additions),
+                    Decimal('0'),
+                ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)
+                deductions_total = sum(
+                    (_decimal(item.get('amount')) for item in deductions),
+                    Decimal('0'),
+                )
+                net_amount = signed_work + additions_total - deductions_total
                 Statement.objects.filter(pk=row.pk).update(
                     amount=base_amount,
                     cumulative_previous_amount=base_amount,
@@ -80,11 +91,11 @@ def recalculate_contract_statements(contract):
                     adjustment_foreign_previous_amount=prior_adjustment_foreign,
                     adjustment_foreign_work_done=signed_foreign,
                     adjustment_foreign_amount=adjustment_foreign_amount,
-                    additions=[],
-                    deductions=[],
-                    additions_total=Decimal('0'),
-                    deductions_total=Decimal('0'),
-                    net_amount=signed_work,
+                    additions=additions,
+                    deductions=deductions,
+                    additions_total=additions_total,
+                    deductions_total=deductions_total,
+                    net_amount=net_amount,
                     updated_at=timezone.now(),
                 )
                 prior_adjustment = adjustment_amount

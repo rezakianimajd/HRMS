@@ -691,6 +691,51 @@ class StatementCalculationTests(TestCase):
         self.assertEqual(normal_row.work_done, Decimal('3000000'))
         self.assertEqual(normal_row.adjustment_amount, Decimal('300000'))
 
+    def test_adjustment_additions_and_deductions_affect_only_its_net_payable(self):
+        Statement.objects.create(
+            company=self.company, contract=self.contract, number='01',
+            date=date(2025, 7, 1), amount=2_000_000, work_done=2_000_000,
+            net_amount=2_000_000,
+        )
+        serializer = StatementSerializer(data=self._payload(
+            number='',
+            kind='increase',
+            amount=0,
+            adjustment_work_done=500_000,
+            additions=[{'description': 'اضافه تعدیل', 'amount': 50_000, 'mode': 'amount'}],
+            deductions=[{'title': 'کسور تعدیل', 'amount': 20_000, 'mode': 'amount'}],
+            value_added_tax=10_000,
+            other_additions=5_000,
+        ))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        adjustment = serializer.save(company=self.company)
+        adjustment.refresh_from_db()
+
+        self.assertEqual(adjustment.work_done, Decimal('500000'))
+        self.assertEqual(adjustment.additions_total, Decimal('65000'))
+        self.assertEqual(adjustment.deductions_total, Decimal('20000'))
+        self.assertEqual(adjustment.net_amount, Decimal('545000'))
+        # تجمعی تعدیل فقط مبلغ تعدیل را نگه می‌دارد؛ اضافات/کسورات در مانده قابل پرداخت اثر دارند.
+        self.assertEqual(adjustment.adjustment_amount, Decimal('500000'))
+
+        normal = StatementSerializer(data=self._payload(number='02', amount=5_000_000))
+        self.assertTrue(normal.is_valid(), normal.errors)
+        normal_row = normal.save(company=self.company)
+        normal_row.refresh_from_db()
+        # صورت‌وضعیت عادی بعدی از مبنای عادی قبلی محاسبه می‌شود، نه از تعدیل.
+        self.assertEqual(normal_row.cumulative_previous_amount, Decimal('2000000'))
+        self.assertEqual(normal_row.work_done, Decimal('3000000'))
+        self.assertEqual(normal_row.adjustment_amount, Decimal('500000'))
+
+        from contracts.statement_totals import recalculate_contract_statements
+        recalculate_contract_statements(self.contract)
+        adjustment.refresh_from_db()
+        normal_row.refresh_from_db()
+        self.assertEqual(adjustment.additions_total, Decimal('65000'))
+        self.assertEqual(adjustment.deductions_total, Decimal('20000'))
+        self.assertEqual(adjustment.net_amount, Decimal('545000'))
+        self.assertEqual(normal_row.cumulative_previous_amount, Decimal('2000000'))
+
     def test_percentage_items_use_current_period_work(self):
         Statement.objects.create(
             company=self.company, contract=self.contract, number='S-PRIOR',
