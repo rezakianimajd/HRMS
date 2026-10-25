@@ -47,6 +47,8 @@ const payment = {
   currency_name: 'ریال ایران',
   reference: 'REF-100',
   method: 'حواله بانکی',
+  payment_type: 'normal',
+  payment_type_display: 'پرداخت عادی',
   note: 'پرداخت اولیه صورت‌وضعیت',
   invoice: 1,
   invoice_number: 'INV-100',
@@ -192,6 +194,7 @@ test('contract payments page renders financial summary, linked details and detai
   expect(container.textContent).toContain('مجموع پرداخت‌شده');
   expect(container.textContent).toContain('REF-100');
   expect(container.textContent).toContain('حواله بانکی');
+  expect(container.textContent).toContain('پرداخت عادی');
   expect(container.textContent).toContain('INV-100');
   expect(container.textContent).toContain('۰۳');
   expect(container.textContent).toContain('قابل پرداخت صورت‌وضعیت');
@@ -203,8 +206,27 @@ test('contract payments page renders financial summary, linked details and detai
     .find((element) => element.textContent.trim() === 'پرداخت جدید');
   expect(newButton).toBeTruthy();
   await act(async () => { newButton.click(); await wait(220); });
+  expect(document.body.textContent).toContain('ثبت پرداخت عادی جدید');
   expect(document.body.textContent).toContain('پیوست فایل‌ها');
   expect(document.body.textContent).toContain('انتخاب فایل پیوست');
+
+  const typeInput = Array.from(document.querySelectorAll('input'))
+    .find((element) => element.value === 'normal');
+  expect(typeInput).toBeTruthy();
+  const typeSelect = typeInput.closest('.MuiInputBase-root')?.querySelector('[role="combobox"]')
+    || typeInput;
+  await act(async () => {
+    typeSelect.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    await wait(180);
+  });
+  const advanceOption = Array.from(document.querySelectorAll('[role="option"]'))
+    .find((element) => element.textContent.includes('پیش‌پرداخت'));
+  expect(advanceOption).toBeTruthy();
+  await act(async () => { advanceOption.click(); await wait(220); });
+  expect(document.body.textContent).toContain('ثبت پیش‌پرداخت جدید');
+  expect(document.body.textContent).toContain('به صورت‌وضعیت متصل نمی‌شود');
+  expect(document.body.textContent).not.toContain('صورت‌وضعیت مرتبط');
+
   const cancelButton = Array.from(document.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'انصراف');
   await act(async () => { cancelButton.click(); await wait(180); });

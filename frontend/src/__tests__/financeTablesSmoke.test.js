@@ -25,11 +25,14 @@ test('finance tables render', () => {
     method: 'نقدی',
     statement_number: '03',
     statement_kind: 'increase',
+    payment_type: 'advance',
+    payment_type_display: 'پیش‌پرداخت',
   };
   expect(renderToString(<StatementsTable statements={[statement]} currencyLabel="ریال" />)).toContain('صورت');
   expect(renderToString(<AdvanceTable rows={[{ id: 1, step: 'مرحله اول', amount: 100 }]} total={100} amortized={10} remaining={90} currency="ریال" />)).toContain('پیش');
   expect(renderToString(<InvoicesTable invoices={[]} />)).toContain('فاکتور');
   expect(renderToString(<PaymentsTable payments={[payment]} />)).toContain('تعدیل افزایشی ۰۳');
+  expect(renderToString(<PaymentsTable payments={[payment]} />)).toContain('پیش‌پرداخت');
   expect(renderToString(<AddendumsTable addendums={[]} />)).toContain('الحاقیه');
   expect(renderToString(<GuaranteesTable guarantees={[]} />)).toContain('تضمین');
 });

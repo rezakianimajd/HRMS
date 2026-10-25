@@ -281,6 +281,7 @@ $BackendFiles = @(
     'hrms_project/contracts/migrations/0034_statement_foreign_totals.py',
     'hrms_project/contracts/migrations/0035_normalize_statement_numbers.py',
     'hrms_project/contracts/migrations/0036_statement_adjustments.py',
+    'hrms_project/contracts/migrations/0037_payment_payment_type.py',
     'hrms_project/projects/migrations/0004_costtransaction_currency_fk.py',
     'hrms_project/projects/migrations/0005_wbstemplatenode_budgetline_created_by_and_more.py',
     'hrms_project/contracts/migrations/0021_contract_contract_alloc_gin_idx_and_more.py',
@@ -476,6 +477,7 @@ $BackendFiles += @(
     'hrms_project/employees/models.py',
     'hrms_project/employees/migrations/0019_alter_contractversion_signature_image_and_more.py',
     'hrms_project/employees/migrations/0020_supplementary_dependent_attachment.py',
+    'hrms_project/employees/migrations/0021_alter_employee_hire_date.py',
     # مرور/دانلود/حذف فایل از پنل تنظیمات
     'hrms_project/settings_app/archive_views.py',
     'hrms_project/settings_app/urls.py',

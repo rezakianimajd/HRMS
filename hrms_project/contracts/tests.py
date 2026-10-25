@@ -72,7 +72,7 @@ class ContractExcelExportTests(TestCase):
             company=self.company, contract=self.contract, number='F-1',
             date=date(2025, 5, 1), amount=1_000_000, vat=90_000, total=1_090_000,
         )
-        Statement.objects.create(
+        self.statement = Statement.objects.create(
             company=self.company, contract=self.contract, number='S-1',
             date=date(2025, 6, 1), amount=2_000_000, work_done=1_000_000,
             net_amount=980_000, additions=[{'title': 'ارزش افزوده', 'amount': 90_000}],
@@ -82,8 +82,9 @@ class ContractExcelExportTests(TestCase):
             company=self.company, contract=self.contract, guarantee_type='performance',
             instrument_type='bank_guarantee', number='G-1', amount=500_000,
         )
-        Payment.objects.create(
-            company=self.company, contract=self.contract, date=date(2025, 7, 1), amount=980_000,
+        self.payment = Payment.objects.create(
+            company=self.company, contract=self.contract, statement=self.statement,
+            date=date(2025, 7, 1), amount=980_000,
         )
         Addendum.objects.create(
             company=self.company, contract=self.contract, number='A-1',
@@ -146,6 +147,7 @@ class ContractExcelExportTests(TestCase):
         self.assertEqual(data['اضافهٔ صورت‌وضعیت 1 — عنوان'], 'اضافه: ارزش افزوده')
         self.assertEqual(data['کسور صورت‌وضعیت 1 — عنوان'], 'کسور: بیمه')
         self.assertEqual(data['پرداخت 1 — مبلغ'], 980_000.0)
+        self.assertEqual(data['پرداخت 1 — نوع'], 'پرداخت عادی')
         self.assertEqual(data['تضمین 1 — شماره'], 'G-1')
         self.assertEqual(data['الحاقیه 1 — تغییر مبلغ'], 1_500_000.0)
         self.assertEqual(
@@ -169,6 +171,24 @@ class ContractExcelExportTests(TestCase):
         self.assertEqual(data['قلم ضمانت قرارداد 1 — درصد'], 5.0)
         # ستون خالی برای آیتم دوم ساخته نشده (بیشترین تعداد = ۱)
         self.assertNotIn('فاکتور 2 — شماره', headers)
+
+    def test_payment_type_is_exposed_and_advance_clears_statement_link(self):
+        from contracts.serializers import PaymentSerializer
+
+        data = PaymentSerializer(self.payment).data
+        self.assertEqual(data['payment_type'], Payment.Type.NORMAL)
+        self.assertEqual(data['payment_type_display'], 'پرداخت عادی')
+
+        serializer = PaymentSerializer(
+            self.payment,
+            data={'payment_type': Payment.Type.ADVANCE},
+            partial=True,
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        serializer.save()
+        self.payment.refresh_from_db()
+        self.assertEqual(self.payment.payment_type, Payment.Type.ADVANCE)
+        self.assertIsNone(self.payment.statement_id)
 
     def test_addendum_serializer_exposes_multiple_subjects(self):
         from contracts.serializers import AddendumSerializer

@@ -311,6 +311,7 @@ def _payment_slots(bundle):
         invoice_id = getattr(payment, 'invoice_id', None)
         statement_id = getattr(payment, 'statement_id', None)
         slots.append({
+            'type': _display(payment, 'payment_type'),
             'reference': _attr(payment, 'reference'),
             'date': _fa_date(getattr(payment, 'date', None)),
             'amount': _num(getattr(payment, 'amount', None)),
@@ -481,7 +482,7 @@ BLOCK_SPECS = [
         ('درصد', 'percent'), ('یادداشت', 'note'),
     ]),
     ('پرداخت', _payment_slots, [
-        ('شماره / مرجع', 'reference'), ('تاریخ', 'date'), ('مبلغ', 'amount'),
+        ('نوع', 'type'), ('شماره / مرجع', 'reference'), ('تاریخ', 'date'), ('مبلغ', 'amount'),
         ('روش', 'method'), ('مرتبط با', 'linked'), ('یادداشت', 'note'),
     ]),
     ('تضمین', _guarantee_slots, [

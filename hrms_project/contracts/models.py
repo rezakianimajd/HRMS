@@ -607,6 +607,12 @@ class Guarantee(BaseModel):
 
 class Payment(BaseModel):
     """پرداخت done against a contract."""
+
+    class Type(models.TextChoices):
+        NORMAL = 'normal', _('پرداخت عادی')
+        ADVANCE = 'advance', _('پیش‌پرداخت')
+        ON_ACCOUNT = 'on_account', _('علی‌الحساب')
+
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='payments', verbose_name=_('قرارداد'))
     invoice = models.ForeignKey(Invoice, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments', verbose_name=_('فاکتور مرتبط'))
     statement = models.ForeignKey(Statement, on_delete=models.SET_NULL, null=True, blank=True, related_name='payments', verbose_name=_('صورت‌وضعیت مرتبط'))
@@ -616,6 +622,10 @@ class Payment(BaseModel):
         related_name='payments', verbose_name=_('واحد ارز'),
     )
     amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ'))
+    payment_type = models.CharField(
+        max_length=20, choices=Type.choices, default=Type.NORMAL,
+        verbose_name=_('نوع پرداخت'),
+    )
     reference = models.CharField(max_length=100, blank=True, verbose_name=_('شماره مرجع / سند'))
     method = models.CharField(max_length=50, blank=True, verbose_name=_('روش پرداخت'))
     note = models.TextField(blank=True, verbose_name=_('توضیحات'))

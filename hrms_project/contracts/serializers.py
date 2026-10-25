@@ -644,6 +644,7 @@ class PaymentSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    payment_type_display = serializers.CharField(source='get_payment_type_display', read_only=True)
     invoice_number = serializers.CharField(source='invoice.number', read_only=True)
     statement_number = serializers.CharField(source='statement.number', read_only=True)
     statement_kind = serializers.SerializerMethodField()
@@ -693,6 +694,16 @@ class PaymentSerializer(serializers.ModelSerializer):
         currency = getattr(statement, 'currency', None) if statement else None
         return getattr(currency, 'name', '') or ''
 
+    def validate(self, attrs):
+        payment_type = attrs.get(
+            'payment_type',
+            getattr(self.instance, 'payment_type', Payment.Type.NORMAL),
+        )
+        if payment_type != Payment.Type.NORMAL:
+            # پیش‌پرداخت و علی‌الحساب به صورت‌وضعیت متصل نمی‌شوند.
+            attrs['statement'] = None
+        return attrs
+
     class Meta:
         model = Payment
         fields = [
@@ -704,6 +715,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             'statement_exchange_rate', 'statement_currency_name',
             'statement_foreign_amount',
             'date', 'currency', 'currency_name', 'currency_symbol',
+            'payment_type', 'payment_type_display',
             'amount', 'reference', 'method', 'note',
             'attachments', 'attachment_count',
         ]

@@ -304,6 +304,7 @@ export const PaymentsTable = ({ payments = [], currency = 'ریال' }) => (
   <SimpleTable
     columns={[
       { key: 'date', label: 'تاریخ', width: 95 },
+      { key: 'payment_type', label: 'نوع پرداخت', width: 105 },
       { key: 'amount', label: 'مبلغ', width: 145 },
       { key: 'method', label: 'روش پرداخت', width: 110 },
       { key: 'reference', label: 'شماره پیگیری', width: 120 },
@@ -314,9 +315,10 @@ export const PaymentsTable = ({ payments = [], currency = 'ریال' }) => (
     rows={payments}
     rowKey={(row) => row.id}
     emptyText="پرداختی برای این قرارداد ثبت نشده است."
-    minWidth={980}
+    minWidth={1085}
     renderRow={(row) => [
       <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
+      <Typography key="type" sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{row.payment_type_display || 'پرداخت عادی'}</Typography>,
       <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
       <Typography key="method" sx={{ fontSize: 12 }}>{row.method || '—'}</Typography>,
       <Typography key="ref" sx={{ fontSize: 12, color: MUTED }}>{row.reference || '—'}</Typography>,

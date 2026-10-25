@@ -56,9 +56,42 @@ const SLATE = '#475569';
 const PALETTE = [TEAL, BLUE, VIOLET, AMBER, '#0e7490', '#be185d', '#4f46e5', '#15803d'];
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
+const PAYMENT_TYPES = [
+  {
+    key: 'normal',
+    label: 'پرداخت عادی',
+    shortLabel: 'عادی',
+    color: TEAL,
+    hint: 'پرداخت بر اساس صورت‌وضعیت، فاکتور یا به‌صورت عمومی.',
+  },
+  {
+    key: 'advance',
+    label: 'پیش‌پرداخت',
+    shortLabel: 'پیش‌پرداخت',
+    color: AMBER,
+    hint: 'پرداخت قبل از انجام کار یا پیش از ثبت صورت‌وضعیت؛ به صورت‌وضعیت متصل نمی‌شود.',
+  },
+  {
+    key: 'on_account',
+    label: 'علی‌الحساب',
+    shortLabel: 'علی‌الحساب',
+    color: VIOLET,
+    hint: 'پرداخت بدون تخصیص به صورت‌وضعیت مشخص؛ برای تسویه/تخصیص در آینده.',
+  },
+];
+
+const PAYMENT_TYPE_META = PAYMENT_TYPES.reduce((acc, item) => {
+  acc[item.key] = item;
+  return acc;
+}, {});
+
+const paymentTypeOf = (row = {}) => (
+  PAYMENT_TYPE_META[row?.payment_type] || PAYMENT_TYPE_META.normal
+);
+
 const EMPTY = {
   id: null, contract: '', invoice: '', statement: '', date: '', currency: '',
-  amount: '', reference: '', method: '', note: '',
+  amount: '', payment_type: 'normal', reference: '', method: '', note: '',
 };
 
 const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
@@ -272,6 +305,7 @@ const MethodsCard = ({ methods, activeMethod, onSelect, accent = TEAL }) => {
 
 const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete }) => {
   const color = methodColor(row.method);
+  const typeMeta = paymentTypeOf(row);
   const info = statementInfo(row, contractRate, currency);
   const rate = info.rate;
   const foreign = info.showForeign ? num(row.amount) / rate : null;
@@ -347,6 +381,8 @@ const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete
       </Stack>
 
       <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+        <Chip size="small" label={typeMeta.label}
+          sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(typeMeta.color, 0.09), color: typeMeta.color }} />
         {row.method ? (
           <Chip size="small" label={row.method}
             sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(color, 0.07), color }} />
@@ -392,6 +428,7 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
       <TableHead>
         <TableRow sx={{ '& th': { bgcolor: SOFT_BG, borderBottom: '1px solid #e8edf4', py: 0.9 } }}>
           <TableCell>تاریخ</TableCell>
+          <TableCell>نوع پرداخت</TableCell>
           <TableCell>مبلغ (ریال)</TableCell>
           <TableCell>روش / مرجع</TableCell>
           <TableCell>پیوندها</TableCell>
@@ -402,6 +439,7 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
       <TableBody>
         {rows.map((row) => {
           const color = methodColor(row.method);
+          const typeMeta = paymentTypeOf(row);
           const info = statementInfo(row, contractRate, currency);
           const rate = info.rate;
           const foreign = info.showForeign ? num(row.amount) / rate : null;
@@ -414,6 +452,10 @@ const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDele
               sx={{ cursor: 'pointer', '& td': { py: 0.8, borderBottom: '1px solid #f2f5f9' } }}>
               <TableCell>
                 <Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{toJalali(row.date)}</Typography>
+              </TableCell>
+              <TableCell>
+                <Chip size="small" label={typeMeta.label}
+                  sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(typeMeta.color, 0.09), color: typeMeta.color }} />
               </TableCell>
               <TableCell>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: TEAL }}>
@@ -491,6 +533,7 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
     : null;
   const statementNetForeign = info.showForeign && row.statement_net_amount ? num(row.statement_net_amount) / rate : null;
   const color = methodColor(row.method);
+  const typeMeta = paymentTypeOf(row);
   return (
     <Drawer anchor="left" open={open} onClose={onClose}
       PaperProps={{ sx: { width: { xs: '100%', sm: 440 }, bgcolor: '#f8fafc' } }}>
@@ -514,7 +557,7 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
               <IconButton size="small" onClick={onClose} sx={{ color: 'rgba(255,255,255,0.8)', mt: -0.4 }}><CloseOutlinedIcon fontSize="small" /></IconButton>
             </Stack>
             <Stack direction="row" spacing={0.5} sx={{ mt: 1.2, position: 'relative', zIndex: 1 }}>
-              <Chip size="small" label="پرداخت ثبت‌شده" sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: 'rgba(255,255,255,0.13)', color: '#fff' }} />
+              <Chip size="small" label={typeMeta.label} sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: 'rgba(255,255,255,0.13)', color: '#fff' }} />
               {row.method ? <Chip size="small" label={row.method} sx={{ height: 20, fontSize: 12, bgcolor: 'rgba(255,255,255,0.09)', color: 'rgba(255,255,255,0.8)' }} /> : null}
             </Stack>
           </Box>
@@ -526,6 +569,7 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
               {foreign !== null ? <InfoLine label="معادل ارزی پرداخت" value={`${formatPersianNumber(foreign)} ${info.currency}`} /> : null}
               {info.showForeign ? <InfoLine label="نرخ تسعیر" value={`${formatPersianNumber(rate)} ریال`} /> : null}
               <InfoLine label="تاریخ پرداخت" value={toJalali(row.date)} />
+              <InfoLine label="نوع پرداخت" value={typeMeta.label} color={typeMeta.color} />
               <InfoLine label="روش پرداخت" value={row.method || '—'} />
               <InfoLine label="شماره مرجع / سند" value={row.reference || '—'} ltr />
               {info.showForeign ? <InfoLine label="واحد ارز مرجع" value={info.currency} /> : null}
@@ -625,6 +669,8 @@ const PaymentEditorDialog = ({
 }) => {
   const selectedCurrency = currencyList.find((item) => String(item.id) === String(form.currency));
   const label = normalizeCurrencyLabel(selectedCurrency?.name || fallbackCurrency);
+  const typeMeta = paymentTypeOf(form);
+  const isNormalType = typeMeta.key === 'normal';
   const referenceRate = Number(selectedCurrency?.exchange_rate) > 1 ? Number(selectedCurrency.exchange_rate) : 1;
   const selectedStatement = statementList.find((item) => String(item.id) === String(form.statement));
   const selectedKind = statementKindOf(selectedStatement);
@@ -657,8 +703,10 @@ const PaymentEditorDialog = ({
       }}>
         <Avatar sx={{ width: 42, height: 42, bgcolor: TEAL, color: '#fff' }}><PaymentsOutlinedIcon /></Avatar>
         <Box sx={{ flex: 1 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>{form.id ? 'ویرایش پرداخت' : 'ثبت پرداخت جدید'}</Typography>
-          <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ، ارز، تاریخ، پیوندهای پرونده و مدارک پیوست را تکمیل کنید.</Typography>
+          <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>
+            {form.id ? `ویرایش ${typeMeta.label}` : `ثبت ${typeMeta.label} جدید`}
+          </Typography>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>{typeMeta.hint}</Typography>
         </Box>
         <IconButton onClick={onClose} size="small"><CloseOutlinedIcon /></IconButton>
       </DialogTitle>
@@ -695,6 +743,25 @@ const PaymentEditorDialog = ({
           <SectionHeading icon={CalendarMonthOutlinedIcon} title="اطلاعات اصلی" color={TEAL} />
           <Grid container spacing={1.4}>
             <Grid item xs={12} md={4}>
+              <FormControl size="small" fullWidth>
+                <InputLabel>نوع پرداخت</InputLabel>
+                <Select value={form.payment_type || 'normal'} label="نوع پرداخت"
+                  onChange={(event) => {
+                    const nextType = event.target.value;
+                    setForm((previous) => ({
+                      ...previous,
+                      payment_type: nextType,
+                      ...(nextType === 'normal' ? {} : { statement: '' }),
+                    }));
+                  }}>
+                  {PAYMENT_TYPES.map((option) => (
+                    <MenuItem key={option.key} value={option.key}>{option.label}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+              <Typography sx={{ mt: 0.4, fontSize: 12, color: MUTED }}>{typeMeta.hint}</Typography>
+            </Grid>
+            <Grid item xs={12} md={4}>
               <JalaliDatePicker fullWidth label="تاریخ پرداخت" value={form.date} onChange={(value) => setForm((previous) => ({ ...previous, date: value }))} />
             </Grid>
             <Grid item xs={12} md={4}>
@@ -706,29 +773,31 @@ const PaymentEditorDialog = ({
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} md={4}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>صورت‌وضعیت مرتبط</InputLabel>
-                <Select value={form.statement || ''} label="صورت‌وضعیت مرتبط" onChange={(event) => setForm((previous) => ({ ...previous, statement: event.target.value }))}>
-                  <MenuItem value="">— بدون صورت‌وضعیت —</MenuItem>
-                  {statementList.map((statement) => {
-                    const info = statementInfo({ ...statement, statement: statement.id }, 1, label);
-                    const payable = statement.net_amount ?? statement.amount;
-                    const cumulativeForeign = info.showForeign && statement.amount
-                      ? (statement.foreign_amount != null
-                        ? num(statement.foreign_amount)
-                        : num(statement.amount) / info.rate)
-                      : null;
-                    return (
-                      <MenuItem key={statement.id} value={statement.id}>
-                        {statementDisplayTitle(statement) || `صورت‌وضعیت ${toPersianDigits(statement.id)}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
-                        {cumulativeForeign !== null ? ` · ${formatPersianNumber(cumulativeForeign)} ${info.currency}` : ''}
-                      </MenuItem>
-                    );
-                  })}
-                </Select>
-              </FormControl>
-            </Grid>
+            {isNormalType ? (
+              <Grid item xs={12}>
+                <FormControl size="small" fullWidth>
+                  <InputLabel>صورت‌وضعیت مرتبط</InputLabel>
+                  <Select value={form.statement || ''} label="صورت‌وضعیت مرتبط" onChange={(event) => setForm((previous) => ({ ...previous, statement: event.target.value }))}>
+                    <MenuItem value="">— بدون صورت‌وضعیت —</MenuItem>
+                    {statementList.map((statement) => {
+                      const info = statementInfo({ ...statement, statement: statement.id }, 1, label);
+                      const payable = statement.net_amount ?? statement.amount;
+                      const cumulativeForeign = info.showForeign && statement.amount
+                        ? (statement.foreign_amount != null
+                          ? num(statement.foreign_amount)
+                          : num(statement.amount) / info.rate)
+                        : null;
+                      return (
+                        <MenuItem key={statement.id} value={statement.id}>
+                          {statementDisplayTitle(statement) || `صورت‌وضعیت ${toPersianDigits(statement.id)}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
+                          {cumulativeForeign !== null ? ` · ${formatPersianNumber(cumulativeForeign)} ${info.currency}` : ''}
+                        </MenuItem>
+                      );
+                    })}
+                  </Select>
+                </FormControl>
+              </Grid>
+            ) : null}
           </Grid>
         </Box>
         {selectedStatement ? (
@@ -919,6 +988,7 @@ const ContractPaymentsPage = () => {
   const [contractId, setContractId] = useState(urlContract);
   const [search, setSearch] = useState('');
   const [methodFilter, setMethodFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('');
   const [sortBy, setSortBy] = useState('newest');
   const [view, setView] = useState('cards');
   const [detail, setDetail] = useState(null);
@@ -1003,8 +1073,9 @@ const ContractPaymentsPage = () => {
     const query = search.trim().toLowerCase();
     const rows = list.filter((payment) => {
       if (methodFilter && (payment.method || 'نامشخص') !== methodFilter) return false;
+      if (typeFilter && (payment.payment_type || 'normal') !== typeFilter) return false;
       if (!query) return true;
-      return [payment.reference, payment.method, payment.note, payment.invoice_number, payment.statement_number, formatStatementNumber(payment.statement_number), paymentStatementKind(payment).label]
+      return [payment.reference, payment.method, payment.note, payment.invoice_number, payment.statement_number, formatStatementNumber(payment.statement_number), paymentStatementKind(payment).label, paymentTypeOf(payment).label]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
     return [...rows].sort((a, b) => {
@@ -1012,7 +1083,7 @@ const ContractPaymentsPage = () => {
       if (sortBy === 'oldest') return new Date(a.date || 0) - new Date(b.date || 0);
       return new Date(b.date || 0) - new Date(a.date || 0);
     });
-  }, [list, methodFilter, search, sortBy]);
+  }, [list, methodFilter, typeFilter, search, sortBy]);
 
   const totalPaid = list.reduce((sum, payment) => sum + num(payment.amount), 0);
   const averagePayment = list.length ? totalPaid / list.length : 0;
@@ -1078,6 +1149,7 @@ const ContractPaymentsPage = () => {
       statement: payment.statement || '',
       currency: payment.currency || '',
       amount: payment.amount ?? '',
+      payment_type: payment.payment_type || 'normal',
       date: payment.date || '',
       reference: payment.reference || '',
       method: payment.method || '',
@@ -1136,6 +1208,7 @@ const ContractPaymentsPage = () => {
     date: payload.date || null,
     currency: payload.currency || null,
     amount: payload.amount === '' || payload.amount == null ? 0 : Number(payload.amount),
+    payment_type: payload.payment_type || 'normal',
     reference: payload.reference || '',
     method: payload.method || '',
     note: payload.note || '',
@@ -1219,9 +1292,9 @@ const ContractPaymentsPage = () => {
   };
 
   const exportCsv = () => {
-    const header = ['تاریخ', 'مبلغ', 'ارز', 'روش', 'مرجع', 'فاکتور', 'صورت‌وضعیت', 'توضیحات'];
+    const header = ['تاریخ', 'نوع پرداخت', 'مبلغ', 'ارز', 'روش', 'مرجع', 'فاکتور', 'صورت‌وضعیت', 'توضیحات'];
     const body = filtered.map((payment) => [
-      payment.date || '', payment.amount || 0, paymentCurrency(payment, contractCurrency),
+      payment.date || '', paymentTypeOf(payment).label, payment.amount || 0, paymentCurrency(payment, contractCurrency),
       payment.method || '', payment.reference || '', payment.invoice_number || '',
       payment.statement_number ? paymentStatementTitle(payment) : '', payment.note || '',
     ]);
@@ -1361,16 +1434,23 @@ const ContractPaymentsPage = () => {
                   hint={contractRate > 1 ? `≈ ${compactMoney(averagePaymentForeign)} ${contractCurrency} · پوشش ${formatPersianPercent(coverage)}` : `پوشش ${formatPersianPercent(coverage)}`} color={BLUE} />
               </Grid>
               <Grid item xs={6} md={3}>
-                <KpiTile icon={CalendarMonthOutlinedIcon} label="آخرین پرداخت" value={lastPayment ? toJalali(lastPayment.date) : '—'} hint={lastPayment?.method || 'بدون پرداخت'} color={AMBER} />
+                <KpiTile icon={CalendarMonthOutlinedIcon} label="آخرین پرداخت" value={lastPayment ? toJalali(lastPayment.date) : '—'} hint={lastPayment ? `${paymentTypeOf(lastPayment).label} · ${lastPayment.method || 'بدون روش'}` : 'بدون پرداخت'} color={AMBER} />
               </Grid>
             </Grid>
 
             <Paper elevation={0} sx={{ p: 1.2, mb: 1.5, borderRadius: '14px', border: '1px solid #e5edf1', bgcolor: '#fff' }}>
               <Stack direction={{ xs: 'column', md: 'row' }} spacing={1} alignItems={{ md: 'center' }}>
-                <TextField size="small" placeholder="جست‌وجو در مرجع، روش، فاکتور یا توضیحات…" value={search}
+                <TextField size="small" placeholder="جست‌وجو در نوع، مرجع، روش، فاکتور یا توضیحات…" value={search}
                   onChange={(event) => setSearch(event.target.value)}
                   InputProps={{ startAdornment: <InputAdornment position="start"><SearchOutlinedIcon fontSize="small" /></InputAdornment> }}
                   sx={{ flex: 1, '& .MuiOutlinedInput-root': { height: 35, borderRadius: '9px', fontSize: 12 } }} />
+                <FormControl size="small" sx={{ minWidth: 140 }}>
+                  <InputLabel>نوع پرداخت</InputLabel>
+                  <Select label="نوع پرداخت" value={typeFilter} onChange={(event) => setTypeFilter(event.target.value)} sx={{ height: 35, borderRadius: '9px', fontSize: 12 }}>
+                    <MenuItem value="">همه انواع</MenuItem>
+                    {PAYMENT_TYPES.map((option) => <MenuItem key={option.key} value={option.key}>{option.label}</MenuItem>)}
+                  </Select>
+                </FormControl>
                 <FormControl size="small" sx={{ minWidth: 145 }}>
                   <InputLabel>روش پرداخت</InputLabel>
                   <Select label="روش پرداخت" value={methodFilter} onChange={(event) => setMethodFilter(event.target.value)} sx={{ height: 35, borderRadius: '9px', fontSize: 12 }}>
