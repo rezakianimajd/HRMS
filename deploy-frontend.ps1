@@ -46,10 +46,13 @@ if ($CheckOnly) {
     Step "بررسی اتصال SSH به $Srv"
     $check = @(ssh $Srv "hostname; id -un; test -w $AppDir/frontend && echo FRONTEND_OK || echo FRONTEND_NO; test -w $StaticDir && echo STATIC_OK || echo STATIC_NO")
     if ($LASTEXITCODE -ne 0) { throw "اتصال SSH برقرار نشد: $Srv" }
-    if ($check -notcontains 'FRONTEND_OK' -or $check -notcontains 'STATIC_OK') {
-        throw "دسترسی نوشتن کامل نیست ($($check -join ', ')). پوشه‌ها باید برای $User قابل نوشتن باشند."
+    if ($check -notcontains 'FRONTEND_OK') {
+        throw "پوشهٔ فرانت‌اند برای $User قابل نوشتن نیست ($($check -join ', '))."
     }
-    Ok "اتصال و دسترسی نوشتن تأیید شد."
+    if ($check -notcontains 'STATIC_OK') {
+        Warn 'پوشهٔ /static قابل نوشتن نیست؛ دارایی‌ها از build/assets سرو می‌شوند (بدون نیاز به sudo).'
+    }
+    Ok "اتصال و دسترسی نوشتن فرانت‌اند تأیید شد."
     Ok 'حالت CheckOnly؛ هیچ بیلد/تغییری انجام نشد.'
     return
 }
@@ -66,6 +69,44 @@ if ($NoBuild) {
 }
 $buildDir = Join-Path $RepoRoot 'frontend\build'
 if (-not (Test-Path (Join-Path $buildDir 'index.html'))) { throw "پوشهٔ build پیدا نشد: $buildDir" }
+
+# دارایی‌های CRA را داخل build/assets می‌بریم تا صفحه مستقل از دسترسی
+# /var/www/hrms/static سرو شود. Nginx مسیر / را از همین build می‌خواند.
+$staticDirLocal = Join-Path $buildDir 'static'
+$assetsDirLocal = Join-Path $buildDir 'assets'
+if (Test-Path $staticDirLocal) {
+    Step '۱.۵/۴ آماده‌سازی دارایی‌های build/assets'
+    foreach ($part in @('js', 'css', 'media')) {
+        $source = Join-Path $staticDirLocal $part
+        $target = Join-Path $assetsDirLocal $part
+        if (-not (Test-Path $source)) { continue }
+        if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
+        New-Item -ItemType Directory -Path $target -Force | Out-Null
+        Get-ChildItem -LiteralPath $source -File | Where-Object {
+            if ($part -eq 'media') { $true } else { $_.Name -match '^main\..+\.(js|css)$' }
+        } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $target -Force }
+    }
+
+    $utf8 = New-Object System.Text.UTF8Encoding($false)
+    $cssDir = Join-Path $assetsDirLocal 'css'
+    if (Test-Path $cssDir) {
+        Get-ChildItem -LiteralPath $cssDir -Filter '*.css' | ForEach-Object {
+            $css = [System.IO.File]::ReadAllText($_.FullName, [System.Text.Encoding]::UTF8)
+            $css = $css.Replace('/static/media/', '/assets/media/')
+            [System.IO.File]::WriteAllText($_.FullName, $css, $utf8)
+        }
+    }
+
+    $indexPath = Join-Path $buildDir 'index.html'
+    $indexHtml = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
+    $indexHtml = $indexHtml.Replace('/static/js/', '/assets/js/').Replace('/static/css/', '/assets/css/')
+    [System.IO.File]::WriteAllText($indexPath, $indexHtml, $utf8)
+
+    Remove-Item -LiteralPath $staticDirLocal -Recurse -Force
+    Ok 'دارایی‌ها به build/assets منتقل شدند.'
+} else {
+    Warn 'پوشهٔ static در build وجود ندارد؛ فرض می‌شود دارایی‌ها از قبل در build/assets هستند.'
+}
 
 Step '۲/۴ آماده‌سازی بستهٔ استقرار'
 $tempRoot = (Get-Item -LiteralPath $env:TEMP).FullName
@@ -84,33 +125,36 @@ if [ ! -d "$FRONTEND_DIR" ]; then
   echo "ERROR: frontend directory not found: $FRONTEND_DIR" >&2
   exit 1
 fi
-if [ ! -w "$FRONTEND_DIR" ] || [ ! -w "$STATIC_DIR" ]; then
-  echo "ERROR: no write access to $FRONTEND_DIR or $STATIC_DIR" >&2
+if [ ! -w "$FRONTEND_DIR" ]; then
+  echo "ERROR: no write access to $FRONTEND_DIR" >&2
   exit 1
 fi
 
 cd "$FRONTEND_DIR"
+OLD_DIR="build.old.$(date +%s)"
 restore() {
   trap - ERR
-  if [ -d build.old ]; then
-    rm -rf build
-    mv build.old build || true
+  if [ -d "$OLD_DIR" ]; then
+    rm -rf build 2>/dev/null || true
+    mv "$OLD_DIR" build || true
   fi
 }
 trap restore ERR
 
-rm -rf build.old
-if [ -d build ]; then mv build build.old; fi
+if [ -d build ]; then mv build "$OLD_DIR"; fi
 if ! mv "$TMP_DIR/build" ./build; then
   restore
   exit 1
 fi
 
-mkdir -p "$STATIC_DIR"
-cp -r --update=none build/static/. "$STATIC_DIR/" || true
+# حالت سازگار با نسخه‌های قدیمی؛ در حالت build/assets نیازی به /static نیست.
+if [ -d build/static ] && [ -w "$STATIC_DIR" ]; then
+  cp -r --update=none build/static/. "$STATIC_DIR/" || true
+fi
 chmod -R u=rwX,g=rX,o=rX build
 trap - ERR
-rm -rf build.old "$TMP_DIR"
+rm -rf "$TMP_DIR"
+rm -rf "$OLD_DIR" 2>/dev/null || true
 
 BUNDLE=$(grep -o 'main\.[a-z0-9]*\.js' build/index.html | head -1 || true)
 echo "ACTIVE_BUNDLE=$BUNDLE"
@@ -150,8 +194,9 @@ try {
 
 Step '۴/۴ تأیید نهایی'
 $index = Invoke-WebRequest -Uri "http://$Server/" -UseBasicParsing -TimeoutSec 15
-$live = ($index.Content | Select-String -Pattern 'main\.[a-z0-9]+\.js' -AllMatches).Matches.Value | Select-Object -First 1
-if ($index.StatusCode -ne 200 -or -not $live) { throw 'صفحهٔ اصلی یا باندل در دسترس نیست.' }
-$asset = Invoke-WebRequest -Uri "http://$Server/static/js/$live" -Method Head -UseBasicParsing -TimeoutSec 15
-Ok "HTTP $($index.StatusCode) — باندل زنده: $live ($($asset.StatusCode))"
+$match = [regex]::Match($index.Content, 'src="([^"]*main\.[a-z0-9]+\.js)"')
+$livePath = if ($match.Success) { $match.Groups[1].Value } else { '' }
+if ($index.StatusCode -ne 200 -or -not $livePath) { throw 'صفحهٔ اصلی یا مسیر باندل در دسترس نیست.' }
+$asset = Invoke-WebRequest -Uri ("http://$Server" + $livePath) -Method Head -UseBasicParsing -TimeoutSec 15
+Ok "HTTP $($index.StatusCode) — باندل زنده: $livePath ($($asset.StatusCode))"
 Ok 'استقرار فرانت‌اند کامل شد. در مرورگر Ctrl+Shift+R بزنید.'
