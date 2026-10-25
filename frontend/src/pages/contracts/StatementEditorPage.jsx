@@ -920,7 +920,7 @@ const StatementEditorPage = () => {
     ? adjustmentWorkRial + additionsTotal - deductionsTotal
     : workDone + additionsTotal - deductionsTotal;
   const netAmountForeign = isAdjustmentForm
-    ? adjustmentWorkForeign
+    ? adjustmentWorkForeign + displayValue(additionsTotal) - displayValue(deductionsTotal)
     : workDoneForeign + displayValue(additionsTotal) - displayValue(deductionsTotal);
   const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
     || (String(form.contract) === String(contractId) ? selectedContract : null);
