@@ -18,10 +18,18 @@ const statement = {
 };
 
 test('finance tables render', () => {
+  const payment = {
+    id: 1,
+    date: '2025-01-02',
+    amount: 100,
+    method: 'نقدی',
+    statement_number: '03',
+    statement_kind: 'increase',
+  };
   expect(renderToString(<StatementsTable statements={[statement]} currencyLabel="ریال" />)).toContain('صورت');
   expect(renderToString(<AdvanceTable rows={[{ id: 1, step: 'مرحله اول', amount: 100 }]} total={100} amortized={10} remaining={90} currency="ریال" />)).toContain('پیش');
   expect(renderToString(<InvoicesTable invoices={[]} />)).toContain('فاکتور');
-  expect(renderToString(<PaymentsTable payments={[]} />)).toContain('پرداخت');
+  expect(renderToString(<PaymentsTable payments={[payment]} />)).toContain('تعدیل افزایشی ۰۳');
   expect(renderToString(<AddendumsTable addendums={[]} />)).toContain('الحاقیه');
   expect(renderToString(<GuaranteesTable guarantees={[]} />)).toContain('تضمین');
 });

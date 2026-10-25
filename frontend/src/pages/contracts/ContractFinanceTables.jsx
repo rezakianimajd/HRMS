@@ -7,7 +7,7 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import { formatPersianNumber, formatStatementNumber, toPersianDigits, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { EmptyState, INK, MUTED } from './ContractProfileUI';
-import { statementKindOf } from './statementKinds';
+import { statementDisplayTitle, statementKindOf } from './statementKinds';
 
 export const toNum = (value) => {
   const number = Number(value);
@@ -321,7 +321,7 @@ export const PaymentsTable = ({ payments = [], currency = 'ریال' }) => (
       <Typography key="method" sx={{ fontSize: 12 }}>{row.method || '—'}</Typography>,
       <Typography key="ref" sx={{ fontSize: 12, color: MUTED }}>{row.reference || '—'}</Typography>,
       <Typography key="invoice" sx={{ fontSize: 12 }}>{row.invoice_number || '—'}</Typography>,
-      <Typography key="statement" sx={{ fontSize: 12 }}>{formatStatementNumber(row.statement_number) || '—'}</Typography>,
+      <Typography key="statement" sx={{ fontSize: 12 }}>{row.statement_number ? statementDisplayTitle({ kind: row.statement_kind, number: row.statement_number }) : '—'}</Typography>,
       <Typography key="note" sx={{ fontSize: 12, color: MUTED, textAlign: 'right' }}>{row.note || '—'}</Typography>,
     ]}
   />
