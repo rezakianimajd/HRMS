@@ -839,6 +839,9 @@ const ContractDocumentsPage = () => {
   const { tokens } = useDesignTokens();
   const tableTheme = resolveTableTheme(tokens);
   const toolbar = resolveToolbarTheme(tokens);
+  /* فاصلهٔ داخلی کارت جدول: حداقل ۸px و در صورت تعیین قاب در استودیو، مقدار تم */
+  const cardPadX = Math.max(8, Number(tableTheme.frameX) || 0);
+  const cardPadY = Math.max(8, Number(tableTheme.frameY) || 0);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const contractId = searchParams.get('contract') || '';
@@ -1574,6 +1577,7 @@ const ContractDocumentsPage = () => {
           <Paper elevation={0} sx={{
             borderRadius: 'var(--hrms-table-radius, 16px)',
             overflow: 'hidden',
+            px: `${cardPadX}px`, py: `${cardPadY}px`,
             border: '1px solid', borderColor: 'divider',
             bgcolor: 'background.paper', boxShadow: 'none',
           }}>
@@ -1604,97 +1608,96 @@ const ContractDocumentsPage = () => {
         )
       ) : (
 
-        <Paper elevation={0} sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', lg: 'row' },
-          alignItems: 'stretch',
-          borderRadius: 'var(--hrms-table-radius, 16px)',
-          overflow: 'hidden',
-          border: '1px solid', borderColor: 'divider',
-          bgcolor: 'background.paper', boxShadow: 'none',
-        }}>
-          {/* جدول قراردادها — داخل همان کارت استاندارد */}
-          <Box sx={{ width: { xs: '100%', lg: '66.6667%' }, minWidth: 0 }}>
-            {docsQuery.isLoading ? tableLoading : !contractRows.length ? (
-              <Box sx={{ p: 5, textAlign: 'center' }}>
-                <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
-                <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
-              </Box>
-            ) : (
-              <>
-                <ContractArchiveTable
-                  rows={pagedContracts}
-                  tableTheme={tableTheme}
-                  containerRef={tableScrollRef}
-                  tableHeight={tableHeight}
-                  rowHeight={effectiveRowPx}
-                  dimmed={docsQuery.isFetching || contractsQuery.isFetching}
-                  docCounts={docCountByContract}
-                  onOpen={openContract}
-                />
-                <TablePager
-                  tableTheme={tableTheme}
-                  page={contractPage}
-                  onPage={setContractPage}
-                  totalPages={contractTotalPages}
-                  pageNumbers={contractPageNumbers}
-                  total={contractRows.length}
-                  pageSize={contractPageSize}
-                  unit="قرارداد"
-                />
-              </>
-            )}
-          </Box>
-          {/* آخرین بارگذاری‌ها — یک سوم، درون همان کارت */}
-          <Box sx={{
-            flex: 1,
-            minWidth: 0,
-            display: 'flex',
-            flexDirection: 'column',
-            borderTop: { xs: '1px solid', lg: 'none' },
-            borderInlineStart: { lg: '1px solid' },
-            borderColor: 'divider',
-            maxHeight: { lg: tableHeight },
-          }}>
-            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-              {recentDocs.length ? recentDocs.map((doc) => (
-                <Box
-                  key={doc.id}
-                  onClick={() => setDetail(doc)}
-                  sx={{
-                    display: 'flex', alignItems: 'center', gap: 0.75,
-                    px: 1.25, py: 0.85,
-                    borderBottom: tableTheme.divider,
-                    cursor: 'pointer',
-                    '&:hover': { backgroundColor: tableTheme.hoverBg },
-                    '&:last-of-type': { borderBottom: 'none' },
-                  }}
-                >
-                  <FileBadge row={doc} size={26} />
-                  <Box sx={{ minWidth: 0, flex: 1 }}>
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{doc.title || '—'}</Typography>
-                    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                      {toPersianDigits(doc.contract_number || '—')} · {dateLabel(doc.uploaded_at)}
-                    </Typography>
-                  </Box>
-                  <Tooltip title="دانلود">
-                    <IconButton
-                      size="small"
-                      onClick={(event) => { event.stopPropagation(); downloadFile(doc); }}
-                    >
-                      <DownloadIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                  </Tooltip>
+        <Grid container spacing={2} alignItems="stretch">
+          {/* جدول قراردادها — کارت استاندارد با فاصلهٔ داخلی */}
+          <Grid item xs={12} lg={8}>
+            <Paper elevation={0} sx={{
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: 'divider',
+              bgcolor: 'background.paper', boxShadow: 'none',
+              overflow: 'hidden',
+              px: `${cardPadX}px`, py: `${cardPadY}px`,
+            }}>
+              {docsQuery.isLoading ? tableLoading : !contractRows.length ? (
+                <Box sx={{ p: 5, textAlign: 'center' }}>
+                  <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
+                  <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
                 </Box>
-              )) : (
-                <Box sx={{ p: 3.5, textAlign: 'center' }}>
-                  <Typography sx={{ fontSize: 11.5, color: MUTED }}>سندی بارگذاری نشده است.</Typography>
-                </Box>
+              ) : (
+                <>
+                  <ContractArchiveTable
+                    rows={pagedContracts}
+                    tableTheme={tableTheme}
+                    containerRef={tableScrollRef}
+                    tableHeight={tableHeight}
+                    rowHeight={effectiveRowPx}
+                    dimmed={docsQuery.isFetching || contractsQuery.isFetching}
+                    docCounts={docCountByContract}
+                    onOpen={openContract}
+                  />
+                  <TablePager
+                    tableTheme={tableTheme}
+                    page={contractPage}
+                    onPage={setContractPage}
+                    totalPages={contractTotalPages}
+                    pageNumbers={contractPageNumbers}
+                    total={contractRows.length}
+                    pageSize={contractPageSize}
+                    unit="قرارداد"
+                  />
+                </>
               )}
-            </Box>
-          </Box>
-        </Paper>
+            </Paper>
+          </Grid>
+          {/* آخرین بارگذاری‌ها — کارت جداگانه در یک سوم عرض */}
+          <Grid item xs={12} lg={4}>
+            <Paper elevation={0} sx={{
+              height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: 'divider',
+              bgcolor: 'background.paper', boxShadow: 'none',
+            }}>
+              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>
+                {recentDocs.length ? recentDocs.map((doc) => (
+                  <Box
+                    key={doc.id}
+                    onClick={() => setDetail(doc)}
+                    sx={{
+                      display: 'flex', alignItems: 'center', gap: 0.75,
+                      px: 1.25, py: 0.85,
+                      borderBottom: tableTheme.divider,
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: tableTheme.hoverBg },
+                      '&:last-of-type': { borderBottom: 'none' },
+                    }}
+                  >
+                    <FileBadge row={doc} size={26} />
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{doc.title || '—'}</Typography>
+                      <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                        {toPersianDigits(doc.contract_number || '—')} · {dateLabel(doc.uploaded_at)}
+                      </Typography>
+                    </Box>
+                    <Tooltip title="دانلود">
+                      <IconButton
+                        size="small"
+                        onClick={(event) => { event.stopPropagation(); downloadFile(doc); }}
+                      >
+                        <DownloadIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )) : (
+                  <Box sx={{ p: 3.5, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>سندی بارگذاری نشده است.</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+
       )}
 
       <DocumentDetailDrawer row={detail} onClose={() => setDetail(null)}

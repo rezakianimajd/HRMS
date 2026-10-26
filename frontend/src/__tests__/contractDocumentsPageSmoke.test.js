@@ -108,13 +108,17 @@ test('archive landing shows the contract list above the latest uploads on the st
   // شمارهٔ قرارداد با ارقام فارسی نمایش داده می‌شود
   expect(contractsTable.querySelector('tbody tr').textContent).toMatch(/[۰-۹]/);
 
-  // کارت آخرین بارگذاری‌ها درون همان کارت جدول و کنار آن (نه جدول دوم)
+  // جدول در کارتی با فاصلهٔ داخلی، و آخرین بارگذاری‌ها در کارت جداگانه کنار آن
   expect(contractsTable.textContent).not.toContain('متن قرارداد');
   expect(container.textContent).toContain('متن قرارداد');
   const tableCard = contractsTable.closest('.MuiPaper-root');
   expect(tableCard).toBeTruthy();
-  expect(tableCard.textContent).toContain('متن قرارداد');
   expect(tableCard.contains(contractsTable)).toBe(true);
+  expect(tableCard.textContent).not.toContain('متن قرارداد');
+  expect(window.getComputedStyle(tableCard).paddingTop).toBe('8px');
+  const recentsCard = Array.from(container.querySelectorAll('.MuiPaper-root'))
+    .find((card) => card !== tableCard && card.textContent.includes('متن قرارداد'));
+  expect(recentsCard).toBeTruthy();
 
   // جدول‌ها از توکن‌های تم استفاده می‌کنند
   const contractsHost = contractsTable.closest('.MuiTableContainer-root');
