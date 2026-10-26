@@ -175,6 +175,9 @@ const ExternalContractsPage = () => {
       if (Array.isArray(payload)) return { rows: payload, count: payload.length };
       return { rows: payload?.results || [], count: Number(payload?.count || 0) };
     },
+    // صفحهٔ قبلی تا رسیدن پاسخ صفحهٔ جدید نگه داشته می‌شود؛ در غیر این صورت count صفر
+    // می‌شود و افکت اصلاح محدوده، کاربر را اشتباهاً به صفحهٔ اول برمی‌گرداند.
+    placeholderData: (previous) => previous,
   });
   const rows = contractsPage?.rows || [];
   const totalCount = contractsPage?.count || 0;
@@ -197,11 +200,13 @@ const ExternalContractsPage = () => {
   };
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  // با تغییر جستجو/فیلترها به صفحهٔ اول برگرد و اگر صفحه از محدوده خارج شد اصلاح کن
+  // با تغییر جستجو/فیلترها به صفحهٔ اول برگرد
   useEffect(() => { setPage(0); }, [search, statusFilter, typeFilter, pageSize]);
+  // اصلاح محدوده فقط وقتی دادهٔ واقعی داریم (نه هنگام بارگذاری صفحهٔ بعد)
   useEffect(() => {
+    if (!contractsPage) return;
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
-  }, [page, totalPages]);
+  }, [contractsPage, page, totalPages]);
   const pageNumbers = (() => {
     const size = 5;
     const start = Math.max(0, Math.min(page - 2, totalPages - size));
@@ -455,7 +460,11 @@ const ExternalContractsPage = () => {
               boxShadow: 'none',
             }}
           >
-            <TableContainer sx={{ maxHeight: 'calc(100vh - 430px)' }}>
+            <TableContainer sx={{
+              maxHeight: 'calc(100vh - 430px)',
+              opacity: isFetching && !isLoading ? 0.6 : 1,
+              transition: 'opacity .15s ease',
+            }}>
               <Table
                 size="small"
                 stickyHeader

@@ -188,6 +188,14 @@ test('contracts list is paginated twenty rows at a time with Persian digits', as
   const pageCalls = axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
   const requestedPages = pageCalls.map(([, config]) => config?.params?.page);
   expect(requestedPages).toContain(2);
+  // صفحهٔ اول باید فقط یک‌بار درخواست شده باشد؛ بازگشت خودکار به صفحهٔ اول یک باگ بود.
+  expect(requestedPages.filter((pageNumber) => pageNumber === 1)).toHaveLength(1);
+  expect(requestedPages[requestedPages.length - 1]).toBe(2);
+
+  // شمارهٔ صفحهٔ فعال باید ۲ باشد (با ارقام فارسی)
+  const activePage = container.querySelector('[aria-current="page"]');
+  expect(activePage).toBeTruthy();
+  expect(activePage.textContent.trim()).toBe('۲');
 
   await act(async () => { root.unmount(); });
   container.remove();
