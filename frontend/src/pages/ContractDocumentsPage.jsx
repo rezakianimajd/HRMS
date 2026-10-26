@@ -44,7 +44,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { statementDisplayTitle } from './contracts/statementKinds';
 import { toJalali } from '../core/utils/dateUtils';
-import { CONTRACT_STATUS_COLORS, CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
+import { CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
 import { INK, MUTED } from './accounting/AccountingDashboardUI';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
@@ -427,7 +427,7 @@ const TablePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, total, 
 /* جدول استاندارد «لیست قراردادها» در صفحهٔ ورود بایگانی */
 const ContractArchiveTable = ({
   rows, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
-  docCounts, lastUploads, onOpen,
+  docCounts, onOpen,
 }) => (
   <TableContainer
     ref={containerRef}
@@ -448,7 +448,7 @@ const ContractArchiveTable = ({
       aria-label="فهرست قراردادهای بایگانی"
       sx={{
         width: '100%',
-        minWidth: 900,
+        minWidth: 720,
         tableLayout: 'fixed',
         '& td, & th': {
           px: 1,
@@ -479,58 +479,37 @@ const ContractArchiveTable = ({
     >
       <TableHead>
         <TableRow>
-          <TableCell align="center" sx={{ width: '10%' }}>شماره</TableCell>
-          <TableCell align="center" sx={{ width: '27%' }}>موضوع قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '20%' }}>طرف قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '10%' }}>وضعیت</TableCell>
-          <TableCell align="center" sx={{ width: '9%' }}>تعداد اسناد</TableCell>
-          <TableCell align="center" sx={{ width: '12%' }}>آخرین بارگذاری</TableCell>
-          <TableCell align="center" sx={{ width: '12%' }}>عملیات</TableCell>
+          <TableCell align="center" sx={{ width: '14%' }}>شماره قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '28%' }}>طرف قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '44%' }}>موضوع قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '14%' }}>تعداد اسناد</TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
-        {rows.map((contract) => {
-          const statusColor = CONTRACT_STATUS_COLORS[contract.status] || '#64748b';
-          return (
-            <TableRow key={contract.id} hover onClick={() => onOpen(contract)} sx={{ cursor: 'pointer' }}>
-              <TableCell align="center">
-                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                  {toPersianDigits(contract.number || '—')}
-                </Typography>
-              </TableCell>
-              <TableCell align="right">
-                <Typography noWrap title={contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
-                  {contract.subject || '—'}
-                </Typography>
-              </TableCell>
-              <TableCell align="right">
-                <Typography noWrap title={contract.party_name} sx={{ fontSize: 11.5, color: MUTED }}>
-                  {contract.party_name || '—'}
-                </Typography>
-              </TableCell>
-              <TableCell align="center">
-                <Chip size="small" label={CONTRACT_STATUS_LABELS[contract.status] || contract.status_display || '—'}
-                  sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: alpha(statusColor, 0.1), color: statusColor }} />
-              </TableCell>
-              <TableCell align="center">
-                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                  {formatPersianNumber(docCounts[String(contract.id)] || 0)}
-                </Typography>
-              </TableCell>
-              <TableCell align="center">
-                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                  {dateLabel(lastUploads[String(contract.id)])}
-                </Typography>
-              </TableCell>
-              <TableCell align="center" onClick={(event) => event.stopPropagation()}>
-                <Button size="small" variant="text" startIcon={<FolderSharedIcon />} onClick={() => onOpen(contract)}
-                  sx={{ fontSize: 11.5, whiteSpace: 'nowrap' }}>
-                  اسناد
-                </Button>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+        {rows.map((contract) => (
+          <TableRow key={contract.id} hover onClick={() => onOpen(contract)} sx={{ cursor: 'pointer' }}>
+            <TableCell align="center">
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {toPersianDigits(contract.number || '—')}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap title={contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                {contract.party_name || '—'}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap title={contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                {contract.subject || '—'}
+              </Typography>
+            </TableCell>
+            <TableCell align="center">
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {formatPersianNumber(docCounts[String(contract.id)] || 0)}
+              </Typography>
+            </TableCell>
+          </TableRow>
+        ))}
       </TableBody>
     </Table>
   </TableContainer>
@@ -1619,7 +1598,6 @@ const ContractDocumentsPage = () => {
                   rowHeight={effectiveRowPx}
                   dimmed={docsQuery.isFetching || contractsQuery.isFetching}
                   docCounts={docCountByContract}
-                  lastUploads={lastUploadByContract}
                   onOpen={openContract}
                 />
                 <TablePager

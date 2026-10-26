@@ -103,7 +103,7 @@ test('archive landing shows the contract list above the latest uploads on the st
   const contractsTable = tables[0];
   expect(contractsTable.getAttribute('aria-label')).toBe('فهرست قراردادهای بایگانی');
   expect(Array.from(contractsTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
-    .toEqual(['شماره', 'موضوع قرارداد', 'طرف قرارداد', 'وضعیت', 'تعداد اسناد', 'آخرین بارگذاری', 'عملیات']);
+    .toEqual(['شماره قرارداد', 'طرف قرارداد', 'موضوع قرارداد', 'تعداد اسناد']);
   expect(contractsTable.querySelector('tbody tr').textContent).toContain('قرارداد نمونه');
   // شمارهٔ قرارداد با ارقام فارسی نمایش داده می‌شود
   expect(contractsTable.querySelector('tbody tr').textContent).toMatch(/[۰-۹]/);
