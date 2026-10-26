@@ -1,27 +1,33 @@
-import React, { useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions,
+  Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, Drawer, FormControl, FormHelperText, Grid,
   IconButton, InputAdornment, InputLabel, LinearProgress, MenuItem, Paper, Select,
-  Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import ImageIcon from '@mui/icons-material/Image';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import LastPageIcon from '@mui/icons-material/LastPage';
 import LockIcon from '@mui/icons-material/Lock';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
@@ -29,18 +35,19 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
+import SortIcon from '@mui/icons-material/Sort';
 import TableChartIcon from '@mui/icons-material/TableChart';
-import TableRowsIcon from '@mui/icons-material/TableRows';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import PageHeader from '../core/components/ui/PageHeader';
-import DataTable from '../core/components/ui/DataTable';
-import ContractListPicker from '../core/components/ui/ContractListPicker';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { statementDisplayTitle } from './contracts/statementKinds';
 import { toJalali } from '../core/utils/dateUtils';
-import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { INK, MUTED } from './accounting/AccountingDashboardUI';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
+import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
+import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 import {
   DOC_ACCENT, FILE_TYPE_META, RELATION_META, RELATION_ORDER,
   countByFileType, countByRelation, documentTitleForFile, fileMeta,
@@ -79,7 +86,56 @@ const RELATION_ICONS = {
 const fileIconFor = (row) => FILE_ICONS[fileMeta(row).iconKey] || InsertDriveFileIcon;
 const relationIconFor = (row) => RELATION_ICONS[relationMetaOf(row).iconKey] || FolderSharedIcon;
 const dateLabel = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
-const money = (value, currency = 'ریال') => `${formatPersianNumber(Number(value) || 0)} ${currency}`;
+
+/* ترتیب نمایش — مستقل از فیلترها (در شمارش فیلترها و چیپ‌های فیلتر نمی‌آید) */
+const SORT_OPTIONS = [
+  { value: 'newest', label: 'جدیدترین' },
+  { value: 'oldest', label: 'قدیمی‌ترین' },
+  { value: 'title', label: 'عنوان (الف→ی)' },
+  { value: 'largest', label: 'بیشترین حجم' },
+];
+
+/* فلش بازشوی «ترتیب»: کلاس MuiSelect-icon حذف می‌شود تا قاعدهٔ پیش‌فرض MUI
+ * در RTL فلش را سمت راست (روی آیکون ترتیب) نگذارد. */
+const SortArrowLeft = ({ className, ...rest }) => (
+  <ExpandMoreIcon
+    {...rest}
+    sx={{
+      position: 'absolute', left: 8, top: 'calc(50% - 10px)',
+      fontSize: 20, color: 'text.secondary', pointerEvents: 'none',
+    }}
+  />
+);
+
+/* سلکت فیلترها با همان استایل نوار ابزار استاندارد */
+const FilterSelect = ({ label, value, options, onChange, labelsPosition, radius = 8 }) => (
+  <Box>
+    {labelsPosition === 'above' ? (
+      <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: 'text.secondary', mb: 0.5 }}>{label}</Typography>
+    ) : null}
+    <FormControl size="small" fullWidth>
+      {labelsPosition === 'inline' ? <InputLabel>{label}</InputLabel> : null}
+      <Select
+        value={value || ''}
+        label={labelsPosition === 'inline' ? label : undefined}
+        displayEmpty={labelsPosition !== 'inline'}
+        onChange={(event) => onChange(event.target.value)}
+        sx={{ fontSize: 12.5, borderRadius: `${radius}px`, bgcolor: 'background.paper' }}
+        renderValue={(selected) => {
+          const match = options.find((option) => String(option.value) === String(selected));
+          if (!match || match.value === '') {
+            return <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>همه</Typography>;
+          }
+          return <Typography component="span" sx={{ fontSize: 12, fontWeight: 700 }}>{match.label}</Typography>;
+        }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option.value || 'all'} value={option.value}>{option.label}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Box>
+);
 
 const InfoLine = ({ label, value, strong, ltr }) => {
   const display = value === null || value === undefined || value === '' ? '—' : value;
@@ -150,312 +206,126 @@ const FileTypeChip = ({ row }) => {
 };
 
 
-const ContractSnapshotCard = ({ contract, accent, onBack, currency, documentCount = 0 }) => (
-  <SurfaceCard title="قرارداد" icon={DescriptionIcon} color={accent}
-    action={<Button size="small" startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ minWidth: 0, fontSize: 12 }}>تغییر</Button>}>
-    <Stack spacing={0.75}>
-      <Box>
-        <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK, lineHeight: 1.6 }}>
-          {contract?.subject || 'قرارداد'}
-        </Typography>
-        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
-          <Chip size="small" label={contract?.number || 'بدون شماره'}
-            sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: alpha(accent, 0.07), color: accent }} />
-          {contract?.status_display ? (
-            <Chip size="small" label={contract.status_display}
-              sx={{ height: 20, fontSize: 11, bgcolor: SOFT_BG, color: MUTED }} />
-          ) : null}
-        </Stack>
-      </Box>
-      <Divider />
-      <InfoLine label="طرف قرارداد" value={contract?.party_name} />
-      <InfoLine label="مبلغ قرارداد" value={money(contract?.amount, currency)} ltr />
-      <InfoLine label="تاریخ شروع" value={dateLabel(contract?.start_date)} />
-      <InfoLine label="تاریخ پایان" value={dateLabel(contract?.effective_end_date || contract?.end_date)} />
-      <InfoLine label="تعداد اسناد" value={formatPersianNumber(documentCount)} strong />
-    </Stack>
-  </SurfaceCard>
-);
-
-const RelationBreakdown = ({ counts, active, onChange, accent, fileCounts = {} }) => (
-  <SurfaceCard title="نقشهٔ اسناد" icon={FolderSharedIcon} color={accent}>
-    <Stack spacing={0.2}>
-      <ButtonBase onClick={() => onChange('all')} sx={{
-        width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'space-between',
-        bgcolor: active === 'all' ? alpha(accent, 0.07) : 'transparent',
-        border: `1px solid ${active === 'all' ? alpha(accent, 0.18) : 'transparent'}`,
-      }}>
-        <Stack direction="row" alignItems="center" spacing={0.65}>
-          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: accent }} />
-          <Typography sx={{ fontSize: 12, fontWeight: active === 'all' ? 900 : 700, color: active === 'all' ? accent : INK }}>
-            همهٔ اسناد
-          </Typography>
-        </Stack>
-        <Chip size="small" label={formatPersianNumber(counts.all || 0)} sx={{ height: 18, fontSize: 11, bgcolor: SOFT_BG }} />
-      </ButtonBase>
-      {RELATION_ORDER.map((key) => {
-        const meta = RELATION_META[key];
-        const Icon = RELATION_ICONS[key];
-        return (
-          <ButtonBase key={key} onClick={() => onChange(key)} sx={{
-            width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'space-between',
-            bgcolor: active === key ? alpha(meta.color, 0.07) : 'transparent',
-            border: `1px solid ${active === key ? alpha(meta.color, 0.18) : 'transparent'}`,
-          }}>
-            <Stack direction="row" alignItems="center" spacing={0.65}>
-              <Box sx={{
-                width: 21, height: 21, borderRadius: '6px', bgcolor: alpha(meta.color, 0.08),
-                color: meta.color, display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}><Icon sx={{ fontSize: 12 }} /></Box>
-              <Typography sx={{ fontSize: 12, fontWeight: active === key ? 900 : 700, color: active === key ? meta.color : INK }}>
-                {meta.label}
-              </Typography>
-            </Stack>
-            <Chip size="small" label={formatPersianNumber(counts[key] || 0)} sx={{ height: 18, fontSize: 11, bgcolor: SOFT_BG }} />
-          </ButtonBase>
-        );
-      })}
-      <Divider sx={{ my: 0.5 }} />
-      <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap">
-        {Object.entries(fileCounts).map(([key, count]) => (
-          <Chip key={key} size="small"
-            label={`${FILE_TYPE_META[key]?.label || key} ${formatPersianNumber(count)}`}
-            sx={{ height: 19, fontSize: 10.5, bgcolor: alpha(FILE_TYPE_META[key]?.color || MUTED, 0.07), color: FILE_TYPE_META[key]?.color || MUTED }} />
-        ))}
-        {!Object.keys(fileCounts).length ? <Typography sx={{ fontSize: 11, color: MUTED }}>هنوز فایلی ثبت نشده است.</Typography> : null}
-      </Stack>
-    </Stack>
-  </SurfaceCard>
-);
 
 
-const LatestDocsPanel = ({ documents, onOpen, onSelectContract, accent }) => (
-  <SurfaceCard title="آخرین اسناد" icon={UploadFileIcon} color={accent}
-    action={<Chip size="small" label={formatPersianNumber(documents.length)} sx={{ height: 21, fontSize: 11, bgcolor: alpha(accent, 0.07), color: accent, fontWeight: 900 }} />}>
-    {documents.length ? (
-      <Stack spacing={0.55}>
-        {documents.map((row) => (
-          <ButtonBase key={row.id}
-            onClick={() => { onOpen(row); onSelectContract(row.contract); }}
-            sx={{
-              width: '100%', p: 0.85, borderRadius: '10px', justifyContent: 'flex-start',
-              border: '1px solid #f1f5f9', bgcolor: '#fff', textAlign: 'right',
-              '&:hover': { bgcolor: alpha(accent, 0.035), borderColor: alpha(accent, 0.16) },
-            }}>
-            <Stack direction="row" alignItems="center" spacing={0.8} sx={{ width: '100%' }}>
-              <FileBadge row={row} size={30} />
-              <Box sx={{ flex: 1, minWidth: 0 }}>
-                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{row.title}</Typography>
-                <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
-                  {row.contract_number || '—'} · {dateLabel(row.uploaded_at)}
-                </Typography>
-              </Box>
-              <RelationPill row={row} size={19} />
-            </Stack>
-          </ButtonBase>
-        ))}
-      </Stack>
-    ) : (
-      <Box sx={{ py: 4, textAlign: 'center' }}>
-        <FolderSharedIcon sx={{ fontSize: 30, color: '#cbd5e1', mb: 0.6 }} />
-        <Typography sx={{ fontSize: 12, color: MUTED }}>هنوز سندی بارگذاری نشده است.</Typography>
-      </Box>
-    )}
-  </SurfaceCard>
-);
 
-const LandingContent = ({ contractList, documents, docCountByContract, accent, onSelect, onSelectContract, onOpen }) => {
-  const relationCounts = useMemo(() => countByRelation(documents), [documents]);
-  const contractsWithDocs = new Set(documents.map((row) => String(row.contract))).size;
-  const latest = useMemo(
-    () => [...documents].sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || ''))).slice(0, 7),
-    [documents],
-  );
-  return (
-    <>
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={FolderSharedIcon} label="کل اسناد" value={formatPersianNumber(documents.length)}
-            suffix="سند" color={accent} />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={DescriptionIcon} label="قراردادهای دارای سند" value={formatPersianNumber(contractsWithDocs)}
-            suffix="قرارداد" color="#2563eb" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={NoteAltIcon} label="پیوست الحاقیه و تضمین"
-            value={formatPersianNumber((relationCounts.addendum || 0) + (relationCounts.guarantee || 0))}
-            suffix="سند" color="#7c3aed" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={ReceiptLongIcon} label="اسناد صورت‌وضعیت" value={formatPersianNumber(relationCounts.statement || 0)}
-            suffix="سند" color="#b45309" />
-        </Grid>
-      </Grid>
-      <Grid container spacing={1.5}>
-        <Grid item xs={12} lg={8}>
-          <SurfaceCard title="انتخاب قرارداد" icon={FolderSharedIcon} color={accent}>
-            <ContractListPicker
-              contracts={contractList}
-              onSelect={onSelect}
-              height={540}
-              accent={accent}
-              countLabel="سند"
-              countHeaderLabel="تعداد اسناد"
-              getCount={(contract) => docCountByContract[String(contract.id)] || 0}
-            />
-          </SurfaceCard>
-        </Grid>
-        <Grid item xs={12} lg={4}>
-          <Stack spacing={1.5}>
-            <LatestDocsPanel documents={latest} onOpen={onOpen} onSelectContract={onSelectContract} accent={accent} />
-            <SurfaceCard title="راهنمای بایگانی" icon={LockIcon} color="#64748b">
-              <Stack spacing={0.55}>
-                {[
-                  ['اسناد عمومی قرارداد', 'قرارداد، مکاتبات، مجوزها و پیوست‌های عمومی'],
-                  ['الحاقیه', 'فقط PDF و متصل به همان الحاقیه'],
-                  ['تضمین', 'فقط PDF و متصل به همان تضمین'],
-                  ['صورت‌وضعیت', 'مستندات پشتیبان همان صورت‌وضعیت'],
-                ].map(([title, hint]) => (
-                  <Stack key={title} direction="row" spacing={0.65} alignItems="flex-start">
-                    <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: accent, mt: 0.7, flexShrink: 0 }} />
-                    <Box>
-                      <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>{title}</Typography>
-                      <Typography sx={{ fontSize: 10.5, color: MUTED }}>{hint}</Typography>
-                    </Box>
-                  </Stack>
-                ))}
+/* جدول استاندارد بایگانی — همان توکن‌های جدولِ صفحهٔ «قراردادهای من» */
+const DocumentArchiveTable = ({
+  rows, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
+  onView, onEdit, onDelete, onPreview, onDownload,
+}) => (
+  <TableContainer
+    ref={containerRef}
+    data-visible-rows={tableTheme.visibleRows}
+    data-row-height={rowHeight}
+    data-table-height={`${tableHeight}px`}
+    sx={{
+      height: { xs: 'auto', sm: `${tableHeight}px` },
+      maxHeight: { xs: 'none', sm: `${tableHeight}px` },
+      overflowY: 'auto',
+      opacity: dimmed ? 0.6 : 1,
+      transition: 'opacity .15s ease',
+    }}
+  >
+    <Table
+      size="small"
+      stickyHeader
+      aria-label="فهرست اسناد قرارداد"
+      sx={{
+        width: '100%',
+        minWidth: 980,
+        tableLayout: 'fixed',
+        '& td, & th': {
+          px: 1,
+          py: `${tableTheme.cellPadding}px`,
+          whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+          borderBottom: tableTheme.divider,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+        '& thead th': {
+          textAlign: `${tableTheme.headerTextAlign} !important`,
+          backgroundColor: 'var(--hrms-table-header-bg)',
+          height: `${tableTheme.headerHeight}px`,
+          fontSize: tableTheme.header.fontSize,
+          fontWeight: tableTheme.header.fontWeight,
+          color: tableTheme.header.color,
+        },
+        '& tbody td': {
+          height: `${tableTheme.rowHeight}px`,
+          fontSize: tableTheme.cell.fontSize,
+          fontWeight: tableTheme.cell.fontWeight,
+          color: tableTheme.cell.color,
+          ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
+        },
+        '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+        ...tableTypographySx(tableTheme),
+      }}
+    >
+      <TableHead>
+        <TableRow>
+          <TableCell align="center" sx={{ width: '26%' }}>سند</TableCell>
+          <TableCell align="center" sx={{ width: '8%' }}>نوع</TableCell>
+          <TableCell align="center" sx={{ width: '18%' }}>جایگاه</TableCell>
+          <TableCell align="center" sx={{ width: '18%' }}>قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '10%' }}>تاریخ بارگذاری</TableCell>
+          <TableCell align="center" sx={{ width: '8%' }}>حجم</TableCell>
+          <TableCell align="center" sx={{ width: '12%' }}>عملیات</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((row) => (
+          <TableRow key={row.id} hover onClick={() => onView(row)} sx={{ cursor: 'pointer' }}>
+            <TableCell align="right">
+              <Stack direction="row" alignItems="center" spacing={0.7}>
+                <FileBadge row={row} size={28} />
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{row.title || '—'}</Typography>
+                  <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, direction: 'ltr', textAlign: 'right' }}>
+                    {row.file_name || '—'}
+                  </Typography>
+                </Box>
               </Stack>
-            </SurfaceCard>
-          </Stack>
-        </Grid>
-      </Grid>
-    </>
-  );
-};
-
-
-const DocumentCard = ({ row, onView, onEdit, onDelete, onPreview, onDownload }) => {
-  const theme = useTheme();
-  const meta = fileMeta(row);
-  return (
-    <Paper elevation={0} sx={{
-      height: '100%', p: 1.4, borderRadius: '16px', border: `1px solid ${theme.palette.divider}`,
-      bgcolor: theme.palette.background.paper, display: 'flex', flexDirection: 'column', gap: 0.8,
-      borderTop: `3px solid ${meta.color}`, transition: 'box-shadow .18s ease, border-color .18s ease',
-      '&:hover': { borderColor: alpha(meta.color, 0.35), boxShadow: `0 10px 24px ${alpha(meta.color, 0.07)}` },
-    }}>
-      <Stack direction="row" alignItems="flex-start" spacing={0.9}>
-        <FileBadge row={row} size={38} />
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap title={row.title} sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>
-            {row.title}
-          </Typography>
-          <Typography noWrap title={row.file_name} sx={{ fontSize: 10.5, color: MUTED, direction: 'ltr', textAlign: 'right' }}>
-            {row.file_name || '—'}
-          </Typography>
-        </Box>
-        <FileTypeChip row={row} />
-      </Stack>
-
-      <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap">
-        <RelationPill row={row} />
-        <Chip size="small" label={relationTargetLabel(row)}
-          sx={{ height: 21, fontSize: 10.5, maxWidth: 210, bgcolor: SOFT_BG, color: MUTED }} />
-      </Stack>
-
-      <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: alpha(meta.color, 0.035), border: `1px solid ${alpha(meta.color, 0.09)}` }}>
-        <Stack direction="row" justifyContent="space-between" spacing={1}>
-          <Box>
-            <Typography sx={{ fontSize: 10, color: MUTED }}>بارگذاری</Typography>
-            <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>{dateLabel(row.uploaded_at)}</Typography>
-          </Box>
-          <Box sx={{ textAlign: 'left' }}>
-            <Typography sx={{ fontSize: 10, color: MUTED }}>حجم</Typography>
-            <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>{row.file_size_display || formatFileSize(row.file_size)}</Typography>
-          </Box>
-        </Stack>
-      </Box>
-
-      <Box sx={{ flex: 1 }} />
-      <Divider />
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
-        <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, maxWidth: 150 }}>
-          {row.contract_number || '—'}
-        </Typography>
-        <Stack direction="row" spacing={0.05} alignItems="center">
-          <Tooltip title="پیش‌نمایش"><IconButton size="small" onClick={() => onPreview(row)}><OpenInNewIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-          <Tooltip title="دانلود"><IconButton size="small" color="primary" onClick={() => onDownload(row)}><DownloadIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-          <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 17 }} /></IconButton></Tooltip>
-          <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-          <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-        </Stack>
-      </Stack>
-    </Paper>
-  );
-};
-
-
-const DocumentTable = ({ rows, onView, onEdit, onDelete, onPreview, onDownload }) => (
-  <DataTable
-    rows={rows}
-    getRowId={(row) => row.id}
-    maxHeight="calc(100vh - 330px)"
-    stickyHeader
-    ariaLabel="فهرست اسناد قرارداد"
-    tableSx={{ '& td, & th': { px: 1.2, py: 0.8 } }}
-    columns={[
-      {
-        key: 'title',
-        label: 'سند',
-        render: (row) => (
-          <Stack direction="row" alignItems="center" spacing={0.7}>
-            <FileBadge row={row} size={28} />
-            <Box sx={{ minWidth: 0 }}>
-              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{row.title}</Typography>
-              <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, direction: 'ltr', textAlign: 'right' }}>
-                {row.file_name || '—'}
+            </TableCell>
+            <TableCell align="center"><FileTypeChip row={row} /></TableCell>
+            <TableCell align="right">
+              <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-start">
+                <RelationPill row={row} />
+                <Typography noWrap title={relationTargetLabel(row)} sx={{ fontSize: 10.5, color: MUTED }}>
+                  {relationTargetLabel(row)}
+                </Typography>
+              </Stack>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{row.contract_number || '—'}</Typography>
+              <Typography noWrap title={row.contract_subject} sx={{ fontSize: 10.5, color: MUTED }}>
+                {row.contract_subject || '—'}
               </Typography>
-            </Box>
-          </Stack>
-        ),
-      },
-      { key: 'type', label: 'نوع', align: 'center', render: (row) => <FileTypeChip row={row} /> },
-      {
-        key: 'relation', label: 'جایگاه', align: 'center',
-        render: (row) => (
-          <Stack spacing={0.3} alignItems="center">
-            <RelationPill row={row} />
-            <Typography noWrap title={relationTargetLabel(row)} sx={{ fontSize: 10.5, color: MUTED, maxWidth: 170 }}>
-              {relationTargetLabel(row)}
-            </Typography>
-          </Stack>
-        ),
-      },
-      {
-        key: 'contract', label: 'قرارداد', cellSx: { maxWidth: 190 },
-        render: (row) => (
-          <Box>
-            <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{row.contract_number || '—'}</Typography>
-            <Typography noWrap title={row.contract_subject} sx={{ fontSize: 10.5, color: MUTED }}>{row.contract_subject || '—'}</Typography>
-          </Box>
-        ),
-      },
-      { key: 'uploaded', label: 'تاریخ بارگذاری', align: 'center', render: (row) => dateLabel(row.uploaded_at) },
-      {
-        key: 'actions', label: 'عملیات', align: 'center', cellSx: { whiteSpace: 'nowrap' },
-        render: (row) => (
-          <Stack direction="row" spacing={0.05} justifyContent="center">
-            <Tooltip title="پیش‌نمایش"><IconButton size="small" onClick={() => onPreview(row)}><OpenInNewIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-            <Tooltip title="دانلود"><IconButton size="small" onClick={() => onDownload(row)}><DownloadIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-            <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-            <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-            <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-          </Stack>
-        ),
-      },
-    ]}
-  />
+            </TableCell>
+            <TableCell align="center">
+              <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {dateLabel(row.uploaded_at)}
+              </Typography>
+            </TableCell>
+            <TableCell align="center">
+              <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {row.file_size_display || formatFileSize(row.file_size)}
+              </Typography>
+            </TableCell>
+            <TableCell align="center" onClick={(event) => event.stopPropagation()}>
+              <Stack direction="row" spacing={0.05} justifyContent="center">
+                <Tooltip title="پیش‌نمایش"><IconButton size="small" onClick={() => onPreview(row)}><OpenInNewIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                <Tooltip title="دانلود"><IconButton size="small" color="primary" onClick={() => onDownload(row)}><DownloadIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+                <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+              </Stack>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </TableContainer>
 );
 
 
@@ -778,6 +648,10 @@ const DocumentEditorDialog = ({
 const ContractDocumentsPage = () => {
   const qc = useQueryClient();
   const theme = useTheme();
+  /* همان توکن‌های استودیوی تم که صفحهٔ «قراردادهای من» می‌خواند */
+  const { tokens } = useDesignTokens();
+  const tableTheme = resolveTableTheme(tokens);
+  const toolbar = resolveToolbarTheme(tokens);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const contractId = searchParams.get('contract') || '';
@@ -785,7 +659,8 @@ const ContractDocumentsPage = () => {
   const [relationFilter, setRelationFilter] = useState('all');
   const [fileFilter, setFileFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [view, setView] = useState('cards');
+  const [page, setPage] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -844,14 +719,8 @@ const ContractDocumentsPage = () => {
     () => (contractId ? allDocs.filter((row) => String(row.contract) === String(contractId)) : allDocs),
     [allDocs, contractId],
   );
-  const docCountByContract = useMemo(() => allDocs.reduce((counts, row) => {
-    const key = String(row.contract);
-    counts[key] = (counts[key] || 0) + 1;
-    return counts;
-  }, {}), [allDocs]);
   const relationCounts = useMemo(() => countByRelation(scopedDocs), [scopedDocs]);
   const fileCounts = useMemo(() => countByFileType(scopedDocs), [scopedDocs]);
-  const pdfCount = fileCounts.pdf || 0;
 
   const filtered = useMemo(() => {
     let rows = scopedDocs.filter((row) => {
@@ -868,21 +737,111 @@ const ContractDocumentsPage = () => {
     return rows;
   }, [scopedDocs, relationFilter, fileFilter, search, sortBy]);
 
+  /* ---- صفحه‌بندی سمت کاربر با تعداد ردیف توکن تم ---- */
+  const pageSize = tableTheme.rowsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  useEffect(() => { setPage(0); }, [search, relationFilter, fileFilter, sortBy, contractId, pageSize]);
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+  const pagedRows = useMemo(
+    () => filtered.slice(page * pageSize, (page + 1) * pageSize),
+    [filtered, page, pageSize],
+  );
+  const pageNumbers = (() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    const end = Math.min(totalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_, index) => start + index);
+  })();
+
+  /* ---- ارتفاع جدول بر اساس ارتفاع واقعی ردیف‌ها (همان مکانیزم صفحهٔ قراردادهای من) ---- */
+  const tableScrollRef = useRef(null);
+  const [measuredRowPx, setMeasuredRowPx] = useState(0);
+  const [measuredHeadPx, setMeasuredHeadPx] = useState(0);
+  const measureTableRows = () => {
+    const host = tableScrollRef.current;
+    if (!host) return;
+    const rowEl = host.querySelector('tbody tr');
+    const headEl = host.querySelector('thead tr');
+    const rowPx = rowEl ? Math.round(rowEl.getBoundingClientRect().height) : 0;
+    const headPx = headEl ? Math.round(headEl.getBoundingClientRect().height) : 0;
+    setMeasuredRowPx((previous) => (previous === rowPx ? previous : rowPx));
+    setMeasuredHeadPx((previous) => (previous === headPx ? previous : headPx));
+  };
+  useLayoutEffect(measureTableRows, [pagedRows.length, tableTheme.rowHeight, tableTheme.headerHeight]);
+  useEffect(() => {
+    const onResize = () => measureTableRows();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const effectiveRowPx = measuredRowPx > 0 ? measuredRowPx : tableTheme.rowHeight;
+  const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
+  const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
+
   const resetFilters = () => {
     setSearch('');
     setRelationFilter('all');
     setFileFilter('all');
     setSortBy('newest');
   };
-  const selectContract = (contract) => {
-    setSearchParams({ contract: String(contract.id) });
-    resetFilters();
-  };
   const clearContract = () => {
     setSearchParams({});
-    resetFilters();
     setDetail(null);
   };
+
+  /* ---- گزینه‌های فیلتر و چیپ‌های فعال (ترتیب جزو فیلترها نیست) ---- */
+  const contractOptions = useMemo(() => [
+    { value: '', label: 'همهٔ قراردادها' },
+    ...contractList.map((contract) => ({
+      value: String(contract.id),
+      label: `${toPersianDigits(contract.number || '—')} — ${contract.subject || ''}`,
+    })),
+  ], [contractList]);
+  const relationOptionsList = [
+    { value: 'all', label: `همه (${formatPersianNumber(relationCounts.all || 0)})` },
+    ...RELATION_ORDER.map((key) => ({
+      value: key,
+      label: `${RELATION_META[key].label} (${formatPersianNumber(relationCounts[key] || 0)})`,
+    })),
+  ];
+  const fileOptionsList = [
+    { value: 'all', label: 'همه' },
+    ...Object.entries(FILE_TYPE_META).map(([key, meta]) => ({
+      value: key,
+      label: `${meta.label} (${formatPersianNumber(fileCounts[key] || 0)})`,
+    })),
+  ];
+  const activeFilterCount = (contractId ? 1 : 0)
+    + (relationFilter !== 'all' ? 1 : 0)
+    + (fileFilter !== 'all' ? 1 : 0);
+  const activeChips = [
+    contractId
+      ? {
+        key: 'contract',
+        label: `قرارداد: ${toPersianDigits(selectedContract?.number || contractId)}`,
+        clear: clearContract,
+      }
+      : null,
+    relationFilter !== 'all'
+      ? {
+        key: 'relation',
+        label: `جایگاه سند: ${RELATION_META[relationFilter]?.label || relationFilter}`,
+        clear: () => setRelationFilter('all'),
+      }
+      : null,
+    fileFilter !== 'all'
+      ? {
+        key: 'file',
+        label: `نوع فایل: ${FILE_TYPE_META[fileFilter]?.label || fileFilter}`,
+        clear: () => setFileFilter('all'),
+      }
+      : null,
+  ].filter(Boolean);
+  const activeChipSx = toolbar.chipStyle === 'outlined'
+    ? { bgcolor: 'transparent', border: `1px solid ${toolbar.chipBorder}`, color: toolbar.primary, fontWeight: 700 }
+    : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontWeight: 700, border: `1px solid ${toolbar.chipBorder}` };
+  const filtersExpanded = filtersOpen === null ? false : filtersOpen;
 
 
   const invalidateAll = () => {
@@ -1108,7 +1067,7 @@ const ContractDocumentsPage = () => {
         subtitle="آرشیو یکپارچهٔ اسناد قرارداد، الحاقیه، تضمین و صورت‌وضعیت"
         title="بایگانی اسناد قرارداد"
         badge={(
-          <Chip size="small" label={contractId ? `${formatPersianNumber(scopedDocs.length)} سند` : 'مدیریت اسناد قرارداد'}
+          <Chip size="small" label={`${formatPersianNumber(filtered.length)} سند`}
             sx={{ height: 23, fontWeight: 800, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }} />
         )}
         actions={(
@@ -1123,128 +1082,270 @@ const ContractDocumentsPage = () => {
               <Button variant="outlined" startIcon={<DescriptionIcon />}
                 onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده قرارداد</Button>
             ) : null}
-            {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>سند جدید</Button>
           </>
         )}
       />
 
-      {!contractId ? (
-        <LandingContent
-          contractList={contractList}
-          documents={allDocs}
-          docCountByContract={docCountByContract}
-          accent={ACCENT}
-          onSelect={selectContract}
-          onSelectContract={(id) => {
-            const target = contractList.find((contract) => String(contract.id) === String(id));
-            if (target) selectContract(target);
-          }}
-          onOpen={setDetail}
-        />
+      {/* نوار استاندارد جستجو، ترتیب و فیلترها — همان الگوی صفحهٔ «قراردادهای من» */}
+      <Paper sx={{ p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <TextField
+            size="small"
+            placeholder={toolbar.searchPlaceholder}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{
+              flex: toolbar.searchWidth === '100%' ? 1 : '0 0 auto',
+              width: toolbar.searchWidth === '100%' ? { xs: '100%', sm: 'auto' } : `${toolbar.searchWidth}px`,
+              '& .MuiOutlinedInput-root': {
+                height: `${toolbar.searchHeight}px`,
+                borderRadius: `${toolbar.searchRadius}px`,
+                bgcolor: toolbar.searchBg,
+                fontSize: 12.5,
+              },
+            }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+            }}
+          />
+          {/* ترتیب نمایش: کنار جستجو و پیش از دکمهٔ فیلترها — خودش فیلتر نیست */}
+          <TextField
+            select
+            size="small"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            sx={{
+              flex: '0 0 auto',
+              minWidth: { xs: '100%', sm: 168 },
+              '& .MuiOutlinedInput-root': {
+                height: `${toolbar.searchHeight}px`,
+                borderRadius: `${toolbar.searchRadius}px`,
+                fontSize: 12.5,
+              },
+              '& .MuiSelect-select': { paddingLeft: '30px !important', paddingRight: '10px !important' },
+            }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment> }}
+            SelectProps={{ inputProps: { 'aria-label': 'ترتیب نمایش' }, IconComponent: SortArrowLeft }}
+          >
+            {SORT_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>{option.label}</MenuItem>
+            ))}
+          </TextField>
+          <Button
+            variant={toolbar.filtersVariant}
+            onClick={() => setFiltersOpen(!filtersExpanded)}
+            startIcon={toolbar.filtersIconPosition === 'start' ? <FilterListIcon fontSize="small" /> : null}
+            endIcon={toolbar.filtersIconPosition === 'end' ? <FilterListIcon fontSize="small" /> : null}
+            aria-expanded={filtersExpanded}
+            sx={{
+              /* هم‌ارتفاع با کادر جستجو و کنترل ترتیب */
+              height: `${toolbar.searchHeight}px !important`,
+              minHeight: `${toolbar.searchHeight}px !important`,
+              maxHeight: `${toolbar.searchHeight}px !important`,
+              alignSelf: 'center', py: 0, boxSizing: 'border-box',
+              borderRadius: `${toolbar.filtersRadius}px`,
+              fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'auto', px: 2,
+            }}
+          >
+            {toolbar.filtersLabel}
+            {toolbar.showFiltersCount && activeFilterCount > 0 ? (
+              <Chip
+                size="small"
+                label={toPersianDigits(activeFilterCount)}
+                sx={{
+                  ml: 0.75, height: 18, fontSize: 11, fontWeight: 800,
+                  bgcolor: toolbar.filtersVariant === 'contained' ? 'rgba(255,255,255,0.24)' : toolbar.chipBg,
+                  color: toolbar.filtersVariant === 'contained' ? '#fff' : toolbar.primary,
+                }}
+              />
+            ) : null}
+          </Button>
+          {toolbar.showReset && (activeFilterCount > 0 || search) ? (
+            <Button
+              size="small" variant="text"
+              onClick={() => { resetFilters(); clearContract(); }}
+              sx={{
+                height: `${toolbar.searchHeight}px`,
+                minHeight: `${toolbar.searchHeight}px`,
+                alignSelf: 'center', py: 0,
+                fontSize: 12.5, whiteSpace: 'nowrap',
+              }}
+            >
+              {toolbar.resetLabel}
+            </Button>
+          ) : null}
+        </Stack>
+
+        <Collapse in={filtersExpanded} timeout={180} unmountOnExit>
+          <Box sx={{
+            mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider',
+            bgcolor: toolbar.panelBg,
+            borderRadius: `${toolbar.panelRadius}px`,
+            p: `${toolbar.panelPadding}px`,
+          }}>
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: toolbar.panelGrid },
+              gap: `${toolbar.panelGap}px`,
+              alignItems: 'end',
+            }}>
+              <FilterSelect
+                label="قرارداد" value={contractId} options={contractOptions}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={(value) => setSearchParams(value ? { contract: value } : {})}
+              />
+              <FilterSelect
+                label="جایگاه سند" value={relationFilter} options={relationOptionsList}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={setRelationFilter}
+              />
+              <FilterSelect
+                label="نوع فایل" value={fileFilter} options={fileOptionsList}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={setFileFilter}
+              />
+              {toolbar.showReset ? (
+                <Button
+                  variant="text" size="small" onClick={resetFilters}
+                  sx={{ fontSize: 12.5, justifySelf: 'start', height: `${toolbar.searchHeight - 6}px` }}
+                >
+                  بازنشانی فیلترها
+                </Button>
+              ) : null}
+            </Box>
+          </Box>
+        </Collapse>
+
+        {activeChips.length > 0 ? (
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+            {activeChips.map((chip) => (
+              <Chip key={chip.key} size="small" label={chip.label} onDelete={chip.clear} sx={activeChipSx} />
+            ))}
+          </Stack>
+        ) : null}
+      </Paper>
+
+
+
+      {/* جدول استاندارد بایگانی — بدون کارت راهنمای بایگانی */}
+      {!filtered.length ? (
+        <Paper elevation={0} sx={{
+          p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
+          textAlign: 'center', bgcolor: 'background.paper',
+        }}>
+          <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>سندی با این مشخصات پیدا نشد.</Typography>
+          <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا سند جدید بارگذاری کنید.</Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>افزودن سند</Button>
+        </Paper>
       ) : (
-        <>
-
-
-          <Grid container spacing={1.5}>
-            <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-              <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-                <ContractSnapshotCard contract={selectedContract} accent={ACCENT} onBack={clearContract}
-                  currency={currencyLabel} documentCount={scopedDocs.length} />
-                <RelationBreakdown counts={relationCounts} active={relationFilter}
-                  onChange={(key) => setRelationFilter(key)} accent={ACCENT} fileCounts={fileCounts} />
-              </Stack>
-            </Grid>
-
-            <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-              <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-                <Grid item xs={6} md={3}>
-                  <KpiTile icon={FolderSharedIcon} label="کل اسناد" value={formatPersianNumber(scopedDocs.length)}
-                    suffix="سند" color={ACCENT} />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <KpiTile icon={NoteAltIcon} label="الحاقیه و تضمین"
-                    value={formatPersianNumber((relationCounts.addendum || 0) + (relationCounts.guarantee || 0))}
-                    suffix="سند" color="#7c3aed" />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <KpiTile icon={ReceiptLongIcon} label="صورت‌وضعیت" value={formatPersianNumber(relationCounts.statement || 0)}
-                    suffix="سند" color="#2563eb" />
-                </Grid>
-                <Grid item xs={6} md={3}>
-                  <KpiTile icon={PictureAsPdfIcon} label="فایل‌های PDF" value={formatPersianNumber(pdfCount)}
-                    suffix="فایل" color="#be123c" />
-                </Grid>
-              </Grid>
-
-
-              <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-                <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-                  <TextField size="small" placeholder="جست‌وجو در عنوان، فایل، قرارداد…"
-                    value={search} onChange={(event) => setSearch(event.target.value)}
-                    sx={{ minWidth: { xs: '100%', sm: 230 }, flex: 1 }}
-                    InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-                  <FormControl size="small" sx={{ minWidth: 155 }}>
-                    <InputLabel>جایگاه</InputLabel>
-                    <Select value={relationFilter} label="جایگاه" onChange={(event) => setRelationFilter(event.target.value)}>
-                      <MenuItem value="all">همه ({formatPersianNumber(relationCounts.all || 0)})</MenuItem>
-                      {RELATION_ORDER.map((key) => (
-                        <MenuItem key={key} value={key}>{RELATION_META[key].label} ({formatPersianNumber(relationCounts[key] || 0)})</MenuItem>
+        <Paper elevation={0} sx={{
+          borderRadius: 'var(--hrms-table-radius, 16px)',
+          overflow: 'hidden',
+          border: '1px solid', borderColor: 'divider',
+          bgcolor: 'background.paper', boxShadow: 'none',
+        }}>
+          <DocumentArchiveTable
+            rows={pagedRows}
+            tableTheme={tableTheme}
+            containerRef={tableScrollRef}
+            tableHeight={tableHeight}
+            rowHeight={effectiveRowPx}
+            dimmed={docsQuery.isFetching}
+            onView={setDetail}
+            onEdit={openEdit}
+            onDelete={setConfirmDelete}
+            onPreview={previewFile}
+            onDownload={downloadFile}
+          />
+          {tableTheme.showPagination && filtered.length > pageSize ? (
+            <Box sx={{
+              px: 1.5,
+              py: tableTheme.paginationDense ? 0.75 : 1.25,
+              borderTop: '1px solid',
+              borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+            }}>
+              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
+                {tableTheme.showPaginationRange ? (
+                  <Typography
+                    sx={{
+                      position: 'absolute', insetInlineStart: 0,
+                      display: { xs: 'none', sm: 'block' },
+                      fontSize: tableTheme.paginationFontSize - 0.5,
+                      color: 'text.secondary', whiteSpace: 'nowrap',
+                    }}
+                  >
+                    نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
+                    {toPersianDigits(Math.min((page + 1) * pageSize, filtered.length))} از{' '}
+                    {toPersianDigits(filtered.length)} سند
+                    {' · '}
+                    {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
+                  </Typography>
+                ) : null}
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  {tableTheme.paginationVariant === 'pages' ? (
+                    <>
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(0)} aria-label="صفحهٔ اول"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                        <FirstPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+                      </IconButton>
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                        <ChevronRightIcon fontSize="small" />
+                      </IconButton>
+                      {pageNumbers.map((index) => (
+                        <Box
+                          key={index}
+                          component="button"
+                          type="button"
+                          onClick={() => setPage(index)}
+                          aria-current={index === page ? 'page' : undefined}
+                          sx={{
+                            minWidth: 28, height: 28, px: 0.75,
+                            borderRadius: `${tableTheme.paginationRadius}px`,
+                            border: '1px solid',
+                            borderColor: index === page ? tableTheme.paginationAccent : 'divider',
+                            bgcolor: index === page ? tableTheme.paginationAccent : 'transparent',
+                            color: index === page ? '#fff' : 'text.secondary',
+                            fontFamily: 'inherit',
+                            fontSize: tableTheme.paginationFontSize,
+                            fontWeight: index === page ? 800 : 600,
+                            cursor: 'pointer',
+                          }}
+                        >
+                          {toPersianDigits(index + 1)}
+                        </Box>
                       ))}
-                    </Select>
-                  </FormControl>
-                  <FormControl size="small" sx={{ minWidth: 135 }}>
-                    <InputLabel>نوع فایل</InputLabel>
-                    <Select value={fileFilter} label="نوع فایل" onChange={(event) => setFileFilter(event.target.value)}>
-                      <MenuItem value="all">همه</MenuItem>
-                      {Object.entries(FILE_TYPE_META).map(([key, meta]) => (
-                        <MenuItem key={key} value={key}>{meta.label}</MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-                  <FormControl size="small" sx={{ minWidth: 135 }}>
-                    <InputLabel>ترتیب</InputLabel>
-                    <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                      <MenuItem value="newest">جدیدترین</MenuItem>
-                      <MenuItem value="oldest">قدیمی‌ترین</MenuItem>
-                      <MenuItem value="title">عنوان</MenuItem>
-                      <MenuItem value="largest">بیشترین حجم</MenuItem>
-                    </Select>
-                  </FormControl>
-                  <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
-                    <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                    <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-                  </ToggleButtonGroup>
-                  <Button variant="contained" startIcon={<UploadFileIcon />} onClick={openNew}
-                    sx={{ display: { xs: 'none', md: 'flex' } }}>افزودن سند</Button>
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                        <ChevronLeftIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} aria-label="صفحهٔ آخر"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                        <LastPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <Stack direction="row" spacing={1} alignItems="center">
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل">
+                        <ChevronRightIcon fontSize="small" />
+                      </IconButton>
+                      <Typography sx={{ fontSize: tableTheme.paginationFontSize }}>
+                        {toPersianDigits(page + 1)} / {toPersianDigits(totalPages)}
+                      </Typography>
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد">
+                        <ChevronLeftIcon fontSize="small" />
+                      </IconButton>
+                    </Stack>
+                  )}
                 </Stack>
-              </Paper>
-
-              {!filtered.length ? (
-                <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
-                  <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>سندی با این مشخصات پیدا نشد.</Typography>
-                  <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا سند جدید بارگذاری کنید.</Typography>
-                  <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>افزودن سند</Button>
-                </Paper>
-              ) : view === 'cards' ? (
-                <Grid container spacing={1.5}>
-                  {filtered.map((row) => (
-                    <Grid item xs={12} md={6} xl={4} key={row.id}>
-                      <DocumentCard row={row} onView={setDetail} onEdit={openEdit}
-                        onDelete={setConfirmDelete} onPreview={previewFile} onDownload={downloadFile} />
-                    </Grid>
-                  ))}
-                </Grid>
-              ) : (
-                <DocumentTable rows={filtered} onView={setDetail} onEdit={openEdit}
-                  onDelete={setConfirmDelete} onPreview={previewFile} onDownload={downloadFile} />
-              )}
-            </Grid>
-          </Grid>
-        </>
+              </Box>
+            </Box>
+          ) : null}
+        </Paper>
       )}
-
 
       <DocumentDetailDrawer row={detail} onClose={() => setDetail(null)}
         onEdit={openEdit} onDelete={setConfirmDelete} accent={ACCENT} />

@@ -56,7 +56,7 @@ beforeEach(() => {
   });
 });
 
-test('contract documents archive renders the new landing and selected-contract views', async () => {
+test('contract documents archive renders the standard toolbar and token-driven table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -81,9 +81,40 @@ test('contract documents archive renders the new landing and selected-contract v
   }
 
   expect(container.textContent).toContain('بایگانی اسناد قرارداد');
-  expect(container.textContent).toContain('انتخاب قرارداد');
-  expect(container.textContent).toContain('کل اسناد');
+  // کارت راهنمای بایگانی حذف شده است
+  expect(container.textContent).not.toContain('راهنمای بایگانی');
 
-  root.unmount();
+  // نوار استاندارد زیر هدر: جستجو → ترتیب → فیلترها
+  const searchInput = container.querySelector('input[placeholder]');
+  const sortSelect = container.querySelector('[role="combobox"]');
+  const filtersButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('فیلترها'));
+  expect(searchInput).toBeTruthy();
+  expect(sortSelect).toBeTruthy();
+  expect(filtersButton).toBeTruthy();
+  expect(searchInput.compareDocumentPosition(sortSelect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(sortSelect.compareDocumentPosition(filtersButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+
+  // جدول استاندارد (توکن‌های تم) زیر نوار
+  const headers = Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+  expect(headers).toEqual(['سند', 'نوع', 'جایگاه', 'قرارداد', 'تاریخ بارگذاری', 'حجم', 'عملیات']);
+  const bodyRow = container.querySelector('tbody tr');
+  expect(bodyRow).toBeTruthy();
+  expect(bodyRow.textContent).toContain('متن قرارداد');
+  expect(bodyRow.textContent).toContain('C-1405-01');
+  const tableHost = container.querySelector('.MuiTableContainer-root');
+  expect(tableHost.getAttribute('data-visible-rows')).toBe('13');
+  expect(tableHost.getAttribute('data-row-height')).toBe('38');
+
+  // جستجوی سمت کاربر: عبارت بی‌نتیجه، حالت خالی را نشان می‌دهد
+  const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+  await act(async () => {
+    valueSetter.call(searchInput, 'یافت‌نشدنی');
+    searchInput.dispatchEvent(new Event('input', { bubbles: true }));
+    await wait(350);
+  });
+  expect(container.textContent).toContain('سندی با این مشخصات پیدا نشد.');
+
+  await act(async () => { root.unmount(); });
   container.remove();
 });
