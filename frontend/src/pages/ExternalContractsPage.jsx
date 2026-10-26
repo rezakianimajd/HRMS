@@ -336,7 +336,7 @@ const ExternalContractsPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filtered.map((c, index) => {
+                  {filtered.map(c => {
                     const amount = c.effective_amount ?? c.amount ?? 0;
                     const baseAmount = c.amount ?? 0;
                     const endEffective = c.effective_end_date || c.end_date;
@@ -347,10 +347,7 @@ const ExternalContractsPage = () => {
                       <TableRow
                         key={c.id} hover
                         onClick={() => navigate(`/external-contracts/${c.id}`)}
-                        sx={{
-                          cursor: 'pointer',
-                          bgcolor: tableTheme.striped && index % 2 === 1 ? tableTheme.stripeBg : 'transparent',
-                        }}
+                        sx={{ cursor: 'pointer' }}
                       >
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography sx={{ fontFamily: 'var(--hrms-table-number-font, inherit)', fontWeight: 800, fontSize: 12.5, color: '#334155' }}>

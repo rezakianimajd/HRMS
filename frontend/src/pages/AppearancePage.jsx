@@ -680,7 +680,7 @@ const TableStudioPreview = ({ design }) => {
               component="tr"
               key={row[0]}
               sx={{
-                bgcolor: theme.striped && rowIndex % 2 === 1 ? theme.stripeBg : 'transparent',
+                bgcolor: theme.striped && rowIndex % 2 === 0 ? theme.stripeBg : 'transparent',
                 ...(theme.hover ? { '&:hover': { bgcolor: theme.hoverBg } } : null),
               }}
             >

@@ -1,4 +1,5 @@
 import { resolveTableTheme, TABLE_NUMBER_FONT_MONO, tableTypographySx } from '../core/theme/tableStyles';
+import { designComponentOverrides } from '../core/theme/themeAdapter';
 import { DEFAULT_DESIGN_TOKENS } from '../core/theme/designTokens';
 
 test('resolver derives typography, divider and row colors from tokens', () => {
@@ -75,4 +76,12 @@ test('cell typography rules also target the content rendered inside cells', () =
   expect(sx['& th .MuiTypography-root'].fontSize).toBe('16px !important');
   expect(sx['& th .MuiTypography-root'].fontWeight).toBe('800 !important');
   expect(tableTypographySx(null)).toEqual({});
+});
+
+test('striped rows are painted by one global rule driven by the token', () => {
+  const overrides = designComponentOverrides(DEFAULT_DESIGN_TOKENS);
+  const rowRoot = overrides.MuiTableRow.styleOverrides.root;
+  // تنها منبع رنگ‌آمیزی یک‌درمیان: قاعدهٔ سراسری ردیف‌های فرد با متغیر توکن.
+  // اگر صفحه‌ها خودشان هم رنگ بزنند، با فاز مخالف جمع می‌شود و همهٔ ردیف‌ها رنگی می‌شوند.
+  expect(rowRoot['&:nth-of-type(odd)'].backgroundColor).toBe('var(--hrms-table-row-alt-bg, transparent)');
 });

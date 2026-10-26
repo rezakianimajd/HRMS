@@ -54,8 +54,6 @@ const DataTable = ({
   const cellPadding = tableCfg.variant === 'compact' ? 6 : tableCfg.variant === 'spacious' ? 12 : (tableCfg.cellPadding ?? 8);
   const rowHover = tableCfg.hover !== false;
   const showBorders = tableCfg.showBorders !== false;
-  const striped = Boolean(tableCfg.striped);
-  const stripBg = striped ? 'var(--hrms-table-row-alt-bg, transparent)' : 'transparent';
 
   /* --- توکن‌های جدول (استودیوی تم) — فقط با themed فعال می‌شوند --- */
   const themedTable = themed ? resolveTableTheme(tokens) : null;
@@ -174,7 +172,7 @@ const DataTable = ({
                       tabIndex={interactive ? 0 : undefined}
                       sx={{
                         cursor: interactive ? 'pointer' : 'default',
-                        bgcolor: selected ? 'action.hover' : (striped && index % 2 === 1 ? stripBg : 'transparent'),
+                        bgcolor: selected ? 'action.hover' : 'transparent',
                         ...(extraSx || {}),
                       }}
                     >
