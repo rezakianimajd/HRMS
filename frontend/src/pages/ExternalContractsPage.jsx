@@ -381,7 +381,7 @@ const ExternalContractsPage = () => {
           }}>
             <Box sx={{
               display: 'grid',
-              gridTemplateColumns: { xs: '1fr', sm: `repeat(${toolbar.panelColumns}, minmax(0, 1fr))` },
+              gridTemplateColumns: { xs: '1fr', sm: toolbar.panelGrid },
               gap: `${toolbar.panelGap}px`,
               alignItems: 'end',
             }}>

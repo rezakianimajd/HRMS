@@ -792,8 +792,8 @@ const ToolbarStudioPreview = ({ design }) => {
         mt: 1, pt: 1, borderTop: '1px dashed', borderColor: 'divider',
         bgcolor: t.panelBg, borderRadius: `${t.panelRadius}px`, p: `${t.panelPadding}px`,
       }}>
-        <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${t.panelColumns}, minmax(0, 1fr))`, gap: `${t.panelGap}px` }}>
-          {['وضعیت', 'نوع قرارداد'].map((label) => (
+        <Box sx={{ display: 'grid', gridTemplateColumns: t.panelGrid, gap: `${t.panelGap}px` }}>
+          {['وضعیت', 'نوع قرارداد', 'طرف حساب', 'بازهٔ تاریخ'].map((label) => (
             <Box key={label}>
               {t.labelsPosition === 'above' ? (
                 <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary', mb: 0.4 }}>{label}</Typography>
@@ -1361,7 +1361,7 @@ const ThemeStudioCard = ({
                 disabled={disabled} onChange={(value) => setToolbar('filtersIconPosition', value)} />
               <StudioNumberField label="شعاع" value={design.toolbar.filtersRadius} min={0} max={32}
                 disabled={disabled} onChange={(value) => setToolbar('filtersRadius', value)} />
-              <StudioToggle label="شمارندهٔ فیلترها" checked={design.toolbar.showFiltersCount} disabled={disabled}
+              <StudioToggle label="نمایش شمارندهٔ فیلترهای فعال" checked={design.toolbar.showFiltersCount} disabled={disabled}
                 onChange={(value) => setToolbar('showFiltersCount', value)} />
               <Box sx={{ minWidth: 200 }}>
                 <TextField
@@ -1371,7 +1371,7 @@ const ThemeStudioCard = ({
               </Box>
             </StudioGroup>
 
-            <StudioGroup title="پنل فیلترها" hint="باز شدن پیش‌فرض، سطح، شعاع، فاصله، تعداد ستون و تراز برچسب‌ها">
+            <StudioGroup title="پنل فیلترها" hint="باز شدن پیش‌فرض، سطح، شعاع، فاصله و تراز برچسب‌ها — تعداد فیلترها را خودِ صفحه تعیین می‌کند و چیدمان خودکار است">
               <StudioToggle label="باز در ابتدا" checked={design.toolbar.openByDefault} disabled={disabled}
                 onChange={(value) => setToolbar('openByDefault', value)} />
               <StudioSelect label="سطح" value={design.toolbar.panelSurface}
@@ -1385,8 +1385,8 @@ const ThemeStudioCard = ({
                 disabled={disabled} onChange={(value) => setToolbar('panelPadding', value)} />
               <StudioNumberField label="فاصلهٔ فیلدها" value={design.toolbar.panelGap} min={0} max={32}
                 disabled={disabled} onChange={(value) => setToolbar('panelGap', value)} />
-              <StudioNumberField label="تعداد ستون" value={design.toolbar.panelColumns} min={1} max={4}
-                disabled={disabled} onChange={(value) => setToolbar('panelColumns', value)} />
+              <StudioNumberField label="حداقل عرض هر فیلتر" value={design.toolbar.panelMinWidth} min={120} max={360}
+                disabled={disabled} onChange={(value) => setToolbar('panelMinWidth', value)} />
             </StudioGroup>
 
             <StudioGroup title="چیپ فیلترهای فعال و پاک‌سازی" hint="نمایش چیپ‌ها، سبک آن‌ها و دکمهٔ حذف فیلترها">

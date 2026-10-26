@@ -184,8 +184,8 @@ export const DEFAULT_DESIGN_TOKENS = {
     panelSurface: 'solid',
     panelRadius: 14,
     panelPadding: 12,
-    panelColumns: 3,
     panelGap: 10,
+    panelMinWidth: 160,
     labelsPosition: 'above',
     openByDefault: false,
     showActiveChips: true,
@@ -614,6 +614,7 @@ export const designCssVariables = (design) => {
     '--hrms-toolbar-panel-radius': px(design.toolbar?.panelRadius, 14),
     '--hrms-toolbar-panel-padding': px(design.toolbar?.panelPadding, 12),
     '--hrms-toolbar-panel-gap': px(design.toolbar?.panelGap, 10),
+    '--hrms-toolbar-panel-min-width': px(design.toolbar?.panelMinWidth, 160),
   };
 };
 

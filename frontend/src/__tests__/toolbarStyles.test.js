@@ -6,7 +6,8 @@ test('toolbar resolver exposes defaults and clamped sizes', () => {
   expect(toolbar.filtersLabel).toBe('فیلترها');
   expect(toolbar.searchPlaceholder).toBe(DEFAULT_TOOLBAR_LABELS.searchPlaceholder);
   expect(toolbar.searchWidth).toBe('100%');
-  expect(toolbar.panelColumns).toBe(3);
+  expect(toolbar.panelMinWidth).toBe(160);
+  expect(toolbar.panelGrid).toBe('repeat(auto-fit, minmax(160px, 1fr))');
   expect(toolbar.openByDefault).toBe(false);
   expect(toolbar.showActiveChips).toBe(true);
   expect(toolbar.labelsPosition).toBe('above');
@@ -17,7 +18,7 @@ test('toolbar resolver applies custom labels, width and surfaces', () => {
     colors: { primary: '#2563eb', textPrimary: '#0f172a' },
     surfaces: { card: { background: '#ffffff' }, table: { headerBackground: '#f1f5f9' } },
     toolbar: {
-      searchWidth: 320, searchHeight: 80, searchRadius: 99, panelColumns: 9,
+      searchWidth: 320, searchHeight: 80, searchRadius: 99, panelMinWidth: 500,
       filtersLabel: '  فیلتر پیشرفته  ', resetLabel: 'پاک‌سازی', searchPlaceholder: 'جستجو…',
       panelSurface: 'tinted', chipStyle: 'outlined', openByDefault: true,
     },
@@ -25,7 +26,8 @@ test('toolbar resolver applies custom labels, width and surfaces', () => {
   expect(toolbar.searchWidth).toBe(320);
   expect(toolbar.searchHeight).toBe(64); // سقف مجاز
   expect(toolbar.searchRadius).toBe(32);
-  expect(toolbar.panelColumns).toBe(4);
+  expect(toolbar.panelMinWidth).toBe(360); // سقف مجاز
+  expect(toolbar.panelGrid).toBe('repeat(auto-fit, minmax(360px, 1fr))');
   expect(toolbar.filtersLabel).toBe('فیلتر پیشرفته');
   expect(toolbar.resetLabel).toBe('پاک‌سازی');
   expect(toolbar.searchPlaceholder).toBe('جستجو…');

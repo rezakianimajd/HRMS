@@ -55,8 +55,12 @@ export const resolveToolbarTheme = (tokens) => {
     panelBg,
     panelRadius: clamp(cfg.panelRadius ?? 14, 0, 32),
     panelPadding: clamp(cfg.panelPadding ?? 12, 0, 32),
-    panelColumns: clamp(cfg.panelColumns ?? 3, 1, 4),
+    panelMinWidth: clamp(cfg.panelMinWidth ?? 160, 120, 360),
     panelGap: clamp(cfg.panelGap ?? 10, 0, 32),
+    /* چیدمان خودکار: تعداد فیلترها را خودِ صفحه تعیین می‌کند، نه تم */
+    get panelGrid() {
+      return `repeat(auto-fit, minmax(${clamp(cfg.panelMinWidth ?? 160, 120, 360)}px, 1fr))`;
+    },
     labelsPosition: cfg.labelsPosition || 'above',
     openByDefault: cfg.openByDefault === true,
     showActiveChips: cfg.showActiveChips !== false,

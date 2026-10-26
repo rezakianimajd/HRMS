@@ -171,7 +171,7 @@ DEFAULT_DESIGN = {
         'filtersVariant': 'outlined', 'filtersLabel': 'فیلترها',
         'filtersIconPosition': 'start', 'filtersRadius': 10, 'showFiltersCount': True,
         'panelSurface': 'solid', 'panelRadius': 14, 'panelPadding': 12,
-        'panelColumns': 3, 'panelGap': 10, 'labelsPosition': 'above',
+        'panelGap': 10, 'panelMinWidth': 160, 'labelsPosition': 'above',
         'openByDefault': False,
         'showActiveChips': True, 'chipStyle': 'soft',
         'showReset': True, 'resetLabel': 'حذف فیلترها',
@@ -427,7 +427,7 @@ def sanitize_design(raw, typography=None):
             'searchRadius': (0, 32, True), 'searchHeight': (32, 64, True),
             'searchWidth': (0, 600, True), 'filtersRadius': (0, 32, True),
             'panelRadius': (0, 32, True), 'panelPadding': (0, 32, True),
-            'panelGap': (0, 32, True), 'panelColumns': (1, 4, True),
+            'panelGap': (0, 32, True), 'panelMinWidth': (120, 360, True),
         },
         texts={'searchPlaceholder': 120, 'filtersLabel': 30, 'resetLabel': 30},
     )

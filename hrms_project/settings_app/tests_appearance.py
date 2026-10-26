@@ -179,14 +179,14 @@ class AppearanceSchemaTests(SimpleTestCase):
             'searchPlaceholder': '<b>جستجو</b> در قراردادها', 'filtersVariant': 'contained',
             'filtersLabel': '  فیلترها  ', 'filtersIconPosition': 'end', 'filtersRadius': 14,
             'showFiltersCount': False, 'panelSurface': 'glass', 'panelRadius': 18,
-            'panelPadding': 16, 'panelColumns': 2, 'panelGap': 12, 'labelsPosition': 'inline',
+            'panelPadding': 16, 'panelMinWidth': 220, 'panelGap': 12, 'labelsPosition': 'inline',
             'openByDefault': True, 'showActiveChips': False, 'chipStyle': 'outlined',
             'showReset': False, 'resetLabel': 'پاک‌سازی',
         }})['toolbar']
         self.assertEqual(toolbar['searchVariant'], 'filled')
         self.assertEqual(toolbar['searchPlaceholder'], 'جستجو در قراردادها')  # تگ‌های HTML حذف می‌شوند
         self.assertEqual(toolbar['filtersLabel'], 'فیلترها')
-        self.assertEqual(toolbar['panelColumns'], 2)
+        self.assertEqual(toolbar['panelMinWidth'], 220)
         self.assertEqual(toolbar['panelGap'], 12)
         self.assertTrue(toolbar['openByDefault'])
         self.assertFalse(toolbar['showFiltersCount'])
@@ -197,7 +197,7 @@ class AppearanceSchemaTests(SimpleTestCase):
         toolbar = sanitize_design({'toolbar': {
             'searchVariant': 'neon', 'searchIconPosition': 'middle', 'filtersVariant': 'ghost',
             'panelSurface': 'metal', 'labelsPosition': 'left', 'chipStyle': 'solid',
-            'searchHeight': 300, 'panelColumns': 0, 'filtersLabel': '   ',
+            'searchHeight': 300, 'panelMinWidth': 999, 'filtersLabel': '   ',
         }})['toolbar']
         self.assertEqual(toolbar['searchVariant'], 'soft')
         self.assertEqual(toolbar['searchIconPosition'], 'start')
@@ -206,5 +206,5 @@ class AppearanceSchemaTests(SimpleTestCase):
         self.assertEqual(toolbar['labelsPosition'], 'above')
         self.assertEqual(toolbar['chipStyle'], 'soft')
         self.assertEqual(toolbar['searchHeight'], 40)
-        self.assertEqual(toolbar['panelColumns'], 3)
+        self.assertEqual(toolbar['panelMinWidth'], 160)
         self.assertEqual(toolbar['filtersLabel'], 'فیلترها')
