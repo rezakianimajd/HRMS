@@ -1,12 +1,13 @@
 ﻿<#
 .SYNOPSIS
-    فعال‌سازی/به‌روزرسانی بک‌اند تنظیمات ظاهر (پالت ماژول‌ها و فونت‌ها) روی سرور HRMS.
+    فعال‌سازی/به‌روزرسانی بک‌اند تنظیمات ظاهر (پالت ماژول‌ها، فونت‌ها و توکن‌های جدول) روی سرور HRMS.
 
 .DESCRIPTION
-    فایل‌های settings_app را به /tmp/hrms-appearance روی سرور منتقل می‌کند،
-    سپس با sudo در /opt/hrms/hrms_project/settings_app جایگزین کرده،
-    مالکیت را به کاربر hrms می‌دهد و gunicorn را ری‌استارت می‌کند.
-    در پایان وجود فیلدهای buttonSize/buttonWeight و پاسخ 401 اندپوینت را بررسی می‌کند.
+    فایل‌های settings_app (از جمله appearance_schema.py که توکن‌های جدول را اعتبارسنجی می‌کند)
+    به /tmp/hrms-appearance روی سرور منتقل می‌شوند، سپس با sudo در
+    /opt/hrms/hrms_project/settings_app جایگزین شده، مالکیت به کاربر hrms داده می‌شود و
+    gunicorn ری‌استارت می‌شود. در پایان تطابق MD5، وجود توکن‌های جدید جدول و پاسخ 401
+    اندپوینت‌ها بررسی می‌شود.
 
     این اسکریپت برای تغییرات بک‌اند است و برخلاف deploy-frontend.ps1 به sudo نیاز دارد؛
     هنگام اجرا رمز sudo کاربر hradmin را در ترمینال وارد کنید.
@@ -34,8 +35,10 @@ $ErrorActionPreference = 'Stop'
 $Srv = "$User@$Server"
 $RepoRoot = $PSScriptRoot
 $Files = @(
-    @{ Local = 'hrms_project/settings_app/views.py';                  Remote = 'settings_app/views.py' },
-    @{ Local = 'hrms_project/settings_app/urls.py';                   Remote = 'settings_app/urls.py' },
+    @{ Local = 'hrms_project/settings_app/appearance_schema.py';       Remote = 'settings_app/appearance_schema.py' },
+    @{ Local = 'hrms_project/settings_app/login_branding.py';          Remote = 'settings_app/login_branding.py' },
+    @{ Local = 'hrms_project/settings_app/views.py';                   Remote = 'settings_app/views.py' },
+    @{ Local = 'hrms_project/settings_app/urls.py';                    Remote = 'settings_app/urls.py' },
     @{ Local = 'hrms_project/settings_app/engines/settings_engine.py'; Remote = 'settings_app/engines/settings_engine.py' }
 )
 
@@ -48,7 +51,7 @@ foreach ($f in $Files) {
     $p = Join-Path $RepoRoot $f.Local
     if (-not (Test-Path $p)) { throw "فایل محلی پیدا نشد: $p" }
 }
-Ok 'هر سه فایل بک‌اند موجود هستند.'
+Ok ("{0} فایل بک‌اند موجود است." -f $Files.Count)
 
 $probe = @(ssh -o BatchMode=yes -o ConnectTimeout=10 $Srv 'hostname; id -un; sudo -n true 2>/dev/null && echo SUDO_OK || echo SUDO_NEEDS_PASSWORD')
 if ($LASTEXITCODE -ne 0) { throw "اتصال SSH برقرار نشد: $Srv" }
@@ -57,7 +60,9 @@ if ($probe -contains 'SUDO_NEEDS_PASSWORD') {
     Warn 'sudo رمز عبور می‌خواهد؛ هنگام اجرای مرحلهٔ نصب، رمز را در ترمینال وارد کنید.'
 }
 
-$applyCmd = "sudo bash -c 'set -e; cp $Stage/settings_app/views.py $AppDir/hrms_project/settings_app/views.py; cp $Stage/settings_app/urls.py $AppDir/hrms_project/settings_app/urls.py; cp $Stage/settings_app/engines/settings_engine.py $AppDir/hrms_project/settings_app/engines/settings_engine.py; chown $AppUser`:$AppUser $AppDir/hrms_project/settings_app/views.py $AppDir/hrms_project/settings_app/urls.py $AppDir/hrms_project/settings_app/engines/settings_engine.py; systemctl restart gunicorn'"
+$remoteFiles = ($Files | ForEach-Object { "$AppDir/hrms_project/$($_.Remote)" }) -join ' '
+$copyCmds = ($Files | ForEach-Object { "cp $Stage/$($_.Remote) $AppDir/hrms_project/$($_.Remote);" }) -join ' '
+$applyCmd = "sudo bash -c 'set -e; $copyCmds chown $AppUser`:$AppUser $remoteFiles; systemctl restart gunicorn'"
 
 if ($CheckOnly) {
     Step '۲/۴ حالت CheckOnly'
@@ -83,18 +88,27 @@ ssh -t $Srv $applyCmd
 if ($LASTEXITCODE -ne 0) { throw 'جایگزینی فایل‌ها یا ری‌استارت gunicorn ناموفق بود.' }
 Ok 'فایل‌ها جایگزین و gunicorn ری‌استارت شد.'
 
-Step '۴/۴ بررسی نهایی'
-$count = @(ssh -o BatchMode=yes $Srv "grep -c buttonSize $AppDir/hrms_project/settings_app/views.py 2>/dev/null || echo 0")
-$countText = ($count -join '').Trim()
-if ([int]$countText -lt 2) {
-    throw "فیلدهای buttonSize در فایل نصب‌شده پیدا نشد (count=$countText)."
+Step '۴/۴ بررسی نهایی (تطابق MD5 و توکن‌های جدید جدول)'
+$localSchema = Join-Path $RepoRoot 'hrms_project/settings_app/appearance_schema.py'
+$localHash = (Get-FileHash -LiteralPath $localSchema -Algorithm MD5).Hash.ToLower()
+$remoteHash = (@(ssh -o BatchMode=yes $Srv "md5sum $AppDir/hrms_project/settings_app/appearance_schema.py | cut -d' ' -f1") -join '').Trim().ToLower()
+if ($remoteHash -ne $localHash) {
+    throw "appearance_schema.py روی سرور با نسخهٔ محلی یکسان نیست (remote=$remoteHash local=$localHash)."
 }
-Ok "فیلدهای فونت دکمهٔ هدر در بک‌اند فعال هستند (count=$countText)."
+Ok 'MD5 فایل appearance_schema.py روی سرور با نسخهٔ محلی یکسان است.'
 
-$http = (& curl.exe -s -o NUL -w '%{http_code}' "http://$Server/api/settings/appearance/").Trim()
-if ($http -eq '401') {
-    Ok 'GET /api/settings/appearance/ برای کاربر مهمان 401 برمی‌گرداند (اندپوینت فعال است).'
-} else {
-    Warn "پاسخ اندپوینت $http است؛ انتظار 401 بود. وضعیت gunicorn/nginx را بررسی کنید."
+$tokens = (@(ssh -o BatchMode=yes $Srv "grep -c -E 'dividerStyle|headerAlign|frameMarginX' $AppDir/hrms_project/settings_app/appearance_schema.py") -join '').Trim()
+if ([int]$tokens -lt 3) {
+    throw "توکن‌های جدید جدول در فایل نصب‌شده پیدا نشد (count=$tokens)."
 }
-Ok 'فعال‌سازی بک‌اند تنظیمات ظاهر کامل شد. در مرورگر Ctrl+Shift+R بزنید.'
+Ok "توکن‌های جدید جدول (خط جداکننده/تراز هدر/قاب) در بک‌اند فعال‌اند (count=$tokens)."
+
+foreach ($path in @('/api/settings/appearance/', '/api/settings/login-branding/')) {
+    $http = (& curl.exe -s -o NUL -w '%{http_code}' "http://$Server$path").Trim()
+    if ($http -eq '401') {
+        Ok "GET $path → 401 (اندپوینت فعال است)."
+    } else {
+        Warn "GET $path → $http؛ انتظار 401 بود. وضعیت gunicorn/nginx را بررسی کنید."
+    }
+}
+Ok 'به‌روزرسانی بک‌اند تنظیمات ظاهر کامل شد. در مرورگر Ctrl+Shift+R بزنید.'
