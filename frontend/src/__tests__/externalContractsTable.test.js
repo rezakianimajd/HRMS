@@ -217,6 +217,12 @@ test('sort sits between search and filters, orders the request, and stays out of
   expect(window.getComputedStyle(sortInputBox).height).toBe('40px');
   expect(window.getComputedStyle(filtersButton).height).toBe('40px');
 
+  // فلش بازشوی ترتیب سمت چپ است (قبلاً قاعدهٔ MuiSelect-icon فلش را در RTL روی آیکون ترتیب می‌گذاشت)
+  const arrow = sortInputBox.querySelector('svg[data-testid="ExpandMoreIcon"]');
+  expect(arrow).toBeTruthy();
+  expect(window.getComputedStyle(arrow).left).toBe('8px');
+  expect(sortInputBox.querySelector('.MuiSelect-icon')).toBeNull();
+
   // پیش‌فرض: آخرین درخواست با ترتیب created_at نزولی
   const requests = () => axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
   expect(requests().at(-1)[1].params.ordering).toBe('-created_at');

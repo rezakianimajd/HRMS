@@ -21,6 +21,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
@@ -66,6 +67,18 @@ const SORT_OPTIONS = [
   { value: '-number', label: 'شماره: نزولی' },
 ];
 const DEFAULT_SORT = SORT_OPTIONS[0].value;
+
+/* فلش بازشوی «ترتیب»: کلاس MuiSelect-icon عمداً حذف می‌شود، چون قاعدهٔ پیش‌فرض MUI
+ * در RTL فلش را سمت راست (روی آیکون ترتیب) می‌گذارد؛ این آیکون در سمت چپ ثابت است. */
+const SortArrowLeft = ({ className, ...rest }) => (
+  <ExpandMoreIcon
+    {...rest}
+    sx={{
+      position: 'absolute', left: 8, top: 'calc(50% - 10px)',
+      fontSize: 20, color: 'text.secondary', pointerEvents: 'none',
+    }}
+  />
+);
 
 const headCellSx = {
   fontWeight: 800, fontSize: 12, color: '#334155', whiteSpace: 'nowrap',
@@ -387,12 +400,15 @@ const ExternalContractsPage = () => {
                 borderRadius: `${toolbar.searchRadius}px`,
                 fontSize: 12.5,
               },
+              /* فلش بازشو سمت چپ است؛ فضای فلش از پدینگ چپ و فضای آیکون از پدینگ راست. */
+              '& .MuiSelect-select': { paddingLeft: '30px !important', paddingRight: '10px !important' },
             }}
             InputProps={{
               startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment>,
             }}
             SelectProps={{
               inputProps: { 'aria-label': 'ترتیب نمایش' },
+              IconComponent: SortArrowLeft,
             }}
           >
             {SORT_OPTIONS.map((option) => (
