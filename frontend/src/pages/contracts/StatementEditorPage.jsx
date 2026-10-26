@@ -693,6 +693,14 @@ const StatementEditorPage = () => {
       const magnitudeRial = Math.abs(Math.round(Number(payload.adjustment_work_done) || 0));
       const magnitudeForeign = Math.abs(Number(payload.adjustment_work_foreign) || 0)
         || fromRial(magnitudeRial, displayRate);
+      // اضافات/کسورات تعدیل هم مثل صورت‌وضعیت عادی باید ذخیره شوند؛ مبنای
+      // درصد، قدرمطلق مبلغ تعدیل همین دوره است (هم‌راستا با بک‌اند).
+      const valueAddedTax = Math.max(0, Math.round(Number(payload.value_added_tax) || 0));
+      const otherAdditions = Math.max(0, Math.round(Number(payload.other_additions) || 0));
+      const additionsTotal = additions.reduce((sum, item) => sum + item.amount, 0) + valueAddedTax + otherAdditions;
+      const deductionsTotal = deductions.reduce((sum, item) => sum + item.amount, 0);
+      const signedRial = sign * magnitudeRial;
+      const signedForeign = sign * magnitudeForeign;
       return {
         contract: Number(payload.contract) || null,
         number,
@@ -701,17 +709,17 @@ const StatementEditorPage = () => {
         amount: 0,
         foreign_amount: 0,
         cumulative_previous_amount: 0,
-        work_done: sign * magnitudeRial,
-        foreign_work_done: sign * magnitudeForeign,
-        adjustment_work_done: sign * magnitudeRial,
-        adjustment_foreign_work_done: sign * magnitudeForeign,
-        value_added_tax: 0,
-        other_additions: 0,
-        additions: [],
-        additions_total: 0,
-        deductions: [],
-        deductions_total: 0,
-        net_amount: sign * magnitudeRial,
+        work_done: signedRial,
+        foreign_work_done: signedForeign,
+        adjustment_work_done: signedRial,
+        adjustment_foreign_work_done: signedForeign,
+        value_added_tax: valueAddedTax,
+        other_additions: otherAdditions,
+        additions: additions.map(({ code, description, percent, amount: itemAmount, mode }) => ({ code, description, percent, amount: itemAmount, mode })),
+        additions_total: additionsTotal,
+        deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
+        deductions_total: deductionsTotal,
+        net_amount: Math.round(signedRial + additionsTotal - deductionsTotal),
         currency: payload.currency || null,
         exchange_rate: normalizeRate(rate),
         is_approved: Boolean(payload.is_approved),

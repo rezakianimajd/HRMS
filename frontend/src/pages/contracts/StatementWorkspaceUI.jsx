@@ -270,8 +270,8 @@ export const StatementTable = ({ rows, contractAmount, currency, fallbackRate = 
                   </TableCell>
                   <TableCell sx={cellSx}>{dateLabel(row.date)}</TableCell>
                   <TableCell sx={cellSx} title={`${money(metrics.work, RIAL_LABEL)}`}>{statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)}</TableCell>
-                  <TableCell sx={{ ...cellSx, color: kind.isAdjustment ? MUTED : GREEN }}>{kind.isAdjustment ? '—' : statementMoney(row, metrics.additionsTotal, currency, fallbackRate)}</TableCell>
-                  <TableCell sx={{ ...cellSx, color: kind.isAdjustment ? MUTED : (metrics.deductionsTotal ? RED : MUTED) }}>{kind.isAdjustment ? '—' : statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)}</TableCell>
+                  <TableCell sx={{ ...cellSx, color: GREEN }}>{statementMoney(row, metrics.additionsTotal, currency, fallbackRate)}</TableCell>
+                  <TableCell sx={{ ...cellSx, color: metrics.deductionsTotal ? RED : MUTED }}>{statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)}</TableCell>
                   <TableCell sx={{ ...cellSx, color: kind.isAdjustment ? kind.color : status.color, fontWeight: 900 }} title={`${money(metrics.net, RIAL_LABEL)}`}>{statementMoney(row, metrics.net, currency, fallbackRate)}</TableCell>
                   <TableCell sx={cellSx}>
                     <Stack direction="row" alignItems="center" spacing={0.45}>

@@ -73,6 +73,21 @@ const statement = {
 
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const buttonByText = (rootEl, text) => Array.from(rootEl.querySelectorAll('button'))
+  .find((element) => element.textContent.trim() === text);
+
+const pickKindOption = async (rootEl, label) => {
+  const kindInput = Array.from(rootEl.querySelectorAll('input')).find((element) => element.value === 'statement');
+  const select = kindInput.closest('.MuiInputBase-root')?.querySelector('[role="combobox"]') || kindInput;
+  await act(async () => {
+    select.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
+    await wait(180);
+  });
+  const option = Array.from(document.querySelectorAll('[role="option"]'))
+    .find((element) => element.textContent.includes(label));
+  await act(async () => { option.click(); await wait(320); });
+};
+
 beforeEach(() => {
   global.IS_REACT_ACT_ENVIRONMENT = true;
   window.matchMedia = window.matchMedia || (() => ({
@@ -206,3 +221,66 @@ test('statements landing shows KPI, contract picker and pending approvals', asyn
   container.remove();
 });
 
+
+
+test('saving an increase adjustment keeps its additions and deductions', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  axiosInstance.patch.mockReset();
+  axiosInstance.patch.mockResolvedValue({ data: { ...statement } });
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/contracts-statements?contract=1']}>
+          <StatementEditorPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(800);
+  });
+  for (let index = 0; index < 4; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  const detailButton = buttonByText(container, 'جزئیات');
+  expect(detailButton).toBeTruthy();
+  await act(async () => { detailButton.click(); await wait(260); });
+
+  const editButton = buttonByText(document, 'ویرایش');
+  expect(editButton).toBeTruthy();
+  await act(async () => { editButton.click(); await wait(320); });
+
+  await pickKindOption(container, 'تعدیل افزایشی');
+  expect(container.textContent).toContain('تعدیل افزایشی این دوره');
+
+  // فیلد «تعدیل افزایشی این دوره» باید قابل ویرایش باشد.
+  const adjustmentInput = Array.from(container.querySelectorAll('input')).find((input) => (
+    (input.closest('.MuiFormControl-root')?.textContent || '').includes('تعدیل افزایشی این دوره')
+    && !input.readOnly
+  ));
+  expect(adjustmentInput).toBeTruthy();
+
+  const saveButton = buttonByText(container, 'ذخیره تعدیل افزایشی');
+  expect(saveButton).toBeTruthy();
+  await act(async () => { saveButton.click(); await wait(400); });
+
+  expect(axiosInstance.patch).toHaveBeenCalled();
+  const [url, payload] = axiosInstance.patch.mock.calls[0];
+  expect(url).toBe('/contract-statements/11/');
+  expect(payload.kind).toBe('increase');
+  expect(payload.adjustment_work_done).toBe(200000000);
+  // رگرسیون: اضافات/کسورات تعدیل هنگام ذخیره نباید حذف شوند.
+  expect(payload.additions).toHaveLength(1);
+  expect(payload.additions[0].amount).toBe(20000000);
+  expect(payload.deductions).toHaveLength(1);
+  expect(payload.additions_total).toBe(20000000);
+  expect(payload.deductions_total).toBe(10000000);
+  expect(payload.net_amount).toBe(210000000);
+
+  root.unmount();
+  container.remove();
+});
