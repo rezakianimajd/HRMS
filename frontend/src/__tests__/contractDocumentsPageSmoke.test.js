@@ -225,6 +225,13 @@ test('clicking a contract row opens its documents in the same standard table', a
   const docsTable = container.querySelector('table[aria-label="فهرست اسناد قرارداد"]');
   expect(docsTable).toBeTruthy();
   expect(docsTable.textContent).toContain('متن قرارداد');
+  expect(Array.from(docsTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
+    .toEqual(['ردیف', 'جایگاه', 'عنوان', 'نوع', 'حجم', 'تاریخ بارگذاری', 'عملیات']);
+  // ستون «جایگاه» فقط متن جایگاه را نشان می‌دهد (نه نام قرارداد)
+  const firstCells = Array.from(docsTable.querySelectorAll('tbody tr')[0].querySelectorAll('td'))
+    .map((cell) => cell.textContent.trim());
+  expect(firstCells[0]).toBe('۱');
+  expect(firstCells[2]).toBe('متن قرارداد');
   expect(container.textContent).toContain('پرونده قرارداد');
 
   await act(async () => { root.unmount(); });

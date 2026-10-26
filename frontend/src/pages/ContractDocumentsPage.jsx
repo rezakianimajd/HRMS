@@ -45,7 +45,7 @@ import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '..
 import { statementDisplayTitle } from './contracts/statementKinds';
 import { toJalali } from '../core/utils/dateUtils';
 import { CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
-import { INK, MUTED } from './accounting/AccountingDashboardUI';
+import { INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
@@ -218,7 +218,7 @@ const FileTypeChip = ({ row }) => {
 
 /* جدول استاندارد بایگانی — همان توکن‌های جدولِ صفحهٔ «قراردادهای من» */
 const DocumentArchiveTable = ({
-  rows, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
+  rows, rowOffset = 0, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
   onView, onEdit, onDelete, onPreview, onDownload,
 }) => (
   <TableContainer
@@ -240,7 +240,7 @@ const DocumentArchiveTable = ({
       aria-label="فهرست اسناد قرارداد"
       sx={{
         width: '100%',
-        minWidth: 980,
+        minWidth: 820,
         tableLayout: 'fixed',
         '& td, & th': {
           px: 1,
@@ -271,53 +271,59 @@ const DocumentArchiveTable = ({
     >
       <TableHead>
         <TableRow>
-          <TableCell align="center" sx={{ width: '26%' }}>سند</TableCell>
-          <TableCell align="center" sx={{ width: '8%' }}>نوع</TableCell>
+          <TableCell align="center" sx={{ width: '6%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>ردیف</Box>
+          </TableCell>
           <TableCell align="center" sx={{ width: '18%' }}>جایگاه</TableCell>
-          <TableCell align="center" sx={{ width: '18%' }}>قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '10%' }}>تاریخ بارگذاری</TableCell>
-          <TableCell align="center" sx={{ width: '8%' }}>حجم</TableCell>
-          <TableCell align="center" sx={{ width: '12%' }}>عملیات</TableCell>
+          <TableCell align="center" sx={{ width: '27%' }}>عنوان</TableCell>
+          <TableCell align="center" sx={{ width: '9%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>نوع</Box>
+          </TableCell>
+          <TableCell align="center" sx={{ width: '9%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>حجم</Box>
+          </TableCell>
+          <TableCell align="center" sx={{ width: '14%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>تاریخ بارگذاری</Box>
+          </TableCell>
+          <TableCell align="center" sx={{ width: '17%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>عملیات</Box>
+          </TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
-        {rows.map((row) => (
+        {rows.map((row, index) => (
           <TableRow key={row.id} hover onClick={() => onView(row)} sx={{ cursor: 'pointer' }}>
-            <TableCell align="right">
-              <Stack direction="row" alignItems="center" spacing={0.7}>
-                <FileBadge row={row} size={28} />
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>{row.title || '—'}</Typography>
-                  <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, direction: 'ltr', textAlign: 'right' }}>
-                    {row.file_name || '—'}
-                  </Typography>
-                </Box>
-              </Stack>
-            </TableCell>
-            <TableCell align="center"><FileTypeChip row={row} /></TableCell>
-            <TableCell align="right">
-              <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-start">
-                <RelationPill row={row} />
-                <Typography noWrap title={relationTargetLabel(row)} sx={{ fontSize: 10.5, color: MUTED }}>
-                  {relationTargetLabel(row)}
+            <TableCell align="center">
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(rowOffset + index + 1)}
                 </Typography>
-              </Stack>
+              </Box>
             </TableCell>
             <TableCell align="right">
-              <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{row.contract_number || '—'}</Typography>
-              <Typography noWrap title={row.contract_subject} sx={{ fontSize: 10.5, color: MUTED }}>
-                {row.contract_subject || '—'}
+              <Typography noWrap title={relationTargetLabel(row)} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                {relationMetaOf(row).label}
               </Typography>
             </TableCell>
-            <TableCell align="center">
-              <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                {dateLabel(row.uploaded_at)}
-              </Typography>
+            <TableCell align="right">
+              <Typography noWrap title={row.title} sx={{ fontSize: 12, fontWeight: 800 }}>{row.title || '—'}</Typography>
             </TableCell>
             <TableCell align="center">
-              <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                {row.file_size_display || formatFileSize(row.file_size)}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}><FileTypeChip row={row} /></Box>
+            </TableCell>
+            <TableCell align="center">
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {row.file_size_display || formatFileSize(row.file_size)}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center">
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {dateLabel(row.uploaded_at)}
+                </Typography>
+              </Box>
             </TableCell>
             <TableCell align="center" onClick={(event) => event.stopPropagation()}>
               <Stack direction="row" spacing={0.05} justifyContent="center">
@@ -1591,6 +1597,7 @@ const ContractDocumentsPage = () => {
           }}>
             <DocumentArchiveTable
               rows={pagedRows}
+              rowOffset={page * pageSize}
               tableTheme={tableTheme}
               containerRef={tableScrollRef}
               tableHeight={tableHeight}
