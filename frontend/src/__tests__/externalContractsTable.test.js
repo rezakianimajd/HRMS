@@ -157,9 +157,9 @@ test('filters stay hidden until the filters button is clicked', async () => {
     await act(async () => { await wait(150); });
   }
 
-  // پنل فیلترها بسته است: هنوز هیچ سلکتی رندر نشده و دکمهٔ «فیلترها» دیده می‌شود.
+  // پنل فیلترها بسته است: فقط «ترتیب» به‌عنوان سلکت دیده می‌شود و دکمهٔ «فیلترها» هم هست.
   expect(container.textContent).toContain('فیلترها');
-  expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(0);
+  expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(1);
 
   const filtersButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.includes('فیلترها'));
@@ -168,12 +168,73 @@ test('filters stay hidden until the filters button is clicked', async () => {
 
   expect(container.textContent).toContain('وضعیت');
   expect(container.textContent).toContain('نوع قرارداد');
-  expect(container.querySelectorAll('[role="combobox"]').length).toBeGreaterThanOrEqual(2);
+  expect(container.querySelectorAll('[role="combobox"]').length).toBeGreaterThanOrEqual(3);
 
   await act(async () => { root.unmount(); });
   container.remove();
 });
 
+
+test('sort sits between search and filters, orders the request, and stays out of the filters', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/external-contracts']}>
+          <ExternalContractsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(700);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
+  }
+
+  const searchInput = container.querySelector('input[placeholder]');
+  const sortSelect = container.querySelector('[role="combobox"]');
+  const filtersButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('فیلترها'));
+  expect(searchInput).toBeTruthy();
+  expect(sortSelect).toBeTruthy();
+  expect(filtersButton).toBeTruthy();
+
+  // جای کنترل: بعد از جستجو و قبل از فیلترها
+  expect(searchInput.compareDocumentPosition(sortSelect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(sortSelect.compareDocumentPosition(filtersButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  expect(sortSelect.textContent).toContain('جدیدترین');
+
+  // پیش‌فرض: آخرین درخواست با ترتیب created_at نزولی
+  const requests = () => axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
+  expect(requests().at(-1)[1].params.ordering).toBe('-created_at');
+
+  await act(async () => {
+    sortSelect.dispatchEvent(new MouseEvent('mousedown', { bubbles: true }));
+    await wait(250);
+  });
+  const option = Array.from(document.querySelectorAll('[role="option"]'))
+    .find((item) => item.textContent.trim() === 'مبلغ: بیشترین');
+  expect(option).toBeTruthy();
+  await act(async () => {
+    option.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(450);
+  });
+
+  const lastParams = requests().at(-1)[1].params;
+  expect(lastParams.ordering).toBe('-amount');
+  expect(lastParams.page).toBe(1);
+  // ترتیب جزو فیلترها نیست: نه شمارندهٔ فیلتر، نه چیپ فعال
+  expect(filtersButton.textContent.trim()).not.toMatch(/[۰-۹]/);
+  expect(container.querySelectorAll('.MuiChip-deletable')).toHaveLength(0);
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
 
 test('contracts list is paginated twenty rows at a time with Persian digits', async () => {
   axiosInstance.get.mockImplementation((url, config) => {

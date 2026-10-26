@@ -10,6 +10,7 @@ import {
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import SortIcon from '@mui/icons-material/Sort';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
@@ -51,6 +52,20 @@ const remainMeta = (days) => {
   if (days <= 60) return { label: `${toPersianDigits(days)} روز`, color: '#b45309', bg: 'rgba(245,158,11,0.14)' };
   return { label: `${toPersianDigits(days)} روز`, color: '#047857', bg: 'rgba(16,185,129,0.14)' };
 };
+
+/* ترتیب نمایش — مستقل از فیلترهاست: نه در شمارش فیلترها می‌آید، نه چیپ فیلتر می‌سازد.
+ * فیلدها همان فیلدهای قابل مرتب‌سازی سرور هستند (OrderingFilter روی ContractSerializer). */
+const SORT_OPTIONS = [
+  { value: '-created_at', label: 'جدیدترین' },
+  { value: 'created_at', label: 'قدیمی‌ترین' },
+  { value: '-start_date', label: 'شروع: جدیدترین' },
+  { value: 'end_date', label: 'پایان: نزدیک‌ترین' },
+  { value: '-amount', label: 'مبلغ: بیشترین' },
+  { value: 'amount', label: 'مبلغ: کمترین' },
+  { value: 'number', label: 'شماره: صعودی' },
+  { value: '-number', label: 'شماره: نزولی' },
+];
+const DEFAULT_SORT = SORT_OPTIONS[0].value;
 
 const headCellSx = {
   fontWeight: 800, fontSize: 12, color: '#334155', whiteSpace: 'nowrap',
@@ -137,6 +152,7 @@ const ExternalContractsPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [sortOrder, setSortOrder] = useState(DEFAULT_SORT);
   const [filtersOpen, setFiltersOpen] = useState(null);
   const [page, setPage] = useState(0);
   const [deleteId, setDeleteId] = useState(null);
@@ -155,13 +171,14 @@ const ExternalContractsPage = () => {
 
   const pageSize = tableTheme.rowsPerPage;
   const { data: contractsPage, isLoading, isFetching } = useQuery({
-    queryKey: ['external-contracts', { page, pageSize, search, statusFilter, typeFilter }],
+    queryKey: ['external-contracts', { page, pageSize, search, statusFilter, typeFilter, sortOrder }],
     queryFn: async () => {
       // صفحه‌بندی سمت سرور: فقط همان ۲۰ ردیف لازم خوانده می‌شود (بارگذاری سریع‌تر).
       const response = await axiosInstance.get('/external-contracts/', {
         params: {
           page: page + 1,
           page_size: pageSize,
+          ordering: sortOrder,
           ...(search ? { search } : {}),
           ...(statusFilter ? { status: statusFilter } : {}),
           ...(typeFilter ? { contract_type_master: typeFilter } : {}),
@@ -209,8 +226,8 @@ const ExternalContractsPage = () => {
   const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  // با تغییر جستجو/فیلترها به صفحهٔ اول برگرد
-  useEffect(() => { setPage(0); }, [search, statusFilter, typeFilter, pageSize]);
+  // با تغییر جستجو/فیلترها/ترتیب به صفحهٔ اول برگرد
+  useEffect(() => { setPage(0); }, [search, statusFilter, typeFilter, pageSize, sortOrder]);
   // اصلاح محدوده فقط وقتی دادهٔ واقعی داریم (نه هنگام بارگذاری صفحهٔ بعد)
   useEffect(() => {
     if (!contractsPage) return;
@@ -354,6 +371,36 @@ const ExternalContractsPage = () => {
                 : { endAdornment: <InputAdornment position="end"><SearchIcon fontSize="small" /></InputAdornment> }),
             })}
           />
+          {/* ترتیب نمایش: کنار جستجو و پیش از دکمهٔ فیلترها — خودش فیلتر نیست */}
+          <TextField
+            select
+            size="small"
+            value={sortOrder}
+            onChange={(event) => setSortOrder(event.target.value)}
+            sx={{
+              flex: '0 0 auto',
+              minWidth: { xs: '100%', sm: 172 },
+              ...fieldSx,
+              '& .MuiOutlinedInput-root': {
+                ...fieldSx['& .MuiOutlinedInput-root'],
+                height: `${toolbar.searchHeight}px`,
+                borderRadius: `${toolbar.searchRadius}px`,
+                fontSize: 12.5,
+              },
+            }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment>,
+            }}
+            SelectProps={{
+              inputProps: { 'aria-label': 'ترتیب نمایش' },
+            }}
+          >
+            {SORT_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </TextField>
           <Button
             variant={toolbar.filtersVariant}
             onClick={() => setFiltersOpen(!filtersExpanded)}
