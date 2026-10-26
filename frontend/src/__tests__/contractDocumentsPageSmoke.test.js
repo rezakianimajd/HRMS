@@ -56,7 +56,7 @@ beforeEach(() => {
   });
 });
 
-test('contract documents archive renders the standard toolbar and token-driven table', async () => {
+test('archive landing shows the contract list above the latest uploads on the standard toolbar', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -95,25 +95,77 @@ test('contract documents archive renders the standard toolbar and token-driven t
   expect(searchInput.compareDocumentPosition(sortSelect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(sortSelect.compareDocumentPosition(filtersButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-  // جدول استاندارد (توکن‌های تم) زیر نوار
-  const headers = Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent.trim());
-  expect(headers).toEqual(['سند', 'نوع', 'جایگاه', 'قرارداد', 'تاریخ بارگذاری', 'حجم', 'عملیات']);
-  const bodyRow = container.querySelector('tbody tr');
-  expect(bodyRow).toBeTruthy();
-  expect(bodyRow.textContent).toContain('متن قرارداد');
-  expect(bodyRow.textContent).toContain('C-1405-01');
-  const tableHost = container.querySelector('.MuiTableContainer-root');
-  expect(tableHost.getAttribute('data-visible-rows')).toBe('13');
-  expect(tableHost.getAttribute('data-row-height')).toBe('38');
+  // محتوای صفحهٔ ورود: لیست قراردادها و سپس آخرین بارگذاری‌ها
+  expect(container.textContent).toContain('لیست قراردادها');
+  expect(container.textContent).toContain('آخرین بارگذاری‌ها');
+  const contractsTable = container.querySelector('table[aria-label="فهرست قراردادهای بایگانی"]');
+  expect(contractsTable).toBeTruthy();
+  expect(Array.from(contractsTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
+    .toEqual(['شماره', 'موضوع قرارداد', 'طرف قرارداد', 'وضعیت', 'تعداد اسناد', 'آخرین بارگذاری', 'عملیات']);
+  expect(contractsTable.querySelector('tbody tr').textContent).toContain('قرارداد نمونه');
+  // شمارهٔ قرارداد با ارقام فارسی نمایش داده می‌شود
+  expect(contractsTable.querySelector('tbody tr').textContent).toMatch(/[۰-۹]/);
 
-  // جستجوی سمت کاربر: عبارت بی‌نتیجه، حالت خالی را نشان می‌دهد
+  const docsTable = container.querySelector('table[aria-label="فهرست اسناد قرارداد"]');
+  expect(docsTable).toBeTruthy();
+  expect(docsTable.querySelector('tbody tr').textContent).toContain('متن قرارداد');
+
+  // جدول‌ها از توکن‌های تم استفاده می‌کنند
+  const contractsHost = contractsTable.closest('.MuiTableContainer-root');
+  expect(contractsHost.getAttribute('data-visible-rows')).toBe('13');
+  expect(contractsHost.getAttribute('data-row-height')).toBe('38');
+
+  // جستجوی سمت کاربر روی لیست قراردادها
   const valueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
   await act(async () => {
     valueSetter.call(searchInput, 'یافت‌نشدنی');
     searchInput.dispatchEvent(new Event('input', { bubbles: true }));
     await wait(350);
   });
-  expect(container.textContent).toContain('سندی با این مشخصات پیدا نشد.');
+  expect(container.textContent).toContain('قراردادی با این مشخصات پیدا نشد.');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
+test('clicking a contract row opens its documents in the same standard table', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-documents']}>
+            <ContractDocumentsPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(1200);
+  });
+
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  const contractsTable = container.querySelector('table[aria-label="فهرست قراردادهای بایگانی"]');
+  expect(contractsTable).toBeTruthy();
+  const firstRow = contractsTable.querySelector('tbody tr');
+  await act(async () => {
+    firstRow.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(500);
+  });
+
+  // نمای قرارداد: فقط جدول اسناد می‌ماند و دکمهٔ «پرونده قرارداد» ظاهر می‌شود
+  expect(container.querySelector('table[aria-label="فهرست قراردادهای بایگانی"]')).toBeNull();
+  const docsTable = container.querySelector('table[aria-label="فهرست اسناد قرارداد"]');
+  expect(docsTable).toBeTruthy();
+  expect(docsTable.textContent).toContain('متن قرارداد');
+  expect(container.textContent).toContain('پرونده قرارداد');
 
   await act(async () => { root.unmount(); });
   container.remove();

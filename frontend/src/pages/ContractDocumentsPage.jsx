@@ -44,6 +44,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { statementDisplayTitle } from './contracts/statementKinds';
 import { toJalali } from '../core/utils/dateUtils';
+import { CONTRACT_STATUS_COLORS, CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
 import { INK, MUTED } from './accounting/AccountingDashboardUI';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
@@ -93,6 +94,12 @@ const SORT_OPTIONS = [
   { value: 'oldest', label: 'قدیمی‌ترین' },
   { value: 'title', label: 'عنوان (الف→ی)' },
   { value: 'largest', label: 'بیشترین حجم' },
+];
+/* ترتیب لیست قراردادها در صفحهٔ ورود بایگانی */
+const CONTRACT_SORT_OPTIONS = [
+  { value: 'lastUpload', label: 'آخرین بارگذاری' },
+  { value: 'docCount', label: 'بیشترین سند' },
+  { value: 'number', label: 'شماره قرارداد' },
 ];
 
 /* فلش بازشوی «ترتیب»: کلاس MuiSelect-icon حذف می‌شود تا قاعدهٔ پیش‌فرض MUI
@@ -323,6 +330,207 @@ const DocumentArchiveTable = ({
             </TableCell>
           </TableRow>
         ))}
+      </TableBody>
+    </Table>
+  </TableContainer>
+);
+
+
+/* صفحه‌بند استاندارد (توکن‌های تم) — مشترک بین جدول قراردادها و جدول اسناد */
+const TablePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, total, pageSize, unit = 'سند' }) => {
+  if (!tableTheme.showPagination || total <= pageSize) return null;
+  return (
+    <Box sx={{
+      px: 1.5,
+      py: tableTheme.paginationDense ? 0.75 : 1.25,
+      borderTop: '1px solid',
+      borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+    }}>
+      <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
+        {tableTheme.showPaginationRange ? (
+          <Typography sx={{
+            position: 'absolute', insetInlineStart: 0,
+            display: { xs: 'none', sm: 'block' },
+            fontSize: tableTheme.paginationFontSize - 0.5,
+            color: 'text.secondary', whiteSpace: 'nowrap',
+          }}>
+            نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
+            {toPersianDigits(Math.min((page + 1) * pageSize, total))} از{' '}
+            {toPersianDigits(total)} {unit}
+            {' · '}
+            {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
+          </Typography>
+        ) : null}
+        <Stack direction="row" spacing={0.5} alignItems="center">
+          {tableTheme.paginationVariant === 'pages' ? (
+            <>
+              <IconButton size="small" disabled={page === 0} onClick={() => onPage(0)} aria-label="صفحهٔ اول"
+                sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                <FirstPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+              </IconButton>
+              <IconButton size="small" disabled={page === 0} onClick={() => onPage(page - 1)} aria-label="صفحهٔ قبل"
+                sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+              {pageNumbers.map((index) => (
+                <Box
+                  key={index}
+                  component="button"
+                  type="button"
+                  onClick={() => onPage(index)}
+                  aria-current={index === page ? 'page' : undefined}
+                  sx={{
+                    minWidth: 28, height: 28, px: 0.75,
+                    borderRadius: `${tableTheme.paginationRadius}px`,
+                    border: '1px solid',
+                    borderColor: index === page ? tableTheme.paginationAccent : 'divider',
+                    bgcolor: index === page ? tableTheme.paginationAccent : 'transparent',
+                    color: index === page ? '#fff' : 'text.secondary',
+                    fontFamily: 'inherit',
+                    fontSize: tableTheme.paginationFontSize,
+                    fontWeight: index === page ? 800 : 600,
+                    cursor: 'pointer',
+                  }}
+                >
+                  {toPersianDigits(index + 1)}
+                </Box>
+              ))}
+              <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)} aria-label="صفحهٔ بعد"
+                sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+              <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(totalPages - 1)} aria-label="صفحهٔ آخر"
+                sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                <LastPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+              </IconButton>
+            </>
+          ) : (
+            <Stack direction="row" spacing={1} alignItems="center">
+              <IconButton size="small" disabled={page === 0} onClick={() => onPage(page - 1)} aria-label="صفحهٔ قبل">
+                <ChevronRightIcon fontSize="small" />
+              </IconButton>
+              <Typography sx={{ fontSize: tableTheme.paginationFontSize }}>
+                {toPersianDigits(page + 1)} / {toPersianDigits(totalPages)}
+              </Typography>
+              <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)} aria-label="صفحهٔ بعد">
+                <ChevronLeftIcon fontSize="small" />
+              </IconButton>
+            </Stack>
+          )}
+        </Stack>
+      </Box>
+    </Box>
+  );
+};
+
+
+/* جدول استاندارد «لیست قراردادها» در صفحهٔ ورود بایگانی */
+const ContractArchiveTable = ({
+  rows, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
+  docCounts, lastUploads, onOpen,
+}) => (
+  <TableContainer
+    ref={containerRef}
+    data-visible-rows={tableTheme.visibleRows}
+    data-row-height={rowHeight}
+    data-table-height={`${tableHeight}px`}
+    sx={{
+      height: { xs: 'auto', sm: `${tableHeight}px` },
+      maxHeight: { xs: 'none', sm: `${tableHeight}px` },
+      overflowY: 'auto',
+      opacity: dimmed ? 0.6 : 1,
+      transition: 'opacity .15s ease',
+    }}
+  >
+    <Table
+      size="small"
+      stickyHeader
+      aria-label="فهرست قراردادهای بایگانی"
+      sx={{
+        width: '100%',
+        minWidth: 900,
+        tableLayout: 'fixed',
+        '& td, & th': {
+          px: 1,
+          py: `${tableTheme.cellPadding}px`,
+          whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+          borderBottom: tableTheme.divider,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+        '& thead th': {
+          textAlign: `${tableTheme.headerTextAlign} !important`,
+          backgroundColor: 'var(--hrms-table-header-bg)',
+          height: `${tableTheme.headerHeight}px`,
+          fontSize: tableTheme.header.fontSize,
+          fontWeight: tableTheme.header.fontWeight,
+          color: tableTheme.header.color,
+        },
+        '& tbody td': {
+          height: `${tableTheme.rowHeight}px`,
+          fontSize: tableTheme.cell.fontSize,
+          fontWeight: tableTheme.cell.fontWeight,
+          color: tableTheme.cell.color,
+          ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
+        },
+        '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+        ...tableTypographySx(tableTheme),
+      }}
+    >
+      <TableHead>
+        <TableRow>
+          <TableCell align="center" sx={{ width: '10%' }}>شماره</TableCell>
+          <TableCell align="center" sx={{ width: '27%' }}>موضوع قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '20%' }}>طرف قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '10%' }}>وضعیت</TableCell>
+          <TableCell align="center" sx={{ width: '9%' }}>تعداد اسناد</TableCell>
+          <TableCell align="center" sx={{ width: '12%' }}>آخرین بارگذاری</TableCell>
+          <TableCell align="center" sx={{ width: '12%' }}>عملیات</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((contract) => {
+          const statusColor = CONTRACT_STATUS_COLORS[contract.status] || '#64748b';
+          return (
+            <TableRow key={contract.id} hover onClick={() => onOpen(contract)} sx={{ cursor: 'pointer' }}>
+              <TableCell align="center">
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(contract.number || '—')}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap title={contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {contract.subject || '—'}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap title={contract.party_name} sx={{ fontSize: 11.5, color: MUTED }}>
+                  {contract.party_name || '—'}
+                </Typography>
+              </TableCell>
+              <TableCell align="center">
+                <Chip size="small" label={CONTRACT_STATUS_LABELS[contract.status] || contract.status_display || '—'}
+                  sx={{ height: 20, fontSize: 11, fontWeight: 800, bgcolor: alpha(statusColor, 0.1), color: statusColor }} />
+              </TableCell>
+              <TableCell align="center">
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(docCounts[String(contract.id)] || 0)}
+                </Typography>
+              </TableCell>
+              <TableCell align="center">
+                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {dateLabel(lastUploads[String(contract.id)])}
+                </Typography>
+              </TableCell>
+              <TableCell align="center" onClick={(event) => event.stopPropagation()}>
+                <Button size="small" variant="text" startIcon={<FolderSharedIcon />} onClick={() => onOpen(contract)}
+                  sx={{ fontSize: 11.5, whiteSpace: 'nowrap' }}>
+                  اسناد
+                </Button>
+              </TableCell>
+            </TableRow>
+          );
+        })}
       </TableBody>
     </Table>
   </TableContainer>
@@ -659,7 +867,11 @@ const ContractDocumentsPage = () => {
   const [relationFilter, setRelationFilter] = useState('all');
   const [fileFilter, setFileFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
+  const [contractSort, setContractSort] = useState('lastUpload');
+  const [contractStatus, setContractStatus] = useState('');
+  const [onlyWithDocs, setOnlyWithDocs] = useState(false);
   const [page, setPage] = useState(0);
+  const [contractPage, setContractPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
@@ -722,6 +934,62 @@ const ContractDocumentsPage = () => {
   const relationCounts = useMemo(() => countByRelation(scopedDocs), [scopedDocs]);
   const fileCounts = useMemo(() => countByFileType(scopedDocs), [scopedDocs]);
 
+  /* ---- داده‌های صفحهٔ ورود: لیست قراردادها + آخرین بارگذاری‌ها ---- */
+  const docCountByContract = useMemo(() => allDocs.reduce((counts, row) => {
+    const key = String(row.contract);
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {}), [allDocs]);
+  const lastUploadByContract = useMemo(() => allDocs.reduce((latest, row) => {
+    const key = String(row.contract);
+    const stamp = String(row.uploaded_at || '');
+    if (!latest[key] || stamp > latest[key]) latest[key] = stamp;
+    return latest;
+  }, {}), [allDocs]);
+  const recentDocs = useMemo(
+    () => [...allDocs]
+      .sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')))
+      .slice(0, 8),
+    [allDocs],
+  );
+  const contractRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const rows = contractList.filter((contract) => {
+      if (onlyWithDocs && !docCountByContract[String(contract.id)]) return false;
+      if (contractStatus && contract.status !== contractStatus) return false;
+      if (!term) return true;
+      return [contract.number, contract.subject, contract.party_name]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+    return [...rows].sort((a, b) => {
+      if (contractSort === 'docCount') {
+        return (docCountByContract[String(b.id)] || 0) - (docCountByContract[String(a.id)] || 0);
+      }
+      if (contractSort === 'number') {
+        return String(a.number || '').localeCompare(String(b.number || ''), 'fa');
+      }
+      return String(lastUploadByContract[String(b.id)] || '')
+        .localeCompare(String(lastUploadByContract[String(a.id)] || ''));
+    });
+  }, [contractList, search, onlyWithDocs, contractStatus, contractSort, docCountByContract, lastUploadByContract]);
+  const contractPageSize = tableTheme.rowsPerPage;
+  const contractTotalPages = Math.max(1, Math.ceil(contractRows.length / contractPageSize));
+  useEffect(() => { setContractPage(0); }, [search, onlyWithDocs, contractStatus, contractSort, contractPageSize]);
+  useEffect(() => {
+    if (contractPage > contractTotalPages - 1) setContractPage(Math.max(0, contractTotalPages - 1));
+  }, [contractPage, contractTotalPages]);
+  const pagedContracts = useMemo(
+    () => contractRows.slice(contractPage * contractPageSize, (contractPage + 1) * contractPageSize),
+    [contractRows, contractPage, contractPageSize],
+  );
+  const contractPageNumbers = (() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(contractPage - 2, contractTotalPages - size));
+    const end = Math.min(contractTotalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_, index) => start + index);
+  })();
+
   const filtered = useMemo(() => {
     let rows = scopedDocs.filter((row) => {
       if (relationFilter !== 'all' && relationKeyOf(row) !== relationFilter) return false;
@@ -769,7 +1037,10 @@ const ContractDocumentsPage = () => {
     setMeasuredRowPx((previous) => (previous === rowPx ? previous : rowPx));
     setMeasuredHeadPx((previous) => (previous === headPx ? previous : headPx));
   };
-  useLayoutEffect(measureTableRows, [pagedRows.length, tableTheme.rowHeight, tableTheme.headerHeight]);
+  useLayoutEffect(measureTableRows, [
+    pagedRows.length, pagedContracts.length, recentDocs.length,
+    tableTheme.rowHeight, tableTheme.headerHeight,
+  ]);
   useEffect(() => {
     const onResize = () => measureTableRows();
     window.addEventListener('resize', onResize);
@@ -778,19 +1049,35 @@ const ContractDocumentsPage = () => {
   const effectiveRowPx = measuredRowPx > 0 ? measuredRowPx : tableTheme.rowHeight;
   const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
   const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
+  /* «آخرین بارگذاری‌ها» کوتاه است: ارتفاع به تعداد ردیف‌ها محدود می‌شود */
+  const recentTableHeight = Math.round(
+    effectiveHeadPx + effectiveRowPx * Math.max(1, Math.min(tableTheme.visibleRows, recentDocs.length)),
+  );
+
+  /* ---- فیلترها و ترتیب: در صفحهٔ ورود روی لیست قراردادها، در نمای قرارداد روی اسناد ---- */
+  const scopedMode = Boolean(contractId);
+  const sortOptions = scopedMode ? SORT_OPTIONS : CONTRACT_SORT_OPTIONS;
+  const sortValue = scopedMode ? sortBy : contractSort;
+  const setSortValue = scopedMode ? setSortBy : setContractSort;
 
   const resetFilters = () => {
     setSearch('');
-    setRelationFilter('all');
-    setFileFilter('all');
-    setSortBy('newest');
+    if (scopedMode) {
+      setRelationFilter('all');
+      setFileFilter('all');
+      setSortBy('newest');
+    } else {
+      setContractStatus('');
+      setOnlyWithDocs(false);
+      setContractSort('lastUpload');
+    }
   };
   const clearContract = () => {
     setSearchParams({});
     setDetail(null);
   };
+  const openContract = (contract) => setSearchParams({ contract: String(contract.id) });
 
-  /* ---- گزینه‌های فیلتر و چیپ‌های فعال (ترتیب جزو فیلترها نیست) ---- */
   const contractOptions = useMemo(() => [
     { value: '', label: 'همهٔ قراردادها' },
     ...contractList.map((contract) => ({
@@ -812,32 +1099,51 @@ const ContractDocumentsPage = () => {
       label: `${meta.label} (${formatPersianNumber(fileCounts[key] || 0)})`,
     })),
   ];
-  const activeFilterCount = (contractId ? 1 : 0)
-    + (relationFilter !== 'all' ? 1 : 0)
-    + (fileFilter !== 'all' ? 1 : 0);
-  const activeChips = [
-    contractId
-      ? {
-        key: 'contract',
-        label: `قرارداد: ${toPersianDigits(selectedContract?.number || contractId)}`,
-        clear: clearContract,
-      }
-      : null,
-    relationFilter !== 'all'
-      ? {
-        key: 'relation',
-        label: `جایگاه سند: ${RELATION_META[relationFilter]?.label || relationFilter}`,
-        clear: () => setRelationFilter('all'),
-      }
-      : null,
-    fileFilter !== 'all'
-      ? {
-        key: 'file',
-        label: `نوع فایل: ${FILE_TYPE_META[fileFilter]?.label || fileFilter}`,
-        clear: () => setFileFilter('all'),
-      }
-      : null,
-  ].filter(Boolean);
+  const statusOptionsList = [
+    { value: '', label: 'همه' },
+    ...Object.entries(CONTRACT_STATUS_LABELS).map(([key, label]) => ({ value: key, label })),
+  ];
+  const docsToggleOptions = [
+    { value: 'all', label: 'همهٔ قراردادها' },
+    { value: 'withDocs', label: 'فقط دارای سند' },
+  ];
+
+  const activeFilterCount = scopedMode
+    ? (relationFilter !== 'all' ? 1 : 0) + (fileFilter !== 'all' ? 1 : 0)
+    : (contractStatus ? 1 : 0) + (onlyWithDocs ? 1 : 0);
+  const activeChips = (scopedMode
+    ? [
+      relationFilter !== 'all'
+        ? {
+          key: 'relation',
+          label: `جایگاه سند: ${RELATION_META[relationFilter]?.label || relationFilter}`,
+          clear: () => setRelationFilter('all'),
+        }
+        : null,
+      fileFilter !== 'all'
+        ? {
+          key: 'file',
+          label: `نوع فایل: ${FILE_TYPE_META[fileFilter]?.label || fileFilter}`,
+          clear: () => setFileFilter('all'),
+        }
+        : null,
+    ]
+    : [
+      contractStatus
+        ? {
+          key: 'status',
+          label: `وضعیت قرارداد: ${CONTRACT_STATUS_LABELS[contractStatus] || contractStatus}`,
+          clear: () => setContractStatus(''),
+        }
+        : null,
+      onlyWithDocs
+        ? {
+          key: 'withDocs',
+          label: 'فقط قراردادهای دارای سند',
+          clear: () => setOnlyWithDocs(false),
+        }
+        : null,
+    ]).filter(Boolean);
   const activeChipSx = toolbar.chipStyle === 'outlined'
     ? { bgcolor: 'transparent', border: `1px solid ${toolbar.chipBorder}`, color: toolbar.primary, fontWeight: 700 }
     : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontWeight: 700, border: `1px solid ${toolbar.chipBorder}` };
@@ -1114,8 +1420,8 @@ const ContractDocumentsPage = () => {
           <TextField
             select
             size="small"
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value)}
+            value={sortValue}
+            onChange={(event) => setSortValue(event.target.value)}
             sx={{
               flex: '0 0 auto',
               minWidth: { xs: '100%', sm: 168 },
@@ -1129,7 +1435,7 @@ const ContractDocumentsPage = () => {
             InputProps={{ startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment> }}
             SelectProps={{ inputProps: { 'aria-label': 'ترتیب نمایش' }, IconComponent: SortArrowLeft }}
           >
-            {SORT_OPTIONS.map((option) => (
+            {sortOptions.map((option) => (
               <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>{option.label}</MenuItem>
             ))}
           </TextField>
@@ -1191,21 +1497,38 @@ const ContractDocumentsPage = () => {
               gap: `${toolbar.panelGap}px`,
               alignItems: 'end',
             }}>
-              <FilterSelect
-                label="قرارداد" value={contractId} options={contractOptions}
-                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
-                onChange={(value) => setSearchParams(value ? { contract: value } : {})}
-              />
-              <FilterSelect
-                label="جایگاه سند" value={relationFilter} options={relationOptionsList}
-                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
-                onChange={setRelationFilter}
-              />
-              <FilterSelect
-                label="نوع فایل" value={fileFilter} options={fileOptionsList}
-                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
-                onChange={setFileFilter}
-              />
+              {scopedMode ? (
+                <>
+                  <FilterSelect
+                    label="جایگاه سند" value={relationFilter} options={relationOptionsList}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setRelationFilter}
+                  />
+                  <FilterSelect
+                    label="نوع فایل" value={fileFilter} options={fileOptionsList}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setFileFilter}
+                  />
+                </>
+              ) : (
+                <>
+                  <FilterSelect
+                    label="وضعیت قرارداد" value={contractStatus} options={statusOptionsList}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setContractStatus}
+                  />
+                  <FilterSelect
+                    label="نمایش" value={onlyWithDocs ? 'withDocs' : 'all'} options={docsToggleOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={(value) => setOnlyWithDocs(value === 'withDocs')}
+                  />
+                  <FilterSelect
+                    label="قرارداد" value={contractId} options={contractOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={(value) => setSearchParams(value ? { contract: value } : {})}
+                  />
+                </>
+              )}
               {toolbar.showReset ? (
                 <Button
                   variant="text" size="small" onClick={resetFilters}
@@ -1229,122 +1552,134 @@ const ContractDocumentsPage = () => {
 
 
 
-      {/* جدول استاندارد بایگانی — بدون کارت راهنمای بایگانی */}
-      {!filtered.length ? (
-        <Paper elevation={0} sx={{
-          p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
-          textAlign: 'center', bgcolor: 'background.paper',
-        }}>
-          <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-          <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>سندی با این مشخصات پیدا نشد.</Typography>
-          <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا سند جدید بارگذاری کنید.</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>افزودن سند</Button>
-        </Paper>
+      {scopedMode ? (
+        /* نمای اسناد یک قرارداد انتخاب‌شده */
+        !filtered.length ? (
+          <Paper elevation={0} sx={{
+            p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
+            textAlign: 'center', bgcolor: 'background.paper',
+          }}>
+            <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+            <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>سندی با این مشخصات پیدا نشد.</Typography>
+            <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا سند جدید بارگذاری کنید.</Typography>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>افزودن سند</Button>
+          </Paper>
+        ) : (
+          <Paper elevation={0} sx={{
+            borderRadius: 'var(--hrms-table-radius, 16px)',
+            overflow: 'hidden',
+            border: '1px solid', borderColor: 'divider',
+            bgcolor: 'background.paper', boxShadow: 'none',
+          }}>
+            <DocumentArchiveTable
+              rows={pagedRows}
+              tableTheme={tableTheme}
+              containerRef={tableScrollRef}
+              tableHeight={tableHeight}
+              rowHeight={effectiveRowPx}
+              dimmed={docsQuery.isFetching}
+              onView={setDetail}
+              onEdit={openEdit}
+              onDelete={setConfirmDelete}
+              onPreview={previewFile}
+              onDownload={downloadFile}
+            />
+            <TablePager
+              tableTheme={tableTheme}
+              page={page}
+              onPage={setPage}
+              totalPages={totalPages}
+              pageNumbers={pageNumbers}
+              total={filtered.length}
+              pageSize={pageSize}
+              unit="سند"
+            />
+          </Paper>
+        )
       ) : (
-        <Paper elevation={0} sx={{
-          borderRadius: 'var(--hrms-table-radius, 16px)',
-          overflow: 'hidden',
-          border: '1px solid', borderColor: 'divider',
-          bgcolor: 'background.paper', boxShadow: 'none',
-        }}>
-          <DocumentArchiveTable
-            rows={pagedRows}
-            tableTheme={tableTheme}
-            containerRef={tableScrollRef}
-            tableHeight={tableHeight}
-            rowHeight={effectiveRowPx}
-            dimmed={docsQuery.isFetching}
-            onView={setDetail}
-            onEdit={openEdit}
-            onDelete={setConfirmDelete}
-            onPreview={previewFile}
-            onDownload={downloadFile}
-          />
-          {tableTheme.showPagination && filtered.length > pageSize ? (
-            <Box sx={{
-              px: 1.5,
-              py: tableTheme.paginationDense ? 0.75 : 1.25,
-              borderTop: '1px solid',
-              borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+        <>
+          {/* لیست قراردادها — محتوای اصلی صفحهٔ ورود بایگانی */}
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
+            <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>لیست قراردادها</Typography>
+            <Chip
+              size="small"
+              label={`${formatPersianNumber(contractRows.length)} قرارداد`}
+              sx={{ height: 21, fontSize: 11, fontWeight: 800, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }}
+            />
+          </Box>
+          {!contractRows.length ? (
+            <Paper elevation={0} sx={{
+              p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
+              textAlign: 'center', bgcolor: 'background.paper',
             }}>
-              <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
-                {tableTheme.showPaginationRange ? (
-                  <Typography
-                    sx={{
-                      position: 'absolute', insetInlineStart: 0,
-                      display: { xs: 'none', sm: 'block' },
-                      fontSize: tableTheme.paginationFontSize - 0.5,
-                      color: 'text.secondary', whiteSpace: 'nowrap',
-                    }}
-                  >
-                    نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
-                    {toPersianDigits(Math.min((page + 1) * pageSize, filtered.length))} از{' '}
-                    {toPersianDigits(filtered.length)} سند
-                    {' · '}
-                    {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
-                  </Typography>
-                ) : null}
-                <Stack direction="row" spacing={0.5} alignItems="center">
-                  {tableTheme.paginationVariant === 'pages' ? (
-                    <>
-                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(0)} aria-label="صفحهٔ اول"
-                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
-                        <FirstPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
-                      </IconButton>
-                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل"
-                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
-                        <ChevronRightIcon fontSize="small" />
-                      </IconButton>
-                      {pageNumbers.map((index) => (
-                        <Box
-                          key={index}
-                          component="button"
-                          type="button"
-                          onClick={() => setPage(index)}
-                          aria-current={index === page ? 'page' : undefined}
-                          sx={{
-                            minWidth: 28, height: 28, px: 0.75,
-                            borderRadius: `${tableTheme.paginationRadius}px`,
-                            border: '1px solid',
-                            borderColor: index === page ? tableTheme.paginationAccent : 'divider',
-                            bgcolor: index === page ? tableTheme.paginationAccent : 'transparent',
-                            color: index === page ? '#fff' : 'text.secondary',
-                            fontFamily: 'inherit',
-                            fontSize: tableTheme.paginationFontSize,
-                            fontWeight: index === page ? 800 : 600,
-                            cursor: 'pointer',
-                          }}
-                        >
-                          {toPersianDigits(index + 1)}
-                        </Box>
-                      ))}
-                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد"
-                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
-                        <ChevronLeftIcon fontSize="small" />
-                      </IconButton>
-                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} aria-label="صفحهٔ آخر"
-                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
-                        <LastPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
-                      </IconButton>
-                    </>
-                  ) : (
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل">
-                        <ChevronRightIcon fontSize="small" />
-                      </IconButton>
-                      <Typography sx={{ fontSize: tableTheme.paginationFontSize }}>
-                        {toPersianDigits(page + 1)} / {toPersianDigits(totalPages)}
-                      </Typography>
-                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد">
-                        <ChevronLeftIcon fontSize="small" />
-                      </IconButton>
-                    </Stack>
-                  )}
-                </Stack>
+              <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
+            </Paper>
+          ) : (
+            <Paper elevation={0} sx={{
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              overflow: 'hidden',
+              border: '1px solid', borderColor: 'divider',
+              bgcolor: 'background.paper', boxShadow: 'none',
+            }}>
+              <ContractArchiveTable
+                rows={pagedContracts}
+                tableTheme={tableTheme}
+                containerRef={tableScrollRef}
+                tableHeight={tableHeight}
+                rowHeight={effectiveRowPx}
+                dimmed={docsQuery.isFetching || contractsQuery.isFetching}
+                docCounts={docCountByContract}
+                lastUploads={lastUploadByContract}
+                onOpen={openContract}
+              />
+              <TablePager
+                tableTheme={tableTheme}
+                page={contractPage}
+                onPage={setContractPage}
+                totalPages={contractTotalPages}
+                pageNumbers={contractPageNumbers}
+                total={contractRows.length}
+                pageSize={contractPageSize}
+                unit="قرارداد"
+              />
+            </Paper>
+          )}
+
+          {/* آخرین بارگذاری‌ها */}
+          {recentDocs.length ? (
+            <Box sx={{ mt: 2 }}>
+              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>آخرین بارگذاری‌ها</Typography>
+                <Chip
+                  size="small"
+                  label={`${toPersianDigits(recentDocs.length)} سند اخیر`}
+                  sx={{ height: 21, fontSize: 11, fontWeight: 800, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }}
+                />
               </Box>
+              <Paper elevation={0} sx={{
+                borderRadius: 'var(--hrms-table-radius, 16px)',
+                overflow: 'hidden',
+                border: '1px solid', borderColor: 'divider',
+                bgcolor: 'background.paper', boxShadow: 'none',
+              }}>
+                <DocumentArchiveTable
+                  rows={recentDocs}
+                  tableTheme={tableTheme}
+                  tableHeight={recentTableHeight}
+                  rowHeight={effectiveRowPx}
+                  dimmed={docsQuery.isFetching}
+                  onView={setDetail}
+                  onEdit={openEdit}
+                  onDelete={setConfirmDelete}
+                  onPreview={previewFile}
+                  onDownload={downloadFile}
+                />
+              </Paper>
             </Box>
           ) : null}
-        </Paper>
+        </>
       )}
 
       <DocumentDetailDrawer row={detail} onClose={() => setDetail(null)}
