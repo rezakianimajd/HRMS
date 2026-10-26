@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, Drawer, FormControl, FormHelperText, Grid,
+  DialogContent, DialogTitle, Divider, Drawer, FormControl, Grid,
   IconButton, InputAdornment, InputLabel, LinearProgress, MenuItem, Paper, Select,
   Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Tooltip, Typography,
@@ -161,7 +161,7 @@ const InfoLine = ({ label, value, strong, ltr }) => {
 };
 
 const SectionHeading = ({ icon: Icon, title, hint, color = '#2563eb', action }) => (
-  <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.8 }}>
+  <Stack direction="row" alignItems="center" spacing={1.15} sx={{ mb: 0.9 }}>
     {Icon ? (
       <Box sx={{
         width: 27, height: 27, borderRadius: '8px', color, bgcolor: alpha(color, 0.08),
@@ -658,7 +658,7 @@ const DocumentEditorDialog = ({
     <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth
       PaperProps={{ sx: { borderRadius: '16px', boxShadow: 'none' } }}>
       <DialogTitle sx={{
-        display: 'flex', alignItems: 'center', gap: 1.1, px: 2.15, py: 1.45,
+        display: 'flex', alignItems: 'center', gap: 1.4, px: 2.15, py: 1.4,
         borderBottom: `1px solid ${theme.palette.divider}`,
       }}>
         <Box sx={{
@@ -668,14 +668,9 @@ const DocumentEditorDialog = ({
         }}>
           <FolderSharedIcon sx={{ fontSize: 19 }} />
         </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>
-            {editing ? 'ویرایش سند قرارداد' : 'افزودن سند به بایگانی'}
-          </Typography>
-          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-            {editing ? 'مشخصات و جایگاه سند را اصلاح کنید' : 'می‌توانید چند فایل را هم‌زمان بارگذاری کنید'}
-          </Typography>
-        </Box>
+        <Typography sx={{ flex: 1, minWidth: 0, fontSize: 13.5, fontWeight: 900, color: INK }}>
+          {editing ? 'ویرایش سند قرارداد' : 'افزودن سند به بایگانی'}
+        </Typography>
         <IconButton size="small" onClick={onClose}><CloseIcon fontSize="small" /></IconButton>
       </DialogTitle>
 
@@ -683,7 +678,7 @@ const DocumentEditorDialog = ({
         <Stack spacing={1.7}>
           <Box>
             <SectionHeading icon={DescriptionIcon} title="قرارداد و جایگاه سند" color={accent} />
-            <Grid container spacing={1.2}>
+            <Grid container spacing={1.2} alignItems="flex-start">
               <Grid item xs={12} md={6}>
                 <FormControl size="small" fullWidth>
                   <InputLabel>قرارداد *</InputLabel>
@@ -698,26 +693,43 @@ const DocumentEditorDialog = ({
                 </FormControl>
               </Grid>
               <Grid item xs={12} md={6}>
-                <Typography sx={{ fontSize: 11.5, color: MUTED, mb: 0.55 }}>این سند به کدام بخش تعلق دارد؟</Typography>
+                <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED, mb: 0.5 }}>
+                  این سند به کدام بخش تعلق دارد؟
+                </Typography>
                 <Box sx={{ display: 'flex', gap: 0.5, flexWrap: 'wrap' }}>
                   {RELATION_ORDER.map((key) => {
                     const meta = RELATION_META[key];
-                    const Icon = RELATION_ICONS[key];
                     const active = form.relationType === key;
                     return (
-                      <Chip key={key} icon={<Icon sx={{ fontSize: 13 }} />} label={meta.label}
+                      <Chip key={key} label={meta.label}
                         onClick={() => setRelationType(key)}
                         sx={{
                           cursor: 'pointer', borderRadius: '9px', fontWeight: 800, fontSize: 11,
                           bgcolor: active ? meta.color : alpha(meta.color, 0.07),
                           color: active ? '#fff' : meta.color,
                           border: `1px solid ${active ? meta.color : alpha(meta.color, 0.25)}`,
-                          '& .MuiChip-icon': { color: active ? '#fff' : meta.color },
                         }} />
                     );
                   })}
                 </Box>
               </Grid>
+              {targetField ? (
+                <Grid item xs={12} md={6}>
+                  <FormControl size="small" fullWidth>
+                    <InputLabel>{RELATION_META[form.relationType].label} مرتبط</InputLabel>
+                    <Select value={String(targetValue || '')} label={`${RELATION_META[form.relationType].label} مرتبط`}
+                      disabled={!form.contract}
+                      onChange={(event) => update(targetField, event.target.value)}>
+                      <MenuItem value="">بدون اتصال</MenuItem>
+                      {targetOptions.map((item) => (
+                        <MenuItem key={item.id} value={String(item.id)}>
+                          {relationOptionLabel(form.relationType, item)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+              ) : null}
             </Grid>
           </Box>
 
@@ -725,38 +737,11 @@ const DocumentEditorDialog = ({
 
 
           <Box>
-            <SectionHeading icon={AttachFileIcon} title="فایل سند" color={pdfOnly ? '#be123c' : '#2563eb'}
-              hint={pdfOnly
-                ? 'برای الحاقیه و تضمین فقط فایل PDF با حجم حداکثر ۲۵ مگابایت'
-                : 'فرمت‌های رایج اداری و تصویری، هر فایل حداکثر ۲۵ مگابایت'} />
-            <Grid container spacing={1.2} sx={{ mb: 1 }}>
-              <Grid item xs={12} md={7}>
-                <TextField size="small" fullWidth label={editing ? 'عنوان سند *' : 'عنوان سند (اختیاری)'}
-                  value={form.title}
-                  helperText={editing ? 'عنوان قابل ویرایش است.' : 'خالی بماند، از نام فایل ساخته می‌شود.'}
-                  onChange={(event) => update('title', event.target.value)} />
-              </Grid>
-              <Grid item xs={12} md={5}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>{RELATION_META[form.relationType].label} مرتبط</InputLabel>
-                  <Select value={String(targetValue || '')} label={`${RELATION_META[form.relationType].label} مرتبط`}
-                    disabled={!form.contract || !targetField}
-                    onChange={(event) => update(targetField, event.target.value)}>
-                    <MenuItem value="">بدون اتصال</MenuItem>
-                    {targetOptions.map((item) => (
-                      <MenuItem key={item.id} value={String(item.id)}>
-                        {relationOptionLabel(form.relationType, item)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  <FormHelperText sx={{ mx: 0 }}>
-                    {!targetField ? 'این سند در سطح قرارداد بایگانی می‌شود.' : (targetOptions.length
-                      ? 'سند در پروندهٔ همین مورد مرتبط نمایش داده می‌شود.'
-                      : 'برای این قرارداد موردی از این نوع ثبت نشده است.')}
-                  </FormHelperText>
-                </FormControl>
-              </Grid>
-            </Grid>
+            <SectionHeading icon={AttachFileIcon} title="فایل سند" color={pdfOnly ? '#be123c' : '#2563eb'} />
+            <TextField size="small" fullWidth label={editing ? 'عنوان سند *' : 'عنوان سند (اختیاری)'}
+              value={form.title}
+              onChange={(event) => update('title', event.target.value)}
+              sx={{ mb: 1 }} />
 
             <Box
               onDragOver={(event) => { event.preventDefault(); setDragActive(true); }}
@@ -833,7 +818,12 @@ const DocumentEditorDialog = ({
         </Stack>
       </DialogContent>
 
-      <DialogActions sx={{ px: 2.15, py: 1.35, borderTop: `1px solid ${theme.palette.divider}` }}>
+      <DialogActions sx={{
+        px: 2.15, py: 1.35,
+        borderTop: `1px solid ${theme.palette.divider}`,
+        gap: 1,
+        '& > :not(style) ~ :not(style)': { marginLeft: 0 },
+      }}>
         <Button onClick={onClose}>انصراف</Button>
         <Button variant="contained" disabled={saving} onClick={onSave}>
           {saving ? <CircularProgress size={18} color="inherit" /> : (editing ? 'ذخیره تغییرات' : 'بارگذاری اسناد')}

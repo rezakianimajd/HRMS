@@ -188,6 +188,68 @@ test('contract list renders from the documents payload before the heavy contract
   container.remove();
 });
 
+test('the new document dialog keeps the relation chips icon-free and spaces the actions', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-documents']}>
+            <ContractDocumentsPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(1000);
+  });
+
+  for (let index = 0; index < 2; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  const newButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('سند جدید'));
+  expect(newButton).toBeTruthy();
+  await act(async () => { newButton.click(); await wait(450); });
+
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).toBeTruthy();
+
+  // چیپ‌های جایگاه سند بدون آیکن هستند
+  const relationLabels = ['مستندات قرارداد', 'الحاقیه', 'تضمین', 'صورت‌وضعیت'];
+  const relationChips = Array.from(dialog.querySelectorAll('.MuiChip-root'))
+    .filter((chip) => relationLabels.includes(chip.textContent.trim()));
+  expect(relationChips).toHaveLength(4);
+  relationChips.forEach((chip) => expect(chip.querySelector('svg')).toBeNull());
+
+  // توضیح زیر عنوان‌ها حذف شده است
+  expect(dialog.textContent).not.toContain('می‌توانید چند فایل را هم‌زمان بارگذاری کنید');
+  expect(dialog.textContent).not.toContain('خالی بماند، از نام فایل ساخته می‌شود.');
+  expect(dialog.textContent).not.toContain('این سند در سطح قرارداد بایگانی می‌شود.');
+
+  // در حالت «مستندات قرارداد» فقط یک سلکت (قرارداد) هست؛ با انتخاب الحاقیه، سلکت مورد مرتبط اضافه می‌شود
+  expect(dialog.querySelectorAll('[role="combobox"]')).toHaveLength(1);
+  const addendumChip = relationChips.find((chip) => chip.textContent.trim() === 'الحاقیه');
+  await act(async () => {
+    addendumChip.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(300);
+  });
+  expect(dialog.querySelectorAll('[role="combobox"]')).toHaveLength(2);
+
+  // فاصلهٔ استاندارد بین دکمه‌های انصراف و بارگذاری
+  const actions = dialog.querySelector('.MuiDialogActions-root');
+  expect(actions).toBeTruthy();
+  expect(window.getComputedStyle(actions).gap).toBe('8px');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
 test('clicking a contract row opens its documents in the same standard table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
