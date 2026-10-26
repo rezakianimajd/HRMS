@@ -474,6 +474,8 @@ const ContractArchiveTable = ({
           ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
         },
         '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+        /* ستون‌های وسط‌چین اجباری: قاعدهٔ دو‌کلاسی تا بر ترازِ !important تم غالب شود */
+        '& th.hrms-cell-center, & td.hrms-cell-center': { textAlign: 'center !important' },
         ...tableTypographySx(tableTheme),
       }}
     >
@@ -482,7 +484,7 @@ const ContractArchiveTable = ({
           <TableCell align="center" sx={{ width: '14%' }}>شماره قرارداد</TableCell>
           <TableCell align="center" sx={{ width: '28%' }}>طرف قرارداد</TableCell>
           <TableCell align="center" sx={{ width: '44%' }}>موضوع قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '14%', textAlign: 'center !important' }}>تعداد اسناد</TableCell>
+          <TableCell align="center" sx={{ width: '14%' }} className="hrms-cell-center">تعداد اسناد</TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
@@ -503,7 +505,7 @@ const ContractArchiveTable = ({
                 {contract.subject || '—'}
               </Typography>
             </TableCell>
-            <TableCell align="center" sx={{ textAlign: 'center !important' }}>
+            <TableCell align="center" className="hrms-cell-center">
               <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                 {formatPersianNumber(docCounts[String(contract.id)] || 0)}
               </Typography>
