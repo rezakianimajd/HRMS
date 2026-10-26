@@ -112,7 +112,7 @@ const ContractPartiesPage = () => {
       const allocs = ct.project_allocations_display || [];
       const subject = ct.subject || ct.number || 'قرارداد';
       if (allocs.length === 0) {
-        const key = ct.project_name || ct.project || 'بدون پروژه';
+        const key = ct.project_title || ct.project_name || ct.project || 'بدون پروژه';
         if (!map[key]) map[key] = { name: key, count: 0, segments: [] };
         map[key].count += 1;
         map[key].segments.push({ subject, percent: 100, color });

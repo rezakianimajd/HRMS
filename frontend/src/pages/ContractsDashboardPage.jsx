@@ -559,7 +559,7 @@ const ContractsDashboardPage = () => {
       .slice(0, 8);
 
     const localProjects = items.reduce((acc, contract) => {
-      const key = contract.project_name || 'بدون پروژه';
+      const key = contract.project_title || contract.project_name || 'بدون پروژه';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});

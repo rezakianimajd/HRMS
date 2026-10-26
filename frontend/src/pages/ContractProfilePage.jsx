@@ -259,7 +259,7 @@ const ContractProfilePage = () => {
         addendumCount={addendumCount}
         addendums={c.addendums || []}
         projectAllocations={c.project_allocations_display || []}
-        projectName={c.project_name}
+        projectName={c.project_title || c.project_name}
         effectiveChanges={effects?.changes || []}
         effectsWarnings={effects?.warnings || []}
         onOpenAddendums={() => navigate(`/contracts-addendums?contract=${id}`)}

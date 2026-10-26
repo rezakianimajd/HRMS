@@ -2,6 +2,7 @@
 from datetime import date
 from decimal import Decimal
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from django.test import SimpleTestCase, TestCase
 
@@ -819,3 +820,80 @@ class StatementCalculationTests(TestCase):
         second.refresh_from_db()
         self.assertEqual(second.cumulative_previous_amount, Decimal('2000000'))
         self.assertEqual(second.work_done, Decimal('3000000'))
+
+
+class ContractApprovalDecideTests(SimpleTestCase):
+    """اقدام «تأیید/رد» مرحلهٔ گردش‌کار قرارداد.
+
+    رگرسیون: پیش‌تر در `ContractApprovalViewSet.decide` فراخوانی `save`/`return` جا افتاده
+    بود؛ وضعیت تغییر می‌کرد ولی چیزی ذخیره نمی‌شد و endpoint مقدار None برمی‌گرداند.
+    """
+
+    def _decide(self, decision, comment=''):
+        from contracts.models import ContractApproval, ContractDraft
+        from contracts.views import ContractApprovalViewSet
+
+        approval = ContractApproval(
+            step=2, approver='مدیر قراردادها', draft=ContractDraft(title='پیش‌نویس تست'),
+        )
+        view = ContractApprovalViewSet()
+        view.request = SimpleNamespace(data={'decision': decision, 'comment': comment})
+        view.kwargs = {'pk': 1}
+        view.get_object = lambda: approval  # نمونهٔ ساخته‌شده (بدون کوئری دیتابیس)
+        with patch.object(ContractApproval, 'save') as save_mock:
+            response = view.decide(view.request, pk=1)
+        return approval, response, save_mock
+
+    def test_approve_persists_status_and_returns_payload(self):
+        from contracts.models import ContractApproval
+
+        approval, response, save_mock = self._decide('approve', comment='تأیید می‌شود')
+        self.assertEqual(approval.status, ContractApproval.Status.APPROVED)
+        self.assertEqual(approval.comment, 'تأیید می‌شود')
+        self.assertIsNotNone(approval.acted_at)
+        save_mock.assert_called_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], ContractApproval.Status.APPROVED)
+        self.assertEqual(response.data['comment'], 'تأیید می‌شود')
+
+    def test_reject_persists_status_and_returns_payload(self):
+        from contracts.models import ContractApproval
+
+        approval, response, save_mock = self._decide('reject')
+        self.assertEqual(approval.status, ContractApproval.Status.REJECTED)
+        save_mock.assert_called_once()
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.data['status'], ContractApproval.Status.REJECTED)
+
+    def test_invalid_decision_is_rejected_without_saving(self):
+        _, response, save_mock = self._decide('maybe')
+        save_mock.assert_not_called()
+        self.assertEqual(response.status_code, 400)
+
+
+class ContractSerializerFieldContractTests(SimpleTestCase):
+    """قرارداد API: `category`، `project_title` و `disputes` باید وجود داشته باشند و
+    `project_name` باید متن مدل و قابل نوشتن باشد (پیش‌تر read_only و map شده به نام پروژه بود).
+    """
+
+    def test_declared_fields(self):
+        from contracts.serializers import ContractSerializer
+
+        fields = ContractSerializer().fields
+        self.assertIn('category', fields)
+        self.assertIn('project_title', fields)
+        self.assertIn('disputes', fields)
+        self.assertFalse(fields['project_name'].read_only)
+        self.assertTrue(fields['project_title'].read_only)
+        self.assertTrue(fields['disputes'].read_only)
+
+    def test_category_and_project_name_are_writable(self):
+        from contracts.serializers import ContractSerializer
+
+        serializer = ContractSerializer(
+            data={'category': 'پیمانی', 'project_name': 'فاز ۲ توسعه'}, partial=True,
+        )
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['category'], 'پیمانی')
+        self.assertEqual(serializer.validated_data['project_name'], 'فاز ۲ توسعه')
+

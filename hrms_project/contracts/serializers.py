@@ -810,7 +810,7 @@ class ContractSerializer(serializers.ModelSerializer):
     guarantee_type_display = serializers.CharField(source='get_guarantee_type_display', read_only=True)
     party_name = serializers.CharField(source='party.name', read_only=True)
     signatory_name = serializers.CharField(source='signatory.full_name', read_only=True)
-    project_name = serializers.CharField(source='project.name', read_only=True)
+    project_title = serializers.CharField(source='project.name', read_only=True)
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     currency_code = serializers.CharField(source='currency.code', read_only=True)
@@ -830,6 +830,7 @@ class ContractSerializer(serializers.ModelSerializer):
     addendums = AddendumSerializer(many=True, read_only=True)
     guarantees = GuaranteeSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
+    disputes = ContractDisputeSerializer(many=True, read_only=True)
     audit_logs = ContractAuditLogSerializer(many=True, read_only=True)
 
     class Meta:
@@ -837,16 +838,16 @@ class ContractSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'number', 'subject', 'party', 'party_name', 'contract_type',
             'contract_type_display', 'contract_type_master', 'contract_type_master_name',
-            'status', 'status_display', 'amount',
+            'status', 'status_display', 'amount', 'category',
             'currency', 'currency_name', 'currency_symbol', 'currency_code', 'exchange_rate',
             'start_date', 'end_date', 'signing_date', 'signatory', 'signatory_name',
             'effective_amount', 'effective_end_date', 'has_addendum',
             'guarantee_amount', 'guarantee_type', 'guarantee_type_display', 'guarantee_items', 'guarantee_items_display',
-            'project', 'project_name', 'project_location', 'tender_number', 'project_allocations', 'project_allocations_display',
+            'project', 'project_name', 'project_title', 'project_location', 'tender_number', 'project_allocations', 'project_allocations_display',
             'advance_payment', 'advance_payments', 'retention_percent', 'warranty_period',
             'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
             'description',
-            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments', 'audit_logs',
+            'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments', 'disputes', 'audit_logs',
             'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']

@@ -92,7 +92,9 @@ class ContractViewSet(BaseContractViewSet):
     ordering = ['-created_at']
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('party', 'signatory').prefetch_related(
+        qs = super().get_queryset().select_related(
+            'party', 'signatory', 'project', 'currency', 'contract_type_master',
+        ).prefetch_related(
             'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
             'guarantees', 'guarantees__documents', 'payments', 'disputes', 'audit_logs',
         )
@@ -613,6 +615,10 @@ class ContractApprovalViewSet(BaseContractViewSet):
             return Response({'error': 'تصمیم نامعتبر است'}, status=400)
         obj.comment = comment
         obj.acted_at = timezone.now()
+        obj.save(update_fields=['status', 'comment', 'acted_at', 'updated_at'])
+        return Response(ContractApprovalSerializer(obj).data)
+
+
 class ContractApprovalWorkflowViewSet(BaseContractViewSet):
     serializer_class = ContractApprovalWorkflowSerializer
     queryset = ContractApprovalWorkflow.objects.select_related('contract_type').prefetch_related('steps')
@@ -641,8 +647,6 @@ class ContractApprovalStepViewSet(BaseContractViewSet):
         if workflow_id:
             qs = qs.filter(workflow_id=workflow_id)
         return qs
-        obj.save(update_fields=['status', 'comment', 'acted_at', 'updated_at'])
-        return Response(ContractApprovalSerializer(obj).data)
 
 
 class ContractAccountMappingViewSet(viewsets.GenericViewSet):
