@@ -171,3 +171,40 @@ class AppearanceSchemaTests(SimpleTestCase):
         self.assertEqual(design['tables']['headerStyle'], 'filled')
         self.assertEqual(design['tables']['rowHeight'], 38)
         self.assertEqual(design['lists']['variant'], 'default')
+
+    def test_toolbar_tokens_are_validated(self):
+        toolbar = sanitize_design({'toolbar': {
+            'searchVariant': 'filled', 'searchSurface': 'tinted', 'searchRadius': 20,
+            'searchHeight': 48, 'searchWidth': 320, 'searchIconPosition': 'end',
+            'searchPlaceholder': '<b>جستجو</b> در قراردادها', 'filtersVariant': 'contained',
+            'filtersLabel': '  فیلترها  ', 'filtersIconPosition': 'end', 'filtersRadius': 14,
+            'showFiltersCount': False, 'panelSurface': 'glass', 'panelRadius': 18,
+            'panelPadding': 16, 'panelColumns': 2, 'panelGap': 12, 'labelsPosition': 'inline',
+            'openByDefault': True, 'showActiveChips': False, 'chipStyle': 'outlined',
+            'showReset': False, 'resetLabel': 'پاک‌سازی',
+        }})['toolbar']
+        self.assertEqual(toolbar['searchVariant'], 'filled')
+        self.assertEqual(toolbar['searchPlaceholder'], 'جستجو در قراردادها')  # تگ‌های HTML حذف می‌شوند
+        self.assertEqual(toolbar['filtersLabel'], 'فیلترها')
+        self.assertEqual(toolbar['panelColumns'], 2)
+        self.assertEqual(toolbar['panelGap'], 12)
+        self.assertTrue(toolbar['openByDefault'])
+        self.assertFalse(toolbar['showFiltersCount'])
+        self.assertFalse(toolbar['showActiveChips'])
+        self.assertEqual(toolbar['resetLabel'], 'پاک‌سازی')
+
+    def test_invalid_toolbar_values_fall_back(self):
+        toolbar = sanitize_design({'toolbar': {
+            'searchVariant': 'neon', 'searchIconPosition': 'middle', 'filtersVariant': 'ghost',
+            'panelSurface': 'metal', 'labelsPosition': 'left', 'chipStyle': 'solid',
+            'searchHeight': 300, 'panelColumns': 0, 'filtersLabel': '   ',
+        }})['toolbar']
+        self.assertEqual(toolbar['searchVariant'], 'soft')
+        self.assertEqual(toolbar['searchIconPosition'], 'start')
+        self.assertEqual(toolbar['filtersVariant'], 'outlined')
+        self.assertEqual(toolbar['panelSurface'], 'solid')
+        self.assertEqual(toolbar['labelsPosition'], 'above')
+        self.assertEqual(toolbar['chipStyle'], 'soft')
+        self.assertEqual(toolbar['searchHeight'], 40)
+        self.assertEqual(toolbar['panelColumns'], 3)
+        self.assertEqual(toolbar['filtersLabel'], 'فیلترها')

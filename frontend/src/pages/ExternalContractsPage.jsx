@@ -6,9 +6,10 @@ import {
   Box, Typography, Paper, Button, Chip, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
   InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, Collapse,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import EditIcon from '@mui/icons-material/Edit';
@@ -25,6 +26,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import InfoCard from '../core/components/ui/InfoCard';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
+import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 
 const currencyUnit = (contract) => normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
 
@@ -63,6 +65,36 @@ const bodyCellSx = {
 // تراز صریح (inline) تا قاعدهٔ سراسری «[dir=rtl] .MuiTableCell-root» بازنویسی نکند
 const CENTER = { textAlign: 'center' };
 const RIGHT = { textAlign: 'right' };
+
+/** سلکت فیلتر با تراز برچسب توکن‌محور (بالای فیلد / درون فیلد / مخفی). */
+const FilterSelect = ({ label, value, options, onChange, labelsPosition, radius = 8 }) => (
+  <Box>
+    {labelsPosition === 'above' ? (
+      <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: 'text.secondary', mb: 0.5 }}>{label}</Typography>
+    ) : null}
+    <FormControl size="small" fullWidth>
+      {labelsPosition === 'inline' ? <InputLabel>{label}</InputLabel> : null}
+      <Select
+        value={value || ''}
+        label={labelsPosition === 'inline' ? label : undefined}
+        displayEmpty={labelsPosition !== 'inline'}
+        onChange={(event) => onChange(event.target.value)}
+        sx={{ fontSize: 12.5, borderRadius: `${radius}px`, bgcolor: 'background.paper' }}
+        renderValue={(selected) => {
+          const match = options.find((option) => String(option.value) === String(selected));
+          if (!match || match.value === '') {
+            return <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>همه</Typography>;
+          }
+          return <Typography component="span" sx={{ fontSize: 12, fontWeight: 700 }}>{match.label}</Typography>;
+        }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option.value || 'all'} value={option.value}>{option.label}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Box>
+);
 
 const TYPE_LABELS = {
   construction: 'پیمانکاری / اجرا',
@@ -104,6 +136,7 @@ const ExternalContractsPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(null);
   const [deleteId, setDeleteId] = useState(null);
   const [msg, setMsg] = useState('');
   const [msgOk, setMsgOk] = useState(true);
@@ -149,6 +182,42 @@ const ExternalContractsPage = () => {
 
   // نوع قرارداد از «نوع پیکربندی‌شده» خوانده می‌شود؛ اگر خالی بود، نوع ثابت.
   const typeLabel = (c) => c.contract_type_master_name || TYPE_LABELS[c.contract_type] || c.contract_type || '—';
+
+  /* ---- نوار جستجو و فیلترها (توکن‌محور، استودیوی تم) ---- */
+  const toolbar = resolveToolbarTheme(tokens);
+  const filtersExpanded = filtersOpen ?? toolbar.openByDefault;
+  const activeFilterCount = (statusFilter ? 1 : 0) + (typeFilter ? 1 : 0);
+  const statusOptions = [
+    { value: '', label: 'همه' },
+    ...Object.entries(STATUS_LABELS).map(([key, label]) => ({ value: key, label })),
+  ];
+  const typeOptions = [
+    { value: '', label: 'همه' },
+    ...typeMasterList.map((item) => ({
+      value: String(item.id),
+      label: `${item.name}${item.code ? ` (${item.code})` : ''}`,
+    })),
+  ];
+  const resetToolbar = () => {
+    setSearch('');
+    setStatusFilter('');
+    setTypeFilter('');
+  };
+  const activeChips = [
+    statusFilter
+      ? { key: 'status', label: `وضعیت: ${STATUS_LABELS[statusFilter] || statusFilter}`, clear: () => setStatusFilter('') }
+      : null,
+    typeFilter
+      ? {
+        key: 'type',
+        label: `نوع: ${typeOptions.find((option) => option.value === String(typeFilter))?.label || typeFilter}`,
+        clear: () => setTypeFilter(''),
+      }
+      : null,
+  ].filter(Boolean);
+  const activeChipSx = toolbar.chipStyle === 'outlined'
+    ? { bgcolor: 'transparent', color: toolbar.primary, border: `1px solid ${toolbar.chipBorder}`, fontSize: 12, height: 24, fontWeight: 700 }
+    : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontSize: 12, height: 24, fontWeight: 700 };
 
   const remove = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/external-contracts/${id}/`),
@@ -244,26 +313,107 @@ const ExternalContractsPage = () => {
         </Grid>
       </Grid>
 
-      {/* Filters */}
+      {/* نوار جستجو و فیلترها — دکمهٔ «فیلترها» پنل را زیر نوار باز می‌کند */}
       <Paper sx={{ p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
-        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} useFlexGap>
-          <TextField size="small" placeholder="جستجوی موضوع / طرف / شماره…" value={search} onChange={e => setSearch(e.target.value)}
-            sx={{ flex: 1, ...fieldSx }} InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 170 } }}>
-            <InputLabel>وضعیت</InputLabel>
-            <Select value={statusFilter || ''} label="وضعیت" onChange={e => setStatusFilter(e.target.value)}>
-              <MenuItem value="">همه</MenuItem>
-              {Object.entries(STATUS_LABELS).map(([k, v]) => <MenuItem key={k} value={k}>{v}</MenuItem>)}
-            </Select>
-          </FormControl>
-          <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 170 } }}>
-            <InputLabel>نوع</InputLabel>
-            <Select value={typeFilter || ''} label="نوع" onChange={e => setTypeFilter(e.target.value)}>
-              <MenuItem value="">همه</MenuItem>
-              {typeMasterList.map(t => <MenuItem key={t.id} value={t.id}>{t.name}{t.code ? ` (${t.code})` : ''}</MenuItem>)}
-            </Select>
-          </FormControl>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <TextField
+            size="small"
+            placeholder={toolbar.searchPlaceholder}
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{
+              flex: toolbar.searchWidth === '100%' ? 1 : '0 0 auto',
+              width: toolbar.searchWidth === '100%' ? { xs: '100%', sm: 'auto' } : `${toolbar.searchWidth}px`,
+              ...fieldSx,
+              '& .MuiOutlinedInput-root': {
+                ...fieldSx['& .MuiOutlinedInput-root'],
+                height: `${toolbar.searchHeight}px`,
+                borderRadius: `${toolbar.searchRadius}px`,
+                bgcolor: toolbar.searchVariant === 'filled' ? 'action.hover' : toolbar.searchBg,
+                ...(toolbar.searchVariant === 'plain' ? { '& fieldset': { borderColor: 'transparent' } } : null),
+                ...(toolbar.searchVariant === 'soft' ? { '&:hover fieldset': { borderColor: toolbar.chipBorder } } : null),
+              },
+            }}
+            InputProps={(toolbar.searchIconPosition === 'hidden' ? {} : {
+              ...(toolbar.searchIconPosition === 'start'
+                ? { startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }
+                : { endAdornment: <InputAdornment position="end"><SearchIcon fontSize="small" /></InputAdornment> }),
+            })}
+          />
+          <Button
+            variant={toolbar.filtersVariant}
+            onClick={() => setFiltersOpen(!filtersExpanded)}
+            startIcon={toolbar.filtersIconPosition === 'start' ? <FilterListIcon fontSize="small" /> : null}
+            endIcon={toolbar.filtersIconPosition === 'end' ? <FilterListIcon fontSize="small" /> : null}
+            aria-expanded={filtersExpanded}
+            sx={{
+              height: `${toolbar.searchHeight}px`,
+              borderRadius: `${toolbar.filtersRadius}px`,
+              fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'auto', px: 2,
+            }}
+          >
+            {toolbar.filtersLabel}
+            {toolbar.showFiltersCount && activeFilterCount > 0 ? (
+              <Chip
+                size="small"
+                label={toPersianDigits(activeFilterCount)}
+                sx={{
+                  ml: 0.75, height: 18, fontSize: 11, fontWeight: 800,
+                  bgcolor: toolbar.filtersVariant === 'contained' ? 'rgba(255,255,255,0.24)' : toolbar.chipBg,
+                  color: toolbar.filtersVariant === 'contained' ? '#fff' : toolbar.primary,
+                }}
+              />
+            ) : null}
+          </Button>
+          {toolbar.showReset && (activeFilterCount > 0 || search) ? (
+            <Button size="small" variant="text" onClick={resetToolbar} sx={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
+              {toolbar.resetLabel}
+            </Button>
+          ) : null}
         </Stack>
+
+        <Collapse in={filtersExpanded} timeout={180} unmountOnExit>
+          <Box sx={{
+            mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider',
+            bgcolor: toolbar.panelBg,
+            borderRadius: `${toolbar.panelRadius}px`,
+            p: `${toolbar.panelPadding}px`,
+          }}>
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: `repeat(${toolbar.panelColumns}, minmax(0, 1fr))` },
+              gap: `${toolbar.panelGap}px`,
+              alignItems: 'end',
+            }}>
+              <FilterSelect
+                label="وضعیت" value={statusFilter} options={statusOptions}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={setStatusFilter}
+              />
+              <FilterSelect
+                label="نوع قرارداد" value={typeFilter} options={typeOptions}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={setTypeFilter}
+              />
+              {toolbar.showReset ? (
+                <Button
+                  variant="text" size="small" onClick={resetToolbar}
+                  sx={{ fontSize: 12.5, justifySelf: 'start', height: `${toolbar.searchHeight - 6}px` }}
+                >
+                  {toolbar.resetLabel}
+                </Button>
+              ) : null}
+            </Box>
+          </Box>
+        </Collapse>
+
+        {toolbar.showActiveChips && activeChips.length > 0 ? (
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+            {activeChips.map((chip) => (
+              <Chip key={chip.key} size="small" label={chip.label} onDelete={chip.clear} sx={activeChipSx} />
+            ))}
+          </Stack>
+        ) : null}
       </Paper>
 
       {/* فهرست قراردادها — جدول یک‌ردیفی و خوانا */}

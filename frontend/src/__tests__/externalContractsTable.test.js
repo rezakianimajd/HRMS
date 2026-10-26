@@ -87,3 +87,41 @@ test('contracts table renders every field in its own single-line column', async 
   await act(async () => { root.unmount(); });
   container.remove();
 });
+
+test('filters stay hidden until the filters button is clicked', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/external-contracts']}>
+          <ExternalContractsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(700);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
+  }
+
+  // پنل فیلترها بسته است: هنوز هیچ سلکتی رندر نشده و دکمهٔ «فیلترها» دیده می‌شود.
+  expect(container.textContent).toContain('فیلترها');
+  expect(container.querySelectorAll('[role="combobox"]')).toHaveLength(0);
+
+  const filtersButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('فیلترها'));
+  expect(filtersButton).toBeTruthy();
+  await act(async () => { filtersButton.click(); await wait(350); });
+
+  expect(container.textContent).toContain('وضعیت');
+  expect(container.textContent).toContain('نوع قرارداد');
+  expect(container.querySelectorAll('[role="combobox"]').length).toBeGreaterThanOrEqual(2);
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});

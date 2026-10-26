@@ -50,6 +50,12 @@ TABLE_FRAMES = {'card', 'plain'}
 COLOR_MODES = {'theme', 'custom'}
 NUMBER_FONTS = {'inherit', 'mono'}
 CELL_ALIGNMENTS = {'auto', 'start', 'center', 'end'}
+SEARCH_VARIANTS = {'soft', 'outlined', 'filled', 'plain'}
+FILTER_BUTTON_VARIANTS = {'outlined', 'contained', 'text'}
+ICON_SIDES = {'start', 'end', 'hidden'}
+PANEL_SURFACES = {'solid', 'glass', 'tinted'}
+LABEL_POSITIONS_TOOLBAR = {'above', 'inline', 'hidden'}
+CHIP_STYLES = {'soft', 'outlined'}
 
 
 INFO_CARD_KEYS = (
@@ -158,6 +164,18 @@ DEFAULT_DESIGN = {
         'showDivider': True, 'hover': True, 'radius': 12,
         'glassOpacity': 0.5, 'glassBlur': 12,
     },
+    'toolbar': {
+        'searchVariant': 'soft', 'searchSurface': 'solid', 'searchRadius': 12,
+        'searchHeight': 40, 'searchWidth': 0, 'searchIconPosition': 'start',
+        'searchPlaceholder': 'جستجو در شماره، موضوع و طرف قرارداد…',
+        'filtersVariant': 'outlined', 'filtersLabel': 'فیلترها',
+        'filtersIconPosition': 'start', 'filtersRadius': 10, 'showFiltersCount': True,
+        'panelSurface': 'solid', 'panelRadius': 14, 'panelPadding': 12,
+        'panelColumns': 3, 'panelGap': 10, 'labelsPosition': 'above',
+        'openByDefault': False,
+        'showActiveChips': True, 'chipStyle': 'soft',
+        'showReset': True, 'resetLabel': 'حذف فیلترها',
+    },
     'components': {},
 }
 
@@ -176,8 +194,8 @@ def _color(value, fallback):
     return value.strip().lower() if isinstance(value, str) and HEX_COLOR.fullmatch(value.strip()) else fallback
 
 
-def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=(), colors=()):
-    """Sanitize one structural token group (infoCards/headers/tables/lists)."""
+def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=(), colors=(), texts=None):
+    """Sanitize one structural token group (infoCards/headers/tables/lists/toolbar)."""
     if not isinstance(raw, dict):
         return
     for key, allowed in (enums or {}).items():
@@ -189,6 +207,13 @@ def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=
     for key in colors:
         if key in raw:
             base[key] = _color(raw.get(key), base.get(key))
+    for key, limit in (texts or {}).items():
+        value = raw.get(key)
+        if isinstance(value, str):
+            cleaned = re.sub(r'<[^>]*>', ' ', value).strip()
+            cleaned = re.sub(r'\s+', ' ', cleaned)[:limit].strip()
+            if cleaned:
+                base[key] = cleaned
     for key, (low, high, integer) in (ranges or {}).items():
         if key in raw:
             base[key] = _number(raw.get(key), low, high, base.get(key), integer=integer)
@@ -387,6 +412,24 @@ def sanitize_design(raw, typography=None):
             'itemPadding': (0, 32, True), 'radius': (0, 40, False),
             'glassOpacity': (0, 1, False), 'glassBlur': (0, 40, False),
         },
+    )
+
+    _sanitize_group(
+        base['toolbar'], source.get('toolbar'),
+        enums={
+            'searchVariant': SEARCH_VARIANTS, 'searchSurface': SURFACE_STYLES,
+            'searchIconPosition': ICON_SIDES, 'filtersVariant': FILTER_BUTTON_VARIANTS,
+            'filtersIconPosition': ICON_SIDES, 'panelSurface': PANEL_SURFACES,
+            'labelsPosition': LABEL_POSITIONS_TOOLBAR, 'chipStyle': CHIP_STYLES,
+        },
+        booleans=('showFiltersCount', 'openByDefault', 'showActiveChips', 'showReset'),
+        ranges={
+            'searchRadius': (0, 32, True), 'searchHeight': (32, 64, True),
+            'searchWidth': (0, 600, True), 'filtersRadius': (0, 32, True),
+            'panelRadius': (0, 32, True), 'panelPadding': (0, 32, True),
+            'panelGap': (0, 32, True), 'panelColumns': (1, 4, True),
+        },
+        texts={'searchPlaceholder': 120, 'filtersLabel': 30, 'resetLabel': 30},
     )
 
     return _apply_legacy_typography(base, typography)

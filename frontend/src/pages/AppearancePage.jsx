@@ -20,6 +20,7 @@ import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsU
 import InfoCard from '../core/components/ui/InfoCard';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { resolveTableTheme } from '../core/theme/tableStyles';
+import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 
 /* =========================================================================
  * ظاهر و پوسته (2026)
@@ -584,6 +585,11 @@ const STUDIO_FONT_WEIGHTS = [
 ];
 const STUDIO_COLOR_MODES = [['theme', 'از پالت تم'], ['custom', 'رنگ سفارشی']];
 const STUDIO_NUMBER_FONTS = [['inherit', 'فونت متن'], ['mono', 'فونت اعداد (Mono)']];
+const STUDIO_SEARCH_VARIANTS = [['soft', 'نرم'], ['outlined', 'قاب‌دار'], ['filled', 'پرشده'], ['plain', 'بدون قاب']];
+const STUDIO_FILTER_BUTTON_VARIANTS = [['outlined', 'قاب‌دار'], ['contained', 'توپر'], ['text', 'متنی']];
+const STUDIO_ICON_SIDES = [['start', 'ابتدای فیلد'], ['end', 'انتهای فیلد'], ['hidden', 'بدون آیکون']];
+const STUDIO_TOOLBAR_LABEL_POSITIONS = [['above', 'بالای فیلد'], ['inline', 'درون فیلد'], ['hidden', 'بدون برچسب']];
+const STUDIO_CHIP_STYLES = [['soft', 'رنگ ملایم'], ['outlined', 'قاب‌دار']];
 
 const StudioSelect = ({ label, value, options, onChange, disabled, sx }) => (
   <TextField
@@ -734,6 +740,89 @@ const ListStudioPreview = ({ design }) => {
   );
 };
 
+/** پیش‌نمایش زندهٔ نوار جستجو و فیلترها (همان توکن‌های صفحهٔ قراردادها). */
+const ToolbarStudioPreview = ({ design }) => {
+  const t = resolveToolbarTheme(design);
+  const iconDot = (
+    <Box sx={{ width: 13, height: 13, borderRadius: '50%', border: `2px solid ${t.primary}`, opacity: 0.6, flexShrink: 0 }} />
+  );
+  const chipBase = {
+    px: 1, height: 22, borderRadius: '11px', fontSize: 11, display: 'inline-flex', alignItems: 'center',
+    color: t.primary,
+    bgcolor: t.chipStyle === 'outlined' ? 'transparent' : t.chipBg,
+    border: t.chipStyle === 'outlined' ? `1px solid ${t.chipBorder}` : '1px solid transparent',
+  };
+  return (
+    <Box sx={{ p: 1.25, borderRadius: '14px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper' }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
+        <Box sx={{
+          flex: t.searchWidth === '100%' ? 1 : '0 0 auto',
+          width: t.searchWidth === '100%' ? '100%' : `${t.searchWidth}px`,
+          height: `${t.searchHeight}px`, borderRadius: `${t.searchRadius}px`, bgcolor: t.searchBg,
+          border: '1px solid',
+          borderColor: t.searchVariant === 'outlined' ? t.chipBorder : 'transparent',
+          boxShadow: t.searchVariant === 'soft' ? `inset 0 0 0 1px ${t.chipBorder}` : 'none',
+          display: 'flex', alignItems: 'center', gap: 0.75, px: 1.25,
+        }}>
+          {t.searchIconPosition === 'start' ? iconDot : null}
+          <Typography noWrap sx={{ flex: 1, fontSize: 12, color: 'text.secondary' }}>{t.searchPlaceholder}</Typography>
+          {t.searchIconPosition === 'end' ? iconDot : null}
+        </Box>
+        <Box sx={{
+          height: `${t.searchHeight}px`, px: 1.5, borderRadius: `${t.filtersRadius}px`,
+          display: 'inline-flex', alignItems: 'center', gap: 0.75, fontSize: 12.5, fontWeight: 700,
+          color: t.filtersVariant === 'contained' ? '#fff' : t.primary,
+          bgcolor: t.filtersVariant === 'contained' ? t.primary : 'transparent',
+          border: `1px solid ${t.filtersVariant === 'outlined' ? t.chipBorder : 'transparent'}`,
+        }}>
+          {t.filtersIconPosition === 'start' ? <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: 'currentColor', opacity: 0.7 }} /> : null}
+          {t.filtersLabel}
+          {t.showFiltersCount ? (
+            <Box sx={{
+              minWidth: 16, height: 16, px: 0.4, borderRadius: '8px', fontSize: 10,
+              display: 'grid', placeItems: 'center',
+              bgcolor: t.filtersVariant === 'contained' ? 'rgba(255,255,255,0.25)' : t.chipBg,
+            }}>۱</Box>
+          ) : null}
+          {t.filtersIconPosition === 'end' ? <Box sx={{ width: 10, height: 10, borderRadius: '2px', bgcolor: 'currentColor', opacity: 0.7 }} /> : null}
+        </Box>
+      </Stack>
+
+      <Box sx={{
+        mt: 1, pt: 1, borderTop: '1px dashed', borderColor: 'divider',
+        bgcolor: t.panelBg, borderRadius: `${t.panelRadius}px`, p: `${t.panelPadding}px`,
+      }}>
+        <Box sx={{ display: 'grid', gridTemplateColumns: `repeat(${t.panelColumns}, minmax(0, 1fr))`, gap: `${t.panelGap}px` }}>
+          {['وضعیت', 'نوع قرارداد'].map((label) => (
+            <Box key={label}>
+              {t.labelsPosition === 'above' ? (
+                <Typography sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary', mb: 0.4 }}>{label}</Typography>
+              ) : null}
+              <Box sx={{
+                height: 32, borderRadius: `${t.filtersRadius}px`, border: '1px solid', borderColor: 'divider',
+                bgcolor: 'background.paper', display: 'flex', alignItems: 'center', px: 1,
+                fontSize: 11.5, color: 'text.secondary', gap: 0.4,
+              }}>
+                {t.labelsPosition === 'inline' ? <Box component="span" sx={{ fontWeight: 700 }}>{label}:</Box> : null}
+                همه
+              </Box>
+            </Box>
+          ))}
+        </Box>
+        {t.showReset ? (
+          <Typography sx={{ mt: 0.75, fontSize: 11.5, fontWeight: 700, color: t.primary }}>{t.resetLabel}</Typography>
+        ) : null}
+      </Box>
+
+      {t.showActiveChips ? (
+        <Stack direction="row" spacing={0.5} sx={{ mt: 1 }}>
+          <Box sx={chipBase}>وضعیت: در حال اجرا</Box>
+        </Stack>
+      ) : null}
+    </Box>
+  );
+};
+
 const ThemeStudioCard = ({
   canEdit, design, onChange, onReset, saving, savedTick,
 }) => {
@@ -745,6 +834,7 @@ const ThemeStudioCard = ({
   const setInfo = (key, value) => onChange({ infoCards: { [key]: value } });
   const setHeader = (key, value) => onChange({ headers: { [key]: value } });
   const setTable = (key, value) => onChange({ tables: { [key]: value } });
+  const setToolbar = (key, value) => onChange({ toolbar: { [key]: value } });
   const setList = (key, value) => onChange({ lists: { [key]: value } });
 
   return (
@@ -799,6 +889,7 @@ const ThemeStudioCard = ({
         <Tab label="هدرها" />
         <Tab label="جداول" />
         <Tab label="فهرست‌ها" />
+        <Tab label="جستجو و فیلترها" />
       </Tabs>
 
       <Typography sx={{ px: 1.75, pt: 1, fontSize: 11, color: 'text.secondary' }}>
@@ -1229,6 +1320,88 @@ const ThemeStudioCard = ({
                 onChange={(value) => setList('showDivider', value)} />
               <StudioToggle label="هاور" checked={design.lists.hover} disabled={disabled}
                 onChange={(value) => setList('hover', value)} />
+            </StudioGroup>
+          </Stack>
+        )}
+
+        {tab === 8 && (
+          <Stack spacing={1.75}>
+            <Box>
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>پیش‌نمایش نوار جستجو و فیلترها</Typography>
+                <Chip size="small" label="همان ظاهر صفحهٔ قراردادها" sx={{ height: 20, fontSize: 11 }} />
+              </Stack>
+              <ToolbarStudioPreview design={design} />
+            </Box>
+
+            <StudioGroup title="نوار جستجو" hint="نمونه، سطح، اندازه، عرض، آیکون و متن راهنما">
+              <StudioSelect label="نمونه" value={design.toolbar.searchVariant} options={STUDIO_SEARCH_VARIANTS}
+                disabled={disabled} onChange={(value) => setToolbar('searchVariant', value)} />
+              <StudioSelect label="سطح" value={design.toolbar.searchSurface} options={STUDIO_SURFACE_OPTIONS}
+                disabled={disabled} onChange={(value) => setToolbar('searchSurface', value)} />
+              <StudioNumberField label="شعاع" value={design.toolbar.searchRadius} min={0} max={32}
+                disabled={disabled} onChange={(value) => setToolbar('searchRadius', value)} />
+              <StudioNumberField label="ارتفاع" value={design.toolbar.searchHeight} min={32} max={64}
+                disabled={disabled} onChange={(value) => setToolbar('searchHeight', value)} />
+              <StudioNumberField label="عرض (۰=کشسان)" value={design.toolbar.searchWidth} min={0} max={600}
+                disabled={disabled} onChange={(value) => setToolbar('searchWidth', value)} />
+              <StudioSelect label="آیکون" value={design.toolbar.searchIconPosition} options={STUDIO_ICON_SIDES}
+                disabled={disabled} onChange={(value) => setToolbar('searchIconPosition', value)} />
+              <Box sx={{ minWidth: 280 }}>
+                <TextField
+                  size="small" fullWidth label="متن راهنمای جستجو" value={design.toolbar.searchPlaceholder}
+                  disabled={disabled} onChange={(event) => setToolbar('searchPlaceholder', event.target.value)}
+                />
+              </Box>
+            </StudioGroup>
+            <StudioGroup title="دکمهٔ فیلترها" hint="نمونه، عنوان، آیکون، شعاع و شمارندهٔ فیلترهای فعال">
+              <StudioSelect label="نمونه" value={design.toolbar.filtersVariant} options={STUDIO_FILTER_BUTTON_VARIANTS}
+                disabled={disabled} onChange={(value) => setToolbar('filtersVariant', value)} />
+              <StudioSelect label="آیکون" value={design.toolbar.filtersIconPosition} options={STUDIO_ICON_SIDES}
+                disabled={disabled} onChange={(value) => setToolbar('filtersIconPosition', value)} />
+              <StudioNumberField label="شعاع" value={design.toolbar.filtersRadius} min={0} max={32}
+                disabled={disabled} onChange={(value) => setToolbar('filtersRadius', value)} />
+              <StudioToggle label="شمارندهٔ فیلترها" checked={design.toolbar.showFiltersCount} disabled={disabled}
+                onChange={(value) => setToolbar('showFiltersCount', value)} />
+              <Box sx={{ minWidth: 200 }}>
+                <TextField
+                  size="small" fullWidth label="عنوان دکمه" value={design.toolbar.filtersLabel}
+                  disabled={disabled} onChange={(event) => setToolbar('filtersLabel', event.target.value)}
+                />
+              </Box>
+            </StudioGroup>
+
+            <StudioGroup title="پنل فیلترها" hint="باز شدن پیش‌فرض، سطح، شعاع، فاصله، تعداد ستون و تراز برچسب‌ها">
+              <StudioToggle label="باز در ابتدا" checked={design.toolbar.openByDefault} disabled={disabled}
+                onChange={(value) => setToolbar('openByDefault', value)} />
+              <StudioSelect label="سطح" value={design.toolbar.panelSurface}
+                options={STUDIO_SURFACE_OPTIONS.filter(([key]) => key !== 'transparent')}
+                disabled={disabled} onChange={(value) => setToolbar('panelSurface', value)} />
+              <StudioSelect label="تراز برچسب" value={design.toolbar.labelsPosition} options={STUDIO_TOOLBAR_LABEL_POSITIONS}
+                disabled={disabled} onChange={(value) => setToolbar('labelsPosition', value)} />
+              <StudioNumberField label="شعاع" value={design.toolbar.panelRadius} min={0} max={32}
+                disabled={disabled} onChange={(value) => setToolbar('panelRadius', value)} />
+              <StudioNumberField label="فاصلهٔ داخلی" value={design.toolbar.panelPadding} min={0} max={32}
+                disabled={disabled} onChange={(value) => setToolbar('panelPadding', value)} />
+              <StudioNumberField label="فاصلهٔ فیلدها" value={design.toolbar.panelGap} min={0} max={32}
+                disabled={disabled} onChange={(value) => setToolbar('panelGap', value)} />
+              <StudioNumberField label="تعداد ستون" value={design.toolbar.panelColumns} min={1} max={4}
+                disabled={disabled} onChange={(value) => setToolbar('panelColumns', value)} />
+            </StudioGroup>
+
+            <StudioGroup title="چیپ فیلترهای فعال و پاک‌سازی" hint="نمایش چیپ‌ها، سبک آن‌ها و دکمهٔ حذف فیلترها">
+              <StudioToggle label="چیپ فیلترهای فعال" checked={design.toolbar.showActiveChips} disabled={disabled}
+                onChange={(value) => setToolbar('showActiveChips', value)} />
+              <StudioSelect label="سبک چیپ" value={design.toolbar.chipStyle} options={STUDIO_CHIP_STYLES}
+                disabled={disabled} onChange={(value) => setToolbar('chipStyle', value)} />
+              <StudioToggle label="دکمهٔ حذف فیلترها" checked={design.toolbar.showReset} disabled={disabled}
+                onChange={(value) => setToolbar('showReset', value)} />
+              <Box sx={{ minWidth: 200 }}>
+                <TextField
+                  size="small" fullWidth label="عنوان دکمهٔ حذف" value={design.toolbar.resetLabel}
+                  disabled={disabled} onChange={(event) => setToolbar('resetLabel', event.target.value)}
+                />
+              </Box>
             </StudioGroup>
           </Stack>
         )}
