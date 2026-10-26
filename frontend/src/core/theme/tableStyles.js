@@ -42,6 +42,11 @@ export const resolveTableTheme = (tokens) => {
   const numberFont = cfg.numberFont === 'mono' ? TABLE_NUMBER_FONT_MONO : 'inherit';
   const hover = cfg.hover !== false;
   const striped = cfg.striped === true;
+  /* تعداد ردیف قابل مشاهده با مقدار امن (۴ تا ۳۰) — مستقل از دادهٔ خراب ذخیره‌شده */
+  const visibleRows = Math.min(30, Math.max(4, Number(cfg.visibleRows ?? 13) || 13));
+  const rowHeightValue = Math.max(24, Math.min(72, Number(cfg.rowHeight ?? 38) || 38));
+  const headerHeightValue = Math.max(32, Math.min(80, Number(headerHeight) || 44));
+  const tableHeight = headerHeightValue + rowHeightValue * visibleRows;
 
   return {
     divider,
@@ -68,13 +73,14 @@ export const resolveTableTheme = (tokens) => {
     frameY: Number(cfg.framePadding ?? 0),
     singleLine: cfg.singleLine !== false,
     cellPadding: Number(cfg.cellPadding ?? 8),
-    rowHeight: Number(cfg.rowHeight ?? 38),
+    rowHeight: rowHeightValue,
     radius: Number(cfg.radius ?? 16),
     columnMinWidth: Number(cfg.columnMinWidth ?? 0),
     /* صفحه‌بندی: تعداد ردیف هر صفحه از همین توکن به API هم فرستاده می‌شود */
     rowsPerPage: Math.min(100, Math.max(5, Number(cfg.rowsPerPage ?? 20))),
     /* ارتفاع قابل مشاهدهٔ جدول = هدر + n ردیف (بقیه با اسکرول داخل جدول) */
-    visibleRows: Math.min(30, Math.max(4, Number(cfg.visibleRows ?? 13))),
+    visibleRows: visibleRows,
+    tableHeight,
     showPagination: cfg.showPagination !== false,
     paginationVariant: cfg.paginationVariant === 'simple' ? 'simple' : 'pages',
     paginationDense: cfg.paginationDense !== false,

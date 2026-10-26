@@ -422,10 +422,10 @@ const ExternalContractsPage = () => {
           >
             <TableContainer
               data-visible-rows={tableTheme.visibleRows}
-              data-table-height={`${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px`}
+              data-table-height={`${tableTheme.tableHeight}px`}
               sx={{
-                height: { xs: 'auto', sm: `${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px` },
-                maxHeight: { xs: 'none', sm: `${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px` },
+                height: { xs: 'auto', sm: `${tableTheme.tableHeight}px` },
+                maxHeight: { xs: 'none', sm: `${tableTheme.tableHeight}px` },
                 overflowY: 'auto',
                 opacity: isFetching && !isLoading ? 0.6 : 1,
                 transition: 'opacity .15s ease',
@@ -586,15 +586,19 @@ const ExternalContractsPage = () => {
               }}>
                 <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
                   {tableTheme.showPaginationRange ? (
-                    <Typography sx={{
-                      position: 'absolute', insetInlineStart: 0,
-                      display: { xs: 'none', sm: 'block' },
-                      fontSize: tableTheme.paginationFontSize - 0.5,
-                      color: 'text.secondary', whiteSpace: 'nowrap',
-                    }}>
+                    <Typography
+                      sx={{
+                        position: 'absolute', insetInlineStart: 0,
+                        display: { xs: 'none', sm: 'block' },
+                        fontSize: tableTheme.paginationFontSize - 0.5,
+                        color: 'text.secondary', whiteSpace: 'nowrap',
+                      }}
+                    >
                       نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
                       {toPersianDigits(Math.min((page + 1) * pageSize, totalCount))} از{' '}
                       {toPersianDigits(totalCount)} قرارداد
+                      {' · '}
+                      {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
                     </Typography>
                   ) : null}
                 <Stack direction="row" spacing={0.5} alignItems="center">

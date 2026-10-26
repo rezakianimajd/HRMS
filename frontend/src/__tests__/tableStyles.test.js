@@ -53,6 +53,8 @@ test('defaults keep tables readable when tokens are missing', () => {
   expect(theme.cellTextAlign).toBeNull();
   expect(theme.rowsPerPage).toBe(20);
   expect(theme.visibleRows).toBe(13);
+  // ارتفاع جدول = هدر ۴۴ + ۱۳ × ردیف ۳۸
+  expect(theme.tableHeight).toBe(538);
   expect(theme.showPagination).toBe(true);
   expect(theme.paginationVariant).toBe('pages');
   expect(theme.showPaginationRange).toBe(true);
@@ -99,6 +101,10 @@ test('pagination tokens are clamped to sane page sizes', () => {
   expect(resolveTableTheme({ tables: { showPagination: false } }).showPagination).toBe(false);
   expect(resolveTableTheme({ tables: { visibleRows: 99 } }).visibleRows).toBe(30); // سقف ارتفاع جدول
   expect(resolveTableTheme({ tables: { visibleRows: 1 } }).visibleRows).toBe(4);
+  // مقدار خراب/غایب نباید ارتفاع را NaN کند (باعث نادیده‌گرفتن ارتفاع و نمایش همهٔ ردیف‌ها می‌شد)
+  expect(resolveTableTheme({ tables: { visibleRows: 'x' } }).tableHeight).toBe(538);
+  expect(resolveTableTheme({ tables: { rowHeight: 'x', headerHeight: null } }).tableHeight).toBe(538);
+  expect(resolveTableTheme({ tables: { visibleRows: 4, rowHeight: 40, headerHeight: 48 } }).tableHeight).toBe(208);
 });
 
 test('pagination color mode resolves theme, module or custom accents', () => {
