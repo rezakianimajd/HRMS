@@ -1049,10 +1049,6 @@ const ContractDocumentsPage = () => {
   const effectiveRowPx = measuredRowPx > 0 ? measuredRowPx : tableTheme.rowHeight;
   const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
   const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
-  /* «آخرین بارگذاری‌ها» کوتاه است: ارتفاع به تعداد ردیف‌ها محدود می‌شود */
-  const recentTableHeight = Math.round(
-    effectiveHeadPx + effectiveRowPx * Math.max(1, Math.min(tableTheme.visibleRows, recentDocs.length)),
-  );
 
   /* ---- فیلترها و ترتیب: در صفحهٔ ورود روی لیست قراردادها، در نمای قرارداد روی اسناد ---- */
   const scopedMode = Boolean(contractId);
@@ -1597,89 +1593,95 @@ const ContractDocumentsPage = () => {
           </Paper>
         )
       ) : (
-        <>
-          {/* لیست قراردادها — محتوای اصلی صفحهٔ ورود بایگانی */}
-          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
-            <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>لیست قراردادها</Typography>
-            <Chip
-              size="small"
-              label={`${formatPersianNumber(contractRows.length)} قرارداد`}
-              sx={{ height: 21, fontSize: 11, fontWeight: 800, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }}
-            />
-          </Box>
-          {!contractRows.length ? (
-            <Paper elevation={0} sx={{
-              p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
-              textAlign: 'center', bgcolor: 'background.paper',
-            }}>
-              <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
-              <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
-            </Paper>
-          ) : (
-            <Paper elevation={0} sx={{
-              borderRadius: 'var(--hrms-table-radius, 16px)',
-              overflow: 'hidden',
-              border: '1px solid', borderColor: 'divider',
-              bgcolor: 'background.paper', boxShadow: 'none',
-            }}>
-              <ContractArchiveTable
-                rows={pagedContracts}
-                tableTheme={tableTheme}
-                containerRef={tableScrollRef}
-                tableHeight={tableHeight}
-                rowHeight={effectiveRowPx}
-                dimmed={docsQuery.isFetching || contractsQuery.isFetching}
-                docCounts={docCountByContract}
-                lastUploads={lastUploadByContract}
-                onOpen={openContract}
-              />
-              <TablePager
-                tableTheme={tableTheme}
-                page={contractPage}
-                onPage={setContractPage}
-                totalPages={contractTotalPages}
-                pageNumbers={contractPageNumbers}
-                total={contractRows.length}
-                pageSize={contractPageSize}
-                unit="قرارداد"
-              />
-            </Paper>
-          )}
-
-          {/* آخرین بارگذاری‌ها */}
-          {recentDocs.length ? (
-            <Box sx={{ mt: 2 }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1, mb: 1 }}>
-                <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>آخرین بارگذاری‌ها</Typography>
-                <Chip
-                  size="small"
-                  label={`${toPersianDigits(recentDocs.length)} سند اخیر`}
-                  sx={{ height: 21, fontSize: 11, fontWeight: 800, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }}
-                />
-              </Box>
+        <Grid container spacing={2} alignItems="stretch">
+          <Grid item xs={12} lg={8}>
+            {!contractRows.length ? (
+              <Paper elevation={0} sx={{
+                p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
+                textAlign: 'center', bgcolor: 'background.paper',
+              }}>
+                <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
+                <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
+              </Paper>
+            ) : (
               <Paper elevation={0} sx={{
                 borderRadius: 'var(--hrms-table-radius, 16px)',
                 overflow: 'hidden',
                 border: '1px solid', borderColor: 'divider',
                 bgcolor: 'background.paper', boxShadow: 'none',
               }}>
-                <DocumentArchiveTable
-                  rows={recentDocs}
+                <ContractArchiveTable
+                  rows={pagedContracts}
                   tableTheme={tableTheme}
-                  tableHeight={recentTableHeight}
+                  containerRef={tableScrollRef}
+                  tableHeight={tableHeight}
                   rowHeight={effectiveRowPx}
-                  dimmed={docsQuery.isFetching}
-                  onView={setDetail}
-                  onEdit={openEdit}
-                  onDelete={setConfirmDelete}
-                  onPreview={previewFile}
-                  onDownload={downloadFile}
+                  dimmed={docsQuery.isFetching || contractsQuery.isFetching}
+                  docCounts={docCountByContract}
+                  lastUploads={lastUploadByContract}
+                  onOpen={openContract}
+                />
+                <TablePager
+                  tableTheme={tableTheme}
+                  page={contractPage}
+                  onPage={setContractPage}
+                  totalPages={contractTotalPages}
+                  pageNumbers={contractPageNumbers}
+                  total={contractRows.length}
+                  pageSize={contractPageSize}
+                  unit="قرارداد"
                 />
               </Paper>
-            </Box>
-          ) : null}
-        </>
+            )}
+          </Grid>
+          <Grid item xs={12} lg={4}>
+            <Paper elevation={0} sx={{
+              height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: 'divider',
+              bgcolor: 'background.paper', boxShadow: 'none',
+            }}>
+              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+                {recentDocs.length ? recentDocs.map((doc) => (
+                  <Box
+                    key={doc.id}
+                    onClick={() => setDetail(doc)}
+                    sx={{
+                      display: 'flex', alignItems: 'center', gap: 0.75,
+                      px: 1.25, py: 0.85,
+                      borderBottom: tableTheme.divider,
+                      cursor: 'pointer',
+                      '&:hover': { backgroundColor: tableTheme.hoverBg },
+                      '&:last-of-type': { borderBottom: 'none' },
+                    }}
+                  >
+                    <FileBadge row={doc} size={26} />
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{doc.title || '—'}</Typography>
+                      <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                        {toPersianDigits(doc.contract_number || '—')} · {dateLabel(doc.uploaded_at)}
+                      </Typography>
+                    </Box>
+                    <Tooltip title="دانلود">
+                      <IconButton
+                        size="small"
+                        onClick={(event) => { event.stopPropagation(); downloadFile(doc); }}
+                      >
+                        <DownloadIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                )) : (
+                  <Box sx={{ p: 3.5, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>سندی بارگذاری نشده است.</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
+
       )}
 
       <DocumentDetailDrawer row={detail} onClose={() => setDetail(null)}

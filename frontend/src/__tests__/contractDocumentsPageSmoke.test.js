@@ -95,20 +95,22 @@ test('archive landing shows the contract list above the latest uploads on the st
   expect(searchInput.compareDocumentPosition(sortSelect) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(sortSelect.compareDocumentPosition(filtersButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
 
-  // محتوای صفحهٔ ورود: لیست قراردادها و سپس آخرین بارگذاری‌ها
-  expect(container.textContent).toContain('لیست قراردادها');
-  expect(container.textContent).toContain('آخرین بارگذاری‌ها');
-  const contractsTable = container.querySelector('table[aria-label="فهرست قراردادهای بایگانی"]');
-  expect(contractsTable).toBeTruthy();
+  // محتوای صفحهٔ ورود: فقط یک جدول (قراردادها) در کارت؛ عنوان و چیپ بخش‌ها حذف شده‌اند
+  expect(container.textContent).not.toContain('لیست قراردادها');
+  expect(container.textContent).not.toContain('آخرین بارگذاری‌ها');
+  const tables = Array.from(container.querySelectorAll('table'));
+  expect(tables).toHaveLength(1);
+  const contractsTable = tables[0];
+  expect(contractsTable.getAttribute('aria-label')).toBe('فهرست قراردادهای بایگانی');
   expect(Array.from(contractsTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
     .toEqual(['شماره', 'موضوع قرارداد', 'طرف قرارداد', 'وضعیت', 'تعداد اسناد', 'آخرین بارگذاری', 'عملیات']);
   expect(contractsTable.querySelector('tbody tr').textContent).toContain('قرارداد نمونه');
   // شمارهٔ قرارداد با ارقام فارسی نمایش داده می‌شود
   expect(contractsTable.querySelector('tbody tr').textContent).toMatch(/[۰-۹]/);
 
-  const docsTable = container.querySelector('table[aria-label="فهرست اسناد قرارداد"]');
-  expect(docsTable).toBeTruthy();
-  expect(docsTable.querySelector('tbody tr').textContent).toContain('متن قرارداد');
+  // کارت آخرین بارگذاری‌ها کنار جدول (نه به‌صورت جدول دوم)
+  expect(contractsTable.textContent).not.toContain('متن قرارداد');
+  expect(container.textContent).toContain('متن قرارداد');
 
   // جدول‌ها از توکن‌های تم استفاده می‌کنند
   const contractsHost = contractsTable.closest('.MuiTableContainer-root');
