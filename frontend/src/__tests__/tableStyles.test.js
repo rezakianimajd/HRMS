@@ -1,4 +1,4 @@
-import { resolveTableTheme, TABLE_NUMBER_FONT_MONO } from '../core/theme/tableStyles';
+import { resolveTableTheme, TABLE_NUMBER_FONT_MONO, tableTypographySx } from '../core/theme/tableStyles';
 import { DEFAULT_DESIGN_TOKENS } from '../core/theme/designTokens';
 
 test('resolver derives typography, divider and row colors from tokens', () => {
@@ -60,4 +60,19 @@ test('divider disappears when borders are off, style is none or width is zero', 
   expect(resolveTableTheme({ tables: { showBorders: false } }).divider).toBe('none');
   expect(resolveTableTheme({ tables: { dividerWidth: 0 } }).divider).toBe('none');
   expect(resolveTableTheme({ tables: { dividerStyle: 'none' } }).divider).toBe('none');
+});
+
+
+test('cell typography rules also target the content rendered inside cells', () => {
+  const theme = resolveTableTheme({
+    tables: { cellFontSize: 14, cellFontWeight: 600, headerFontSize: 16, headerFontWeight: 800 },
+  });
+  const sx = tableTypographySx(theme);
+  const cellRule = sx['& td .MuiTypography-root, & td .MuiChip-label, & td .MuiFormControlLabel-label'];
+  // متن سلول‌ها داخل Typography/Chip رندر می‌شود؛ بدون این قاعده، اندازه/وزن نادیده گرفته می‌شد.
+  expect(cellRule.fontSize).toBe('14px !important');
+  expect(cellRule.fontWeight).toBe('600 !important');
+  expect(sx['& th .MuiTypography-root'].fontSize).toBe('16px !important');
+  expect(sx['& th .MuiTypography-root'].fontWeight).toBe('800 !important');
+  expect(tableTypographySx(null)).toEqual({});
 });

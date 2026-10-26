@@ -86,4 +86,19 @@ export const resolveTableTheme = (tokens) => {
   };
 };
 
+/** استایل تایپوگرافی محتوای سلول‌ها (متن داخل Typography/Chip را هم می‌گیرد). */
+export const tableTypographySx = (theme) => {
+  if (!theme) return {};
+  return {
+    '& td .MuiTypography-root, & td .MuiChip-label, & td .MuiFormControlLabel-label': {
+      fontSize: `${theme.cellFontSize}px !important`,
+      fontWeight: `${theme.cellFontWeight} !important`,
+    },
+    '& th .MuiTypography-root': {
+      fontSize: `${theme.headerFontSize}px !important`,
+      fontWeight: `${theme.headerFontWeight} !important`,
+    },
+  };
+};
+
 export default resolveTableTheme;

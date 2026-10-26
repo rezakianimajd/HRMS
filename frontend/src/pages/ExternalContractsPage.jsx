@@ -24,7 +24,7 @@ import downloadFile from '../core/utils/downloadUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import InfoCard from '../core/components/ui/InfoCard';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
-import { resolveTableTheme } from '../core/theme/tableStyles';
+import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
 
 const currencyUnit = (contract) => normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
 
@@ -318,6 +318,7 @@ const ExternalContractsPage = () => {
                     ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
                   },
                   '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+                  ...tableTypographySx(tableTheme),
                 }}
               >
                 <TableHead>

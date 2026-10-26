@@ -5,7 +5,7 @@ import {
 } from '@mui/material';
 import { useDesignTokens } from '../../context/DesignTokenContext';
 import { tableBackground } from '../../theme/designTokens';
-import { resolveTableTheme } from '../../theme/tableStyles';
+import { resolveTableTheme, tableTypographySx } from '../../theme/tableStyles';
 
 /**
  * جدول مشترک و توکن‌محور.
@@ -119,6 +119,7 @@ const DataTable = ({
                     : null),
                   '& tbody td': { height: `${themedTable.rowHeight}px` },
                   '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: themedTable.hoverBg },
+                  ...tableTypographySx(themedTable),
                 } : null),
                 ...tableSx,
               }}
