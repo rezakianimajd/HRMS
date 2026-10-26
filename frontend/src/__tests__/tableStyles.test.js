@@ -52,7 +52,7 @@ test('defaults keep tables readable when tokens are missing', () => {
   expect(theme.cellAlign).toBe('auto');
   expect(theme.cellTextAlign).toBeNull();
   expect(theme.rowsPerPage).toBe(20);
-  expect(theme.visibleRows).toBe(12);
+  expect(theme.visibleRows).toBe(13);
   expect(theme.showPagination).toBe(true);
   expect(theme.paginationVariant).toBe('pages');
   expect(theme.showPaginationRange).toBe(true);

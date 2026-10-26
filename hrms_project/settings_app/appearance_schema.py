@@ -158,7 +158,7 @@ DEFAULT_DESIGN = {
         'dividerStyle': 'solid', 'dividerColor': '#e2e8f0', 'dividerOpacity': 100,
         'frame': 'card', 'frameMarginX': 0, 'framePadding': 0,
         'singleLine': True, 'columnMinWidth': 0,
-        'rowsPerPage': 20, 'visibleRows': 12, 'showPagination': True, 'paginationVariant': 'pages',
+        'rowsPerPage': 20, 'visibleRows': 13, 'showPagination': True, 'paginationVariant': 'pages',
         'paginationDense': True, 'showPaginationRange': True,
         'paginationColorMode': 'primary', 'paginationColor': '#6366f1', 'paginationFontSize': 12,
         'cellPadding': 8, 'rowHeight': 38, 'radius': 16,

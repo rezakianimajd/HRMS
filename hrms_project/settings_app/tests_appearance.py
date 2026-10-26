@@ -232,7 +232,7 @@ class AppearanceSchemaTests(SimpleTestCase):
             'paginationFontSize': 99,
         }})['tables']
         self.assertEqual(tables['rowsPerPage'], 20)
-        self.assertEqual(tables['visibleRows'], 12)
+        self.assertEqual(tables['visibleRows'], 13)
         self.assertEqual(tables['paginationVariant'], 'pages')
         self.assertEqual(tables['paginationColorMode'], 'primary')
         self.assertEqual(tables['paginationColor'], '#6366f1')

@@ -74,7 +74,7 @@ export const resolveTableTheme = (tokens) => {
     /* صفحه‌بندی: تعداد ردیف هر صفحه از همین توکن به API هم فرستاده می‌شود */
     rowsPerPage: Math.min(100, Math.max(5, Number(cfg.rowsPerPage ?? 20))),
     /* ارتفاع قابل مشاهدهٔ جدول = هدر + n ردیف (بقیه با اسکرول داخل جدول) */
-    visibleRows: Math.min(30, Math.max(4, Number(cfg.visibleRows ?? 12))),
+    visibleRows: Math.min(30, Math.max(4, Number(cfg.visibleRows ?? 13))),
     showPagination: cfg.showPagination !== false,
     paginationVariant: cfg.paginationVariant === 'simple' ? 'simple' : 'pages',
     paginationDense: cfg.paginationDense !== false,

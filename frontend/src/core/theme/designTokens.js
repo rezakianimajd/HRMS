@@ -153,7 +153,7 @@ export const DEFAULT_DESIGN_TOKENS = {
     singleLine: true,
     columnMinWidth: 0,
     rowsPerPage: 20,
-    visibleRows: 12,
+    visibleRows: 13,
     showPagination: true,
     paginationVariant: 'pages',
     paginationDense: true,
