@@ -23,6 +23,8 @@ import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import InfoCard from '../core/components/ui/InfoCard';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
+import { withAlpha } from '../core/utils/colorUtils';
 
 const FONT = 'Vazirmatn, IRANSans, sans-serif';
 
@@ -109,6 +111,27 @@ const ExternalContractsPage = () => {
   const [msg, setMsg] = useState('');
   const [msgOk, setMsgOk] = useState(true);
   const [exporting, setExporting] = useState(false);
+
+  /* ---- توکن‌های جدول از استودیوی تم (خط جداکننده، تراز هدر، قاب کارت) ---- */
+  const { tokens } = useDesignTokens();
+  const tableTokens = tokens?.tables || {};
+  const tableFrame = tableTokens.frame !== 'plain';
+  const headerAlign = tableTokens.headerAlign || 'center';
+  const headerTextAlign = headerAlign === 'start' ? 'right' : (headerAlign === 'end' ? 'left' : 'center');
+  const singleLine = tableTokens.singleLine !== false;
+  const dividerStyle = tableTokens.dividerStyle && tableTokens.dividerStyle !== 'none'
+    ? tableTokens.dividerStyle
+    : tableTokens.dividerStyle === 'none' ? 'none' : 'solid';
+  const dividerColor = withAlpha(
+    tableTokens.dividerColor || tokens?.colors?.divider || '#e2e8f0',
+    Number(tableTokens.dividerOpacity ?? 100) / 100,
+  );
+  const tableDivider = dividerStyle === 'none' ? 'none' : `1px ${dividerStyle} ${dividerColor}`;
+  const cellPadding = tableTokens.variant === 'compact' ? 6 : tableTokens.variant === 'spacious' ? 12 : (tableTokens.cellPadding ?? 8);
+  const tableFrameSx = tableFrame ? {
+    mx: `${Number(tableTokens.frameMarginX ?? 16)}px`,
+    p: `${Number(tableTokens.framePadding ?? 12)}px`,
+  } : {};
 
   const { data: contracts, isLoading } = useQuery({
     queryKey: ['external-contracts'],
@@ -261,26 +284,55 @@ const ExternalContractsPage = () => {
       {/* فهرست قراردادها — جدول یک‌ردیفی و خوانا */}
       <Box>
         {isLoading ? (
-          <Paper sx={{ py: 6, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}><CircularProgress /></Paper>
+          <Paper sx={{ ...tableFrameSx, py: 6, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}><CircularProgress /></Paper>
         ) : filtered.length === 0 ? (
-          <Paper sx={{ py: 7, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+          <Paper sx={{ ...tableFrameSx, py: 7, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
             <Typography color="textSecondary">قراردادی ثبت نشده است.</Typography>
           </Paper>
         ) : (
-          <Paper sx={{ borderRadius: '16px', overflow: 'hidden', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+          <Paper
+            sx={{
+              ...tableFrameSx,
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: 'divider',
+              bgcolor: 'background.paper',
+              boxShadow: 'none',
+            }}
+          >
             <TableContainer sx={{ maxHeight: 'calc(100vh - 430px)' }}>
-              <Table size="small" stickyHeader sx={{ minWidth: 1180, '& td, & th': { px: 1.25 } }}>
+              <Table
+                size="small"
+                stickyHeader
+                sx={{
+                  minWidth: 1400,
+                  '& td, & th': {
+                    px: 1.25,
+                    py: `${cellPadding}px`,
+                    whiteSpace: singleLine ? 'nowrap' : 'normal',
+                    borderBottom: tableDivider,
+                    textOverflow: singleLine ? 'ellipsis' : 'clip',
+                  },
+                  '& thead th': {
+                    textAlign: `${headerTextAlign} !important`,
+                    minWidth: `${Number(tableTokens.columnMinWidth ?? 110)}px`,
+                  },
+                  '& tbody td': { height: `${Number(tableTokens.rowHeight ?? 38)}px` },
+                }}
+              >
                 <TableHead>
                   <TableRow>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>شماره قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 165 }}>طرف حساب</TableCell>
-                    <TableCell align="center" style={CENTER} sx={headCellSx}>نام قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 110 }}>وضعیت</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ شروع</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 105 }}>تاریخ پایان</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 145 }}>مانده (روز تا پایان)</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 205 }}>مبلغ قرارداد (با الحاقیه)</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 130 }}>عملیات</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 110 }}>شماره قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 175 }}>طرف حساب</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 285 }}>موضوع قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 150 }}>نوع قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 112 }}>وضعیت</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 108 }}>تاریخ شروع</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 108 }}>تاریخ پایان</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 150 }}>مانده (روز تا پایان)</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 195 }}>مبلغ قرارداد (با الحاقیه)</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 126 }}>عملیات</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -309,13 +361,15 @@ const ExternalContractsPage = () => {
                             </Typography>
                           </Tooltip>
                         </TableCell>
-                        <TableCell align="right" style={RIGHT} sx={{ ...bodyCellSx, maxWidth: 300 }}>
+                        <TableCell align="right" style={RIGHT} sx={{ ...bodyCellSx, maxWidth: 285 }}>
                           <Tooltip title={c.subject || ''}>
                             <Typography fontWeight={800} noWrap sx={{ color: '#0f172a', fontSize: 12 }}>
                               {c.subject || '—'}
                             </Typography>
                           </Tooltip>
-                          <Typography variant="caption" noWrap display="block" sx={{ color: '#64748b', fontSize: 12 }}>
+                        </TableCell>
+                        <TableCell align="center" style={CENTER} sx={bodyCellSx}>
+                          <Typography variant="caption" noWrap sx={{ color: '#475569', fontWeight: 700, fontSize: 12 }}>
                             {typeLabel(c)}
                           </Typography>
                         </TableCell>

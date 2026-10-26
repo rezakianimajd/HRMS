@@ -78,6 +78,42 @@ class AppearanceSchemaTests(SimpleTestCase):
         self.assertEqual(design['lists']['variant'], 'compact')
         self.assertFalse(design['lists']['showDivider'])
 
+
+    def test_table_divider_align_and_frame_tokens_are_validated(self):
+        design = sanitize_design({
+            'tables': {
+                'headerAlign': 'center', 'dividerStyle': 'dotted', 'dividerColor': '#7C3AED',
+                'dividerOpacity': 140, 'frame': 'card', 'frameMarginX': 24,
+                'framePadding': 10, 'singleLine': True, 'columnMinWidth': 130,
+            },
+        })
+        tables = design['tables']
+        self.assertEqual(tables['headerAlign'], 'center')
+        self.assertEqual(tables['dividerStyle'], 'dotted')
+        self.assertEqual(tables['dividerColor'], '#7c3aed')
+        # مقدار خارج از بازه به پیش‌فرض برمی‌گردد (۱۰۰)
+        self.assertEqual(tables['dividerOpacity'], 100)
+        self.assertEqual(tables['frame'], 'card')
+        self.assertEqual(tables['frameMarginX'], 24)
+        self.assertEqual(tables['framePadding'], 10)
+        self.assertTrue(tables['singleLine'])
+        self.assertEqual(tables['columnMinWidth'], 130)
+
+    def test_invalid_table_divider_values_fall_back_to_defaults(self):
+        design = sanitize_design({
+            'tables': {
+                'headerAlign': 'middle', 'dividerStyle': 'wavy', 'dividerColor': 'url(x)',
+                'frame': 'floating', 'singleLine': 'yes', 'frameMarginX': 900,
+            },
+        })
+        tables = design['tables']
+        self.assertEqual(tables['headerAlign'], 'center')
+        self.assertEqual(tables['dividerStyle'], 'solid')
+        self.assertEqual(tables['dividerColor'], '#e2e8f0')
+        self.assertEqual(tables['frame'], 'card')
+        self.assertTrue(tables['singleLine'])
+        self.assertEqual(tables['frameMarginX'], 16)
+
     def test_invalid_structural_values_fall_back(self):
         design = sanitize_design({
             'infoCards': {'variant': 'unknown', 'glassOpacity': 5},

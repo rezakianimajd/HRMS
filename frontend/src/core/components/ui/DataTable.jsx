@@ -12,6 +12,11 @@ import { tableBackground } from '../../theme/designTokens';
  * columns: [{ key, label, align, width, render(row, index), headerSx, cellSx }]
  * تمام رنگ، شعاع، سایه و فاصله‌ها از CSS Variables مربوط به طراحی خوانده
  * می‌شوند؛ صفحات فقط ساختار داده و استایل‌های استثنایی خود را می‌دهند.
+ *
+ * گزینهٔ `themed`: توکن‌های پیشرفتهٔ استودیوی تم را روی جدول اعمال می‌کند
+ * (تراز عنوان ستون‌ها، سبک/رنگ/شدت خط جداکنندهٔ ردیف‌ها، قاب کارت با حاشیهٔ
+ * کناری، سلول‌های تک‌خطی و حداقل عرض ستون). این گزینه برای حفظ ظاهر فعلی
+ * سایر صفحات، پیش‌فرض خاموش است و هر صفحه می‌تواند آن را روشن کند.
  */
 const DataTable = ({
   rows = [],
@@ -36,6 +41,7 @@ const DataTable = ({
   footer = null,
   ariaLabel = 'جدول داده‌ها',
   loadingComponent = null,
+  themed = false,
 }) => {
   const colSpan = Math.max(columns.length, 1);
   const interactive = typeof onRowClick === 'function';
@@ -50,18 +56,30 @@ const DataTable = ({
   const striped = Boolean(tableCfg.striped);
   const stripBg = striped ? 'var(--hrms-table-row-alt-bg, transparent)' : 'transparent';
 
+  /* --- توکن‌های جدید جدول (استودیوی تم) — فقط با themed فعال می‌شوند --- */
+  const headerAlign = themed ? (tableCfg.headerAlign || 'center') : null;
+  const headerTextAlign = headerAlign === 'end' ? 'left' : (headerAlign === 'start' ? 'right' : headerAlign);
+  const dividerStyle = themed ? (tableCfg.dividerStyle || 'solid') : 'solid';
+  const singleLine = themed ? tableCfg.singleLine !== false : false;
+  const framed = themed && tableCfg.frame !== 'plain';
+
   return (
     <Paper
       elevation={0}
       className="hrms-data-table"
+      data-themed={themed ? 'true' : undefined}
       sx={{
         borderRadius: 'var(--hrms-table-radius, 16px)',
         overflow: 'hidden',
-        border: 'var(--hrms-table-border-color, 1px solid #e8edf4)',
+        border: themed ? 'var(--hrms-table-border, 1px solid #e8edf4)' : 'var(--hrms-table-border-color, 1px solid #e8edf4)',
         background,
         boxShadow: 'var(--hrms-table-shadow, none)',
         backdropFilter: isGlass ? 'var(--hrms-table-backdrop, blur(12px))' : 'none',
         WebkitBackdropFilter: isGlass ? 'var(--hrms-table-backdrop, blur(12px))' : 'none',
+        ...(framed ? {
+          mx: 'var(--hrms-table-frame-margin, 16px)',
+          p: 'var(--hrms-table-frame-padding, 12px)',
+        } : null),
         ...paperSx,
       }}
     >
@@ -81,11 +99,22 @@ const DataTable = ({
               aria-label={ariaLabel}
               sx={{
                 minWidth,
-                '& td, & th': {
+                '& td, & th': themed ? {
+                  px: 1.25,
+                  py: `${cellPadding}px`,
+                  borderBottom: showBorders ? `1px ${dividerStyle} var(--hrms-table-divider, #e2e8f0)` : 'none',
+                  whiteSpace: singleLine ? 'nowrap' : 'normal',
+                  overflow: singleLine ? 'hidden' : 'visible',
+                  textOverflow: singleLine ? 'ellipsis' : 'clip',
+                } : {
                   px: 1.25,
                   py: `${cellPadding}px`,
                   borderBottomColor: showBorders ? 'var(--hrms-table-border-color, #e8edf4)' : 'transparent',
                 },
+                ...(themed ? {
+                  '& thead th': { minWidth: 'var(--hrms-table-column-min-width, 110px)' },
+                  '& tbody td': { height: 'var(--hrms-table-row-height, 38px)' },
+                } : null),
                 ...tableSx,
               }}
             >
@@ -95,14 +124,17 @@ const DataTable = ({
                     {columns.map((column) => (
                       <TableCell
                         key={column.key}
-                        align={column.align || 'right'}
+                        align={headerAlign || column.align || 'right'}
                         sx={{
                           fontWeight: 600,
                           whiteSpace: 'nowrap',
                           bgcolor: 'var(--hrms-table-header-bg, #f8fafc)',
                           ...column.headerSx,
                         }}
-                        style={column.width ? { width: column.width } : undefined}
+                        style={{
+                          ...(column.width ? { width: column.width } : null),
+                          ...(headerTextAlign ? { textAlign: headerTextAlign } : null),
+                        }}
                       >
                         {column.label}
                       </TableCell>
@@ -143,6 +175,9 @@ const DataTable = ({
                         <TableCell
                           key={column.key}
                           align={column.align || 'right'}
+                          style={themed && column.align ? {
+                            textAlign: column.align === 'center' ? 'center' : (column.align === 'left' ? 'left' : 'right'),
+                          } : undefined}
                           sx={{ verticalAlign: 'middle', ...column.cellSx }}
                         >
                           {column.render ? column.render(row, index) : row[column.key] ?? '—'}

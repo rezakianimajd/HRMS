@@ -129,6 +129,15 @@ export const DEFAULT_DESIGN_TOKENS = {
     hover: true,
     showBorders: true,
     headerStyle: 'filled',
+    headerAlign: 'center',
+    dividerStyle: 'solid',
+    dividerColor: '#e2e8f0',
+    dividerOpacity: 100,
+    frame: 'card',
+    frameMarginX: 16,
+    framePadding: 12,
+    singleLine: true,
+    columnMinWidth: 110,
     cellPadding: 8,
     rowHeight: 38,
     radius: 16,
@@ -430,6 +439,10 @@ export const designCssVariables = (design) => {
   const glassFilter = (config) => (config.surface === 'glass' ? `blur(${config.glassBlur ?? 14}px)` : 'none');
   const tableBorder = tables.showBorders ? surfaces.table.border : 'none';
   const tableRowAlt = tables.striped ? colorWithAlpha(colors.primary, 0.035) : 'transparent';
+  const tableDividerOpacity = Math.min(100, Math.max(0, Number(tables.dividerOpacity ?? 100))) / 100;
+  const tableDivider = tables.showBorders && tables.dividerStyle !== 'none'
+    ? colorWithAlpha(tables.dividerColor || colors.divider || '#e2e8f0', tableDividerOpacity)
+    : 'transparent';
   const tableIsGlass = tables.variant === 'glass' || tables.surface === 'glass';
   const effectiveTables = { ...tables, surface: tableIsGlass ? 'glass' : tables.surface };
   const tableCellPadding = tables.variant === 'compact' ? 6 : tables.variant === 'spacious' ? 12 : tables.cellPadding;
@@ -508,8 +521,16 @@ export const designCssVariables = (design) => {
     '--hrms-header-backdrop': glassFilter(headers),
     '--hrms-table-surface-bg': tableBackground(design, effectiveTables),
     '--hrms-table-header-bg': tables.headerStyle === 'plain' ? 'transparent' : surfaces.table.headerBackground,
+    '--hrms-table-header-align': tables.headerAlign || 'center',
     '--hrms-table-row-alt-bg': tableRowAlt,
-    '--hrms-table-border-color': tableBorder,
+    '--hrms-table-border': tableBorder,
+    '--hrms-table-border-color': tableBorder === 'none' ? 'transparent' : (tables.dividerColor || colors.divider || '#e2e8f0'),
+    '--hrms-table-divider': tableDivider,
+    '--hrms-table-divider-style': tables.dividerStyle && tables.dividerStyle !== 'none' ? tables.dividerStyle : 'solid',
+    '--hrms-table-frame-margin': tables.frame === 'plain' ? '0px' : px(tables.frameMarginX, 16),
+    '--hrms-table-frame-padding': tables.frame === 'plain' ? '0px' : px(tables.framePadding, 12),
+    '--hrms-table-column-min-width': px(tables.columnMinWidth, 110),
+    '--hrms-table-white-space': tables.singleLine === false ? 'normal' : 'nowrap',
     '--hrms-table-radius': px(tables.radius, 16),
     '--hrms-table-cell-padding': px(tableCellPadding, 8),
     '--hrms-table-row-height': px(tableRowHeight, 38),

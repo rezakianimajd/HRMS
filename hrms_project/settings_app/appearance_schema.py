@@ -45,6 +45,8 @@ VALUE_POSITIONS = {'start', 'end'}
 SUBTITLE_POSITIONS = {'below', 'inline'}
 ACCENT_MODES = {'module', 'theme'}
 HEADER_STYLES = {'filled', 'plain'}
+DIVIDER_STYLES = {'solid', 'dashed', 'dotted', 'none'}
+TABLE_FRAMES = {'card', 'plain'}
 
 
 INFO_CARD_KEYS = (
@@ -136,8 +138,12 @@ DEFAULT_DESIGN = {
     },
     'tables': {
         'variant': 'default', 'surface': 'solid', 'striped': False, 'hover': True,
-        'showBorders': True, 'headerStyle': 'filled', 'cellPadding': 8,
-        'rowHeight': 38, 'radius': 16, 'glassOpacity': 0.5, 'glassBlur': 12,
+        'showBorders': True, 'headerStyle': 'filled', 'headerAlign': 'center',
+        'dividerStyle': 'solid', 'dividerColor': '#e2e8f0', 'dividerOpacity': 100,
+        'frame': 'card', 'frameMarginX': 16, 'framePadding': 12,
+        'singleLine': True, 'columnMinWidth': 110,
+        'cellPadding': 8, 'rowHeight': 38, 'radius': 16,
+        'glassOpacity': 0.5, 'glassBlur': 12,
     },
     'lists': {
         'variant': 'default', 'surface': 'solid', 'itemPadding': 8,
@@ -162,7 +168,7 @@ def _color(value, fallback):
     return value.strip().lower() if isinstance(value, str) and HEX_COLOR.fullmatch(value.strip()) else fallback
 
 
-def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=()):
+def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=(), colors=()):
     """Sanitize one structural token group (infoCards/headers/tables/lists)."""
     if not isinstance(raw, dict):
         return
@@ -172,6 +178,9 @@ def _sanitize_group(base, raw, *, enums=None, booleans=(), ranges=None, shadows=
     for key in booleans:
         if key in raw and isinstance(raw.get(key), bool):
             base[key] = raw[key]
+    for key in colors:
+        if key in raw:
+            base[key] = _color(raw.get(key), base.get(key))
     for key, (low, high, integer) in (ranges or {}).items():
         if key in raw:
             base[key] = _number(raw.get(key), low, high, base.get(key), integer=integer)
@@ -342,14 +351,18 @@ def sanitize_design(raw, typography=None):
         base['tables'], source.get('tables'),
         enums={
             'variant': TABLE_VARIANTS, 'surface': SURFACE_STYLES,
-            'headerStyle': HEADER_STYLES,
+            'headerStyle': HEADER_STYLES, 'headerAlign': ALIGNMENTS,
+            'dividerStyle': DIVIDER_STYLES, 'frame': TABLE_FRAMES,
         },
-        booleans=('striped', 'hover', 'showBorders'),
+        booleans=('striped', 'hover', 'showBorders', 'singleLine'),
         ranges={
             'cellPadding': (0, 32, True), 'rowHeight': (24, 64, True),
             'radius': (0, 40, False), 'glassOpacity': (0, 1, False),
-            'glassBlur': (0, 40, False),
+            'glassBlur': (0, 40, False), 'dividerOpacity': (0, 100, True),
+            'frameMarginX': (0, 64, True), 'framePadding': (0, 32, True),
+            'columnMinWidth': (60, 260, True),
         },
+        colors=('dividerColor',),
     )
     _sanitize_group(
         base['lists'], source.get('lists'),

@@ -574,6 +574,10 @@ const STUDIO_TABLE_VARIANTS = [
   ['default', 'استاندارد'], ['compact', 'فشرده'], ['spacious', 'جادار'], ['glass', 'شیشه‌ای'],
 ];
 const STUDIO_HEADER_STYLES = [['filled', 'پس‌زمینه‌دار'], ['plain', 'ساده']];
+const STUDIO_DIVIDER_STYLES = [
+  ['solid', 'ممتد'], ['dashed', 'خط‌چین'], ['dotted', 'نقطه‌چین'], ['none', 'بدون خط'],
+];
+const STUDIO_TABLE_FRAMES = [['card', 'کارت با حاشیه'], ['plain', 'تمام‌عرض']];
 
 const StudioSelect = ({ label, value, options, onChange, disabled, sx }) => (
   <TextField
@@ -992,6 +996,7 @@ const ThemeStudioCard = ({
                 ]}
                 getRowId={(row) => row.id}
                 maxHeight={190}
+                themed
               />
             </Box>
             <Box>
@@ -1021,6 +1026,31 @@ const ThemeStudioCard = ({
                   disabled={disabled} onChange={(value) => setTable('glassOpacity', value)} />
                 <StudioNumberField label="بلور شیشه" value={design.tables.glassBlur} min={0} max={40}
                   disabled={disabled} onChange={(value) => setTable('glassBlur', value)} />
+              </Stack>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>خطوط، تراز و قاب جدول</Typography>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+                <StudioSelect label="تراز عنوان ستون" value={design.tables.headerAlign} options={STUDIO_ALIGNS}
+                  disabled={disabled} onChange={(value) => setTable('headerAlign', value)} />
+                <StudioSelect label="خط جداکننده" value={design.tables.dividerStyle} options={STUDIO_DIVIDER_STYLES}
+                  disabled={disabled} onChange={(value) => setTable('dividerStyle', value)} />
+                <StudioColorField label="رنگ خط جداکننده" value={design.tables.dividerColor}
+                  disabled={disabled} onChange={(value) => setTable('dividerColor', value)} />
+                <StudioNumberField label="شدت رنگ خط" value={design.tables.dividerOpacity} min={0} max={100}
+                  disabled={disabled} onChange={(value) => setTable('dividerOpacity', value)} />
+              </Stack>
+              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mt: 1 }}>
+                <StudioSelect label="قاب کارت" value={design.tables.frame} options={STUDIO_TABLE_FRAMES}
+                  disabled={disabled} onChange={(value) => setTable('frame', value)} />
+                <StudioNumberField label="حاشیهٔ کناری" value={design.tables.frameMarginX} min={0} max={64}
+                  disabled={disabled} onChange={(value) => setTable('frameMarginX', value)} />
+                <StudioNumberField label="فاصلهٔ داخلی قاب" value={design.tables.framePadding} min={0} max={32}
+                  disabled={disabled} onChange={(value) => setTable('framePadding', value)} />
+                <StudioNumberField label="حداقل عرض ستون" value={design.tables.columnMinWidth} min={60} max={260}
+                  disabled={disabled} onChange={(value) => setTable('columnMinWidth', value)} />
+                <StudioToggle label="سلول تک‌خطی" checked={design.tables.singleLine} disabled={disabled}
+                  onChange={(value) => setTable('singleLine', value)} />
               </Stack>
             </Box>
             <Box>
