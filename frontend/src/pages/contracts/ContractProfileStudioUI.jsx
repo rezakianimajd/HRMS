@@ -244,9 +244,12 @@ const IdentityAmountBlock = ({
   advanceAmount, guaranteeAmount, retentionPercent,
 }) => {
   const theme = useTheme();
+  const isDark = theme.palette.mode === 'dark';
   const info = theme.palette.info.main;
   const success = theme.palette.success.main;
   const warning = theme.palette.warning.main;
+  /* روی زمینهٔ سفید، رنگ تیره‌تر نارنجی خوانایی مبلغ را بالا می‌برد */
+  const warningText = isDark ? (theme.palette.warning.light || warning) : (theme.palette.warning.dark || warning);
   const danger = theme.palette.error.main;
   const violet = theme.palette.secondary.main;
   const progressColor = progressPercent >= 100 ? success : progressPercent > 50 ? info : warning;
@@ -254,13 +257,15 @@ const IdentityAmountBlock = ({
   return (
     <Box sx={{
       p: 1.5, height: '100%', borderRadius: 'var(--hrms-radius-medium, 15px)',
-      border: `1px solid ${alpha(warning, 0.25)}`,
-      background: `linear-gradient(145deg, ${alpha(warning, 0.09)}, ${alpha(info, 0.035)})`,
+      border: `1px solid ${alpha(warning, 0.22)}`,
+      /* کارت سفید: بدون گرادیان رنگی تا اعداد و برچسب‌ها خواناتر شوند */
+      bgcolor: isDark ? alpha(warning, 0.06) : '#ffffff',
+      backgroundImage: 'none',
     }}>
       <Stack direction={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ sm: 'flex-start' }} spacing={1}>
         <Box>
           <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>مبلغ مؤثر قرارداد با الحاقیه و تعدیل</Typography>
-          <Typography sx={{ mt: 0.3, fontSize: { xs: 23, sm: 28 }, fontWeight: 900, color: warning, lineHeight: 1.25, direction: 'rtl' }}>
+          <Typography sx={{ mt: 0.3, fontSize: { xs: 23, sm: 28 }, fontWeight: 900, color: warningText, lineHeight: 1.25, direction: 'rtl' }}>
             {formatPersianNumber(adjustedAmount)} <Box component="span" sx={{ fontSize: 12, fontWeight: 600, color: theme.palette.text.secondary }}>{currencyLabel}</Box>
           </Typography>
           <Stack direction="row" spacing={0.55} useFlexGap flexWrap="wrap" sx={{ mt: 0.55 }}>
@@ -371,14 +376,11 @@ const IdentityAddendums = ({ addendums = [], addendumCount, effectiveChanges = [
 
 export const StudioIdentityCard = (props) => {
   const theme = useTheme();
-  const accent = theme.palette.primary.main;
-  const info = theme.palette.info.main;
+  const isDark = theme.palette.mode === 'dark';
+  /* کارت شناسنامه عمداً سفید است (بدون پوشش گرادیان) تا متن‌ها و مبالغ خواناتر باشند. */
+  const surface = isDark ? theme.palette.background.paper : '#ffffff';
   return (
-    <Paper elevation={0} sx={{ ...panelSx, mb: 2, overflow: 'hidden', position: 'relative' }}>
-      <Box sx={{
-        position: 'absolute', inset: 0, pointerEvents: 'none',
-        background: `radial-gradient(circle at 12% -15%, ${alpha(accent, 0.16)}, transparent 42%), radial-gradient(circle at 92% 0%, ${alpha(info, 0.10)}, transparent 38%)`,
-      }} />
+    <Paper elevation={0} sx={{ ...panelSx, bgcolor: surface, backgroundImage: 'none', mb: 2, overflow: 'hidden', position: 'relative' }}>
       <Box sx={{ position: 'relative', p: { xs: 1.5, md: 2.2 } }}>
         <Grid container spacing={2}>
           <Grid item xs={12} lg={6}><IdentitySubjectBlock {...props} /></Grid>

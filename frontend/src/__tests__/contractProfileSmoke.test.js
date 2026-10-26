@@ -123,6 +123,27 @@ test('foreign contract profile shows dual rial/foreign financial analysis', asyn
   expect(container.textContent).toContain('۲٬۰۰۰٬۰۰۰٬۰۰۰ ریال');
   expect(container.textContent).toContain('۱٬۰۰۰ یورو');
 
+  // کارت بزرگ اول (شناسنامه + مبلغ) باید سفید و بدون پوشش گرادیان باشد تا خوانا بماند.
+  const identityLabel = Array.from(container.querySelectorAll('.MuiTypography-root'))
+    .find((el) => el.textContent.trim() === 'شناسنامهٔ قرارداد');
+  expect(identityLabel).toBeTruthy();
+  const identityCard = identityLabel.closest('.MuiPaper-root');
+  expect(identityCard).not.toBeNull();
+  const identityStyle = window.getComputedStyle(identityCard);
+  expect(identityStyle.backgroundColor).toBe('rgb(255, 255, 255)');
+  expect(identityStyle.backgroundImage).toBe('none');
+  // پوشش گرادیان تزئینی کارت حذف شده است.
+  expect(identityCard.querySelector('[style*="radial-gradient"]')).toBeNull();
+
+  const amountLabel = Array.from(container.querySelectorAll('.MuiTypography-root'))
+    .find((el) => el.textContent.includes('مبلغ مؤثر قرارداد'));
+  expect(amountLabel).toBeTruthy();
+  // هیچ گرادیان رنگی داخل این کارت نمانده است (پیش‌تر پس‌زمینهٔ مبلغ و کل کارت رنگی بود).
+  const gradientNodes = Array.from(identityCard.querySelectorAll('*')).filter((el) => (
+    String(window.getComputedStyle(el).backgroundImage || '').includes('gradient')
+  ));
+  expect(gradientNodes).toHaveLength(0);
+
   const sectionOrder = [
     'شناسنامهٔ قرارداد', 'دسترسی سریع', 'تحلیل مالی قرارداد', 'تایم‌لاین قرارداد',
     'تضامین قرارداد', 'پوشش تعهدات', 'شرایط پرداخت', 'شرایط تحویل', 'قراردادهای هم‌تراز',
