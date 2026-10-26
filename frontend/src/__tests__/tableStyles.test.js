@@ -97,3 +97,19 @@ test('pagination tokens are clamped to sane page sizes', () => {
   expect(resolveTableTheme({ tables: { rowsPerPage: 50, paginationVariant: 'simple' } }).paginationVariant).toBe('simple');
   expect(resolveTableTheme({ tables: { showPagination: false } }).showPagination).toBe(false);
 });
+
+test('pagination color mode resolves theme, module or custom accents', () => {
+  const base = { colors: { primary: '#6366f1', moduleAccent: '#14b8a6' }, shape: { small: 10 } };
+
+  expect(resolveTableTheme({ ...base, tables: {} }).paginationAccent).toBe('#6366f1');
+  expect(resolveTableTheme({ ...base, tables: { paginationColorMode: 'module' } }).paginationAccent).toBe('#14b8a6');
+  expect(resolveTableTheme({
+    ...base,
+    tables: { paginationColorMode: 'custom', paginationColor: '#b91c1c' },
+  }).paginationAccent).toBe('#b91c1c');
+
+  const sized = resolveTableTheme({ ...base, tables: { paginationFontSize: 40 } });
+  expect(sized.paginationFontSize).toBe(18); // سقف مجاز
+  expect(sized.paginationRadius).toBe(10); // از shape.small
+});
+

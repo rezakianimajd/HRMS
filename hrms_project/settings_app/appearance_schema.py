@@ -57,6 +57,7 @@ PANEL_SURFACES = {'solid', 'glass', 'tinted'}
 LABEL_POSITIONS_TOOLBAR = {'above', 'inline', 'hidden'}
 CHIP_STYLES = {'soft', 'outlined'}
 PAGINATION_VARIANTS = {'pages', 'simple'}
+PAGINATION_COLOR_MODES = {'primary', 'module', 'custom'}
 
 
 INFO_CARD_KEYS = (
@@ -159,6 +160,7 @@ DEFAULT_DESIGN = {
         'singleLine': True, 'columnMinWidth': 0,
         'rowsPerPage': 20, 'showPagination': True, 'paginationVariant': 'pages',
         'paginationDense': True, 'showPaginationRange': True,
+        'paginationColorMode': 'primary', 'paginationColor': '#6366f1', 'paginationFontSize': 12,
         'cellPadding': 8, 'rowHeight': 38, 'radius': 16,
         'glassOpacity': 0.5, 'glassBlur': 12,
     },
@@ -392,6 +394,7 @@ def sanitize_design(raw, typography=None):
             'headerColorMode': COLOR_MODES, 'cellColorMode': COLOR_MODES,
             'cellAlign': CELL_ALIGNMENTS, 'numberFont': NUMBER_FONTS,
             'paginationVariant': PAGINATION_VARIANTS,
+            'paginationColorMode': PAGINATION_COLOR_MODES,
         },
         booleans=('striped', 'hover', 'showBorders', 'singleLine',
                   'showPagination', 'paginationDense', 'showPaginationRange'),
@@ -403,12 +406,13 @@ def sanitize_design(raw, typography=None):
             'frameMarginX': (0, 64, True), 'framePadding': (0, 32, True),
             'columnMinWidth': (0, 260, True),
             'rowsPerPage': (5, 100, True),
+            'paginationFontSize': (10, 18, False),
             'headerFontSize': (10, 24, False), 'cellFontSize': (10, 22, False),
             'headerFontWeight': (300, 900, True), 'cellFontWeight': (300, 900, True),
             'headerHeight': (32, 80, True),
             'hoverTint': (0, 40, True), 'stripeTint': (0, 40, True),
         },
-        colors=('dividerColor', 'headerColor', 'cellColor'),
+        colors=('dividerColor', 'headerColor', 'cellColor', 'paginationColor'),
     )
     _sanitize_group(
         base['lists'], source.get('lists'),

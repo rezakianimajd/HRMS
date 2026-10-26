@@ -30,6 +30,7 @@ import PageHeader from '../core/components/ui/PageHeader';
 import InfoCard from '../core/components/ui/InfoCard';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
+import { withAlpha } from '../core/utils/colorUtils';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 
 const currencyUnit = (contract) => normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
@@ -602,32 +603,35 @@ const ExternalContractsPage = () => {
             </TableContainer>
 
             {tableTheme.showPagination && totalCount > pageSize ? (
-              <Stack
-                direction={{ xs: 'column', sm: 'row' }}
-                alignItems="center"
-                justifyContent="space-between"
-                spacing={1}
-                sx={{
-                  px: 1.5,
-                  py: tableTheme.paginationDense ? 0.75 : 1.25,
-                  borderTop: '1px solid',
-                  borderColor: 'var(--hrms-table-border-color, #e8edf4)',
-                }}
-              >
-                {tableTheme.showPaginationRange ? (
-                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
-                    نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
-                    {toPersianDigits(Math.min((page + 1) * pageSize, totalCount))} از{' '}
-                    {toPersianDigits(totalCount)} قرارداد
-                  </Typography>
-                ) : <Box />}
+              <Box sx={{
+                px: 1.5,
+                py: tableTheme.paginationDense ? 0.75 : 1.25,
+                borderTop: '1px solid',
+                borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+              }}>
+                <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
+                  {tableTheme.showPaginationRange ? (
+                    <Typography sx={{
+                      position: 'absolute', insetInlineStart: 0,
+                      display: { xs: 'none', sm: 'block' },
+                      fontSize: tableTheme.paginationFontSize - 0.5,
+                      color: 'text.secondary', whiteSpace: 'nowrap',
+                    }}>
+                      نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
+                      {toPersianDigits(Math.min((page + 1) * pageSize, totalCount))} از{' '}
+                      {toPersianDigits(totalCount)} قرارداد
+                    </Typography>
+                  ) : null}
                 <Stack direction="row" spacing={0.5} alignItems="center">
                   {tableTheme.paginationVariant === 'pages' ? (
                     <>
-                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(0)} aria-label="صفحهٔ اول">
-                        <FirstPageIcon fontSize="small" />
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(0)} aria-label="صفحهٔ اول"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                        {/* آیکون اول/آخر برای RTL آینه می‌شود تا «اول» سمت راست باشد */}
+                        <FirstPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
                       </IconButton>
-                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل">
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
                         <ChevronRightIcon fontSize="small" />
                       </IconButton>
                       {pageNumbers.map((index) => (
@@ -638,41 +642,63 @@ const ExternalContractsPage = () => {
                           onClick={() => setPage(index)}
                           aria-current={index === page ? 'page' : undefined}
                           sx={{
-                            minWidth: 30, height: 30, px: 0.75, borderRadius: '9px', cursor: 'pointer',
+                            minWidth: 30, height: 30, px: 0.75,
+                            borderRadius: `${tableTheme.paginationRadius}px`, cursor: 'pointer',
                             border: '1px solid',
-                            borderColor: index === page ? 'transparent' : 'var(--hrms-table-border-color, #e8edf4)',
-                            bgcolor: index === page ? tableTheme.header.color : 'transparent',
-                            color: index === page ? '#ffffff' : 'text.primary',
-                            fontSize: 12, fontWeight: 800, fontFamily: 'inherit',
+                            borderColor: index === page ? 'transparent' : withAlpha(tableTheme.paginationAccent, 0.3),
+                            bgcolor: index === page ? tableTheme.paginationAccent : 'transparent',
+                            color: index === page ? '#ffffff' : tableTheme.paginationAccent,
+                            fontSize: tableTheme.paginationFontSize, fontWeight: 800,
+                            fontFamily: 'inherit', lineHeight: 1,
                           }}
                         >
                           {toPersianDigits(index + 1)}
                         </Box>
                       ))}
-                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد">
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
                         <ChevronLeftIcon fontSize="small" />
                       </IconButton>
-                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} aria-label="صفحهٔ آخر">
-                        <LastPageIcon fontSize="small" />
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} aria-label="صفحهٔ آخر"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+                        <LastPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
                       </IconButton>
                     </>
                   ) : (
                     <>
-                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل">
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
                         <ChevronRightIcon fontSize="small" />
                       </IconButton>
                       <Chip
                         size="small"
                         label={`${toPersianDigits(page + 1)} / ${toPersianDigits(totalPages)}`}
-                        sx={{ height: 24, fontSize: 12, fontWeight: 700 }}
+                        sx={{
+                          height: 24, fontSize: tableTheme.paginationFontSize, fontWeight: 800,
+                          color: tableTheme.paginationAccent,
+                          bgcolor: withAlpha(tableTheme.paginationAccent, 0.12),
+                        }}
                       />
-                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد">
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد"
+                        sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
                         <ChevronLeftIcon fontSize="small" />
                       </IconButton>
                     </>
                   )}
                 </Stack>
-              </Stack>
+                </Box>
+                {tableTheme.showPaginationRange ? (
+                  <Typography sx={{
+                    display: { xs: 'block', sm: 'none' },
+                    mt: 0.75, textAlign: 'center',
+                    fontSize: tableTheme.paginationFontSize - 0.5, color: 'text.secondary',
+                  }}>
+                    نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
+                    {toPersianDigits(Math.min((page + 1) * pageSize, totalCount))} از{' '}
+                    {toPersianDigits(totalCount)} قرارداد
+                  </Typography>
+                ) : null}
+              </Box>
             ) : null}
           </Paper>
         )}

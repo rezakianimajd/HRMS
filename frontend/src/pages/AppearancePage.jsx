@@ -716,15 +716,16 @@ const TableStudioPreview = ({ design }) => {
           <Stack direction="row" spacing={0.5} alignItems="center">
             {theme.paginationVariant === 'pages' ? [1, 2, 3, 4, 5].map((number) => (
               <Box key={number} sx={{
-                minWidth: 24, height: 24, px: 0.5, borderRadius: '8px', fontSize: 11, fontWeight: 800,
+                minWidth: 24, height: 24, px: 0.5, borderRadius: `${theme.paginationRadius}px`,
+                fontSize: theme.paginationFontSize, fontWeight: 800,
                 display: 'grid', placeItems: 'center',
-                bgcolor: number === 1 ? theme.header.color : 'transparent',
-                color: number === 1 ? '#ffffff' : 'text.primary',
+                bgcolor: number === 1 ? theme.paginationAccent : 'transparent',
+                color: number === 1 ? '#ffffff' : theme.paginationAccent,
                 border: number === 1 ? '1px solid transparent' : '1px solid',
                 borderColor: 'divider',
               }}>{toPersianDigits(number)}</Box>
             )) : (
-              <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: theme.primary }}>۱ / ۵</Typography>
+              <Typography sx={{ fontSize: theme.paginationFontSize, fontWeight: 800, color: theme.paginationAccent }}>۱ / ۵</Typography>
             )}
           </Stack>
         </Stack>
@@ -1319,6 +1320,15 @@ const ThemeStudioCard = ({
                 onChange={(value) => setTable('paginationDense', value)} />
               <StudioToggle label="متن بازه (۱ تا ۲۰ از ۵۷)" checked={design.tables.showPaginationRange} disabled={disabled}
                 onChange={(value) => setTable('showPaginationRange', value)} />
+              <StudioSelect label="رنگ" value={design.tables.paginationColorMode}
+                options={[['primary', 'رنگ اصلی تم'], ['module', 'رنگ ماژول'], ['custom', 'رنگ سفارشی']]}
+                disabled={disabled} onChange={(value) => setTable('paginationColorMode', value)} />
+              {design.tables.paginationColorMode === 'custom' ? (
+                <StudioColorField label="رنگ صفحه‌بندی" value={design.tables.paginationColor}
+                  disabled={disabled} onChange={(value) => setTable('paginationColor', value)} />
+              ) : null}
+              <StudioNumberField label="اندازهٔ فونت" value={design.tables.paginationFontSize} min={10} max={18} step={0.5}
+                disabled={disabled} onChange={(value) => setTable('paginationFontSize', value)} />
             </StudioGroup>
 
             <StudioGroup title="قاب و شیشه" hint="قاب کارت، فاصلهٔ داخلی و افکت شیشه‌ای">

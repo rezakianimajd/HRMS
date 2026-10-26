@@ -77,6 +77,14 @@ export const resolveTableTheme = (tokens) => {
     paginationVariant: cfg.paginationVariant === 'simple' ? 'simple' : 'pages',
     paginationDense: cfg.paginationDense !== false,
     showPaginationRange: cfg.showPaginationRange !== false,
+    paginationFontSize: Math.min(18, Math.max(10, Number(cfg.paginationFontSize ?? 12))),
+    /* رنگ صفحه‌بندی: از رنگ اصلی تم، رنگ ماژول، یا رنگ سفارشی */
+    paginationAccent: cfg.paginationColorMode === 'custom'
+      ? (cfg.paginationColor || colors.primary || '#6366f1')
+      : cfg.paginationColorMode === 'module'
+        ? (colors.moduleAccent || colors.primary || '#6366f1')
+        : (colors.primary || '#6366f1'),
+    paginationRadius: Math.min(20, Math.max(0, Number(source.shape?.small ?? 8))),
     /* استایل‌های آمادهٔ inline برای هدر و سلول‌ها */
     header: {
       fontSize: `${headerFontSize}px`,

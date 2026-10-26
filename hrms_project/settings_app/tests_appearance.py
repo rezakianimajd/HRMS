@@ -208,3 +208,32 @@ class AppearanceSchemaTests(SimpleTestCase):
         self.assertEqual(toolbar['searchHeight'], 40)
         self.assertEqual(toolbar['panelMinWidth'], 160)
         self.assertEqual(toolbar['filtersLabel'], 'فیلترها')
+
+    def test_table_pagination_tokens_are_validated(self):
+        tables = sanitize_design({'tables': {
+            'rowsPerPage': 50, 'showPagination': False, 'paginationVariant': 'simple',
+            'paginationDense': False, 'showPaginationRange': False,
+            'paginationColorMode': 'custom', 'paginationColor': '#0F766E',
+            'paginationFontSize': 14,
+        }})['tables']
+        self.assertEqual(tables['rowsPerPage'], 50)
+        self.assertFalse(tables['showPagination'])
+        self.assertEqual(tables['paginationVariant'], 'simple')
+        self.assertFalse(tables['paginationDense'])
+        self.assertFalse(tables['showPaginationRange'])
+        self.assertEqual(tables['paginationColorMode'], 'custom')
+        self.assertEqual(tables['paginationColor'], '#0f766e')
+        self.assertEqual(tables['paginationFontSize'], 14)
+
+    def test_invalid_table_pagination_values_fall_back(self):
+        tables = sanitize_design({'tables': {
+            'rowsPerPage': 500, 'paginationVariant': 'carousel',
+            'paginationColorMode': 'neon', 'paginationColor': 'blue',
+            'paginationFontSize': 99,
+        }})['tables']
+        self.assertEqual(tables['rowsPerPage'], 20)
+        self.assertEqual(tables['paginationVariant'], 'pages')
+        self.assertEqual(tables['paginationColorMode'], 'primary')
+        self.assertEqual(tables['paginationColor'], '#6366f1')
+        self.assertEqual(tables['paginationFontSize'], 12)
+
