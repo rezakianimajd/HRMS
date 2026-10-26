@@ -1043,11 +1043,11 @@ const ThemeStudioCard = ({
               <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mt: 1 }}>
                 <StudioSelect label="قاب کارت" value={design.tables.frame} options={STUDIO_TABLE_FRAMES}
                   disabled={disabled} onChange={(value) => setTable('frame', value)} />
-                <StudioNumberField label="حاشیهٔ کناری" value={design.tables.frameMarginX} min={0} max={64}
+                <StudioNumberField label="فاصلهٔ افقی داخل قاب" value={design.tables.frameMarginX} min={0} max={64}
                   disabled={disabled} onChange={(value) => setTable('frameMarginX', value)} />
-                <StudioNumberField label="فاصلهٔ داخلی قاب" value={design.tables.framePadding} min={0} max={32}
+                <StudioNumberField label="فاصلهٔ عمودی داخل قاب" value={design.tables.framePadding} min={0} max={32}
                   disabled={disabled} onChange={(value) => setTable('framePadding', value)} />
-                <StudioNumberField label="حداقل عرض ستون" value={design.tables.columnMinWidth} min={60} max={260}
+                <StudioNumberField label="حداقل عرض ستون (۰=خودکار)" value={design.tables.columnMinWidth} min={0} max={260}
                   disabled={disabled} onChange={(value) => setTable('columnMinWidth', value)} />
                 <StudioToggle label="سلول تک‌خطی" checked={design.tables.singleLine} disabled={disabled}
                   onChange={(value) => setTable('singleLine', value)} />

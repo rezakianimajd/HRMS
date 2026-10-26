@@ -112,7 +112,7 @@ class AppearanceSchemaTests(SimpleTestCase):
         self.assertEqual(tables['dividerColor'], '#e2e8f0')
         self.assertEqual(tables['frame'], 'card')
         self.assertTrue(tables['singleLine'])
-        self.assertEqual(tables['frameMarginX'], 16)
+        self.assertEqual(tables['frameMarginX'], 0)
 
     def test_invalid_structural_values_fall_back(self):
         design = sanitize_design({

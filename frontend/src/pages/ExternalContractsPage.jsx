@@ -129,8 +129,8 @@ const ExternalContractsPage = () => {
   const tableDivider = dividerStyle === 'none' ? 'none' : `1px ${dividerStyle} ${dividerColor}`;
   const cellPadding = tableTokens.variant === 'compact' ? 6 : tableTokens.variant === 'spacious' ? 12 : (tableTokens.cellPadding ?? 8);
   const tableFrameSx = tableFrame ? {
-    mx: `${Number(tableTokens.frameMarginX ?? 16)}px`,
-    p: `${Number(tableTokens.framePadding ?? 12)}px`,
+    px: `${Number(tableTokens.frameMarginX ?? 0)}px`,
+    py: `${Number(tableTokens.framePadding ?? 0)}px`,
   } : {};
 
   const { data: contracts, isLoading } = useQuery({
@@ -306,33 +306,35 @@ const ExternalContractsPage = () => {
                 size="small"
                 stickyHeader
                 sx={{
-                  minWidth: 1400,
+                  width: '100%',
+                  minWidth: 860,
+                  tableLayout: 'fixed',
                   '& td, & th': {
-                    px: 1.25,
+                    px: 1,
                     py: `${cellPadding}px`,
                     whiteSpace: singleLine ? 'nowrap' : 'normal',
                     borderBottom: tableDivider,
-                    textOverflow: singleLine ? 'ellipsis' : 'clip',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
                   },
                   '& thead th': {
                     textAlign: `${headerTextAlign} !important`,
-                    minWidth: `${Number(tableTokens.columnMinWidth ?? 110)}px`,
                   },
                   '& tbody td': { height: `${Number(tableTokens.rowHeight ?? 38)}px` },
                 }}
               >
                 <TableHead>
                   <TableRow>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 110 }}>شماره قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 175 }}>طرف حساب</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 285 }}>موضوع قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 150 }}>نوع قرارداد</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 112 }}>وضعیت</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 108 }}>تاریخ شروع</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 108 }}>تاریخ پایان</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 150 }}>مانده (روز تا پایان)</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 195 }}>مبلغ قرارداد (با الحاقیه)</TableCell>
-                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: 126 }}>عملیات</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7%' }}>شماره قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '12%' }}>طرف حساب</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '17%' }}>موضوع قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '10%' }}>نوع قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7%' }}>وضعیت</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7.5%' }}>تاریخ شروع</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '7.5%' }}>تاریخ پایان</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '10%' }}>روز تا پایان</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '13%' }}>مبلغ قرارداد</TableCell>
+                    <TableCell align="center" style={CENTER} sx={{ ...headCellSx, width: '9%' }}>عملیات</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -395,8 +397,10 @@ const ExternalContractsPage = () => {
                           </Typography>
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                          <Chip size="small" label={remain.label}
-                            sx={{ bgcolor: remain.bg, color: remain.color, fontWeight: 800, fontSize: 12, height: 22 }} />
+                          <Tooltip title={remain.label}>
+                            <Chip size="small" label={remain.label}
+                              sx={{ maxWidth: '100%', bgcolor: remain.bg, color: remain.color, fontWeight: 800, fontSize: 12, height: 22 }} />
+                          </Tooltip>
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Tooltip title={`پایه: ${formatPersianNumber(baseAmount)}${Number(amount) !== Number(baseAmount)

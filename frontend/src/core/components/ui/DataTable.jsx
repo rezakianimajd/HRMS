@@ -77,8 +77,8 @@ const DataTable = ({
         backdropFilter: isGlass ? 'var(--hrms-table-backdrop, blur(12px))' : 'none',
         WebkitBackdropFilter: isGlass ? 'var(--hrms-table-backdrop, blur(12px))' : 'none',
         ...(framed ? {
-          mx: 'var(--hrms-table-frame-margin, 16px)',
-          p: 'var(--hrms-table-frame-padding, 12px)',
+          px: 'var(--hrms-table-frame-margin, 0px)',
+          py: 'var(--hrms-table-frame-padding, 0px)',
         } : null),
         ...paperSx,
       }}
@@ -112,7 +112,9 @@ const DataTable = ({
                   borderBottomColor: showBorders ? 'var(--hrms-table-border-color, #e8edf4)' : 'transparent',
                 },
                 ...(themed ? {
-                  '& thead th': { minWidth: 'var(--hrms-table-column-min-width, 110px)' },
+                  ...(Number(tableCfg.columnMinWidth) > 0
+                    ? { '& thead th': { minWidth: 'var(--hrms-table-column-min-width, 110px)' } }
+                    : null),
                   '& tbody td': { height: 'var(--hrms-table-row-height, 38px)' },
                 } : null),
                 ...tableSx,
