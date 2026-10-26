@@ -114,6 +114,52 @@ class AppearanceSchemaTests(SimpleTestCase):
         self.assertTrue(tables['singleLine'])
         self.assertEqual(tables['frameMarginX'], 0)
 
+
+    def test_table_typography_and_color_tokens_are_validated(self):
+        design = sanitize_design({
+            'tables': {
+                'headerFontSize': 15.5, 'headerFontWeight': 800, 'headerHeight': 52,
+                'headerColorMode': 'custom', 'headerColor': '#7C3AED',
+                'cellFontSize': 12, 'cellFontWeight': 400, 'cellAlign': 'start',
+                'cellColorMode': 'custom', 'cellColor': '#0F172A',
+                'numberFont': 'mono', 'hoverTint': 12, 'stripeTint': 8, 'dividerWidth': 2,
+            },
+        })
+        tables = design['tables']
+        self.assertEqual(tables['headerFontSize'], 15.5)
+        self.assertEqual(tables['headerFontWeight'], 800)
+        self.assertEqual(tables['headerHeight'], 52)
+        self.assertEqual(tables['headerColorMode'], 'custom')
+        self.assertEqual(tables['headerColor'], '#7c3aed')
+        self.assertEqual(tables['cellFontSize'], 12)
+        self.assertEqual(tables['cellFontWeight'], 400)
+        self.assertEqual(tables['cellAlign'], 'start')
+        self.assertEqual(tables['cellColor'], '#0f172a')
+        self.assertEqual(tables['numberFont'], 'mono')
+        self.assertEqual(tables['hoverTint'], 12)
+        self.assertEqual(tables['stripeTint'], 8)
+        self.assertEqual(tables['dividerWidth'], 2)
+
+    def test_invalid_table_typography_falls_back_to_defaults(self):
+        tables = sanitize_design({
+            'tables': {
+                'headerFontSize': 90, 'headerFontWeight': 1000, 'cellAlign': 'middle',
+                'headerColorMode': 'wrong', 'cellColorMode': 'wrong', 'numberFont': 'serif',
+                'headerColor': 'red', 'cellColor': 'url(x)', 'dividerWidth': 9,
+                'hoverTint': 200,
+            },
+        })['tables']
+        self.assertEqual(tables['headerFontSize'], 13)
+        self.assertEqual(tables['headerFontWeight'], 700)
+        self.assertEqual(tables['cellAlign'], 'center')
+        self.assertEqual(tables['headerColorMode'], 'theme')
+        self.assertEqual(tables['cellColorMode'], 'theme')
+        self.assertEqual(tables['numberFont'], 'inherit')
+        self.assertEqual(tables['headerColor'], '#334155')
+        self.assertEqual(tables['cellColor'], '#334155')
+        self.assertEqual(tables['dividerWidth'], 1)
+        self.assertEqual(tables['hoverTint'], 6)
+
     def test_invalid_structural_values_fall_back(self):
         design = sanitize_design({
             'infoCards': {'variant': 'unknown', 'glassOpacity': 5},

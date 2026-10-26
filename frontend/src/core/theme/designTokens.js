@@ -130,6 +130,20 @@ export const DEFAULT_DESIGN_TOKENS = {
     showBorders: true,
     headerStyle: 'filled',
     headerAlign: 'center',
+    headerFontSize: 13,
+    headerFontWeight: 700,
+    headerHeight: 44,
+    headerColorMode: 'theme',
+    headerColor: '#334155',
+    cellFontSize: 12.5,
+    cellFontWeight: 500,
+    cellAlign: 'center',
+    cellColorMode: 'theme',
+    cellColor: '#334155',
+    numberFont: 'inherit',
+    hoverTint: 6,
+    stripeTint: 4,
+    dividerWidth: 1,
     dividerStyle: 'solid',
     dividerColor: '#e2e8f0',
     dividerOpacity: 100,
@@ -438,11 +452,25 @@ export const designCssVariables = (design) => {
   const surfaceShadow = (key) => shadowValue(design, key);
   const glassFilter = (config) => (config.surface === 'glass' ? `blur(${config.glassBlur ?? 14}px)` : 'none');
   const tableBorder = tables.showBorders ? surfaces.table.border : 'none';
-  const tableRowAlt = tables.striped ? colorWithAlpha(colors.primary, 0.035) : 'transparent';
   const tableDividerOpacity = Math.min(100, Math.max(0, Number(tables.dividerOpacity ?? 100))) / 100;
-  const tableDivider = tables.showBorders && tables.dividerStyle !== 'none'
-    ? colorWithAlpha(tables.dividerColor || colors.divider || '#e2e8f0', tableDividerOpacity)
+  const tableDividerWidth = Math.min(4, Math.max(0, Number(tables.dividerWidth ?? 1)));
+  const tableDivider = tables.showBorders && tables.dividerStyle !== 'none' && tableDividerWidth > 0
+    ? `${tableDividerWidth}px ${tables.dividerStyle || 'solid'} ${colorWithAlpha(tables.dividerColor || colors.divider || '#e2e8f0', tableDividerOpacity)}`
+    : 'none';
+  /* تایپوگرافی و رنگ‌های جدول: حالت «تم» از پالت پیروی می‌کند، حالت «سفارشی» از رنگ انتخابی. */
+  const tableHeaderColor = tables.headerColorMode === 'custom'
+    ? (tables.headerColor || colors.textPrimary)
+    : colors.textPrimary;
+  const tableCellColor = tables.cellColorMode === 'custom'
+    ? (tables.cellColor || colors.textPrimary)
+    : colors.textPrimary;
+  const tableHoverBg = tables.hover
+    ? colorWithAlpha(colors.primary, Math.min(40, Math.max(0, Number(tables.hoverTint ?? 6))) / 100)
     : 'transparent';
+  const tableStripeBg = tables.striped
+    ? colorWithAlpha(colors.primary, Math.min(40, Math.max(0, Number(tables.stripeTint ?? 4))) / 100)
+    : 'transparent';
+  const tableCellAlign = tables.cellAlign === 'end' ? 'left' : (tables.cellAlign === 'start' ? 'right' : 'center');
   const tableIsGlass = tables.variant === 'glass' || tables.surface === 'glass';
   const effectiveTables = { ...tables, surface: tableIsGlass ? 'glass' : tables.surface };
   const tableCellPadding = tables.variant === 'compact' ? 6 : tables.variant === 'spacious' ? 12 : tables.cellPadding;
@@ -522,14 +550,27 @@ export const designCssVariables = (design) => {
     '--hrms-table-surface-bg': tableBackground(design, effectiveTables),
     '--hrms-table-header-bg': tables.headerStyle === 'plain' ? 'transparent' : surfaces.table.headerBackground,
     '--hrms-table-header-align': tables.headerAlign || 'center',
-    '--hrms-table-row-alt-bg': tableRowAlt,
+    '--hrms-table-header-size': `${Number(tables.headerFontSize ?? 13)}px`,
+    '--hrms-table-header-weight': String(Number(tables.headerFontWeight ?? 700)),
+    '--hrms-table-header-color': tableHeaderColor,
+    '--hrms-table-header-height': px(tables.headerHeight, 44),
+    '--hrms-table-cell-size': `${Number(tables.cellFontSize ?? 12.5)}px`,
+    '--hrms-table-cell-weight': String(Number(tables.cellFontWeight ?? 500)),
+    '--hrms-table-cell-color': tableCellColor,
+    '--hrms-table-cell-align': tableCellAlign,
+    '--hrms-table-number-font': tables.numberFont === 'mono'
+      ? "'JetBrains Mono','Consolas','Courier New',monospace"
+      : 'inherit',
+    '--hrms-table-hover-bg': tableHoverBg,
+    '--hrms-table-row-alt-bg': tableStripeBg,
     '--hrms-table-border': tableBorder,
     '--hrms-table-border-color': tableBorder === 'none' ? 'transparent' : (tables.dividerColor || colors.divider || '#e2e8f0'),
     '--hrms-table-divider': tableDivider,
+    '--hrms-table-divider-width': `${tableDividerWidth}px`,
     '--hrms-table-divider-style': tables.dividerStyle && tables.dividerStyle !== 'none' ? tables.dividerStyle : 'solid',
-    '--hrms-table-frame-margin': tables.frame === 'plain' ? '0px' : px(tables.frameMarginX, 16),
-    '--hrms-table-frame-padding': tables.frame === 'plain' ? '0px' : px(tables.framePadding, 12),
-    '--hrms-table-column-min-width': px(tables.columnMinWidth, 110),
+    '--hrms-table-frame-margin': tables.frame === 'plain' ? '0px' : px(tables.frameMarginX, 0),
+    '--hrms-table-frame-padding': tables.frame === 'plain' ? '0px' : px(tables.framePadding, 0),
+    '--hrms-table-column-min-width': px(tables.columnMinWidth, 0),
     '--hrms-table-white-space': tables.singleLine === false ? 'normal' : 'nowrap',
     '--hrms-table-radius': px(tables.radius, 16),
     '--hrms-table-cell-padding': px(tableCellPadding, 8),

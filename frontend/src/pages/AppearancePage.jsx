@@ -18,8 +18,8 @@ import {
 } from '../core/theme/appearanceDefaults';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import InfoCard from '../core/components/ui/InfoCard';
-import DataTable from '../core/components/ui/DataTable';
 import { formatPersianNumber } from '../core/utils/numberUtils';
+import { resolveTableTheme } from '../core/theme/tableStyles';
 
 /* =========================================================================
  * ظاهر و پوسته (2026)
@@ -578,6 +578,12 @@ const STUDIO_DIVIDER_STYLES = [
   ['solid', 'ممتد'], ['dashed', 'خط‌چین'], ['dotted', 'نقطه‌چین'], ['none', 'بدون خط'],
 ];
 const STUDIO_TABLE_FRAMES = [['card', 'کارت با حاشیه'], ['plain', 'تمام‌عرض']];
+const STUDIO_FONT_WEIGHTS = [
+  [300, 'نازک'], [400, 'معمولی'], [500, 'متوسط'], [600, 'نیمه‌ضخیم'],
+  [700, 'ضخیم'], [800, 'خیلی ضخیم'], [900, 'سیاه'],
+];
+const STUDIO_COLOR_MODES = [['theme', 'از پالت تم'], ['custom', 'رنگ سفارشی']];
+const STUDIO_NUMBER_FONTS = [['inherit', 'فونت متن'], ['mono', 'فونت اعداد (Mono)']];
 
 const StudioSelect = ({ label, value, options, onChange, disabled, sx }) => (
   <TextField
@@ -609,6 +615,124 @@ const StudioToggle = ({ label, checked, onChange, disabled }) => (
 );
 
 
+
+/** گروه‌بندی حرفه‌ای تنظیمات استودیو (عنوان + توضیح + فیلدها). */
+const StudioGroup = ({ title, hint, children }) => (
+  <Box sx={{
+    p: 1.25, borderRadius: '12px', border: '1px solid', borderColor: 'divider',
+    bgcolor: 'action.hover',
+  }}>
+    <Typography sx={{ fontSize: 13, fontWeight: 500 }}>{title}</Typography>
+    {hint ? (
+      <Typography sx={{ fontSize: 11, color: 'text.secondary', mb: 0.75 }}>{hint}</Typography>
+    ) : <Box sx={{ mb: 0.75 }} />}
+    <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
+      {children}
+    </Stack>
+  </Box>
+);
+
+/**
+ * پیش‌نمایش زندهٔ جدول بر اساس همان توکن‌هایی که صفحهٔ «قراردادهای من» می‌خواند.
+ * استایل‌ها عمداً inline از `design` محاسبه می‌شوند تا تغییراتِ ذخیره‌نشده هم فوری دیده شوند.
+ */
+const TableStudioPreview = ({ design }) => {
+  const t = design.tables || {};
+  const surfaces = design.surfaces || {};
+  /* همان resolver مشترکی که صفحهٔ قراردادها و DataTable استفاده می‌کنند */
+  const theme = resolveTableTheme(design);
+  const headerBg = t.headerStyle === 'plain' ? 'transparent' : (surfaces.table?.headerBackground || '#f8fafc');
+  const columns = ['شماره', 'طرف حساب', 'مبلغ قرارداد', 'وضعیت', 'تاریخ پایان'];
+  const rows = [
+    ['C-1201', 'شرکت ساختمانی الف', '۱٬۲۰۰٬۰۰۰٬۰۰۰', 'در حال اجرا', '۱۴۰۴/۰۳/۱۲'],
+    ['C-1202', 'تأمین کالای پارس', '۸۵۰٬۰۰۰٬۰۰۰', 'خاتمه یافته', '۱۴۰۳/۱۲/۲۸'],
+    ['C-1203', 'مهندسی سازه نوین', '۲٬۴۰۰٬۰۰۰٬۰۰۰', 'در انتظار امضا', '۱۴۰۵/۰۱/۱۵'],
+  ];
+  const statusColor = ['#10b981', '#64748b', '#f59e0b'];
+
+  return (
+    <Box sx={{
+      borderRadius: `${theme.radius}px`,
+      border: 'var(--hrms-border-table, 1px solid #e8edf4)',
+      bgcolor: surfaces.table?.background || '#ffffff',
+      overflow: 'hidden',
+      px: theme.frame ? `${theme.frameX}px` : 0,
+      py: theme.frame ? `${theme.frameY}px` : 0,
+    }}>
+      <Box component="table" sx={{ width: '100%', borderCollapse: 'collapse', tableLayout: 'fixed' }}>
+        <Box component="thead">
+          <Box component="tr">
+            {columns.map((label) => (
+              <Box component="th" key={label} sx={{
+                ...theme.header,
+                px: `${theme.cellPadding}px`,
+                textAlign: theme.headerTextAlign,
+                bgcolor: headerBg,
+                borderBottom: theme.divider,
+                whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+              }}>{label}</Box>
+            ))}
+          </Box>
+        </Box>
+        <Box component="tbody">
+          {rows.map((row, rowIndex) => (
+            <Box
+              component="tr"
+              key={row[0]}
+              sx={{
+                bgcolor: theme.striped && rowIndex % 2 === 1 ? theme.stripeBg : 'transparent',
+                ...(theme.hover ? { '&:hover': { bgcolor: theme.hoverBg } } : null),
+              }}
+            >
+              {row.map((value, cellIndex) => (
+                <Box component="td" key={cellIndex} sx={{
+                  ...theme.cell,
+                  height: `${theme.rowHeight}px`,
+                  px: `${theme.cellPadding}px`,
+                  borderBottom: theme.divider,
+                  color: cellIndex === 3 ? statusColor[rowIndex] : theme.cell.color,
+                  textAlign: theme.cellTextAlign,
+                  whiteSpace: theme.singleLine ? 'nowrap' : 'normal',
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  fontFamily: cellIndex === 0 || cellIndex === 2 || cellIndex === 4 ? theme.numberFont : 'inherit',
+                }}>{value}</Box>
+              ))}
+            </Box>
+          ))}
+        </Box>
+      </Box>
+    </Box>
+  );
+};
+
+/** پیش‌نمایش کوچک فهرست‌ها (توکن‌های lists). */
+const ListStudioPreview = ({ design }) => {
+  const l = design.lists || {};
+  const colors = design.colors || {};
+  const radius = Number(l.radius ?? 12);
+  const pad = Number(l.itemPadding ?? 8);
+  const items = ['درخواست خرید تجهیزات', 'تأیید صورت‌وضعیت دورهٔ سوم', 'پرداخت به تأمین‌کننده'];
+  return (
+    <Box sx={{
+      borderRadius: `${radius}px`, overflow: 'hidden',
+      border: 'var(--hrms-border-card, 1px solid #e8edf4)',
+      bgcolor: design.surfaces?.card?.background || '#ffffff',
+    }}>
+      {items.map((item, index) => (
+        <Box key={item} sx={{
+          px: `${pad + 4}px`, py: `${pad}px`,
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 1,
+          borderBottom: l.showDivider !== false && index < items.length - 1
+            ? `1px solid ${colors.divider || '#eef2f7'}` : 'none',
+          ...(l.hover !== false ? { '&:hover': { bgcolor: colors.hover || '#f5f7fb' } } : null),
+        }}>
+          <Typography sx={{ fontSize: 12, color: colors.textPrimary }}>{item}</Typography>
+          <Typography sx={{ fontSize: 11, color: colors.textSecondary }}>نمونه</Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+};
 
 const ThemeStudioCard = ({
   canEdit, design, onChange, onReset, saving, savedTick,
@@ -673,7 +797,8 @@ const ThemeStudioCard = ({
         <Tab label="چیدمان و تراکم" />
         <Tab label="کارت‌های اطلاعات" />
         <Tab label="هدرها" />
-        <Tab label="جدول‌ها و فهرست‌ها" />
+        <Tab label="جداول" />
+        <Tab label="فهرست‌ها" />
       </Tabs>
 
       <Typography sx={{ px: 1.75, pt: 1, fontSize: 11, color: 'text.secondary' }}>
@@ -983,94 +1108,127 @@ const ThemeStudioCard = ({
         {tab === 6 && (
           <Stack spacing={1.75}>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>پیش‌نمایش جدول</Typography>
-              <DataTable
-                rows={[
-                  { id: 1, name: 'ردیف اول', value: '۱۲۰' },
-                  { id: 2, name: 'ردیف دوم', value: '۸۵' },
-                  { id: 3, name: 'ردیف سوم', value: '۲۴۰' },
-                ]}
-                columns={[
-                  { key: 'name', label: 'عنوان' },
-                  { key: 'value', label: 'مقدار' },
-                ]}
-                getRowId={(row) => row.id}
-                maxHeight={190}
-                themed
-              />
+              <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 1 }}>
+                <Typography sx={{ fontSize: 13, fontWeight: 500 }}>پیش‌نمایش زندهٔ جدول</Typography>
+                <Chip size="small" label="همان ظاهر صفحهٔ قراردادها" sx={{ height: 20, fontSize: 11 }} />
+              </Stack>
+              <TableStudioPreview design={design} />
             </Box>
+            <StudioGroup title="ظاهر کلی" hint="نمونه، سطح، سبک هدر، شعاع و حالت ردیف‌ها">
+              <StudioSelect label="نمونه" value={design.tables.variant} options={STUDIO_TABLE_VARIANTS}
+                disabled={disabled} onChange={(value) => setTable('variant', value)} />
+              <StudioSelect label="سطح" value={design.tables.surface} options={STUDIO_SURFACE_OPTIONS}
+                disabled={disabled} onChange={(value) => setTable('surface', value)} />
+              <StudioSelect label="سبک هدر" value={design.tables.headerStyle} options={STUDIO_HEADER_STYLES}
+                disabled={disabled} onChange={(value) => setTable('headerStyle', value)} />
+              <StudioNumberField label="شعاع گوشه" value={design.tables.radius} min={0} max={40}
+                disabled={disabled} onChange={(value) => setTable('radius', value)} />
+              <StudioToggle label="خطوط جدول" checked={design.tables.showBorders} disabled={disabled}
+                onChange={(value) => setTable('showBorders', value)} />
+              <StudioToggle label="ردیف یک‌درمیان" checked={design.tables.striped} disabled={disabled}
+                onChange={(value) => setTable('striped', value)} />
+              <StudioToggle label="هاور ردیف" checked={design.tables.hover} disabled={disabled}
+                onChange={(value) => setTable('hover', value)} />
+              <StudioToggle label="سلول تک‌خطی" checked={design.tables.singleLine} disabled={disabled}
+                onChange={(value) => setTable('singleLine', value)} />
+            </StudioGroup>
+
+            <StudioGroup title="تایپوگرافی عنوان ستون‌ها" hint="اندازه، وزن، تراز، ارتفاع و رنگ هدر">
+              <StudioNumberField label="اندازه" value={design.tables.headerFontSize} min={10} max={24} step={0.5}
+                disabled={disabled} onChange={(value) => setTable('headerFontSize', value)} />
+              <StudioSelect label="وزن" value={design.tables.headerFontWeight} options={STUDIO_FONT_WEIGHTS}
+                disabled={disabled} onChange={(value) => setTable('headerFontWeight', Number(value))} />
+              <StudioSelect label="تراز" value={design.tables.headerAlign} options={STUDIO_ALIGNS}
+                disabled={disabled} onChange={(value) => setTable('headerAlign', value)} />
+              <StudioNumberField label="ارتفاع هدر" value={design.tables.headerHeight} min={32} max={80}
+                disabled={disabled} onChange={(value) => setTable('headerHeight', value)} />
+              <StudioSelect label="رنگ متن" value={design.tables.headerColorMode} options={STUDIO_COLOR_MODES}
+                disabled={disabled} onChange={(value) => setTable('headerColorMode', value)} />
+              {design.tables.headerColorMode === 'custom' ? (
+                <StudioColorField label="رنگ هدر" value={design.tables.headerColor}
+                  disabled={disabled} onChange={(value) => setTable('headerColor', value)} />
+              ) : null}
+            </StudioGroup>
+            <StudioGroup title="تایپوگرافی سلول‌ها" hint="اندازه، وزن، تراز، فونت اعداد و رنگ متن">
+              <StudioNumberField label="اندازه" value={design.tables.cellFontSize} min={10} max={22} step={0.5}
+                disabled={disabled} onChange={(value) => setTable('cellFontSize', value)} />
+              <StudioSelect label="وزن" value={design.tables.cellFontWeight} options={STUDIO_FONT_WEIGHTS}
+                disabled={disabled} onChange={(value) => setTable('cellFontWeight', Number(value))} />
+              <StudioSelect label="تراز" value={design.tables.cellAlign} options={STUDIO_ALIGNS}
+                disabled={disabled} onChange={(value) => setTable('cellAlign', value)} />
+              <StudioSelect label="فونت اعداد" value={design.tables.numberFont} options={STUDIO_NUMBER_FONTS}
+                disabled={disabled} onChange={(value) => setTable('numberFont', value)} />
+              <StudioSelect label="رنگ متن" value={design.tables.cellColorMode} options={STUDIO_COLOR_MODES}
+                disabled={disabled} onChange={(value) => setTable('cellColorMode', value)} />
+              {design.tables.cellColorMode === 'custom' ? (
+                <StudioColorField label="رنگ سلول" value={design.tables.cellColor}
+                  disabled={disabled} onChange={(value) => setTable('cellColor', value)} />
+              ) : null}
+            </StudioGroup>
+
+            <StudioGroup title="رنگ ردیف‌ها" hint="شدت رنگ هاور و ردیف‌های یک‌درمیان بر پایهٔ رنگ اصلی تم">
+              <StudioNumberField label="شدت هاور" value={design.tables.hoverTint} min={0} max={40}
+                disabled={disabled} onChange={(value) => setTable('hoverTint', value)} />
+              <StudioNumberField label="شدت ردیف یک‌درمیان" value={design.tables.stripeTint} min={0} max={40}
+                disabled={disabled} onChange={(value) => setTable('stripeTint', value)} />
+            </StudioGroup>
+
+            <StudioGroup title="خط جداکنندهٔ ردیف‌ها" hint="سبک، ضخامت، رنگ و شفافیت خط">
+              <StudioSelect label="سبک" value={design.tables.dividerStyle} options={STUDIO_DIVIDER_STYLES}
+                disabled={disabled} onChange={(value) => setTable('dividerStyle', value)} />
+              <StudioNumberField label="ضخامت" value={design.tables.dividerWidth} min={0} max={4}
+                disabled={disabled} onChange={(value) => setTable('dividerWidth', value)} />
+              <StudioColorField label="رنگ خط" value={design.tables.dividerColor}
+                disabled={disabled} onChange={(value) => setTable('dividerColor', value)} />
+              <StudioNumberField label="شفافیت رنگ" value={design.tables.dividerOpacity} min={0} max={100}
+                disabled={disabled} onChange={(value) => setTable('dividerOpacity', value)} />
+            </StudioGroup>
+
+            <StudioGroup title="فاصله‌ها و اندازهٔ ستون" hint="فاصلهٔ سلول، ارتفاع ردیف و حداقل عرض ستون">
+              <StudioNumberField label="فاصلهٔ سلول" value={design.tables.cellPadding} min={0} max={32}
+                disabled={disabled} onChange={(value) => setTable('cellPadding', value)} />
+              <StudioNumberField label="ارتفاع ردیف" value={design.tables.rowHeight} min={24} max={64}
+                disabled={disabled} onChange={(value) => setTable('rowHeight', value)} />
+              <StudioNumberField label="حداقل عرض ستون (۰=خودکار)" value={design.tables.columnMinWidth} min={0} max={260}
+                disabled={disabled} onChange={(value) => setTable('columnMinWidth', value)} />
+            </StudioGroup>
+
+            <StudioGroup title="قاب و شیشه" hint="قاب کارت، فاصلهٔ داخلی و افکت شیشه‌ای">
+              <StudioSelect label="قاب کارت" value={design.tables.frame} options={STUDIO_TABLE_FRAMES}
+                disabled={disabled} onChange={(value) => setTable('frame', value)} />
+              <StudioNumberField label="فاصلهٔ افقی داخل قاب" value={design.tables.frameMarginX} min={0} max={64}
+                disabled={disabled} onChange={(value) => setTable('frameMarginX', value)} />
+              <StudioNumberField label="فاصلهٔ عمودی داخل قاب" value={design.tables.framePadding} min={0} max={32}
+                disabled={disabled} onChange={(value) => setTable('framePadding', value)} />
+              <StudioNumberField label="شفافیت شیشه" value={design.tables.glassOpacity} min={0} max={1} step={0.05}
+                disabled={disabled} onChange={(value) => setTable('glassOpacity', value)} />
+              <StudioNumberField label="بلور شیشه" value={design.tables.glassBlur} min={0} max={40}
+                disabled={disabled} onChange={(value) => setTable('glassBlur', value)} />
+            </StudioGroup>
+          </Stack>
+        )}
+
+        {tab === 7 && (
+          <Stack spacing={1.75}>
             <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>ساختار جدول</Typography>
-              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
-                <StudioSelect label="نمونه" value={design.tables.variant} options={STUDIO_TABLE_VARIANTS}
-                  disabled={disabled} onChange={(value) => setTable('variant', value)} />
-                <StudioSelect label="سطح" value={design.tables.surface} options={STUDIO_SURFACE_OPTIONS}
-                  disabled={disabled} onChange={(value) => setTable('surface', value)} />
-                <StudioSelect label="هدر" value={design.tables.headerStyle} options={STUDIO_HEADER_STYLES}
-                  disabled={disabled} onChange={(value) => setTable('headerStyle', value)} />
-                <StudioNumberField label="فاصله سلول" value={design.tables.cellPadding} min={0} max={32}
-                  disabled={disabled} onChange={(value) => setTable('cellPadding', value)} />
-                <StudioNumberField label="ارتفاع ردیف" value={design.tables.rowHeight} min={24} max={64}
-                  disabled={disabled} onChange={(value) => setTable('rowHeight', value)} />
-                <StudioNumberField label="شعاع" value={design.tables.radius} min={0} max={40}
-                  disabled={disabled} onChange={(value) => setTable('radius', value)} />
-              </Stack>
-              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mt: 1 }}>
-                <StudioToggle label="ردیف‌های یک‌درمیان" checked={design.tables.striped} disabled={disabled}
-                  onChange={(value) => setTable('striped', value)} />
-                <StudioToggle label="Hover" checked={design.tables.hover} disabled={disabled}
-                  onChange={(value) => setTable('hover', value)} />
-                <StudioToggle label="خطوط جدول" checked={design.tables.showBorders} disabled={disabled}
-                  onChange={(value) => setTable('showBorders', value)} />
-                <StudioNumberField label="شفافیت شیشه" value={design.tables.glassOpacity} min={0} max={1} step={0.05}
-                  disabled={disabled} onChange={(value) => setTable('glassOpacity', value)} />
-                <StudioNumberField label="بلور شیشه" value={design.tables.glassBlur} min={0} max={40}
-                  disabled={disabled} onChange={(value) => setTable('glassBlur', value)} />
-              </Stack>
+              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>پیش‌نمایش فهرست</Typography>
+              <ListStudioPreview design={design} />
             </Box>
-            <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>خطوط، تراز و قاب جدول</Typography>
-              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
-                <StudioSelect label="تراز عنوان ستون" value={design.tables.headerAlign} options={STUDIO_ALIGNS}
-                  disabled={disabled} onChange={(value) => setTable('headerAlign', value)} />
-                <StudioSelect label="خط جداکننده" value={design.tables.dividerStyle} options={STUDIO_DIVIDER_STYLES}
-                  disabled={disabled} onChange={(value) => setTable('dividerStyle', value)} />
-                <StudioColorField label="رنگ خط جداکننده" value={design.tables.dividerColor}
-                  disabled={disabled} onChange={(value) => setTable('dividerColor', value)} />
-                <StudioNumberField label="شدت رنگ خط" value={design.tables.dividerOpacity} min={0} max={100}
-                  disabled={disabled} onChange={(value) => setTable('dividerOpacity', value)} />
-              </Stack>
-              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center" sx={{ mt: 1 }}>
-                <StudioSelect label="قاب کارت" value={design.tables.frame} options={STUDIO_TABLE_FRAMES}
-                  disabled={disabled} onChange={(value) => setTable('frame', value)} />
-                <StudioNumberField label="فاصلهٔ افقی داخل قاب" value={design.tables.frameMarginX} min={0} max={64}
-                  disabled={disabled} onChange={(value) => setTable('frameMarginX', value)} />
-                <StudioNumberField label="فاصلهٔ عمودی داخل قاب" value={design.tables.framePadding} min={0} max={32}
-                  disabled={disabled} onChange={(value) => setTable('framePadding', value)} />
-                <StudioNumberField label="حداقل عرض ستون (۰=خودکار)" value={design.tables.columnMinWidth} min={0} max={260}
-                  disabled={disabled} onChange={(value) => setTable('columnMinWidth', value)} />
-                <StudioToggle label="سلول تک‌خطی" checked={design.tables.singleLine} disabled={disabled}
-                  onChange={(value) => setTable('singleLine', value)} />
-              </Stack>
-            </Box>
-            <Box>
-              <Typography sx={{ fontSize: 13, fontWeight: 500, mb: 1 }}>فهرست‌ها</Typography>
-              <Stack direction="row" spacing={1.25} flexWrap="wrap" useFlexGap alignItems="center">
-                <StudioSelect label="نمونه" value={design.lists.variant}
-                  options={STUDIO_TABLE_VARIANTS.filter(([key]) => key !== 'glass')}
-                  disabled={disabled} onChange={(value) => setList('variant', value)} />
-                <StudioSelect label="سطح" value={design.lists.surface} options={STUDIO_SURFACE_OPTIONS}
-                  disabled={disabled} onChange={(value) => setList('surface', value)} />
-                <StudioNumberField label="فاصله آیتم" value={design.lists.itemPadding} min={0} max={32}
-                  disabled={disabled} onChange={(value) => setList('itemPadding', value)} />
-                <StudioNumberField label="شعاع" value={design.lists.radius} min={0} max={40}
-                  disabled={disabled} onChange={(value) => setList('radius', value)} />
-                <StudioToggle label="جداکننده" checked={design.lists.showDivider} disabled={disabled}
-                  onChange={(value) => setList('showDivider', value)} />
-                <StudioToggle label="Hover" checked={design.lists.hover} disabled={disabled}
-                  onChange={(value) => setList('hover', value)} />
-              </Stack>
-            </Box>
+            <StudioGroup title="فهرست‌ها" hint="نمونه، سطح، فاصلهٔ آیتم، جداکننده و هاور">
+              <StudioSelect label="نمونه" value={design.lists.variant}
+                options={STUDIO_TABLE_VARIANTS.filter(([key]) => key !== 'glass')}
+                disabled={disabled} onChange={(value) => setList('variant', value)} />
+              <StudioSelect label="سطح" value={design.lists.surface} options={STUDIO_SURFACE_OPTIONS}
+                disabled={disabled} onChange={(value) => setList('surface', value)} />
+              <StudioNumberField label="فاصلهٔ آیتم" value={design.lists.itemPadding} min={0} max={32}
+                disabled={disabled} onChange={(value) => setList('itemPadding', value)} />
+              <StudioNumberField label="شعاع" value={design.lists.radius} min={0} max={40}
+                disabled={disabled} onChange={(value) => setList('radius', value)} />
+              <StudioToggle label="جداکننده" checked={design.lists.showDivider} disabled={disabled}
+                onChange={(value) => setList('showDivider', value)} />
+              <StudioToggle label="هاور" checked={design.lists.hover} disabled={disabled}
+                onChange={(value) => setList('hover', value)} />
+            </StudioGroup>
           </Stack>
         )}
       </Box>

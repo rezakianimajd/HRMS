@@ -47,6 +47,8 @@ ACCENT_MODES = {'module', 'theme'}
 HEADER_STYLES = {'filled', 'plain'}
 DIVIDER_STYLES = {'solid', 'dashed', 'dotted', 'none'}
 TABLE_FRAMES = {'card', 'plain'}
+COLOR_MODES = {'theme', 'custom'}
+NUMBER_FONTS = {'inherit', 'mono'}
 
 
 INFO_CARD_KEYS = (
@@ -139,6 +141,11 @@ DEFAULT_DESIGN = {
     'tables': {
         'variant': 'default', 'surface': 'solid', 'striped': False, 'hover': True,
         'showBorders': True, 'headerStyle': 'filled', 'headerAlign': 'center',
+        'headerFontSize': 13, 'headerFontWeight': 700, 'headerHeight': 44,
+        'headerColorMode': 'theme', 'headerColor': '#334155',
+        'cellFontSize': 12.5, 'cellFontWeight': 500, 'cellAlign': 'center',
+        'cellColorMode': 'theme', 'cellColor': '#334155', 'numberFont': 'inherit',
+        'hoverTint': 6, 'stripeTint': 4, 'dividerWidth': 1,
         'dividerStyle': 'solid', 'dividerColor': '#e2e8f0', 'dividerOpacity': 100,
         'frame': 'card', 'frameMarginX': 0, 'framePadding': 0,
         'singleLine': True, 'columnMinWidth': 0,
@@ -353,16 +360,23 @@ def sanitize_design(raw, typography=None):
             'variant': TABLE_VARIANTS, 'surface': SURFACE_STYLES,
             'headerStyle': HEADER_STYLES, 'headerAlign': ALIGNMENTS,
             'dividerStyle': DIVIDER_STYLES, 'frame': TABLE_FRAMES,
+            'headerColorMode': COLOR_MODES, 'cellColorMode': COLOR_MODES,
+            'cellAlign': ALIGNMENTS, 'numberFont': NUMBER_FONTS,
         },
         booleans=('striped', 'hover', 'showBorders', 'singleLine'),
         ranges={
             'cellPadding': (0, 32, True), 'rowHeight': (24, 64, True),
             'radius': (0, 40, False), 'glassOpacity': (0, 1, False),
             'glassBlur': (0, 40, False), 'dividerOpacity': (0, 100, True),
+            'dividerWidth': (0, 4, True),
             'frameMarginX': (0, 64, True), 'framePadding': (0, 32, True),
             'columnMinWidth': (0, 260, True),
+            'headerFontSize': (10, 24, False), 'cellFontSize': (10, 22, False),
+            'headerFontWeight': (300, 900, True), 'cellFontWeight': (300, 900, True),
+            'headerHeight': (32, 80, True),
+            'hoverTint': (0, 40, True), 'stripeTint': (0, 40, True),
         },
-        colors=('dividerColor',),
+        colors=('dividerColor', 'headerColor', 'cellColor'),
     )
     _sanitize_group(
         base['lists'], source.get('lists'),

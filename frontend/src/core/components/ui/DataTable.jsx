@@ -5,6 +5,7 @@ import {
 } from '@mui/material';
 import { useDesignTokens } from '../../context/DesignTokenContext';
 import { tableBackground } from '../../theme/designTokens';
+import { resolveTableTheme } from '../../theme/tableStyles';
 
 /**
  * جدول مشترک و توکن‌محور.
@@ -56,12 +57,13 @@ const DataTable = ({
   const striped = Boolean(tableCfg.striped);
   const stripBg = striped ? 'var(--hrms-table-row-alt-bg, transparent)' : 'transparent';
 
-  /* --- توکن‌های جدید جدول (استودیوی تم) — فقط با themed فعال می‌شوند --- */
-  const headerAlign = themed ? (tableCfg.headerAlign || 'center') : null;
-  const headerTextAlign = headerAlign === 'end' ? 'left' : (headerAlign === 'start' ? 'right' : headerAlign);
-  const dividerStyle = themed ? (tableCfg.dividerStyle || 'solid') : 'solid';
-  const singleLine = themed ? tableCfg.singleLine !== false : false;
-  const framed = themed && tableCfg.frame !== 'plain';
+  /* --- توکن‌های جدول (استودیوی تم) — فقط با themed فعال می‌شوند --- */
+  const themedTable = themed ? resolveTableTheme(tokens) : null;
+  const headerAlign = themedTable ? themedTable.headerAlign : null;
+  const headerTextAlign = themedTable ? themedTable.headerTextAlign : null;
+  const singleLine = themedTable ? themedTable.singleLine : false;
+  const framed = Boolean(themedTable && themedTable.frame);
+  const themedTypography = themedTable ? { header: themedTable.header, cell: themedTable.cell } : null;
 
   return (
     <Paper
@@ -102,7 +104,7 @@ const DataTable = ({
                 '& td, & th': themed ? {
                   px: 1.25,
                   py: `${cellPadding}px`,
-                  borderBottom: showBorders ? `1px ${dividerStyle} var(--hrms-table-divider, #e2e8f0)` : 'none',
+                  borderBottom: themedTable.divider,
                   whiteSpace: singleLine ? 'nowrap' : 'normal',
                   overflow: singleLine ? 'hidden' : 'visible',
                   textOverflow: singleLine ? 'ellipsis' : 'clip',
@@ -112,10 +114,11 @@ const DataTable = ({
                   borderBottomColor: showBorders ? 'var(--hrms-table-border-color, #e8edf4)' : 'transparent',
                 },
                 ...(themed ? {
-                  ...(Number(tableCfg.columnMinWidth) > 0
+                  ...(themedTable.columnMinWidth > 0
                     ? { '& thead th': { minWidth: 'var(--hrms-table-column-min-width, 110px)' } }
                     : null),
-                  '& tbody td': { height: 'var(--hrms-table-row-height, 38px)' },
+                  '& tbody td': { height: `${themedTable.rowHeight}px` },
+                  '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: themedTable.hoverBg },
                 } : null),
                 ...tableSx,
               }}
@@ -126,7 +129,7 @@ const DataTable = ({
                     {columns.map((column) => (
                       <TableCell
                         key={column.key}
-                        align={headerAlign || column.align || 'right'}
+                        align={headerTextAlign || column.align || 'right'}
                         sx={{
                           fontWeight: 600,
                           whiteSpace: 'nowrap',
@@ -136,6 +139,7 @@ const DataTable = ({
                         style={{
                           ...(column.width ? { width: column.width } : null),
                           ...(headerTextAlign ? { textAlign: headerTextAlign } : null),
+                          ...(themedTypography ? themedTypography.header : null),
                         }}
                       >
                         {column.label}
@@ -177,8 +181,9 @@ const DataTable = ({
                         <TableCell
                           key={column.key}
                           align={column.align || 'right'}
-                          style={themed && column.align ? {
-                            textAlign: column.align === 'center' ? 'center' : (column.align === 'left' ? 'left' : 'right'),
+                          style={themed ? {
+                            textAlign: column.align === 'left' ? 'left' : (column.align === 'right' ? 'right' : (column.align === 'center' ? 'center' : themedTable.cellTextAlign)),
+                            ...themedTypography.cell,
                           } : undefined}
                           sx={{ verticalAlign: 'middle', ...column.cellSx }}
                         >

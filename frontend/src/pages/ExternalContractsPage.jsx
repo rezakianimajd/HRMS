@@ -24,11 +24,8 @@ import downloadFile from '../core/utils/downloadUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import InfoCard from '../core/components/ui/InfoCard';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
-import { withAlpha } from '../core/utils/colorUtils';
+import { resolveTableTheme } from '../core/theme/tableStyles';
 
-const FONT = 'Vazirmatn, IRANSans, sans-serif';
-
-// واحد ارز (نام ارز؛ در نبود نام، نماد و در نهایت «ریال»)
 const currencyUnit = (contract) => normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
 
 // روزهای باقی‌مانده تا پایان (مبتنی بر تاریخ مؤثر با الحاقیه؛ بر پایهٔ روز محلی)
@@ -112,26 +109,14 @@ const ExternalContractsPage = () => {
   const [msgOk, setMsgOk] = useState(true);
   const [exporting, setExporting] = useState(false);
 
-  /* ---- توکن‌های جدول از استودیوی تم (خط جداکننده، تراز هدر، قاب کارت) ---- */
+  /* ---- توکن‌های جدول از استودیوی تم (تایپوگرافی، رنگ، خط جداکننده، قاب) ---- */
   const { tokens } = useDesignTokens();
   const tableTokens = tokens?.tables || {};
-  const tableFrame = tableTokens.frame !== 'plain';
-  const headerAlign = tableTokens.headerAlign || 'center';
-  const headerTextAlign = headerAlign === 'start' ? 'right' : (headerAlign === 'end' ? 'left' : 'center');
-  const singleLine = tableTokens.singleLine !== false;
-  const dividerStyle = tableTokens.dividerStyle && tableTokens.dividerStyle !== 'none'
-    ? tableTokens.dividerStyle
-    : tableTokens.dividerStyle === 'none' ? 'none' : 'solid';
-  const dividerColor = withAlpha(
-    tableTokens.dividerColor || tokens?.colors?.divider || '#e2e8f0',
-    Number(tableTokens.dividerOpacity ?? 100) / 100,
-  );
-  const tableDivider = dividerStyle === 'none' ? 'none' : `1px ${dividerStyle} ${dividerColor}`;
-  const cellPadding = tableTokens.variant === 'compact' ? 6 : tableTokens.variant === 'spacious' ? 12 : (tableTokens.cellPadding ?? 8);
-  const tableFrameSx = tableFrame ? {
-    px: `${Number(tableTokens.frameMarginX ?? 0)}px`,
-    py: `${Number(tableTokens.framePadding ?? 0)}px`,
-  } : {};
+  const tableTheme = resolveTableTheme(tokens);
+  const cellPadding = tableTokens.variant === 'compact' ? 6 : tableTokens.variant === 'spacious' ? 12 : tableTheme.cellPadding;
+  const tableFrameSx = tableTheme.frame
+    ? { px: `${tableTheme.frameX}px`, py: `${tableTheme.frameY}px` }
+    : {};
 
   const { data: contracts, isLoading } = useQuery({
     queryKey: ['external-contracts'],
@@ -312,15 +297,26 @@ const ExternalContractsPage = () => {
                   '& td, & th': {
                     px: 1,
                     py: `${cellPadding}px`,
-                    whiteSpace: singleLine ? 'nowrap' : 'normal',
-                    borderBottom: tableDivider,
+                    whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+                    borderBottom: tableTheme.divider,
                     overflow: 'hidden',
                     textOverflow: 'ellipsis',
                   },
                   '& thead th': {
-                    textAlign: `${headerTextAlign} !important`,
+                    textAlign: `${tableTheme.headerTextAlign} !important`,
+                    backgroundColor: 'var(--hrms-table-header-bg)',
+                    height: `${tableTheme.headerHeight}px`,
+                    fontSize: tableTheme.header.fontSize,
+                    fontWeight: tableTheme.header.fontWeight,
+                    color: tableTheme.header.color,
                   },
-                  '& tbody td': { height: `${Number(tableTokens.rowHeight ?? 38)}px` },
+                  '& tbody td': {
+                    height: `${tableTheme.rowHeight}px`,
+                    fontSize: tableTheme.cell.fontSize,
+                    fontWeight: tableTheme.cell.fontWeight,
+                    color: tableTheme.cell.color,
+                  },
+                  '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
                 }}
               >
                 <TableHead>
@@ -338,7 +334,7 @@ const ExternalContractsPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filtered.map(c => {
+                  {filtered.map((c, index) => {
                     const amount = c.effective_amount ?? c.amount ?? 0;
                     const baseAmount = c.amount ?? 0;
                     const endEffective = c.effective_end_date || c.end_date;
@@ -349,10 +345,13 @@ const ExternalContractsPage = () => {
                       <TableRow
                         key={c.id} hover
                         onClick={() => navigate(`/external-contracts/${c.id}`)}
-                        sx={{ cursor: 'pointer', '&:hover': { bgcolor: 'rgba(245,158,11,0.05)' } }}
+                        sx={{
+                          cursor: 'pointer',
+                          bgcolor: tableTheme.striped && index % 2 === 1 ? tableTheme.stripeBg : 'transparent',
+                        }}
                       >
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                          <Typography sx={{ fontFamily: FONT, fontWeight: 800, fontSize: 12.5, color: '#334155' }}>
+                          <Typography sx={{ fontFamily: 'var(--hrms-table-number-font, inherit)', fontWeight: 800, fontSize: 12.5, color: '#334155' }}>
                             {toPersianDigits(c.number || '—')}
                           </Typography>
                         </TableCell>
@@ -384,13 +383,13 @@ const ExternalContractsPage = () => {
                             }} />
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
-                          <Typography variant="caption" sx={{ fontFamily: FONT, color: '#334155', fontWeight: 700 }}>
+                          <Typography variant="caption" sx={{ fontFamily: 'var(--hrms-table-number-font, inherit)', color: '#334155', fontWeight: 700 }}>
                             {c.start_date ? toJalali(c.start_date) : '—'}
                           </Typography>
                         </TableCell>
                         <TableCell align="center" style={CENTER} sx={bodyCellSx}>
                           <Typography variant="caption" sx={{
-                            fontFamily: FONT, fontWeight: extended ? 800 : 700,
+                            fontFamily: 'var(--hrms-table-number-font, inherit)', fontWeight: extended ? 800 : 700,
                             color: extended ? '#047857' : '#334155',
                           }}>
                             {endEffective ? toJalali(endEffective) : '—'}
@@ -407,7 +406,7 @@ const ExternalContractsPage = () => {
                             ? ` | تغییر الحاقیه: ${formatPersianNumber(Number(amount) - Number(baseAmount))}` : ''}`}>
                             <Box component="span" sx={{ display: 'inline-flex', alignItems: 'center', gap: '10px' }}>
                               <Typography sx={{
-                                fontFamily: FONT, fontWeight: 800, fontSize: 13.5, color: '#b45309',
+                                fontFamily: 'var(--hrms-table-number-font, inherit)', fontWeight: 800, fontSize: 13.5, color: '#b45309',
                                 whiteSpace: 'nowrap',
                               }}>
                                 {formatPersianNumber(amount)}
