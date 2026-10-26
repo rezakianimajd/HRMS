@@ -1572,24 +1572,26 @@ const ContractDocumentsPage = () => {
           </Paper>
         )
       ) : (
-        <Grid container spacing={2} alignItems="stretch">
-          <Grid item xs={12} lg={8}>
+
+        <Paper elevation={0} sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', lg: 'row' },
+          alignItems: 'stretch',
+          borderRadius: 'var(--hrms-table-radius, 16px)',
+          overflow: 'hidden',
+          border: '1px solid', borderColor: 'divider',
+          bgcolor: 'background.paper', boxShadow: 'none',
+        }}>
+          {/* جدول قراردادها — داخل همان کارت استاندارد */}
+          <Box sx={{ width: { xs: '100%', lg: '66.6667%' }, minWidth: 0 }}>
             {!contractRows.length ? (
-              <Paper elevation={0} sx={{
-                p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
-                textAlign: 'center', bgcolor: 'background.paper',
-              }}>
+              <Box sx={{ p: 5, textAlign: 'center' }}>
                 <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
                 <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
                 <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
-              </Paper>
+              </Box>
             ) : (
-              <Paper elevation={0} sx={{
-                borderRadius: 'var(--hrms-table-radius, 16px)',
-                overflow: 'hidden',
-                border: '1px solid', borderColor: 'divider',
-                bgcolor: 'background.paper', boxShadow: 'none',
-              }}>
+              <>
                 <ContractArchiveTable
                   rows={pagedContracts}
                   tableTheme={tableTheme}
@@ -1610,56 +1612,58 @@ const ContractDocumentsPage = () => {
                   pageSize={contractPageSize}
                   unit="قرارداد"
                 />
-              </Paper>
+              </>
             )}
-          </Grid>
-          <Grid item xs={12} lg={4}>
-            <Paper elevation={0} sx={{
-              height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-              borderRadius: 'var(--hrms-table-radius, 16px)',
-              border: '1px solid', borderColor: 'divider',
-              bgcolor: 'background.paper', boxShadow: 'none',
-            }}>
-              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                {recentDocs.length ? recentDocs.map((doc) => (
-                  <Box
-                    key={doc.id}
-                    onClick={() => setDetail(doc)}
-                    sx={{
-                      display: 'flex', alignItems: 'center', gap: 0.75,
-                      px: 1.25, py: 0.85,
-                      borderBottom: tableTheme.divider,
-                      cursor: 'pointer',
-                      '&:hover': { backgroundColor: tableTheme.hoverBg },
-                      '&:last-of-type': { borderBottom: 'none' },
-                    }}
-                  >
-                    <FileBadge row={doc} size={26} />
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{doc.title || '—'}</Typography>
-                      <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                        {toPersianDigits(doc.contract_number || '—')} · {dateLabel(doc.uploaded_at)}
-                      </Typography>
-                    </Box>
-                    <Tooltip title="دانلود">
-                      <IconButton
-                        size="small"
-                        onClick={(event) => { event.stopPropagation(); downloadFile(doc); }}
-                      >
-                        <DownloadIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </Tooltip>
+          </Box>
+          {/* آخرین بارگذاری‌ها — یک سوم، درون همان کارت */}
+          <Box sx={{
+            flex: 1,
+            minWidth: 0,
+            display: 'flex',
+            flexDirection: 'column',
+            borderTop: { xs: '1px solid', lg: 'none' },
+            borderInlineStart: { lg: '1px solid' },
+            borderColor: 'divider',
+            maxHeight: { lg: tableHeight },
+          }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
+              {recentDocs.length ? recentDocs.map((doc) => (
+                <Box
+                  key={doc.id}
+                  onClick={() => setDetail(doc)}
+                  sx={{
+                    display: 'flex', alignItems: 'center', gap: 0.75,
+                    px: 1.25, py: 0.85,
+                    borderBottom: tableTheme.divider,
+                    cursor: 'pointer',
+                    '&:hover': { backgroundColor: tableTheme.hoverBg },
+                    '&:last-of-type': { borderBottom: 'none' },
+                  }}
+                >
+                  <FileBadge row={doc} size={26} />
+                  <Box sx={{ minWidth: 0, flex: 1 }}>
+                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{doc.title || '—'}</Typography>
+                    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                      {toPersianDigits(doc.contract_number || '—')} · {dateLabel(doc.uploaded_at)}
+                    </Typography>
                   </Box>
-                )) : (
-                  <Box sx={{ p: 3.5, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>سندی بارگذاری نشده است.</Typography>
-                  </Box>
-                )}
-              </Box>
-            </Paper>
-          </Grid>
-        </Grid>
-
+                  <Tooltip title="دانلود">
+                    <IconButton
+                      size="small"
+                      onClick={(event) => { event.stopPropagation(); downloadFile(doc); }}
+                    >
+                      <DownloadIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Box>
+              )) : (
+                <Box sx={{ p: 3.5, textAlign: 'center' }}>
+                  <Typography sx={{ fontSize: 11.5, color: MUTED }}>سندی بارگذاری نشده است.</Typography>
+                </Box>
+              )}
+            </Box>
+          </Box>
+        </Paper>
       )}
 
       <DocumentDetailDrawer row={detail} onClose={() => setDetail(null)}
