@@ -6,7 +6,7 @@ import {
   Box, Typography, Paper, Button, Chip, CircularProgress, Stack,
   Dialog, DialogTitle, DialogContent, DialogActions, TextField, FormControl,
   InputLabel, Select, MenuItem, InputAdornment, IconButton, Tooltip, Alert,
-  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Grid, Collapse,
+  Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Collapse,
 } from '@mui/material';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import FilterListIcon from '@mui/icons-material/FilterList';
@@ -20,14 +20,10 @@ import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DownloadIcon from '@mui/icons-material/Download';
-import CheckCircleRoundedIcon from '@mui/icons-material/CheckCircleRounded';
-import ScheduleIcon from '@mui/icons-material/Schedule';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import downloadFile from '../core/utils/downloadUtils';
 import PageHeader from '../core/components/ui/PageHeader';
-import InfoCard from '../core/components/ui/InfoCard';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
 import { withAlpha } from '../core/utils/colorUtils';
@@ -182,23 +178,6 @@ const ExternalContractsPage = () => {
   const rows = contractsPage?.rows || [];
   const totalCount = contractsPage?.count || 0;
 
-  // کارت‌های بالای صفحه از endpoint آمار خوانده می‌شوند (به‌جای خواندن همهٔ قراردادها)
-  const { data: stats } = useQuery({
-    queryKey: ['external-contracts-stats', statusFilter, typeFilter],
-    queryFn: () => axiosInstance.get('/external-contracts/stats/', {
-      params: {
-        ...(statusFilter ? { status: statusFilter } : {}),
-        ...(typeFilter ? { contract_type_master: typeFilter } : {}),
-      },
-    }).then((response) => response.data),
-  });
-  const overview = {
-    total: Number(stats?.total ?? totalCount ?? 0),
-    active: Number(stats?.status_counts?.active ?? 0),
-    expiring: Number(stats?.expiring ?? 0),
-    amount: Number(stats?.total_amount ?? 0),
-  };
-
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   // با تغییر جستجو/فیلترها به صفحهٔ اول برگرد
   useEffect(() => { setPage(0); }, [search, statusFilter, typeFilter, pageSize]);
@@ -317,25 +296,6 @@ const ExternalContractsPage = () => {
       />
 
       {msg && <Alert severity={msgOk ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg('')}>{msg}</Alert>}
-
-      <Grid container spacing={1.5} sx={{ mb: 2 }}>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<HandshakeIcon />} color="#f59e0b" label="کل قراردادها"
-            value={toPersianDigits(overview.total)} suffix="قرارداد" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<CheckCircleRoundedIcon />} color="#10b981" label="در حال اجرا"
-            value={toPersianDigits(overview.active)} suffix="قرارداد" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<ScheduleIcon />} color="#f97316" label="رو به انقضا"
-            value={toPersianDigits(overview.expiring)} suffix="تا ۶۰ روز" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <InfoCard icon={<AccountBalanceIcon />} color="#3b82f6" label="جمع مبالغ"
-            value={formatPersianNumber(overview.amount)} suffix="ریال" />
-        </Grid>
-      </Grid>
 
       {/* نوار جستجو و فیلترها — دکمهٔ «فیلترها» پنل را زیر نوار باز می‌کند */}
       <Paper sx={{ p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
@@ -461,7 +421,8 @@ const ExternalContractsPage = () => {
             }}
           >
             <TableContainer sx={{
-              maxHeight: 'calc(100vh - 430px)',
+              maxHeight: `${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px`,
+              overflowY: 'auto',
               opacity: isFetching && !isLoading ? 0.6 : 1,
               transition: 'opacity .15s ease',
             }}>

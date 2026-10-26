@@ -1311,6 +1311,8 @@ const ThemeStudioCard = ({
             <StudioGroup title="صفحه‌بندی" hint="تعداد ردیف هر صفحه (از سرور خوانده می‌شود) و ظاهر نوار صفحه‌بندی — ارقام فارسی">
               <StudioNumberField label="ردیف در هر صفحه" value={design.tables.rowsPerPage} min={5} max={100}
                 disabled={disabled} onChange={(value) => setTable('rowsPerPage', value)} />
+              <StudioNumberField label="ردیف قابل مشاهده (ارتفاع جدول)" value={design.tables.visibleRows} min={4} max={30}
+                disabled={disabled} onChange={(value) => setTable('visibleRows', value)} />
               <StudioSelect label="نمونه" value={design.tables.paginationVariant}
                 options={[['pages', 'شمارهٔ صفحه'], ['simple', 'ساده (قبلی/بعدی)']]}
                 disabled={disabled} onChange={(value) => setTable('paginationVariant', value)} />

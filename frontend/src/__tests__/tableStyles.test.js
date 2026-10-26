@@ -52,6 +52,7 @@ test('defaults keep tables readable when tokens are missing', () => {
   expect(theme.cellAlign).toBe('auto');
   expect(theme.cellTextAlign).toBeNull();
   expect(theme.rowsPerPage).toBe(20);
+  expect(theme.visibleRows).toBe(12);
   expect(theme.showPagination).toBe(true);
   expect(theme.paginationVariant).toBe('pages');
   expect(theme.showPaginationRange).toBe(true);
@@ -96,6 +97,8 @@ test('pagination tokens are clamped to sane page sizes', () => {
   expect(resolveTableTheme({ tables: { rowsPerPage: 1 } }).rowsPerPage).toBe(5);
   expect(resolveTableTheme({ tables: { rowsPerPage: 50, paginationVariant: 'simple' } }).paginationVariant).toBe('simple');
   expect(resolveTableTheme({ tables: { showPagination: false } }).showPagination).toBe(false);
+  expect(resolveTableTheme({ tables: { visibleRows: 99 } }).visibleRows).toBe(30); // سقف ارتفاع جدول
+  expect(resolveTableTheme({ tables: { visibleRows: 1 } }).visibleRows).toBe(4);
 });
 
 test('pagination color mode resolves theme, module or custom accents', () => {
