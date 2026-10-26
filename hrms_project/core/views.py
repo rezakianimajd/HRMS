@@ -152,16 +152,21 @@ def login_companies_view(request):
     login screen mirrors what the organization configured in the app.
     """
     from settings_app.models import CompanyProfile
+    from settings_app.login_branding import read_login_branding
 
     companies = list(Company.objects.filter(is_active=True).order_by('name'))
     data = []
     for company in companies:
         profile = None
+        branding = {}
         try:
             with schema_context(company.schema_name):
                 profile = CompanyProfile.objects.filter(company_id=company.id).first()
+                # ظاهر صفحهٔ ورود (تصویر پس‌زمینه، رنگ پوشش و رنگ متن) همین شرکت
+                branding = read_login_branding(company)
         except Exception:  # noqa: BLE001 — a missing profile/schema must not break login
             profile = None
+            branding = {}
 
         legal_name = (getattr(profile, 'legal_name', '') or '').strip()
         logo_url = None
@@ -177,6 +182,7 @@ def login_companies_view(request):
             'display_name': legal_name,
             'legal_name': legal_name,
             'logo_url': logo_url,
+            'login_branding': branding,
         })
     return Response(data)
 

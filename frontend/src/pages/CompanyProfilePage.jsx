@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
   Box, Typography, Paper, Avatar, Grid, TextField, Button, CircularProgress,
-  Alert, Stack, Tooltip, Chip, alpha,
+  Alert, Stack, Tooltip, Chip, alpha, Slider, IconButton,
 } from '@mui/material';
 import BusinessIcon from '@mui/icons-material/Business';
 import PhotoCameraIcon from '@mui/icons-material/PhotoCamera';
@@ -12,9 +12,16 @@ import ContactPhoneIcon from '@mui/icons-material/ContactPhone';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import SaveIcon from '@mui/icons-material/Save';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import WallpaperIcon from '@mui/icons-material/Wallpaper';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import RestartAltIcon from '@mui/icons-material/RestartAlt';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import { toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
+import {
+  DEFAULT_LOGIN_BRANDING, LOGIN_PANEL_DEFAULT_BACKGROUND,
+  loginOverlayGradient, normalizeHexColor, resolveLoginBranding,
+} from '../core/utils/colorUtils';
 
 const glassCard = { ...SURFACE };
 
@@ -45,6 +52,73 @@ const Section = ({ icon, title, subtitle, color, children }) => (
     {children}
   </Paper>
 );
+
+const ColorField = ({ label, value, onChange }) => (
+  <Stack direction="row" spacing={1} alignItems="center">
+    <Box
+      component="input"
+      type="color"
+      aria-label={label}
+      value={normalizeHexColor(value, DEFAULT_LOGIN_BRANDING.overlay_color)}
+      onChange={(event) => onChange(event.target.value)}
+      sx={{
+        width: 40, height: 40, p: 0, flexShrink: 0, cursor: 'pointer',
+        border: '1px solid', borderColor: 'divider', borderRadius: '10px', bgcolor: 'transparent',
+      }}
+    />
+    <TextField
+      size="small" fullWidth sx={fieldSx} label={label} value={value || ''}
+      onChange={(event) => onChange(event.target.value)}
+      inputProps={{ dir: 'ltr', spellCheck: false }}
+      helperText="کد رنگ شش‌رقمی، مثل #0b3b2e"
+    />
+  </Stack>
+);
+
+/** پیش‌نمایش زندهٔ پنل سمت راست صفحهٔ ورود (همان لایه‌بندی تصویر + پوشش رنگی). */
+const LoginPanelPreview = ({ branding }) => {
+  const theme = resolveLoginBranding(branding);
+  const hasImage = Boolean(theme.backgroundUrl);
+  return (
+    <Box sx={{
+      position: 'relative', overflow: 'hidden', borderRadius: '14px', minHeight: 228, p: 1.7,
+      color: theme.text, bgcolor: theme.overlay,
+      border: '1px solid', borderColor: 'divider',
+      background: hasImage
+        ? `${loginOverlayGradient(theme)}, ${LOGIN_PANEL_DEFAULT_BACKGROUND}`
+        : LOGIN_PANEL_DEFAULT_BACKGROUND,
+    }}>
+      {hasImage ? (
+        <>
+          <Box aria-hidden sx={{
+            position: 'absolute', inset: 0, backgroundImage: `url("${theme.backgroundUrl}")`,
+            backgroundSize: 'cover', backgroundPosition: 'center',
+          }} />
+          <Box aria-hidden sx={{ position: 'absolute', inset: 0, background: loginOverlayGradient(theme) }} />
+        </>
+      ) : null}
+      <Box sx={{ position: 'relative' }}>
+        <Typography sx={{ fontSize: 12, fontWeight: 800, color: theme.accent }}>
+          پیش‌نمایش صفحهٔ ورود
+        </Typography>
+        <Typography sx={{ mt: 1.1, fontSize: 15, fontWeight: 900, color: theme.text, lineHeight: 1.6 }}>
+          یک فضای کاری،
+        </Typography>
+        <Typography sx={{ fontSize: 15, fontWeight: 900, color: theme.accent, lineHeight: 1.6 }}>
+          همهٔ کسب‌وکار شما.
+        </Typography>
+        <Typography sx={{ mt: 1, fontSize: 12, color: theme.muted, lineHeight: 1.9 }}>
+          داده‌ها، فرایندها و تصمیم‌های سازمان در یک تجربهٔ منسجم.
+        </Typography>
+        {hasImage ? null : (
+          <Typography sx={{ mt: 1.2, fontSize: 12, color: theme.faint }}>
+            تصویری انتخاب نشده؛ پس‌زمینهٔ پیش‌فرض سامانه نمایش داده می‌شود.
+          </Typography>
+        )}
+      </Box>
+    </Box>
+  );
+};
 
 const CompanyProfilePage = () => {
   const qc = useQueryClient();
@@ -95,6 +169,101 @@ const CompanyProfilePage = () => {
     const f = e.target.files?.[0];
     if (f) { setUploading(true); logoMutation.mutate(f); }
   };
+
+  /* ---------------- ظاهر صفحهٔ ورود (تصویر + رنگ پوشش + رنگ متن) ---------------- */
+  const [branding, setBranding] = useState(null);
+  const [brandingSaved, setBrandingSaved] = useState(false);
+  const [brandingError, setBrandingError] = useState('');
+  const [backgroundUploading, setBackgroundUploading] = useState(false);
+
+  const { data: brandingData } = useQuery({
+    queryKey: ['login-branding'],
+    queryFn: () => axiosInstance.get('/settings/login-branding/').then(r => r.data),
+  });
+
+  useEffect(() => {
+    if (brandingData) setBranding(brandingData);
+  }, [brandingData]);
+
+  const panelBranding = { ...DEFAULT_LOGIN_BRANDING, ...(branding || {}) };
+  const canEditBranding = (branding?.can_edit ?? true) !== false;
+
+  const flashBrandingSaved = () => {
+    setBrandingSaved(true);
+    setTimeout(() => setBrandingSaved(false), 2500);
+  };
+
+  const saveBrandingMutation = useMutation({
+    mutationFn: (data) => axiosInstance.put('/settings/login-branding/', data),
+    onSuccess: (res) => {
+      setBranding((previous) => ({ ...(previous || {}), ...res.data }));
+      qc.invalidateQueries({ queryKey: ['login-branding'] });
+      qc.invalidateQueries({ queryKey: ['login-company-profile'] });
+      flashBrandingSaved();
+    },
+    onError: (e) => setBrandingError(e.response?.data?.error || 'ذخیرهٔ ظاهر صفحهٔ ورود انجام نشد'),
+  });
+
+  const backgroundMutation = useMutation({
+    mutationFn: (file) => {
+      const fd = new FormData();
+      fd.append('background', file);
+      return axiosInstance.post('/settings/login-branding/background/', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+    },
+    onSuccess: (res) => {
+      setBackgroundUploading(false);
+      setBranding((previous) => ({ ...(previous || {}), ...res.data }));
+      qc.invalidateQueries({ queryKey: ['login-branding'] });
+      flashBrandingSaved();
+    },
+    onError: (e) => {
+      setBackgroundUploading(false);
+      setBrandingError(e.response?.data?.error || 'بارگذاری تصویر انجام نشد');
+    },
+  });
+
+  const removeBackgroundMutation = useMutation({
+    mutationFn: () => axiosInstance.post('/settings/login-branding/background/', { remove: 1 }),
+    onSuccess: (res) => {
+      setBranding((previous) => ({ ...(previous || {}), ...res.data }));
+      qc.invalidateQueries({ queryKey: ['login-branding'] });
+      flashBrandingSaved();
+    },
+    onError: (e) => setBrandingError(e.response?.data?.error || 'حذف تصویر انجام نشد'),
+  });
+
+  const setBrandingField = (key, value) => {
+    setBrandingError('');
+    setBranding((previous) => ({ ...DEFAULT_LOGIN_BRANDING, ...(previous || {}), [key]: value }));
+  };
+
+  const handleBackgroundFile = (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    setBrandingError('');
+    setBackgroundUploading(true);
+    backgroundMutation.mutate(file);
+  };
+
+  const resetBrandingColors = () => {
+    setBrandingError('');
+    setBranding((previous) => ({
+      ...DEFAULT_LOGIN_BRANDING,
+      ...(previous || {}),
+      overlay_color: DEFAULT_LOGIN_BRANDING.overlay_color,
+      overlay_opacity: DEFAULT_LOGIN_BRANDING.overlay_opacity,
+      text_color: DEFAULT_LOGIN_BRANDING.text_color,
+      accent_color: DEFAULT_LOGIN_BRANDING.accent_color,
+    }));
+  };
+
+  const submitBranding = () => saveBrandingMutation.mutate({
+    overlay_color: panelBranding.overlay_color,
+    overlay_opacity: panelBranding.overlay_opacity,
+    text_color: panelBranding.text_color,
+    accent_color: panelBranding.accent_color,
+  });
 
   if (isLoading) return <Box sx={{ textAlign: 'center', p: 8 }}><CircularProgress /></Box>;
 
@@ -161,6 +330,108 @@ const CompanyProfilePage = () => {
 
       {saved && <Alert icon={<CheckCircleIcon fontSize="inherit" />} severity="success" sx={{ mb: 2, borderRadius: '12px' }}>مشخصات شرکت با موفقیت ذخیره شد</Alert>}
       {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setError('')}>{error}</Alert>}
+
+      {/* ظاهر صفحهٔ ورود */}
+      <Section
+        icon={<WallpaperIcon sx={{ color: '#fff', fontSize: 22 }} />}
+        title="ظاهر صفحهٔ ورود"
+        subtitle="تصویر پس‌زمینهٔ پنل ورود، رنگ پوشش فید روی آن و رنگ نوشته‌ها — برای همهٔ کاربران اعمال می‌شود"
+        color={SOFT.blue}
+      >
+        <Grid container spacing={2}>
+          <Grid item xs={12} md={5}>
+            <LoginPanelPreview branding={panelBranding} />
+            <Stack direction="row" spacing={1} sx={{ mt: 1.2 }} flexWrap="wrap" useFlexGap alignItems="center">
+              <Button
+                variant="outlined" size="small" component="label" startIcon={<PhotoCameraIcon />}
+                disabled={backgroundUploading || !canEditBranding}
+                sx={{ fontSize: 12, borderRadius: '9px' }}
+              >
+                {panelBranding.background_url ? 'تغییر تصویر' : 'انتخاب تصویر'}
+                <input type="file" accept="image/png,image/jpeg,image/webp" hidden onChange={handleBackgroundFile} />
+              </Button>
+              {panelBranding.background_url ? (
+                <Button
+                  variant="text" size="small" color="error" startIcon={<DeleteOutlineIcon />}
+                  onClick={() => removeBackgroundMutation.mutate()}
+                  disabled={removeBackgroundMutation.isLoading || !canEditBranding}
+                  sx={{ fontSize: 12 }}
+                >
+                  حذف تصویر
+                </Button>
+              ) : null}
+              {backgroundUploading ? <CircularProgress size={18} /> : null}
+            </Stack>
+            <Typography sx={{ mt: 0.8, fontSize: 12, color: 'text.secondary' }}>
+              JPG، PNG یا WEBP تا ۶ مگابایت. تصویر تمام‌پهنا (Cover) و زیر رنگ پوشش نمایش داده می‌شود.
+            </Typography>
+          </Grid>
+
+          <Grid item xs={12} md={7}>
+            <Grid container spacing={1.6}>
+              <Grid item xs={12} sm={6}>
+                <ColorField
+                  label="رنگ پوشش (فید)" value={panelBranding.overlay_color}
+                  onChange={(value) => setBrandingField('overlay_color', value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <ColorField
+                  label="رنگ متن اصلی" value={panelBranding.text_color}
+                  onChange={(value) => setBrandingField('text_color', value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <ColorField
+                  label="رنگ متن تأکیدی" value={panelBranding.accent_color}
+                  onChange={(value) => setBrandingField('accent_color', value)}
+                />
+              </Grid>
+              <Grid item xs={12} sm={6}>
+                <Typography sx={{ fontSize: 12, color: 'text.secondary', mb: 0.4 }}>
+                  شدت رنگ پوشش (شفافیت تصویر)
+                </Typography>
+                <Stack direction="row" spacing={1.5} alignItems="center">
+                  <Slider
+                    size="small" min={0} max={95} step={1}
+                    value={Number(panelBranding.overlay_opacity ?? 0)}
+                    onChange={(_, value) => setBrandingField('overlay_opacity', value)}
+                    sx={{ flex: 1 }}
+                  />
+                  <Chip size="small" label={`${toPersianDigits(Number(panelBranding.overlay_opacity ?? 0))}٪`} />
+                </Stack>
+              </Grid>
+            </Grid>
+
+            <Alert severity="info" sx={{ mt: 1, borderRadius: '10px', fontSize: 12 }}>
+              هرچه درصد پوشش بیشتر باشد تصویر محو‌تر و متن خواناتر می‌شود؛ رنگ متن را طوری انتخاب کنید
+              که روی رنگ پوشش به‌خوبی دیده شود.
+            </Alert>
+
+            <Stack direction="row" spacing={1} sx={{ mt: 1.5 }} flexWrap="wrap" useFlexGap alignItems="center">
+              <Button
+                variant="contained" size="small" startIcon={<SaveIcon />}
+                onClick={submitBranding}
+                disabled={saveBrandingMutation.isLoading || !canEditBranding}
+                sx={{ bgcolor: SOFT.indigo, borderRadius: '9px', boxShadow: 'none', fontSize: 12, '&:hover': { bgcolor: '#6f7ecb' } }}
+              >
+                ذخیرهٔ ظاهر صفحهٔ ورود
+              </Button>
+              <Button variant="text" size="small" startIcon={<RestartAltIcon />} onClick={resetBrandingColors} sx={{ fontSize: 12 }}>
+                بازگردانی رنگ پیش‌فرض
+              </Button>
+              {brandingSaved ? (
+                <Chip size="small" icon={<CheckCircleIcon />} label="ذخیره شد" sx={{ bgcolor: alpha(SOFT.green, 0.14), color: '#15803d', fontSize: 12 }} />
+              ) : null}
+            </Stack>
+            {brandingError ? (
+              <Alert severity="error" sx={{ mt: 1.2, borderRadius: '10px', fontSize: 12 }} onClose={() => setBrandingError('')}>
+                {brandingError}
+              </Alert>
+            ) : null}
+          </Grid>
+        </Grid>
+      </Section>
 
       {/* اطلاعات حقوقی و ثبت */}
       <Section icon={<BadgeIcon sx={{ color: '#fff', fontSize: 22 }} />} title="اطلاعات حقوقی و ثبت" color={SOFT.indigo}>

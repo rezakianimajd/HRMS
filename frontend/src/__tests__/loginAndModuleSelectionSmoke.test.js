@@ -7,6 +7,7 @@ import axiosInstance from '../core/api/axiosConfig';
 import ModuleSelection, { greetingForHour } from '../core/components/ui/ModuleSelection';
 import Login from '../pages/Login';
 import { getModuleLandingPath } from '../core/constants/moduleIcons';
+import { loginOverlayGradient, resolveLoginBranding } from '../core/utils/colorUtils';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -95,11 +96,40 @@ beforeEach(() => {
           legal_name: 'شرکت نمونه کیان',
           logo_url: '/media/company-logos/kian.png',
           name: 'DB-TENANT-NAME-MUST-NOT-APPEAR',
+          login_branding: {
+            background_url: '/media/login_branding/company_1/office.jpg',
+            overlay_color: '#0b3b2e',
+            overlay_opacity: 80,
+            text_color: '#f8fafc',
+            accent_color: '#fbbf24',
+          },
         }],
       });
     }
     return Promise.resolve({ data: null });
   });
+});
+
+test('login branding colors are sanitized and turned into a fade gradient', () => {
+  const theme = resolveLoginBranding({
+    background_url: ' /media/login_branding/bg.jpg ',
+    overlay_color: '#0B3B2E',
+    overlay_opacity: 200,
+    text_color: 'red',
+    accent_color: '#fbbf24',
+  });
+  expect(theme.backgroundUrl).toBe('/media/login_branding/bg.jpg');
+  expect(theme.overlay).toBe('#0b3b2e');
+  expect(theme.opacity).toBe(95);
+  expect(theme.text).toBe('#ffffff');
+  expect(theme.accent).toBe('#fbbf24');
+  expect(loginOverlayGradient(theme)).toContain('rgba(11,59,46,0.95)');
+
+  const defaults = resolveLoginBranding(null);
+  expect(defaults.backgroundUrl).toBe('');
+  expect(defaults.overlay).toBe('#07101f');
+  expect(defaults.opacity).toBe(72);
+  expect(loginOverlayGradient(defaults)).toContain('rgba(7,16,31');
 });
 
 test('each selected module resolves to its own landing dashboard', () => {
@@ -169,6 +199,17 @@ test('login page reads company name and logo from company profile, not tenant DB
   expect(container.textContent).not.toContain('DB-TENANT-NAME-MUST-NOT-APPEAR');
   expect(container.querySelector('img')).toBeTruthy();
   expect(container.textContent).toContain('خوش آمدید');
+
+  // ظاهر صفحهٔ ورود از تنظیمات شرکت خوانده می‌شود: تصویر پس‌زمینه زیر پوشش رنگی + رنگ متن‌ها
+  const panel = container.querySelector('[data-testid="login-brand-panel"]');
+  expect(panel).toBeTruthy();
+  expect(panel.getAttribute('data-branding-text-color')).toBe('#f8fafc');
+  expect(panel.getAttribute('data-branding-accent-color')).toBe('#fbbf24');
+  const image = container.querySelector('[data-testid="login-branding-image"]');
+  expect(image.getAttribute('data-background-url')).toBe('/media/login_branding/company_1/office.jpg');
+  const overlay = container.querySelector('[data-testid="login-branding-overlay"]');
+  expect(overlay.getAttribute('data-overlay-color')).toBe('#0b3b2e');
+  expect(overlay.getAttribute('data-overlay-opacity')).toBe('80');
 
   root.unmount();
   container.remove();

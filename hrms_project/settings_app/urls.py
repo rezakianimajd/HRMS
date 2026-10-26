@@ -22,6 +22,9 @@ urlpatterns = [
     path('settings/company-profile/', views.company_profile_view, name='api-company-profile'),
     path('settings/company-profile/update/', views.company_profile_update, name='api-company-profile-update'),
     path('settings/company-profile/logo/', views.company_logo_upload, name='api-company-logo-upload'),
+    # ظاهر صفحهٔ ورود (تصویر پس‌زمینه + رنگ پوشش + رنگ متن)
+    path('settings/login-branding/', views.login_branding_view, name='api-login-branding'),
+    path('settings/login-branding/background/', views.login_branding_background, name='api-login-branding-background'),
 
     # Settings list & update
     path('settings/', views.settings_list, name='api-settings-list'),

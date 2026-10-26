@@ -23,6 +23,9 @@ import ModuleSelection from '../core/components/ui/ModuleSelection';
 import CompanyLogo, { companyLabel } from '../core/components/ui/CompanyLogo';
 import { MODULE_ICONS, getModuleLandingPath } from '../core/constants/moduleIcons';
 import { MODULE_DEFAULT_ACCENTS } from '../core/context/ModulePaletteContext';
+import {
+  LOGIN_PANEL_DEFAULT_BACKGROUND, loginOverlayGradient, resolveLoginBranding, withAlpha,
+} from '../core/utils/colorUtils';
 
 const ACCENT = '#4f46e5';
 const INK = '#0f172a';
@@ -77,22 +80,24 @@ const BrandMark = ({ size = 40 }) => (
   }}>K</Box>
 );
 
-const ProductName = ({ dark = false }) => (
+const ProductName = ({ dark = false, color, mutedColor }) => (
   <Box sx={{ minWidth: 0 }}>
-    <Typography noWrap sx={{ fontSize: 14, fontWeight: 900, lineHeight: 1.3, color: dark ? '#fff' : INK }}>
+    <Typography noWrap sx={{ fontSize: 14, fontWeight: 900, lineHeight: 1.3, color: color || (dark ? '#fff' : INK) }}>
       سامانه یکپارچه مدیریت کسب و کار کیان
     </Typography>
     <Typography sx={{
       fontSize: 12, fontWeight: 700, letterSpacing: '0.12em',
-      color: dark ? 'rgba(255,255,255,0.44)' : '#94a3b8', mt: 0.25,
+      color: mutedColor || (dark ? 'rgba(255,255,255,0.44)' : '#94a3b8'), mt: 0.25,
     }}>
       KIAN BUSINESS SUITE
     </Typography>
   </Box>
 );
 
-const BrandPanel = ({ company }) => {
+const BrandPanel = ({ company, branding }) => {
   const name = company ? (companyDisplayName(company) || 'شرکت') : '';
+  const theme = resolveLoginBranding(branding);
+  const hasImage = Boolean(theme.backgroundUrl);
 
   return (
     <Box sx={{
@@ -104,64 +109,85 @@ const BrandPanel = ({ company }) => {
       flexDirection: 'column',
       justifyContent: 'space-between',
       p: { md: 4.5, lg: 5.8, xl: 6.8 },
-      color: '#fff',
-      bgcolor: '#07101f',
-      background: [
-        'radial-gradient(900px 560px at 14% 8%, rgba(79,70,229,0.34), transparent 64%)',
-        'radial-gradient(720px 620px at 100% 96%, rgba(14,165,233,0.16), transparent 60%)',
-        'linear-gradient(145deg, #07101f 0%, #0c1830 55%, #07101f 100%)',
-      ].join(','),
-      '&::before': {
-        content: '""',
-        position: 'absolute',
-        inset: 0,
-        opacity: 0.16,
+      color: theme.text,
+      bgcolor: theme.overlay,
+      background: hasImage
+        ? `${loginOverlayGradient(theme)}, ${LOGIN_PANEL_DEFAULT_BACKGROUND}`
+        : LOGIN_PANEL_DEFAULT_BACKGROUND,
+    }}
+      data-testid="login-brand-panel"
+      data-branding-text-color={theme.text}
+      data-branding-accent-color={theme.accent}
+    >
+      {hasImage ? (
+        <>
+          {/* تصویر پس‌زمینهٔ سازمان (زیر پوشش رنگی) */}
+          <Box aria-hidden data-testid="login-branding-image" data-background-url={theme.backgroundUrl} sx={{
+            position: 'absolute', inset: 0, zIndex: 0,
+            backgroundImage: `url("${theme.backgroundUrl}")`,
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            transform: 'scale(1.03)',
+            filter: 'saturate(1.06) contrast(1.02)',
+          }} />
+          {/* پوشش فید با رنگ انتخابی سازمان؛ لبه‌ها تیره‌تر تا متن خوانا بماند */}
+          <Box
+            aria-hidden
+            data-testid="login-branding-overlay"
+            data-overlay-color={theme.overlay}
+            data-overlay-opacity={theme.opacity}
+            sx={{ position: 'absolute', inset: 0, zIndex: 0, background: loginOverlayGradient(theme) }}
+          />
+        </>
+      ) : null}
+      <Box aria-hidden sx={{
+        position: 'absolute', inset: 0, zIndex: 0,
+        opacity: hasImage ? 0.09 : 0.16,
         backgroundImage: 'linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px)',
         backgroundSize: '46px 46px',
         maskImage: 'linear-gradient(to bottom, rgba(0,0,0,0.72), transparent 88%)',
-      },
-      '&::after': {
-        content: '""',
+      }} />
+      <Box aria-hidden sx={{
         position: 'absolute',
+        zIndex: 0,
         width: 380,
         height: 380,
         borderRadius: '50%',
-        border: '1px solid rgba(129,140,248,0.11)',
+        border: `1px solid ${withAlpha(theme.accent, 0.11)}`,
         left: -180,
         bottom: 75,
-        boxShadow: '0 0 0 42px rgba(99,102,241,0.025), 0 0 0 88px rgba(14,165,233,0.018)',
-      },
-    }}>
+        boxShadow: `0 0 0 42px ${withAlpha(theme.accent, 0.03)}, 0 0 0 88px ${withAlpha(theme.accent, 0.02)}`,
+      }} />
       <Stack direction="row" alignItems="center" spacing={1.2} sx={{ position: 'relative', zIndex: 1 }}>
         <BrandMark size={44} />
-        <ProductName dark />
+        <ProductName dark color={theme.text} mutedColor={theme.faint} />
         <Box sx={{ flex: 1 }} />
         <Chip label="نسخهٔ سازمانی" sx={{
           height: 24, fontSize: 12, fontWeight: 800,
-          color: 'rgba(226,232,240,0.76)', bgcolor: 'rgba(255,255,255,0.06)',
-          border: '1px solid rgba(255,255,255,0.09)',
+          color: theme.muted, bgcolor: withAlpha(theme.text, 0.06),
+          border: `1px solid ${withAlpha(theme.text, 0.10)}`,
         }} />
       </Stack>
 
       <Box sx={{ position: 'relative', zIndex: 1, maxWidth: 590, py: { md: 4, lg: 5.5 } }}>
         <Chip label="پلتفرم یکپارچه مدیریت سازمان" sx={{
           mb: 2.2, height: 27, fontSize: 12, fontWeight: 800,
-          color: '#c7d2fe', bgcolor: 'rgba(129,140,248,0.12)',
-          border: '1px solid rgba(129,140,248,0.20)',
+          color: theme.accent, bgcolor: withAlpha(theme.accent, 0.12),
+          border: `1px solid ${withAlpha(theme.accent, 0.22)}`,
         }} />
         <Typography component="h1" sx={{
           fontSize: { md: 38, lg: 45, xl: 49 },
           fontWeight: 900,
           lineHeight: 1.34,
           letterSpacing: '-0.05em',
-          color: '#fff',
+          color: theme.text,
         }}>
           یک فضای کاری،
-          <Box component="span" sx={{ display: 'block', color: '#a5b4fc' }}>همهٔ کسب‌وکار شما.</Box>
+          <Box component="span" sx={{ display: 'block', color: theme.accent }}>همهٔ کسب‌وکار شما.</Box>
         </Typography>
         <Typography sx={{
           mt: 2, fontSize: { md: 11.8, lg: 13 }, lineHeight: 2,
-          color: 'rgba(226,232,240,0.62)', maxWidth: 470,
+          color: theme.muted, maxWidth: 470,
         }}>
           داده‌ها، فرایندها و تصمیم‌های سازمان در یک تجربهٔ منسجم؛ از منابع انسانی و قراردادها
           تا مالی، پروژه‌ها و عملیات روزانه.
@@ -177,11 +203,11 @@ const BrandPanel = ({ company }) => {
             return (
               <Box key={item.slug} sx={{
                 p: 1.35, borderRadius: '14px', display: 'flex', alignItems: 'center', gap: 1,
-                bgcolor: 'rgba(255,255,255,0.035)',
-                border: '1px solid rgba(255,255,255,0.075)',
+                bgcolor: withAlpha(theme.text, 0.045),
+                border: `1px solid ${withAlpha(theme.text, 0.085)}`,
                 backdropFilter: 'blur(10px)',
                 transition: 'background-color .2s ease, border-color .2s ease',
-                '&:hover': { bgcolor: 'rgba(255,255,255,0.06)', borderColor: alpha(accent, 0.25) },
+                '&:hover': { bgcolor: withAlpha(theme.text, 0.075), borderColor: alpha(accent, 0.25) },
               }}>
                 <Box sx={{
                   width: 35, height: 35, borderRadius: '10px', flexShrink: 0,
@@ -192,8 +218,8 @@ const BrandPanel = ({ company }) => {
                   <Icon sx={{ fontSize: 18 }} />
                 </Box>
                 <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{item.title}</Typography>
-                  <Typography noWrap sx={{ mt: 0.15, fontSize: 12, color: 'rgba(226,232,240,0.45)' }}>{item.caption}</Typography>
+                  <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: theme.text }}>{item.title}</Typography>
+                  <Typography noWrap sx={{ mt: 0.15, fontSize: 12, color: theme.faint }}>{item.caption}</Typography>
                 </Box>
               </Box>
             );
@@ -204,8 +230,8 @@ const BrandPanel = ({ company }) => {
           {['دسترسی نقش‌محور', 'داده‌های یکپارچه', 'گزارش‌های لحظه‌ای'].map((label) => (
             <Chip key={label} size="small" label={label} sx={{
               height: 22, fontSize: 12, fontWeight: 700,
-              color: 'rgba(226,232,240,0.62)', bgcolor: 'rgba(255,255,255,0.035)',
-              border: '1px solid rgba(255,255,255,0.07)',
+              color: theme.muted, bgcolor: withAlpha(theme.text, 0.04),
+              border: `1px solid ${withAlpha(theme.text, 0.08)}`,
             }} />
           ))}
         </Stack>
@@ -216,19 +242,19 @@ const BrandPanel = ({ company }) => {
         {company ? (
           <Box sx={{
             p: 1.35, borderRadius: '15px', maxWidth: 430,
-            bgcolor: 'rgba(255,255,255,0.055)',
-            border: '1px solid rgba(255,255,255,0.10)',
+            bgcolor: withAlpha(theme.text, 0.06),
+            border: `1px solid ${withAlpha(theme.text, 0.11)}`,
             backdropFilter: 'blur(12px)',
           }}>
             <Stack direction="row" alignItems="center" spacing={1.15}>
               <CompanyLogo company={company} size={42} radius="11px"
-                sx={{ bgcolor: 'rgba(255,255,255,0.94)', borderColor: 'rgba(255,255,255,0.24)' }} />
+                sx={{ bgcolor: 'rgba(255,255,255,0.94)', borderColor: withAlpha(theme.text, 0.24) }} />
               <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.38)', mb: 0.15 }}>
+                <Typography sx={{ fontSize: 12, fontWeight: 700, color: theme.faint, mb: 0.15 }}>
                   سازمان انتخاب‌شده
                 </Typography>
-                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: '#fff' }}>{name}</Typography>
-                <Typography noWrap sx={{ fontSize: 12, color: 'rgba(255,255,255,0.40)', direction: 'ltr', textAlign: 'right' }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: theme.text }}>{name}</Typography>
+                <Typography noWrap sx={{ fontSize: 12, color: theme.faint, direction: 'ltr', textAlign: 'right' }}>
                   {company.code || 'COMPANY PROFILE'}
                 </Typography>
               </Box>
@@ -242,12 +268,12 @@ const BrandPanel = ({ company }) => {
 
         <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={2}>
           <Stack direction="row" alignItems="center" spacing={0.65}>
-            <ShieldOutlinedIcon sx={{ fontSize: 14, color: 'rgba(255,255,255,0.35)' }} />
-            <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.36)' }}>
+            <ShieldOutlinedIcon sx={{ fontSize: 14, color: theme.faint }} />
+            <Typography sx={{ fontSize: 12, color: theme.faint }}>
               دسترسی امن · محیط یکپارچه سازمانی
             </Typography>
           </Stack>
-          <Typography sx={{ fontSize: 12, color: 'rgba(255,255,255,0.28)' }}>KIAN ERP · 1.0</Typography>
+          <Typography sx={{ fontSize: 12, color: theme.faint }}>KIAN ERP · 1.0</Typography>
         </Stack>
       </Stack>
     </Box>
@@ -785,7 +811,7 @@ const Login = () => {
         </Stack>
       </Box>
 
-      <BrandPanel company={selectedCompany} />
+      <BrandPanel company={selectedCompany} branding={selectedCompany?.login_branding} />
     </Box>
   );
 };

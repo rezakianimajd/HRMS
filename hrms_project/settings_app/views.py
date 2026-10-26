@@ -225,6 +225,57 @@ def company_logo_upload(request):
     return Response(CompanyProfileSerializer(profile).data)
 
 
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def login_branding_view(request):
+    """ظاهر صفحهٔ ورود: خواندن برای همهٔ کاربران، تغییر برای مدیران تنظیمات."""
+    from settings_app.login_branding import read_login_branding, save_login_branding
+
+    company = _get_company(request)
+    if not company:
+        return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
+
+    if request.method == 'PUT':
+        if not _can_edit_settings(request.user):
+            return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+        branding = save_login_branding(company, request.data)
+        return Response({**branding, 'can_edit': True, 'message': 'ظاهر صفحهٔ ورود ذخیره شد'})
+
+    return Response({**read_login_branding(company), 'can_edit': _can_edit_settings(request.user)})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def login_branding_background(request):
+    """بارگذاری یا حذف تصویر پس‌زمینهٔ صفحهٔ ورود."""
+    from settings_app.login_branding import (
+        BackgroundUploadError, clear_login_background, store_login_background,
+    )
+
+    if not _can_edit_settings(request.user):
+        return Response({'error': 'دسترسی غیرمجاز'}, status=403)
+
+    company = _get_company(request)
+    if not company:
+        return Response({'error': 'شرکت جاری یافت نشد'}, status=404)
+
+    if str(request.data.get('remove') or '').lower() in ('1', 'true', 'yes'):
+        branding = clear_login_background(company)
+        return Response({
+            **branding, 'can_edit': True,
+            'message': 'تصویر پس‌زمینهٔ صفحهٔ ورود حذف شد',
+        })
+
+    upload = request.FILES.get('background')
+    if not upload:
+        return Response({'error': 'فایل تصویر پس‌زمینه الزامی است'}, status=400)
+    try:
+        branding = store_login_background(company, upload)
+    except BackgroundUploadError as exc:
+        return Response({'error': str(exc)}, status=400)
+    return Response({**branding, 'can_edit': True, 'message': 'تصویر پس‌زمینه ذخیره شد'})
+
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def roles_list(request):
