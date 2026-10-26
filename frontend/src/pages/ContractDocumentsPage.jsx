@@ -506,7 +506,7 @@ const ContractArchiveTable = ({
               </Typography>
             </TableCell>
             <TableCell align="center" className="hrms-cell-center">
-              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, textAlign: 'center', fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                 {formatPersianNumber(docCounts[String(contract.id)] || 0)}
               </Typography>
             </TableCell>
