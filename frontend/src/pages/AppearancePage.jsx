@@ -1313,6 +1313,13 @@ const ThemeStudioCard = ({
                 disabled={disabled} onChange={(value) => setTable('rowsPerPage', value)} />
               <StudioNumberField label="ردیف قابل مشاهده (ارتفاع جدول)" value={design.tables.visibleRows} min={4} max={30}
                 disabled={disabled} onChange={(value) => setTable('visibleRows', value)} />
+              <Chip
+                size="small"
+                label={`ارتفاع محاسبه‌شده: ${formatPersianNumber(
+                  Number(design.tables.headerHeight ?? 44) + Number(design.tables.rowHeight ?? 38) * Number(design.tables.visibleRows ?? 13),
+                )}px`}
+                sx={{ height: 20, fontSize: 11 }}
+              />
               <StudioSelect label="نمونه" value={design.tables.paginationVariant}
                 options={[['pages', 'شمارهٔ صفحه'], ['simple', 'ساده (قبلی/بعدی)']]}
                 disabled={disabled} onChange={(value) => setTable('paginationVariant', value)} />

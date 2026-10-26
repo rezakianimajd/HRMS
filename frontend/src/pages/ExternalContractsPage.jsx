@@ -420,12 +420,17 @@ const ExternalContractsPage = () => {
               boxShadow: 'none',
             }}
           >
-            <TableContainer sx={{
-              maxHeight: `${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px`,
-              overflowY: 'auto',
-              opacity: isFetching && !isLoading ? 0.6 : 1,
-              transition: 'opacity .15s ease',
-            }}>
+            <TableContainer
+              data-visible-rows={tableTheme.visibleRows}
+              data-table-height={`${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px`}
+              sx={{
+                height: { xs: 'auto', sm: `${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px` },
+                maxHeight: { xs: 'none', sm: `${tableTheme.headerHeight + tableTheme.rowHeight * tableTheme.visibleRows}px` },
+                overflowY: 'auto',
+                opacity: isFetching && !isLoading ? 0.6 : 1,
+                transition: 'opacity .15s ease',
+              }}
+            >
               <Table
                 size="small"
                 stickyHeader

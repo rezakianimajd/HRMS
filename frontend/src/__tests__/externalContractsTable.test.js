@@ -84,6 +84,11 @@ test('contracts table renders every field in its own single-line column', async 
   expect(cells[0][2]).not.toContain('پیمانکاری اجرا');
   expect(cells[0][3]).toBe('پیمانکاری اجرا');
 
+  // ارتفاع جدول از توکن‌ها: هدر + ۱۳ ردیف (۴۴ + ۳۸×۱۳)
+  const tableContainer = container.querySelector('.MuiTableContainer-root');
+  expect(tableContainer.getAttribute('data-visible-rows')).toBe('13');
+  expect(tableContainer.getAttribute('data-table-height')).toBe('538px');
+
   await act(async () => { root.unmount(); });
   container.remove();
 });
