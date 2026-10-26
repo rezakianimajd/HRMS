@@ -482,7 +482,7 @@ const ContractArchiveTable = ({
           <TableCell align="center" sx={{ width: '14%' }}>شماره قرارداد</TableCell>
           <TableCell align="center" sx={{ width: '28%' }}>طرف قرارداد</TableCell>
           <TableCell align="center" sx={{ width: '44%' }}>موضوع قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '14%' }}>تعداد اسناد</TableCell>
+          <TableCell align="center" sx={{ width: '14%', textAlign: 'center !important' }}>تعداد اسناد</TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
@@ -503,7 +503,7 @@ const ContractArchiveTable = ({
                 {contract.subject || '—'}
               </Typography>
             </TableCell>
-            <TableCell align="center">
+            <TableCell align="center" sx={{ textAlign: 'center !important' }}>
               <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                 {formatPersianNumber(docCounts[String(contract.id)] || 0)}
               </Typography>
@@ -863,6 +863,7 @@ const ContractDocumentsPage = () => {
   const docsQuery = useQuery({
     queryKey: ['contract-documents-all'],
     queryFn: () => axiosInstance.get('/contract-documents/', { params: { page_size: 500 } }).then((r) => r.data),
+    staleTime: 60 * 1000,
   });
   const allDocs = useMemo(
     () => (Array.isArray(docsQuery.data) ? docsQuery.data : docsQuery.data?.results || []),
@@ -871,11 +872,38 @@ const ContractDocumentsPage = () => {
   const contractsQuery = useQuery({
     queryKey: ['external-contracts-all-docs'],
     queryFn: () => axiosInstance.get('/external-contracts/', { params: { page_size: 500 } }).then((r) => r.data),
+    // پاسخ سنگین است (اسناد/فاکتور/... تودرتو)؛ تا ۵ دقیقه دوباره گرفته نمی‌شود
+    staleTime: 5 * 60 * 1000,
+    // پس از رسیدن اسناد شروع می‌شود تا دو درخواست سنگین هم‌زمان سرور را قفل نکنند
+    enabled: !docsQuery.isLoading,
   });
   const contractList = useMemo(
     () => (Array.isArray(contractsQuery.data) ? contractsQuery.data : contractsQuery.data?.results || []),
     [contractsQuery.data],
   );
+  /* فهرست قراردادها فوراً از خودِ اسناد ساخته می‌شود تا جدول معطل پاسخ سنگین
+   * /external-contracts/ (که اسناد/فاکتور/... تودرتو دارد) نماند؛ وقتی آن پاسخ
+   * رسید، اطلاعات تکمیلی (وضعیت و قراردادهای بدون سند) با همین فهرست ادغام می‌شود. */
+  const contractDirectory = useMemo(() => {
+    const map = new Map();
+    allDocs.forEach((doc) => {
+      const key = String(doc.contract ?? '');
+      if (!key || key === 'null' || map.has(key)) return;
+      map.set(key, {
+        id: doc.contract,
+        number: doc.contract_number,
+        subject: doc.contract_subject,
+        party_name: doc.contract_party_name,
+        status: '',
+      });
+    });
+    contractList.forEach((contract) => {
+      const key = String(contract.id);
+      const docRow = map.get(key);
+      map.set(key, docRow ? { ...docRow, ...contract } : contract);
+    });
+    return Array.from(map.values());
+  }, [allDocs, contractList]);
   const selectedContract = contractList.find((contract) => String(contract.id) === String(contractId)) || null;
   const formContract = contractList.find((contract) => String(contract.id) === String(form.contract)) || null;
   const currencyLabel = normalizeCurrencyLabel(
@@ -933,7 +961,7 @@ const ContractDocumentsPage = () => {
   );
   const contractRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const rows = contractList.filter((contract) => {
+    const rows = contractDirectory.filter((contract) => {
       if (onlyWithDocs && !docCountByContract[String(contract.id)]) return false;
       if (contractStatus && contract.status !== contractStatus) return false;
       if (!term) return true;
@@ -951,7 +979,7 @@ const ContractDocumentsPage = () => {
       return String(lastUploadByContract[String(b.id)] || '')
         .localeCompare(String(lastUploadByContract[String(a.id)] || ''));
     });
-  }, [contractList, search, onlyWithDocs, contractStatus, contractSort, docCountByContract, lastUploadByContract]);
+  }, [contractDirectory, search, onlyWithDocs, contractStatus, contractSort, docCountByContract, lastUploadByContract]);
   const contractPageSize = tableTheme.rowsPerPage;
   const contractTotalPages = Math.max(1, Math.ceil(contractRows.length / contractPageSize));
   useEffect(() => { setContractPage(0); }, [search, onlyWithDocs, contractStatus, contractSort, contractPageSize]);
@@ -1336,9 +1364,12 @@ const ContractDocumentsPage = () => {
     URL.revokeObjectURL(link.href);
   };
 
-  if (docsQuery.isLoading) {
-    return <Box sx={{ py: 8, textAlign: 'center' }}><CircularProgress /></Box>;
-  }
+  /* اسکلت صفحه (هدر و نوار ابزار) فوراً می‌آید؛ فقط داخل کارت اسپینر نشان داده می‌شود */
+  const tableLoading = (
+    <Box sx={{ py: 7, textAlign: 'center' }}>
+      <CircularProgress size={26} />
+    </Box>
+  );
 
   return (
     <Box sx={{ pb: 1 }}>
@@ -1529,7 +1560,7 @@ const ContractDocumentsPage = () => {
 
       {scopedMode ? (
         /* نمای اسناد یک قرارداد انتخاب‌شده */
-        !filtered.length ? (
+        docsQuery.isLoading ? tableLoading : !filtered.length ? (
           <Paper elevation={0} sx={{
             p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
             textAlign: 'center', bgcolor: 'background.paper',
@@ -1584,7 +1615,7 @@ const ContractDocumentsPage = () => {
         }}>
           {/* جدول قراردادها — داخل همان کارت استاندارد */}
           <Box sx={{ width: { xs: '100%', lg: '66.6667%' }, minWidth: 0 }}>
-            {!contractRows.length ? (
+            {docsQuery.isLoading ? tableLoading : !contractRows.length ? (
               <Box sx={{ p: 5, textAlign: 'center' }}>
                 <FolderSharedIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
                 <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>

@@ -134,6 +134,55 @@ test('archive landing shows the contract list above the latest uploads on the st
   container.remove();
 });
 
+test('contract list renders from the documents payload before the heavy contracts request resolves', async () => {
+  // endpoint سنگین قراردادها هرگز پاسخ نمی‌دهد؛ جدول باید از دادهٔ اسناد ساخته شود
+  axiosInstance.get.mockImplementation((url) => {
+    if (String(url).includes('/contract-documents/')) return Promise.resolve({ data: documents });
+    if (String(url).includes('/external-contracts/')) return new Promise(() => {});
+    if (String(url).includes('applications')) return Promise.resolve({ data: { applications: [] } });
+    return Promise.resolve({ data: [] });
+  });
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-documents']}>
+            <ContractDocumentsPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(900);
+  });
+
+  for (let index = 0; index < 2; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
+  }
+
+  const contractsTable = container.querySelector('table[aria-label="فهرست قراردادهای بایگانی"]');
+  expect(contractsTable).toBeTruthy();
+  const rowText = contractsTable.querySelector('tbody tr').textContent;
+  expect(rowText).toContain('قرارداد نمونه');
+  expect(rowText).toContain('پیمانکار نمونه');
+
+  // ستون «تعداد اسناد» وسط‌چین است (مستقل از ترازِ سلول‌های تم)
+  const countHeader = contractsTable.querySelectorAll('thead th')[3];
+  expect(countHeader.textContent.trim()).toBe('تعداد اسناد');
+  expect(window.getComputedStyle(countHeader).textAlign).toBe('center');
+  const countCell = contractsTable.querySelector('tbody tr').querySelectorAll('td')[3];
+  expect(window.getComputedStyle(countCell).textAlign).toBe('center');
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
 test('clicking a contract row opens its documents in the same standard table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
