@@ -839,9 +839,11 @@ const ContractDocumentsPage = () => {
   const { tokens } = useDesignTokens();
   const tableTheme = resolveTableTheme(tokens);
   const toolbar = resolveToolbarTheme(tokens);
-  /* فاصلهٔ داخلی کارت جدول: حداقل ۸px و در صورت تعیین قاب در استودیو، مقدار تم */
-  const cardPadX = Math.max(8, Number(tableTheme.frameX) || 0);
-  const cardPadY = Math.max(8, Number(tableTheme.frameY) || 0);
+  /* فاصلهٔ داخلی و مرز کارت جدول: حداقل ۱۲px و در صورت تعیین قاب در استودیو، مقدار تم */
+  const cardPadX = Math.max(12, Number(tableTheme.frameX) || 0);
+  const cardPadY = Math.max(12, Number(tableTheme.frameY) || 0);
+  /* مرز واضح‌تر از خط جداکنندهٔ پیش‌فرض تا خودِ کارت دیده شود */
+  const cardBorderColor = alpha(theme.palette.text.primary, 0.14);
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const contractId = searchParams.get('contract') || '';
@@ -1578,7 +1580,7 @@ const ContractDocumentsPage = () => {
             borderRadius: 'var(--hrms-table-radius, 16px)',
             overflow: 'hidden',
             px: `${cardPadX}px`, py: `${cardPadY}px`,
-            border: '1px solid', borderColor: 'divider',
+            border: '1px solid', borderColor: cardBorderColor,
             bgcolor: 'background.paper', boxShadow: 'none',
           }}>
             <DocumentArchiveTable
@@ -1613,7 +1615,7 @@ const ContractDocumentsPage = () => {
           <Grid item xs={12} lg={8}>
             <Paper elevation={0} sx={{
               borderRadius: 'var(--hrms-table-radius, 16px)',
-              border: '1px solid', borderColor: 'divider',
+              border: '1px solid', borderColor: cardBorderColor,
               bgcolor: 'background.paper', boxShadow: 'none',
               overflow: 'hidden',
               px: `${cardPadX}px`, py: `${cardPadY}px`,
@@ -1655,7 +1657,7 @@ const ContractDocumentsPage = () => {
             <Paper elevation={0} sx={{
               height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
               borderRadius: 'var(--hrms-table-radius, 16px)',
-              border: '1px solid', borderColor: 'divider',
+              border: '1px solid', borderColor: cardBorderColor,
               bgcolor: 'background.paper', boxShadow: 'none',
             }}>
               <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>

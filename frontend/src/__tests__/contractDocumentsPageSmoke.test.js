@@ -115,7 +115,7 @@ test('archive landing shows the contract list above the latest uploads on the st
   expect(tableCard).toBeTruthy();
   expect(tableCard.contains(contractsTable)).toBe(true);
   expect(tableCard.textContent).not.toContain('متن قرارداد');
-  expect(window.getComputedStyle(tableCard).paddingTop).toBe('8px');
+  expect(window.getComputedStyle(tableCard).paddingTop).toBe('12px');
   const recentsCard = Array.from(container.querySelectorAll('.MuiPaper-root'))
     .find((card) => card !== tableCard && card.textContent.includes('متن قرارداد'));
   expect(recentsCard).toBeTruthy();
