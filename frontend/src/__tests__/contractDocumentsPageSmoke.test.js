@@ -179,11 +179,10 @@ test('contract list renders from the documents payload before the heavy contract
   // ستون «تعداد اسناد» وسط‌چین است (مستقل از ترازِ سلول‌های تم)
   const countHeader = contractsTable.querySelectorAll('thead th')[3];
   expect(countHeader.textContent.trim()).toBe('تعداد اسناد');
-  expect(countHeader.className).toContain('hrms-cell-center');
-  expect(window.getComputedStyle(countHeader).textAlign).toBe('center');
+  // وسط‌چینی با flex است تا به text-align (که تم با !important راست‌چین می‌کند) وابسته نباشد
+  expect(window.getComputedStyle(countHeader.querySelector('div')).justifyContent).toBe('center');
   const countCell = contractsTable.querySelector('tbody tr').querySelectorAll('td')[3];
-  expect(countCell.className).toContain('hrms-cell-center');
-  expect(window.getComputedStyle(countCell).textAlign).toBe('center');
+  expect(window.getComputedStyle(countCell.querySelector('div')).justifyContent).toBe('center');
 
   await act(async () => { root.unmount(); });
   container.remove();

@@ -484,7 +484,9 @@ const ContractArchiveTable = ({
           <TableCell align="center" sx={{ width: '14%' }}>شماره قرارداد</TableCell>
           <TableCell align="center" sx={{ width: '28%' }}>طرف قرارداد</TableCell>
           <TableCell align="center" sx={{ width: '44%' }}>موضوع قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '14%' }} className="hrms-cell-center">تعداد اسناد</TableCell>
+          <TableCell align="center" sx={{ width: '14%' }} className="hrms-cell-center">
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>تعداد اسناد</Box>
+          </TableCell>
         </TableRow>
       </TableHead>
       <TableBody>
@@ -506,9 +508,11 @@ const ContractArchiveTable = ({
               </Typography>
             </TableCell>
             <TableCell align="center" className="hrms-cell-center">
-              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, textAlign: 'center', fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                {formatPersianNumber(docCounts[String(contract.id)] || 0)}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(docCounts[String(contract.id)] || 0)}
+                </Typography>
+              </Box>
             </TableCell>
           </TableRow>
         ))}
