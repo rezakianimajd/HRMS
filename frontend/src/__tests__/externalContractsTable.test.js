@@ -93,6 +93,49 @@ test('contracts table renders every field in its own single-line column', async 
   container.remove();
 });
 
+test('table height follows the measured row height, not the design token', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  // jsdom هیچ layout ندارد؛ ارتفاع واقعی ردیف (۴۷px) و هدر (۴۴px) را شبیه‌سازی می‌کنیم.
+  const originalGetRect = Element.prototype.getBoundingClientRect;
+  Element.prototype.getBoundingClientRect = function getRect() {
+    if (this.tagName === 'TR') {
+      const height = this.closest('thead') ? 44 : 47;
+      return { width: 800, height, top: 0, left: 0, bottom: height, right: 800, x: 0, y: 0, toJSON: () => ({}) };
+    }
+    return originalGetRect.call(this);
+  };
+
+  try {
+    await act(async () => {
+      root.render(
+        <QueryClientProvider client={client}>
+          <MemoryRouter initialEntries={['/external-contracts']}>
+            <ExternalContractsPage />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      await wait(700);
+    });
+    for (let index = 0; index < 3; index += 1) {
+      // eslint-disable-next-line no-await-in-loop
+      await act(async () => { await wait(150); });
+    }
+
+    const tableContainer = container.querySelector('.MuiTableContainer-root');
+    // ۴۴ + ۴۷×۱۳ = ۶۵۵ (اگر توکن ۳۸px مبنا بود، ۵۳۸ می‌شد و ۱۳ ردیف جا نمی‌شد)
+    expect(tableContainer.getAttribute('data-row-height')).toBe('47');
+    expect(tableContainer.getAttribute('data-table-height')).toBe('655px');
+  } finally {
+    Element.prototype.getBoundingClientRect = originalGetRect;
+    await act(async () => { root.unmount(); });
+    container.remove();
+  }
+});
+
 test('filters stay hidden until the filters button is clicked', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');

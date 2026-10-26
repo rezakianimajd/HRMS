@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -177,6 +177,36 @@ const ExternalContractsPage = () => {
   });
   const rows = contractsPage?.rows || [];
   const totalCount = contractsPage?.count || 0;
+
+  /* ---- ارتفاع جدول بر اساس ارتفاع واقعی ردیف‌ها ----
+   * توکن rowHeight فقط یک مبنای طراحی است؛ ارتفاع واقعی هر ردیف به ارتفاع
+   * محتوای سلول (چیپ وضعیت، تایپوگرافی) و padding سراسری بستگی دارد.
+   * اگر ارتفاع توکن مبنا قرار گیرد، «۱۳ ردیف» در عمل به ۱۰.۵ ردیف تبدیل می‌شود؛
+   * پس ارتفاع واقعی ردیف/هدر اندازه‌گیری می‌شود.
+   */
+  const tableScrollRef = useRef(null);
+  const [measuredRowPx, setMeasuredRowPx] = useState(0);
+  const [measuredHeadPx, setMeasuredHeadPx] = useState(0);
+  const measureTableRows = () => {
+    const host = tableScrollRef.current;
+    if (!host) return;
+    const rowEl = host.querySelector('tbody tr');
+    const headEl = host.querySelector('thead tr');
+    const rowPx = rowEl ? Math.round(rowEl.getBoundingClientRect().height) : 0;
+    const headPx = headEl ? Math.round(headEl.getBoundingClientRect().height) : 0;
+    setMeasuredRowPx((prev) => (prev === rowPx ? prev : rowPx));
+    setMeasuredHeadPx((prev) => (prev === headPx ? prev : headPx));
+  };
+  useLayoutEffect(measureTableRows, [rows.length, tableTheme.rowHeight, tableTheme.headerHeight, tableTokens.variant]);
+  useEffect(() => {
+    const onResize = () => measureTableRows();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const effectiveRowPx = measuredRowPx > 0 ? measuredRowPx : tableTheme.rowHeight;
+  const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
+  /* ارتفاع ثابت می‌ماند تا با رفتن به صفحهٔ آخر، جدول جمع نشود */
+  const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
 
   const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
   // با تغییر جستجو/فیلترها به صفحهٔ اول برگرد
@@ -421,11 +451,13 @@ const ExternalContractsPage = () => {
             }}
           >
             <TableContainer
+              ref={tableScrollRef}
               data-visible-rows={tableTheme.visibleRows}
-              data-table-height={`${tableTheme.tableHeight}px`}
+              data-row-height={effectiveRowPx}
+              data-table-height={`${tableHeight}px`}
               sx={{
-                height: { xs: 'auto', sm: `${tableTheme.tableHeight}px` },
-                maxHeight: { xs: 'none', sm: `${tableTheme.tableHeight}px` },
+                height: { xs: 'auto', sm: `${tableHeight}px` },
+                maxHeight: { xs: 'none', sm: `${tableHeight}px` },
                 overflowY: 'auto',
                 opacity: isFetching && !isLoading ? 0.6 : 1,
                 transition: 'opacity .15s ease',

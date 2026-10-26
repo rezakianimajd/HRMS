@@ -1315,9 +1315,7 @@ const ThemeStudioCard = ({
                 disabled={disabled} onChange={(value) => setTable('visibleRows', value)} />
               <Chip
                 size="small"
-                label={`ارتفاع محاسبه‌شده: ${formatPersianNumber(
-                  Number(design.tables.headerHeight ?? 44) + Number(design.tables.rowHeight ?? 38) * Number(design.tables.visibleRows ?? 13),
-                )}px`}
+                label={`ارتفاع خودکار = ارتفاع واقعی ردیف × ${formatPersianNumber(Number(design.tables.visibleRows ?? 13))} ردیف`}
                 sx={{ height: 20, fontSize: 11 }}
               />
               <StudioSelect label="نمونه" value={design.tables.paginationVariant}
