@@ -56,6 +56,7 @@ ICON_SIDES = {'start', 'end', 'hidden'}
 PANEL_SURFACES = {'solid', 'glass', 'tinted'}
 LABEL_POSITIONS_TOOLBAR = {'above', 'inline', 'hidden'}
 CHIP_STYLES = {'soft', 'outlined'}
+PAGINATION_VARIANTS = {'pages', 'simple'}
 
 
 INFO_CARD_KEYS = (
@@ -156,6 +157,8 @@ DEFAULT_DESIGN = {
         'dividerStyle': 'solid', 'dividerColor': '#e2e8f0', 'dividerOpacity': 100,
         'frame': 'card', 'frameMarginX': 0, 'framePadding': 0,
         'singleLine': True, 'columnMinWidth': 0,
+        'rowsPerPage': 20, 'showPagination': True, 'paginationVariant': 'pages',
+        'paginationDense': True, 'showPaginationRange': True,
         'cellPadding': 8, 'rowHeight': 38, 'radius': 16,
         'glassOpacity': 0.5, 'glassBlur': 12,
     },
@@ -388,8 +391,10 @@ def sanitize_design(raw, typography=None):
             'dividerStyle': DIVIDER_STYLES, 'frame': TABLE_FRAMES,
             'headerColorMode': COLOR_MODES, 'cellColorMode': COLOR_MODES,
             'cellAlign': CELL_ALIGNMENTS, 'numberFont': NUMBER_FONTS,
+            'paginationVariant': PAGINATION_VARIANTS,
         },
-        booleans=('striped', 'hover', 'showBorders', 'singleLine'),
+        booleans=('striped', 'hover', 'showBorders', 'singleLine',
+                  'showPagination', 'paginationDense', 'showPaginationRange'),
         ranges={
             'cellPadding': (0, 32, True), 'rowHeight': (24, 64, True),
             'radius': (0, 40, False), 'glassOpacity': (0, 1, False),
@@ -397,6 +402,7 @@ def sanitize_design(raw, typography=None):
             'dividerWidth': (0, 4, True),
             'frameMarginX': (0, 64, True), 'framePadding': (0, 32, True),
             'columnMinWidth': (0, 260, True),
+            'rowsPerPage': (5, 100, True),
             'headerFontSize': (10, 24, False), 'cellFontSize': (10, 22, False),
             'headerFontWeight': (300, 900, True), 'cellFontWeight': (300, 900, True),
             'headerHeight': (32, 80, True),

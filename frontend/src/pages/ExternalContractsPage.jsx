@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -12,6 +12,10 @@ import HandshakeIcon from '@mui/icons-material/Handshake';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import LastPageIcon from '@mui/icons-material/LastPage';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import VisibilityIcon from '@mui/icons-material/Visibility';
@@ -137,6 +141,7 @@ const ExternalContractsPage = () => {
   const [statusFilter, setStatusFilter] = useState('');
   const [typeFilter, setTypeFilter] = useState('');
   const [filtersOpen, setFiltersOpen] = useState(null);
+  const [page, setPage] = useState(0);
   const [deleteId, setDeleteId] = useState(null);
   const [msg, setMsg] = useState('');
   const [msgOk, setMsgOk] = useState(true);
@@ -151,28 +156,57 @@ const ExternalContractsPage = () => {
     ? { px: `${tableTheme.frameX}px`, py: `${tableTheme.frameY}px` }
     : {};
 
-  const { data: contracts, isLoading } = useQuery({
-    queryKey: ['external-contracts'],
+  const pageSize = tableTheme.rowsPerPage;
+  const { data: contractsPage, isLoading, isFetching } = useQuery({
+    queryKey: ['external-contracts', { page, pageSize, search, statusFilter, typeFilter }],
     queryFn: async () => {
-      // صفحه‌بندی پیش‌فرض بک‌اند ۱۰۰ ردیف است؛ برای آمار و جدول، همهٔ صفحات را می‌خوانیم.
-      const pageSize = 1000;
-      const first = await axiosInstance.get('/external-contracts/', { params: { page_size: pageSize } });
-      const payload = first.data;
-      if (Array.isArray(payload)) return payload;
-
-      const results = [...(payload?.results || [])];
-      const total = Number(payload?.count || results.length);
-      const pages = Math.ceil(total / pageSize);
-      for (let page = 2; page <= pages; page += 1) {
-        const response = await axiosInstance.get('/external-contracts/', {
-          params: { page, page_size: pageSize },
-        });
-        results.push(...(response.data?.results || []));
-      }
-      return results;
+      // صفحه‌بندی سمت سرور: فقط همان ۲۰ ردیف لازم خوانده می‌شود (بارگذاری سریع‌تر).
+      const response = await axiosInstance.get('/external-contracts/', {
+        params: {
+          page: page + 1,
+          page_size: pageSize,
+          ...(search ? { search } : {}),
+          ...(statusFilter ? { status: statusFilter } : {}),
+          ...(typeFilter ? { contract_type_master: typeFilter } : {}),
+        },
+      });
+      const payload = response.data;
+      if (Array.isArray(payload)) return { rows: payload, count: payload.length };
+      return { rows: payload?.results || [], count: Number(payload?.count || 0) };
     },
   });
-  const contractList = Array.isArray(contracts) ? contracts : contracts?.results || [];
+  const rows = contractsPage?.rows || [];
+  const totalCount = contractsPage?.count || 0;
+
+  // کارت‌های بالای صفحه از endpoint آمار خوانده می‌شوند (به‌جای خواندن همهٔ قراردادها)
+  const { data: stats } = useQuery({
+    queryKey: ['external-contracts-stats', statusFilter, typeFilter],
+    queryFn: () => axiosInstance.get('/external-contracts/stats/', {
+      params: {
+        ...(statusFilter ? { status: statusFilter } : {}),
+        ...(typeFilter ? { contract_type_master: typeFilter } : {}),
+      },
+    }).then((response) => response.data),
+  });
+  const overview = {
+    total: Number(stats?.total ?? totalCount ?? 0),
+    active: Number(stats?.status_counts?.active ?? 0),
+    expiring: Number(stats?.expiring ?? 0),
+    amount: Number(stats?.total_amount ?? 0),
+  };
+
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  // با تغییر جستجو/فیلترها به صفحهٔ اول برگرد و اگر صفحه از محدوده خارج شد اصلاح کن
+  useEffect(() => { setPage(0); }, [search, statusFilter, typeFilter, pageSize]);
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+  const pageNumbers = (() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    const end = Math.min(totalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_, index) => start + index);
+  })();
 
   const { data: typeMasters } = useQuery({
     queryKey: ['contract-types-master'],
@@ -228,22 +262,6 @@ const ExternalContractsPage = () => {
       setTimeout(() => setMsg(''), 2500);
     },
   });
-
-  const filtered = contractList.filter(c =>
-    (!search || (c.subject || '').includes(search) || (c.party_name || '').includes(search) || (c.number || '').includes(search)) &&
-    (!statusFilter || c.status === statusFilter) &&
-    (!typeFilter || String(c.contract_type_master) === String(typeFilter))
-  );
-
-  const overview = {
-    total: contractList.length,
-    active: contractList.filter(c => c.status === 'active').length,
-    expiring: contractList.filter(c => {
-      const days = daysUntil(c.effective_end_date || c.end_date);
-      return days !== null && days >= 0 && days <= 60;
-    }).length,
-    amount: contractList.reduce((sum, c) => sum + Number(c.effective_amount ?? c.amount ?? 0), 0),
-  };
 
   // خروجی اکسل جامع: تک‌شیت و یک ردیف برای هر قرارداد (همهٔ آیتم‌ها در ستون‌های همان ردیف)
   const exportExcel = async () => {
@@ -420,7 +438,7 @@ const ExternalContractsPage = () => {
       <Box>
         {isLoading ? (
           <Paper sx={{ ...tableFrameSx, py: 6, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}><CircularProgress /></Paper>
-        ) : filtered.length === 0 ? (
+        ) : rows.length === 0 ? (
           <Paper sx={{ ...tableFrameSx, py: 7, textAlign: 'center', borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
             <Typography color="textSecondary">قراردادی ثبت نشده است.</Typography>
           </Paper>
@@ -486,7 +504,7 @@ const ExternalContractsPage = () => {
                   </TableRow>
                 </TableHead>
                 <TableBody>
-                  {filtered.map(c => {
+                  {rows.map(c => {
                     const amount = c.effective_amount ?? c.amount ?? 0;
                     const baseAmount = c.amount ?? 0;
                     const endEffective = c.effective_end_date || c.end_date;
@@ -582,6 +600,80 @@ const ExternalContractsPage = () => {
                 </TableBody>
               </Table>
             </TableContainer>
+
+            {tableTheme.showPagination && totalCount > pageSize ? (
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                alignItems="center"
+                justifyContent="space-between"
+                spacing={1}
+                sx={{
+                  px: 1.5,
+                  py: tableTheme.paginationDense ? 0.75 : 1.25,
+                  borderTop: '1px solid',
+                  borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+                }}
+              >
+                {tableTheme.showPaginationRange ? (
+                  <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>
+                    نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
+                    {toPersianDigits(Math.min((page + 1) * pageSize, totalCount))} از{' '}
+                    {toPersianDigits(totalCount)} قرارداد
+                  </Typography>
+                ) : <Box />}
+                <Stack direction="row" spacing={0.5} alignItems="center">
+                  {tableTheme.paginationVariant === 'pages' ? (
+                    <>
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(0)} aria-label="صفحهٔ اول">
+                        <FirstPageIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل">
+                        <ChevronRightIcon fontSize="small" />
+                      </IconButton>
+                      {pageNumbers.map((index) => (
+                        <Box
+                          key={index}
+                          component="button"
+                          type="button"
+                          onClick={() => setPage(index)}
+                          aria-current={index === page ? 'page' : undefined}
+                          sx={{
+                            minWidth: 30, height: 30, px: 0.75, borderRadius: '9px', cursor: 'pointer',
+                            border: '1px solid',
+                            borderColor: index === page ? 'transparent' : 'var(--hrms-table-border-color, #e8edf4)',
+                            bgcolor: index === page ? tableTheme.header.color : 'transparent',
+                            color: index === page ? '#ffffff' : 'text.primary',
+                            fontSize: 12, fontWeight: 800, fontFamily: 'inherit',
+                          }}
+                        >
+                          {toPersianDigits(index + 1)}
+                        </Box>
+                      ))}
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد">
+                        <ChevronLeftIcon fontSize="small" />
+                      </IconButton>
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(totalPages - 1)} aria-label="صفحهٔ آخر">
+                        <LastPageIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  ) : (
+                    <>
+                      <IconButton size="small" disabled={page === 0} onClick={() => setPage(page - 1)} aria-label="صفحهٔ قبل">
+                        <ChevronRightIcon fontSize="small" />
+                      </IconButton>
+                      <Chip
+                        size="small"
+                        label={`${toPersianDigits(page + 1)} / ${toPersianDigits(totalPages)}`}
+                        sx={{ height: 24, fontSize: 12, fontWeight: 700 }}
+                      />
+                      <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => setPage(page + 1)} aria-label="صفحهٔ بعد">
+                        <ChevronLeftIcon fontSize="small" />
+                      </IconButton>
+                    </>
+                  )}
+                </Stack>
+              </Stack>
+            ) : null}
           </Paper>
         )}
       </Box>

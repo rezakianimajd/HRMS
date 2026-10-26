@@ -18,7 +18,7 @@ import {
 } from '../core/theme/appearanceDefaults';
 import { PageHeader, SURFACE, SOFT } from '../core/components/settings/settingsUi';
 import InfoCard from '../core/components/ui/InfoCard';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { resolveTableTheme } from '../core/theme/tableStyles';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 
@@ -707,6 +707,28 @@ const TableStudioPreview = ({ design }) => {
           ))}
         </Box>
       </Box>
+
+      {theme.showPagination ? (
+        <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mt: 1, px: 0.5 }}>
+          {theme.showPaginationRange ? (
+            <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>نمایش ۱ تا ۲۰ از ۱۲۰</Typography>
+          ) : <Box />}
+          <Stack direction="row" spacing={0.5} alignItems="center">
+            {theme.paginationVariant === 'pages' ? [1, 2, 3, 4, 5].map((number) => (
+              <Box key={number} sx={{
+                minWidth: 24, height: 24, px: 0.5, borderRadius: '8px', fontSize: 11, fontWeight: 800,
+                display: 'grid', placeItems: 'center',
+                bgcolor: number === 1 ? theme.header.color : 'transparent',
+                color: number === 1 ? '#ffffff' : 'text.primary',
+                border: number === 1 ? '1px solid transparent' : '1px solid',
+                borderColor: 'divider',
+              }}>{toPersianDigits(number)}</Box>
+            )) : (
+              <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: theme.primary }}>۱ / ۵</Typography>
+            )}
+          </Stack>
+        </Stack>
+      ) : null}
     </Box>
   );
 };
@@ -1283,6 +1305,20 @@ const ThemeStudioCard = ({
                 disabled={disabled} onChange={(value) => setTable('rowHeight', value)} />
               <StudioNumberField label="حداقل عرض ستون (۰=خودکار)" value={design.tables.columnMinWidth} min={0} max={260}
                 disabled={disabled} onChange={(value) => setTable('columnMinWidth', value)} />
+            </StudioGroup>
+
+            <StudioGroup title="صفحه‌بندی" hint="تعداد ردیف هر صفحه (از سرور خوانده می‌شود) و ظاهر نوار صفحه‌بندی — ارقام فارسی">
+              <StudioNumberField label="ردیف در هر صفحه" value={design.tables.rowsPerPage} min={5} max={100}
+                disabled={disabled} onChange={(value) => setTable('rowsPerPage', value)} />
+              <StudioSelect label="نمونه" value={design.tables.paginationVariant}
+                options={[['pages', 'شمارهٔ صفحه'], ['simple', 'ساده (قبلی/بعدی)']]}
+                disabled={disabled} onChange={(value) => setTable('paginationVariant', value)} />
+              <StudioToggle label="نمایش نوار صفحه‌بندی" checked={design.tables.showPagination} disabled={disabled}
+                onChange={(value) => setTable('showPagination', value)} />
+              <StudioToggle label="فشرده" checked={design.tables.paginationDense} disabled={disabled}
+                onChange={(value) => setTable('paginationDense', value)} />
+              <StudioToggle label="متن بازه (۱ تا ۲۰ از ۵۷)" checked={design.tables.showPaginationRange} disabled={disabled}
+                onChange={(value) => setTable('showPaginationRange', value)} />
             </StudioGroup>
 
             <StudioGroup title="قاب و شیشه" hint="قاب کارت، فاصلهٔ داخلی و افکت شیشه‌ای">

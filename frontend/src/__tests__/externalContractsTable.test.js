@@ -125,3 +125,70 @@ test('filters stay hidden until the filters button is clicked', async () => {
   await act(async () => { root.unmount(); });
   container.remove();
 });
+
+
+test('contracts list is paginated twenty rows at a time with Persian digits', async () => {
+  axiosInstance.get.mockImplementation((url, config) => {
+    if (url === '/external-contracts/') {
+      const pageNumber = Number(config?.params?.page || 1);
+      const length = pageNumber === 1 ? 20 : 5;
+      const results = Array.from({ length }, (_, index) => ({
+        id: pageNumber * 100 + index,
+        number: `C-${pageNumber}-${index}`,
+        subject: `قرارداد ${index}`,
+        party_name: 'شرکت نمونه',
+        contract_type: 'construction',
+        status: 'active',
+        start_date: '2025-01-01',
+        end_date: '2026-01-01',
+        amount: 1000,
+        currency_name: 'ریال',
+      }));
+      return Promise.resolve({ data: { count: 25, results } });
+    }
+    if (url === '/contract-types-master/') return Promise.resolve({ data: [] });
+    if (url === '/external-contracts/stats/') {
+      return Promise.resolve({ data: { total: 25, status_counts: { active: 25 }, expiring: 1, total_amount: 25000 } });
+    }
+    return Promise.resolve({ data: [] });
+  });
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/external-contracts']}>
+          <ExternalContractsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(700);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(150); });
+  }
+
+  const listCall = axiosInstance.get.mock.calls.find(([url]) => url === '/external-contracts/');
+  expect(listCall[1].params.page_size).toBe(20);
+  expect(listCall[1].params.page).toBe(1);
+  expect(container.querySelectorAll('tbody tr')).toHaveLength(20);
+
+  // بازهٔ صفحه و شماره‌های صفحه با ارقام فارسی
+  expect(container.textContent).toContain('نمایش ۱ تا ۲۰ از ۲۵');
+  const secondPage = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === '۲');
+  expect(secondPage).toBeTruthy();
+
+  await act(async () => { secondPage.click(); await wait(600); });
+  const pageCalls = axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
+  const requestedPages = pageCalls.map(([, config]) => config?.params?.page);
+  expect(requestedPages).toContain(2);
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});

@@ -71,6 +71,12 @@ export const resolveTableTheme = (tokens) => {
     rowHeight: Number(cfg.rowHeight ?? 38),
     radius: Number(cfg.radius ?? 16),
     columnMinWidth: Number(cfg.columnMinWidth ?? 0),
+    /* صفحه‌بندی: تعداد ردیف هر صفحه از همین توکن به API هم فرستاده می‌شود */
+    rowsPerPage: Math.min(100, Math.max(5, Number(cfg.rowsPerPage ?? 20))),
+    showPagination: cfg.showPagination !== false,
+    paginationVariant: cfg.paginationVariant === 'simple' ? 'simple' : 'pages',
+    paginationDense: cfg.paginationDense !== false,
+    showPaginationRange: cfg.showPaginationRange !== false,
     /* استایل‌های آمادهٔ inline برای هدر و سلول‌ها */
     header: {
       fontSize: `${headerFontSize}px`,
