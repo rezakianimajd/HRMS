@@ -182,7 +182,7 @@ const DataTable = ({
                           key={column.key}
                           align={column.align || 'right'}
                           style={themed ? {
-                            textAlign: column.align === 'left' ? 'left' : (column.align === 'right' ? 'right' : (column.align === 'center' ? 'center' : themedTable.cellTextAlign)),
+                            textAlign: column.align === 'left' ? 'left' : (column.align === 'right' ? 'right' : (column.align === 'center' ? 'center' : (themedTable.cellTextAlign || 'right'))),
                             ...themedTypography.cell,
                           } : undefined}
                           sx={{ verticalAlign: 'middle', ...column.cellSx }}

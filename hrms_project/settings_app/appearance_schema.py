@@ -49,6 +49,7 @@ DIVIDER_STYLES = {'solid', 'dashed', 'dotted', 'none'}
 TABLE_FRAMES = {'card', 'plain'}
 COLOR_MODES = {'theme', 'custom'}
 NUMBER_FONTS = {'inherit', 'mono'}
+CELL_ALIGNMENTS = {'auto', 'start', 'center', 'end'}
 
 
 INFO_CARD_KEYS = (
@@ -143,7 +144,7 @@ DEFAULT_DESIGN = {
         'showBorders': True, 'headerStyle': 'filled', 'headerAlign': 'center',
         'headerFontSize': 13, 'headerFontWeight': 700, 'headerHeight': 44,
         'headerColorMode': 'theme', 'headerColor': '#334155',
-        'cellFontSize': 12.5, 'cellFontWeight': 500, 'cellAlign': 'center',
+        'cellFontSize': 12.5, 'cellFontWeight': 500, 'cellAlign': 'auto',
         'cellColorMode': 'theme', 'cellColor': '#334155', 'numberFont': 'inherit',
         'hoverTint': 6, 'stripeTint': 4, 'dividerWidth': 1,
         'dividerStyle': 'solid', 'dividerColor': '#e2e8f0', 'dividerOpacity': 100,
@@ -361,7 +362,7 @@ def sanitize_design(raw, typography=None):
             'headerStyle': HEADER_STYLES, 'headerAlign': ALIGNMENTS,
             'dividerStyle': DIVIDER_STYLES, 'frame': TABLE_FRAMES,
             'headerColorMode': COLOR_MODES, 'cellColorMode': COLOR_MODES,
-            'cellAlign': ALIGNMENTS, 'numberFont': NUMBER_FONTS,
+            'cellAlign': CELL_ALIGNMENTS, 'numberFont': NUMBER_FONTS,
         },
         booleans=('striped', 'hover', 'showBorders', 'singleLine'),
         ranges={

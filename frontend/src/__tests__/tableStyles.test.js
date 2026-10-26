@@ -48,6 +48,8 @@ test('defaults keep tables readable when tokens are missing', () => {
   expect(theme.numberFont).toBe('inherit');
   expect(theme.striped).toBe(false);
   expect(theme.hover).toBe(true);
+  expect(theme.cellAlign).toBe('auto');
+  expect(theme.cellTextAlign).toBeNull();
 
   const empty = resolveTableTheme();
   expect(empty.headerAlign).toBe('center');

@@ -315,6 +315,7 @@ const ExternalContractsPage = () => {
                     fontSize: tableTheme.cell.fontSize,
                     fontWeight: tableTheme.cell.fontWeight,
                     color: tableTheme.cell.color,
+                    ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
                   },
                   '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
                 }}

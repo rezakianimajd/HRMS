@@ -151,7 +151,7 @@ class AppearanceSchemaTests(SimpleTestCase):
         })['tables']
         self.assertEqual(tables['headerFontSize'], 13)
         self.assertEqual(tables['headerFontWeight'], 700)
-        self.assertEqual(tables['cellAlign'], 'center')
+        self.assertEqual(tables['cellAlign'], 'auto')
         self.assertEqual(tables['headerColorMode'], 'theme')
         self.assertEqual(tables['cellColorMode'], 'theme')
         self.assertEqual(tables['numberFont'], 'inherit')

@@ -1154,7 +1154,8 @@ const ThemeStudioCard = ({
                 disabled={disabled} onChange={(value) => setTable('cellFontSize', value)} />
               <StudioSelect label="وزن" value={design.tables.cellFontWeight} options={STUDIO_FONT_WEIGHTS}
                 disabled={disabled} onChange={(value) => setTable('cellFontWeight', Number(value))} />
-              <StudioSelect label="تراز" value={design.tables.cellAlign} options={STUDIO_ALIGNS}
+              <StudioSelect label="تراز" value={design.tables.cellAlign}
+                options={[['auto', 'خودکار (هر ستون)'], ...STUDIO_ALIGNS]}
                 disabled={disabled} onChange={(value) => setTable('cellAlign', value)} />
               <StudioSelect label="فونت اعداد" value={design.tables.numberFont} options={STUDIO_NUMBER_FONTS}
                 disabled={disabled} onChange={(value) => setTable('numberFont', value)} />

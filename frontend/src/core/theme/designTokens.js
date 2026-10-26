@@ -137,7 +137,7 @@ export const DEFAULT_DESIGN_TOKENS = {
     headerColor: '#334155',
     cellFontSize: 12.5,
     cellFontWeight: 500,
-    cellAlign: 'center',
+    cellAlign: 'auto',
     cellColorMode: 'theme',
     cellColor: '#334155',
     numberFont: 'inherit',
@@ -470,7 +470,7 @@ export const designCssVariables = (design) => {
   const tableStripeBg = tables.striped
     ? colorWithAlpha(colors.primary, Math.min(40, Math.max(0, Number(tables.stripeTint ?? 4))) / 100)
     : 'transparent';
-  const tableCellAlign = tables.cellAlign === 'end' ? 'left' : (tables.cellAlign === 'start' ? 'right' : 'center');
+  const tableCellAlign = tables.cellAlign === 'end' ? 'left' : (tables.cellAlign === 'start' ? 'right' : (tables.cellAlign === 'center' ? 'center' : 'inherit'));
   const tableIsGlass = tables.variant === 'glass' || tables.surface === 'glass';
   const effectiveTables = { ...tables, surface: tableIsGlass ? 'glass' : tables.surface };
   const tableCellPadding = tables.variant === 'compact' ? 6 : tables.variant === 'spacious' ? 12 : tables.cellPadding;
