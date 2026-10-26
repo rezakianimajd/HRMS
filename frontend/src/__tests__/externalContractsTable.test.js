@@ -209,6 +209,14 @@ test('sort sits between search and filters, orders the request, and stays out of
   expect(sortSelect.compareDocumentPosition(filtersButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   expect(sortSelect.textContent).toContain('جدیدترین');
 
+  // ارتفاع یکسان: کادر جستجو، کنترل ترتیب و دکمهٔ فیلترها (توکن toolbar.searchHeight = ۴۰px)
+  const sortInputBox = sortSelect.closest('.MuiOutlinedInput-root');
+  const searchInputBox = Array.from(container.querySelectorAll('.MuiOutlinedInput-root'))
+    .find((box) => box !== sortInputBox);
+  expect(window.getComputedStyle(searchInputBox).height).toBe('40px');
+  expect(window.getComputedStyle(sortInputBox).height).toBe('40px');
+  expect(window.getComputedStyle(filtersButton).height).toBe('40px');
+
   // پیش‌فرض: آخرین درخواست با ترتیب created_at نزولی
   const requests = () => axiosInstance.get.mock.calls.filter(([url]) => url === '/external-contracts/');
   expect(requests().at(-1)[1].params.ordering).toBe('-created_at');

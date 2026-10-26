@@ -408,7 +408,11 @@ const ExternalContractsPage = () => {
             endIcon={toolbar.filtersIconPosition === 'end' ? <FilterListIcon fontSize="small" /> : null}
             aria-expanded={filtersExpanded}
             sx={{
-              height: `${toolbar.searchHeight}px`,
+              /* هم‌ارتفاع با کادر جستجو و کنترل ترتیب */
+              height: `${toolbar.searchHeight}px !important`,
+              minHeight: `${toolbar.searchHeight}px !important`,
+              maxHeight: `${toolbar.searchHeight}px !important`,
+              alignSelf: 'center', py: 0, boxSizing: 'border-box',
               borderRadius: `${toolbar.filtersRadius}px`,
               fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'auto', px: 2,
             }}
@@ -427,7 +431,15 @@ const ExternalContractsPage = () => {
             ) : null}
           </Button>
           {toolbar.showReset && (activeFilterCount > 0 || search) ? (
-            <Button size="small" variant="text" onClick={resetToolbar} sx={{ fontSize: 12.5, whiteSpace: 'nowrap' }}>
+            <Button
+              size="small" variant="text" onClick={resetToolbar}
+              sx={{
+                height: `${toolbar.searchHeight}px`,
+                minHeight: `${toolbar.searchHeight}px`,
+                alignSelf: 'center', py: 0,
+                fontSize: 12.5, whiteSpace: 'nowrap',
+              }}
+            >
               {toolbar.resetLabel}
             </Button>
           ) : null}
