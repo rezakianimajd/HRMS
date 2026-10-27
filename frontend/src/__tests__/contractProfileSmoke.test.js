@@ -86,7 +86,7 @@ beforeEach(() => {
   });
 });
 
-test('foreign contract profile shows dual rial/foreign financial analysis', async () => {
+test('contract profile shows the compact card, single-row quick access and the archive tabs', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -109,50 +109,59 @@ test('foreign contract profile shows dual rial/foreign financial analysis', asyn
     await act(async () => { await wait(180); });
   }
 
-  expect(container.textContent).toContain('تحلیل مالی قرارداد');
-  expect(container.textContent).toContain('شناسنامهٔ قرارداد');
-  expect(container.textContent).toContain('الحاقیه‌ها و اثرهای ثبت‌شده');
-  expect(container.textContent).toContain('دسترسی سریع');
-  expect(container.textContent).toContain('تضامین قرارداد');
-  expect(container.textContent).toContain('پوشش تعهدات');
-  expect(container.textContent).toContain('شرایط پرداخت');
-  expect(container.textContent).toContain('شرایط تحویل');
-  expect(container.textContent).toContain('قراردادهای هم‌تراز');
-  expect(container.textContent).toContain('حسن انجام کار');
-  expect(container.textContent).toContain('پیش‌پرداخت کسرشده');
-  expect(container.textContent).toContain('۲٬۰۰۰٬۰۰۰٬۰۰۰ ریال');
+  // کارت قرارداد فشرده (مبلغ مؤثر با ارز قرارداد)
+  expect(container.textContent).toContain('قرارداد ارزی نمونه');
   expect(container.textContent).toContain('۱٬۰۰۰ یورو');
+  expect(container.textContent).toContain('مبلغ مؤثر قرارداد');
 
-  // کارت بزرگ اول (شناسنامه + مبلغ) باید سفید و بدون پوشش گرادیان باشد تا خوانا بماند.
-  const identityLabel = Array.from(container.querySelectorAll('.MuiTypography-root'))
-    .find((el) => el.textContent.trim() === 'شناسنامهٔ قرارداد');
-  expect(identityLabel).toBeTruthy();
-  const identityCard = identityLabel.closest('.MuiPaper-root');
-  expect(identityCard).not.toBeNull();
-  const identityStyle = window.getComputedStyle(identityCard);
-  expect(identityStyle.backgroundColor).toBe('rgb(255, 255, 255)');
-  expect(identityStyle.backgroundImage).toBe('none');
-  // پوشش گرادیان تزئینی کارت حذف شده است.
-  expect(identityCard.querySelector('[style*="radial-gradient"]')).toBeNull();
+  // دسترسی سریع در یک ردیف
+  const quickLabels = ['فاکتورها', 'صورت‌وضعیت‌ها', 'پرداخت‌ها', 'الحاقیه‌ها', 'تضمین‌ها', 'اختلافات', 'اسناد و بایگانی'];
+  const quickButtons = Array.from(container.querySelectorAll('button'))
+    .filter((button) => quickLabels.some((label) => button.textContent.trim().startsWith(label)));
+  expect(quickButtons.length).toBeGreaterThanOrEqual(quickLabels.length);
 
-  const amountLabel = Array.from(container.querySelectorAll('.MuiTypography-root'))
-    .find((el) => el.textContent.includes('مبلغ مؤثر قرارداد'));
-  expect(amountLabel).toBeTruthy();
-  // هیچ گرادیان رنگی داخل این کارت نمانده است (پیش‌تر پس‌زمینهٔ مبلغ و کل کارت رنگی بود).
-  const gradientNodes = Array.from(identityCard.querySelectorAll('*')).filter((el) => (
-    String(window.getComputedStyle(el).backgroundImage || '').includes('gradient')
-  ));
-  expect(gradientNodes).toHaveLength(0);
+  // تب‌های پرونده
+  const tabLabels = Array.from(container.querySelectorAll('.MuiTab-root')).map((tab) => tab.textContent.trim());
+  expect(tabLabels).toEqual([
+    'نمای کلی', 'تایم‌لاین', 'مشخصات قرارداد', 'مشخصات مالی', 'الحاقیه‌ها', 'تضامین',
+    'صورت‌وضعیت', 'فاکتورها', 'پرداخت‌ها', 'قراردادهای هم‌تراز', 'مدارک',
+  ]);
 
-  const sectionOrder = [
-    'شناسنامهٔ قرارداد', 'دسترسی سریع', 'تحلیل مالی قرارداد', 'تایم‌لاین قرارداد',
-    'تضامین قرارداد', 'پوشش تعهدات', 'شرایط پرداخت', 'شرایط تحویل', 'قراردادهای هم‌تراز',
-  ];
-  const text = container.textContent;
-  const positions = sectionOrder.map((label) => text.indexOf(label));
-  expect(positions.every((position) => position >= 0)).toBe(true);
-  expect(positions).toEqual([...positions].sort((a, b) => a - b));
+  // تب پیش‌فرض
+  expect(container.textContent).toContain('ترکیب مالی');
+  expect(container.textContent).toContain('آخرین رویدادها');
 
-  root.unmount();
+  const openTab = async (label) => {
+    const tab = Array.from(container.querySelectorAll('.MuiTab-root'))
+      .find((item) => item.textContent.trim() === label);
+    expect(tab).toBeTruthy();
+    await act(async () => {
+      tab.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+      await wait(260);
+    });
+  };
+
+  await openTab('مشخصات قرارداد');
+  expect(container.textContent).toContain('شناسنامهٔ قرارداد');
+
+  await openTab('مشخصات مالی');
+  expect(container.textContent).toContain('تحلیل مالی قرارداد');
+
+  await openTab('الحاقیه‌ها');
+  expect(container.textContent).toContain('فهرست الحاقیه‌ها');
+
+  await openTab('صورت‌وضعیت');
+  expect(container.textContent).toContain('فهرست صورت‌وضعیت‌ها');
+
+  await openTab('فاکتورها');
+  expect(container.textContent).toContain('فهرست فاکتورها');
+
+  await openTab('پرداخت‌ها');
+  expect(container.textContent).toContain('فهرست پرداخت‌ها');
+
+  await openTab('مدارک');
+  expect(container.textContent).toContain('مدارک قرارداد');
+
+  await act(async () => { root.unmount(); });
   container.remove();
 });
