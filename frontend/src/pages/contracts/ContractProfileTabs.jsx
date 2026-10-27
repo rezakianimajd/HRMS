@@ -839,13 +839,17 @@ const RequirementCoverage = ({ requirement, currencyLabel }) => {
     <Box sx={{
       p: 1.4, height: '100%', display: 'flex', flexDirection: 'column', gap: 1,
       borderRadius: '14px',
+      /* مرز واضح و قابل دیدن، مشتق از رنگ متن تم (مستقل از خطوط روشن جدول) */
       border: '1px solid',
-      borderColor: 'var(--hrms-table-border-color, rgba(15,23,42,0.14))',
-      bgcolor: 'background.paper',
+      borderColor: alpha(theme.palette.text.primary, 0.18),
+      /* نوار رنگی وضعیت در لبهٔ شروع کارت */
+      borderInlineStart: `4px solid ${color}`,
+      bgcolor: alpha(theme.palette.text.primary, 0.012),
+      boxShadow: `0 1px 2px ${alpha(theme.palette.text.primary, 0.04)}`,
     }}>
       <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-        <Stack direction="row" spacing={1.25} alignItems="center" sx={{ minWidth: 0 }}>
-          <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+        <Stack direction="row" spacing={1.6} alignItems="center" sx={{ minWidth: 0 }}>
+          <Box sx={{ width: 10, height: 10, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
           <Typography noWrap title={requirement.label} sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>
             {requirement.label}
           </Typography>
@@ -884,7 +888,7 @@ const RequirementCoverage = ({ requirement, currencyLabel }) => {
           {items.map((item) => {
             const state = guaranteeState(item);
             return (
-              <Stack key={item.id} direction="row" alignItems="center" spacing={1.1} sx={{ minWidth: 0 }}>
+              <Stack key={item.id} direction="row" alignItems="center" spacing={1.4} sx={{ minWidth: 0 }}>
                 <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: state.color, flexShrink: 0 }} />
                 <Typography noWrap title={`${item.number} · ${item.bank || ''}`}
                   sx={{ fontSize: 11, fontWeight: 700, color: INK, flex: 1, minWidth: 0 }}>
@@ -1054,8 +1058,8 @@ export const GuaranteesTab = ({ ctx }) => {
               render: (row) => {
                 const state = guaranteeState(row);
                 return (
-                  <Stack direction="row" spacing={0.9} alignItems="center" justifyContent="center">
-                    <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: state.color }} />
+                  <Stack direction="row" spacing={1.2} alignItems="center" justifyContent="center">
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: state.color }} />
                     <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 700, color: state.color }}>{state.label}</Typography>
                   </Stack>
                 );
@@ -1071,13 +1075,13 @@ export const GuaranteesTab = ({ ctx }) => {
             {unrequired.map((item) => {
               const state = guaranteeState(item);
               return (
-                <Stack key={item.id} direction="row" alignItems="center" spacing={1.1}
+                <Stack key={item.id} direction="row" alignItems="center" spacing={1.4}
                   sx={{
                     px: 1, py: 0.7, borderRadius: '10px',
                     border: '1px solid',
-                    borderColor: 'var(--hrms-table-border-color, rgba(15,23,42,0.14))',
+                    borderColor: alpha(theme.palette.text.primary, 0.18),
                   }}>
-                  <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: state.color }} />
+                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: state.color }} />
                   <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: INK, flex: 1, minWidth: 0 }}>
                     {item.number || '—'} · {item.type_label || '—'}{item.bank ? ` · ${item.bank}` : ''}
                   </Typography>

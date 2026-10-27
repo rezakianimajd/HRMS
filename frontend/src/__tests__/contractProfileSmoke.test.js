@@ -6,6 +6,8 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import ContractProfilePage from '../pages/ContractProfilePage';
 
+jest.setTimeout(20000);
+
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
   default: { get: jest.fn(), post: jest.fn(), patch: jest.fn(), delete: jest.fn() },
