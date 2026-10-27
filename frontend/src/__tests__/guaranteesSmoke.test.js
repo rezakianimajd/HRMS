@@ -97,7 +97,7 @@ beforeEach(() => {
   });
 });
 
-test('contract guarantees landing lists contracts with guarantee counts and no avatars', async () => {
+test('contract guarantees page lists every guarantee in the archive-style table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -121,15 +121,36 @@ test('contract guarantees landing lists contracts with guarantee counts and no a
     });
   }
 
-  expect(container.textContent).toContain('انتخاب قرارداد');
-  expect(container.textContent).toContain('C-۲۰۰');
-  expect(container.textContent).toContain('تعداد تضمین‌ها');
+  expect(container.textContent).toContain('تضامین و ضمانت‌نامه‌ها');
   expect(container.textContent).toContain('۲ تضمین');
+  expect(container.textContent).toContain('خروجی');
+  expect(container.textContent).toContain('تضمین جدید');
+  /* نوار ابزار استاندارد: جستجو، ترتیب، فیلترها */
+  expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
+  expect(container.textContent).toContain('فیلترها');
+  expect(container.textContent).toContain('نزدیک‌ترین سررسید');
+  /* ستون‌های جدول استاندارد */
+  expect(container.textContent).toContain('شماره / نوع');
+  expect(container.textContent).toContain('ابزار');
+  expect(container.textContent).toContain('بانک');
+  expect(container.textContent).toContain('سررسید');
+  expect(container.textContent).toContain('وضعیت');
+  expect(container.textContent).toContain('عملیات');
+  /* ردیف‌های تضامین با شمارهٔ قرارداد و نام بانک */
+  expect(container.textContent).toContain('G-۱۱');
+  expect(container.textContent).toContain('CH-۱۲');
+  expect(container.textContent).toContain('C-۲۰۰');
+  expect(container.textContent).toContain('قرارداد آزمایشی تضامین');
+  expect(container.textContent).toContain('بانک تست');
+  expect(container.textContent).toContain('معتبر');
+  expect(container.textContent).toContain('منقضی');
+  /* نمای کارت حذف شده است */
+  expect(container.querySelector('.MuiToggleButton-root')).toBeNull();
   expect(container.querySelector('.MuiAvatar-root')).toBeNull();
   root.unmount();
 });
 
-test('contract guarantees workspace renders coverage, cards and editor without a title description', async () => {
+test('contract guarantees workspace scopes the table to a contract and opens the editor', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -154,10 +175,13 @@ test('contract guarantees workspace renders coverage, cards and editor without a
   }
 
   expect(container.textContent).toContain('تضامین و ضمانت‌نامه‌ها');
-  expect(container.textContent).toContain('پوشش تضامین');
-  expect(container.textContent).toContain('G-11');
-  expect(container.textContent).toContain('۱ پیوست');
+  expect(container.textContent).toContain('پرونده قرارداد');
+  expect(container.textContent).toContain('چاپ');
   expect(container.textContent).toContain('خروجی');
+  /* چیپ فیلتر قرارداد فعال و قابل حذف است */
+  expect(container.textContent).toContain('قرارداد: C-۲۰۰');
+  expect(container.textContent).toContain('G-۱۱');
+  expect(container.textContent).toContain('بانک تست');
   expect(container.textContent).not.toContain('برای مشاهده و ثبت تضامین');
 
   const newButton = Array.from(container.querySelectorAll('button'))

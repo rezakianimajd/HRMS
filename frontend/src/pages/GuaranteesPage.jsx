@@ -1,12 +1,13 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions,
+  Alert, Box, Button, ButtonBase, Chip, CircularProgress, Collapse, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, Drawer, FormControl, FormHelperText,
   Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
-  Snackbar, Stack, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
+  TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
@@ -15,14 +16,19 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlockIcon from '@mui/icons-material/Block';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
 import EventBusyIcon from '@mui/icons-material/EventBusy';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
 import GavelIcon from '@mui/icons-material/Gavel';
+import LastPageIcon from '@mui/icons-material/LastPage';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import NoteAltIcon from '@mui/icons-material/NoteAlt';
@@ -33,6 +39,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SearchIcon from '@mui/icons-material/Search';
+import SortIcon from '@mui/icons-material/Sort';
 import TableRowsIcon from '@mui/icons-material/TableRows';
 import UndoIcon from '@mui/icons-material/Undo';
 import UpdateIcon from '@mui/icons-material/Update';
@@ -50,6 +57,9 @@ import DataTable from '../core/components/ui/DataTable';
 import { GUARANTEE_TYPES, GUARANTEE_TYPE_LABELS as TYPE_LABELS } from '../core/constants/guaranteeTypes';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { AttachmentLinks, AttachmentPicker } from './contracts/AddendumWorkspaceUI';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
+import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
+import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
 
 const EMPTY = {
   id: null, contract: '', contract_guarantee_index: null,
@@ -109,6 +119,283 @@ const statusOf = (row) => {
 
 const canAct = (row) => !row.is_released && !['returned', 'executed', 'canceled'].includes(row.last_action);
 const numberFor = (row) => row.number || row.check_number || row.promissory_number || row.guarantee_number || '—';
+
+/* جدول استاندارد تضامین — همان چیدمان و توکن‌های صفحهٔ بایگانی اسناد */
+const GuaranteeArchiveTable = ({
+  rows, rowOffset = 0, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
+  currencyFor, contractNumberFor, onView, onEdit, onDelete, onAction,
+}) => (
+  <TableContainer
+    ref={containerRef}
+    data-visible-rows={tableTheme.visibleRows}
+    data-row-height={rowHeight}
+    data-table-height={`${tableHeight}px`}
+    sx={{
+      height: { xs: 'auto', sm: `${tableHeight}px` },
+      maxHeight: { xs: 'none', sm: `${tableHeight}px` },
+      overflowY: 'auto',
+      opacity: dimmed ? 0.6 : 1,
+      transition: 'opacity .15s ease',
+    }}
+  >
+    <Table
+      size="small"
+      stickyHeader
+      aria-label="فهرست تضامین قراردادها"
+      sx={{
+        width: '100%',
+        minWidth: 980,
+        tableLayout: 'fixed',
+        '& td, & th': {
+          px: 1,
+          py: `${tableTheme.cellPadding}px`,
+          whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+          borderBottom: tableTheme.divider,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+        '& thead th': {
+          textAlign: `${tableTheme.headerTextAlign} !important`,
+          backgroundColor: 'var(--hrms-table-header-bg)',
+          height: `${tableTheme.headerHeight}px`,
+          fontSize: tableTheme.header.fontSize,
+          fontWeight: tableTheme.header.fontWeight,
+          color: tableTheme.header.color,
+        },
+        '& tbody td': {
+          height: `${tableTheme.rowHeight}px`,
+          fontSize: tableTheme.cell.fontSize,
+          fontWeight: tableTheme.cell.fontWeight,
+          color: tableTheme.cell.color,
+          ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
+        },
+        '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+        ...tableTypographySx(tableTheme),
+      }}
+    >
+      <TableHead>
+        <TableRow>
+          <TableCell align="center" sx={{ width: '5%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>ردیف</Box>
+          </TableCell>
+          <TableCell align="center" sx={{ width: '17%' }}>شماره / نوع</TableCell>
+          <TableCell align="center" sx={{ width: '13%' }}>ابزار</TableCell>
+          <TableCell align="center" sx={{ width: '13%' }}>بانک</TableCell>
+          <TableCell align="center" sx={{ width: '19%' }}>قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '13%' }}>مبلغ</TableCell>
+          <TableCell align="center" sx={{ width: '10%' }}>سررسید</TableCell>
+          <TableCell align="center" sx={{ width: '10%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>وضعیت</Box>
+          </TableCell>
+          <TableCell align="center" sx={{ width: '12%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>عملیات</Box>
+          </TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((row, index) => {
+          const instrument = INSTRUMENT_META[row.instrument_type]
+            || { label: row.instrument_type_display || '—', color: '#475569', icon: ReceiptLongIcon };
+          const InstrumentIcon = instrument.icon;
+          const status = statusOf(row);
+          const due = dueOf(row);
+          const remaining = daysUntil(due);
+          return (
+            <TableRow key={row.id} hover onClick={() => onView(row)} sx={{ cursor: 'pointer' }}>
+              <TableCell align="center">
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                    {toPersianDigits(rowOffset + index + 1)}
+                  </Typography>
+                </Box>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {toPersianDigits(numberFor(row))}
+                </Typography>
+                <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                  {row.contract_guarantee_label || row.guarantee_type_display || '—'}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                  <InstrumentIcon sx={{ fontSize: 15, color: instrument.color, flexShrink: 0 }} />
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>{instrument.label}</Typography>
+                </Box>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap sx={{ fontSize: 11.5 }}>{row.bank || row.check_bank || '—'}</Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                  {toPersianDigits(row.contract_number || contractNumberFor(row) || row.contract || '—')}
+                </Typography>
+                <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>{row.contract_subject || '—'}</Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {money(row.amount, currencyFor(row))}
+                </Typography>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {dateLabel(due)}
+                </Typography>
+                {remaining !== null ? (
+                  <Typography noWrap sx={{ fontSize: 10.5, color: remaining < 0 ? '#be123c' : remaining <= 30 ? '#b45309' : MUTED }}>
+                    {remaining < 0
+                      ? `${toPersianDigits(Math.abs(remaining))} روز گذشته`
+                      : `${toPersianDigits(remaining)} روز مانده`}
+                  </Typography>
+                ) : null}
+              </TableCell>
+              <TableCell align="center">
+                <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                  <Chip
+                    size="small"
+                    label={status.label}
+                    sx={{
+                      height: 20, fontSize: 10.5, fontWeight: 800,
+                      bgcolor: status.bg, color: status.color,
+                      border: `1px solid ${alpha(status.color, 0.28)}`,
+                      '& .MuiChip-label': { px: 0.8 },
+                    }}
+                  />
+                </Box>
+              </TableCell>
+              <TableCell align="center">
+                <Stack direction="row" spacing={0.15} useFlexGap alignItems="center" justifyContent="center"
+                  onClick={(event) => event.stopPropagation()}>
+                  <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+                  <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                  <LifecycleActions row={row} compact onAction={({ action }) => onAction(row, action)} />
+                  <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                </Stack>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+
+    </Table>
+  </TableContainer>
+);
+
+/* ---------- اجزای استاندارد (همان الگوی صفحهٔ بایگانی اسناد) ---------- */
+const GUARANTEE_SORT_OPTIONS = [
+  { value: 'due', label: 'نزدیک‌ترین سررسید' },
+  { value: 'newest', label: 'جدیدترین' },
+  { value: 'amount', label: 'بیشترین مبلغ' },
+];
+
+const SortArrow = ({ className, ...rest }) => (
+  <ExpandMoreIcon
+    {...rest}
+    sx={{
+      position: 'absolute', left: 8, top: 'calc(50% - 10px)',
+      fontSize: 20, color: 'text.secondary', pointerEvents: 'none',
+    }}
+  />
+);
+
+const FilterSelect = ({ label, value, options, onChange, labelsPosition, radius = 8 }) => (
+  <Box>
+    {labelsPosition === 'above' ? (
+      <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: 'text.secondary', mb: 0.5 }}>{label}</Typography>
+    ) : null}
+    <FormControl size="small" fullWidth>
+      {labelsPosition === 'inline' ? <InputLabel>{label}</InputLabel> : null}
+      <Select
+        value={value || ''}
+        label={labelsPosition === 'inline' ? label : undefined}
+        displayEmpty={labelsPosition !== 'inline'}
+        onChange={(event) => onChange(event.target.value)}
+        sx={{ fontSize: 12.5, borderRadius: `${radius}px`, bgcolor: 'background.paper' }}
+        renderValue={(selected) => {
+          const match = options.find((option) => String(option.value) === String(selected));
+          if (!match || match.value === '') {
+            return <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>همه</Typography>;
+          }
+          return <Typography component="span" sx={{ fontSize: 12, fontWeight: 700 }}>{match.label}</Typography>;
+        }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option.value || 'all'} value={option.value}>{option.label}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Box>
+);
+
+const GuaranteePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, total, pageSize }) => {
+  if (!tableTheme.showPagination || total <= pageSize) return null;
+  return (
+    <Box sx={{
+      px: 1.5,
+      py: tableTheme.paginationDense ? 0.75 : 1.25,
+      borderTop: '1px solid',
+      borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+    }}>
+      <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
+        {tableTheme.showPaginationRange ? (
+          <Typography sx={{
+            position: 'absolute', insetInlineStart: 0,
+            display: { xs: 'none', sm: 'block' },
+            fontSize: tableTheme.paginationFontSize - 0.5,
+            color: 'text.secondary', whiteSpace: 'nowrap',
+          }}>
+            نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
+            {toPersianDigits(Math.min((page + 1) * pageSize, total))} از{' '}
+            {toPersianDigits(total)} تضمین
+            {' · '}
+            {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
+          </Typography>
+        ) : null}
+        <Stack direction="row" spacing={0.5} useFlexGap alignItems="center">
+          <IconButton size="small" disabled={page === 0} onClick={() => onPage(0)} aria-label="صفحهٔ اول"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <FirstPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+          </IconButton>
+          <IconButton size="small" disabled={page === 0} onClick={() => onPage(page - 1)} aria-label="صفحهٔ قبل"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+          {pageNumbers.map((index) => (
+            <Box
+              key={index}
+              component="button"
+              type="button"
+              onClick={() => onPage(index)}
+              aria-current={index === page ? 'page' : undefined}
+              sx={{
+                minWidth: 28, height: 28, px: 0.75,
+                borderRadius: `${tableTheme.paginationRadius}px`,
+                border: '1px solid',
+                borderColor: index === page ? tableTheme.paginationAccent : 'divider',
+                bgcolor: index === page ? tableTheme.paginationAccent : 'transparent',
+                color: index === page ? '#fff' : 'text.secondary',
+                fontFamily: 'inherit',
+                fontSize: tableTheme.paginationFontSize,
+                fontWeight: index === page ? 800 : 600,
+                cursor: 'pointer',
+              }}
+            >
+              {toPersianDigits(index + 1)}
+            </Box>
+          ))}
+          <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)} aria-label="صفحهٔ بعد"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(totalPages - 1)} aria-label="صفحهٔ آخر"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <LastPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+          </IconButton>
+        </Stack>
+      </Box>
+    </Box>
+  );
+};
 
 const InfoLine = ({ label, value, strong, ltr }) => {
   const display = value === null || value === undefined || value === '' ? '—' : value;
@@ -916,7 +1203,8 @@ const GuaranteesPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [instrumentFilter, setInstrumentFilter] = useState('all');
   const [sortBy, setSortBy] = useState('due');
-  const [view, setView] = useState('cards');
+  const [page, setPage] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -969,7 +1257,6 @@ const GuaranteesPage = () => {
     setStatusFilter('all');
     setInstrumentFilter('all');
     setSortBy('due');
-    setView('cards');
     setDetail(null);
   }, [contractId]);
 
@@ -996,25 +1283,6 @@ const GuaranteesPage = () => {
     return counts;
   }, [scopedList]);
 
-  const activeCount = statusCounts.active || 0;
-  const expiringCount = statusCounts.expiring || 0;
-  const validCount = activeCount + expiringCount;
-  const totalAmount = scopedList.reduce((sum, row) => sum + Number(row.amount || 0), 0);
-  const globalValidCount = useMemo(
-    () => list.filter((row) => ['active', 'expiring'].includes(statusOf(row).key)).length,
-    [list],
-  );
-  const globalTotalAmount = useMemo(
-    () => list.reduce((sum, row) => sum + Number(row.amount || 0), 0),
-    [list],
-  );
-  const expiringRows = useMemo(() => (
-    [...list]
-      .filter((row) => statusOf(row).key === 'expiring')
-      .sort((a, b) => (daysUntil(dueOf(a)) ?? 9999) - (daysUntil(dueOf(b)) ?? 9999))
-      .slice(0, 6)
-  ), [list]);
-
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let result = scopedList.filter((row) => {
@@ -1035,6 +1303,135 @@ const GuaranteesPage = () => {
     });
     return result;
   }, [scopedList, search, statusFilter, instrumentFilter, sortBy]);
+
+  /* ---- توکن‌های استودیو تم + صفحه‌بندی + اندازه‌گیری ارتفاع ردیف‌ها ---- */
+  const { tokens } = useDesignTokens();
+  const tableTheme = resolveTableTheme(tokens);
+  const toolbar = resolveToolbarTheme(tokens);
+  const cardPadX = Math.max(12, Number(tableTheme.frameX) || 0);
+  const cardPadY = Math.max(12, Number(tableTheme.frameY) || 0);
+  const cardBorderColor = alpha(theme.palette.text.primary, 0.14);
+
+  const pageSize = tableTheme.rowsPerPage;
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  useEffect(() => {
+    setPage(0);
+  }, [search, statusFilter, instrumentFilter, sortBy, contractId, pageSize]);
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+  const pagedRows = useMemo(
+    () => filtered.slice(page * pageSize, (page + 1) * pageSize),
+    [filtered, page, pageSize],
+  );
+  const pageNumbers = (() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    const end = Math.min(totalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
+  })();
+
+  const tableScrollRef = useRef(null);
+  const [measuredRowPx, setMeasuredRowPx] = useState(0);
+  const [measuredHeadPx, setMeasuredHeadPx] = useState(0);
+  const measureRows = () => {
+    const host = tableScrollRef.current;
+    if (!host) return;
+    const rowEl = host.querySelector('tbody tr');
+    const headEl = host.querySelector('thead tr');
+    const rowPx = rowEl ? Math.round(rowEl.getBoundingClientRect().height) : 0;
+    const headPx = headEl ? Math.round(headEl.getBoundingClientRect().height) : 0;
+    setMeasuredRowPx((previous) => (previous === rowPx ? previous : rowPx));
+    setMeasuredHeadPx((previous) => (previous === headPx ? previous : headPx));
+  };
+  useLayoutEffect(measureRows, [pagedRows.length, tableTheme.rowHeight, tableTheme.headerHeight]);
+  useEffect(() => {
+    const onResize = () => measureRows();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const effectiveRowPx = measuredRowPx > 0 ? measuredRowPx : tableTheme.rowHeight;
+  const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
+  const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
+
+  /* ---- فیلترها، چیپ‌ها و گزینه‌ها ---- */
+  const contractOptions = useMemo(() => [
+    { value: '', label: 'همهٔ قراردادها' },
+    ...contractList.map((contract) => ({
+      value: String(contract.id),
+      label: `${toPersianDigits(contract.number || '—')} — ${contract.subject || ''}`,
+    })),
+  ], [contractList]);
+  const instrumentOptions = [
+    { value: 'all', label: 'همه' },
+    ...Object.entries(INSTRUMENT_META).map(([key, meta]) => ({ value: key, label: meta.label })),
+  ];
+  const statusOptions = [
+    { value: 'all', label: 'همه' },
+    ...Object.entries(STATUS_META).map(([key, meta]) => ({
+      value: key,
+      label: `${meta.label} (${toPersianDigits(statusCounts[key] || 0)})`,
+    })),
+  ];
+  const activeFilterCount = (contractId ? 1 : 0)
+    + (instrumentFilter !== 'all' ? 1 : 0)
+    + (statusFilter !== 'all' ? 1 : 0);
+  const activeChips = [
+    contractId
+      ? {
+        key: 'contract',
+        label: `قرارداد: ${toPersianDigits(selectedContract?.number || contractId)}`,
+        clear: clearContract,
+      }
+      : null,
+    instrumentFilter !== 'all'
+      ? {
+        key: 'instrument',
+        label: `نوع: ${INSTRUMENT_META[instrumentFilter]?.label || instrumentFilter}`,
+        clear: () => setInstrumentFilter('all'),
+      }
+      : null,
+    statusFilter !== 'all'
+      ? {
+        key: 'status',
+        label: `وضعیت: ${STATUS_META[statusFilter]?.label || statusFilter}`,
+        clear: () => setStatusFilter('all'),
+      }
+      : null,
+  ].filter(Boolean);
+  const activeChipSx = toolbar.chipStyle === 'outlined'
+    ? { bgcolor: 'transparent', border: `1px solid ${toolbar.chipBorder}`, color: toolbar.primary, fontWeight: 700 }
+    : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontWeight: 700, border: `1px solid ${toolbar.chipBorder}` };
+  const filtersExpanded = filtersOpen;
+  const resetFilters = () => {
+    setSearch('');
+    setStatusFilter('all');
+    setInstrumentFilter('all');
+    setSortBy('due');
+  };
+  const refreshAll = () => {
+    refetch();
+    if (contractId) qc.invalidateQueries({ queryKey: ['contract-guarantees-status', contractId] });
+  };
+  const openLifecycle = (row, action) => {
+    setActionDialog({ id: row.id, action, instrument: row.instrument_type });
+    setNewExpiry('');
+  };
+  const currencyByContract = useMemo(() => {
+    const map = new Map();
+    contractList.forEach((contract) => {
+      map.set(
+        String(contract.id),
+        normalizeCurrencyLabel(contract.currency_name || contract.currency_symbol || 'ریال'),
+      );
+    });
+    return map;
+  }, [contractList]);
+  const contractNumberById = useMemo(() => {
+    const map = new Map();
+    contractList.forEach((contract) => map.set(String(contract.id), contract.number || ''));
+    return map;
+  }, [contractList]);
 
   const warnings = guaranteeStatus?.warnings || [];
 
@@ -1269,149 +1666,227 @@ const GuaranteesPage = () => {
         icon={<LockIcon />}
         title="تضامین و ضمانت‌نامه‌ها"
         badge={(
-          <Chip size="small" label={contractId ? `${formatPersianNumber(scopedList.length)} تضمین` : 'مدیریت تضامین'}
+          <Chip size="small" label={`${formatPersianNumber(list.length)} تضمین`}
             sx={{ height: 23, fontWeight: 800, bgcolor: alpha(accent, 0.08), color: accent }} />
         )}
         actions={(
           <>
+            <Tooltip title="به‌روزرسانی">
+              <span>
+                <Button variant="outlined" onClick={refreshAll} disabled={isFetching} sx={{ minWidth: 40, px: 1 }}>
+                  <RefreshIcon fontSize="small" />
+                </Button>
+              </span>
+            </Tooltip>
             {contractId ? (
-              <Tooltip title="به‌روزرسانی">
-                <span>
-                  <Button variant="outlined" onClick={() => { refetch(); qc.invalidateQueries({ queryKey: ['contract-guarantees-status', contractId] }); }}
-                    disabled={isFetching} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button>
-                </span>
-              </Tooltip>
+              <Button variant="outlined" startIcon={<DescriptionIcon />}
+                onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده قرارداد</Button>
             ) : null}
             {contractId ? (
-              <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>
-                پرونده
-              </Button>
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
             ) : null}
-            {contractId ? <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button> : null}
-            {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
-            {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>تضمین جدید</Button> : null}
+            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>تضمین جدید</Button>
           </>
         )}
       />
 
-      {!contractId ? (
-        <LandingContent
-          contractList={contractList}
-          list={list}
-          expiringRows={expiringRows}
-          activeCount={globalValidCount}
-          totalAmount={globalTotalAmount}
-          currencyLabel={currencyLabel}
-          accent={accent}
-          onSelect={selectContract}
-          onSelectContract={(id) => {
-            const target = contractList.find((contract) => String(contract.id) === String(id));
-            if (target) selectContract(target);
-          }}
-        />
-      ) : (
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-              <ContractSnapshotCard contract={selectedContract} accent={accent} onBack={clearContract}
-                currency={currencyLabel} guaranteeCount={scopedList.length} />
-              <CoveragePanel status={guaranteeStatus} accent={accent} isLoading={statusLoading} />
-              <StatusNav counts={statusCounts} active={statusFilter} onChange={setStatusFilter} accent={accent} />
-            </Stack>
-          </Grid>
-
-
-          <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={LockIcon} label="کل تضامین" value={formatPersianNumber(scopedList.length)} suffix="مورد" color={accent} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={CheckCircleIcon} label="معتبر" value={formatPersianNumber(validCount)} suffix="مورد" color="#0f766e" />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={EventBusyIcon} label="نزدیک انقضا" value={formatPersianNumber(expiringCount)} suffix="مورد" color="#b45309" />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={PaymentsIcon} label="مجموع مبلغ" value={formatPersianNumber(totalAmount)} suffix={currencyLabel} color="#2563eb" size={16} />
-              </Grid>
-            </Grid>
-
-            <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-                <TextField size="small" placeholder="جست‌وجو در شماره، بانک، قرارداد…"
-                  value={search} onChange={(event) => setSearch(event.target.value)}
-                  sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-                <FormControl size="small" sx={{ minWidth: 145 }}>
-                  <InputLabel>وضعیت</InputLabel>
-                  <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
-                    {[
-                      ['all', 'همه'],
-                      ['active', 'معتبر'],
-                      ['expiring', 'نزدیک انقضا'],
-                      ['expired', 'منقضی'],
-                      ['returned', 'استرداد شده'],
-                      ['executed', 'اجرا / ضبط شده'],
-                      ['canceled', 'ابطال شده'],
-                    ].map(([key, label]) => (
-                      <MenuItem key={key} value={key}>{label} ({formatPersianNumber(statusCounts[key] || 0)})</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 155 }}>
-                  <InputLabel>ابزار</InputLabel>
-                  <Select value={instrumentFilter} label="ابزار" onChange={(event) => setInstrumentFilter(event.target.value)}>
-                    <MenuItem value="all">همه</MenuItem>
-                    {Object.entries(INSTRUMENT_META).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 125 }}>
-                  <InputLabel>ترتیب</InputLabel>
-                  <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                    <MenuItem value="due">نزدیک‌ترین سررسید</MenuItem>
-                    <MenuItem value="amount">بیشترین مبلغ</MenuItem>
-                    <MenuItem value="newest">جدیدترین صدور</MenuItem>
-                  </Select>
-                </FormControl>
-                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_e, value) => value && setView(value)}>
-                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-                </ToggleButtonGroup>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ display: { xs: 'none', md: 'flex' } }}>تضمین جدید</Button>
-              </Stack>
-            </Paper>
-
-            {warnings.slice(0, 3).map((warning) => (
-              <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
-              </Alert>
+      {/* نوار استاندارد جستجو، ترتیب و فیلترها — همان الگوی صفحهٔ بایگانی اسناد */}
+      <Paper sx={{ p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider', bgcolor: 'background.paper', boxShadow: 'none' }}>
+        <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
+          <TextField
+            size="small"
+            placeholder="جستجو در شماره، بانک، قرارداد…"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            sx={{
+              flex: toolbar.searchWidth === '100%' ? 1 : '0 0 auto',
+              width: toolbar.searchWidth === '100%' ? { xs: '100%', sm: 'auto' } : `${toolbar.searchWidth}px`,
+              '& .MuiOutlinedInput-root': {
+                height: `${toolbar.searchHeight}px`,
+                borderRadius: `${toolbar.searchRadius}px`,
+                bgcolor: toolbar.searchBg,
+                fontSize: 12.5,
+              },
+            }}
+            InputProps={{
+              startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+            }}
+          />
+          <TextField
+            select
+            size="small"
+            value={sortBy}
+            onChange={(event) => setSortBy(event.target.value)}
+            sx={{
+              flex: '0 0 auto',
+              minWidth: { xs: '100%', sm: 168 },
+              '& .MuiOutlinedInput-root': {
+                height: `${toolbar.searchHeight}px`,
+                borderRadius: `${toolbar.searchRadius}px`,
+                fontSize: 12.5,
+              },
+              '& .MuiSelect-select': { paddingLeft: '30px !important', paddingRight: '10px !important' },
+            }}
+            InputProps={{ startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment> }}
+            SelectProps={{ inputProps: { 'aria-label': 'ترتیب نمایش' }, IconComponent: SortArrow }}
+          >
+            {GUARANTEE_SORT_OPTIONS.map((option) => (
+              <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>{option.label}</MenuItem>
             ))}
+          </TextField>
+          <Button
+            variant={toolbar.filtersVariant}
+            onClick={() => setFiltersOpen(!filtersExpanded)}
+            startIcon={toolbar.filtersIconPosition === 'start' ? <FilterListIcon fontSize="small" /> : null}
+            endIcon={toolbar.filtersIconPosition === 'end' ? <FilterListIcon fontSize="small" /> : null}
+            aria-expanded={filtersExpanded}
+            sx={{
+              height: `${toolbar.searchHeight}px !important`,
+              minHeight: `${toolbar.searchHeight}px !important`,
+              maxHeight: `${toolbar.searchHeight}px !important`,
+              alignSelf: 'center', py: 0, boxSizing: 'border-box',
+              borderRadius: `${toolbar.filtersRadius}px`,
+              fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'auto', px: 2,
+            }}
+          >
+            {toolbar.filtersLabel}
+            {toolbar.showFiltersCount && activeFilterCount > 0 ? (
+              <Chip
+                size="small"
+                label={toPersianDigits(activeFilterCount)}
+                sx={{
+                  ml: 0.75, height: 18, fontSize: 11, fontWeight: 800,
+                  bgcolor: toolbar.filtersVariant === 'contained' ? 'rgba(255,255,255,0.24)' : toolbar.chipBg,
+                  color: toolbar.filtersVariant === 'contained' ? '#fff' : toolbar.primary,
+                }}
+              />
+            ) : null}
+          </Button>
+          {toolbar.showReset && (activeFilterCount > 0 || search) ? (
+            <Button
+              size="small" variant="text"
+              onClick={() => { resetFilters(); clearContract(); }}
+              sx={{
+                height: `${toolbar.searchHeight}px`,
+                minHeight: `${toolbar.searchHeight}px`,
+                alignSelf: 'center', py: 0,
+                fontSize: 12.5, whiteSpace: 'nowrap',
+              }}
+            >
+              {toolbar.resetLabel}
+            </Button>
+          ) : null}
+        </Stack>
 
+        <Collapse in={filtersExpanded} timeout={180} unmountOnExit>
+          <Box sx={{
+            mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider',
+            bgcolor: toolbar.panelBg,
+            borderRadius: `${toolbar.panelRadius}px`,
+            p: `${toolbar.panelPadding}px`,
+          }}>
+            <Box sx={{
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr', sm: toolbar.panelGrid },
+              gap: `${toolbar.panelGap}px`,
+              alignItems: 'end',
+            }}>
+              <FilterSelect
+                label="قرارداد" value={contractId} options={contractOptions}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={(value) => {
+                  if (value) {
+                    selectContract({ id: value });
+                  } else {
+                    clearContract();
+                  }
+                }}
+              />
+              <FilterSelect
+                label="نوع ابزار" value={instrumentFilter} options={instrumentOptions}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={setInstrumentFilter}
+              />
+              <FilterSelect
+                label="وضعیت" value={statusFilter} options={statusOptions}
+                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                onChange={setStatusFilter}
+              />
+              {toolbar.showReset ? (
+                <Button
+                  variant="text" size="small" onClick={() => { resetFilters(); clearContract(); }}
+                  sx={{ fontSize: 12.5, justifySelf: 'start', height: `${toolbar.searchHeight - 6}px` }}
+                >
+                  بازنشانی فیلترها
+                </Button>
+              ) : null}
+            </Box>
+          </Box>
+        </Collapse>
 
-            {!filtered.length ? (
-              <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
-                <LockIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>تضمینی با این مشخصات ثبت نشده است.</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت تضمین جدید</Button>
-              </Paper>
-            ) : view === 'cards' ? (
-              <Grid container spacing={1.5}>
-                {filtered.map((row) => (
-                  <Grid item xs={12} md={6} xl={4} key={row.id}>
-                    <GuaranteeCard row={row} currency={currencyLabel} accent={accent}
-                      onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete}
-                      onAction={({ row: selected, action }) => { setActionDialog({ id: selected.id, action, instrument: selected.instrument_type }); setNewExpiry(''); }} />
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <GuaranteeTable rows={filtered} currency={currencyLabel}
-                onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete}
-                onAction={({ row: selected, action }) => { setActionDialog({ id: selected.id, action, instrument: selected.instrument_type }); setNewExpiry(''); }} />
-            )}
-          </Grid>
-        </Grid>
+        {toolbar.showActiveChips && activeChips.length > 0 ? (
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+            {activeChips.map((chip) => (
+              <Chip key={chip.key} size="small" label={chip.label} onDelete={chip.clear} sx={activeChipSx} />
+            ))}
+          </Stack>
+        ) : null}
+      </Paper>
+
+      {warnings.length ? (
+        <Stack spacing={0.75} useFlexGap sx={{ mb: 1.25 }}>
+          {warnings.slice(0, 3).map((warning) => (
+            <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '11px', py: 0.2 }}>
+              <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
+            </Alert>
+          ))}
+        </Stack>
+      ) : null}
+
+      {!filtered.length ? (
+        <Paper elevation={0} sx={{
+          p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
+          textAlign: 'center', bgcolor: 'background.paper',
+        }}>
+          <LockIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+          <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>تضمینی با این مشخصات پیدا نشد.</Typography>
+          <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا تضمین جدید ثبت کنید.</Typography>
+          <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت تضمین جدید</Button>
+        </Paper>
+      ) : (
+        <Paper elevation={0} sx={{
+          borderRadius: 'var(--hrms-table-radius, 16px)',
+          overflow: 'hidden',
+          px: `${cardPadX}px`, py: `${cardPadY}px`,
+          border: '1px solid', borderColor: cardBorderColor,
+          bgcolor: 'background.paper', boxShadow: 'none',
+        }}>
+          <GuaranteeArchiveTable
+            rows={pagedRows}
+            rowOffset={page * pageSize}
+            tableTheme={tableTheme}
+            containerRef={tableScrollRef}
+            tableHeight={tableHeight}
+            rowHeight={effectiveRowPx}
+            dimmed={isFetching || statusLoading}
+            currencyFor={(row) => currencyByContract.get(String(row.contract)) || currencyLabel}
+            contractNumberFor={(row) => contractNumberById.get(String(row.contract)) || ''}
+            onView={setDetail}
+            onEdit={openEdit}
+            onDelete={setConfirmDelete}
+            onAction={openLifecycle}
+          />
+          <GuaranteePager
+            tableTheme={tableTheme}
+            page={page}
+            onPage={setPage}
+            totalPages={totalPages}
+            pageNumbers={pageNumbers}
+            total={filtered.length}
+            pageSize={pageSize}
+          />
+        </Paper>
       )}
 
       <GuaranteeDetailDrawer row={detail} onClose={() => setDetail(null)}
