@@ -22,8 +22,7 @@ import {
   SectionCard, TimelineList,
 } from './ContractProfileUI';
 import {
-  AddendumsStudioCard, CoverageCompactCard,
-  GuaranteeCompactCard, RelatedContractsStudioCard, TermsStudioCard,
+  AddendumsStudioCard, RelatedContractsStudioCard, TermsStudioCard,
 } from './ContractProfileStudioUI';
 import { statementDisplayTitle } from './statementKinds';
 
@@ -795,19 +794,311 @@ export const AddendumsTab = ({ ctx }) => (
 );
 
 /* ---------- تضامین ---------- */
-export const GuaranteesTab = ({ ctx }) => (
-  <Grid container spacing={2}>
-    <Grid item xs={12} lg={7}>
-      <GuaranteeCompactCard summary={ctx.guaranteeSummary} items={ctx.visibleGuaranteeItems}
-        count={ctx.guaranteeCount} coverage={ctx.coveragePercent} currencyLabel="ریال"
-        onOpen={ctx.openGuarantees} />
-    </Grid>
-    <Grid item xs={12} lg={5}>
-      <CoverageCompactCard summary={ctx.guaranteeSummary} coverage={ctx.coveragePercent}
-        onOpen={ctx.openGuarantees} />
-    </Grid>
-  </Grid>
-);
+const CoverageGauge = ({ percent = 0, size = 132, thickness = 14, color = '#2563eb', label, value }) => {
+  const theme = useTheme();
+  const radius = (size - thickness) / 2;
+  const circumference = 2 * Math.PI * radius;
+  const clamped = Math.max(0, Math.min(100, Number(percent) || 0));
+  const dash = (clamped / 100) * circumference;
+  return (
+    <Box sx={{ position: 'relative', width: size, height: size, flexShrink: 0 }}>
+      <svg width={size} height={size}>
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none"
+          stroke={alpha(theme.palette.text.primary, 0.07)} strokeWidth={thickness} />
+        <circle cx={size / 2} cy={size / 2} r={radius} fill="none" stroke={color} strokeWidth={thickness}
+          strokeDasharray={`${dash} ${circumference - dash}`} strokeLinecap="round"
+          transform={`rotate(-90 ${size / 2} ${size / 2})`} />
+      </svg>
+      <Box sx={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+        <Typography sx={{ fontSize: 22, fontWeight: 900, color, lineHeight: 1.1 }}>
+          {toPersianDigits(Math.round(clamped))}٪
+        </Typography>
+        <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label || 'پوشش'}</Typography>
+        {value ? <Typography sx={{ mt: 0.15, fontSize: 10, fontWeight: 700, color: MUTED }}>{value}</Typography> : null}
+      </Box>
+    </Box>
+  );
+};
+
+const guaranteeState = (item) => {
+  if (item.is_released) return { label: 'آزادشده', color: '#64748b' };
+  if (item.days_to_expiry !== null && item.days_to_expiry !== undefined) {
+    if (item.days_to_expiry < 0) return { label: 'منقضی', color: '#b91c1c' };
+    if (item.days_to_expiry <= 30) return { label: `${toPersianDigits(item.days_to_expiry)} روز تا سررسید`, color: '#b45309' };
+  }
+  return { label: 'فعال', color: '#047857' };
+};
+const RequirementCoverage = ({ requirement, currencyLabel }) => {
+  const theme = useTheme();
+  const percent = Number(requirement.coverage_percent || 0);
+  const color = requirement.status === 'provided' ? theme.palette.success.main
+    : requirement.status === 'partial' ? theme.palette.warning.main
+      : theme.palette.error.main;
+  const items = requirement.items || [];
+  return (
+    <Box sx={{
+      p: 1.4, height: '100%', display: 'flex', flexDirection: 'column', gap: 1,
+      borderRadius: '14px', border: '1px solid', borderColor: 'divider',
+      bgcolor: 'background.paper',
+    }}>
+      <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+        <Stack direction="row" spacing={0.75} alignItems="center" sx={{ minWidth: 0 }}>
+          <Box sx={{ width: 9, height: 9, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
+          <Typography noWrap title={requirement.label} sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>
+            {requirement.label}
+          </Typography>
+        </Stack>
+        <Typography sx={{ fontSize: 12.5, fontWeight: 900, color }}>{toPersianDigits(percent)}٪</Typography>
+      </Stack>
+
+      <Box sx={{ height: 9, borderRadius: 5, bgcolor: alpha(theme.palette.text.primary, 0.07), overflow: 'hidden' }}>
+        <Box sx={{ width: `${Math.min(100, percent)}%`, height: '100%', bgcolor: color, opacity: 0.9 }} />
+      </Box>
+
+      <Grid container spacing={0.75}>
+        <Grid item xs={6}>
+          <Typography sx={{ fontSize: 10, color: MUTED }}>نیاز</Typography>
+          <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>{money(requirement.required, currencyLabel)}</Typography>
+        </Grid>
+        <Grid item xs={6}>
+          <Typography sx={{ fontSize: 10, color: MUTED }}>تأمین‌شده</Typography>
+          <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: theme.palette.success.dark }}>{money(requirement.provided, currencyLabel)}</Typography>
+        </Grid>
+        <Grid item xs={6}>
+          <Typography sx={{ fontSize: 10, color: MUTED }}>کمبود</Typography>
+          <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: requirement.balance > 0 ? theme.palette.error.dark : MUTED }}>
+            {money(requirement.balance, currencyLabel)}
+          </Typography>
+        </Grid>
+        <Grid item xs={6}>
+          <Typography sx={{ fontSize: 10, color: MUTED }}>آزادشده</Typography>
+          <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>{money(requirement.released_total, currencyLabel)}</Typography>
+        </Grid>
+      </Grid>
+
+      <Divider />
+      {items.length ? (
+        <Stack spacing={0.35}>
+          {items.map((item) => {
+            const state = guaranteeState(item);
+            return (
+              <Stack key={item.id} direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
+                <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: state.color, flexShrink: 0 }} />
+                <Typography noWrap title={`${item.number} · ${item.bank || ''}`}
+                  sx={{ fontSize: 11, fontWeight: 700, color: INK, flex: 1, minWidth: 0 }}>
+                  {item.number || '—'} · {item.instrument_label || item.type_label || '—'}
+                  {item.bank ? ` · ${item.bank}` : ''}
+                </Typography>
+                <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: MUTED }}>
+                  {money(item.amount, currencyLabel)}
+                </Typography>
+                <Typography noWrap sx={{ fontSize: 10, color: state.color, minWidth: 62, textAlign: 'left' }}>
+                  {state.label}
+                </Typography>
+              </Stack>
+            );
+          })}
+        </Stack>
+      ) : (
+        <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+          {requirement.status === 'missing' ? 'برای این قلم هنوز تضمینی ثبت نشده است.' : 'تضمینی به این قلم وصل نشده است.'}
+        </Typography>
+      )}
+    </Box>
+  );
+};
+export const GuaranteesTab = ({ ctx }) => {
+  const theme = useTheme();
+  const report = ctx.guaranteeReport;
+  const requirements = report?.requirements || [];
+  const unrequired = report?.unrequired || [];
+  const summary = report?.summary || {};
+  const warnings = report?.warnings || [];
+  const coverage = Number(summary.coverage_percent ?? ctx.coveragePercent ?? 0);
+  const coverageColor = coverage >= 100 ? theme.palette.success.main
+    : coverage > 0 ? theme.palette.warning.main : theme.palette.error.main;
+
+  const registered = report
+    ? [
+      ...requirements.flatMap((requirement) => (requirement.items || []).map((item) => ({
+        ...item,
+        requirement_label: requirement.label,
+        requirement_required: Number(requirement.required || 0),
+      }))),
+      ...unrequired.map((item) => ({ ...item, requirement_label: 'بدون تعریف', requirement_required: 0 })),
+    ]
+    : (ctx.guarantees || []).map((row, index) => ({
+      id: row.id ?? `g-${index}`,
+      number: row.number,
+      type_label: row.guarantee_type_display || row.guarantee_type,
+      instrument_label: row.instrument_type,
+      amount: Number(row.amount || 0),
+      bank: row.bank,
+      issue_date: row.issue_date,
+      expiry_date: row.expiry_date,
+      is_released: row.is_released,
+      requirement_label: '—',
+      requirement_required: 0,
+    }));
+
+  const rows = registered.map((item, index) => ({ ...item, key: item.id ?? index }));
+
+  return (
+    <Stack spacing={2}>
+      <Grid container spacing={2}>
+        <Grid item xs={12} lg={4}>
+          <SectionCard title="پوشش کلی تضامین" icon={DescriptionIcon} color={theme.palette.primary.main} sx={{ mb: 0, height: '100%' }}>
+            <Stack direction="row" spacing={2} alignItems="center" useFlexGap flexWrap="wrap">
+              <CoverageGauge percent={coverage} color={coverageColor} label="پوشش"
+                value={`${toPersianDigits(summary.provided_count || 0)} از ${toPersianDigits(summary.required_count || 0)} قلم`} />
+              <Stack spacing={0.75} sx={{ flex: 1, minWidth: 150 }}>
+                <MoneyTile label="نیاز کل" value={money(summary.required_total, 'ریال')} />
+                <MoneyTile label="تأمین‌شده" value={money(summary.provided_total, 'ریال')} color={theme.palette.success.main} />
+              </Stack>
+            </Stack>
+            <Box sx={{ mt: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75 }}>
+              <MoneyTile label="کمبود" value={money(summary.balance_total, 'ریال')}
+                color={Number(summary.balance_total || 0) > 0 ? theme.palette.error.main : MUTED} />
+              <MoneyTile label="آزادشده" value={money(summary.released_total, 'ریال')} color={MUTED} />
+            </Box>
+            <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                {toPersianDigits(summary.registered_count ?? rows.length)} تضمین ثبت‌شده
+              </Typography>
+              <Typography sx={{ fontSize: 10.5, color: theme.palette.success.dark }}>
+                تأمین‌شده: {toPersianDigits(summary.provided_count || 0)}
+              </Typography>
+              <Typography sx={{ fontSize: 10.5, color: theme.palette.warning.dark }}>
+                ناقص: {toPersianDigits(summary.partial_count || 0)}
+              </Typography>
+              <Typography sx={{ fontSize: 10.5, color: theme.palette.error.dark }}>
+                تأمین‌نشده: {toPersianDigits(summary.missing_count || 0)}
+              </Typography>
+            </Stack>
+          </SectionCard>
+        </Grid>
+
+        <Grid item xs={12} lg={8}>
+          <SectionCard title="پوشش هر قلم تضمین" icon={DescriptionIcon} color={theme.palette.info.main} sx={{ mb: 0, height: '100%' }}>
+            {requirements.length ? (
+              <Grid container spacing={1.5}>
+                {requirements.map((requirement, index) => (
+                  <Grid item xs={12} md={6} key={`${requirement.type}-${requirement.index ?? index}`}>
+                    <RequirementCoverage requirement={requirement} currencyLabel="ریال" />
+                  </Grid>
+                ))}
+              </Grid>
+            ) : (
+              <EmptyState text="اقلام تضمین برای این قرارداد تعریف نشده است." />
+            )}
+          </SectionCard>
+        </Grid>
+      </Grid>
+      {/* تضامین ثبت‌شده در قرارداد */}
+      <SectionCard title="تضامین ثبت‌شده" icon={DescriptionIcon} color={theme.palette.secondary.main} sx={{ mb: 0 }}
+        action={<Button size="small" variant="text" onClick={ctx.openGuarantees}>پروندهٔ تضامین</Button>}>
+        <ProfileTable
+          ariaLabel="فهرست تضامین ثبت‌شده"
+          emptyText="تضمینی برای این قرارداد ثبت نشده است."
+          rows={rows}
+          stickyHeader
+          maxHeight={460}
+          columns={[
+            {
+              key: 'row', label: 'ردیف', width: '6%',
+              render: (row, index) => <CellText strong>{toPersianDigits(index + 1)}</CellText>,
+            },
+            {
+              key: 'number', label: 'شماره', width: '12%',
+              render: (row) => <CellText strong>{toPersianDigits(row.number || '—')}</CellText>,
+            },
+            {
+              key: 'type_label', label: 'نوع تضمین', width: '16%', align: 'right',
+              render: (row) => <CellText strong>{row.type_label || '—'}</CellText>,
+            },
+            {
+              key: 'instrument_label', label: 'ابزار', width: '12%', align: 'right',
+              render: (row) => <CellText>{row.instrument_label || '—'}</CellText>,
+            },
+            {
+              key: 'bank', label: 'بانک / صادرکننده', width: '14%', align: 'right',
+              render: (row) => <CellText>{row.bank || '—'}</CellText>,
+            },
+            {
+              key: 'amount', label: 'مبلغ', width: '14%',
+              render: (row) => <CellText strong>{money(row.amount, 'ریال')}</CellText>,
+            },
+            {
+              key: 'coverage', label: 'پوشش از قلم', width: '12%',
+              render: (row) => {
+                if (!row.requirement_required) return <CellText>—</CellText>;
+                const share = Math.min(100, Math.round((Number(row.amount || 0) / row.requirement_required) * 100));
+                return (
+                  <Stack spacing={0.3} alignItems="center" sx={{ width: '100%' }}>
+                    <Typography sx={{ fontSize: 10.5, fontWeight: 800, color: INK }}>{toPersianDigits(share)}٪</Typography>
+                    <Box sx={{ width: '82%', height: 5, borderRadius: 3, bgcolor: alpha(theme.palette.text.primary, 0.07), overflow: 'hidden' }}>
+                      <Box sx={{ width: `${share}%`, height: '100%', bgcolor: theme.palette.primary.main, opacity: 0.85 }} />
+                    </Box>
+                  </Stack>
+                );
+              },
+            },
+            {
+              key: 'expiry_date', label: 'سررسید', width: '11%',
+              render: (row) => <CellText>{dateLabel(row.expiry_date)}</CellText>,
+            },
+            {
+              key: 'state', label: 'وضعیت', width: '13%',
+              render: (row) => {
+                const state = guaranteeState(row);
+                return (
+                  <Stack direction="row" spacing={0.5} alignItems="center" justifyContent="center">
+                    <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: state.color }} />
+                    <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 700, color: state.color }}>{state.label}</Typography>
+                  </Stack>
+                );
+              },
+            },
+          ]}
+        />
+      </SectionCard>
+
+      {unrequired.length ? (
+        <SectionCard title="تضامین بدون تعریف در قرارداد" icon={DescriptionIcon} color={theme.palette.warning.main} sx={{ mb: 0 }}>
+          <Stack spacing={0.6}>
+            {unrequired.map((item) => {
+              const state = guaranteeState(item);
+              return (
+                <Stack key={item.id} direction="row" alignItems="center" spacing={0.75}
+                  sx={{ px: 1, py: 0.7, borderRadius: '10px', border: '1px solid', borderColor: 'divider' }}>
+                  <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: state.color }} />
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: INK, flex: 1, minWidth: 0 }}>
+                    {item.number || '—'} · {item.type_label || '—'}{item.bank ? ` · ${item.bank}` : ''}
+                  </Typography>
+                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>{money(item.amount, 'ریال')}</Typography>
+                  <Typography noWrap sx={{ fontSize: 10, color: state.color, minWidth: 62, textAlign: 'left' }}>{state.label}</Typography>
+                </Stack>
+              );
+            })}
+          </Stack>
+        </SectionCard>
+      ) : null}
+
+      {warnings.length ? (
+        <SectionCard title="هشدارهای تضامین" icon={DescriptionIcon} color={theme.palette.error.main} sx={{ mb: 0 }}>
+          <Stack spacing={0.5}>
+            {warnings.map((warning) => (
+              <Typography key={warning} sx={{ fontSize: 11.5, color: theme.palette.error.dark }}>• {warning}</Typography>
+            ))}
+          </Stack>
+        </SectionCard>
+      ) : null}
+    </Stack>
+  );
+};
+
+
+
 
 /* ---------- صورت‌وضعیت‌ها ---------- */
 export const StatementsTab = ({ ctx }) => (

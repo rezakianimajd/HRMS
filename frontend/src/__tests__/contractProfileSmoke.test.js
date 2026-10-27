@@ -92,6 +92,31 @@ beforeEach(() => {
     addEventListener: () => {}, removeEventListener: () => {},
   }));
   axiosInstance.get.mockImplementation((url) => {
+    if (String(url).includes('guarantees-status')) {
+      return Promise.resolve({
+        data: {
+          summary: {
+            required_total: 100000000, provided_total: 60000000, released_total: 0,
+            balance_total: 40000000, coverage_percent: 60, required_count: 1,
+            provided_count: 1, partial_count: 1, missing_count: 0,
+            registered_count: 1, unrequired_count: 0,
+          },
+          requirements: [{
+            index: 0, type: 'performance', label: 'حسن انجام کار',
+            required: 100000000, provided: 60000000, released_total: 0,
+            balance: 40000000, coverage_percent: 60, status: 'partial', status_label: 'ناقص',
+            provided_count: 1, released_count: 0,
+            items: [{
+              id: 9, number: 'G-1', type_label: 'حسن انجام کار', instrument_label: 'ضمانت‌نامه بانکی',
+              amount: 60000000, bank: 'بانک ملی', issue_date: '2026-01-01',
+              expiry_date: '2026-12-31', days_to_expiry: 40, is_released: false,
+            }],
+          }],
+          unrequired: [],
+          warnings: ['تضمین «حسن انجام کار» کامل تأمین نشده است.'],
+        },
+      });
+    }
     if (String(url).includes('/effective/')) {
       return Promise.resolve({ data: { effective: {}, changed: [], changes: [], warnings: [], addendum_count: 0 } });
     }
@@ -177,6 +202,19 @@ test('contract profile shows the compact card, single-row quick access and the a
 
   await openTab('الحاقیه‌ها');
   expect(container.textContent).toContain('فهرست الحاقیه‌ها');
+
+  await openTab('تضامین');
+  expect(container.textContent).toContain('پوشش کلی تضامین');
+  expect(container.textContent).toContain('پوشش هر قلم تضمین');
+  expect(container.textContent).toContain('حسن انجام کار');
+  expect(container.textContent).toContain('۶۰٪');
+  expect(container.textContent).toContain('بانک ملی');
+  expect(container.textContent).toContain('تضامین ثبت‌شده');
+  expect(container.textContent).toContain('هشدارهای تضامین');
+  const guaranteeTable = container.querySelector('table[aria-label="فهرست تضامین ثبت‌شده"]');
+  expect(guaranteeTable).toBeTruthy();
+  expect(Array.from(guaranteeTable.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
+    .toEqual(['ردیف', 'شماره', 'نوع تضمین', 'ابزار', 'بانک / صادرکننده', 'مبلغ', 'پوشش از قلم', 'سررسید', 'وضعیت']);
 
   await openTab('صورت‌وضعیت');
   expect(container.textContent).toContain('فهرست صورت‌وضعیت‌ها');

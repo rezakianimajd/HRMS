@@ -267,6 +267,8 @@ const ContractProfilePage = () => {
     progressPercent,
     adjustmentNetRial,
     guaranteeSummary,
+    guaranteeReport: guaranteeStatus || null,
+    guarantees: c.guarantees || [],
     visibleGuaranteeItems,
     guaranteeCount,
     coveragePercent,
