@@ -294,76 +294,213 @@ export const TimelineTab = ({ ctx }) => {
   );
 };
 
-/* ---------- مشخصات قرارداد (کامل) ---------- */
+/* ---------- مشخصات قرارداد (تمام جزئیات، بدون اقلام مالی) ---------- */
+const InfoRow = ({ label, value, ltr, color }) => (
+  <Stack
+    direction="row"
+    spacing={1}
+    justifyContent="space-between"
+    alignItems="baseline"
+    sx={{ py: 0.7, borderBottom: '1px dashed', borderColor: 'divider', minWidth: 0 }}
+  >
+    <Typography sx={{ fontSize: 11.5, color: MUTED, flexShrink: 0 }}>{label}</Typography>
+    <Typography
+      noWrap
+      title={typeof value === 'string' ? value : undefined}
+      sx={{
+        fontSize: 12, fontWeight: 800, color: color || INK, minWidth: 0,
+        direction: ltr ? 'ltr' : 'rtl', fontFamily: 'var(--hrms-table-number-font, inherit)',
+      }}
+    >
+      {value}
+    </Typography>
+  </Stack>
+);
+
+const AllocationRow = ({ name, percent, color }) => (
+  <Box sx={{ px: 1, py: 0.8, borderRadius: '11px', border: '1px solid', borderColor: 'divider', minWidth: 0 }}>
+    <Stack direction="row" spacing={1} justifyContent="space-between" alignItems="baseline">
+      <Typography noWrap title={name} sx={{ fontSize: 12, fontWeight: 800, color: INK, minWidth: 0 }}>{name}</Typography>
+      <Typography sx={{ fontSize: 12, fontWeight: 900, color }}>{toPersianDigits(percent)}٪</Typography>
+    </Stack>
+    <Box sx={{ mt: 0.5, height: 6, borderRadius: 3, bgcolor: 'rgba(15,23,42,0.06)', overflow: 'hidden' }}>
+      <Box sx={{ width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', borderRadius: 3, bgcolor: color }} />
+    </Box>
+  </Box>
+);
+
 export const IdentityTab = ({ ctx }) => {
   const theme = useTheme();
   const {
-    contract, currencyLabel, contractRate, effectiveEndDate, effects, contractTypeLabel,
-    advanceAmount, guaranteeAmount, retentionPercent, projectNames,
+    contract, currencyLabel, effectiveEndDate, effects, contractTypeLabel, remainingDays,
   } = ctx;
+
+  const allocations = (contract.project_allocations_display || [])
+    .filter((row) => row && (row.project_name || row.percentage));
+  const singleProject = contract.project_title || contract.project_name || '';
+
+  const startDate = contract.start_date ? new Date(contract.start_date) : null;
+  const endDate = effectiveEndDate ? new Date(effectiveEndDate) : null;
+  const totalDays = startDate && endDate ? Math.max(1, Math.round((endDate - startDate) / 86400000)) : null;
+  const passedDays = startDate ? Math.max(0, Math.round((Date.now() - startDate.getTime()) / 86400000)) : null;
+  const elapsedPercent = totalDays && passedDays !== null
+    ? Math.max(0, Math.min(100, Math.round((passedDays / totalDays) * 100)))
+    : null;
+
+  const logs = (contract.audit_logs || []).slice(0, 12);
+
   return (
     <Stack spacing={2}>
-      <SectionCard title="شناسنامهٔ قرارداد" icon={DescriptionIcon} color={theme.palette.primary.main}>
-        <Grid container spacing={1}>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="شمارهٔ قرارداد" value={toPersianDigits(contract.number || '—')} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="نوع قرارداد" value={contractTypeLabel} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="طبقه‌بندی" value={contract.category || '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="امضاکننده" value={contract.signatory_name || '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="طرف قرارداد" value={contract.party_name || '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="تاریخ امضا" value={dateLabel(contract.signing_date)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="تاریخ شروع" value={dateLabel(contract.start_date)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="پایان پایه" value={dateLabel(contract.end_date)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="پایان مؤثر (با الحاقیه)" value={dateLabel(effectiveEndDate)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="دورهٔ گارانتی" value={contract.warranty_period || '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="شمارهٔ مناقصه" value={contract.tender_number || '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="محل اجرا" value={contract.project_location || '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="مبلغ پایه" value={money(contract.amount, currencyLabel)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="پیش‌پرداخت" value={money(advanceAmount, currencyLabel)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="مبلغ تضمین" value={money(guaranteeAmount, currencyLabel)} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="درصد نگهداشت" value={retentionPercent ? `${formatPersianNumber(retentionPercent)}٪` : '—'} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="ارز قرارداد" value={currencyLabel} /></Grid>
-          <Grid item xs={6} sm={4} lg={3}><DetailTile label="نرخ تبدیل" value={contractRate > 1 ? formatPersianNumber(contractRate) : '—'} /></Grid>
-          <Grid item xs={12} sm={8} lg={6}><DetailTile label="پروژه‌ها" value={projectNames.length ? projectNames.join('، ') : '—'} /></Grid>
+      {/* شناسنامه */}
+      <SectionCard title="شناسنامهٔ قرارداد" icon={DescriptionIcon} color={theme.palette.primary.main} sx={{ mb: 0 }}>
+        <Grid container spacing={{ xs: 0, md: 2 }}>
+          <Grid item xs={12} md={6}>
+            <InfoRow label="شمارهٔ قرارداد" value={toPersianDigits(contract.number || '—')} />
+            <InfoRow label="نوع قرارداد" value={contractTypeLabel} />
+            <InfoRow label="طبقه‌بندی" value={contract.category || '—'} />
+            <InfoRow label="وضعیت" value={contract.status_display || contract.status || '—'} />
+            <InfoRow label="طرف قرارداد" value={contract.party_name || '—'} />
+            <InfoRow label="امضاکننده" value={contract.signatory_name || '—'} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <InfoRow label="تاریخ امضا" value={dateLabel(contract.signing_date)} />
+            <InfoRow label="شمارهٔ مناقصه" value={contract.tender_number || '—'} />
+            <InfoRow label="محل اجرا" value={contract.project_location || '—'} />
+            <InfoRow label="دورهٔ گارانتی" value={contract.warranty_period || '—'} />
+            <InfoRow label="ارز قرارداد" value={currencyLabel} />
+            <InfoRow label="کد ارز" value={contract.currency_code || contract.currency_symbol || '—'} ltr />
+          </Grid>
         </Grid>
       </SectionCard>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={6}>
-          <TermsStudioCard title="شرایط پرداخت" icon={DescriptionIcon} color={theme.palette.info.main}
-            text={contract.payment_terms} />
+      {/* زمان‌بندی */}
+      <SectionCard title="زمان‌بندی قرارداد" icon={DescriptionIcon} color={theme.palette.info.main} sx={{ mb: 0 }}>
+        <Grid container spacing={1.5}>
+          <Grid item xs={6} md={3}><DetailTile label="شروع" value={dateLabel(contract.start_date)} /></Grid>
+          <Grid item xs={6} md={3}><DetailTile label="پایان پایه" value={dateLabel(contract.end_date)} /></Grid>
+          <Grid item xs={6} md={3}><DetailTile label="پایان با الحاقیه" value={dateLabel(effectiveEndDate)} /></Grid>
+          <Grid item xs={6} md={3}>
+            <DetailTile label="مدت کل"
+              value={totalDays ? `${toPersianDigits(totalDays)} روز` : '—'} />
+          </Grid>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <TermsStudioCard title="شرایط تحویل" icon={DescriptionIcon} color={theme.palette.warning.main}
-            text={contract.delivery_terms} />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <TermsStudioCard title="شرایط جریمه" icon={DescriptionIcon} color={theme.palette.error.main}
-            text={contract.penalty_terms} />
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <TermsStudioCard title="شرایط بیمه" icon={DescriptionIcon} color={theme.palette.secondary.main}
-            text={contract.insurance_terms} />
-        </Grid>
-      </Grid>
+        {elapsedPercent !== null ? (
+          <Box sx={{ mt: 1.5 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="baseline" sx={{ mb: 0.4 }}>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                سپری‌شده {toPersianDigits(Math.min(passedDays, totalDays))} روز از {toPersianDigits(totalDays)} روز
+              </Typography>
+              <Typography sx={{ fontSize: 11, fontWeight: 800, color: theme.palette.info.main }}>
+                {toPersianDigits(elapsedPercent)}٪
+              </Typography>
+            </Stack>
+            <Box sx={{ height: 8, borderRadius: 4, bgcolor: 'rgba(15,23,42,0.06)', overflow: 'hidden' }}>
+              <Box sx={{
+                width: `${elapsedPercent}%`, height: '100%', borderRadius: 4,
+                bgcolor: theme.palette.info.main, opacity: 0.9,
+              }} />
+            </Box>
+            <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.5 }}>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                {remainingDays === null
+                  ? 'بدون تاریخ پایان'
+                  : remainingDays < 0
+                    ? `${toPersianDigits(Math.abs(remainingDays))} روز از پایان گذشته`
+                    : `${toPersianDigits(remainingDays)} روز باقی‌مانده`}
+              </Typography>
+            </Stack>
+          </Box>
+        ) : null}
+      </SectionCard>
 
+      {/* پروژه‌ها و تخصیص درصدی */}
+      <SectionCard title="پروژه‌ها و تخصیص درصدی" icon={DescriptionIcon} color={theme.palette.secondary.main} sx={{ mb: 0 }}>
+        {allocations.length ? (
+          <Grid container spacing={1}>
+            {allocations.map((allocation, index) => (
+              <Grid item xs={12} sm={6} lg={4} key={`${allocation.project || allocation.project_name}-${index}`}>
+                <AllocationRow
+                  name={allocation.project_name || `پروژه #${allocation.project || index + 1}`}
+                  percent={Number(allocation.percentage || 0)}
+                  color={theme.palette.secondary.main}
+                />
+              </Grid>
+            ))}
+            <Grid item xs={12}>
+              <Typography sx={{ mt: 0.5, fontSize: 10.5, color: MUTED }}>
+                جمع تخصیص: {toPersianDigits(allocations.reduce((sum, row) => sum + Number(row.percentage || 0), 0))}٪
+              </Typography>
+            </Grid>
+          </Grid>
+        ) : singleProject ? (
+          <AllocationRow name={singleProject} percent={100} color={theme.palette.secondary.main} />
+        ) : (
+          <EmptyState text="پروژه‌ای به این قرارداد تخصیص نیافته است." />
+        )}
+      </SectionCard>
+
+      {/* شرایط و تعهدات */}
+      <SectionCard title="شرایط و تعهدات" icon={DescriptionIcon} color={theme.palette.warning.main} sx={{ mb: 0 }}>
+        <Grid container spacing={1.5}>
+          <Grid item xs={12} md={6}>
+            <TermsStudioCard title="شرایط پرداخت" icon={DescriptionIcon} color={theme.palette.info.main}
+              text={contract.payment_terms} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TermsStudioCard title="شرایط تحویل" icon={DescriptionIcon} color={theme.palette.warning.main}
+              text={contract.delivery_terms} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TermsStudioCard title="شرایط جریمه" icon={DescriptionIcon} color={theme.palette.error.main}
+              text={contract.penalty_terms} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <TermsStudioCard title="شرایط بیمه" icon={DescriptionIcon} color={theme.palette.secondary.main}
+              text={contract.insurance_terms} />
+          </Grid>
+        </Grid>
+      </SectionCard>
+      {/* اثر الحاقیه‌ها */}
+      {(effects?.changes || []).length ? (
+        <SectionCard title="اثر مؤثر الحاقیه‌ها" icon={DescriptionIcon} color={theme.palette.secondary.main} sx={{ mb: 0 }}>
+          <Grid container spacing={1}>
+            {(effects.changes || []).map((change, index) => (
+              <Grid item xs={12} sm={6} lg={4} key={`${change.field}-${index}`}>
+                <DetailTile
+                  label={change.source_label || change.field}
+                  value={change.field === 'end_date' ? dateLabel(change.to) : formatPersianNumber(change.to || 0)}
+                />
+              </Grid>
+            ))}
+          </Grid>
+        </SectionCard>
+      ) : null}
+
+      {/* توضیحات */}
       {contract.description ? (
-        <SectionCard title="توضیحات قرارداد" icon={DescriptionIcon} color={theme.palette.text.secondary}>
-          <Typography sx={{ fontSize: 12, lineHeight: 1.9, color: INK, whiteSpace: 'pre-wrap' }}>
+        <SectionCard title="توضیحات قرارداد" icon={DescriptionIcon} color={theme.palette.text.secondary} sx={{ mb: 0 }}>
+          <Typography sx={{ fontSize: 12, lineHeight: 1.95, color: INK, whiteSpace: 'pre-wrap' }}>
             {contract.description}
           </Typography>
         </SectionCard>
       ) : null}
 
-      {(effects?.changes || []).length ? (
-        <SectionCard title="اثر مؤثر الحاقیه‌ها" icon={DescriptionIcon} color={theme.palette.secondary.main}>
-          <Grid container spacing={1}>
-            {(effects.changes || []).map((change, index) => (
-              <Grid item xs={12} sm={6} lg={4} key={`${change.field}-${index}`}>
-                <DetailTile label={change.source_label || change.field}
-                  value={change.field === 'end_date' ? dateLabel(change.to) : formatPersianNumber(change.to || 0)} />
-              </Grid>
-            ))}
-          </Grid>
+      {/* سابقهٔ تغییرات */}
+      {logs.length ? (
+        <SectionCard title="سابقهٔ تغییرات ثبت‌شده" icon={DescriptionIcon} color={theme.palette.text.secondary} sx={{ mb: 0 }}>
+          <ProfileTable
+            ariaLabel="سابقه تغییرات قرارداد"
+            emptyText="تغییری ثبت نشده است."
+            rows={logs.map((row) => ({ ...row, key: row.id }))}
+            columns={[
+              { key: 'created_at', label: 'تاریخ', width: '18%', render: (row) => <CellText>{dateLabel(row.created_at)}</CellText> },
+              { key: 'action_display', label: 'اقدام', width: '18%', render: (row) => <CellText strong>{row.action_display || row.action || '—'}</CellText> },
+              { key: 'field', label: 'فیلد', width: '18%', render: (row) => <CellText>{row.field || '—'}</CellText> },
+              { key: 'old_value', label: 'مقدار قبلی', width: '20%', render: (row) => <CellText>{row.old_value || '—'}</CellText> },
+              { key: 'new_value', label: 'مقدار جدید', width: '20%', render: (row) => <CellText>{row.new_value || '—'}</CellText> },
+              { key: 'user', label: 'کاربر', width: '6%', render: (row) => <CellText>{row.user || '—'}</CellText> },
+            ]}
+          />
         </SectionCard>
       ) : null}
     </Stack>
@@ -372,24 +509,41 @@ export const IdentityTab = ({ ctx }) => {
 
 /* ---------- مشخصات مالی (کامل) ---------- */
 export const FinanceTab = ({ ctx }) => (
-  <ContractFinanceStudioCard
-    financial={ctx.financial}
-    contractRate={ctx.contractRate}
-    currencyLabel={ctx.currencyLabel}
-    adjustedAmount={ctx.adjustedContractAmount}
-    adjustedAmountRial={ctx.adjustedContractAmountRial}
-    totalStatements={ctx.totalStatements}
-    totalPaid={ctx.totalPaid}
-    totalInvoices={ctx.totalInvoices}
-    remainingRial={ctx.remainingRial}
-    progressPercent={ctx.progressPercent}
-    adjustmentNetRial={ctx.adjustmentNetRial}
-    monthlyPayments={ctx.paymentMonths}
-  />
+  <Stack spacing={2}>
+    <SectionCard title="مشخصات مالی پایه" icon={DescriptionIcon} color={ctx.accent} sx={{ mb: 0 }}>
+      <Grid container spacing={1}>
+        <Grid item xs={6} sm={4} lg={3}><DetailTile label="مبلغ پایه" value={money(ctx.contract.amount, ctx.currencyLabel)} /></Grid>
+        <Grid item xs={6} sm={4} lg={3}><DetailTile label="پیش‌پرداخت" value={money(ctx.advanceAmount, ctx.currencyLabel)} /></Grid>
+        <Grid item xs={6} sm={4} lg={3}><DetailTile label="مبلغ تضمین" value={money(ctx.guaranteeAmount, ctx.currencyLabel)} /></Grid>
+        <Grid item xs={6} sm={4} lg={3}>
+          <DetailTile label="درصد نگهداشت"
+            value={ctx.retentionPercent ? `${formatPersianNumber(ctx.retentionPercent)}٪` : '—'} />
+        </Grid>
+        <Grid item xs={6} sm={4} lg={3}><DetailTile label="ارز قرارداد" value={ctx.currencyLabel} /></Grid>
+        <Grid item xs={6} sm={4} lg={3}>
+          <DetailTile label="نرخ تبدیل" value={ctx.contractRate > 1 ? formatPersianNumber(ctx.contractRate) : '—'} />
+        </Grid>
+      </Grid>
+    </SectionCard>
+    <ContractFinanceStudioCard
+      financial={ctx.financial}
+      contractRate={ctx.contractRate}
+      currencyLabel={ctx.currencyLabel}
+      adjustedAmount={ctx.adjustedContractAmount}
+      adjustedAmountRial={ctx.adjustedContractAmountRial}
+      totalStatements={ctx.totalStatements}
+      totalPaid={ctx.totalPaid}
+      totalInvoices={ctx.totalInvoices}
+      remainingRial={ctx.remainingRial}
+      progressPercent={ctx.progressPercent}
+      adjustmentNetRial={ctx.adjustmentNetRial}
+      monthlyPayments={ctx.paymentMonths}
+    />
+  </Stack>
 );
 
-
 /* ---------- الحاقیه‌ها ---------- */
+
 export const AddendumsTab = ({ ctx }) => (
   <Stack spacing={2}>
     <AddendumsStudioCard addendums={ctx.contract.addendums || []} onOpen={ctx.openAddendums} />

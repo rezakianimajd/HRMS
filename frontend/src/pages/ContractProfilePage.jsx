@@ -257,6 +257,7 @@ const ContractProfilePage = () => {
     coveragePercent,
     addendumCount,
     paymentMonths,
+    remainingDays,
     effectiveEndDate: endDateWithAddendum,
     contractTypeLabel,
     advanceAmount: advanceWithAddendum,

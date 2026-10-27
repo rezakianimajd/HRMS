@@ -66,6 +66,10 @@ const contract = {
     is_approved: true,
   }],
   documents: [],
+  project_allocations_display: [
+    { project: 1, project_name: 'پروژهٔ نمونه', percentage: 60 },
+    { project: 2, project_name: 'پروژهٔ دوم', percentage: 40 },
+  ],
 };
 
 const wait = (ms = 200) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -146,8 +150,15 @@ test('contract profile shows the compact card, single-row quick access and the a
 
   await openTab('مشخصات قرارداد');
   expect(container.textContent).toContain('شناسنامهٔ قرارداد');
+  expect(container.textContent).toContain('زمان‌بندی قرارداد');
+  expect(container.textContent).toContain('پروژه‌ها و تخصیص درصدی');
+  expect(container.textContent).toContain('پروژهٔ نمونه');
+  expect(container.textContent).toContain('۶۰٪');
+  expect(container.textContent).toContain('جمع تخصیص: ۱۰۰٪');
+  expect(container.textContent).toContain('شرایط و تعهدات');
 
   await openTab('مشخصات مالی');
+  expect(container.textContent).toContain('مشخصات مالی پایه');
   expect(container.textContent).toContain('تحلیل مالی قرارداد');
 
   await openTab('الحاقیه‌ها');
