@@ -128,25 +128,39 @@ test('contract guarantees page lists every guarantee in the archive-style table'
   /* نوار ابزار استاندارد: جستجو، ترتیب، فیلترها */
   expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
   expect(container.textContent).toContain('فیلترها');
-  expect(container.textContent).toContain('نزدیک‌ترین سررسید');
-  /* ستون‌های جدول استاندارد */
-  expect(container.textContent).toContain('شماره / نوع');
-  expect(container.textContent).toContain('ابزار');
-  expect(container.textContent).toContain('بانک');
-  expect(container.textContent).toContain('سررسید');
-  expect(container.textContent).toContain('وضعیت');
-  expect(container.textContent).toContain('عملیات');
-  /* ردیف‌های تضامین با شمارهٔ قرارداد و نام بانک */
-  expect(container.textContent).toContain('G-۱۱');
-  expect(container.textContent).toContain('CH-۱۲');
+  expect(container.textContent).toContain('بیشترین تضمین');
+  /* ستون‌های جدول قراردادها (صفحهٔ اول، مثل بایگانی اسناد) */
+  expect(container.textContent).toContain('شماره قرارداد');
+  expect(container.textContent).toContain('طرف قرارداد');
+  expect(container.textContent).toContain('موضوع قرارداد');
+  expect(container.textContent).toContain('تعداد تضمین');
+  expect(container.textContent).toContain('مبلغ تضمین');
+  /* ردیف قرارداد با شمار، طرف قرارداد و موضوع */
   expect(container.textContent).toContain('C-۲۰۰');
+  expect(container.textContent).toContain('شرکت پیمانکار');
   expect(container.textContent).toContain('قرارداد آزمایشی تضامین');
-  expect(container.textContent).toContain('بانک تست');
-  expect(container.textContent).toContain('معتبر');
-  expect(container.textContent).toContain('منقضی');
+  expect(container.textContent).toContain('۶٬۵۰۰٬۰۰۰ ریال');
+  /* کارت نزدیک‌ترین سررسیدها */
+  expect(container.textContent).toContain('نزدیک‌ترین سررسیدها');
   /* نمای کارت حذف شده است */
   expect(container.querySelector('.MuiToggleButton-root')).toBeNull();
   expect(container.querySelector('.MuiAvatar-root')).toBeNull();
+
+  /* با کلیک روی ردیف قرارداد، تضامین همان قرارداد نمایش داده می‌شود */
+  const contractRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.textContent.includes('C-۲۰۰'));
+  expect(contractRow).toBeTruthy();
+  await act(async () => { contractRow.click(); });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  }
+  expect(container.textContent).toContain('شماره تضمین');
+  expect(container.textContent).toContain('G-۱۱');
+  expect(container.textContent).toContain('بانک تست');
+  expect(container.textContent).toContain('قرارداد: C-۲۰۰');
   root.unmount();
 });
 

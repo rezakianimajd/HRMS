@@ -60,6 +60,7 @@ import { AttachmentLinks, AttachmentPicker } from './contracts/AddendumWorkspace
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
 import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
+import { CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
 
 const EMPTY = {
   id: null, contract: '', contract_guarantee_index: null,
@@ -123,7 +124,7 @@ const numberFor = (row) => row.number || row.check_number || row.promissory_numb
 /* جدول استاندارد تضامین — همان چیدمان و توکن‌های صفحهٔ بایگانی اسناد */
 const GuaranteeArchiveTable = ({
   rows, rowOffset = 0, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
-  currencyFor, contractNumberFor, onView, onEdit, onDelete, onAction,
+  currencyFor, onView, onEdit, onDelete, onAction,
 }) => (
   <TableContainer
     ref={containerRef}
@@ -175,19 +176,19 @@ const GuaranteeArchiveTable = ({
     >
       <TableHead>
         <TableRow>
-          <TableCell align="center" sx={{ width: '5%' }}>
+          <TableCell align="center" sx={{ width: '4%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>ردیف</Box>
           </TableCell>
-          <TableCell align="center" sx={{ width: '17%' }}>شماره / نوع</TableCell>
-          <TableCell align="center" sx={{ width: '13%' }}>ابزار</TableCell>
-          <TableCell align="center" sx={{ width: '13%' }}>بانک</TableCell>
-          <TableCell align="center" sx={{ width: '19%' }}>قرارداد</TableCell>
-          <TableCell align="center" sx={{ width: '13%' }}>مبلغ</TableCell>
-          <TableCell align="center" sx={{ width: '10%' }}>سررسید</TableCell>
+          <TableCell align="center" sx={{ width: '13%' }}>شماره تضمین</TableCell>
+          <TableCell align="center" sx={{ width: '15%' }}>نوع تضمین</TableCell>
+          <TableCell align="center" sx={{ width: '12%' }}>ابزار</TableCell>
+          <TableCell align="center" sx={{ width: '11%' }}>بانک</TableCell>
+          <TableCell align="center" sx={{ width: '14%' }}>مبلغ</TableCell>
+          <TableCell align="center" sx={{ width: '11%' }}>سررسید</TableCell>
           <TableCell align="center" sx={{ width: '10%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>وضعیت</Box>
           </TableCell>
-          <TableCell align="center" sx={{ width: '12%' }}>
+          <TableCell align="center" sx={{ width: '10%' }}>
             <Box sx={{ display: 'flex', justifyContent: 'center' }}>عملیات</Box>
           </TableCell>
         </TableRow>
@@ -210,10 +211,13 @@ const GuaranteeArchiveTable = ({
                 </Box>
               </TableCell>
               <TableCell align="right">
-                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800 }}>
+                <Typography noWrap title={numberFor(row)} sx={{ fontSize: 12, fontWeight: 800 }}>
                   {toPersianDigits(numberFor(row))}
                 </Typography>
-                <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+              </TableCell>
+              <TableCell align="right">
+                <Typography noWrap title={row.contract_guarantee_label || row.guarantee_type_display}
+                  sx={{ fontSize: 11.5, fontWeight: 700 }}>
                   {row.contract_guarantee_label || row.guarantee_type_display || '—'}
                 </Typography>
               </TableCell>
@@ -224,13 +228,9 @@ const GuaranteeArchiveTable = ({
                 </Box>
               </TableCell>
               <TableCell align="right">
-                <Typography noWrap sx={{ fontSize: 11.5 }}>{row.bank || row.check_bank || '—'}</Typography>
-              </TableCell>
-              <TableCell align="right">
-                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>
-                  {toPersianDigits(row.contract_number || contractNumberFor(row) || row.contract || '—')}
+                <Typography noWrap title={row.bank || row.check_bank} sx={{ fontSize: 11.5 }}>
+                  {row.bank || row.check_bank || '—'}
                 </Typography>
-                <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>{row.contract_subject || '—'}</Typography>
               </TableCell>
               <TableCell align="right">
                 <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
@@ -238,16 +238,13 @@ const GuaranteeArchiveTable = ({
                 </Typography>
               </TableCell>
               <TableCell align="right">
-                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                <Typography noWrap sx={{
+                  fontSize: 11.5,
+                  fontFamily: 'var(--hrms-table-number-font, inherit)',
+                  color: remaining !== null && remaining < 0 ? '#be123c' : remaining !== null && remaining <= 30 ? '#b45309' : 'inherit',
+                }}>
                   {dateLabel(due)}
                 </Typography>
-                {remaining !== null ? (
-                  <Typography noWrap sx={{ fontSize: 10.5, color: remaining < 0 ? '#be123c' : remaining <= 30 ? '#b45309' : MUTED }}>
-                    {remaining < 0
-                      ? `${toPersianDigits(Math.abs(remaining))} روز گذشته`
-                      : `${toPersianDigits(remaining)} روز مانده`}
-                  </Typography>
-                ) : null}
               </TableCell>
               <TableCell align="center">
                 <Box sx={{ display: 'flex', justifyContent: 'center' }}>
@@ -281,11 +278,119 @@ const GuaranteeArchiveTable = ({
   </TableContainer>
 );
 
+/* جدول قراردادها در صفحهٔ اول تضامین — همان الگوی جدول قراردادهای بایگانی اسناد */
+const GuaranteeContractTable = ({
+  rows, tableTheme, containerRef, tableHeight, rowHeight, dimmed,
+  guaranteeCounts, guaranteeAmounts, currencyFor, onOpen,
+}) => (
+  <TableContainer
+    ref={containerRef}
+    data-visible-rows={tableTheme.visibleRows}
+    data-row-height={rowHeight}
+    data-table-height={`${tableHeight}px`}
+    sx={{
+      height: { xs: 'auto', sm: `${tableHeight}px` },
+      maxHeight: { xs: 'none', sm: `${tableHeight}px` },
+      overflowY: 'auto',
+      opacity: dimmed ? 0.6 : 1,
+      transition: 'opacity .15s ease',
+    }}
+  >
+    <Table
+      size="small"
+      stickyHeader
+      aria-label="فهرست قراردادهای تضامین"
+      sx={{
+        width: '100%',
+        minWidth: 720,
+        tableLayout: 'fixed',
+        '& td, & th': {
+          px: 1,
+          py: `${tableTheme.cellPadding}px`,
+          whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+          borderBottom: tableTheme.divider,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+        '& thead th': {
+          textAlign: `${tableTheme.headerTextAlign} !important`,
+          backgroundColor: 'var(--hrms-table-header-bg)',
+          height: `${tableTheme.headerHeight}px`,
+          fontSize: tableTheme.header.fontSize,
+          fontWeight: tableTheme.header.fontWeight,
+          color: tableTheme.header.color,
+        },
+        '& tbody td': {
+          height: `${tableTheme.rowHeight}px`,
+          fontSize: tableTheme.cell.fontSize,
+          fontWeight: tableTheme.cell.fontWeight,
+          color: tableTheme.cell.color,
+          ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
+        },
+        '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+        '& th.hrms-cell-center, & td.hrms-cell-center': { textAlign: 'center !important' },
+        ...tableTypographySx(tableTheme),
+      }}
+    >
+      <TableHead>
+        <TableRow>
+          <TableCell align="center" sx={{ width: '14%' }}>شماره قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '24%' }}>طرف قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '32%' }}>موضوع قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '14%' }} className="hrms-cell-center">تعداد تضمین</TableCell>
+          <TableCell align="center" sx={{ width: '16%' }} className="hrms-cell-center">مبلغ تضمین</TableCell>
+        </TableRow>
+      </TableHead>
+      <TableBody>
+        {rows.map((contract) => (
+          <TableRow key={contract.id} hover onClick={() => onOpen(contract)} sx={{ cursor: 'pointer' }}>
+            <TableCell align="center">
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {toPersianDigits(contract.number || '—')}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap title={contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                {contract.party_name || '—'}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap title={contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                {contract.subject || '—'}
+              </Typography>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(guaranteeCounts[String(contract.id)] || 0)}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {money(guaranteeAmounts[String(contract.id)] || 0, currencyFor(contract))}
+                </Typography>
+              </Box>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </TableContainer>
+);
+
 /* ---------- اجزای استاندارد (همان الگوی صفحهٔ بایگانی اسناد) ---------- */
+
 const GUARANTEE_SORT_OPTIONS = [
   { value: 'due', label: 'نزدیک‌ترین سررسید' },
   { value: 'newest', label: 'جدیدترین' },
   { value: 'amount', label: 'بیشترین مبلغ' },
+];
+const GUARANTEE_CONTRACT_SORT_OPTIONS = [
+  { value: 'guaranteeCount', label: 'بیشترین تضمین' },
+  { value: 'amount', label: 'بیشترین مبلغ' },
+  { value: 'number', label: 'شماره قرارداد' },
 ];
 
 const SortArrow = ({ className, ...rest }) => (
@@ -327,7 +432,7 @@ const FilterSelect = ({ label, value, options, onChange, labelsPosition, radius 
   </Box>
 );
 
-const GuaranteePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, total, pageSize }) => {
+const GuaranteePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, total, pageSize, unit = 'تضمین' }) => {
   if (!tableTheme.showPagination || total <= pageSize) return null;
   return (
     <Box sx={{
@@ -346,7 +451,7 @@ const GuaranteePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, tot
           }}>
             نمایش {toPersianDigits(page * pageSize + 1)} تا{' '}
             {toPersianDigits(Math.min((page + 1) * pageSize, total))} از{' '}
-            {toPersianDigits(total)} تضمین
+            {toPersianDigits(total)} {unit}
             {' · '}
             {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
           </Typography>
@@ -1203,7 +1308,11 @@ const GuaranteesPage = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [instrumentFilter, setInstrumentFilter] = useState('all');
   const [sortBy, setSortBy] = useState('due');
+  const [contractSort, setContractSort] = useState('guaranteeCount');
+  const [contractStatusFilter, setContractStatusFilter] = useState('');
+  const [onlyWithGuarantees, setOnlyWithGuarantees] = useState(false);
   const [page, setPage] = useState(0);
+  const [contractPage, setContractPage] = useState(0);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
@@ -1283,6 +1392,102 @@ const GuaranteesPage = () => {
     return counts;
   }, [scopedList]);
 
+  /* ---- توکن‌های استودیو تم (پیش از هر محاسبهٔ جدول) ---- */
+  const { tokens } = useDesignTokens();
+  const tableTheme = resolveTableTheme(tokens);
+  const toolbar = resolveToolbarTheme(tokens);
+  const cardPadX = Math.max(12, Number(tableTheme.frameX) || 0);
+  const cardPadY = Math.max(12, Number(tableTheme.frameY) || 0);
+  const cardBorderColor = alpha(theme.palette.text.primary, 0.14);
+
+  /* ---- دادهٔ صفحهٔ اول: فهرست قراردادها با شمار و مبلغ تضامین ---- */
+  const guaranteeCountByContract = useMemo(() => list.reduce((counts, row) => {
+    const key = String(row.contract);
+    counts[key] = (counts[key] || 0) + 1;
+    return counts;
+  }, {}), [list]);
+  const guaranteeAmountByContract = useMemo(() => list.reduce((totals, row) => {
+    const key = String(row.contract);
+    totals[key] = (totals[key] || 0) + Number(row.amount || 0);
+    return totals;
+  }, {}), [list]);
+  const nextDueByContract = useMemo(() => list.reduce((latest, row) => {
+    const key = String(row.contract);
+    const due = String(dueOf(row) || '');
+    if (!due) return latest;
+    if (!latest[key] || due < latest[key]) latest[key] = due;
+    return latest;
+  }, {}), [list]);
+  const expiringRows = useMemo(() => (
+    [...list]
+      .filter((row) => statusOf(row).key === 'expiring')
+      .sort((a, b) => (daysUntil(dueOf(a)) ?? 9999) - (daysUntil(dueOf(b)) ?? 9999))
+      .slice(0, 8)
+  ), [list]);
+  /* فهرست قراردادها فوراً از خود تضامین ساخته می‌شود تا جدول منتظر پاسخ
+   * سنگین /external-contracts/ نماند و سپس با اطلاعات کامل ادغام می‌شود. */
+  const contractDirectory = useMemo(() => {
+    const map = new Map();
+    list.forEach((row) => {
+      const key = String(row.contract ?? '');
+      if (!key || key === 'null' || map.has(key)) return;
+      map.set(key, {
+        id: row.contract,
+        number: row.contract_number || '',
+        subject: row.contract_subject || '',
+        party_name: row.contract_party_name || '',
+        status: '',
+      });
+    });
+    contractList.forEach((contract) => {
+      const key = String(contract.id);
+      const row = map.get(key);
+      map.set(key, row ? { ...row, ...contract } : contract);
+    });
+    return Array.from(map.values());
+  }, [list, contractList]);
+  const contractRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const rows = contractDirectory.filter((contract) => {
+      if (onlyWithGuarantees && !guaranteeCountByContract[String(contract.id)]) return false;
+      if (contractStatusFilter && contract.status !== contractStatusFilter) return false;
+      if (!term) return true;
+      return [contract.number, contract.subject, contract.party_name]
+        .filter(Boolean)
+        .some((value) => String(value).toLowerCase().includes(term));
+    });
+    return [...rows].sort((a, b) => {
+      if (contractSort === 'amount') {
+        return (guaranteeAmountByContract[String(b.id)] || 0) - (guaranteeAmountByContract[String(a.id)] || 0);
+      }
+      if (contractSort === 'number') {
+        return String(a.number || '').localeCompare(String(b.number || ''), 'fa');
+      }
+      return (guaranteeCountByContract[String(b.id)] || 0) - (guaranteeCountByContract[String(a.id)] || 0);
+    });
+  }, [
+    contractDirectory, search, onlyWithGuarantees, contractStatusFilter, contractSort,
+    guaranteeCountByContract, guaranteeAmountByContract,
+  ]);
+  const contractPageSize = tableTheme.rowsPerPage;
+  const contractTotalPages = Math.max(1, Math.ceil(contractRows.length / contractPageSize));
+  useEffect(() => {
+    setContractPage(0);
+  }, [search, onlyWithGuarantees, contractStatusFilter, contractSort, contractPageSize]);
+  useEffect(() => {
+    if (contractPage > contractTotalPages - 1) setContractPage(Math.max(0, contractTotalPages - 1));
+  }, [contractPage, contractTotalPages]);
+  const pagedContracts = useMemo(
+    () => contractRows.slice(contractPage * contractPageSize, (contractPage + 1) * contractPageSize),
+    [contractRows, contractPage, contractPageSize],
+  );
+  const contractPageNumbers = (() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(contractPage - 2, contractTotalPages - size));
+    const end = Math.min(contractTotalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
+  })();
+
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
     let result = scopedList.filter((row) => {
@@ -1305,13 +1510,6 @@ const GuaranteesPage = () => {
   }, [scopedList, search, statusFilter, instrumentFilter, sortBy]);
 
   /* ---- توکن‌های استودیو تم + صفحه‌بندی + اندازه‌گیری ارتفاع ردیف‌ها ---- */
-  const { tokens } = useDesignTokens();
-  const tableTheme = resolveTableTheme(tokens);
-  const toolbar = resolveToolbarTheme(tokens);
-  const cardPadX = Math.max(12, Number(tableTheme.frameX) || 0);
-  const cardPadY = Math.max(12, Number(tableTheme.frameY) || 0);
-  const cardBorderColor = alpha(theme.palette.text.primary, 0.14);
-
   const pageSize = tableTheme.rowsPerPage;
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   useEffect(() => {
@@ -1344,7 +1542,7 @@ const GuaranteesPage = () => {
     setMeasuredRowPx((previous) => (previous === rowPx ? previous : rowPx));
     setMeasuredHeadPx((previous) => (previous === headPx ? previous : headPx));
   };
-  useLayoutEffect(measureRows, [pagedRows.length, tableTheme.rowHeight, tableTheme.headerHeight]);
+  useLayoutEffect(measureRows, [pagedRows.length, pagedContracts.length, tableTheme.rowHeight, tableTheme.headerHeight]);
   useEffect(() => {
     const onResize = () => measureRows();
     window.addEventListener('resize', onResize);
@@ -1354,7 +1552,11 @@ const GuaranteesPage = () => {
   const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
   const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
 
-  /* ---- فیلترها، چیپ‌ها و گزینه‌ها ---- */
+  /* ---- فیلترها، چیپ‌ها و گزینه‌ها: صفحهٔ ورود روی قراردادها، نمای قرارداد روی تضامین ---- */
+  const scopedMode = Boolean(contractId);
+  const sortOptions = scopedMode ? GUARANTEE_SORT_OPTIONS : GUARANTEE_CONTRACT_SORT_OPTIONS;
+  const sortValue = scopedMode ? sortBy : contractSort;
+  const setSortValue = scopedMode ? setSortBy : setContractSort;
   const contractOptions = useMemo(() => [
     { value: '', label: 'همهٔ قراردادها' },
     ...contractList.map((contract) => ({
@@ -1373,41 +1575,72 @@ const GuaranteesPage = () => {
       label: `${meta.label} (${toPersianDigits(statusCounts[key] || 0)})`,
     })),
   ];
-  const activeFilterCount = (contractId ? 1 : 0)
-    + (instrumentFilter !== 'all' ? 1 : 0)
-    + (statusFilter !== 'all' ? 1 : 0);
-  const activeChips = [
-    contractId
-      ? {
-        key: 'contract',
-        label: `قرارداد: ${toPersianDigits(selectedContract?.number || contractId)}`,
-        clear: clearContract,
-      }
-      : null,
-    instrumentFilter !== 'all'
-      ? {
-        key: 'instrument',
-        label: `نوع: ${INSTRUMENT_META[instrumentFilter]?.label || instrumentFilter}`,
-        clear: () => setInstrumentFilter('all'),
-      }
-      : null,
-    statusFilter !== 'all'
-      ? {
-        key: 'status',
-        label: `وضعیت: ${STATUS_META[statusFilter]?.label || statusFilter}`,
-        clear: () => setStatusFilter('all'),
-      }
-      : null,
-  ].filter(Boolean);
+  const contractStatusOptions = [
+    { value: '', label: 'همه' },
+    ...Object.entries(CONTRACT_STATUS_LABELS).map(([key, label]) => ({ value: key, label })),
+  ];
+  const guaranteesToggleOptions = [
+    { value: 'all', label: 'همهٔ قراردادها' },
+    { value: 'withGuarantees', label: 'فقط دارای تضمین' },
+  ];
+  const activeFilterCount = scopedMode
+    ? (contractId ? 1 : 0) + (instrumentFilter !== 'all' ? 1 : 0) + (statusFilter !== 'all' ? 1 : 0)
+    : (contractStatusFilter ? 1 : 0) + (onlyWithGuarantees ? 1 : 0);
+  const activeChips = (scopedMode
+    ? [
+      contractId
+        ? {
+          key: 'contract',
+          label: `قرارداد: ${toPersianDigits(selectedContract?.number || contractId)}`,
+          clear: clearContract,
+        }
+        : null,
+      instrumentFilter !== 'all'
+        ? {
+          key: 'instrument',
+          label: `نوع: ${INSTRUMENT_META[instrumentFilter]?.label || instrumentFilter}`,
+          clear: () => setInstrumentFilter('all'),
+        }
+        : null,
+      statusFilter !== 'all'
+        ? {
+          key: 'status',
+          label: `وضعیت: ${STATUS_META[statusFilter]?.label || statusFilter}`,
+          clear: () => setStatusFilter('all'),
+        }
+        : null,
+    ]
+    : [
+      contractStatusFilter
+        ? {
+          key: 'contractStatus',
+          label: `وضعیت قرارداد: ${CONTRACT_STATUS_LABELS[contractStatusFilter] || contractStatusFilter}`,
+          clear: () => setContractStatusFilter(''),
+        }
+        : null,
+      onlyWithGuarantees
+        ? {
+          key: 'withGuarantees',
+          label: 'فقط قراردادهای دارای تضمین',
+          clear: () => setOnlyWithGuarantees(false),
+        }
+        : null,
+    ]).filter(Boolean);
   const activeChipSx = toolbar.chipStyle === 'outlined'
     ? { bgcolor: 'transparent', border: `1px solid ${toolbar.chipBorder}`, color: toolbar.primary, fontWeight: 700 }
     : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontWeight: 700, border: `1px solid ${toolbar.chipBorder}` };
   const filtersExpanded = filtersOpen;
   const resetFilters = () => {
     setSearch('');
-    setStatusFilter('all');
-    setInstrumentFilter('all');
-    setSortBy('due');
+    if (scopedMode) {
+      setStatusFilter('all');
+      setInstrumentFilter('all');
+      setSortBy('due');
+    } else {
+      setContractStatusFilter('');
+      setOnlyWithGuarantees(false);
+      setContractSort('guaranteeCount');
+    }
   };
   const refreshAll = () => {
     refetch();
@@ -1698,7 +1931,7 @@ const GuaranteesPage = () => {
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
           <TextField
             size="small"
-            placeholder="جستجو در شماره، بانک، قرارداد…"
+            placeholder={scopedMode ? 'جستجو در شماره، بانک، قرارداد…' : 'جستجو در شماره، موضوع و طرف قرارداد…'}
             value={search}
             onChange={(event) => setSearch(event.target.value)}
             sx={{
@@ -1718,8 +1951,8 @@ const GuaranteesPage = () => {
           <TextField
             select
             size="small"
-            value={sortBy}
-            onChange={(event) => setSortBy(event.target.value)}
+            value={sortValue}
+            onChange={(event) => setSortValue(event.target.value)}
             sx={{
               flex: '0 0 auto',
               minWidth: { xs: '100%', sm: 168 },
@@ -1733,7 +1966,7 @@ const GuaranteesPage = () => {
             InputProps={{ startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment> }}
             SelectProps={{ inputProps: { 'aria-label': 'ترتیب نمایش' }, IconComponent: SortArrow }}
           >
-            {GUARANTEE_SORT_OPTIONS.map((option) => (
+            {sortOptions.map((option) => (
               <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>{option.label}</MenuItem>
             ))}
           </TextField>
@@ -1768,7 +2001,7 @@ const GuaranteesPage = () => {
           {toolbar.showReset && (activeFilterCount > 0 || search) ? (
             <Button
               size="small" variant="text"
-              onClick={() => { resetFilters(); clearContract(); }}
+              onClick={() => { resetFilters(); if (scopedMode) clearContract(); }}
               sx={{
                 height: `${toolbar.searchHeight}px`,
                 minHeight: `${toolbar.searchHeight}px`,
@@ -1794,30 +2027,47 @@ const GuaranteesPage = () => {
               gap: `${toolbar.panelGap}px`,
               alignItems: 'end',
             }}>
-              <FilterSelect
-                label="قرارداد" value={contractId} options={contractOptions}
-                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
-                onChange={(value) => {
-                  if (value) {
-                    selectContract({ id: value });
-                  } else {
-                    clearContract();
-                  }
-                }}
-              />
-              <FilterSelect
-                label="نوع ابزار" value={instrumentFilter} options={instrumentOptions}
-                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
-                onChange={setInstrumentFilter}
-              />
-              <FilterSelect
-                label="وضعیت" value={statusFilter} options={statusOptions}
-                labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
-                onChange={setStatusFilter}
-              />
+              {scopedMode ? (
+                <>
+                  <FilterSelect
+                    label="قرارداد" value={contractId} options={contractOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={(value) => {
+                      if (value) {
+                        selectContract({ id: value });
+                      } else {
+                        clearContract();
+                      }
+                    }}
+                  />
+                  <FilterSelect
+                    label="نوع ابزار" value={instrumentFilter} options={instrumentOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setInstrumentFilter}
+                  />
+                  <FilterSelect
+                    label="وضعیت" value={statusFilter} options={statusOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setStatusFilter}
+                  />
+                </>
+              ) : (
+                <>
+                  <FilterSelect
+                    label="وضعیت قرارداد" value={contractStatusFilter} options={contractStatusOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setContractStatusFilter}
+                  />
+                  <FilterSelect
+                    label="نمایش" value={onlyWithGuarantees ? 'withGuarantees' : 'all'} options={guaranteesToggleOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={(value) => setOnlyWithGuarantees(value === 'withGuarantees')}
+                  />
+                </>
+              )}
               {toolbar.showReset ? (
                 <Button
-                  variant="text" size="small" onClick={() => { resetFilters(); clearContract(); }}
+                  variant="text" size="small" onClick={() => { resetFilters(); if (scopedMode) clearContract(); }}
                   sx={{ fontSize: 12.5, justifySelf: 'start', height: `${toolbar.searchHeight - 6}px` }}
                 >
                   بازنشانی فیلترها
@@ -1836,59 +2086,171 @@ const GuaranteesPage = () => {
         ) : null}
       </Paper>
 
-      {warnings.length ? (
-        <Stack spacing={0.75} useFlexGap sx={{ mb: 1.25 }}>
-          {warnings.slice(0, 3).map((warning) => (
-            <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '11px', py: 0.2 }}>
-              <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
-            </Alert>
-          ))}
-        </Stack>
-      ) : null}
+      {scopedMode ? (
+        <>
+          {warnings.length ? (
+            <Stack spacing={0.75} useFlexGap sx={{ mb: 1.25 }}>
+              {warnings.slice(0, 3).map((warning) => (
+                <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '11px', py: 0.2 }}>
+                  <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
+                </Alert>
+              ))}
+            </Stack>
+          ) : null}
 
-      {!filtered.length ? (
-        <Paper elevation={0} sx={{
-          p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
-          textAlign: 'center', bgcolor: 'background.paper',
-        }}>
-          <LockIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-          <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>تضمینی با این مشخصات پیدا نشد.</Typography>
-          <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا تضمین جدید ثبت کنید.</Typography>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت تضمین جدید</Button>
-        </Paper>
+          {!filtered.length ? (
+            <Paper elevation={0} sx={{
+              p: 5, borderRadius: '16px', border: '1px dashed', borderColor: 'divider',
+              textAlign: 'center', bgcolor: 'background.paper',
+            }}>
+              <LockIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>تضمینی با این مشخصات پیدا نشد.</Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>فیلترها را تغییر دهید یا تضمین جدید ثبت کنید.</Typography>
+              <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت تضمین جدید</Button>
+            </Paper>
+          ) : (
+            <Paper elevation={0} sx={{
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              overflow: 'hidden',
+              px: `${cardPadX}px`, py: `${cardPadY}px`,
+              border: '1px solid', borderColor: cardBorderColor,
+              bgcolor: 'background.paper', boxShadow: 'none',
+            }}>
+              <GuaranteeArchiveTable
+                rows={pagedRows}
+                rowOffset={page * pageSize}
+                tableTheme={tableTheme}
+                containerRef={tableScrollRef}
+                tableHeight={tableHeight}
+                rowHeight={effectiveRowPx}
+                dimmed={isFetching || statusLoading}
+                currencyFor={(row) => currencyByContract.get(String(row.contract)) || currencyLabel}
+                onView={setDetail}
+                onEdit={openEdit}
+                onDelete={setConfirmDelete}
+                onAction={openLifecycle}
+              />
+              <GuaranteePager
+                tableTheme={tableTheme}
+                page={page}
+                onPage={setPage}
+                totalPages={totalPages}
+                pageNumbers={pageNumbers}
+                total={filtered.length}
+                pageSize={pageSize}
+              />
+            </Paper>
+          )}
+        </>
       ) : (
-        <Paper elevation={0} sx={{
-          borderRadius: 'var(--hrms-table-radius, 16px)',
-          overflow: 'hidden',
-          px: `${cardPadX}px`, py: `${cardPadY}px`,
-          border: '1px solid', borderColor: cardBorderColor,
-          bgcolor: 'background.paper', boxShadow: 'none',
-        }}>
-          <GuaranteeArchiveTable
-            rows={pagedRows}
-            rowOffset={page * pageSize}
-            tableTheme={tableTheme}
-            containerRef={tableScrollRef}
-            tableHeight={tableHeight}
-            rowHeight={effectiveRowPx}
-            dimmed={isFetching || statusLoading}
-            currencyFor={(row) => currencyByContract.get(String(row.contract)) || currencyLabel}
-            contractNumberFor={(row) => contractNumberById.get(String(row.contract)) || ''}
-            onView={setDetail}
-            onEdit={openEdit}
-            onDelete={setConfirmDelete}
-            onAction={openLifecycle}
-          />
-          <GuaranteePager
-            tableTheme={tableTheme}
-            page={page}
-            onPage={setPage}
-            totalPages={totalPages}
-            pageNumbers={pageNumbers}
-            total={filtered.length}
-            pageSize={pageSize}
-          />
-        </Paper>
+        <Grid container spacing={2} alignItems="stretch">
+          {/* جدول قراردادها — کارت استاندارد با فاصلهٔ داخلی */}
+          <Grid item xs={12} lg={8}>
+            <Paper elevation={0} sx={{
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: cardBorderColor,
+              bgcolor: 'background.paper', boxShadow: 'none',
+              overflow: 'hidden',
+              px: `${cardPadX}px`, py: `${cardPadY}px`,
+            }}>
+              {!contractRows.length ? (
+                <Box sx={{ p: 5, textAlign: 'center' }}>
+                  <LockIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
+                  <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
+                </Box>
+              ) : (
+                <>
+                  <GuaranteeContractTable
+                    rows={pagedContracts}
+                    tableTheme={tableTheme}
+                    containerRef={tableScrollRef}
+                    tableHeight={tableHeight}
+                    rowHeight={effectiveRowPx}
+                    dimmed={isFetching}
+                    guaranteeCounts={guaranteeCountByContract}
+                    guaranteeAmounts={guaranteeAmountByContract}
+                    currencyFor={(contract) => currencyByContract.get(String(contract.id)) || 'ریال'}
+                    onOpen={selectContract}
+                  />
+                  <GuaranteePager
+                    tableTheme={tableTheme}
+                    page={contractPage}
+                    onPage={setContractPage}
+                    totalPages={contractTotalPages}
+                    pageNumbers={contractPageNumbers}
+                    total={contractRows.length}
+                    pageSize={contractPageSize}
+                    unit="قرارداد"
+                  />
+                </>
+              )}
+            </Paper>
+          </Grid>
+          {/* نزدیک‌ترین سررسیدها — کارت جداگانه در یک سوم عرض */}
+          <Grid item xs={12} lg={4}>
+            <Paper elevation={0} sx={{
+              height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: cardBorderColor,
+              bgcolor: 'background.paper', boxShadow: 'none',
+            }}>
+              <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap
+                sx={{ px: 1.25, py: 1, borderBottom: tableTheme.divider }}>
+                <EventBusyIcon sx={{ fontSize: 16, color: '#b45309' }} />
+                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, flex: 1 }}>نزدیک‌ترین سررسیدها</Typography>
+                <Chip size="small" label={toPersianDigits(expiringRows.length)}
+                  sx={{ height: 18, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#b45309', 0.1), color: '#b45309' }} />
+              </Stack>
+              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>
+                {expiringRows.length ? expiringRows.map((row) => {
+                  const days = daysUntil(dueOf(row));
+                  const contract = contractDirectory.find((item) => String(item.id) === String(row.contract));
+                  return (
+                    <Box
+                      key={row.id}
+                      onClick={() => { if (contract) selectContract(contract); }}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 0.75,
+                        px: 1.25, py: 0.85,
+                        borderBottom: tableTheme.divider,
+                        cursor: contract ? 'pointer' : 'default',
+                        '&:hover': { backgroundColor: tableTheme.hoverBg },
+                        '&:last-of-type': { borderBottom: 'none' },
+                      }}
+                    >
+                      <Box sx={{
+                        width: 26, height: 26, borderRadius: '8px', flexShrink: 0,
+                        bgcolor: alpha('#b45309', 0.08), color: '#b45309',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <LockIcon sx={{ fontSize: 14 }} />
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                          {toPersianDigits(numberFor(row))}
+                        </Typography>
+                        <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                          {toPersianDigits(contract?.number || '—')} · {dateLabel(dueOf(row))}
+                        </Typography>
+                      </Box>
+                      <Chip size="small"
+                        label={days === null ? '—' : `${toPersianDigits(Math.max(0, days))} روز`}
+                        sx={{
+                          height: 18, fontSize: 10.5, fontWeight: 800,
+                          bgcolor: alpha('#b45309', 0.1), color: '#b45309',
+                        }} />
+                    </Box>
+                  );
+                }) : (
+                  <Box sx={{ p: 3, textAlign: 'center' }}>
+                    <Typography sx={{ fontSize: 11, color: MUTED }}>تضمینی در ۳۰ روز آینده منقضی نمی‌شود.</Typography>
+                  </Box>
+                )}
+              </Box>
+            </Paper>
+          </Grid>
+        </Grid>
       )}
 
       <GuaranteeDetailDrawer row={detail} onClose={() => setDetail(null)}
