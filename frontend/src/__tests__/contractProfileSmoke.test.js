@@ -128,9 +128,11 @@ test('contract profile shows the compact card, single-row quick access and the a
     'صورت‌وضعیت', 'فاکتورها', 'پرداخت‌ها', 'قراردادهای هم‌تراز', 'مدارک',
   ]);
 
-  // تب پیش‌فرض
-  expect(container.textContent).toContain('ترکیب مالی');
+  // تب پیش‌فرض (نمای کلی بازطراحی‌شده)
+  expect(container.textContent).toContain('تحلیل مالی');
+  expect(container.textContent).toContain('شاخص‌های پرونده');
   expect(container.textContent).toContain('آخرین رویدادها');
+  expect(container.textContent).toContain('آخرین مدارک');
 
   const openTab = async (label) => {
     const tab = Array.from(container.querySelectorAll('.MuiTab-root'))

@@ -1,10 +1,14 @@
 import React from 'react';
 import {
-  Box, Button, Grid, Stack, Table, TableBody, TableCell, TableContainer,
+  Box, Button, Divider, Grid, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import DescriptionIcon from '@mui/icons-material/Description';
+import PaymentsIcon from '@mui/icons-material/Payments';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import HandshakeIcon from '@mui/icons-material/Handshake';
 import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { useDesignTokens } from '../../core/context/DesignTokenContext';
@@ -101,78 +105,164 @@ const CellText = ({ children, strong, color }) => (
 
 
 /* ---------- نمای کلی ---------- */
+const MetricRow = ({ label, value, hint, percent, color }) => (
+  <Box sx={{ py: 0.65 }}>
+    <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1}>
+      <Typography sx={{ fontSize: 11.5, color: MUTED }}>{label}</Typography>
+      <Typography noWrap sx={{
+        fontSize: 12, fontWeight: 800, color: color || INK,
+        fontFamily: 'var(--hrms-table-number-font, inherit)',
+      }}>
+        {value}
+      </Typography>
+    </Stack>
+    {typeof percent === 'number' ? (
+      <Box sx={{ mt: 0.35, height: 5, borderRadius: 3, bgcolor: 'rgba(15,23,42,0.06)', overflow: 'hidden' }}>
+        <Box sx={{
+          width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', borderRadius: 3,
+          bgcolor: color || 'currentColor', opacity: 0.85,
+        }} />
+      </Box>
+    ) : null}
+    {hint ? <Typography sx={{ mt: 0.15, fontSize: 10.5, color: MUTED }}>{hint}</Typography> : null}
+  </Box>
+);
+
 export const OverviewTab = ({ ctx }) => {
   const theme = useTheme();
   const {
-    contract, currencyLabel, adjustedContractAmount, adjustedContractAmountRial,
-    totalPaid, remainingRial, progressPercent, totalStatements, totalInvoices,
+    contract, financial, currencyLabel, totalPaid, remainingRial,
+    adjustedContractAmount, adjustedContractAmountRial, progressPercent,
+    totalStatements, totalInvoices, guaranteeSummary, coveragePercent,
     timeline, effects,
   } = ctx;
-  const counts = {
-    addendum: (contract.addendums || []).length,
-    guarantee: (contract.guarantees || []).length,
-    statement: (contract.statements || []).length,
-    invoice: (contract.invoices || []).length,
-    payment: (contract.payments || []).length,
-    document: (contract.documents || []).length,
-    dispute: (contract.disputes || []).length,
-  };
+
+  const statements = contract.statements || [];
+  const payments = contract.payments || [];
+  const documents = contract.documents || [];
+  const rial = financial?.rial || {};
+
+  const netStatements = Number(rial.net || 0);
+  const paidRatio = netStatements > 0 ? Math.min(100, Math.round((totalPaid / netStatements) * 100)) : 0;
+  const approvedCount = statements.filter((row) => row.is_approved).length;
+  const pendingNet = statements
+    .filter((row) => !row.is_approved)
+    .reduce((sum, row) => sum + Number(row.net_amount || 0), 0);
+  const avgPayment = payments.length ? Math.round(totalPaid / payments.length) : 0;
+  const latestDocuments = [...documents]
+    .sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')))
+    .slice(0, 5);
+  const coverage = Number(guaranteeSummary?.coverage_percent ?? coveragePercent ?? 0);
+  const requiredGuarantee = Number(guaranteeSummary?.required_total || 0);
+  const providedGuarantee = Number(guaranteeSummary?.provided_total || 0);
+  const scale = Math.max(totalStatements, adjustedContractAmountRial, totalInvoices, totalPaid, 1);
+
   return (
     <Stack spacing={2}>
+      {/* شاخص‌های اصلی */}
       <Grid container spacing={1.5}>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard icon={DescriptionIcon} label="مبلغ مؤثر قرارداد" value={adjustedContractAmount}
+        <Grid item xs={12} sm={6} lg={3}>
+          <KpiCard icon={HandshakeIcon} label="مبلغ مؤثر قرارداد" value={adjustedContractAmount}
             suffix={currencyLabel} color={theme.palette.warning.main} />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard icon={DescriptionIcon} label="پرداخت‌شده" value={totalPaid} suffix="ریال"
+        <Grid item xs={12} sm={6} lg={3}>
+          <KpiCard icon={PaymentsIcon} label="پرداخت‌شده" value={totalPaid} suffix="ریال"
             color={theme.palette.success.main} />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard icon={DescriptionIcon} label="مانده مالی" value={remainingRial} suffix="ریال"
+        <Grid item xs={12} sm={6} lg={3}>
+          <KpiCard icon={AccountBalanceWalletIcon} label="مانده مالی" value={remainingRial} suffix="ریال"
             color={theme.palette.error.main} />
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <KpiCard icon={DescriptionIcon} label="پیشرفت مالی" value={`${toPersianDigits(progressPercent)}٪`}
+        <Grid item xs={12} sm={6} lg={3}>
+          <KpiCard icon={TrendingUpIcon} label="پیشرفت مالی" value={`${toPersianDigits(progressPercent)}٪`}
             color={theme.palette.info.main} progress={progressPercent}
             progressLabel={`${formatPersianNumber(totalPaid)} از ${formatPersianNumber(adjustedContractAmountRial)} ریال`} />
         </Grid>
       </Grid>
-
+      {/* تحلیل مالی + شاخص‌های پرونده */}
       <Grid container spacing={2}>
-        <Grid item xs={12} lg={5}>
-          <SectionCard title="ترکیب مالی" icon={DescriptionIcon} color={theme.palette.info.main}
+        <Grid item xs={12} lg={7}>
+          <SectionCard title="تحلیل مالی" icon={DescriptionIcon} color={theme.palette.info.main}
             contentSx={{ pt: 0.5 }}>
-            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1.5 }} flexWrap="wrap" useFlexGap>
+            <Stack direction="row" spacing={2} alignItems="center" sx={{ mb: 1.5 }} useFlexGap flexWrap="wrap">
               <FinancialDonut paid={totalPaid} remaining={remainingRial} />
-              <Stack spacing={0.75} sx={{ flex: 1, minWidth: 180 }}>
-                <MoneyBar label="صورت‌وضعیت‌های ثبت‌شده" value={totalStatements}
-                  total={Math.max(totalStatements, adjustedContractAmountRial, 1)} color={theme.palette.info.main} />
-                <MoneyBar label="پرداخت‌ها" value={totalPaid}
-                  total={Math.max(totalStatements, adjustedContractAmountRial, 1)} color={theme.palette.success.main} />
-                <MoneyBar label="فاکتورها" value={totalInvoices}
-                  total={Math.max(totalInvoices, totalStatements, adjustedContractAmountRial, 1)} color={theme.palette.secondary.main} />
+              <Stack spacing={0.85} sx={{ flex: 1, minWidth: 190 }}>
+                <MoneyBar label="خالص صورت‌وضعیت‌ها" value={netStatements} total={scale} color={theme.palette.info.main} />
+                <MoneyBar label="پرداخت‌ها" value={totalPaid} total={scale} color={theme.palette.success.main} />
+                <MoneyBar label="فاکتورها" value={totalInvoices} total={scale} color={theme.palette.secondary.main} />
+                <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                  {toPersianDigits(financial?.normalCount || 0)} صورت‌وضعیت عادی · {toPersianDigits(financial?.adjustments?.count || 0)} تعدیل
+                  {financial?.hasForeign ? ` · نرخ ${formatPersianNumber(ctx.contractRate)} ریال` : ''}
+                </Typography>
               </Stack>
             </Stack>
+            <Divider sx={{ mb: 1 }} />
             <Grid container spacing={1}>
-              <Grid item xs={6}><DetailTile label="صورت‌وضعیت" value={toPersianDigits(counts.statement)} /></Grid>
-              <Grid item xs={6}><DetailTile label="فاکتور" value={toPersianDigits(counts.invoice)} /></Grid>
-              <Grid item xs={6}><DetailTile label="پرداخت" value={toPersianDigits(counts.payment)} /></Grid>
-              <Grid item xs={6}><DetailTile label="الحاقیه" value={toPersianDigits(counts.addendum)} /></Grid>
-              <Grid item xs={6}><DetailTile label="تضمین" value={toPersianDigits(counts.guarantee)} /></Grid>
-              <Grid item xs={6}><DetailTile label="مدرک" value={toPersianDigits(counts.document)} /></Grid>
-              <Grid item xs={6}><DetailTile label="اختلاف" value={toPersianDigits(counts.dispute)} /></Grid>
-              <Grid item xs={6}>
-                <DetailTile label="صورت‌وضعیت تأییدشده"
-                  value={toPersianDigits((contract.statements || []).filter((row) => row.is_approved).length)} />
-              </Grid>
+              <Grid item xs={6} sm={4}><DetailTile label="کارکرد اجراشده" value={formatPersianNumber(Number(rial.work || 0))} /></Grid>
+              <Grid item xs={6} sm={4}><DetailTile label="جمع کسورات" value={formatPersianNumber(Number(rial.deductionsTotal || 0))} /></Grid>
+              <Grid item xs={6} sm={4}><DetailTile label="حسن انجام کار" value={formatPersianNumber(Number(rial.retention || 0))} /></Grid>
+              <Grid item xs={6} sm={4}><DetailTile label="پیش‌پرداخت کسرشده" value={formatPersianNumber(Number(rial.prepayment || 0))} /></Grid>
+              <Grid item xs={6} sm={4}><DetailTile label="بیمه" value={formatPersianNumber(Number(rial.insurance || 0))} /></Grid>
+              <Grid item xs={6} sm={4}><DetailTile label="ارزش افزوده" value={formatPersianNumber(Number(rial.vat || 0))} /></Grid>
             </Grid>
           </SectionCard>
         </Grid>
+
+        <Grid item xs={12} lg={5}>
+          <SectionCard title="شاخص‌های پرونده" icon={DescriptionIcon} color={theme.palette.primary.main}>
+            <MetricRow label="پوشش تضامین" value={`${toPersianDigits(coverage)}٪`} percent={coverage}
+              color={theme.palette.primary.main}
+              hint={`تأمین ${formatPersianNumber(providedGuarantee)} از ${formatPersianNumber(requiredGuarantee)} ریال`} />
+            <MetricRow label="نسبت پرداخت به صورت‌وضعیت" value={`${toPersianDigits(paidRatio)}٪`} percent={paidRatio}
+              color={theme.palette.success.main}
+              hint={`خالص صورت‌وضعیت‌ها ${formatPersianNumber(netStatements)} ریال`} />
+            <MetricRow label="صورت‌وضعیت‌های تأییدشده"
+              value={`${toPersianDigits(approvedCount)} از ${toPersianDigits(statements.length)}`}
+              percent={statements.length ? (approvedCount / statements.length) * 100 : 0}
+              color={theme.palette.info.main} />
+            <MetricRow label="مانده تأییدنشده" value={formatPersianNumber(pendingNet)} color={theme.palette.warning.dark} />
+            <MetricRow label="میانگین هر پرداخت" value={formatPersianNumber(avgPayment)}
+              hint={`${toPersianDigits(payments.length)} پرداخت ثبت‌شده`} />
+            <MetricRow label="مدارک بارگذاری‌شده" value={`${toPersianDigits(documents.length)} مدرک`}
+              hint={latestDocuments[0] ? `آخرین: ${dateLabel(latestDocuments[0].uploaded_at)}` : 'بدون مدرک'} />
+          </SectionCard>
+        </Grid>
+      </Grid>
+      {/* آخرین رویدادها + آخرین مدارک */}
+      <Grid container spacing={2}>
         <Grid item xs={12} lg={7}>
           <SectionCard title="آخرین رویدادها" icon={DescriptionIcon} color={theme.palette.secondary.main}>
-            {timeline.length ? <TimelineList events={timeline.slice(0, 9)} maxHeight={330} /> : (
+            {timeline.length ? <TimelineList events={timeline.slice(0, 7)} maxHeight={300} /> : (
               <EmptyState text="رویدادی برای این قرارداد ثبت نشده است." />
+            )}
+          </SectionCard>
+        </Grid>
+        <Grid item xs={12} lg={5}>
+          <SectionCard title="آخرین مدارک" icon={DescriptionIcon} color={theme.palette.text.secondary}
+            action={<Button size="small" variant="text" onClick={ctx.openArchive}>بایگانی کامل</Button>}>
+            {latestDocuments.length ? (
+              <Stack spacing={0.5}>
+                {latestDocuments.map((doc) => (
+                  <Box key={doc.id} sx={{
+                    px: 1, py: 0.7, borderRadius: '10px',
+                    border: '1px solid', borderColor: 'divider',
+                    display: 'flex', alignItems: 'center', gap: 0.75, minWidth: 0,
+                  }}>
+                    <Box sx={{ minWidth: 0, flex: 1 }}>
+                      <Typography noWrap title={doc.title} sx={{ fontSize: 11.5, fontWeight: 700, color: INK }}>
+                        {doc.title || doc.file_name || '—'}
+                      </Typography>
+                      <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                        {dateLabel(doc.uploaded_at)}
+                        {doc.file_extension ? ` · ${String(doc.file_extension).toUpperCase()}` : ''}
+                        {doc.file_size_display ? ` · ${doc.file_size_display}` : ''}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Stack>
+            ) : (
+              <EmptyState text="مدرکی برای این قرارداد بارگذاری نشده است." />
             )}
           </SectionCard>
         </Grid>
@@ -190,6 +280,7 @@ export const OverviewTab = ({ ctx }) => {
     </Stack>
   );
 };
+
 
 /* ---------- تایم‌لاین ---------- */
 export const TimelineTab = ({ ctx }) => {
