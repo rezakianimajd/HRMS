@@ -4,7 +4,7 @@ import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import downloadFile from '../core/utils/downloadUtils';
 import {
-  Alert, Box, Button, CircularProgress, Paper, Stack, Tab, Tabs, Tooltip, Typography,
+  Alert, Box, Button, CircularProgress, Divider, Paper, Stack, Tab, Tabs, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
@@ -17,6 +17,7 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import LockIcon from '@mui/icons-material/Lock';
 import EditNoteIcon from '@mui/icons-material/EditNote';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import StorefrontIcon from '@mui/icons-material/Storefront';
 import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
@@ -30,6 +31,26 @@ import {
 } from './contracts/ContractProfileTabs';
 
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
+
+/* کاشی مشخصه در کارت قرارداد */
+const SpecTile = ({ label, value, color, bg }) => (
+  <Box sx={{
+    px: 1, py: 0.75,
+    minWidth: 0,
+    borderRadius: '11px',
+    border: '1px solid', borderColor: 'divider',
+    bgcolor: bg || 'transparent',
+  }}>
+    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
+    <Typography noWrap title={typeof value === 'string' ? value : undefined} sx={{
+      mt: 0.2, fontSize: 12.5, fontWeight: 800,
+      color: color || INK,
+      fontFamily: 'var(--hrms-table-number-font, inherit)',
+    }}>
+      {value}
+    </Typography>
+  </Box>
+);
 
 const ContractProfilePage = () => {
   const { id } = useParams();
@@ -191,8 +212,12 @@ const ContractProfilePage = () => {
     { label: 'الحاقیه‌ها', path: '/contracts-addendums', icon: EditNoteIcon, color: theme.palette.warning.main, count: addendumCount, meta: `اثر ${formatPersianNumber(addendumTotal)}` },
     { label: 'تضمین‌ها', path: '/contracts-guarantees', icon: LockIcon, color: theme.palette.primary.main, count: guaranteeCount, meta: `${toPersianDigits(coveragePercent)}٪ پوشش` },
     { label: 'اختلافات', path: '/contracts-disputes', icon: GavelIcon, color: theme.palette.error.main, count: (c.disputes || []).length, meta: 'پیگیری پرونده' },
+    { label: 'هم‌تراز', icon: HandshakeIcon, color: theme.palette.primary.main, count: relatedContracts.length, meta: 'قراردادهای هم‌تراز', onClick: () => setTab(9) },
     { label: 'اسناد و بایگانی', path: '/contracts-documents', icon: FolderOpenIcon, color: theme.palette.text.secondary, count: (c.documents || []).length, meta: 'مشاهدهٔ اسناد' },
-  ].map((item) => ({ ...item, onClick: () => navigate(`${item.path}?contract=${id}`) }));
+  ].map((item) => ({
+    ...item,
+    onClick: item.onClick || (() => navigate(`${item.path}?contract=${id}`)),
+  }));
 
   /* پروژه‌ها (برای تب مشخصات قرارداد) */
   const projectNames = (c.project_allocations_display || [])
@@ -291,66 +316,106 @@ const ContractProfilePage = () => {
         <Alert severity="error" sx={{ mb: 2 }} onClose={() => setExportError('')}>{exportError}</Alert>
       ) : null}
 
-      {/* ۱) کارت قرارداد — مشخصات کم، بها و پیشرفت مالی بدون هیچ چیپ */}
+      {/* ۱) کارت قرارداد — طرف قرارداد و مشخصات کلی خوانا، بها/پیشرفت بدون چیپ */}
       <Paper elevation={0} sx={{
-        p: { xs: 1.5, md: 2 },
+        p: { xs: 1.5, md: 2.25 },
         mb: 2,
         borderRadius: 'var(--hrms-radius-large, 18px)',
         border: '1px solid', borderColor: 'divider',
         bgcolor: 'background.paper', boxShadow: 'none',
       }}>
-        <Stack
-          direction={{ xs: 'column', md: 'row' }}
-          spacing={2}
-          alignItems={{ xs: 'flex-start', md: 'center' }}
-          justifyContent="space-between"
-        >
-          <Stack direction="row" spacing={1.5} alignItems="center" sx={{ minWidth: 0, flex: 1 }}>
-            <Box sx={{
-              width: 46, height: 46, borderRadius: '14px', flexShrink: 0,
-              bgcolor: alpha(theme.palette.primary.main, 0.08),
-              color: theme.palette.primary.main,
-              border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <HandshakeIcon sx={{ fontSize: 24 }} />
-            </Box>
-            <Box sx={{ minWidth: 0 }}>
-              <Typography noWrap sx={{ fontSize: 14, fontWeight: 900, color: INK }}>{c.subject || '—'}</Typography>
-              <Typography noWrap sx={{ mt: 0.2, fontSize: 11.5, color: MUTED }}>
-                {toPersianDigits(c.number || '—')} · {c.party_name || '—'} · {contractTypeLabel}
-              </Typography>
-              <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 0.7 }}>
-                <Stack direction="row" spacing={0.5} alignItems="center">
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: STATUS_COLORS[c.status] || '#64748b' }} />
-                  <Typography sx={{ fontSize: 11, fontWeight: 700, color: MUTED }}>
-                    {STATUS_LABELS[c.status] || '—'}
-                  </Typography>
-                </Stack>
-                <Typography sx={{ fontSize: 11, color: MUTED }}>شروع {toJalali(c.start_date)}</Typography>
-                <Typography sx={{ fontSize: 11, color: MUTED }}>پایان مؤثر {toJalali(endDateWithAddendum)}</Typography>
-                <Typography sx={{
-                  fontSize: 11, fontWeight: 700,
-                  color: remainingDays !== null && remainingDays < 0 ? theme.palette.error.dark : theme.palette.warning.dark,
-                }}>
-                  {remainingDays === null
-                    ? 'بدون تاریخ پایان'
-                    : remainingDays < 0
-                      ? `${toPersianDigits(Math.abs(remainingDays))} روز گذشته`
-                      : `${toPersianDigits(remainingDays)} روز مانده`}
+        <Stack direction={{ xs: 'column', lg: 'row' }} spacing={{ xs: 2, lg: 2.5 }} alignItems="stretch">
+          <Box sx={{ flex: 1, minWidth: 0 }}>
+            <Stack direction="row" spacing={1.5} alignItems="center">
+              <Box sx={{
+                width: 48, height: 48, borderRadius: '14px', flexShrink: 0,
+                bgcolor: alpha(theme.palette.primary.main, 0.08),
+                color: theme.palette.primary.main,
+                border: `1px solid ${alpha(theme.palette.primary.main, 0.16)}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+              }}>
+                <HandshakeIcon sx={{ fontSize: 25 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography noWrap title={c.subject} sx={{ fontSize: 16, fontWeight: 900, color: INK, lineHeight: 1.5 }}>
+                  {c.subject || '—'}
                 </Typography>
-              </Stack>
-            </Box>
-          </Stack>
+                <Stack direction="row" spacing={1.25} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 0.3 }}>
+                  <Typography sx={{ fontSize: 11.5, color: MUTED }}>
+                    شمارهٔ {toPersianDigits(c.number || '—')}
+                  </Typography>
+                  <Typography sx={{ fontSize: 11.5, color: MUTED }}>· {contractTypeLabel}</Typography>
+                  {c.category ? <Typography sx={{ fontSize: 11.5, color: MUTED }}>· {c.category}</Typography> : null}
+                  <Stack direction="row" spacing={0.5} alignItems="center">
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: STATUS_COLORS[c.status] || '#64748b' }} />
+                    <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                      {STATUS_LABELS[c.status] || '—'}
+                    </Typography>
+                  </Stack>
+                </Stack>
+              </Box>
+            </Stack>
 
-          <Box sx={{ flex: '0 0 auto', width: { xs: '100%', md: 320 } }}>
+            {/* طرف قرارداد — برجسته */}
+            <Box sx={{
+              mt: 1.5, px: 1.1, py: 0.85,
+              display: 'flex', alignItems: 'center', gap: 1,
+              borderRadius: '12px', border: '1px dashed', borderColor: 'divider',
+              bgcolor: alpha(theme.palette.text.primary, theme.palette.mode === 'dark' ? 0.05 : 0.015),
+            }}>
+              <StorefrontIcon sx={{ fontSize: 18, color: theme.palette.primary.main, flexShrink: 0 }} />
+              <Typography sx={{ fontSize: 11, color: MUTED, flexShrink: 0 }}>طرف قرارداد</Typography>
+              <Typography noWrap title={c.party_name} sx={{ fontSize: 13, fontWeight: 800, color: INK, minWidth: 0 }}>
+                {c.party_name || '—'}
+              </Typography>
+              {c.signatory_name ? (
+                <Typography noWrap sx={{ ml: 'auto', fontSize: 10.5, color: MUTED }}>
+                  امضاکننده: {c.signatory_name}
+                </Typography>
+              ) : null}
+            </Box>
+
+            {/* مشخصات کلی */}
+            <Box sx={{
+              mt: 1.2,
+              display: 'grid',
+              gridTemplateColumns: { xs: '1fr 1fr', sm: 'repeat(4, minmax(0, 1fr))' },
+              gap: 1,
+            }}>
+              <SpecTile label="شروع قرارداد" value={toJalali(c.start_date)} />
+              <SpecTile label="پایان پایه" value={toJalali(c.end_date)} />
+              <SpecTile
+                label="پایان با الحاقیه"
+                value={toJalali(endDateWithAddendum)}
+                color={theme.palette.info.dark}
+                bg={alpha(theme.palette.info.main, 0.06)}
+              />
+              <SpecTile
+                label="زمان باقی‌مانده"
+                value={remainingDays === null
+                  ? 'بدون پایان'
+                  : remainingDays < 0
+                    ? `${toPersianDigits(Math.abs(remainingDays))} روز گذشته`
+                    : `${toPersianDigits(remainingDays)} روز`}
+                color={remainingDays !== null && remainingDays < 0 ? theme.palette.error.dark : theme.palette.warning.dark}
+                bg={alpha(remainingDays !== null && remainingDays < 0 ? theme.palette.error.main : theme.palette.warning.main, 0.06)}
+              />
+            </Box>
+          </Box>
+          <Divider orientation="vertical" flexItem sx={{ display: { xs: 'none', lg: 'block' } }} />
+
+          {/* بها و پیشرفت مالی — بدون هیچ چیپ */}
+          <Box sx={{ flex: '0 0 auto', width: { xs: '100%', lg: 340 } }}>
             <Typography sx={{ fontSize: 11, color: MUTED }}>مبلغ مؤثر قرارداد با الحاقیه و تعدیل</Typography>
-            <Typography sx={{ mt: 0.2, fontSize: 22, fontWeight: 900, lineHeight: 1.35, direction: 'rtl', color: theme.palette.warning.dark }}>
+            <Typography sx={{
+              mt: 0.2, fontSize: 25, fontWeight: 900, lineHeight: 1.35,
+              direction: 'rtl', color: theme.palette.warning.dark,
+            }}>
               {formatPersianNumber(adjustedContractAmount)}
               {' '}
-              <Box component="span" sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>{currencyLabel}</Box>
+              <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED }}>{currencyLabel}</Box>
             </Typography>
-            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.6 }}>
+            <Stack direction="row" spacing={1} alignItems="center" sx={{ mt: 0.75 }}>
               <Box sx={{ flex: 1, height: 8, borderRadius: 4, bgcolor: alpha(theme.palette.text.primary, 0.07), overflow: 'hidden' }}>
                 <Box sx={{
                   width: `${Math.max(0, Math.min(100, progressPercent))}%`,
@@ -358,45 +423,72 @@ const ContractProfilePage = () => {
                   bgcolor: progressPercent >= 100 ? theme.palette.success.main : theme.palette.info.main,
                 }} />
               </Box>
-              <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: theme.palette.info.main }}>
+              <Typography sx={{ fontSize: 12, fontWeight: 800, color: theme.palette.info.main }}>
                 {toPersianDigits(progressPercent)}٪
               </Typography>
             </Stack>
-            <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
-              <Typography sx={{ fontSize: 11, color: MUTED }}>پرداخت‌شده: {formatPersianNumber(totalPaid)} ریال</Typography>
-              <Typography sx={{ fontSize: 11, color: MUTED }}>مانده: {formatPersianNumber(remainingRial)} ریال</Typography>
-            </Stack>
+            <Box sx={{ mt: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 0.75 }}>
+              <SpecTile label="پرداخت‌شده (ریال)" value={formatPersianNumber(totalPaid)} color={theme.palette.success.dark} />
+              <SpecTile label="مانده مالی (ریال)" value={formatPersianNumber(remainingRial)} color={theme.palette.error.dark} />
+            </Box>
           </Box>
         </Stack>
       </Paper>
 
 
-      {/* ۲) دسترسی سریع — یک ردیف دکمهٔ کاربردی */}
-      <Stack
-        direction="row"
-        spacing={1}
-        sx={{ mb: 2, overflowX: 'auto', pb: 0.5 }}
-      >
+
+
+      {/* ۲) دسترسی سریع — ردیف کارت‌های تک‌خطی با تعداد موارد */}
+      <Box sx={{
+        mb: 2,
+        display: 'grid',
+        gridAutoFlow: 'column',
+        gridAutoColumns: { xs: 'minmax(160px, 1fr)', md: 'minmax(0, 1fr)' },
+        gap: 1,
+        overflowX: 'auto',
+        pb: 0.5,
+      }}>
         {quickLinks.map((item) => {
           const Icon = item.icon;
+          const accent = item.color || theme.palette.primary.main;
           return (
-            <Button
+            <Box
               key={item.label}
-              variant="outlined"
-              size="small"
-              startIcon={<Icon sx={{ fontSize: 16 }} />}
+              role="button"
+              tabIndex={0}
               onClick={item.onClick}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); item.onClick(); }
+              }}
               sx={{
-                flexShrink: 0, whiteSpace: 'nowrap', fontSize: 12, fontWeight: 700,
-                borderRadius: '10px', px: 1.4,
+                px: 1.1, py: 0.9, minWidth: 0,
+                display: 'flex', alignItems: 'center', gap: 1,
+                cursor: 'pointer',
+                borderRadius: '12px',
+                border: '1px solid', borderColor: 'divider',
+                bgcolor: 'background.paper',
+                transition: 'border-color .15s ease, transform .15s ease, background-color .15s ease',
+                '&:hover': { borderColor: alpha(accent, 0.45), transform: 'translateY(-1px)', bgcolor: alpha(accent, 0.02) },
+                '&:focus-visible': { outline: `2px solid ${alpha(accent, 0.5)}`, outlineOffset: 1 },
               }}
             >
-              {item.label}
-              {item.count ? ` (${toPersianDigits(item.count)})` : ''}
-            </Button>
+              <Box sx={{
+                width: 30, height: 30, borderRadius: '9px', flexShrink: 0,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                bgcolor: alpha(accent, 0.08), color: accent,
+              }}>
+                <Icon sx={{ fontSize: 16 }} />
+              </Box>
+              <Box sx={{ minWidth: 0 }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>{item.label}</Typography>
+                <Typography noWrap sx={{ mt: 0.1, fontSize: 10.5, color: MUTED }}>
+                  {item.count ? `${toPersianDigits(item.count)} مورد` : 'بدون مورد'}
+                </Typography>
+              </Box>
+            </Box>
           );
         })}
-      </Stack>
+      </Box>
 
       {/* ۳) تب‌های پرونده */}
       <Paper elevation={0} sx={{

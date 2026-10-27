@@ -114,11 +114,12 @@ test('contract profile shows the compact card, single-row quick access and the a
   expect(container.textContent).toContain('۱٬۰۰۰ یورو');
   expect(container.textContent).toContain('مبلغ مؤثر قرارداد');
 
-  // دسترسی سریع در یک ردیف
+  // دسترسی سریع: ردیف کارت‌های تک‌خطی با تعداد موارد
   const quickLabels = ['فاکتورها', 'صورت‌وضعیت‌ها', 'پرداخت‌ها', 'الحاقیه‌ها', 'تضمین‌ها', 'اختلافات', 'اسناد و بایگانی'];
-  const quickButtons = Array.from(container.querySelectorAll('button'))
-    .filter((button) => quickLabels.some((label) => button.textContent.trim().startsWith(label)));
-  expect(quickButtons.length).toBeGreaterThanOrEqual(quickLabels.length);
+  const quickTiles = Array.from(container.querySelectorAll('[role="button"]'))
+    .filter((tile) => quickLabels.some((label) => tile.textContent.trim().startsWith(label)));
+  expect(quickTiles.length).toBeGreaterThanOrEqual(quickLabels.length);
+  expect(quickTiles.some((tile) => tile.textContent.includes('مورد'))).toBe(true);
 
   // تب‌های پرونده
   const tabLabels = Array.from(container.querySelectorAll('.MuiTab-root')).map((tab) => tab.textContent.trim());
