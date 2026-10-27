@@ -1276,6 +1276,20 @@ const ContractDocumentsPage = () => {
     setProgress({ done: 0, total: 0 });
   };
 
+  /* ورود از پروندهٔ قرارداد با ?document=id → ویرایشگر همان سند باز می‌شود */
+  const requestedDocumentId = searchParams.get('document') || '';
+  const autoEditRef = useRef(false);
+  useEffect(() => {
+    if (!requestedDocumentId || autoEditRef.current) return;
+    const target = allDocs.find((row) => String(row.id) === String(requestedDocumentId));
+    if (!target) return;
+    autoEditRef.current = true;
+    openEdit(target);
+    const next = new URLSearchParams(searchParams);
+    next.delete('document');
+    setSearchParams(next, { replace: true });
+  }, [requestedDocumentId, allDocs]);
+
   const addPendingFiles = (files) => {
     const pdfOnly = ['addendum', 'guarantee'].includes(form.relationType);
     const accepted = [];

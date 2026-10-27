@@ -250,6 +250,42 @@ test('the new document dialog keeps the relation chips icon-free and spaces the 
   container.remove();
 });
 
+test('opening the archive with a document id starts editing that document', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-documents?contract=1&document=1']}>
+            <ContractDocumentsPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(1100);
+  });
+
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).toBeTruthy();
+  // ویرایشگر سند همان سند انتخاب‌شده را با عنوانش باز می‌کند
+  expect(dialog.textContent).toContain('ویرایش سند قرارداد');
+  const titleInput = Array.from(dialog.querySelectorAll('input'))
+    .find((input) => String(input.value || '').includes('متن قرارداد'));
+  expect(titleInput).toBeTruthy();
+
+  await act(async () => { root.unmount(); });
+  container.remove();
+});
+
 test('clicking a contract row opens its documents in the same standard table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');

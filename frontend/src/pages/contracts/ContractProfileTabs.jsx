@@ -1,11 +1,14 @@
 import React from 'react';
 import {
-  Box, Button, Divider, Grid, Stack, Table, TableBody, TableCell, TableContainer,
+  Box, Button, Divider, Grid, IconButton, Stack, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
 import { alpha } from '@mui/material/styles';
 import DescriptionIcon from '@mui/icons-material/Description';
+import DownloadIcon from '@mui/icons-material/Download';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -36,7 +39,7 @@ const compactMoney = (value) => {
 const dateLabel = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
 
 /* جدول استاندارد داخل تب‌ها — همان توکن‌های استودیوی تم */
-const ProfileTable = ({ ariaLabel, columns, rows, emptyText = 'موردی ثبت نشده است.' }) => {
+const ProfileTable = ({ ariaLabel, columns, rows, emptyText = 'موردی ثبت نشده است.', stickyHeader = false, maxHeight }) => {
   const { tokens } = useDesignTokens();
   const tableTheme = resolveTableTheme(tokens);
   if (!rows.length) {
@@ -47,8 +50,14 @@ const ProfileTable = ({ ariaLabel, columns, rows, emptyText = 'موردی ثبت
     );
   }
   return (
-    <TableContainer sx={{ border: '1px solid', borderColor: 'var(--hrms-table-border-color, #e8edf4)', borderRadius: '12px', overflow: 'hidden' }}>
-      <Table size="small" aria-label={ariaLabel} sx={{
+    <TableContainer sx={{
+      border: '1px solid', borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+      borderRadius: '12px',
+      overflow: 'hidden',
+      maxHeight,
+      overflowY: maxHeight ? 'auto' : 'hidden',
+    }}>
+      <Table size="small" stickyHeader={stickyHeader} aria-label={ariaLabel} sx={{
         width: '100%',
         '& td, & th': {
           px: 1,
@@ -64,8 +73,10 @@ const ProfileTable = ({ ariaLabel, columns, rows, emptyText = 'موردی ثبت
           fontWeight: tableTheme.header.fontWeight,
           color: tableTheme.header.color,
           textAlign: 'center',
+          height: `${tableTheme.headerHeight}px`,
         },
         '& tbody td': {
+          height: `${tableTheme.rowHeight}px`,
           fontSize: tableTheme.cell.fontSize,
           fontWeight: tableTheme.cell.fontWeight,
           color: tableTheme.cell.color,
@@ -890,36 +901,103 @@ const documentPlace = (doc) => (
       : doc.statement_number ? 'صورت‌وضعیت' : 'مستندات قرارداد'
 );
 
-export const DocumentsTab = ({ ctx }) => (
-  <Stack spacing={2}>
-    <Grid container spacing={1.5}>
-      <Grid item xs={12} sm={4}><DetailTile label="تعداد مدارک" value={toPersianDigits((ctx.contract.documents || []).length)} /></Grid>
-      <Grid item xs={12} sm={4}><DetailTile label="پیوست الحاقیه/تضمین" value={toPersianDigits((ctx.contract.documents || []).filter((doc) => doc.addendum_number || doc.guarantee_number).length)} /></Grid>
-      <Grid item xs={12} sm={4}><DetailTile label="اسناد صورت‌وضعیت" value={toPersianDigits((ctx.contract.documents || []).filter((doc) => doc.statement_number).length)} /></Grid>
-    </Grid>
-    <SectionCard title="مدارک قرارداد" icon={DescriptionIcon} color={ctx.accent}
-      action={<Button size="small" variant="text" onClick={ctx.openArchive}>بایگانی کامل</Button>}>
-      <ProfileTable
-        ariaLabel="فهرست مدارک قرارداد"
-        emptyText="مدرکی برای این قرارداد بارگذاری نشده است."
-        rows={(ctx.contract.documents || []).map((row) => ({ ...row, key: row.id }))}
-        columns={[
-          { key: 'title', label: 'عنوان', width: '30%', align: 'right', render: (row) => <CellText strong>{row.title || row.file_name || '—'}</CellText> },
-          { key: 'place', label: 'جایگاه', width: '18%', render: (row) => <CellText>{documentPlace(row)}</CellText> },
-          { key: 'file_extension', label: 'نوع', width: '10%', render: (row) => <CellText>{String(row.file_extension || '—').toUpperCase()}</CellText> },
-          { key: 'file_size_display', label: 'حجم', width: '12%', render: (row) => <CellText>{row.file_size_display || '—'}</CellText> },
-          { key: 'uploaded_at', label: 'تاریخ بارگذاری', width: '16%', render: (row) => <CellText>{dateLabel(row.uploaded_at)}</CellText> },
-          {
-            key: 'open', label: 'عملیات', width: '14%',
-            render: (row) => (
-              <Tooltip title="بازکردن در بایگانی">
-                <Button size="small" variant="text" onClick={() => ctx.openDocument(row)}>مشاهده</Button>
-              </Tooltip>
-            ),
-          },
-        ]}
-      />
-    </SectionCard>
-  </Stack>
-);
+const fileSizeLabel = (bytes) => {
+  const value = Number(bytes) || 0;
+  if (!value) return '—';
+  if (value >= 1024 * 1024) return `${formatPersianNumber(Number((value / (1024 * 1024)).toFixed(1)))} مگابایت`;
+  if (value >= 1024) return `${formatPersianNumber(Math.round(value / 1024))} کیلوبایت`;
+  return `${formatPersianNumber(value)} بایت`;
+};
+
+export const DocumentsTab = ({ ctx }) => {
+  const theme = useTheme();
+  const documents = ctx.contract.documents || [];
+  const rows = [...documents]
+    .sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')))
+    .map((doc) => ({ ...doc, key: doc.id }));
+  const totalSize = documents.reduce((sum, doc) => sum + Number(doc.file_size || 0), 0);
+  const linkedCount = documents.filter((doc) => doc.addendum_number || doc.guarantee_number).length;
+  const statementDocs = documents.filter((doc) => doc.statement_number).length;
+
+  return (
+    <Stack spacing={2}>
+      <Grid container spacing={1.5}>
+        <Grid item xs={6} md={3}>
+          <DetailTile label="تعداد مدارک" value={toPersianDigits(documents.length)} />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <DetailTile label="حجم کل" value={fileSizeLabel(totalSize)} />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <DetailTile label="پیوست الحاقیه/تضمین" value={toPersianDigits(linkedCount)} />
+        </Grid>
+        <Grid item xs={6} md={3}>
+          <DetailTile label="اسناد صورت‌وضعیت" value={toPersianDigits(statementDocs)} />
+        </Grid>
+      </Grid>
+
+      <SectionCard title="مدارک قرارداد" icon={DescriptionIcon} color={ctx.accent} sx={{ mb: 0 }}
+        action={<Button size="small" variant="text" onClick={ctx.openArchive}>بایگانی کامل</Button>}>
+        <ProfileTable
+          ariaLabel="فهرست مدارک قرارداد"
+          emptyText="مدرکی برای این قرارداد بارگذاری نشده است."
+          rows={rows}
+          stickyHeader
+          maxHeight={520}
+          columns={[
+            {
+              key: 'row', label: 'ردیف', width: '6%',
+              render: (row, index) => <CellText strong>{toPersianDigits(index + 1)}</CellText>,
+            },
+            {
+              key: 'title', label: 'عنوان', width: '27%', align: 'right',
+              render: (row) => <CellText strong>{row.title || row.file_name || '—'}</CellText>,
+            },
+            {
+              key: 'place', label: 'جایگاه', width: '16%', align: 'right',
+              render: (row) => <CellText>{documentPlace(row)}</CellText>,
+            },
+            {
+              key: 'file_extension', label: 'نوع', width: '9%',
+              render: (row) => <CellText>{String(row.file_extension || '—').toUpperCase()}</CellText>,
+            },
+            {
+              key: 'file_size', label: 'حجم', width: '11%',
+              render: (row) => <CellText>{row.file_size_display || fileSizeLabel(row.file_size)}</CellText>,
+            },
+            {
+              key: 'uploaded_at', label: 'تاریخ بارگذاری', width: '14%',
+              render: (row) => <CellText>{dateLabel(row.uploaded_at)}</CellText>,
+            },
+            {
+              key: 'actions', label: 'عملیات', width: '17%',
+              render: (row) => (
+                <Stack direction="row" spacing={0.25} justifyContent="center">
+                  <Tooltip title="مشاهده">
+                    <IconButton size="small" aria-label="مشاهده سند" onClick={() => ctx.openDocument(row)}>
+                      <VisibilityIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="دانلود">
+                    <IconButton size="small" aria-label="دانلود سند" color="primary" onClick={() => ctx.downloadDocument(row)}>
+                      <DownloadIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="ویرایش">
+                    <IconButton size="small" aria-label="ویرایش سند" onClick={() => ctx.editDocument(row)}>
+                      <EditIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              ),
+            },
+          ]}
+        />
+        <Typography sx={{ mt: 0.75, fontSize: 10.5, color: MUTED }}>
+          مشاهده، فایل را در تب جدید باز می‌کند؛ ویرایش، پنجرهٔ ویرایش سند را در بایگانی همین قرارداد باز می‌کند.
+        </Typography>
+      </SectionCard>
+    </Stack>
+  );
+};
 

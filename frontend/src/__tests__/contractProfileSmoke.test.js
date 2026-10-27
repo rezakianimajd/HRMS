@@ -65,7 +65,18 @@ const contract = {
     exchange_rate: 2000000,
     is_approved: true,
   }],
-  documents: [],
+  documents: [
+    {
+      id: 5,
+      title: 'متن قرارداد',
+      file_name: 'contract.pdf',
+      file_extension: '.pdf',
+      file_url: 'https://example.test/contract.pdf',
+      file_size: 2048,
+      file_size_display: '۲ کیلوبایت',
+      uploaded_at: '2026-10-24T08:00:00Z',
+    },
+  ],
   project_allocations_display: [
     { project: 1, project_name: 'پروژهٔ نمونه', percentage: 60 },
     { project: 2, project_name: 'پروژهٔ دوم', percentage: 40 },
@@ -178,6 +189,17 @@ test('contract profile shows the compact card, single-row quick access and the a
 
   await openTab('مدارک');
   expect(container.textContent).toContain('مدارک قرارداد');
+  expect(container.textContent).toContain('متن قرارداد');
+  expect(container.textContent).toContain('حجم کل');
+  const docsTable = container.querySelector('table[aria-label="فهرست مدارک قرارداد"]');
+  expect(docsTable).toBeTruthy();
+  const docsHeaders = Array.from(docsTable.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+  expect(docsHeaders).toEqual(['ردیف', 'عنوان', 'جایگاه', 'نوع', 'حجم', 'تاریخ بارگذاری', 'عملیات']);
+  // سه عملیات: مشاهده، دانلود، ویرایش (بدون حذف)
+  ['مشاهده سند', 'دانلود سند', 'ویرایش سند'].forEach((label) => {
+    expect(container.querySelector(`[aria-label="${label}"]`)).toBeTruthy();
+  });
+  expect(container.querySelector('[aria-label="حذف سند"]')).toBeNull();
 
   await act(async () => { root.unmount(); });
   container.remove();

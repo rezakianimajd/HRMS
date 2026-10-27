@@ -232,7 +232,22 @@ const ContractProfilePage = () => {
   const openGuarantees = () => navigate(`/contracts-guarantees?contract=${id}`);
   const openArchive = () => navigate(`/contracts-documents?contract=${id}`);
   const openRelated = (contractId) => navigate(`/external-contracts/${contractId}`);
-  const openDocument = () => openArchive();
+  const openDocument = (doc) => {
+    if (!doc?.file_url) return;
+    window.open(doc.file_url, '_blank', 'noopener,noreferrer');
+  };
+  const downloadDocument = (doc) => {
+    if (!doc?.file_url) return;
+    const link = document.createElement('a');
+    link.href = doc.file_url;
+    link.download = doc.file_name || doc.title || 'contract-document';
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+  };
+  const editDocument = (doc) => navigate(`/contracts-documents?contract=${id}&document=${doc.id}`);
 
   const ctx = {
     contract: c,
@@ -271,6 +286,8 @@ const ContractProfilePage = () => {
     openRelated,
     openArchive,
     openDocument,
+    downloadDocument,
+    editDocument,
   };
 
   const tabs = [
