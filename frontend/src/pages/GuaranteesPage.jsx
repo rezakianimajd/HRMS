@@ -1635,8 +1635,10 @@ const GuaranteesPage = () => {
   const needsGuarantee = (type) => type === 'bank_guarantee' || type === 'check_and_guarantee' || type === 'promissory_and_guarantee';
 
   const exportCsv = () => {
-    const headers = ['نوع تضمین', 'ابزار', 'شماره', 'مبلغ', 'بانک', 'تاریخ صدور', 'سررسید', 'وضعیت', 'ضمانت قرارداد'];
+    const headers = ['شماره قرارداد', 'موضوع قرارداد', 'نوع تضمین', 'ابزار', 'شماره', 'مبلغ', 'بانک', 'تاریخ صدور', 'سررسید', 'وضعیت', 'ضمانت قرارداد'];
     const rows = filtered.map((row) => [
+      contractNumberById.get(String(row.contract)) || row.contract_number || '',
+      row.contract_subject || '',
       row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '',
       instrumentMeta(row).label,
       numberFor(row),
