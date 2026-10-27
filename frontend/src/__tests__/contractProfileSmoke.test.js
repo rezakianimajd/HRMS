@@ -159,7 +159,10 @@ test('contract profile shows the compact card, single-row quick access and the a
 
   await openTab('مشخصات مالی');
   expect(container.textContent).toContain('مشخصات مالی پایه');
-  expect(container.textContent).toContain('تحلیل مالی قرارداد');
+  expect(container.textContent).toContain('تفکیک مالی صورت‌وضعیت‌ها');
+  expect(container.textContent).toContain('شاخص‌های مالی');
+  expect(container.textContent).toContain('روند پرداخت ماهانه');
+  expect(container.textContent).toContain('تعدیل و معادل ارزی');
 
   await openTab('الحاقیه‌ها');
   expect(container.textContent).toContain('فهرست الحاقیه‌ها');

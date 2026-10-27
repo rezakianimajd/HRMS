@@ -4,6 +4,7 @@ import {
   TableHead, TableRow, Tooltip, Typography,
 } from '@mui/material';
 import { useTheme } from '@mui/material/styles';
+import { alpha } from '@mui/material/styles';
 import DescriptionIcon from '@mui/icons-material/Description';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -18,12 +19,20 @@ import {
   SectionCard, TimelineList,
 } from './ContractProfileUI';
 import {
-  AddendumsStudioCard, ContractFinanceStudioCard, CoverageCompactCard,
+  AddendumsStudioCard, CoverageCompactCard,
   GuaranteeCompactCard, RelatedContractsStudioCard, TermsStudioCard,
 } from './ContractProfileStudioUI';
 import { statementDisplayTitle } from './statementKinds';
 
 const money = (value, currency = 'ریال') => `${formatPersianNumber(Number(value) || 0)} ${currency}`;
+const compactMoney = (value) => {
+  const amount = Number(value) || 0;
+  const scaled = (unit) => formatPersianNumber(Number((amount / unit).toFixed(1)));
+  if (Math.abs(amount) >= 1_000_000_000_000) return `${scaled(1_000_000_000_000)} همت`;
+  if (Math.abs(amount) >= 1_000_000_000) return `${scaled(1_000_000_000)} میلیارد`;
+  if (Math.abs(amount) >= 1_000_000) return `${scaled(1_000_000)} میلیون`;
+  return formatPersianNumber(amount);
+};
 const dateLabel = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
 
 /* جدول استاندارد داخل تب‌ها — همان توکن‌های استودیوی تم */
@@ -508,39 +517,248 @@ export const IdentityTab = ({ ctx }) => {
 };
 
 /* ---------- مشخصات مالی (کامل) ---------- */
-export const FinanceTab = ({ ctx }) => (
-  <Stack spacing={2}>
-    <SectionCard title="مشخصات مالی پایه" icon={DescriptionIcon} color={ctx.accent} sx={{ mb: 0 }}>
-      <Grid container spacing={1}>
-        <Grid item xs={6} sm={4} lg={3}><DetailTile label="مبلغ پایه" value={money(ctx.contract.amount, ctx.currencyLabel)} /></Grid>
-        <Grid item xs={6} sm={4} lg={3}><DetailTile label="پیش‌پرداخت" value={money(ctx.advanceAmount, ctx.currencyLabel)} /></Grid>
-        <Grid item xs={6} sm={4} lg={3}><DetailTile label="مبلغ تضمین" value={money(ctx.guaranteeAmount, ctx.currencyLabel)} /></Grid>
-        <Grid item xs={6} sm={4} lg={3}>
-          <DetailTile label="درصد نگهداشت"
-            value={ctx.retentionPercent ? `${formatPersianNumber(ctx.retentionPercent)}٪` : '—'} />
+const MoneyTile = ({ label, value, hint, color, emphasize }) => (
+  <Box sx={{
+    px: 1.2, py: 1, minWidth: 0,
+    borderRadius: '12px',
+    border: '1px solid',
+    borderColor: emphasize ? alpha(color || '#2563eb', 0.35) : 'divider',
+    bgcolor: emphasize ? alpha(color || '#2563eb', 0.05) : 'transparent',
+  }}>
+    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
+    <Typography noWrap title={String(value)} sx={{
+      mt: 0.3, fontSize: 15, fontWeight: 900, color: color || INK,
+      fontFamily: 'var(--hrms-table-number-font, inherit)',
+    }}>
+      {value}
+    </Typography>
+    {hint ? <Typography noWrap sx={{ mt: 0.15, fontSize: 10.5, color: MUTED }}>{hint}</Typography> : null}
+  </Box>
+);
+
+const FinanceRow = ({ label, value, percent, color, sign, strong }) => (
+  <Box sx={{ py: 0.55 }}>
+    <Stack direction="row" justifyContent="space-between" alignItems="baseline" spacing={1}>
+      <Typography sx={{ fontSize: 11.5, color: strong ? INK : MUTED, fontWeight: strong ? 800 : 400 }}>{label}</Typography>
+      <Typography noWrap sx={{
+        fontSize: strong ? 13 : 12, fontWeight: strong ? 900 : 800,
+        color: color || INK, fontFamily: 'var(--hrms-table-number-font, inherit)',
+      }}>
+        {sign || ''}{formatPersianNumber(Number(value) || 0)}
+      </Typography>
+    </Stack>
+    {typeof percent === 'number' ? (
+      <Box sx={{ mt: 0.3, height: 5, borderRadius: 3, bgcolor: 'rgba(15,23,42,0.06)', overflow: 'hidden' }}>
+        <Box sx={{
+          width: `${Math.max(0, Math.min(100, percent))}%`, height: '100%', borderRadius: 3,
+          bgcolor: color || '#2563eb', opacity: 0.85,
+        }} />
+      </Box>
+    ) : null}
+  </Box>
+);
+
+const PaymentBars = ({ data = [], color }) => {
+  const max = Math.max(...data.map((item) => Number(item.value) || 0), 1);
+  return (
+    <Box sx={{ display: 'flex', alignItems: 'flex-end', gap: 1, height: 132, mt: 1 }}>
+      {data.map((item, index) => (
+        <Box key={`${item.label}-${index}`} sx={{
+          flex: 1, minWidth: 0, height: '100%',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-end',
+        }}>
+          <Typography noWrap sx={{ fontSize: 9.5, color: MUTED, mb: 0.3 }}>{compactMoney(item.value)}</Typography>
+          <Box sx={{
+            width: '68%',
+            height: `${Math.max(3, (Number(item.value) / max) * 100)}%`,
+            bgcolor: alpha(color, Number(item.value) ? 0.75 : 0.15),
+            borderRadius: '6px 6px 2px 2px',
+          }} />
+          <Typography noWrap sx={{ mt: 0.35, fontSize: 10, color: MUTED }}>{item.label}</Typography>
+        </Box>
+      ))}
+    </Box>
+  );
+};
+
+export const FinanceTab = ({ ctx }) => {
+  const theme = useTheme();
+  const {
+    contract, financial, currencyLabel, contractRate, adjustedContractAmount,
+    adjustedContractAmountRial, totalPaid, remainingRial, progressPercent,
+    totalInvoices, adjustmentNetRial, paymentMonths, guaranteeSummary, coveragePercent,
+  } = ctx;
+
+  const rial = financial?.rial || {};
+  const foreign = financial?.foreign || {};
+  const netStatements = Number(rial.net || 0);
+  const work = Number(rial.work || 0);
+  const additions = Number(rial.additionsTotal || 0);
+  const deductions = Number(rial.deductionsTotal || 0);
+  const baseScale = Math.max(work, 1);
+  const paidRatio = netStatements > 0 ? Math.min(100, Math.round((totalPaid / netStatements) * 100)) : 0;
+  const deductionRatio = work > 0 ? Math.min(100, Math.round((deductions / work) * 100)) : 0;
+  const adjustmentCount = Number(financial?.adjustments?.count || 0);
+  const adjustmentNetForeign = Number(financial?.adjustments?.netForeign || 0);
+  const hasForeign = Boolean(financial?.hasForeign) || contractRate > 1;
+  const coverage = Number(guaranteeSummary?.coverage_percent ?? coveragePercent ?? 0);
+  const avgPayment = (contract.payments || []).length
+    ? Math.round(totalPaid / contract.payments.length)
+    : 0;
+
+  return (
+    <Stack spacing={2}>
+      {/* جمع‌بندی مالی */}
+      <Grid container spacing={1.5}>
+        <Grid item xs={12} sm={6} lg={3}>
+          <MoneyTile label="مبلغ پایه" value={money(contract.amount, currencyLabel)} color={theme.palette.text.secondary} />
         </Grid>
-        <Grid item xs={6} sm={4} lg={3}><DetailTile label="ارز قرارداد" value={ctx.currencyLabel} /></Grid>
-        <Grid item xs={6} sm={4} lg={3}>
-          <DetailTile label="نرخ تبدیل" value={ctx.contractRate > 1 ? formatPersianNumber(ctx.contractRate) : '—'} />
+        <Grid item xs={12} sm={6} lg={3}>
+          <MoneyTile label="مبلغ مؤثر (الحاقیه + تعدیل)" value={money(adjustedContractAmount, currencyLabel)}
+            hint={hasForeign ? money(adjustedContractAmountRial, 'ریال') : null}
+            color={theme.palette.warning.main} emphasize />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <MoneyTile label="پرداخت‌شده" value={money(totalPaid, 'ریال')}
+            hint={`${toPersianDigits(progressPercent)}٪ از مبلغ مؤثر`} color={theme.palette.success.main} />
+        </Grid>
+        <Grid item xs={12} sm={6} lg={3}>
+          <MoneyTile label="مانده مالی" value={money(remainingRial, 'ریال')}
+            hint={`${toPersianDigits(100 - progressPercent)}٪ باقی‌مانده`} color={theme.palette.error.main} />
         </Grid>
       </Grid>
-    </SectionCard>
-    <ContractFinanceStudioCard
-      financial={ctx.financial}
-      contractRate={ctx.contractRate}
-      currencyLabel={ctx.currencyLabel}
-      adjustedAmount={ctx.adjustedContractAmount}
-      adjustedAmountRial={ctx.adjustedContractAmountRial}
-      totalStatements={ctx.totalStatements}
-      totalPaid={ctx.totalPaid}
-      totalInvoices={ctx.totalInvoices}
-      remainingRial={ctx.remainingRial}
-      progressPercent={ctx.progressPercent}
-      adjustmentNetRial={ctx.adjustmentNetRial}
-      monthlyPayments={ctx.paymentMonths}
-    />
-  </Stack>
-);
+      {/* مشخصات مالی پایه */}
+      <SectionCard title="مشخصات مالی پایه" icon={DescriptionIcon} color={theme.palette.text.secondary} sx={{ mb: 0 }}>
+        <Grid container spacing={{ xs: 0, md: 2 }}>
+          <Grid item xs={12} md={6}>
+            <InfoRow label="مبلغ پایه" value={money(contract.amount, currencyLabel)} />
+            <InfoRow label="پیش‌پرداخت" value={money(ctx.advanceAmount, currencyLabel)} />
+            <InfoRow label="مبلغ تضمین" value={money(ctx.guaranteeAmount, currencyLabel)} />
+            <InfoRow label="درصد نگهداشت"
+              value={ctx.retentionPercent ? `${formatPersianNumber(ctx.retentionPercent)}٪` : '—'} />
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <InfoRow label="ارز قرارداد" value={currencyLabel} />
+            <InfoRow label="نرخ تبدیل" value={contractRate > 1 ? `${formatPersianNumber(contractRate)} ریال` : '—'} />
+            <InfoRow label="مبلغ مؤثر (ریال)" value={formatPersianNumber(adjustedContractAmountRial)} />
+            <InfoRow label="جمع فاکتورها" value={money(totalInvoices, 'ریال')} />
+          </Grid>
+        </Grid>
+      </SectionCard>
+
+      <Grid container spacing={2}>
+        {/* تفکیک صورت‌وضعیت */}
+        <Grid item xs={12} lg={7}>
+          <SectionCard title="تفکیک مالی صورت‌وضعیت‌ها" icon={DescriptionIcon} color={theme.palette.info.main} sx={{ mb: 0 }}>
+            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mb: 1 }}>
+              <Typography sx={{ fontSize: 11, color: MUTED }}>کارکرد</Typography>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>{formatPersianNumber(work)}</Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED }}>+ اضافات</Typography>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: theme.palette.success.dark }}>{formatPersianNumber(additions)}</Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED }}>− کسورات</Typography>
+              <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: theme.palette.error.dark }}>{formatPersianNumber(deductions)}</Typography>
+              <Typography sx={{ fontSize: 11, color: MUTED }}>= خالص</Typography>
+              <Typography sx={{ fontSize: 13, fontWeight: 900, color: theme.palette.info.dark }}>{formatPersianNumber(netStatements)}</Typography>
+            </Stack>
+            <Grid container spacing={{ xs: 0, md: 2 }}>
+              <Grid item xs={12} md={6}>
+                <FinanceRow label="کارکرد اجراشده" value={rial.work} percent={100} color={theme.palette.info.main} />
+                <FinanceRow label="اضافات (به‌جز مالیات)" value={rial.otherAdditions}
+                  percent={work ? (Number(rial.otherAdditions || 0) / baseScale) * 100 : 0} color={theme.palette.success.main} sign="+" />
+                <FinanceRow label="ارزش افزوده / مالیات" value={rial.vat}
+                  percent={work ? (Number(rial.vat || 0) / baseScale) * 100 : 0} color={theme.palette.success.main} sign="+" />
+                <FinanceRow label="حسن انجام کار" value={rial.retention}
+                  percent={work ? (Number(rial.retention || 0) / baseScale) * 100 : 0} color={theme.palette.error.main} sign="−" />
+                <FinanceRow label="پیش‌پرداخت کسرشده" value={rial.prepayment}
+                  percent={work ? (Number(rial.prepayment || 0) / baseScale) * 100 : 0} color={theme.palette.error.main} sign="−" />
+              </Grid>
+              <Grid item xs={12} md={6}>
+                <FinanceRow label="بیمه" value={rial.insurance}
+                  percent={work ? (Number(rial.insurance || 0) / baseScale) * 100 : 0} color={theme.palette.error.main} sign="−" />
+                <FinanceRow label="مصالح" value={rial.materials}
+                  percent={work ? (Number(rial.materials || 0) / baseScale) * 100 : 0} color={theme.palette.error.main} sign="−" />
+                <FinanceRow label="علی‌الحساب صورت‌وضعیت" value={rial.statementAdvance}
+                  percent={work ? (Number(rial.statementAdvance || 0) / baseScale) * 100 : 0} color={theme.palette.error.main} sign="−" />
+                <FinanceRow label="سایر علی‌الحساب و کسورات"
+                  value={Number(rial.otherAdvances || 0) + Number(rial.otherDeductions || 0)}
+                  percent={work ? ((Number(rial.otherAdvances || 0) + Number(rial.otherDeductions || 0)) / baseScale) * 100 : 0}
+                  color={theme.palette.error.main} sign="−" />
+                <Divider sx={{ my: 0.5 }} />
+                <FinanceRow label="خالص قابل پرداخت" value={netStatements} color={theme.palette.info.dark} strong />
+              </Grid>
+            </Grid>
+            <Typography sx={{ mt: 0.75, fontSize: 10.5, color: MUTED }}>
+              نسبت کسورات به کارکرد: {toPersianDigits(deductionRatio)}٪ · {toPersianDigits(financial?.count || 0)} صورت‌وضعیت ثبت‌شده
+            </Typography>
+          </SectionCard>
+        </Grid>
+        {/* شاخص‌های مالی */}
+        <Grid item xs={12} lg={5}>
+          <SectionCard title="شاخص‌های مالی" icon={DescriptionIcon} color={theme.palette.primary.main} sx={{ mb: 0 }}>
+            <MetricRow label="نسبت پرداخت به خالص صورت‌وضعیت" value={`${toPersianDigits(paidRatio)}٪`}
+              percent={paidRatio} color={theme.palette.success.main}
+              hint={`${formatPersianNumber(totalPaid)} از ${formatPersianNumber(netStatements)} ریال`} />
+            <MetricRow label="نسبت کسورات به کارکرد" value={`${toPersianDigits(deductionRatio)}٪`}
+              percent={deductionRatio} color={theme.palette.error.main}
+              hint={`${formatPersianNumber(deductions)} ریال کسورات`} />
+            <MetricRow label="پوشش تضامین" value={`${toPersianDigits(coverage)}٪`} percent={coverage}
+              color={theme.palette.primary.main}
+              hint={guaranteeSummary
+                ? `تأمین ${formatPersianNumber(guaranteeSummary.provided_total || 0)} از ${formatPersianNumber(guaranteeSummary.required_total || 0)} ریال`
+                : null} />
+            <MetricRow label="میانگین هر پرداخت" value={formatPersianNumber(avgPayment)}
+              hint={`${toPersianDigits((contract.payments || []).length)} پرداخت`} />
+            <MetricRow label="جمع فاکتورها" value={formatPersianNumber(totalInvoices)}
+              hint={`${toPersianDigits((contract.invoices || []).length)} فاکتور`} />
+            <MetricRow label="مانده مالی" value={`${formatPersianNumber(remainingRial)} ریال`}
+              color={theme.palette.error.dark} />
+          </SectionCard>
+        </Grid>
+      </Grid>
+
+      <Grid container spacing={2}>
+        {/* روند پرداخت */}
+        <Grid item xs={12} lg={7}>
+          <SectionCard title="روند پرداخت ماهانه" icon={DescriptionIcon} color={theme.palette.success.main} sx={{ mb: 0 }}>
+            {(paymentMonths || []).length ? (
+              <PaymentBars data={paymentMonths} color={theme.palette.success.main} />
+            ) : (
+              <EmptyState text="پرداختی برای این قرارداد ثبت نشده است." />
+            )}
+            <Typography sx={{ mt: 0.5, fontSize: 10.5, color: MUTED }}>
+              شش دورهٔ آخر · جمع پرداخت‌ها {formatPersianNumber(totalPaid)} ریال
+            </Typography>
+          </SectionCard>
+        </Grid>
+
+        {/* تعدیل و ارز */}
+        <Grid item xs={12} lg={5}>
+          <SectionCard title="تعدیل و معادل ارزی" icon={DescriptionIcon} color={theme.palette.secondary.main} sx={{ mb: 0 }}>
+            <MoneyTile label="تعدیل خالص (ریال)" value={formatPersianNumber(adjustmentNetRial)}
+              color={adjustmentNetRial < 0 ? theme.palette.error.main : theme.palette.success.main} />
+            <Box sx={{ mt: 1 }}>
+              <InfoRow label="تعداد تعدیل‌ها" value={toPersianDigits(adjustmentCount)} />
+              <InfoRow label="تعدیل خالص ارزی" value={hasForeign ? `${formatPersianNumber(adjustmentNetForeign)} ${currencyLabel}` : '—'} />
+              <InfoRow label="صورت‌وضعیت عادی" value={toPersianDigits(financial?.normalCount || 0)} />
+              <InfoRow label="نرخ تبدیل" value={contractRate > 1 ? `${formatPersianNumber(contractRate)} ریال` : '—'} />
+            </Box>
+            {hasForeign ? (
+              <Box sx={{ mt: 1 }}>
+                <Divider sx={{ mb: 0.75 }} />
+                <FinanceRow label={`کارکرد ارزی`} value={Number(foreign.work || 0)} color={theme.palette.info.main} />
+                <FinanceRow label={`خالص ارزی صورت‌وضعیت‌ها`} value={Number(foreign.net || 0)} color={theme.palette.info.dark} />
+              </Box>
+            ) : null}
+          </SectionCard>
+        </Grid>
+      </Grid>
+    </Stack>
+  );
+};
+
+/* ---------- الحاقیه‌ها ---------- */
+
+
 
 /* ---------- الحاقیه‌ها ---------- */
 
