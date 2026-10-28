@@ -650,14 +650,29 @@ const chartXAxisProps = {
   tick: chartAxisTick,
   tickMargin: 8,
 };
+/* برچسب محور عمودی: با direction=ltr و textAnchor=end همیشه سمت چپ خط محور می‌نشیند */
+const ChartYAxisTick = ({ x, y, payload }) => (
+  <text
+    x={x}
+    y={y}
+    dx={-10}
+    dy={4}
+    textAnchor="end"
+    direction="ltr"
+    fill="#475569"
+    fontSize={11}
+    fontFamily="inherit"
+  >
+    {chartAxisMoney(payload?.value)}
+  </text>
+);
+
 const chartYAxisProps = {
   orientation: 'left',
-  width: 80,
+  width: 86,
   axisLine: { stroke: '#cbd5e1', strokeWidth: 1 },
   tickLine: { stroke: '#cbd5e1' },
-  tick: chartAxisTick,
-  tickMargin: 6,
-  tickFormatter: chartAxisMoney,
+  tick: <ChartYAxisTick />,
 };
 const chartTooltipProps = {
   contentStyle: chartTooltipStyle,
@@ -855,10 +870,6 @@ const ContractFinancePage = () => {
     const end = Math.min(landingTotalPages, start + size);
     return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
   })();
-  const topRemaining = useMemo(
-    () => [...contractRows].sort((a, b) => b.remaining - a.remaining).slice(0, 6),
-    [contractRows],
-  );
 
   /* اندازه‌گیری ارتفاع ردیف‌های جدول فهرست */
   const tableScrollRef = useRef(null);
@@ -1425,7 +1436,7 @@ const ContractFinancePage = () => {
 
           {/* جدول قراردادها + کارت بیشترین مانده */}
           <Grid container spacing={2} alignItems="stretch">
-            <Grid item xs={12} lg={8}>
+            <Grid item xs={12}>
               <Paper elevation={0} sx={{
                 borderRadius: 'var(--hrms-table-radius, 16px)',
                 border: '1px solid', borderColor: cardBorderColor,
@@ -1469,62 +1480,6 @@ const ContractFinancePage = () => {
                     />
                   </>
                 )}
-              </Paper>
-            </Grid>
-
-            <Grid item xs={12} lg={4}>
-              <Paper elevation={0} sx={{
-                height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-                borderRadius: 'var(--hrms-table-radius, 16px)',
-                border: '1px solid', borderColor: cardBorderColor,
-                bgcolor: 'background.paper', boxShadow: 'none',
-              }}>
-                <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap
-                  sx={{ px: 1.25, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
-                  <TrendingUpIcon sx={{ fontSize: 16, color: CLR.balance }} />
-                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, flex: 1 }}>بیشترین مانده مالی</Typography>
-                  <Chip size="small" label={toPersianDigits(topRemaining.length)}
-                    sx={{ height: 18, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.balance, 0.1), color: CLR.balance }} />
-                </Stack>
-                <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>
-                  {topRemaining.length ? topRemaining.map((row) => (
-                    <Box
-                      key={row.contract.id}
-                      onClick={() => selectContract(row.contract)}
-                      sx={{
-                        display: 'flex', alignItems: 'center', gap: 0.75,
-                        px: 1.25, py: 0.85,
-                        borderBottom: '1px solid', borderColor: 'divider',
-                        cursor: 'pointer',
-                        '&:hover': { backgroundColor: tableTheme.hoverBg },
-                        '&:last-of-type': { borderBottom: 'none' },
-                      }}
-                    >
-                      <Box sx={{
-                        width: 26, height: 26, borderRadius: '8px', flexShrink: 0,
-                        bgcolor: alpha(CLR.balance, 0.08), color: CLR.balance,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <AccountBalanceWalletIcon sx={{ fontSize: 14 }} />
-                      </Box>
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                          {row.contract.subject || '—'}
-                        </Typography>
-                        <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                          {toPersianDigits(row.contract.number || '—')} · {formatPersianNumber(Math.round(row.workDone))}
-                        </Typography>
-                      </Box>
-                      <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: CLR.balance }}>
-                        {formatPersianNumber(Math.round(row.remaining))}
-                      </Typography>
-                    </Box>
-                  )) : (
-                    <Box sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography sx={{ fontSize: 11, color: MUTED }}>مانده‌ای برای نمایش نیست.</Typography>
-                    </Box>
-                  )}
-                </Box>
               </Paper>
             </Grid>
           </Grid>

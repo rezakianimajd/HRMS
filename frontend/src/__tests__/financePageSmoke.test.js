@@ -96,7 +96,7 @@ test('contract finance landing lists contracts with financial columns', async ()
   expect(container.textContent).toContain('مانده');
   expect(container.textContent).toContain('C-۱');
   expect(container.textContent).toContain('شرکت آزمایشی');
-  expect(container.textContent).toContain('بیشترین مانده مالی');
+  expect(container.textContent).not.toContain('مانده‌ای برای نمایش نیست');
   expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
   root.unmount();
 });
