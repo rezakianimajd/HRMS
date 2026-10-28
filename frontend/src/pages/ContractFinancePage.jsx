@@ -1434,7 +1434,7 @@ const ContractFinancePage = () => {
             ) : null}
           </Paper>
 
-          {/* جدول قراردادها + کارت بیشترین مانده */}
+          {/* جدول قراردادها — تمام عرض */}
           <Grid container spacing={2} alignItems="stretch">
             <Grid item xs={12}>
               <Paper elevation={0} sx={{
