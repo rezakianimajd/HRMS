@@ -8,7 +8,7 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import {
-  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line,
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend, Line, LineChart,
   Pie, PieChart, ResponsiveContainer, Tooltip as ReTooltip, XAxis, YAxis,
 } from 'recharts';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
@@ -239,7 +239,7 @@ const FinanceLandingTable = ({
           textOverflow: 'ellipsis',
         },
         '& thead th': {
-          textAlign: `${tableTheme.headerTextAlign} !important`,
+          textAlign: 'center !important',
           backgroundColor: 'var(--hrms-table-header-bg)',
           height: `${tableTheme.headerHeight}px`,
           fontSize: tableTheme.header.fontSize,
@@ -302,7 +302,7 @@ const FinanceLandingTable = ({
             <TableCell align="center" className="hrms-cell-center">
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
                 <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                  {money(row.amount, row.currency)}
+                  {row.amountLoaded ? money(row.amount, row.currency) : '—'}
                 </Typography>
               </Box>
             </TableCell>
@@ -558,7 +558,7 @@ const FinanceBreakdownTable = ({
 };
 
 /* ---------- کارت تحلیل ---------- */
-const AnalysisCard = ({ icon: Icon, title, hint, color = CLR.net, action, children, sx }) => (
+const AnalysisCard = ({ icon: Icon, title, color = CLR.net, action, children, sx }) => (
   <Paper elevation={0} sx={{
     height: '100%',
     borderRadius: 'var(--hrms-table-radius, 16px)',
@@ -578,7 +578,6 @@ const AnalysisCard = ({ icon: Icon, title, hint, color = CLR.net, action, childr
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>{title}</Typography>
-        {hint ? <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.2 }}>{hint}</Typography> : null}
       </Box>
       {action || null}
     </Stack>
@@ -593,10 +592,21 @@ const chartTooltipStyle = {
   borderRadius: 10,
   border: '1px solid rgba(148,163,184,0.35)',
   backgroundColor: 'rgba(255,255,255,0.98)',
+  boxShadow: '0 8px 20px rgba(15,23,42,0.08)',
 };
-const chartAxisTick = { fontSize: 11, fontFamily: 'inherit' };
-const legendStyle = { fontSize: 11, fontFamily: 'inherit' };
+const chartAxisTick = { fontSize: 11, fontFamily: 'inherit', fill: '#64748b' };
+const legendStyle = { fontSize: 11, fontFamily: 'inherit', paddingTop: 4 };
 const chartMoney = (value) => formatPersianNumber(Math.round(toNum(value)));
+const chartGrid = { stroke: 'rgba(148,163,184,0.22)', strokeDasharray: '4 4', vertical: false };
+const chartAxisProps = { tick: chartAxisTick, axisLine: false, tickLine: false, tickMargin: 8 };
+const chartTooltipProps = {
+  contentStyle: chartTooltipStyle,
+  itemStyle: { fontFamily: 'inherit' },
+  cursor: { fill: 'rgba(148,163,184,0.08)' },
+};
+const chartLegendProps = { align: 'right', iconType: 'circle', iconSize: 8, wrapperStyle: legendStyle };
+/* رنگ‌های حرفه‌ای برای اقلام کسورات/اضافات */
+const SERIES_COLORS = ['#be123c', '#f97316', '#7c3aed', '#0e7490', '#f59e0b', '#15803d', '#64748b'];
 
 
 /* =======================================================================
@@ -634,6 +644,7 @@ const ContractFinancePage = () => {
     queryFn: () => fetchAllPages('/external-contracts/'),
     staleTime: 3 * 60 * 1000,
   });
+  /* دو فهرست سبک‌تر که جدول را سریع می‌سازند؛ پاسخ سنگین قراردادها بعداً آن را کامل می‌کند */
   const statementsQuery = useQuery({
     queryKey: ['contracts-finance-statements'],
     queryFn: () => fetchAllPages('/contract-statements/'),
@@ -665,7 +676,6 @@ const ContractFinancePage = () => {
   });
   const contract = detailQuery.data || null;
   const scoped = Boolean(contractId);
-  const selectedContract = contractList.find((row) => String(row.id) === String(contractId)) || null;
 
   const selectContract = (row) => {
     if (!row?.id) return;
@@ -683,6 +693,34 @@ const ContractFinancePage = () => {
     paymentsQuery.refetch();
     if (scoped) detailQuery.refetch();
   };
+
+  /* ---- فهرست قراردادها: ابتدا از اسناد ساخته می‌شود و با پاسخ قراردادها کامل می‌گردد ---- */
+  const contractDirectory = useMemo(() => {
+    const map = new Map();
+    statementsAll.forEach((row) => {
+      const key = String(row.contract ?? '');
+      if (!key || key === 'null' || map.has(key)) return;
+      map.set(key, {
+        id: row.contract,
+        number: row.contract_number || '',
+        subject: row.contract_subject || '',
+        party_name: '',
+      });
+    });
+    paymentsAll.forEach((row) => {
+      const key = String(row.contract ?? '');
+      if (!key || key === 'null' || map.has(key)) return;
+      map.set(key, { id: row.contract, number: '', subject: row.contract_subject || '', party_name: '' });
+    });
+    contractList.forEach((row) => {
+      const key = String(row.id);
+      const partial = map.get(key);
+      map.set(key, partial ? { ...partial, ...row } : row);
+    });
+    return Array.from(map.values());
+  }, [statementsAll, paymentsAll, contractList]);
+
+  const selectedContract = contractDirectory.find((row) => String(row.id) === String(contractId)) || null;
 
   /* ---- جمع‌های مالی هر قرارداد برای صفحهٔ اول ---- */
   const landingAggregates = useMemo(() => {
@@ -706,7 +744,7 @@ const ContractFinancePage = () => {
 
   const contractRows = useMemo(() => {
     const term = search.trim().toLowerCase();
-    const rows = contractList
+    const rows = contractDirectory
       .filter((row) => {
         if (statusFilter && row.status !== statusFilter) return false;
         const agg = landingAggregates.get(String(row.id));
@@ -724,6 +762,7 @@ const ContractFinancePage = () => {
           workDone: agg.workDone,
           paid: agg.paid,
           remaining: Math.max(agg.net - agg.paid, 0),
+          amountLoaded: row.amount !== undefined && row.amount !== null,
           amount: toNum(row.effective_amount ?? row.amount),
           currency: normalizeCurrencyLabel(row.currency_name || row.currency_symbol),
         };
@@ -734,7 +773,7 @@ const ContractFinancePage = () => {
       if (sortBy === 'number') return String(a.contract.number || '').localeCompare(String(b.contract.number || ''), 'fa');
       return b.remaining - a.remaining;
     });
-  }, [contractList, landingAggregates, search, statusFilter, onlyWithFinance, sortBy]);
+  }, [contractDirectory, landingAggregates, search, statusFilter, onlyWithFinance, sortBy]);
 
 
   const landingPageSize = tableTheme.rowsPerPage;
@@ -1137,7 +1176,7 @@ const ContractFinancePage = () => {
     }
   };
 
-  const loading = contractsQuery.isLoading || (scoped && detailQuery.isLoading);
+  const loading = (contractsQuery.isLoading || statementsQuery.isLoading) && !contractDirectory.length;
 
 
   return (
@@ -1197,13 +1236,6 @@ const ContractFinancePage = () => {
           {msg.text}
         </Alert>
       ) : null}
-
-      {loading && !contractList.length ? (
-        <Paper elevation={0} sx={{ p: 6, textAlign: 'center', bgcolor: 'background.paper', border: '1px solid', borderColor: cardBorderColor, borderRadius: '16px' }}>
-          <CircularProgress size={28} />
-        </Paper>
-      ) : null}
-
 
       {!scoped ? (
         <>
@@ -1341,11 +1373,18 @@ const ContractFinancePage = () => {
                 px: `${cardPadX}px`, py: `${cardPadY}px`,
               }}>
                 {!contractRows.length ? (
-                  <Box sx={{ p: 5, textAlign: 'center' }}>
-                    <AccountBalanceWalletIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
-                    <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
-                  </Box>
+                  loading ? (
+                    <Box sx={{ p: 6, textAlign: 'center' }}>
+                      <CircularProgress size={26} />
+                      <Typography sx={{ fontSize: 11, color: MUTED, mt: 1 }}>در حال آماده‌سازی فهرست قراردادها…</Typography>
+                    </Box>
+                  ) : (
+                    <Box sx={{ p: 5, textAlign: 'center' }}>
+                      <AccountBalanceWalletIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                      <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
+                      <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
+                    </Box>
+                  )
                 ) : (
                   <>
                     <FinanceLandingTable
@@ -1533,19 +1572,9 @@ const ContractFinancePage = () => {
                 }}>
                   <ReceiptLongIcon sx={{ fontSize: 16 }} />
                 </Box>
-                <Box sx={{ flex: 1, minWidth: 180 }}>
-                  <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>جدول تفصیلی مالی صورت‌وضعیت‌ها</Typography>
-                  <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.2 }}>
-                    مشخصات قرارداد، کارکرد، اضافات، کسورات و جمع هر صورت‌وضعیت
-                  </Typography>
-                </Box>
-                <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-                  <Chip size="small" label="اضافات" sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.add, 0.1), color: CLR.add }} />
-                  <Chip size="small" label="کسورات" sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.ded, 0.1), color: CLR.ded }} />
-                  <Chip size="small" label="جمع" sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.net, 0.1), color: CLR.net }} />
-                  <Chip size="small" label={`${toPersianDigits(breakdownRows.length)} صورت‌وضعیت`}
-                    sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(theme.palette.text.primary, 0.06), color: 'text.secondary' }} />
-                </Stack>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK, flex: 1 }}>
+                  جدول تفصیلی مالی صورت‌وضعیت‌ها
+                </Typography>
               </Stack>
 
               {breakdownRows.length ? (
@@ -1569,8 +1598,8 @@ const ContractFinancePage = () => {
             <Grid container spacing={2}>
               {/* ۱) وضعیت مالی کل */}
               <Grid item xs={12} lg={6}>
-                <AnalysisCard icon={AssessmentIcon} title="۱. تحلیل وضعیت مالی کل قرارداد"
-                  hint="مقایسهٔ مبلغ قرارداد با کارکرد، خالص قابل پرداخت و پرداختی" color={CLR.net}
+                <AnalysisCard icon={AssessmentIcon} title="تحلیل وضعیت مالی کل قرارداد"
+                  color={CLR.net}
                   action={<Chip size="small" label={`کارکرد ${faPercent(workRatio)}`}
                     sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.work, 0.1), color: CLR.work }} />}>
                   <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 1, mb: 1.25 }}>
@@ -1583,9 +1612,10 @@ const ContractFinancePage = () => {
                       <Box key={label} sx={{
                         p: 0.9, borderRadius: '10px', bgcolor: alpha(color, 0.05),
                         border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0,
+                        textAlign: 'center',
                       }}>
-                        <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
-                        <Typography noWrap title={value} sx={{ fontSize: 12, fontWeight: 900, color, mt: 0.25 }}>{value}</Typography>
+                        <Typography sx={{ fontSize: 10.5, color: MUTED, textAlign: 'center' }}>{label}</Typography>
+                        <Typography noWrap title={value} sx={{ fontSize: 12, fontWeight: 900, color, mt: 0.25, textAlign: 'center' }}>{value}</Typography>
                       </Box>
                     ))}
                   </Box>
@@ -1599,13 +1629,14 @@ const ContractFinancePage = () => {
                                 { name: 'پرداخت‌شده', value: Math.round(totals.paid) },
                                 { name: 'مانده', value: Math.round(payableRemaining) },
                               ]}
-                              dataKey="value" nameKey="name" innerRadius={48} outerRadius={72} paddingAngle={2} startAngle={90} endAngle={450}
+                              dataKey="value" nameKey="name" innerRadius={48} outerRadius={72} paddingAngle={3}
+                              startAngle={90} endAngle={450} stroke="#fff" strokeWidth={2} cornerRadius={4}
                             >
                               <Cell fill={CLR.paid} />
                               <Cell fill={CLR.balance} />
                             </Pie>
-                            <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
-                            <Legend align="right" wrapperStyle={legendStyle} />
+                            <ReTooltip {...chartTooltipProps} formatter={chartMoney} />
+                            <Legend {...chartLegendProps} />
                           </PieChart>
                         </ResponsiveContainer>
                       </Box>
@@ -1632,28 +1663,30 @@ const ContractFinancePage = () => {
 
               {/* ۲) صورت‌وضعیت‌ها و پرداخت‌ها */}
               <Grid item xs={12} lg={6}>
-                <AnalysisCard icon={ReceiptLongIcon} title="۲. تحلیل صورت‌وضعیت‌ها و پرداخت‌ها"
-                  hint="کارکرد، خالص و پرداختی هر صورت‌وضعیت" color={CLR.work}
+                <AnalysisCard icon={ReceiptLongIcon} title="تحلیل صورت‌وضعیت‌ها و پرداخت‌ها"
+                  color={CLR.work}
                   action={<Chip size="small" label={`${toPersianDigits(breakdownRows.length)} سند`}
                     sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.work, 0.1), color: CLR.work }} />}>
                   {timeline.length ? (
                     <Box sx={{ height: 268 }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <ComposedChart data={timeline} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                          <XAxis dataKey="label" reversed tick={chartAxisTick} />
-                          <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                        <LineChart data={timeline} margin={{ top: 10, right: 12, left: 4, bottom: 4 }}>
+                          <CartesianGrid {...chartGrid} />
+                          <XAxis {...chartAxisProps} dataKey="label" />
+                          <YAxis {...chartAxisProps} width={86} tickFormatter={chartMoney} />
                           <ReTooltip
+                            {...chartTooltipProps}
                             formatter={chartMoney}
                             labelFormatter={(label, payload) => payload?.[0]?.payload?.title || label}
-                            contentStyle={chartTooltipStyle}
-                            itemStyle={{ fontFamily: 'inherit' }}
                           />
-                          <Legend align="right" wrapperStyle={legendStyle} />
-                          <Bar dataKey="gross" name="کارکرد" fill={CLR.work} radius={[3, 3, 0, 0]} maxBarSize={22} />
-                          <Bar dataKey="net" name="خالص" fill={CLR.net} radius={[3, 3, 0, 0]} maxBarSize={22} />
-                          <Line type="monotone" dataKey="paid" name="پرداختی" stroke={CLR.paid} strokeWidth={2} dot={{ r: 2 }} />
-                        </ComposedChart>
+                          <Legend {...chartLegendProps} />
+                          <Line type="monotone" dataKey="gross" name="کارکرد" stroke={CLR.work} strokeWidth={2.4}
+                            dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                          <Line type="monotone" dataKey="net" name="خالص" stroke={CLR.net} strokeWidth={2.4}
+                            dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                          <Line type="monotone" dataKey="paid" name="پرداختی" stroke={CLR.paid} strokeWidth={2.4}
+                            dot={false} activeDot={{ r: 4, strokeWidth: 0 }} strokeDasharray="5 3" />
+                        </LineChart>
                       </ResponsiveContainer>
                     </Box>
                   ) : <EmptyState icon={ReceiptLongIcon} text="صورت‌وضعیتی برای تحلیل ثبت نشده است." />}
@@ -1665,20 +1698,20 @@ const ContractFinancePage = () => {
 
               {/* ۳) تخصیص مالی بین پروژه‌ها */}
               <Grid item xs={12} lg={6}>
-                <AnalysisCard icon={PieChartIcon} title="۳. تحلیل تخصیص مالی بین پروژه‌ها"
-                  hint="سهم هر پروژه از مبلغ مؤثر قرارداد" color={CLR.rate}>
+                <AnalysisCard icon={PieChartIcon} title="تحلیل تخصیص مالی بین پروژه‌ها"
+                  color={CLR.rate}>
                   <Grid container spacing={1.5} alignItems="center">
                     <Grid item xs={12} sm={6}>
                       <Box sx={{ height: 190 }}>
                         <ResponsiveContainer width="100%" height="100%">
                           <PieChart>
                             <Pie data={allocationRows} dataKey="amount" nameKey="name" innerRadius={44} outerRadius={70}
-                              paddingAngle={2} startAngle={90} endAngle={450}>
+                              paddingAngle={3} startAngle={90} endAngle={450} stroke="#fff" strokeWidth={2} cornerRadius={4}>
                               {allocationRows.map((row, index) => (
                                 <Cell key={row.name} fill={['#2563eb', '#7c3aed', '#0f766e', '#b45309', '#be123c', '#0891b2'][index % 6]} />
                               ))}
                             </Pie>
-                            <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                            <ReTooltip {...chartTooltipProps} formatter={chartMoney} />
                           </PieChart>
                         </ResponsiveContainer>
                       </Box>
@@ -1709,8 +1742,8 @@ const ContractFinancePage = () => {
 
               {/* ۴) پیش‌پرداخت و کسورات */}
               <Grid item xs={12} lg={6}>
-                <AnalysisCard icon={LockIcon} title="۴. تحلیل پیش‌پرداخت و کسورات"
-                  hint="تفکیک کسورات صورت‌وضعیت‌ها و وضعیت تسویهٔ پیش‌پرداخت" color={CLR.ded}
+                <AnalysisCard icon={LockIcon} title="تحلیل پیش‌پرداخت و کسورات"
+                  color={CLR.ded}
                   action={<Chip size="small" label={`جمع کسورات ${formatPersianNumber(Math.round(totals.deductionsTotal))}`}
                     sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.ded, 0.1), color: CLR.ded }} />}>
                   <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1.25 }}>
@@ -1719,20 +1752,27 @@ const ContractFinancePage = () => {
                       ['تسویه‌شده (کسورات)', formatPersianNumber(Math.round(prepaymentAmortized)), CLR.ok],
                       ['مانده پیش‌پرداخت', formatPersianNumber(Math.round(prepaymentRemaining)), CLR.warn],
                     ].map(([label, value, color]) => (
-                      <Box key={label} sx={{ p: 0.8, borderRadius: '10px', bgcolor: alpha(color, 0.05), border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 10, color: MUTED }}>{label}</Typography>
-                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color, mt: 0.2 }}>{value}</Typography>
+                      <Box key={label} sx={{
+                        p: 0.8, borderRadius: '10px', bgcolor: alpha(color, 0.05),
+                        border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0, textAlign: 'center',
+                      }}>
+                        <Typography sx={{ fontSize: 10, color: MUTED, textAlign: 'center' }}>{label}</Typography>
+                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color, mt: 0.2, textAlign: 'center' }}>{value}</Typography>
                       </Box>
                     ))}
                   </Box>
                   <Box sx={{ height: 210 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={deductionBuckets} layout="vertical" margin={{ top: 4, right: 12, left: 12, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                        <XAxis type="number" tick={chartAxisTick} tickFormatter={chartMoney} />
-                        <YAxis type="category" dataKey="label" orientation="right" width={126} tick={chartAxisTick} />
-                        <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
-                        <Bar dataKey="value" name="مبلغ کسورات" fill={CLR.ded} radius={[0, 3, 3, 0]} maxBarSize={16} />
+                      <BarChart data={deductionBuckets} layout="vertical" margin={{ top: 4, right: 16, left: 4, bottom: 4 }}>
+                        <CartesianGrid {...chartGrid} vertical horizontal={false} />
+                        <XAxis {...chartAxisProps} type="number" tickFormatter={chartMoney} />
+                        <YAxis {...chartAxisProps} type="category" dataKey="label" width={132} />
+                        <ReTooltip {...chartTooltipProps} formatter={chartMoney} />
+                        <Bar dataKey="value" name="مبلغ کسورات" radius={[0, 6, 6, 0]} maxBarSize={18}>
+                          {deductionBuckets.map((row, index) => (
+                            <Cell key={row.key} fill={SERIES_COLORS[index % SERIES_COLORS.length]} />
+                          ))}
+                        </Bar>
                       </BarChart>
                     </ResponsiveContainer>
                   </Box>
@@ -1747,8 +1787,8 @@ const ContractFinancePage = () => {
 
               {/* ۵) ضمانت‌نامه‌ها و ریسک مالی */}
               <Grid item xs={12} lg={6}>
-                <AnalysisCard icon={LockIcon} title="۵. تحلیل ضمانت‌نامه‌ها و ریسک مالی"
-                  hint="پوشش تضامین در برابر تعهدات قرارداد" color={CLR.risk}
+                <AnalysisCard icon={LockIcon} title="تحلیل ضمانت‌نامه‌ها و ریسک مالی"
+                  color={CLR.risk}
                   action={<Chip size="small"
                     label={guaranteeCoverage >= 100 ? 'ریسک پایین' : guaranteeCoverage >= 60 ? 'ریسک متوسط' : 'ریسک بالا'}
                     sx={{
@@ -1762,22 +1802,25 @@ const ContractFinancePage = () => {
                       ['تضامین ثبت‌شده', formatPersianNumber(Math.round(guaranteeProvidedTotal)), CLR.ok],
                       ['کسری پوشش', formatPersianNumber(Math.round(Math.max(0, guaranteeRequiredTotal - guaranteeProvidedTotal))), CLR.risk],
                     ].map(([label, value, color]) => (
-                      <Box key={label} sx={{ p: 0.8, borderRadius: '10px', bgcolor: alpha(color, 0.05), border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 10, color: MUTED }}>{label}</Typography>
-                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color, mt: 0.2 }}>{value}</Typography>
+                      <Box key={label} sx={{
+                        p: 0.8, borderRadius: '10px', bgcolor: alpha(color, 0.05),
+                        border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0, textAlign: 'center',
+                      }}>
+                        <Typography sx={{ fontSize: 10, color: MUTED, textAlign: 'center' }}>{label}</Typography>
+                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color, mt: 0.2, textAlign: 'center' }}>{value}</Typography>
                       </Box>
                     ))}
                   </Box>
                   <Box sx={{ height: 210 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={guaranteeChart} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                        <XAxis dataKey="name" reversed tick={chartAxisTick} interval={0} height={42} />
-                        <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
-                        <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
-                        <Legend align="right" wrapperStyle={legendStyle} />
-                        <Bar dataKey="required" name="تعهد" fill={CLR.contract} radius={[3, 3, 0, 0]} maxBarSize={26} />
-                        <Bar dataKey="provided" name="ثبت‌شده" fill={CLR.ok} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                      <BarChart data={guaranteeChart} margin={{ top: 8, right: 12, left: 4, bottom: 4 }} barCategoryGap="28%">
+                        <CartesianGrid {...chartGrid} />
+                        <XAxis {...chartAxisProps} dataKey="name" interval={0} height={42} />
+                        <YAxis {...chartAxisProps} width={86} tickFormatter={chartMoney} />
+                        <ReTooltip {...chartTooltipProps} formatter={chartMoney} />
+                        <Legend {...chartLegendProps} />
+                        <Bar dataKey="required" name="تعهد" fill={CLR.contract} radius={[6, 6, 0, 0]} maxBarSize={24} />
+                        <Bar dataKey="provided" name="ثبت‌شده" fill={CLR.ok} radius={[6, 6, 0, 0]} maxBarSize={24} />
                       </BarChart>
                     </ResponsiveContainer>
                   </Box>
@@ -1792,8 +1835,8 @@ const ContractFinancePage = () => {
 
               {/* ۶) انحراف مبلغ و پیش‌بینی هزینه */}
               <Grid item xs={12} lg={6}>
-                <AnalysisCard icon={TrendingUpIcon} title="۶. تحلیل انحراف مبلغ قرارداد و پیش‌بینی هزینه نهایی"
-                  hint="مبلغ پایه، الحاقیه‌ها، کارکرد و پیش‌بینی هزینه بر پایهٔ آهنگ کارکرد" color={CLR.contract}
+                <AnalysisCard icon={TrendingUpIcon} title="تحلیل انحراف مبلغ قرارداد و پیش‌بینی هزینه نهایی"
+                  color={CLR.contract}
                   action={<Chip size="small"
                     label={`انحراف ${faPercent(Math.abs(forecastDeviation))} ${forecastDeviation >= 0 ? 'بیش‌برآورد' : 'کم‌برآورد'}`}
                     sx={{
@@ -1803,12 +1846,12 @@ const ContractFinancePage = () => {
                     }} />}>
                   <Box sx={{ height: 206 }}>
                     <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={deviationRows} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                        <XAxis dataKey="name" reversed tick={chartAxisTick} interval={0} height={42} />
-                        <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
-                        <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
-                        <Bar dataKey="value" name="مبلغ (ریال)" radius={[3, 3, 0, 0]} maxBarSize={34}>
+                      <BarChart data={deviationRows} margin={{ top: 8, right: 12, left: 4, bottom: 4 }} barCategoryGap="30%">
+                        <CartesianGrid {...chartGrid} />
+                        <XAxis {...chartAxisProps} dataKey="name" interval={0} height={42} />
+                        <YAxis {...chartAxisProps} width={86} tickFormatter={chartMoney} />
+                        <ReTooltip {...chartTooltipProps} formatter={chartMoney} />
+                        <Bar dataKey="value" name="مبلغ (ریال)" radius={[6, 6, 0, 0]} maxBarSize={32}>
                           {deviationRows.map((row, index) => (
                             <Cell
                               key={row.name}
@@ -1825,9 +1868,12 @@ const ContractFinancePage = () => {
                       ['سپری‌شده', `${toPersianDigits(elapsedDays)} روز`],
                       ['آهنگ کارکرد روزانه', formatPersianNumber(Math.round(burnPerDay))],
                     ].map(([label, value]) => (
-                      <Box key={label} sx={{ p: 0.7, borderRadius: '9px', bgcolor: alpha(CLR.contract, 0.04), border: `1px solid ${alpha(CLR.contract, 0.14)}`, minWidth: 0 }}>
-                        <Typography sx={{ fontSize: 10, color: MUTED }}>{label}</Typography>
-                        <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: INK, mt: 0.15 }}>{value}</Typography>
+                      <Box key={label} sx={{
+                        p: 0.7, borderRadius: '9px', bgcolor: alpha(CLR.contract, 0.04),
+                        border: `1px solid ${alpha(CLR.contract, 0.14)}`, minWidth: 0, textAlign: 'center',
+                      }}>
+                        <Typography sx={{ fontSize: 10, color: MUTED, textAlign: 'center' }}>{label}</Typography>
+                        <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: INK, mt: 0.15, textAlign: 'center' }}>{value}</Typography>
                       </Box>
                     ))}
                   </Box>
@@ -1837,35 +1883,37 @@ const ContractFinancePage = () => {
 
               {/* ۷) جریان نقدی قرارداد */}
               <Grid item xs={12} lg={7}>
-                <AnalysisCard icon={TimelineIcon} title="۷. تحلیل جریان نقدی قرارداد"
-                  hint="روند تجمعی کارکرد، خالص صورت‌وضعیت و پرداختی" color={CLR.paid}>
+                <AnalysisCard icon={TimelineIcon} title="تحلیل جریان نقدی قرارداد"
+                  color={CLR.paid}>
                   {timeline.length ? (
                     <Box sx={{ height: 262 }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={timeline} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
+                        <AreaChart data={timeline} margin={{ top: 10, right: 12, left: 4, bottom: 4 }}>
                           <defs>
                             <linearGradient id="cashWork" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={CLR.work} stopOpacity={0.25} />
-                              <stop offset="100%" stopColor={CLR.work} stopOpacity={0} />
+                              <stop offset="0%" stopColor={CLR.work} stopOpacity={0.28} />
+                              <stop offset="100%" stopColor={CLR.work} stopOpacity={0.02} />
                             </linearGradient>
                             <linearGradient id="cashPaid" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="0%" stopColor={CLR.paid} stopOpacity={0.25} />
-                              <stop offset="100%" stopColor={CLR.paid} stopOpacity={0} />
+                              <stop offset="0%" stopColor={CLR.paid} stopOpacity={0.28} />
+                              <stop offset="100%" stopColor={CLR.paid} stopOpacity={0.02} />
                             </linearGradient>
                           </defs>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                          <XAxis dataKey="label" reversed tick={chartAxisTick} />
-                          <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                          <CartesianGrid {...chartGrid} />
+                          <XAxis {...chartAxisProps} dataKey="label" />
+                          <YAxis {...chartAxisProps} width={86} tickFormatter={chartMoney} />
                           <ReTooltip
+                            {...chartTooltipProps}
                             formatter={chartMoney}
                             labelFormatter={(label, payload) => payload?.[0]?.payload?.title || label}
-                            contentStyle={chartTooltipStyle}
-                            itemStyle={{ fontFamily: 'inherit' }}
                           />
-                          <Legend align="right" wrapperStyle={legendStyle} />
-                          <Area type="monotone" dataKey="cumWork" name="کارکرد تجمعی" stroke={CLR.work} strokeWidth={2} fill="url(#cashWork)" />
-                          <Area type="monotone" dataKey="cumNet" name="خالص تجمعی" stroke={CLR.net} strokeWidth={2} fillOpacity={0} />
-                          <Area type="monotone" dataKey="cumPaid" name="پرداخت تجمعی" stroke={CLR.paid} strokeWidth={2} fill="url(#cashPaid)" />
+                          <Legend {...chartLegendProps} />
+                          <Area type="monotone" dataKey="cumWork" name="کارکرد تجمعی" stroke={CLR.work} strokeWidth={2.4}
+                            fill="url(#cashWork)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
+                          <Area type="monotone" dataKey="cumNet" name="خالص تجمعی" stroke={CLR.net} strokeWidth={2}
+                            fillOpacity={0} dot={false} activeDot={{ r: 3, strokeWidth: 0 }} />
+                          <Area type="monotone" dataKey="cumPaid" name="پرداخت تجمعی" stroke={CLR.paid} strokeWidth={2.4}
+                            fill="url(#cashPaid)" dot={false} activeDot={{ r: 4, strokeWidth: 0 }} />
                         </AreaChart>
                       </ResponsiveContainer>
                     </Box>
@@ -1876,18 +1924,22 @@ const ContractFinancePage = () => {
               {/* پرداخت‌های ماهانه */}
               <Grid item xs={12} lg={5}>
                 <AnalysisCard icon={PaymentsIcon} title="پرداخت‌های ماهانه"
-                  hint="مجموع پرداخت هر ماه شمسی" color={CLR.paid}
+                  color={CLR.paid}
                   action={<Chip size="small" label={money(totalPaidAll, currencyLabel)}
                     sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.paid, 0.1), color: CLR.paid }} />}>
                   {monthlyPayments.length ? (
                     <Box sx={{ height: 262 }}>
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={monthlyPayments} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
-                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
-                          <XAxis dataKey="month" reversed tick={chartAxisTick} />
-                          <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
-                          <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
-                          <Bar dataKey="amount" name="پرداخت" fill={CLR.paid} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                        <BarChart data={monthlyPayments} margin={{ top: 10, right: 12, left: 4, bottom: 4 }} barCategoryGap="24%">
+                          <CartesianGrid {...chartGrid} />
+                          <XAxis {...chartAxisProps} dataKey="month" />
+                          <YAxis {...chartAxisProps} width={86} tickFormatter={chartMoney} />
+                          <ReTooltip {...chartTooltipProps} formatter={chartMoney} />
+                          <Bar dataKey="amount" name="پرداخت" radius={[6, 6, 0, 0]} maxBarSize={26}>
+                            {monthlyPayments.map((row) => (
+                              <Cell key={row.month} fill={CLR.paid} fillOpacity={0.9} />
+                            ))}
+                          </Bar>
                         </BarChart>
                       </ResponsiveContainer>
                     </Box>
@@ -1898,8 +1950,8 @@ const ContractFinancePage = () => {
 
               {/* ۸) مغایرت‌ها و کنترل‌های مالی */}
               <Grid item xs={12}>
-                <AnalysisCard icon={ErrorOutlineIcon} title="۸. تحلیل مغایرت‌ها و کنترل‌های مالی"
-                  hint="بررسی خودکار سازگاری اسناد، پرداخت‌ها، کسورات و تضامین" color={warningCount ? CLR.warn : CLR.ok}
+                <AnalysisCard icon={ErrorOutlineIcon} title="تحلیل مغایرت‌ها و کنترل‌های مالی"
+                  color={warningCount ? CLR.warn : CLR.ok}
                   action={<Chip size="small"
                     label={warningCount ? `${toPersianDigits(warningCount)} هشدار` : 'بدون مغایرت'}
                     sx={{
