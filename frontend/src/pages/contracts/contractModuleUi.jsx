@@ -366,12 +366,12 @@ export const useRowHeight = (tableTheme, rowCount) => {
     setRowPx((previous) => (previous === nextRow ? previous : nextRow));
     setHeadPx((previous) => (previous === nextHead ? previous : nextHead));
   };
-  useLayoutEffect(measure, [rowCount, tableTheme.rowHeight, tableTheme.headerHeight]); // eslint-disable-line react-hooks/exhaustive-deps
+  useLayoutEffect(measure, [rowCount, tableTheme.rowHeight, tableTheme.headerHeight]);
   React.useEffect(() => {
     const onResize = () => measure();
     window.addEventListener('resize', onResize);
     return () => window.removeEventListener('resize', onResize);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
   const rowHeight = rowPx > 0 ? rowPx : tableTheme.rowHeight;
   const headHeight = headPx > 0 ? headPx : tableTheme.headerHeight;
   return { ref, rowHeight, tableHeight: Math.round(headHeight + rowHeight * tableTheme.visibleRows) };
@@ -380,7 +380,7 @@ export const useRowHeight = (tableTheme, rowCount) => {
 export const useModuleTableState = (total, pageSize, deps = []) => {
   const [page, setPage] = useState(0);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
-  React.useEffect(() => { setPage(0); }, deps); // eslint-disable-line react-hooks/exhaustive-deps
+  React.useEffect(() => { setPage(0); }, deps);
   React.useEffect(() => {
     if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
   }, [page, totalPages]);
@@ -401,3 +401,136 @@ export const moneyCell = (value, color) => (
     {formatPersianNumber(Math.round(Number(value) || 0))}
   </Typography>
 );
+
+/* نوار ابزار استاندارد ماژول‌های مالی قرارداد */
+export const ModuleToolbar = ({
+  theme, search, onSearch, searchPlaceholder, sort, sortOptions, onSort,
+  filters = [], activeChips = [], activeFilterCount = 0, onReset, filtersOpen, setFiltersOpen, children,
+}) => {
+  const toolbar = theme.toolbar;
+  const chipsSx = toolbar.chipStyle === 'outlined'
+    ? { bgcolor: 'transparent', border: `1px solid ${toolbar.chipBorder}`, color: toolbar.primary, fontWeight: 700 }
+    : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontWeight: 700, border: `1px solid ${toolbar.chipBorder}` };
+  return (
+    <Paper sx={{
+      p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider',
+      bgcolor: 'background.paper', boxShadow: 'none',
+    }}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
+        <TextField
+          size="small"
+          placeholder={searchPlaceholder}
+          value={search}
+          onChange={(event) => onSearch(event.target.value)}
+          sx={{
+            flex: toolbar.searchWidth === '100%' ? 1 : '0 0 auto',
+            width: toolbar.searchWidth === '100%' ? { xs: '100%', sm: 'auto' } : `${toolbar.searchWidth}px`,
+            '& .MuiOutlinedInput-root': {
+              height: `${toolbar.searchHeight}px`,
+              borderRadius: `${toolbar.searchRadius}px`,
+              bgcolor: toolbar.searchBg,
+              fontSize: 12.5,
+            },
+          }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }}
+        />
+        <TextField
+          select
+          size="small"
+          value={sort}
+          onChange={(event) => onSort(event.target.value)}
+          sx={{
+            flex: '0 0 auto',
+            minWidth: { xs: '100%', sm: 176 },
+            '& .MuiOutlinedInput-root': {
+              height: `${toolbar.searchHeight}px`,
+              borderRadius: `${toolbar.searchRadius}px`,
+              fontSize: 12.5,
+            },
+            '& .MuiSelect-select': { paddingLeft: '30px !important', paddingRight: '10px !important' },
+          }}
+          InputProps={{ startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment> }}
+          SelectProps={{ inputProps: { 'aria-label': 'ترتیب نمایش' }, IconComponent: SortArrow }}
+        >
+          {sortOptions.map((option) => (
+            <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>{option.label}</MenuItem>
+          ))}
+        </TextField>
+        <Button
+          variant={toolbar.filtersVariant}
+          onClick={() => setFiltersOpen(!filtersOpen)}
+          startIcon={toolbar.filtersIconPosition === 'start' ? <FilterListIcon fontSize="small" /> : null}
+          endIcon={toolbar.filtersIconPosition === 'end' ? <FilterListIcon fontSize="small" /> : null}
+          aria-expanded={filtersOpen}
+          sx={{
+            height: `${toolbar.searchHeight}px !important`,
+            minHeight: `${toolbar.searchHeight}px !important`,
+            maxHeight: `${toolbar.searchHeight}px !important`,
+            alignSelf: 'center', py: 0, boxSizing: 'border-box',
+            borderRadius: `${toolbar.filtersRadius}px`,
+            fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'auto', px: 2,
+          }}
+        >
+          {toolbar.filtersLabel}
+          {toolbar.showFiltersCount && activeFilterCount > 0 ? (
+            <Chip size="small" label={toPersianDigits(activeFilterCount)}
+              sx={{
+                ml: 0.75, height: 18, fontSize: 11, fontWeight: 800,
+                bgcolor: toolbar.filtersVariant === 'contained' ? 'rgba(255,255,255,0.24)' : toolbar.chipBg,
+                color: toolbar.filtersVariant === 'contained' ? '#fff' : toolbar.primary,
+              }} />
+          ) : null}
+        </Button>
+        {toolbar.showReset && (activeFilterCount > 0 || search) ? (
+          <Button size="small" variant="text" onClick={onReset}
+            sx={{ height: `${toolbar.searchHeight}px`, minHeight: `${toolbar.searchHeight}px`, alignSelf: 'center', py: 0, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+            {toolbar.resetLabel}
+          </Button>
+        ) : null}
+        {children}
+      </Stack>
+
+      <Collapse in={filtersOpen} timeout={180} unmountOnExit>
+        <Box sx={{
+          mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider',
+          bgcolor: toolbar.panelBg,
+          borderRadius: `${toolbar.panelRadius}px`,
+          p: `${toolbar.panelPadding}px`,
+        }}>
+          <Box sx={{
+            display: 'grid',
+            gridTemplateColumns: { xs: '1fr', sm: toolbar.panelGrid },
+            gap: `${toolbar.panelGap}px`,
+            alignItems: 'end',
+          }}>
+            {filters.map((filter) => (
+              <FilterSelect
+                key={filter.label}
+                label={filter.label}
+                value={filter.value}
+                options={filter.options}
+                onChange={filter.onChange}
+                labelsPosition={toolbar.labelsPosition}
+                radius={toolbar.filtersRadius}
+              />
+            ))}
+            {toolbar.showReset ? (
+              <Button variant="text" size="small" onClick={onReset}
+                sx={{ fontSize: 12.5, justifySelf: 'start', height: `${toolbar.searchHeight - 6}px` }}>
+                بازنشانی فیلترها
+              </Button>
+            ) : null}
+          </Box>
+        </Box>
+      </Collapse>
+
+      {toolbar.showActiveChips && activeChips.length > 0 ? (
+        <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+          {activeChips.map((chip) => (
+            <Chip key={chip.key} size="small" label={chip.label} onDelete={chip.clear} sx={chipsSx} />
+          ))}
+        </Stack>
+      ) : null}
+    </Paper>
+  );
+};

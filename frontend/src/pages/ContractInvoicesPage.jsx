@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -24,28 +24,24 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
-import { getJalaliParts } from '../core/utils/dateUtils';
+import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
-import { ColumnChart } from '../core/components/charts/Charts';
-import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { INK, MUTED } from './accounting/AccountingDashboardUI';
+import { INVOICE_ACCENT, InvoiceDetailDrawer, InvoiceEditorDialog, invoiceMetrics, invoiceStatus } from './contracts/InvoiceWorkspaceUI';
 import {
-  INVOICE_ACCENT, InvoiceCard, InvoiceContractCard, InvoiceDetailDrawer,
-  InvoiceEditorDialog, InvoiceFinancialCard, InvoiceLanding, InvoiceStatusNav,
-  InvoiceTable, invoiceCurrency, invoiceMetrics, invoiceStatus,
-} from './contracts/InvoiceWorkspaceUI';
+  ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
+  useModuleTableState, useModuleTheme, useRowHeight,
+} from './contracts/contractModuleUi';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 
-const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 const GREEN = '#0f766e';
 const AMBER = '#b45309';
 const RED = '#be123c';
 const BLUE = '#2563eb';
 const n = (value) => Number(value) || 0;
-const compactMoney = (value, currency = '') => {
-  const amount = Number(value) || 0;
-  if (Math.abs(amount) >= 1000000000) return `${formatPersianNumber((amount / 1000000000).toFixed(1))} میلیارد ${currency}`.trim();
-  if (Math.abs(amount) >= 1000000) return `${formatPersianNumber((amount / 1000000).toFixed(1))} میلیون ${currency}`.trim();
-  return `${formatPersianNumber(amount)} ${currency}`.trim();
-};
 const EMPTY = {
   id: null, contract: '', number: '', subject: '', date: '', due_date: '',
   currency: '', amount: 0, vat: 0, is_paid: false, description: '',
@@ -53,7 +49,7 @@ const EMPTY = {
 
 const ContractInvoicesPage = () => {
   const qc = useQueryClient();
-  const theme = useTheme();
+  const moduleTheme = useModuleTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const urlContract = searchParams.get('contract') || '';
@@ -61,7 +57,7 @@ const ContractInvoicesPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [view, setView] = useState('cards');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [dialog, setDialog] = useState(false);
   const [form, setForm] = useState(EMPTY);
@@ -110,9 +106,6 @@ const ContractInvoicesPage = () => {
     selectedContract?.currency_name || selectedContract?.currency_symbol
     || scopedList[0]?.currency_name || scopedList[0]?.currency_symbol || 'ریال',
   );
-  const landingCurrency = normalizeCurrencyLabel(
-    contractList[0]?.currency_name || contractList[0]?.currency_symbol || 'ریال',
-  );
 
   const counts = useMemo(() => {
     const next = { all: scopedList.length, paid: 0, pending: 0, overdue: 0 };
@@ -136,14 +129,6 @@ const ContractInvoicesPage = () => {
     };
   }, [scopedList, paidByInvoice, counts]);
 
-  const dueRows = useMemo(
-    () => [...allInvoices]
-      .filter((row) => !row.is_paid)
-      .sort((a, b) => String(a.due_date || a.date || '9999').localeCompare(String(b.due_date || b.date || '9999')))
-      .slice(0, 6),
-    [allInvoices],
-  );
-
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
     let result = scopedList.filter((row) => {
@@ -161,35 +146,33 @@ const ContractInvoicesPage = () => {
     return result;
   }, [scopedList, search, statusFilter, sortBy, paidByInvoice]);
 
-  const monthlyData = useMemo(() => {
-    const buckets = new Map();
-    scopedList.forEach((row) => {
-      if (!row.date) return;
-      const parts = getJalaliParts(row.date);
-      if (!parts) return;
-      const key = `${parts[0]}-${String(parts[1]).padStart(2, '0')}`;
-      buckets.set(key, (buckets.get(key) || 0) + invoiceMetrics(row, paidByInvoice[String(row.id)]).total);
-    });
-    return [...buckets.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-6)
-      .map(([key, value]) => {
-        const month = Number(key.split('-')[1]);
-        return { label: MONTH_NAMES[month - 1] || key, value };
-      });
-  }, [scopedList, paidByInvoice]);
-
-  const totalAmountAll = useMemo(
-    () => allInvoices.reduce((sum, row) => sum + invoiceMetrics(row, 0).total, 0),
-    [allInvoices],
+  const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
+    filtered.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize],
   );
+  const pagedInvoices = useMemo(
+    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [filtered, page, scopedPageSize],
+  );
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedInvoices.length);
+  const statusOptions = [
+    { value: 'all', label: `همه (${formatPersianNumber(counts.all)})` },
+    { value: 'paid', label: `پرداخت‌شده (${formatPersianNumber(counts.paid)})` },
+    { value: 'pending', label: `در انتظار (${formatPersianNumber(counts.pending)})` },
+    { value: 'overdue', label: `سررسید گذشته (${formatPersianNumber(counts.overdue)})` },
+  ];
+  const activeFilterCount = statusFilter !== 'all' ? 1 : 0;
+  const statusLabelOf = (key) => ({ paid: 'پرداخت‌شده', pending: 'در انتظار پرداخت', overdue: 'سررسید گذشته' }[key] || key);
+  const activeChips = statusFilter !== 'all'
+    ? [{ key: 'status', label: `وضعیت: ${statusLabelOf(statusFilter)}`, clear: () => setStatusFilter('all') }]
+    : [];
+  const scoped = Boolean(contractId);
 
   useEffect(() => { setContractId(urlContract); }, [urlContract]);
   useEffect(() => {
     setSearch('');
     setStatusFilter('all');
     setSortBy('newest');
-    setView('cards');
     setDetail(null);
   }, [contractId]);
 
@@ -201,10 +184,6 @@ const ContractInvoicesPage = () => {
   const clearContract = () => {
     setContractId('');
     setSearchParams({});
-  };
-  const selectContractById = (id) => {
-    const target = contractList.find((contract) => String(contract.id) === String(id));
-    if (target) selectContract(target);
   };
 
   const invalidateAll = () => {
@@ -343,148 +322,300 @@ const ContractInvoicesPage = () => {
   if (isLoading || contractsLoading) {
     return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
   }
-
   return (
     <Box sx={{ pb: 1 }}>
       <PageHeader
         icon={<ReceiptLongIcon />}
         title="فاکتورهای قرارداد"
         badge={(
-          <Chip size="small" label={contractId ? `${formatPersianNumber(scopedList.length)} فاکتور` : 'مدیریت فاکتورها'}
+          <Chip size="small" label={`${formatPersianNumber(scoped ? scopedList.length : allInvoices.length)} فاکتور`}
             sx={{ height: 23, fontWeight: 800, bgcolor: alpha(INVOICE_ACCENT, 0.08), color: INVOICE_ACCENT }} />
         )}
         actions={(
           <>
-            {contractId ? (
-              <Tooltip title="به‌روزرسانی">
-                <span>
-                  <Button variant="outlined" disabled={isFetching} onClick={() => { refetch(); qc.invalidateQueries({ queryKey: ['contract-invoice-payments', contractId] }); }} sx={{ minWidth: 40, px: 1 }}>
-                    <RefreshIcon fontSize="small" />
-                  </Button>
-                </span>
-              </Tooltip>
+            <Tooltip title="به‌روزرسانی">
+              <span>
+                <Button variant="outlined" disabled={isFetching}
+                  onClick={() => { refetch(); if (contractId) qc.invalidateQueries({ queryKey: ['contract-invoice-payments', contractId] }); }}
+                  sx={{ minWidth: 40, px: 1 }}>
+                  <RefreshIcon fontSize="small" />
+                </Button>
+              </span>
+            </Tooltip>
+            {scoped ? (
+              <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>
+                پرونده قرارداد
+              </Button>
             ) : null}
-            {contractId ? <Button variant="outlined" startIcon={<DescriptionIcon />} onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده</Button> : null}
-            {contractId ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
-            {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
-            {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>فاکتور جدید</Button> : null}
+            {scoped ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
+            {scoped ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
+            <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>فاکتور جدید</Button>
+            {scoped ? (
+              <Button variant="contained" startIcon={<ChevronRightIcon />} onClick={clearContract}>فهرست قراردادها</Button>
+            ) : null}
           </>
         )}
       />
 
-      {!contractId ? (
-        <InvoiceLanding
-          contractList={contractList}
-          invoices={allInvoices}
-          dueRows={dueRows}
-          paidByInvoice={paidByInvoice}
-          totalAmount={totalAmountAll}
-          currency={landingCurrency}
+      {!scoped ? (
+        <ContractPickerLanding
+          theme={moduleTheme}
+          contracts={contractList}
+          records={allInvoices}
+          getContractId={(row) => row.contract}
+          metrics={(row) => {
+            const values = invoiceMetrics(row, 0);
+            return { total: values.total, vat: values.vat, paid: row.is_paid ? values.total : 0 };
+          }}
           onSelect={selectContract}
-          onSelectContract={selectContractById}
+          ariaLabel="فهرست قراردادها برای فاکتورها"
+          sortOptions={[
+            { value: 'total', label: 'بیشترین مبلغ فاکتورها' },
+            { value: 'paid', label: 'بیشترین پرداخت‌شده' },
+            { value: 'count', label: 'بیشترین تعداد فاکتور' },
+            { value: 'number', label: 'شماره قرارداد' },
+          ]}
+          columns={[
+            {
+              key: 'number',
+              label: 'شماره قرارداد',
+              width: '10%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(row.contract.number || '—')}
+                </Typography>
+              ),
+            },
+            {
+              key: 'party',
+              label: 'طرف قرارداد',
+              width: '19%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                  {row.contract.party_name || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'subject',
+              label: 'موضوع قرارداد',
+              width: '25%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {row.contract.subject || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'count',
+              label: 'تعداد فاکتور',
+              width: '10%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{formatPersianNumber(row.count || 0)}</Typography>
+              ),
+            },
+            { key: 'total', label: 'مجموع مبلغ', width: '14%', align: 'center', render: (row) => moneyCell(row.total, BLUE) },
+            { key: 'vat', label: 'مالیات', width: '10%', align: 'center', render: (row) => moneyCell(row.vat, MUTED) },
+            { key: 'paid', label: 'پرداخت‌شده', width: '12%', align: 'center', render: (row) => moneyCell(row.paid, GREEN) },
+          ]}
         />
       ) : (
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-              <InvoiceContractCard contract={selectedContract} currency={currencyLabel}
-                invoiceCount={scopedList.length} onBack={clearContract} />
-              <InvoiceFinancialCard totals={totals} currency={currencyLabel} isLoading={paymentsLoading} />
-              <InvoiceStatusNav counts={counts} active={statusFilter} onChange={setStatusFilter} />
+
+        <>
+          <ModuleToolbar
+            theme={moduleTheme}
+            search={search}
+            onSearch={setSearch}
+            searchPlaceholder="جستجو در شماره، شرح و توضیحات فاکتور…"
+            sort={sortBy}
+            sortOptions={[
+              { value: 'newest', label: 'جدیدترین' },
+              { value: 'amount', label: 'بیشترین مبلغ' },
+              { value: 'due', label: 'نزدیک‌ترین سررسید' },
+              { value: 'paid', label: 'پرداخت‌شده‌ها' },
+            ]}
+            onSort={setSortBy}
+            filters={[{ label: 'وضعیت فاکتور', value: statusFilter, options: statusOptions, onChange: setStatusFilter }]}
+            activeChips={activeChips}
+            activeFilterCount={activeFilterCount}
+            onReset={() => { setSearch(''); setStatusFilter('all'); setSortBy('newest'); }}
+            filtersOpen={filtersOpen}
+            setFiltersOpen={setFiltersOpen}
+          />
+
+          <Paper elevation={0} sx={{
+            borderRadius: 'var(--hrms-table-radius, 16px)',
+            overflow: 'hidden',
+            px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+            border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+            bgcolor: 'background.paper', boxShadow: 'none',
+          }}>
+            <ModuleTable
+              tableTheme={moduleTheme.tableTheme}
+              ariaLabel="فهرست فاکتورهای قرارداد"
+              containerRef={tableRef}
+              tableHeight={tableHeight}
+              rowHeight={rowHeight}
+              dimmed={isFetching || paymentsLoading}
+              rows={pagedInvoices}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => setDetail(row)}
+              emptyText="فاکتوری با این مشخصات ثبت نشده است."
+              columns={[
+                {
+                  key: 'row',
+                  label: 'ردیف',
+                  width: '4%',
+                  align: 'center',
+                  render: (_row, index) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                      {toPersianDigits(page * scopedPageSize + index + 1)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'number',
+                  label: 'شماره فاکتور',
+                  width: '10%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {toPersianDigits(row.number || `#${row.id}`)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'subject',
+                  label: 'شرح',
+                  width: '20%',
+                  render: (row) => (
+                    <Typography noWrap title={row.subject || row.description} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                      {row.subject || row.description || '—'}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'date',
+                  label: 'تاریخ',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {row.date ? toJalali(row.date) : '—'}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'due',
+                  label: 'سررسید',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {row.due_date ? toJalali(row.due_date) : '—'}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'amount',
+                  label: 'مبلغ',
+                  width: '11%',
+                  align: 'center',
+                  render: (row) => moneyCell(invoiceMetrics(row, paidByInvoice[String(row.id)]).amount, INK),
+                },
+                {
+                  key: 'vat',
+                  label: 'مالیات',
+                  width: '8%',
+                  align: 'center',
+                  render: (row) => moneyCell(invoiceMetrics(row, paidByInvoice[String(row.id)]).vat, MUTED),
+                },
+                {
+                  key: 'total',
+                  label: 'مبلغ کل',
+                  width: '11%',
+                  align: 'center',
+                  render: (row) => moneyCell(invoiceMetrics(row, paidByInvoice[String(row.id)]).total, BLUE),
+                },
+                {
+                  key: 'paid',
+                  label: 'پرداخت‌شده',
+                  width: '10%',
+                  align: 'center',
+                  render: (row) => moneyCell(invoiceMetrics(row, paidByInvoice[String(row.id)]).paid, GREEN),
+                },
+                {
+                  key: 'status',
+                  label: 'وضعیت',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => {
+                    const status = invoiceStatus(row, paidByInvoice[String(row.id)]);
+                    return (
+                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Chip size="small" label={status.label}
+                          sx={{
+                            height: 20, fontSize: 10.5, fontWeight: 800,
+                            bgcolor: status.bg, color: status.color,
+                            border: `1px solid ${alpha(status.color, 0.28)}`,
+                            '& .MuiChip-label': { px: 0.8 },
+                          }} />
+                      </Box>
+                    );
+                  },
+                },
+                {
+                  key: 'actions',
+                  label: 'عملیات',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => (
+                    <Stack direction="row" spacing={0.15} useFlexGap alignItems="center" justifyContent="center"
+                      onClick={(event) => event.stopPropagation()}>
+                      <Tooltip title="جزئیات"><IconButton size="small" aria-label="جزئیات" onClick={() => setDetail(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+                      <Tooltip title="ویرایش"><IconButton size="small" aria-label="ویرایش" onClick={() => openEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                      <Tooltip title={row.is_paid ? 'لغو پرداخت' : 'ثبت پرداخت'}>
+                        <IconButton size="small" aria-label={row.is_paid ? 'لغو پرداخت' : 'ثبت پرداخت'} sx={{ color: row.is_paid ? GREEN : MUTED }} onClick={() => togglePaid.mutate(row)}>
+                          <CheckCircleIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="حذف"><IconButton size="small" aria-label="حذف" color="error" onClick={() => setConfirmDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                    </Stack>
+                  ),
+                },
+              ]}
+            />
+
+            <ModulePager
+              tableTheme={moduleTheme.tableTheme}
+              page={page}
+              onPage={setPage}
+              totalPages={totalPages}
+              pageNumbers={pageNumbers}
+              total={filtered.length}
+              pageSize={scopedPageSize}
+              unit="فاکتور"
+            />
+            <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
+              sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+              <Chip size="small" label={`جمع مبلغ: ${formatPersianNumber(Math.round(totals.total))} ${currencyLabel}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(BLUE, 0.1), color: BLUE }} />
+              <Chip size="small" label={`پرداخت‌شده: ${formatPersianNumber(Math.round(totals.paid))}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(GREEN, 0.1), color: GREEN }} />
+              <Chip size="small" label={`مانده: ${formatPersianNumber(Math.round(totals.outstanding))}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(totals.overdueCount ? RED : AMBER, 0.1), color: totals.overdueCount ? RED : AMBER }} />
+              {counts.overdue ? (
+                <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 13 }} />}
+                  label={`${formatPersianNumber(counts.overdue)} فاکتور سررسید گذشته`}
+                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(RED, 0.1), color: RED }} />
+              ) : null}
             </Stack>
-          </Grid>
-
-          <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={ReceiptLongIcon} label="تعداد فاکتور" value={formatPersianNumber(counts.all)} suffix="مورد" color={INVOICE_ACCENT} hint={`${formatPersianNumber(counts.pending)} در انتظار پرداخت`} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={PaymentsIcon} label="مجموع مبالغ" value={compactMoney(totals.total, currencyLabel)} color={BLUE} size={16} hint={`${formatPersianNumber(counts.paid)} پرداخت‌شده`} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={CheckCircleIcon} label="پرداخت‌شده" value={compactMoney(totals.paid, currencyLabel)} color={GREEN} size={16} hint={`پوشش ${totals.total ? toPersianDigits(((totals.paid / totals.total) * 100).toFixed(0)) : '۰'}٪`} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={EventBusyIcon} label="مانده پرداخت" value={compactMoney(totals.outstanding, currencyLabel)} color={totals.overdueCount ? RED : AMBER} size={16} hint={`${formatPersianNumber(counts.overdue)} سررسید گذشته`} />
-              </Grid>
-            </Grid>
-
-            <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-                <TextField size="small" placeholder="جست‌وجو در شماره، شرح، توضیحات…"
-                  value={search} onChange={(event) => setSearch(event.target.value)}
-                  sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-                <FormControl size="small" sx={{ minWidth: 145 }}>
-                  <InputLabel>وضعیت</InputLabel>
-                  <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
-                    <MenuItem value="all">همه ({formatPersianNumber(counts.all)})</MenuItem>
-                    <MenuItem value="paid">پرداخت‌شده ({formatPersianNumber(counts.paid)})</MenuItem>
-                    <MenuItem value="pending">در انتظار ({formatPersianNumber(counts.pending)})</MenuItem>
-                    <MenuItem value="overdue">سررسید گذشته ({formatPersianNumber(counts.overdue)})</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 125 }}>
-                  <InputLabel>ترتیب</InputLabel>
-                  <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                    <MenuItem value="newest">جدیدترین</MenuItem>
-                    <MenuItem value="amount">بیشترین مبلغ</MenuItem>
-                    <MenuItem value="due">نزدیک‌ترین سررسید</MenuItem>
-                    <MenuItem value="paid">پرداخت‌شده‌ها</MenuItem>
-                  </Select>
-                </FormControl>
-                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
-                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-                </ToggleButtonGroup>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ display: { xs: 'none', md: 'flex' } }}>فاکتور جدید</Button>
-              </Stack>
-            </Paper>
-
-            {counts.overdue ? (
-              <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 12 }}>{formatPersianNumber(counts.overdue)} فاکتور از تاریخ سررسید گذشته و هنوز پرداخت نشده است.</Typography>
-              </Alert>
-            ) : null}
-
-            {!filtered.length ? (
-              <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
-                <ReceiptLongIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>فاکتوری با این مشخصات ثبت نشده است.</Typography>
-                <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.4 }}>اولین فاکتور را ثبت کنید تا پوشش مالی و وضعیت پرداخت شکل بگیرد.</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت فاکتور جدید</Button>
-              </Paper>
-            ) : view === 'cards' ? (
-              <Grid container spacing={1.5}>
-                {filtered.map((row) => (
-                  <Grid item xs={12} md={6} xl={4} key={row.id}>
-                    <InvoiceCard row={row} currency={invoiceCurrency(row, selectedContract)}
-                      paidAmount={paidByInvoice[String(row.id)] || 0}
-                      onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete}
-                      onTogglePaid={(selected) => togglePaid.mutate(selected)} />
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <InvoiceTable rows={filtered} currency={currencyLabel} paidByInvoice={paidByInvoice}
-                onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete}
-                onTogglePaid={(selected) => togglePaid.mutate(selected)} />
-            )}
-
-            <Box sx={{ mt: 1.5 }}>
-              <SurfaceCard title="روند فاکتورها" icon={TrendingUpIcon} color={INVOICE_ACCENT}
-                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(INVOICE_ACCENT, 0.07), color: INVOICE_ACCENT }} />}>
-                {monthlyData.some((item) => item.value > 0) ? (
-                  <ColumnChart data={monthlyData} color={INVOICE_ACCENT} height={150} />
-                ) : (
-                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 12 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
-                )}
-              </SurfaceCard>
-            </Box>
-          </Grid>
-        </Grid>
+          </Paper>
+        </>
       )}
+
 
       <InvoiceDetailDrawer row={detail} contract={selectedContract} currency={currencyLabel}
         paidAmount={detail ? paidByInvoice[String(detail.id)] || 0 : 0}

@@ -101,15 +101,14 @@ test('invoice workspace renders KPI, invoice card, detail drawer and editor dial
   }
 
   expect(container.textContent).toContain('فاکتورهای قرارداد');
-  expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(container.textContent).toContain('پوشش مالی فاکتورها');
-  expect(container.textContent).toContain('روند فاکتورها');
-  expect(container.textContent).toContain('INV-100');
+  expect(container.textContent).toContain('شماره فاکتور');
+  expect(container.textContent).toContain('INV-۱۰۰');
   expect(container.textContent).toContain('فاکتور تجهیزات کارگاه');
-  expect(container.textContent).toContain('جزئیات');
+  expect(container.textContent).toContain('سررسید گذشته');
+  expect(container.textContent).toContain('جمع مبلغ:');
+  expect(container.textContent).toContain('فهرست قراردادها');
 
-  const detailButton = Array.from(container.querySelectorAll('button'))
-    .find((element) => element.textContent.trim() === 'جزئیات');
+  const detailButton = container.querySelector('button[aria-label="جزئیات"]');
   expect(detailButton).toBeTruthy();
   await act(async () => { detailButton.click(); await wait(260); });
 
@@ -118,8 +117,7 @@ test('invoice workspace renders KPI, invoice card, detail drawer and editor dial
   expect(document.body.textContent).toContain('PAY-100');
   expect(document.body.textContent).toContain('تاریخ سررسید');
 
-  const editButton = Array.from(document.querySelectorAll('button'))
-    .find((element) => element.textContent.trim() === 'ویرایش');
+  const editButton = document.querySelector('button[aria-label="ویرایش"]');
   expect(editButton).toBeTruthy();
   await act(async () => { editButton.click(); await wait(300); });
 
@@ -153,11 +151,15 @@ test('invoice landing shows KPI, contract picker and due invoices', async () => 
     await act(async () => { await wait(180); });
   }
 
-  expect(container.textContent).toContain('انتخاب قرارداد');
-  expect(container.textContent).toContain('کل قراردادها');
-  expect(container.textContent).toContain('دارای فاکتور');
+  expect(container.textContent).toContain('شماره قرارداد');
+  expect(container.textContent).toContain('طرف قرارداد');
+  expect(container.textContent).toContain('موضوع قرارداد');
+  expect(container.textContent).toContain('تعداد فاکتور');
+  expect(container.textContent).toContain('مجموع مبلغ');
+  expect(container.textContent).toContain('C-۱۰۰');
+  expect(container.textContent).toContain('شرکت ساختمانی الف');
   expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(container.textContent).toContain('در انتظار پرداخت');
+  expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
 
   root.unmount();
   container.remove();
