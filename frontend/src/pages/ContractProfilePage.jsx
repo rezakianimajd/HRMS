@@ -29,6 +29,7 @@ import {
   AddendumsTab, DocumentsTab, FinanceTab, GuaranteesTab, IdentityTab, InvoicesTab,
   OverviewTab, PaymentsTab, RelatedTab, StatementsTab, TimelineTab,
 } from './contracts/ContractProfileTabs';
+import ContractFinancePage from './ContractFinancePage';
 
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
@@ -212,7 +213,7 @@ const ContractProfilePage = () => {
     { label: 'الحاقیه‌ها', path: '/contracts-addendums', icon: EditNoteIcon, color: theme.palette.warning.main, count: addendumCount, meta: `اثر ${formatPersianNumber(addendumTotal)}` },
     { label: 'تضمین‌ها', path: '/contracts-guarantees', icon: LockIcon, color: theme.palette.primary.main, count: guaranteeCount, meta: `${toPersianDigits(coveragePercent)}٪ پوشش` },
     { label: 'اختلافات', path: '/contracts-disputes', icon: GavelIcon, color: theme.palette.error.main, count: (c.disputes || []).length, meta: 'پیگیری پرونده' },
-    { label: 'هم‌تراز', icon: HandshakeIcon, color: theme.palette.primary.main, count: relatedContracts.length, meta: 'قراردادهای هم‌تراز', onClick: () => setTab(9) },
+    { label: 'هم‌تراز', icon: HandshakeIcon, color: theme.palette.primary.main, count: relatedContracts.length, meta: 'قراردادهای هم‌تراز', onClick: () => setTab(10) },
     { label: 'اسناد و بایگانی', path: '/contracts-documents', icon: FolderOpenIcon, color: theme.palette.text.secondary, count: (c.documents || []).length, meta: 'مشاهدهٔ اسناد' },
   ].map((item) => ({
     ...item,
@@ -295,6 +296,7 @@ const ContractProfilePage = () => {
   const tabs = [
     { key: 'overview', label: 'نمای کلی', content: <OverviewTab ctx={ctx} /> },
     { key: 'timeline', label: 'تایم‌لاین', content: <TimelineTab ctx={ctx} /> },
+    { key: 'finance-analysis', label: 'تحلیل مالی', content: <ContractFinancePage contract={c} embedded /> },
     { key: 'identity', label: 'مشخصات قرارداد', content: <IdentityTab ctx={ctx} /> },
     { key: 'finance', label: 'مشخصات مالی', content: <FinanceTab ctx={ctx} /> },
     { key: 'addendums', label: 'الحاقیه‌ها', content: <AddendumsTab ctx={ctx} /> },

@@ -687,11 +687,11 @@ const SERIES_COLORS = ['#be123c', '#f97316', '#7c3aed', '#0e7490', '#f59e0b', '#
 /* =======================================================================
    صفحهٔ تحلیل مالی قرارداد: صفحهٔ اول فهرست قراردادها، سپس تحلیل هر قرارداد
    ======================================================================= */
-const ContractFinancePage = () => {
+const ContractFinancePage = ({ embedded = false, contract: contractProp = null } = {}) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const contractId = searchParams.get('contract') || '';
+  const contractId = embedded ? String(contractProp?.id || '') : (searchParams.get('contract') || '');
 
   /* توکن‌های استودیو تم */
   const { tokens } = useDesignTokens();
@@ -718,17 +718,20 @@ const ContractFinancePage = () => {
     queryKey: ['contracts-finance-list'],
     queryFn: () => fetchAllPages('/external-contracts/'),
     staleTime: 3 * 60 * 1000,
+    enabled: !embedded,
   });
   /* دو فهرست سبک‌تر که جدول را سریع می‌سازند؛ پاسخ سنگین قراردادها بعداً آن را کامل می‌کند */
   const statementsQuery = useQuery({
     queryKey: ['contracts-finance-statements'],
     queryFn: () => fetchAllPages('/contract-statements/'),
     staleTime: 2 * 60 * 1000,
+    enabled: !embedded,
   });
   const paymentsQuery = useQuery({
     queryKey: ['contracts-finance-payments'],
     queryFn: () => fetchAllPages('/contract-payments/'),
     staleTime: 2 * 60 * 1000,
+    enabled: !embedded,
   });
 
   const contractList = useMemo(
@@ -747,9 +750,9 @@ const ContractFinancePage = () => {
   const detailQuery = useQuery({
     queryKey: ['contract-finance-detail', contractId],
     queryFn: () => axiosInstance.get(`/external-contracts/${contractId}/`).then((response) => response.data),
-    enabled: Boolean(contractId),
+    enabled: Boolean(contractId) && !embedded,
   });
-  const contract = detailQuery.data || null;
+  const contract = contractProp || detailQuery.data || null;
   const scoped = Boolean(contractId);
 
   const selectContract = (row) => {
@@ -1253,6 +1256,7 @@ const ContractFinancePage = () => {
 
   return (
     <Box>
+      {!embedded ? (
       <PageHeader
         icon={<InsightsIcon />}
         title="تحلیل مالی قرارداد"
@@ -1302,6 +1306,7 @@ const ContractFinancePage = () => {
           </>
         )}
       />
+      ) : null}
 
       {msg ? (
         <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setMsg(null)}>
@@ -1975,6 +1980,7 @@ const ContractFinancePage = () => {
             </Grid>
 
             {/* ---- اسناد مالی قرارداد ---- */}
+            {!embedded ? (
             <Paper elevation={0} sx={{
               mt: 2,
               borderRadius: 'var(--hrms-table-radius, 16px)',
@@ -2012,6 +2018,7 @@ const ContractFinancePage = () => {
               {docsTab === 2 ? <AddendumsTable addendums={addendums} currency={currencyLabel} /> : null}
               {docsTab === 3 ? <GuaranteesTable guarantees={guarantees} currency={currencyLabel} /> : null}
             </Paper>
+            ) : null}
           </>
         )
       ) : null}

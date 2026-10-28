@@ -166,7 +166,7 @@ test('contract profile shows the compact card, single-row quick access and the a
   // تب‌های پرونده
   const tabLabels = Array.from(container.querySelectorAll('.MuiTab-root')).map((tab) => tab.textContent.trim());
   expect(tabLabels).toEqual([
-    'نمای کلی', 'تایم‌لاین', 'مشخصات قرارداد', 'مشخصات مالی', 'الحاقیه‌ها', 'تضامین',
+    'نمای کلی', 'تایم‌لاین', 'تحلیل مالی', 'مشخصات قرارداد', 'مشخصات مالی', 'الحاقیه‌ها', 'تضامین',
     'صورت‌وضعیت', 'فاکتورها', 'پرداخت‌ها', 'قراردادهای هم‌تراز', 'مدارک',
   ]);
 
@@ -194,6 +194,13 @@ test('contract profile shows the compact card, single-row quick access and the a
   expect(container.textContent).toContain('۶۰٪');
   expect(container.textContent).toContain('جمع تخصیص: ۱۰۰٪');
   expect(container.textContent).toContain('شرایط و تعهدات');
+
+  await openTab('تحلیل مالی');
+  expect(container.textContent).toContain('تحلیل وضعیت مالی کل قرارداد');
+  expect(container.textContent).toContain('تحلیل صورت‌وضعیت‌ها و پرداخت‌ها');
+  expect(container.textContent).toContain('تحلیل تخصیص مالی بین پروژه‌ها');
+  expect(container.textContent).toContain('تحلیل مغایرت‌ها و کنترل‌های مالی');
+  expect(container.textContent).toContain('جدول تفصیلی مالی صورت‌وضعیت‌ها');
 
   await openTab('مشخصات مالی');
   expect(container.textContent).toContain('مشخصات مالی پایه');
