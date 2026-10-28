@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -129,16 +129,15 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
   }
 
   expect(container.textContent).toContain('صورت‌وضعیت‌های قرارداد');
-  expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(container.textContent).toContain('پوشش مالی صورت‌وضعیت‌ها');
-  expect(container.textContent).toContain('روند صورت‌وضعیت‌ها');
-  expect(container.textContent).toContain('۰۳');
-  expect(container.textContent).toContain('تأیید شده');
-  expect(container.textContent).toContain('۱ پیوست');
-  expect(container.textContent).toContain('جزئیات');
+  expect(container.textContent).toContain('شماره');
+  expect(container.textContent).toContain('نوع');
+  expect(container.textContent).toContain('کارکرد دوره');
+  expect(container.textContent).toContain('خالص قابل پرداخت');
+  expect(container.textContent).toContain('تأییدشده');
+  expect(container.textContent).toContain('جمع خالص:');
+  expect(container.textContent).toContain('فهرست قراردادها');
 
-  const detailButton = Array.from(container.querySelectorAll('button'))
-    .find((element) => element.textContent.trim() === 'جزئیات');
+  const detailButton = container.querySelector('button[aria-label="جزئیات"]');
   expect(detailButton).toBeTruthy();
   await act(async () => { detailButton.click(); await wait(260); });
 
@@ -147,8 +146,7 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
   expect(document.body.textContent).toContain('صورت‌وضعیت امضاشده');
   expect(document.body.textContent).toContain('کارکرد این دوره');
 
-  const editButton = Array.from(document.querySelectorAll('button'))
-    .find((element) => element.textContent.trim() === 'ویرایش');
+  const editButton = document.querySelector('button[aria-label="ویرایش"]');
   expect(editButton).toBeTruthy();
   await act(async () => { editButton.click(); await wait(320); });
 
@@ -184,7 +182,8 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
     .find((element) => element.textContent.trim() === 'بازگشت به لیست');
   expect(backButton).toBeTruthy();
   await act(async () => { backButton.click(); await wait(260); });
-  expect(container.textContent).toContain('روند صورت‌وضعیت‌ها');
+  expect(container.textContent).toContain('کارکرد دوره');
+  expect(container.textContent).toContain('فهرست قراردادها');
 
   root.unmount();
   container.remove();
@@ -211,11 +210,15 @@ test('statements landing shows KPI, contract picker and pending approvals', asyn
     await act(async () => { await wait(180); });
   }
 
-  expect(container.textContent).toContain('انتخاب قرارداد');
-  expect(container.textContent).toContain('کل قراردادها');
-  expect(container.textContent).toContain('دارای صورت‌وضعیت');
+  expect(container.textContent).toContain('شماره قرارداد');
+  expect(container.textContent).toContain('طرف قرارداد');
+  expect(container.textContent).toContain('موضوع قرارداد');
+  expect(container.textContent).toContain('تعداد صورت‌وضعیت');
+  expect(container.textContent).toContain('خالص قابل پرداخت');
+  expect(container.textContent).toContain('C-۱۰۰');
+  expect(container.textContent).toContain('شرکت ساختمانی الف');
   expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(container.textContent).toContain('در انتظار تأیید');
+  expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
 
   root.unmount();
   container.remove();
@@ -246,11 +249,11 @@ test('saving an increase adjustment keeps its additions and deductions', async (
     await act(async () => { await wait(180); });
   }
 
-  const detailButton = buttonByText(container, 'جزئیات');
+  const detailButton = container.querySelector('button[aria-label="جزئیات"]');
   expect(detailButton).toBeTruthy();
   await act(async () => { detailButton.click(); await wait(260); });
 
-  const editButton = buttonByText(document, 'ویرایش');
+  const editButton = document.querySelector('button[aria-label="ویرایش"]');
   expect(editButton).toBeTruthy();
   await act(async () => { editButton.click(); await wait(320); });
 

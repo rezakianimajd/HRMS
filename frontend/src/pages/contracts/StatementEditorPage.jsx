@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
@@ -48,10 +48,17 @@ import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/Account
 import { ColumnChart } from '../../core/components/charts/Charts';
 import { AttachmentPicker } from './AddendumWorkspaceUI';
 import {
-  ContractSnapshotCard, FinancialCoverageCard, StatusNav, StatementCard,
-  StatementDetailDrawer, StatementLanding, StatementTable, STATEMENT_ACCENT,
+  StatementDetailDrawer, STATEMENT_ACCENT,
   contractAmountOf, dateLabel, money, rowMetrics,
 } from './StatementWorkspaceUI';
+import {
+  ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
+  useModuleTableState, useModuleTheme, useRowHeight,
+} from './contractModuleUi';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import VisibilityIcon from '@mui/icons-material/Visibility';
 import {
   cumulativeRialFromForeign, displayAmount, fromRial, isRialCurrency, normalizeRate, rateOfStatement, toRial,
 } from './statementCurrency';
@@ -408,6 +415,7 @@ const Field = ({ label, value, strong, color }) => (
 const MONTH_NAMES = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 const GREEN = '#0f766e';
 const AMBER = '#b45309';
+const RED = '#be123c';
 const BLUE = '#2563eb';
 const compactMoney = (value, currency = '') => {
   const amount = Number(value) || 0;
@@ -480,6 +488,7 @@ const adjustmentForeignCumulativeFor = (rows, { excludeId = null } = {}) => (
 const StatementEditorPage = () => {
   const qc = useQueryClient();
   const theme = useTheme();
+  const moduleTheme = useModuleTheme();
   const navigate = useNavigate();
   const { currentCompany } = useCompany();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -488,7 +497,7 @@ const StatementEditorPage = () => {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [view, setView] = useState('cards');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [mode, setMode] = useState('list');
   const [form, setForm] = useState({});
@@ -639,6 +648,7 @@ const StatementEditorPage = () => {
     let result = scopedList.filter((row) => {
       if (statusFilter === 'approved' && !row.is_approved) return false;
       if (statusFilter === 'pending' && row.is_approved) return false;
+      if (statusFilter === 'adjustments' && !isAdjustmentKind(row)) return false;
       if (!query) return true;
       return [row.number, formatStatementNumber(row.number), statementKindOf(row).label, row.contract_subject, row.description, ...(row.documents || []).map((doc) => doc.title)]
         .some((value) => String(value || '').toLowerCase().includes(query));
@@ -651,6 +661,31 @@ const StatementEditorPage = () => {
     });
     return result;
   }, [scopedList, search, statusFilter, sortBy]);
+
+  /* صفحه‌بندی و اندازه‌گیری جدول تک‌ردیفه (الگوی تضامین) */
+  const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
+    filtered.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize],
+  );
+  const pagedStatements = useMemo(
+    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [filtered, page, scopedPageSize],
+  );
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedStatements.length);
+  const statusOptions = [
+    { value: 'all', label: `همه (${formatPersianNumber(counts.all)})` },
+    { value: 'approved', label: `تأییدشده (${formatPersianNumber(counts.approved)})` },
+    { value: 'pending', label: `در انتظار تأیید (${formatPersianNumber(counts.pending)})` },
+    { value: 'adjustments', label: `تعدیل‌ها (${formatPersianNumber(counts.adjustments)})` },
+  ];
+  const activeFilterCount = statusFilter !== 'all' ? 1 : 0;
+  const statusLabelOf = (key) => ({
+    approved: 'تأییدشده', pending: 'در انتظار تأیید', adjustments: 'تعدیل‌ها',
+  }[key] || key);
+  const activeChips = statusFilter !== 'all'
+    ? [{ key: 'status', label: `وضعیت: ${statusLabelOf(statusFilter)}`, clear: () => setStatusFilter('all') }]
+    : [];
+  const scopedMode = Boolean(contractId);
 
   const monthlyData = useMemo(() => {
     const buckets = new Map();
@@ -849,7 +884,6 @@ const StatementEditorPage = () => {
     setSearch('');
     setStatusFilter('all');
     setSortBy('newest');
-    setView('cards');
     setDetail(null);
   }, [contractId]);
 
@@ -1544,124 +1578,271 @@ const StatementEditorPage = () => {
             {contractId ? <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button> : null}
             {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button> : null}
             {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>صورت‌وضعیت جدید</Button> : null}
+            {scopedMode ? (
+              <Button variant="contained" startIcon={<ChevronRightIcon />} onClick={clearContract}>فهرست قراردادها</Button>
+            ) : null}
           </>
         )}
       />
 
-      {!contractId ? (
-        <StatementLanding
-          contractList={contractList}
-          list={allStatements}
-          pendingRows={pendingRows}
-          counts={{ approved: allStatements.filter((row) => row.is_approved).length }}
-          totalNet={allStatements.reduce((sum, row) => sum + rowMetrics(row).net, 0)}
-          currency="ریال"
-          accent={STATEMENT_ACCENT}
+      {!scopedMode ? (
+        <ContractPickerLanding
+          theme={moduleTheme}
+          contracts={contractList}
+          records={allStatements}
+          getContractId={(row) => row.contract}
+          metrics={(row) => {
+            const values = rowMetrics(row);
+            return { work: values.work, net: values.net, approved: row.is_approved ? 1 : 0 };
+          }}
           onSelect={selectContract}
-          onSelectContract={selectContractById}
+          ariaLabel="فهرست قراردادها برای صورت‌وضعیت‌ها"
+          sortOptions={[
+            { value: 'net', label: 'بیشترین خالص' },
+            { value: 'work', label: 'بیشترین کارکرد' },
+            { value: 'approved', label: 'بیشترین تأییدشده' },
+            { value: 'number', label: 'شماره قرارداد' },
+          ]}
+          columns={[
+            {
+              key: 'number',
+              label: 'شماره قرارداد',
+              width: '10%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(row.contract.number || '—')}
+                </Typography>
+              ),
+            },
+            {
+              key: 'party',
+              label: 'طرف قرارداد',
+              width: '18%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                  {row.contract.party_name || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'subject',
+              label: 'موضوع قرارداد',
+              width: '24%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {row.contract.subject || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'count',
+              label: 'تعداد صورت‌وضعیت',
+              width: '10%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{formatPersianNumber(row.count || 0)}</Typography>
+              ),
+            },
+            { key: 'work', label: 'کارکرد', width: '13%', align: 'center', render: (row) => moneyCell(row.work, BLUE) },
+            { key: 'net', label: 'خالص قابل پرداخت', width: '15%', align: 'center', render: (row) => moneyCell(row.net, GREEN) },
+            { key: 'approved', label: 'تأییدشده', width: '10%', align: 'center', render: (row) => moneyCell(row.approved, AMBER) },
+          ]}
         />
       ) : (
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-            <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-              <ContractSnapshotCard contract={selectedContract} currency={currencyLabel} accent={STATEMENT_ACCENT}
-                onBack={clearContract} statementCount={scopedList.length} adjustments={totals.adjustments} />
-              <FinancialCoverageCard totals={displayTotals} currency={currencyLabel} isLoading={paymentsLoading} accent={STATEMENT_ACCENT} />
-              <StatusNav counts={counts} active={statusFilter} onChange={setStatusFilter} accent={STATEMENT_ACCENT} />
+        <>
+          <ModuleToolbar
+            theme={moduleTheme}
+            search={search}
+            onSearch={setSearch}
+            searchPlaceholder="جستجو در شماره، نوع و شرح صورت‌وضعیت…"
+            sort={sortBy}
+            sortOptions={[
+              { value: 'newest', label: 'جدیدترین' },
+              { value: 'amount', label: 'بیشترین مبلغ تجمعی' },
+              { value: 'net', label: 'بیشترین خالص' },
+              { value: 'work', label: 'بیشترین کارکرد' },
+            ]}
+            onSort={setSortBy}
+            filters={[{ label: 'وضعیت صورت‌وضعیت', value: statusFilter, options: statusOptions, onChange: setStatusFilter }]}
+            activeChips={activeChips}
+            activeFilterCount={activeFilterCount}
+            onReset={() => { setSearch(''); setStatusFilter('all'); setSortBy('newest'); }}
+            filtersOpen={filtersOpen}
+            setFiltersOpen={setFiltersOpen}
+          />
+
+          <Paper elevation={0} sx={{
+            borderRadius: 'var(--hrms-table-radius, 16px)',
+            overflow: 'hidden',
+            px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+            border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+            bgcolor: 'background.paper', boxShadow: 'none',
+          }}>
+            <ModuleTable
+              tableTheme={moduleTheme.tableTheme}
+              ariaLabel="فهرست صورت‌وضعیت‌های قرارداد"
+              containerRef={tableRef}
+              tableHeight={tableHeight}
+              rowHeight={rowHeight}
+              dimmed={isFetching || paymentsLoading}
+              rows={pagedStatements}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => setDetail(row)}
+              emptyText="صورت‌وضعیتی با این مشخصات ثبت نشده است."
+              columns={[
+                {
+                  key: 'row',
+                  label: 'ردیف',
+                  width: '4%',
+                  align: 'center',
+                  render: (_row, index) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                      {toPersianDigits(page * scopedPageSize + index + 1)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'number',
+                  label: 'شماره',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {formatStatementNumber(row.number) || toPersianDigits(row.id)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'kind',
+                  label: 'نوع',
+                  width: '11%',
+                  align: 'center',
+                  render: (row) => {
+                    const kind = statementKindOf(row);
+                    return (
+                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Chip size="small" label={kind.label}
+                          sx={{
+                            height: 20, fontSize: 10.5, fontWeight: 800,
+                            bgcolor: alpha(kind.color, 0.1), color: kind.color,
+                            border: `1px solid ${alpha(kind.color, 0.28)}`,
+                            '& .MuiChip-label': { px: 0.8 },
+                          }} />
+                      </Box>
+                    );
+                  },
+                },
+                {
+                  key: 'date',
+                  label: 'تاریخ',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {dateLabel(row.date)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'work',
+                  label: 'کارکرد دوره',
+                  width: '11%',
+                  align: 'center',
+                  render: (row) => moneyCell(rowMetrics(row).work, BLUE),
+                },
+                {
+                  key: 'additions',
+                  label: 'اضافات',
+                  width: '10%',
+                  align: 'center',
+                  render: (row) => moneyCell(rowMetrics(row).additionsTotal, GREEN),
+                },
+                {
+                  key: 'deductions',
+                  label: 'کسورات',
+                  width: '10%',
+                  align: 'center',
+                  render: (row) => moneyCell(rowMetrics(row).deductionsTotal, RED),
+                },
+                {
+                  key: 'net',
+                  label: 'خالص قابل پرداخت',
+                  width: '12%',
+                  align: 'center',
+                  render: (row) => moneyCell(rowMetrics(row).net, GREEN),
+                },
+
+                {
+                  key: 'approved',
+                  label: 'تأیید',
+                  width: '7%',
+                  align: 'center',
+                  render: (row) => (
+                    <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                      <Chip size="small" label={row.is_approved ? 'تأییدشده' : 'در انتظار'}
+                        sx={{
+                          height: 20, fontSize: 10.5, fontWeight: 800,
+                          bgcolor: alpha(row.is_approved ? GREEN : AMBER, 0.1),
+                          color: row.is_approved ? GREEN : AMBER,
+                          '& .MuiChip-label': { px: 0.8 },
+                        }} />
+                    </Box>
+                  ),
+                },
+                {
+                  key: 'actions',
+                  label: 'عملیات',
+                  width: '12%',
+                  align: 'center',
+                  render: (row) => (
+                    <Stack direction="row" spacing={0.15} useFlexGap alignItems="center" justifyContent="center"
+                      onClick={(event) => event.stopPropagation()}>
+                      <Tooltip title="جزئیات"><IconButton size="small" aria-label="جزئیات" onClick={() => setDetail(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
+                      <Tooltip title="ویرایش"><IconButton size="small" aria-label="ویرایش" onClick={() => openEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                      <Tooltip title="چاپ"><IconButton size="small" aria-label="چاپ" onClick={() => openPrint(row)}><PrintOutlinedIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                      <Tooltip title={row.is_approved ? 'لغو تأیید' : 'تأیید'}>
+                        <IconButton size="small" aria-label={row.is_approved ? 'لغو تأیید' : 'تأیید'}
+                          sx={{ color: row.is_approved ? GREEN : MUTED }} onClick={() => toggleApproval.mutate(row)}>
+                          <CheckCircleIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="حذف"><IconButton size="small" aria-label="حذف" color="error" onClick={() => setConfirmDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
+                    </Stack>
+                  ),
+                },
+              ]}
+            />
+            <ModulePager
+              tableTheme={moduleTheme.tableTheme}
+              page={page}
+              onPage={setPage}
+              totalPages={totalPages}
+              pageNumbers={pageNumbers}
+              total={filtered.length}
+              pageSize={scopedPageSize}
+              unit="صورت‌وضعیت"
+            />
+            <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
+              sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+              <Chip size="small" label={`جمع خالص: ${formatPersianNumber(Math.round(displayTotals.net))} ${currencyLabel}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(GREEN, 0.1), color: GREEN }} />
+              <Chip size="small" label={`پرداخت‌شده: ${formatPersianNumber(Math.round(displayTotals.paid))}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(BLUE, 0.1), color: BLUE }} />
+              <Chip size="small" label={`مانده: ${formatPersianNumber(Math.round(displayTotals.outstanding))}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(AMBER, 0.1), color: AMBER }} />
+              <Chip size="small" label={`کارکرد تجمعی: ${formatPersianNumber(Math.round(displayTotals.cumulative))}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(STATEMENT_ACCENT, 0.1), color: STATEMENT_ACCENT }} />
+              {counts.pending ? (
+                <Chip size="small" icon={<WarningAmberIcon sx={{ fontSize: 13 }} />}
+                  label={`${formatPersianNumber(counts.pending)} در انتظار تأیید`}
+                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(AMBER, 0.1), color: AMBER }} />
+              ) : null}
             </Stack>
-          </Grid>
-
-          <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-            <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={ReceiptLongIcon} label="تعداد صورت‌وضعیت" value={formatPersianNumber(counts.all)} suffix="مورد" color={STATEMENT_ACCENT} hint={`${formatPersianNumber(counts.pending)} در انتظار تأیید`} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={PaymentsIcon} label="مجموع قابل پرداخت" value={compactMoney(displayTotals.net, currencyLabel)} color={GREEN} hint={`${formatPersianNumber(counts.approved)} تأییدشده`} size={16} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={EventAvailableIcon} label="پرداخت‌شده" value={compactMoney(displayTotals.paid, currencyLabel)} color={BLUE} hint={`مانده ${compactMoney(displayTotals.outstanding, currencyLabel)}`} size={16} />
-              </Grid>
-              <Grid item xs={6} md={3}>
-                <KpiTile icon={TrendingUpIcon} label="کارکرد تجمعی" value={compactMoney(displayTotals.cumulative, currencyLabel)} color={AMBER} hint={`پیشرفت قرارداد ${toPersianDigits(contractProgress.toFixed(0))}٪`} size={16} />
-              </Grid>
-            </Grid>
-
-            <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-              <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-                <TextField size="small" placeholder="جست‌وجو در شماره، قرارداد، توضیحات…"
-                  value={search} onChange={(event) => setSearch(event.target.value)}
-                  sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
-                  InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-                <FormControl size="small" sx={{ minWidth: 145 }}>
-                  <InputLabel>وضعیت</InputLabel>
-                  <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
-                    <MenuItem value="all">همه ({formatPersianNumber(counts.all)})</MenuItem>
-                    <MenuItem value="approved">تأییدشده ({formatPersianNumber(counts.approved)})</MenuItem>
-                    <MenuItem value="pending">در انتظار ({formatPersianNumber(counts.pending)})</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 125 }}>
-                  <InputLabel>ترتیب</InputLabel>
-                  <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                    <MenuItem value="newest">جدیدترین</MenuItem>
-                    <MenuItem value="amount">بیشترین مبلغ</MenuItem>
-                    <MenuItem value="net">بیشترین قابل پرداخت</MenuItem>
-                    <MenuItem value="work">بیشترین کارکرد</MenuItem>
-                  </Select>
-                </FormControl>
-                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
-                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-                </ToggleButtonGroup>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ display: { xs: 'none', md: 'flex' } }}>صورت‌وضعیت جدید</Button>
-              </Stack>
-            </Paper>
-
-            {displayTotals.overContract > 0 ? (
-              <Alert severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-                <Typography sx={{ fontSize: 12 }}>مبلغ تجمعی صورت‌وضعیت‌ها از مبلغ قرارداد بیشتر است ({money(displayTotals.overContract, currencyLabel)}).</Typography>
-              </Alert>
-            ) : null}
-
-            {!filtered.length ? (
-              <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: `1px dashed ${theme.palette.divider}`, textAlign: 'center' }}>
-                <ReceiptLongIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
-                <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>صورت‌وضعیتی با این مشخصات ثبت نشده است.</Typography>
-                <Typography sx={{ fontSize: 12, color: MUTED, mt: 0.4 }}>اولین صورت‌وضعیت را ثبت کنید تا پوشش مالی و روند شکل بگیرد.</Typography>
-                <Button variant="contained" startIcon={<AddIcon />} onClick={openNew} sx={{ mt: 1.5 }}>ثبت صورت‌وضعیت جدید</Button>
-              </Paper>
-            ) : view === 'cards' ? (
-              <Grid container spacing={1.5}>
-                {filtered.map((row) => (
-                  <Grid item xs={12} md={6} xl={4} key={row.id}>
-                    <StatementCard row={row} contractAmount={selectedContractAmount} currency={currencyLabel}
-                      fallbackRate={selectedContractRate} accent={STATEMENT_ACCENT}
-                      onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} onPrint={openPrint}
-                      onApprove={(selected) => toggleApproval.mutate(selected)} />
-                  </Grid>
-                ))}
-              </Grid>
-            ) : (
-              <StatementTable rows={filtered} contractAmount={selectedContractAmount} currency={currencyLabel}
-                fallbackRate={selectedContractRate}
-                onView={setDetail} onEdit={openEdit} onDelete={setConfirmDelete} onPrint={openPrint}
-                onApprove={(selected) => toggleApproval.mutate(selected)} />
-            )}
-
-            <Box sx={{ mt: 1.5 }}>
-              <SurfaceCard title="روند صورت‌وضعیت‌ها" icon={TrendingUpIcon} color={STATEMENT_ACCENT}
-                action={<Chip size="small" label={`${formatPersianNumber(monthlyData.length)} ماه`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(STATEMENT_ACCENT, 0.07), color: STATEMENT_ACCENT }} />}>
-                {monthlyData.some((item) => item.value > 0) ? (
-                  <ColumnChart data={monthlyData} color={STATEMENT_ACCENT} height={150} />
-                ) : (
-                  <Box sx={{ py: 3, textAlign: 'center', color: MUTED, fontSize: 12 }}>داده‌ای برای نمایش روند وجود ندارد.</Box>
-                )}
-              </SurfaceCard>
-            </Box>
-          </Grid>
-        </Grid>
+          </Paper>
+        </>
       )}
+
 
       <StatementDetailDrawer row={detail} contract={selectedContract} currency={currencyLabel}
         fallbackRate={selectedContractRate}
@@ -1900,7 +2081,7 @@ const StatementEditorView = ({
                       </Stack>
                     </Box>
                   </>
-                ) : (
+        ) : (
                   <>
                 <Grid container spacing={1.1}>
                   <Grid item xs={12} sm={6}>
