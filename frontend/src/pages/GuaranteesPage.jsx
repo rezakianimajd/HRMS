@@ -939,7 +939,7 @@ const LandingContent = ({
         </Grid>
       </Grid>
       <Grid container spacing={1.5}>
-        <Grid item xs={12} lg={8}>
+        <Grid item xs={12}>
           <SurfaceCard title="انتخاب قرارداد" icon={LockIcon} color={accent}>
             <ContractListPicker
               contracts={contractList}
@@ -2145,7 +2145,7 @@ const GuaranteesPage = () => {
       ) : (
         <Grid container spacing={2} alignItems="stretch">
           {/* جدول قراردادها — کارت استاندارد با فاصلهٔ داخلی */}
-          <Grid item xs={12} lg={8}>
+          <Grid item xs={12}>
             <Paper elevation={0} sx={{
               borderRadius: 'var(--hrms-table-radius, 16px)',
               border: '1px solid', borderColor: cardBorderColor,
@@ -2185,69 +2185,6 @@ const GuaranteesPage = () => {
                   />
                 </>
               )}
-            </Paper>
-          </Grid>
-          {/* نزدیک‌ترین سررسیدها — کارت جداگانه در یک سوم عرض */}
-          <Grid item xs={12} lg={4}>
-            <Paper elevation={0} sx={{
-              height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-              borderRadius: 'var(--hrms-table-radius, 16px)',
-              border: '1px solid', borderColor: cardBorderColor,
-              bgcolor: 'background.paper', boxShadow: 'none',
-            }}>
-              <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap
-                sx={{ px: 1.25, py: 1, borderBottom: tableTheme.divider }}>
-                <EventBusyIcon sx={{ fontSize: 16, color: '#b45309' }} />
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, flex: 1 }}>نزدیک‌ترین سررسیدها</Typography>
-                <Chip size="small" label={toPersianDigits(expiringRows.length)}
-                  sx={{ height: 18, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#b45309', 0.1), color: '#b45309' }} />
-              </Stack>
-              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>
-                {expiringRows.length ? expiringRows.map((row) => {
-                  const days = daysUntil(dueOf(row));
-                  const contract = contractDirectory.find((item) => String(item.id) === String(row.contract));
-                  return (
-                    <Box
-                      key={row.id}
-                      onClick={() => { if (contract) selectContract(contract); }}
-                      sx={{
-                        display: 'flex', alignItems: 'center', gap: 0.75,
-                        px: 1.25, py: 0.85,
-                        borderBottom: tableTheme.divider,
-                        cursor: contract ? 'pointer' : 'default',
-                        '&:hover': { backgroundColor: tableTheme.hoverBg },
-                        '&:last-of-type': { borderBottom: 'none' },
-                      }}
-                    >
-                      <Box sx={{
-                        width: 26, height: 26, borderRadius: '8px', flexShrink: 0,
-                        bgcolor: alpha('#b45309', 0.08), color: '#b45309',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      }}>
-                        <LockIcon sx={{ fontSize: 14 }} />
-                      </Box>
-                      <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                          {toPersianDigits(numberFor(row))}
-                        </Typography>
-                        <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                          {toPersianDigits(contract?.number || '—')} · {dateLabel(dueOf(row))}
-                        </Typography>
-                      </Box>
-                      <Chip size="small"
-                        label={days === null ? '—' : `${toPersianDigits(Math.max(0, days))} روز`}
-                        sx={{
-                          height: 18, fontSize: 10.5, fontWeight: 800,
-                          bgcolor: alpha('#b45309', 0.1), color: '#b45309',
-                        }} />
-                    </Box>
-                  );
-                }) : (
-                  <Box sx={{ p: 3, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: 11, color: MUTED }}>تضمینی در ۳۰ روز آینده منقضی نمی‌شود.</Typography>
-                  </Box>
-                )}
-              </Box>
             </Paper>
           </Grid>
         </Grid>

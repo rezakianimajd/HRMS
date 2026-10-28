@@ -140,8 +140,8 @@ test('contract guarantees page lists every guarantee in the archive-style table'
   expect(container.textContent).toContain('شرکت پیمانکار');
   expect(container.textContent).toContain('قرارداد آزمایشی تضامین');
   expect(container.textContent).toContain('۶٬۵۰۰٬۰۰۰ ریال');
-  /* کارت نزدیک‌ترین سررسیدها */
-  expect(container.textContent).toContain('نزدیک‌ترین سررسیدها');
+  /* کارت کناری حذف شده و جدول تمام‌عرض است */
+  expect(container.textContent).not.toContain('نزدیک‌ترین سررسیدها');
   /* نمای کارت حذف شده است */
   expect(container.querySelector('.MuiToggleButton-root')).toBeNull();
   expect(container.querySelector('.MuiAvatar-root')).toBeNull();
