@@ -1,178 +1,1133 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Alert, Autocomplete, Box, Button, Chip, CircularProgress, Grid, Paper,
-  Stack, Tab, Tabs, TextField, Typography,
+  Alert, Box, Button, Chip, CircularProgress, Collapse, FormControl, Grid, IconButton,
+  InputAdornment, InputLabel, MenuItem, Paper, Select, Stack, Tab, Tabs, Table, TableBody,
+  TableCell, TableContainer, TableFooter, TableHead, TableRow, TextField, Tooltip, Typography,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
+import {
+  Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ComposedChart, Legend, Line,
+  Pie, PieChart, ResponsiveContainer, Tooltip as ReTooltip, XAxis, YAxis,
+} from 'recharts';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 import BusinessIcon from '@mui/icons-material/Business';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import DownloadIcon from '@mui/icons-material/Download';
-import EditNoteIcon from '@mui/icons-material/EditNote';
-import HandshakeIcon from '@mui/icons-material/Handshake';
+import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import FirstPageIcon from '@mui/icons-material/FirstPage';
+import InsightsIcon from '@mui/icons-material/Insights';
+import LastPageIcon from '@mui/icons-material/LastPage';
 import LockIcon from '@mui/icons-material/Lock';
 import PaymentsIcon from '@mui/icons-material/Payments';
+import PieChartIcon from '@mui/icons-material/PieChart';
 import PrintIcon from '@mui/icons-material/Print';
-import ReceiptIcon from '@mui/icons-material/Receipt';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import VisibilityIcon from '@mui/icons-material/Visibility';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import SearchIcon from '@mui/icons-material/Search';
+import SortIcon from '@mui/icons-material/Sort';
+import TimelineIcon from '@mui/icons-material/Timeline';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import axiosInstance from '../core/api/axiosConfig';
 import fetchAllPages from '../core/api/fetchAllPages';
 import downloadFile from '../core/utils/downloadUtils';
-import { formatPersianNumber, toPersianDigits, normalizeCurrencyLabel } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
+import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
+import { resolveToolbarTheme } from '../core/theme/toolbarStyles';
+import { CONTRACT_STATUS_LABELS } from '../core/theme/tokens';
+import { DetailTile, EmptyState, ProgressBar, INK, MUTED } from './contracts/ContractProfileUI';
 import {
-  SectionCard, KpiCard, DetailTile, ProgressBar, MoneyBar, EmptyState,
-  INK, MUTED, CARD_BG, CARD_BORDER, SOFT_BG,
-} from './contracts/ContractProfileUI';
-import {
-  StatementsTable, AdvanceTable, InvoicesTable, PaymentsTable, AddendumsTable,
-  GuaranteesTable, statementMetrics, toNum,
+  AddendumsTable, GuaranteesTable, InvoicesTable, PaymentsTable, statementMetrics, toNum,
 } from './contracts/ContractFinanceTables';
+import { statementDisplayTitle, statementKindOf } from './contracts/statementKinds';
 
+/* ---------- پالت معنایی تحلیل مالی ---------- */
+const CLR = {
+  contract: '#b45309',
+  work: '#1d4ed8',
+  add: '#15803d',
+  addSoft: '#ecfdf5',
+  ded: '#be123c',
+  dedSoft: '#fff1f2',
+  net: '#0f766e',
+  paid: '#2563eb',
+  balance: '#b45309',
+  risk: '#be123c',
+  ok: '#0f766e',
+  warn: '#b45309',
+  rate: '#7c3aed',
+};
+
+const DEDUCTION_KEYS = [
+  ['retention', 'حسن انجام کار'],
+  ['insurance', 'بیمه'],
+  ['prepayment', 'پیش‌پرداخت'],
+  ['materials', 'مصالح'],
+  ['statementAdvance', 'علی‌الحساب صورت‌وضعیت'],
+  ['otherAdvance', 'سایر علی‌الحساب‌ها'],
+  ['other', 'سایر کسورات'],
+];
+
+const CONTRACT_SORT_OPTIONS = [
+  { value: 'remaining', label: 'بیشترین مانده مالی' },
+  { value: 'work', label: 'بیشترین کارکرد' },
+  { value: 'amount', label: 'بیشترین مبلغ قرارداد' },
+  { value: 'number', label: 'شماره قرارداد' },
+];
+
+const titleOf = (item) => String(item?.title || item?.description || item?.name || '').replace(/\s+/g, ' ').trim();
+const isVatTitle = (title) => title.includes('ارزش افزوده') || title.includes('مالیات');
+const shortTitle = (title, max = 22) => (title.length > max ? `${title.slice(0, max)}…` : title);
+const money = (value, currency = 'ریال') => `${formatPersianNumber(Math.round(toNum(value)))} ${currency}`;
+const ratio = (part, whole) => (toNum(whole) > 0 ? Math.max(0, Math.min(100, (toNum(part) / toNum(whole)) * 100)) : 0);
+const dayDiff = (from, to) => {
+  if (!from || !to) return 0;
+  const start = new Date(`${String(from).slice(0, 10)}T00:00:00`);
+  const end = new Date(`${String(to).slice(0, 10)}T00:00:00`);
+  if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) return 0;
+  return Math.max(0, Math.round((end - start) / 86400000));
+};
+const faPercent = (value) => `${toPersianDigits(String(Math.round(toNum(value) * 10) / 10))}٪`;
+
+
+/* فلش بازشوی «ترتیب» — هم‌الگو با صفحه‌های بایگانی و تضامین */
+const SortArrow = ({ className, ...rest }) => (
+  <ExpandMoreIcon
+    {...rest}
+    sx={{ position: 'absolute', left: 8, top: 'calc(50% - 10px)', fontSize: 20, color: 'text.secondary', pointerEvents: 'none' }}
+  />
+);
+
+const FilterSelect = ({ label, value, options, onChange, labelsPosition, radius = 8 }) => (
+  <Box>
+    {labelsPosition === 'above' ? (
+      <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: 'text.secondary', mb: 0.5 }}>{label}</Typography>
+    ) : null}
+    <FormControl size="small" fullWidth>
+      {labelsPosition === 'inline' ? <InputLabel>{label}</InputLabel> : null}
+      <Select
+        value={value || ''}
+        label={labelsPosition === 'inline' ? label : undefined}
+        displayEmpty={labelsPosition !== 'inline'}
+        onChange={(event) => onChange(event.target.value)}
+        sx={{ fontSize: 12.5, borderRadius: `${radius}px`, bgcolor: 'background.paper' }}
+        renderValue={(selected) => {
+          const match = options.find((option) => String(option.value) === String(selected));
+          if (!match || match.value === '') {
+            return <Typography component="span" sx={{ fontSize: 12, color: 'text.secondary' }}>همه</Typography>;
+          }
+          return <Typography component="span" sx={{ fontSize: 12, fontWeight: 700 }}>{match.label}</Typography>;
+        }}
+      >
+        {options.map((option) => (
+          <MenuItem key={option.value || 'all'} value={option.value}>{option.label}</MenuItem>
+        ))}
+      </Select>
+    </FormControl>
+  </Box>
+);
+
+const ArchivePager = ({ tableTheme, page, onPage, totalPages, pageNumbers, total, pageSize, unit = 'قرارداد' }) => {
+  if (!tableTheme.showPagination || total <= pageSize) return null;
+  return (
+    <Box sx={{
+      px: 1.5,
+      py: tableTheme.paginationDense ? 0.75 : 1.25,
+      borderTop: '1px solid',
+      borderColor: 'var(--hrms-table-border-color, #e8edf4)',
+    }}>
+      <Box sx={{ position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: 32 }}>
+        {tableTheme.showPaginationRange ? (
+          <Typography sx={{
+            position: 'absolute', insetInlineStart: 0,
+            display: { xs: 'none', sm: 'block' },
+            fontSize: tableTheme.paginationFontSize - 0.5,
+            color: 'text.secondary', whiteSpace: 'nowrap',
+          }}>
+            نمایش {toPersianDigits(page * pageSize + 1)} تا {toPersianDigits(Math.min((page + 1) * pageSize, total))} از{' '}
+            {toPersianDigits(total)} {unit} · {toPersianDigits(tableTheme.visibleRows)} ردیف در نما
+          </Typography>
+        ) : null}
+        <Stack direction="row" spacing={0.5} useFlexGap alignItems="center">
+          <IconButton size="small" disabled={page === 0} onClick={() => onPage(0)} aria-label="صفحهٔ اول"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <FirstPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+          </IconButton>
+          <IconButton size="small" disabled={page === 0} onClick={() => onPage(page - 1)} aria-label="صفحهٔ قبل"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <ChevronRightIcon fontSize="small" />
+          </IconButton>
+          {pageNumbers.map((index) => (
+            <Box
+              key={index}
+              component="button"
+              type="button"
+              onClick={() => onPage(index)}
+              aria-current={index === page ? 'page' : undefined}
+              sx={{
+                minWidth: 28, height: 28, px: 0.75,
+                borderRadius: `${tableTheme.paginationRadius}px`,
+                border: '1px solid',
+                borderColor: index === page ? tableTheme.paginationAccent : 'divider',
+                bgcolor: index === page ? tableTheme.paginationAccent : 'transparent',
+                color: index === page ? '#fff' : 'text.secondary',
+                fontFamily: 'inherit',
+                fontSize: tableTheme.paginationFontSize,
+                fontWeight: index === page ? 800 : 600,
+                cursor: 'pointer',
+              }}
+            >
+              {toPersianDigits(index + 1)}
+            </Box>
+          ))}
+          <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)} aria-label="صفحهٔ بعد"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <ChevronLeftIcon fontSize="small" />
+          </IconButton>
+          <IconButton size="small" disabled={page >= totalPages - 1} onClick={() => onPage(totalPages - 1)} aria-label="صفحهٔ آخر"
+            sx={{ color: tableTheme.paginationAccent, p: 0.4 }}>
+            <LastPageIcon fontSize="small" sx={{ transform: 'scaleX(-1)' }} />
+          </IconButton>
+        </Stack>
+      </Box>
+    </Box>
+  );
+};
+
+/* ---------- جدول فهرست قراردادها (صفحهٔ اول تحلیل مالی) ---------- */
+const FinanceLandingTable = ({
+  rows, tableTheme, containerRef, tableHeight, rowHeight, dimmed, onOpen,
+}) => (
+  <TableContainer
+    ref={containerRef}
+    data-visible-rows={tableTheme.visibleRows}
+    data-row-height={rowHeight}
+    data-table-height={`${tableHeight}px`}
+    sx={{
+      height: { xs: 'auto', sm: `${tableHeight}px` },
+      maxHeight: { xs: 'none', sm: `${tableHeight}px` },
+      overflowY: 'auto',
+      opacity: dimmed ? 0.6 : 1,
+      transition: 'opacity .15s ease',
+    }}
+  >
+    <Table
+      size="small"
+      stickyHeader
+      aria-label="فهرست قراردادها برای تحلیل مالی"
+      sx={{
+        width: '100%',
+        minWidth: 980,
+        tableLayout: 'fixed',
+        '& td, & th': {
+          px: 1,
+          py: `${tableTheme.cellPadding}px`,
+          whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+          borderBottom: tableTheme.divider,
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+        },
+        '& thead th': {
+          textAlign: `${tableTheme.headerTextAlign} !important`,
+          backgroundColor: 'var(--hrms-table-header-bg)',
+          height: `${tableTheme.headerHeight}px`,
+          fontSize: tableTheme.header.fontSize,
+          fontWeight: tableTheme.header.fontWeight,
+          color: tableTheme.header.color,
+        },
+        '& tbody td': {
+          height: `${tableTheme.rowHeight}px`,
+          fontSize: tableTheme.cell.fontSize,
+          fontWeight: tableTheme.cell.fontWeight,
+          color: tableTheme.cell.color,
+          ...(tableTheme.cellTextAlign ? { textAlign: `${tableTheme.cellTextAlign} !important` } : null),
+        },
+        '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+        '& th.hrms-cell-center, & td.hrms-cell-center': { textAlign: 'center !important' },
+        ...tableTypographySx(tableTheme),
+      }}
+    >
+      <TableHead>
+        <TableRow>
+          <TableCell align="center" sx={{ width: '4%' }}>
+            <Box sx={{ display: 'flex', justifyContent: 'center' }}>ردیف</Box>
+          </TableCell>
+          <TableCell align="center" sx={{ width: '10%' }}>شماره قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '17%' }}>طرف قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '21%' }}>موضوع قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '13%' }} className="hrms-cell-center">مبلغ قرارداد</TableCell>
+          <TableCell align="center" sx={{ width: '7%' }} className="hrms-cell-center">صورت‌وضعیت</TableCell>
+          <TableCell align="center" sx={{ width: '10%' }} className="hrms-cell-center">کارکرد</TableCell>
+          <TableCell align="center" sx={{ width: '9%' }} className="hrms-cell-center">پرداختی</TableCell>
+          <TableCell align="center" sx={{ width: '9%' }} className="hrms-cell-center">مانده</TableCell>
+        </TableRow>
+      </TableHead>
+
+      <TableBody>
+        {rows.map((row, index) => (
+          <TableRow key={row.contract.id} hover onClick={() => onOpen(row.contract)} sx={{ cursor: 'pointer' }}>
+            <TableCell align="center">
+              <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(row.offset + index + 1)}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center">
+              <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {toPersianDigits(row.contract.number || '—')}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                {row.contract.party_name || '—'}
+              </Typography>
+            </TableCell>
+            <TableCell align="right">
+              <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                {row.contract.subject || '—'}
+              </Typography>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {money(row.amount, row.currency)}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>{toPersianDigits(row.statements)}</Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: CLR.work, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(Math.round(row.workDone))}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: CLR.paid, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(Math.round(row.paid))}
+                </Typography>
+              </Box>
+            </TableCell>
+            <TableCell align="center" className="hrms-cell-center">
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+                <Typography noWrap sx={{
+                  fontSize: 11.5, fontWeight: 800,
+                  color: row.remaining > 0 ? CLR.balance : CLR.ok,
+                  fontFamily: 'var(--hrms-table-number-font, inherit)',
+                }}>
+                  {formatPersianNumber(Math.round(row.remaining))}
+                </Typography>
+              </Box>
+            </TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  </TableContainer>
+);
+
+
+/* ---------- جدول تفصیلی مالی با سرستون‌های گروه‌بندی‌شده ---------- */
+const finHeadBase = {
+  px: 0.8, py: 0.65, fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap',
+  textAlign: 'center', verticalAlign: 'middle',
+  borderBottom: '1px solid var(--hrms-table-border-color, #e8edf4)',
+};
+const finCellBase = {
+  px: 0.8, py: 0.6, fontSize: 11.5, whiteSpace: 'nowrap',
+  borderBottom: '1px solid var(--hrms-table-border-color, #e8edf4)',
+  fontVariantNumeric: 'tabular-nums',
+  fontFamily: 'var(--hrms-table-number-font, inherit)',
+};
+
+const FinanceGroupHeader = ({ label, color, colSpan }) => (
+  <TableCell colSpan={colSpan} sx={{
+    ...finHeadBase,
+    bgcolor: alpha(color, 0.07),
+    color,
+    fontWeight: 900,
+    borderBottom: `1px solid ${alpha(color, 0.22)}`,
+  }}>
+    {label}
+  </TableCell>
+);
+
+const FinanceBreakdownTable = ({
+  rows, additionColumns, deductionColumns, hasOtherAddition, hasOtherDeduction,
+  totals, currencyLabel, tableTheme, maxHeight = 460,
+}) => {
+  const subHead = (label, tint) => (
+    <TableCell sx={{ ...finHeadBase, color: tint, bgcolor: 'var(--hrms-table-header-bg)' }}>{label}</TableCell>
+  );
+  return (
+    <TableContainer sx={{
+      maxHeight,
+      overflow: 'auto',
+      borderRadius: '12px',
+      border: '1px solid var(--hrms-table-border-color, #e8edf4)',
+    }}>
+      <Table
+        size="small"
+        stickyHeader
+        aria-label="جدول تفصیلی مالی قرارداد"
+        sx={{
+          width: '100%',
+          minWidth: 1180,
+          tableLayout: 'auto',
+          '& tbody tr:hover': { backgroundColor: tableTheme.hoverBg },
+          ...tableTypographySx(tableTheme),
+        }}
+      >
+        <TableHead>
+          <TableRow>
+            <FinanceGroupHeader label="مشخصات قرارداد" color={CLR.contract} colSpan={3} />
+            <FinanceGroupHeader label="کارکرد" color={CLR.work} colSpan={1} />
+            <FinanceGroupHeader label="اضافات" color={CLR.add} colSpan={1 + additionColumns.length + (hasOtherAddition ? 1 : 0)} />
+            <FinanceGroupHeader label="کسورات" color={CLR.ded} colSpan={deductionColumns.length + (hasOtherDeduction ? 1 : 0)} />
+            <FinanceGroupHeader label="جمع" color={CLR.net} colSpan={5} />
+          </TableRow>
+          <TableRow>
+            {subHead('صورت‌وضعیت', CLR.contract)}
+            {subHead('ناخالص ارزی', CLR.contract)}
+            {subHead('نرخ تبدیل', CLR.contract)}
+            {subHead('مبلغ ناخالص (ریال)', CLR.work)}
+            {subHead('مالیات بر ارزش افزوده', CLR.add)}
+            {additionColumns.map((column) => (
+              <TableCell key={`add-${column.key}`} sx={{ ...finHeadBase, color: CLR.add, bgcolor: 'var(--hrms-table-header-bg)' }}>
+                <Tooltip title={column.label}><Box component="span">{shortTitle(column.label, 18)}</Box></Tooltip>
+              </TableCell>
+            ))}
+            {hasOtherAddition ? subHead('سایر اضافات', CLR.add) : null}
+            {deductionColumns.map((column) => (
+              <TableCell key={`ded-${column.key}`} sx={{ ...finHeadBase, color: CLR.ded, bgcolor: 'var(--hrms-table-header-bg)' }}>
+                <Tooltip title={column.label}><Box component="span">{shortTitle(column.label, 18)}</Box></Tooltip>
+              </TableCell>
+            ))}
+            {hasOtherDeduction ? subHead('سایر کسورات', CLR.ded) : null}
+            {subHead('جمع اضافات', CLR.add)}
+            {subHead('جمع کسورات', CLR.ded)}
+            {subHead('خالص قابل پرداخت', CLR.net)}
+            {subHead('پرداخت‌شده', CLR.paid)}
+            {subHead('مانده', CLR.balance)}
+          </TableRow>
+        </TableHead>
+
+        <TableBody>
+          {rows.map(({ row, metrics, paid, balance, additions, deductions }) => {
+            const kind = statementKindOf(row);
+            return (
+              <TableRow key={row.id} hover>
+                <TableCell align="right" sx={{ ...finCellBase, textAlign: 'right' }}>
+                  <Tooltip title={statementDisplayTitle(row, { fallbackId: true })}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, minWidth: 0 }}>
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: kind.color, flexShrink: 0 }} />
+                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>
+                        {statementDisplayTitle(row, { fallbackId: true })}
+                      </Typography>
+                    </Box>
+                  </Tooltip>
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: MUTED }}>
+                  {metrics.foreignGross !== null && metrics.foreignGross !== undefined
+                    ? formatPersianNumber(Math.round(metrics.foreignGross))
+                    : '—'}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.rate, fontWeight: 700 }}>
+                  {metrics.rate > 1 ? formatPersianNumber(metrics.rate) : '—'}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.work, fontWeight: 700 }}>
+                  {formatPersianNumber(Math.round(metrics.gross))}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.add }}>
+                  {metrics.vat ? formatPersianNumber(Math.round(metrics.vat)) : '—'}
+                </TableCell>
+                {additionColumns.map((column) => (
+                  <TableCell key={`add-${column.key}`} align="center" sx={{ ...finCellBase, color: CLR.add }}>
+                    {additions[column.key] ? formatPersianNumber(Math.round(additions[column.key])) : '—'}
+                  </TableCell>
+                ))}
+                {hasOtherAddition ? (
+                  <TableCell align="center" sx={{ ...finCellBase, color: CLR.add }}>
+                    {additions.__other ? formatPersianNumber(Math.round(additions.__other)) : '—'}
+                  </TableCell>
+                ) : null}
+                {deductionColumns.map((column) => (
+                  <TableCell key={`ded-${column.key}`} align="center" sx={{ ...finCellBase, color: CLR.ded }}>
+                    {deductions[column.key] ? formatPersianNumber(Math.round(deductions[column.key])) : '—'}
+                  </TableCell>
+                ))}
+                {hasOtherDeduction ? (
+                  <TableCell align="center" sx={{ ...finCellBase, color: CLR.ded }}>
+                    {deductions.__other ? formatPersianNumber(Math.round(deductions.__other)) : '—'}
+                  </TableCell>
+                ) : null}
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.add, fontWeight: 700 }}>
+                  {formatPersianNumber(Math.round(metrics.additionsTotal))}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.ded, fontWeight: 700 }}>
+                  {formatPersianNumber(Math.round(metrics.deductionsTotal))}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.net, fontWeight: 800 }}>
+                  {formatPersianNumber(Math.round(metrics.net))}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.paid, fontWeight: 700 }}>
+                  {formatPersianNumber(Math.round(paid))}
+                </TableCell>
+                <TableCell align="center" sx={{
+                  ...finCellBase,
+                  fontWeight: 800,
+                  color: balance > 0 ? CLR.balance : CLR.ok,
+                }}>
+                  {formatPersianNumber(Math.round(balance))}
+                </TableCell>
+              </TableRow>
+            );
+          })}
+        </TableBody>
+
+        <TableFooter>
+          <TableRow sx={{ '& td': { borderTop: '2px solid var(--hrms-table-border-color, #e8edf4)', bgcolor: alpha(CLR.net, 0.04) } }}>
+            <TableCell align="right" sx={{ ...finCellBase, textAlign: 'right', fontWeight: 900, color: INK }}>
+              جمع کل ({toPersianDigits(rows.length)} سند)
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 800, color: MUTED }}>—</TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 800, color: MUTED }}>—</TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.work }}>
+              {formatPersianNumber(Math.round(totals.gross))}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.add }}>
+              {formatPersianNumber(Math.round(totals.vat))}
+            </TableCell>
+            {additionColumns.map((column) => (
+              <TableCell key={`tadd-${column.key}`} align="center" sx={{ ...finCellBase, fontWeight: 800, color: CLR.add }}>
+                {totals.additions[column.key] ? formatPersianNumber(Math.round(totals.additions[column.key])) : '—'}
+              </TableCell>
+            ))}
+            {hasOtherAddition ? (
+              <TableCell align="center" sx={{ ...finCellBase, fontWeight: 800, color: CLR.add }}>
+                {totals.additions.__other ? formatPersianNumber(Math.round(totals.additions.__other)) : '—'}
+              </TableCell>
+            ) : null}
+            {deductionColumns.map((column) => (
+              <TableCell key={`tded-${column.key}`} align="center" sx={{ ...finCellBase, fontWeight: 800, color: CLR.ded }}>
+                {totals.deductions[column.key] ? formatPersianNumber(Math.round(totals.deductions[column.key])) : '—'}
+              </TableCell>
+            ))}
+            {hasOtherDeduction ? (
+              <TableCell align="center" sx={{ ...finCellBase, fontWeight: 800, color: CLR.ded }}>
+                {totals.deductions.__other ? formatPersianNumber(Math.round(totals.deductions.__other)) : '—'}
+              </TableCell>
+            ) : null}
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.add }}>
+              {formatPersianNumber(Math.round(totals.additionsTotal))}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.ded }}>
+              {formatPersianNumber(Math.round(totals.deductionsTotal))}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.net }}>
+              {formatPersianNumber(Math.round(totals.net))}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.paid }}>
+              {formatPersianNumber(Math.round(totals.paid))}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: totals.balance > 0 ? CLR.balance : CLR.ok }}>
+              {formatPersianNumber(Math.round(totals.balance))}
+            </TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
+    </TableContainer>
+  );
+};
+
+/* ---------- کارت تحلیل ---------- */
+const AnalysisCard = ({ icon: Icon, title, hint, color = CLR.net, action, children, sx }) => (
+  <Paper elevation={0} sx={{
+    height: '100%',
+    borderRadius: 'var(--hrms-table-radius, 16px)',
+    border: '1px solid var(--hrms-table-border-color, #e8edf4)',
+    bgcolor: 'background.paper',
+    boxShadow: 'none',
+    p: 1.5,
+    ...sx,
+  }}>
+    <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ mb: 1.25 }}>
+      <Box sx={{
+        width: 28, height: 28, borderRadius: '9px', flexShrink: 0,
+        bgcolor: alpha(color, 0.08), color,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+      }}>
+        <Icon sx={{ fontSize: 16 }} />
+      </Box>
+      <Box sx={{ flex: 1, minWidth: 0 }}>
+        <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>{title}</Typography>
+        {hint ? <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.2 }}>{hint}</Typography> : null}
+      </Box>
+      {action || null}
+    </Stack>
+    {children}
+  </Paper>
+);
+
+const chartTooltipStyle = {
+  direction: 'rtl',
+  fontSize: 12,
+  fontFamily: 'inherit',
+  borderRadius: 10,
+  border: '1px solid rgba(148,163,184,0.35)',
+  backgroundColor: 'rgba(255,255,255,0.98)',
+};
+const chartAxisTick = { fontSize: 11, fontFamily: 'inherit' };
+const legendStyle = { fontSize: 11, fontFamily: 'inherit' };
+const chartMoney = (value) => formatPersianNumber(Math.round(toNum(value)));
+
+
+/* =======================================================================
+   صفحهٔ تحلیل مالی قرارداد: صفحهٔ اول فهرست قراردادها، سپس تحلیل هر قرارداد
+   ======================================================================= */
 const ContractFinancePage = () => {
+  const theme = useTheme();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [selected, setSelected] = useState(null);
-  const [tab, setTab] = useState(0);
+  const contractId = searchParams.get('contract') || '';
+
+  /* توکن‌های استودیو تم */
+  const { tokens } = useDesignTokens();
+  const tableTheme = resolveTableTheme(tokens);
+  const toolbar = resolveToolbarTheme(tokens);
+  const cardPadX = Math.max(12, Number(tableTheme.frameX) || 0);
+  const cardPadY = Math.max(12, Number(tableTheme.frameY) || 0);
+  const cardBorderColor = alpha(theme.palette.text.primary, 0.14);
+
+  /* وضعیت صفحهٔ فهرست */
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState('remaining');
+  const [statusFilter, setStatusFilter] = useState('');
+  const [onlyWithFinance, setOnlyWithFinance] = useState(false);
+  const [page, setPage] = useState(0);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [docsTab, setDocsTab] = useState(0);
   const [exporting, setExporting] = useState(false);
   const [msg, setMsg] = useState(null);
 
-  const { data: contracts, isLoading: contractsLoading } = useQuery({
+  const asList = (data) => (Array.isArray(data) ? data : []);
+
+  const contractsQuery = useQuery({
     queryKey: ['contracts-finance-list'],
     queryFn: () => fetchAllPages('/external-contracts/'),
+    staleTime: 3 * 60 * 1000,
   });
-  const contractList = Array.isArray(contracts) ? contracts : [];
+  const statementsQuery = useQuery({
+    queryKey: ['contracts-finance-statements'],
+    queryFn: () => fetchAllPages('/contract-statements/'),
+    staleTime: 2 * 60 * 1000,
+  });
+  const paymentsQuery = useQuery({
+    queryKey: ['contracts-finance-payments'],
+    queryFn: () => fetchAllPages('/contract-payments/'),
+    staleTime: 2 * 60 * 1000,
+  });
 
-  useEffect(() => {
-    if (!contractList.length) return;
-    const requestedId = searchParams.get('contract');
-    const requested = requestedId ? contractList.find((item) => String(item.id) === String(requestedId)) : null;
-    if (requested) {
-      if (String(selected?.id) !== String(requested.id)) setSelected(requested);
-      return;
-    }
-    if (!selected) setSelected(contractList[0]);
-  }, [contractList, searchParams, selected]);
+  const contractList = useMemo(
+    () => asList(contractsQuery.data).filter((row) => row && row.id),
+    [contractsQuery.data],
+  );
+  const statementsAll = useMemo(
+    () => asList(statementsQuery.data).filter((row) => row && row.contract),
+    [statementsQuery.data],
+  );
+  const paymentsAll = useMemo(
+    () => asList(paymentsQuery.data).filter((row) => row && row.contract),
+    [paymentsQuery.data],
+  );
 
-  const selectContract = (contract) => {
-    setSelected(contract || null);
-    setTab(0);
+  const detailQuery = useQuery({
+    queryKey: ['contract-finance-detail', contractId],
+    queryFn: () => axiosInstance.get(`/external-contracts/${contractId}/`).then((response) => response.data),
+    enabled: Boolean(contractId),
+  });
+  const contract = detailQuery.data || null;
+  const scoped = Boolean(contractId);
+  const selectedContract = contractList.find((row) => String(row.id) === String(contractId)) || null;
+
+  const selectContract = (row) => {
+    if (!row?.id) return;
     setMsg(null);
-    setSearchParams(contract ? { contract: String(contract.id) } : {});
+    setDocsTab(0);
+    setSearchParams({ contract: String(row.id) });
+  };
+  const clearContract = () => {
+    setMsg(null);
+    setSearchParams({});
+  };
+  const refresh = () => {
+    contractsQuery.refetch();
+    statementsQuery.refetch();
+    paymentsQuery.refetch();
+    if (scoped) detailQuery.refetch();
   };
 
-  const { data: contract, isLoading } = useQuery({
-    queryKey: ['contract-finance-detail', selected?.id],
-    queryFn: () => axiosInstance.get(`/external-contracts/${selected.id}/`).then((response) => response.data),
-    enabled: Boolean(selected?.id),
-  });
+  /* ---- جمع‌های مالی هر قرارداد برای صفحهٔ اول ---- */
+  const landingAggregates = useMemo(() => {
+    const map = new Map();
+    const ensure = (key) => {
+      if (!map.has(key)) map.set(key, { statements: 0, workDone: 0, net: 0, paid: 0 });
+      return map.get(key);
+    };
+    statementsAll.forEach((row) => {
+      const entry = ensure(String(row.contract));
+      const metrics = statementMetrics(row, 0);
+      entry.statements += 1;
+      entry.workDone += metrics.gross;
+      entry.net += metrics.net;
+    });
+    paymentsAll.forEach((row) => {
+      ensure(String(row.contract)).paid += toNum(row.amount);
+    });
+    return map;
+  }, [statementsAll, paymentsAll]);
 
+  const contractRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    const rows = contractList
+      .filter((row) => {
+        if (statusFilter && row.status !== statusFilter) return false;
+        const agg = landingAggregates.get(String(row.id));
+        if (onlyWithFinance && (!agg || (!agg.statements && !agg.paid))) return false;
+        if (!term) return true;
+        return [row.number, row.subject, row.party_name]
+          .filter(Boolean)
+          .some((value) => String(value).toLowerCase().includes(term));
+      })
+      .map((row) => {
+        const agg = landingAggregates.get(String(row.id)) || { statements: 0, workDone: 0, net: 0, paid: 0 };
+        return {
+          contract: row,
+          statements: agg.statements,
+          workDone: agg.workDone,
+          paid: agg.paid,
+          remaining: Math.max(agg.net - agg.paid, 0),
+          amount: toNum(row.effective_amount ?? row.amount),
+          currency: normalizeCurrencyLabel(row.currency_name || row.currency_symbol),
+        };
+      });
+    return [...rows].sort((a, b) => {
+      if (sortBy === 'work') return b.workDone - a.workDone;
+      if (sortBy === 'amount') return b.amount - a.amount;
+      if (sortBy === 'number') return String(a.contract.number || '').localeCompare(String(b.contract.number || ''), 'fa');
+      return b.remaining - a.remaining;
+    });
+  }, [contractList, landingAggregates, search, statusFilter, onlyWithFinance, sortBy]);
+
+
+  const landingPageSize = tableTheme.rowsPerPage;
+  const landingTotalPages = Math.max(1, Math.ceil(contractRows.length / landingPageSize));
+  useEffect(() => { setPage(0); }, [search, statusFilter, onlyWithFinance, sortBy, landingPageSize]);
+  useEffect(() => {
+    if (page > landingTotalPages - 1) setPage(Math.max(0, landingTotalPages - 1));
+  }, [page, landingTotalPages]);
+
+  const pagedContracts = useMemo(
+    () => contractRows
+      .slice(page * landingPageSize, (page + 1) * landingPageSize)
+      .map((row) => ({ ...row, offset: page * landingPageSize })),
+    [contractRows, page, landingPageSize],
+  );
+  const landingPageNumbers = (() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, landingTotalPages - size));
+    const end = Math.min(landingTotalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
+  })();
+  const topRemaining = useMemo(
+    () => [...contractRows].sort((a, b) => b.remaining - a.remaining).slice(0, 6),
+    [contractRows],
+  );
+
+  /* اندازه‌گیری ارتفاع ردیف‌های جدول فهرست */
+  const tableScrollRef = useRef(null);
+  const [measuredRowPx, setMeasuredRowPx] = useState(0);
+  const [measuredHeadPx, setMeasuredHeadPx] = useState(0);
+  const measureRows = () => {
+    const host = tableScrollRef.current;
+    if (!host) return;
+    const rowEl = host.querySelector('tbody tr');
+    const headEl = host.querySelector('thead tr');
+    const rowPx = rowEl ? Math.round(rowEl.getBoundingClientRect().height) : 0;
+    const headPx = headEl ? Math.round(headEl.getBoundingClientRect().height) : 0;
+    setMeasuredRowPx((previous) => (previous === rowPx ? previous : rowPx));
+    setMeasuredHeadPx((previous) => (previous === headPx ? previous : headPx));
+  };
+  useLayoutEffect(measureRows, [pagedContracts.length, tableTheme.rowHeight, tableTheme.headerHeight, scoped]);
+  useEffect(() => {
+    const onResize = () => measureRows();
+    window.addEventListener('resize', onResize);
+    return () => window.removeEventListener('resize', onResize);
+  }, []);
+  const effectiveRowPx = measuredRowPx > 0 ? measuredRowPx : tableTheme.rowHeight;
+  const effectiveHeadPx = measuredHeadPx > 0 ? measuredHeadPx : tableTheme.headerHeight;
+  const tableHeight = Math.round(effectiveHeadPx + effectiveRowPx * tableTheme.visibleRows);
+
+  /* ---- فیلترهای صفحهٔ اول ---- */
+  const contractStatusOptions = [
+    { value: '', label: 'همه' },
+    ...Object.entries(CONTRACT_STATUS_LABELS).map(([key, label]) => ({ value: key, label })),
+  ];
+  const financeToggleOptions = [
+    { value: 'all', label: 'همهٔ قراردادها' },
+    { value: 'withFinance', label: 'فقط دارای سند مالی' },
+  ];
+  const activeFilterCount = (statusFilter ? 1 : 0) + (onlyWithFinance ? 1 : 0);
+  const activeChips = [
+    statusFilter
+      ? {
+        key: 'status',
+        label: `وضعیت: ${CONTRACT_STATUS_LABELS[statusFilter] || statusFilter}`,
+        clear: () => setStatusFilter(''),
+      }
+      : null,
+    onlyWithFinance
+      ? { key: 'withFinance', label: 'فقط قراردادهای دارای سند مالی', clear: () => setOnlyWithFinance(false) }
+      : null,
+  ].filter(Boolean);
+  const activeChipSx = toolbar.chipStyle === 'outlined'
+    ? { bgcolor: 'transparent', border: `1px solid ${toolbar.chipBorder}`, color: toolbar.primary, fontWeight: 700 }
+    : { bgcolor: toolbar.chipBg, color: toolbar.primary, fontWeight: 700, border: `1px solid ${toolbar.chipBorder}` };
+  const resetFilters = () => {
+    setSearch('');
+    setStatusFilter('');
+    setOnlyWithFinance(false);
+    setSortBy('remaining');
+  };
+
+  /* ---- دادهٔ قرارداد انتخاب‌شده ---- */
+  const statements = useMemo(() => [...(contract?.statements || [])].sort((a, b) => (
+    String(a.date || '').localeCompare(String(b.date || '')) || Number(a.id || 0) - Number(b.id || 0)
+  )), [contract]);
   const invoices = contract?.invoices || [];
-  const statements = contract?.statements || [];
   const payments = contract?.payments || [];
   const addendums = contract?.addendums || [];
   const guarantees = contract?.guarantees || [];
 
-  const sortedStatements = useMemo(
-    () => [...statements].sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))),
-    [statements],
-  );
-  const sortedInvoices = useMemo(
-    () => [...invoices].sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))),
-    [invoices],
-  );
-  const sortedPayments = useMemo(
-    () => [...payments].sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))),
-    [payments],
-  );
-  const sortedAddendums = useMemo(
-    () => [...addendums].sort((a, b) => String(a.date || '').localeCompare(String(b.date || ''))),
-    [addendums],
-  );
-
-  const amount = toNum(contract?.effective_amount ?? contract?.amount);
   const baseAmount = toNum(contract?.amount);
-  const addendumAmount = amount - baseAmount;
+  const contractAmount = toNum(contract?.effective_amount ?? contract?.amount);
+  const addendumAmount = contractAmount - baseAmount;
   const currencyLabel = normalizeCurrencyLabel(contract?.currency_name || contract?.currency_symbol);
-  const statementRate = [...sortedStatements]
+  const statementRate = [...statements]
     .reverse()
     .map((row) => toNum(row.exchange_rate))
-    .find((rate) => rate > 1) || 0;
-  const contractRate = toNum(contract?.exchange_rate) > 1
+    .find((value) => value > 1) || 0;
+  const displayRate = toNum(contract?.exchange_rate) > 1
     ? toNum(contract.exchange_rate)
     : (statementRate || 1);
-  const displayRate = contractRate > 1 ? contractRate : 1;
-  const amountRial = amount * displayRate;
+  const amountRial = contractAmount * displayRate;
 
-  const statementRows = useMemo(
-    () => sortedStatements.map((row) => ({ row, metrics: statementMetrics(row, contract?.exchange_rate) })),
-    [sortedStatements, contract?.exchange_rate],
-  );
+  const paidByStatement = useMemo(() => payments.reduce((map, row) => {
+    const key = String(row.statement ?? '');
+    if (!key || key === 'null') return map;
+    map[key] = (map[key] || 0) + toNum(row.amount);
+    return map;
+  }, {}), [payments]);
+
+
+  /* ---- ستون‌های پویا: هر اضافه/کسورات موجود در صورت‌وضعیت‌ها یک ستون ---- */
+  const additionColumns = useMemo(() => {
+    const titles = [];
+    statements.forEach((row) => (Array.isArray(row.additions) ? row.additions : []).forEach((item) => {
+      const title = titleOf(item);
+      if (!title || isVatTitle(title) || titles.includes(title)) return;
+      titles.push(title);
+    }));
+    return titles.slice(0, 8).map((title) => ({ key: title, label: title }));
+  }, [statements]);
+
+  const deductionColumns = useMemo(() => {
+    const titles = [];
+    statements.forEach((row) => (Array.isArray(row.deductions) ? row.deductions : []).forEach((item) => {
+      const title = titleOf(item);
+      if (!title || titles.includes(title)) return;
+      titles.push(title);
+    }));
+    return titles.slice(0, 10).map((title) => ({ key: title, label: title }));
+  }, [statements]);
+
+  const breakdownRows = useMemo(() => statements.map((row) => {
+    const metrics = statementMetrics(row, contract?.exchange_rate);
+    const additions = {};
+    let listedAdditions = 0;
+    (Array.isArray(row.additions) ? row.additions : []).forEach((item) => {
+      const title = titleOf(item);
+      if (!title || isVatTitle(title)) return;
+      if (additionColumns.some((column) => column.key === title)) {
+        additions[title] = (additions[title] || 0) + toNum(item.amount);
+        listedAdditions += toNum(item.amount);
+      }
+    });
+    additions.__other = Math.max(0, metrics.additionsTotal - listedAdditions - toNum(metrics.vat));
+
+    const deductions = {};
+    let listedDeductions = 0;
+    (Array.isArray(row.deductions) ? row.deductions : []).forEach((item) => {
+      const title = titleOf(item);
+      if (!title) return;
+      if (deductionColumns.some((column) => column.key === title)) {
+        deductions[title] = (deductions[title] || 0) + toNum(item.amount);
+        listedDeductions += toNum(item.amount);
+      }
+    });
+    deductions.__other = Math.max(0, metrics.deductionsTotal - listedDeductions);
+
+    const paid = paidByStatement[String(row.id)] || 0;
+    return { row, metrics, additions, deductions, paid, balance: metrics.net - paid };
+  }), [statements, additionColumns, deductionColumns, paidByStatement, contract?.exchange_rate]);
+
+  const hasOtherAddition = breakdownRows.some((item) => item.additions.__other > 0.5);
+  const hasOtherDeduction = breakdownRows.some((item) => item.deductions.__other > 0.5);
 
   const totals = useMemo(() => {
     const base = {
-      gross: 0, foreign: 0, vat: 0, deductions: 0, net: 0,
-      retention: 0, insurance: 0, prepayment: 0, materials: 0, statementAdvance: 0, otherAdvance: 0, other: 0,
+      gross: 0, vat: 0, additionsTotal: 0, deductionsTotal: 0, net: 0, paid: 0, balance: 0,
+      additions: {}, deductions: {}, buckets: {},
     };
-    statementRows.forEach(({ metrics }) => {
+    DEDUCTION_KEYS.forEach(([key]) => { base.buckets[key] = 0; });
+    breakdownRows.forEach(({ metrics, additions, deductions, paid, balance }) => {
       base.gross += metrics.gross;
-      base.foreign += metrics.foreignGross || 0;
       base.vat += metrics.vat;
-      base.deductions += metrics.deductionsTotal;
+      base.additionsTotal += metrics.additionsTotal;
+      base.deductionsTotal += metrics.deductionsTotal;
       base.net += metrics.net;
-      Object.keys(metrics.buckets).forEach((key) => { base[key] += metrics.buckets[key]; });
+      base.paid += paid;
+      base.balance += balance;
+      Object.entries(additions).forEach(([key, value]) => { base.additions[key] = (base.additions[key] || 0) + value; });
+      Object.entries(deductions).forEach(([key, value]) => { base.deductions[key] = (base.deductions[key] || 0) + value; });
+      Object.entries(metrics.buckets).forEach(([key, value]) => { base.buckets[key] = (base.buckets[key] || 0) + value; });
     });
-    base.invoices = sortedInvoices.reduce((sum, row) => sum + toNum(row.total), 0);
-    base.payments = sortedPayments.reduce((sum, row) => sum + toNum(row.amount), 0);
     return base;
-  }, [statementRows, sortedInvoices, sortedPayments]);
+  }, [breakdownRows]);
 
-  const advanceRows = (contract?.advance_payments || []).map((row, index) => ({
-    id: `advance-${index}`,
-    step: row.step,
-    amount: toNum(row.amount),
-    due_date: row.due_date,
-    note: row.note,
+  const totalPaidAll = payments.reduce((sum, row) => sum + toNum(row.amount), 0);
+  const payableRemaining = Math.max(totals.net - totals.paid, 0);
+  const contractRemaining = Math.max(amountRial - totals.gross, 0);
+  const workRatio = ratio(totals.gross, amountRial || 1);
+  const paidRatio = ratio(totals.paid, totals.net || 1);
+
+  /* ---- روند و جریان نقدی ---- */
+  const timeline = useMemo(() => {
+    let cumWork = 0;
+    let cumNet = 0;
+    let cumPaid = 0;
+    return breakdownRows.map(({ row, metrics, paid }) => {
+      cumWork += metrics.gross;
+      cumNet += metrics.net;
+      cumPaid += paid;
+      return {
+        label: toPersianDigits(row.number || row.id),
+        title: statementDisplayTitle(row, { fallbackId: true }),
+        date: toJalali(row.date),
+        gross: Math.round(metrics.gross),
+        additions: Math.round(metrics.additionsTotal),
+        deductions: Math.round(metrics.deductionsTotal),
+        net: Math.round(metrics.net),
+        paid: Math.round(paid),
+        cumWork: Math.round(cumWork),
+        cumNet: Math.round(cumNet),
+        cumPaid: Math.round(cumPaid),
+      };
+    });
+  }, [breakdownRows]);
+
+  const monthlyPayments = useMemo(() => {
+    const map = new Map();
+    [...payments]
+      .sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')))
+      .forEach((row) => {
+        const month = toJalali(row.date).slice(0, 7) || '—';
+        map.set(month, (map.get(month) || 0) + toNum(row.amount));
+      });
+    return Array.from(map.entries()).map(([month, amount]) => ({ month, amount: Math.round(amount) }));
+  }, [payments]);
+
+  const paymentTypeRows = useMemo(() => {
+    const map = new Map();
+    payments.forEach((row) => {
+      const label = row.payment_type_display || row.payment_type || 'سایر';
+      map.set(label, (map.get(label) || 0) + toNum(row.amount));
+    });
+    return Array.from(map.entries()).map(([name, value]) => ({ name, value: Math.round(value) }));
+  }, [payments]);
+
+
+  /* ---- پیش‌پرداخت، تضامین، تخصیص پروژه‌ها و پیش‌بینی ---- */
+  const stagedAdvance = (contract?.advance_payments || []).reduce((sum, row) => sum + toNum(row.amount), 0);
+  const prepaymentTotal = Math.max(toNum(contract?.advance_payment), stagedAdvance);
+  const prepaymentAmortized = Math.min(totals.buckets.prepayment || 0, prepaymentTotal);
+  const prepaymentRemaining = Math.max(prepaymentTotal - prepaymentAmortized, 0);
+
+  const guaranteeItems = useMemo(() => {
+    const display = Array.isArray(contract?.guarantee_items_display) ? contract.guarantee_items_display : [];
+    const raw = Array.isArray(contract?.guarantee_items) ? contract.guarantee_items : [];
+    const items = display.length ? display : raw;
+    return items.map((item, index) => {
+      const required = toNum(item.amount) || ((toNum(item.percent) * contractAmount) / 100);
+      const provided = guarantees
+        .filter((row) => !row.is_released && Number(row.contract_guarantee_index) === index)
+        .reduce((sum, row) => sum + toNum(row.amount), 0);
+      return {
+        name: item.type_label || item.type || `تعهد ${index + 1}`,
+        required: Math.round(required),
+        provided: Math.round(provided),
+      };
+    });
+  }, [contract, contractAmount, guarantees]);
+
+  const guaranteeProvidedTotal = guarantees
+    .filter((row) => !row.is_released)
+    .reduce((sum, row) => sum + toNum(row.amount), 0);
+  const guaranteeRequiredTotal = guaranteeItems.reduce((sum, item) => sum + item.required, 0)
+    || Math.round(contractAmount * 0.1);
+  const guaranteeCoverage = ratio(guaranteeProvidedTotal, guaranteeRequiredTotal || 1);
+  const guaranteeChart = guaranteeItems.length
+    ? guaranteeItems
+    : [{ name: 'کل تعهدات', required: guaranteeRequiredTotal, provided: Math.round(guaranteeProvidedTotal) }];
+
+  const allocationRows = useMemo(() => {
+    const display = Array.isArray(contract?.project_allocations_display) ? contract.project_allocations_display : [];
+    const raw = Array.isArray(contract?.project_allocations) ? contract.project_allocations : [];
+    const list = display.length ? display : raw;
+    if (!list.length) {
+      return [{
+        name: contract?.project_title || contract?.project_name || contract?.subject || 'کل قرارداد',
+        percent: 100,
+        amount: Math.round(contractAmount),
+      }];
+    }
+    return list.map((item) => ({
+      name: item.project_name || `پروژه #${item.project}`,
+      percent: toNum(item.percentage),
+      amount: Math.round((contractAmount * toNum(item.percentage)) / 100),
+    }));
+  }, [contract, contractAmount]);
+
+  const periodStart = contract?.start_date;
+  const periodEnd = contract?.effective_end_date || contract?.end_date;
+  const totalDays = dayDiff(periodStart, periodEnd);
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const elapsedDays = totalDays > 0 ? Math.min(totalDays, Math.max(1, dayDiff(periodStart, todayIso))) : 0;
+  const burnPerDay = elapsedDays > 0 ? totals.gross / elapsedDays : 0;
+  const forecastTotal = Math.max(totals.gross, Math.round(burnPerDay * Math.max(totalDays, 1)));
+  const forecastDeviation = amountRial > 0 ? ((forecastTotal - amountRial) / amountRial) * 100 : 0;
+  const deviationRows = [
+    { name: 'مبلغ پایه', value: Math.round(baseAmount * displayRate) },
+    { name: 'الحاقیه‌ها', value: Math.round(addendumAmount * displayRate) },
+    { name: 'کارکرد تا امروز', value: Math.round(totals.gross) },
+    { name: 'پیش‌بینی هزینه نهایی', value: forecastTotal },
+  ];
+
+  const deductionBuckets = DEDUCTION_KEYS.map(([key, label]) => ({
+    key,
+    label,
+    value: Math.round(totals.buckets[key] || 0),
   }));
-  const stagedAdvance = advanceRows.reduce((sum, row) => sum + row.amount, 0);
-  const advanceTotal = Math.max(toNum(contract?.advance_payment), stagedAdvance);
-  const advanceRowsFinal = advanceRows.length
-    ? advanceRows
-    : [{ id: 'advance-base', step: 'پیش‌پرداخت قرارداد', amount: advanceTotal, note: '' }];
-  const totalsDisplay = {
-    ...totals,
-    gross: totals.foreign || totals.gross / displayRate,
-    net: totals.net / displayRate,
-    deductions: totals.deductions / displayRate,
-    payments: totals.payments / displayRate,
-    prepayment: totals.prepayment / displayRate,
-    retention: totals.retention / displayRate,
-    insurance: totals.insurance / displayRate,
-    statementAdvance: totals.statementAdvance / displayRate,
-    otherAdvance: totals.otherAdvance / displayRate,
-    materials: totals.materials / displayRate,
-    other: totals.other / displayRate,
-  };
-  const advanceAmortized = Math.min(totalsDisplay.prepayment, advanceTotal);
-  const advanceRemaining = Math.max(advanceTotal - advanceAmortized, 0);
 
-  const paidRatio = amountRial > 0 ? Math.min(100, (totals.payments / amountRial) * 100) : 0;
-  const workRatio = amountRial > 0 ? Math.min(100, (totals.gross / amountRial) * 100) : 0;
-  const netRatio = amountRial > 0 ? Math.min(100, (totals.net / amountRial) * 100) : 0;
-  const remainingContract = Math.max(amount - totalsDisplay.gross, 0);
+
+  /* ---- کنترل‌ها و مغایرت‌ها ---- */
+  const checks = useMemo(() => {
+    const out = [];
+    const push = (key, label, status, detail, value = 0) => out.push({ key, label, status, detail, value });
+
+    const netMismatch = breakdownRows.filter(({ metrics }) => (
+      Math.abs(metrics.net - (metrics.gross + metrics.additionsTotal - metrics.deductionsTotal)) > 1000
+    ));
+    push('net', 'تطابق خالص صورت‌وضعیت', netMismatch.length ? 'danger' : 'ok',
+      netMismatch.length
+        ? `${toPersianDigits(netMismatch.length)} سند: خالص ≠ کارکرد + اضافات − کسورات`
+        : 'خالص همهٔ اسناد هم‌خوان است', netMismatch.length);
+
+    const unapproved = statements.filter((row) => !row.is_approved);
+    push('approved', 'صورت‌وضعیت‌های تأییدنشده', unapproved.length ? 'warn' : 'ok',
+      unapproved.length
+        ? `${toPersianDigits(unapproved.length)} صورت‌وضعیت در انتظار تأیید`
+        : 'همهٔ صورت‌وضعیت‌ها تأیید شده‌اند', unapproved.length);
+
+    const overpaid = breakdownRows.filter(({ metrics, paid }) => paid > metrics.net + 1);
+    push('overpaid', 'پرداخت مازاد بر خالص صورت‌وضعیت', overpaid.length ? 'danger' : 'ok',
+      overpaid.length
+        ? `${toPersianDigits(overpaid.length)} سند: پرداختی بیش از خالص`
+        : 'پرداختی از خالص پیشی نگرفته است', overpaid.length);
+
+    const unlinked = payments.filter((row) => !row.statement);
+    const unlinkedSum = unlinked.reduce((sum, row) => sum + toNum(row.amount), 0);
+    push('unlinked', 'پرداخت‌های بدون اتصال به صورت‌وضعیت', unlinked.length ? 'warn' : 'ok',
+      unlinked.length
+        ? `${toPersianDigits(unlinked.length)} پرداخت — ${money(unlinkedSum, currencyLabel)}`
+        : 'همهٔ پرداخت‌ها به صورت‌وضعیت متصل است', unlinked.length);
+
+    const overrun = Math.max(0, totals.gross - amountRial);
+    push('overrun', 'کارکرد بیش از مبلغ قرارداد', overrun > 1 ? 'danger' : 'ok',
+      overrun > 1 ? `${money(overrun, currencyLabel)} بیش از سقف قرارداد` : 'کارکرد در سقف قرارداد است', overrun);
+
+    const badRate = statements.filter((row) => (
+      normalizeCurrencyLabel(row.currency_name || row.currency_symbol) !== 'ریال' && toNum(row.exchange_rate) <= 1
+    ));
+    push('rate', 'نرخ تبدیل ارز صورت‌وضعیت‌ها', badRate.length ? 'warn' : 'ok',
+      badRate.length
+        ? `${toPersianDigits(badRate.length)} سند بدون نرخ تبدیل معتبر`
+        : 'نرخ تبدیل همهٔ اسناد ثبت شده است', badRate.length);
+
+    push('advance', 'تسویهٔ پیش‌پرداخت', prepaymentRemaining > 1 ? 'warn' : 'ok',
+      prepaymentRemaining > 1
+        ? `${money(prepaymentRemaining, currencyLabel)} پیش‌پرداخت تسویه‌نشده`
+        : 'پیش‌پرداخت کامل تسویه شده است', prepaymentRemaining);
+
+    const retentionPercent = toNum(contract?.retention_percent);
+    const expectedRetention = (totals.gross * retentionPercent) / 100;
+    const retentionGap = Math.abs((totals.buckets.retention || 0) - expectedRetention);
+    push('retention', 'کنترل کسورات حسن انجام کار',
+      retentionPercent > 0 && retentionGap > Math.max(1000, expectedRetention * 0.05) ? 'warn' : 'ok',
+      retentionPercent > 0
+        ? `انتظار ${money(expectedRetention, currencyLabel)} · ثبت‌شده ${money(totals.buckets.retention || 0, currencyLabel)}`
+        : 'درصد حسن انجام کار برای قرارداد ثبت نشده است',
+      retentionGap);
+
+    const guaranteeGap = Math.max(0, guaranteeRequiredTotal - guaranteeProvidedTotal);
+    push('guarantee', 'پوشش تضامین و تعهدات', guaranteeGap > 1 ? 'warn' : 'ok',
+      guaranteeGap > 1
+        ? `${money(guaranteeGap, currencyLabel)} کسری پوشش تضامین`
+        : 'تضامین ثبت‌شده پوشش کامل دارد', guaranteeGap);
+
+    return out;
+  }, [
+    breakdownRows, statements, payments, totals, amountRial, prepaymentRemaining,
+    contract?.retention_percent, guaranteeRequiredTotal, guaranteeProvidedTotal, currencyLabel,
+  ]);
+
+  const warningCount = checks.filter((item) => item.status !== 'ok').length;
 
   const exportExcel = async () => {
-    if (!selected?.id || exporting) return;
+    if (!contractId || exporting) return;
     setExporting(true);
     setMsg(null);
     try {
       await downloadFile('/external-contracts/export-excel/', {
-        params: { contract: selected.id },
-        fallbackName: `contract-${selected.number || selected.id}-finance.xlsx`,
+        params: { contract: contractId },
+        fallbackName: `contract-${selectedContract?.number || contractId}-finance.xlsx`,
       });
       setMsg({ ok: true, text: 'فایل اکسل این قرارداد آماده شد.' });
     } catch (error) {
@@ -182,243 +1137,843 @@ const ContractFinancePage = () => {
     }
   };
 
+  const loading = contractsQuery.isLoading || (scoped && detailQuery.isLoading);
+
+
   return (
     <Box>
       <PageHeader
-        icon={<AccountBalanceWalletIcon />}
-        title="نمای مالی قرارداد"
-        badge={selected ? (
+        icon={<InsightsIcon />}
+        title="تحلیل مالی قرارداد"
+        badge={scoped ? (
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
-            <Chip size="small" variant="outlined" label={`قرارداد ${toPersianDigits(selected.number || '—')}`} />
-            {selected.status_display || selected.status ? (
-              <Chip size="small" label={selected.status_display || selected.status} sx={{ bgcolor: '#f1f5f9', color: '#475569', fontWeight: 700 }} />
+            <Chip size="small" variant="outlined"
+              label={`قرارداد ${toPersianDigits(contract?.number || selectedContract?.number || contractId)}`} />
+            {contract?.status_display || contract?.status ? (
+              <Chip size="small" label={contract.status_display || contract.status}
+                sx={{ bgcolor: alpha(theme.palette.text.primary, 0.06), color: 'text.secondary', fontWeight: 700 }} />
             ) : null}
+            <Chip size="small" label={currencyLabel}
+              sx={{ bgcolor: alpha(CLR.contract, 0.1), color: CLR.contract, fontWeight: 800 }} />
           </Stack>
-        ) : null}
+        ) : (
+          <Chip size="small" label={`${toPersianDigits(contractRows.length)} قرارداد`}
+            sx={{ height: 23, fontWeight: 800, bgcolor: alpha(CLR.contract, 0.1), color: CLR.contract }} />
+        )}
         actions={(
           <>
-            <Button variant="outlined" disabled={!selected || exporting}
-              startIcon={exporting ? <CircularProgress size={15} /> : <DownloadIcon />} onClick={exportExcel}>
-              {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
-            </Button>
-            <Button variant="outlined" disabled={!selected} startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
-            <Button variant="contained" disabled={!selected} startIcon={<VisibilityIcon />}
-              onClick={() => navigate(`/external-contracts/${selected.id}`)}>پرونده قرارداد</Button>
+            <Tooltip title="به‌روزرسانی">
+              <span>
+                <Button variant="outlined" onClick={refresh}
+                  disabled={contractsQuery.isFetching || detailQuery.isFetching}
+                  sx={{ minWidth: 40, px: 1 }}>
+                  <RefreshIcon fontSize="small" />
+                </Button>
+              </span>
+            </Tooltip>
+            {scoped ? (
+              <Button variant="outlined" disabled={exporting} startIcon={<DownloadIcon />} onClick={exportExcel}>
+                {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+              </Button>
+            ) : null}
+            {scoped ? (
+              <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button>
+            ) : null}
+            {scoped ? (
+              <Button variant="outlined" startIcon={<BusinessIcon />}
+                onClick={() => navigate(`/external-contracts/${contractId}`)}>پرونده قرارداد</Button>
+            ) : null}
+            {scoped ? (
+              <Button variant="contained" startIcon={<ChevronRightIcon />} onClick={clearContract}>
+                فهرست قراردادها
+              </Button>
+            ) : null}
           </>
         )}
       />
 
       {msg ? (
-        <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2 }} onClose={() => setMsg(null)}>{msg.text}</Alert>
+        <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setMsg(null)}>
+          {msg.text}
+        </Alert>
       ) : null}
 
-      {/* انتخاب قرارداد */}
-      <Paper elevation={0} sx={{
-        p: 1.75, mb: 2, bgcolor: CARD_BG, border: `1px solid ${CARD_BORDER}`,
-        borderRadius: '16px', boxShadow: 'none',
-      }}>
-        <Grid container spacing={1.5} alignItems="center">
-          <Grid item xs={12} md={8}>
-            <Autocomplete
-              size="small"
-              fullWidth
-              options={contractList}
-              value={selected}
-              onChange={(_, value) => selectContract(value)}
-              loading={contractsLoading}
-              isOptionEqualToValue={(option, value) => String(option.id) === String(value?.id)}
-              getOptionLabel={(option) => `${option.number || ''} — ${option.subject || ''}`}
-              filterOptions={(options, state) => {
-                const q = state.inputValue.trim().toLowerCase();
-                if (!q) return options;
-                return options.filter((option) => [option.number, option.subject, option.party_name]
-                  .some((value) => String(value || '').toLowerCase().includes(q)));
-              }}
-              renderOption={(props, option) => (
-                <Box component="li" {...props} key={option.id} sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
-                  <Box sx={{ flex: 1, minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{option.subject || '—'}</Typography>
-                    <Typography sx={{ fontSize: 12, color: MUTED }}>{toPersianDigits(option.number || '—')} · {option.party_name || '—'}</Typography>
-                  </Box>
-                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#b45309' }}>
-                    {formatPersianNumber(option.effective_amount ?? option.amount ?? 0)} {normalizeCurrencyLabel(option.currency_name || option.currency_symbol)}
-                  </Typography>
-                </Box>
-              )}
-              renderInput={(params) => (
-                <TextField {...params} label="انتخاب قرارداد" placeholder="جستجو بر اساس شماره، موضوع یا طرف قرارداد…" />
-              )}
-            />
-          </Grid>
-          <Grid item xs={12} md={4}>
-            <Stack direction="row" spacing={1} useFlexGap alignItems="center" justifyContent={{ xs: 'flex-start', md: 'flex-end' }}>
-              <Chip size="small" icon={<HandshakeIcon />} label={`${toPersianDigits(contractList.length)} قرارداد`}
-                sx={{ bgcolor: '#f8fafc', color: '#475569', border: '1px solid #e2e8f0' }} />
-              {selected ? (
-                <Chip size="small" icon={<CalendarMonthIcon />} label={toJalali(selected.effective_end_date || selected.end_date)}
-                  sx={{ bgcolor: '#eff6ff', color: '#1d4ed8' }} />
-              ) : null}
-            </Stack>
-          </Grid>
-        </Grid>
-      </Paper>
-
-      {!selected ? (
-        <Paper elevation={0} sx={{ p: 6, bgcolor: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px', boxShadow: 'none' }}>
-          <EmptyState icon={AccountBalanceWalletIcon} text="یک قرارداد را برای مشاهدهٔ نمای مالی انتخاب کنید." />
-        </Paper>
-      ) : isLoading ? (
-        <Paper elevation={0} sx={{ p: 6, textAlign: 'center', bgcolor: CARD_BG, border: `1px solid ${CARD_BORDER}`, borderRadius: '18px', boxShadow: 'none' }}>
+      {loading && !contractList.length ? (
+        <Paper elevation={0} sx={{ p: 6, textAlign: 'center', bgcolor: 'background.paper', border: '1px solid', borderColor: cardBorderColor, borderRadius: '16px' }}>
           <CircularProgress size={28} />
         </Paper>
-      ) : contract ? (
+      ) : null}
+
+
+      {!scoped ? (
         <>
-          {/* مشخصات مالی قرارداد */}
-          <Paper elevation={0} sx={{
-            p: 2, mb: 2, bgcolor: CARD_BG, border: `1px solid ${CARD_BORDER}`,
-            borderRadius: '18px', boxShadow: 'none',
+          {/* نوار استاندارد جستجو، ترتیب و فیلترها */}
+          <Paper sx={{
+            p: 1.25, mb: 2, borderRadius: '16px', border: '1px solid', borderColor: 'divider',
+            bgcolor: 'background.paper', boxShadow: 'none',
           }}>
-            <Grid container spacing={2}>
-              <Grid item xs={12} lg={6}>
-                <Stack direction="row" alignItems="flex-start" spacing={1.25} useFlexGap>
-                  <Box sx={{
-                    width: 48, height: 48, flexShrink: 0, borderRadius: '14px',
-                    bgcolor: '#fff7ed', border: '1px solid #fed7aa', color: '#c2410c',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  }}>
-                    <BusinessIcon sx={{ fontSize: 23 }} />
-                  </Box>
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK, lineHeight: 1.5 }}>{contract.subject || '—'}</Typography>
-                    <Typography sx={{ fontSize: 12, color: '#475569', mt: 0.2 }}>
-                      {contract.party_name || '—'} · قرارداد {toPersianDigits(contract.number || '—')}
-                    </Typography>
-                    <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.8 }}>
-                      <Chip size="small" label={contract.contract_type_master_name || contract.contract_type_display || '—'} variant="outlined" sx={{ height: 21, fontSize: 12 }} />
-                      <Chip size="small" label={contract.status_display || contract.status || '—'} sx={{ height: 21, fontSize: 12, bgcolor: '#f1f5f9', color: '#475569' }} />
-                      <Chip size="small" label={`${toJalali(contract.start_date)} تا ${toJalali(contract.effective_end_date || contract.end_date)}`} variant="outlined" sx={{ height: 21, fontSize: 12 }} />
-                    </Stack>
-                  </Box>
-                </Stack>
-              </Grid>
-              <Grid item xs={12} lg={6}>
-                <Grid container spacing={1}>
-                  <Grid item xs={6} sm={3}><DetailTile label="مبلغ پایه" value={`${formatPersianNumber(baseAmount)} ${currencyLabel}`} ltr /></Grid>
-                  <Grid item xs={6} sm={3}><DetailTile label="مبلغ با الحاقیه" value={`${formatPersianNumber(amount)} ${currencyLabel}`} ltr /></Grid>
-                  <Grid item xs={6} sm={3}><DetailTile label="تغییر الحاقیه" value={`${formatPersianNumber(addendumAmount)} ${currencyLabel}`} ltr /></Grid>
-                  <Grid item xs={6} sm={3}><DetailTile label="پیش‌پرداخت" value={`${formatPersianNumber(advanceTotal)} ${currencyLabel}`} ltr /></Grid>
-                </Grid>
-              </Grid>
-            </Grid>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} useFlexGap alignItems={{ xs: 'stretch', sm: 'center' }}>
+              <TextField
+                size="small"
+                placeholder="جستجو در شماره، موضوع و طرف قرارداد…"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                sx={{
+                  flex: toolbar.searchWidth === '100%' ? 1 : '0 0 auto',
+                  width: toolbar.searchWidth === '100%' ? { xs: '100%', sm: 'auto' } : `${toolbar.searchWidth}px`,
+                  '& .MuiOutlinedInput-root': {
+                    height: `${toolbar.searchHeight}px`,
+                    borderRadius: `${toolbar.searchRadius}px`,
+                    bgcolor: toolbar.searchBg,
+                    fontSize: 12.5,
+                  },
+                }}
+                InputProps={{
+                  startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment>,
+                }}
+              />
+              <TextField
+                select
+                size="small"
+                value={sortBy}
+                onChange={(event) => setSortBy(event.target.value)}
+                sx={{
+                  flex: '0 0 auto',
+                  minWidth: { xs: '100%', sm: 180 },
+                  '& .MuiOutlinedInput-root': {
+                    height: `${toolbar.searchHeight}px`,
+                    borderRadius: `${toolbar.searchRadius}px`,
+                    fontSize: 12.5,
+                  },
+                  '& .MuiSelect-select': { paddingLeft: '30px !important', paddingRight: '10px !important' },
+                }}
+                InputProps={{ startAdornment: <InputAdornment position="start"><SortIcon fontSize="small" /></InputAdornment> }}
+                SelectProps={{ inputProps: { 'aria-label': 'ترتیب نمایش' }, IconComponent: SortArrow }}
+              >
+                {CONTRACT_SORT_OPTIONS.map((option) => (
+                  <MenuItem key={option.value} value={option.value} sx={{ fontSize: 12.5 }}>{option.label}</MenuItem>
+                ))}
+              </TextField>
+              <Button
+                variant={toolbar.filtersVariant}
+                onClick={() => setFiltersOpen(!filtersOpen)}
+                startIcon={toolbar.filtersIconPosition === 'start' ? <FilterListIcon fontSize="small" /> : null}
+                endIcon={toolbar.filtersIconPosition === 'end' ? <FilterListIcon fontSize="small" /> : null}
+                aria-expanded={filtersOpen}
+                sx={{
+                  height: `${toolbar.searchHeight}px !important`,
+                  minHeight: `${toolbar.searchHeight}px !important`,
+                  maxHeight: `${toolbar.searchHeight}px !important`,
+                  alignSelf: 'center', py: 0, boxSizing: 'border-box',
+                  borderRadius: `${toolbar.filtersRadius}px`,
+                  fontSize: 12.5, fontWeight: 700, whiteSpace: 'nowrap', minWidth: 'auto', px: 2,
+                }}
+              >
+                {toolbar.filtersLabel}
+                {toolbar.showFiltersCount && activeFilterCount > 0 ? (
+                  <Chip size="small" label={toPersianDigits(activeFilterCount)}
+                    sx={{
+                      ml: 0.75, height: 18, fontSize: 11, fontWeight: 800,
+                      bgcolor: toolbar.filtersVariant === 'contained' ? 'rgba(255,255,255,0.24)' : toolbar.chipBg,
+                      color: toolbar.filtersVariant === 'contained' ? '#fff' : toolbar.primary,
+                    }} />
+                ) : null}
+              </Button>
+              {toolbar.showReset && (activeFilterCount > 0 || search) ? (
+                <Button size="small" variant="text" onClick={resetFilters}
+                  sx={{ height: `${toolbar.searchHeight}px`, minHeight: `${toolbar.searchHeight}px`, alignSelf: 'center', py: 0, fontSize: 12.5, whiteSpace: 'nowrap' }}>
+                  {toolbar.resetLabel}
+                </Button>
+              ) : null}
+            </Stack>
+
+
+            <Collapse in={filtersOpen} timeout={180} unmountOnExit>
+              <Box sx={{
+                mt: 1.25, pt: 1.25, borderTop: '1px dashed', borderColor: 'divider',
+                bgcolor: toolbar.panelBg,
+                borderRadius: `${toolbar.panelRadius}px`,
+                p: `${toolbar.panelPadding}px`,
+              }}>
+                <Box sx={{
+                  display: 'grid',
+                  gridTemplateColumns: { xs: '1fr', sm: toolbar.panelGrid },
+                  gap: `${toolbar.panelGap}px`,
+                  alignItems: 'end',
+                }}>
+                  <FilterSelect
+                    label="وضعیت قرارداد" value={statusFilter} options={contractStatusOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={setStatusFilter}
+                  />
+                  <FilterSelect
+                    label="نمایش" value={onlyWithFinance ? 'withFinance' : 'all'} options={financeToggleOptions}
+                    labelsPosition={toolbar.labelsPosition} radius={toolbar.filtersRadius}
+                    onChange={(value) => setOnlyWithFinance(value === 'withFinance')}
+                  />
+                  {toolbar.showReset ? (
+                    <Button variant="text" size="small" onClick={resetFilters}
+                      sx={{ fontSize: 12.5, justifySelf: 'start', height: `${toolbar.searchHeight - 6}px` }}>
+                      بازنشانی فیلترها
+                    </Button>
+                  ) : null}
+                </Box>
+              </Box>
+            </Collapse>
+
+            {toolbar.showActiveChips && activeChips.length > 0 ? (
+              <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
+                {activeChips.map((chip) => (
+                  <Chip key={chip.key} size="small" label={chip.label} onDelete={chip.clear} sx={activeChipSx} />
+                ))}
+              </Stack>
+            ) : null}
           </Paper>
 
-          {/* شاخص‌های مالی */}
-          <Grid container spacing={1.5} sx={{ mb: 2 }}>
-            <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={AccountBalanceIcon} label="مبلغ قرارداد" value={formatPersianNumber(amount)} suffix={currencyLabel} color="#f59e0b" size={15} />
-            </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={ReceiptLongIcon} label="کارکرد صورت‌وضعیت" value={formatPersianNumber(totalsDisplay.gross)} suffix={currencyLabel} color="#3b82f6" progress={workRatio} progressLabel={`${toPersianDigits(Math.round(workRatio))}٪ پیشرفت`} size={15} />
-            </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={ReceiptIcon} label="خالص صورت‌وضعیت" value={formatPersianNumber(totalsDisplay.net)} suffix={currencyLabel} color="#6366f1" progress={netRatio} progressLabel="خالص تجمعی" size={15} />
-            </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={LockIcon} label="جمع کسورات" value={formatPersianNumber(totalsDisplay.deductions)} suffix={currencyLabel} color="#be123c" hint={`${toPersianDigits(sortedStatements.length)} دوره`} size={15} />
-            </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={PaymentsIcon} label="پرداخت‌شده" value={formatPersianNumber(totalsDisplay.payments)} suffix={currencyLabel} color="#0891b2" progress={paidRatio} progressLabel={`${toPersianDigits(Math.round(paidRatio))}٪ از قرارداد`} size={15} />
-            </Grid>
-            <Grid item xs={6} md={4} lg={2}>
-              <KpiCard icon={CalendarMonthIcon} label="مانده قرارداد" value={formatPersianNumber(remainingContract)} suffix={currencyLabel} color="#64748b" progress={100 - workRatio} progressLabel="کار باقی‌مانده" size={15} />
-            </Grid>
-          </Grid>
-
-          {/* جدول اصلی صورت‌وضعیت‌ها */}
-          <SectionCard title="جدول مالی صورت‌وضعیت‌ها" icon={ReceiptLongIcon} color="#3b82f6" sx={{ mb: 2 }}
-            action={<Chip size="small" label={`${toPersianDigits(sortedStatements.length)} صورت‌وضعیت`}
-              sx={{ height: 22, fontSize: 12, bgcolor: '#eff6ff', color: '#1d4ed8' }} />}>
-            <StatementsTable statements={sortedStatements} currencyLabel={currencyLabel} fallbackRate={contract.exchange_rate} />
-          </SectionCard>
-
-          {/* پیش‌پرداخت و نسبت‌های مالی */}
-          <Grid container spacing={2} sx={{ mb: 2 }}>
-            <Grid item xs={12} lg={4}>
-              <SectionCard title="پیش‌پرداخت" icon={AccountBalanceWalletIcon} color="#f59e0b">
-                <AdvanceTable rows={advanceRowsFinal} total={advanceTotal} amortized={advanceAmortized}
-                  remaining={advanceRemaining} currency={currencyLabel} />
-              </SectionCard>
-            </Grid>
-
+          {/* جدول قراردادها + کارت بیشترین مانده */}
+          <Grid container spacing={2} alignItems="stretch">
             <Grid item xs={12} lg={8}>
-              <SectionCard title="نسبت‌های مالی" icon={AccountBalanceIcon} color="#0ea5e9"
-                action={<Chip size="small" label={`مانده: ${formatPersianNumber(remainingContract)} ${currencyLabel}`}
-                  sx={{ height: 22, fontSize: 12, bgcolor: '#f1f5f9', color: '#475569' }} />}>
-                <Grid container spacing={2}>
-                  <Grid item xs={12} sm={6}>
-                    <Stack spacing={1.4}>
-                      <MoneyBar label="پیشرفت کارکرد" value={totalsDisplay.gross} total={amount || 1} color="#3b82f6" suffix={currencyLabel} />
-                      <MoneyBar label="خالص صورت‌وضعیت" value={totalsDisplay.net} total={amount || 1} color="#6366f1" suffix={currencyLabel} />
-                      <MoneyBar label="پرداخت‌شده" value={totalsDisplay.payments} total={amount || 1} color="#0891b2" suffix={currencyLabel} />
-                    </Stack>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Box sx={{ p: 1.5, height: '100%', borderRadius: '13px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
-                      <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK, mb: 1 }}>ترکیب کسورات</Typography>
-                      <Stack spacing={0.85}>
-                        {[
-                          ['حسن انجام کار', totalsDisplay.retention, '#f59e0b'],
-                          ['بیمه', totalsDisplay.insurance, '#3b82f6'],
-                          ['پیش‌پرداخت', totalsDisplay.prepayment, '#8b5cf6'],
-                          ['علی‌الحساب‌ها', totalsDisplay.statementAdvance + totalsDisplay.otherAdvance + totalsDisplay.materials, '#ec4899'],
-                          ['سایر', totalsDisplay.other, '#64748b'],
-                        ].map(([label, value, color]) => (
-                          <Stack key={label} direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap>
-                            <Stack direction="row" alignItems="center" spacing={0.5} useFlexGap>
-                              <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color }} />
-                              <Typography sx={{ fontSize: 12, color: MUTED }}>{label}</Typography>
-                            </Stack>
-                            <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{formatPersianNumber(value)}</Typography>
-                          </Stack>
-                        ))}
-                      </Stack>
-                      <Typography sx={{ mt: 1, pt: 0.8, borderTop: '1px solid #e8edf4', fontSize: 12, color: MUTED }}>
-                        مانده پیش‌پرداخت: <Box component="span" sx={{ color: '#1d4ed8', fontWeight: 800 }}>{formatPersianNumber(advanceRemaining)} {currencyLabel}</Box>
+              <Paper elevation={0} sx={{
+                borderRadius: 'var(--hrms-table-radius, 16px)',
+                border: '1px solid', borderColor: cardBorderColor,
+                bgcolor: 'background.paper', boxShadow: 'none',
+                overflow: 'hidden',
+                px: `${cardPadX}px`, py: `${cardPadY}px`,
+              }}>
+                {!contractRows.length ? (
+                  <Box sx={{ p: 5, textAlign: 'center' }}>
+                    <AccountBalanceWalletIcon sx={{ fontSize: 36, color: theme.palette.text.disabled, mb: 1 }} />
+                    <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>قراردادی با این مشخصات پیدا نشد.</Typography>
+                    <Typography sx={{ fontSize: 11, color: MUTED, mt: 0.3 }}>عبارت جستجو یا فیلترها را تغییر دهید.</Typography>
+                  </Box>
+                ) : (
+                  <>
+                    <FinanceLandingTable
+                      rows={pagedContracts}
+                      tableTheme={tableTheme}
+                      containerRef={tableScrollRef}
+                      tableHeight={tableHeight}
+                      rowHeight={effectiveRowPx}
+                      dimmed={contractsQuery.isFetching || statementsQuery.isFetching || paymentsQuery.isFetching}
+                      onOpen={selectContract}
+                    />
+                    <ArchivePager
+                      tableTheme={tableTheme}
+                      page={page}
+                      onPage={setPage}
+                      totalPages={landingTotalPages}
+                      pageNumbers={landingPageNumbers}
+                      total={contractRows.length}
+                      pageSize={landingPageSize}
+                      unit="قرارداد"
+                    />
+                  </>
+                )}
+              </Paper>
+            </Grid>
+
+            <Grid item xs={12} lg={4}>
+              <Paper elevation={0} sx={{
+                height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
+                borderRadius: 'var(--hrms-table-radius, 16px)',
+                border: '1px solid', borderColor: cardBorderColor,
+                bgcolor: 'background.paper', boxShadow: 'none',
+              }}>
+                <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap
+                  sx={{ px: 1.25, py: 1, borderBottom: '1px solid', borderColor: 'divider' }}>
+                  <TrendingUpIcon sx={{ fontSize: 16, color: CLR.balance }} />
+                  <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, flex: 1 }}>بیشترین مانده مالی</Typography>
+                  <Chip size="small" label={toPersianDigits(topRemaining.length)}
+                    sx={{ height: 18, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.balance, 0.1), color: CLR.balance }} />
+                </Stack>
+                <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>
+                  {topRemaining.length ? topRemaining.map((row) => (
+                    <Box
+                      key={row.contract.id}
+                      onClick={() => selectContract(row.contract)}
+                      sx={{
+                        display: 'flex', alignItems: 'center', gap: 0.75,
+                        px: 1.25, py: 0.85,
+                        borderBottom: '1px solid', borderColor: 'divider',
+                        cursor: 'pointer',
+                        '&:hover': { backgroundColor: tableTheme.hoverBg },
+                        '&:last-of-type': { borderBottom: 'none' },
+                      }}
+                    >
+                      <Box sx={{
+                        width: 26, height: 26, borderRadius: '8px', flexShrink: 0,
+                        bgcolor: alpha(CLR.balance, 0.08), color: CLR.balance,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      }}>
+                        <AccountBalanceWalletIcon sx={{ fontSize: 14 }} />
+                      </Box>
+                      <Box sx={{ minWidth: 0, flex: 1 }}>
+                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                          {row.contract.subject || '—'}
+                        </Typography>
+                        <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                          {toPersianDigits(row.contract.number || '—')} · {formatPersianNumber(Math.round(row.workDone))}
+                        </Typography>
+                      </Box>
+                      <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: CLR.balance }}>
+                        {formatPersianNumber(Math.round(row.remaining))}
                       </Typography>
                     </Box>
-                  </Grid>
-                </Grid>
-              </SectionCard>
+                  )) : (
+                    <Box sx={{ p: 3, textAlign: 'center' }}>
+                      <Typography sx={{ fontSize: 11, color: MUTED }}>مانده‌ای برای نمایش نیست.</Typography>
+                    </Box>
+                  )}
+                </Box>
+              </Paper>
             </Grid>
           </Grid>
-
-          {/* سایر اسناد مالی */}
-          <SectionCard title="سایر اسناد مالی قرارداد" icon={ReceiptIcon} color="#6366f1"
-            action={<Chip size="small" label={`${toPersianDigits(invoices.length + payments.length + addendums.length + guarantees.length)} سند`}
-              sx={{ height: 22, fontSize: 12, bgcolor: '#eef2ff', color: '#4338ca' }} />}>
-            <Tabs value={tab} onChange={(_, value) => setTab(value)} variant="scrollable" allowScrollButtonsMobile
-              sx={{
-                minHeight: 36, borderBottom: '1px solid #eef2f7', mb: 1.5,
-                '& .MuiTab-root': { minHeight: 36, minWidth: 110, fontSize: 12, fontWeight: 700, textTransform: 'none' },
-                '& .Mui-selected': { color: '#4338ca' },
-                '& .MuiTabs-indicator': { bgcolor: '#6366f1', height: 2.5 },
-              }}>
-              <Tab label={`فاکتورها (${toPersianDigits(invoices.length)})`} />
-              <Tab label={`پرداخت‌ها (${toPersianDigits(payments.length)})`} />
-              <Tab label={`الحاقیه‌ها (${toPersianDigits(addendums.length)})`} />
-              <Tab label={`تضامین (${toPersianDigits(guarantees.length)})`} />
-            </Tabs>
-
-            {tab === 0 ? <InvoicesTable invoices={sortedInvoices} currency={currencyLabel} /> : null}
-            {tab === 1 ? <PaymentsTable payments={sortedPayments} currency={currencyLabel} /> : null}
-            {tab === 2 ? <AddendumsTable addendums={sortedAddendums} currency={currencyLabel} /> : null}
-            {tab === 3 ? <GuaranteesTable guarantees={guarantees} currency={currencyLabel} /> : null}
-          </SectionCard>
         </>
+      ) : null}
+
+
+      {scoped ? (
+        detailQuery.isLoading && !contract ? (
+          <Paper elevation={0} sx={{ p: 6, textAlign: 'center', bgcolor: 'background.paper', border: '1px solid', borderColor: cardBorderColor, borderRadius: '16px' }}>
+            <CircularProgress size={28} />
+          </Paper>
+        ) : !contract ? (
+          <Paper elevation={0} sx={{ p: 6, bgcolor: 'background.paper', border: '1px solid', borderColor: cardBorderColor, borderRadius: '16px' }}>
+            <EmptyState icon={AccountBalanceWalletIcon} text="برای این قرارداد دادهٔ مالی پیدا نشد." />
+          </Paper>
+        ) : (
+          <>
+            {/* ---- سربرگ مشخصات کمی قرارداد ---- */}
+            <Paper elevation={0} sx={{
+              p: 1.75, mb: 2,
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: cardBorderColor,
+              bgcolor: 'background.paper', boxShadow: 'none',
+            }}>
+              <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} lg={5}>
+                  <Stack direction="row" alignItems="flex-start" spacing={1.25} useFlexGap>
+                    <Box sx={{
+                      width: 46, height: 46, flexShrink: 0, borderRadius: '14px',
+                      bgcolor: alpha(CLR.contract, 0.08), border: `1px solid ${alpha(CLR.contract, 0.2)}`, color: CLR.contract,
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    }}>
+                      <BusinessIcon sx={{ fontSize: 22 }} />
+                    </Box>
+                    <Box sx={{ minWidth: 0 }}>
+                      <Typography sx={{ fontSize: 14, fontWeight: 900, color: INK, lineHeight: 1.6 }}>
+                        {contract.subject || '—'}
+                      </Typography>
+                      <Typography sx={{ fontSize: 11.5, color: 'text.secondary', mt: 0.2 }}>
+                        طرف قرارداد: <Box component="span" sx={{ fontWeight: 800, color: INK }}>{contract.party_name || '—'}</Box>
+                        {' · '}
+                        شماره: <Box component="span" sx={{ fontWeight: 800, color: INK }}>{toPersianDigits(contract.number || '—')}</Box>
+                      </Typography>
+                      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.8 }}>
+                        <Chip size="small" label={contract.contract_type_master_name || contract.contract_type_display || '—'}
+                          variant="outlined" sx={{ height: 21, fontSize: 10.5 }} />
+                        <Chip size="small" label={contract.status_display || contract.status || '—'}
+                          sx={{ height: 21, fontSize: 10.5, bgcolor: alpha(theme.palette.text.primary, 0.06), color: 'text.secondary' }} />
+                        <Chip size="small"
+                          icon={<CalendarMonthIcon sx={{ fontSize: 13 }} />}
+                          label={`${toJalali(periodStart) || '—'} تا ${toJalali(periodEnd) || '—'}`}
+                          variant="outlined" sx={{ height: 21, fontSize: 10.5 }} />
+                        <Chip size="small"
+                          label={`${toPersianDigits(totalDays)} روز`}
+                          sx={{ height: 21, fontSize: 10.5, bgcolor: alpha(CLR.rate, 0.1), color: CLR.rate, fontWeight: 800 }} />
+                      </Stack>
+                    </Box>
+                  </Stack>
+                </Grid>
+                <Grid item xs={12} lg={7}>
+                  <Grid container spacing={1}>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="مبلغ پایه" value={`${formatPersianNumber(baseAmount)} ${currencyLabel}`} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="الحاقیه‌ها" value={`${formatPersianNumber(addendumAmount)} ${currencyLabel}`} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="مبلغ مؤثر" value={`${formatPersianNumber(contractAmount)} ${currencyLabel}`} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="نرخ تبدیل" value={displayRate > 1 ? formatPersianNumber(displayRate) : '—'} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="کارکرد (ریال)" value={formatPersianNumber(Math.round(totals.gross))} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="خالص قابل پرداخت" value={formatPersianNumber(Math.round(totals.net))} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="پرداخت‌شده" value={formatPersianNumber(Math.round(totals.paid))} ltr />
+                    </Grid>
+                    <Grid item xs={6} sm={3}>
+                      <DetailTile label="مانده مالی" value={formatPersianNumber(Math.round(payableRemaining))} ltr />
+                    </Grid>
+                  </Grid>
+                </Grid>
+              </Grid>
+            </Paper>
+
+
+            {/* ---- جدول تفصیلی مالی صورت‌وضعیت‌ها ---- */}
+            <Paper elevation={0} sx={{
+              mb: 2,
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: cardBorderColor,
+              bgcolor: 'background.paper', boxShadow: 'none',
+              p: 1.5,
+            }}>
+              <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap" sx={{ mb: 1.25 }}>
+                <Box sx={{
+                  width: 28, height: 28, borderRadius: '9px', flexShrink: 0,
+                  bgcolor: alpha(CLR.work, 0.08), color: CLR.work,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <ReceiptLongIcon sx={{ fontSize: 16 }} />
+                </Box>
+                <Box sx={{ flex: 1, minWidth: 180 }}>
+                  <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>جدول تفصیلی مالی صورت‌وضعیت‌ها</Typography>
+                  <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.2 }}>
+                    مشخصات قرارداد، کارکرد، اضافات، کسورات و جمع هر صورت‌وضعیت
+                  </Typography>
+                </Box>
+                <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
+                  <Chip size="small" label="اضافات" sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.add, 0.1), color: CLR.add }} />
+                  <Chip size="small" label="کسورات" sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.ded, 0.1), color: CLR.ded }} />
+                  <Chip size="small" label="جمع" sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.net, 0.1), color: CLR.net }} />
+                  <Chip size="small" label={`${toPersianDigits(breakdownRows.length)} صورت‌وضعیت`}
+                    sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(theme.palette.text.primary, 0.06), color: 'text.secondary' }} />
+                </Stack>
+              </Stack>
+
+              {breakdownRows.length ? (
+                <FinanceBreakdownTable
+                  rows={breakdownRows}
+                  additionColumns={additionColumns}
+                  deductionColumns={deductionColumns}
+                  hasOtherAddition={hasOtherAddition}
+                  hasOtherDeduction={hasOtherDeduction}
+                  totals={totals}
+                  currencyLabel={currencyLabel}
+                  tableTheme={tableTheme}
+                />
+              ) : (
+                <EmptyState icon={ReceiptLongIcon} text="برای این قرارداد صورت‌وضعیتی ثبت نشده است." />
+              )}
+            </Paper>
+
+
+            {/* ---- هشت تحلیل مالی ---- */}
+            <Grid container spacing={2}>
+              {/* ۱) وضعیت مالی کل */}
+              <Grid item xs={12} lg={6}>
+                <AnalysisCard icon={AssessmentIcon} title="۱. تحلیل وضعیت مالی کل قرارداد"
+                  hint="مقایسهٔ مبلغ قرارداد با کارکرد، خالص قابل پرداخت و پرداختی" color={CLR.net}
+                  action={<Chip size="small" label={`کارکرد ${faPercent(workRatio)}`}
+                    sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.work, 0.1), color: CLR.work }} />}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr 1fr', sm: '1fr 1fr 1fr 1fr' }, gap: 1, mb: 1.25 }}>
+                    {[
+                      ['مبلغ قرارداد', `${formatPersianNumber(contractAmount)} ${currencyLabel}`, CLR.contract],
+                      ['کارکرد', formatPersianNumber(Math.round(totals.gross)), CLR.work],
+                      ['خالص قابل پرداخت', formatPersianNumber(Math.round(totals.net)), CLR.net],
+                      ['مانده مالی', formatPersianNumber(Math.round(payableRemaining)), CLR.balance],
+                    ].map(([label, value, color]) => (
+                      <Box key={label} sx={{
+                        p: 0.9, borderRadius: '10px', bgcolor: alpha(color, 0.05),
+                        border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0,
+                      }}>
+                        <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
+                        <Typography noWrap title={value} sx={{ fontSize: 12, fontWeight: 900, color, mt: 0.25 }}>{value}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  <Grid container spacing={1.5} alignItems="center">
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ height: 176 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={[
+                                { name: 'پرداخت‌شده', value: Math.round(totals.paid) },
+                                { name: 'مانده', value: Math.round(payableRemaining) },
+                              ]}
+                              dataKey="value" nameKey="name" innerRadius={48} outerRadius={72} paddingAngle={2} startAngle={90} endAngle={450}
+                            >
+                              <Cell fill={CLR.paid} />
+                              <Cell fill={CLR.balance} />
+                            </Pie>
+                            <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                            <Legend align="right" wrapperStyle={legendStyle} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      {[
+                        ['پیشرفت کارکرد نسبت به مبلغ قرارداد', workRatio, CLR.work],
+                        ['نسبت پرداخت به خالص صورت‌وضعیت‌ها', paidRatio, CLR.paid],
+                        ['ماندهٔ قرارداد (کارکردنشده)', ratio(contractRemaining, amountRial || 1), CLR.balance],
+                      ].map(([label, value, color]) => (
+                        <Box key={label} sx={{ mb: 1.1 }}>
+                          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap>
+                            <Typography sx={{ fontSize: 11, color: MUTED }}>{label}</Typography>
+                            <Typography sx={{ fontSize: 11, fontWeight: 800, color }}>{faPercent(value)}</Typography>
+                          </Stack>
+                          <ProgressBar value={value} color={color} height={6} />
+                        </Box>
+                      ))}
+                    </Grid>
+                  </Grid>
+                </AnalysisCard>
+              </Grid>
+
+
+              {/* ۲) صورت‌وضعیت‌ها و پرداخت‌ها */}
+              <Grid item xs={12} lg={6}>
+                <AnalysisCard icon={ReceiptLongIcon} title="۲. تحلیل صورت‌وضعیت‌ها و پرداخت‌ها"
+                  hint="کارکرد، خالص و پرداختی هر صورت‌وضعیت" color={CLR.work}
+                  action={<Chip size="small" label={`${toPersianDigits(breakdownRows.length)} سند`}
+                    sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.work, 0.1), color: CLR.work }} />}>
+                  {timeline.length ? (
+                    <Box sx={{ height: 268 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <ComposedChart data={timeline} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                          <XAxis dataKey="label" reversed tick={chartAxisTick} />
+                          <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                          <ReTooltip
+                            formatter={chartMoney}
+                            labelFormatter={(label, payload) => payload?.[0]?.payload?.title || label}
+                            contentStyle={chartTooltipStyle}
+                            itemStyle={{ fontFamily: 'inherit' }}
+                          />
+                          <Legend align="right" wrapperStyle={legendStyle} />
+                          <Bar dataKey="gross" name="کارکرد" fill={CLR.work} radius={[3, 3, 0, 0]} maxBarSize={22} />
+                          <Bar dataKey="net" name="خالص" fill={CLR.net} radius={[3, 3, 0, 0]} maxBarSize={22} />
+                          <Line type="monotone" dataKey="paid" name="پرداختی" stroke={CLR.paid} strokeWidth={2} dot={{ r: 2 }} />
+                        </ComposedChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  ) : <EmptyState icon={ReceiptLongIcon} text="صورت‌وضعیتی برای تحلیل ثبت نشده است." />}
+                  <Typography sx={{ mt: 0.75, fontSize: 10.5, color: MUTED }}>
+                    جمع پرداخت‌ها {money(totalPaidAll, currencyLabel)} · از این مبلغ {money(totals.paid, currencyLabel)} به صورت‌وضعیت‌ها متصل است.
+                  </Typography>
+                </AnalysisCard>
+              </Grid>
+
+              {/* ۳) تخصیص مالی بین پروژه‌ها */}
+              <Grid item xs={12} lg={6}>
+                <AnalysisCard icon={PieChartIcon} title="۳. تحلیل تخصیص مالی بین پروژه‌ها"
+                  hint="سهم هر پروژه از مبلغ مؤثر قرارداد" color={CLR.rate}>
+                  <Grid container spacing={1.5} alignItems="center">
+                    <Grid item xs={12} sm={6}>
+                      <Box sx={{ height: 190 }}>
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie data={allocationRows} dataKey="amount" nameKey="name" innerRadius={44} outerRadius={70}
+                              paddingAngle={2} startAngle={90} endAngle={450}>
+                              {allocationRows.map((row, index) => (
+                                <Cell key={row.name} fill={['#2563eb', '#7c3aed', '#0f766e', '#b45309', '#be123c', '#0891b2'][index % 6]} />
+                              ))}
+                            </Pie>
+                            <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </Box>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                      <Stack spacing={0.9} useFlexGap>
+                        {allocationRows.map((row, index) => (
+                          <Box key={row.name}>
+                            <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap>
+                              <Stack direction="row" spacing={0.5} useFlexGap alignItems="center" sx={{ minWidth: 0 }}>
+                                <Box sx={{ width: 7, height: 7, borderRadius: '50%', flexShrink: 0, bgcolor: ['#2563eb', '#7c3aed', '#0f766e', '#b45309', '#be123c', '#0891b2'][index % 6] }} />
+                                <Typography noWrap title={row.name} sx={{ fontSize: 11, color: INK, fontWeight: 700 }}>{row.name}</Typography>
+                              </Stack>
+                              <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: CLR.rate }}>{faPercent(row.percent)}</Typography>
+                            </Stack>
+                            <Stack direction="row" justifyContent="space-between" spacing={1} useFlexGap alignItems="center">
+                              <Box sx={{ flex: 1, minWidth: 0 }}><ProgressBar value={row.percent} color="#7c3aed" height={5} /></Box>
+                              <Typography noWrap sx={{ fontSize: 10, color: MUTED }}>{formatPersianNumber(row.amount)}</Typography>
+                            </Stack>
+                          </Box>
+                        ))}
+                      </Stack>
+                    </Grid>
+                  </Grid>
+                </AnalysisCard>
+              </Grid>
+
+
+              {/* ۴) پیش‌پرداخت و کسورات */}
+              <Grid item xs={12} lg={6}>
+                <AnalysisCard icon={LockIcon} title="۴. تحلیل پیش‌پرداخت و کسورات"
+                  hint="تفکیک کسورات صورت‌وضعیت‌ها و وضعیت تسویهٔ پیش‌پرداخت" color={CLR.ded}
+                  action={<Chip size="small" label={`جمع کسورات ${formatPersianNumber(Math.round(totals.deductionsTotal))}`}
+                    sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.ded, 0.1), color: CLR.ded }} />}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1.25 }}>
+                    {[
+                      ['پیش‌پرداخت قرارداد', formatPersianNumber(Math.round(prepaymentTotal)), CLR.contract],
+                      ['تسویه‌شده (کسورات)', formatPersianNumber(Math.round(prepaymentAmortized)), CLR.ok],
+                      ['مانده پیش‌پرداخت', formatPersianNumber(Math.round(prepaymentRemaining)), CLR.warn],
+                    ].map(([label, value, color]) => (
+                      <Box key={label} sx={{ p: 0.8, borderRadius: '10px', bgcolor: alpha(color, 0.05), border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0 }}>
+                        <Typography sx={{ fontSize: 10, color: MUTED }}>{label}</Typography>
+                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color, mt: 0.2 }}>{value}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  <Box sx={{ height: 210 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={deductionBuckets} layout="vertical" margin={{ top: 4, right: 12, left: 12, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                        <XAxis type="number" tick={chartAxisTick} tickFormatter={chartMoney} />
+                        <YAxis type="category" dataKey="label" orientation="right" width={126} tick={chartAxisTick} />
+                        <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                        <Bar dataKey="value" name="مبلغ کسورات" fill={CLR.ded} radius={[0, 3, 3, 0]} maxBarSize={16} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Box>
+                  <Typography sx={{ mt: 0.5, fontSize: 10.5, color: MUTED }}>
+                    پیش‌پرداخت تسویه‌شده: {faPercent(ratio(prepaymentAmortized, prepaymentTotal || 1))}
+                    {' · '}
+                    جمع مالیات بر ارزش افزوده: {money(totals.vat, currencyLabel)}
+                  </Typography>
+                </AnalysisCard>
+              </Grid>
+
+
+              {/* ۵) ضمانت‌نامه‌ها و ریسک مالی */}
+              <Grid item xs={12} lg={6}>
+                <AnalysisCard icon={LockIcon} title="۵. تحلیل ضمانت‌نامه‌ها و ریسک مالی"
+                  hint="پوشش تضامین در برابر تعهدات قرارداد" color={CLR.risk}
+                  action={<Chip size="small"
+                    label={guaranteeCoverage >= 100 ? 'ریسک پایین' : guaranteeCoverage >= 60 ? 'ریسک متوسط' : 'ریسک بالا'}
+                    sx={{
+                      height: 20, fontSize: 10.5, fontWeight: 800,
+                      bgcolor: alpha(guaranteeCoverage >= 100 ? CLR.ok : guaranteeCoverage >= 60 ? CLR.warn : CLR.risk, 0.1),
+                      color: guaranteeCoverage >= 100 ? CLR.ok : guaranteeCoverage >= 60 ? CLR.warn : CLR.risk,
+                    }} />}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mb: 1.25 }}>
+                    {[
+                      ['تعهدات تضامین', formatPersianNumber(Math.round(guaranteeRequiredTotal)), CLR.contract],
+                      ['تضامین ثبت‌شده', formatPersianNumber(Math.round(guaranteeProvidedTotal)), CLR.ok],
+                      ['کسری پوشش', formatPersianNumber(Math.round(Math.max(0, guaranteeRequiredTotal - guaranteeProvidedTotal))), CLR.risk],
+                    ].map(([label, value, color]) => (
+                      <Box key={label} sx={{ p: 0.8, borderRadius: '10px', bgcolor: alpha(color, 0.05), border: `1px solid ${alpha(color, 0.16)}`, minWidth: 0 }}>
+                        <Typography sx={{ fontSize: 10, color: MUTED }}>{label}</Typography>
+                        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color, mt: 0.2 }}>{value}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                  <Box sx={{ height: 210 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={guaranteeChart} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                        <XAxis dataKey="name" reversed tick={chartAxisTick} interval={0} height={42} />
+                        <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                        <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                        <Legend align="right" wrapperStyle={legendStyle} />
+                        <Bar dataKey="required" name="تعهد" fill={CLR.contract} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                        <Bar dataKey="provided" name="ثبت‌شده" fill={CLR.ok} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Box>
+                  <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ mt: 0.75 }}>
+                    <Typography sx={{ fontSize: 10.5, color: MUTED }}>پوشش تضامین</Typography>
+                    <Box sx={{ flex: 1, minWidth: 0 }}><ProgressBar value={guaranteeCoverage} color={CLR.ok} height={6} /></Box>
+                    <Typography sx={{ fontSize: 11, fontWeight: 800, color: CLR.ok }}>{faPercent(guaranteeCoverage)}</Typography>
+                  </Stack>
+                </AnalysisCard>
+              </Grid>
+
+
+              {/* ۶) انحراف مبلغ و پیش‌بینی هزینه */}
+              <Grid item xs={12} lg={6}>
+                <AnalysisCard icon={TrendingUpIcon} title="۶. تحلیل انحراف مبلغ قرارداد و پیش‌بینی هزینه نهایی"
+                  hint="مبلغ پایه، الحاقیه‌ها، کارکرد و پیش‌بینی هزینه بر پایهٔ آهنگ کارکرد" color={CLR.contract}
+                  action={<Chip size="small"
+                    label={`انحراف ${faPercent(Math.abs(forecastDeviation))} ${forecastDeviation >= 0 ? 'بیش‌برآورد' : 'کم‌برآورد'}`}
+                    sx={{
+                      height: 20, fontSize: 10.5, fontWeight: 800,
+                      bgcolor: alpha(forecastDeviation > 5 ? CLR.risk : CLR.ok, 0.1),
+                      color: forecastDeviation > 5 ? CLR.risk : CLR.ok,
+                    }} />}>
+                  <Box sx={{ height: 206 }}>
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={deviationRows} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                        <XAxis dataKey="name" reversed tick={chartAxisTick} interval={0} height={42} />
+                        <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                        <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                        <Bar dataKey="value" name="مبلغ (ریال)" radius={[3, 3, 0, 0]} maxBarSize={34}>
+                          {deviationRows.map((row, index) => (
+                            <Cell
+                              key={row.name}
+                              fill={[CLR.contract, CLR.rate, CLR.work, forecastDeviation > 5 ? CLR.risk : CLR.net][index]}
+                            />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </Box>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 1, mt: 1 }}>
+                    {[
+                      ['مدت قرارداد', `${toPersianDigits(totalDays)} روز`],
+                      ['سپری‌شده', `${toPersianDigits(elapsedDays)} روز`],
+                      ['آهنگ کارکرد روزانه', formatPersianNumber(Math.round(burnPerDay))],
+                    ].map(([label, value]) => (
+                      <Box key={label} sx={{ p: 0.7, borderRadius: '9px', bgcolor: alpha(CLR.contract, 0.04), border: `1px solid ${alpha(CLR.contract, 0.14)}`, minWidth: 0 }}>
+                        <Typography sx={{ fontSize: 10, color: MUTED }}>{label}</Typography>
+                        <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: INK, mt: 0.15 }}>{value}</Typography>
+                      </Box>
+                    ))}
+                  </Box>
+                </AnalysisCard>
+              </Grid>
+
+
+              {/* ۷) جریان نقدی قرارداد */}
+              <Grid item xs={12} lg={7}>
+                <AnalysisCard icon={TimelineIcon} title="۷. تحلیل جریان نقدی قرارداد"
+                  hint="روند تجمعی کارکرد، خالص صورت‌وضعیت و پرداختی" color={CLR.paid}>
+                  {timeline.length ? (
+                    <Box sx={{ height: 262 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <AreaChart data={timeline} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
+                          <defs>
+                            <linearGradient id="cashWork" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={CLR.work} stopOpacity={0.25} />
+                              <stop offset="100%" stopColor={CLR.work} stopOpacity={0} />
+                            </linearGradient>
+                            <linearGradient id="cashPaid" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor={CLR.paid} stopOpacity={0.25} />
+                              <stop offset="100%" stopColor={CLR.paid} stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                          <XAxis dataKey="label" reversed tick={chartAxisTick} />
+                          <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                          <ReTooltip
+                            formatter={chartMoney}
+                            labelFormatter={(label, payload) => payload?.[0]?.payload?.title || label}
+                            contentStyle={chartTooltipStyle}
+                            itemStyle={{ fontFamily: 'inherit' }}
+                          />
+                          <Legend align="right" wrapperStyle={legendStyle} />
+                          <Area type="monotone" dataKey="cumWork" name="کارکرد تجمعی" stroke={CLR.work} strokeWidth={2} fill="url(#cashWork)" />
+                          <Area type="monotone" dataKey="cumNet" name="خالص تجمعی" stroke={CLR.net} strokeWidth={2} fillOpacity={0} />
+                          <Area type="monotone" dataKey="cumPaid" name="پرداخت تجمعی" stroke={CLR.paid} strokeWidth={2} fill="url(#cashPaid)" />
+                        </AreaChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  ) : <EmptyState icon={TimelineIcon} text="دادهٔ جریان نقدی موجود نیست." />}
+                </AnalysisCard>
+              </Grid>
+
+              {/* پرداخت‌های ماهانه */}
+              <Grid item xs={12} lg={5}>
+                <AnalysisCard icon={PaymentsIcon} title="پرداخت‌های ماهانه"
+                  hint="مجموع پرداخت هر ماه شمسی" color={CLR.paid}
+                  action={<Chip size="small" label={money(totalPaidAll, currencyLabel)}
+                    sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.paid, 0.1), color: CLR.paid }} />}>
+                  {monthlyPayments.length ? (
+                    <Box sx={{ height: 262 }}>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={monthlyPayments} margin={{ top: 6, right: 8, left: 8, bottom: 4 }}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="rgba(148,163,184,0.3)" />
+                          <XAxis dataKey="month" reversed tick={chartAxisTick} />
+                          <YAxis orientation="right" tick={chartAxisTick} width={78} tickFormatter={chartMoney} />
+                          <ReTooltip formatter={chartMoney} contentStyle={chartTooltipStyle} itemStyle={{ fontFamily: 'inherit' }} />
+                          <Bar dataKey="amount" name="پرداخت" fill={CLR.paid} radius={[3, 3, 0, 0]} maxBarSize={26} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </Box>
+                  ) : <EmptyState icon={PaymentsIcon} text="پرداختی ثبت نشده است." />}
+                </AnalysisCard>
+              </Grid>
+
+
+              {/* ۸) مغایرت‌ها و کنترل‌های مالی */}
+              <Grid item xs={12}>
+                <AnalysisCard icon={ErrorOutlineIcon} title="۸. تحلیل مغایرت‌ها و کنترل‌های مالی"
+                  hint="بررسی خودکار سازگاری اسناد، پرداخت‌ها، کسورات و تضامین" color={warningCount ? CLR.warn : CLR.ok}
+                  action={<Chip size="small"
+                    label={warningCount ? `${toPersianDigits(warningCount)} هشدار` : 'بدون مغایرت'}
+                    sx={{
+                      height: 20, fontSize: 10.5, fontWeight: 800,
+                      bgcolor: alpha(warningCount ? CLR.warn : CLR.ok, 0.1),
+                      color: warningCount ? CLR.warn : CLR.ok,
+                    }} />}>
+                  <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', md: '1fr 1fr', xl: '1fr 1fr 1fr' }, gap: 1 }}>
+                    {checks.map((item) => {
+                      const color = item.status === 'ok' ? CLR.ok : item.status === 'warn' ? CLR.warn : CLR.risk;
+                      const Icon = item.status === 'ok' ? CheckCircleIcon : item.status === 'warn' ? WarningAmberIcon : ErrorOutlineIcon;
+                      return (
+                        <Box key={item.key} sx={{
+                          p: 1, borderRadius: '10px',
+                          border: `1px solid ${alpha(color, 0.2)}`,
+                          bgcolor: alpha(color, 0.04),
+                          display: 'flex', alignItems: 'flex-start', gap: 0.75, minWidth: 0,
+                        }}>
+                          <Icon sx={{ fontSize: 16, color, flexShrink: 0, mt: 0.15 }} />
+                          <Box sx={{ minWidth: 0 }}>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>{item.label}</Typography>
+                            <Typography sx={{ fontSize: 10.5, color: MUTED, mt: 0.2 }}>{item.detail}</Typography>
+                          </Box>
+                        </Box>
+                      );
+                    })}
+                  </Box>
+                </AnalysisCard>
+              </Grid>
+            </Grid>
+
+            {/* ---- اسناد مالی قرارداد ---- */}
+            <Paper elevation={0} sx={{
+              mt: 2,
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              border: '1px solid', borderColor: cardBorderColor,
+              bgcolor: 'background.paper', boxShadow: 'none',
+              p: 1.5,
+            }}>
+              <Stack direction="row" alignItems="center" spacing={1} useFlexGap sx={{ mb: 1 }}>
+                <Box sx={{
+                  width: 28, height: 28, borderRadius: '9px', flexShrink: 0,
+                  bgcolor: alpha(CLR.rate, 0.08), color: CLR.rate,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <ReceiptLongIcon sx={{ fontSize: 16 }} />
+                </Box>
+                <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK, flex: 1 }}>اسناد مالی قرارداد</Typography>
+                <Chip size="small"
+                  label={`${toPersianDigits(invoices.length + payments.length + addendums.length + guarantees.length)} سند`}
+                  sx={{ height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(CLR.rate, 0.1), color: CLR.rate }} />
+              </Stack>
+              <Tabs value={docsTab} onChange={(_event, value) => setDocsTab(value)} variant="scrollable" allowScrollButtonsMobile
+                sx={{
+                  minHeight: 34, borderBottom: '1px solid', borderColor: 'divider', mb: 1.25,
+                  '& .MuiTab-root': { minHeight: 34, minWidth: 104, fontSize: 11.5, fontWeight: 700, textTransform: 'none' },
+                  '& .Mui-selected': { color: CLR.rate },
+                  '& .MuiTabs-indicator': { bgcolor: CLR.rate, height: 2.5 },
+                }}>
+                <Tab label={`فاکتورها (${toPersianDigits(invoices.length)})`} />
+                <Tab label={`پرداخت‌ها (${toPersianDigits(payments.length)})`} />
+                <Tab label={`الحاقیه‌ها (${toPersianDigits(addendums.length)})`} />
+                <Tab label={`تضامین (${toPersianDigits(guarantees.length)})`} />
+              </Tabs>
+              {docsTab === 0 ? <InvoicesTable invoices={invoices} currency={currencyLabel} /> : null}
+              {docsTab === 1 ? <PaymentsTable payments={payments} currency={currencyLabel} /> : null}
+              {docsTab === 2 ? <AddendumsTable addendums={addendums} currency={currencyLabel} /> : null}
+              {docsTab === 3 ? <GuaranteesTable guarantees={guarantees} currency={currencyLabel} /> : null}
+            </Paper>
+          </>
+        )
       ) : null}
     </Box>
   );
 };
 
 export default ContractFinancePage;
-
