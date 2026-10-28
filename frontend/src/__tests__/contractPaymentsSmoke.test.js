@@ -158,10 +158,10 @@ test('foreign statement shows rial amount, foreign equivalent and payable amount
     await act(async () => { await wait(180); });
   }
 
-  expect(container.textContent).toContain('قرارداد تجهیزات وارداتی');
+  expect(container.textContent).toContain('مبلغ (ریال)');
   expect(container.textContent).toContain('REF-EUR');
-  expect(container.textContent).toContain('قابل پرداخت صورت‌وضعیت');
-  expect(container.textContent).toContain('≈');
+  expect(container.textContent).toContain('فاکتور / صورت‌وضعیت');
+  expect(container.textContent).toContain('مجموع پرداخت‌ها:');
 });
 
 test('contract payments page renders financial summary, linked details and detail drawer', async () => {
@@ -187,20 +187,16 @@ test('contract payments page renders financial summary, linked details and detai
   }
 
   expect(container.textContent).toContain('پرداخت‌های قرارداد');
-  expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(container.textContent).toContain('پوشش مالی پرداخت‌ها');
-  expect(container.textContent).toContain('روش‌های پرداخت');
-  expect(container.textContent).toContain('روند پرداخت‌ها');
-  expect(container.textContent).toContain('مجموع پرداخت‌شده');
+  expect(container.textContent).toContain('تاریخ');
+  expect(container.textContent).toContain('نوع پرداخت');
+  expect(container.textContent).toContain('روش');
   expect(container.textContent).toContain('REF-100');
   expect(container.textContent).toContain('حواله بانکی');
   expect(container.textContent).toContain('پرداخت عادی');
-  expect(container.textContent).toContain('INV-100');
-  expect(container.textContent).toContain('۰۳');
-  expect(container.textContent).toContain('قابل پرداخت صورت‌وضعیت');
-  expect(container.textContent).not.toContain('≈');
-  expect(container.textContent).toContain('مشاهده جزئیات');
-  expect(container.textContent).toContain('۱ فایل');
+  expect(container.textContent).toContain('INV-۱۰۰');
+  expect(container.textContent).toContain('صورت‌وضعیت');
+  expect(container.textContent).toContain('مجموع پرداخت‌ها:');
+  expect(container.textContent).toContain('پوشش قرارداد:');
 
   const newButton = Array.from(container.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'پرداخت جدید');
@@ -231,10 +227,9 @@ test('contract payments page renders financial summary, linked details and detai
     .find((element) => element.textContent.trim() === 'انصراف');
   await act(async () => { cancelButton.click(); await wait(180); });
 
-  const card = Array.from(container.querySelectorAll('[role="button"]'))
-    .find((element) => element.textContent.includes('مشاهده جزئیات'));
-  expect(card).toBeTruthy();
-  await act(async () => { card.click(); await wait(220); });
+  const row = container.querySelector('tbody tr');
+  expect(row).toBeTruthy();
+  await act(async () => { row.click(); await wait(220); });
 
   expect(document.body.textContent).toContain('جزئیات پرداخت قرارداد');
   expect(document.body.textContent).toContain('اطلاعات پرداخت');
