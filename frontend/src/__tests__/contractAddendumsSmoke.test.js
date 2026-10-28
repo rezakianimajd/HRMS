@@ -122,10 +122,19 @@ test('contract addendums landing lists contracts with addendum counts and no ava
     });
   }
 
-  expect(container.textContent).toContain('انتخاب قرارداد');
+  expect(container.querySelector('[aria-label="فهرست قراردادها برای الحاقیه‌ها"]')).toBeTruthy();
+  expect(container.textContent).toContain('شماره قرارداد');
+  expect(container.textContent).toContain('طرف قرارداد');
+  expect(container.textContent).toContain('موضوع قرارداد');
+  expect(container.textContent).toContain('تعداد الحاقیه');
+  expect(container.textContent).toContain('مجموع تغییر مبلغ');
+  expect(container.textContent).toContain('مبلغ مؤثر قرارداد');
   expect(container.textContent).toContain('C-۱۰۰');
-  expect(container.textContent).toContain('تعداد الحاقیه‌ها');
-  expect(container.textContent).toContain('۱ الحاقیه');
+  expect(container.textContent).toContain('شرکت طرف قرارداد');
+  expect(container.textContent).toContain('قرارداد آزمایشی الحاقیه');
+  expect(container.textContent).not.toContain('فضای کاری الحاقیه‌ها');
+  expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
+  expect(container.querySelector('[aria-label="فهرست قراردادها برای الحاقیه‌ها"]')).toBeTruthy();
   expect(container.querySelector('.MuiAvatar-root')).toBeNull();
   root.unmount();
 });
@@ -155,14 +164,26 @@ test('contract addendums workspace renders effective profile, timeline and edito
   }
 
   expect(container.textContent).toContain('الحاقیه‌های قرارداد');
-  expect(container.textContent).toContain('پروندهٔ مؤثر');
-  expect(container.textContent).toContain('C-100');
-  expect(container.textContent).toContain('A-7');
-  expect(container.textContent).toContain('۱ پیوست PDF');
+  expect(container.textContent).toContain('تعداد الحاقیه: ۱');
+  expect(container.textContent).toContain('خالص تغییر مبلغ');
+  expect(container.textContent).toContain('تمدید مدت');
+  expect(container.textContent).toContain('اثرهای اعمال‌شده: ۱');
+  expect(container.textContent).toContain('افزایش مبلغ و تمدید سه‌ماهه');
+  expect(container.textContent).toContain('موضوع‌ها');
   expect(container.textContent).toContain('خروجی');
+  expect(container.querySelector('[aria-label="فهرست الحاقیه‌های قرارداد"]')).toBeTruthy();
+  expect(container.querySelector('button[aria-label="جزئیات"]')).toBeTruthy();
+  expect(container.querySelector('button[aria-label="ویرایش"]')).toBeTruthy();
+  expect(container.querySelector('button[aria-label="حذف"]')).toBeTruthy();
+
+  const detailButton = container.querySelector('button[aria-label="جزئیات"]');
+  await act(async () => { detailButton.click(); });
+  expect(document.body.textContent).toContain('جزئیات الحاقیه');
+  await act(async () => { });
 
   const newButton = Array.from(container.querySelectorAll('button'))
-    .find((button) => button.textContent.includes('الحاقیه جدید'));
+    .filter((button) => button.textContent.includes('الحاقیه جدید'))
+    .pop();
   expect(newButton).toBeTruthy();
   await act(async () => { newButton.click(); });
   expect(document.body.textContent).toContain('اطلاعات پایه');

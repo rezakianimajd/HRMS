@@ -1,11 +1,11 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, Drawer, FormControl, Grid, IconButton, InputAdornment,
   InputLabel, MenuItem, Paper, Select, Snackbar, Stack, Table, TableBody, TableCell,
-  TableHead, TableRow, TextField, ToggleButton, ToggleButtonGroup,
+  TableHead, TableRow, TextField,
   Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
@@ -16,6 +16,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DescriptionIcon from '@mui/icons-material/Description';
@@ -35,22 +36,26 @@ import TimelineIcon from '@mui/icons-material/Timeline';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TuneIcon from '@mui/icons-material/Tune';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import {
+  ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
+  useModuleTableState, useModuleTheme, useRowHeight,
+} from './contracts/contractModuleUi';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
-import ContractListPicker from '../core/components/ui/ContractListPicker';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import { useModulePalette } from '../core/context/ModulePaletteContext';
 import { DEFAULT_TYPOGRAPHY } from '../core/theme/appearanceDefaults';
-import { formatPersianNumber, normalizeCurrencyLabel } from '../core/utils/numberUtils';
+import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import {
   ADDENDUM_GROUPS, ADDENDUM_SCHEMA, CONTRACT_TARGET_LABELS,
   addendumSubject,
 } from '../core/constants/addendumSubjects';
-import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import {
-  AmendmentCard, AmendmentTable, AmendmentTimeline, AttachmentLinks, AttachmentPicker,
-  ContractSnapshotCard, EffectiveProfileCard, EffectTable, EditorStepNav, EmptyState, InfoLine,
+  AttachmentLinks, AttachmentPicker,
+  EffectTable, EditorStepNav, EmptyState, InfoLine,
   SectionTitle, SubjectPill, dateLabel, dayDiff, deltaTone, effectDelta,
   groupTone, money, signedMoney, toNumber, useAddendumStyle,
 } from './contracts/AddendumWorkspaceUI';
@@ -256,6 +261,7 @@ const rowSubjects = (row, subjectMap) => {
 };
 
 const ContractAddendumsPage = () => {
+  const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
   const theme = useTheme();
   const { getPalette, typography } = useModulePalette();
@@ -269,7 +275,7 @@ const ContractAddendumsPage = () => {
   const [search, setSearch] = useState('');
   const [groupFilter, setGroupFilter] = useState('all');
   const [sortBy, setSortBy] = useState('newest');
-  const [view, setView] = useState('cards');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [step, setStep] = useState(0);
@@ -354,7 +360,6 @@ const ContractAddendumsPage = () => {
     setSearch('');
     setGroupFilter('all');
     setSortBy('newest');
-    setView('cards');
     setDetail(null);
   }, [contractId]);
 
@@ -402,6 +407,41 @@ const ContractAddendumsPage = () => {
     });
   }, [list, search, groupFilter, sortBy, getRowGroups]);
 
+  /* ---- صفحهٔ اول (فهرست قراردادها) و صفحه‌بندی جدول تک‌ردیفه ---- */
+  const landingAddendums = useMemo(
+    () => contractList.flatMap((contract) => (
+      Array.isArray(contract.addendums)
+        ? contract.addendums.map((row) => ({ ...row, contract: contract.id }))
+        : []
+    )),
+    [contractList],
+  );
+  const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
+    filtered.length, scopedPageSize, [search, groupFilter, sortBy, contractId, scopedPageSize],
+  );
+  const pagedAddendums = useMemo(
+    () => filtered.slice(page * scopedPageSize, (page + 1) * scopedPageSize),
+    [filtered, page, scopedPageSize],
+  );
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedAddendums.length);
+  const groupOptions = [
+    { value: 'all', label: `همهٔ موضوع‌ها (${formatPersianNumber(groupCounts.all || 0)})` },
+    ...Object.entries(ADDENDUM_GROUPS).map(([key, label]) => ({
+      value: key,
+      label: `${label} (${formatPersianNumber(groupCounts[key] || 0)})`,
+    })),
+  ];
+  const activeFilterCount = groupFilter !== 'all' ? 1 : 0;
+  const activeChips = groupFilter !== 'all'
+    ? [{
+      key: 'group',
+      label: `موضوع: ${ADDENDUM_GROUPS[groupFilter] || groupFilter}`,
+      clear: () => setGroupFilter('all'),
+    }]
+    : [];
+  const scopedMode = Boolean(contractId);
+
   const subjectCount = useMemo(() => {
     const set = new Set();
     list.forEach((row) => rowSubjects(row, subjectMap).forEach((item) => set.add(item.type)));
@@ -413,9 +453,6 @@ const ContractAddendumsPage = () => {
   const lastAmendment = [...list]
     .filter((row) => row.date)
     .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')))[0] || list[0];
-  const contractsWithAddendums = contractList.filter((item) => item.has_addendum || item.addendums?.length).length;
-  const activeContracts = contractList.filter((item) => item.status === 'active').length;
-  const totalAddendums = contractList.reduce((total, item) => total + (item.addendums?.length || 0), 0);
 
 
   const previewEffect = useMutation({
@@ -698,52 +735,301 @@ const ContractAddendumsPage = () => {
             {contractId ? <Button variant="outlined" startIcon={<PrintIcon />} onClick={() => window.print()}>چاپ</Button> : null}
             {contractId ? <Button variant="outlined" startIcon={<DownloadIcon />} onClick={() => downloadCsv(filtered)}>خروجی</Button> : null}
             {contractId ? <Button variant="contained" startIcon={<AddIcon />} onClick={openNew}>الحاقیه جدید</Button> : null}
+            {contractId ? (
+              <Button variant="contained" startIcon={<ChevronRightIcon />} onClick={clearContract}>فهرست قراردادها</Button>
+            ) : null}
           </>
         )}
       />
 
-      {!contractId ? (
-        <LandingContent
-          accent={accent}
-          contractList={contractList}
-          contractsWithAddendums={contractsWithAddendums}
-          activeContracts={activeContracts}
-          totalAddendums={totalAddendums}
+      {!scopedMode ? (
+        <ContractPickerLanding
+          theme={moduleTheme}
+          contracts={contractList}
+          records={landingAddendums}
+          getContractId={(row) => row.contract}
+          metrics={(row) => ({ amount: Math.abs(toNumber(row.amount_change)) })}
           onSelect={selectContract}
+          ariaLabel="فهرست قراردادها برای الحاقیه‌ها"
+          sortOptions={[
+            { value: 'amount', label: 'بیشترین تغییر مبلغ' },
+            { value: 'count', label: 'بیشترین تعداد الحاقیه' },
+            { value: 'number', label: 'شماره قرارداد' },
+          ]}
+          columns={[
+            {
+              key: 'number',
+              label: 'شماره قرارداد',
+              width: '10%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(row.contract.number || '—')}
+                </Typography>
+              ),
+            },
+            {
+              key: 'party',
+              label: 'طرف قرارداد',
+              width: '19%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                  {row.contract.party_name || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'subject',
+              label: 'موضوع قرارداد',
+              width: '25%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {row.contract.subject || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'count',
+              label: 'تعداد الحاقیه',
+              width: '11%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{formatPersianNumber(row.count || 0)}</Typography>
+              ),
+            },
+            {
+              key: 'amount',
+              label: 'مجموع تغییر مبلغ',
+              width: '19%',
+              align: 'center',
+              render: (row) => moneyCell(row.amount, '#b45309'),
+            },
+            {
+              key: 'effective',
+              label: 'مبلغ مؤثر قرارداد',
+              width: '16%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(Math.round(toNumber(row.contract.effective_amount ?? row.contract.amount)))}
+                </Typography>
+              ),
+            },
+          ]}
         />
       ) : (
-        <WorkspaceContent
-          contract={selectedContract}
-          accent={accent}
-          base={baseContract}
-          effective={effective}
-          list={list}
-          filtered={filtered}
-          view={view}
-          setView={setView}
-          search={search}
-          setSearch={setSearch}
-          groupFilter={groupFilter}
-          setGroupFilter={setGroupFilter}
-          groupCounts={groupCounts}
-          sortBy={sortBy}
-          setSortBy={setSortBy}
-          subjectCount={subjectCount}
-          amountDelta={amountDelta}
-          durationDelta={durationDelta}
-          effectCount={effectCount}
-          lastAmendment={lastAmendment}
-          currencyLabel={currencyLabel}
-          isLoading={isLoading}
-          warnings={warnings}
-          onBack={clearContract}
-          onNew={openNew}
-          onDetail={setDetail}
-          onEdit={openEdit}
-          onDuplicate={openDuplicate}
-          onDelete={setConfirmDelete}
-        />
+        <>
+          <ModuleToolbar
+            theme={moduleTheme}
+            search={search}
+            onSearch={setSearch}
+            searchPlaceholder="جستجو در شماره، موضوع و شرح الحاقیه…"
+            sort={sortBy}
+            sortOptions={[
+              { value: 'newest', label: 'جدیدترین' },
+              { value: 'oldest', label: 'قدیمی‌ترین' },
+              { value: 'amount', label: 'بیشترین تغییر مبلغ' },
+              { value: 'impact', label: 'بیشترین اثر' },
+            ]}
+            onSort={setSortBy}
+            filters={[{ label: 'موضوع الحاقیه', value: groupFilter, options: groupOptions, onChange: setGroupFilter }]}
+            activeChips={activeChips}
+            activeFilterCount={activeFilterCount}
+            onReset={() => { setSearch(''); setGroupFilter('all'); setSortBy('newest'); }}
+            filtersOpen={filtersOpen}
+            setFiltersOpen={setFiltersOpen}
+          />
+
+          {warnings.map((warning) => (
+            <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ mb: 1.25, borderRadius: '12px', py: 0.35 }}>
+              <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
+            </Alert>
+          ))}
+
+          <Paper elevation={0} sx={{
+            borderRadius: 'var(--hrms-table-radius, 16px)',
+            overflow: 'hidden',
+            px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+            border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+            bgcolor: 'background.paper', boxShadow: 'none',
+          }}>
+            <ModuleTable
+              tableTheme={moduleTheme.tableTheme}
+              ariaLabel="فهرست الحاقیه‌های قرارداد"
+              containerRef={tableRef}
+              tableHeight={tableHeight}
+              rowHeight={rowHeight}
+              dimmed={isFetching}
+              rows={pagedAddendums}
+              rowKey={(row) => row.id}
+              onRowClick={(row) => setDetail(row)}
+              emptyText="الحاقیه‌ای با این مشخصات ثبت نشده است."
+              columns={[
+                {
+                  key: 'row',
+                  label: 'ردیف',
+                  width: '4%',
+                  align: 'center',
+                  render: (_row, index) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                      {toPersianDigits(page * scopedPageSize + index + 1)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'number',
+                  label: 'شماره',
+                  width: '8%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {toPersianDigits(row.number || row.id)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'date',
+                  label: 'تاریخ',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {dateLabel(row.date)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'subjects',
+                  label: 'موضوع‌ها',
+                  width: '30%',
+                  render: (row) => (
+                    <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap" sx={{ alignItems: 'center' }}>
+                      {getRowGroups(row).slice(0, 3).map((key) => (
+                        <Chip key={key} size="small" label={ADDENDUM_GROUPS[key] || key}
+                          sx={{
+                            height: 20, fontSize: 10.5, fontWeight: 800,
+                            bgcolor: alpha(groupTone(key), 0.1), color: groupTone(key),
+                            border: `1px solid ${alpha(groupTone(key), 0.24)}`,
+                            '& .MuiChip-label': { px: 0.8 },
+                          }} />
+                      ))}
+                      {!getRowGroups(row).length ? (
+                        <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+                          {row.subjects_display || row.subject_type_display || '—'}
+                        </Typography>
+                      ) : null}
+                    </Stack>
+                  ),
+                },
+
+                {
+                  key: 'amount',
+                  label: 'تغییر مبلغ',
+                  width: '14%',
+                  align: 'center',
+                  render: (row) => {
+                    const delta = toNumber(effectDelta(row, 'amount'));
+                    return (
+                      <Typography noWrap sx={{
+                        fontSize: 11.5, fontWeight: 800,
+                        color: delta === 0 ? MUTED : deltaTone(delta),
+                        fontFamily: 'var(--hrms-table-number-font, inherit)',
+                      }}>
+                        {signedMoney(delta, currencyLabel)}
+                      </Typography>
+                    );
+                  },
+                },
+                {
+                  key: 'effects',
+                  label: 'اثرها',
+                  width: '10%',
+                  align: 'center',
+                  render: (row) => (
+                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                      {formatPersianNumber((row.effect?.changes || []).length)}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'description',
+                  label: 'شرح',
+                  width: '12%',
+                  render: (row) => (
+                    <Typography noWrap title={row.change_description || row.subject} sx={{ fontSize: 11, color: MUTED }}>
+                      {row.change_description || row.subject || '—'}
+                    </Typography>
+                  ),
+                },
+                {
+                  key: 'actions',
+                  label: 'عملیات',
+                  width: '13%',
+                  align: 'center',
+                  render: (row) => (
+                    <Stack direction="row" spacing={0.15} useFlexGap alignItems="center" justifyContent="center"
+                      onClick={(event) => event.stopPropagation()}>
+                      <Tooltip title="جزئیات">
+                        <IconButton size="small" aria-label="جزئیات" onClick={() => setDetail(row)}>
+                          <VisibilityIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="ویرایش">
+                        <IconButton size="small" aria-label="ویرایش" onClick={() => openEdit(row)}>
+                          <EditIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="تکثیر">
+                        <IconButton size="small" aria-label="تکثیر" onClick={() => openDuplicate(row)}>
+                          <ContentCopyIcon sx={{ fontSize: 14 }} />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="حذف">
+                        <IconButton size="small" aria-label="حذف" color="error" onClick={() => setConfirmDelete(row)}>
+                          <DeleteIcon sx={{ fontSize: 15 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  ),
+                },
+              ]}
+            />
+            <ModulePager
+              tableTheme={moduleTheme.tableTheme}
+              page={page}
+              onPage={setPage}
+              totalPages={totalPages}
+              pageNumbers={pageNumbers}
+              total={filtered.length}
+              pageSize={scopedPageSize}
+              unit="الحاقیه"
+            />
+
+            <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
+              sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+              <Chip size="small" label={`تعداد الحاقیه: ${formatPersianNumber(list.length)}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(accent, 0.1), color: accent }} />
+              <Chip size="small" label={`خالص تغییر مبلغ: ${signedMoney(amountDelta, currencyLabel)}`}
+                sx={{
+                  height: 21, fontSize: 10.5, fontWeight: 800,
+                  bgcolor: alpha(amountDelta === 0 ? MUTED : deltaTone(amountDelta), 0.1),
+                  color: amountDelta === 0 ? MUTED : deltaTone(amountDelta),
+                }} />
+              <Chip size="small" label={`تمدید مدت: ${durationDelta === null ? '—' : `${formatPersianNumber(durationDelta)} روز`}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#2563eb', 0.1), color: '#2563eb' }} />
+              <Chip size="small" label={`اثرهای اعمال‌شده: ${formatPersianNumber(effectCount)}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#0f766e', 0.1), color: '#0f766e' }} />
+              {lastAmendment ? (
+                <Chip size="small" label={`آخرین الحاقیه: ${dateLabel(lastAmendment.date)}`}
+                  sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#7c3aed', 0.1), color: '#7c3aed' }} />
+              ) : null}
+              <Chip size="small" label={`موضوع‌های متمایز: ${formatPersianNumber(subjectCount)}`}
+                sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#b45309', 0.1), color: '#b45309' }} />
+            </Stack>
+          </Paper>
+        </>
       )}
+
 
       <AddendumEditorDialog
         open={editorOpen}
@@ -813,244 +1099,6 @@ const ContractAddendumsPage = () => {
       </Snackbar>
 
     </Box>
-  );
-};
-
-
-const LandingContent = ({
-  accent, contractList, contractsWithAddendums, activeContracts, totalAddendums, onSelect,
-}) => (
-  <>
-    <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-      <Grid item xs={6} md={3}>
-        <KpiTile icon={EditNoteIcon} label="کل قراردادها" value={formatPersianNumber(contractList.length)}
-          suffix="قرارداد" color={accent} hint="پرونده‌های قابل انتخاب" />
-      </Grid>
-      <Grid item xs={6} md={3}>
-        <KpiTile icon={HistoryIcon} label="دارای الحاقیه" value={formatPersianNumber(contractsWithAddendums)}
-          suffix="قرارداد" color="#0f766e" hint={`${formatPersianNumber(totalAddendums)} الحاقیه ثبت‌شده`} />
-      </Grid>
-      <Grid item xs={6} md={3}>
-        <KpiTile icon={CheckCircleIcon} label="در حال اجرا" value={formatPersianNumber(activeContracts)}
-          suffix="قرارداد" color="#2563eb" hint="وضعیت فعال" />
-      </Grid>
-      <Grid item xs={6} md={3}>
-        <KpiTile icon={TuneIcon} label="ظرفیت ویرایش" value="چندموضوعی" color="#7c3aed" hint="مالی، زمان، دامنه و..." />
-      </Grid>
-    </Grid>
-    <Grid container spacing={1.5}>
-      <Grid item xs={12} lg={8}>
-        <SurfaceCard title="انتخاب قرارداد" icon={EditNoteIcon} color={accent}>
-          <ContractListPicker
-            contracts={contractList}
-            onSelect={onSelect}
-            height={540}
-            accent={accent}
-            countLabel="الحاقیه"
-            countHeaderLabel="تعداد الحاقیه‌ها"
-            getCount={(contract) => contract.addendums?.length || 0}
-          />
-        </SurfaceCard>
-      </Grid>
-      <Grid item xs={12} lg={4}>
-        <SurfaceCard title="فضای کاری الحاقیه‌ها" icon={TuneIcon} color={accent}>
-          <Stack spacing={1.25}>
-            {[
-              ['۱', 'پروندهٔ مؤثر قرارداد را ببینید', 'مبلغ، پیش‌پرداخت، پایان، تضمین و حسن انجام کار بعد از همهٔ الحاقیه‌ها.'],
-              ['۲', 'با چند موضوع در یک الحاقیه', 'تغییر مالی، زمانی، دامنه، طرفین و شرایط حقوقی را یک‌جا ثبت کنید.'],
-              ['۳', 'اثر زنده و قابل ردیابی', 'هر تغییر قبل از ذخیره پیش‌نمایش داده می‌شود و مبلغ پایه بازنویسی نمی‌شود.'],
-            ].map(([number, title, description]) => (
-              <Stack key={number} direction="row" spacing={1}>
-                <Box sx={{
-                  width: 25, height: 25, borderRadius: '8px', flexShrink: 0,
-                  bgcolor: alpha(accent, 0.08), color: accent,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: 12, fontWeight: 900,
-                }}>{number}</Box>
-                <Box>
-                  <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{title}</Typography>
-                  <Typography sx={{ fontSize: 12, color: MUTED, lineHeight: 1.7 }}>{description}</Typography>
-                </Box>
-              </Stack>
-            ))}
-          </Stack>
-        </SurfaceCard>
-      </Grid>
-    </Grid>
-  </>
-);
-
-
-const WorkspaceContent = ({
-  contract, accent, base, effective, list, filtered, view, setView, search, setSearch,
-  groupFilter, setGroupFilter, groupCounts, sortBy, setSortBy, subjectCount, amountDelta,
-  durationDelta, effectCount, lastAmendment, currencyLabel, isLoading, warnings,
-  onBack, onNew, onDetail, onEdit, onDuplicate, onDelete,
-}) => {
-  const { theme } = useAddendumStyle();
-  return (
-    <Grid container spacing={1.5}>
-      <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-        <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-          <ContractSnapshotCard contract={contract} accent={accent} onBack={onBack} />
-          <EffectiveProfileCard base={base} effective={effective} accent={accent} currency={currencyLabel} />
-          <SurfaceCard title="فیلتر موضوع" icon={FilterListIcon} color={accent}>
-            <Stack spacing={0.2}>
-              <ButtonBase onClick={() => setGroupFilter('all')} sx={{
-                width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'space-between',
-                bgcolor: groupFilter === 'all' ? alpha(accent, 0.07) : 'transparent',
-              }}>
-                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>همهٔ موضوع‌ها</Typography>
-                <Chip size="small" label={formatPersianNumber(groupCounts.all || 0)} sx={{ height: 19, fontSize: 12 }} />
-              </ButtonBase>
-              {Object.entries(ADDENDUM_GROUPS).map(([key, label]) => (
-                <ButtonBase key={key} onClick={() => setGroupFilter(key)} sx={{
-                  width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'space-between',
-                  bgcolor: groupFilter === key ? alpha(groupTone(key), 0.07) : 'transparent',
-                }}>
-                  <Stack direction="row" alignItems="center" spacing={0.6}>
-                    <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: groupTone(key) }} />
-                    <Typography sx={{ fontSize: 12, fontWeight: groupFilter === key ? 900 : 600, color: theme.palette.text.primary }}>
-                      {label}
-                    </Typography>
-                  </Stack>
-                  <Chip size="small" label={formatPersianNumber(groupCounts[key] || 0)} sx={{ height: 19, fontSize: 12 }} />
-                </ButtonBase>
-              ))}
-            </Stack>
-          </SurfaceCard>
-          {lastAmendment ? (
-            <Paper elevation={0} sx={{ p: 1.25, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
-              <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>آخرین الحاقیه</Typography>
-              <Typography sx={{ mt: 0.2, fontSize: 12, fontWeight: 800 }}>{dateLabel(lastAmendment.date)}</Typography>
-              <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
-                {lastAmendment.number ? `شماره ${lastAmendment.number}` : lastAmendment.subjects_display || 'بدون عنوان'}
-              </Typography>
-            </Paper>
-          ) : null}
-        </Stack>
-      </Grid>
-
-
-      <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-        <Stack spacing={1.5}>
-          <Grid container spacing={1.25}>
-            <Grid item xs={6} md={3}>
-              <KpiTile icon={HistoryIcon} label="تعداد الحاقیه" value={formatPersianNumber(list.length)} suffix="مورد" color={accent} hint={`${formatPersianNumber(subjectCount)} موضوع متمایز`} />
-            </Grid>
-            <Grid item xs={6} md={3}>
-              <KpiTile icon={TrendingUpIcon} label="خالص تغییر مبلغ" value={signedMoney(amountDelta, currencyLabel)} color={amountDelta === 0 ? MUTED : deltaTone(amountDelta)} hint="مبلغ مؤثر منهای مبلغ پایه" />
-            </Grid>
-            <Grid item xs={6} md={3}>
-              <KpiTile icon={CalendarMonthIcon} label="تمدید مدت" value={durationDelta === null ? '—' : `${durationDelta > 0 ? '+' : ''}${formatPersianNumber(durationDelta)}`} suffix="روز" color="#2563eb" hint="تاریخ پایان مؤثر" />
-            </Grid>
-            <Grid item xs={6} md={3}>
-              <KpiTile icon={CheckCircleIcon} label="اثرهای اعمال‌شده" value={formatPersianNumber(effectCount)} suffix="اثر" color="#0f766e" hint="قابل ردیابی در پرونده" />
-            </Grid>
-          </Grid>
-
-          <Paper elevation={0} sx={{ p: 1.25, borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-              <TextField size="small" placeholder="جست‌وجو در شماره، موضوع یا شرح..."
-                value={search} onChange={(event) => setSearch(event.target.value)} sx={{ minWidth: { xs: '100%', sm: 235 }, flex: 1 }}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-              <FormControl size="small" sx={{ minWidth: 145 }}>
-                <InputLabel>موضوع</InputLabel>
-                <Select value={groupFilter} label="موضوع" onChange={(event) => setGroupFilter(event.target.value)}>
-                  <MenuItem value="all">همهٔ موضوع‌ها</MenuItem>
-                  {Object.entries(ADDENDUM_GROUPS).map(([key, label]) => (
-                    <MenuItem key={key} value={key}>{label} ({formatPersianNumber(groupCounts[key] || 0)})</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 125 }}>
-                <InputLabel>ترتیب</InputLabel>
-                <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                  <MenuItem value="newest">جدیدترین</MenuItem>
-                  <MenuItem value="oldest">قدیمی‌ترین</MenuItem>
-                  <MenuItem value="amount">بیشترین تغییر مبلغ</MenuItem>
-                  <MenuItem value="impact">بیشترین اثر</MenuItem>
-                </Select>
-              </FormControl>
-              <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, next) => next && setView(next)}>
-                <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-                <ToggleButton value="timeline" aria-label="نمای تایم‌لاین" sx={{ px: 1 }}><Tooltip title="تایم‌لاین"><TimelineIcon fontSize="small" /></Tooltip></ToggleButton>
-              </ToggleButtonGroup>
-              <Button variant="contained" startIcon={<AddIcon />} onClick={onNew} sx={{ display: { xs: 'none', md: 'flex' } }}>
-                الحاقیه جدید
-              </Button>
-            </Stack>
-          </Paper>
-
-
-          {warnings.map((warning) => (
-            <Alert key={warning} severity="warning" icon={<WarningAmberIcon />} sx={{ borderRadius: '12px', py: 0.35 }}>
-              <Typography sx={{ fontSize: 12 }}>{warning}</Typography>
-            </Alert>
-          ))}
-
-          {isLoading ? (
-            <Paper elevation={0} sx={{ py: 7, textAlign: 'center', borderRadius: '16px', border: `1px solid ${theme.palette.divider}` }}>
-              <CircularProgress size={28} sx={{ color: accent }} />
-            </Paper>
-          ) : filtered.length === 0 ? (
-            <EmptyState
-              title={list.length ? 'نتیجه‌ای برای این فیلتر پیدا نشد' : 'هنوز الحاقیه‌ای ثبت نشده است'}
-              description={list.length
-                ? 'جست‌وجو یا فیلتر موضوع را تغییر دهید.'
-                : 'اولین تغییر قرارداد را با انتخاب موضوع‌های مالی، زمانی یا دامنه ثبت کنید.'}
-              action={<Button variant="contained" startIcon={<AddIcon />} onClick={onNew}>الحاقیه جدید</Button>}
-            />
-          ) : view === 'table' ? (
-            <AmendmentTable
-              rows={filtered}
-              accent={accent}
-              currency={currencyLabel}
-              onView={onDetail}
-              onEdit={onEdit}
-              onDuplicate={onDuplicate}
-              onDelete={onDelete}
-            />
-          ) : view === 'timeline' ? (
-            <AmendmentTimeline
-              rows={filtered}
-              accent={accent}
-              currency={currencyLabel}
-              onView={onDetail}
-              onEdit={onEdit}
-              onDelete={onDelete}
-            />
-          ) : (
-            <Grid container spacing={1.5}>
-              {filtered.map((row, index) => (
-                <Grid item xs={12} md={6} xl={4} key={row.id}>
-                  <AmendmentCard
-                    row={row}
-                    index={index}
-                    accent={accent}
-                    currency={currencyLabel}
-                    onView={() => onDetail(row)}
-                    onEdit={() => onEdit(row)}
-                    onDuplicate={() => onDuplicate(row)}
-                    onDelete={() => onDelete(row)}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-          )}
-
-          <Stack direction="row" justifyContent="space-between" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
-            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
-              نمایش {formatPersianNumber(filtered.length)} از {formatPersianNumber(list.length)} الحاقیه
-            </Typography>
-            <Typography sx={{ fontSize: 12, color: theme.palette.text.secondary }}>
-              مبلغ پایه هرگز بازنویسی نمی‌شود؛ همهٔ اثرها مشتق‌شده و قابل برگشت‌اند.
-            </Typography>
-          </Stack>
-        </Stack>
-      </Grid>
-    </Grid>
   );
 };
 
@@ -1547,4 +1595,3 @@ const AddendumDetailDrawer = ({
 };
 
 export default ContractAddendumsPage;
-
