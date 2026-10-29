@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -40,6 +40,8 @@ const PARTY_ROW = {
   invoiceNo: 'A-12',
   status: 'registered',
 };
+
+const ROWS_KEY = 'hrms.seasonal.rows.7.q1';
 
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -84,8 +86,7 @@ beforeEach(() => {
   });
 });
 
-
-test('seasonal manual report renders header, period selectors and all columns', async () => {
+test('renders header, year/quarter selectors, studio search bar and all columns', async () => {
   const { root, container } = await renderPage();
 
   expect(container.textContent).toContain('صورت معاملات فصلی (ورود دستی)');
@@ -93,29 +94,69 @@ test('seasonal manual report renders header, period selectors and all columns', 
   expect(container.textContent).toContain('فصل');
   expect(container.textContent).toContain('خروجی اکسل');
 
+  /* نوار جستجو و فیلتر استودیو تم */
+  const searchInput = container.querySelector('input[placeholder^="جستجو در نام طرف معامله"]');
+  expect(searchInput).not.toBeNull();
+
+  /* دکمه‌های حذف‌شده نباید وجود داشته باشند */
+  const buttonLabels = Array.from(container.querySelectorAll('button')).map((button) => button.textContent.trim());
+  expect(buttonLabels.some((label) => label.includes('ارزش افزوده ۱۰٪'))).toBe(false);
+  expect(buttonLabels.some((label) => label.includes('پاک کردن فصل'))).toBe(false);
+  expect(buttonLabels.some((label) => label.includes('ردیف جدید'))).toBe(false);
+  expect(container.textContent).not.toContain('Ctrl + Enter');
+
   const table = container.querySelector('table');
   expect(table).not.toBeNull();
   const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
   expect(headers).toEqual([
     'ردیف', 'نام و نام خانوادگی / نام شرکت', 'شهر', 'آدرس', 'شناسه ملی',
     'شرح کالا / خدمات', 'مبلغ', 'مالیات بر ارزش افزوده', 'جمع کل',
-    'نوع', 'تاریخ فاکتور', 'شماره فاکتور', 'وضعیت (سامانه مودیان)', 'عملیات',
+    'نوع', 'تاریخ فاکتور', 'شماره فاکتور', 'وضعیت', 'عملیات',
   ]);
 
   root.unmount();
   container.remove();
 });
 
-test('total column equals amount + vat and the footer aggregates the quarter', async () => {
-  window.localStorage.setItem('hrms.seasonal.rows.7.q1', JSON.stringify([PARTY_ROW]));
+test('an empty row is always ready and a new one is created after typing', async () => {
+  const { root, container } = await renderPage();
+
+  /* فصل خالی: فقط یک ردیف آمادهٔ ورود */
+  let bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+  expect(bodyRows).toHaveLength(1);
+  expect(bodyRows[0].querySelector('input[aria-label="نام طرف معامله"]')).not.toBeNull();
+
+  /* با نوشتن در ردیف آخر، ردیف بعدی خودکار ساخته می‌شود */
+  const nameInput = bodyRows[0].querySelector('input[aria-label="نام طرف معامله"]');
+  await act(async () => { setNativeValue(nameInput, 'ش'); await wait(200); });
+  bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+  expect(bodyRows).toHaveLength(2);
+  expect(bodyRows[1].querySelector('input[aria-label="نام طرف معامله"]').value).toBe('');
+
+  root.unmount();
+  container.remove();
+});
+
+test('total column equals amount + vat, numbers are Persian and the status is a dot', async () => {
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([PARTY_ROW]));
   const { root, container } = await renderPage();
 
   const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-  expect(bodyRows).toHaveLength(1);
-  // ۱٬۰۹۰٬۰۰۰ = ۱٬۰۰۰٬۰۰۰ + ۹۰٬۰۰۰
-  expect(bodyRows[0].textContent).toContain('۱٬۰۹۰٬۰۰۰');
+  expect(bodyRows.length).toBe(2);
+
+  const firstRow = bodyRows[0];
+  /* ۱٬۰۹۰٬۰۰۰ = ۱٬۰۰۰٬۰۰۰ + ۹۰٬۰۰۰ */
+  expect(firstRow.textContent).toContain('۱٬۰۹۰٬۰۰۰');
+  /* شناسه ملی و شماره فاکتور با ارقام فارسی نمایش داده می‌شوند */
+  expect(firstRow.querySelector('input[placeholder="شناسه ملی"]').value).toBe('۱۰۱۰۱۰۱۰۱۰۱');
+  expect(firstRow.querySelector('input[placeholder="شماره"]').value).toBe('A-۱۲');
+  /* وضعیت: نقطهٔ سبز (درج‌شده در سامانه) */
+  const select = firstRow.querySelector('[aria-label="وضعیت در سامانه مودیان"]');
+  expect(select.textContent.trim()).toBe('');
+  expect(select.querySelector('[data-status="registered"]')).not.toBeNull();
+
   expect(container.textContent).toContain('جمع کل: ۱٬۰۹۰٬۰۰۰');
-  expect(container.textContent).toContain('جمع ارزش افزوده: ۹۰٬۰۰۰');
+  expect(container.textContent).toContain('تعداد ردیف: ۱');
   expect(container.textContent).toContain('درج‌شده در سامانه: ۱ از ۱');
 
   root.unmount();
@@ -123,18 +164,14 @@ test('total column equals amount + vat and the footer aggregates the quarter', a
 });
 
 test('typing the first letters of a known party suggests it and fills city/address', async () => {
-  window.localStorage.setItem('hrms.seasonal.rows.7.q1', JSON.stringify([PARTY_ROW]));
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([PARTY_ROW]));
   const { root, container } = await renderPage();
-
-  const addButton = Array.from(container.querySelectorAll('button'))
-    .find((button) => button.textContent.includes('ردیف جدید'));
-  await act(async () => { addButton.click(); await wait(120); });
 
   const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
   expect(bodyRows).toHaveLength(2);
-  const newRow = bodyRows[1];
+  const readyRow = bodyRows[1];
 
-  const nameInput = newRow.querySelector('input[aria-label="نام طرف معامله"]');
+  const nameInput = readyRow.querySelector('input[aria-label="نام طرف معامله"]');
   expect(nameInput).not.toBeNull();
   await act(async () => {
     nameInput.focus();
@@ -146,20 +183,38 @@ test('typing the first letters of a known party suggests it and fills city/addre
     .find((option) => option.textContent.includes('شرکت آلفا تجارت'));
   expect(suggestion).toBeTruthy();
   expect(suggestion.textContent).toContain('را می‌خواهی؟');
-  expect(suggestion.textContent).toContain('تهران');
 
   await act(async () => { suggestion.click(); await wait(260); });
 
-  const freshRow = Array.from(container.querySelectorAll('tbody tr'))[1];
-  expect(freshRow.querySelector('input[placeholder="شهر"]').value).toBe('تهران');
-  expect(freshRow.querySelector('input[placeholder="آدرس"]').value).toBe('خیابان ولیعصر، پلاک ۱۲');
+  const filledRow = Array.from(container.querySelectorAll('tbody tr'))[1];
+  expect(filledRow.querySelector('input[placeholder="شهر"]').value).toBe('تهران');
+  expect(filledRow.querySelector('input[placeholder="آدرس"]').value).toBe('خیابان ولیعصر، پلاک ۱۲');
+  /* پس از پر شدن، ردیف خالی بعدی خودکار ساخته می‌شود */
+  expect(Array.from(container.querySelectorAll('tbody tr'))).toHaveLength(3);
+
+  root.unmount();
+  container.remove();
+});
+
+test('duplicate row keeps the party and leaves the invoice number empty', async () => {
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([PARTY_ROW]));
+  const { root, container } = await renderPage();
+
+  const copyButton = container.querySelector('button[aria-label="کپی ردیف"]');
+  expect(copyButton).not.toBeNull();
+  await act(async () => { copyButton.click(); await wait(200); });
+
+  const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+  expect(bodyRows).toHaveLength(3);
+  expect(bodyRows[1].querySelector('input[placeholder="شهر"]').value).toBe('تهران');
+  expect(bodyRows[1].querySelector('input[placeholder="شماره"]').value).toBe('');
 
   root.unmount();
   container.remove();
 });
 
 test('excel export builds a downloadable sheet for the selected quarter', async () => {
-  window.localStorage.setItem('hrms.seasonal.rows.7.q1', JSON.stringify([PARTY_ROW]));
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([PARTY_ROW]));
   const { root, container } = await renderPage();
 
   const created = [];
@@ -181,28 +236,25 @@ test('excel export builds a downloadable sheet for the selected quarter', async 
   container.remove();
 });
 
-test('duplicate row keeps the party and the 10% vat helper fills empty vat cells', async () => {
-  window.localStorage.setItem('hrms.seasonal.rows.7.q1', JSON.stringify([
-    { ...PARTY_ROW, vat: '' },
+test('search filters the table and hides the ready-to-type row', async () => {
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([
+    PARTY_ROW,
+    { ...PARTY_ROW, id: 'seed-2', name: 'فروشگاه بتا', city: 'اصفهان', address: 'خیابان چهارباغ', invoiceNo: 'B-9', status: 'pending' },
   ]));
   const { root, container } = await renderPage();
 
-  const vatButton = Array.from(container.querySelectorAll('button'))
-    .find((button) => button.textContent.includes('ارزش افزوده ۱۰٪'));
-  await act(async () => { vatButton.click(); await wait(160); });
+  expect(Array.from(container.querySelectorAll('tbody tr'))).toHaveLength(3);
 
-  // ۱۰٪ از ۱٬۰۰۰٬۰۰۰ = ۱۰۰٬۰۰۰ و جمع کل = ۱٬۱۰۰٬۰۰۰
-  expect(Array.from(container.querySelectorAll('tbody tr'))[0].textContent).toContain('۱٬۱۰۰٬۰۰۰');
-
-  const copyButton = container.querySelector('button[aria-label="کپی ردیف"]');
-  expect(copyButton).not.toBeNull();
-  await act(async () => { copyButton.click(); await wait(160); });
+  const searchInput = container.querySelector('input[placeholder^="جستجو در نام طرف معامله"]');
+  await act(async () => { setNativeValue(searchInput, 'بتا'); await wait(220); });
 
   const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
-  expect(bodyRows).toHaveLength(2);
-  expect(bodyRows[1].querySelector('input[placeholder="شهر"]').value).toBe('تهران');
-  expect(bodyRows[1].querySelector('input[placeholder="شماره"]').value).toBe('');
+  expect(bodyRows).toHaveLength(1);
+  expect(bodyRows[0].querySelector('input[aria-label="نام طرف معامله"]').value).toBe('فروشگاه بتا');
+  expect(container.querySelector('[data-status="pending"]')).not.toBeNull();
 
   root.unmount();
   container.remove();
 });
+
+

@@ -1,14 +1,11 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, FormControl, IconButton, InputLabel,
   MenuItem, Paper, Select, Snackbar, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import DeleteSweepIcon from '@mui/icons-material/DeleteSweep';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import PercentIcon from '@mui/icons-material/Percent';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../../core/api/axiosConfig';
@@ -19,7 +16,7 @@ import { MUTED } from '../../accounting/AccountingDashboardUI';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali, getJalaliParts } from '../../../core/utils/dateUtils';
 import {
-  ModuleTable, useModuleTheme, useRowHeight,
+  ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../../contracts/contractModuleUi';
 
 const QUARTERS = [
@@ -47,6 +44,9 @@ const emptyRow = () => ({
 const num = (value) => Number(toEnglishDigits(String(value ?? '')).replace(/[^\d.-]/g, '')) || 0;
 const totalOf = (row) => num(row.amount) + num(row.vat);
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
+/* ردیف خالی (ردیف آمادهٔ ورود) — برای ساخت خودکار ردیف بعدی */
+const TEXT_FIELDS = ['name', 'city', 'address', 'nationalId', 'description', 'amount', 'vat', 'invoiceNo', 'invoiceDate'];
+const isBlankRow = (row) => TEXT_FIELDS.every((field) => !String(row[field] ?? '').trim());
 /* تاریخ شمسی برای خروجی اکسل (ارقام لاتین تا Excel ستون تاریخ را درست بخواند) */
 const jalaliLatin = (value) => {
   if (!value) return '';
@@ -102,7 +102,7 @@ const CellSelect = ({ value, onChange, options, ariaLabel }) => (
     inputProps={{ 'aria-label': ariaLabel }}
     sx={{
       width: '100%', fontSize: 11,
-      '& .MuiSelect-select': { py: 0.25, px: 0.25, fontSize: 11 },
+      '& .MuiSelect-select': { py: 0.25, px: 0.25, fontSize: 11, display: 'flex', justifyContent: 'center' },
     }}
   >
     {options.map((option) => (
@@ -113,6 +113,70 @@ const CellSelect = ({ value, onChange, options, ariaLabel }) => (
   </Select>
 );
 
+/* ورودی کد/شماره با نمایش ارقام فارسی و ذخیرهٔ ارقام لاتین */
+const DigitField = ({ value, onChange, placeholder, numeric, maxLength }) => (
+  <CellTextField
+    value={toPersianDigits(value ?? '')}
+    onChange={(raw) => {
+      const latin = toEnglishDigits(String(raw ?? ''));
+      const cleaned = numeric ? latin.replace(/[^\d]/g, '') : latin;
+      onChange(maxLength ? cleaned.slice(0, maxLength) : cleaned);
+    }}
+    placeholder={placeholder}
+    inputProps={{ inputMode: numeric ? 'numeric' : 'text', dir: 'ltr', style: { textAlign: 'center' } }}
+  />
+);
+
+/* نقطهٔ رنگی وضعیت سامانهٔ مودیان (به‌جای متن، برای صرفه‌جویی در فضا) */
+const StatusDot = ({ registered }) => (
+  <Box
+    component="span"
+    role="img"
+    data-status={registered ? 'registered' : 'pending'}
+    aria-label={registered ? 'درج شده در سامانه مودیان' : 'درج نشده در سامانه مودیان'}
+    sx={{
+      display: 'inline-block',
+      width: 10,
+      height: 10,
+      borderRadius: '50%',
+      bgcolor: registered ? '#16a34a' : '#dc2626',
+      boxShadow: registered
+        ? '0 0 0 3px rgba(22,163,74,0.16)'
+        : '0 0 0 3px rgba(220,38,38,0.16)',
+    }}
+  />
+);
+
+const StatusCell = ({ value, onChange }) => (
+  <Tooltip title={value === 'registered' ? 'درج شده در سامانه مودیان' : 'درج نشده در سامانه مودیان'}>
+    <Select
+      variant="standard"
+      value={value}
+      onChange={(event) => onChange(event.target.value)}
+      disableUnderline
+      IconComponent={() => null}
+      renderValue={(selected) => (
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: '100%' }}>
+          <StatusDot registered={selected === 'registered'} />
+        </Box>
+      )}
+      inputProps={{ 'aria-label': 'وضعیت در سامانه مودیان' }}
+      sx={{
+        width: '100%',
+        fontSize: 11,
+        '& .MuiSelect-select': { py: 0.4, px: 0, display: 'flex', justifyContent: 'center' },
+      }}
+    >
+      {STATUSES.map((option) => (
+        <MenuItem key={option.value} value={option.value} sx={{ fontSize: 11.5, gap: 1 }}>
+          <StatusDot registered={option.value === 'registered'} />
+          {option.label}
+        </MenuItem>
+      ))}
+    </Select>
+  </Tooltip>
+);
+
 const SeasonalReportPage = () => {
   const moduleTheme = useModuleTheme();
   const [yearKey, setYearKey] = useState(() => readJson(SETTINGS_KEY, {}).yearKey || '');
@@ -121,7 +185,11 @@ const SeasonalReportPage = () => {
   const [parties, setParties] = useState(() => readJson(PARTIES_KEY, []));
   const [loadedKey, setLoadedKey] = useState('');
   const [toast, setToast] = useState('');
-  const tableTopRef = useRef(null);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [kindFilter, setKindFilter] = useState('all');
+  const [sortBy, setSortBy] = useState('entry');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: fiscalYears, isFetched: fiscalYearsFetched } = useQuery({
     queryKey: ['fiscal-years-for-seasonal'],
@@ -165,11 +233,13 @@ const SeasonalReportPage = () => {
     writeJson(SETTINGS_KEY, { yearKey, quarter });
   }, [yearKey, quarter]);
 
-  /* بارگذاری ردیف‌های همان سال/فصل */
+  /* بارگذاری ردیف‌های همان سال/فصل (همیشه با یک ردیف خالی آمادهٔ ورود در پایان) */
   useEffect(() => {
-    if (!yearKey) { setRows([]); setLoadedKey(''); return; }
+    if (!yearKey) { setRows([emptyRow()]); setLoadedKey(''); return; }
     const saved = readJson(ROWS_KEY(yearKey, quarter), []);
-    setRows(Array.isArray(saved) ? saved.map((row) => ({ ...emptyRow(), ...row })) : []);
+    const list = Array.isArray(saved) ? saved.map((row) => ({ ...emptyRow(), ...row })) : [];
+    while (list.length && isBlankRow(list[list.length - 1])) list.pop();
+    setRows([...list, emptyRow()]);
     setLoadedKey(`${yearKey}|${quarter}`);
   }, [yearKey, quarter]);
 
@@ -216,17 +286,6 @@ const SeasonalReportPage = () => {
     } : row)));
   };
 
-  const addRow = () => {
-    const row = emptyRow();
-    setRows((previous) => [...previous, row]);
-    setToast('ردیف جدید اضافه شد');
-    window.setTimeout(() => {
-      if (tableTopRef.current && typeof tableTopRef.current.scrollIntoView === 'function') {
-        tableTopRef.current.scrollIntoView({ block: 'nearest' });
-      }
-    }, 30);
-  };
-
   const removeRow = (id) => setRows((previous) => previous.filter((row) => row.id !== id));
 
   /* کپی ردیف: طرف معامله، آدرس و نوع حفظ می‌شود؛ فقط شماره فاکتور خالی می‌ماند */
@@ -240,38 +299,80 @@ const SeasonalReportPage = () => {
     setToast('ردیف کپی شد — شماره فاکتور را وارد کنید');
   };
 
-  /* پر کردن ارزش افزودهٔ خالی با نرخ ۱۰٪ (قابل ویرایش بعد از محاسبه) */
-  const fillVat = () => {
-    const pending = rows.filter((row) => num(row.amount) > 0 && !num(row.vat));
-    if (!pending.length) {
-      setToast('همهٔ ردیف‌های دارای مبلغ، ارزش افزوده دارند');
-      return;
+  /* ردیف بعدی همیشه خودکار ساخته می‌شود: هر وقت آخرین ردیف پر شود، یک ردیف خالی پایین آن اضافه می‌شود */
+  useEffect(() => {
+    setRows((previous) => (
+      previous.length && !isBlankRow(previous[previous.length - 1])
+        ? [...previous, emptyRow()]
+        : previous
+    ));
+  }, [rows]);
+
+
+  /* ردیف‌های دارای داده (به‌جز ردیف خالی آمادهٔ ورود) */
+  const filledRows = useMemo(() => rows.filter((row) => !isBlankRow(row)), [rows]);
+  const indexById = useMemo(() => {
+    const map = new Map();
+    filledRows.forEach((row, index) => map.set(row.id, index));
+    return map;
+  }, [filledRows]);
+
+  const filteredRows = useMemo(() => {
+    const term = search.trim().toLowerCase();
+    let list = filledRows;
+    if (term) {
+      list = list.filter((row) => [row.name, row.city, row.address, row.nationalId, row.description, row.invoiceNo]
+        .some((value) => String(value ?? '').toLowerCase().includes(term)));
     }
-    setRows((previous) => previous.map((row) => (
-      num(row.amount) > 0 && !num(row.vat)
-        ? { ...row, vat: String(Math.round(num(row.amount) * 0.1)) }
-        : row
-    )));
-    setToast('ارزش افزودهٔ ۱۰٪ برای ردیف‌های خالی محاسبه شد');
-  };
+    if (statusFilter !== 'all') list = list.filter((row) => row.status === statusFilter);
+    if (kindFilter !== 'all') list = list.filter((row) => String(row.kind) === String(kindFilter));
+    const sorted = [...list];
+    if (sortBy === 'amount') sorted.sort((a, b) => num(b.amount) - num(a.amount));
+    else if (sortBy === 'total') sorted.sort((a, b) => totalOf(b) - totalOf(a));
+    else if (sortBy === 'name') sorted.sort((a, b) => String(a.name).localeCompare(String(b.name), 'fa'));
+    else sorted.sort((a, b) => (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0));
+    return sorted;
+  }, [filledRows, search, statusFilter, kindFilter, sortBy, indexById]);
 
-  const clearQuarter = () => {
-    if (!rows.length) return;
-    if (!window.confirm('همهٔ ردیف‌های این فصل حذف شوند؟ این کار قابل بازگشت نیست.')) return;
-    setRows([]);
-    setToast('ردیف‌های این فصل پاک شد');
-  };
+  /* ردیف خالی فقط در حالت عادی (بدون جستجو/فیلتر/مرتب‌سازی) نمایش داده می‌شود */
+  const editingLive = !search.trim() && statusFilter === 'all' && kindFilter === 'all' && sortBy === 'entry';
+  const displayRows = useMemo(() => {
+    if (!editingLive) return filteredRows;
+    const tail = rows[rows.length - 1];
+    return tail && isBlankRow(tail) ? [...filteredRows, tail] : filteredRows;
+  }, [editingLive, filteredRows, rows]);
 
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0);
+  const statusLabelOf = (value) => (value === 'registered' ? 'درج شده' : 'درج نشده');
+  const activeChips = [
+    ...(statusFilter !== 'all'
+      ? [{ key: 'status', label: `وضعیت: ${statusLabelOf(statusFilter)}`, clear: () => setStatusFilter('all') }]
+      : []),
+    ...(kindFilter !== 'all'
+      ? [{ key: 'kind', label: `نوع: ${toPersianDigits(kindFilter)}`, clear: () => setKindFilter('all') }]
+      : []),
+  ];
+  const filterOptions = [
+    { label: 'وضعیت سامانه', value: statusFilter, onChange: setStatusFilter, options: [
+      { value: 'all', label: `همه (${toPersianDigits(filledRows.length)})` },
+      { value: 'registered', label: `درج شده (${toPersianDigits(filledRows.filter((row) => row.status === 'registered').length)})` },
+      { value: 'pending', label: `درج نشده (${toPersianDigits(filledRows.filter((row) => row.status !== 'registered').length)})` },
+    ] },
+    { label: 'نوع', value: kindFilter, onChange: setKindFilter, options: [
+      { value: 'all', label: 'همه' },
+      ...KINDS.map((kind) => ({ value: String(kind), label: `نوع ${toPersianDigits(kind)}` })),
+    ] },
+  ];
 
-  const totals = useMemo(() => rows.reduce((acc, row) => ({
+  const totals = useMemo(() => filledRows.reduce((acc, row) => ({
     amount: acc.amount + num(row.amount),
     vat: acc.vat + num(row.vat),
     total: acc.total + totalOf(row),
     registered: acc.registered + (row.status === 'registered' ? 1 : 0),
-  }), { amount: 0, vat: 0, total: 0, registered: 0 }), [rows]);
+  }), { amount: 0, vat: 0, total: 0, registered: 0 }), [filledRows]);
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
-  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, Math.min(rows.length || 8, pageSize));
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, Math.min(displayRows.length || 8, pageSize));
   const yearLabel = years.find((item) => item.value === String(yearKey))?.label || 'سال مالی';
   const quarterLabel = QUARTERS.find((item) => item.value === quarter)?.label || '';
 
@@ -284,7 +385,7 @@ const SeasonalReportPage = () => {
     ];
     const escape = (value) => String(value ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const body = rows.map((row, index) => `
+    const body = filledRows.map((row, index) => `
       <tr>
         <td>${index + 1}</td>
         <td>${escape(row.name)}</td>
@@ -335,11 +436,11 @@ const SeasonalReportPage = () => {
     {
       key: 'row',
       label: 'ردیف',
-      width: '3%',
+      width: '4%',
       align: 'center',
-      render: (_row, index) => (
+      render: (row) => (
         <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: MUTED }}>
-          {toPersianDigits(index + 1)}
+          {toPersianDigits((indexById.get(row.id) ?? 0) + 1)}
         </Typography>
       ),
     },
@@ -411,8 +512,8 @@ const SeasonalReportPage = () => {
       width: '10%',
       align: 'center',
       render: (row) => (
-        <CellTextField value={row.nationalId} onChange={(value) => updateCell(row.id, 'nationalId', value)}
-          placeholder="شناسه ملی" inputProps={{ inputMode: 'numeric', dir: 'ltr', style: { textAlign: 'center' } }} />
+        <DigitField value={row.nationalId} onChange={(value) => updateCell(row.id, 'nationalId', value)}
+          placeholder="شناسه ملی" numeric maxLength={11} />
       ),
     },
     {
@@ -510,22 +611,17 @@ const SeasonalReportPage = () => {
       width: '7%',
       align: 'center',
       render: (row) => (
-        <CellTextField value={row.invoiceNo} onChange={(value) => updateCell(row.id, 'invoiceNo', value)}
-          placeholder="شماره" inputProps={{ dir: 'ltr', style: { textAlign: 'center' } }} />
+        <DigitField value={row.invoiceNo} onChange={(value) => updateCell(row.id, 'invoiceNo', value)}
+          placeholder="شماره" />
       ),
     },
     {
       key: 'status',
-      label: 'وضعیت (سامانه مودیان)',
-      width: '9%',
+      label: 'وضعیت',
+      width: '5%',
       align: 'center',
       render: (row) => (
-        <CellSelect
-          value={row.status}
-          onChange={(value) => updateCell(row.id, 'status', value)}
-          ariaLabel="وضعیت در سامانه مودیان"
-          options={STATUSES}
-        />
+        <StatusCell value={row.status} onChange={(value) => updateCell(row.id, 'status', value)} />
       ),
     },
     {
@@ -559,9 +655,6 @@ const SeasonalReportPage = () => {
         color="#d97706"
         actions={(
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
-            <Button variant="outlined" size="small" startIcon={<AddIcon />} onClick={addRow}>
-              ردیف جدید
-            </Button>
             <Button variant="contained" size="small" startIcon={<DownloadIcon />} onClick={exportExcel}>
               خروجی اکسل
             </Button>
@@ -619,36 +712,28 @@ const SeasonalReportPage = () => {
             ))}
           </Select>
         </FormControl>
-
-        <Typography sx={{ fontSize: 11, color: 'text.secondary', flex: 1, minWidth: 220 }}>
-          با تایپ حرف اول نام، طرف‌های معاملهٔ قبلی پیشنهاد می‌شوند؛ با انتخاب، شهر و آدرس خودکار پر می‌شود.
-          {' '}
-          میان‌بر افزودن ردیف: Ctrl + Enter
-        </Typography>
-
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<PercentIcon />}
-          onClick={fillVat}
-          disabled={!rows.length}
-          sx={{ fontSize: 11.5 }}
-        >
-          ارزش افزوده ۱۰٪
-        </Button>
-
-        <Button
-          size="small"
-          color="error"
-          variant="text"
-          startIcon={<DeleteSweepIcon />}
-          onClick={clearQuarter}
-          disabled={!rows.length}
-          sx={{ fontSize: 11.5 }}
-        >
-          پاک کردن فصل
-        </Button>
       </Paper>
+
+      <ModuleToolbar
+        theme={moduleTheme}
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="جستجو در نام طرف معامله، شهر، آدرس، شناسه ملی، شرح کالا و شماره فاکتور…"
+        sort={sortBy}
+        sortOptions={[
+          { value: 'entry', label: 'ترتیب ورود' },
+          { value: 'amount', label: 'بیشترین مبلغ' },
+          { value: 'total', label: 'بیشترین جمع کل' },
+          { value: 'name', label: 'نام (الفبا)' },
+        ]}
+        onSort={setSortBy}
+        filters={filterOptions}
+        activeChips={activeChips}
+        activeFilterCount={activeFilterCount}
+        onReset={() => { setSearch(''); setStatusFilter('all'); setKindFilter('all'); setSortBy('entry'); }}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
+      />
 
       <Paper
         elevation={0}
@@ -659,24 +744,16 @@ const SeasonalReportPage = () => {
           overflow: 'hidden',
         }}
       >
-        <Box
-          ref={tableTopRef}
-          onKeyDown={(event) => {
-            if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
-              event.preventDefault();
-              addRow();
-            }
-          }}
-        >
+        <Box>
           <ModuleTable
             tableTheme={moduleTheme.tableTheme}
             columns={tableColumns}
-            rows={rows}
+            rows={displayRows}
             rowKey={(row) => row.id}
             containerRef={tableRef}
-            tableHeight={rows.length ? tableHeight : 210}
+            tableHeight={displayRows.length ? tableHeight : 210}
             rowHeight={rowHeight}
-            emptyText="هنوز ردیفی ثبت نشده است — با دکمهٔ «ردیف جدید» شروع کنید."
+            emptyText="ردیفی با این مشخصات پیدا نشد."
             ariaLabel="جدول معاملات فصلی"
           />
         </Box>
@@ -695,7 +772,7 @@ const SeasonalReportPage = () => {
         >
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'تعداد ردیف: '}
-            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{toPersianDigits(rows.length)}</Box>
+            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{toPersianDigits(filledRows.length)}</Box>
           </Typography>
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'جمع مبلغ: '}
@@ -712,7 +789,7 @@ const SeasonalReportPage = () => {
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary', ml: 'auto' }}>
             {'درج‌شده در سامانه: '}
             <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>
-              {`${toPersianDigits(totals.registered)} از ${toPersianDigits(rows.length)}`}
+              {`${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`}
             </Box>
           </Typography>
         </Box>
