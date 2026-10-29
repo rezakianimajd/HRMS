@@ -136,7 +136,7 @@ beforeEach(() => {
   });
 });
 
-test('document management page renders library, folder tree, detail drawer and upload dialog', async () => {
+test('document management page renders the library in a single standard table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -157,17 +157,27 @@ test('document management page renders library, folder tree, detail drawer and u
     await act(async () => { await wait(180); });
   }
 
+  // هدر و نوار جست‌وجوی استاندارد
   expect(container.textContent).toContain('کتابخانه اسناد');
-  expect(container.textContent).toContain('پوشه‌های اسناد');
-  expect(container.textContent).toContain('مدارک و مستندات شرکت');
-  expect(container.textContent).toContain('قراردادها');
-  expect(container.textContent).toContain('قرارداد پیمانکاری سالن تولید');
-  expect(container.textContent).toContain('مجوز فعالیت کارگاه');
-  expect(container.textContent).toContain('سیاست ذخیره‌سازی');
-  expect(container.textContent).toContain('documents');
+  expect(container.querySelector('input[placeholder*="جست‌وجو"]')).toBeTruthy();
 
-  const detailButton = Array.from(container.querySelectorAll('button'))
-    .find((element) => element.textContent.trim() === 'جزئیات');
+  // بدون درخت‌وارهٔ پوشه‌ها و بدون کارت
+  expect(container.textContent).not.toContain('پوشه‌های اسناد');
+  expect(container.textContent).not.toContain('سیاست ذخیره‌سازی');
+  expect(container.querySelector('[aria-label="نمای کارت"]')).toBeNull();
+
+  // یک جدول استاندارد با ستون‌های کتابخانه
+  const tables = Array.from(container.querySelectorAll('table'));
+  expect(tables).toHaveLength(1);
+  const libraryTable = tables[0];
+  expect(libraryTable.getAttribute('aria-label')).toBe('فهرست اسناد کتابخانه');
+  const headers = Array.from(libraryTable.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+  expect(headers).toEqual(['ردیف', 'عنوان سند', 'نوع', 'پوشه', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'انقضا', 'عملیات']);
+  expect(libraryTable.textContent).toContain('قرارداد پیمانکاری سالن تولید');
+  expect(libraryTable.textContent).toContain('مجوز فعالیت کارگاه');
+  expect(libraryTable.textContent).toContain('قراردادها');
+
+  const detailButton = container.querySelector('button[aria-label="جزئیات سند"]');
   expect(detailButton).toBeTruthy();
   await act(async () => { detailButton.click(); await wait(300); });
 
@@ -193,7 +203,7 @@ test('document management page renders library, folder tree, detail drawer and u
   container.remove();
 });
 
-test('personnel library shows employee cards and grouped document dialog', async () => {
+test('personnel library lists documents in the same standard table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -215,27 +225,24 @@ test('personnel library shows employee cards and grouped document dialog', async
   }
 
   expect(container.textContent).toContain('کتابخانه اسناد · پرسنل');
-  expect(container.textContent).toContain('علی رضایی');
-  expect(container.textContent).toContain('شماره پرسنلی: ۱۰۰۱');
-  expect(container.textContent).toContain('مشاهده');
 
-  const viewButton = Array.from(container.querySelectorAll('button'))
-    .find((button) => button.textContent.trim() === 'مشاهده');
-  expect(viewButton).toBeTruthy();
-  await act(async () => { viewButton.click(); await wait(300); });
-
-  expect(document.body.textContent).toContain('عکس پرسنلی');
-  expect(document.body.textContent).toContain('شناسنامه');
-  expect(document.body.textContent).toContain('کارت ملی');
-  expect(document.body.textContent).toContain('مدرک تحصیلی');
-  expect(document.body.textContent).toContain('ثبت‌شده در پرونده');
+  const tables = Array.from(container.querySelectorAll('table'));
+  expect(tables).toHaveLength(1);
+  const personnelTable = tables[0];
+  const headers = Array.from(personnelTable.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+  expect(headers).toEqual(['ردیف', 'عنوان سند', 'نوع', 'پرسنل', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'انقضا', 'عملیات']);
+  expect(personnelTable.textContent).toContain('علی رضایی');
+  expect(personnelTable.textContent).toContain('کد ۱۰۰۱');
+  ['عکس پرسنلی', 'شناسنامه', 'کارت ملی', 'مدرک تحصیلی'].forEach((title) => {
+    expect(personnelTable.textContent).toContain(title);
+  });
 
   root.unmount();
   container.remove();
 });
 
 
-test('selecting a library module limits the folder tree to that module', async () => {
+test('selecting a library module scopes the table to that module', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -257,7 +264,6 @@ test('selecting a library module limits the folder tree to that module', async (
   }
 
   expect(container.textContent).toContain('کتابخانه اسناد · منابع انسانی');
-  expect(container.textContent).toContain('پوشه‌های منابع انسانی');
   expect(container.textContent).not.toContain('قرارداد پیمانکاری سالن تولید');
 
   root.unmount();

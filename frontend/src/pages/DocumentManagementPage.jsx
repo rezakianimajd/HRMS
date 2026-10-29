@@ -1,40 +1,41 @@
-import React, { useEffect, useMemo, useState } from 'react';
+﻿import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import useAuth from '../core/hooks/useAuth';
 import {
-  Alert, Box, Button, ButtonBase, Chip, CircularProgress, Dialog, DialogActions,
-  DialogContent, DialogTitle, Divider, FormControl, Grid, IconButton,
-  InputAdornment, InputLabel, MenuItem, Paper, Select, Snackbar, Stack,
-  TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Alert, Box, Button, CircularProgress, Dialog, DialogActions,
+  DialogContent, DialogTitle, FormControl, IconButton, InputLabel, MenuItem,
+  Paper, Select, Snackbar, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
-import { alpha } from '@mui/material/styles';
-import AddIcon from '@mui/icons-material/Add';
 import CreateNewFolderOutlinedIcon from '@mui/icons-material/CreateNewFolderOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import FolderOpenOutlinedIcon from '@mui/icons-material/FolderOpenOutlined';
 import PeopleAltOutlinedIcon from '@mui/icons-material/PeopleAltOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SearchIcon from '@mui/icons-material/Search';
 import SyncIcon from '@mui/icons-material/Sync';
-import TableRowsIcon from '@mui/icons-material/TableRows';
+import RestoreOutlinedIcon from '@mui/icons-material/RestoreOutlined';
 import UploadFileOutlinedIcon from '@mui/icons-material/UploadFileOutlined';
-import ViewModuleIcon from '@mui/icons-material/ViewModule';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
-import { INK, MUTED, SOFT_BG, SurfaceCard } from './accounting/AccountingDashboardUI';
+import { MUTED } from './accounting/AccountingDashboardUI';
 import {
-  CONFIDENTIALITY, DMS_ACCENT, DOC_STATUS, DOCUMENT_TYPE, DocumentCard,
-  DocumentDetailDrawer, DocumentEditorDialog, DocumentTable, FolderEditorDialog,
-  FolderTree, LibraryBreadcrumb, StoragePolicyCard, WORKFLOW_STATUS,
+  CONFIDENTIALITY, DOC_STATUS, DOCUMENT_TYPE,
+  DocumentDetailDrawer, DocumentEditorDialog, FolderEditorDialog, WORKFLOW_STATUS,
 } from './contracts/DocumentManagementUI';
-import { PersonnelDocumentCard, PersonnelDocumentsDialog } from './contracts/PersonnelDocumentUI';
-import { buildPersonnelRows, fileFormat, groupPersonnelDocuments, normalizeText } from './contracts/personnelDocuments';
+import { buildPersonnelRows, normalizeText } from './contracts/personnelDocuments';
 import {
   documentMatchesModuleText, findDocumentModule, findModuleForFolder,
   folderDescendants, moduleFolderIds, scopedLibraryFolders,
 } from '../core/config/documentLibraryModules';
+import {
+  ModulePager, ModuleTable, ModuleToolbar,
+  useModuleTableState, useModuleTheme, useRowHeight,
+} from './contracts/contractModuleUi';
 
 const EMPTY_DOCUMENT = {
   id: null, title: '', folder: '', description: '', tags: '', reference_number: '',
@@ -89,9 +90,8 @@ const DocumentManagementPage = () => {
   const [reviewFilter, setReviewFilter] = useState(() => searchParams.get('review') || '');
   const [scope, setScope] = useState(() => searchParams.get('scope') || 'all');
   const [sortBy, setSortBy] = useState('newest');
-  const [view, setView] = useState('cards');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [detail, setDetail] = useState(null);
-  const [personnelDetail, setPersonnelDetail] = useState(null);
   const [editorOpen, setEditorOpen] = useState(false);
   const [form, setForm] = useState(EMPTY_DOCUMENT);
   const [folderDialog, setFolderDialog] = useState(false);
@@ -235,28 +235,19 @@ const DocumentManagementPage = () => {
     () => (personnelMode ? buildPersonnelRows(personnelEmployees, personnelDocuments, search) : { rows: [], unassigned: [] }),
     [personnelMode, personnelEmployees, personnelDocuments, search],
   );
-  const personnelFileCount = personnel.rows.reduce((total, row) => total + row.count, 0)
-    + personnel.unassigned.length;
-  const unassignedPersonnel = useMemo(() => {
-    const rows = personnel.unassigned || [];
-    if (!rows.length) return null;
-    const formats = {};
-    rows.forEach((row) => {
-      const format = fileFormat(row);
-      formats[format.key] = (formats[format.key] || 0) + 1;
-    });
-    return {
-      employee: {
-        id: 'unassigned', full_name: 'مدارک بدون پرسنل قابل تطبیق',
-        employee_id: '—', department_name: 'نیازمند تخصیص',
-      },
-      documents: rows,
-      groups: groupPersonnelDocuments(rows),
-      formats,
-      count: rows.length,
-    };
-  }, [personnel.unassigned]);
-  const activeDocuments = documents.filter((row) => row.status !== 'archived');
+  /* نمای پرسنلی هم جدولی است: هر ردیف یک مدرک + نام و کد پرسنلی */
+  const personnelRows = useMemo(() => (personnelMode
+    ? [
+      ...personnel.rows.flatMap((person) => person.documents.map((doc) => ({
+        ...doc,
+        employee_name: person.employee.full_name || '',
+        employee_code: person.employee.employee_id || '',
+      }))),
+      ...(personnel.unassigned || []).map((doc) => ({
+        ...doc, employee_name: 'بدون پرسنل قابل تطبیق', employee_code: '',
+      })),
+    ]
+    : []), [personnelMode, personnel.rows, personnel.unassigned]);
 
   const replacementOptions = supersedeRow
     ? documents.filter((row) => String(row.id) !== String(supersedeRow.id) && ['approved', 'published'].includes(row.workflow_status))
@@ -267,12 +258,12 @@ const DocumentManagementPage = () => {
   const viewMeta = personnelMode
     ? {
       title: `کتابخانه اسناد · ${activeModuleMeta?.label || 'پرسنل'}`,
-      subtitle: 'پرونده‌های پرسنلی؛ مدارک بر اساس نوع تعریف‌شده در «تعاریف اولیه ← انواع مدارک» گروه‌بندی می‌شوند',
+      subtitle: 'مدارک پرسنلی در یک جدول استاندارد؛ هر ردیف یک مدرک با نام و کد پرسنلی',
     }
     : activeModuleMeta
       ? {
         title: `کتابخانه اسناد · ${activeModuleMeta.label}`,
-        subtitle: 'فایل‌ها و پوشه‌های همین ماژول؛ برای دیدن جزئیات هر سند روی کارت آن کلیک کنید',
+        subtitle: 'فایل‌های همین ماژول در جدول استاندارد کتابخانه',
       }
       : scope === 'mine'
     ? { title: 'اسناد من', subtitle: 'اسنادی که شما ایجاد کرده‌اید' }
@@ -292,7 +283,46 @@ const DocumentManagementPage = () => {
                 ? { title: DOCUMENT_TYPE[typeFilter]?.label || 'اسناد سازمانی', subtitle: 'اسناد سازمانی طبقه‌بندی‌شده در کتابخانهٔ مرکزی' }
                 : confidentialityFilter !== 'all'
                   ? { title: 'اسناد محرمانه', subtitle: 'اسناد با سطح دسترسی محدود' }
-                  : { title: 'کتابخانه اسناد', subtitle: 'کتابخانه مرکزی اسناد با پوشه‌بندی، نسخه‌بندی، متادیتا و تاریخچه' };
+                  : { title: 'کتابخانه اسناد', subtitle: 'کتابخانه مرکزی اسناد با نسخه‌بندی، متادیتا و تاریخچه — نمای جدولی' };
+
+  /* ---- جدول استاندارد استودیوتم ---- */
+  const moduleTheme = useModuleTheme();
+  const tableRows = personnelMode ? personnelRows : filtered;
+  const pageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
+    tableRows.length, pageSize, [
+    search, folderId, moduleFilter, statusFilter, confidentialityFilter,
+    typeFilter, workflowFilter, reviewFilter, scope, sortBy, personnelMode, pageSize,
+  ],
+  );
+  const pagedRows = useMemo(
+    () => tableRows.slice(page * pageSize, (page + 1) * pageSize),
+    [tableRows, page, pageSize],
+  );
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
+
+  const filterOptions = (meta) => [
+    { value: 'all', label: 'همه' },
+    ...Object.entries(meta).map(([key, item]) => ({ value: key, label: item.label || key })),
+  ];
+  const activeChips = [
+    statusFilter !== 'all' ? { key: 'status', label: `وضعیت: ${DOC_STATUS[statusFilter]?.label || statusFilter}`, clear: () => setStatusFilter('all') } : null,
+    confidentialityFilter !== 'all' ? { key: 'confidentiality', label: `محرمانگی: ${CONFIDENTIALITY[confidentialityFilter]?.label || confidentialityFilter}`, clear: () => setConfidentialityFilter('all') } : null,
+    typeFilter !== 'all' ? { key: 'type', label: `نوع: ${DOCUMENT_TYPE[typeFilter]?.label || typeFilter}`, clear: () => setTypeFilter('all') } : null,
+    workflowFilter !== 'all' ? { key: 'workflow', label: `گردش‌کار: ${WORKFLOW_STATUS[workflowFilter]?.label || workflowFilter}`, clear: () => setWorkflowFilter('all') } : null,
+  ].filter(Boolean);
+
+  const totalSize = tableRows.reduce((sum, row) => sum + Number(row.file_size || 0), 0);
+  const totalVersions = tableRows.reduce((sum, row) => sum + Number(row.version_count || 1), 0);
+  const expiringSoon = tableRows.filter((row) => row.days_until_expiry != null
+    && row.days_until_expiry >= 0 && row.days_until_expiry <= 30).length;
+  const dateCell = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
+  const sizeCell = (value) => {
+    const bytes = Number(value) || 0;
+    if (!bytes) return '—';
+    if (bytes >= 1024 * 1024) return `${formatPersianNumber((bytes / 1024 / 1024).toFixed(1))} MB`;
+    return `${formatPersianNumber(Math.max(1, Math.round(bytes / 1024)))} KB`;
+  };
 
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['dms-folders'] });
@@ -587,10 +617,11 @@ const DocumentManagementPage = () => {
         icon={personnelMode ? <PeopleAltOutlinedIcon /> : <FolderOpenOutlinedIcon />}
         title={viewMeta.title}
         subtitle={viewMeta.subtitle}
-        badge={<Chip size="small" label={personnelMode
-          ? `${formatPersianNumber(personnel.rows.length)} پرسنل · ${formatPersianNumber(personnelFileCount)} فایل`
-          : `${formatPersianNumber(filtered.length)} سند فعال`}
-          sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DMS_ACCENT, 0.08), color: DMS_ACCENT }} />}
+        badge={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>
+          {personnelMode
+            ? `${formatPersianNumber(personnelRows.length)} مدرک · ${formatPersianNumber(personnel.rows.length)} پرسنل`
+            : `${formatPersianNumber(filtered.length)} سند`}
+        </Typography>}
         actions={(
           <>
             <Tooltip title="به‌روزرسانی"><span><Button variant="outlined" disabled={documentsQuery.isFetching} onClick={() => { documentsQuery.refetch(); statsQuery.refetch(); foldersQuery.refetch(); }} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span></Tooltip>
@@ -604,189 +635,254 @@ const DocumentManagementPage = () => {
         )}
       />
 
-      <Grid container spacing={1.5}>
-        <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-          <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-            <SurfaceCard title={activeModuleMeta ? `پوشه‌های ${activeModuleMeta.label}` : 'پوشه‌های اسناد'}
-              icon={FolderOpenOutlinedIcon} color={activeModuleMeta?.color || DMS_ACCENT}
-              action={<IconButton size="small" onClick={openFolderNew} sx={{ color: activeModuleMeta?.color || DMS_ACCENT }}><AddIcon fontSize="small" /></IconButton>}>
-              <Stack spacing={0.6}>
-                <ButtonBase onClick={clearScope}
-                  sx={{
-                    width: '100%', p: 0.7, borderRadius: '10px', justifyContent: 'flex-start', textAlign: 'right',
-                    bgcolor: !folderId && !moduleFilter ? alpha(DMS_ACCENT, 0.08) : 'transparent',
-                    border: `1px solid ${!folderId && !moduleFilter ? alpha(DMS_ACCENT, 0.2) : 'transparent'}`,
-                  }}>
-                  <Stack direction="row" alignItems="center" spacing={0.6} sx={{ width: '100%' }}>
-                    <FolderOpenOutlinedIcon sx={{ fontSize: 17, color: DMS_ACCENT }} />
-                    <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 800, color: INK }}>همه اسناد</Typography>
-                    <Chip size="small" label={formatPersianNumber(activeDocuments.length)} sx={{ height: 18, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
-                  </Stack>
-                </ButtonBase>
-                {activeModuleMeta ? (
-                  <Stack direction="row" alignItems="center" spacing={0.65} sx={{
-                    p: 0.7, borderRadius: '10px', bgcolor: alpha(activeModuleMeta.color || DMS_ACCENT, 0.07),
-                    border: `1px solid ${alpha(activeModuleMeta.color || DMS_ACCENT, 0.16)}`,
-                  }}>
-                    <Box sx={{
-                      width: 27, height: 27, borderRadius: '8px', display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', bgcolor: alpha(activeModuleMeta.color || DMS_ACCENT, 0.14),
-                      color: activeModuleMeta.color || DMS_ACCENT,
-                    }}>
-                      <FolderOpenOutlinedIcon sx={{ fontSize: 16 }} />
-                    </Box>
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{activeModuleMeta.label}</Typography>
-                      <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>فقط درخت‌وارهٔ همین ماژول</Typography>
-                    </Box>
-                  </Stack>
-                ) : null}
-                <Divider />
-                {scopedFolders.length ? <FolderTree folders={scopedFolders} selected={folderId} onSelect={setFolderId}
-                  onEdit={openFolderEdit} onDelete={setConfirmFolderDelete} /> : (
-                  <Typography sx={{ fontSize: 12, color: MUTED, py: 1 }}>
-                    {activeModuleMeta ? 'برای این ماژول هنوز پوشه‌ای ساخته نشده است.' : 'پوشه‌ای ساخته نشده است.'}
+      <ModuleToolbar
+        theme={moduleTheme}
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder={personnelMode
+          ? 'جست‌وجوی نام، کد پرسنلی، عنوان مدرک یا توضیحات…'
+          : 'جست‌وجو در عنوان، برچسب، شماره مرجع یا نام فایل…'}
+        sort={sortBy}
+        sortOptions={[
+          { value: 'newest', label: 'جدیدترین' },
+          { value: 'updated', label: 'آخرین ویرایش' },
+          { value: 'title', label: 'عنوان' },
+          { value: 'reference', label: 'شماره مرجع' },
+          { value: 'expiry', label: 'نزدیک‌ترین انقضا' },
+          { value: 'size', label: 'بیشترین حجم' },
+        ]}
+        onSort={setSortBy}
+        filters={[
+          { label: 'وضعیت', value: statusFilter, options: filterOptions(DOC_STATUS), onChange: setStatusFilter },
+          { label: 'محرمانگی', value: confidentialityFilter, options: filterOptions(CONFIDENTIALITY), onChange: setConfidentialityFilter },
+          { label: 'نوع سند', value: typeFilter, options: filterOptions(DOCUMENT_TYPE), onChange: setTypeFilter },
+          { label: 'گردش‌کار', value: workflowFilter, options: filterOptions(WORKFLOW_STATUS), onChange: setWorkflowFilter },
+        ]}
+        activeChips={activeChips}
+        activeFilterCount={activeChips.length}
+        onReset={() => {
+          setSearch('');
+          setStatusFilter('all');
+          setConfidentialityFilter('all');
+          setTypeFilter('all');
+          setWorkflowFilter('all');
+          setSortBy('newest');
+        }}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
+      />
+
+      {error ? (
+        <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1.25, borderRadius: '12px' }}>{error}</Alert>
+      ) : null}
+
+      <Paper elevation={0} sx={{
+        borderRadius: 'var(--hrms-table-radius, 16px)',
+        overflow: 'hidden',
+        px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+        border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+        bgcolor: 'background.paper', boxShadow: 'none',
+      }}>
+        <ModuleTable
+          tableTheme={moduleTheme.tableTheme}
+          ariaLabel="فهرست اسناد کتابخانه"
+          containerRef={tableRef}
+          tableHeight={tableHeight}
+          rowHeight={rowHeight}
+          dimmed={documentsQuery.isFetching}
+          rows={pagedRows}
+          rowKey={(row) => row.id}
+          onRowClick={(row) => setDetail(row)}
+          emptyText="سندی با این مشخصات پیدا نشد؛ فیلترها یا عبارت جست‌وجو را تغییر دهید."
+          columns={[
+            {
+              key: 'row',
+              label: 'ردیف',
+              width: '4%',
+              align: 'center',
+              render: (_row, index) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                  {toPersianDigits(page * pageSize + index + 1)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'title',
+              label: 'عنوان سند',
+              width: '23%',
+              render: (row) => (
+                <Typography noWrap title={`${row.title || ''}${row.reference_number ? ` · ${row.reference_number}` : ''}`}
+                  sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {row.title || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'type',
+              label: 'نوع',
+              width: '9%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
+                  {DOCUMENT_TYPE[row.document_type]?.label || '—'}
+                </Typography>
+              ),
+            },
+            personnelMode ? {
+              key: 'employee',
+              label: 'پرسنل',
+              width: '13%',
+              render: (row) => (
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography noWrap title={row.employee_name} sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                    {row.employee_name || '—'}
                   </Typography>
-                )}
-              </Stack>
-            </SurfaceCard>
-            <StoragePolicyCard policy={stats.storage_policy} />
-          </Stack>
-        </Grid>
-
-        <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-          <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: '1px solid #e5edf1' }}>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-              <TextField size="small" placeholder={personnelMode
-                ? 'جست‌وجوی نام، شماره پرسنلی، عنوان مدرک یا توضیحات…'
-                : 'جست‌وجو در عنوان، برچسب، شماره مرجع یا نام فایل…'}
-                value={search} onChange={(event) => setSearch(event.target.value)}
-                sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-              <FormControl size="small" sx={{ minWidth: 135 }}>
-                <InputLabel>وضعیت</InputLabel>
-                <Select value={statusFilter} label="وضعیت" onChange={(event) => setStatusFilter(event.target.value)}>
-                  <MenuItem value="all">همه</MenuItem>
-                  {Object.entries(DOC_STATUS).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 135 }}>
-                <InputLabel>محرمانگی</InputLabel>
-                <Select value={confidentialityFilter} label="محرمانگی" onChange={(event) => setConfidentialityFilter(event.target.value)}>
-                  <MenuItem value="all">همه</MenuItem>
-                  {Object.entries(CONFIDENTIALITY).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 145 }}>
-                <InputLabel>نوع سند</InputLabel>
-                <Select value={typeFilter} label="نوع سند" onChange={(event) => setTypeFilter(event.target.value)}>
-                  <MenuItem value="all">همه انواع</MenuItem>
-                  {Object.entries(DOCUMENT_TYPE).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 145 }}>
-                <InputLabel>گردش‌کار</InputLabel>
-                <Select value={workflowFilter} label="گردش‌کار" onChange={(event) => setWorkflowFilter(event.target.value)}>
-                  <MenuItem value="all">همه مراحل</MenuItem>
-                  {Object.entries(WORKFLOW_STATUS).map(([key, meta]) => <MenuItem key={key} value={key}>{meta.label}</MenuItem>)}
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 125 }}>
-                <InputLabel>ترتیب</InputLabel>
-                <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                  <MenuItem value="newest">جدیدترین</MenuItem>
-                  <MenuItem value="updated">آخرین ویرایش</MenuItem>
-                  <MenuItem value="title">عنوان</MenuItem>
-                  <MenuItem value="reference">شماره مرجع</MenuItem>
-                  <MenuItem value="expiry">نزدیک‌ترین انقضا</MenuItem>
-                  <MenuItem value="size">بیشترین حجم</MenuItem>
-                </Select>
-              </FormControl>
-              {personnelMode ? (
-                <Chip size="small" label="نمای پرسنلی"
-                  sx={{ height: 24, fontSize: 12, bgcolor: alpha(DMS_ACCENT, 0.09), color: DMS_ACCENT, fontWeight: 800 }} />
-              ) : (
-                <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
-                  <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                  <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-                </ToggleButtonGroup>
-              )}
-            </Stack>
-          </Paper>
-
-          <LibraryBreadcrumb
-            rootLabel="کتابخانه"
-            path={selectedFolder?.path || activeModuleMeta?.label || ''}
-            onHome={clearScope}
-            count={personnelMode ? personnel.rows.length : filtered.length}
-          />
-
-          {error ? <Alert severity="error" onClose={() => setError('')} sx={{ mb: 1, borderRadius: '11px' }}>{error}</Alert> : null}
-
-          {personnelMode ? (
-            personnelEmployeesQuery.isLoading ? (
-              <Box sx={{ py: 7, textAlign: 'center' }}><CircularProgress size={28} /></Box>
-            ) : (
-              <>
-                {personnelEmployeesQuery.isError ? (
-                  <Alert severity="warning" sx={{ mb: 1.2, borderRadius: '11px' }}>
-                    فهرست پرسنل دریافت نشد؛ مدارک بر اساس نام پوشه نمایش داده می‌شوند.
-                  </Alert>
-                ) : null}
-                {!personnel.rows.length && !unassignedPersonnel ? (
-                  <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
-                    <PeopleAltOutlinedIcon sx={{ fontSize: 42, color: '#cbd5e1', mb: 1 }} />
-                    <Typography sx={{ fontSize: 13, fontWeight: 900, color: '#0f172a' }}>پرسنلی با مدرک در این پوشه پیدا نشد.</Typography>
-                    <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>
-                      فیلترها یا عبارت جست‌وجو را تغییر دهید یا از دکمهٔ «همگام‌سازی بایگانی» استفاده کنید.
+                  {row.employee_code ? (
+                    <Typography noWrap sx={{ fontSize: 10, color: MUTED }}>
+                      {`کد ${toPersianDigits(row.employee_code)}`}
                     </Typography>
-                  </Paper>
-                ) : (
-                  <Grid container spacing={1.5}>
-                    {personnel.rows.map((person) => (
-                      <Grid item xs={12} sm={6} md={4} xl={3} key={person.employee.id}>
-                        <PersonnelDocumentCard
-                          person={person}
-                          onOpen={() => setPersonnelDetail(person)}
-                          onEdit={(employee) => navigate(`/employees/${employee.id}/edit`)}
-                          onOpenProfile={(employee) => navigate(`/employees/${employee.id}`)}
-                        />
-                      </Grid>
-                    ))}
-                    {unassignedPersonnel ? (
-                      <Grid item xs={12} sm={6} md={4} xl={3} key="unassigned-personnel">
-                        <PersonnelDocumentCard person={unassignedPersonnel}
-                          onOpen={() => setPersonnelDetail(unassignedPersonnel)} />
-                      </Grid>
-                    ) : null}
-                  </Grid>
-                )}
-              </>
-            )
-          ) : !filtered.length ? (
-            <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
-              <FolderOpenOutlinedIcon sx={{ fontSize: 40, color: '#cbd5e1', mb: 1 }} />
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>سندی با این مشخصات پیدا نشد.</Typography>
-              <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>پوشه، فیلترها یا عبارت جست‌وجو را تغییر دهید.</Typography>
-              <Button variant="contained" startIcon={<UploadFileOutlinedIcon />} onClick={openNew} disabled={!canManage} sx={{ mt: 1.5 }}>آپلود سند جدید</Button>
-            </Paper>
-          ) : view === 'cards' ? (
-            <Grid container spacing={1.5}>
-              {filtered.map((row) => (
-                <Grid item xs={12} md={6} xl={4} key={row.id}>
-                  <DocumentCard row={row} onView={setDetail} onEdit={openEdit} onDownload={(selected) => downloadDocument.mutate(selected)}
-                    onArchive={(selected) => archive.mutate(selected)} onRestore={(selected) => restore.mutate(selected)}
-                    onDelete={setConfirmDelete} canManage={canManage} canDelete={canDelete} />
-                </Grid>
-              ))}
-            </Grid>
-          ) : (
-            <DocumentTable rows={filtered} onView={setDetail} onEdit={openEdit} onDownload={(selected) => downloadDocument.mutate(selected)}
-              onArchive={(selected) => archive.mutate(selected)} onRestore={(selected) => restore.mutate(selected)}
-              onDelete={setConfirmDelete} canManage={canManage} canDelete={canDelete} />
-          )}
-        </Grid>
-      </Grid>
+                  ) : null}
+                </Box>
+              ),
+            } : {
+              key: 'folder',
+              label: 'پوشه',
+              width: '13%',
+              render: (row) => (
+                <Typography noWrap title={row.folder_path} sx={{ fontSize: 11, color: 'text.secondary' }}>
+                  {row.folder_path || 'بدون پوشه'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'confidentiality',
+              label: 'محرمانگی',
+              width: '9%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
+                  {CONFIDENTIALITY[row.confidentiality]?.label || row.confidentiality_display || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'workflow',
+              label: 'گردش‌کار',
+              width: '9%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{
+                  fontSize: 11, fontWeight: 800,
+                  color: WORKFLOW_STATUS[row.workflow_status]?.color || 'text.primary',
+                }}>
+                  {WORKFLOW_STATUS[row.workflow_status]?.label || row.workflow_status_display || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'version',
+              label: 'نسخه',
+              width: '6%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700 }}>
+                  {toPersianDigits(row.version_count || 1)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'size',
+              label: 'حجم',
+              width: '7%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>{sizeCell(row.file_size)}</Typography>
+              ),
+            },
+            {
+              key: 'expiry',
+              label: 'انقضا',
+              width: '9%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{
+                  fontSize: 11,
+                  fontWeight: row.is_expired ? 900 : 600,
+                  color: row.is_expired ? '#be123c' : 'text.primary',
+                }}>
+                  {dateCell(row.expiry_date)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'actions',
+              label: 'عملیات',
+              width: '11%',
+              align: 'center',
+              render: (row) => (
+                <Stack direction="row" spacing={0.1} alignItems="center" justifyContent="center"
+                  onClick={(event) => event.stopPropagation()}>
+                  <Tooltip title="جزئیات و نسخه‌ها">
+                    <IconButton size="small" aria-label="جزئیات سند" onClick={() => setDetail(row)}>
+                      <VisibilityOutlinedIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Tooltip>
+                  {row.status === 'archived' ? (
+                    <Tooltip title="بازگردانی از بایگانی">
+                      <IconButton size="small" aria-label="بازگردانی سند" color="success"
+                        disabled={!canManage} onClick={() => restore.mutate(row)}>
+                        <RestoreOutlinedIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  ) : (
+                    <Tooltip title="ویرایش سند">
+                      <IconButton size="small" aria-label="ویرایش سند" disabled={!canManage}
+                        onClick={() => openEdit(row)}>
+                        <EditOutlinedIcon sx={{ fontSize: 15 }} />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                  <Tooltip title="دانلود">
+                    <IconButton size="small" aria-label="دانلود سند" onClick={() => downloadDocument.mutate(row)}>
+                      <DownloadIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Tooltip>
+                  <Tooltip title="حذف">
+                    <IconButton size="small" aria-label="حذف سند" color="error"
+                      disabled={!canDelete} onClick={() => setConfirmDelete(row)}>
+                      <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              ),
+            },
+          ]}
+        />
+        <ModulePager
+          tableTheme={moduleTheme.tableTheme}
+          page={page}
+          onPage={setPage}
+          totalPages={totalPages}
+          pageNumbers={pageNumbers}
+          total={tableRows.length}
+          pageSize={pageSize}
+          unit="سند"
+        />
+        <Stack direction="row" spacing={2.5} useFlexGap flexWrap="wrap"
+          sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+          {[
+            ['اسناد', formatPersianNumber(tableRows.length)],
+            ['نسخه‌ها', formatPersianNumber(totalVersions)],
+            ['حجم کل', sizeCell(totalSize)],
+            ['انقضا تا ۳۰ روز', formatPersianNumber(expiringSoon)],
+          ].map(([label, value]) => (
+            <Box key={label}>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
+              <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: 'text.primary' }}>{value}</Typography>
+            </Box>
+          ))}
+        </Stack>
+      </Paper>
 
       <DocumentDetailDrawer row={detail} activities={detailActivities} onClose={() => setDetail(null)}
         onEdit={openEdit} onArchive={(selected) => archive.mutate(selected)}
@@ -796,16 +892,6 @@ const DocumentManagementPage = () => {
         onPreview={(row) => previewDocument.mutate(row)}
         onVersionDownload={(row, version) => downloadVersion.mutate({ row, version })}
         onRestoreVersion={(row, version) => restoreVersion.mutate({ row, version })} />
-
-      <PersonnelDocumentsDialog
-        person={personnelDetail}
-        onClose={() => setPersonnelDetail(null)}
-        onPreview={(row) => (row.isEmployeePhoto ? window.open(row.file_url, '_blank', 'noopener,noreferrer') : previewDocument.mutate(row))}
-        onDownload={(row) => (row.isEmployeePhoto ? window.open(row.file_url, '_blank', 'noopener,noreferrer') : downloadDocument.mutate(row))}
-        onEditDocument={(row) => { setPersonnelDetail(null); openEdit(row); }}
-        onEditEmployee={(employee) => { setPersonnelDetail(null); navigate(`/employees/${employee.id}/edit`); }}
-        onOpenProfile={(employee) => { setPersonnelDetail(null); navigate(`/employees/${employee.id}`); }}
-      />
 
 
       <DocumentEditorDialog open={editorOpen} onClose={() => { setEditorOpen(false); setError(''); }}
