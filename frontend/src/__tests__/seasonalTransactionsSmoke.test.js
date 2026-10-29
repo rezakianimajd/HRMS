@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -258,3 +258,89 @@ test('search filters the table and hides the ready-to-type row', async () => {
 });
 
 
+
+test('the date is shown with persian digits and typing a jalali date keeps it persian', async () => {
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([PARTY_ROW]));
+  const { root, container } = await renderPage();
+
+  const dateInput = container.querySelector('tbody tr input[placeholder^="۱۴۰۵"]');
+  expect(dateInput).not.toBeNull();
+  expect(dateInput.value).toMatch(/^[۰-۹]{4}\/[۰-۹]{2}\/[۰-۹]{2}$/);
+
+  /* تایپ تاریخ شمسی با ارقام لاتین هم باید فارسی نمایش داده شود */
+  const readyDateInput = Array.from(container.querySelectorAll('tbody tr'))
+    .pop().querySelector('input[placeholder^="۱۴۰۵"]');
+  await act(async () => { setNativeValue(readyDateInput, '1405/02/03'); await wait(160); });
+  /* ردیف پر‌شده یکی بالاتر از ردیف خالیِ تازه‌ساخته است */
+  const rowsAfterTyping = Array.from(container.querySelectorAll('tbody tr'));
+  expect(rowsAfterTyping).toHaveLength(3);
+  const freshDateInput = rowsAfterTyping[1].querySelector('input[placeholder^="۱۴۰۵"]');
+  expect(freshDateInput.value).toBe('۱۴۰۵/۰۲/۰۳');
+  expect(rowsAfterTyping[2].querySelector('input[placeholder^="۱۴۰۵"]').value).toBe('');
+
+  root.unmount();
+  container.remove();
+});
+
+test('the status dot opens the menu on click (no blocking tooltip)', async () => {
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([PARTY_ROW]));
+  const { root, container } = await renderPage();
+
+  const statusSelect = container.querySelector('tbody tr [aria-label="وضعیت در سامانه مودیان"]');
+  expect(statusSelect).not.toBeNull();
+
+  /* عنوان راهنما به‌صورت title بومی است و کلیک را نمی‌گیرد */
+  expect(statusSelect.closest('[title]')).not.toBeNull();
+
+  await act(async () => {
+    statusSelect.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(220);
+  });
+
+  const menuItem = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.includes('درج نشده'));
+  expect(menuItem).toBeTruthy();
+
+  await act(async () => { menuItem.click(); await wait(200); });
+  expect(container.querySelector('tbody tr [data-status="pending"]')).not.toBeNull();
+
+  root.unmount();
+  container.remove();
+});
+
+test('suggestions come from every row of the table, not only the previous one', async () => {
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([
+    { ...PARTY_ROW, id: 'seed-a', name: 'شرکت آلفا تجارت', city: 'تهران' },
+    { ...PARTY_ROW, id: 'seed-b', name: 'شرکت آلفا صنعت', city: 'کرج', address: 'جاده مخصوص' },
+    { ...PARTY_ROW, id: 'seed-c', name: 'فروشگاه بتا', city: 'اصفهان' },
+  ]));
+  const { root, container } = await renderPage();
+
+  const readyNameInput = Array.from(container.querySelectorAll('tbody tr'))
+    .pop().querySelector('input[aria-label="نام طرف معامله"]');
+  await act(async () => {
+    readyNameInput.focus();
+    setNativeValue(readyNameInput, 'شرکت آلفا');
+    await wait(280);
+  });
+
+  const optionTexts = Array.from(document.querySelectorAll('li[role="option"]')).map((item) => item.textContent);
+  expect(optionTexts.some((text) => text.includes('شرکت آلفا تجارت'))).toBe(true);
+  expect(optionTexts.some((text) => text.includes('شرکت آلفا صنعت'))).toBe(true);
+  expect(optionTexts.some((text) => text.includes('فروشگاه بتا'))).toBe(false);
+
+  await act(async () => {
+    const target = Array.from(document.querySelectorAll('li[role="option"]'))
+      .find((item) => item.textContent.includes('شرکت آلفا صنعت'));
+    target.click();
+    await wait(240);
+  });
+
+  const filledRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.querySelector('input[aria-label="نام طرف معامله"]')
+      && row.querySelector('input[aria-label="نام طرف معامله"]').value === 'شرکت آلفا صنعت');
+  expect(filledRow.querySelector('input[placeholder="شهر"]').value).toBe('کرج');
+
+  root.unmount();
+  container.remove();
+});
