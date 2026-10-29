@@ -14,11 +14,8 @@ import AddIcon from '@mui/icons-material/Add';
 import AddCircleIcon from '@mui/icons-material/AddCircle';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
-import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
@@ -26,12 +23,8 @@ import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import RemoveCircleIcon from '@mui/icons-material/RemoveCircle';
 import SaveIcon from '@mui/icons-material/Save';
-import SearchIcon from '@mui/icons-material/Search';
-import TaskAltIcon from '@mui/icons-material/TaskAlt';
-import TableRowsIcon from '@mui/icons-material/TableRows';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import TrendingDownIcon from '@mui/icons-material/TrendingDown';
-import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import html2canvas from 'html2canvas';
 import {
@@ -45,7 +38,6 @@ import MoneyInput from '../../core/components/ui/MoneyInput';
 import PageHeader from '../../core/components/ui/PageHeader';
 import useCompany from '../../core/hooks/useCompany';
 import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
-import { ColumnChart } from '../../core/components/charts/Charts';
 import { AttachmentPicker } from './AddendumWorkspaceUI';
 import {
   StatementDetailDrawer, STATEMENT_ACCENT,
@@ -74,36 +66,6 @@ const KIND_OPTIONS = [
   { key: STATEMENT_KIND_INCREASE, label: 'تعدیل افزایشی', color: '#15803d', icon: TrendingUpIcon },
   { key: STATEMENT_KIND_DECREASE, label: 'تعدیل کاهشی', color: '#be123c', icon: TrendingDownIcon },
 ];
-
-const glass = {
-  background: 'linear-gradient(135deg, rgba(255,255,255,0.70), rgba(255,255,255,0.34))',
-  backdropFilter: 'blur(24px)',
-  WebkitBackdropFilter: 'blur(24px)',
-  border: '1px solid rgba(255,255,255,0.6)',
-  boxShadow: '0 16px 44px rgba(99,102,241,0.14)',
-  borderRadius: '16px',
-};
-
-const fieldSx = {
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    background: 'rgba(255,255,255,0.55)',
-    transition: 'all .2s ease',
-    '&:hover': { background: 'rgba(255,255,255,0.84)' },
-    '&.Mui-focused': { background: 'rgba(255,255,255,0.95)', boxShadow: `0 0 0 3px ${COLOR}22` },
-  },
-};
-
-const readonlyFieldSx = {
-  '& .MuiOutlinedInput-root': {
-    borderRadius: '12px',
-    background: 'rgba(99,102,241,0.07)',
-    '& .MuiOutlinedInput-input': { fontWeight: 800, color: COLOR_DARK },
-    '& .MuiOutlinedInput-notchedOutline': { borderColor: 'rgba(99,102,241,0.25)' },
-  },
-};
-
-const labelSx = { fontWeight: 700, color: COLOR_DARK, mb: 0.5, display: 'block', fontSize: 12 };
 
 const num = (v) => Math.max(0, Number(v) || 0);
 

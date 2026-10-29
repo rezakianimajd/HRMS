@@ -2,26 +2,20 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Avatar, Box, Button, ButtonBase, Chip, CircularProgress, Dialog,
+  Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog,
   DialogActions, DialogContent, DialogTitle, Divider, Drawer, FormControl,
-  Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
-  Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead,
-  TableRow, TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography, alpha,
+  Grid, IconButton, InputLabel, MenuItem, Paper, Select,
+  Snackbar, Stack, Table,
+  TextField, Tooltip, Typography, alpha,
 } from '@mui/material';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
-import ArrowBackRoundedIcon from '@mui/icons-material/ArrowBackRounded';
-import ArrowForwardOutlinedIcon from '@mui/icons-material/ArrowForwardOutlined';
-import SearchOutlinedIcon from '@mui/icons-material/SearchOutlined';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
-import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
-import ViewModuleOutlinedIcon from '@mui/icons-material/ViewModuleOutlined';
-import TableRowsOutlinedIcon from '@mui/icons-material/TableRowsOutlined';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
@@ -29,19 +23,17 @@ import CloseOutlinedIcon from '@mui/icons-material/CloseOutlined';
 import LinkOutlinedIcon from '@mui/icons-material/LinkOutlined';
 import AttachFileOutlinedIcon from '@mui/icons-material/AttachFileOutlined';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
-import ContractListPicker from '../core/components/ui/ContractListPicker';
 import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
 import MoneyInput from '../core/components/ui/MoneyInput';
-import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
-import { ColumnChart } from '../core/components/charts/Charts';
-import { formatPersianNumber, formatPersianPercent, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
+import { INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
 import {
   CONTRACT_STATUS_LABELS as STATUS_LABELS,
   CONTRACT_STATUS_COLORS as STATUS_COLORS,
-  CONTRACT_TYPE_LABELS as TYPE_LABELS,
 } from '../core/theme/tokens';
 import { contractRateOf } from './contracts/contractFinanceSummary';
 import { adjustmentSummaryOf, statementDisplayTitle, statementKindOf } from './contracts/statementKinds';
@@ -49,7 +41,6 @@ import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
   useModuleTableState, useModuleTheme, useRowHeight,
 } from './contracts/contractModuleUi';
-import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 
 const TEAL = '#0f766e';
@@ -102,13 +93,6 @@ const EMPTY = {
 
 const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 const asArray = (value) => (Array.isArray(value) ? value : []);
-const compactMoney = (value) => {
-  const amount = num(value);
-  if (Math.abs(amount) >= 1_000_000_000_000) return `${formatPersianNumber((amount / 1_000_000_000_000).toFixed(1))} هزار میلیارد`;
-  if (Math.abs(amount) >= 1_000_000_000) return `${formatPersianNumber((amount / 1_000_000_000).toFixed(1))} میلیارد`;
-  if (Math.abs(amount) >= 1_000_000) return `${formatPersianNumber((amount / 1_000_000).toFixed(1))} میلیون`;
-  return formatPersianNumber(amount);
-};
 const paymentCurrency = (payment, fallback) => normalizeCurrencyLabel(
   payment?.currency_name || payment?.currency_symbol || fallback,
 );
@@ -184,349 +168,6 @@ const SectionHeading = ({ icon: Icon, title, color = TEAL, action }) => (
     {action || null}
   </Stack>
 );
-
-const EmptyState = ({ icon: Icon = PaymentsOutlinedIcon, title, hint, color = TEAL, action }) => (
-  <Paper elevation={0} sx={{ p: 4.5, borderRadius: '16px', border: '1px dashed #dbe5ea', textAlign: 'center', bgcolor: '#fbfdfd' }}>
-    <Icon sx={{ fontSize: 34, color: alpha(color, 0.55), mb: 1 }} />
-    <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{title}</Typography>
-    {hint ? <Typography sx={{ mt: 0.35, fontSize: 12, color: MUTED }}>{hint}</Typography> : null}
-    {action ? <Box sx={{ mt: 1.4 }}>{action}</Box> : null}
-  </Paper>
-);
-
-
-const ContractSnapshotCard = ({ contract, currency, contractRate = 1, navigate, onBack, adjustments = null }) => {
-  if (!contract) return null;
-  return (
-    <SurfaceCard title="پرونده قرارداد" icon={DescriptionOutlinedIcon} color={TEAL}
-      action={<Chip size="small" label={contract.number || '—'} sx={{ height: 20, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />}>
-      <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, lineHeight: 1.6 }}>{contract.subject}</Typography>
-      <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 0.7, mb: 1 }}>
-        <Chip size="small" label={statusLabel(contract.status)}
-          sx={{ height: 19, fontSize: 12, fontWeight: 800, bgcolor: alpha(statusColor(contract.status), 0.08), color: statusColor(contract.status) }} />
-        <Chip size="small" label={contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || 'قرارداد'}
-          sx={{ height: 19, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
-      </Stack>
-      <Divider />
-      <Box sx={{ py: 0.5 }}>
-        <InfoLine label="طرف قرارداد" value={contract.party_name || '—'} />
-        <InfoLine label="مبلغ قرارداد" value={`${formatPersianNumber(contractAmountOf(contract))} ${currency}`} strong />
-        {contractRate > 1 ? (
-          <InfoLine label="معادل ریالی" value={`${formatPersianNumber(contractAmountOf(contract) * contractRate)} ریال`} />
-        ) : null}
-        {adjustments?.count ? (
-          <>
-            <InfoLine label="تعدیل افزایشی" value={`${formatPersianNumber(adjustments.increase)} ریال`} color={GREEN} />
-            <InfoLine label="تعدیل کاهشی" value={`${formatPersianNumber(adjustments.decrease)} ریال`} color="#be123c" />
-            <InfoLine label="اثر خالص تعدیلات" value={`${formatPersianNumber(adjustments.net)} ریال`} strong color={adjustments.net >= 0 ? GREEN : '#be123c'} />
-          </>
-        ) : null}
-        <InfoLine label="تاریخ شروع" value={toJalali(contract.start_date)} />
-        <InfoLine label="تاریخ پایان" value={toJalali(contract.end_date)} />
-      </Box>
-      <Divider />
-      <Stack direction="row" spacing={0.7} sx={{ mt: 1 }}>
-        <Button size="small" variant="outlined" startIcon={<ArrowBackRoundedIcon />} onClick={onBack} sx={{ flex: 1, fontSize: 12 }}>تغییر</Button>
-        <Button size="small" variant="contained" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate(`/external-contracts/${contract.id}`)}
-          sx={{ flex: 1, fontSize: 12, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>پرونده</Button>
-      </Stack>
-    </SurfaceCard>
-  );
-};
-
-const CoverageCard = ({
-  totalPaid, contractAmount, contractRate = 1, paymentCount, invoiceCount,
-  statementCount, currency, averagePayment, lastPayment,
-}) => {
-  const contractAmountRial = contractAmount * contractRate;
-  const coverage = contractAmountRial > 0 ? (totalPaid / contractAmountRial) * 100 : 0;
-  const remainingRial = Math.max(0, contractAmountRial - totalPaid);
-  const remainingForeign = contractRate > 1 ? remainingRial / contractRate : remainingRial;
-  const paidForeign = contractRate > 1 ? totalPaid / contractRate : totalPaid;
-  const averageForeign = contractRate > 1 ? averagePayment / contractRate : averagePayment;
-  return (
-    <SurfaceCard title="پوشش مالی پرداخت‌ها" icon={AccountBalanceWalletOutlinedIcon} color={BLUE}>
-      <Stack direction="row" alignItems="baseline" justifyContent="space-between" sx={{ mb: 0.5 }}>
-        <Typography sx={{ fontSize: 12, color: MUTED }}>نسبت پرداخت‌شده به مبلغ قرارداد</Typography>
-        <Typography sx={{ fontSize: 13, fontWeight: 900, color: coverage >= 70 ? GREEN : coverage >= 40 ? AMBER : BLUE }}>
-          {formatPersianPercent(coverage)}
-        </Typography>
-      </Stack>
-      <ProgressBar value={Math.min(100, coverage)} color={coverage >= 70 ? GREEN : coverage >= 40 ? AMBER : BLUE} height={8} />
-      <Box sx={{ mt: 1.2 }}>
-        <InfoLine label="مبلغ قرارداد" value={`${compactMoney(contractAmount)} ${currency}`} />
-        {contractRate > 1 ? <InfoLine label="معادل ریالی قرارداد" value={`${compactMoney(contractAmountRial)} ریال`} /> : null}
-        <InfoLine label="مجموع پرداخت‌شده" value={`${compactMoney(totalPaid)} ریال`} strong color={TEAL} />
-        {contractRate > 1 ? <InfoLine label="معادل ارزی پرداخت‌ها" value={`${compactMoney(paidForeign)} ${currency}`} /> : null}
-        <InfoLine label="مانده پرداخت" value={`${compactMoney(remainingRial)} ریال`} color={remainingRial > 0 ? AMBER : GREEN} />
-        {contractRate > 1 ? <InfoLine label="معادل ارزی مانده" value={`${compactMoney(remainingForeign)} ${currency}`} /> : null}
-        <InfoLine label="تعداد پرداخت" value={`${formatPersianNumber(paymentCount)} فقره`} />
-        <InfoLine label="میانگین پرداخت" value={`${compactMoney(averagePayment)} ریال`} />
-        {contractRate > 1 ? <InfoLine label="میانگین ارزی" value={`${compactMoney(averageForeign)} ${currency}`} /> : null}
-        <InfoLine label="آخرین پرداخت" value={lastPayment ? toJalali(lastPayment.date) : '—'} />
-      </Box>
-      <Divider sx={{ my: 0.6 }} />
-      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap">
-        <Chip size="small" label={`${formatPersianNumber(invoiceCount)} فاکتور پیوندی`}
-          sx={{ height: 19, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
-        <Chip size="small" label={`${formatPersianNumber(statementCount)} صورت‌وضعیت پیوندی`}
-          sx={{ height: 19, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} />
-      </Stack>
-    </SurfaceCard>
-  );
-};
-
-const MethodsCard = ({ methods, activeMethod, onSelect, accent = TEAL }) => {
-  const maxCount = Math.max(...methods.map((item) => item.count), 1);
-  return (
-    <SurfaceCard title="روش‌های پرداخت" icon={PaymentsOutlinedIcon} color={accent}
-      action={activeMethod ? (
-        <Button size="small" onClick={() => onSelect('')} sx={{ minWidth: 0, px: 0.6, fontSize: 12 }}>همه</Button>
-      ) : null}>
-      {!methods.length ? (
-        <Typography sx={{ py: 2, textAlign: 'center', fontSize: 12, color: MUTED }}>روشی ثبت نشده است</Typography>
-      ) : (
-        <Stack spacing={0.75}>
-          {methods.slice(0, 4).map((item) => (
-            <ButtonBase key={item.name} onClick={() => onSelect(activeMethod === item.name ? '' : item.name)}
-              sx={{
-                width: '100%', display: 'block', textAlign: 'right', p: 0.65, borderRadius: '9px',
-                bgcolor: activeMethod === item.name ? alpha(item.color, 0.07) : 'transparent',
-                border: `1px solid ${activeMethod === item.name ? alpha(item.color, 0.18) : 'transparent'}`,
-              }}>
-              <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mb: 0.35 }}>
-                <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: item.color }} />
-                <Typography noWrap sx={{ flex: 1, fontSize: 12, fontWeight: 700, color: INK }}>{item.name || 'نامشخص'}</Typography>
-                <Typography sx={{ fontSize: 12, color: MUTED }}>{formatPersianNumber(item.count)}</Typography>
-              </Stack>
-              <ProgressBar value={(item.count / maxCount) * 100} color={item.color} height={4} />
-            </ButtonBase>
-          ))}
-        </Stack>
-      )}
-    </SurfaceCard>
-  );
-};
-
-
-const PaymentCard = ({ row, currency, contractRate = 1, onView, onEdit, onDelete }) => {
-  const color = methodColor(row.method);
-  const typeMeta = paymentTypeOf(row);
-  const info = statementInfo(row, contractRate, currency);
-  const rate = info.rate;
-  const foreign = info.showForeign ? num(row.amount) / rate : null;
-  const statementForeign = info.showForeign && row.statement_amount
-    ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
-    : null;
-  const statementNetForeign = info.showForeign && row.statement_net_amount ? num(row.statement_net_amount) / rate : null;
-  return (
-    <Paper
-      elevation={0}
-      role="button"
-      tabIndex={0}
-      onClick={() => onView(row)}
-      onKeyDown={(event) => { if (event.key === 'Enter' || event.key === ' ') onView(row); }}
-      sx={{
-        p: 1.6, height: '100%', borderRadius: '16px', border: '1px solid #e7edf2', bgcolor: '#fff',
-        position: 'relative', overflow: 'hidden', cursor: 'pointer',
-        transition: 'border-color .18s ease, transform .18s ease',
-        '&:hover': { borderColor: alpha(color, 0.32), transform: 'translateY(-1px)' },
-      }}
-    >
-      <Box sx={{
-        position: 'absolute', width: 120, height: 120, borderRadius: '50%', top: -58, left: -48,
-        background: `radial-gradient(circle, ${alpha(color, 0.11)}, transparent 70%)`, pointerEvents: 'none',
-      }} />
-      <Stack direction="row" alignItems="flex-start" spacing={1} sx={{ position: 'relative' }}>
-        <Avatar sx={{ width: 40, height: 40, bgcolor: alpha(color, 0.1), color, border: `1px solid ${alpha(color, 0.16)}` }}>
-          <PaymentsOutlinedIcon sx={{ fontSize: 20 }} />
-        </Avatar>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 900, color: TEAL, lineHeight: 1.35 }}>
-            {formatPersianNumber(row.amount || 0)}
-            <Box component="span" sx={{ fontSize: 12, fontWeight: 700, color: MUTED, mr: 0.4 }}>ریال</Box>
-          </Typography>
-          {foreign !== null ? (
-            <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(foreign)} {info.currency}</Typography>
-          ) : null}
-          {row.statement_amount ? (
-            <Typography sx={{ mt: 0.2, fontSize: 12, color: BLUE }}>
-              {paymentStatementKind(row).isAdjustment ? 'مبلغ تجمعی صورت‌وضعیت (بدون تغییر): ' : 'مبلغ صورت‌وضعیت: '}
-              {formatPersianNumber(row.statement_amount)} ریال
-              {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${info.currency}` : ''}
-            </Typography>
-          ) : null}
-          {row.statement_adjustment_work_done ? (
-            <Typography sx={{ fontSize: 12, color: paymentStatementKind(row).color, fontWeight: 800 }}>
-              مبلغ تعدیل این دوره: {formatPersianNumber(row.statement_adjustment_work_done)} ریال
-              {row.statement_adjustment_amount ? ` · تعدیل تجمعی: ${formatPersianNumber(row.statement_adjustment_amount)} ریال` : ''}
-            </Typography>
-          ) : null}
-          {row.statement_net_amount ? (
-            <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
-              {paymentStatementNetLabel(row)}: {formatPersianNumber(row.statement_net_amount)} ریال
-              {statementNetForeign !== null ? ` · ≈ ${formatPersianNumber(statementNetForeign)} ${info.currency}` : ''}
-            </Typography>
-          ) : null}
-          <Typography sx={{ mt: 0.15, fontSize: 12, color: MUTED }}>
-            تاریخ پرداخت: {toJalali(row.date)}
-          </Typography>
-        </Box>
-        <Stack direction="row" spacing={0.1}>
-          <Tooltip title="ویرایش">
-            <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(row); }} sx={{ color: BLUE, p: 0.4 }}>
-              <EditOutlinedIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-          <Tooltip title="حذف">
-            <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(row); }} sx={{ color: RED, p: 0.4 }}>
-              <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      </Stack>
-
-      <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap" sx={{ mt: 1 }}>
-        <Chip size="small" label={typeMeta.label}
-          sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(typeMeta.color, 0.09), color: typeMeta.color }} />
-        {row.method ? (
-          <Chip size="small" label={row.method}
-            sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(color, 0.07), color }} />
-        ) : null}
-        {row.reference ? (
-          <Chip size="small" icon={<LinkOutlinedIcon sx={{ fontSize: '12px !important' }} />} label={row.reference}
-            sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: SLATE, '& .MuiChip-icon': { color: SLATE } }} />
-        ) : null}
-        {row.invoice_number ? (
-          <Chip size="small" label={`فاکتور ${row.invoice_number}`}
-            sx={{ height: 20, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} />
-        ) : null}
-        {row.statement_number ? (
-          <Chip size="small" label={paymentStatementTitle(row)}
-            sx={{ height: 20, fontSize: 12, bgcolor: alpha(paymentStatementKind(row).color, 0.07), color: paymentStatementKind(row).color }} />
-        ) : null}
-        {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
-          <Chip size="small" icon={<AttachFileOutlinedIcon sx={{ fontSize: '12px !important' }} />}
-            label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`}
-            sx={{ height: 20, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL, '& .MuiChip-icon': { color: TEAL } }} />
-        ) : null}
-      </Stack>
-
-      <Typography sx={{
-        mt: 0.8, fontSize: 12, color: row.note ? MUTED : '#cbd5e1', lineHeight: 1.8,
-        minHeight: 30, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
-      }}>
-        {row.note || 'بدون توضیحات'}
-      </Typography>
-
-      <Stack direction="row" alignItems="center" spacing={0.35} sx={{ mt: 0.8, color: TEAL }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 800 }}>مشاهده جزئیات</Typography>
-        <ArrowForwardOutlinedIcon sx={{ fontSize: 13 }} />
-      </Stack>
-    </Paper>
-  );
-};
-
-
-const PaymentTable = ({ rows, currency, contractRate = 1, onView, onEdit, onDelete }) => (
-  <TableContainer component={Paper} elevation={0} sx={{ borderRadius: '15px', border: '1px solid #e7edf2', overflow: 'hidden' }}>
-    <Table size="small" stickyHeader>
-      <TableHead>
-        <TableRow sx={{ '& th': { bgcolor: SOFT_BG, borderBottom: '1px solid #e8edf4', py: 0.9 } }}>
-          <TableCell>تاریخ</TableCell>
-          <TableCell>نوع پرداخت</TableCell>
-          <TableCell>مبلغ (ریال)</TableCell>
-          <TableCell>روش / مرجع</TableCell>
-          <TableCell>پیوندها</TableCell>
-          <TableCell>توضیحات</TableCell>
-          <TableCell align="center">عملیات</TableCell>
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {rows.map((row) => {
-          const color = methodColor(row.method);
-          const typeMeta = paymentTypeOf(row);
-          const info = statementInfo(row, contractRate, currency);
-          const rate = info.rate;
-          const foreign = info.showForeign ? num(row.amount) / rate : null;
-          const statementForeign = info.showForeign && row.statement_amount
-            ? (row.statement_foreign_amount != null ? num(row.statement_foreign_amount) : num(row.statement_amount) / rate)
-            : null;
-          const statementNetForeign = info.showForeign && row.statement_net_amount ? num(row.statement_net_amount) / rate : null;
-          return (
-            <TableRow key={row.id} hover onClick={() => onView(row)}
-              sx={{ cursor: 'pointer', '& td': { py: 0.8, borderBottom: '1px solid #f2f5f9' } }}>
-              <TableCell>
-                <Typography sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{toJalali(row.date)}</Typography>
-              </TableCell>
-              <TableCell>
-                <Chip size="small" label={typeMeta.label}
-                  sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(typeMeta.color, 0.09), color: typeMeta.color }} />
-              </TableCell>
-              <TableCell>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: TEAL }}>
-                  {formatPersianNumber(row.amount || 0)}
-                  <Box component="span" sx={{ fontSize: 12, color: MUTED, mr: 0.35 }}>ریال</Box>
-                </Typography>
-                {foreign !== null ? (
-                  <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(foreign)} {info.currency}</Typography>
-                ) : null}
-                {row.statement_amount ? (
-                  <Typography sx={{ fontSize: 12, color: BLUE }}>
-                    {paymentStatementKind(row).isAdjustment ? 'مبلغ تجمعی صورت‌وضعیت (بدون تغییر): ' : 'مبلغ صورت‌وضعیت: '}
-                    {formatPersianNumber(row.statement_amount)} ریال
-                    {statementForeign !== null ? ` · ≈ ${formatPersianNumber(statementForeign)} ${info.currency}` : ''}
-                  </Typography>
-                ) : null}
-                {row.statement_adjustment_work_done ? (
-                  <Typography sx={{ fontSize: 12, color: paymentStatementKind(row).color, fontWeight: 800 }}>
-                    مبلغ تعدیل: {formatPersianNumber(row.statement_adjustment_work_done)} ریال
-                    {row.statement_adjustment_amount ? ` · تجمعی: ${formatPersianNumber(row.statement_adjustment_amount)} ریال` : ''}
-                  </Typography>
-                ) : null}
-                {row.statement_net_amount ? (
-                  <Typography sx={{ fontSize: 12, color: GREEN, fontWeight: 700 }}>
-                    {paymentStatementNetLabel(row)}: {formatPersianNumber(row.statement_net_amount)} ریال
-                    {statementNetForeign !== null ? ` · ≈ ${formatPersianNumber(statementNetForeign)} ${info.currency}` : ''}
-                  </Typography>
-                ) : null}
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" alignItems="center" spacing={0.45}>
-                  <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, flexShrink: 0 }} />
-                  <Typography sx={{ fontSize: 12, color: INK }}>{row.method || '—'}</Typography>
-                  <Typography sx={{ fontSize: 12, color: MUTED }}>{row.reference ? `· ${row.reference}` : ''}</Typography>
-                </Stack>
-              </TableCell>
-              <TableCell>
-                <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap">
-                  {row.invoice_number ? <Chip size="small" label={`فاکتور ${row.invoice_number}`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(VIOLET, 0.07), color: VIOLET }} /> : null}
-                  {row.statement_number ? <Chip size="small" label={paymentStatementTitle(row)} sx={{ height: 18, fontSize: 12, bgcolor: alpha(paymentStatementKind(row).color, 0.07), color: paymentStatementKind(row).color }} /> : null}
-                  {num(row.attachment_count ?? asArray(row.attachments).length) > 0 ? (
-                    <Chip size="small" label={`${formatPersianNumber(row.attachment_count ?? asArray(row.attachments).length)} فایل`} sx={{ height: 18, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />
-                  ) : null}
-                  {!row.invoice_number && !row.statement_number && !num(row.attachment_count ?? asArray(row.attachments).length) ? <Typography sx={{ fontSize: 12, color: MUTED }}>—</Typography> : null}
-                </Stack>
-              </TableCell>
-              <TableCell>
-                <Typography noWrap sx={{ maxWidth: 180, fontSize: 12, color: MUTED }}>{row.note || '—'}</Typography>
-              </TableCell>
-              <TableCell align="center">
-                <IconButton size="small" onClick={(event) => { event.stopPropagation(); onEdit(row); }} sx={{ color: BLUE, p: 0.35 }}>
-                  <EditOutlinedIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-                <IconButton size="small" onClick={(event) => { event.stopPropagation(); onDelete(row); }} sx={{ color: RED, p: 0.35 }}>
-                  <DeleteOutlineIcon sx={{ fontSize: 16 }} />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
-
 
 const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, onClose, onEdit, onDelete }) => {
   const open = Boolean(payment);
@@ -1363,6 +1004,8 @@ const ContractPaymentsPage = () => {
             <Button variant="outlined" startIcon={<DownloadOutlinedIcon />} onClick={exportCsv}>خروجی</Button>
             <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={openNew}
               sx={{ bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>پرداخت جدید</Button>
+            <Button variant="contained" startIcon={<ChevronRightIcon />} onClick={clearContract}
+              sx={{ bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>فهرست قراردادها</Button>
           </>
         ) : (
           <Button variant="outlined" startIcon={<DescriptionOutlinedIcon />} onClick={() => navigate('/external-contracts')}>قراردادها</Button>

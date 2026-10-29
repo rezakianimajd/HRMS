@@ -3,19 +3,17 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Alert, Box, Button, ButtonBase, Chip, CircularProgress, Collapse, Dialog, DialogActions,
+  Alert, Box, Button, Chip, CircularProgress, Collapse, Dialog, DialogActions,
   DialogContent, DialogTitle, Divider, Drawer, FormControl, FormHelperText,
   Grid, IconButton, InputAdornment, InputLabel, MenuItem, Paper, Select,
   Snackbar, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  TextField, ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  TextField, Tooltip, Typography,
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import AddIcon from '@mui/icons-material/Add';
-import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import BlockIcon from '@mui/icons-material/Block';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
@@ -23,7 +21,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditIcon from '@mui/icons-material/Edit';
-import EventBusyIcon from '@mui/icons-material/EventBusy';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
@@ -40,11 +37,8 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
-import TableRowsIcon from '@mui/icons-material/TableRows';
 import UndoIcon from '@mui/icons-material/Undo';
 import UpdateIcon from '@mui/icons-material/Update';
-import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
@@ -55,7 +49,7 @@ import MoneyInput from '../core/components/ui/MoneyInput';
 import PageHeader from '../core/components/ui/PageHeader';
 import DataTable from '../core/components/ui/DataTable';
 import { GUARANTEE_TYPES, GUARANTEE_TYPE_LABELS as TYPE_LABELS } from '../core/constants/guaranteeTypes';
-import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
 import { AttachmentLinks, AttachmentPicker } from './contracts/AddendumWorkspaceUI';
 import { useDesignTokens } from '../core/context/DesignTokenContext';
 import { resolveTableTheme, tableTypographySx } from '../core/theme/tableStyles';
@@ -590,415 +584,6 @@ const uploadGuaranteeFiles = async (guaranteeId, contractId, files = []) => {
   }));
 };
 
-
-const GuaranteeCard = ({ row, currency, accent, onView, onEdit, onDelete, onAction }) => {
-  const theme = useTheme();
-  const meta = instrumentMeta(row);
-  const Icon = meta.icon;
-  const status = statusOf(row);
-  const due = dueOf(row);
-  const days = daysUntil(due);
-  const documents = row.documents || [];
-  return (
-    <Paper elevation={0} sx={{
-      height: '100%', p: 1.5, borderRadius: '16px', border: `1px solid ${theme.palette.divider}`,
-      bgcolor: theme.palette.background.paper, display: 'flex', flexDirection: 'column', gap: 1,
-      borderTop: `3px solid ${meta.color}`,
-      transition: 'box-shadow .18s ease, border-color .18s ease',
-      '&:hover': { borderColor: alpha(meta.color, 0.35), boxShadow: `0 10px 24px ${alpha(meta.color, 0.06)}` },
-    }}>
-      <Stack direction="row" alignItems="flex-start" spacing={1}>
-        <Box sx={{
-          width: 38, height: 38, borderRadius: '11px', flexShrink: 0,
-          bgcolor: alpha(meta.color, 0.08), color: meta.color,
-          border: `1px solid ${alpha(meta.color, 0.16)}`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <Icon sx={{ fontSize: 20 }} />
-        </Box>
-        <Box sx={{ flex: 1, minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
-            {numberFor(row)}
-          </Typography>
-          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
-            {row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}
-          </Typography>
-        </Box>
-        <StatusChip row={row} />
-      </Stack>
-
-      <Stack direction="row" spacing={0.45} useFlexGap flexWrap="wrap">
-        <InstrumentPill row={row} />
-        {row.contract_guarantee_label ? (
-          <Chip size="small" label={row.contract_guarantee_label}
-            sx={{ height: 21, fontSize: 12, maxWidth: 190, bgcolor: alpha(accent, 0.06), color: accent }} />
-        ) : null}
-        {documents.length ? (
-          <Chip component="a" href={documents[0].file_url || documents[0].file}
-            target="_blank" rel="noreferrer" clickable size="small"
-            icon={<PictureAsPdfIcon sx={{ fontSize: 12 }} />}
-            label={`${formatPersianNumber(documents.length)} پیوست`}
-            sx={{ height: 21, fontSize: 12, fontWeight: 800, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }} />
-        ) : null}
-      </Stack>
-
-      <Stack direction="row" alignItems="flex-end" justifyContent="space-between" spacing={1}>
-        <Box>
-          <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ تضمین</Typography>
-          <Typography sx={{ fontSize: 13.5, fontWeight: 900, color: INK, direction: 'rtl' }}>
-            {money(row.amount, currency)}
-          </Typography>
-        </Box>
-        <Box sx={{ textAlign: 'left' }}>
-          <Typography sx={{ fontSize: 12, color: MUTED }}>سررسید / انقضا</Typography>
-          <Typography sx={{ fontSize: 12, fontWeight: 800, color: days !== null && days < 0 ? '#be123c' : INK }}>
-            {dateLabel(due)}
-          </Typography>
-        </Box>
-      </Stack>
-
-      {days !== null && status.key !== 'returned' && status.key !== 'canceled' ? (
-        <Box sx={{ p: 0.75, borderRadius: '9px', bgcolor: alpha(status.color, 0.045), border: `1px solid ${alpha(status.color, 0.12)}` }}>
-          <Stack direction="row" alignItems="center" spacing={0.6}>
-            <ScheduleIcon sx={{ fontSize: 13, color: status.color }} />
-            <Typography sx={{ fontSize: 12, color: status.color, fontWeight: 800 }}>
-              {days < 0 ? `${toPersianDigits(Math.abs(days))} روز از انقضا گذشته` : days === 0 ? 'امروز منقضی می‌شود' : `${toPersianDigits(days)} روز تا انقضا`}
-            </Typography>
-          </Stack>
-        </Box>
-      ) : null}
-
-      <Box sx={{ flex: 1 }} />
-      <Divider />
-      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
-        <Box sx={{ minWidth: 0 }}>
-          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>{row.bank || 'بدون بانک'}</Typography>
-          <Typography sx={{ fontSize: 12, color: MUTED }}>صدور: {dateLabel(row.issue_date)}</Typography>
-        </Box>
-        <Stack direction="row" spacing={0.1} alignItems="center">
-          <LifecycleActions row={row} onAction={onAction} compact />
-          <Tooltip title="جزئیات">
-            <IconButton size="small" aria-label="جزئیات تضمین" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 17 }} /></IconButton>
-          </Tooltip>
-          <Tooltip title="ویرایش">
-            <IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 16 }} /></IconButton>
-          </Tooltip>
-          <Tooltip title="حذف">
-            <IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 16 }} /></IconButton>
-          </Tooltip>
-        </Stack>
-      </Stack>
-    </Paper>
-  );
-};
-
-
-const GuaranteeTable = ({ rows, currency, onView, onEdit, onDelete, onAction }) => (
-  <DataTable
-    rows={rows}
-    getRowId={(row) => row.id}
-    maxHeight="calc(100vh - 330px)"
-    stickyHeader
-    ariaLabel="فهرست ضمانت‌ها"
-    tableSx={{ '& td, & th': { px: 1.25, py: 0.85 } }}
-    columns={[
-      {
-        key: 'instrument',
-        label: 'ابزار / نوع',
-        render: (row) => {
-          const meta = instrumentMeta(row);
-          const Icon = meta.icon;
-          return (
-            <Stack direction="row" alignItems="center" spacing={0.6}>
-              <Box sx={{
-                width: 25, height: 25, borderRadius: '7px', color: meta.color,
-                bgcolor: alpha(meta.color, 0.08), display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}><Icon sx={{ fontSize: 14 }} /></Box>
-              <Box>
-                <Typography sx={{ fontSize: 12, fontWeight: 800 }}>{meta.label}</Typography>
-                <Typography sx={{ fontSize: 12, color: MUTED }}>{row.guarantee_type_display || TYPE_LABELS[row.guarantee_type] || '—'}</Typography>
-              </Box>
-            </Stack>
-          );
-        },
-      },
-      {
-        key: 'number',
-        label: 'شماره',
-        cellSx: { fontSize: 12, fontWeight: 800 },
-        render: (row) => numberFor(row),
-      },
-      {
-        key: 'amount',
-        label: 'مبلغ',
-        cellSx: { fontSize: 12, direction: 'ltr', textAlign: 'right' },
-        render: (row) => money(row.amount, currency),
-      },
-      {
-        key: 'contract',
-        label: 'ضمانت قرارداد',
-        cellSx: { maxWidth: 210 },
-        render: (row) => (
-          <Typography noWrap title={row.contract_guarantee_label || ''} sx={{ fontSize: 12, color: MUTED }}>
-            {row.contract_guarantee_label || '—'}
-          </Typography>
-        ),
-      },
-      {
-        key: 'due',
-        label: 'سررسید',
-        render: (row) => (
-          <>
-            <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{dateLabel(dueOf(row))}</Typography>
-            <Typography sx={{ fontSize: 12, color: statusOf(row).color }}>
-              {statusOf(row).key === 'expiring' ? `${toPersianDigits(daysUntil(dueOf(row)))} روز` : ''}
-            </Typography>
-          </>
-        ),
-      },
-      {
-        key: 'status',
-        label: 'وضعیت',
-        align: 'center',
-        render: (row) => <StatusChip row={row} />,
-      },
-      {
-        key: 'actions',
-        label: 'عملیات',
-        align: 'center',
-        cellSx: { whiteSpace: 'nowrap' },
-        render: (row) => (
-          <Stack direction="row" spacing={0.1} justifyContent="center">
-            <LifecycleActions row={row} onAction={onAction} compact />
-            <Tooltip title="جزئیات"><IconButton size="small" onClick={() => onView(row)}><VisibilityIcon sx={{ fontSize: 16 }} /></IconButton></Tooltip>
-            <Tooltip title="ویرایش"><IconButton size="small" onClick={() => onEdit(row)}><EditIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-            <Tooltip title="حذف"><IconButton size="small" color="error" onClick={() => onDelete(row)}><DeleteIcon sx={{ fontSize: 15 }} /></IconButton></Tooltip>
-          </Stack>
-        ),
-      },
-    ]}
-  />
-);
-
-const ContractSnapshotCard = ({ contract, accent, onBack, currency, guaranteeCount = 0 }) => (
-  <SurfaceCard title="قرارداد" icon={DescriptionIcon} color={accent}
-    action={<Button size="small" startIcon={<ArrowBackIcon />} onClick={onBack} sx={{ minWidth: 0, fontSize: 12 }}>تغییر</Button>}>
-    <Stack spacing={0.75}>
-      <Box>
-        <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK, lineHeight: 1.6 }}>
-          {contract?.subject || 'قرارداد'}
-        </Typography>
-        <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.3 }}>
-          <Chip size="small" label={contract?.number || 'بدون شماره'}
-            sx={{ height: 20, fontSize: 12, fontWeight: 800, bgcolor: alpha(accent, 0.07), color: accent }} />
-          {contract?.status_display ? (
-            <Chip size="small" label={contract.status_display}
-              sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />
-          ) : null}
-        </Stack>
-      </Box>
-      <Divider />
-      <InfoLine label="طرف قرارداد" value={contract?.party_name} />
-      <InfoLine label="مبلغ قرارداد" value={money(contract?.amount, currency)} ltr />
-      <InfoLine label="تاریخ پایان" value={dateLabel(contract?.end_date)} />
-      <InfoLine label="تعداد تضامین" value={formatPersianNumber(guaranteeCount)} />
-    </Stack>
-  </SurfaceCard>
-);
-
-const CoveragePanel = ({ status, accent, isLoading }) => {
-  const summary = status?.summary || {};
-  const coverage = Math.max(0, Math.min(100, Number(summary.coverage_percent) || 0));
-  const coverageColor = coverage >= 100 ? '#0f766e' : coverage >= 50 ? '#b45309' : '#be123c';
-  const requirements = status?.requirements || [];
-  return (
-    <SurfaceCard title="پوشش تضامین" icon={VerifiedUserIcon} color={accent}
-      action={<Chip size="small" label={`${toPersianDigits(coverage)}٪`}
-        sx={{ height: 21, fontSize: 12, fontWeight: 900, bgcolor: alpha(coverageColor, 0.08), color: coverageColor }} />}>
-      {isLoading ? <Box sx={{ py: 3, textAlign: 'center' }}><CircularProgress size={20} /></Box> : (
-        <Stack spacing={1}>
-          <Box>
-            <Typography sx={{ fontSize: 30, fontWeight: 900, color: coverageColor, lineHeight: 1.1 }}>
-              {toPersianDigits(coverage)}٪
-            </Typography>
-            <Box sx={{ mt: 0.75 }}><ProgressBar value={coverage} color={coverageColor} height={7} /></Box>
-          </Box>
-          <Grid container spacing={0.7}>
-            {[
-              ['مورد نیاز', summary.required_total, INK],
-              ['تأمین‌شده', summary.provided_total, '#0f766e'],
-              ['کمبود', summary.balance_total, Number(summary.balance_total) > 0 ? '#be123c' : INK],
-              ['آزادشده', summary.released_total, MUTED],
-            ].map(([label, value, color]) => (
-              <Grid item xs={6} key={label}>
-                <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: SOFT_BG, border: '1px solid #eef2f7' }}>
-                  <Typography sx={{ fontSize: 12, color: MUTED }}>{label}</Typography>
-                  <Typography sx={{ fontSize: 12, fontWeight: 900, color, direction: 'ltr', textAlign: 'right' }}>
-                    {formatPersianNumber(value || 0)}
-                  </Typography>
-                </Box>
-              </Grid>
-            ))}
-          </Grid>
-          <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
-            <Chip size="small" label={`${toPersianDigits(summary.provided_count || 0)} تأمین‌شده`}
-              sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
-            {Number(summary.partial_count) > 0 ? <Chip size="small" label={`${toPersianDigits(summary.partial_count)} ناقص`} sx={{ height: 19, fontSize: 12, bgcolor: '#fffbeb', color: '#b45309' }} /> : null}
-            {Number(summary.missing_count) > 0 ? <Chip size="small" label={`${toPersianDigits(summary.missing_count)} تأمین‌نشده`} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} /> : null}
-          </Stack>
-          {requirements.length ? (
-            <Box sx={{ pt: 0.3 }}>
-              <Typography sx={{ fontSize: 12, color: MUTED, mb: 0.5 }}>اقلام تضمین قرارداد</Typography>
-              <Stack spacing={0.55}>
-                {requirements.slice(0, 4).map((req) => (
-                  <Box key={`${req.index}-${req.type}`}>
-                    <Stack direction="row" justifyContent="space-between" spacing={1}>
-                      <Typography noWrap sx={{ fontSize: 12, color: '#475569' }}>{req.label}</Typography>
-                      <Typography sx={{ fontSize: 12, fontWeight: 800, color: req.status === 'provided' ? '#0f766e' : req.status === 'partial' ? '#b45309' : '#be123c' }}>
-                        {toPersianDigits(req.coverage_percent || 0)}٪
-                      </Typography>
-                    </Stack>
-                    <Box sx={{ mt: 0.25 }}><ProgressBar value={req.coverage_percent || 0} color={req.status === 'provided' ? '#0f766e' : req.status === 'partial' ? '#b45309' : '#be123c'} height={4} /></Box>
-                  </Box>
-                ))}
-              </Stack>
-            </Box>
-          ) : null}
-        </Stack>
-      )}
-    </SurfaceCard>
-  );
-};
-
-
-
-const StatusNav = ({ counts, active, onChange, accent }) => {
-  const theme = useTheme();
-  const items = [
-    ['all', 'همهٔ تضامین', '#64748b'],
-    ['active', 'معتبر', STATUS_META.active.color],
-    ['expiring', 'نزدیک انقضا', STATUS_META.expiring.color],
-    ['expired', 'منقضی', STATUS_META.expired.color],
-    ['returned', 'استرداد شده', STATUS_META.returned.color],
-    ['executed', 'اجرا / ضبط شده', STATUS_META.executed.color],
-    ['canceled', 'ابطال شده', STATUS_META.canceled.color],
-  ];
-  return (
-    <SurfaceCard title="وضعیت‌ها" icon={FilterListIcon} color={accent}>
-      <Stack spacing={0.2}>
-        {items.map(([key, label, color]) => (
-          <ButtonBase key={key} onClick={() => onChange(key)} sx={{
-            width: '100%', p: 0.7, borderRadius: '9px', justifyContent: 'space-between',
-            bgcolor: active === key ? alpha(color, 0.07) : 'transparent',
-            border: `1px solid ${active === key ? alpha(color, 0.18) : 'transparent'}`,
-          }}>
-            <Stack direction="row" alignItems="center" spacing={0.65}>
-              <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: color }} />
-              <Typography sx={{ fontSize: 12, fontWeight: active === key ? 900 : 700, color: active === key ? color : theme.palette.text.primary }}>
-                {label}
-              </Typography>
-            </Stack>
-            <Chip size="small" label={formatPersianNumber(counts[key] || 0)}
-              sx={{ height: 18, fontSize: 12, bgcolor: theme.palette.action.hover }} />
-          </ButtonBase>
-        ))}
-      </Stack>
-    </SurfaceCard>
-  );
-};
-
-
-const LandingContent = ({
-  contractList, list, expiringRows, activeCount, totalAmount, currencyLabel, accent,
-  onSelect, onSelectContract,
-}) => {
-  const contractsWithGuarantees = new Set(list.map((row) => String(row.contract))).size;
-  const guaranteeCounts = list.reduce((counts, row) => {
-    const key = String(row.contract);
-    counts[key] = (counts[key] || 0) + 1;
-    return counts;
-  }, {});
-  return (
-    <>
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={DescriptionIcon} label="کل قراردادها" value={formatPersianNumber(contractList.length)}
-            suffix="قرارداد" color={accent} />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={LockIcon} label="دارای تضمین" value={formatPersianNumber(contractsWithGuarantees)}
-            suffix="قرارداد" color="#2563eb" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={CheckCircleIcon} label="تضامین معتبر" value={formatPersianNumber(activeCount)}
-            suffix="مورد" color="#0f766e" />
-        </Grid>
-        <Grid item xs={6} md={3}>
-          <KpiTile icon={PaymentsIcon} label="مجموع مبلغ تضامین" value={formatPersianNumber(totalAmount)}
-            suffix={currencyLabel} color="#b45309" size={16} />
-        </Grid>
-      </Grid>
-      <Grid container spacing={1.5}>
-        <Grid item xs={12}>
-          <SurfaceCard title="انتخاب قرارداد" icon={LockIcon} color={accent}>
-            <ContractListPicker
-              contracts={contractList}
-              onSelect={onSelect}
-              height={540}
-              accent={accent}
-              countLabel="تضمین"
-              countHeaderLabel="تعداد تضمین‌ها"
-              getCount={(contract) => guaranteeCounts[String(contract.id)] || 0}
-            />
-          </SurfaceCard>
-        </Grid>
-        <Grid item xs={12} lg={4}>
-          <SurfaceCard title="تضامین نزدیک انقضا" icon={EventBusyIcon} color="#b45309"
-            action={<Chip size="small" label={formatPersianNumber(expiringRows.length)}
-              sx={{ height: 21, fontSize: 12, bgcolor: '#fffbeb', color: '#b45309', fontWeight: 900 }} />}>
-            {expiringRows.length ? (
-              <Stack spacing={0.55}>
-                {expiringRows.map((row) => {
-                  const days = daysUntil(dueOf(row));
-                  return (
-                    <ButtonBase key={row.id} onClick={() => onSelectContract(row.contract)}
-                      sx={{
-                        width: '100%', p: 0.85, borderRadius: '10px', justifyContent: 'flex-start',
-                        border: '1px solid #f1f5f9', bgcolor: '#fff', textAlign: 'right',
-                        '&:hover': { bgcolor: '#fffbeb', borderColor: '#fde68a' },
-                      }}>
-                      <Stack direction="row" alignItems="center" spacing={0.75} sx={{ width: '100%' }}>
-                        <Box sx={{
-                          width: 28, height: 28, borderRadius: '8px', bgcolor: '#fffbeb', color: '#b45309',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
-                        }}><ScheduleIcon sx={{ fontSize: 15 }} /></Box>
-                        <Box sx={{ flex: 1, minWidth: 0 }}>
-                          <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
-                            {numberFor(row)} · {instrumentMeta(row).label}
-                          </Typography>
-                          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
-                            {row.contract_subject || 'قرارداد'} · {dateLabel(dueOf(row))}
-                          </Typography>
-                        </Box>
-                        <Chip size="small" label={days === 0 ? 'امروز' : `${toPersianDigits(days)} روز`}
-                          sx={{ height: 19, fontSize: 12, bgcolor: '#fff7ed', color: '#c2410c', fontWeight: 800 }} />
-                      </Stack>
-                    </ButtonBase>
-                  );
-                })}
-              </Stack>
-            ) : (
-              <Box sx={{ py: 4, textAlign: 'center' }}>
-                <CheckCircleIcon sx={{ fontSize: 30, color: '#0f766e', mb: 0.6 }} />
-                <Typography sx={{ fontSize: 12, color: MUTED }}>تضمینی در ۳۰ روز آینده منقضی نمی‌شود.</Typography>
-              </Box>
-            )}
-          </SurfaceCard>
-        </Grid>
-      </Grid>
-    </>
-  );
-};
 
 const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, currency, accent }) => {
   const theme = useTheme();
