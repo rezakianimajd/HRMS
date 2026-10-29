@@ -1,28 +1,30 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Alert, Box, Button, Chip, CircularProgress, FormControl, Grid,
-  InputAdornment, InputLabel, MenuItem, Paper, Select, Stack, TextField,
-  ToggleButton, ToggleButtonGroup, Tooltip, Typography,
+  Alert, Box, Button, Chip, CircularProgress, IconButton, Paper, Stack, Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import DownloadIcon from '@mui/icons-material/Download';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import SearchIcon from '@mui/icons-material/Search';
-import TableRowsIcon from '@mui/icons-material/TableRows';
-import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { formatPersianNumber } from '../core/utils/numberUtils';
+import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
+import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
+import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
-import { KpiTile } from './accounting/AccountingDashboardUI';
+import { MUTED } from './accounting/AccountingDashboardUI';
 import {
-  EXPIRING_ACCENT, ExpiryCard, ExpirySummaryCard, ExpiryTable, ExpiryUrgentCard,
-  daysUntil, effAmount, effEnd, expiryMeta,
+  EXPIRING_ACCENT, daysUntil, effAmount, effEnd, expiryMeta,
 } from './contracts/ExpiringWorkspaceUI';
+import {
+  ModulePager, ModuleTable, ModuleToolbar,
+  useModuleTableState, useModuleTheme, useRowHeight,
+} from './contracts/contractModuleUi';
+
+const dateLabel = (value) => (value ? toJalali(value) : '—');
 
 const compactMoney = (value, currency = '') => {
   const amount = Number(value) || 0;
@@ -31,12 +33,24 @@ const compactMoney = (value, currency = '') => {
   return `${formatPersianNumber(amount)} ${currency}`.trim();
 };
 
+const daysLabel = (days) => {
+  if (days === null || days === undefined) return '—';
+  if (days < 0) return `${toPersianDigits(Math.abs(days))} روز گذشته`;
+  if (days === 0) return 'امروز';
+  return `${toPersianDigits(days)} روز مانده`;
+};
+
+const RANGE_LABELS = {
+  expired: 'منقضی‌شده', soon30: 'تا ۳۰ روز', soon60: 'تا ۶۰ روز', soon90: 'تا ۹۰ روز',
+};
+
 const ContractExpiringPage = () => {
   const navigate = useNavigate();
+  const moduleTheme = useModuleTheme();
   const [search, setSearch] = useState('');
   const [rangeFilter, setRangeFilter] = useState('all');
   const [sortBy, setSortBy] = useState('days');
-  const [view, setView] = useState('cards');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ['ext-contracts-expiring'],
@@ -63,30 +77,50 @@ const ContractExpiringPage = () => {
   );
   const filtered = useMemo(() => {
     const query = search.trim().toLowerCase();
-    let result = monitoredRows.filter((row) => {
+    const result = monitoredRows.filter((row) => {
       if (rangeFilter !== 'all' && row.meta.key !== rangeFilter) return false;
       if (!query) return true;
       const contract = row.contract;
       return [contract.subject, contract.party_name, contract.number]
         .some((value) => String(value || '').toLowerCase().includes(query));
     });
-    result = [...result].sort((a, b) => {
+    return [...result].sort((a, b) => {
       if (sortBy === 'amount') return effAmount(b.contract) - effAmount(a.contract);
       if (sortBy === 'newest') return String(b.end || '').localeCompare(String(a.end || ''));
       return (a.days ?? 99999) - (b.days ?? 99999);
     });
-    return result;
   }, [monitoredRows, search, rangeFilter, sortBy]);
 
-  const urgentRows = useMemo(
-    () => [...monitoredRows].sort((a, b) => (a.days ?? 99999) - (b.days ?? 99999)).slice(0, 5).map((row) => row.contract),
+  const atRiskAmount = useMemo(
+    () => monitoredRows
+      .filter((row) => row.meta.key === 'expired' || row.meta.key === 'soon30')
+      .reduce((sum, row) => sum + effAmount(row.contract), 0),
     [monitoredRows],
   );
-  const atRiskAmount = monitoredRows
-    .filter((row) => row.meta.key === 'expired' || row.meta.key === 'soon30')
-    .reduce((sum, row) => sum + effAmount(row.contract), 0);
   const currency = monitoredRows[0]?.contract?.currency_name || monitoredRows[0]?.contract?.currency_symbol || 'ریال';
   const monitoredCount = monitoredRows.length;
+
+  const pageSize = moduleTheme.tableTheme.rowsPerPage;
+  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
+    filtered.length, pageSize, [search, rangeFilter, sortBy, pageSize],
+  );
+  const pagedRows = useMemo(
+    () => filtered.slice(page * pageSize, (page + 1) * pageSize),
+    [filtered, page, pageSize],
+  );
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
+
+  const rangeOptions = [
+    { value: 'all', label: `همه (${formatPersianNumber(monitoredCount)})` },
+    { value: 'expired', label: `منقضی‌شده (${formatPersianNumber(counts.expired || 0)})` },
+    { value: 'soon30', label: `تا ۳۰ روز (${formatPersianNumber(counts.soon30 || 0)})` },
+    { value: 'soon60', label: `تا ۶۰ روز (${formatPersianNumber(counts.soon60 || 0)})` },
+    { value: 'soon90', label: `تا ۹۰ روز (${formatPersianNumber(counts.soon90 || 0)})` },
+  ];
+  const activeFilterCount = rangeFilter === 'all' ? 0 : 1;
+  const activeChips = rangeFilter === 'all'
+    ? []
+    : [{ key: 'range', label: `بازه: ${RANGE_LABELS[rangeFilter] || ''}`, clear: () => setRangeFilter('all') }];
 
   const exportCsv = () => {
     const headers = ['قرارداد', 'شماره', 'طرف قرارداد', 'تاریخ پایان', 'روز مانده', 'مبلغ مؤثر', 'بازه'];
@@ -105,7 +139,9 @@ const ContractExpiringPage = () => {
     URL.revokeObjectURL(link.href);
   };
 
-  if (isLoading) return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
+  if (isLoading) {
+    return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress sx={{ color: EXPIRING_ACCENT }} /></Box>;
+  }
 
   return (
     <Box sx={{ pb: 1 }}>
@@ -113,12 +149,18 @@ const ContractExpiringPage = () => {
         icon={<NotificationsActiveIcon />}
         title="قراردادهای رو به انقضا"
         subtitle="پایش تاریخ پایان مؤثر قراردادها با احتساب آخرین الحاقیه"
-        badge={<Chip size="small" label={`${formatPersianNumber(monitoredCount)} قرارداد در بازه ۹۰ روز`}
-          sx={{ height: 23, fontWeight: 800, bgcolor: alpha(EXPIRING_ACCENT, 0.09), color: '#b45309' }} />}
+        badge={(
+          <Chip size="small" label={`${formatPersianNumber(monitoredCount)} قرارداد در بازه ۹۰ روز`}
+            sx={{ height: 23, fontWeight: 800, bgcolor: alpha(EXPIRING_ACCENT, 0.09), color: '#b45309' }} />
+        )}
         actions={(
           <>
             <Tooltip title="به‌روزرسانی">
-              <span><Button variant="outlined" disabled={isFetching} onClick={() => refetch()} sx={{ minWidth: 40, px: 1 }}><RefreshIcon fontSize="small" /></Button></span>
+              <span>
+                <Button variant="outlined" disabled={isFetching} onClick={() => refetch()} sx={{ minWidth: 40, px: 1 }}>
+                  <RefreshIcon fontSize="small" />
+                </Button>
+              </span>
             </Tooltip>
             <Button variant="outlined" startIcon={<PrintOutlinedIcon />} onClick={() => window.print()}>چاپ</Button>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
@@ -126,78 +168,190 @@ const ContractExpiringPage = () => {
         )}
       />
 
-      <Grid container spacing={1.5}>
-        <Grid item xs={12} lg={3} sx={{ order: { xs: 2, lg: 1 } }}>
-          <Stack spacing={1.5} sx={{ position: { lg: 'sticky' }, top: 16 }}>
-            <ExpirySummaryCard counts={counts} total={monitoredCount} laterCount={counts.later || 0} isLoading={isLoading} />
-            <ExpiryUrgentCard rows={urgentRows} onOpen={(contract) => navigate(`/external-contracts/${contract.id}`)} />
-          </Stack>
-        </Grid>
+      <ModuleToolbar
+        theme={moduleTheme}
+        search={search}
+        onSearch={setSearch}
+        searchPlaceholder="جستجو در موضوع، طرف قرارداد یا شماره قرارداد…"
+        sort={sortBy}
+        sortOptions={[
+          { value: 'days', label: 'نزدیک‌ترین انقضا' },
+          { value: 'amount', label: 'بیشترین مبلغ' },
+          { value: 'newest', label: 'دورترین تاریخ' },
+        ]}
+        onSort={setSortBy}
+        filters={[{ label: 'بازه انقضا', value: rangeFilter, options: rangeOptions, onChange: setRangeFilter }]}
+        activeChips={activeChips}
+        activeFilterCount={activeFilterCount}
+        onReset={() => { setSearch(''); setRangeFilter('all'); setSortBy('days'); }}
+        filtersOpen={filtersOpen}
+        setFiltersOpen={setFiltersOpen}
+      />
 
-        <Grid item xs={12} lg={9} sx={{ order: { xs: 1, lg: 2 } }}>
-          <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-            <Grid item xs={6} md={3}><KpiTile icon={NotificationsActiveIcon} label="در بازه پایش" value={formatPersianNumber(monitoredCount)} suffix="قرارداد" color={EXPIRING_ACCENT} hint={`${formatPersianNumber(counts.later || 0)} بیش از ۹۰ روز`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={WarningAmberIcon} label="منقضی‌شده" value={formatPersianNumber(counts.expired || 0)} suffix="قرارداد" color="#be123c" hint="نیازمند اقدام فوری" /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={NotificationsActiveIcon} label="انقضا تا ۳۰ روز" value={formatPersianNumber(counts.soon30 || 0)} suffix="قرارداد" color="#ea580c" hint={`${formatPersianNumber(counts.soon60 || 0)} مورد تا ۶۰ روز`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={DownloadIcon} label="مبلغ در معرض خطر" value={compactMoney(atRiskAmount, currency)} color="#b45309" size={16} hint="منقضی‌شده و تا ۳۰ روز" /></Grid>
-          </Grid>
+      {(counts.expired || 0) > 0 ? (
+        <Alert severity="error" icon={<WarningAmberIcon />} sx={{ mb: 1.25, borderRadius: '12px', py: 0.35 }}>
+          <Typography sx={{ fontSize: 12 }}>
+            {formatPersianNumber(counts.expired)} قرارداد منقضی شده است؛ وضعیت آن‌ها را بررسی کنید.
+          </Typography>
+        </Alert>
+      ) : null}
 
-          <Paper elevation={0} sx={{ p: 1.25, mb: 1.5, borderRadius: '16px', border: '1px solid #e5edf1' }}>
-            <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap" alignItems="center">
-              <TextField size="small" placeholder="جست‌وجو در موضوع، طرف قرارداد یا شماره…"
-                value={search} onChange={(event) => setSearch(event.target.value)}
-                sx={{ minWidth: { xs: '100%', sm: 220 }, flex: 1 }}
-                InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon fontSize="small" /></InputAdornment> }} />
-              <FormControl size="small" sx={{ minWidth: 160 }}>
-                <InputLabel>بازه انقضا</InputLabel>
-                <Select value={rangeFilter} label="بازه انقضا" onChange={(event) => setRangeFilter(event.target.value)}>
-                  <MenuItem value="all">همه ({formatPersianNumber(monitoredCount)})</MenuItem>
-                  <MenuItem value="expired">منقضی‌شده ({formatPersianNumber(counts.expired || 0)})</MenuItem>
-                  <MenuItem value="soon30">تا ۳۰ روز ({formatPersianNumber(counts.soon30 || 0)})</MenuItem>
-                  <MenuItem value="soon60">تا ۶۰ روز ({formatPersianNumber(counts.soon60 || 0)})</MenuItem>
-                  <MenuItem value="soon90">تا ۹۰ روز ({formatPersianNumber(counts.soon90 || 0)})</MenuItem>
-                </Select>
-              </FormControl>
-              <FormControl size="small" sx={{ minWidth: 140 }}>
-                <InputLabel>ترتیب</InputLabel>
-                <Select value={sortBy} label="ترتیب" onChange={(event) => setSortBy(event.target.value)}>
-                  <MenuItem value="days">نزدیک‌ترین انقضا</MenuItem>
-                  <MenuItem value="amount">بیشترین مبلغ</MenuItem>
-                  <MenuItem value="newest">دورترین تاریخ</MenuItem>
-                </Select>
-              </FormControl>
-              <ToggleButtonGroup size="small" exclusive value={view} onChange={(_event, value) => value && setView(value)}>
-                <ToggleButton value="cards" aria-label="نمای کارت" sx={{ px: 1 }}><Tooltip title="کارت"><ViewModuleIcon fontSize="small" /></Tooltip></ToggleButton>
-                <ToggleButton value="table" aria-label="نمای جدول" sx={{ px: 1 }}><Tooltip title="جدول"><TableRowsIcon fontSize="small" /></Tooltip></ToggleButton>
-              </ToggleButtonGroup>
-            </Stack>
-          </Paper>
+      <Paper elevation={0} sx={{
+        borderRadius: 'var(--hrms-table-radius, 16px)',
+        overflow: 'hidden',
+        px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+        border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+        bgcolor: 'background.paper', boxShadow: 'none',
+      }}>
+        <ModuleTable
+          tableTheme={moduleTheme.tableTheme}
+          ariaLabel="فهرست قراردادهای رو به انقضا"
+          containerRef={tableRef}
+          tableHeight={tableHeight}
+          rowHeight={rowHeight}
+          dimmed={isFetching}
+          rows={pagedRows}
+          rowKey={(row) => row.contract.id}
+          onRowClick={(row) => navigate(`/external-contracts/${row.contract.id}`)}
+          emptyText="قراردادی در این بازه پیدا نشد؛ فیلتر بازه یا عبارت جستجو را تغییر دهید."
+          columns={[
+            {
+              key: 'row',
+              label: 'ردیف',
+              width: '4%',
+              align: 'center',
+              render: (_row, index) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                  {toPersianDigits(page * pageSize + index + 1)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'number',
+              label: 'شماره',
+              width: '9%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {toPersianDigits(row.contract.number || row.contract.id)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'subject',
+              label: 'موضوع قرارداد',
+              width: '25%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
+                  {row.contract.subject || '—'}
+                </Typography>
+              ),
+            },
 
-          {(counts.expired || 0) > 0 ? (
-            <Alert severity="error" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '11px', py: 0.2 }}>
-              <Typography sx={{ fontSize: 12 }}>{formatPersianNumber(counts.expired)} قرارداد منقضی شده است؛ وضعیت آن‌ها را بررسی کنید.</Typography>
-            </Alert>
-          ) : null}
-
-          {!filtered.length ? (
-            <Paper elevation={0} sx={{ p: 5, borderRadius: '16px', border: '1px dashed #dbe4ea', textAlign: 'center' }}>
-              <NotificationsActiveIcon sx={{ fontSize: 38, color: '#cbd5e1', mb: 1 }} />
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: '#0f172a' }}>قراردادی در این بازه پیدا نشد.</Typography>
-              <Typography sx={{ fontSize: 12, color: '#64748b', mt: 0.4 }}>فیلتر بازه یا عبارت جست‌وجو را تغییر دهید.</Typography>
-            </Paper>
-          ) : view === 'cards' ? (
-            <Grid container spacing={1.5}>
-              {filtered.map(({ contract }) => (
-                <Grid item xs={12} md={6} xl={4} key={contract.id}>
-                  <ExpiryCard contract={contract} onOpen={(row) => navigate(`/external-contracts/${row.id}`)} />
-                </Grid>
-              ))}
-            </Grid>
-          ) : (
-            <ExpiryTable rows={filtered.map((row) => row.contract)} onOpen={(contract) => navigate(`/external-contracts/${contract.id}`)} />
-          )}
-        </Grid>
-      </Grid>
+            {
+              key: 'party',
+              label: 'طرف قرارداد',
+              width: '18%',
+              render: (row) => (
+                <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
+                  {row.contract.party_name || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'end',
+              label: 'پایان مؤثر',
+              width: '10%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {dateLabel(row.end)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'days',
+              label: 'روز مانده',
+              width: '11%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: row.meta.color }}>
+                  {daysLabel(row.days)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'amount',
+              label: 'مبلغ مؤثر',
+              width: '12%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap title={`${formatPersianNumber(effAmount(row.contract))} ${currency}`}
+                  sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                  {formatPersianNumber(Math.round(effAmount(row.contract)))}
+                </Typography>
+              ),
+            },
+            {
+              key: 'range',
+              label: 'بازه',
+              width: '13%',
+              align: 'center',
+              render: (row) => (
+                <Chip size="small" label={row.meta.label}
+                  sx={{
+                    height: 20, fontSize: 10.5, fontWeight: 800,
+                    bgcolor: row.meta.bg, color: row.meta.color,
+                    border: `1px solid ${alpha(row.meta.color, 0.22)}`,
+                    '& .MuiChip-label': { px: 0.8 },
+                  }} />
+              ),
+            },
+            {
+              key: 'actions',
+              label: 'عملیات',
+              width: '8%',
+              align: 'center',
+              render: (row) => (
+                <Stack direction="row" spacing={0.15} useFlexGap alignItems="center" justifyContent="center"
+                  onClick={(event) => event.stopPropagation()}>
+                  <Tooltip title="پرونده قرارداد">
+                    <IconButton size="small" aria-label="پرونده قرارداد"
+                      onClick={() => navigate(`/external-contracts/${row.contract.id}`)}>
+                      <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+                    </IconButton>
+                  </Tooltip>
+                </Stack>
+              ),
+            },
+          ]}
+        />
+        <ModulePager
+          tableTheme={moduleTheme.tableTheme}
+          page={page}
+          onPage={setPage}
+          totalPages={totalPages}
+          pageNumbers={pageNumbers}
+          total={filtered.length}
+          pageSize={pageSize}
+          unit="قرارداد"
+        />
+        <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
+          sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
+          <Chip size="small" label={`در بازه پایش: ${formatPersianNumber(monitoredCount)}`}
+            sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(EXPIRING_ACCENT, 0.12), color: '#b45309' }} />
+          <Chip size="small" label={`منقضی‌شده: ${formatPersianNumber(counts.expired || 0)}`}
+            sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#be123c', 0.1), color: '#be123c' }} />
+          <Chip size="small" label={`تا ۳۰ روز: ${formatPersianNumber(counts.soon30 || 0)}`}
+            sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#ea580c', 0.1), color: '#ea580c' }} />
+          <Chip size="small" label={`تا ۶۰ روز: ${formatPersianNumber(counts.soon60 || 0)}`}
+            sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#b45309', 0.1), color: '#b45309' }} />
+          <Chip size="small" label={`تا ۹۰ روز: ${formatPersianNumber(counts.soon90 || 0)}`}
+            sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#ca8a04', 0.12), color: '#a16207' }} />
+          <Chip size="small" label={`مبلغ در معرض خطر: ${compactMoney(atRiskAmount, currency)}`}
+            sx={{ height: 21, fontSize: 10.5, fontWeight: 800, bgcolor: alpha('#0f766e', 0.1), color: '#0f766e' }} />
+        </Stack>
+      </Paper>
     </Box>
   );
 };

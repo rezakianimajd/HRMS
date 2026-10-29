@@ -49,7 +49,7 @@ beforeEach(() => {
   });
 });
 
-test('expiring contracts page renders KPI, distribution and urgency cards', async () => {
+test('expiring contracts page renders the themed toolbar and a single-row table', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -70,13 +70,41 @@ test('expiring contracts page renders KPI, distribution and urgency cards', asyn
     await act(async () => { await wait(180); });
   }
 
+  // هدر صفحه
   expect(container.textContent).toContain('قراردادهای رو به انقضا');
-  expect(container.textContent).toContain('توزیع بازه‌های انقضا');
-  expect(container.textContent).toContain('فوری‌ترین قراردادها');
-  expect(container.textContent).toContain('منقضی‌شده');
+  expect(container.textContent).toContain('خروجی');
+
+  // کارت‌های حذف‌شده نباید وجود داشته باشند
+  expect(container.textContent).not.toContain('توزیع بازه‌های انقضا');
+  expect(container.textContent).not.toContain('فوری‌ترین قراردادها');
+  expect(container.textContent).not.toContain('درجه فوریت');
+  expect(container.querySelector('[aria-label="نمای کارت"]')).toBeNull();
+
+  // نوار ابزار استاندارد استودیوتم
+  expect(container.querySelector('input[placeholder*="جستجو"]')).toBeTruthy();
+
+  // جدول تک‌ردیفه با ستون‌های جدید
+  const table = container.querySelector('[aria-label="فهرست قراردادهای رو به انقضا"]');
+  expect(table).toBeTruthy();
+  expect(container.textContent).toContain('موضوع قرارداد');
+  expect(container.textContent).toContain('طرف قرارداد');
+  expect(container.textContent).toContain('پایان مؤثر');
+  expect(container.textContent).toContain('روز مانده');
+  expect(container.textContent).toContain('مبلغ مؤثر');
+  expect(container.textContent).toContain('بازه');
+
+  // ردیف‌های بازه پایش
   expect(container.textContent).toContain('قرارداد منقضی‌شده');
   expect(container.textContent).toContain('قرارداد ۳۰ روزه');
-  expect(container.textContent).toContain('پرونده قرارداد');
+  expect(container.textContent).toContain('منقضی شده');
+  expect(container.textContent).toContain('انقضا تا ۳۰ روز');
+
+  // جمع‌های پایین جدول
+  expect(container.textContent).toContain('در بازه پایش:');
+  expect(container.textContent).toContain('مبلغ در معرض خطر:');
+
+  // عملیات ردیف
+  expect(container.querySelector('button[aria-label="پرونده قرارداد"]')).toBeTruthy();
 
   root.unmount();
   container.remove();
