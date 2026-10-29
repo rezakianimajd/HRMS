@@ -146,13 +146,18 @@ def control_totals(report):
     by_kind = [
         {
             'kind': item['kind'],
-            'label': SeasonalTransaction.Kind(item['kind']).label,
+            'label': str(SeasonalTransaction.Kind(item['kind']).label),
             'count': item['count'],
             'amount': float(item['amount'] or 0),
             'vat': float(item['vat'] or 0),
             'total': float((item['amount'] or 0) + (item['vat'] or 0)),
         }
-        for item in rows.values('kind').annotate(count=Count('id'), amount=Sum('amount'), vat=Sum('vat')).order_by('kind')
+        for item in (
+            rows.order_by()          # پاک‌کردن ordering پیش‌فرض مدل تا گروه‌بندی درست باشد
+            .values('kind')
+            .annotate(count=Count('id'), amount=Sum('amount'), vat=Sum('vat'))
+            .order_by('kind')
+        )
     ]
     registered = rows.filter(moadian_status=SeasonalTransaction.MoadianStatus.REGISTERED).count()
     amount = float(agg['amount'] or 0)
