@@ -56,7 +56,7 @@ beforeEach(() => {
   });
 });
 
-test('archive landing shows the contract list above the latest uploads on the standard toolbar', async () => {
+test('archive landing shows a full-width contract list on the standard toolbar', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -108,17 +108,17 @@ test('archive landing shows the contract list above the latest uploads on the st
   // شمارهٔ قرارداد با ارقام فارسی نمایش داده می‌شود
   expect(contractsTable.querySelector('tbody tr').textContent).toMatch(/[۰-۹]/);
 
-  // جدول در کارتی با فاصلهٔ داخلی، و آخرین بارگذاری‌ها در کارت جداگانه کنار آن
+  // جدول در کارتی با فاصلهٔ داخلی و تمام‌عرض — کارت کنارِ «آخرین موارد اضافه‌شده» حذف شده است
   expect(contractsTable.textContent).not.toContain('متن قرارداد');
-  expect(container.textContent).toContain('متن قرارداد');
   const tableCard = contractsTable.closest('.MuiPaper-root');
   expect(tableCard).toBeTruthy();
   expect(tableCard.contains(contractsTable)).toBe(true);
-  expect(tableCard.textContent).not.toContain('متن قرارداد');
   expect(window.getComputedStyle(tableCard).paddingTop).toBe('12px');
-  const recentsCard = Array.from(container.querySelectorAll('.MuiPaper-root'))
-    .find((card) => card !== tableCard && card.textContent.includes('متن قرارداد'));
-  expect(recentsCard).toBeTruthy();
+  // سند هیچ قراردادی در نمای ورود نمایش داده نمی‌شود (نه در جدول و نه در کارت کناری)
+  expect(container.textContent).not.toContain('متن قرارداد');
+  const sideCards = Array.from(container.querySelectorAll('.MuiPaper-root'))
+    .filter((card) => card !== tableCard && card.textContent.includes('متن قرارداد'));
+  expect(sideCards).toHaveLength(0);
 
   // جدول‌ها از توکن‌های تم استفاده می‌کنند
   const contractsHost = contractsTable.closest('.MuiTableContainer-root');

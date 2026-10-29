@@ -37,7 +37,6 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
 import TableChartIcon from '@mui/icons-material/TableChart';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
 import PageHeader from '../core/components/ui/PageHeader';
@@ -960,12 +959,6 @@ const ContractDocumentsPage = () => {
     if (!latest[key] || stamp > latest[key]) latest[key] = stamp;
     return latest;
   }, {}), [allDocs]);
-  const recentDocs = useMemo(
-    () => [...allDocs]
-      .sort((a, b) => String(b.uploaded_at || '').localeCompare(String(a.uploaded_at || '')))
-      .slice(0, 8),
-    [allDocs],
-  );
   const contractRows = useMemo(() => {
     const term = search.trim().toLowerCase();
     const rows = contractDirectory.filter((contract) => {
@@ -1052,7 +1045,7 @@ const ContractDocumentsPage = () => {
     setMeasuredHeadPx((previous) => (previous === headPx ? previous : headPx));
   };
   useLayoutEffect(measureTableRows, [
-    pagedRows.length, pagedContracts.length, recentDocs.length,
+    pagedRows.length, pagedContracts.length,
     tableTheme.rowHeight, tableTheme.headerHeight,
   ]);
   useEffect(() => {
@@ -1629,7 +1622,7 @@ const ContractDocumentsPage = () => {
 
         <Grid container spacing={2} alignItems="stretch">
           {/* جدول قراردادها — کارت استاندارد با فاصلهٔ داخلی */}
-          <Grid item xs={12} lg={8}>
+          <Grid item xs={12}>
             <Paper elevation={0} sx={{
               borderRadius: 'var(--hrms-table-radius, 16px)',
               border: '1px solid', borderColor: cardBorderColor,
@@ -1667,52 +1660,6 @@ const ContractDocumentsPage = () => {
                   />
                 </>
               )}
-            </Paper>
-          </Grid>
-          {/* آخرین بارگذاری‌ها — کارت جداگانه در یک سوم عرض */}
-          <Grid item xs={12} lg={4}>
-            <Paper elevation={0} sx={{
-              height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden',
-              borderRadius: 'var(--hrms-table-radius, 16px)',
-              border: '1px solid', borderColor: cardBorderColor,
-              bgcolor: 'background.paper', boxShadow: 'none',
-            }}>
-              <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto', maxHeight: { lg: tableHeight } }}>
-                {recentDocs.length ? recentDocs.map((doc) => (
-                  <Box
-                    key={doc.id}
-                    onClick={() => setDetail(doc)}
-                    sx={{
-                      display: 'flex', alignItems: 'center', gap: 0.75,
-                      px: 1.25, py: 0.85,
-                      borderBottom: tableTheme.divider,
-                      cursor: 'pointer',
-                      '&:hover': { backgroundColor: tableTheme.hoverBg },
-                      '&:last-of-type': { borderBottom: 'none' },
-                    }}
-                  >
-                    <FileBadge row={doc} size={26} />
-                    <Box sx={{ minWidth: 0, flex: 1 }}>
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>{doc.title || '—'}</Typography>
-                      <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                        {toPersianDigits(doc.contract_number || '—')} · {dateLabel(doc.uploaded_at)}
-                      </Typography>
-                    </Box>
-                    <Tooltip title="دانلود">
-                      <IconButton
-                        size="small"
-                        onClick={(event) => { event.stopPropagation(); downloadFile(doc); }}
-                      >
-                        <DownloadIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </Tooltip>
-                  </Box>
-                )) : (
-                  <Box sx={{ p: 3.5, textAlign: 'center' }}>
-                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>سندی بارگذاری نشده است.</Typography>
-                  </Box>
-                )}
-              </Box>
             </Paper>
           </Grid>
         </Grid>
