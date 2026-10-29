@@ -906,3 +906,167 @@ class FinancialStatementApproval(AccountingBaseModel):
 
     def __str__(self):
         return f'{self.get_statement_type_display()} — {self.auditor_name} ({self.status})'
+
+# =============================================================================
+# Seasonal transactions report — ماده ۱۶۹ مکرر قانون مالیات‌های مستقیم
+# =============================================================================
+
+def seasonal_period_range(fiscal_year_start, quarter):
+    """بازهٔ میلادی یک فصل از سال مالی، بر پایهٔ تقویم شمسی.
+
+    شروع سال مالی شمسی (مثلاً ۱ فروردین) مبنای سه‌ماهه‌ها است؛ خروجی
+    ``(start_date, end_date)`` میلادی برای فیلتر تاریخ فاکتور و گزارش‌ها.
+    """
+    import jdatetime
+    from datetime import timedelta
+
+    quarter = max(1, min(4, int(quarter or 1)))
+    jstart = jdatetime.date.fromgregorian(date=fiscal_year_start)
+    month_index = (jstart.month - 1) + (quarter - 1) * 3
+    year_offset, month_zero = divmod(month_index, 12)
+    start_j = jdatetime.date(jstart.year + year_offset, month_zero + 1, 1)
+
+    next_index = month_index + 3
+    next_offset, next_month_zero = divmod(next_index, 12)
+    next_j = jdatetime.date(jstart.year + next_offset, next_month_zero + 1, 1)
+
+    return start_j.togregorian(), (next_j - timedelta(days=1)).togregorian()
+
+
+class SeasonalReport(AccountingBaseModel):
+    """صورت معاملات فصلی — یک گزارش به‌ازای هر «سال مالی + فصل»."""
+
+    class Quarter(models.IntegerChoices):
+        Q1 = 1, _('سه‌ماهه اول')
+        Q2 = 2, _('سه‌ماهه دوم')
+        Q3 = 3, _('سه‌ماهه سوم')
+        Q4 = 4, _('سه‌ماهه چهارم')
+
+    class Status(models.TextChoices):
+        DRAFT = 'draft', _('پیش‌نویس')
+        READY = 'ready', _('آمادهٔ ارسال')
+        SUBMITTED = 'submitted', _('ارسال‌شده')
+
+    fiscal_year = models.ForeignKey(
+        FiscalYear, on_delete=models.CASCADE, related_name='seasonal_reports',
+        verbose_name=_('سال مالی'),
+    )
+    quarter = models.PositiveSmallIntegerField(
+        choices=Quarter.choices, default=Quarter.Q1, verbose_name=_('فصل'),
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.DRAFT, verbose_name=_('وضعیت'),
+    )
+    notes = models.TextField(blank=True, verbose_name=_('یادداشت'))
+    submitted_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان ارسال'))
+    submission_ref = models.CharField(max_length=120, blank=True, verbose_name=_('شمارهٔ پیگیری / رسید'))
+
+    class Meta:
+        verbose_name = _('صورت معاملات فصلی')
+        verbose_name_plural = _('صورت‌های معاملات فصلی')
+        ordering = ['-fiscal_year__start_date', 'quarter']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'fiscal_year', 'quarter'],
+                name='uniq_seasonal_report_period',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.fiscal_year.name} / {self.get_quarter_display()}'
+
+    @property
+    def period_range(self):
+        return seasonal_period_range(self.fiscal_year.start_date, self.quarter)
+
+    @property
+    def period_start(self):
+        return self.period_range[0]
+
+    @property
+    def period_end(self):
+        return self.period_range[1]
+
+    @property
+    def is_locked(self):
+        return self.status == self.Status.SUBMITTED
+
+
+class SeasonalTransaction(AccountingBaseModel):
+    """یک ردیف معاملهٔ فصلی (طرف معامله + فاکتور)."""
+
+    class Kind(models.IntegerChoices):
+        TYPE_1 = 1, _('نوع ۱')
+        TYPE_2 = 2, _('نوع ۲')
+        TYPE_3 = 3, _('نوع ۳')
+        TYPE_4 = 4, _('نوع ۴')
+        TYPE_5 = 5, _('نوع ۵')
+
+    class PersonType(models.TextChoices):
+        LEGAL = 'legal', _('شخص حقوقی')
+        NATURAL = 'natural', _('شخص حقیقی')
+
+    class MoadianStatus(models.TextChoices):
+        REGISTERED = 'registered', _('درج‌شده در سامانه مودیان')
+        PENDING = 'pending', _('درج‌نشده در سامانه')
+
+    class Source(models.TextChoices):
+        MANUAL = 'manual', _('ورود دستی')
+        LEDGER = 'ledger', _('از اسناد حسابداری')
+
+    report = models.ForeignKey(
+        SeasonalReport, on_delete=models.CASCADE, related_name='transactions',
+        verbose_name=_('گزارش فصلی'),
+    )
+    line_no = models.PositiveIntegerField(default=0, verbose_name=_('ردیف'))
+    name = models.CharField(max_length=250, verbose_name=_('نام / عنوان طرف معامله'))
+    person_type = models.CharField(
+        max_length=10, choices=PersonType.choices, blank=True, default='',
+        verbose_name=_('نوع شخص'),
+    )
+    economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('شماره اقتصادی'))
+    national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ملی'))
+    postal_code = models.CharField(max_length=10, blank=True, verbose_name=_('کد پستی'))
+    province = models.CharField(max_length=60, blank=True, verbose_name=_('استان'))
+    city = models.CharField(max_length=100, blank=True, verbose_name=_('شهر'))
+    address = models.TextField(blank=True, verbose_name=_('آدرس'))
+    goods_service_desc = models.CharField(max_length=300, blank=True, verbose_name=_('شرح کالا / خدمات'))
+    amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
+    vat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مالیات بر ارزش افزوده'))
+    kind = models.PositiveSmallIntegerField(choices=Kind.choices, default=Kind.TYPE_1, verbose_name=_('نوع معامله'))
+    invoice_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ فاکتور'))
+    invoice_no = models.CharField(max_length=50, blank=True, verbose_name=_('شماره فاکتور'))
+    moadian_status = models.CharField(
+        max_length=10, choices=MoadianStatus.choices, default=MoadianStatus.PENDING,
+        verbose_name=_('وضعیت در سامانه مودیان'),
+    )
+    moadian_uid = models.CharField(max_length=120, blank=True, verbose_name=_('شناسهٔ یکتای صورتحساب'))
+    currency_code = models.CharField(max_length=10, blank=True, verbose_name=_('ارز (صادرات/واردات)'))
+    fx_rate = models.DecimalField(max_digits=18, decimal_places=6, default=1, verbose_name=_('نرخ ارز'))
+    source = models.CharField(
+        max_length=10, choices=Source.choices, default=Source.MANUAL, verbose_name=_('منبع ردیف'),
+    )
+    source_line = models.ForeignKey(
+        AccountingDocumentLine, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='seasonal_rows', verbose_name=_('سطر سند مبنا'),
+    )
+
+    class Meta:
+        verbose_name = _('ردیف معاملات فصلی')
+        verbose_name_plural = _('ردیف‌های معاملات فصلی')
+        ordering = ['line_no', 'id']
+        indexes = [
+            models.Index(fields=['report', 'line_no'], name='seasonal_row_order_idx'),
+            models.Index(fields=['report', 'economic_code'], name='seasonal_row_party_idx'),
+        ]
+        constraints = [
+            models.UniqueConstraint(fields=['report', 'line_no'], name='uniq_seasonal_row_no'),
+        ]
+
+    def __str__(self):
+        return f'{self.line_no}. {self.name} — {self.invoice_no}'
+
+    @property
+    def total(self):
+        return (self.amount or 0) + (self.vat or 0)
+

@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, FormControl, IconButton, InputLabel,
   MenuItem, Paper, Select, Snackbar, Stack, TextField, Tooltip, Typography,
@@ -7,6 +7,9 @@ import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
+import PrintIcon from '@mui/icons-material/Print';
+import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
+import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../../core/api/axiosConfig';
 import PageHeader from '../../../core/components/ui/PageHeader';
@@ -17,6 +20,8 @@ import { toJalali, getJalaliParts, toGregorian } from '../../../core/utils/dateU
 import {
   ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../../contracts/contractModuleUi';
+
+const API_BASE = '/accounting/tax/seasonal-reports';
 
 const QUARTERS = [
   { value: 1, label: 'سه‌ماهه اول (بهار)' },
@@ -36,22 +41,66 @@ const SETTINGS_KEY = 'hrms.seasonal.settings';
 
 const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-  name: '', city: '', address: '', nationalId: '', description: '',
-  amount: '', vat: '', kind: 1, invoiceDate: '', invoiceNo: '', status: 'pending',
+  name: '', economicCode: '', nationalId: '', postalCode: '', city: '', address: '',
+  description: '', amount: '', vat: '', kind: 1, invoiceDate: '', invoiceNo: '',
+  status: 'pending',
 });
 
 const num = (value) => Number(toEnglishDigits(String(value ?? '')).replace(/[^\d.-]/g, '')) || 0;
 const totalOf = (row) => num(row.amount) + num(row.vat);
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
-/* ردیف خالی (ردیف آمادهٔ ورود) — برای ساخت خودکار ردیف بعدی */
-const TEXT_FIELDS = ['name', 'city', 'address', 'nationalId', 'description', 'amount', 'vat', 'invoiceNo', 'invoiceDate'];
-const isBlankRow = (row) => TEXT_FIELDS.every((field) => !String(row[field] ?? '').trim());
-/* تاریخ شمسی برای نمایش/خروجی (اگر خالی بود، بدون خط تیره) */
+const isEmpty = (value) => !String(value ?? '').trim();
+
+/* ردیف خالی (ردیف آمادهٔ ورود) */
+const TEXT_FIELDS = [
+  'name', 'economicCode', 'nationalId', 'postalCode', 'city', 'address',
+  'description', 'amount', 'vat', 'invoiceNo', 'invoiceDate',
+];
+const isBlankRow = (row) => TEXT_FIELDS.every((field) => isEmpty(row[field]));
+
 const jalaliText = (value) => {
   if (!value) return '';
   const jalali = toJalali(value);
   return jalali === '—' ? '' : jalali;
 };
+
+/* نگاشت ردیف API ↔ جدول */
+const rowFromApi = (item) => ({
+  id: item.id,
+  name: item.name || '',
+  economicCode: item.economic_code || '',
+  nationalId: item.national_id || '',
+  postalCode: item.postal_code || '',
+  city: item.city || '',
+  address: item.address || '',
+  description: item.goods_service_desc || '',
+  amount: item.amount ? String(Number(item.amount)) : '',
+  vat: item.vat ? String(Number(item.vat)) : '',
+  kind: item.kind || 1,
+  invoiceDate: item.invoice_date || '',
+  invoiceNo: item.invoice_no || '',
+  status: item.moadian_status || 'pending',
+});
+
+const rowToApi = (row) => ({
+  id: typeof row.id === 'number' ? row.id : null,
+  name: row.name || '',
+  economic_code: row.economicCode || '',
+  national_id: row.nationalId || '',
+  postal_code: row.postalCode || '',
+  city: row.city || '',
+  address: row.address || '',
+  goods_service_desc: row.description || '',
+  amount: num(row.amount),
+  vat: num(row.vat),
+  kind: Number(row.kind) || 1,
+  invoice_date: row.invoiceDate || null,
+  invoice_no: row.invoiceNo || '',
+  moadian_status: row.status === 'registered' ? 'registered' : 'pending',
+});
+
+/* نگاشت ردیف قدیمی localStorage (بدون شماره اقتصادی/کد پستی) */
+const legacyRow = (row) => ({ ...emptyRow(), ...row });
 
 const readJson = (key, fallback) => {
   try {
@@ -65,6 +114,48 @@ const writeJson = (key, value) => {
   try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* noop */ }
 };
 
+/* اعتبارسنجی محلی (وقتی API سرور در دسترس نیست) — همان قواعد سمت سرور */
+const localValidate = (rows, periodStart, periodEnd) => {
+  const issues = [];
+  const seen = new Map();
+  rows.forEach((row, index) => {
+    if (isBlankRow(row)) return;
+    const lineNo = index + 1;
+    const push = (field, level, message) => issues.push({
+      row_id: row.id, row_no: lineNo, row_name: row.name, field, level, message,
+    });
+    if (!row.name) push('name', 'error', 'نام طرف معامله الزامی است.');
+    if (!num(row.amount) && !num(row.vat)) push('amount', 'error', 'مبلغ معامله باید بزرگ‌تر از صفر باشد.');
+    if (num(row.vat) > num(row.amount)) push('vat', 'error', 'مالیات بر ارزش افزوده از مبلغ معامله بیشتر است.');
+    if (!row.economicCode) push('economicCode', 'warning', 'شماره اقتصادی ثبت نشده است.');
+    else if (toEnglishDigits(row.economicCode).length !== 11) push('economicCode', 'error', 'شماره اقتصادی باید ۱۱ رقم باشد.');
+    if (!row.postalCode) push('postalCode', 'warning', 'کد پستی طرف معامله ثبت نشده است.');
+    else if (toEnglishDigits(row.postalCode).length !== 10) push('postalCode', 'error', 'کد پستی باید ۱۰ رقم باشد.');
+    if (!row.invoiceNo) push('invoiceNo', 'warning', 'شماره فاکتور وارد نشده است.');
+    if (!row.invoiceDate) push('invoiceDate', 'warning', 'تاریخ فاکتور وارد نشده است.');
+    else if (periodStart && periodEnd && (row.invoiceDate < periodStart || row.invoiceDate > periodEnd)) {
+      push('invoiceDate', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.');
+    }
+    if (!row.description) push('description', 'warning', 'شرح کالا یا خدمات وارد نشده است.');
+    if (row.status !== 'registered') push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.');
+    if (row.invoiceNo) {
+      const key = `${normalizeName(row.invoiceNo)}|${row.economicCode}`;
+      if (seen.has(key)) push('invoiceNo', 'error', `شماره فاکتور تکراری با ردیف ${toPersianDigits(seen.get(key))} ثبت شده است.`);
+      else seen.set(key, lineNo);
+    }
+  });
+  const errors = issues.filter((issue) => issue.level === 'error').length;
+  return {
+    issues,
+    summary: {
+      rows: rows.filter((row) => !isBlankRow(row)).length,
+      errors,
+      warnings: issues.length - errors,
+    },
+  };
+};
+
+
 /* سلول متنی فشرده برای ورود سریع */
 const CellTextField = ({ value, onChange, placeholder, title, sx, ...rest }) => (
   <TextField
@@ -74,7 +165,6 @@ const CellTextField = ({ value, onChange, placeholder, title, sx, ...rest }) => 
     onChange={(event) => onChange(event.target.value)}
     placeholder={placeholder}
     title={title}
-    InputProps={{ disableUnderline: false }}
     sx={{
       '& .MuiInputBase-root': { minHeight: 26 },
       '& .MuiInputBase-input': { py: 0.25, px: 0.25 },
@@ -133,7 +223,6 @@ const DateCell = ({ value, onChange, sx }) => {
 
   const handleChange = (raw) => {
     let latin = toEnglishDigits(String(raw ?? '')).replace(/[^\d/]/g, '');
-    /* ۱۴۰۴۰۱۰۱ → ۱۴۰۴/۰۱/۰۱ */
     if (!latin.includes('/') && latin.length === 8) {
       latin = `${latin.slice(0, 4)}/${latin.slice(4, 6)}/${latin.slice(6)}`;
     }
@@ -163,7 +252,7 @@ const DateCell = ({ value, onChange, sx }) => {
   );
 };
 
-/* نقطهٔ رنگی وضعیت سامانهٔ مودیان (به‌جای متن، برای صرفه‌جویی در فضا) */
+/* نقطهٔ رنگی وضعیت سامانهٔ مودیان */
 const StatusDot = ({ registered }) => (
   <Box
     component="span"
@@ -176,9 +265,7 @@ const StatusDot = ({ registered }) => (
       height: 10,
       borderRadius: '50%',
       bgcolor: registered ? '#16a34a' : '#dc2626',
-      boxShadow: registered
-        ? '0 0 0 3px rgba(22,163,74,0.16)'
-        : '0 0 0 3px rgba(220,38,38,0.16)',
+      boxShadow: registered ? '0 0 0 3px rgba(22,163,74,0.16)' : '0 0 0 3px rgba(220,38,38,0.16)',
     }}
   />
 );
@@ -212,19 +299,26 @@ const StatusCell = ({ value, onChange, sx, fontSize }) => (
   </Select>
 );
 
+
 const SeasonalReportPage = () => {
   const moduleTheme = useModuleTheme();
   const [yearKey, setYearKey] = useState(() => readJson(SETTINGS_KEY, {}).yearKey || '');
   const [quarter, setQuarter] = useState(() => readJson(SETTINGS_KEY, {}).quarter || 1);
-  const [rows, setRows] = useState([]);
+  const [rows, setRows] = useState([emptyRow()]);
   const [parties] = useState(() => readJson(PARTIES_KEY, []));
   const [loadedKey, setLoadedKey] = useState('');
+  const [reportId, setReportId] = useState(null);
+  const [mode, setMode] = useState('loading');            // api | local
+  const [saveState, setSaveState] = useState('idle');     // idle | saving | saved | error
+  const [period, setPeriod] = useState({ start: '', end: '' });
+  const [issues, setIssues] = useState([]);
   const [toast, setToast] = useState('');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
   const [sortBy, setSortBy] = useState('entry');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const savedPayloadRef = useRef('');
 
   const { data: fiscalYears, isFetched: fiscalYearsFetched } = useQuery({
     queryKey: ['fiscal-years-for-seasonal'],
@@ -235,7 +329,6 @@ const SeasonalReportPage = () => {
   const years = useMemo(() => {
     const list = Array.isArray(fiscalYears) ? fiscalYears : fiscalYears?.results || [];
     if (!list.length) {
-      /* تا رسیدن پاسخ API صبر می‌کنیم؛ فقط در نبود سال مالی، گزینهٔ دستی می‌سازیم */
       if (!fiscalYearsFetched) return [];
       const parts = getJalaliParts(new Date().toISOString().slice(0, 10));
       const current = parts ? parts[0] : 1404;
@@ -248,7 +341,6 @@ const SeasonalReportPage = () => {
     }
     return list.map((item) => ({
       value: String(item.id),
-      /* همهٔ عنوان‌ها با ارقام فارسی نمایش داده می‌شوند */
       label: toPersianDigits(item.name || item.title || `سال مالی ${item.id}`),
       start: item.start_date || '',
       end: item.end_date || '',
@@ -271,70 +363,121 @@ const SeasonalReportPage = () => {
     writeJson(SETTINGS_KEY, { yearKey, quarter });
   }, [yearKey, quarter]);
 
-  /* بارگذاری ردیف‌های همان سال/فصل (همیشه با یک ردیف خالی آمادهٔ ورود در پایان) */
+  /* بارگذاری گزارش دوره: از سرور، و در نبود سرور از حافظهٔ محلی */
   useEffect(() => {
-    if (!yearKey) { setRows([emptyRow()]); setLoadedKey(''); return; }
-    const saved = readJson(ROWS_KEY(yearKey, quarter), []);
-    const list = Array.isArray(saved) ? saved.map((row) => ({ ...emptyRow(), ...row })) : [];
-    while (list.length && isBlankRow(list[list.length - 1])) list.pop();
-    setRows([...list, emptyRow()]);
-    setLoadedKey(`${yearKey}|${quarter}`);
+    if (!yearKey) { setRows([emptyRow()]); setLoadedKey(''); return undefined; }
+    const key = `${yearKey}|${quarter}`;
+    let cancelled = false;
+    setMode('loading');
+    setIssues([]);
+
+    const fallbackToLocal = () => {
+      if (cancelled) return;
+      const saved = readJson(ROWS_KEY(yearKey, quarter), []);
+      const list = (Array.isArray(saved) ? saved.map(legacyRow) : []);
+      while (list.length && isBlankRow(list[list.length - 1])) list.pop();
+      setRows([...list, emptyRow()]);
+      setReportId(null);
+      setMode('local');
+      setLoadedKey(key);
+      setPeriod({ start: '', end: '' });
+    };
+
+    axiosInstance.get(`${API_BASE}/current/`, { params: { fiscal_year: yearKey, quarter } })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setReportId(data.id);
+        setPeriod({ start: data.period_start || '', end: data.period_end || '' });
+        const serverRows = (data.transactions || []).map(rowFromApi);
+        if (!serverRows.length) {
+          /* مهاجرت یک‌بارهٔ ردیف‌های محلی به سرور */
+          const legacy = readJson(ROWS_KEY(yearKey, quarter), []);
+          const migrated = (Array.isArray(legacy) ? legacy.map(legacyRow) : [])
+            .filter((row) => !isBlankRow(row));
+          if (migrated.length) {
+            setRows([...migrated, emptyRow()]);
+            setMode('api');
+            setLoadedKey(key);
+            savedPayloadRef.current = '';
+            return;
+          }
+        }
+        setRows([...serverRows, emptyRow()]);
+        setMode('api');
+        setLoadedKey(key);
+        savedPayloadRef.current = JSON.stringify((data.transactions || []).map(rowToApi));
+      })
+      .catch(fallbackToLocal);
+
+    return () => { cancelled = true; };
   }, [yearKey, quarter]);
 
-  /* ذخیرهٔ خودکار ردیف‌های همین دوره */
-  useEffect(() => {
-    /* فقط وقتی بنویس که ردیف‌های در حافظه مربوط به همین دوره باشند */
-    if (!yearKey || loadedKey !== `${yearKey}|${quarter}`) return;
-    writeJson(ROWS_KEY(yearKey, quarter), rows);
-  }, [rows, yearKey, quarter, loadedKey]);
 
-  /* دفتر طرف‌های معامله: همهٔ ردیف‌های همین جدول + طرف‌های دوره‌های قبلی (برای پیشنهاد نام) */
-  const partyDirectory = useMemo(() => {
-    const map = new Map();
-    /* اول ردیف‌های خود جدول، بعد طرف‌های ذخیره‌شده */
-    rows.forEach((row) => {
-      const key = normalizeName(row.name).toLowerCase();
-      if (!key) return;
-      const previous = map.get(key);
-      map.set(key, {
-        name: normalizeName(row.name),
-        city: row.city || previous?.city || '',
-        address: row.address || previous?.address || '',
-        nationalId: row.nationalId || previous?.nationalId || '',
-      });
-    });
-    parties.forEach((party) => {
-      const key = normalizeName(party.name).toLowerCase();
-      if (!key) return;
-      const previous = map.get(key) || {};
-      map.set(key, {
-        name: normalizeName(party.name),
-        city: previous.city || party.city || '',
-        address: previous.address || party.address || '',
-        nationalId: previous.nationalId || party.nationalId || '',
-      });
-    });
-    return [...map.values()];
-  }, [rows, parties]);
+  /* ذخیرهٔ خودکار: سرور (با debounce) یا حافظهٔ محلی */
+  const filledForSave = useMemo(() => rows.filter((row) => !isBlankRow(row)), [rows]);
+  useEffect(() => {
+    if (!yearKey || loadedKey !== `${yearKey}|${quarter}` || mode === 'loading') return undefined;
+    writeJson(ROWS_KEY(yearKey, quarter), rows);
+
+    if (mode !== 'api' || !reportId) {
+      setSaveState('saved');
+      return undefined;
+    }
+
+    const payload = filledForSave.map(rowToApi);
+    const serialized = JSON.stringify(payload);
+    if (serialized === savedPayloadRef.current) return undefined;
+
+    setSaveState('saving');
+    const timer = window.setTimeout(() => {
+      axiosInstance.post(`${API_BASE}/${reportId}/rows/`, { rows: payload })
+        .then(({ data }) => {
+          savedPayloadRef.current = JSON.stringify((data.transactions || []).map(rowToApi));
+          setSaveState('saved');
+          const serverRows = (data.transactions || []).map(rowFromApi);
+          setRows((previous) => {
+            /* شناسه‌های سرور را جایگزین می‌کنیم تا ذخیره‌های بعدی «ویرایش» شوند */
+            const tail = previous.filter((row) => isBlankRow(row)).slice(-1);
+            if (serverRows.length !== previous.filter((row) => !isBlankRow(row)).length) return previous;
+            return [...serverRows, ...(tail.length ? tail : [emptyRow()])];
+          });
+        })
+        .catch(() => {
+          setSaveState('error');
+          setToast('ذخیره در سرور انجام نشد؛ نسخهٔ محلی نگه داشته شد.');
+        });
+    }, 700);
+    return () => window.clearTimeout(timer);
+  }, [rows, yearKey, quarter, loadedKey, mode, reportId, filledForSave]);
+
+  /* ردیف بعدی همیشه خودکار ساخته می‌شود */
+  useEffect(() => {
+    setRows((previous) => (
+      previous.length && !isBlankRow(previous[previous.length - 1])
+        ? [...previous, emptyRow()]
+        : previous
+    ));
+  }, [rows]);
 
   const updateCell = (id, field, value) => {
     setRows((previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
-  /* انتخاب طرف معامله از پیشنهادها: شهر، آدرس و شناسه ملی هم پر می‌شود */
+  /* انتخاب طرف معامله از پیشنهادها: شماره اقتصادی/شناسه ملی/کد پستی/شهر/آدرس پر می‌شود */
   const applyParty = (id, party) => {
     setRows((previous) => previous.map((row) => (row.id === id ? {
       ...row,
       name: party.name,
+      economicCode: row.economicCode || party.economicCode || '',
+      nationalId: row.nationalId || party.nationalId || '',
+      postalCode: row.postalCode || party.postalCode || '',
       city: row.city || party.city || '',
       address: row.address || party.address || '',
-      nationalId: row.nationalId || party.nationalId || '',
     } : row)));
   };
 
   const removeRow = (id) => setRows((previous) => previous.filter((row) => row.id !== id));
 
-  /* کپی ردیف: طرف معامله، آدرس و نوع حفظ می‌شود؛ فقط شماره فاکتور خالی می‌ماند */
   const duplicateRow = (id) => {
     setRows((previous) => {
       const index = previous.findIndex((row) => row.id === id);
@@ -345,17 +488,8 @@ const SeasonalReportPage = () => {
     setToast('ردیف کپی شد — شماره فاکتور را وارد کنید');
   };
 
-  /* ردیف بعدی همیشه خودکار ساخته می‌شود: هر وقت آخرین ردیف پر شود، یک ردیف خالی پایین آن اضافه می‌شود */
-  useEffect(() => {
-    setRows((previous) => (
-      previous.length && !isBlankRow(previous[previous.length - 1])
-        ? [...previous, emptyRow()]
-        : previous
-    ));
-  }, [rows]);
 
-
-  /* ردیف‌های دارای داده (به‌جز ردیف خالی آمادهٔ ورود) */
+  /* ردیف‌های دارای داده و نگاشت شمارهٔ پایدار ردیف */
   const filledRows = useMemo(() => rows.filter((row) => !isBlankRow(row)), [rows]);
   const indexById = useMemo(() => {
     const map = new Map();
@@ -367,8 +501,10 @@ const SeasonalReportPage = () => {
     const term = search.trim().toLowerCase();
     let list = filledRows;
     if (term) {
-      list = list.filter((row) => [row.name, row.city, row.address, row.nationalId, row.description, row.invoiceNo]
-        .some((value) => String(value ?? '').toLowerCase().includes(term)));
+      list = list.filter((row) => [
+        row.name, row.city, row.address, row.nationalId, row.economicCode,
+        row.description, row.invoiceNo,
+      ].some((value) => String(value ?? '').toLowerCase().includes(term)));
     }
     if (statusFilter !== 'all') list = list.filter((row) => row.status === statusFilter);
     if (kindFilter !== 'all') list = list.filter((row) => String(row.kind) === String(kindFilter));
@@ -380,7 +516,6 @@ const SeasonalReportPage = () => {
     return sorted;
   }, [filledRows, search, statusFilter, kindFilter, sortBy, indexById]);
 
-  /* ردیف خالی فقط در حالت عادی (بدون جستجو/فیلتر/مرتب‌سازی) نمایش داده می‌شود */
   const editingLive = !search.trim() && statusFilter === 'all' && kindFilter === 'all' && sortBy === 'entry';
   const displayRows = useMemo(() => {
     if (!editingLive) return filteredRows;
@@ -417,12 +552,27 @@ const SeasonalReportPage = () => {
     registered: acc.registered + (row.status === 'registered' ? 1 : 0),
   }), { amount: 0, vat: 0, total: 0, registered: 0 }), [filledRows]);
 
+  const issuesByRow = useMemo(() => {
+    const map = new Map();
+    issues.forEach((issue) => {
+      const key = String(issue.row_id);
+      if (!map.has(key)) map.set(key, []);
+      map.get(key).push(issue);
+    });
+    return map;
+  }, [issues]);
+  const errorCount = issues.filter((issue) => issue.level === 'error').length;
+  const warningCount = issues.length - errorCount;
+  const issuesForRow = (row) => issuesByRow.get(String(row.id)) || [];
+  const rowHasError = (row) => issuesForRow(row).some((issue) => issue.level === 'error');
+
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
-  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, Math.min(displayRows.length || 8, pageSize));
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
+    moduleTheme.tableTheme, Math.min(displayRows.length || 8, pageSize),
+  );
   const yearLabel = years.find((item) => item.value === String(yearKey))?.label || 'سال مالی';
   const quarterLabel = QUARTERS.find((item) => item.value === quarter)?.label || '';
 
-  /* فونت همهٔ سلول‌ها از توکن جدول استودیو تم گرفته می‌شود تا کل جدول یکدست باشد */
   const cellFontPx = moduleTheme.tableTheme.cell.fontSize;
   const cellInputSx = useMemo(() => {
     const size = `${cellFontPx}px`;
@@ -434,22 +584,72 @@ const SeasonalReportPage = () => {
     };
   }, [cellFontPx]);
 
-  /* ---- خروجی اکسل (xls قابل باز شدن در Excel) ---- */
+
+  /* اعتبارسنجی: سرور (رسمی) یا محلی */
+  const runValidation = () => {
+    if (mode === 'api' && reportId) {
+      setSaveState('saving');
+      axiosInstance.post(`${API_BASE}/${reportId}/validate/`)
+        .then(({ data }) => {
+          setIssues(data.issues || []);
+          const summary = data.summary || {};
+          setToast(
+            summary.errors
+              ? `${toPersianDigits(summary.errors)} خطا و ${toPersianDigits(summary.warnings || 0)} هشدار یافت شد`
+              : `بدون خطا — ${toPersianDigits(summary.warnings || 0)} هشدار`,
+          );
+        })
+        .catch(() => setToast('اعتبارسنجی سرور انجام نشد؛ اعتبارسنجی محلی اجرا شد.'))
+        .finally(() => setSaveState('idle'));
+      return;
+    }
+    const result = localValidate(filledRows, period.start, period.end);
+    setIssues(result.issues);
+    setToast(
+      result.summary.errors
+        ? `${toPersianDigits(result.summary.errors)} خطا و ${toPersianDigits(result.summary.warnings)} هشدار یافت شد`
+        : `بدون خطا — ${toPersianDigits(result.summary.warnings)} هشدار`,
+    );
+  };
+
+  /* خروجی اکسل: از سرور (سه‌شیتی رسمی) یا تولید محلی */
   const exportExcel = () => {
+    if (mode === 'api' && reportId) {
+      axiosInstance.get(`${API_BASE}/${reportId}/export/`, { responseType: 'blob' })
+        .then((response) => {
+          const blob = new Blob([response.data], {
+            type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          });
+          const link = document.createElement('a');
+          link.href = URL.createObjectURL(blob);
+          link.download = `seasonal-${yearKey || 'year'}-q${quarter}.xlsx`;
+          document.body.appendChild(link);
+          link.click();
+          link.remove();
+          URL.revokeObjectURL(link.href);
+          setToast('فایل اکسل رسمی ساخته شد');
+        })
+        .catch(() => setToast('خروجی سرور در دسترس نیست.'));
+      return;
+    }
+
     const headers = [
-      'ردیف', 'نام و نام خانوادگی / نام شرکت', 'شهر', 'آدرس', 'شناسه ملی',
-      'شرح کالا / خدمات', 'مبلغ', 'مالیات بر ارزش افزوده', 'جمع کل',
-      'نوع', 'تاریخ فاکتور', 'شماره فاکتور', 'وضعیت',
+      'ردیف', 'شماره اقتصادی طرف معامله', 'شناسه ملی / کد ملی', 'نام و نام خانوادگی / نام شرکت',
+      'کد پستی', 'شهر', 'آدرس', 'شرح کالا / خدمات', 'مبلغ (ریال)',
+      'مالیات بر ارزش افزوده', 'جمع کل', 'نوع معامله', 'تاریخ فاکتور', 'شماره فاکتور',
+      'وضعیت سامانه مودیان',
     ];
     const escape = (value) => String(value ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const body = filledRows.map((row, index) => `
       <tr>
         <td>${index + 1}</td>
+        <td style="mso-number-format:'\\@'">${escape(row.economicCode)}</td>
+        <td style="mso-number-format:'\\@'">${escape(row.nationalId)}</td>
         <td>${escape(row.name)}</td>
+        <td style="mso-number-format:'\\@'">${escape(row.postalCode)}</td>
         <td>${escape(row.city)}</td>
         <td>${escape(row.address)}</td>
-        <td style="mso-number-format:'\\@'">${escape(row.nationalId)}</td>
         <td>${escape(row.description)}</td>
         <td>${num(row.amount)}</td>
         <td>${num(row.vat)}</td>
@@ -457,7 +657,7 @@ const SeasonalReportPage = () => {
         <td>${escape(row.kind)}</td>
         <td style="mso-number-format:'\\@'">${escape(jalaliText(row.invoiceDate))}</td>
         <td style="mso-number-format:'\\@'">${escape(row.invoiceNo)}</td>
-        <td>${row.status === 'registered' ? 'درج شده در سامانه' : 'درج نشده'}</td>
+        <td>${row.status === 'registered' ? 'درج‌شده در سامانه' : 'درج‌نشده'}</td>
       </tr>`).join('');
     const html = `<html dir="rtl"><head><meta charset="utf-8" />
       <style>table{border-collapse:collapse;font-family:Tahoma}td,th{border:1px solid #999;padding:4px;font-size:11px}
@@ -465,7 +665,7 @@ const SeasonalReportPage = () => {
       <h3>صورت معاملات فصلی — ${escape(yearLabel)} — ${escape(quarterLabel)}</h3>
       <table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td colspan="6">جمع کل</td><td>${totals.amount}</td><td>${totals.vat}</td>
+      <tfoot><tr><td colspan="8">جمع کل</td><td>${totals.amount}</td><td>${totals.vat}</td>
       <td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
     const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const link = document.createElement('a');
@@ -478,13 +678,76 @@ const SeasonalReportPage = () => {
     setToast('فایل اکسل ساخته شد');
   };
 
-  /* پیشنهاد نام از کل جدول + طرف‌های دوره‌های قبلی (ترم = همان متن تایپ‌شده در ردیف) */
+  /* چاپ / PDF مرورگر */
+  const printReport = () => {
+    const printable = typeof window.open === 'function' ? window.open('', '_blank') : null;
+    if (!printable) { setToast('امکان باز کردن پنجرهٔ چاپ نیست.'); return; }
+    const rowsHtml = filledRows.map((row, index) => `
+      <tr>
+        <td>${toPersianDigits(index + 1)}</td>
+        <td>${row.name}</td>
+        <td>${toPersianDigits(row.economicCode)}</td>
+        <td>${toPersianDigits(row.nationalId)}</td>
+        <td>${row.city}</td>
+        <td>${row.description}</td>
+        <td>${formatPersianNumber(num(row.amount))}</td>
+        <td>${formatPersianNumber(num(row.vat))}</td>
+        <td>${formatPersianNumber(totalOf(row))}</td>
+        <td>${jalaliText(row.invoiceDate)}</td>
+        <td>${row.invoiceNo}</td>
+      </tr>`).join('');
+    printable.document.write(`<html dir="rtl" lang="fa"><head><meta charset="utf-8" />
+      <title>صورت معاملات فصلی</title>
+      <style>body{font-family:Tahoma;padding:16px}table{width:100%;border-collapse:collapse}
+      th,td{border:1px solid #888;padding:4px;font-size:11px;text-align:center}
+      h3{margin:0 0 6px}</style></head><body>
+      <h3>صورت معاملات فصلی — ${yearLabel} — ${quarterLabel}</h3>
+      <table><thead><tr><th>ردیف</th><th>طرف معامله</th><th>شماره اقتصادی</th><th>شناسه/کد ملی</th>
+      <th>شهر</th><th>شرح کالا/خدمات</th><th>مبلغ</th><th>مالیات</th><th>جمع کل</th>
+      <th>تاریخ</th><th>شماره فاکتور</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
+    printable.document.close();
+    printable.focus();
+    printable.print();
+  };
+
+
+  /* دفتر طرف‌های معامله: همهٔ ردیف‌های همین جدول + طرف‌های دوره‌های قبلی */
+  const partyDirectory = useMemo(() => {
+    const map = new Map();
+    rows.forEach((row) => {
+      const key = normalizeName(row.name).toLowerCase();
+      if (!key) return;
+      const previous = map.get(key);
+      map.set(key, {
+        name: normalizeName(row.name),
+        economicCode: row.economicCode || previous?.economicCode || '',
+        nationalId: row.nationalId || previous?.nationalId || '',
+        postalCode: row.postalCode || previous?.postalCode || '',
+        city: row.city || previous?.city || '',
+        address: row.address || previous?.address || '',
+      });
+    });
+    parties.forEach((party) => {
+      const key = normalizeName(party.name).toLowerCase();
+      if (!key) return;
+      const previous = map.get(key) || {};
+      map.set(key, {
+        name: normalizeName(party.name),
+        economicCode: previous.economicCode || party.economicCode || '',
+        nationalId: previous.nationalId || party.nationalId || '',
+        postalCode: previous.postalCode || party.postalCode || '',
+        city: previous.city || party.city || '',
+        address: previous.address || party.address || '',
+      });
+    });
+    return [...map.values()];
+  }, [rows, parties]);
+
   const partyOptions = useMemo(() => {
     const cleaned = partyDirectory
       .map((party) => ({ ...party, name: normalizeName(party.name) }))
       .filter((party) => party.name.length >= 3);
     const names = cleaned.map((party) => party.name.toLowerCase());
-    /* نام‌های نیمه‌کاره (مثل «شرک» وقتی «شرکت آلفا» هم هست) پیشنهاد نمی‌شوند */
     return cleaned.filter((party, index) => !names.some((other, otherIndex) => (
       otherIndex !== index && other.length > names[index].length && other.startsWith(names[index])
     )));
@@ -504,7 +767,6 @@ const SeasonalReportPage = () => {
     return scored.sort((a, b) => a.score - b.score).slice(0, 6).map((item) => item.party);
   };
 
-  /* ثبت دفتر طرف‌ها در حافظهٔ مرورگر (بدون setState تا حلقه ایجاد نشود) */
   const partyOptionsJson = useMemo(() => JSON.stringify(partyOptions), [partyOptions]);
   useEffect(() => {
     writeJson(PARTIES_KEY, JSON.parse(partyOptionsJson));
@@ -515,18 +777,27 @@ const SeasonalReportPage = () => {
     {
       key: 'row',
       label: 'ردیف',
-      width: '4%',
+      width: '5%',
       align: 'center',
-      render: (row) => (
-        <Typography noWrap sx={{ color: MUTED }}>
-          {toPersianDigits((indexById.get(row.id) ?? 0) + 1)}
-        </Typography>
-      ),
+      render: (row) => {
+        const rowIssues = issuesForRow(row);
+        const hasError = rowIssues.some((issue) => issue.level === 'error');
+        return (
+          <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4 }}>
+            <Typography noWrap sx={{ color: MUTED }}>{toPersianDigits((indexById.get(row.id) ?? 0) + 1)}</Typography>
+            {rowIssues.length ? (
+              <Tooltip title={rowIssues.map((issue) => issue.message).join(' • ')}>
+                <WarningAmberRoundedIcon sx={{ fontSize: 14, color: hasError ? '#dc2626' : '#d97706' }} />
+              </Tooltip>
+            ) : null}
+          </Box>
+        );
+      },
     },
     {
       key: 'name',
       label: 'نام و نام خانوادگی / نام شرکت',
-      width: '16%',
+      width: '14%',
       render: (row) => (
         <Autocomplete
           freeSolo
@@ -566,25 +837,19 @@ const SeasonalReportPage = () => {
       ),
     },
     {
-      key: 'city',
-      label: 'شهر',
+      key: 'economicCode',
+      label: 'شماره اقتصادی',
       width: '8%',
+      align: 'center',
       render: (row) => (
-        <CellTextField value={row.city} onChange={(value) => updateCell(row.id, 'city', value)} placeholder="شهر" sx={cellInputSx} />
-      ),
-    },
-    {
-      key: 'address',
-      label: 'آدرس',
-      width: '14%',
-      render: (row) => (
-        <CellTextField value={row.address} onChange={(value) => updateCell(row.id, 'address', value)} placeholder="آدرس" sx={cellInputSx} />
+        <DigitField value={row.economicCode} onChange={(value) => updateCell(row.id, 'economicCode', value)}
+          placeholder="۱۱ رقمی" numeric maxLength={11} sx={cellInputSx} />
       ),
     },
     {
       key: 'nationalId',
       label: 'شناسه ملی',
-      width: '10%',
+      width: '8%',
       align: 'center',
       render: (row) => (
         <DigitField value={row.nationalId} onChange={(value) => updateCell(row.id, 'nationalId', value)}
@@ -592,9 +857,37 @@ const SeasonalReportPage = () => {
       ),
     },
     {
+      key: 'postalCode',
+      label: 'کد پستی',
+      width: '6%',
+      align: 'center',
+      render: (row) => (
+        <DigitField value={row.postalCode} onChange={(value) => updateCell(row.id, 'postalCode', value)}
+          placeholder="۱۰ رقمی" numeric maxLength={10} sx={cellInputSx} />
+      ),
+    },
+    {
+      key: 'city',
+      label: 'شهر',
+      width: '7%',
+      render: (row) => (
+        <CellTextField value={row.city} onChange={(value) => updateCell(row.id, 'city', value)}
+          placeholder="شهر" sx={cellInputSx} />
+      ),
+    },
+    {
+      key: 'address',
+      label: 'آدرس',
+      width: '12%',
+      render: (row) => (
+        <CellTextField value={row.address} onChange={(value) => updateCell(row.id, 'address', value)}
+          placeholder="آدرس" sx={cellInputSx} />
+      ),
+    },
+    {
       key: 'description',
       label: 'شرح کالا / خدمات',
-      width: '14%',
+      width: '12%',
       render: (row) => (
         <CellTextField value={row.description} onChange={(value) => updateCell(row.id, 'description', value)}
           placeholder="شرح کالا یا خدمات" sx={cellInputSx} />
@@ -637,12 +930,10 @@ const SeasonalReportPage = () => {
     {
       key: 'total',
       label: 'جمع کل',
-      width: '9%',
+      width: '8%',
       align: 'center',
       render: (row) => (
-        <Typography noWrap>
-          {formatPersianNumber(totalOf(row))}
-        </Typography>
+        <Typography noWrap>{formatPersianNumber(totalOf(row))}</Typography>
       ),
     },
     {
@@ -720,15 +1011,22 @@ const SeasonalReportPage = () => {
     },
   ];
 
+
   return (
     <>
       <PageHeader
         icon={<CalendarViewMonthIcon sx={{ fontSize: 26 }} />}
         title="صورت معاملات فصلی (ورود دستی)"
-        subtitle="ماده ۱۶۹ مکرر — ثبت دستی معاملات هر فصل و خروجی اکسل آمادهٔ ارسال"
+        subtitle="ماده ۱۶۹ مکرر — ثبت، اعتبارسنجی و خروجی رسمی معاملات هر فصل"
         color="#d97706"
         actions={(
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Button variant="outlined" size="small" startIcon={<RuleOutlinedIcon />} onClick={runValidation}>
+              اعتبارسنجی
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={printReport}>
+              چاپ
+            </Button>
             <Button variant="contained" size="small" startIcon={<DownloadIcon />} onClick={exportExcel}>
               خروجی اکسل
             </Button>
@@ -786,13 +1084,29 @@ const SeasonalReportPage = () => {
             ))}
           </Select>
         </FormControl>
+
+        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+          {period.start && period.end
+            ? `بازهٔ فصل: ${jalaliText(period.start)} تا ${jalaliText(period.end)}`
+            : mode === 'local'
+              ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
+              : 'در حال دریافت بازهٔ فصل…'}
+        </Typography>
+
+        <Box sx={{ flex: 1 }} />
+
+        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
+          {saveState === 'saving' ? 'در حال ذخیره…' : null}
+          {saveState === 'saved' ? (mode === 'api' ? 'ذخیره شد' : 'ذخیرهٔ محلی') : null}
+          {saveState === 'error' ? 'ذخیره در سرور ناموفق بود' : null}
+        </Typography>
       </Paper>
 
       <ModuleToolbar
         theme={moduleTheme}
         search={search}
         onSearch={setSearch}
-        searchPlaceholder="جستجو در نام طرف معامله، شهر، آدرس، شناسه ملی، شرح کالا و شماره فاکتور…"
+        searchPlaceholder="جستجو در نام طرف معامله، شماره اقتصادی، شناسه ملی، شهر، آدرس، شرح کالا و شماره فاکتور…"
         sort={sortBy}
         sortOptions={[
           { value: 'entry', label: 'ترتیب ورود' },
@@ -808,6 +1122,7 @@ const SeasonalReportPage = () => {
         filtersOpen={filtersOpen}
         setFiltersOpen={setFiltersOpen}
       />
+
 
       <Paper
         elevation={0}
@@ -860,10 +1175,18 @@ const SeasonalReportPage = () => {
             {'جمع کل: '}
             <Box component="span" sx={{ fontWeight: 900, color: 'text.primary' }}>{formatPersianNumber(totals.total)}</Box>
           </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', ml: 'auto' }}>
+          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'درج‌شده در سامانه: '}
             <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>
               {`${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`}
+            </Box>
+          </Typography>
+          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', ml: 'auto' }}>
+            {'اعتبارسنجی: '}
+            <Box component="span" sx={{ fontWeight: 800, color: errorCount ? '#dc2626' : (warningCount ? '#d97706' : 'text.primary') }}>
+              {errorCount || warningCount
+                ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
+                : 'بدون خطا'}
             </Box>
           </Typography>
         </Box>
@@ -871,11 +1194,11 @@ const SeasonalReportPage = () => {
 
       <Snackbar
         open={Boolean(toast)}
-        autoHideDuration={2200}
+        autoHideDuration={2600}
         onClose={() => setToast('')}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
       >
-        <Alert severity="success" variant="filled" onClose={() => setToast('')} sx={{ fontSize: 12 }}>
+        <Alert severity={errorCount ? 'warning' : 'success'} variant="filled" onClose={() => setToast('')} sx={{ fontSize: 12 }}>
           {toast}
         </Alert>
       </Snackbar>

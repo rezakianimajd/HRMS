@@ -10,6 +10,7 @@ from accounting.models import (
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
     ApprovalPolicy, ApprovalStep, FinancialStatementApproval,
+    SeasonalReport, SeasonalTransaction,
 )
 
 
@@ -417,3 +418,110 @@ class CodingConfigSerializer(BaseModelSerializer):
             'id', 'level', 'level_display', 'prefix', 'start_number',
             'end_number', 'min_length', 'max_length', 'is_active',
         ]
+
+
+# ---------------------------------------------------------------------------
+# Seasonal transactions (ماده ۱۶۹ مکرر)
+# ---------------------------------------------------------------------------
+
+class SeasonalTransactionSerializer(BaseModelSerializer):
+    total = serializers.SerializerMethodField()
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    moadian_status_display = serializers.CharField(source='get_moadian_status_display', read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = SeasonalTransaction
+        fields = [
+            'id', 'line_no', 'name', 'person_type', 'economic_code', 'national_id',
+            'postal_code', 'province', 'city', 'address', 'goods_service_desc',
+            'amount', 'vat', 'total', 'kind', 'kind_display', 'invoice_date',
+            'invoice_no', 'moadian_status', 'moadian_status_display', 'moadian_uid',
+            'currency_code', 'fx_rate', 'source', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'line_no', 'source', 'created_at', 'updated_at', 'company']
+
+    def get_total(self, obj):
+        return str(obj.total)
+
+    def validate_amount(self, value):
+        if value is None or value < 0:
+            raise serializers.ValidationError('مبلغ نمی‌تواند منفی باشد.')
+        return value
+
+    def validate_vat(self, value):
+        if value is None or value < 0:
+            raise serializers.ValidationError('مالیات بر ارزش افزوده نمی‌تواند منفی باشد.')
+        return value
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        amount = attrs.get('amount', getattr(self.instance, 'amount', 0)) or 0
+        vat = attrs.get('vat', getattr(self.instance, 'vat', 0)) or 0
+        if vat and amount and vat > amount:
+            raise serializers.ValidationError({'vat': 'مالیات بر ارزش افزوده از مبلغ معامله بیشتر است.'})
+        invoice_date = attrs.get('invoice_date', getattr(self.instance, 'invoice_date', None))
+        report = attrs.get('report', getattr(self.instance, 'report', None))
+        if report and invoice_date:
+            start, end = report.period_range
+            if not (start <= invoice_date <= end):
+                raise serializers.ValidationError({
+                    'invoice_date': 'تاریخ فاکتور بیرون از بازهٔ این فصل است.',
+                })
+        for field, length in (('economic_code', 11), ('postal_code', 10)):
+            code = attrs.get(field)
+            if code and (not str(code).isdigit() or len(str(code)) > length):
+                raise serializers.ValidationError({field: f'فقط رقم مجاز است (حداکثر {length} رقم).'})
+        return attrs
+
+class SeasonalReportSerializer(BaseModelSerializer):
+    """گزارش فصلی + ردیف‌ها + جمع‌های کنترل."""
+
+    fiscal_year_name = serializers.CharField(source='fiscal_year.name', read_only=True)
+    quarter_display = serializers.CharField(source='get_quarter_display', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    period_start = serializers.DateField(read_only=True)
+    period_end = serializers.DateField(read_only=True)
+    is_locked = serializers.BooleanField(read_only=True)
+    rows_count = serializers.SerializerMethodField()
+    control_totals = serializers.SerializerMethodField()
+    transactions = SeasonalTransactionSerializer(many=True, read_only=True)
+
+    class Meta(BaseModelSerializer.Meta):
+        model = SeasonalReport
+        fields = [
+            'id', 'fiscal_year', 'fiscal_year_name', 'quarter', 'quarter_display',
+            'status', 'status_display', 'notes', 'submitted_at', 'submission_ref',
+            'period_start', 'period_end', 'is_locked', 'rows_count', 'control_totals',
+            'transactions', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at', 'submitted_at']
+
+    def get_rows_count(self, obj):
+        return obj.transactions.count()
+
+    def get_control_totals(self, obj):
+        from accounting.seasonal import control_totals
+
+        return control_totals(obj)
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        company = self.context.get('company')
+        fiscal_year = attrs.get('fiscal_year', getattr(self.instance, 'fiscal_year', None))
+        quarter = attrs.get('quarter', getattr(self.instance, 'quarter', None))
+        if company and fiscal_year and quarter:
+            existing = SeasonalReport.objects.filter(
+                company=company, fiscal_year=fiscal_year, quarter=quarter,
+            ).exclude(pk=getattr(self.instance, 'pk', None))
+            if existing.exists():
+                raise serializers.ValidationError(
+                    {'quarter': 'برای این سال مالی و فصل، گزارش دیگری ثبت شده است.'},
+                )
+        return attrs
+
+
+class SeasonalRowsWriteSerializer(serializers.Serializer):
+    """بدنهٔ ذخیرهٔ گروهی ردیف‌ها: ``{'rows': [...]}``."""
+
+    rows = serializers.ListField(child=serializers.DictField(), allow_empty=True)
+

@@ -3,6 +3,7 @@ from rest_framework.routers import DefaultRouter
 from accounting import report_views
 from accounting import annual_views
 from accounting import tax_views
+from accounting import seasonal_views
 from accounting.views import (
     BranchViewSet, FiscalYearViewSet, FiscalPeriodViewSet, AccountingBookViewSet,
     AccountTypeViewSet, AccountGroupViewSet, AccountViewSet,
@@ -42,6 +43,7 @@ router.register(r'posting-templates', PostingTemplateViewSet, basename='posting-
 router.register(r'settings', AccountingSettingsViewSet, basename='accounting-settings')
 router.register(r'coding-configs', CodingConfigViewSet, basename='coding-config')
 router.register(r'statement-approvals', FinancialStatementApprovalViewSet, basename='statement-approval')
+router.register(r'tax/seasonal-reports', seasonal_views.SeasonalReportViewSet, basename='seasonal-report')
 
 urlpatterns = [
     path('', include(router.urls)),
