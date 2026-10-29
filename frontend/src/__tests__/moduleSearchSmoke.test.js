@@ -75,6 +75,28 @@ test('command palette searches only the active module', async () => {
   expect(input).toBeTruthy();
   expect(document.body.textContent).toContain('جستجو در مدیریت قراردادها');
 
+  // ---- طراحی جدید: بدون چیپ + ریل محدوده ----
+  expect(document.querySelectorAll('.MuiChip-root')).toHaveLength(0);
+  expect(document.body.textContent).toContain('محدودهٔ جستجو');
+  expect(document.body.textContent).toContain('دسترسی‌ها');
+  expect(document.body.textContent).toContain('نتایج داده');
+
+  // ناوبری کیبورد روی فهرست صفحه‌ها (قبل از تایپ)
+  const pageOptions = Array.from(document.querySelectorAll('[role="option"]'));
+  expect(pageOptions.length).toBeGreaterThan(1);
+  expect(pageOptions[0].getAttribute('aria-selected')).toBe('true');
+  await act(async () => {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+    await wait(60);
+  });
+  const movedOptions = Array.from(document.querySelectorAll('[role="option"]'));
+  expect(movedOptions[1].getAttribute('aria-selected')).toBe('true');
+  await act(async () => {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }));
+    await wait(60);
+  });
+  expect(Array.from(document.querySelectorAll('[role="option"]'))[0].getAttribute('aria-selected')).toBe('true');
+
   await act(async () => {
     const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
     setter.call(input, 'پیمان');
@@ -90,4 +112,20 @@ test('command palette searches only the active module', async () => {
   );
   expect(document.body.textContent).toContain('قرارداد نمونه پیمانکاری');
   expect(document.body.textContent).toContain('شرکت نمونه');
+  expect(document.body.textContent).toContain('قراردادها');
+
+  // انتخاب با Enter + ثبت در جستجوهای اخیر
+  await act(async () => {
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+    await wait(150);
+  });
+  expect(window.localStorage.getItem('hrms.quicksearch.recent')).toContain('پیمان');
+
+  // بازکردن مجدد و دیدن «اخیر» در ریل کنار
+  await act(async () => {
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true }));
+    await wait(150);
+  });
+  expect(document.body.textContent).toContain('اخیر');
+  expect(document.body.textContent).toContain('پاک‌سازی');
 });
