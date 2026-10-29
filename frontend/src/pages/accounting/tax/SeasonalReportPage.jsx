@@ -35,26 +35,92 @@ const STATUSES = [
   { value: 'pending', label: 'درج نشده' },
 ];
 
+const BACKEND_DIRECTION = 'purchase';   // این نسخه فقط خرید
+
+const PERSON_TYPES = [
+  { value: 'legal', label: 'حقوقی' },
+  { value: 'natural', label: 'حقیقی' },
+  { value: 'foreign', label: 'خارجی' },
+];
+
+/* نگاشت فیلد داخلی قواعد ← فیلد رابط کاربری */
+const FIELD_MAP = {
+  line_no: 'lineNo',
+  name: 'name',
+  person_type: 'personType',
+  economic_code: 'economicCode',
+  national_id: 'nationalId',
+  postal_code: 'postalCode',
+  country: 'country',
+  province: 'province',
+  city: 'city',
+  address: 'address',
+  goods_service_desc: 'description',
+  amount: 'amount',
+  vat: 'vat',
+  duties: 'duties',
+  kind: 'kind',
+  invoice_date: 'invoiceDate',
+  invoice_no: 'invoiceNo',
+  moadian_status: 'status',
+  moadian_uid: 'moadianUid',
+};
+
+const SOURCE_LEGAL = 'ماده ۱۶۹ مکرر ق.م.م و آیین‌نامه — الزامات عمومی فهرست معاملات';
+const SOURCE_TTMS = 'قالب TTMS نسخهٔ هدف ۱۴۰۵ — تأییدنشده (فایل رسمی در دسترس نیست)';
+const SOURCE_INTERNAL = 'سیاست داخلی Kian EBP';
+
+/* آینهٔ محلی قواعد (فقط برای حالت آفلاین) — مرجع نهایی همان پاسخ سرور است */
+const LOCAL_REFERENCE = {
+  direction: BACKEND_DIRECTION,
+  ruleset_version: 'draft-1405.1',
+  ruleset_status: 'unverified',
+  rules: [
+    { kind: 'required', field: 'name', person_types: ['legal', 'natural', 'foreign'], level: 'error', source: SOURCE_LEGAL, message: 'نام فروشنده الزامی است.' },
+    { kind: 'required', field: 'person_type', person_types: ['legal', 'natural', 'foreign'], level: 'error', source: SOURCE_INTERNAL, message: 'نوع فروشنده را انتخاب کنید.' },
+    { kind: 'required', field: 'economic_code', person_types: ['legal'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقوقی، شماره اقتصادی ۱۱ رقمی الزامی است.' },
+    { kind: 'digits', field: 'economic_code', person_types: ['legal', 'natural'], level: 'error', length: 11, source: SOURCE_LEGAL, message: 'شماره اقتصادی باید فقط رقم و ۱۱ رقم باشد.' },
+    { kind: 'required', field: 'national_id', person_types: ['legal'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقوقی، شناسه ملی ۱۱ رقمی الزامی است.' },
+    { kind: 'digits', field: 'national_id', person_types: ['legal'], level: 'error', length: 11, source: SOURCE_LEGAL, message: 'شناسه ملی شخص حقوقی باید ۱۱ رقم باشد.' },
+    { kind: 'required', field: 'national_id', person_types: ['natural'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقیقی، کد ملی ۱۰ رقمی الزامی است.' },
+    { kind: 'digits', field: 'national_id', person_types: ['natural'], level: 'error', length: 10, source: SOURCE_LEGAL, message: 'کد ملی شخص حقیقی باید ۱۰ رقم باشد.' },
+    { kind: 'forbidden', field: 'economic_code', person_types: ['foreign'], level: 'warning', source: SOURCE_TTMS, message: 'برای شخص خارجی، شماره اقتصادی ایرانی ثبت نمی‌شود.' },
+    { kind: 'forbidden', field: 'national_id', person_types: ['foreign'], level: 'warning', source: SOURCE_TTMS, message: 'برای شخص خارجی، شناسه ملی/کد ملی ایرانی ثبت نمی‌شود.' },
+    { kind: 'required', field: 'country', person_types: ['foreign'], level: 'error', source: SOURCE_TTMS, message: 'برای شخص خارجی، کشور الزامی است.' },
+    { kind: 'recommended', field: 'postal_code', person_types: ['legal', 'natural'], level: 'warning', source: SOURCE_LEGAL, message: 'کد پستی فروشنده ثبت نشده است.' },
+    { kind: 'digits', field: 'postal_code', person_types: ['legal', 'natural'], level: 'error', length: 10, source: SOURCE_LEGAL, message: 'کد پستی باید ۱۰ رقم باشد.' },
+    { kind: 'recommended', field: 'invoice_no', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'شماره فاکتور وارد نشده است.' },
+    { kind: 'recommended', field: 'invoice_date', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'تاریخ فاکتور وارد نشده است.' },
+    { kind: 'recommended', field: 'goods_service_desc', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'شرح کالا یا خدمات وارد نشده است.' },
+  ],
+  required: {
+    legal: ['name', 'person_type', 'economic_code', 'national_id'],
+    natural: ['name', 'person_type', 'national_id'],
+    foreign: ['name', 'person_type', 'country'],
+  },
+};
+
 const ROWS_KEY = (yearKey, quarter) => `hrms.seasonal.rows.${yearKey}.q${quarter}`;
 const PARTIES_KEY = 'hrms.seasonal.parties';
 const SETTINGS_KEY = 'hrms.seasonal.settings';
 
 const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-  name: '', economicCode: '', nationalId: '', postalCode: '', city: '', address: '',
-  description: '', amount: '', vat: '', kind: 1, invoiceDate: '', invoiceNo: '',
-  status: 'pending',
+  name: '', personType: 'legal', economicCode: '', nationalId: '', postalCode: '',
+  country: '', city: '', address: '',
+  description: '', amount: '', vat: '', duties: '', kind: 1, invoiceDate: '',
+  invoiceNo: '', moadianUid: '', status: 'pending',
 });
 
 const num = (value) => Number(toEnglishDigits(String(value ?? '')).replace(/[^\d.-]/g, '')) || 0;
-const totalOf = (row) => num(row.amount) + num(row.vat);
+const totalOf = (row) => num(row.amount) + num(row.vat) + num(row.duties);
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const isEmpty = (value) => !String(value ?? '').trim();
 
 /* ردیف خالی (ردیف آمادهٔ ورود) */
 const TEXT_FIELDS = [
-  'name', 'economicCode', 'nationalId', 'postalCode', 'city', 'address',
-  'description', 'amount', 'vat', 'invoiceNo', 'invoiceDate',
+  'name', 'economicCode', 'nationalId', 'postalCode', 'country', 'city', 'address',
+  'description', 'amount', 'vat', 'duties', 'invoiceNo', 'invoiceDate', 'moadianUid',
 ];
 const isBlankRow = (row) => TEXT_FIELDS.every((field) => isEmpty(row[field]));
 
@@ -68,35 +134,44 @@ const jalaliText = (value) => {
 const rowFromApi = (item) => ({
   id: item.id,
   name: item.name || '',
+  personType: item.person_type || 'legal',
   economicCode: item.economic_code || '',
   nationalId: item.national_id || '',
   postalCode: item.postal_code || '',
+  country: item.country || '',
   city: item.city || '',
   address: item.address || '',
   description: item.goods_service_desc || '',
   amount: item.amount ? String(Number(item.amount)) : '',
   vat: item.vat ? String(Number(item.vat)) : '',
+  duties: item.duties ? String(Number(item.duties)) : '',
   kind: item.kind || 1,
   invoiceDate: item.invoice_date || '',
   invoiceNo: item.invoice_no || '',
+  moadianUid: item.moadian_uid || '',
   status: item.moadian_status || 'pending',
 });
 
 const rowToApi = (row) => ({
   id: typeof row.id === 'number' ? row.id : null,
   name: row.name || '',
+  person_type: row.personType || 'legal',
   economic_code: row.economicCode || '',
   national_id: row.nationalId || '',
   postal_code: row.postalCode || '',
+  country: row.country || '',
   city: row.city || '',
   address: row.address || '',
   goods_service_desc: row.description || '',
   amount: num(row.amount),
   vat: num(row.vat),
+  duties: num(row.duties),
   kind: Number(row.kind) || 1,
   invoice_date: row.invoiceDate || null,
   invoice_no: row.invoiceNo || '',
+  moadian_uid: row.moadianUid || '',
   moadian_status: row.status === 'registered' ? 'registered' : 'pending',
+  direction: BACKEND_DIRECTION,
 });
 
 /* نگاشت ردیف قدیمی localStorage (بدون شماره اقتصادی/کد پستی) */
@@ -114,39 +189,70 @@ const writeJson = (key, value) => {
   try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* noop */ }
 };
 
-/* اعتبارسنجی محلی (وقتی API سرور در دسترس نیست) — همان قواعد سمت سرور */
-const localValidate = (rows, periodStart, periodEnd) => {
+/* اعتبارسنجی قواعد‌محور (حالت آفلاین) — همان ساختار قواعد سرور */
+const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE) => {
+  const rules = reference.rules || LOCAL_REFERENCE.rules;
   const issues = [];
   const seen = new Map();
+
   rows.forEach((row, index) => {
     if (isBlankRow(row)) return;
     const lineNo = index + 1;
-    const push = (field, level, message) => issues.push({
-      row_id: row.id, row_no: lineNo, row_name: row.name, field, level, message,
+    const personType = row.personType || '';
+    const push = (field, level, message, source = SOURCE_INTERNAL) => issues.push({
+      row_id: row.id, row_no: lineNo, row_name: row.name,
+      field: FIELD_MAP[field] || field, level, message, source,
     });
-    if (!row.name) push('name', 'error', 'نام طرف معامله الزامی است.');
-    if (!num(row.amount) && !num(row.vat)) push('amount', 'error', 'مبلغ معامله باید بزرگ‌تر از صفر باشد.');
-    if (num(row.vat) > num(row.amount)) push('vat', 'error', 'مالیات بر ارزش افزوده از مبلغ معامله بیشتر است.');
-    if (!row.economicCode) push('economicCode', 'warning', 'شماره اقتصادی ثبت نشده است.');
-    else if (toEnglishDigits(row.economicCode).length !== 11) push('economicCode', 'error', 'شماره اقتصادی باید ۱۱ رقم باشد.');
-    if (!row.postalCode) push('postalCode', 'warning', 'کد پستی طرف معامله ثبت نشده است.');
-    else if (toEnglishDigits(row.postalCode).length !== 10) push('postalCode', 'error', 'کد پستی باید ۱۰ رقم باشد.');
-    if (!row.invoiceNo) push('invoiceNo', 'warning', 'شماره فاکتور وارد نشده است.');
-    if (!row.invoiceDate) push('invoiceDate', 'warning', 'تاریخ فاکتور وارد نشده است.');
-    else if (periodStart && periodEnd && (row.invoiceDate < periodStart || row.invoiceDate > periodEnd)) {
-      push('invoiceDate', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.');
+
+    rules.forEach((rule) => {
+      if (personType && !rule.person_types.includes(personType)) return;
+      const uiField = FIELD_MAP[rule.field] || rule.field;
+      const text = String(row[uiField] ?? '').trim();
+      if (rule.kind === 'required' || rule.kind === 'recommended') {
+        if (!text) push(rule.field, rule.level, rule.message, rule.source);
+        return;
+      }
+      if (rule.kind === 'digits') {
+        if (text && (!/^\d+$/.test(toEnglishDigits(text)) || (rule.length && toEnglishDigits(text).length !== rule.length))) {
+          push(rule.field, rule.level, rule.message, rule.source);
+        }
+        return;
+      }
+      if (rule.kind === 'forbidden' && text) {
+        push(rule.field, rule.level, rule.message, rule.source);
+      }
+    });
+
+    if (!num(row.amount) && !num(row.vat) && !num(row.duties)) {
+      push('amount', 'error', 'مبلغ خرید باید بزرگ‌تر از صفر باشد.', SOURCE_LEGAL);
     }
-    if (!row.description) push('description', 'warning', 'شرح کالا یا خدمات وارد نشده است.');
-    if (row.status !== 'registered') push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.');
+    if (num(row.vat) > num(row.amount)) {
+      push('vat', 'error', 'مالیات بر ارزش افزوده نمی‌تواند از مبلغ خرید بیشتر باشد.', SOURCE_LEGAL);
+    }
+    if (num(row.duties) > num(row.amount)) {
+      push('duties', 'error', 'عوارض نمی‌تواند از مبلغ خرید بیشتر باشد.', SOURCE_TTMS);
+    }
+    if (row.invoiceDate && periodStart && periodEnd
+      && (row.invoiceDate < periodStart || row.invoiceDate > periodEnd)) {
+      push('invoiceDate', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.', SOURCE_LEGAL);
+    }
+    if (row.status !== 'registered') {
+      push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.', SOURCE_TTMS);
+    }
     if (row.invoiceNo) {
-      const key = `${normalizeName(row.invoiceNo)}|${row.economicCode}`;
-      if (seen.has(key)) push('invoiceNo', 'error', `شماره فاکتور تکراری با ردیف ${toPersianDigits(seen.get(key))} ثبت شده است.`);
-      else seen.set(key, lineNo);
+      const key = `${normalizeName(row.invoiceNo)}|${row.economicCode || row.nationalId}`;
+      if (seen.has(key)) {
+        push('invoiceNo', 'error', `شماره فاکتور تکراری با ردیف ${toPersianDigits(seen.get(key))} ثبت شده است.`, SOURCE_INTERNAL);
+      } else {
+        seen.set(key, lineNo);
+      }
     }
   });
+
   const errors = issues.filter((issue) => issue.level === 'error').length;
   return {
     issues,
+    ruleset: { version: reference.ruleset_version, status: reference.ruleset_status },
     summary: {
       rows: rows.filter((row) => !isBlankRow(row)).length,
       errors,
@@ -154,6 +260,11 @@ const localValidate = (rows, periodStart, periodEnd) => {
     },
   };
 };
+
+/* الزامات هر نوع فروشنده از مرجع قواعد (سرور یا آینهٔ محلی) */
+const requiredFor = (reference, personType) => (
+  (reference?.required || LOCAL_REFERENCE.required)[personType || 'legal'] || []
+);
 
 
 /* سلول متنی فشرده برای ورود سریع */
@@ -319,6 +430,16 @@ const SeasonalReportPage = () => {
   const [sortBy, setSortBy] = useState('entry');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const savedPayloadRef = useRef('');
+
+  const { data: referenceData } = useQuery({
+    queryKey: ['seasonal-rules-reference'],
+    queryFn: () => axiosInstance.get(`${API_BASE}/reference/`).then((response) => response.data),
+    staleTime: 30 * 60 * 1000,
+    retry: false,
+  });
+  /* مرجع نهایی قواعد: پاسخ سرور؛ در نبود سرور، آینهٔ محلی (هم‌نسخه) */
+  const reference = referenceData || LOCAL_REFERENCE;
+  const rulesetStatus = reference?.ruleset_status || 'unverified';
 
   const { data: fiscalYears, isFetched: fiscalYearsFetched } = useQuery({
     queryKey: ['fiscal-years-for-seasonal'],
@@ -548,9 +669,10 @@ const SeasonalReportPage = () => {
   const totals = useMemo(() => filledRows.reduce((acc, row) => ({
     amount: acc.amount + num(row.amount),
     vat: acc.vat + num(row.vat),
+    duties: acc.duties + num(row.duties),
     total: acc.total + totalOf(row),
     registered: acc.registered + (row.status === 'registered' ? 1 : 0),
-  }), { amount: 0, vat: 0, total: 0, registered: 0 }), [filledRows]);
+  }), { amount: 0, vat: 0, duties: 0, total: 0, registered: 0 }), [filledRows]);
 
   const issuesByRow = useMemo(() => {
     const map = new Map();
@@ -585,11 +707,11 @@ const SeasonalReportPage = () => {
   }, [cellFontPx]);
 
 
-  /* اعتبارسنجی: سرور (رسمی) یا محلی */
+  /* اعتبارسنجی: سرور (مرجع نهایی) یا موتور قواعد محلی */
   const runValidation = () => {
     if (mode === 'api' && reportId) {
       setSaveState('saving');
-      axiosInstance.post(`${API_BASE}/${reportId}/validate/`)
+      axiosInstance.post(`${API_BASE}/${reportId}/validate/`, { direction: BACKEND_DIRECTION })
         .then(({ data }) => {
           setIssues(data.issues || []);
           const summary = data.summary || {};
@@ -599,11 +721,15 @@ const SeasonalReportPage = () => {
               : `بدون خطا — ${toPersianDigits(summary.warnings || 0)} هشدار`,
           );
         })
-        .catch(() => setToast('اعتبارسنجی سرور انجام نشد؛ اعتبارسنجی محلی اجرا شد.'))
+        .catch(() => {
+          const result = localValidate(filledRows, period.start, period.end, reference);
+          setIssues(result.issues);
+          setToast('اعتبارسنجی سرور در دسترس نبود؛ موتور قواعد محلی اجرا شد.');
+        })
         .finally(() => setSaveState('idle'));
       return;
     }
-    const result = localValidate(filledRows, period.start, period.end);
+    const result = localValidate(filledRows, period.start, period.end, reference);
     setIssues(result.issues);
     setToast(
       result.summary.errors
@@ -622,7 +748,7 @@ const SeasonalReportPage = () => {
           });
           const link = document.createElement('a');
           link.href = URL.createObjectURL(blob);
-          link.download = `seasonal-${yearKey || 'year'}-q${quarter}.xlsx`;
+          link.download = `seasonal-purchase-${yearKey || 'year'}-q${quarter}.xlsx`;
           document.body.appendChild(link);
           link.click();
           link.remove();
@@ -634,25 +760,29 @@ const SeasonalReportPage = () => {
     }
 
     const headers = [
-      'ردیف', 'شماره اقتصادی طرف معامله', 'شناسه ملی / کد ملی', 'نام و نام خانوادگی / نام شرکت',
-      'کد پستی', 'شهر', 'آدرس', 'شرح کالا / خدمات', 'مبلغ (ریال)',
-      'مالیات بر ارزش افزوده', 'جمع کل', 'نوع معامله', 'تاریخ فاکتور', 'شماره فاکتور',
-      'وضعیت سامانه مودیان',
+      'ردیف', 'شماره اقتصادی فروشنده', 'شناسه ملی / کد ملی فروشنده', 'نام فروشنده',
+      'نوع فروشنده', 'کد پستی', 'کشور', 'شهر', 'آدرس', 'شرح کالا / خدمات',
+      'مبلغ خرید (ریال)', 'مالیات بر ارزش افزوده', 'عوارض', 'جمع کل',
+      'نوع معامله', 'تاریخ فاکتور', 'شماره فاکتور', 'وضعیت سامانه مودیان',
     ];
     const escape = (value) => String(value ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const personLabel = (value) => (PERSON_TYPES.find((type) => type.value === value) || {}).label || '';
     const body = filledRows.map((row, index) => `
       <tr>
         <td>${index + 1}</td>
         <td style="mso-number-format:'\\@'">${escape(row.economicCode)}</td>
         <td style="mso-number-format:'\\@'">${escape(row.nationalId)}</td>
         <td>${escape(row.name)}</td>
+        <td>${escape(personLabel(row.personType))}</td>
         <td style="mso-number-format:'\\@'">${escape(row.postalCode)}</td>
+        <td>${escape(row.country)}</td>
         <td>${escape(row.city)}</td>
         <td>${escape(row.address)}</td>
         <td>${escape(row.description)}</td>
         <td>${num(row.amount)}</td>
         <td>${num(row.vat)}</td>
+        <td>${num(row.duties)}</td>
         <td>${totalOf(row)}</td>
         <td>${escape(row.kind)}</td>
         <td style="mso-number-format:'\\@'">${escape(jalaliText(row.invoiceDate))}</td>
@@ -662,20 +792,50 @@ const SeasonalReportPage = () => {
     const html = `<html dir="rtl"><head><meta charset="utf-8" />
       <style>table{border-collapse:collapse;font-family:Tahoma}td,th{border:1px solid #999;padding:4px;font-size:11px}
       th{background:#f1f5f9}</style></head><body>
-      <h3>صورت معاملات فصلی — ${escape(yearLabel)} — ${escape(quarterLabel)}</h3>
+      <h3>صورت معاملات فصلی خرید — ${escape(yearLabel)} — ${escape(quarterLabel)}</h3>
       <table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td colspan="8">جمع کل</td><td>${totals.amount}</td><td>${totals.vat}</td>
-      <td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
+      <tfoot><tr><td colspan="10">جمع کل خرید</td><td>${totals.amount}</td><td>${totals.vat}</td>
+      <td>${totals.duties}</td><td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
     const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `seasonal-transactions-${yearKey || 'year'}-q${quarter}.xls`;
+    link.download = `seasonal-purchase-${yearKey || 'year'}-q${quarter}.xls`;
     document.body.appendChild(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(link.href);
     setToast('فایل اکسل ساخته شد');
+  };
+
+  /* خروجی TTMS: فقط از سرور و با هشدار «آزمایش‌نشده» */
+  const exportTtms = () => {
+    if (mode !== 'api' || !reportId) {
+      setToast('خروجی TTMS فقط در حالت اتصال به سرور و پس از استقرار بک‌اند در دسترس است.');
+      return;
+    }
+    const confirmed = typeof window.confirm === 'function'
+      ? window.confirm(
+        'خروجی TTMS «آزمایش‌نشده» است: قالب رسمی نسخهٔ هدف در دسترس نبود.\n'
+        + 'این فایل پیش‌نویس ساختاری است و پیش از ارسال رسمی باید با نسخهٔ TTMS آزمون شود.\n\n'
+        + 'ادامه می‌دهید؟',
+      )
+      : true;
+    if (!confirmed) return;
+
+    axiosInstance.get(`${API_BASE}/${reportId}/export-ttms/`, { responseType: 'blob' })
+      .then((response) => {
+        const blob = new Blob([response.data], { type: 'application/zip' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `ttms-draft-purchase-${yearKey || 'year'}-q${quarter}.zip`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        setToast('بستهٔ پیش‌نویس TTMS ساخته شد (آزمایش‌نشده).');
+      })
+      .catch(() => setToast('خروجی TTMS در دسترس نیست.'));
   };
 
   /* چاپ / PDF مرورگر */
@@ -686,25 +846,32 @@ const SeasonalReportPage = () => {
       <tr>
         <td>${toPersianDigits(index + 1)}</td>
         <td>${row.name}</td>
+        <td>${(PERSON_TYPES.find((type) => type.value === row.personType) || {}).label || ''}</td>
         <td>${toPersianDigits(row.economicCode)}</td>
         <td>${toPersianDigits(row.nationalId)}</td>
-        <td>${row.city}</td>
+        <td>${row.country || row.city}</td>
         <td>${row.description}</td>
         <td>${formatPersianNumber(num(row.amount))}</td>
         <td>${formatPersianNumber(num(row.vat))}</td>
+        <td>${formatPersianNumber(num(row.duties))}</td>
         <td>${formatPersianNumber(totalOf(row))}</td>
         <td>${jalaliText(row.invoiceDate)}</td>
         <td>${row.invoiceNo}</td>
       </tr>`).join('');
+    const rulesetNote = rulesetStatus === 'verified'
+      ? 'تأییدشده'
+      : `تأییدنشده (نسخهٔ ${reference?.ruleset_version || 'نامشخص'})`;
     printable.document.write(`<html dir="rtl" lang="fa"><head><meta charset="utf-8" />
-      <title>صورت معاملات فصلی</title>
+      <title>صورت معاملات فصلی خرید</title>
       <style>body{font-family:Tahoma;padding:16px}table{width:100%;border-collapse:collapse}
       th,td{border:1px solid #888;padding:4px;font-size:11px;text-align:center}
-      h3{margin:0 0 6px}</style></head><body>
-      <h3>صورت معاملات فصلی — ${yearLabel} — ${quarterLabel}</h3>
-      <table><thead><tr><th>ردیف</th><th>طرف معامله</th><th>شماره اقتصادی</th><th>شناسه/کد ملی</th>
-      <th>شهر</th><th>شرح کالا/خدمات</th><th>مبلغ</th><th>مالیات</th><th>جمع کل</th>
-      <th>تاریخ</th><th>شماره فاکتور</th></tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
+      h3{margin:0 0 4px}.note{font-size:10px;color:#92400e;margin:0 0 8px}</style></head><body>
+      <h3>صورت معاملات فصلی خرید — ${yearLabel} — ${quarterLabel}</h3>
+      <p class="note">وضعیت قواعد/قالب TTMS: ${rulesetNote}</p>
+      <table><thead><tr><th>ردیف</th><th>فروشنده</th><th>نوع</th><th>شماره اقتصادی</th>
+      <th>شناسه/کد ملی</th><th>کشور/شهر</th><th>شرح کالا/خدمات</th><th>مبلغ</th>
+      <th>مالیات</th><th>عوارض</th><th>جمع کل</th><th>تاریخ</th><th>شماره فاکتور</th>
+      </tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
     printable.document.close();
     printable.focus();
     printable.print();
@@ -773,6 +940,35 @@ const SeasonalReportPage = () => {
   }, [partyOptionsJson]);
 
 
+  /* الزامات خرید: اتحاد فیلدهای اجباری همهٔ انواع فروشنده (برای ستارهٔ سرستون) */
+  const requiredUnion = useMemo(() => {
+    const source = reference?.required || LOCAL_REFERENCE.required;
+    const set = new Set();
+    Object.values(source).forEach((fields) => (fields || []).forEach((field) => set.add(field)));
+    return set;
+  }, [reference]);
+
+  const colLabel = (text, internalField) => (
+    <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
+      {text}
+      {requiredUnion.has(internalField) ? (
+        <Box component="span" sx={{ color: '#dc2626', ml: 0.25 }}>*</Box>
+      ) : null}
+    </Box>
+  );
+
+  /* فیلد اجباریِ خالی برای همین نوع فروشنده → خط زیرین قرمز در سلول */
+  const cellSxFor = (row, internalField) => {
+    const required = requiredFor(reference, row.personType).includes(internalField);
+    const uiField = FIELD_MAP[internalField];
+    if (!required || !uiField || !isEmpty(row[uiField])) return cellInputSx;
+    return {
+      ...cellInputSx,
+      '& .MuiInput-underline:before': { borderBottomColor: '#dc2626' },
+      '& .MuiInput-underline:hover:before': { borderBottomColor: '#dc2626' },
+    };
+  };
+
   const tableColumns = [
     {
       key: 'row',
@@ -796,8 +992,8 @@ const SeasonalReportPage = () => {
     },
     {
       key: 'name',
-      label: 'نام و نام خانوادگی / نام شرکت',
-      width: '14%',
+      label: colLabel('نام فروشنده', 'name'),
+      width: '13%',
       render: (row) => (
         <Autocomplete
           freeSolo
@@ -811,7 +1007,7 @@ const SeasonalReportPage = () => {
           onChange={(_event, value) => {
             if (value && typeof value !== 'string') applyParty(row.id, value);
           }}
-          noOptionsText="طرف معاملهٔ جدید — با ادامهٔ تایپ ثبت می‌شود"
+          noOptionsText="فروشندهٔ جدید — با ادامهٔ تایپ ثبت می‌شود"
           renderOption={(props, option) => (
             <Box component="li" {...props} key={option.name} sx={{ gap: 1 }}>
               <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -837,39 +1033,64 @@ const SeasonalReportPage = () => {
       ),
     },
     {
+      key: 'personType',
+      label: colLabel('نوع فروشنده', 'person_type'),
+      width: '7%',
+      align: 'center',
+      render: (row) => (
+        <CellSelect
+          value={row.personType}
+          onChange={(value) => updateCell(row.id, 'personType', value)}
+          ariaLabel="نوع فروشنده"
+          options={PERSON_TYPES}
+          sx={cellInputSx}
+          fontSize={cellFontPx}
+        />
+      ),
+    },
+    {
       key: 'economicCode',
-      label: 'شماره اقتصادی',
+      label: colLabel('شماره اقتصادی', 'economic_code'),
       width: '8%',
       align: 'center',
       render: (row) => (
         <DigitField value={row.economicCode} onChange={(value) => updateCell(row.id, 'economicCode', value)}
-          placeholder="۱۱ رقمی" numeric maxLength={11} sx={cellInputSx} />
+          placeholder="۱۱ رقمی" numeric maxLength={11} sx={cellSxFor(row, 'economic_code')} />
       ),
     },
     {
       key: 'nationalId',
-      label: 'شناسه ملی',
+      label: colLabel('شناسه ملی / کد ملی', 'national_id'),
       width: '8%',
       align: 'center',
       render: (row) => (
         <DigitField value={row.nationalId} onChange={(value) => updateCell(row.id, 'nationalId', value)}
-          placeholder="شناسه ملی" numeric maxLength={11} sx={cellInputSx} />
+          placeholder="شناسه/کد ملی" numeric maxLength={11} sx={cellSxFor(row, 'national_id')} />
       ),
     },
     {
       key: 'postalCode',
-      label: 'کد پستی',
+      label: colLabel('کد پستی', 'postal_code'),
       width: '6%',
       align: 'center',
       render: (row) => (
         <DigitField value={row.postalCode} onChange={(value) => updateCell(row.id, 'postalCode', value)}
-          placeholder="۱۰ رقمی" numeric maxLength={10} sx={cellInputSx} />
+          placeholder="۱۰ رقمی" numeric maxLength={10} sx={cellSxFor(row, 'postal_code')} />
+      ),
+    },
+    {
+      key: 'country',
+      label: colLabel('کشور', 'country'),
+      width: '5%',
+      render: (row) => (
+        <CellTextField value={row.country} onChange={(value) => updateCell(row.id, 'country', value)}
+          placeholder={row.personType === 'foreign' ? 'کشور' : '—'} sx={cellSxFor(row, 'country')} />
       ),
     },
     {
       key: 'city',
       label: 'شهر',
-      width: '7%',
+      width: '6%',
       render: (row) => (
         <CellTextField value={row.city} onChange={(value) => updateCell(row.id, 'city', value)}
           placeholder="شهر" sx={cellInputSx} />
@@ -878,7 +1099,7 @@ const SeasonalReportPage = () => {
     {
       key: 'address',
       label: 'آدرس',
-      width: '12%',
+      width: '11%',
       render: (row) => (
         <CellTextField value={row.address} onChange={(value) => updateCell(row.id, 'address', value)}
           placeholder="آدرس" sx={cellInputSx} />
@@ -928,6 +1149,23 @@ const SeasonalReportPage = () => {
       ),
     },
     {
+      key: 'duties',
+      label: 'عوارض',
+      width: '6%',
+      align: 'center',
+      render: (row) => (
+        <MoneyInput
+          variant="standard"
+          allowDecimals={false}
+          value={row.duties}
+          onChange={(value) => updateCell(row.id, 'duties', value)}
+          placeholder="عوارض"
+          inputProps={{ 'aria-label': 'عوارض', style: { textAlign: 'center' } }}
+          sx={cellInputSx}
+        />
+      ),
+    },
+    {
       key: 'total',
       label: 'جمع کل',
       width: '8%',
@@ -954,7 +1192,7 @@ const SeasonalReportPage = () => {
     },
     {
       key: 'invoiceDate',
-      label: 'تاریخ فاکتور',
+      label: colLabel('تاریخ فاکتور', 'invoice_date'),
       width: '8%',
       align: 'center',
       render: (row) => (
@@ -967,7 +1205,7 @@ const SeasonalReportPage = () => {
     },
     {
       key: 'invoiceNo',
-      label: 'شماره فاکتور',
+      label: colLabel('شماره فاکتور', 'invoice_no'),
       width: '7%',
       align: 'center',
       render: (row) => (
@@ -1016,8 +1254,8 @@ const SeasonalReportPage = () => {
     <>
       <PageHeader
         icon={<CalendarViewMonthIcon sx={{ fontSize: 26 }} />}
-        title="صورت معاملات فصلی (ورود دستی)"
-        subtitle="ماده ۱۶۹ مکرر — ثبت، اعتبارسنجی و خروجی رسمی معاملات هر فصل"
+        title="معاملات فصلی خرید"
+        subtitle="ماده ۱۶۹ مکرر — ثبت، اعتبارسنجی پویا و خروجی‌های خرید (فروش در نسخهٔ بعد)"
         color="#d97706"
         actions={(
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
@@ -1026,6 +1264,9 @@ const SeasonalReportPage = () => {
             </Button>
             <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={printReport}>
               چاپ
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={exportTtms}>
+              خروجی TTMS
             </Button>
             <Button variant="contained" size="small" startIcon={<DownloadIcon />} onClick={exportExcel}>
               خروجی اکسل
@@ -1091,6 +1332,23 @@ const SeasonalReportPage = () => {
             : mode === 'local'
               ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
               : 'در حال دریافت بازهٔ فصل…'}
+        </Typography>
+
+        <Typography
+          sx={{
+            fontSize: 10.5,
+            color: rulesetStatus === 'verified' ? '#15803d' : '#b45309',
+            border: '1px dashed',
+            borderColor: rulesetStatus === 'verified' ? 'rgba(21,128,61,0.4)' : 'rgba(180,83,9,0.4)',
+            borderRadius: '6px',
+            px: 0.75,
+            py: 0.25,
+          }}
+          title={`نسخهٔ قواعد: ${reference?.ruleset_version || 'نامشخص'}`}
+        >
+          {rulesetStatus === 'verified'
+            ? 'قواعد تأییدشدهٔ قالب هدف'
+            : 'قواعد/قالب TTMS تأییدنشده'}
         </Typography>
 
         <Box sx={{ flex: 1 }} />
@@ -1170,6 +1428,10 @@ const SeasonalReportPage = () => {
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'جمع ارزش افزوده: '}
             <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{formatPersianNumber(totals.vat)}</Box>
+          </Typography>
+          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
+            {'جمع عوارض: '}
+            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{formatPersianNumber(totals.duties)}</Box>
           </Typography>
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'جمع کل: '}

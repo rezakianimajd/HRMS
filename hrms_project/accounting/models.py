@@ -1005,6 +1005,16 @@ class SeasonalTransaction(AccountingBaseModel):
     class PersonType(models.TextChoices):
         LEGAL = 'legal', _('شخص حقوقی')
         NATURAL = 'natural', _('شخص حقیقی')
+        FOREIGN = 'foreign', _('شخص خارجی')
+
+    class Direction(models.TextChoices):
+        """جهت معامله.
+
+        در این نسخه فقط «خرید» ثبت و گزارش می‌شود؛ ``SALE`` برای توسعهٔ
+        آینده نگه داشته شده و در رابط کاربری فعلی قابل انتخاب نیست.
+        """
+        PURCHASE = 'purchase', _('خرید')
+        SALE = 'sale', _('فروش')
 
     class MoadianStatus(models.TextChoices):
         REGISTERED = 'registered', _('درج‌شده در سامانه مودیان')
@@ -1019,6 +1029,10 @@ class SeasonalTransaction(AccountingBaseModel):
         verbose_name=_('گزارش فصلی'),
     )
     line_no = models.PositiveIntegerField(default=0, verbose_name=_('ردیف'))
+    direction = models.CharField(
+        max_length=10, choices=Direction.choices, default=Direction.PURCHASE,
+        verbose_name=_('جهت معامله'),
+    )
     name = models.CharField(max_length=250, verbose_name=_('نام / عنوان طرف معامله'))
     person_type = models.CharField(
         max_length=10, choices=PersonType.choices, blank=True, default='',
@@ -1027,12 +1041,14 @@ class SeasonalTransaction(AccountingBaseModel):
     economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('شماره اقتصادی'))
     national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ملی'))
     postal_code = models.CharField(max_length=10, blank=True, verbose_name=_('کد پستی'))
+    country = models.CharField(max_length=60, blank=True, verbose_name=_('کشور'))
     province = models.CharField(max_length=60, blank=True, verbose_name=_('استان'))
     city = models.CharField(max_length=100, blank=True, verbose_name=_('شهر'))
     address = models.TextField(blank=True, verbose_name=_('آدرس'))
     goods_service_desc = models.CharField(max_length=300, blank=True, verbose_name=_('شرح کالا / خدمات'))
     amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
     vat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مالیات بر ارزش افزوده'))
+    duties = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('عوارض'))
     kind = models.PositiveSmallIntegerField(choices=Kind.choices, default=Kind.TYPE_1, verbose_name=_('نوع معامله'))
     invoice_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ فاکتور'))
     invoice_no = models.CharField(max_length=50, blank=True, verbose_name=_('شماره فاکتور'))
@@ -1056,11 +1072,13 @@ class SeasonalTransaction(AccountingBaseModel):
         verbose_name_plural = _('ردیف‌های معاملات فصلی')
         ordering = ['line_no', 'id']
         indexes = [
-            models.Index(fields=['report', 'line_no'], name='seasonal_row_order_idx'),
+            models.Index(fields=['report', 'direction', 'line_no'], name='seasonal_row_order_idx'),
             models.Index(fields=['report', 'economic_code'], name='seasonal_row_party_idx'),
         ]
         constraints = [
-            models.UniqueConstraint(fields=['report', 'line_no'], name='uniq_seasonal_row_no'),
+            models.UniqueConstraint(
+                fields=['report', 'direction', 'line_no'], name='uniq_seasonal_row_no',
+            ),
         ]
 
     def __str__(self):
@@ -1068,5 +1086,5 @@ class SeasonalTransaction(AccountingBaseModel):
 
     @property
     def total(self):
-        return (self.amount or 0) + (self.vat or 0)
+        return (self.amount or 0) + (self.vat or 0) + (self.duties or 0)
 

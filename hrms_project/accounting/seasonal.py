@@ -1,31 +1,38 @@
-"""سرویس‌های صورت معاملات فصلی (ماده ۱۶۹ مکرر).
+"""سرویس‌های صورت معاملات فصلی (ماده ۱۶۹ مکرر) — نسخهٔ «خرید».
 
-- ``sync_rows``: ذخیرهٔ گروهی و اتمیک ردیف‌ها (جایگزینی کامل لیست).
-- ``validate_report``: اعتبارسنجی ردیف‌ها با سطح خطا/هشدار (برای گزارش و اکسل).
-- ``control_totals``: جمع‌های کنترل (کل، به تفکیک نوع و وضعیت سامانه).
-- ``build_workbook``: خروجی اکسل رسمی سه‌شیتی (داده / خلاصه / خطاها).
+- ``sync_rows``: ذخیرهٔ گروهی و اتمیک ردیف‌های یک جهت معامله (جایگزینی لیست).
+- ``validate_report``: اعتبارسنجی قواعدِ خرید از ``seasonal_rules`` (سرور مرجع نهایی).
+- ``control_totals``: جمع‌های کنترل یک جهت (مبلغ، ارزش افزوده، عوارض، جمع).
+- ``build_workbook``: خروجی اکسل مدیریتی سه‌شیتی مخصوص خرید.
+- ``build_ttms_draft``: بستهٔ «پیش‌نویس آزمایش‌نشده» برای TTMS + راهنمای نگاشت.
 """
 from decimal import Decimal, InvalidOperation
 
-from django.db import transaction
-from django.db import models
+from django.db import models, transaction
 from django.db.models import Count, Sum
 
+from accounting import seasonal_rules
 from accounting.models import SeasonalReport, SeasonalTransaction
 
-# ستون‌های رسمی فرم معاملات فصلی (ترتیب پایه؛ در فاز ۲ با فایل TTMS تطبیق می‌شود)
-OFFICIAL_COLUMNS = [
+DIRECTION_PURCHASE = SeasonalTransaction.Direction.PURCHASE
+SUPPORTED_DIRECTIONS = (DIRECTION_PURCHASE,)   # فروش در نسخهٔ بعدی
+
+# ستون‌های خروجی اکسل مدیریتی خرید (با ستون عوارض و کشور)
+PURCHASE_COLUMNS = [
     'ردیف',
-    'شماره اقتصادی طرف معامله',
-    'شناسه ملی / کد ملی',
-    'نام و نام خانوادگی / نام شرکت',
+    'شماره اقتصادی فروشنده',
+    'شناسه ملی / کد ملی فروشنده',
+    'نام فروشنده',
+    'نوع فروشنده',
     'کد پستی',
+    'کشور',
     'استان',
     'شهر',
     'آدرس',
     'شرح کالا / خدمات',
-    'مبلغ (ریال)',
+    'مبلغ خرید (ریال)',
     'مالیات بر ارزش افزوده',
+    'عوارض',
     'جمع کل',
     'نوع معامله',
     'تاریخ فاکتور',
@@ -34,8 +41,8 @@ OFFICIAL_COLUMNS = [
 ]
 
 ROW_FIELDS = (
-    'name', 'person_type', 'economic_code', 'national_id', 'postal_code',
-    'province', 'city', 'address', 'goods_service_desc', 'amount', 'vat',
+    'name', 'person_type', 'economic_code', 'national_id', 'postal_code', 'country',
+    'province', 'city', 'address', 'goods_service_desc', 'amount', 'vat', 'duties',
     'kind', 'invoice_date', 'invoice_no', 'moadian_status', 'moadian_uid',
     'currency_code', 'fx_rate',
 )
@@ -71,13 +78,19 @@ def _parse_date(value):
         return None
 
 
-def sync_rows(report, rows):
-    """جایگزینی کامل ردیف‌های گزارش با لیست ورودی (تراکنشی).
+def _ensure_supported(direction):
+    if direction not in SUPPORTED_DIRECTIONS:
+        raise ValueError('در این نسخه فقط معاملات خرید پشتیبانی می‌شود.')
+    return direction
 
-    هر آیتم: ``{'id': optional, ...ROW_FIELDS}``. شمارهٔ ردیف‌ها از ۱ بازشماری
-    می‌شود تا ترتیب جدول و خروجی همیشه یکسان باشد. ردیف‌هایی که در ورودی نیستند
-    حذف می‌شوند (رفتار «ذخیرهٔ کل جدول»).
+
+def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
+    """جایگزینی کامل ردیف‌های یک جهت معامله در گزارش (تراکنشی).
+
+    ردیف‌های جهت دیگر (مثلاً فروش در آینده) دست‌نخورده می‌مانند و شماره‌گذاری
+    ردیف‌ها به‌ازای هر جهت مستقل است.
     """
+    direction = _ensure_supported(direction)
     if report.is_locked:
         raise ValueError('این فصل ارسال شده است و قابل ویرایش نیست.')
 
@@ -85,10 +98,6 @@ def sync_rows(report, rows):
     for index, raw in enumerate(rows or [], start=1):
         if not isinstance(raw, dict):
             continue
-        amount = _to_decimal(raw.get('amount'))
-        vat = _to_decimal(raw.get('vat'))
-        kind = int(raw.get('kind') or 1)
-        kind = kind if 1 <= kind <= 5 else 1
         item = {
             'id': raw.get('id') or None,
             'line_no': index,
@@ -97,13 +106,15 @@ def sync_rows(report, rows):
             'economic_code': _digits_only(raw.get('economic_code'))[:20],
             'national_id': _digits_only(raw.get('national_id'))[:20],
             'postal_code': _digits_only(raw.get('postal_code'))[:10],
+            'country': _clean_text(raw.get('country'), 60),
             'province': _clean_text(raw.get('province'), 60),
             'city': _clean_text(raw.get('city'), 100),
             'address': _clean_text(raw.get('address')),
             'goods_service_desc': _clean_text(raw.get('goods_service_desc'), 300),
-            'amount': amount,
-            'vat': vat,
-            'kind': kind,
+            'amount': _to_decimal(raw.get('amount')),
+            'vat': _to_decimal(raw.get('vat')),
+            'duties': _to_decimal(raw.get('duties')),
+            'kind': int(raw.get('kind') or 1) if str(raw.get('kind') or '1').isdigit() else 1,
             'invoice_date': _parse_date(raw.get('invoice_date')),
             'invoice_no': _clean_text(raw.get('invoice_no'), 50),
             'moadian_status': 'registered' if raw.get('moadian_status') == 'registered' else 'pending',
@@ -111,37 +122,49 @@ def sync_rows(report, rows):
             'currency_code': _clean_text(raw.get('currency_code'), 10),
             'fx_rate': _to_decimal(raw.get('fx_rate')) or Decimal('1'),
         }
-        # ردیف‌های کاملاً خالی نادیده گرفته می‌شوند
-        if not any([item['name'], item['invoice_no'], item['amount'], item['vat'], item['goods_service_desc']]):
+        if item['kind'] < 1 or item['kind'] > 5:
+            item['kind'] = 1
+        if not any([item['name'], item['invoice_no'], item['amount'], item['vat'], item['duties'],
+                    item['goods_service_desc']]):
             continue
         cleaned.append(item)
 
+    scoped = report.transactions.filter(direction=direction)
     with transaction.atomic():
-        existing = {str(row.id): row for row in report.transactions.all()}
-        # مرحلهٔ ۱: شماره‌های موقت تا محدودیت «ردیف یکتا» در بازچینش ترتیب نقض نشود
-        report.transactions.update(line_no=models.F('line_no') + 100000)
+        existing = {str(row.id): row for row in scoped}
+        # شماره‌های موقت تا محدودیت یکتایی (گزارش، جهت، ردیف) در بازچینش نقض نشود
+        scoped.update(line_no=models.F('line_no') + 100000)
         keep_ids = []
         for item in cleaned:
             row_id = item.pop('id', None)
             row = existing.get(str(row_id)) if row_id else None
             if row is None:
-                row = SeasonalTransaction(report=report, company_id=report.company_id)
+                row = SeasonalTransaction(
+                    report=report, company_id=report.company_id, direction=direction,
+                )
             for field in ROW_FIELDS:
                 setattr(row, field, item[field])
+            row.direction = direction
             row.line_no = item['line_no']
             row.save()
             keep_ids.append(row.id)
-        report.transactions.exclude(id__in=keep_ids).delete()
+        scoped.exclude(id__in=keep_ids).delete()
 
-    return report.transactions.count()
+    return scoped.count()
 
-def control_totals(report):
-    """جمع‌های کنترل گزارش: کل، به تفکیک نوع معامله و وضعیت سامانه."""
-    rows = report.transactions.all()
+def _scoped_rows(report, direction=DIRECTION_PURCHASE):
+    """ردیف‌های یک جهت معامله در گزارش."""
+    return report.transactions.filter(direction=direction)
+
+
+def control_totals(report, direction=DIRECTION_PURCHASE):
+    """جمع‌های کنترل یک جهت معامله: مبلغ، ارزش افزوده، عوارض و جمع کل."""
+    rows = _scoped_rows(report, direction)
     agg = rows.aggregate(
         count=Count('id'),
         amount=Sum('amount'),
         vat=Sum('vat'),
+        duties=Sum('duties'),
     )
     by_kind = [
         {
@@ -150,85 +173,120 @@ def control_totals(report):
             'count': item['count'],
             'amount': float(item['amount'] or 0),
             'vat': float(item['vat'] or 0),
-            'total': float((item['amount'] or 0) + (item['vat'] or 0)),
+            'duties': float(item['duties'] or 0),
+            'total': float((item['amount'] or 0) + (item['vat'] or 0) + (item['duties'] or 0)),
         }
         for item in (
             rows.order_by()          # پاک‌کردن ordering پیش‌فرض مدل تا گروه‌بندی درست باشد
             .values('kind')
-            .annotate(count=Count('id'), amount=Sum('amount'), vat=Sum('vat'))
+            .annotate(count=Count('id'), amount=Sum('amount'), vat=Sum('vat'), duties=Sum('duties'))
             .order_by('kind')
         )
     ]
     registered = rows.filter(moadian_status=SeasonalTransaction.MoadianStatus.REGISTERED).count()
     amount = float(agg['amount'] or 0)
     vat = float(agg['vat'] or 0)
+    duties = float(agg['duties'] or 0)
+    by_person_type = [
+        {
+            'person_type': item['person_type'] or 'unknown',
+            'label': dict(seasonal_rules.PERSON_TYPES).get(item['person_type'], 'نامشخص'),
+            'count': item['count'],
+            'amount': float(item['amount'] or 0),
+        }
+        for item in (
+            rows.order_by()
+            .values('person_type')
+            .annotate(count=Count('id'), amount=Sum('amount'))
+            .order_by('person_type')
+        )
+    ]
     return {
+        'direction': direction,
         'count': agg['count'] or 0,
         'amount': amount,
         'vat': vat,
-        'total': amount + vat,
+        'duties': duties,
+        'total': amount + vat + duties,
         'registered': registered,
         'pending': (agg['count'] or 0) - registered,
         'by_kind': by_kind,
+        'by_person_type': by_person_type,
     }
 
 
-def validate_report(report):
-    """اعتبارسنجی ردیف‌های گزارش؛ خروجی: ``{'issues': [...], 'summary': {...}}``.
+def validate_report(report, direction=DIRECTION_PURCHASE):
+    """اعتبارسنجی ردیف‌های خرید بر پایهٔ قواعد اعلانی ``seasonal_rules``.
 
-    ``level='error'`` مانع خروجی رسمی است و ``level='warning'`` فقط یادآوری است
-    (مثلاً نبود شماره اقتصادی یا درج‌نشدن فاکتور در سامانه مودیان).
+    خروجی: ``{'issues': [...], 'summary': {...}, 'ruleset': {...}}``.
+    هر issue دارای ``code``/``source`` است تا «الزام قانونی» از «الزام نسخهٔ
+    TTMS تأییدنشده» و «سیاست داخلی» قابل تفکیک باشد. اعتبارسنجی سرور مرجع نهایی است.
     """
+    rows = list(_scoped_rows(report, direction).order_by('line_no', 'id'))
     period_start, period_end = report.period_range
-    rows = list(report.transactions.order_by('line_no', 'id'))
     issues = []
     seen = {}
 
-    def add(row, field, level, message):
+    def add(row, field, level, message, code='', source=None):
         issues.append({
             'row_id': row.id,
             'row_no': row.line_no,
             'row_name': row.name,
             'field': field,
+            'field_label': seasonal_rules.FIELD_LABELS.get(field, field),
             'level': level,
             'message': message,
+            'code': code,
+            'source': source or seasonal_rules.SOURCE_INTERNAL,
         })
 
     for row in rows:
-        if not row.name.strip():
-            add(row, 'name', 'error', 'نام طرف معامله الزامی است.')
-        if not row.amount and not row.vat:
-            add(row, 'amount', 'error', 'مبلغ معامله باید بزرگ‌تر از صفر باشد.')
+        person_type = row.person_type or ''
+        # ---- قواعد اعلانی: required / recommended / digits / forbidden ----
+        for rule in seasonal_rules.rules_for(person_type or None):
+            if person_type and person_type not in rule['person_types']:
+                continue
+            value = getattr(row, rule['field'], '')
+            text = str(value if value is not None else '').strip()
+            kind = rule['kind']
+            if kind in ('required', 'recommended'):
+                if not text:
+                    add(row, rule['field'], rule['level'], rule['message'], rule['code'], rule['source'])
+            elif kind == 'digits':
+                expected = int(rule.get('length') or 0)
+                if text and (not text.isdigit() or (expected and len(text) != expected)):
+                    add(row, rule['field'], rule['level'], rule['message'], rule['code'], rule['source'])
+            elif kind == 'forbidden':
+                if text:
+                    add(row, rule['field'], rule['level'], rule['message'], rule['code'], rule['source'])
+
+        # ---- قواعد محاسباتی و میان‌فیلدی خرید ----
+        if not row.amount and not row.vat and not row.duties:
+            add(row, 'amount', 'error', 'مبلغ خرید باید بزرگ‌تر از صفر باشد.',
+                'amount_positive', seasonal_rules.SOURCE_LEGAL)
         if row.vat and row.amount and row.vat > row.amount:
-            add(row, 'vat', 'error', 'مالیات بر ارزش افزوده نمی‌تواند از مبلغ معامله بیشتر باشد.')
-        if not row.invoice_no.strip():
-            add(row, 'invoice_no', 'warning', 'شماره فاکتور وارد نشده است.')
-        if not row.invoice_date:
-            add(row, 'invoice_date', 'warning', 'تاریخ فاکتور وارد نشده است.')
-        elif not (period_start <= row.invoice_date <= period_end):
-            add(row, 'invoice_date', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.')
-        if not row.economic_code:
-            if row.person_type == SeasonalTransaction.PersonType.LEGAL:
-                add(row, 'economic_code', 'error', 'برای شخص حقوقی، شماره اقتصادی ۱۱ رقمی الزامی است.')
-            else:
-                add(row, 'economic_code', 'warning', 'شماره اقتصادی ثبت نشده است.')
-        elif len(row.economic_code) != 11:
-            add(row, 'economic_code', 'error', 'شماره اقتصادی باید ۱۱ رقم باشد.')
-        if row.national_id and len(row.national_id) not in (10, 11):
-            add(row, 'national_id', 'error', 'شناسه ملی/کد ملی باید ۱۰ یا ۱۱ رقم باشد.')
-        if not row.postal_code:
-            add(row, 'postal_code', 'warning', 'کد پستی طرف معامله ثبت نشده است.')
-        elif len(row.postal_code) != 10:
-            add(row, 'postal_code', 'error', 'کد پستی باید ۱۰ رقم باشد.')
-        if not row.goods_service_desc.strip():
-            add(row, 'goods_service_desc', 'warning', 'شرح کالا یا خدمات وارد نشده است.')
+            add(row, 'vat', 'error', 'مالیات بر ارزش افزوده نمی‌تواند از مبلغ خرید بیشتر باشد.',
+                'vat_le_amount', seasonal_rules.SOURCE_LEGAL)
+        if row.duties and row.amount and row.duties > row.amount:
+            add(row, 'duties', 'error', 'عوارض نمی‌تواند از مبلغ خرید بیشتر باشد.',
+                'duties_le_amount', seasonal_rules.SOURCE_TTMS)
+        if row.invoice_date and not (period_start <= row.invoice_date <= period_end):
+            add(row, 'invoice_date', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.',
+                'invoice_date_in_period', seasonal_rules.SOURCE_LEGAL)
         if row.moadian_status != SeasonalTransaction.MoadianStatus.REGISTERED:
-            add(row, 'moadian_status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.')
+            add(row, 'moadian_status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.',
+                'moadian_not_registered', seasonal_rules.SOURCE_TTMS)
+        elif not row.moadian_uid:
+            add(row, 'moadian_uid', 'warning',
+                'برای فاکتور درج‌شده در سامانه مودیان، شناسهٔ یکتا بهتر است ثبت شود.',
+                'moadian_uid_recommended', seasonal_rules.SOURCE_TTMS)
 
         if row.invoice_no:
-            key = (row.invoice_no.strip(), row.economic_code.strip())
+            key = (row.invoice_no.strip(), row.economic_code.strip() or row.national_id.strip())
             if key in seen:
-                add(row, 'invoice_no', 'error', f'شماره فاکتور تکراری با ردیف {seen[key]} ثبت شده است.')
+                add(row, 'invoice_no', 'error',
+                    f'شماره فاکتور تکراری با ردیف {seen[key]} ثبت شده است.',
+                    'duplicate_invoice', seasonal_rules.SOURCE_INTERNAL)
             else:
                 seen[key] = row.line_no
 
@@ -236,13 +294,18 @@ def validate_report(report):
     warnings = sum(1 for issue in issues if issue['level'] == 'warning')
     return {
         'issues': issues,
+        'direction': direction,
+        'ruleset': {
+            'version': seasonal_rules.RULESET_VERSION,
+            'status': seasonal_rules.RULESET_STATUS,
+        },
         'summary': {
             'rows': len(rows),
             'errors': errors,
             'warnings': warnings,
             'period_start': period_start.isoformat(),
             'period_end': period_end.isoformat(),
-            'totals': control_totals(report),
+            'totals': control_totals(report, direction),
         },
     }
 
@@ -280,19 +343,23 @@ def _company_identity(report):
 
 
 def _row_values(row):
-    """مقادیر یک ردیف به ترتیب ستون‌های رسمی."""
+    """مقادیر یک ردیف خرید به ترتیب ستون‌های ``PURCHASE_COLUMNS``."""
+    person_label = dict(seasonal_rules.PERSON_TYPES).get(row.person_type, '')
     return [
         row.line_no,
         row.economic_code,
         row.national_id,
         row.name,
+        person_label,
         row.postal_code,
+        row.country,
         row.province,
         row.city,
         row.address,
         row.goods_service_desc,
         int(row.amount or 0),
         int(row.vat or 0),
+        int(row.duties or 0),
         int(row.total or 0),
         int(row.kind),
         _jalali_text(row.invoice_date),
@@ -302,7 +369,7 @@ def _row_values(row):
 
 
 def _build_data_sheet(workbook, report, rows, totals):
-    """شیت «داده»: سرصفحهٔ رسمی + ردیف‌ها + سطر جمع."""
+    """شیت «داده» خرید: سرصفحه + ردیف‌ها + سطر جمع (مبلغ/ارزش افزوده/عوارض/جمع)."""
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
@@ -313,14 +380,14 @@ def _build_data_sheet(workbook, report, rows, totals):
     left = Alignment(horizontal='left', vertical='center')
     thin = Side(style='thin', color='D8DEE9')
     border = Border(left=thin, right=thin, top=thin, bottom=thin)
-    columns = len(OFFICIAL_COLUMNS)
+    columns = len(PURCHASE_COLUMNS)
 
     ws = workbook.active
     ws.title = 'داده'
     ws.sheet_view.rightToLeft = True
 
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=columns)
-    title = ws.cell(row=1, column=1, value='صورت معاملات فصلی — ماده ۱۶۹ مکرر قانون مالیات‌های مستقیم')
+    title = ws.cell(row=1, column=1, value='صورت معاملات فصلی خرید — ماده ۱۶۹ مکرر قانون مالیات‌های مستقیم')
     title.font = Font(bold=True, size=13)
     title.alignment = center
 
@@ -331,10 +398,11 @@ def _build_data_sheet(workbook, report, rows, totals):
         f'{company_name}  |  شناسه ملی: {company_national or "—"}  |  شماره اقتصادی: {company_economic or "—"}'
         f'  |  سال مالی: {report.fiscal_year.name}  |  {report.get_quarter_display()}'
         f'  |  بازه: {_jalali_text(period_start)} تا {_jalali_text(period_end)}'
+        f'  |  قواعد: {seasonal_rules.RULESET_VERSION} ({seasonal_rules.RULESET_STATUS})'
     ))
     meta.alignment = center
 
-    for index, header in enumerate(OFFICIAL_COLUMNS, start=1):
+    for index, header in enumerate(PURCHASE_COLUMNS, start=1):
         cell = ws.cell(row=3, column=index, value=header)
         cell.font = head_font
         cell.fill = head_fill
@@ -349,21 +417,24 @@ def _build_data_sheet(workbook, report, rows, totals):
         for column, value in enumerate(_row_values(row), start=1):
             cell = ws.cell(row=excel_row, column=column, value=value)
             cell.border = border
-            if column in (2, 3, 5, 14, 15):        # کدها و تاریخ به‌صورت متن
+            if column in (2, 3, 6, 17, 18):        # کدها و تاریخ به‌صورت متن
                 cell.number_format = '@'
                 cell.alignment = center
-            elif column in (1, 13, 16):
+            elif column in (1, 5, 16, 19):
                 cell.alignment = center
-            elif column in (10, 11, 12):
+            elif column in (12, 13, 14, 15):
                 cell.number_format = '#,##0'
                 cell.alignment = left
 
     total_row = 4 + len(rows)
-    ws.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=9)
-    label = ws.cell(row=total_row, column=1, value='جمع کل')
+    ws.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=11)
+    label = ws.cell(row=total_row, column=1, value='جمع کل خرید')
     label.font = Font(bold=True)
     label.alignment = center
-    for column, value in ((10, totals['amount']), (11, totals['vat']), (12, totals['total'])):
+    for column, value in (
+        (12, totals['amount']), (13, totals['vat']),
+        (14, totals.get('duties', 0)), (15, totals['total']),
+    ):
         cell = ws.cell(row=total_row, column=column, value=value)
         cell.font = Font(bold=True)
         cell.number_format = '#,##0'
@@ -379,7 +450,7 @@ def _build_data_sheet(workbook, report, rows, totals):
     return ws
 
 def _build_summary_sheet(workbook, report, totals, validation):
-    """شیت «خلاصه»: جمع‌های کنترلی، به تفکیک نوع معامله و وضعیت سامانه."""
+    """شیت «خلاصه» خرید: جمع‌ها، به تفکیک نوع معامله و نوع فروشنده + وضعیت قواعد."""
     from openpyxl.styles import Font, PatternFill
 
     head_font = Font(bold=True, color='FFFFFF', size=10)
@@ -389,7 +460,7 @@ def _build_summary_sheet(workbook, report, totals, validation):
     ws = workbook.create_sheet('خلاصه')
     ws.sheet_view.rightToLeft = True
 
-    ws.append(['صورت معاملات فصلی — خلاصهٔ کنترلی'])
+    ws.append(['صورت معاملات فصلی خرید — خلاصهٔ کنترلی'])
     ws['A1'].font = Font(bold=True, size=13)
     ws.append([])
     for label, value in (
@@ -397,10 +468,13 @@ def _build_summary_sheet(workbook, report, totals, validation):
         ('فصل', report.get_quarter_display()),
         ('بازهٔ فصل', f'{_jalali_text(period_start)} تا {_jalali_text(period_end)}'),
         ('وضعیت گزارش', report.get_status_display()),
+        ('نسخهٔ قواعد اعتبارسنجی', seasonal_rules.RULESET_VERSION),
+        ('وضعیت تأیید قواعد/قالب', seasonal_rules.RULESET_STATUS),
         ('', ''),
-        ('تعداد ردیف', totals['count']),
-        ('جمع مبلغ (ریال)', totals['amount']),
+        ('تعداد ردیف خرید', totals['count']),
+        ('جمع مبلغ خرید (ریال)', totals['amount']),
         ('جمع مالیات بر ارزش افزوده', totals['vat']),
+        ('جمع عوارض', totals.get('duties', 0)),
         ('جمع کل', totals['total']),
         ('درج‌شده در سامانه مودیان', totals['registered']),
         ('درج‌نشده در سامانه', totals['pending']),
@@ -409,24 +483,34 @@ def _build_summary_sheet(workbook, report, totals, validation):
     ):
         ws.append([label, value])
     ws.append([])
-    ws.append(['نوع معامله', 'تعداد', 'مبلغ', 'مالیات', 'جمع کل'])
+    ws.append(['نوع معامله', 'تعداد', 'مبلغ', 'مالیات', 'عوارض', 'جمع کل'])
     for cell in ws[ws.max_row]:
         cell.font = head_font
         cell.fill = head_fill
     for item in totals['by_kind']:
-        ws.append([item['label'], item['count'], item['amount'], item['vat'], item['total']])
+        ws.append([
+            item['label'], item['count'], item['amount'],
+            item['vat'], item.get('duties', 0), item['total'],
+        ])
+    ws.append([])
+    ws.append(['نوع فروشنده', 'تعداد', 'مبلغ'])
+    for cell in ws[ws.max_row]:
+        cell.font = head_font
+        cell.fill = head_fill
+    for item in totals.get('by_person_type', []):
+        ws.append([item['label'], item['count'], item['amount']])
     for row_cells in ws.iter_rows(min_row=1, max_row=ws.max_row):
         for cell in row_cells:
             if isinstance(cell.value, (int, float)):
                 cell.number_format = '#,##0'
-    ws.column_dimensions['A'].width = 30
-    for letter in ('B', 'C', 'D', 'E'):
+    ws.column_dimensions['A'].width = 32
+    for letter in ('B', 'C', 'D', 'E', 'F'):
         ws.column_dimensions[letter].width = 18
     return ws
 
 
 def _build_issues_sheet(workbook, validation):
-    """شیت «خطاها»: فهرست خطا/هشدارهای اعتبارسنجی برای اصلاح قبل از ارسال."""
+    """شیت «خطاها»: فهرست خطا/هشدارها با کد قاعده و منبع (قابل ردیابی)."""
     from openpyxl.styles import Alignment, Font, PatternFill
 
     head_font = Font(bold=True, color='FFFFFF', size=10)
@@ -434,29 +518,31 @@ def _build_issues_sheet(workbook, validation):
 
     ws = workbook.create_sheet('خطاها')
     ws.sheet_view.rightToLeft = True
-    ws.append(['ردیف', 'طرف معامله', 'فیلد', 'سطح', 'پیام'])
+    ws.append(['ردیف', 'فروشنده', 'فیلد', 'سطح', 'پیام', 'کد قاعده', 'منبع قاعده'])
     for cell in ws[1]:
         cell.font = head_font
         cell.fill = head_fill
         cell.alignment = Alignment(horizontal='center', vertical='center')
     for issue in validation['issues']:
         ws.append([
-            issue['row_no'], issue['row_name'], issue['field'],
+            issue['row_no'], issue['row_name'], issue.get('field_label') or issue['field'],
             'خطا' if issue['level'] == 'error' else 'هشدار', issue['message'],
+            issue.get('code', ''), issue.get('source', ''),
         ])
     if not validation['issues']:
-        ws.append(['', 'موردی برای اصلاح نیست.', '', '', ''])
-    for column, width in zip('ABCDE', (8, 30, 18, 10, 60)):
+        ws.append(['', 'موردی برای اصلاح نیست.', '', '', '', '', ''])
+    for column, width in zip('ABCDEFG', (8, 30, 18, 10, 55, 26, 50)):
         ws.column_dimensions[column].width = width
     return ws
 
 
-def build_workbook(report):
-    """کارپوشهٔ خروجی رسمی: داده + خلاصه + خطاها."""
+def build_workbook(report, direction=DIRECTION_PURCHASE):
+    """کارپوشهٔ خروجی مدیریتی خرید: داده + خلاصه + خطاها (فقط ردیف‌های خرید)."""
     from openpyxl import Workbook
 
-    validation = validate_report(report)
-    rows = list(report.transactions.order_by('line_no', 'id'))
+    direction = _ensure_supported(direction)
+    validation = validate_report(report, direction)
+    rows = list(_scoped_rows(report, direction).order_by('line_no', 'id'))
     totals = validation['summary']['totals']
 
     workbook = Workbook()
@@ -464,4 +550,113 @@ def build_workbook(report):
     _build_summary_sheet(workbook, report, totals, validation)
     _build_issues_sheet(workbook, validation)
     return workbook
+
+
+
+# ---------------------------------------------------------------------------
+# خروجی TTMS (پیش‌نویس آزمایش‌نشده)
+# ---------------------------------------------------------------------------
+
+def _draft_value(row, internal):
+    """مقدار یک ردیف برای پیش‌نویس TTMS بر اساس فیلد داخلی."""
+    if internal == 'person_type':
+        return dict(seasonal_rules.PERSON_TYPES).get(row.person_type, '')
+    if internal == 'moadian_status':
+        return 'درج‌شده در سامانه' if row.moadian_status == 'registered' else 'درج‌نشده'
+    if internal == 'invoice_date':
+        return _jalali_text(row.invoice_date)
+    if internal in ('amount', 'vat', 'duties', 'total', 'kind', 'line_no'):
+        value = getattr(row, internal, None)
+        return int(value or 0)
+    return str(getattr(row, internal, '') or '')
+
+
+def build_ttms_draft(report, direction=DIRECTION_PURCHASE):
+    """ساخت بستهٔ «پیش‌نویس TTMS» — **آزمایش‌نشده** (قالب رسمی در دسترس نیست).
+
+    خروجی: ``(zip_bytes, filename, warnings)``. بسته شامل:
+    - ``purchase-rows.csv``: فقط ردیف‌های خرید، با ستون‌های نگاشتِ پیش‌نویس
+    - ``README.txt``: هشدار عدم تأیید، نسخهٔ قواعد، جدول نگاشت و اقلام لازم برای تکمیل
+    """
+    import csv
+    import io
+    import zipfile
+
+    direction = _ensure_supported(direction)
+    rows = list(_scoped_rows(report, direction).order_by('line_no', 'id'))
+    mapping = seasonal_rules.TTMS_DRAFT_MAPPING
+    totals = control_totals(report, direction)
+    period_start, period_end = report.period_range
+    company_name, company_economic, company_national = _company_identity(report)
+
+    buffer = io.StringIO()
+    writer = csv.writer(buffer, lineterminator='\r\n')
+    writer.writerow([seasonal_rules.FIELD_LABELS.get(item['internal'], item['internal']) for item in mapping])
+    for row in rows:
+        writer.writerow([_draft_value(row, item['internal']) for item in mapping])
+    csv_text = '\ufeff' + buffer.getvalue()
+
+    mapping_lines = [
+        f"- {seasonal_rules.FIELD_LABELS.get(item['internal'], item['internal'])}"
+        f" | فیلد داخلی: {item['internal']}"
+        f" | نوع: {item['type']}"
+        f" | طول: {item.get('length') or '—'}"
+        f" | الزام: {item.get('requirement', '—')}"
+        f" | نام فیلد در قالب رسمی: {item.get('target_field') or 'نامشخص (نیازمند قالب رسمی)'}"
+        for item in mapping
+    ]
+    readme = '\r\n'.join([
+        'بستهٔ پیش‌نویس خروجی TTMS — وضعیت: آزمایش‌نشده (UNVERIFIED)',
+        '=' * 70,
+        '',
+        'هشدار مهم:',
+        'قالب رسمی/Access نسخهٔ TTMS هدف و راهنمای آن در محیط پروژه موجود نبود؛',
+        'این فایل صرفاً یک «پیش‌نویس ساختاری» است و نباید به‌عنوان خروجی تأییدشده',
+        'یا سازگار قطعی با نرم‌افزار TTMS تلقی شود. پیش از استفادهٔ رسمی، فایل باید',
+        'با نسخهٔ مشخص TTMS آزمایش و نگاشت ستون‌ها نهایی شود.',
+        '',
+        f'نسخهٔ قواعد اعتبارسنجی: {seasonal_rules.RULESET_VERSION} ({seasonal_rules.RULESET_STATUS})',
+        '',
+        'سرصفحهٔ گزارش:',
+        f'  شرکت: {company_name}',
+        f'  شناسه ملی شرکت: {company_national or "—"}',
+        f'  شماره اقتصادی شرکت: {company_economic or "—"}',
+        f'  سال مالی: {report.fiscal_year.name} | {report.get_quarter_display()}',
+        f'  بازهٔ فصل: {_jalali_text(period_start)} تا {_jalali_text(period_end)}',
+        f'  جهت معامله: خرید',
+        '',
+        'جمع‌های کنترل (فقط خرید):',
+        f'  تعداد ردیف: {totals["count"]}',
+        f'  جمع مبلغ: {totals["amount"]}',
+        f'  جمع مالیات بر ارزش افزوده: {totals["vat"]}',
+        f'  جمع عوارض: {totals.get("duties", 0)}',
+        f'  جمع کل: {totals["total"]}',
+        '',
+        'نگاشت ستون‌های پیش‌نویس:',
+        *mapping_lines,
+        '',
+        'برای تکمیل و تأیید این خروجی، موارد زیر لازم است:',
+        '  1) نسخهٔ دقیق نرم‌افزار آفلاین TTMS مورد استفاده در مؤسسه برای سال ۱۴۰۵',
+        '  2) فایل خام Access (یا پایگاه‌دادهٔ رسمی) همان نسخه و راهنمای همراه آن',
+        '  3) نام/نوع/طول/مقدار مجاز هر ستون در بخش «خرید» و تفاوت الزامات فروشندهٔ',
+        '     حقیقی/حقوقی/خارجی در همان نسخه',
+        '  4) نمونهٔ فایل ورودی موفق (برای آزمون رفت‌وبرگشت)',
+        '',
+        'پس از دریافت موارد بالا، تنها نگاشت seasonal_rules.TTMS_DRAFT_MAPPING و',
+        'سطح/شدت قواعد همان فایل به‌روزرسانی می‌شود؛ ساختار فرم و API تغییر نمی‌کند.',
+    ])
+
+    zip_buffer = io.BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as archive:
+        archive.writestr('purchase-rows.csv', csv_text)
+        archive.writestr('README.txt', readme)
+
+    warnings = [
+        'خروجی TTMS «آزمایش‌نشده» است: قالب رسمی نسخهٔ هدف در دسترس نبود.',
+        'نام ستون‌های رسمی TTMS نگاشت نشده و در README به‌صورت «نامشخص» علامت خورده است.',
+        'پیش از ارسال رسمی، فایل باید با نسخهٔ مشخص TTMS آزمایش شود.',
+    ]
+    year_key = getattr(report, 'fiscal_year_id', None) or getattr(report.fiscal_year, 'pk', 'na')
+    filename = f'ttms-draft-purchase-{year_key}-q{report.quarter}.zip'
+    return zip_buffer.getvalue(), filename, warnings
 

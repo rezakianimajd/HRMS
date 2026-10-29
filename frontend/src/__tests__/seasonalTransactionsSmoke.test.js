@@ -41,6 +41,7 @@ const API_ROW = {
   goods_service_desc: 'خدمات مشاوره مالی',
   amount: '1000000',
   vat: '90000',
+  duties: '0',
   total: '1090000',
   kind: 1,
   invoice_date: '2026-04-10',
@@ -53,12 +54,26 @@ const apiReport = (transactions = []) => ({
   fiscal_year: 7,
   quarter: 1,
   status: 'draft',
+  direction: 'purchase',
   period_start: '2026-03-21',
   period_end: '2026-06-21',
   rows_count: transactions.length,
   transactions,
+  ruleset: { version: 'draft-1405.1', status: 'unverified' },
   control_totals: { count: transactions.length },
 });
+
+const apiReference = {
+  direction: 'purchase',
+  ruleset_version: 'draft-1405.1',
+  ruleset_status: 'unverified',
+  required: {
+    legal: ['name', 'person_type', 'economic_code', 'national_id'],
+    natural: ['name', 'person_type', 'national_id'],
+    foreign: ['name', 'person_type', 'country'],
+  },
+  rules: [],
+};
 
 const ROWS_KEY = 'hrms.seasonal.rows.7.q1';
 
@@ -110,6 +125,11 @@ beforeEach(() => {
 
   axiosInstance.get.mockImplementation((url) => {
     if (url === '/accounting/fiscal-years/') return Promise.resolve({ data: fiscalYears });
+    if (url === '/accounting/tax/seasonal-reports/reference/') {
+      return apiShouldFail
+        ? Promise.reject(new Error('offline'))
+        : Promise.resolve({ data: apiReference });
+    }
     if (url === '/accounting/tax/seasonal-reports/current/') {
       return apiShouldFail
         ? Promise.reject(new Error('offline'))
@@ -140,13 +160,15 @@ test('renders header, official columns, studio search bar and the api period ran
   currentReport = apiReport([API_ROW]);
   const { root, container } = await renderPage();
 
-  expect(container.textContent).toContain('صورت معاملات فصلی (ورود دستی)');
+  expect(container.textContent).toContain('معاملات فصلی خرید');
   expect(container.textContent).toContain('بازهٔ فصل: ۱۴۰۵/۰۱/۰۱ تا ۱۴۰۵/۰۳/۳۱');
+  expect(container.textContent).toContain('قواعد/قالب TTMS تأییدنشده');
   expect(container.querySelector('input[placeholder^="جستجو در نام طرف معامله"]')).not.toBeNull();
 
   const buttonLabels = Array.from(container.querySelectorAll('button')).map((button) => button.textContent.trim());
   expect(buttonLabels.some((label) => label.includes('اعتبارسنجی'))).toBe(true);
   expect(buttonLabels.some((label) => label.includes('چاپ'))).toBe(true);
+  expect(buttonLabels.some((label) => label.includes('خروجی TTMS'))).toBe(true);
   expect(buttonLabels.some((label) => label.includes('خروجی اکسل'))).toBe(true);
   expect(buttonLabels.some((label) => label.includes('ارزش افزوده ۱۰٪'))).toBe(false);
   expect(buttonLabels.some((label) => label.includes('ردیف جدید'))).toBe(false);
@@ -155,9 +177,25 @@ test('renders header, official columns, studio search bar and the api period ran
   expect(table).not.toBeNull();
   const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
   expect(headers).toEqual([
-    'ردیف', 'نام و نام خانوادگی / نام شرکت', 'شماره اقتصادی', 'شناسه ملی', 'کد پستی',
-    'شهر', 'آدرس', 'شرح کالا / خدمات', 'مبلغ', 'مالیات بر ارزش افزوده', 'جمع کل',
-    'نوع', 'تاریخ فاکتور', 'شماره فاکتور', 'وضعیت', 'عملیات',
+    'ردیف',
+    'نام فروشنده*',
+    'نوع فروشنده*',
+    'شماره اقتصادی*',
+    'شناسه ملی / کد ملی*',
+    'کد پستی',
+    'کشور*',
+    'شهر',
+    'آدرس',
+    'شرح کالا / خدمات',
+    'مبلغ',
+    'مالیات بر ارزش افزوده',
+    'عوارض',
+    'جمع کل',
+    'نوع',
+    'تاریخ فاکتور',
+    'شماره فاکتور',
+    'وضعیت',
+    'عملیات',
   ]);
 
   root.unmount();
@@ -287,7 +325,7 @@ test('excel export downloads the official workbook from the api', async () => {
   expect(exportCalls.length).toBe(1);
   expect(exportCalls[0][1]).toMatchObject({ responseType: 'blob' });
   expect(clickSpy).toHaveBeenCalledTimes(1);
-  expect(clickSpy.mock.instances[0].download).toBe('seasonal-7-q1.xlsx');
+  expect(clickSpy.mock.instances[0].download).toBe('seasonal-purchase-7-q1.xlsx');
 
   clickSpy.mockRestore();
   root.unmount();
@@ -296,6 +334,9 @@ test('excel export downloads the official workbook from the api', async () => {
 
 test('falls back to the local storage when the api is unavailable', async () => {
   apiShouldFail = true;
+  /* تخلیهٔ تایمرهای ذخیرهٔ تست قبلی تا آینهٔ محلی بازنویسی نشود */
+  await act(async () => { await wait(200); });
+  window.localStorage.clear();
   window.localStorage.setItem(ROWS_KEY, JSON.stringify([{
     id: 'r-local-1', name: 'شرکت محلی', city: 'شیراز', address: 'بلوار زند',
     nationalId: '10101010101', description: 'خدمات', amount: '500000', vat: '50000',
@@ -315,6 +356,81 @@ test('falls back to the local storage when the api is unavailable', async () => 
     .find((button) => button.textContent.includes('اعتبارسنجی'));
   await act(async () => { validateButton.click(); await wait(220); });
   expect(container.textContent).toMatch(/اعتبارسنجی: [۰-۹]+ (خطا|هشدار)/);
+
+  root.unmount();
+  container.remove();
+});
+
+
+
+test('purchase grid shows seller type, duties total and required markers', async () => {
+  currentReport = apiReport([{ ...API_ROW, person_type: 'foreign', country: 'آلمان', economic_code: '', national_id: '', duties: '20000' }]);
+  const { root, container } = await renderPage();
+
+  const firstRow = container.querySelectorAll('tbody tr')[0];
+  /* نوع فروشنده به‌صورت انتخاب‌گر با سه گزینه */
+  const personSelect = firstRow.querySelector('[aria-label="نوع فروشنده"]');
+  expect(personSelect).not.toBeNull();
+  expect(personSelect.textContent.trim()).toBe('خارجی');
+  /* کشور برای فروشندهٔ خارجی در دسترس است */
+  expect(firstRow.querySelector('input[placeholder="کشور"]')).not.toBeNull();
+
+  /* عوارض در جمع کل و در فوتر لحاظ می‌شود: ۱٬۰۰۰٬۰۰۰ + ۹۰٬۰۰۰ + ۲۰٬۰۰۰ */
+  expect(firstRow.textContent).toContain('۱٬۱۱۰٬۰۰۰');
+  expect(container.textContent).toContain('جمع عوارض: ۲۰٬۰۰۰');
+
+  root.unmount();
+  container.remove();
+});
+
+test('ttms draft export asks for confirmation and downloads the unverified bundle', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  const created = [];
+  window.URL.createObjectURL = jest.fn((blob) => { created.push(blob); return 'blob:ttms'; });
+  window.URL.revokeObjectURL = jest.fn();
+  const confirmSpy = jest.spyOn(window, 'confirm').mockImplementation(() => true);
+  const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(function noop() {});
+
+  const ttmsButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('خروجی TTMS'));
+  await act(async () => { ttmsButton.click(); await wait(320); });
+
+  expect(confirmSpy).toHaveBeenCalledTimes(1);
+  expect(String(confirmSpy.mock.calls[0][0])).toContain('آزمایش‌نشده');
+  const exportCalls = axiosInstance.get.mock.calls.filter(([url]) => url.endsWith('/export-ttms/'));
+  expect(exportCalls.length).toBe(1);
+  expect(exportCalls[0][1]).toMatchObject({ responseType: 'blob' });
+  expect(clickSpy).toHaveBeenCalledTimes(1);
+  expect(clickSpy.mock.instances[0].download).toBe('ttms-draft-purchase-7-q1.zip');
+
+  confirmSpy.mockRestore();
+  clickSpy.mockRestore();
+  root.unmount();
+  container.remove();
+});
+
+test('local rules engine flags a missing country for foreign sellers', async () => {
+  apiShouldFail = true;
+  await act(async () => { await wait(200); });
+  window.localStorage.clear();
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([{
+    id: 'r-foreign', name: 'فروشندهٔ خارجی', personType: 'foreign', country: '',
+    city: '', address: '', economicCode: '', nationalId: '', postalCode: '',
+    description: 'خرید دستگاه', amount: '1000000', vat: '0', duties: '0',
+    kind: 1, invoiceDate: '2026-04-15', invoiceNo: 'T-1', status: 'pending',
+  }]));
+
+  const { root, container } = await renderPage();
+  expect(container.textContent).toContain('حالت محلی');
+
+  const validateButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('اعتبارسنجی'));
+  await act(async () => { validateButton.click(); await wait(240); });
+
+  /* یک خطا (کشور) و هشدارهای توصیه‌ای */
+  expect(container.textContent).toMatch(/اعتبارسنجی: [۱-۹][۰-۹]* خطا/);
 
   root.unmount();
   container.remove();

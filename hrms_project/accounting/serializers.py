@@ -428,13 +428,16 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
     total = serializers.SerializerMethodField()
     kind_display = serializers.CharField(source='get_kind_display', read_only=True)
     moadian_status_display = serializers.CharField(source='get_moadian_status_display', read_only=True)
+    person_type_display = serializers.CharField(source='get_person_type_display', read_only=True)
+    direction_display = serializers.CharField(source='get_direction_display', read_only=True)
 
     class Meta(BaseModelSerializer.Meta):
         model = SeasonalTransaction
         fields = [
-            'id', 'line_no', 'name', 'person_type', 'economic_code', 'national_id',
-            'postal_code', 'province', 'city', 'address', 'goods_service_desc',
-            'amount', 'vat', 'total', 'kind', 'kind_display', 'invoice_date',
+            'id', 'line_no', 'direction', 'direction_display', 'name', 'person_type',
+            'person_type_display', 'economic_code', 'national_id', 'postal_code',
+            'country', 'province', 'city', 'address', 'goods_service_desc',
+            'amount', 'vat', 'duties', 'total', 'kind', 'kind_display', 'invoice_date',
             'invoice_no', 'moadian_status', 'moadian_status_display', 'moadian_uid',
             'currency_code', 'fx_rate', 'source', 'created_at', 'updated_at',
         ]
@@ -453,12 +456,20 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
             raise serializers.ValidationError('مالیات بر ارزش افزوده نمی‌تواند منفی باشد.')
         return value
 
+    def validate_duties(self, value):
+        if value is None or value < 0:
+            raise serializers.ValidationError('عوارض نمی‌تواند منفی باشد.')
+        return value
+
     def validate(self, attrs):
         attrs = super().validate(attrs)
         amount = attrs.get('amount', getattr(self.instance, 'amount', 0)) or 0
         vat = attrs.get('vat', getattr(self.instance, 'vat', 0)) or 0
+        duties = attrs.get('duties', getattr(self.instance, 'duties', 0)) or 0
         if vat and amount and vat > amount:
-            raise serializers.ValidationError({'vat': 'مالیات بر ارزش افزوده از مبلغ معامله بیشتر است.'})
+            raise serializers.ValidationError({'vat': 'مالیات بر ارزش افزوده از مبلغ خرید بیشتر است.'})
+        if duties and amount and duties > amount:
+            raise serializers.ValidationError({'duties': 'عوارض از مبلغ خرید بیشتر است.'})
         invoice_date = attrs.get('invoice_date', getattr(self.instance, 'invoice_date', None))
         report = attrs.get('report', getattr(self.instance, 'report', None))
         if report and invoice_date:
@@ -474,7 +485,7 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
         return attrs
 
 class SeasonalReportSerializer(BaseModelSerializer):
-    """گزارش فصلی + ردیف‌ها + جمع‌های کنترل."""
+    """گزارش فصلی + ردیف‌های یک جهت معامله + جمع‌های کنترل همان جهت."""
 
     fiscal_year_name = serializers.CharField(source='fiscal_year.name', read_only=True)
     quarter_display = serializers.CharField(source='get_quarter_display', read_only=True)
@@ -484,7 +495,9 @@ class SeasonalReportSerializer(BaseModelSerializer):
     is_locked = serializers.BooleanField(read_only=True)
     rows_count = serializers.SerializerMethodField()
     control_totals = serializers.SerializerMethodField()
-    transactions = SeasonalTransactionSerializer(many=True, read_only=True)
+    transactions = serializers.SerializerMethodField()
+    direction = serializers.SerializerMethodField()
+    ruleset = serializers.SerializerMethodField()
 
     class Meta(BaseModelSerializer.Meta):
         model = SeasonalReport
@@ -492,17 +505,32 @@ class SeasonalReportSerializer(BaseModelSerializer):
             'id', 'fiscal_year', 'fiscal_year_name', 'quarter', 'quarter_display',
             'status', 'status_display', 'notes', 'submitted_at', 'submission_ref',
             'period_start', 'period_end', 'is_locked', 'rows_count', 'control_totals',
-            'transactions', 'created_at', 'updated_at',
+            'transactions', 'direction', 'ruleset', 'created_at', 'updated_at',
         ]
         read_only_fields = ['id', 'company', 'created_at', 'updated_at', 'submitted_at']
 
+    def _direction(self):
+        return self.context.get('direction') or 'purchase'
+
+    def get_direction(self, obj):
+        return self._direction()
+
+    def get_ruleset(self, obj):
+        from accounting import seasonal_rules
+
+        return {'version': seasonal_rules.RULESET_VERSION, 'status': seasonal_rules.RULESET_STATUS}
+
     def get_rows_count(self, obj):
-        return obj.transactions.count()
+        return obj.transactions.filter(direction=self._direction()).count()
+
+    def get_transactions(self, obj):
+        rows = obj.transactions.filter(direction=self._direction()).order_by('line_no', 'id')
+        return SeasonalTransactionSerializer(rows, many=True, context=self.context).data
 
     def get_control_totals(self, obj):
         from accounting.seasonal import control_totals
 
-        return control_totals(obj)
+        return control_totals(obj, self._direction())
 
     def validate(self, attrs):
         attrs = super().validate(attrs)
