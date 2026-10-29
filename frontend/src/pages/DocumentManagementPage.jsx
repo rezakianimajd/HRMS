@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
@@ -241,10 +241,18 @@ const DocumentManagementPage = () => {
       ...personnel.rows.flatMap((person) => person.documents.map((doc) => ({
         ...doc,
         employee_name: person.employee.full_name || '',
+        employee_first_name: person.employee.first_name || '',
+        employee_last_name: person.employee.last_name || '',
         employee_code: person.employee.employee_id || '',
+        employee_department: person.employee.department_name || '',
       }))),
       ...(personnel.unassigned || []).map((doc) => ({
-        ...doc, employee_name: 'بدون پرسنل قابل تطبیق', employee_code: '',
+        ...doc,
+        employee_name: 'بدون پرسنل قابل تطبیق',
+        employee_first_name: '—',
+        employee_last_name: '—',
+        employee_code: '',
+        employee_department: '',
       })),
     ]
     : []), [personnelMode, personnel.rows, personnel.unassigned]);
@@ -317,6 +325,25 @@ const DocumentManagementPage = () => {
   const expiringSoon = tableRows.filter((row) => row.days_until_expiry != null
     && row.days_until_expiry >= 0 && row.days_until_expiry <= 30).length;
   const dateCell = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
+  /* عنوان سند در بایگانی قرارداد: از عنوانِ قرارداد در ماژول قراردادها خوانده می‌شود */
+  const CONTRACT_PATTERN = /contract/i;
+  const contractTitleOf = (row) => row.related_entity_label || row.folder_name || row.folder_path || '';
+  const isContractRow = (row) => CONTRACT_PATTERN.test(String(row.related_entity_type || ''))
+    || CONTRACT_PATTERN.test(String(row.source_module_key || ''))
+    || CONTRACT_PATTERN.test(String(row.folder_path || ''))
+    || row.document_type === 'contract';
+  const contractMode = !personnelMode && (
+    activeModuleKey === 'contracts'
+    || (tableRows.length > 0 && tableRows.every(isContractRow))
+  );
+  /* عنوان مدرک پرسنلی: اگر عنوان فایل خام باشد، از نوع مدرک استفاده می‌شود */
+  const LOOKS_LIKE_FILE = /\.(pdf|jpe?g|png|gif|webp|docx?|xlsx?|pptx?|zip|rar)$/i;
+  const docTypeLabel = (row) => DOCUMENT_TYPE[row.document_type]?.label || row.document_type_display || '';
+  const personnelDocTitle = (row) => {
+    const title = String(row.title || '').trim();
+    if (!title || LOOKS_LIKE_FILE.test(title)) return docTypeLabel(row) || title || '—';
+    return title;
+  };
   const sizeCell = (value) => {
     const bytes = Number(value) || 0;
     if (!bytes) return '—';
@@ -611,6 +638,219 @@ const DocumentManagementPage = () => {
     return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress /></Box>;
   }
 
+  /* ---- ستون‌های جدول بر اساس نوع کتابخانه ---- */
+  const rowColumn = {
+    key: 'row',
+    label: 'ردیف',
+    width: '4%',
+    align: 'center',
+    render: (_row, index) => (
+      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+        {toPersianDigits(page * pageSize + index + 1)}
+      </Typography>
+    ),
+  };
+  const titleColumn = {
+    key: 'title',
+    label: 'عنوان سند',
+    width: contractMode ? '15%' : '23%',
+    render: (row) => (
+      <Typography noWrap title={`${row.title || ''}${row.reference_number ? ` · ${row.reference_number}` : ''}`}
+        sx={{ fontSize: 12, fontWeight: 800 }}>
+        {row.title || '—'}
+      </Typography>
+    ),
+  };
+  const contractTitleColumn = {
+    key: 'contractTitle',
+    label: 'عنوان قرارداد',
+    width: '18%',
+    render: (row) => (
+      <Typography noWrap title={contractTitleOf(row)} sx={{ fontSize: 12, fontWeight: 800 }}>
+        {contractTitleOf(row) || '—'}
+      </Typography>
+    ),
+  };
+  const typeColumn = {
+    key: 'type',
+    label: 'نوع',
+    width: contractMode ? '8%' : '9%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
+        {DOCUMENT_TYPE[row.document_type]?.label || '—'}
+      </Typography>
+    ),
+  };
+  const personnelCodeColumn = {
+    key: 'employeeCode',
+    label: 'شماره پرسنلی',
+    width: '9%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+        {row.employee_code ? toPersianDigits(row.employee_code) : '—'}
+      </Typography>
+    ),
+  };
+  const lastNameColumn = {
+    key: 'employeeLastName',
+    label: 'نام خانوادگی',
+    width: '13%',
+    render: (row) => (
+      <Typography noWrap title={row.employee_name} sx={{ fontSize: 11.5, fontWeight: 800 }}>
+        {row.employee_last_name || '—'}
+      </Typography>
+    ),
+  };
+  const firstNameColumn = {
+    key: 'employeeFirstName',
+    label: 'نام',
+    width: '10%',
+    render: (row) => (
+      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>
+        {row.employee_first_name || '—'}
+      </Typography>
+    ),
+  };
+  const personnelDocumentTitleColumn = {
+    key: 'personnelTitle',
+    label: 'عنوان مدرک',
+    width: '18%',
+    render: (row) => (
+      <Typography noWrap title={`${personnelDocTitle(row)}${row.employee_department ? ` · ${row.employee_department}` : ''}`}
+        sx={{ fontSize: 12, fontWeight: 800 }}>
+        {personnelDocTitle(row)}
+      </Typography>
+    ),
+  };
+  const folderColumn = {
+    key: 'folder',
+    label: 'پوشه',
+    width: contractMode ? '11%' : '13%',
+    render: (row) => (
+      <Typography noWrap title={row.folder_path} sx={{ fontSize: 11, color: 'text.secondary' }}>
+        {row.folder_path || 'بدون پوشه'}
+      </Typography>
+    ),
+  };
+  const confidentialityColumn = {
+    key: 'confidentiality',
+    label: 'محرمانگی',
+    width: '8%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
+        {CONFIDENTIALITY[row.confidentiality]?.label || row.confidentiality_display || '—'}
+      </Typography>
+    ),
+  };
+  const workflowColumn = {
+    key: 'workflow',
+    label: 'گردش‌کار',
+    width: '9%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{
+        fontSize: 11, fontWeight: 800,
+        color: WORKFLOW_STATUS[row.workflow_status]?.color || 'text.primary',
+      }}>
+        {WORKFLOW_STATUS[row.workflow_status]?.label || row.workflow_status_display || '—'}
+      </Typography>
+    ),
+  };
+  const versionColumn = {
+    key: 'version',
+    label: 'نسخه',
+    width: '5%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{ fontSize: 11, fontWeight: 700 }}>
+        {toPersianDigits(row.version_count || 1)}
+      </Typography>
+    ),
+  };
+  const sizeColumn = {
+    key: 'size',
+    label: 'حجم',
+    width: '6%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>{sizeCell(row.file_size)}</Typography>
+    ),
+  };
+  const expiryColumn = {
+    key: 'expiry',
+    label: 'انقضا',
+    width: '8%',
+    align: 'center',
+    render: (row) => (
+      <Typography noWrap sx={{
+        fontSize: 11,
+        fontWeight: row.is_expired ? 900 : 600,
+        color: row.is_expired ? '#be123c' : 'text.primary',
+      }}>
+        {dateCell(row.expiry_date)}
+      </Typography>
+    ),
+  };
+  const actionsColumn = {
+    key: 'actions',
+    label: 'عملیات',
+    width: personnelMode ? '9%' : '8%',
+    align: 'center',
+    render: (row) => (
+      <Stack direction="row" spacing={0.1} alignItems="center" justifyContent="center"
+        onClick={(event) => event.stopPropagation()}>
+        <Tooltip title="جزئیات و نسخه‌ها">
+          <IconButton size="small" aria-label="جزئیات سند" onClick={() => setDetail(row)}>
+            <VisibilityOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+        {row.status === 'archived' ? (
+          <Tooltip title="بازگردانی از بایگانی">
+            <IconButton size="small" aria-label="بازگردانی سند" color="success"
+              disabled={!canManage} onClick={() => restore.mutate(row)}>
+              <RestoreOutlinedIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Tooltip>
+        ) : (
+          <Tooltip title="ویرایش سند">
+            <IconButton size="small" aria-label="ویرایش سند" disabled={!canManage}
+              onClick={() => openEdit(row)}>
+              <EditOutlinedIcon sx={{ fontSize: 15 }} />
+            </IconButton>
+          </Tooltip>
+        )}
+        <Tooltip title="دانلود">
+          <IconButton size="small" aria-label="دانلود سند" onClick={() => downloadDocument.mutate(row)}>
+            <DownloadIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+        <Tooltip title="حذف">
+          <IconButton size="small" aria-label="حذف سند" color="error"
+            disabled={!canDelete} onClick={() => setConfirmDelete(row)}>
+            <DeleteOutlineIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+    ),
+  };
+  const tableColumns = personnelMode
+    ? [
+      rowColumn, personnelCodeColumn, lastNameColumn, firstNameColumn, personnelDocumentTitleColumn,
+      typeColumn, confidentialityColumn, workflowColumn, versionColumn, sizeColumn, actionsColumn,
+    ]
+    : contractMode
+      ? [
+        rowColumn, contractTitleColumn, titleColumn, typeColumn, folderColumn,
+        confidentialityColumn, workflowColumn, versionColumn, sizeColumn, expiryColumn, actionsColumn,
+      ]
+      : [
+        rowColumn, titleColumn, typeColumn, folderColumn, confidentialityColumn,
+        workflowColumn, versionColumn, sizeColumn, expiryColumn, actionsColumn,
+      ];
+
   return (
     <Box sx={{ pb: 1 }}>
       <PageHeader
@@ -694,169 +934,7 @@ const DocumentManagementPage = () => {
           rowKey={(row) => row.id}
           onRowClick={(row) => setDetail(row)}
           emptyText="سندی با این مشخصات پیدا نشد؛ فیلترها یا عبارت جست‌وجو را تغییر دهید."
-          columns={[
-            {
-              key: 'row',
-              label: 'ردیف',
-              width: '4%',
-              align: 'center',
-              render: (_row, index) => (
-                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                  {toPersianDigits(page * pageSize + index + 1)}
-                </Typography>
-              ),
-            },
-            {
-              key: 'title',
-              label: 'عنوان سند',
-              width: '23%',
-              render: (row) => (
-                <Typography noWrap title={`${row.title || ''}${row.reference_number ? ` · ${row.reference_number}` : ''}`}
-                  sx={{ fontSize: 12, fontWeight: 800 }}>
-                  {row.title || '—'}
-                </Typography>
-              ),
-            },
-            {
-              key: 'type',
-              label: 'نوع',
-              width: '9%',
-              align: 'center',
-              render: (row) => (
-                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
-                  {DOCUMENT_TYPE[row.document_type]?.label || '—'}
-                </Typography>
-              ),
-            },
-            personnelMode ? {
-              key: 'employee',
-              label: 'پرسنل',
-              width: '13%',
-              render: (row) => (
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap title={row.employee_name} sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                    {row.employee_name || '—'}
-                  </Typography>
-                  {row.employee_code ? (
-                    <Typography noWrap sx={{ fontSize: 10, color: MUTED }}>
-                      {`کد ${toPersianDigits(row.employee_code)}`}
-                    </Typography>
-                  ) : null}
-                </Box>
-              ),
-            } : {
-              key: 'folder',
-              label: 'پوشه',
-              width: '13%',
-              render: (row) => (
-                <Typography noWrap title={row.folder_path} sx={{ fontSize: 11, color: 'text.secondary' }}>
-                  {row.folder_path || 'بدون پوشه'}
-                </Typography>
-              ),
-            },
-            {
-              key: 'confidentiality',
-              label: 'محرمانگی',
-              width: '9%',
-              align: 'center',
-              render: (row) => (
-                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: 'text.secondary' }}>
-                  {CONFIDENTIALITY[row.confidentiality]?.label || row.confidentiality_display || '—'}
-                </Typography>
-              ),
-            },
-            {
-              key: 'workflow',
-              label: 'گردش‌کار',
-              width: '9%',
-              align: 'center',
-              render: (row) => (
-                <Typography noWrap sx={{
-                  fontSize: 11, fontWeight: 800,
-                  color: WORKFLOW_STATUS[row.workflow_status]?.color || 'text.primary',
-                }}>
-                  {WORKFLOW_STATUS[row.workflow_status]?.label || row.workflow_status_display || '—'}
-                </Typography>
-              ),
-            },
-            {
-              key: 'version',
-              label: 'نسخه',
-              width: '6%',
-              align: 'center',
-              render: (row) => (
-                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700 }}>
-                  {toPersianDigits(row.version_count || 1)}
-                </Typography>
-              ),
-            },
-            {
-              key: 'size',
-              label: 'حجم',
-              width: '7%',
-              align: 'center',
-              render: (row) => (
-                <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>{sizeCell(row.file_size)}</Typography>
-              ),
-            },
-            {
-              key: 'expiry',
-              label: 'انقضا',
-              width: '9%',
-              align: 'center',
-              render: (row) => (
-                <Typography noWrap sx={{
-                  fontSize: 11,
-                  fontWeight: row.is_expired ? 900 : 600,
-                  color: row.is_expired ? '#be123c' : 'text.primary',
-                }}>
-                  {dateCell(row.expiry_date)}
-                </Typography>
-              ),
-            },
-            {
-              key: 'actions',
-              label: 'عملیات',
-              width: '11%',
-              align: 'center',
-              render: (row) => (
-                <Stack direction="row" spacing={0.1} alignItems="center" justifyContent="center"
-                  onClick={(event) => event.stopPropagation()}>
-                  <Tooltip title="جزئیات و نسخه‌ها">
-                    <IconButton size="small" aria-label="جزئیات سند" onClick={() => setDetail(row)}>
-                      <VisibilityOutlinedIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                  </Tooltip>
-                  {row.status === 'archived' ? (
-                    <Tooltip title="بازگردانی از بایگانی">
-                      <IconButton size="small" aria-label="بازگردانی سند" color="success"
-                        disabled={!canManage} onClick={() => restore.mutate(row)}>
-                        <RestoreOutlinedIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </Tooltip>
-                  ) : (
-                    <Tooltip title="ویرایش سند">
-                      <IconButton size="small" aria-label="ویرایش سند" disabled={!canManage}
-                        onClick={() => openEdit(row)}>
-                        <EditOutlinedIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </Tooltip>
-                  )}
-                  <Tooltip title="دانلود">
-                    <IconButton size="small" aria-label="دانلود سند" onClick={() => downloadDocument.mutate(row)}>
-                      <DownloadIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                  </Tooltip>
-                  <Tooltip title="حذف">
-                    <IconButton size="small" aria-label="حذف سند" color="error"
-                      disabled={!canDelete} onClick={() => setConfirmDelete(row)}>
-                      <DeleteOutlineIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                  </Tooltip>
-                </Stack>
-              ),
-            },
-          ]}
+          columns={tableColumns}
         />
         <ModulePager
           tableTheme={moduleTheme.tableTheme}

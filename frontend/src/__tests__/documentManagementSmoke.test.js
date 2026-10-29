@@ -51,6 +51,8 @@ const documents = [
     id: 10, title: 'قرارداد پیمانکاری سالن تولید', folder: 1, folder_name: 'قراردادها',
     folder_path: 'قراردادها', description: 'نسخه امضاشده قرارداد', tags: 'قرارداد, تولید',
     tags_list: ['قرارداد', 'تولید'], reference_number: 'DOC-1405-001',
+    source_module_key: 'archive.contracts', related_entity_type: 'archive.contracts',
+    related_entity_label: '100_قرارداد پیمانکاری سالن تولید',
     issue_date: '2026-01-10', expiry_date: '2027-01-10', retention_until: '2032-01-10',
     confidentiality: 'confidential', confidentiality_display: 'محرمانه', status: 'active',
     status_display: 'فعال', is_locked: false, current_version: 22, version_count: 2,
@@ -67,7 +69,10 @@ const documents = [
   {
     id: 11, title: 'مجوز فعالیت کارگاه', folder: 2, folder_name: 'قراردادهای جاری',
     folder_path: 'قراردادها / قراردادهای جاری', description: '', tags: 'مجوز',
-    tags_list: ['مجوز'], reference_number: 'DOC-1405-002', issue_date: '2025-06-01',
+    tags_list: ['مجوز'], reference_number: 'DOC-1405-002',
+    source_module_key: 'archive.contracts', related_entity_type: 'archive.contracts',
+    related_entity_label: '101_مجوز فعالیت کارگاه',
+    issue_date: '2025-06-01',
     expiry_date: '2026-06-01', retention_until: null, confidentiality: 'internal',
     confidentiality_display: 'داخلی', status: 'draft', status_display: 'پیش‌نویس',
     is_locked: false, current_version: 23, version_count: 1,
@@ -230,9 +235,13 @@ test('personnel library lists documents in the same standard table', async () =>
   expect(tables).toHaveLength(1);
   const personnelTable = tables[0];
   const headers = Array.from(personnelTable.querySelectorAll('thead th')).map((th) => th.textContent.trim());
-  expect(headers).toEqual(['ردیف', 'عنوان سند', 'نوع', 'پرسنل', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'انقضا', 'عملیات']);
-  expect(personnelTable.textContent).toContain('علی رضایی');
-  expect(personnelTable.textContent).toContain('کد ۱۰۰۱');
+  expect(headers).toEqual([
+    'ردیف', 'شماره پرسنلی', 'نام خانوادگی', 'نام', 'عنوان مدرک',
+    'نوع', 'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'عملیات',
+  ]);
+  expect(personnelTable.textContent).toContain('۱۰۰۱');
+  expect(personnelTable.textContent).toContain('رضایی');
+  expect(personnelTable.textContent).toContain('علی');
   ['عکس پرسنلی', 'شناسنامه', 'کارت ملی', 'مدرک تحصیلی'].forEach((title) => {
     expect(personnelTable.textContent).toContain(title);
   });
@@ -241,6 +250,47 @@ test('personnel library lists documents in the same standard table', async () =>
   container.remove();
 });
 
+
+test('contract library reads the contract title next to the archival document title', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/document-management/library?module=contracts']}>
+          <DocumentManagementPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(900);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  expect(container.textContent).toContain('کتابخانه اسناد · مدیریت قراردادها');
+
+  const tables = Array.from(container.querySelectorAll('table'));
+  expect(tables).toHaveLength(1);
+  const contractTable = tables[0];
+  const headers = Array.from(contractTable.querySelectorAll('thead th')).map((th) => th.textContent.trim());
+  expect(headers).toEqual([
+    'ردیف', 'عنوان قرارداد', 'عنوان سند', 'نوع', 'پوشه',
+    'محرمانگی', 'گردش‌کار', 'نسخه', 'حجم', 'انقضا', 'عملیات',
+  ]);
+  // عنوان قرارداد از ماژول قراردادها
+  expect(contractTable.textContent).toContain('100_قرارداد پیمانکاری سالن تولید');
+  // عنوان سند از بایگانی اسناد قرارداد
+  expect(contractTable.textContent).toContain('قرارداد پیمانکاری سالن تولید');
+  expect(contractTable.textContent).toContain('مجوز فعالیت کارگاه');
+
+  root.unmount();
+  container.remove();
+});
 
 test('selecting a library module scopes the table to that module', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
