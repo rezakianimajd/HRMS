@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   Alert, Box, ButtonBase, CircularProgress, Dialog, Divider, InputAdornment,
@@ -7,6 +7,7 @@ import {
 import { useTheme } from '@mui/material/styles';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import FolderOutlinedIcon from '@mui/icons-material/FolderOutlined';
@@ -24,9 +25,6 @@ import AccountBalanceOutlinedIcon from '@mui/icons-material/AccountBalanceOutlin
 import LocalShippingOutlinedIcon from '@mui/icons-material/LocalShippingOutlined';
 import ShieldOutlinedIcon from '@mui/icons-material/ShieldOutlined';
 import HistoryIcon from '@mui/icons-material/History';
-import KeyboardReturnIcon from '@mui/icons-material/KeyboardReturn';
-import NorthIcon from '@mui/icons-material/North';
-import SouthIcon from '@mui/icons-material/South';
 import { useApplication } from '../../context/ApplicationContext';
 import { useDesignTokens } from '../../context/DesignTokenContext';
 import { useModulePalette } from '../../context/ModulePaletteContext';
@@ -113,18 +111,6 @@ const readRecents = () => {
   }
 };
 
-/* کلید میان‌بر کوچک */
-const Kbd = ({ children, tone }) => (
-  <Box component="span" sx={{
-    display: 'inline-flex', alignItems: 'center', gap: 0.3,
-    minWidth: 18, px: 0.55, py: 0.05, borderRadius: '6px',
-    border: '1px solid', borderColor: alpha(tone, 0.3),
-    bgcolor: alpha(tone, 0.06), color: tone,
-    fontSize: 9.5, fontWeight: 800, lineHeight: 1.8,
-    fontFamily: "'JetBrains Mono','Consolas',monospace",
-  }}>{children}</Box>
-);
-
 /* یک ردیف نتیجه (صفحه یا رکورد) */
 const ResultRow = ({ row, active, accent, tableTheme, onSelect, onHover }) => {
   const Icon = row.kind === 'page'
@@ -138,7 +124,7 @@ const ResultRow = ({ row, active, accent, tableTheme, onSelect, onHover }) => {
       onClick={() => onSelect(row.path)}
       sx={{
         width: '100%', justifyContent: 'flex-start', textAlign: 'right',
-        px: 1, py: 0.55, borderRadius: `${tableTheme.radius ? 9 : 9}px`,
+        px: 1, py: 0.55, borderRadius: `${Math.max(6, Math.min(14, (tableTheme.radius || 16) - 6))}px`,
         border: '1px solid', borderColor: active ? alpha(accent, 0.35) : 'transparent',
         bgcolor: active ? alpha(accent, 0.08) : 'transparent',
         transition: 'background-color .14s ease, border-color .14s ease',
@@ -157,29 +143,15 @@ const ResultRow = ({ row, active, accent, tableTheme, onSelect, onHover }) => {
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: 'text.primary' }}>{row.title}</Typography>
-        {row.subtitle ? (
-          <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>{row.subtitle}</Typography>
-        ) : null}
       </Box>
-      <Box sx={{
-        flexShrink: 0, px: 0.6, py: 0.1, borderRadius: '6px',
-        fontSize: 9.5, fontWeight: 800,
-        color: active ? accent : 'text.secondary',
-        bgcolor: active ? alpha(accent, 0.12) : alpha(accent, 0.05),
-      }}>
-        {row.kind === 'page' ? (row.group || 'صفحه') : (row.section || 'رکورد')}
-      </Box>
+      {active ? <ChevronLeftIcon sx={{ fontSize: 15, color: alpha(accent, 0.7), flexShrink: 0 }} /> : null}
     </ButtonBase>
   );
 };
 
-const SectionHeader = ({ label, count, accent }) => (
+const SectionHeader = ({ label, accent }) => (
   <Stack direction="row" alignItems="center" spacing={0.75} sx={{ px: 1, pt: 0.75, pb: 0.4 }}>
     <Typography sx={{ fontSize: 10.5, fontWeight: 900, color: accent }}>{label}</Typography>
-    <Box sx={{
-      minWidth: 18, textAlign: 'center', px: 0.5, borderRadius: '6px',
-      fontSize: 9.5, fontWeight: 800, color: accent, bgcolor: alpha(accent, 0.1),
-    }}>{count}</Box>
     <Divider sx={{ flex: 1, borderColor: alpha(accent, 0.14) }} />
   </Stack>
 );
@@ -209,9 +181,6 @@ const ScopeRail = ({ theme, accent, moduleLabel, counts, recents, onRecent, onCl
     <Box>
       <Typography sx={{ fontSize: 10, fontWeight: 900, color: tone }}>محدودهٔ جستجو</Typography>
       <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.primary', mt: 0.15 }}>{moduleLabel}</Typography>
-      <Typography sx={{ fontSize: 9.5, color: 'text.secondary', lineHeight: 1.9 }}>
-        فقط صفحه‌ها و داده‌های همین ماژول بررسی می‌شوند.
-      </Typography>
     </Box>
     <Divider />
     <Stack spacing={0.5}>
@@ -442,15 +411,7 @@ const CommandPalette = () => {
             <Typography sx={{ fontSize: 13, fontWeight: 900, color: 'text.primary', lineHeight: 1.5 }}>
               جستجو در {moduleMeta.label}
             </Typography>
-            <Typography noWrap sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-              صفحه‌ها و داده‌های همین ماژول — حرکت با ↑ ↓ و انتخاب با Enter
-            </Typography>
           </Box>
-          <Stack direction="row" alignItems="center" spacing={0.4} sx={{ flexShrink: 0 }}>
-            <Kbd tone={accent}>Ctrl</Kbd>
-            <Typography sx={{ fontSize: 9.5, color: 'text.disabled' }}>+</Typography>
-            <Kbd tone={accent}>K</Kbd>
-          </Stack>
         </Stack>
 
         <TextField
@@ -523,7 +484,7 @@ const CommandPalette = () => {
 
           {navigationResults.length ? (
             <>
-              <SectionHeader label={`صفحه‌های ${moduleMeta.label}`} count={navigationResults.length} accent={accent} />
+              <SectionHeader label={`صفحه‌های ${moduleMeta.label}`} accent={accent} />
               <Box role="listbox" aria-label="صفحه‌های ماژول">
                 {navigationResults.map((item, index) => (
                   <Box key={`${item.group}-${item.id || item.path}`} ref={(node) => { rowRefs.current[index] = node; }}>
@@ -557,7 +518,7 @@ const CommandPalette = () => {
             ) : (
               groupedResults.map(([section, rows], groupIndex) => (
                 <Box key={section}>
-                  <SectionHeader label={section} count={rows.length} accent={accent} />
+                  <SectionHeader label={section} accent={accent} />
                   <Box role="listbox" aria-label={section}>
                     {rows.map((row, rowIndex) => {
                       const index = navigationResults.length
@@ -599,25 +560,13 @@ const CommandPalette = () => {
         />
       </Box>
 
-      {/* ---------- فوتر: راهنمای کلیدها ---------- */}
+      {/* ---------- فوتر: راهنما و شمارش ---------- */}
       <Box sx={{
         px: 1.5, py: 0.85, borderTop: '1px solid', borderColor: 'divider',
         bgcolor: isDark ? alpha('#ffffff', 0.02) : alpha(accent, 0.025),
       }}>
         <Stack direction="row" alignItems="center" spacing={1.25} useFlexGap flexWrap="wrap">
-          <Stack direction="row" alignItems="center" spacing={0.4}>
-            <KeyboardReturnIcon sx={{ fontSize: 13, color: 'text.secondary' }} />
-            <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>انتخاب</Typography>
-          </Stack>
-          <Stack direction="row" alignItems="center" spacing={0.3}>
-            <NorthIcon sx={{ fontSize: 11, color: 'text.secondary' }} />
-            <SouthIcon sx={{ fontSize: 11, color: 'text.secondary' }} />
-            <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>جابجایی</Typography>
-          </Stack>
-          <Stack direction="row" alignItems="center" spacing={0.4}>
-            <Kbd tone={accent}>Esc</Kbd>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>بستن</Typography>
-          </Stack>
+          <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>Enter انتخاب · ↑↓ جابجایی · Esc بستن</Typography>
           <Typography sx={{ mr: 'auto', fontSize: 10, color: 'text.disabled' }}>
             {`${toPersianDigits(navigationResults.length)} صفحه · ${toPersianDigits(recordCount)} نتیجهٔ داده`}
           </Typography>

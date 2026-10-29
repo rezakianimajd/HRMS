@@ -111,7 +111,9 @@ test('command palette searches only the active module', async () => {
     { params: { q: 'پیمان', module: 'contracts' } },
   );
   expect(document.body.textContent).toContain('قرارداد نمونه پیمانکاری');
-  expect(document.body.textContent).toContain('شرکت نمونه');
+  // زیرعنوان ردیف‌ها و چیپ‌ها حذف شده‌اند
+  expect(document.body.textContent).not.toContain('شرکت نمونه');
+  expect(document.querySelectorAll('.MuiChip-root')).toHaveLength(0);
   expect(document.body.textContent).toContain('قراردادها');
 
   // انتخاب با Enter + ثبت در جستجوهای اخیر

@@ -8,6 +8,7 @@ import {
   DialogActions, TextField, IconButton, Tooltip, CircularProgress, Switch,
   Grid, Divider,
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
@@ -18,8 +19,13 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import RadioButtonUncheckedIcon from '@mui/icons-material/RadioButtonUnchecked';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import EditIcon from '@mui/icons-material/Edit';
+import BadgeOutlinedIcon from '@mui/icons-material/BadgeOutlined';
 import { formatPersianNumber } from '../core/utils/numberUtils';
 import { PageHeader, TabsCard, SURFACE, SOFT } from '../core/components/settings/settingsUi';
+import { useDesignTokens } from '../core/context/DesignTokenContext';
+import { useModulePalette } from '../core/context/ModulePaletteContext';
+import EmployeePicker from '../core/components/ui/EmployeePicker';
+import UserAvatar from '../core/components/ui/UserAvatar';
 
 const ROLE_LABELS = {
   super_admin: 'مدیر ارشد سیستم',
@@ -85,23 +91,54 @@ const ModuleCard = ({ app, checked, disabled, onToggle }) => (
 
 const UsersPage = () => {
   const qc = useQueryClient();
+  const theme = useTheme();
+  const { tokens } = useDesignTokens();
+  const { getPalette } = useModulePalette();
+  const modulePalette = typeof getPalette === 'function' ? getPalette('hrms') : null;
+  /* رنگ لهجه از تم ماژول (استودیو تم) و در نبود آن رنگ پیش‌فرض تنظیمات */
+  const accent = tokens?.colors?.moduleAccent || modulePalette?.accent || modulePalette?.primary || SOFT.slate;
+  const dialogRadius = tokens?.surfaces?.dialog?.radius ?? tokens?.shape?.large ?? 18;
+  const isDark = theme.palette.mode === 'dark';
+  const dialogPaperSx = {
+    borderRadius: `${dialogRadius}px`,
+    border: `1px solid ${alpha(accent, isDark ? 0.3 : 0.18)}`,
+    bgcolor: tokens?.surfaces?.dialog?.background || 'background.paper',
+    boxShadow: isDark ? `0 26px 80px ${alpha('#000000', 0.55)}` : `0 26px 70px ${alpha(accent, 0.2)}`,
+  };
+  const fieldSx = {
+    '& .MuiOutlinedInput-root': { borderRadius: `${tokens?.shape?.medium ?? 10}px` },
+    '& .MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline': {
+      borderColor: accent, borderWidth: 1.5,
+    },
+    '& .MuiInputLabel-root.Mui-focused': { color: accent },
+  };
   const [tab, setTab] = useState(0);
   const [msg, setMsg] = useState('');
   const [err, setErr] = useState('');
   const [openAdd, setOpenAdd] = useState(false);
-  const [draft, setDraft] = useState({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'employee', application_ids: [] });
+  const [draft, setDraft] = useState({
+    username: '', email: '', password: '', first_name: '', last_name: '',
+    role: 'employee', application_ids: [], employee_id: null,
+  });
   const [permEdits, setPermEdits] = useState({});
   const [viewUser, setViewUser] = useState(null);
   const [editUser, setEditUser] = useState(null);
   const [editForm, setEditForm] = useState({
     username: '', first_name: '', last_name: '', email: '',
-    role: 'employee', application_ids: [],
+    role: 'employee', application_ids: [], employee_id: null,
   });
 
   const { data: users, isLoading } = useQuery({
     queryKey: ['users-list'],
     queryFn: () => axiosInstance.get('/users/').then(r => r.data),
   });
+  /* پرسنل‌های منابع انسانی برای اتصال کاربر به پروندهٔ پرسنلی */
+  const { data: employees, isLoading: employeesLoading, isError: employeesError } = useQuery({
+    queryKey: ['users-employees-picker'],
+    queryFn: () => axiosInstance.get('/employees/', { params: { page_size: 500 } }).then(r => r.data),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: roles, isLoading: rolesLoading } = useQuery({
     queryKey: ['users-roles'],
     queryFn: () => axiosInstance.get('/users/roles/').then(r => r.data),
@@ -113,6 +150,8 @@ const UsersPage = () => {
   const userList = Array.isArray(users) ? users : [];
   const roleList = Array.isArray(roles) ? roles : [];
   const appList = Array.isArray(catalog) ? catalog : [];
+  const employeeList = Array.isArray(employees) ? employees : (employees?.results || []);
+  const employeeById = (id) => employeeList.find((item) => String(item.id) === String(id ?? '')) || null;
 
   const setRoleMutation = useMutation({
     mutationFn: ({ id, role }) => axiosInstance.post(`/users/${id}/role/`, { role }),
@@ -133,7 +172,10 @@ const UsersPage = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['users-list'] });
       setOpenAdd(false);
-      setDraft({ username: '', email: '', password: '', first_name: '', last_name: '', role: 'employee', application_ids: [] });
+      setDraft({
+        username: '', email: '', password: '', first_name: '', last_name: '',
+        role: 'employee', application_ids: [], employee_id: null,
+      });
       setMsg('کاربر ساخته شد.');
       setTimeout(() => setMsg(''), 2500);
     },
@@ -160,8 +202,18 @@ const UsersPage = () => {
       email: u.email || '',
       role: u.role || 'employee',
       application_ids: [...(u.applications || [])],
+      employee_id: u.employee_id ?? null,
     });
     setErr('');
+  };
+
+  const openAddUser = () => {
+    setErr('');
+    setDraft({
+      username: '', email: '', password: '', first_name: '', last_name: '',
+      role: 'employee', application_ids: [], employee_id: null,
+    });
+    setOpenAdd(true);
   };
 
   return (
@@ -173,7 +225,7 @@ const UsersPage = () => {
         actions={(
           <Button
             variant="contained" startIcon={<AddIcon />}
-            onClick={() => { setErr(''); setOpenAdd(true); }}
+            onClick={openAddUser}
             sx={{
               bgcolor: SOFT.slate, borderRadius: '9px', boxShadow: 'none',
               fontSize: 12, '&:hover': { bgcolor: '#8494a8' },
@@ -248,11 +300,23 @@ const UsersPage = () => {
                       <TableRow key={u.id} hover>
                         <TableCell>
                           <Stack direction="row" alignItems="center" spacing={1.25} useFlexGap>
-                            <Avatar sx={{ width: 30, height: 30, fontSize: 12, fontWeight: 800, bgcolor: `${ROLE_COLORS[u.role] || SOFT.slate}1f`, color: ROLE_COLORS[u.role] || SOFT.slate }}>
-                              {(u.first_name?.charAt(0) || u.username?.charAt(0) || 'U')}
-                            </Avatar>
-                            <Box>
-                              <Typography sx={{ fontSize: 12, fontWeight: 700 }}>{u.first_name} {u.last_name}</Typography>
+                            <UserAvatar
+                              user={u}
+                              size={30}
+                              sx={{
+                                bgcolor: alpha(ROLE_COLORS[u.role] || SOFT.slate, 0.12),
+                                color: ROLE_COLORS[u.role] || SOFT.slate,
+                              }}
+                            />
+                            <Box sx={{ minWidth: 0 }}>
+                              <Typography noWrap sx={{ fontSize: 12, fontWeight: 700 }}>
+                                {`${u.first_name || ''} ${u.last_name || ''}`.trim() || u.username}
+                              </Typography>
+                              <Typography noWrap sx={{ fontSize: 10, color: 'text.secondary' }}>
+                                {u.employee_name
+                                  ? `پرسنل: ${u.employee_name}`
+                                  : 'بدون ارتباط با پرسنل'}
+                              </Typography>
                             </Box>
                           </Stack>
                         </TableCell>
@@ -363,24 +427,64 @@ const UsersPage = () => {
       )}
 
       {/* Dialog add user */}
-      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth>
-        <DialogTitle sx={{ color: '#475569' }}>افزودن کاربر جدید</DialogTitle>
+      <Dialog open={openAdd} onClose={() => setOpenAdd(false)} maxWidth="sm" fullWidth
+        PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{
+          fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 0.75,
+          color: accent, borderBottom: '1px solid', borderColor: alpha(accent, 0.16),
+          bgcolor: alpha(accent, 0.05), py: 1.25,
+        }}>
+          <PersonIcon sx={{ fontSize: 18 }} /> افزودن کاربر جدید
+        </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="نام کاربری *" value={draft.username}
+          <TextField fullWidth size="small" label="نام کاربری *" value={draft.username} sx={fieldSx}
             onChange={e => setDraft(p => ({ ...p, username: e.target.value }))} />
-          <TextField fullWidth size="small" label="ایمیل" value={draft.email}
+          <TextField fullWidth size="small" label="ایمیل" value={draft.email} sx={fieldSx}
             onChange={e => setDraft(p => ({ ...p, email: e.target.value }))} />
-          <TextField fullWidth size="small" label="رمز عبور *" type="password" value={draft.password}
+          <TextField fullWidth size="small" label="رمز عبور *" type="password" value={draft.password} sx={fieldSx}
             onChange={e => setDraft(p => ({ ...p, password: e.target.value }))} />
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="نام" value={draft.first_name}
+            <TextField fullWidth size="small" label="نام" value={draft.first_name} sx={fieldSx}
               onChange={e => setDraft(p => ({ ...p, first_name: e.target.value }))} />
-            <TextField fullWidth size="small" label="نام خانوادگی" value={draft.last_name}
+            <TextField fullWidth size="small" label="نام خانوادگی" value={draft.last_name} sx={fieldSx}
               onChange={e => setDraft(p => ({ ...p, last_name: e.target.value }))} />
           </Stack>
+          <Divider sx={{ my: 0.25 }} />
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <UserAvatar
+              user={{
+                employee_photo: employeeById(draft.employee_id)?.photo_url,
+                employee_gender: employeeById(draft.employee_id)?.gender,
+                employee_name: employeeById(draft.employee_id)?.full_name,
+                first_name: draft.first_name,
+                last_name: draft.last_name,
+                username: draft.username,
+              }}
+              size={44}
+              sx={{ bgcolor: alpha(accent, 0.12), color: accent, flexShrink: 0 }}
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.primary' }}>
+                {employeeById(draft.employee_id)
+                  ? 'آواتار از پروندهٔ پرسنلی خوانده می‌شود'
+                  : 'بدون ارتباط با پرسنل — آواتار از نام یا جنسیت ساخته می‌شود'}
+              </Typography>
+              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                ارتباط کاربر با پرسنل منابع انسانی، عکس و جنسیت او را در کل سامانه نمایش می‌دهد.
+              </Typography>
+            </Box>
+          </Stack>
+          <EmployeePicker
+            employees={employeeList}
+            value={draft.employee_id}
+            onChange={(employeeId) => setDraft(p => ({ ...p, employee_id: employeeId }))}
+            accent={accent}
+            loading={employeesLoading}
+            disabled={employeesError}
+          />
           <FormControl fullWidth size="small">
             <InputLabel>نقش</InputLabel>
-            <Select value={draft.role} label="نقش" onChange={e => setDraft(p => ({ ...p, role: e.target.value }))}>
+            <Select value={draft.role} label="نقش" sx={fieldSx} onChange={e => setDraft(p => ({ ...p, role: e.target.value }))}>
               {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
             </Select>
           </FormControl>
@@ -402,7 +506,7 @@ const UsersPage = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={() => setOpenAdd(false)}>انصراف</Button>
-          <Button variant="contained" sx={{ bgcolor: SOFT.slate, boxShadow: 'none', '&:hover': { bgcolor: '#8494a8' } }}
+          <Button variant="contained" sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}
             disabled={!draft.username || !draft.password}
             onClick={() => createMutation.mutate(draft)}>
             ساخت کاربر
@@ -412,22 +516,29 @@ const UsersPage = () => {
 
       {/* Dialog view user */}
       <Dialog open={!!viewUser} onClose={() => setViewUser(null)} maxWidth="xs" fullWidth
-        PaperProps={{ sx: { borderRadius: '18px' } }}>
-        <DialogTitle sx={{ fontSize: 15, fontWeight: 900 }}>مشخصات کاربر</DialogTitle>
+        PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{
+          fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 0.75,
+          color: accent, borderBottom: '1px solid', borderColor: alpha(accent, 0.16),
+          bgcolor: alpha(accent, 0.05), py: 1.25,
+        }}>
+          <BadgeOutlinedIcon sx={{ fontSize: 18 }} /> مشخصات کاربر
+        </DialogTitle>
         <DialogContent dividers>
           {viewUser && (
             <Stack spacing={1.25}>
               <Stack direction="row" spacing={1.25} alignItems="center" useFlexGap sx={{ mb: 1 }}>
-                <Avatar sx={{
-                  width: 42, height: 42, fontSize: 16, fontWeight: 800,
-                  bgcolor: `${ROLE_COLORS[viewUser.role] || SOFT.slate}1f`,
-                  color: ROLE_COLORS[viewUser.role] || SOFT.slate,
-                }}>
-                  {(viewUser.first_name?.charAt(0) || viewUser.username?.charAt(0) || 'U')}
-                </Avatar>
+                <UserAvatar
+                  user={viewUser}
+                  size={42}
+                  sx={{
+                    bgcolor: alpha(ROLE_COLORS[viewUser.role] || SOFT.slate, 0.12),
+                    color: ROLE_COLORS[viewUser.role] || SOFT.slate,
+                  }}
+                />
                 <Box>
                   <Typography variant="h6">
-                    {viewUser.first_name} {viewUser.last_name}
+                    {`${viewUser.first_name || ''} ${viewUser.last_name || ''}`.trim() || viewUser.username}
                   </Typography>
                   <Typography sx={{ fontSize: 12, color: 'text.secondary' }}>@{viewUser.username}</Typography>
                 </Box>
@@ -440,6 +551,10 @@ const UsersPage = () => {
                   ? 'همهٔ ماژول‌ها'
                   : `${formatPersianNumber((viewUser.applications || []).length)} ماژول`],
                 ['وضعیت', viewUser.is_active ? 'فعال' : 'غیرفعال'],
+                ['پروندهٔ پرسنلی', viewUser.employee_name
+                  ? `${viewUser.employee_name}${viewUser.employee_code ? ` · کد ${formatPersianNumber(viewUser.employee_code)}` : ''}`
+                  : 'متصل نشده'],
+                ['جنسیت پرسنل', viewUser.employee_gender_display || '—'],
               ].map(([key, value]) => (
                 <Stack key={key} direction="row" justifyContent="space-between"
                   sx={{ py: 0.5, borderBottom: '1px dashed', borderColor: 'divider' }}>
@@ -453,7 +568,7 @@ const UsersPage = () => {
         <DialogActions>
           <Button onClick={() => setViewUser(null)}>بستن</Button>
           <Button variant="contained" startIcon={<EditIcon />}
-            sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
+            sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}
             onClick={() => { const current = viewUser; setViewUser(null); openEditUser(current); }}>
             ویرایش
           </Button>
@@ -462,27 +577,64 @@ const UsersPage = () => {
 
       {/* Dialog edit user */}
       <Dialog open={!!editUser} onClose={() => setEditUser(null)} maxWidth="sm" fullWidth
-        PaperProps={{ sx: { borderRadius: '18px' } }}>
-        <DialogTitle sx={{ fontSize: 15, fontWeight: 900 }}>ویرایش کاربر</DialogTitle>
+        PaperProps={{ sx: dialogPaperSx }}>
+        <DialogTitle sx={{
+          fontSize: 14, fontWeight: 900, display: 'flex', alignItems: 'center', gap: 0.75,
+          color: accent, borderBottom: '1px solid', borderColor: alpha(accent, 0.16),
+          bgcolor: alpha(accent, 0.05), py: 1.25,
+        }}>
+          <EditIcon sx={{ fontSize: 18 }} /> ویرایش کاربر
+        </DialogTitle>
         <DialogContent sx={{ display: 'flex', flexDirection: 'column', gap: 1.5, mt: 1 }}>
-          <TextField fullWidth size="small" label="نام کاربری *" value={editForm.username}
+          <TextField fullWidth size="small" label="نام کاربری *" value={editForm.username} sx={fieldSx}
             onChange={e => setEditForm(p => ({ ...p, username: e.target.value }))} />
           <Stack direction={{ xs: 'column', md: 'row' }} spacing={1.5}>
-            <TextField fullWidth size="small" label="نام" value={editForm.first_name}
+            <TextField fullWidth size="small" label="نام" value={editForm.first_name} sx={fieldSx}
               onChange={e => setEditForm(p => ({ ...p, first_name: e.target.value }))} />
-            <TextField fullWidth size="small" label="نام خانوادگی" value={editForm.last_name}
+            <TextField fullWidth size="small" label="نام خانوادگی" value={editForm.last_name} sx={fieldSx}
               onChange={e => setEditForm(p => ({ ...p, last_name: e.target.value }))} />
           </Stack>
-          <TextField fullWidth size="small" label="ایمیل" value={editForm.email}
+          <TextField fullWidth size="small" label="ایمیل" value={editForm.email} sx={fieldSx}
             onChange={e => setEditForm(p => ({ ...p, email: e.target.value }))} />
           <FormControl fullWidth size="small">
             <InputLabel>نقش</InputLabel>
-            <Select value={editForm.role} label="نقش"
+            <Select value={editForm.role} label="نقش" sx={fieldSx}
               onChange={e => setEditForm(p => ({ ...p, role: e.target.value }))}>
               {ROLE_KEYS.map(r => <MenuItem key={r} value={r}>{ROLE_LABELS[r]}</MenuItem>)}
             </Select>
           </FormControl>
-          <Divider sx={{ my: 0.5 }} />
+          <Divider sx={{ my: 0.25 }} />
+          <Stack direction="row" spacing={1.25} alignItems="center">
+            <UserAvatar
+              user={{
+                employee_photo: employeeById(editForm.employee_id)?.photo_url || editUser?.employee_photo,
+                employee_gender: employeeById(editForm.employee_id)?.gender || editUser?.employee_gender,
+                employee_name: employeeById(editForm.employee_id)?.full_name || editUser?.employee_name,
+                first_name: editForm.first_name,
+                last_name: editForm.last_name,
+                username: editForm.username,
+              }}
+              size={44}
+              sx={{ bgcolor: alpha(accent, 0.12), color: accent, flexShrink: 0 }}
+            />
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: 'text.primary' }}>
+                {employeeById(editForm.employee_id) ? 'آواتار از پروندهٔ پرسنلی خوانده می‌شود' : 'آواتار بر اساس نام یا جنسیت'}
+              </Typography>
+              <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+                با قطع ارتباط، آواتار به حالت پیش‌فرض (آقا/خانم یا حرف اول نام) برمی‌گردد.
+              </Typography>
+            </Box>
+          </Stack>
+          <EmployeePicker
+            employees={employeeList}
+            value={editForm.employee_id}
+            onChange={(employeeId) => setEditForm(p => ({ ...p, employee_id: employeeId }))}
+            accent={accent}
+            loading={employeesLoading}
+            disabled={employeesError}
+          />
+          <Divider sx={{ my: 0.25 }} />
           <Typography sx={{ fontSize: 12, fontWeight: 800, color: 'text.secondary' }}>
             دسترسی ماژول‌ها (خالی یعنی طبق نقش)
           </Typography>
@@ -506,7 +658,7 @@ const UsersPage = () => {
           <Button onClick={() => setEditUser(null)}>انصراف</Button>
           <Button variant="contained" startIcon={<SaveIcon />}
             disabled={!editForm.username || updateMutation.isLoading}
-            sx={{ bgcolor: SOFT.indigo, boxShadow: 'none', '&:hover': { bgcolor: '#6f7ecb' } }}
+            sx={{ bgcolor: accent, boxShadow: 'none', '&:hover': { bgcolor: accent } }}
             onClick={() => updateMutation.mutate({ id: editUser.id, body: editForm })}>
             ذخیره تغییرات
           </Button>

@@ -14,6 +14,7 @@ import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import LightModeIcon from '@mui/icons-material/LightMode';
 import DarkModeIcon from '@mui/icons-material/DarkMode';
+import MovieFilterOutlinedIcon from '@mui/icons-material/MovieFilterOutlined';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import PersonAddIcon from '@mui/icons-material/PersonAdd';
 import HistoryEduIcon from '@mui/icons-material/HistoryEdu';
@@ -66,6 +67,7 @@ import NotificationBell from './NotificationBell';
 import AppSwitcher from './AppSwitcher';
 import WorkspaceTabs from './WorkspaceTabs';
 import CommandPalette from './CommandPalette';
+import UserAvatar from './UserAvatar';
 import ModuleLibraryDrawer from './ModuleLibraryDrawer';
 import menuConfig, { getMenuForApp } from '../../config/menuConfig';
 import { libraryModuleForApplication, libraryModuleLabel } from '../../config/documentLibraryModules';
@@ -308,8 +310,6 @@ const Layout = ({ children }) => {
     t('app.shortName');
   const companyLogo = profile?.logo_url || null;
   const fullName = `${user?.first_name || ''} ${user?.last_name || ''}`.trim() || user?.username || '';
-  const initials = `${user?.first_name?.[0] || ''}${user?.last_name?.[0] || ''}` ||
-    user?.username?.[0] || '؟';
 
   const handleLogout = async () => {
     await logout();
@@ -575,22 +575,37 @@ const Layout = ({ children }) => {
           >
             <DarkModeIcon sx={{ fontSize: 16 }} />
           </IconButton>
+          <Tooltip title="کوراساوا مود" placement="left" arrow>
+            <IconButton
+              size="small"
+              onClick={() => setMode('kurosawa')}
+              aria-label="تم کوراساوا"
+              sx={{
+                width: 30, height: 30,
+                color: mode === 'kurosawa' ? '#111827' : ICON_COLOR,
+                opacity: mode === 'kurosawa' ? 1 : 0.55,
+                bgcolor: mode === 'kurosawa' ? 'action.selected' : 'transparent',
+                filter: 'grayscale(1)',
+              }}
+            >
+              <MovieFilterOutlinedIcon sx={{ fontSize: 16 }} />
+            </IconButton>
+          </Tooltip>
         </Box>
 
         <Tooltip title={fullName} placement="left" arrow>
-          <Avatar
+          <UserAvatar
+            user={user}
+            size={34}
             onClick={(event) => setUserMenuAnchor(event.currentTarget)}
             sx={{
-              mt: 1.2, width: 34, height: 34, flexShrink: 0,
-              cursor: 'pointer', fontSize: 12, fontWeight: 800,
+              mt: 1.2, flexShrink: 0, cursor: 'pointer',
               bgcolor: (theme) => alpha(theme.palette.primary.main, 0.14),
               color: 'primary.main',
               border: '2px solid', borderColor: 'background.paper',
               boxShadow: (theme) => `0 4px 12px ${alpha(theme.palette.primary.main, 0.25)}`,
             }}
-          >
-            {initials}
-          </Avatar>
+          />
         </Tooltip>
       </Box>
 
@@ -829,4 +844,3 @@ const Layout = ({ children }) => {
 };
 
 export default Layout;
-

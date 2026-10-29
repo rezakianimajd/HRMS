@@ -41,6 +41,12 @@ class UserSerializer(serializers.ModelSerializer):
     companies = serializers.SerializerMethodField()
     role = serializers.SerializerMethodField()
     permissions = serializers.SerializerMethodField()
+    employee_id = serializers.SerializerMethodField()
+    employee_name = serializers.SerializerMethodField()
+    employee_code = serializers.SerializerMethodField()
+    employee_photo = serializers.SerializerMethodField()
+    employee_gender = serializers.SerializerMethodField()
+    employee_gender_display = serializers.SerializerMethodField()
 
     class Meta:
         model = User
@@ -48,6 +54,8 @@ class UserSerializer(serializers.ModelSerializer):
             'id', 'username', 'email', 'first_name', 'last_name',
             'is_superuser', 'is_active', 'date_joined', 'last_login',
             'companies', 'role', 'permissions',
+            'employee_id', 'employee_name', 'employee_code', 'employee_photo',
+            'employee_gender', 'employee_gender_display',
         ]
         read_only_fields = ['id', 'date_joined', 'last_login']
 
@@ -57,6 +65,33 @@ class UserSerializer(serializers.ModelSerializer):
             return obj.profile
         except Exception:  # noqa: BLE001 — کاربر بدون پروفایل
             return None
+
+    def _employee(self, obj):
+        """اطلاعات پرسنلِ متصل (یک‌بار برای هر کاربر محاسبه می‌شود)."""
+        cached = getattr(obj, '_employee_link_cache', None)
+        if cached is None:
+            from core.employee_link import employee_link_payload
+            cached = employee_link_payload(self._profile(obj), self.context.get('request'))
+            obj._employee_link_cache = cached
+        return cached
+
+    def get_employee_id(self, obj):
+        return self._employee(obj)['employee_id']
+
+    def get_employee_name(self, obj):
+        return self._employee(obj)['employee_name']
+
+    def get_employee_code(self, obj):
+        return self._employee(obj)['employee_code']
+
+    def get_employee_photo(self, obj):
+        return self._employee(obj)['employee_photo']
+
+    def get_employee_gender(self, obj):
+        return self._employee(obj)['employee_gender']
+
+    def get_employee_gender_display(self, obj):
+        return self._employee(obj)['employee_gender_display']
 
     def get_role(self, obj):
         profile = self._profile(obj)

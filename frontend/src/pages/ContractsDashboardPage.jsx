@@ -1,11 +1,10 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
-  Alert, Box, Button, ButtonBase, CircularProgress, Divider, Grid, IconButton, Paper, Skeleton,
+  Alert, Box, Button, ButtonBase, Divider, Grid, IconButton, Paper, Skeleton,
   Stack, Tooltip, Typography, alpha,
 } from '@mui/material';
-import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import HandshakeOutlinedIcon from '@mui/icons-material/HandshakeOutlined';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
@@ -17,8 +16,6 @@ import EventBusyOutlinedIcon from '@mui/icons-material/EventBusyOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import InsightsOutlinedIcon from '@mui/icons-material/InsightsOutlined';
 import TrendingUpOutlinedIcon from '@mui/icons-material/TrendingUpOutlined';
-import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
-import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import CurrencyExchangeOutlinedIcon from '@mui/icons-material/CurrencyExchangeOutlined';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -451,7 +448,6 @@ const ContractsDashboardPage = () => {
   const items = useMemo(() => (Array.isArray(raw) ? raw : raw?.results || []), [raw]);
   const stats = statsQuery.data || {};
   const isLoading = contractsQuery.isLoading || statsQuery.isLoading;
-  const refreshing = contractsQuery.isFetching || statsQuery.isFetching;
   const hasError = contractsQuery.isError || statsQuery.isError;
 
   const data = useMemo(() => {
@@ -649,38 +645,6 @@ const ContractsDashboardPage = () => {
     statsQuery.refetch();
   };
 
-  const exportCsv = () => {
-    const rows = [
-      ['شاخص', 'مقدار'],
-      ['کل قراردادها', data.total],
-      ['قراردادهای ریالی', data.rialGroup.count],
-      ['قراردادهای ارزی', data.foreignGroup.count],
-      ['ارزش ریالی پرتفوی', data.rialGroup.amount],
-      ['معادل ریالی قراردادهای ارزی', data.totals.rialEquivalent],
-      ['صورت‌وضعیت / فاکتور', data.totals.invoiced],
-      ['پرداخت‌شده', data.totals.paid],
-      ['مانده تسویه', data.totals.outstanding],
-      ['تضامین فعال', data.totals.guarantees],
-      [],
-      ['گروه ارزی', 'شماره', 'موضوع', 'طرف قرارداد', 'ارز', 'مبلغ مؤثر', 'نرخ ارز', 'معادل ریالی', 'وضعیت', 'پایان مؤثر'],
-      ...[...data.rialRows, ...data.foreignRows].map((row) => [
-        row.group === 'rial' ? 'ریالی' : 'ارزی',
-        row.contract.number || '', row.contract.subject || '', row.contract.party_name || '',
-        row.currency, row.amount, row.rate, row.rialAmount,
-        statusLabel(row.contract.status), row.end || '',
-      ]),
-    ];
-    const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(',')).join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `contracts-dashboard-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(link.href);
-  };
-
   if (isLoading) {
     return (
       <Box>
@@ -713,22 +677,6 @@ const ContractsDashboardPage = () => {
           <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>
             {`${formatPersianNumber(data.rialGroup.count)} ریالی · ${formatPersianNumber(data.foreignGroup.count)} ارزی`}
           </Typography>
-        )}
-        actions={(
-          <>
-            <Tooltip title="به‌روزرسانی">
-              <span>
-                <Button variant="outlined" onClick={refreshAll} disabled={refreshing} sx={{ minWidth: 40, px: 1 }}>
-                  {refreshing ? <CircularProgress size={16} /> : <RefreshOutlinedIcon fontSize="small" />}
-                </Button>
-              </span>
-            </Tooltip>
-            <Button variant="outlined" startIcon={<DownloadOutlinedIcon />} onClick={exportCsv}>خروجی</Button>
-            <Button variant="contained" startIcon={<AddRoundedIcon />} onClick={() => navigate('/contracts/new')}
-              sx={{ bgcolor: AMBER, '&:hover': { bgcolor: '#92400e' } }}>
-              قرارداد جدید
-            </Button>
-          </>
         )}
       />
 

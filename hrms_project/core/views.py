@@ -373,6 +373,7 @@ def users_view(request):
         qs = qs.filter(id__in=allowed_ids) if allowed_ids else qs
 
     data = []
+    from core.employee_link import employee_link_payload
     for u in qs:
         p = getattr(u, 'profile', None)
         data.append({
@@ -387,6 +388,7 @@ def users_view(request):
             'role_label': p.get_role_display() if p else '',
             'applications': list(p.applications.values_list('id', flat=True)) if p else [],
             'companies': list(p.companies.values_list('id', flat=True)) if (p and company) else [],
+            **employee_link_payload(p, request),
         })
     return Response(data)
 
@@ -475,6 +477,7 @@ def user_create_view(request):
         return Response({'error': 'دسترسی غیرمجاز'}, status=403)
     from django.contrib.auth.models import User
     from core.models.user import UserProfile
+    from core.employee_link import employee_exists, employee_link_payload
 
     data = request.data
     username = (data.get('username') or '').strip()
@@ -490,6 +493,18 @@ def user_create_view(request):
     if role not in role_map:
         return Response({'error': 'نقش نامعتبر است'}, status=400)
 
+    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+    # اتصال به پروندهٔ پرسنلی (اختیاری): پیش از ساخت کاربر اعتبارسنجی می‌شود
+    linked_employee_id = None
+    raw_employee = data.get('employee_id')
+    if raw_employee not in (None, '', 'null'):
+        if not str(raw_employee).isdigit():
+            return Response({'error': 'شناسهٔ پرسنل نامعتبر است'}, status=400)
+        from core.employee_link import employee_exists
+        if not employee_exists(int(raw_employee), company):
+            return Response({'error': 'پروندهٔ پرسنلی انتخاب‌شده یافت نشد'}, status=400)
+        linked_employee_id = int(raw_employee)
+
     u = User.objects.create_user(
         username=username,
         email=email or '',
@@ -502,10 +517,11 @@ def user_create_view(request):
     p.role = role
 
     # Auto-assign to current company (multi-tenant setup)
-    company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
     if company:
         p.companies.add(company)
         p.current_company = company
+    if linked_employee_id:
+        p.employee_id = linked_employee_id
     p.save()
 
     # Assign module access (if provided by admin)
@@ -523,6 +539,7 @@ def user_create_view(request):
             'role': p.role, 'role_label': role_map.get(p.role, ''),
             'is_superuser': u.is_superuser,
             'applications': list(p.applications.values_list('id', flat=True)),
+            **employee_link_payload(p, request),
         },
     }, status=201)
 
@@ -538,6 +555,7 @@ def user_update_view(request, user_id):
     from django.contrib.auth.models import User
     from core.models.user import UserProfile
     from core.models import Application
+    from core.employee_link import employee_exists, employee_link_payload, company_of_profile
 
     user = User.objects.filter(id=user_id, is_active=True).first()
     if not user:
@@ -578,6 +596,23 @@ def user_update_view(request, user_id):
             profile.current_application = None
             update_fields.append('current_application')
 
+    # اتصال/قطع اتصال پروندهٔ پرسنلی (منبع عکس و جنسیت کاربر)
+    if 'employee_id' in data:
+        raw_employee = data.get('employee_id')
+        if raw_employee in (None, '', 'null'):
+            if profile.employee_id is not None:
+                profile.employee_id = None
+                update_fields.append('employee_id')
+        elif not str(raw_employee).isdigit():
+            return Response({'error': 'شناسهٔ پرسنل نامعتبر است'}, status=400)
+        elif int(raw_employee) != profile.employee_id:
+            from core.employee_link import employee_exists
+            company = company_of_profile(profile) or getattr(request, 'tenant', None) or getattr(request, 'company', None)
+            if not employee_exists(int(raw_employee), company):
+                return Response({'error': 'پروندهٔ پرسنلی انتخاب‌شده یافت نشد'}, status=400)
+            profile.employee_id = int(raw_employee)
+            update_fields.append('employee_id')
+
     if update_fields:
         update_fields.append('updated_at')
         profile.save(update_fields=update_fields)
@@ -589,6 +624,7 @@ def user_update_view(request, user_id):
             'first_name': user.first_name, 'last_name': user.last_name,
             'role': profile.role, 'role_label': role_map.get(profile.role, ''),
             'applications': list(profile.applications.values_list('id', flat=True)),
+            **employee_link_payload(profile, request),
         },
     })
 
