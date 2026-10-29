@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -95,14 +95,41 @@ const contracts = [
     guarantees: [],
     documents: [],
   },
+  {
+    id: 4,
+    number: 'C-103',
+    subject: 'قرارداد خرید تجهیزات وارداتی',
+    party: 12,
+    party_name: 'شرکت بازرگانی پ',
+    contract_type: 'purchase',
+    contract_type_master_name: 'خرید',
+    status: 'active',
+    amount: 250000,
+    effective_amount: 250000,
+    effective_end_date: '2026-12-31',
+    end_date: '2026-12-31',
+    start_date: '2026-10-15',
+    created_at: '2026-10-15T10:00:00Z',
+    project_name: 'پروژه ج',
+    currency_name: 'دلار آمریکا',
+    currency_symbol: '$',
+    currency_code: 'USD',
+    exchange_rate: 600000,
+    addendums: [],
+    invoices: [{ id: 4, total: 100000, is_paid: false, due_date: '2026-09-01' }],
+    payments: [],
+    statements: [],
+    guarantees: [{ id: 4, amount: 20000, is_released: false }],
+    documents: [],
+  },
 ];
 
 const stats = {
-  total: 3,
-  status_counts: { active: 1, completed: 1, draft: 1 },
-  type_counts: { 'پیمانکاری': 1, 'خرید': 1, 'مشاوره': 1 },
-  project_counts: { 'پروژه آ': 2, 'پروژه ب': 1 },
-  total_amount: 1800000000,
+  total: 4,
+  status_counts: { active: 2, completed: 1, draft: 1 },
+  type_counts: { 'پیمانکاری': 1, 'خرید': 2, 'مشاوره': 1 },
+  project_counts: { 'پروژه آ': 2, 'پروژه ب': 1, 'پروژه ج': 1 },
+  total_amount: 1800500000,
   expiring: 1,
 };
 
@@ -120,8 +147,7 @@ beforeEach(() => {
     return Promise.resolve({ data: null });
   });
 });
-
-test('contracts dashboard shows graphical portfolio, finance and actionable tables', async () => {
+test('contracts dashboard splits rial and foreign contracts into themed tables and line charts', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -142,20 +168,52 @@ test('contracts dashboard shows graphical portfolio, finance and actionable tabl
     await act(async () => { await wait(180); });
   }
 
+  // هدر و شاخص‌ها
   expect(container.textContent).toContain('داشبورد قراردادها');
-  expect(container.textContent).toContain('پرتفوی قراردادها در یک نگاه');
   expect(container.textContent).toContain('کل قراردادها');
-  expect(container.textContent).toContain('وضعیت قراردادها');
-  expect(container.textContent).toContain('ترکیب انواع قرارداد');
-  expect(container.textContent).toContain('روند ماهانه قراردادها');
-  expect(container.textContent).toContain('قراردادهای رو به انقضا');
+  expect(container.textContent).toContain('ارزش پرتفوی ریالی');
+  expect(container.textContent).toContain('معادل ریالی قراردادهای ارزی');
+
+  // تفکیک ارزی / ریالی
+  expect(container.textContent).toContain('تفکیک قراردادها بر اساس ارز');
+  expect(container.textContent).toContain('قراردادهای ریالی');
+  expect(container.textContent).toContain('قراردادهای ارزی');
+  expect(container.textContent).toContain('دلار آمریکا');
+
+  // نمودارهای خطی (recharts) — بدون نمودار میله‌ای/دونات
+  expect(container.textContent).toContain('روند ماهانه انعقاد قراردادها');
+  expect(container.textContent).toContain('روند ارزش قراردادهای منعقدشده');
+  expect(container.querySelectorAll('.recharts-line').length).toBeGreaterThan(0);
+  expect(container.querySelectorAll('.recharts-bar-rectangle').length).toBe(0);
+  expect(container.querySelectorAll('.recharts-pie').length).toBe(0);
+
+  // جداول استاندارد ریالی و ارزی
+  const rialTable = container.querySelector('table[aria-label="فهرست قراردادهای ریالی داشبورد"]');
+  const foreignTable = container.querySelector('table[aria-label="فهرست قراردادهای ارزی داشبورد"]');
+  expect(rialTable).toBeTruthy();
+  expect(foreignTable).toBeTruthy();
+  expect(rialTable.textContent).toContain('قرارداد ساخت سالن تولید');
+  expect(rialTable.textContent).not.toContain('قرارداد خرید تجهیزات وارداتی');
+  expect(foreignTable.textContent).toContain('قرارداد خرید تجهیزات وارداتی');
+  expect(foreignTable.textContent).toContain('دلار آمریکا');
+  expect(rialTable.querySelectorAll('tbody tr')).toHaveLength(3);
+  expect(foreignTable.querySelectorAll('tbody tr')).toHaveLength(1);
+  expect(rialTable.querySelector('thead th').textContent).toContain('ردیف');
+
+  // سایر بخش‌های جدولی
   expect(container.textContent).toContain('سلامت مالی پرونده‌ها');
-  expect(container.textContent).toContain('قراردادهای اخیر');
-  expect(container.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(container.textContent).toContain('پیمانکاران و تأمین‌کنندگان کلیدی');
-  expect(container.textContent).toContain('شرکت ساختمانی الف');
+  expect(container.textContent).toContain('قراردادهای رو به انقضا');
+  expect(container.textContent).toContain('طرف‌های اصلی قرارداد');
+  expect(container.textContent).toContain('ترکیب انواع قرارداد');
   expect(container.textContent).toContain('توزیع قراردادها در پروژه‌ها');
+  expect(container.querySelector('table[aria-label="فهرست طرف‌های قرارداد داشبورد"]')).toBeTruthy();
+  expect(container.textContent).toContain('شرکت ساختمانی الف');
+
+  // هیچ چیپی در داشبورد استفاده نشده است
+  expect(container.querySelectorAll('.MuiChip-root')).toHaveLength(0);
 
   root.unmount();
   container.remove();
 });
+
+
