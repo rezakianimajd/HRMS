@@ -1024,6 +1024,14 @@ class SeasonalTransaction(AccountingBaseModel):
         MANUAL = 'manual', _('ورود دستی')
         LEDGER = 'ledger', _('از اسناد حسابداری')
 
+    class GoodsServiceType(models.TextChoices):
+        """نوع کالا/خدمات در فایل خروجی.
+
+        بر اساس دستور کارفرما، در این نسخه همهٔ ردیف‌ها با «سایر» گزارش می‌شوند؛
+        افزودن مقادیر دیگر فقط با مستند نسخهٔ TTMS انجام می‌شود.
+        """
+        OTHER = 'other', _('سایر')
+
     report = models.ForeignKey(
         SeasonalReport, on_delete=models.CASCADE, related_name='transactions',
         verbose_name=_('گزارش فصلی'),
@@ -1034,11 +1042,16 @@ class SeasonalTransaction(AccountingBaseModel):
         verbose_name=_('جهت معامله'),
     )
     name = models.CharField(max_length=250, verbose_name=_('نام / عنوان طرف معامله'))
+    first_name = models.CharField(max_length=150, blank=True, verbose_name=_('نام (شخص حقیقی)'))
+    last_name = models.CharField(max_length=150, blank=True, verbose_name=_('نام خانوادگی (شخص حقیقی)'))
     person_type = models.CharField(
         max_length=10, choices=PersonType.choices, blank=True, default='',
         verbose_name=_('نوع شخص'),
     )
-    economic_code = models.CharField(max_length=20, blank=True, verbose_name=_('شماره اقتصادی'))
+    economic_code = models.CharField(
+        max_length=20, blank=True, verbose_name=_('شماره اقتصادی (منسوخ)'),
+        help_text=_('دیگر استفاده نمی‌شود؛ فقط برای حفظ داده‌های قبلی نگه داشته شده است.'),
+    )
     national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ملی'))
     postal_code = models.CharField(max_length=10, blank=True, verbose_name=_('کد پستی'))
     country = models.CharField(max_length=60, blank=True, verbose_name=_('کشور'))
@@ -1049,6 +1062,14 @@ class SeasonalTransaction(AccountingBaseModel):
     amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
     vat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مالیات بر ارزش افزوده'))
     duties = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('عوارض'))
+    is_included = models.BooleanField(
+        default=True, verbose_name=_('مشمول معاملات فصلی'),
+        help_text=_('در این نسخه همهٔ ردیف‌ها مشمول هستند و این مقدار همیشه True است.'),
+    )
+    goods_service_type = models.CharField(
+        max_length=20, choices=GoodsServiceType.choices, default=GoodsServiceType.OTHER,
+        verbose_name=_('نوع کالا یا خدمات'),
+    )
     kind = models.PositiveSmallIntegerField(choices=Kind.choices, default=Kind.TYPE_1, verbose_name=_('نوع معامله'))
     invoice_date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ فاکتور'))
     invoice_no = models.CharField(max_length=50, blank=True, verbose_name=_('شماره فاکتور'))

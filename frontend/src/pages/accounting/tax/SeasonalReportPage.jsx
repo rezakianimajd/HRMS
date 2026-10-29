@@ -47,8 +47,9 @@ const PERSON_TYPES = [
 const FIELD_MAP = {
   line_no: 'lineNo',
   name: 'name',
+  first_name: 'firstName',
+  last_name: 'lastName',
   person_type: 'personType',
-  economic_code: 'economicCode',
   national_id: 'nationalId',
   postal_code: 'postalCode',
   country: 'country',
@@ -73,18 +74,17 @@ const SOURCE_INTERNAL = 'سیاست داخلی Kian EBP';
 /* آینهٔ محلی قواعد (فقط برای حالت آفلاین) — مرجع نهایی همان پاسخ سرور است */
 const LOCAL_REFERENCE = {
   direction: BACKEND_DIRECTION,
-  ruleset_version: 'draft-1405.1',
+  ruleset_version: 'draft-1405.2',
   ruleset_status: 'unverified',
   rules: [
-    { kind: 'required', field: 'name', person_types: ['legal', 'natural', 'foreign'], level: 'error', source: SOURCE_LEGAL, message: 'نام فروشنده الزامی است.' },
     { kind: 'required', field: 'person_type', person_types: ['legal', 'natural', 'foreign'], level: 'error', source: SOURCE_INTERNAL, message: 'نوع فروشنده را انتخاب کنید.' },
-    { kind: 'required', field: 'economic_code', person_types: ['legal'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقوقی، شماره اقتصادی ۱۱ رقمی الزامی است.' },
-    { kind: 'digits', field: 'economic_code', person_types: ['legal', 'natural'], level: 'error', length: 11, source: SOURCE_LEGAL, message: 'شماره اقتصادی باید فقط رقم و ۱۱ رقم باشد.' },
+    { kind: 'required', field: 'name', person_types: ['legal', 'foreign'], level: 'error', source: SOURCE_LEGAL, message: 'نام شرکت / عنوان فروشنده الزامی است.' },
     { kind: 'required', field: 'national_id', person_types: ['legal'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقوقی، شناسه ملی ۱۱ رقمی الزامی است.' },
     { kind: 'digits', field: 'national_id', person_types: ['legal'], level: 'error', length: 11, source: SOURCE_LEGAL, message: 'شناسه ملی شخص حقوقی باید ۱۱ رقم باشد.' },
+    { kind: 'required', field: 'first_name', person_types: ['natural'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقیقی، «نام» الزامی است.' },
+    { kind: 'required', field: 'last_name', person_types: ['natural'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقیقی، «نام خانوادگی» الزامی است.' },
     { kind: 'required', field: 'national_id', person_types: ['natural'], level: 'error', source: SOURCE_LEGAL, message: 'برای فروشندهٔ حقیقی، کد ملی ۱۰ رقمی الزامی است.' },
     { kind: 'digits', field: 'national_id', person_types: ['natural'], level: 'error', length: 10, source: SOURCE_LEGAL, message: 'کد ملی شخص حقیقی باید ۱۰ رقم باشد.' },
-    { kind: 'forbidden', field: 'economic_code', person_types: ['foreign'], level: 'warning', source: SOURCE_TTMS, message: 'برای شخص خارجی، شماره اقتصادی ایرانی ثبت نمی‌شود.' },
     { kind: 'forbidden', field: 'national_id', person_types: ['foreign'], level: 'warning', source: SOURCE_TTMS, message: 'برای شخص خارجی، شناسه ملی/کد ملی ایرانی ثبت نمی‌شود.' },
     { kind: 'required', field: 'country', person_types: ['foreign'], level: 'error', source: SOURCE_TTMS, message: 'برای شخص خارجی، کشور الزامی است.' },
     { kind: 'recommended', field: 'postal_code', person_types: ['legal', 'natural'], level: 'warning', source: SOURCE_LEGAL, message: 'کد پستی فروشنده ثبت نشده است.' },
@@ -94,9 +94,9 @@ const LOCAL_REFERENCE = {
     { kind: 'recommended', field: 'goods_service_desc', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'شرح کالا یا خدمات وارد نشده است.' },
   ],
   required: {
-    legal: ['name', 'person_type', 'economic_code', 'national_id'],
-    natural: ['name', 'person_type', 'national_id'],
-    foreign: ['name', 'person_type', 'country'],
+    legal: ['person_type', 'name', 'national_id'],
+    natural: ['person_type', 'first_name', 'last_name', 'national_id'],
+    foreign: ['person_type', 'name', 'country'],
   },
 };
 
@@ -106,8 +106,8 @@ const SETTINGS_KEY = 'hrms.seasonal.settings';
 
 const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-  name: '', personType: 'legal', economicCode: '', nationalId: '', postalCode: '',
-  country: '', city: '', address: '',
+  name: '', firstName: '', lastName: '', personType: 'legal', nationalId: '',
+  postalCode: '', country: '', city: '', address: '',
   description: '', amount: '', vat: '', duties: '', kind: 1, invoiceDate: '',
   invoiceNo: '', moadianUid: '', status: 'pending',
 });
@@ -119,7 +119,7 @@ const isEmpty = (value) => !String(value ?? '').trim();
 
 /* ردیف خالی (ردیف آمادهٔ ورود) */
 const TEXT_FIELDS = [
-  'name', 'economicCode', 'nationalId', 'postalCode', 'country', 'city', 'address',
+  'name', 'firstName', 'lastName', 'nationalId', 'postalCode', 'country', 'city', 'address',
   'description', 'amount', 'vat', 'duties', 'invoiceNo', 'invoiceDate', 'moadianUid',
 ];
 const isBlankRow = (row) => TEXT_FIELDS.every((field) => isEmpty(row[field]));
@@ -134,8 +134,9 @@ const jalaliText = (value) => {
 const rowFromApi = (item) => ({
   id: item.id,
   name: item.name || '',
+  firstName: item.first_name || '',
+  lastName: item.last_name || '',
   personType: item.person_type || 'legal',
-  economicCode: item.economic_code || '',
   nationalId: item.national_id || '',
   postalCode: item.postal_code || '',
   country: item.country || '',
@@ -155,8 +156,9 @@ const rowFromApi = (item) => ({
 const rowToApi = (row) => ({
   id: typeof row.id === 'number' ? row.id : null,
   name: row.name || '',
+  first_name: row.firstName || '',
+  last_name: row.lastName || '',
   person_type: row.personType || 'legal',
-  economic_code: row.economicCode || '',
   national_id: row.nationalId || '',
   postal_code: row.postalCode || '',
   country: row.country || '',
@@ -240,7 +242,7 @@ const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE
       push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.', SOURCE_TTMS);
     }
     if (row.invoiceNo) {
-      const key = `${normalizeName(row.invoiceNo)}|${row.economicCode || row.nationalId}`;
+      const key = `${normalizeName(row.invoiceNo)}|${row.nationalId || row.name}`;
       if (seen.has(key)) {
         push('invoiceNo', 'error', `شماره فاکتور تکراری با ردیف ${toPersianDigits(seen.get(key))} ثبت شده است.`, SOURCE_INTERNAL);
       } else {
@@ -584,17 +586,23 @@ const SeasonalReportPage = () => {
     setRows((previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
-  /* انتخاب طرف معامله از پیشنهادها: شماره اقتصادی/شناسه ملی/کد پستی/شهر/آدرس پر می‌شود */
+  /* انتخاب طرف معامله از پیشنهادها: شناسه/کد پستی/شهر/آدرس و (برای حقیقی) نام و نام خانوادگی پر می‌شود */
   const applyParty = (id, party) => {
-    setRows((previous) => previous.map((row) => (row.id === id ? {
-      ...row,
-      name: party.name,
-      economicCode: row.economicCode || party.economicCode || '',
-      nationalId: row.nationalId || party.nationalId || '',
-      postalCode: row.postalCode || party.postalCode || '',
-      city: row.city || party.city || '',
-      address: row.address || party.address || '',
-    } : row)));
+    setRows((previous) => previous.map((row) => {
+      if (row.id !== id) return row;
+      const parts = String(party.name || '').trim().split(/\s+/);
+      const isNatural = row.personType === 'natural';
+      return {
+        ...row,
+        name: party.name,
+        firstName: isNatural && !row.firstName ? (parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '') : row.firstName,
+        lastName: isNatural && !row.lastName ? (parts.length > 1 ? parts[parts.length - 1] : '') : row.lastName,
+        nationalId: row.nationalId || party.nationalId || '',
+        postalCode: row.postalCode || party.postalCode || '',
+        city: row.city || party.city || '',
+        address: row.address || party.address || '',
+      };
+    }));
   };
 
   const removeRow = (id) => setRows((previous) => previous.filter((row) => row.id !== id));
@@ -623,7 +631,7 @@ const SeasonalReportPage = () => {
     let list = filledRows;
     if (term) {
       list = list.filter((row) => [
-        row.name, row.city, row.address, row.nationalId, row.economicCode,
+        row.name, row.firstName, row.lastName, row.city, row.address, row.nationalId,
         row.description, row.invoiceNo,
       ].some((value) => String(value ?? '').toLowerCase().includes(term)));
     }
@@ -760,10 +768,11 @@ const SeasonalReportPage = () => {
     }
 
     const headers = [
-      'ردیف', 'شماره اقتصادی فروشنده', 'شناسه ملی / کد ملی فروشنده', 'نام فروشنده',
-      'نوع فروشنده', 'کد پستی', 'کشور', 'شهر', 'آدرس', 'شرح کالا / خدمات',
-      'مبلغ خرید (ریال)', 'مالیات بر ارزش افزوده', 'عوارض', 'جمع کل',
-      'نوع معامله', 'تاریخ فاکتور', 'شماره فاکتور', 'وضعیت سامانه مودیان',
+      'ردیف', 'نوع فروشنده', 'نام شرکت / عنوان', 'نام', 'نام خانوادگی',
+      'شناسه ملی / کد ملی', 'مشمول معاملات فصلی', 'کد پستی', 'کشور', 'شهر', 'آدرس',
+      'شرح کالا / خدمات', 'نوع کالا یا خدمات', 'مبلغ خرید (ریال)',
+      'مالیات بر ارزش افزوده', 'عوارض', 'جمع کل', 'نوع معامله', 'تاریخ فاکتور',
+      'شماره فاکتور', 'وضعیت سامانه مودیان',
     ];
     const escape = (value) => String(value ?? '')
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -771,15 +780,18 @@ const SeasonalReportPage = () => {
     const body = filledRows.map((row, index) => `
       <tr>
         <td>${index + 1}</td>
-        <td style="mso-number-format:'\\@'">${escape(row.economicCode)}</td>
-        <td style="mso-number-format:'\\@'">${escape(row.nationalId)}</td>
-        <td>${escape(row.name)}</td>
         <td>${escape(personLabel(row.personType))}</td>
+        <td>${escape(row.name)}</td>
+        <td>${escape(row.firstName)}</td>
+        <td>${escape(row.lastName)}</td>
+        <td style="mso-number-format:'\\@'">${escape(row.nationalId)}</td>
+        <td>بله</td>
         <td style="mso-number-format:'\\@'">${escape(row.postalCode)}</td>
         <td>${escape(row.country)}</td>
         <td>${escape(row.city)}</td>
         <td>${escape(row.address)}</td>
         <td>${escape(row.description)}</td>
+        <td>سایر</td>
         <td>${num(row.amount)}</td>
         <td>${num(row.vat)}</td>
         <td>${num(row.duties)}</td>
@@ -795,7 +807,7 @@ const SeasonalReportPage = () => {
       <h3>صورت معاملات فصلی خرید — ${escape(yearLabel)} — ${escape(quarterLabel)}</h3>
       <table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
-      <tfoot><tr><td colspan="10">جمع کل خرید</td><td>${totals.amount}</td><td>${totals.vat}</td>
+      <tfoot><tr><td colspan="13">جمع کل خرید</td><td>${totals.amount}</td><td>${totals.vat}</td>
       <td>${totals.duties}</td><td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
     const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const link = document.createElement('a');
@@ -845,12 +857,11 @@ const SeasonalReportPage = () => {
     const rowsHtml = filledRows.map((row, index) => `
       <tr>
         <td>${toPersianDigits(index + 1)}</td>
-        <td>${row.name}</td>
         <td>${(PERSON_TYPES.find((type) => type.value === row.personType) || {}).label || ''}</td>
-        <td>${toPersianDigits(row.economicCode)}</td>
+        <td>${row.name}</td>
+        <td>${row.firstName || ''}</td>
+        <td>${row.lastName || ''}</td>
         <td>${toPersianDigits(row.nationalId)}</td>
-        <td>${row.country || row.city}</td>
-        <td>${row.description}</td>
         <td>${formatPersianNumber(num(row.amount))}</td>
         <td>${formatPersianNumber(num(row.vat))}</td>
         <td>${formatPersianNumber(num(row.duties))}</td>
@@ -868,9 +879,9 @@ const SeasonalReportPage = () => {
       h3{margin:0 0 4px}.note{font-size:10px;color:#92400e;margin:0 0 8px}</style></head><body>
       <h3>صورت معاملات فصلی خرید — ${yearLabel} — ${quarterLabel}</h3>
       <p class="note">وضعیت قواعد/قالب TTMS: ${rulesetNote}</p>
-      <table><thead><tr><th>ردیف</th><th>فروشنده</th><th>نوع</th><th>شماره اقتصادی</th>
-      <th>شناسه/کد ملی</th><th>کشور/شهر</th><th>شرح کالا/خدمات</th><th>مبلغ</th>
-      <th>مالیات</th><th>عوارض</th><th>جمع کل</th><th>تاریخ</th><th>شماره فاکتور</th>
+      <table><thead><tr><th>ردیف</th><th>نوع</th><th>نام شرکت / عنوان</th><th>نام</th>
+      <th>نام خانوادگی</th><th>شناسه/کد ملی</th><th>مبلغ</th><th>مالیات</th><th>عوارض</th>
+      <th>جمع کل</th><th>تاریخ</th><th>شماره فاکتور</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
     printable.document.close();
     printable.focus();
@@ -887,7 +898,6 @@ const SeasonalReportPage = () => {
       const previous = map.get(key);
       map.set(key, {
         name: normalizeName(row.name),
-        economicCode: row.economicCode || previous?.economicCode || '',
         nationalId: row.nationalId || previous?.nationalId || '',
         postalCode: row.postalCode || previous?.postalCode || '',
         city: row.city || previous?.city || '',
@@ -900,7 +910,6 @@ const SeasonalReportPage = () => {
       const previous = map.get(key) || {};
       map.set(key, {
         name: normalizeName(party.name),
-        economicCode: previous.economicCode || party.economicCode || '',
         nationalId: previous.nationalId || party.nationalId || '',
         postalCode: previous.postalCode || party.postalCode || '',
         city: previous.city || party.city || '',
@@ -992,9 +1001,26 @@ const SeasonalReportPage = () => {
     },
     {
       key: 'name',
-      label: colLabel('نام فروشنده', 'name'),
-      width: '13%',
-      render: (row) => (
+      label: colLabel('نام و نام خانوادگی / نام شرکت', 'name'),
+      width: '16%',
+      render: (row) => (row.personType === 'natural' ? (
+        <Box sx={{ display: 'flex', gap: 0.75 }}>
+          <CellTextField
+            value={row.firstName}
+            onChange={(value) => updateCell(row.id, 'firstName', value)}
+            placeholder="نام"
+            inputProps={{ 'aria-label': 'نام' }}
+            sx={cellSxFor(row, 'first_name')}
+          />
+          <CellTextField
+            value={row.lastName}
+            onChange={(value) => updateCell(row.id, 'lastName', value)}
+            placeholder="نام خانوادگی"
+            inputProps={{ 'aria-label': 'نام خانوادگی' }}
+            sx={cellSxFor(row, 'last_name')}
+          />
+        </Box>
+      ) : (
         <Autocomplete
           freeSolo
           size="small"
@@ -1024,13 +1050,13 @@ const SeasonalReportPage = () => {
             <TextField
               {...params}
               variant="standard"
-              placeholder="نام طرف معامله…"
-              inputProps={{ ...params.inputProps, 'aria-label': 'نام طرف معامله' }}
-              sx={cellInputSx}
+              placeholder="نام شرکت / عنوان…"
+              inputProps={{ ...params.inputProps, 'aria-label': 'نام شرکت' }}
+              sx={cellSxFor(row, 'name')}
             />
           )}
         />
-      ),
+      )),
     },
     {
       key: 'personType',
@@ -1049,23 +1075,19 @@ const SeasonalReportPage = () => {
       ),
     },
     {
-      key: 'economicCode',
-      label: colLabel('شماره اقتصادی', 'economic_code'),
-      width: '8%',
-      align: 'center',
-      render: (row) => (
-        <DigitField value={row.economicCode} onChange={(value) => updateCell(row.id, 'economicCode', value)}
-          placeholder="۱۱ رقمی" numeric maxLength={11} sx={cellSxFor(row, 'economic_code')} />
-      ),
-    },
-    {
       key: 'nationalId',
       label: colLabel('شناسه ملی / کد ملی', 'national_id'),
-      width: '8%',
+      width: '9%',
       align: 'center',
       render: (row) => (
-        <DigitField value={row.nationalId} onChange={(value) => updateCell(row.id, 'nationalId', value)}
-          placeholder="شناسه/کد ملی" numeric maxLength={11} sx={cellSxFor(row, 'national_id')} />
+        <DigitField
+          value={row.nationalId}
+          onChange={(value) => updateCell(row.id, 'nationalId', value)}
+          placeholder={row.personType === 'natural' ? 'کد ملی ۱۰ رقمی' : 'شناسه ملی ۱۱ رقمی'}
+          numeric
+          maxLength={11}
+          sx={cellSxFor(row, 'national_id')}
+        />
       ),
     },
     {
@@ -1332,6 +1354,7 @@ const SeasonalReportPage = () => {
             : mode === 'local'
               ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
               : 'در حال دریافت بازهٔ فصل…'}
+          {' · همهٔ ردیف‌ها «مشمول» و «نوع کالا/خدمات = سایر»'}
         </Typography>
 
         <Typography

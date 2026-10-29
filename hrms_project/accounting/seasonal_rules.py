@@ -30,9 +30,11 @@ PERSON_TYPES = [
 
 FIELD_LABELS = {
     'line_no': 'ردیف',
-    'name': 'نام فروشنده',
+    'name': 'نام شرکت / عنوان',
+    'first_name': 'نام',
+    'last_name': 'نام خانوادگی',
     'person_type': 'نوع فروشنده',
-    'economic_code': 'شماره اقتصادی',
+    'economic_code': 'شماره اقتصادی (منسوخ)',
     'national_id': 'شناسه ملی / کد ملی',
     'postal_code': 'کد پستی',
     'country': 'کشور',
@@ -40,6 +42,8 @@ FIELD_LABELS = {
     'city': 'شهر',
     'address': 'آدرس',
     'goods_service_desc': 'شرح کالا / خدمات',
+    'goods_service_type': 'نوع کالا یا خدمات',
+    'is_included': 'مشمول معاملات فصلی',
     'amount': 'مبلغ',
     'vat': 'مالیات بر ارزش افزوده',
     'duties': 'عوارض',
@@ -74,30 +78,30 @@ def _rule(kind, field, person_types, level, source, message, **extra):
 # قواعد خرید (اعلانی — قابل نگهداری؛ با تغییر نسخهٔ TTMS فقط این بخش عوض می‌شود)
 # ---------------------------------------------------------------------------
 RULES = [
-    _rule('required', 'name', ALL_TYPES, 'error', SOURCE_LEGAL,
-          'نام فروشنده الزامی است.'),
     _rule('required', 'person_type', ALL_TYPES, 'error', SOURCE_INTERNAL,
           'نوع فروشنده (حقوقی/حقیقی/خارجی) را انتخاب کنید؛ قواعد هر نوع متفاوت است.'),
 
-    # فروشندهٔ حقوقی: شماره اقتصادی و شناسه ملی
-    _rule('required', 'economic_code', ('legal',), 'error', SOURCE_LEGAL,
-          'برای فروشندهٔ حقوقی، شماره اقتصادی ۱۱ رقمی الزامی است.'),
-    _rule('digits', 'economic_code', IRANIAN_TYPES, 'error', SOURCE_LEGAL,
-          'شماره اقتصادی باید فقط رقم و ۱۱ رقم باشد.', length=11),
+    # ---- فروشندهٔ حقوقی: عنوان شرکت + شناسه ملی ۱۱ رقمی (کد اقتصادی استفاده نمی‌شود) ----
+    _rule('required', 'name', ('legal',), 'error', SOURCE_LEGAL,
+          'نام شرکت برای فروشندهٔ حقوقی الزامی است.'),
     _rule('required', 'national_id', ('legal',), 'error', SOURCE_LEGAL,
           'برای فروشندهٔ حقوقی، شناسه ملی ۱۱ رقمی الزامی است.'),
     _rule('digits', 'national_id', ('legal',), 'error', SOURCE_LEGAL,
           'شناسه ملی شخص حقوقی باید ۱۱ رقم باشد.', length=11),
 
-    # فروشندهٔ حقیقی: کد ملی؛ شماره اقتصادی اختیاری است (در صورت وجود، ۱۱ رقمی)
+    # ---- فروشندهٔ حقیقی: نام و نام خانوادگی جدا + کد ملی ۱۰ رقمی ----
+    _rule('required', 'first_name', ('natural',), 'error', SOURCE_LEGAL,
+          'برای فروشندهٔ حقیقی، «نام» الزامی است.'),
+    _rule('required', 'last_name', ('natural',), 'error', SOURCE_LEGAL,
+          'برای فروشندهٔ حقیقی، «نام خانوادگی» الزامی است.'),
     _rule('required', 'national_id', ('natural',), 'error', SOURCE_LEGAL,
           'برای فروشندهٔ حقیقی، کد ملی ۱۰ رقمی الزامی است.'),
     _rule('digits', 'national_id', ('natural',), 'error', SOURCE_LEGAL,
           'کد ملی شخص حقیقی باید ۱۰ رقم باشد.', length=10),
 
-    # شخص خارجی: شناسه‌های ایرانی معنا ندارند؛ کشور الزامی است
-    _rule('forbidden', 'economic_code', ('foreign',), 'warning', SOURCE_TTMS,
-          'برای شخص خارجی، شماره اقتصادی ایرانی ثبت نمی‌شود؛ این فیلد را خالی بگذارید.'),
+    # ---- شخص خارجی: شناسه‌های ایرانی معنا ندارند؛ نام/عنوان و کشور الزامی است ----
+    _rule('required', 'name', ('foreign',), 'error', SOURCE_LEGAL,
+          'نام/عنوان فروشندهٔ خارجی الزامی است.'),
     _rule('forbidden', 'national_id', ('foreign',), 'warning', SOURCE_TTMS,
           'برای شخص خارجی، شناسه ملی/کد ملی ایرانی ثبت نمی‌شود؛ این فیلد را خالی بگذارید.'),
     _rule('required', 'country', ('foreign',), 'error', SOURCE_TTMS,
@@ -179,12 +183,17 @@ def build_reference(direction=DIRECTION):
 # ---------------------------------------------------------------------------
 # ``target_field`` عمداً خالی است: نام ستون رسمی نسخهٔ هدف TTMS در دسترس نیست و
 # پرکردن آن با حدس، ممنوع است. با دریافت قالب رسمی، فقط همین جدول تکمیل می‌شود.
+# تغییرات دستور کارفرما: «مشمول» برای همهٔ ردیف‌ها = بله و «نوع کالا/خدمات» = سایر؛
+# همچنین کد اقتصادی حذف و برای حقیقی نام/نام خانوادگی جدا گزارش می‌شود.
 TTMS_DRAFT_MAPPING = [
     {'internal': 'line_no', 'type': 'int', 'length': None, 'requirement': 'الزامی', 'target_field': None},
-    {'internal': 'name', 'type': 'text', 'length': 250, 'requirement': 'الزامی', 'target_field': None},
     {'internal': 'person_type', 'type': 'enum', 'length': 10, 'requirement': 'الزامی', 'target_field': None},
-    {'internal': 'economic_code', 'type': 'text', 'length': 11, 'requirement': 'الزامی برای حقوقی', 'target_field': None},
-    {'internal': 'national_id', 'type': 'text', 'length': 11, 'requirement': 'الزامی ( حقوقی ۱۱ / حقیقی ۱۰ )', 'target_field': None},
+    {'internal': 'is_included', 'type': 'bool', 'length': 1, 'requirement': 'همیشه «بله»', 'target_field': None},
+    {'internal': 'goods_service_type', 'type': 'enum', 'length': 20, 'requirement': 'همیشه «سایر»', 'target_field': None},
+    {'internal': 'name', 'type': 'text', 'length': 250, 'requirement': 'الزامی برای حقوقی/خارجی', 'target_field': None},
+    {'internal': 'first_name', 'type': 'text', 'length': 150, 'requirement': 'الزامی برای حقیقی', 'target_field': None},
+    {'internal': 'last_name', 'type': 'text', 'length': 150, 'requirement': 'الزامی برای حقیقی', 'target_field': None},
+    {'internal': 'national_id', 'type': 'text', 'length': 11, 'requirement': 'الزامی (حقوقی ۱۱ / حقیقی ۱۰)', 'target_field': None},
     {'internal': 'postal_code', 'type': 'text', 'length': 10, 'requirement': 'توصیه‌شده', 'target_field': None},
     {'internal': 'country', 'type': 'text', 'length': 60, 'requirement': 'الزامی برای خارجی', 'target_field': None},
     {'internal': 'province', 'type': 'text', 'length': 60, 'requirement': 'اختیاری', 'target_field': None},

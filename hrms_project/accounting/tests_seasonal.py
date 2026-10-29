@@ -47,11 +47,12 @@ class SeasonalBaseTest(TestCase):
         )
 
     def row(self, **overrides):
-        """ردیف خرید پیش‌فرض: فروشندهٔ حقوقی با تمام اطلاعات الزامی."""
+        """ردیف خرید پیش‌فرض: فروشندهٔ حقوقی با شناسه ملی ۱۱ رقمی."""
         data = {
             'name': 'شرکت آلفا تجارت',
+            'first_name': '',
+            'last_name': '',
             'person_type': 'legal',
-            'economic_code': '10101010101',
             'national_id': '10101010101',
             'postal_code': '1234567890',
             'country': '',
@@ -68,6 +69,15 @@ class SeasonalBaseTest(TestCase):
             'moadian_status': 'registered',
             'moadian_uid': 'UID-1',
         }
+        data.update(overrides)
+        return data
+
+    def natural_row(self, **overrides):
+        """ردیف خرید فروشندهٔ حقیقی: نام و نام خانوادگی جدا + کد ملی ۱۰ رقمی."""
+        data = self.row(
+            person_type='natural', name='', first_name='علی', last_name='رضایی',
+            national_id='0012345678', postal_code='1234567890', invoice_no='N-1',
+        )
         data.update(overrides)
         return data
 
@@ -172,14 +182,26 @@ class PurchaseSyncTests(SeasonalBaseTest):
     def test_sync_skips_empty_rows_and_cleans_digits(self):
         report = self.make_report()
         saved = self.save_rows(report, [
-            self.row(economic_code='۱۰۱۰۱۰۱۰۱۰۱', postal_code='۱۲۳۴۵۶۷۸۹۰'),
+            self.row(national_id='۱۰۱۰۱۰۱۰۱۰۱', postal_code='۱۲۳۴۵۶۷۸۹۰'),
             {'name': '', 'invoice_no': '', 'amount': '', 'vat': '', 'duties': ''},
         ])
         self.assertEqual(saved, 1)
         row = report.transactions.first()
-        self.assertEqual(row.economic_code, '10101010101')
+        self.assertEqual(row.national_id, '10101010101')
         self.assertEqual(row.postal_code, '1234567890')
         self.assertEqual(row.source, SeasonalTransaction.Source.MANUAL)
+        # قواعد ثابت این نسخه: مشمول = بله و نوع کالا/خدمات = سایر
+        self.assertTrue(row.is_included)
+        self.assertEqual(row.goods_service_type, SeasonalTransaction.GoodsServiceType.OTHER)
+
+    def test_sync_composes_natural_full_name_and_ignores_economic_code(self):
+        report = self.make_report()
+        self.save_rows(report, [self.natural_row(economic_code='99999999999')])
+        row = report.transactions.first()
+        self.assertEqual(row.first_name, 'علی')
+        self.assertEqual(row.last_name, 'رضایی')
+        self.assertEqual(row.name, 'علی رضایی')
+        self.assertEqual(row.economic_code, '')      # فیلد منسوخ؛ نوشته نمی‌شود
 
 
 
@@ -197,34 +219,41 @@ class PurchaseValidationTests(SeasonalBaseTest):
         self.assertEqual(result['summary']['errors'], 0)
         self.assertEqual(result['summary']['warnings'], 0)
 
-    def test_legal_seller_missing_or_invalid_economic_code(self):
-        result = self.validate([self.row(economic_code='')])
-        self.assertIn((1, 'economic_code'), self.error_fields(result))
-
-        result = self.validate([self.row(economic_code='12345')])
-        self.assertIn((1, 'economic_code'), self.error_fields(result))
-
-    def test_legal_seller_missing_national_id(self):
+    def test_legal_seller_missing_or_invalid_national_id(self):
         result = self.validate([self.row(national_id='')])
         self.assertIn((1, 'national_id'), self.error_fields(result))
 
-    def test_natural_seller_valid_without_economic_code(self):
-        # فروشندهٔ حقیقی: کد ملی ۱۰ رقمی؛ شماره اقتصادی اختیاری
-        result = self.validate([self.row(
-            person_type='natural', economic_code='', national_id='0012345678',
-        )])
-        self.assertNotIn('economic_code', {field for _no, field in self.error_fields(result)})
+        result = self.validate([self.row(national_id='12345')])
+        self.assertIn((1, 'national_id'), self.error_fields(result))
+
+    def test_legal_seller_requires_company_name(self):
+        result = self.validate([self.row(name='')])
+        self.assertIn((1, 'name'), self.error_fields(result))
+
+    def test_legal_seller_does_not_need_economic_code(self):
+        # کد اقتصادی منسوخ است: نبودش نباید خطا/هشدار بسازد
+        result = self.validate([self.row(economic_code='')])
+        fields = {field for _no, field in self.error_fields(result)}
+        self.assertNotIn('economic_code', fields)
         self.assertEqual(result['summary']['errors'], 0, result['issues'])
 
+    def test_natural_seller_requires_separate_first_and_last_name(self):
+        result = self.validate([self.natural_row()])
+        self.assertEqual(result['summary']['errors'], 0, result['issues'])
+
+        result = self.validate([self.natural_row(first_name='')])
+        self.assertIn((1, 'first_name'), self.error_fields(result))
+
+        result = self.validate([self.natural_row(last_name='')])
+        self.assertIn((1, 'last_name'), self.error_fields(result))
+
     def test_natural_seller_invalid_national_id(self):
-        result = self.validate([self.row(
-            person_type='natural', economic_code='', national_id='12345',
-        )])
+        result = self.validate([self.natural_row(national_id='12345')])
         self.assertIn((1, 'national_id'), self.error_fields(result))
 
     def test_foreign_seller_supported_with_country(self):
         result = self.validate([self.row(
-            person_type='foreign', economic_code='', national_id='', postal_code='',
+            person_type='foreign', name='Atlas GmbH', national_id='', postal_code='',
             country='آلمان', invoice_no='F-1',
         )])
         self.assertEqual(result['summary']['errors'], 0, result['issues'])
@@ -233,13 +262,13 @@ class PurchaseValidationTests(SeasonalBaseTest):
 
     def test_foreign_seller_with_iranian_ids_warns(self):
         result = self.validate([self.row(
-            person_type='foreign', country='آلمان', national_id='10101010101',
+            person_type='foreign', name='Atlas GmbH', country='آلمان', national_id='10101010101',
         )])
         self.assertIn((1, 'national_id'), self.warning_fields(result))
 
     def test_foreign_seller_requires_country(self):
         result = self.validate([self.row(
-            person_type='foreign', economic_code='', national_id='', postal_code='', country='',
+            person_type='foreign', name='Atlas GmbH', national_id='', postal_code='', country='',
         )])
         self.assertIn((1, 'country'), self.error_fields(result))
 
@@ -283,8 +312,8 @@ class PurchaseValidationTests(SeasonalBaseTest):
         self.assertIn((2, 'invoice_no'), self.error_fields(result))
 
     def test_validation_issues_carry_rule_source(self):
-        result = self.validate([self.row(economic_code='')])
-        issue = next(item for item in result['issues'] if item['field'] == 'economic_code')
+        result = self.validate([self.row(national_id='123')])
+        issue = next(item for item in result['issues'] if item['field'] == 'national_id')
         self.assertTrue(issue['code'])
         self.assertEqual(issue['source'], seasonal_rules.SOURCE_LEGAL)
         self.assertEqual(result['ruleset']['status'], 'unverified')
@@ -299,11 +328,9 @@ class PurchaseExportTests(SeasonalBaseTest):
         self.report = self.make_report()
         self.save_rows(self.report, [
             self.row(invoice_no='P-1', amount=1000000, vat=100000, duties=20000),
-            self.row(invoice_no='P-2', name='فروشگاه بتا', person_type='natural',
-                     economic_code='', national_id='0012345678', amount=500000, vat=50000,
-                     duties=0, kind=2),
-            self.row(invoice_no='P-3', name='شخص خارجی', person_type='foreign',
-                     economic_code='', national_id='', postal_code='', country='ترکیه',
+            self.natural_row(invoice_no='P-2', amount=500000, vat=50000, duties=0, kind=2),
+            self.row(invoice_no='P-3', name='Atlas GmbH', person_type='foreign',
+                     national_id='', postal_code='', country='ترکیه',
                      amount=250000, vat=0, duties=0, moadian_status='pending'),
         ])
         # ردیف فروش (نباید در هیچ خروجی/جمعی بیاید)
@@ -339,21 +366,28 @@ class PurchaseExportTests(SeasonalBaseTest):
         self.assertTrue(data.auto_filter.ref)
 
         self.assertEqual(data.cell(row=4, column=1).value, 1)
-        self.assertEqual(data.cell(row=4, column=2).value, '10101010101')
-        self.assertEqual(data.cell(row=4, column=12).value, 1000000)
-        self.assertEqual(data.cell(row=4, column=13).value, 100000)
-        self.assertEqual(data.cell(row=4, column=14).value, 20000)
-        self.assertEqual(data.cell(row=4, column=15).value, 1120000)
-        self.assertTrue(data.cell(row=4, column=17).value.startswith('1405/'))
-        names = [data.cell(row=row, column=4).value for row in range(4, 7)]
+        self.assertEqual(data.cell(row=4, column=2).value, 'شخص حقوقی')
+        self.assertEqual(data.cell(row=4, column=3).value, 'شرکت آلفا تجارت')
+        self.assertEqual(data.cell(row=4, column=6).value, '10101010101')
+        self.assertEqual(data.cell(row=4, column=7).value, 'بله')          # مشمول
+        self.assertEqual(data.cell(row=4, column=14).value, 'سایر')        # نوع کالا/خدمات
+        self.assertEqual(data.cell(row=4, column=15).value, 1000000)
+        self.assertEqual(data.cell(row=4, column=16).value, 100000)
+        self.assertEqual(data.cell(row=4, column=17).value, 20000)
+        self.assertEqual(data.cell(row=4, column=18).value, 1120000)
+        self.assertTrue(data.cell(row=4, column=20).value.startswith('1405/'))
+        # ردیف حقیقی: نام و نام خانوادگی جدا
+        self.assertEqual(data.cell(row=5, column=4).value, 'علی')
+        self.assertEqual(data.cell(row=5, column=5).value, 'رضایی')
+        names = [data.cell(row=row, column=3).value for row in range(4, 7)]
         self.assertNotIn('مشتری فروش', names)
         self.assertEqual(data.max_row, 4 + 3)
 
         total_row = 4 + 3
-        self.assertEqual(data.cell(row=total_row, column=12).value, 1750000)
-        self.assertEqual(data.cell(row=total_row, column=13).value, 150000)
-        self.assertEqual(data.cell(row=total_row, column=14).value, 20000)
-        self.assertEqual(data.cell(row=total_row, column=15).value, 1920000)
+        self.assertEqual(data.cell(row=total_row, column=15).value, 1750000)
+        self.assertEqual(data.cell(row=total_row, column=16).value, 150000)
+        self.assertEqual(data.cell(row=total_row, column=17).value, 20000)
+        self.assertEqual(data.cell(row=total_row, column=18).value, 1920000)
 
         summary = workbook['خلاصه']
         summary_values = [cell.value for cell in summary['B']]
@@ -391,10 +425,11 @@ class PurchaseExportTests(SeasonalBaseTest):
         reference = seasonal_rules.build_reference()
         self.assertEqual(reference['direction'], 'purchase')
         self.assertEqual(reference['ruleset_status'], 'unverified')
-        self.assertIn('economic_code', reference['required']['legal'])
-        self.assertIn('national_id', reference['required']['natural'])
+        self.assertNotIn('economic_code', reference['required']['legal'])
+        self.assertIn('national_id', reference['required']['legal'])
+        self.assertIn('first_name', reference['required']['natural'])
+        self.assertIn('last_name', reference['required']['natural'])
         self.assertIn('country', reference['required']['foreign'])
-        self.assertNotIn('economic_code', reference['required']['natural'])
         self.assertTrue(reference['rules'])
 
 

@@ -434,14 +434,19 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
     class Meta(BaseModelSerializer.Meta):
         model = SeasonalTransaction
         fields = [
-            'id', 'line_no', 'direction', 'direction_display', 'name', 'person_type',
-            'person_type_display', 'economic_code', 'national_id', 'postal_code',
+            'id', 'line_no', 'direction', 'direction_display', 'name',
+            'first_name', 'last_name', 'person_type', 'person_type_display',
+            'economic_code', 'national_id', 'postal_code',
             'country', 'province', 'city', 'address', 'goods_service_desc',
+            'goods_service_type', 'is_included',
             'amount', 'vat', 'duties', 'total', 'kind', 'kind_display', 'invoice_date',
             'invoice_no', 'moadian_status', 'moadian_status_display', 'moadian_uid',
             'currency_code', 'fx_rate', 'source', 'created_at', 'updated_at',
         ]
-        read_only_fields = ['id', 'line_no', 'source', 'created_at', 'updated_at', 'company']
+        read_only_fields = [
+            'id', 'line_no', 'source', 'created_at', 'updated_at', 'company',
+            'economic_code', 'is_included', 'goods_service_type',
+        ]
 
     def get_total(self, obj):
         return str(obj.total)
@@ -478,7 +483,7 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
                 raise serializers.ValidationError({
                     'invoice_date': 'تاریخ فاکتور بیرون از بازهٔ این فصل است.',
                 })
-        for field, length in (('economic_code', 11), ('postal_code', 10)):
+        for field, length in (('national_id', 11), ('postal_code', 10)):
             code = attrs.get(field)
             if code and (not str(code).isdigit() or len(str(code)) > length):
                 raise serializers.ValidationError({field: f'فقط رقم مجاز است (حداکثر {length} رقم).'})

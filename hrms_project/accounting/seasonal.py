@@ -17,19 +17,22 @@ from accounting.models import SeasonalReport, SeasonalTransaction
 DIRECTION_PURCHASE = SeasonalTransaction.Direction.PURCHASE
 SUPPORTED_DIRECTIONS = (DIRECTION_PURCHASE,)   # فروش در نسخهٔ بعدی
 
-# ستون‌های خروجی اکسل مدیریتی خرید (با ستون عوارض و کشور)
+# ستون‌های خروجی اکسل مدیریتی خرید
 PURCHASE_COLUMNS = [
     'ردیف',
-    'شماره اقتصادی فروشنده',
-    'شناسه ملی / کد ملی فروشنده',
-    'نام فروشنده',
     'نوع فروشنده',
+    'نام شرکت / عنوان',
+    'نام',
+    'نام خانوادگی',
+    'شناسه ملی / کد ملی',
+    'مشمول معاملات فصلی',
     'کد پستی',
     'کشور',
     'استان',
     'شهر',
     'آدرس',
     'شرح کالا / خدمات',
+    'نوع کالا یا خدمات',
     'مبلغ خرید (ریال)',
     'مالیات بر ارزش افزوده',
     'عوارض',
@@ -41,9 +44,9 @@ PURCHASE_COLUMNS = [
 ]
 
 ROW_FIELDS = (
-    'name', 'person_type', 'economic_code', 'national_id', 'postal_code', 'country',
-    'province', 'city', 'address', 'goods_service_desc', 'amount', 'vat', 'duties',
-    'kind', 'invoice_date', 'invoice_no', 'moadian_status', 'moadian_uid',
+    'name', 'first_name', 'last_name', 'person_type', 'national_id', 'postal_code',
+    'country', 'province', 'city', 'address', 'goods_service_desc', 'amount', 'vat',
+    'duties', 'kind', 'invoice_date', 'invoice_no', 'moadian_status', 'moadian_uid',
     'currency_code', 'fx_rate',
 )
 
@@ -101,9 +104,10 @@ def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
         item = {
             'id': raw.get('id') or None,
             'line_no': index,
-            'name': _clean_text(raw.get('name'), 250),
             'person_type': _clean_text(raw.get('person_type'), 10),
-            'economic_code': _digits_only(raw.get('economic_code'))[:20],
+            'first_name': _clean_text(raw.get('first_name'), 150),
+            'last_name': _clean_text(raw.get('last_name'), 150),
+            'name': _clean_text(raw.get('name'), 250),
             'national_id': _digits_only(raw.get('national_id'))[:20],
             'postal_code': _digits_only(raw.get('postal_code'))[:10],
             'country': _clean_text(raw.get('country'), 60),
@@ -124,8 +128,13 @@ def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
         }
         if item['kind'] < 1 or item['kind'] > 5:
             item['kind'] = 1
-        if not any([item['name'], item['invoice_no'], item['amount'], item['vat'], item['duties'],
-                    item['goods_service_desc']]):
+        # شخص حقیقی: نام و نام خانوادگی جدا ذخیره می‌شود و «نام کامل» برای گزارش ساخته می‌شود
+        if item['person_type'] == SeasonalTransaction.PersonType.NATURAL:
+            composed = ' '.join(part for part in [item['first_name'], item['last_name']] if part).strip()
+            if composed:
+                item['name'] = composed[:250]
+        if not any([item['name'], item['first_name'], item['last_name'], item['invoice_no'],
+                    item['amount'], item['vat'], item['duties'], item['goods_service_desc']]):
             continue
         cleaned.append(item)
 
@@ -144,6 +153,9 @@ def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
                 )
             for field in ROW_FIELDS:
                 setattr(row, field, item[field])
+            # دستور کارفرما: همهٔ ردیف‌ها مشمول و نوع کالا/خدمات «سایر»
+            row.is_included = True
+            row.goods_service_type = SeasonalTransaction.GoodsServiceType.OTHER
             row.direction = direction
             row.line_no = item['line_no']
             row.save()
@@ -282,7 +294,7 @@ def validate_report(report, direction=DIRECTION_PURCHASE):
                 'moadian_uid_recommended', seasonal_rules.SOURCE_TTMS)
 
         if row.invoice_no:
-            key = (row.invoice_no.strip(), row.economic_code.strip() or row.national_id.strip())
+            key = (row.invoice_no.strip(), row.national_id.strip() or row.name.strip())
             if key in seen:
                 add(row, 'invoice_no', 'error',
                     f'شماره فاکتور تکراری با ردیف {seen[key]} ثبت شده است.',
@@ -347,16 +359,19 @@ def _row_values(row):
     person_label = dict(seasonal_rules.PERSON_TYPES).get(row.person_type, '')
     return [
         row.line_no,
-        row.economic_code,
-        row.national_id,
-        row.name,
         person_label,
+        row.name,
+        row.first_name,
+        row.last_name,
+        row.national_id,
+        'بله' if row.is_included else 'خیر',
         row.postal_code,
         row.country,
         row.province,
         row.city,
         row.address,
         row.goods_service_desc,
+        str(row.get_goods_service_type_display()),
         int(row.amount or 0),
         int(row.vat or 0),
         int(row.duties or 0),
@@ -417,23 +432,23 @@ def _build_data_sheet(workbook, report, rows, totals):
         for column, value in enumerate(_row_values(row), start=1):
             cell = ws.cell(row=excel_row, column=column, value=value)
             cell.border = border
-            if column in (2, 3, 6, 17, 18):        # کدها و تاریخ به‌صورت متن
+            if column in (6, 8, 20, 21):        # شناسه/کد پستی/تاریخ/شماره فاکتور به‌صورت متن
                 cell.number_format = '@'
                 cell.alignment = center
-            elif column in (1, 5, 16, 19):
+            elif column in (1, 2, 7, 14, 19, 22):
                 cell.alignment = center
-            elif column in (12, 13, 14, 15):
+            elif column in (15, 16, 17, 18):
                 cell.number_format = '#,##0'
                 cell.alignment = left
 
     total_row = 4 + len(rows)
-    ws.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=11)
+    ws.merge_cells(start_row=total_row, start_column=1, end_row=total_row, end_column=14)
     label = ws.cell(row=total_row, column=1, value='جمع کل خرید')
     label.font = Font(bold=True)
     label.alignment = center
     for column, value in (
-        (12, totals['amount']), (13, totals['vat']),
-        (14, totals.get('duties', 0)), (15, totals['total']),
+        (15, totals['amount']), (16, totals['vat']),
+        (17, totals.get('duties', 0)), (18, totals['total']),
     ):
         cell = ws.cell(row=total_row, column=column, value=value)
         cell.font = Font(bold=True)
@@ -561,6 +576,10 @@ def _draft_value(row, internal):
     """مقدار یک ردیف برای پیش‌نویس TTMS بر اساس فیلد داخلی."""
     if internal == 'person_type':
         return dict(seasonal_rules.PERSON_TYPES).get(row.person_type, '')
+    if internal == 'is_included':
+        return 'بله' if row.is_included else 'خیر'
+    if internal == 'goods_service_type':
+        return str(row.get_goods_service_type_display())
     if internal == 'moadian_status':
         return 'درج‌شده در سامانه' if row.moadian_status == 'registered' else 'درج‌نشده'
     if internal == 'invoice_date':
@@ -634,6 +653,12 @@ def build_ttms_draft(report, direction=DIRECTION_PURCHASE):
         '',
         'نگاشت ستون‌های پیش‌نویس:',
         *mapping_lines,
+        '',
+        'قواعد ثابت این نسخه (دستور کارفرما):',
+        '  - همهٔ ردیف‌ها «مشمول معاملات فصلی» = بله',
+        '  - «نوع کالا یا خدمات» = سایر',
+        '  - فروشندهٔ حقیقی: نام و نام خانوادگی جدا + کد ملی ۱۰ رقمی',
+        '  - فروشندهٔ حقوقی: شناسه ملی ۱۱ رقمی (کد اقتصادی استفاده نمی‌شود)',
         '',
         'برای تکمیل و تأیید این خروجی، موارد زیر لازم است:',
         '  1) نسخهٔ دقیق نرم‌افزار آفلاین TTMS مورد استفاده در مؤسسه برای سال ۱۴۰۵',

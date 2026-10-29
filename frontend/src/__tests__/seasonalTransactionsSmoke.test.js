@@ -32,13 +32,16 @@ const API_ROW = {
   id: 101,
   line_no: 1,
   name: 'شرکت آلفا تجارت',
+  first_name: '',
+  last_name: '',
   person_type: 'legal',
-  economic_code: '10101010101',
   national_id: '10101010101',
   postal_code: '1234567890',
   city: 'تهران',
   address: 'خیابان ولیعصر، پلاک ۱۲',
   goods_service_desc: 'خدمات مشاوره مالی',
+  goods_service_type: 'other',
+  is_included: true,
   amount: '1000000',
   vat: '90000',
   duties: '0',
@@ -178,9 +181,8 @@ test('renders header, official columns, studio search bar and the api period ran
   const headers = Array.from(table.querySelectorAll('thead th')).map((th) => th.textContent.trim());
   expect(headers).toEqual([
     'ردیف',
-    'نام فروشنده*',
+    'نام و نام خانوادگی / نام شرکت*',
     'نوع فروشنده*',
-    'شماره اقتصادی*',
     'شناسه ملی / کد ملی*',
     'کد پستی',
     'کشور*',
@@ -211,7 +213,7 @@ test('api rows render totals, persian digits and the moadian status dot', async 
 
   const first = bodyRows[0];
   expect(first.textContent).toContain('۱٬۰۹۰٬۰۰۰');
-  expect(first.querySelector('input[placeholder="۱۱ رقمی"]').value).toBe('۱۰۱۰۱۰۱۰۱۰۱');
+  expect(first.querySelector('input[placeholder="شناسه ملی ۱۱ رقمی"]').value).toBe('۱۰۱۰۱۰۱۰۱۰۱');
   expect(first.querySelector('input[placeholder="A-۱۲"]') || first.textContent).toBeTruthy();
   const dateInput = first.querySelector('input[placeholder^="۱۴۰۵"]');
   expect(dateInput.value).toMatch(/^[۰-۹]{4}\/[۰-۹]{2}\/[۰-۹]{2}$/);
@@ -230,12 +232,12 @@ test('a ready empty row is always available and typing creates the next one, the
   let bodyRows = Array.from(container.querySelectorAll('tbody tr'));
   expect(bodyRows).toHaveLength(1);
 
-  const nameInput = bodyRows[0].querySelector('input[aria-label="نام طرف معامله"]');
+  const nameInput = bodyRows[0].querySelector('input[aria-label="نام شرکت"]');
   await act(async () => { setNativeValue(nameInput, 'ش'); await wait(220); });
 
   bodyRows = Array.from(container.querySelectorAll('tbody tr'));
   expect(bodyRows).toHaveLength(2);
-  expect(bodyRows[1].querySelector('input[aria-label="نام طرف معامله"]').value).toBe('');
+  expect(bodyRows[1].querySelector('input[aria-label="نام شرکت"]').value).toBe('');
 
   /* ذخیرهٔ خودکار با debounce روی API */
   await act(async () => { await wait(1100); });
@@ -248,16 +250,16 @@ test('a ready empty row is always available and typing creates the next one, the
 });
 
 
-test('suggestions come from every api row and fill city plus economic code', async () => {
+test('suggestions come from every api row and fill city plus national id', async () => {
   currentReport = apiReport([
     API_ROW,
-    { ...API_ROW, id: 102, line_no: 2, name: 'شرکت آلفا صنعت', city: 'کرج', economic_code: '20202020202', invoice_no: 'B-1' },
+    { ...API_ROW, id: 102, line_no: 2, name: 'شرکت آلفا صنعت', city: 'کرج', national_id: '20202020202', invoice_no: 'B-1' },
     { ...API_ROW, id: 103, line_no: 3, name: 'فروشگاه بتا', city: 'اصفهان', invoice_no: 'C-1' },
   ]);
   const { root, container } = await renderPage();
 
   const readyNameInput = Array.from(container.querySelectorAll('tbody tr'))
-    .pop().querySelector('input[aria-label="نام طرف معامله"]');
+    .pop().querySelector('input[aria-label="نام شرکت"]');
   await act(async () => {
     readyNameInput.focus();
     setNativeValue(readyNameInput, 'شرکت آلفا');
@@ -277,9 +279,9 @@ test('suggestions come from every api row and fill city plus economic code', asy
   });
 
   const filled = Array.from(container.querySelectorAll('tbody tr'))
-    .find((row) => row.querySelector('input[aria-label="نام طرف معامله"]')?.value === 'شرکت آلفا صنعت');
+    .find((row) => row.querySelector('input[aria-label="نام شرکت"]')?.value === 'شرکت آلفا صنعت');
   expect(filled.querySelector('input[placeholder="شهر"]').value).toBe('کرج');
-  expect(filled.querySelector('input[placeholder="۱۱ رقمی"]').value).toBe('۲۰۲۰۲۰۲۰۲۰۲');
+  expect(filled.querySelector('input[placeholder="شناسه ملی ۱۱ رقمی"]').value).toBe('۲۰۲۰۲۰۲۰۲۰۲');
 
   root.unmount();
   container.remove();
@@ -289,7 +291,7 @@ test('validation marks rows with issues and reports counts in the footer', async
   currentReport = apiReport([API_ROW]);
   validateResponse = {
     issues: [
-      { row_id: 101, row_no: 1, row_name: API_ROW.name, field: 'economic_code', level: 'error', message: 'شماره اقتصادی باید ۱۱ رقم باشد.' },
+      { row_id: 101, row_no: 1, row_name: API_ROW.name, field: 'national_id', level: 'error', message: 'شناسه ملی باید ۱۱ رقم باشد.' },
       { row_id: 101, row_no: 1, row_name: API_ROW.name, field: 'postal_code', level: 'warning', message: 'کد پستی ثبت نشده است.' },
     ],
     summary: { rows: 1, errors: 1, warnings: 1 },
@@ -348,7 +350,7 @@ test('falls back to the local storage when the api is unavailable', async () => 
   expect(container.textContent).toContain('حالت محلی');
   const bodyRows = Array.from(container.querySelectorAll('tbody tr'));
   expect(bodyRows.length).toBe(2);
-  expect(bodyRows[0].querySelector('input[aria-label="نام طرف معامله"]').value).toBe('شرکت محلی');
+  expect(bodyRows[0].querySelector('input[aria-label="نام شرکت"]').value).toBe('شرکت محلی');
   expect(bodyRows[0].textContent).toContain('۵۵۰٬۰۰۰');
 
   /* اعتبارسنجی در حالت محلی هم کار می‌کند */
@@ -431,6 +433,62 @@ test('local rules engine flags a missing country for foreign sellers', async () 
 
   /* یک خطا (کشور) و هشدارهای توصیه‌ای */
   expect(container.textContent).toMatch(/اعتبارسنجی: [۱-۹][۰-۹]* خطا/);
+
+  root.unmount();
+  container.remove();
+});
+
+
+
+test('a natural seller is edited with separate first and last name fields', async () => {
+  currentReport = apiReport([{
+    ...API_ROW,
+    id: 201,
+    person_type: 'natural',
+    name: 'علی رضایی',
+    first_name: 'علی',
+    last_name: 'رضایی',
+    national_id: '0012345678',
+    invoice_no: 'N-1',
+  }]);
+  const { root, container } = await renderPage();
+
+  const firstRow = container.querySelectorAll('tbody tr')[0];
+  const firstName = firstRow.querySelector('input[aria-label="نام"]');
+  const lastName = firstRow.querySelector('input[aria-label="نام خانوادگی"]');
+  expect(firstName).not.toBeNull();
+  expect(lastName).not.toBeNull();
+  expect(firstName.value).toBe('علی');
+  expect(lastName.value).toBe('رضایی');
+  /* شناسه/کد ملی برای حقیقی ۱۰ رقمی است */
+  expect(firstRow.querySelector('input[placeholder="کد ملی ۱۰ رقمی"]').value).toBe('۰۰۱۲۳۴۵۶۷۸');
+  /* کد اقتصادی حذف شده است */
+  expect(firstRow.querySelector('input[placeholder="۱۱ رقمی"]')).toBeNull();
+
+  root.unmount();
+  container.remove();
+});
+
+test('switching the seller type to natural swaps the name cell to two fields', async () => {
+  const { root, container } = await renderPage();
+
+  const readyRow = container.querySelectorAll('tbody tr')[0];
+  expect(readyRow.querySelector('input[aria-label="نام شرکت"]')).not.toBeNull();
+
+  const personSelect = readyRow.querySelector('[aria-label="نوع فروشنده"]');
+  await act(async () => {
+    personSelect.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(200);
+  });
+  const naturalOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.trim() === 'حقیقی');
+  expect(naturalOption).toBeTruthy();
+  await act(async () => { naturalOption.click(); await wait(220); });
+
+  const updatedRow = container.querySelectorAll('tbody tr')[0];
+  expect(updatedRow.querySelector('input[aria-label="نام"]')).not.toBeNull();
+  expect(updatedRow.querySelector('input[aria-label="نام خانوادگی"]')).not.toBeNull();
+  expect(updatedRow.querySelector('input[aria-label="نام شرکت"]')).toBeNull();
 
   root.unmount();
   container.remove();
