@@ -147,7 +147,7 @@ beforeEach(() => {
     return Promise.resolve({ data: null });
   });
 });
-test('contracts dashboard splits rial and foreign contracts into themed tables and line charts', async () => {
+test('contracts dashboard renders rial/foreign cards, schematic tracks and line charts', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -172,44 +172,46 @@ test('contracts dashboard splits rial and foreign contracts into themed tables a
   expect(container.textContent).toContain('داشبورد قراردادها');
   expect(container.textContent).toContain('کل قراردادها');
   expect(container.textContent).toContain('ارزش پرتفوی ریالی');
-  expect(container.textContent).toContain('معادل ریالی قراردادهای ارزی');
+  expect(container.textContent).toContain('معادل ریالی ارزی');
 
-  // تفکیک ارزی / ریالی
-  expect(container.textContent).toContain('تفکیک قراردادها بر اساس ارز');
-  expect(container.textContent).toContain('قراردادهای ریالی');
-  expect(container.textContent).toContain('قراردادهای ارزی');
-  expect(container.textContent).toContain('دلار آمریکا');
+  // کارت‌های گروه ارزی/ریالی
+  const rialGroupCard = container.querySelector('[aria-label="پرتفوی ریالی"]');
+  const foreignGroupCard = container.querySelector('[aria-label="پرتفوی ارزی"]');
+  expect(rialGroupCard).toBeTruthy();
+  expect(foreignGroupCard).toBeTruthy();
+  expect(foreignGroupCard.textContent).toContain('دلار آمریکا');
 
-  // نمودارهای خطی (recharts) — بدون نمودار میله‌ای/دونات
+  // نمودارهای خطی (خطی و اسپارک‌لاین) — بدون میله/دونات
   expect(container.textContent).toContain('روند ماهانه انعقاد قراردادها');
   expect(container.textContent).toContain('روند ارزش قراردادهای منعقدشده');
   expect(container.querySelectorAll('.recharts-line').length).toBeGreaterThan(0);
   expect(container.querySelectorAll('.recharts-bar-rectangle').length).toBe(0);
   expect(container.querySelectorAll('.recharts-pie').length).toBe(0);
 
-  // جداول استاندارد ریالی و ارزی
-  const rialTable = container.querySelector('table[aria-label="فهرست قراردادهای ریالی داشبورد"]');
-  const foreignTable = container.querySelector('table[aria-label="فهرست قراردادهای ارزی داشبورد"]');
-  expect(rialTable).toBeTruthy();
-  expect(foreignTable).toBeTruthy();
-  expect(rialTable.textContent).toContain('قرارداد ساخت سالن تولید');
-  expect(rialTable.textContent).not.toContain('قرارداد خرید تجهیزات وارداتی');
-  expect(foreignTable.textContent).toContain('قرارداد خرید تجهیزات وارداتی');
-  expect(foreignTable.textContent).toContain('دلار آمریکا');
-  expect(rialTable.querySelectorAll('tbody tr')).toHaveLength(3);
-  expect(foreignTable.querySelectorAll('tbody tr')).toHaveLength(1);
-  expect(rialTable.querySelector('thead th').textContent).toContain('ردیف');
+  // داشبورد جدول ندارد؛ قراردادها کارت شده‌اند
+  expect(container.querySelectorAll('table')).toHaveLength(0);
+  const rialCards = container.querySelector('[aria-label="کارت‌های قراردادهای ریالی"]');
+  const foreignCards = container.querySelector('[aria-label="کارت‌های قراردادهای ارزی"]');
+  expect(rialCards).toBeTruthy();
+  expect(foreignCards).toBeTruthy();
+  expect(rialCards.textContent).toContain('قرارداد ساخت سالن تولید');
+  expect(rialCards.textContent).not.toContain('قرارداد خرید تجهیزات وارداتی');
+  expect(foreignCards.textContent).toContain('قرارداد خرید تجهیزات وارداتی');
+  expect(foreignCards.textContent).toContain('دلار آمریکا');
+  expect(foreignCards.textContent).toContain('معادل');
+  expect(rialCards.querySelectorAll('[aria-label="پرونده قرارداد"]').length).toBe(3);
+  expect(foreignCards.querySelectorAll('[aria-label="پرونده قرارداد"]').length).toBe(1);
 
-  // سایر بخش‌های جدولی
+  // بخش‌های شماتیک بدون جدول
   expect(container.textContent).toContain('سلامت مالی پرونده‌ها');
   expect(container.textContent).toContain('قراردادهای رو به انقضا');
+  expect(container.textContent).toContain('ترکیب وضعیت‌ها');
   expect(container.textContent).toContain('طرف‌های اصلی قرارداد');
   expect(container.textContent).toContain('ترکیب انواع قرارداد');
-  expect(container.textContent).toContain('توزیع قراردادها در پروژه‌ها');
-  expect(container.querySelector('table[aria-label="فهرست طرف‌های قرارداد داشبورد"]')).toBeTruthy();
+  expect(container.textContent).toContain('قراردادها در پروژه‌ها');
   expect(container.textContent).toContain('شرکت ساختمانی الف');
 
-  // هیچ چیپی در داشبورد استفاده نشده است
+  // نه چیپ، نه جدول
   expect(container.querySelectorAll('.MuiChip-root')).toHaveLength(0);
 
   root.unmount();

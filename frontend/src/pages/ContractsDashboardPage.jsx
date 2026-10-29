@@ -21,12 +21,14 @@ import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import CurrencyExchangeOutlinedIcon from '@mui/icons-material/CurrencyExchangeOutlined';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import {
   CartesianGrid, Legend, Line, LineChart, Tooltip as ReTooltip, XAxis, YAxis,
 } from 'recharts';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
-import { INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { INK, MUTED } from './accounting/AccountingDashboardUI';
 import {
   formatPersianNumber, formatPersianPercent, normalizeCurrencyLabel, toPersianDigits,
 } from '../core/utils/numberUtils';
@@ -36,10 +38,7 @@ import {
   CONTRACT_STATUS_LABELS as STATUS_LABELS,
   CONTRACT_TYPE_LABELS as TYPE_LABELS,
 } from '../core/theme/tokens';
-import {
-  ModulePager, ModuleTable, ModuleToolbar,
-  useModuleTableState, useModuleTheme, useRowHeight,
-} from './contracts/contractModuleUi';
+import { ModuleToolbar, useModuleTheme } from './contracts/contractModuleUi';
 
 const AMBER = '#b45309';
 const BLUE = '#2563eb';
@@ -50,6 +49,7 @@ const VIOLET = '#7c3aed';
 const SLATE = '#475569';
 const RIAL_BLUE = '#1d4ed8';
 const FOREIGN_VIOLET = '#7c3aed';
+const CARDS_PER_PAGE = 6;
 
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
@@ -58,7 +58,6 @@ const asArray = (value) => (Array.isArray(value) ? value : []);
 const statusLabel = (status) => STATUS_LABELS[status] || status || '—';
 const statusColor = (status) => STATUS_COLORS[status] || SLATE;
 const dateLabel = (value) => (value ? toJalali(String(value).slice(0, 10)) : '—');
-
 const money = (value, currency = 'ریال') => `${formatPersianNumber(Math.round(num(value)))} ${currency}`.trim();
 
 const compactMoney = (value, currency = '') => {
@@ -101,7 +100,7 @@ const daysColor = (days) => {
   return GREEN;
 };
 
-/* ---- تفکیک ارزی/ریالی: مبنای تشخیص همان منطق بک‌اند (exchange_rate > 1 و کد ارز غیر IRR) ---- */
+/* ---- تفکیک ارزی/ریالی با همان منطق بک‌اند (exchange_rate > 1 و کد ارز غیر IRR) ---- */
 const RIAL_CODES = ['IRR', 'IRT'];
 const RIAL_NAMES = ['ریال', 'ریال ایران', 'تومان'];
 const currencyGroupOf = (contract) => {
@@ -119,8 +118,7 @@ const rateOf = (contract) => {
   const rate = num(contract?.exchange_rate);
   return rate > 1 ? rate : 1;
 };
-
-/* ---------------------------------------------------------------- اجزای مشترک */
+/* ------------------------------------------------------------ اجزای شماتیک */
 const chartGrid = { stroke: 'rgba(148,163,184,0.26)', strokeDasharray: '4 4', vertical: true };
 const chartTick = { fill: '#475569', fontSize: 11, fontFamily: 'inherit' };
 const chartTooltip = {
@@ -137,56 +135,56 @@ const yTick = ({ x, y, payload }) => (
   </text>
 );
 
-const Panel = ({ theme, title, hint, icon: Icon, color = AMBER, action, children, sx }) => (
-  <Paper elevation={0} sx={{
+/* کارت پایه: هدر تم‌محور + بدنه */
+const Panel = ({ theme, title, hint, icon: Icon, color = AMBER, action, children, sx, ariaLabel }) => (
+  <Paper elevation={0} aria-label={ariaLabel} sx={{
     borderRadius: 'var(--hrms-table-radius, 16px)',
     border: '1px solid', borderColor: theme.cardBorderColor,
     bgcolor: 'background.paper', boxShadow: 'none', overflow: 'hidden',
-    display: 'flex', flexDirection: 'column', height: '100%', ...sx,
+    display: 'flex', flexDirection: 'column', height: '100%',
+    transition: 'box-shadow .18s ease, border-color .18s ease', ...sx,
   }}>
     <Stack direction="row" alignItems="center" spacing={1} useFlexGap
-      sx={{ px: `${theme.cardPadX}px`, py: 1.15, borderBottom: '1px solid', borderColor: 'divider' }}>
+      sx={{ px: `${theme.cardPadX}px`, py: 1.1, borderBottom: '1px solid', borderColor: 'divider' }}>
       <Box sx={{
-        width: 30, height: 30, borderRadius: '9px', flexShrink: 0,
+        width: 28, height: 28, borderRadius: '9px', flexShrink: 0,
         bgcolor: alpha(color, 0.08), color, border: `1px solid ${alpha(color, 0.16)}`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
       }}>
-        <Icon sx={{ fontSize: 17 }} />
+        <Icon sx={{ fontSize: 16 }} />
       </Box>
       <Box sx={{ flex: 1, minWidth: 0 }}>
         <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: INK }}>{title}</Typography>
-        {hint ? <Typography sx={{ fontSize: 10.5, color: MUTED }}>{hint}</Typography> : null}
+        {hint ? <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>{hint}</Typography> : null}
       </Box>
       {action || null}
     </Stack>
-    <Box sx={{ p: `${theme.cardPadX}px ${theme.cardPadX}px ${theme.cardPadY}px`, flex: 1, minHeight: 0 }}>
-      {children}
-    </Box>
+    <Box sx={{ p: `${theme.cardPadX}px`, flex: 1, minHeight: 0 }}>{children}</Box>
   </Paper>
 );
 
 const MetricTile = ({ theme, icon: Icon, label, value, suffix, hint, color = AMBER, onClick }) => {
   const content = (
     <Paper elevation={0} sx={{
-      p: 1.35, height: '100%', borderRadius: 'var(--hrms-table-radius, 16px)',
+      p: 1.3, height: '100%', borderRadius: 'var(--hrms-table-radius, 16px)',
       border: '1px solid', borderColor: theme.cardBorderColor,
       bgcolor: 'background.paper', boxShadow: 'none',
-      display: 'flex', flexDirection: 'column', gap: 0.6,
-      transition: 'border-color .16s ease, box-shadow .16s ease',
-      '&:hover': onClick ? { borderColor: alpha(color, 0.4), boxShadow: `0 8px 22px ${alpha(color, 0.07)}` } : undefined,
+      display: 'flex', flexDirection: 'column', gap: 0.55,
+      transition: 'border-color .16s ease, box-shadow .16s ease, transform .16s ease',
+      '&:hover': onClick ? { borderColor: alpha(color, 0.42), boxShadow: `0 10px 24px ${alpha(color, 0.08)}`, transform: 'translateY(-1px)' } : undefined,
     }}>
-      <Stack direction="row" alignItems="center" spacing={0.75}>
+      <Stack direction="row" alignItems="center" spacing={0.7}>
         <Box sx={{
-          width: 28, height: 28, borderRadius: '8px', flexShrink: 0,
+          width: 26, height: 26, borderRadius: '8px', flexShrink: 0,
           bgcolor: alpha(color, 0.08), color, border: `1px solid ${alpha(color, 0.14)}`,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
         }}>
-          <Icon sx={{ fontSize: 15 }} />
+          <Icon sx={{ fontSize: 14 }} />
         </Box>
         <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>{label}</Typography>
       </Stack>
       <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.4, minWidth: 0 }}>
-        <Typography noWrap sx={{ fontSize: 18, fontWeight: 900, color: INK, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+        <Typography noWrap sx={{ fontSize: 17, fontWeight: 900, color: INK, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
           {value}
         </Typography>
         {suffix ? <Typography sx={{ fontSize: 10.5, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
@@ -200,7 +198,7 @@ const MetricTile = ({ theme, icon: Icon, label, value, suffix, hint, color = AMB
 };
 
 const StatRow = ({ label, value, color = INK, strong = false }) => (
-  <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ py: 0.32 }}>
+  <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1} sx={{ py: 0.3 }}>
     <Typography noWrap sx={{ fontSize: 11.5, color: MUTED }}>{label}</Typography>
     <Typography noWrap sx={{
       fontSize: strong ? 12 : 11.5, fontWeight: strong ? 900 : 700, color,
@@ -209,6 +207,38 @@ const StatRow = ({ label, value, color = INK, strong = false }) => (
   </Stack>
 );
 
+
+/* نوار شماتیک (بدون چیپ، بدون جدول) */
+const Track = ({ value, color, height = 6, track }) => (
+  <Box sx={{ width: '100%', height, borderRadius: height / 2, bgcolor: track || 'rgba(148,163,184,0.18)', overflow: 'hidden' }}>
+    <Box sx={{
+      width: `${Math.max(0, Math.min(100, num(value)))}%`, height: '100%', borderRadius: height / 2,
+      background: `linear-gradient(90deg, ${alpha(color, 0.6)}, ${color})`,
+      transition: 'width .35s ease',
+    }} />
+  </Box>
+);
+
+const SchematicRow = ({ label, value, share, color = BLUE, hint, onClick }) => (
+  <Box
+    onClick={onClick}
+    sx={{
+      py: 0.6, px: 0.5, borderRadius: '9px',
+      cursor: onClick ? 'pointer' : 'default',
+      transition: 'background-color .16s ease',
+      '&:hover': onClick ? { bgcolor: alpha(color, 0.05) } : undefined,
+    }}
+  >
+    <Stack direction="row" alignItems="baseline" justifyContent="space-between" spacing={1}>
+      <Typography noWrap title={label} sx={{ fontSize: 11.5, fontWeight: 800, color: INK, flex: 1, minWidth: 0 }}>{label}</Typography>
+      <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>{value}</Typography>
+    </Stack>
+    <Box sx={{ mt: 0.45 }}><Track value={share} color={color} height={5} /></Box>
+    {hint ? <Typography noWrap sx={{ mt: 0.3, fontSize: 10, color: MUTED }}>{hint}</Typography> : null}
+  </Box>
+);
+
+/* نمودار خطی کامل (محور چپ، لجند RTL) */
 const TrendChart = ({ data, series, height = 240, yWidth = 62, tooltipFormatter }) => {
   const hostRef = React.useRef(null);
   const [width, setWidth] = useState(760);
@@ -244,6 +274,52 @@ const TrendChart = ({ data, series, height = 240, yWidth = 62, tooltipFormatter 
   );
 };
 
+/* اسپارک‌لاین کوچک داخل کارت‌ها */
+const SparkLine = ({ data, dataKey, color, height = 46 }) => {
+  const hostRef = React.useRef(null);
+  const [width, setWidth] = useState(180);
+  React.useLayoutEffect(() => {
+    const measure = () => {
+      const node = hostRef.current;
+      if (!node) return;
+      const next = Math.round(node.getBoundingClientRect().width);
+      if (next > 0) setWidth((previous) => (previous === next ? previous : next));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, []);
+  return (
+    <Box ref={hostRef} sx={{ width: '100%', height, direction: 'ltr' }}>
+      <LineChart width={width} height={height} data={data} margin={{ top: 4, right: 2, left: 2, bottom: 2 }}>
+        <Line type="monotone" dataKey={dataKey} stroke={color} strokeWidth={2}
+          dot={false} isAnimationActive={false} />
+      </LineChart>
+    </Box>
+  );
+};
+
+const CardPager = ({ page, total, onPage, unit }) => {
+  const totalPages = Math.max(1, Math.ceil(total / CARDS_PER_PAGE));
+  return (
+    <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} sx={{ mt: 1.25 }}>
+      <Typography sx={{ fontSize: 11, color: MUTED }}>
+        {`${formatPersianNumber(total)} ${unit} • صفحهٔ ${toPersianDigits(page + 1)} از ${toPersianDigits(totalPages)}`}
+      </Typography>
+      <Stack direction="row" spacing={0.5}>
+        <Button size="small" variant="outlined" disabled={page <= 0} onClick={() => onPage(page - 1)}
+          startIcon={<ChevronRightIcon sx={{ fontSize: 15 }} />} sx={{ minWidth: 0, fontSize: 11 }}>
+          قبلی
+        </Button>
+        <Button size="small" variant="outlined" disabled={page >= totalPages - 1} onClick={() => onPage(page + 1)}
+          endIcon={<ChevronLeftIcon sx={{ fontSize: 15 }} />} sx={{ minWidth: 0, fontSize: 11 }}>
+          بعدی
+        </Button>
+      </Stack>
+    </Stack>
+  );
+};
+
 const EmptyNote = ({ icon: Icon = InsightsOutlinedIcon, text }) => (
   <Box sx={{ py: 4, textAlign: 'center' }}>
     <Icon sx={{ fontSize: 30, color: '#cbd5e1', mb: 0.75 }} />
@@ -252,12 +328,113 @@ const EmptyNote = ({ icon: Icon = InsightsOutlinedIcon, text }) => (
 );
 
 
+/* کارت قرارداد — نمایش شماتیک جای جدول چندستونه */
+const ContractCard = ({ row, theme, onOpen }) => {
+  const isForeign = row.group === 'foreign';
+  const accent = isForeign ? FOREIGN_VIOLET : RIAL_BLUE;
+  const statusTone = statusColor(row.contract.status);
+  return (
+    <Paper
+      elevation={0}
+      onClick={onOpen}
+      sx={{
+        p: 1.25, borderRadius: '14px', height: '100%',
+        border: '1px solid', borderColor: theme.cardBorderColor,
+        borderRight: `3px solid ${alpha(accent, 0.75)}`,
+        bgcolor: 'background.paper', boxShadow: 'none', cursor: 'pointer',
+        display: 'flex', flexDirection: 'column', gap: 0.7,
+        transition: 'border-color .18s ease, box-shadow .18s ease, transform .18s ease',
+        '&:hover': { borderColor: alpha(accent, 0.45), boxShadow: `0 10px 26px ${alpha(accent, 0.09)}`, transform: 'translateY(-2px)' },
+      }}
+    >
+      <Stack direction="row" alignItems="center" spacing={0.75}>
+        <Typography noWrap sx={{
+          fontSize: 11.5, fontWeight: 900, color: accent,
+          fontFamily: 'var(--hrms-table-number-font, inherit)',
+        }}>
+          {toPersianDigits(row.contract.number || row.contract.id)}
+        </Typography>
+        <Box sx={{ flex: 1 }} />
+        <Stack direction="row" alignItems="center" spacing={0.4}>
+          <Box sx={{ width: 7, height: 7, borderRadius: '50%', bgcolor: statusTone }} />
+          <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 800, color: statusTone }}>
+            {statusLabel(row.contract.status)}
+          </Typography>
+        </Stack>
+      </Stack>
+
+      <Typography
+        title={row.contract.subject}
+        sx={{
+          fontSize: 12, fontWeight: 800, color: INK, lineHeight: 1.6, minHeight: 38,
+          display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden',
+        }}
+      >
+        {row.contract.subject || 'بدون موضوع'}
+      </Typography>
+
+      <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 10.5, color: MUTED }}>
+        {row.contract.party_name || 'بدون طرف قرارداد'}
+      </Typography>
+
+      <Box sx={{ p: 0.9, borderRadius: '10px', bgcolor: alpha(accent, 0.04), border: `1px solid ${alpha(accent, 0.14)}` }}>
+        <Typography sx={{ fontSize: 10, color: MUTED }}>{isForeign ? 'مبلغ ارزی' : 'مبلغ مؤثر (ریال)'}</Typography>
+        <Typography noWrap sx={{
+          fontSize: 14, fontWeight: 900, color: accent, lineHeight: 1.35,
+          fontFamily: 'var(--hrms-table-number-font, inherit)',
+        }}>
+          {isForeign ? `${formatPersianNumber(Math.round(row.amount))} ${row.currency}` : formatPersianNumber(Math.round(row.amount))}
+        </Typography>
+        {isForeign ? (
+          <Typography noWrap sx={{ fontSize: 10, color: MUTED, mt: 0.2 }}>
+            {`نرخ ${formatPersianNumber(row.rate)} • معادل ${compactMoney(row.rialAmount)} ریال`}
+          </Typography>
+        ) : (
+          <Typography noWrap sx={{ fontSize: 10, color: MUTED, mt: 0.2 }}>
+            {`سهم از پرتفوی ریالی ${formatPersianPercent(num(row.share))}`}
+          </Typography>
+        )}
+      </Box>
+
+      <Box>
+        <Stack direction="row" justifyContent="space-between" alignItems="baseline">
+          <Typography sx={{ fontSize: 10, color: MUTED }}>سهم از ارزش گروه</Typography>
+          <Typography sx={{ fontSize: 10, fontWeight: 800, color: accent }}>{formatPersianPercent(num(row.share))}</Typography>
+        </Stack>
+        <Box sx={{ mt: 0.35 }}><Track value={row.share} color={accent} height={5} /></Box>
+      </Box>
+
+      <Divider sx={{ my: 0.1 }} />
+      <Stack direction="row" alignItems="center" spacing={0.6}>
+        <Box sx={{ flex: 1, minWidth: 0 }}>
+          <Typography noWrap sx={{ fontSize: 10, color: MUTED }}>پایان مؤثر</Typography>
+          <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+            {dateLabel(row.end)}
+          </Typography>
+        </Box>
+        <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 900, color: daysColor(row.days) }}>
+          {daysText(row.days)}
+        </Typography>
+        <Tooltip title="پرونده قرارداد">
+          <IconButton size="small" aria-label="پرونده قرارداد"
+            onClick={(event) => { event.stopPropagation(); onOpen(); }}>
+            <VisibilityOutlinedIcon sx={{ fontSize: 15 }} />
+          </IconButton>
+        </Tooltip>
+      </Stack>
+    </Paper>
+  );
+};
+
+
 /* ====================================================================== صفحه */
 const ContractsDashboardPage = () => {
   const navigate = useNavigate();
   const moduleTheme = useModuleTheme();
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('amount');
+  const [rialPage, setRialPage] = useState(0);
+  const [foreignPage, setForeignPage] = useState(0);
 
   const contractsQuery = useQuery({
     queryKey: ['external-contracts'],
@@ -315,7 +492,6 @@ const ContractsDashboardPage = () => {
       amount: rows.reduce((sum, row) => sum + row.amount, 0),
       rialAmount: rows.reduce((sum, row) => sum + row.rialAmount, 0),
       active: rows.filter((row) => row.contract.status === 'active').length,
-      activeAmount: rows.filter((row) => row.contract.status === 'active').reduce((sum, row) => sum + row.amount, 0),
       average: rows.length ? rows.reduce((sum, row) => sum + row.amount, 0) / rows.length : 0,
       expiring: rows.filter((row) => row.days !== null && row.days >= 0 && row.days <= 60).length,
       invoiced: rows.reduce((sum, row) => sum + row.invoiced, 0),
@@ -331,7 +507,7 @@ const ContractsDashboardPage = () => {
     const foreignRows = withMetrics.filter((row) => row.group === 'foreign');
     const rialGroup = groupOf(rialRows);
     const foreignGroup = groupOf(foreignRows);
-
+    const withShare = (rows, total) => rows.map((row) => ({ ...row, share: total > 0 ? (row.amount / total) * 100 : 0 }));
 
     const currencyMap = foreignRows.reduce((acc, row) => {
       const key = row.currency;
@@ -351,14 +527,23 @@ const ContractsDashboardPage = () => {
       const sameMonth = withMetrics.filter((row) => String(row.contract.start_date || '').slice(0, 7) === key);
       const rialMonth = sameMonth.filter((row) => row.group === 'rial');
       const foreignMonth = sameMonth.filter((row) => row.group === 'foreign');
+      const invoiceMonth = items.reduce((sum, contract) => sum + asArray(contract.invoices)
+        .filter((invoice) => String(invoice.date || invoice.created_at || '').slice(0, 7) === key)
+        .reduce((value, invoice) => value + num(invoice.total ?? invoice.amount), 0), 0);
+      const paymentMonth = items.reduce((sum, contract) => sum + asArray(contract.payments)
+        .filter((payment) => String(payment.date || payment.created_at || '').slice(0, 7) === key)
+        .reduce((value, payment) => value + num(payment.amount), 0), 0);
       monthly.push({
         label: jalali ? JALALI_MONTHS[jalali[1] - 1] : key,
         rial: rialMonth.length,
         foreign: foreignMonth.length,
         rialAmount: rialMonth.reduce((sum, row) => sum + row.amount, 0),
         foreignRialAmount: foreignMonth.reduce((sum, row) => sum + row.rialAmount, 0),
+        invoiceAmount: invoiceMonth,
+        paymentAmount: paymentMonth,
       });
     }
+
 
     const parties = Object.values(items.reduce((acc, contract) => {
       const name = contract.party_name || 'بدون طرف قرارداد';
@@ -369,18 +554,25 @@ const ContractsDashboardPage = () => {
       else acc[name].rialCount += 1;
       return acc;
     }, {})).sort((a, b) => b.amount - a.amount);
+    const partyTop = Math.max(...parties.map((party) => party.amount), 1);
 
     const types = Object.entries(items.reduce((acc, contract) => {
       const key = contract.contract_type_master_name || TYPE_LABELS[contract.contract_type] || 'سایر';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    const typeTop = Math.max(...types.map((type) => type.count), 1);
 
     const projects = Object.entries(items.reduce((acc, contract) => {
       const key = contract.project_title || contract.project_name || 'بدون پروژه';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {})).map(([label, count]) => ({ label, count })).sort((a, b) => b.count - a.count);
+    const projectTop = Math.max(...projects.map((project) => project.count), 1);
+
+    const statusSegments = Object.entries(STATUS_LABELS)
+      .map(([key, label]) => ({ key, label, value: num(statusCounts[key]), color: statusColor(key) }))
+      .filter((segment) => segment.value > 0);
 
     const expiring = withMetrics
       .filter((row) => row.days !== null && row.days <= 60)
@@ -395,15 +587,21 @@ const ContractsDashboardPage = () => {
     return {
       total: num(stats.total) || items.length,
       statusCounts,
-      rialRows,
-      foreignRows,
+      statusSegments,
+      rialRows: withShare(rialRows, rialGroup.amount).sort((a, b) => b.amount - a.amount),
+      foreignRows: withShare(foreignRows, foreignGroup.rialAmount)
+        .map((row) => ({ ...row, share: foreignGroup.rialAmount > 0 ? (row.rialAmount / foreignGroup.rialAmount) * 100 : 0 }))
+        .sort((a, b) => b.rialAmount - a.rialAmount),
       rialGroup,
       foreignGroup,
       byCurrency: Object.values(currencyMap).sort((a, b) => b.rialAmount - a.rialAmount),
       monthly,
       parties,
+      partyTop,
       types,
+      typeTop,
       projects,
+      projectTop,
       expiring,
       totals: {
         invoiced: totalInvoiced,
@@ -421,8 +619,7 @@ const ContractsDashboardPage = () => {
     };
   }, [items, stats]);
 
-
-  /* ---- جست‌وجو و مرتب‌سازی مشترک دو جدول ریالی/ارزی ---- */
+  /* ---- جست‌وجو و مرتب‌سازی کارت‌ها ---- */
   const matched = (row) => {
     const term = search.trim().toLowerCase();
     if (!term) return true;
@@ -437,29 +634,15 @@ const ContractsDashboardPage = () => {
     if (sortBy === 'rial') return b.rialAmount - a.rialAmount;
     return b.amount - a.amount;
   };
-  const rialList = useMemo(() => data.rialRows.filter(matched).sort(sorter), [data.rialRows, search, sortBy]);
-  const foreignList = useMemo(() => data.foreignRows.filter(matched).sort(sorter), [data.foreignRows, search, sortBy]);
-
-  const rialPageSize = moduleTheme.tableTheme.rowsPerPage;
-  const rialState = useModuleTableState(rialList.length, rialPageSize, [search, sortBy, rialPageSize]);
-  const foreignState = useModuleTableState(foreignList.length, rialPageSize, [search, sortBy, rialPageSize]);
-  const rialPaged = useMemo(
-    () => rialList.slice(rialState.page * rialPageSize, (rialState.page + 1) * rialPageSize),
-    [rialList, rialState.page, rialPageSize],
-  );
-  const foreignPaged = useMemo(
-    () => foreignList.slice(foreignState.page * rialPageSize, (foreignState.page + 1) * rialPageSize),
-    [foreignList, foreignState.page, rialPageSize],
-  );
-  const rialHeight = useRowHeight(moduleTheme.tableTheme, rialPaged.length);
-  const foreignHeight = useRowHeight(moduleTheme.tableTheme, foreignPaged.length);
-  const expiringHeight = useRowHeight(moduleTheme.tableTheme, Math.min(data.expiring.length, 8));
+  const rialCards = useMemo(() => data.rialRows.filter(matched).sort(sorter), [data.rialRows, search, sortBy]);
+  const foreignCards = useMemo(() => data.foreignRows.filter(matched).sort(sorter), [data.foreignRows, search, sortBy]);
+  const rialSlice = rialCards.slice(rialPage * CARDS_PER_PAGE, (rialPage + 1) * CARDS_PER_PAGE);
+  const foreignSlice = foreignCards.slice(foreignPage * CARDS_PER_PAGE, (foreignPage + 1) * CARDS_PER_PAGE);
 
   const counters = data.statusCounts;
   const shareOf = (value, total) => (total > 0 ? (value / total) * 100 : 0);
-  const partyMax = Math.max(...data.parties.map((party) => party.amount), 1);
-
   const openContract = (row) => navigate(`/external-contracts/${row.contract.id}`);
+
 
   const refreshAll = () => {
     contractsQuery.refetch();
@@ -508,13 +691,13 @@ const ContractsDashboardPage = () => {
           gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', sm: 'repeat(3, minmax(0, 1fr))', lg: 'repeat(5, minmax(0, 1fr))' },
         }}>
           {[0, 1, 2, 3, 4].map((item) => (
-            <Skeleton key={item} variant="rounded" height={96} sx={{ borderRadius: '16px' }} />
+            <Skeleton key={item} variant="rounded" height={92} sx={{ borderRadius: '16px' }} />
           ))}
         </Box>
-        <Grid container spacing={1.5}>
-          <Grid item xs={12} lg={7}><Skeleton variant="rounded" height={292} sx={{ borderRadius: '16px' }} /></Grid>
-          <Grid item xs={12} lg={5}><Skeleton variant="rounded" height={292} sx={{ borderRadius: '16px' }} /></Grid>
-        </Grid>
+        <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', lg: '1fr 1fr' } }}>
+          <Skeleton variant="rounded" height={252} sx={{ borderRadius: '16px' }} />
+          <Skeleton variant="rounded" height={252} sx={{ borderRadius: '16px' }} />
+        </Box>
       </Box>
     );
   }
@@ -572,7 +755,7 @@ const ContractsDashboardPage = () => {
         <MetricTile theme={moduleTheme} icon={AccountBalanceWalletOutlinedIcon} label="ارزش پرتفوی ریالی"
           value={compactMoney(data.rialGroup.amount)} suffix="ریال"
           hint={`میانگین ${compactMoney(data.rialGroup.average)} ریال`} color={RIAL_BLUE} />
-        <MetricTile theme={moduleTheme} icon={CurrencyExchangeOutlinedIcon} label="معادل ریالی قراردادهای ارزی"
+        <MetricTile theme={moduleTheme} icon={CurrencyExchangeOutlinedIcon} label="معادل ریالی ارزی"
           value={compactMoney(data.totals.rialEquivalent)} suffix="ریال"
           hint={`${formatPersianNumber(data.byCurrency.length)} ارز فعال`} color={FOREIGN_VIOLET} />
         <MetricTile theme={moduleTheme} icon={WarningAmberOutlinedIcon} label="رو به انقضا"
@@ -581,110 +764,119 @@ const ContractsDashboardPage = () => {
       </Box>
 
 
-      {/* ---- تفکیک ارزی / ریالی + روند انعقاد ---- */}
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={12} lg={5}>
-          <Panel theme={moduleTheme} icon={CurrencyExchangeOutlinedIcon} color={FOREIGN_VIOLET}
-            title="تفکیک قراردادها بر اساس ارز" hint="پایهٔ محاسبات: کد ارز و نرخ تبدیل ثبت‌شده">
-            <Grid container spacing={1.25}>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ p: 1.15, borderRadius: '12px', border: '1px solid', borderColor: alpha(RIAL_BLUE, 0.22), bgcolor: alpha(RIAL_BLUE, 0.035) }}>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: RIAL_BLUE, mb: 0.5 }}>قراردادهای ریالی</Typography>
-                  <StatRow label="تعداد" value={`${formatPersianNumber(data.rialGroup.count)} قرارداد`} strong />
-                  <StatRow label="ارزش کل" value={money(data.rialGroup.amount)} color={RIAL_BLUE} strong />
-                  <StatRow label="میانگین هر قرارداد" value={money(data.rialGroup.average)} />
-                  <StatRow label="در حال اجرا" value={`${formatPersianNumber(data.rialGroup.active)} قرارداد`} />
-                  <StatRow label="سهم از پرتفوی" value={formatPersianPercent(shareOf(data.rialGroup.amount, data.totals.portfolioRial))} />
-                </Box>
-              </Grid>
-              <Grid item xs={12} sm={6}>
-                <Box sx={{ p: 1.15, borderRadius: '12px', border: '1px solid', borderColor: alpha(FOREIGN_VIOLET, 0.22), bgcolor: alpha(FOREIGN_VIOLET, 0.035) }}>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: FOREIGN_VIOLET, mb: 0.5 }}>قراردادهای ارزی</Typography>
-                  <StatRow label="تعداد" value={`${formatPersianNumber(data.foreignGroup.count)} قرارداد`} strong />
-                  <StatRow label="معادل ریالی" value={money(data.totals.rialEquivalent)} color={FOREIGN_VIOLET} strong />
-                  <StatRow label="میانگین (معادل ریالی)"
-                    value={money(data.foreignGroup.count ? data.totals.rialEquivalent / data.foreignGroup.count : 0)} />
-                  <StatRow label="در حال اجرا" value={`${formatPersianNumber(data.foreignGroup.active)} قرارداد`} />
-                  <StatRow label="سهم از پرتفوی" value={formatPersianPercent(shareOf(data.totals.rialEquivalent, data.totals.portfolioRial))} />
-                </Box>
-              </Grid>
-              <Grid item xs={12}>
-                <Divider sx={{ my: 0.25 }} />
-                {data.byCurrency.length ? (
-                  <Box sx={{ mt: 0.75 }}>
-                    {data.byCurrency.map((row) => (
-                      <StatRow key={row.currency} label={`${row.currency} · ${formatPersianNumber(row.count)} قرارداد`}
-                        value={`${compactMoney(row.amount, row.currency)} (≈ ${compactMoney(row.rialAmount)} ریال)`} />
-                    ))}
-                  </Box>
-                ) : (
-                  <Typography sx={{ mt: 0.5, fontSize: 11, color: MUTED }}>قرارداد ارزی ثبت نشده است.</Typography>
-                )}
-              </Grid>
+      {/* ---- کارت‌های گروه ارزی/ریالی با اسپارک‌لاین ---- */}
+      <Box sx={{ display: 'grid', gap: 1.5, mb: 1.5, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' } }}>
+        <Panel theme={moduleTheme} icon={AccountBalanceWalletOutlinedIcon} color={RIAL_BLUE}
+          title="پرتفوی ریالی" hint={`${formatPersianNumber(data.rialGroup.count)} قرارداد ریالی`}
+          ariaLabel="پرتفوی ریالی"
+          action={<Button size="small" variant="text" onClick={() => navigate('/external-contracts')}>فهرست</Button>}>
+          <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ mb: 0.5 }}>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>ارزش کل</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: RIAL_BLUE, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {money(data.rialGroup.amount)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>سهم از پرتفوی</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK }}>
+                {formatPersianPercent(shareOf(data.rialGroup.amount, data.totals.portfolioRial))}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>میانگین قرارداد</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK }}>
+                {compactMoney(data.rialGroup.average)}
+              </Typography>
+            </Box>
+          </Stack>
+          <SparkLine data={data.monthly} dataKey="rial" color={RIAL_BLUE} height={54} />
+          <Grid container spacing={1} sx={{ mt: 0.25 }}>
+            <Grid item xs={6}><StatRow label="فاکتور" value={money(data.rialGroup.invoiced)} /></Grid>
+            <Grid item xs={6}><StatRow label="پرداخت" value={money(data.rialGroup.paid)} color={GREEN} /></Grid>
+            <Grid item xs={6}>
+              <StatRow label="مانده" value={money(Math.max(0, data.rialGroup.invoiced - data.rialGroup.paid))} color={AMBER} />
             </Grid>
-          </Panel>
-        </Grid>
+            <Grid item xs={6}>
+              <StatRow label="رو به انقضا" value={`${formatPersianNumber(data.rialGroup.expiring)} مورد`}
+                color={data.rialGroup.expiring ? RED : GREEN} />
+            </Grid>
+          </Grid>
+        </Panel>
 
-        <Grid item xs={12} lg={7}>
-          <Panel theme={moduleTheme} icon={TrendingUpOutlinedIcon} color={BLUE}
-            title="روند ماهانه انعقاد قراردادها" hint="شش ماه اخیر — تفکیک ریالی و ارزی">
-            {data.monthly.some((row) => row.rial || row.foreign) ? (
-              <TrendChart
-                data={data.monthly}
-                height={246}
-                series={[
-                  { key: 'rial', name: 'ریالی', color: RIAL_BLUE },
-                  { key: 'foreign', name: 'ارزی', color: FOREIGN_VIOLET },
-                ]}
-                tooltipFormatter={(value, name) => [`${formatPersianNumber(value)} قرارداد`, name]}
-              />
-            ) : <EmptyNote text="در شش ماه اخیر قراردادی منعقد نشده است." />}
-          </Panel>
-        </Grid>
-      </Grid>
+        <Panel theme={moduleTheme} icon={CurrencyExchangeOutlinedIcon} color={FOREIGN_VIOLET}
+          title="پرتفوی ارزی" hint={`${formatPersianNumber(data.foreignGroup.count)} قرارداد · ${formatPersianNumber(data.byCurrency.length)} ارز`}
+          ariaLabel="پرتفوی ارزی">
+          <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ mb: 0.5 }}>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>معادل ریالی</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: FOREIGN_VIOLET, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {money(data.totals.rialEquivalent)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>سهم از پرتفوی</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK }}>
+                {formatPersianPercent(shareOf(data.totals.rialEquivalent, data.totals.portfolioRial))}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>میانگین (معادل ریالی)</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK }}>
+                {compactMoney(data.foreignGroup.count ? data.totals.rialEquivalent / data.foreignGroup.count : 0)}
+              </Typography>
+            </Box>
+          </Stack>
+          <SparkLine data={data.monthly} dataKey="foreign" color={FOREIGN_VIOLET} height={54} />
+          <Box sx={{ mt: 0.5 }}>
+            {data.byCurrency.length ? data.byCurrency.map((row) => (
+              <SchematicRow key={row.currency} color={FOREIGN_VIOLET}
+                label={`${row.currency} · ${formatPersianNumber(row.count)} قرارداد`}
+                value={compactMoney(row.amount, row.currency)}
+                share={shareOf(row.rialAmount, data.totals.rialEquivalent || 1)}
+                hint={`معادل ${compactMoney(row.rialAmount)} ریال`} />
+            )) : (
+              <Typography sx={{ fontSize: 11, color: MUTED }}>قرارداد ارزی ثبت نشده است.</Typography>
+            )}
+          </Box>
+        </Panel>
+      </Box>
 
 
-      {/* ---- نمودار ارزش + سلامت مالی ---- */}
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
-        <Grid item xs={12} lg={7}>
-          <Panel theme={moduleTheme} icon={InsightsOutlinedIcon} color={BLUE}
-            title="روند ارزش قراردادهای منعقدشده" hint="مبلغ مؤثر در هر ماه">
-            {data.monthly.some((row) => row.rialAmount || row.foreignRialAmount) ? (
-              <TrendChart
-                data={data.monthly}
-                height={232}
-                yWidth={78}
-                series={[
-                  { key: 'rialAmount', name: 'مبلغ ریالی', color: RIAL_BLUE },
-                  { key: 'foreignRialAmount', name: 'معادل ریالی ارزی', color: FOREIGN_VIOLET, dashed: true },
-                ]}
-                tooltipFormatter={(value, name) => [money(value), name]}
-              />
-            ) : <EmptyNote text="داده‌ای برای روند مبالغ موجود نیست." />}
-          </Panel>
-        </Grid>
-        <Grid item xs={12} lg={5}>
-          <Panel theme={moduleTheme} icon={ReceiptLongOutlinedIcon} color={CYAN}
-            title="سلامت مالی پرونده‌ها" hint="جمع صورت‌وضعیت، فاکتور و پرداخت">
-            <StatRow label="صورت‌وضعیت و فاکتورها" value={money(data.totals.invoiced)} strong />
-            <StatRow label="پرداخت‌شده" value={money(data.totals.paid)} color={GREEN} />
-            <StatRow label="مانده تسویه" value={money(data.totals.outstanding)}
-              color={data.totals.outstanding ? AMBER : GREEN} strong />
-            <StatRow label="نرخ وصول" value={formatPersianPercent(data.totals.collectionRate)} color={GREEN} />
-            <Divider sx={{ my: 0.5 }} />
-            <StatRow label="تضامین فعال"
-              value={`${money(data.totals.guarantees)} · ${formatPersianNumber(data.totals.guaranteeCount)} فقره`} color={VIOLET} />
-            <StatRow label="فاکتورهای معوق"
-              value={`${formatPersianNumber(data.totals.overdue)} فقره`} color={data.totals.overdue ? RED : GREEN} />
-            <Stack direction="row" spacing={1} useFlexGap sx={{ mt: 1, flexWrap: 'wrap' }}>
-              <Button size="small" variant="outlined" onClick={() => navigate('/contract-invoices')}>فاکتورها</Button>
-              <Button size="small" variant="outlined" onClick={() => navigate('/contracts-guarantees')}>تضامین</Button>
-            </Stack>
-          </Panel>
-        </Grid>
-      </Grid>
+      {/* ---- نمودارهای خطی ---- */}
+      <Box sx={{ display: 'grid', gap: 1.5, mb: 1.5, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' } }}>
+        <Panel theme={moduleTheme} icon={TrendingUpOutlinedIcon} color={BLUE}
+          title="روند ماهانه انعقاد قراردادها" hint="شش ماه اخیر — ریالی و ارزی">
+          {data.monthly.some((row) => row.rial || row.foreign) ? (
+            <TrendChart
+              data={data.monthly}
+              height={218}
+              series={[
+                { key: 'rial', name: 'ریالی', color: RIAL_BLUE },
+                { key: 'foreign', name: 'ارزی', color: FOREIGN_VIOLET },
+              ]}
+              tooltipFormatter={(value, name) => [`${formatPersianNumber(value)} قرارداد`, name]}
+            />
+          ) : <EmptyNote text="در شش ماه اخیر قراردادی منعقد نشده است." />}
+        </Panel>
+        <Panel theme={moduleTheme} icon={InsightsOutlinedIcon} color={FOREIGN_VIOLET}
+          title="روند ارزش قراردادهای منعقدشده" hint="مبلغ ریالی و معادل ریالی ارزی">
+          {data.monthly.some((row) => row.rialAmount || row.foreignRialAmount) ? (
+            <TrendChart
+              data={data.monthly}
+              height={218}
+              yWidth={78}
+              series={[
+                { key: 'rialAmount', name: 'مبلغ ریالی', color: RIAL_BLUE },
+                { key: 'foreignRialAmount', name: 'معادل ریالی ارزی', color: FOREIGN_VIOLET, dashed: true },
+              ]}
+              tooltipFormatter={(value, name) => [money(value), name]}
+            />
+          ) : <EmptyNote text="داده‌ای برای روند مبالغ موجود نیست." />}
+        </Panel>
+      </Box>
 
-      {/* ---- نوار جست‌وجو و مرتب‌سازی جداول ارزی/ریالی ---- */}
+      {/* ---- جست‌وجو و ترتیب کارت‌های قرارداد ---- */}
       <ModuleToolbar
         theme={moduleTheme}
         search={search}
@@ -701,578 +893,192 @@ const ContractsDashboardPage = () => {
         onReset={() => { setSearch(''); setSortBy('amount'); }}
       />
 
-
-      {/* ---- جدول قراردادهای ریالی ---- */}
-      <Box sx={{ mb: 1.5 }}>
-        <Panel theme={moduleTheme} icon={HandshakeOutlinedIcon} color={RIAL_BLUE}
-          title="قراردادهای ریالی" hint={`${formatPersianNumber(rialList.length)} قرارداد · ارزش ${money(data.rialGroup.amount)}`}>
-          <Box sx={{ mt: -0.5 }}>
-            <ModuleTable
-              tableTheme={moduleTheme.tableTheme}
-              ariaLabel="فهرست قراردادهای ریالی داشبورد"
-              containerRef={rialHeight.ref}
-              tableHeight={rialHeight.tableHeight}
-              rowHeight={rialHeight.rowHeight}
-              dimmed={refreshing}
-              rows={rialPaged}
-              rowKey={(row) => row.contract.id}
-              onRowClick={openContract}
-              emptyText="قرارداد ریالی با این مشخصات پیدا نشد."
-              columns={[
-                {
-                  key: 'row',
-                  label: 'ردیف',
-                  width: '5%',
-                  align: 'center',
-                  render: (_row, index) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                      {toPersianDigits(rialState.page * rialPageSize + index + 1)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'number',
-                  label: 'شماره',
-                  width: '10%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {toPersianDigits(row.contract.number || row.contract.id)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'subject',
-                  label: 'موضوع قرارداد',
-                  width: '25%',
-                  render: (row) => (
-                    <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
-                      {row.contract.subject || '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'party',
-                  label: 'طرف قرارداد',
-                  width: '15%',
-                  render: (row) => (
-                    <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
-                      {row.contract.party_name || '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'status',
-                  label: 'وضعیت',
-                  width: '9%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11, fontWeight: 800, color: statusColor(row.contract.status) }}>
-                      {statusLabel(row.contract.status)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'amount',
-                  label: 'مبلغ مؤثر',
-                  width: '13%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: RIAL_BLUE, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {formatPersianNumber(Math.round(row.amount))}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'end',
-                  label: 'پایان مؤثر',
-                  width: '10%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {dateLabel(row.end)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'days',
-                  label: 'روز مانده',
-                  width: '10%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: daysColor(row.days) }}>
-                      {daysText(row.days)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'actions',
-                  label: 'عملیات',
-                  width: '5%',
-                  align: 'center',
-                  render: (row) => (
-                    <Tooltip title="پرونده قرارداد">
-                      <IconButton size="small" aria-label="پرونده قرارداد"
-                        onClick={(event) => { event.stopPropagation(); openContract(row); }}>
-                        <VisibilityOutlinedIcon sx={{ fontSize: 15 }} />
-                      </IconButton>
-                    </Tooltip>
-                  ),
-                },
-              ]}
-            />
-            <ModulePager
-              tableTheme={moduleTheme.tableTheme}
-              page={rialState.page}
-              onPage={rialState.setPage}
-              totalPages={rialState.totalPages}
-              pageNumbers={rialState.pageNumbers}
-              total={rialList.length}
-              pageSize={rialPageSize}
-              unit="قرارداد ریالی"
-            />
-            <Divider sx={{ my: 0.75 }} />
-            <Stack direction="row" spacing={2.5} useFlexGap flexWrap="wrap" sx={{ pt: 0.25 }}>
-              {[
-                ['جمع مبلغ مؤثر', money(data.rialGroup.amount), RIAL_BLUE],
-                ['فاکتور', money(data.rialGroup.invoiced), INK],
-                ['پرداخت', money(data.rialGroup.paid), GREEN],
-                ['مانده', money(Math.max(0, data.rialGroup.invoiced - data.rialGroup.paid)), AMBER],
-              ].map(([label, value, color]) => (
-                <Box key={label}>
-                  <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
-                  <Typography sx={{ fontSize: 11.5, fontWeight: 900, color, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                    {value}
-                  </Typography>
-                </Box>
+      {/* ---- کارت‌های قراردادهای ریالی ---- */}
+      <Panel theme={moduleTheme} icon={HandshakeOutlinedIcon} color={RIAL_BLUE}
+        title="قراردادهای ریالی" hint={`${formatPersianNumber(rialCards.length)} قرارداد`}
+        ariaLabel="کارت‌های قراردادهای ریالی"
+        sx={{ mb: 1.5 }}>
+        {rialSlice.length ? (
+          <>
+            <Box sx={{
+              display: 'grid', gap: 1.25,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
+            }}>
+              {rialSlice.map((row) => (
+                <ContractCard key={row.contract.id} row={row} theme={moduleTheme} onOpen={() => openContract(row)} />
               ))}
-            </Stack>
-          </Box>
+            </Box>
+            <CardPager page={rialPage} total={rialCards.length} onPage={setRialPage} unit="قرارداد ریالی" />
+          </>
+        ) : <EmptyNote text="قرارداد ریالی با این مشخصات پیدا نشد." />}
+      </Panel>
+
+      {/* ---- کارت‌های قراردادهای ارزی ---- */}
+      <Panel theme={moduleTheme} icon={CurrencyExchangeOutlinedIcon} color={FOREIGN_VIOLET}
+        title="قراردادهای ارزی" hint={`${formatPersianNumber(foreignCards.length)} قرارداد · معادل ${money(data.totals.rialEquivalent)}`}
+        ariaLabel="کارت‌های قراردادهای ارزی"
+        sx={{ mb: 1.5 }}>
+        {foreignSlice.length ? (
+          <>
+            <Box sx={{
+              display: 'grid', gap: 1.25,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
+            }}>
+              {foreignSlice.map((row) => (
+                <ContractCard key={row.contract.id} row={row} theme={moduleTheme} onOpen={() => openContract(row)} />
+              ))}
+            </Box>
+            <CardPager page={foreignPage} total={foreignCards.length} onPage={setForeignPage} unit="قرارداد ارزی" />
+          </>
+        ) : <EmptyNote icon={CurrencyExchangeOutlinedIcon} text="قرارداد ارزی با این مشخصات پیدا نشد." />}
+      </Panel>
+
+
+      {/* ---- گرید: سلامت مالی + انقضا + توزیع‌ها ---- */}
+      <Box sx={{ display: 'grid', gap: 1.5, mb: 1.5, gridTemplateColumns: { xs: '1fr', lg: 'repeat(2, minmax(0, 1fr))' } }}>
+        <Panel theme={moduleTheme} icon={ReceiptLongOutlinedIcon} color={CYAN}
+          title="سلامت مالی پرونده‌ها" hint="روند صورت‌وضعیت و پرداخت در شش ماه اخیر">
+          <Stack direction="row" spacing={2} useFlexGap flexWrap="wrap" sx={{ mb: 0.4 }}>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>فاکتور / صورت‌وضعیت</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: INK, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {compactMoney(data.totals.invoiced)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>پرداخت‌شده</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: GREEN, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {compactMoney(data.totals.paid)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>مانده تسویه</Typography>
+              <Typography sx={{ fontSize: 15, fontWeight: 900, color: data.totals.outstanding ? AMBER : GREEN, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                {compactMoney(data.totals.outstanding)}
+              </Typography>
+            </Box>
+          </Stack>
+          {data.monthly.some((row) => row.invoiceAmount || row.paymentAmount) ? (
+            <TrendChart
+              data={data.monthly}
+              height={196}
+              yWidth={74}
+              series={[
+                { key: 'invoiceAmount', name: 'فاکتور', color: CYAN },
+                { key: 'paymentAmount', name: 'پرداخت', color: GREEN },
+              ]}
+              tooltipFormatter={(value, name) => [money(value), name]}
+            />
+          ) : <EmptyNote icon={ReceiptLongOutlinedIcon} text="سند مالی در شش ماه اخیر ثبت نشده است." />}
+          <Divider sx={{ my: 0.75 }} />
+          <Grid container spacing={1}>
+            <Grid item xs={6}><StatRow label="نرخ وصول" value={formatPersianPercent(data.totals.collectionRate)} color={GREEN} strong /></Grid>
+            <Grid item xs={6}><StatRow label="فاکتور معوق" value={`${formatPersianNumber(data.totals.overdue)} فقره`} color={data.totals.overdue ? RED : GREEN} /></Grid>
+            <Grid item xs={6}><StatRow label="تضامین فعال" value={`${formatPersianNumber(data.totals.guaranteeCount)} فقره`} color={VIOLET} /></Grid>
+            <Grid item xs={6}><StatRow label="ارزش تضامین" value={compactMoney(data.totals.guarantees)} color={VIOLET} /></Grid>
+          </Grid>
         </Panel>
-      </Box>
 
-
-      {/* ---- جدول قراردادهای ارزی ---- */}
-      <Box sx={{ mb: 1.5 }}>
-        <Panel theme={moduleTheme} icon={CurrencyExchangeOutlinedIcon} color={FOREIGN_VIOLET}
-          title="قراردادهای ارزی" hint={`${formatPersianNumber(foreignList.length)} قرارداد · معادل ${money(data.totals.rialEquivalent)}`}>
-          <Box sx={{ mt: -0.5 }}>
-            <ModuleTable
-              tableTheme={moduleTheme.tableTheme}
-              ariaLabel="فهرست قراردادهای ارزی داشبورد"
-              containerRef={foreignHeight.ref}
-              tableHeight={foreignHeight.tableHeight}
-              rowHeight={foreignHeight.rowHeight}
-              dimmed={refreshing}
-              rows={foreignPaged}
-              rowKey={(row) => row.contract.id}
-              onRowClick={openContract}
-              emptyText="قرارداد ارزی با این مشخصات پیدا نشد."
-              columns={[
-                {
-                  key: 'row',
-                  label: 'ردیف',
-                  width: '4%',
-                  align: 'center',
-                  render: (_row, index) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                      {toPersianDigits(foreignState.page * rialPageSize + index + 1)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'number',
-                  label: 'شماره',
-                  width: '8%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+        <Panel theme={moduleTheme} icon={EventBusyOutlinedIcon} color={RED}
+          title="قراردادهای رو به انقضا" hint="نزدیک‌ترین پایان‌های مؤثر"
+          action={<Button size="small" variant="text" onClick={() => navigate('/contracts-expiring')}>مشاهدهٔ کامل</Button>}>
+          {data.expiring.length ? (
+            <Box sx={{
+              display: 'grid', gap: 1.1,
+              gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, minmax(0, 1fr))' },
+            }}>
+              {data.expiring.slice(0, 4).map((row) => (
+                <Box key={row.contract.id} onClick={() => openContract(row)} sx={{
+                  p: 1, borderRadius: '11px', cursor: 'pointer',
+                  border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+                  borderRight: `3px solid ${daysColor(row.days)}`,
+                  transition: 'background-color .16s ease, box-shadow .16s ease',
+                  '&:hover': { bgcolor: alpha(daysColor(row.days), 0.04), boxShadow: `0 8px 20px ${alpha(daysColor(row.days), 0.08)}` },
+                }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={0.5}>
+                    <Typography noWrap sx={{ fontSize: 11, fontWeight: 900, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                       {toPersianDigits(row.contract.number || row.contract.id)}
                     </Typography>
-                  ),
-                },
-                {
-                  key: 'subject',
-                  label: 'موضوع قرارداد',
-                  width: '18%',
-                  render: (row) => (
-                    <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
-                      {row.contract.subject || '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'party',
-                  label: 'طرف قرارداد',
-                  width: '13%',
-                  render: (row) => (
-                    <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
-                      {row.contract.party_name || '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'currency',
-                  label: 'ارز',
-                  width: '7%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: FOREIGN_VIOLET }}>
-                      {row.currency}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'amount',
-                  label: 'مبلغ ارزی',
-                  width: '11%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {formatPersianNumber(Math.round(row.amount))}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'rate',
-                  label: 'نرخ تبدیل',
-                  width: '8%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {formatPersianNumber(row.rate)}
-                    </Typography>
-                  ),
-                },
-
-                {
-                  key: 'rial',
-                  label: 'معادل ریالی',
-                  width: '12%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color: FOREIGN_VIOLET, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {formatPersianNumber(Math.round(row.rialAmount))}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'end',
-                  label: 'پایان مؤثر',
-                  width: '9%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {dateLabel(row.end)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'days',
-                  label: 'روز مانده',
-                  width: '10%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: daysColor(row.days) }}>
+                    <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 900, color: daysColor(row.days) }}>
                       {daysText(row.days)}
                     </Typography>
-                  ),
-                },
-              ]}
-            />
-            <ModulePager
-              tableTheme={moduleTheme.tableTheme}
-              page={foreignState.page}
-              onPage={foreignState.setPage}
-              totalPages={foreignState.totalPages}
-              pageNumbers={foreignState.pageNumbers}
-              total={foreignList.length}
-              pageSize={rialPageSize}
-              unit="قرارداد ارزی"
-            />
-          </Box>
-        </Panel>
-      </Box>
-
-
-      {/* ---- قراردادهای رو به انقضا ---- */}
-      <Box sx={{ mb: 1.5 }}>
-        <Panel theme={moduleTheme} icon={EventBusyOutlinedIcon} color={RED}
-          title="قراردادهای رو به انقضا" hint="بر اساس تاریخ پایان مؤثر با احتساب الحاقیه‌ها"
-          action={<Button size="small" variant="text" onClick={() => navigate('/contracts-expiring')}>مشاهدهٔ کامل</Button>}>
-          <Box sx={{ mt: -0.5 }}>
-            <ModuleTable
-              tableTheme={moduleTheme.tableTheme}
-              ariaLabel="فهرست قراردادهای رو به انقضا داشبورد"
-              containerRef={expiringHeight.ref}
-              tableHeight={expiringHeight.tableHeight}
-              rowHeight={expiringHeight.rowHeight}
-              rows={data.expiring.slice(0, 8)}
-              rowKey={(row) => row.contract.id}
-              onRowClick={openContract}
-              emptyText="قرارداد رو به انقضا در بازهٔ ۶۰ روز آینده وجود ندارد."
-              columns={[
-                {
-                  key: 'number',
-                  label: 'شماره',
-                  width: '10%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {toPersianDigits(row.contract.number || row.contract.id)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'subject',
-                  label: 'موضوع قرارداد',
-                  width: '26%',
-                  render: (row) => (
-                    <Typography noWrap title={row.contract.subject} sx={{ fontSize: 12, fontWeight: 800 }}>
-                      {row.contract.subject || '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'party',
-                  label: 'طرف قرارداد',
-                  width: '18%',
-                  render: (row) => (
-                    <Typography noWrap title={row.contract.party_name} sx={{ fontSize: 11.5, fontWeight: 700 }}>
-                      {row.contract.party_name || '—'}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'group',
-                  label: 'گروه ارزی',
-                  width: '11%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: row.group === 'foreign' ? FOREIGN_VIOLET : RIAL_BLUE }}>
+                  </Stack>
+                  <Typography noWrap title={row.contract.subject} sx={{ fontSize: 11.5, fontWeight: 800, color: INK, mt: 0.2 }}>
+                    {row.contract.subject || '—'}
+                  </Typography>
+                  <Typography noWrap sx={{ fontSize: 10, color: MUTED }}>{row.contract.party_name || 'بدون طرف'}</Typography>
+                  <Box sx={{ mt: 0.5 }}>
+                    <Track value={Math.max(4, 100 - Math.min(100, Math.abs(num(row.days)) / 0.6))} color={daysColor(row.days)} height={4} />
+                  </Box>
+                  <Stack direction="row" justifyContent="space-between" sx={{ mt: 0.45 }}>
+                    <Typography sx={{ fontSize: 10, color: MUTED }}>{dateLabel(row.end)}</Typography>
+                    <Typography sx={{ fontSize: 10, fontWeight: 800, color: row.group === 'foreign' ? FOREIGN_VIOLET : RIAL_BLUE }}>
                       {row.group === 'foreign' ? `ارزی · ${row.currency}` : 'ریالی'}
                     </Typography>
-                  ),
-                },
-                {
-                  key: 'end',
-                  label: 'پایان مؤثر',
-                  width: '11%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {dateLabel(row.end)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'days',
-                  label: 'روز مانده',
-                  width: '11%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 900, color: daysColor(row.days) }}>
-                      {daysText(row.days)}
-                    </Typography>
-                  ),
-                },
-                {
-                  key: 'amount',
-                  label: 'مبلغ مؤثر',
-                  width: '13%',
-                  align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {formatPersianNumber(Math.round(row.amount))}
-                    </Typography>
-                  ),
-                },
-              ]}
-            />
-          </Box>
+                  </Stack>
+                </Box>
+              ))}
+            </Box>
+          ) : <EmptyNote icon={EventBusyOutlinedIcon} text="قراردادی در بازهٔ ۶۰ روز آینده منقضی نمی‌شود." />}
         </Panel>
       </Box>
 
 
-      {/* ---- طرف‌های قرارداد، انواع و پروژه‌ها ---- */}
-      <Grid container spacing={1.5}>
-        <Grid item xs={12} lg={5}>
-          <Panel theme={moduleTheme} icon={StorefrontOutlinedIcon} color={CYAN}
-            title="طرف‌های اصلی قرارداد" hint="بر اساس جمع مبلغ مؤثر">
-            <Box sx={{ mt: -0.5 }}>
-              <ModuleTable
-                tableTheme={moduleTheme.tableTheme}
-                ariaLabel="فهرست طرف‌های قرارداد داشبورد"
-                rows={data.parties.slice(0, 6)}
-                rowKey={(row) => row.name}
-                emptyText="طرف قراردادی ثبت نشده است."
-                columns={[
-                  {
-                    key: 'rank',
-                    label: 'رتبه',
-                    width: '8%',
-                    align: 'center',
-                    render: (_row, index) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: MUTED }}>
-                        {toPersianDigits(index + 1)}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    key: 'name',
-                    label: 'طرف قرارداد',
-                    width: '36%',
-                    render: (row) => (
-                      <Typography noWrap title={row.name} sx={{ fontSize: 11.5, fontWeight: 800 }}>{row.name}</Typography>
-                    ),
-                  },
-                  {
-                    key: 'count',
-                    label: 'قرارداد',
-                    width: '11%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                        {formatPersianNumber(row.count)}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    key: 'split',
-                    label: 'ریالی / ارزی',
-                    width: '14%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: MUTED }}>
-                        {`${toPersianDigits(row.rialCount)} / ${toPersianDigits(row.foreignCount)}`}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    key: 'amount',
-                    label: 'مبلغ مؤثر',
-                    width: '17%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: CYAN, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                        {compactMoney(row.amount)}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    key: 'share',
-                    label: 'سهم',
-                    width: '14%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                        {formatPersianPercent(shareOf(row.amount, partyMax))}
-                      </Typography>
-                    ),
-                  },
-                ]}
-              />
-            </Box>
-          </Panel>
-        </Grid>
+      {/* ---- توزیع‌های شماتیک: وضعیت، طرف‌ها، انواع، پروژه‌ها ---- */}
+      <Box sx={{ display: 'grid', gap: 1.5, gridTemplateColumns: { xs: '1fr', md: 'repeat(2, minmax(0, 1fr))', xl: 'repeat(4, minmax(0, 1fr))' } }}>
+        <Panel theme={moduleTheme} icon={InsightsOutlinedIcon} color={SLATE}
+          title="ترکیب وضعیت‌ها" hint={`${formatPersianNumber(data.total)} پرونده`}>
+          <Stack direction="row" spacing={0.35} sx={{ mb: 1 }}>
+            {data.statusSegments.map((segment) => (
+              <Box key={segment.key} sx={{
+                height: 8, borderRadius: 4, bgcolor: segment.color,
+                width: `${shareOf(segment.value, data.total)}%`, minWidth: 4,
+                transition: 'width .35s ease',
+              }} />
+            ))}
+          </Stack>
+          {data.statusSegments.map((segment) => (
+            <SchematicRow key={segment.key} label={segment.label} color={segment.color}
+              value={`${formatPersianNumber(segment.value)} · ${formatPersianPercent(shareOf(segment.value, data.total))}`}
+              share={shareOf(segment.value, data.total)} />
+          ))}
+          {!data.statusSegments.length ? <EmptyNote text="وضعیتی ثبت نشده است." /> : null}
+        </Panel>
 
-        <Grid item xs={12} sm={6} lg={3}>
-          <Panel theme={moduleTheme} icon={DescriptionOutlinedIcon} color={AMBER}
-            title="ترکیب انواع قرارداد" hint="تعداد پرونده به تفکیک نوع">
-            <Box sx={{ mt: -0.5 }}>
-              <ModuleTable
-                tableTheme={moduleTheme.tableTheme}
-                ariaLabel="ترکیب انواع قرارداد داشبورد"
-                rows={data.types}
-                rowKey={(row) => row.label}
-                emptyText="نوع قراردادی ثبت نشده است."
-                columns={[
-                  {
-                    key: 'label',
-                    label: 'نوع قرارداد',
-                    width: '55%',
-                    render: (row) => (
-                      <Typography noWrap title={row.label} sx={{ fontSize: 11.5, fontWeight: 800 }}>{row.label}</Typography>
-                    ),
-                  },
-                  {
-                    key: 'count',
-                    label: 'تعداد',
-                    width: '20%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                        {formatPersianNumber(row.count)}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    key: 'share',
-                    label: 'سهم',
-                    width: '25%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                        {formatPersianPercent(shareOf(row.count, data.total))}
-                      </Typography>
-                    ),
-                  },
-                ]}
-              />
-            </Box>
-          </Panel>
-        </Grid>
-        <Grid item xs={12} sm={6} lg={4}>
-          <Panel theme={moduleTheme} icon={FolderOutlinedIcon} color={VIOLET}
-            title="توزیع قراردادها در پروژه‌ها" hint="تعداد پرونده به تفکیک پروژه">
-            <Box sx={{ mt: -0.5 }}>
-              <ModuleTable
-                tableTheme={moduleTheme.tableTheme}
-                ariaLabel="توزیع قراردادها در پروژه‌ها داشبورد"
-                rows={data.projects}
-                rowKey={(row) => row.label}
-                emptyText="قراردادی به پروژه تخصیص نیافته است."
-                columns={[
-                  {
-                    key: 'label',
-                    label: 'پروژه',
-                    width: '58%',
-                    render: (row) => (
-                      <Typography noWrap title={row.label} sx={{ fontSize: 11.5, fontWeight: 800 }}>{row.label}</Typography>
-                    ),
-                  },
-                  {
-                    key: 'count',
-                    label: 'تعداد',
-                    width: '18%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                        {formatPersianNumber(row.count)}
-                      </Typography>
-                    ),
-                  },
-                  {
-                    key: 'share',
-                    label: 'سهم',
-                    width: '24%',
-                    align: 'center',
-                    render: (row) => (
-                      <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                        {formatPersianPercent(shareOf(row.count, data.total))}
-                      </Typography>
-                    ),
-                  },
-                ]}
-              />
-            </Box>
-          </Panel>
-        </Grid>
-      </Grid>
+        <Panel theme={moduleTheme} icon={StorefrontOutlinedIcon} color={CYAN}
+          title="طرف‌های اصلی قرارداد" hint="بر اساس جمع مبلغ مؤثر">
+          {data.parties.slice(0, 5).map((party, index) => (
+            <SchematicRow key={party.name} color={CYAN}
+              label={`${toPersianDigits(index + 1)}. ${party.name}`}
+              value={compactMoney(party.amount)}
+              share={shareOf(party.amount, data.partyTop)}
+              hint={`${formatPersianNumber(party.count)} قرارداد · ${toPersianDigits(party.rialCount)} ریالی / ${toPersianDigits(party.foreignCount)} ارزی`} />
+          ))}
+          {!data.parties.length ? <EmptyNote icon={StorefrontOutlinedIcon} text="طرف قراردادی ثبت نشده است." /> : null}
+        </Panel>
+
+        <Panel theme={moduleTheme} icon={DescriptionOutlinedIcon} color={AMBER}
+          title="ترکیب انواع قرارداد" hint="تعداد پرونده به تفکیک نوع">
+          {data.types.map((type) => (
+            <SchematicRow key={type.label} color={AMBER} label={type.label}
+              value={`${formatPersianNumber(type.count)} · ${formatPersianPercent(shareOf(type.count, data.total))}`}
+              share={shareOf(type.count, data.typeTop)} />
+          ))}
+          {!data.types.length ? <EmptyNote icon={DescriptionOutlinedIcon} text="نوع قراردادی ثبت نشده است." /> : null}
+        </Panel>
+
+        <Panel theme={moduleTheme} icon={FolderOutlinedIcon} color={VIOLET}
+          title="قراردادها در پروژه‌ها" hint="تعداد پرونده به تفکیک پروژه">
+          {data.projects.slice(0, 6).map((project) => (
+            <SchematicRow key={project.label} color={VIOLET} label={project.label}
+              value={`${formatPersianNumber(project.count)} · ${formatPersianPercent(shareOf(project.count, data.total))}`}
+              share={shareOf(project.count, data.projectTop)} />
+          ))}
+          {!data.projects.length ? <EmptyNote icon={FolderOutlinedIcon} text="قراردادی به پروژه تخصیص نیافته است." /> : null}
+        </Panel>
+      </Box>
     </Box>
   );
 };
 
 export default ContractsDashboardPage;
-
-const rialEquivalentOf = (contract) => effectiveAmount(contract) * rateOf(contract);
