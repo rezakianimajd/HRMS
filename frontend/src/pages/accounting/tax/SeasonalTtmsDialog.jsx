@@ -195,6 +195,13 @@ const SeasonalTtmsDialog = ({
             + 'و در پایان result.json را برای ثبت در HRMS تولید می‌کند.'}
         </Alert>
 
+        {referenceQuery.isError ? (
+          <Alert severity="warning" sx={{ mb: 1.5, fontSize: 11.5 }}>
+            {'نسخهٔ فعلی سرور هنوز نقطهٔ پایانی بستهٔ درج TTMS را ندارد؛ '
+              + 'پس از استقرار بک‌اند (migration 0032) این بخش فعال می‌شود.'}
+          </Alert>
+        ) : null}
+
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
           <Chip size="small" color="primary" variant="outlined"
                 label={`ردیف‌های فیلترشدهٔ جدول: ${toPersianDigits(rowCount)}`} />
