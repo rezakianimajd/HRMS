@@ -41,7 +41,10 @@ const PERSON_TYPES = [
   { value: 'legal', label: 'حقوقی' },
   { value: 'natural', label: 'حقیقی' },
   { value: 'foreign', label: 'خارجی' },
+  { value: 'aggregate', label: 'تجمیعی' },
 ];
+
+const DEFAULT_COUNTRY = 'ایران';
 
 /* نگاشت فیلد داخلی قواعد ← فیلد رابط کاربری */
 const FIELD_MAP = {
@@ -97,6 +100,7 @@ const LOCAL_REFERENCE = {
     legal: ['person_type', 'name', 'national_id'],
     natural: ['person_type', 'first_name', 'last_name', 'national_id'],
     foreign: ['person_type', 'name', 'country'],
+    aggregate: ['amount'],
   },
 };
 
@@ -107,7 +111,7 @@ const SETTINGS_KEY = 'hrms.seasonal.settings';
 const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   name: '', firstName: '', lastName: '', personType: 'legal', nationalId: '',
-  postalCode: '', country: '', city: '', address: '',
+  postalCode: '', country: DEFAULT_COUNTRY, city: '', address: '',
   description: '', amount: '', vat: '', duties: '', kind: 1, invoiceDate: '',
   invoiceNo: '', moadianUid: '', status: 'pending',
 });
@@ -117,9 +121,9 @@ const totalOf = (row) => num(row.amount) + num(row.vat) + num(row.duties);
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const isEmpty = (value) => !String(value ?? '').trim();
 
-/* ردیف خالی (ردیف آمادهٔ ورود) */
+/* ردیف خالی (ردیف آمادهٔ ورود) — «کشور» حساب نمی‌شود چون پیش‌فرض «ایران» دارد */
 const TEXT_FIELDS = [
-  'name', 'firstName', 'lastName', 'nationalId', 'postalCode', 'country', 'city', 'address',
+  'name', 'firstName', 'lastName', 'nationalId', 'postalCode', 'city', 'address',
   'description', 'amount', 'vat', 'duties', 'invoiceNo', 'invoiceDate', 'moadianUid',
 ];
 const isBlankRow = (row) => TEXT_FIELDS.every((field) => isEmpty(row[field]));
@@ -586,6 +590,20 @@ const SeasonalReportPage = () => {
     setRows((previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
+  /* تغییر نوع فروشنده: کشور پیش‌فرض «ایران» پر می‌شود و برای خارجی خالی می‌ماند */
+  const changePersonType = (row, value) => {
+    setRows((previous) => previous.map((item) => {
+      if (item.id !== row.id) return item;
+      let country = item.country;
+      if (value === 'foreign') {
+        if (!country || country === DEFAULT_COUNTRY) country = '';
+      } else if (!country) {
+        country = DEFAULT_COUNTRY;
+      }
+      return { ...item, personType: value, country };
+    }));
+  };
+
   /* انتخاب طرف معامله از پیشنهادها: شناسه/کد پستی/شهر/آدرس و (برای حقیقی) نام و نام خانوادگی پر می‌شود */
   const applyParty = (id, party) => {
     setRows((previous) => previous.map((row) => {
@@ -1003,60 +1021,77 @@ const SeasonalReportPage = () => {
       key: 'name',
       label: colLabel('نام و نام خانوادگی / نام شرکت', 'name'),
       width: '16%',
-      render: (row) => (row.personType === 'natural' ? (
-        <Box sx={{ display: 'flex', gap: 0.75 }}>
-          <CellTextField
-            value={row.firstName}
-            onChange={(value) => updateCell(row.id, 'firstName', value)}
-            placeholder="نام"
-            inputProps={{ 'aria-label': 'نام' }}
-            sx={cellSxFor(row, 'first_name')}
-          />
-          <CellTextField
-            value={row.lastName}
-            onChange={(value) => updateCell(row.id, 'lastName', value)}
-            placeholder="نام خانوادگی"
-            inputProps={{ 'aria-label': 'نام خانوادگی' }}
-            sx={cellSxFor(row, 'last_name')}
-          />
-        </Box>
-      ) : (
-        <Autocomplete
-          freeSolo
-          size="small"
-          options={partyOptions}
-          filterOptions={(options) => filterParties(options, row.name)}
-          getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-          inputValue={row.name}
-          value={row.name}
-          onInputChange={(_event, value) => updateCell(row.id, 'name', value)}
-          onChange={(_event, value) => {
-            if (value && typeof value !== 'string') applyParty(row.id, value);
-          }}
-          noOptionsText="فروشندهٔ جدید — با ادامهٔ تایپ ثبت می‌شود"
-          renderOption={(props, option) => (
-            <Box component="li" {...props} key={option.name} sx={{ gap: 1 }}>
-              <Box sx={{ minWidth: 0, flex: 1 }}>
-                <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
-                  {`${option.name} را می‌خواهی؟`}
-                </Typography>
-                <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
-                  {[option.city, option.address].filter(Boolean).join(' · ') || 'بدون آدرس ثبت‌شده'}
-                </Typography>
-              </Box>
+      render: (row) => {
+        if (row.personType === 'natural') {
+          return (
+            <Box sx={{ display: 'flex', gap: 0.75 }}>
+              <CellTextField
+                value={row.firstName}
+                onChange={(value) => updateCell(row.id, 'firstName', value)}
+                placeholder="نام"
+                inputProps={{ 'aria-label': 'نام' }}
+                sx={cellSxFor(row, 'first_name')}
+              />
+              <CellTextField
+                value={row.lastName}
+                onChange={(value) => updateCell(row.id, 'lastName', value)}
+                placeholder="نام خانوادگی"
+                inputProps={{ 'aria-label': 'نام خانوادگی' }}
+                sx={cellSxFor(row, 'last_name')}
+              />
             </Box>
-          )}
-          renderInput={(params) => (
-            <TextField
-              {...params}
-              variant="standard"
-              placeholder="نام شرکت / عنوان…"
-              inputProps={{ ...params.inputProps, 'aria-label': 'نام شرکت' }}
-              sx={cellSxFor(row, 'name')}
+          );
+        }
+        if (row.personType === 'aggregate') {
+          /* تجمیعی: هیچ فیلد هویتی الزامی نیست؛ نام اختیاری */
+          return (
+            <CellTextField
+              value={row.name}
+              onChange={(value) => updateCell(row.id, 'name', value)}
+              placeholder="تجمیعی — نام اختیاری"
+              inputProps={{ 'aria-label': 'نام شرکت' }}
+              sx={cellInputSx}
             />
-          )}
-        />
-      )),
+          );
+        }
+        return (
+          <Autocomplete
+            freeSolo
+            size="small"
+            options={partyOptions}
+            filterOptions={(options) => filterParties(options, row.name)}
+            getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
+            inputValue={row.name}
+            value={row.name}
+            onInputChange={(_event, value) => updateCell(row.id, 'name', value)}
+            onChange={(_event, value) => {
+              if (value && typeof value !== 'string') applyParty(row.id, value);
+            }}
+            noOptionsText="فروشندهٔ جدید — با ادامهٔ تایپ ثبت می‌شود"
+            renderOption={(props, option) => (
+              <Box component="li" {...props} key={option.name} sx={{ gap: 1 }}>
+                <Box sx={{ minWidth: 0, flex: 1 }}>
+                  <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
+                    {`${option.name} را می‌خواهی؟`}
+                  </Typography>
+                  <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
+                    {[option.city, option.address].filter(Boolean).join(' · ') || 'بدون آدرس ثبت‌شده'}
+                  </Typography>
+                </Box>
+              </Box>
+            )}
+            renderInput={(params) => (
+              <TextField
+                {...params}
+                variant="standard"
+                placeholder="نام شرکت / عنوان…"
+                inputProps={{ ...params.inputProps, 'aria-label': 'نام شرکت' }}
+                sx={cellSxFor(row, 'name')}
+              />
+            )}
+          />
+        );
+      },
     },
     {
       key: 'personType',
@@ -1066,7 +1101,7 @@ const SeasonalReportPage = () => {
       render: (row) => (
         <CellSelect
           value={row.personType}
-          onChange={(value) => updateCell(row.id, 'personType', value)}
+          onChange={(value) => changePersonType(row, value)}
           ariaLabel="نوع فروشنده"
           options={PERSON_TYPES}
           sx={cellInputSx}
@@ -1138,7 +1173,7 @@ const SeasonalReportPage = () => {
     },
     {
       key: 'amount',
-      label: 'مبلغ',
+      label: colLabel('مبلغ', 'amount'),
       width: '9%',
       align: 'center',
       render: (row) => (
@@ -1354,7 +1389,8 @@ const SeasonalReportPage = () => {
             : mode === 'local'
               ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
               : 'در حال دریافت بازهٔ فصل…'}
-          {' · همهٔ ردیف‌ها «مشمول» و «نوع کالا/خدمات = سایر»'}
+          {' · همهٔ ردیف‌ها «مشمول» و «نوع کالا/خدمات = سایر»'} 
+          {' · کشور پیش‌فرض «ایران» · نوع «تجمیعی» فقط مبلغ لازم دارد'}
         </Typography>
 
         <Typography

@@ -133,6 +133,9 @@ def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
             composed = ' '.join(part for part in [item['first_name'], item['last_name']] if part).strip()
             if composed:
                 item['name'] = composed[:250]
+        # کشور پیش‌فرض «ایران» برای همهٔ انواع به‌جز خارجی (که کاربر باید وارد کند)
+        if item['person_type'] != SeasonalTransaction.PersonType.FOREIGN and not item['country']:
+            item['country'] = seasonal_rules.DEFAULT_COUNTRY
         if not any([item['name'], item['first_name'], item['last_name'], item['invoice_no'],
                     item['amount'], item['vat'], item['duties'], item['goods_service_desc']]):
             continue
@@ -285,13 +288,15 @@ def validate_report(report, direction=DIRECTION_PURCHASE):
         if row.invoice_date and not (period_start <= row.invoice_date <= period_end):
             add(row, 'invoice_date', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.',
                 'invoice_date_in_period', seasonal_rules.SOURCE_LEGAL)
-        if row.moadian_status != SeasonalTransaction.MoadianStatus.REGISTERED:
-            add(row, 'moadian_status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.',
-                'moadian_not_registered', seasonal_rules.SOURCE_TTMS)
-        elif not row.moadian_uid:
-            add(row, 'moadian_uid', 'warning',
-                'برای فاکتور درج‌شده در سامانه مودیان، شناسهٔ یکتا بهتر است ثبت شود.',
-                'moadian_uid_recommended', seasonal_rules.SOURCE_TTMS)
+        # ردیف «تجمیعی» فقط مبلغ دارد؛ هشدارهای فاکتور/سامانه برای آن معنا ندارد
+        if row.person_type != SeasonalTransaction.PersonType.AGGREGATE:
+            if row.moadian_status != SeasonalTransaction.MoadianStatus.REGISTERED:
+                add(row, 'moadian_status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.',
+                    'moadian_not_registered', seasonal_rules.SOURCE_TTMS)
+            elif not row.moadian_uid:
+                add(row, 'moadian_uid', 'warning',
+                    'برای فاکتور درج‌شده در سامانه مودیان، شناسهٔ یکتا بهتر است ثبت شود.',
+                    'moadian_uid_recommended', seasonal_rules.SOURCE_TTMS)
 
         if row.invoice_no:
             key = (row.invoice_no.strip(), row.national_id.strip() or row.name.strip())

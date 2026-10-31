@@ -1006,6 +1006,7 @@ class SeasonalTransaction(AccountingBaseModel):
         LEGAL = 'legal', _('شخص حقوقی')
         NATURAL = 'natural', _('شخص حقیقی')
         FOREIGN = 'foreign', _('شخص خارجی')
+        AGGREGATE = 'aggregate', _('تجمیعی')
 
     class Direction(models.TextChoices):
         """جهت معامله.
@@ -1054,7 +1055,10 @@ class SeasonalTransaction(AccountingBaseModel):
     )
     national_id = models.CharField(max_length=20, blank=True, verbose_name=_('شناسه ملی / کد ملی'))
     postal_code = models.CharField(max_length=10, blank=True, verbose_name=_('کد پستی'))
-    country = models.CharField(max_length=60, blank=True, verbose_name=_('کشور'))
+    country = models.CharField(
+        max_length=60, blank=True, default='ایران', verbose_name=_('کشور'),
+        help_text=_('پیش‌فرض «ایران»؛ برای شخص خارجی قابل تغییر است.'),
+    )
     province = models.CharField(max_length=60, blank=True, verbose_name=_('استان'))
     city = models.CharField(max_length=100, blank=True, verbose_name=_('شهر'))
     address = models.TextField(blank=True, verbose_name=_('آدرس'))

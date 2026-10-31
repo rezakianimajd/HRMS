@@ -494,3 +494,63 @@ test('switching the seller type to natural swaps the name cell to two fields', a
   container.remove();
 });
 
+
+
+test('country defaults to Iran and the aggregate seller type needs only the amount', async () => {
+  currentReport = apiReport([{
+    ...API_ROW,
+    id: 301,
+    person_type: 'aggregate',
+    name: '',
+    first_name: '',
+    last_name: '',
+    national_id: '',
+    postal_code: '',
+    country: 'ایران',
+    amount: '750000',
+    vat: '0',
+    duties: '0',
+    invoice_no: '',
+  }]);
+  const { root, container } = await renderPage();
+
+  const firstRow = container.querySelectorAll('tbody tr')[0];
+  /* گزینهٔ «تجمیعی» در انتخاب‌گر نوع فروشنده */
+  const personSelect = firstRow.querySelector('[aria-label="نوع فروشنده"]');
+  expect(personSelect.textContent.trim()).toBe('تجمیعی');
+
+  /* کشور پیش‌فرض «ایران» و قابل ویرایش */
+  const countryInput = firstRow.querySelector('input[placeholder="—"]');
+  expect(countryInput.value).toBe('ایران');
+
+  /* نام اختیاری است و فقط مبلغ الزامی */
+  expect(firstRow.querySelector('input[aria-label="نام شرکت"]').placeholder).toContain('اختیاری');
+  expect(container.textContent).toContain('نوع «تجمیعی» فقط مبلغ لازم دارد');
+
+  root.unmount();
+  container.remove();
+});
+
+test('a new row starts with Iran as country and switching to foreign clears it', async () => {
+  const { root, container } = await renderPage();
+
+  const readyRow = container.querySelectorAll('tbody tr')[0];
+  expect(readyRow.querySelector('input[placeholder="—"]').value).toBe('ایران');
+
+  const personSelect = readyRow.querySelector('[aria-label="نوع فروشنده"]');
+  await act(async () => {
+    personSelect.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(200);
+  });
+  const foreignOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.trim() === 'خارجی');
+  await act(async () => { foreignOption.click(); await wait(220); });
+
+  const updatedRow = container.querySelectorAll('tbody tr')[0];
+  expect(updatedRow.querySelector('input[placeholder="کشور"]')).not.toBeNull();
+  expect(updatedRow.querySelector('input[placeholder="کشور"]').value).toBe('');
+
+  root.unmount();
+  container.remove();
+});
+

@@ -26,7 +26,10 @@ PERSON_TYPES = [
     ('legal', 'شخص حقوقی'),
     ('natural', 'شخص حقیقی'),
     ('foreign', 'شخص خارجی'),
+    ('aggregate', 'تجمیعی'),
 ]
+
+DEFAULT_COUNTRY = 'ایران'
 
 FIELD_LABELS = {
     'line_no': 'ردیف',
@@ -137,6 +140,9 @@ def rules_for(person_type=None, level=None):
 
 def required_fields(person_type):
     """فیلدهای اجباری (سطح خطا) برای یک نوع فروشنده — برای نشانه‌گذاری فرم."""
+    if person_type == 'aggregate':
+        # «تجمیعی»: تنها مبلغ الزامی است و بقیهٔ فیلدها اختیاری‌اند
+        return ['amount']
     fields = []
     for rule in rules_for(person_type):
         if rule['kind'] == 'required' and rule['level'] == 'error' and rule['field'] not in fields:
@@ -173,6 +179,8 @@ def build_reference(direction=DIRECTION):
             'این نسخه فقط معاملات خرید را ثبت و گزارش می‌کند؛ فروش در نسخهٔ بعد و مستقل اضافه می‌شود.',
             'کدهای «نوع معامله» (۱ تا ۵) بدون نگاشت رسمی حفظ شده‌اند و باید با مستند نسخهٔ TTMS هدف تطبیق شوند.',
             'فایل رسمی/Access نسخهٔ TTMS هدف در محیط پروژه موجود نبود؛ خروجی TTMS «آزمایش‌نشده» است.',
+            'نوع «تجمیعی» برای ردیف‌هایی است که فقط مبلغ آن‌ها گزارش می‌شود؛ بقیهٔ فیلدها اختیاری‌اند.',
+            'کشور به‌صورت پیش‌فرض «ایران» پر می‌شود و قابل ویرایش است.',
         ],
     }
 

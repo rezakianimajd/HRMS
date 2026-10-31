@@ -203,6 +203,29 @@ class PurchaseSyncTests(SeasonalBaseTest):
         self.assertEqual(row.name, 'علی رضایی')
         self.assertEqual(row.economic_code, '')      # فیلد منسوخ؛ نوشته نمی‌شود
 
+    def test_country_defaults_to_iran_except_foreign(self):
+        report = self.make_report()
+        self.save_rows(report, [
+            self.row(invoice_no='C-1', country=''),
+            self.row(invoice_no='C-2', country='', person_type='foreign', name='Atlas GmbH',
+                     national_id='', postal_code=''),
+        ])
+        rows = {row.invoice_no: row for row in report.transactions.all()}
+        self.assertEqual(rows['C-1'].country, seasonal_rules.DEFAULT_COUNTRY)
+        self.assertEqual(rows['C-2'].country, '')     # خارجی: کاربر باید کشور را وارد کند
+
+    def test_aggregate_row_is_saved_with_only_amount(self):
+        report = self.make_report()
+        saved = self.save_rows(report, [{
+            'person_type': 'aggregate', 'amount': 750000,
+        }])
+        self.assertEqual(saved, 1)
+        row = report.transactions.first()
+        self.assertEqual(row.person_type, 'aggregate')
+        self.assertEqual(int(row.amount), 750000)
+        self.assertTrue(row.is_included)
+        self.assertEqual(row.goods_service_type, SeasonalTransaction.GoodsServiceType.OTHER)
+
 
 
 class PurchaseValidationTests(SeasonalBaseTest):
@@ -310,6 +333,26 @@ class PurchaseValidationTests(SeasonalBaseTest):
             self.row(id=None, invoice_no='D-1'),
         ])
         self.assertIn((2, 'invoice_no'), self.error_fields(result))
+
+    def test_aggregate_row_needs_only_amount(self):
+        result = self.validate([{'person_type': 'aggregate', 'amount': 750000}])
+        self.assertEqual(result['issues'], [], result['issues'])
+        self.assertEqual(result['summary']['errors'], 0)
+        self.assertEqual(result['summary']['warnings'], 0)
+
+    def test_aggregate_row_without_amount_is_error(self):
+        result = self.validate([{'person_type': 'aggregate', 'amount': 0}])
+        self.assertIn((1, 'amount'), self.error_fields(result))
+
+    def test_country_required_only_for_foreign_seller(self):
+        result = self.validate([self.row(country='', invoice_no='K-1')])
+        self.assertNotIn((1, 'country'), self.error_fields(result))
+
+        result = self.validate([self.row(
+            person_type='foreign', name='Atlas GmbH', national_id='', postal_code='',
+            country='', invoice_no='K-2',
+        )])
+        self.assertIn((1, 'country'), self.error_fields(result))
 
     def test_validation_issues_carry_rule_source(self):
         result = self.validate([self.row(national_id='123')])
