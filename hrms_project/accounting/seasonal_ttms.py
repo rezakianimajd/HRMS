@@ -238,7 +238,7 @@ def ttms_reference():
 
 def row_payload(row, options=None, fallback_date=None):
     """یک ردیف فصلی → مقادیر آمادهٔ درج در ``Kharid_Detail``."""
-    options = options or normalize_options()
+    options = normalize_options(options)
     type_code, type1_code = PERSON_TYPE_CODES.get(row.person_type, (2, 7))
     if options.get('seller_type1_code') is not None:
         type1_code = options['seller_type1_code']

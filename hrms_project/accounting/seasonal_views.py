@@ -14,6 +14,7 @@
 from __future__ import annotations
 
 import json
+from decimal import Decimal, InvalidOperation
 
 from django.db.models import F
 from django.http import HttpResponse
@@ -46,6 +47,14 @@ def _user_name(request):
     if hasattr(user, 'get_full_name'):
         name = user.get_full_name() or ''
     return (name or getattr(user, 'username', '') or '')[:150]
+
+
+def _int_or(value, fallback=0):
+    """تبدیل ایمن مقدار ورودی (رشته/اعشار) به عدد صحیح نامنفی."""
+    try:
+        return max(0, int(Decimal(str(value)).to_integral_value()))
+    except (InvalidOperation, ValueError, TypeError):
+        return fallback
 
 
 
@@ -437,14 +446,11 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         if target:
             run.target_name = target[:200]
         run.message = str(result.get('message') or '')[:255]
-        if status == 'filled' and result.get('observed'):
+        if status == 'filled' and isinstance(result.get('observed'), dict):
             observed = result['observed']
-            try:
-                run.row_count = max(0, int(observed.get('rows') or run.row_count))
-                run.amount_total = observed.get('amount') or run.amount_total
-                run.vat_total = observed.get('vat') or run.vat_total
-            except (TypeError, ValueError):
-                pass
+            run.row_count = _int_or(observed.get('rows'), run.row_count)
+            run.amount_total = _int_or(observed.get('amount'), run.amount_total)
+            run.vat_total = _int_or(observed.get('vat'), run.vat_total)
         run.save(update_fields=[
             'status', 'result', 'filled_rows', 'target_name', 'message',
             'row_count', 'amount_total', 'vat_total', 'updated_at',
