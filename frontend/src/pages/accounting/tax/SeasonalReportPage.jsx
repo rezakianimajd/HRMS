@@ -807,7 +807,6 @@ const SeasonalReportPage = () => {
   const errorCount = issues.filter((issue) => issue.level === 'error').length;
   const warningCount = issues.length - errorCount;
   const issuesForRow = (row) => issuesByRow.get(String(row.id)) || [];
-  const rowHasError = (row) => issuesForRow(row).some((issue) => issue.level === 'error');
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
