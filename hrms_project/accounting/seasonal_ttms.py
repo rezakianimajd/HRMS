@@ -54,6 +54,8 @@ EDITABLE_COLUMNS = [
     'HCForoushandeTypeCode',
     'HCForoushandeType1Code',
     'ForoushandePostCode',
+    'ForoushandePerCityCode',
+    'ForoushandeTell',
     'ForoushandeNationalCode',
     'ForoushandeName',
     'ForoushandeLastNameSherkatName',
@@ -61,11 +63,26 @@ EDITABLE_COLUMNS = [
     'KalaKhadamatName',
     'Price',
     'MaliatArzeshAfzoodeh',
+    'AvarezArzeshAfzoodeh',
+    'SayerAvarez',
+    'TakhfifPrice',
+    'MaliatMaksoore',
+    'BargashtType',
+    'IsHagholAmalKari',
+    'Sarjam',
+    'ArzType',
+    'Arz_Price',
+    'Arz_MaliatArzeshAfzoodeh',
+    'Arz_AvarezArzeshAfzoodeh',
+    'Arz_SayerAvarez',
+    'Arz_TakhfifPrice',
+    'Arz_MaliatMaksoore',
+    'MoadelRialiPrice',
+    'MoadelRialiMaliatArzeshAfzoodeh',
     'FactorNo',
     'FactorDate',
     'SanadNO',
     'SanadDate',
-    'ArzType',
 ]
 
 # محدودهٔ مجاز ستون‌های عددی فایل TTMS (بر اساس نوع فیلد در Access)
@@ -77,9 +94,21 @@ COLUMN_RANGES = {
     'HCForoushandeType1Code': (5, 7),
     'ArzType': (0, 32767),
     'SanadNO': (0, 2147483647),
+    'Radif': (0, 2147483647),
     'Price': (0, 10 ** 15),
     'MaliatArzeshAfzoodeh': (0, 10 ** 15),
-    'Radif': (0, 2147483647),
+    'AvarezArzeshAfzoodeh': (0, 10 ** 15),
+    'SayerAvarez': (0, 10 ** 15),
+    'TakhfifPrice': (0, 10 ** 15),
+    'MaliatMaksoore': (0, 10 ** 15),
+    'Arz_Price': (0, 10 ** 15),
+    'Arz_MaliatArzeshAfzoodeh': (0, 10 ** 15),
+    'Arz_AvarezArzeshAfzoodeh': (0, 10 ** 15),
+    'Arz_SayerAvarez': (0, 10 ** 15),
+    'Arz_TakhfifPrice': (0, 10 ** 15),
+    'Arz_MaliatMaksoore': (0, 10 ** 15),
+    'MoadelRialiPrice': (0, 10 ** 15),
+    'MoadelRialiMaliatArzeshAfzoodeh': (0, 10 ** 15),
 }
 
 
@@ -115,42 +144,67 @@ PERSON_TYPE_CODES = {
     'aggregate': (2, 7),
 }
 
-# ستون‌های rows.csv به همان ترتیب INSERT در Kharid_Detail
-# (name, kind, max_length, label) — kind: int | text | bool
+# ستون‌های rows.csv — کامل و به همان ترتیب فیلدهای جدول Kharid_Detail فایل مرجع
+# (name, kind, max_length, label, note)
+# kind: int | text | bool | guid (فیلد GUID بدون منبع در HRMS؛ خالی ارسال می‌شود)
 DETAIL_COLUMNS = [
-    ('Radif', 'int', None, 'شمارهٔ ردیف'),
-    ('Sarjam', 'bool', None, 'سرجمع'),
-    ('IsHagholAmalKari', 'bool', None, 'از طریق حق‌العمل‌کاری'),
-    ('KalaType', 'int', None, 'نوع کالا (جدول KalaType)'),
-    ('KalaKhadamatName', 'text', 100, 'شرح کالا یا خدمات'),
-    ('Price', 'int', None, 'مبلغ کالا یا خدمات (ریال)'),
-    ('MaliatArzeshAfzoodeh', 'int', None, 'مالیات بر ارزش افزوده'),
-    ('AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزش افزوده'),
-    ('SayerAvarez', 'int', None, 'سایر عوارض'),
-    ('TakhfifPrice', 'int', None, 'تخفیف'),
-    ('MaliatMaksoore', 'int', None, 'مالیات مکسوره'),
-    ('HCForoushandeTypeCode', 'int', None, 'نوع فروشنده (۱ حقیقی / ۲ حقوقی)'),
-    ('ForoushandePostCode', 'text', 10, 'کد پستی فروشنده'),
-    ('ForoushandeName', 'text', 50, 'نام فروشنده (شخص حقیقی)'),
-    ('ForoushandeLastNameSherkatName', 'text', 100, 'نام خانوادگی / نام شرکت فروشنده'),
-    ('ForoushandeEconomicNO', 'text', 12, 'کد اقتصادی فروشنده'),
-    ('ForoushandeNationalCode', 'text', 13, 'کد ملی / شناسه ملی فروشنده'),
-    ('ForoushandeAddress', 'text', 80, 'آدرس فروشنده'),
-    ('HCForoushandeType1Code', 'int', None, 'وضعیت مودی فروشنده (۵/۶/۷)'),
-    ('StateCode', 'int', None, 'کد استان (جدول Zone)'),
-    ('CityCode', 'int', None, 'کد شهر (جدول Zone)'),
-    ('ArzType', 'int', None, 'نوع ارز (معاملات ریالی خالی)'),
-    ('FactorNo', 'text', 50, 'شمارهٔ صورتحساب'),
-    ('FactorDate', 'text', 10, 'تاریخ صورتحساب (شمسی)'),
-    ('SanadNO', 'int', None, 'شمارهٔ سند حسابداری'),
-    ('SanadDate', 'text', 10, 'تاریخ سند حسابداری (شمسی)'),
-    ('IsSent', 'bool', None, 'ارسال‌شده به سازمان'),
+    ('Radif', 'int', None, 'شمارهٔ ردیف', 'شمارهٔ ترتیبی درج (ادامهٔ ردیف‌های فایل)'),
+    ('Sarjam', 'bool', None, 'سرجمع', 'ردیف‌های عادی همیشه «خیر»'),
+    ('IsHagholAmalKari', 'bool', None, 'از طریق حق‌العمل‌کاری', 'قابل تنظیم برای ردیف یا همه'),
+    ('KalaType', 'int', None, 'نوع کالا (جدول KalaType)', 'کد ۱..۱۲ از جدول KalaType'),
+    ('KalaKhadamatName', 'text', 100, 'شرح کالا یا خدمات', 'از شرح ردیف گزارش فصلی'),
+    ('KalaCode', 'guid', None, 'شناسهٔ کالا (GUID)', 'شناسهٔ کالای TTMS؛ منبعی در HRMS ندارد'),
+    ('BargashtType', 'bool', None, 'برگشتی', 'برای ردیف‌های برگشتی «بله»'),
+    ('Price', 'int', None, 'مبلغ کالا یا خدمات (ریال)', 'مبلغ ردیف گزارش فصلی'),
+    ('MaliatArzeshAfzoodeh', 'int', None, 'مالیات بر ارزش افزوده', 'مالیات ردیف گزارش فصلی'),
+    ('AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزش افزوده', 'پیش‌فرض صفر؛ قابل اصلاح'),
+    ('SayerAvarez', 'int', None, 'سایر عوارض', 'پیش‌فرض صفر؛ قابل اصلاح'),
+    ('TakhfifPrice', 'int', None, 'تخفیف', 'پیش‌فرض صفر؛ قابل اصلاح'),
+    ('MaliatMaksoore', 'int', None, 'مالیات مکسوره', 'پیش‌فرض صفر؛ قابل اصلاح'),
+    ('HCForoushandeTypeCode', 'int', None, 'نوع فروشنده (۱ حقیقی / ۲ حقوقی)', 'خودکار از نوع شخص'),
+    ('ForoushandePostCode', 'text', 10, 'کد پستی فروشنده', 'از کد پستی ردیف'),
+    ('ForoushandePerCityCode', 'text', 10, 'پیش‌شمارهٔ شهر فروشنده', 'پیش‌فرض خالی؛ قابل اصلاح'),
+    ('ForoushandeTell', 'text', 50, 'تلفن فروشنده', 'پیش‌فرض خالی؛ قابل اصلاح'),
+    ('ForoushandeAddress', 'text', 80, 'آدرس فروشنده', 'از آدرس ردیف'),
+    ('ForoushandeName', 'text', 50, 'نام فروشنده (شخص حقیقی)', 'نام شخص حقیقی'),
+    ('ForoushandeLastNameSherkatName', 'text', 100, 'نام خانوادگی / نام شرکت فروشنده', 'الزامی‌ترین ستون فروشنده'),
+    ('ForoushandeEconomicNO', 'text', 12, 'کد اقتصادی فروشنده', 'طبق دستور کارفرما ارسال نمی‌شود'),
+    ('ForoushandeNationalCode', 'text', 13, 'کد ملی / شناسه ملی فروشنده', 'از شناسهٔ ملی ردیف'),
+    ('HCForoushandeType1Code', 'int', None, 'وضعیت مودی فروشنده (۵/۶/۷)', 'خودکار؛ قابل بازنویسی'),
+    ('StateCode', 'int', None, 'کد استان (جدول Zone)', 'تشخیص خودکار از نام استان'),
+    ('CityCode', 'int', None, 'کد شهر (جدول Zone)', 'تشخیص خودکار از نام شهر'),
+    ('ArzType', 'int', None, 'نوع ارز (جدول Arz)', 'برای معاملات ریالی خالی'),
+    ('Arz_Price', 'int', None, 'مبلغ ارزی', 'فقط برای معاملات ارزی'),
+    ('Arz_MaliatArzeshAfzoodeh', 'int', None, 'مالیات ارزی', 'فقط برای معاملات ارزی'),
+    ('Arz_AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزی', 'فقط برای معاملات ارزی'),
+    ('Arz_SayerAvarez', 'int', None, 'سایر عوارض ارزی', 'فقط برای معاملات ارزی'),
+    ('Arz_TakhfifPrice', 'int', None, 'تخفیف ارزی', 'فقط برای معاملات ارزی'),
+    ('Arz_MaliatMaksoore', 'int', None, 'مالیات مکسورهٔ ارزی', 'فقط برای معاملات ارزی'),
+    ('ArzBarabari_Price', 'guid', None, 'نرخ برابری ارز مبلغ (GUID)', 'مرجع نرخ ارز TTMS؛ خارج از دامنهٔ HRMS'),
+    ('ArzBarabari_TakhfifPrice', 'guid', None, 'نرخ برابری ارز تخفیف (GUID)', 'مرجع نرخ ارز TTMS'),
+    ('ArzBarabari_MaliatArzeshAfzoodeh', 'guid', None, 'نرخ برابری ارز مالیات (GUID)', 'مرجع نرخ ارز TTMS'),
+    ('ArzBarabari_AvarezArzeshAfzoodeh', 'guid', None, 'نرخ برابری ارز عوارض (GUID)', 'مرجع نرخ ارز TTMS'),
+    ('ArzBarabari_SayerAvarez', 'guid', None, 'نرخ برابری ارز سایر عوارض (GUID)', 'مرجع نرخ ارز TTMS'),
+    ('ArzBarabari_MaliatMaksoore', 'guid', None, 'نرخ برابری ارز مالیات مکسوره (GUID)', 'مرجع نرخ ارز TTMS'),
+    ('MoadelRialiPrice', 'int', None, 'معادل ریالی مبلغ ارزی', 'در معاملهٔ ارزی خودکار پر می‌شود'),
+    ('MoadelRialiTakhfifPrice', 'int', None, 'معادل ریالی تخفیف ارزی', 'در معاملهٔ ارزی خودکار پر می‌شود'),
+    ('MoadelRialiMaliatArzeshAfzoodeh', 'int', None, 'معادل ریالی مالیات ارزی', 'در معاملهٔ ارزی خودکار پر می‌شود'),
+    ('MoadelRialiAvarezArzeshAfzoodeh', 'int', None, 'معادل ریالی عوارض ارزی', 'در معاملهٔ ارزی خودکار پر می‌شود'),
+    ('MoadelRialiSayerAvarez', 'int', None, 'معادل ریالی سایر عوارض ارزی', 'در معاملهٔ ارزی خودکار پر می‌شود'),
+    ('MoadelRialiMaliatMaksoore', 'int', None, 'معادل ریالی مالیات مکسورهٔ ارزی', 'در معاملهٔ ارزی خودکار پر می‌شود'),
+    ('FactorNo', 'text', 50, 'شمارهٔ صورتحساب', 'از شمارهٔ فاکتور ردیف'),
+    ('FactorDate', 'text', 10, 'تاریخ صورتحساب (شمسی)', 'شمسی؛ در صورت خالی بودن پایان فصل'),
+    ('SanadNO', 'int', None, 'شمارهٔ سند حسابداری', 'اختیاری؛ قابل اصلاح'),
+    ('SanadDate', 'text', 10, 'تاریخ سند حسابداری (شمسی)', 'اختیاری؛ قابل اصلاح'),
+    ('IsSent', 'bool', None, 'ارسال‌شده به سازمان', 'همیشه «خیر» تا در TTMS ارسال شود'),
 ]
 
 COLUMN_NAMES = [item[0] for item in DETAIL_COLUMNS]
 COLUMN_KINDS = {item[0]: item[1] for item in DETAIL_COLUMNS}
 COLUMN_LENGTHS = {item[0]: item[2] for item in DETAIL_COLUMNS}
 COLUMN_LABELS = {item[0]: item[3] for item in DETAIL_COLUMNS}
+COLUMN_NOTES = {item[0]: item[4] for item in DETAIL_COLUMNS}
+GUID_COLUMNS = tuple(name for name, kind, *_rest in DETAIL_COLUMNS if kind == 'guid')
 
 DEFAULT_OPTIONS = {
     'kala_type': 12,
@@ -340,10 +394,8 @@ def ttms_reference():
             key: {'type_code': code, 'type1_code': extra}
             for key, (code, extra) in PERSON_TYPE_CODES.items()
         },
-        'columns': [
-            {'name': name, 'kind': kind, 'length': length, 'label': label}
-            for name, kind, length, label in DETAIL_COLUMNS
-        ],
+        'columns': _column_spec(),
+        'coverage': column_coverage(),
         'editable': list(EDITABLE_COLUMNS),
         'column_ranges': {key: list(value) for key, value in COLUMN_RANGES.items()},
         'zone_source': f'{TEMPLATE_REFERENCE} :: Zone',
@@ -426,6 +478,28 @@ def row_payload(row, options=None, fallback_date=None):
         'StateCode': state_code,
         'CityCode': city_code,
         'ArzType': None,
+        'Arz_Price': None,
+        'Arz_MaliatArzeshAfzoodeh': None,
+        'Arz_AvarezArzeshAfzoodeh': None,
+        'Arz_SayerAvarez': None,
+        'Arz_TakhfifPrice': None,
+        'Arz_MaliatMaksoore': None,
+        'ArzBarabari_Price': None,
+        'ArzBarabari_TakhfifPrice': None,
+        'ArzBarabari_MaliatArzeshAfzoodeh': None,
+        'ArzBarabari_AvarezArzeshAfzoodeh': None,
+        'ArzBarabari_SayerAvarez': None,
+        'ArzBarabari_MaliatMaksoore': None,
+        'MoadelRialiPrice': None,
+        'MoadelRialiTakhfifPrice': None,
+        'MoadelRialiMaliatArzeshAfzoodeh': None,
+        'MoadelRialiAvarezArzeshAfzoodeh': None,
+        'MoadelRialiSayerAvarez': None,
+        'MoadelRialiMaliatMaksoore': None,
+        'ForoushandePerCityCode': '',
+        'ForoushandeTell': '',
+        'KalaCode': None,
+        'BargashtType': False,
         'FactorNo': _text(getattr(row, 'invoice_no', ''), COLUMN_LENGTHS['FactorNo']),
         'FactorDate': factor_date,
         'SanadNO': None,
@@ -497,6 +571,17 @@ def _clean_override_value(column, value):
     """اعتبارسنجی/تبدیل یک مقدار اصلاح‌شده → ``(value, error)``."""
     label = COLUMN_LABELS.get(column, column)
     kind = COLUMN_KINDS.get(column)
+    if kind == 'bool':
+        if isinstance(value, bool):
+            return value, None
+        text = str(value if value is not None else '').strip().lower()
+        if text in ('1', 'true', 'yes', 'بله', 'درست'):
+            return True, None
+        if text in ('0', 'false', 'no', 'خیر', 'نه', ''):
+            return False, None
+        return None, f'مقدار «{label}» باید بله یا خیر باشد.'
+    if kind == 'guid':
+        return None, f'«{label}» شناسهٔ GUID است و از HRMS قابل تولید نیست.'
     if kind == 'int':
         text = _digits(value)
         if not text:
@@ -584,6 +669,27 @@ def apply_overrides(payloads, keys, overrides=None, defaults=None):
         for column, value in (overrides.get(key) or {}).items():
             if column in payload:
                 payload[column] = value
+    return _apply_currency_defaults(payloads)
+
+
+CURRENCY_PAIRS = (
+    ('Arz_Price', 'MoadelRialiPrice', 'Price'),
+    ('Arz_TakhfifPrice', 'MoadelRialiTakhfifPrice', 'TakhfifPrice'),
+    ('Arz_MaliatArzeshAfzoodeh', 'MoadelRialiMaliatArzeshAfzoodeh', 'MaliatArzeshAfzoodeh'),
+    ('Arz_AvarezArzeshAfzoodeh', 'MoadelRialiAvarezArzeshAfzoodeh', 'AvarezArzeshAfzoodeh'),
+    ('Arz_SayerAvarez', 'MoadelRialiSayerAvarez', 'SayerAvarez'),
+    ('Arz_MaliatMaksoore', 'MoadelRialiMaliatMaksoore', 'MaliatMaksoore'),
+)
+
+
+def _apply_currency_defaults(payloads):
+    """در معاملهٔ ارزی، «معادل ریالی» هر جزء ارزی از مقدار ریالی همان جزء پر می‌شود."""
+    for payload in payloads:
+        if not payload.get('ArzType'):
+            continue
+        for arz_column, moadel_column, rial_column in CURRENCY_PAIRS:
+            if payload.get(moadel_column) in (None, ''):
+                payload[moadel_column] = payload.get(rial_column) or 0
     return payloads
 
 
@@ -658,6 +764,21 @@ def _quality_report(payloads, rows, report):
             bump('zero_amount', key)
         elif vat > 0 and vat * 10 > amount + 10:
             bump('vat_ratio', key)
+        discount = _to_int(payload.get('TakhfifPrice'))
+        if discount > amount:
+            bump('discount_gt_amount', key)
+        if payload.get('BargashtType'):
+            bump('return_row')
+        if payload.get('IsHagholAmalKari'):
+            bump('commission_row')
+        currency = payload.get('ArzType')
+        fx_amount = _to_int(payload.get('Arz_Price'))
+        if currency:
+            if fx_amount <= 0:
+                bump('currency_missing_amount', key)
+            bump('fx_rate_manual')
+        elif fx_amount > 0:
+            bump('currency_missing_type', key)
         invoice_no = str(payload.get('FactorNo') or '')
         if not invoice_no:
             bump('missing_invoice', key)
@@ -685,6 +806,15 @@ def _quality_report(payloads, rows, report):
         'missing_invoice': ('شمارهٔ فاکتور ندارد.', 'warning', 'FactorNo'),
         'duplicate_invoice': ('ترکیب شمارهٔ فاکتور و شناسهٔ ملی در این خروجی تکرار شده است.',
                               'warning', 'FactorNo'),
+        'discount_gt_amount': ('تخفیف بیشتر از مبلغ ردیف است؛ بررسی کنید.', 'warning', 'TakhfifPrice'),
+        'return_row': ('ردیف به‌عنوان «برگشتی» علامت خورده است.', 'info', 'BargashtType'),
+        'commission_row': ('ردیف «از طریق حق‌العمل‌کاری» علامت خورده است.', 'info', 'IsHagholAmalKari'),
+        'currency_missing_amount': ('نوع ارز انتخاب شده ولی مبلغ ارزی خالی است.',
+                                    'warning', 'Arz_Price'),
+        'currency_missing_type': ('مبلغ ارزی وارد شده ولی نوع ارز انتخاب نشده است.',
+                                  'warning', 'ArzType'),
+        'fx_rate_manual': ('برای ردیف ارزی، «نرخ برابری ارز» (GUID) باید در خود TTMS ثبت شود.',
+                           'info', 'ArzBarabari_Price'),
     }
 
     warnings = []
@@ -708,14 +838,41 @@ class _FakePeriod:
 
 
 def _column_spec():
+    """مشخصات کامل ستون‌های خروجی TTMS برای رابط کاربری (وضعیت پشتیبانی و منبع)."""
     return [
         {
-            'name': name, 'kind': kind, 'length': length, 'label': label,
+            'name': name,
+            'kind': kind,
+            'length': length,
+            'label': label,
+            'note': COLUMN_NOTES.get(name, ''),
             'editable': name in EDITABLE_COLUMNS,
+            'supported': kind != 'guid',
             'range': list(COLUMN_RANGES[name]) if name in COLUMN_RANGES else None,
         }
-        for name, kind, length, label in DETAIL_COLUMNS
+        for name, kind, length, label, _note in DETAIL_COLUMNS
     ]
+
+
+def column_coverage():
+    """خلاصهٔ پوشش ستون‌های Kharid_Detail: کامل / قابل اصلاح / خارج از دامنهٔ HRMS."""
+    editable = set(EDITABLE_COLUMNS)
+    coverage = {'total': len(DETAIL_COLUMNS), 'editable': [], 'auto': [],
+                'out_of_scope': []}
+    for name, kind, _length, label, note in DETAIL_COLUMNS:
+        entry = {'name': name, 'label': label, 'note': note}
+        if kind == 'guid':
+            coverage['out_of_scope'].append(entry)
+        elif name in editable:
+            coverage['editable'].append(entry)
+        else:
+            coverage['auto'].append(entry)
+    coverage['counts'] = {
+        'editable': len(coverage['editable']),
+        'auto': len(coverage['auto']),
+        'out_of_scope': len(coverage['out_of_scope']),
+    }
+    return coverage
 
 
 def preview(report, rows, options=None, filters=None, overrides=None, defaults=None):
@@ -784,6 +941,7 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
         },
         'options': options,
         'columns': _column_spec(),
+        'coverage': column_coverage(),
         'editable': list(EDITABLE_COLUMNS),
         'kala_types': [{'value': value, 'label': label} for value, label in KALA_TYPES],
         'currencies': currency_codes(),
@@ -882,10 +1040,8 @@ def build_manifest(report, payloads, options=None, filters=None, package_name=''
             'seller_type1_code': options['seller_type1_code'],
         },
         'totals': totals,
-        'columns': [
-            {'name': name, 'kind': kind, 'length': length, 'label': label}
-            for name, kind, length, label in DETAIL_COLUMNS
-        ],
+        'columns': _column_spec(),
+        'coverage': column_coverage(),
         'rows_file': 'rows.csv',
         'notes': [
             'تاریخ‌های فاقد مقدار با پایان فصل پر می‌شوند.',
@@ -898,6 +1054,8 @@ def build_readme(manifest):
     """راهنمای فارسی داخل بسته."""
     totals = manifest['totals']
     report = manifest['report']
+    coverage = manifest.get('coverage') or {}
+    counts = coverage.get('counts') or {}
     lines = [
         'بستهٔ درج ردیف‌های صورت معاملات فصلی در فایل Access نسخهٔ TTMS',
         '=' * 70,
@@ -917,6 +1075,12 @@ def build_readme(manifest):
         '  manifest.json   مشخصات دوره، نگاشت و جمع‌های کنترلی',
         '  fill_ttms.ps1   اسکریپت درج در کپی فایل Access',
         '  README.txt      همین راهنما',
+        '',
+        'پوشش ستون‌های Kharid_Detail:',
+        f"  کل: {coverage.get('total', 0)} ستون | خودکار: {counts.get('auto', 0)}"
+        f" | قابل اصلاح: {counts.get('editable', 0)} | خارج از دامنه: {counts.get('out_of_scope', 0)}",
+        '  ستون‌های «خارج از دامنه» (نرخ برابری ارز و شناسهٔ کالا) در TTMS وجود دارند',
+        '  ولی منبعی در HRMS ندارند و خالی (NULL) ارسال می‌شوند.',
         '',
         'اجرا (روی ویندوز، در PowerShell):',
         '  1) فایل‌های بسته را در یک پوشه از حالت فشرده خارج کنید.',

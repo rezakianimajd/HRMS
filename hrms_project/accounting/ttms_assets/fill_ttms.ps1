@@ -331,6 +331,8 @@ try {
                 } else {
                     $values.Add('False')
                 }
+            } elseif ($kind -eq 'guid') {
+                $values.Add('NULL')
             } else {
                 $values.Add((ConvertTo-SqlText $raw))
             }

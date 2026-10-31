@@ -1,9 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, FormControl, FormControlLabel, InputLabel, LinearProgress,
-  MenuItem, Select, Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow,
-  TextField, Tooltip, Typography,
+  Accordion, AccordionDetails, AccordionSummary, Alert, Box, Button, Chip,
+  FormControl, FormControlLabel, InputLabel, LinearProgress, MenuItem, Select,
+  Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow, TextField,
+  Tooltip, Typography,
 } from '@mui/material';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import DownloadIcon from '@mui/icons-material/Download';
 import { useQuery } from '@tanstack/react-query';
@@ -18,8 +20,12 @@ const MAIN_COLUMNS = [
   'ForoushandeNationalCode', 'KalaKhadamatName', 'FactorNo', 'FactorDate',
 ];
 const EXTRA_COLUMNS = [
+  'TakhfifPrice', 'SayerAvarez', 'AvarezArzeshAfzoodeh', 'MaliatMaksoore',
+  'BargashtType', 'IsHagholAmalKari', 'Sarjam',
+  'ForoushandeTell', 'ForoushandePerCityCode',
   'HCForoushandeTypeCode', 'ForoushandeName', 'ForoushandeLastNameSherkatName',
-  'ForoushandeAddress', 'ArzType', 'SanadNO', 'SanadDate',
+  'ForoushandeAddress', 'ArzType', 'Arz_Price', 'Arz_MaliatArzeshAfzoodeh',
+  'MoadelRialiPrice', 'MoadelRialiMaliatArzeshAfzoodeh', 'SanadNO', 'SanadDate',
 ];
 const BULK_COLUMNS = [STATE_COLUMN, CITY_COLUMN, 'KalaType', 'HCForoushandeType1Code',
   'ArzType', 'FactorDate', 'KalaKhadamatName'];
@@ -84,6 +90,16 @@ const SeasonalTtmsPreview = ({
   const visibleColumns = showExtra ? [...MAIN_COLUMNS, ...EXTRA_COLUMNS] : MAIN_COLUMNS;
   const allRows = preview?.rows || [];
   const rows = onlyNeedsFix ? allRows.filter((row) => row.needs_fix) : allRows;
+
+  const coverage = useMemo(() => {
+    const list = preview?.columns || [];
+    return {
+      total: list.length,
+      auto: list.filter((column) => !column.editable && column.supported),
+      editable: list.filter((column) => column.editable),
+      outside: list.filter((column) => !column.supported),
+    };
+  }, [preview]);
 
   const renderEditor = (row, column) => {
     const value = valueOf(row, column);
@@ -155,6 +171,29 @@ const SeasonalTtmsPreview = ({
             </MenuItem>
           ))}
         </Select>
+      );
+    }
+    const columnKind = columns[column]?.kind;
+    if (columnKind === 'bool') {
+      const isTrue = value === true || String(value).toLowerCase() === 'true';
+      return (
+        <Select size="small" value={isTrue ? 'true' : 'false'}
+                onChange={(event) => onOverride(row.key, column, event.target.value === 'true')}
+                sx={{ fontSize: 11, minWidth: 90 }}>
+          <MenuItem value="false" sx={{ fontSize: 11 }}>خیر</MenuItem>
+          <MenuItem value="true" sx={{ fontSize: 11 }}>بله</MenuItem>
+        </Select>
+      );
+    }
+    if (columnKind === 'int') {
+      return (
+        <TextField
+          size="small"
+          value={text}
+          onChange={(event) => onOverride(row.key, column, event.target.value)}
+          sx={{ minWidth: 110 }}
+          inputProps={{ style: { fontSize: 11, padding: '6px 8px', direction: 'ltr' } }}
+        />
       );
     }
     return (
@@ -364,15 +403,58 @@ const SeasonalTtmsPreview = ({
       </Box>
 
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mt: 1 }}>
-        <Tooltip title="نمایش ستون‌های کم‌کاربرد مثل شماره/تاریخ سند، نام و آدرس فروشنده">
+        <Tooltip title="نمایش ستون‌های کم‌کاربرد مثل تخفیف، عوارض، برگشتی، حق‌العمل‌کاری، ارز و سند">
           <Button size="small" variant="text" onClick={() => setShowExtra((value) => !value)}>
             {showExtra ? 'نمایش ستون‌های اصلی' : 'نمایش همهٔ ستون‌های قابل ویرایش'}
           </Button>
         </Tooltip>
         <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
-          {'کدهای استان/شهر از جدول Zone نسخهٔ TTMS خوانده و از نام استان/شهر هر ردیف تشخیص داده می‌شوند؛ تغییرها فقط در همین خروجی اثر دارد.'}
+          {'کدهای استان/شهر از جدول Zone و کدهای ارز از جدول Arz نسخهٔ TTMS خوانده می‌شوند.'}
         </Typography>
       </Stack>
+
+      {preview?.columns?.length ? (
+        <Accordion disableGutters elevation={0}
+                   sx={{ mt: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}>
+          <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 34 }}>
+            <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
+              {`پوشش ستون‌های Kharid_Detail: ${toPersianDigits(coverage.total)} ستون — خودکار ${toPersianDigits(coverage.auto.length)} / قابل اصلاح ${toPersianDigits(coverage.editable.length)} / خارج از دامنه ${toPersianDigits(coverage.outside.length)}`}
+            </Typography>
+          </AccordionSummary>
+          <AccordionDetails sx={{ pt: 0 }}>
+            <Typography sx={{ fontSize: 10.5, color: 'text.secondary', mb: 0.5 }}>
+              {'ستون‌های «خارج از دامنه» در فایل TTMS وجود دارند ولی منبعی در HRMS ندارند و خالی (NULL) ارسال می‌شوند: '}
+              {coverage.outside.map((column) => column.label).join('، ') || '—'}
+            </Typography>
+            <Box sx={{ maxHeight: 150, overflow: 'auto' }}>
+              <Table size="small">
+                <TableBody>
+                  {preview.columns.map((column) => (
+                    <TableRow key={column.name}>
+                      <TableCell sx={{ fontSize: 10.5, py: 0.25, width: 170 }}>{column.label}</TableCell>
+                      <TableCell sx={{ fontSize: 10, py: 0.25, direction: 'ltr', color: 'text.secondary' }}>
+                        {column.name}
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 10.5, py: 0.25 }}>
+                        <Chip
+                          size="small"
+                          sx={{ height: 18, fontSize: 10 }}
+                          color={column.supported ? (column.editable ? 'primary' : 'success') : 'default'}
+                          variant="outlined"
+                          label={column.supported ? (column.editable ? 'قابل اصلاح' : 'خودکار') : 'خارج از دامنه'}
+                        />
+                      </TableCell>
+                      <TableCell sx={{ fontSize: 10.5, py: 0.25, color: 'text.secondary' }}>
+                        {column.note || '—'}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </Box>
+          </AccordionDetails>
+        </Accordion>
+      ) : null}
     </Box>
   );
 };

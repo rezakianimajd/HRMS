@@ -477,6 +477,9 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertEqual(manifest['target']['hc_year_code'], 1405)
         self.assertEqual(manifest['target']['hc_fasl_type_code'], 1)
         self.assertEqual(manifest['target']['detail_table'], 'Kharid_Detail')
+        self.assertEqual(len(manifest['columns']), 49)     # پوشش کامل Kharid_Detail
+        self.assertTrue(manifest['coverage']['counts']['editable'])
+        self.assertEqual(len(manifest['coverage']['out_of_scope']), 7)   # ۶ نرخ + شناسهٔ کالا
         self.assertEqual(
             manifest['totals'],
             {'rows': 3, 'amount': 1750000, 'vat': 150000, 'total': 1900000},
@@ -569,7 +572,37 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertGreaterEqual(payload['needs_fix_count'], 1)
         self.assertTrue(payload['rows'][0]['province_name'])
 
-    def test_preview_overrides_and_validation(self):
+    def test_currency_and_discount_fields(self):
+        from accounting import seasonal_ttms
+
+        rows = rec.filtered_rows(self.report, 'purchase', {})
+        key = seasonal_ttms._row_key(rows[0])
+
+        payload = seasonal_ttms.preview(
+            self.report, rows,
+            overrides={key: {'ArzType': 36, 'Arz_Price': 100, 'TakhfifPrice': 2000000}},
+        )
+        values = payload['rows'][0]['values']
+        self.assertEqual(values['ArzType'], 36)
+        self.assertEqual(values['Arz_Price'], 100)
+        self.assertEqual(values['TakhfifPrice'], 2000000)
+        self.assertEqual(values['MoadelRialiPrice'], 1000000)   # معادل ریالی خودکار
+        codes = {item['code'] for item in payload['warnings']}
+        self.assertIn('fx_rate_manual', codes)
+        self.assertIn('discount_gt_amount', codes)
+
+        bad_bool = seasonal_ttms.preview(
+            self.report, rows, overrides={key: {'BargashtType': 'شاید'}},
+        )
+        self.assertTrue(bad_bool['errors'])
+
+        flags = seasonal_ttms.preview(
+            self.report, rows, overrides={key: {'BargashtType': 'بله'}},
+        )
+        self.assertTrue(flags['rows'][0]['values']['BargashtType'])
+        codes = {item['code'] for item in flags['warnings']}
+        self.assertIn('return_row', codes)
+
         from accounting import seasonal_ttms
 
         rows = rec.filtered_rows(self.report, 'purchase', {})
