@@ -518,7 +518,7 @@ test('switching the seller type to natural swaps the name cell to two fields', a
 
 
 
-test('country defaults to Iran and the aggregate seller type needs only the amount', async () => {
+test('an aggregate row records «متفرقه» for names and a dash for the other columns', async () => {
   currentReport = apiReport([{
     ...API_ROW,
     id: 301,
@@ -529,26 +529,65 @@ test('country defaults to Iran and the aggregate seller type needs only the amou
     national_id: '',
     postal_code: '',
     country: 'ایران',
+    city: '',
+    address: '',
     amount: '750000',
     vat: '0',
     invoice_no: '',
+    kind: 3,
   }]);
   const { root, container } = await renderPage();
 
   const firstRow = container.querySelectorAll('tbody tr')[0];
   /* گزینهٔ «تجمیعی» در انتخاب‌گر نوع فروشنده */
-  const personSelect = firstRow.querySelector('[aria-label="نوع فروشنده"]');
-  expect(personSelect.textContent.trim()).toBe('تجمیعی');
+  expect(firstRow.querySelector('[aria-label="نوع فروشنده"]').textContent.trim()).toBe('تجمیعی');
 
-  /* کشور پیش‌فرض «ایران» و قابل ویرایش */
-  const countryInput = firstRow.querySelector('input[placeholder="—"]');
-  expect(countryInput.value).toBe('ایران');
+  /* نام و نام خانوادگی پیش‌فرض «متفرقه» */
+  expect(firstRow.querySelector('input[aria-label="نام شرکت"]').value).toBe('متفرقه');
 
-  /* نام اختیاری است و فقط مبلغ الزامی */
-  expect(firstRow.querySelector('input[aria-label="نام شرکت"]').placeholder).toContain('اختیاری');
+  /* بقیهٔ ستون‌ها «—» (لازم نیست ولی قابل ویرایش) */
+  expect(firstRow.querySelector('input[placeholder="شناسه ملی ۱۱ رقمی"]').value).toBe('—');
+  expect(firstRow.querySelector('input[placeholder="۱۰ رقمی"]').value).toBe('—');
+  expect(firstRow.querySelector('input[placeholder="—"]').value).toBe('—');
+  expect(firstRow.querySelector('input[placeholder="شهر"]').value).toBe('—');
+  expect(firstRow.querySelector('input[placeholder="آدرس"]').value).toBe('—');
+  expect(firstRow.querySelector('input[placeholder="شماره"]').value).toBe('—');
+  expect(firstRow.querySelector('input[aria-label="مالیات بر ارزش افزوده"]').value).toBe('—');
+
+  /* شرح کالا و مبلغ دست‌نخورده می‌مانند (فقط این دو باید پر شوند) */
+  expect(firstRow.querySelector('input[placeholder="شرح کالا یا خدمات"]').value).toBe('خدمات مشاوره مالی');
+  expect(firstRow.querySelector('input[aria-label="مبلغ"]').value).toBe('۷۵۰٬۰۰۰');
+
+  /* نوع معامله = ۳ و وضعیت «ثبت نشده» */
+  expect(firstRow.querySelector('[aria-label="نوع معامله"]').textContent.trim()).toBe('۳');
+  expect(firstRow.querySelector('[data-status="pending"]')).not.toBeNull();
+
   /* توضیحات اضافی کنار انتخاب سال/فصل حذف شده است */
   expect(container.textContent).not.toContain('فقط مبلغ لازم دارد');
   expect(container.textContent).not.toContain('کشور پیش‌فرض');
+
+  root.unmount();
+  container.remove();
+});
+
+test('switching a row to aggregate fills the placeholder defaults', async () => {
+  const { root, container } = await renderPage();
+
+  const readyRow = container.querySelectorAll('tbody tr')[0];
+  const personSelect = readyRow.querySelector('[aria-label="نوع فروشنده"]');
+  await act(async () => {
+    personSelect.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(200);
+  });
+  const aggregateOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.trim() === 'تجمیعی');
+  await act(async () => { aggregateOption.click(); await wait(260); });
+
+  const row = container.querySelectorAll('tbody tr')[0];
+  expect(row.querySelector('input[aria-label="نام شرکت"]').value).toBe('متفرقه');
+  expect(row.querySelector('input[placeholder="—"]').value).toBe('—');
+  expect(row.querySelector('[aria-label="نوع معامله"]').textContent.trim()).toBe('۳');
+  expect(row.querySelector('[data-status="pending"]')).not.toBeNull();
 
   root.unmount();
   container.remove();
@@ -712,3 +751,41 @@ test('selecting a foreign party restores its country instead of Iran', async () 
   root.unmount();
   container.remove();
 });
+
+test('a natural seller typed in a previous quarter is suggested as «حقیقی»', async () => {
+  /* دادهٔ فصل قبل در همین مرورگر: فقط «نام کامل» و کد ملی ۱۰ رقمی، بدون نوع */
+  window.localStorage.setItem('hrms.seasonal.rows.7.q4', JSON.stringify([{
+    id: 'r-old-1', name: 'مریم احمدی', nationalId: '0012345679', city: 'تبریز',
+    address: 'خیابان امام، پلاک ۹', amount: '300000', vat: '30000', invoiceNo: 'Q4-1',
+  }]));
+  const { root, container } = await renderPage();
+
+  const readyNameInput = Array.from(container.querySelectorAll('tbody tr'))
+    .pop().querySelector('input[aria-label="نام شرکت"]');
+  await act(async () => {
+    readyNameInput.focus();
+    setNativeValue(readyNameInput, 'مریم');
+    await wait(320);
+  });
+
+  const options = Array.from(document.querySelectorAll('li[role="option"]')).map((item) => item.textContent);
+  expect(options.some((text) => text.includes('مریم احمدی') && text.includes('حقیقی'))).toBe(true);
+
+  await act(async () => {
+    Array.from(document.querySelectorAll('li[role="option"]'))
+      .find((item) => item.textContent.includes('مریم احمدی'))
+      .click();
+    await wait(300);
+  });
+
+  const naturalRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.querySelector('input[aria-label="نام"]')?.value === 'مریم');
+  expect(naturalRow).toBeTruthy();
+  expect(naturalRow.querySelector('[aria-label="نوع فروشنده"]').textContent.trim()).toBe('حقیقی');
+  expect(naturalRow.querySelector('input[aria-label="نام خانوادگی"]').value).toBe('احمدی');
+  expect(naturalRow.querySelector('input[placeholder="کد ملی ۱۰ رقمی"]').value).toBe('۰۰۱۲۳۴۵۶۷۹');
+  expect(naturalRow.querySelector('input[placeholder="شهر"]').value).toBe('تبریز');
+
+  root.unmount();
+  container.remove();
+}, 20000);

@@ -103,7 +103,8 @@ const LOCAL_REFERENCE = {
   },
 };
 
-const ROWS_KEY = (yearKey, quarter) => `hrms.seasonal.rows.${yearKey}.q${quarter}`;
+const ROWS_KEY_PREFIX = 'hrms.seasonal.rows.';
+const ROWS_KEY = (yearKey, quarter) => `${ROWS_KEY_PREFIX}${yearKey}.q${quarter}`;
 const PARTIES_KEY = 'hrms.seasonal.parties';
 const SETTINGS_KEY = 'hrms.seasonal.settings';
 
@@ -120,6 +121,11 @@ const totalOf = (row) => num(row.amount) + num(row.vat);
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const isEmpty = (value) => !String(value ?? '').trim();
 
+/* ---- ردیف «تجمیعی»: نام‌ها «متفرقه» و بقیهٔ ستون‌ها «—» (نشانهٔ لازم‌نبودن، ولی قابل ویرایش) ---- */
+const AGGREGATE_NAME = 'متفرقه';
+const PLACEHOLDER = '—';
+const AGGREGATE_KIND = 3;
+const isPlaceholder = (value) => /^[—–-]+$/.test(String(value ?? '').trim());
 /* ---- حافظهٔ طرف‌های معامله (برای همهٔ انواع: حقوقی/حقیقی/خارجی/تجمیعی) ---- */
 const PERSON_TYPE_LABELS = PERSON_TYPES.reduce(
   (acc, type) => ({ ...acc, [type.value]: type.label }), {},
@@ -129,6 +135,17 @@ const PERSON_TYPE_LABELS = PERSON_TYPES.reduce(
 const partyDisplay = (party) => normalizeName(
   party?.label || party?.name || [party?.firstName, party?.lastName].filter(Boolean).join(' '),
 );
+
+/* نوع طرف معامله؛ برای داده‌های قدیمیِ بدون نوع، از روی شناسه/کشور حدس زده می‌شود */
+const inferPersonType = (party) => {
+  if (party?.personType && PERSON_TYPE_LABELS[party.personType]) return party.personType;
+  if (party?.firstName || party?.lastName) return 'natural';
+  const nationalId = String(party?.nationalId || '');
+  if (nationalId.length === 10) return 'natural';       // کد ملی اشخاص حقیقی ۱۰ رقمی است
+  const country = normalizeName(party?.country);
+  if (country && country !== DEFAULT_COUNTRY && !isPlaceholder(country)) return 'foreign';
+  return 'legal';
+};
 
 /* رتبه‌بندی پیشنهادها بر اساس متن تایپ‌شده (شروع نام → شروع یک کلمه → شامل) */
 const filterPartyOptions = (options, term) => {
@@ -158,49 +175,85 @@ const jalaliText = (value) => {
   return jalali === '—' ? '' : jalali;
 };
 
+/* ردیف «تجمیعی»: نام و نام خانوادگی «متفرقه»، بقیهٔ ستون‌ها «—»؛ فقط شرح و مبلغ باید پر شود */
+const aggregateDefaults = (row, { forceNames = false } = {}) => ({
+  ...row,
+  personType: 'aggregate',
+  name: forceNames || isEmpty(row.name) || isPlaceholder(row.name) ? AGGREGATE_NAME : row.name,
+  firstName: forceNames || isEmpty(row.firstName) || isPlaceholder(row.firstName) ? AGGREGATE_NAME : row.firstName,
+  lastName: forceNames || isEmpty(row.lastName) || isPlaceholder(row.lastName) ? AGGREGATE_NAME : row.lastName,
+  nationalId: isEmpty(row.nationalId) ? PLACEHOLDER : row.nationalId,
+  postalCode: isEmpty(row.postalCode) ? PLACEHOLDER : row.postalCode,
+  country: isEmpty(row.country) || row.country === DEFAULT_COUNTRY ? PLACEHOLDER : row.country,
+  city: isEmpty(row.city) ? PLACEHOLDER : row.city,
+  address: isEmpty(row.address) ? PLACEHOLDER : row.address,
+  invoiceNo: isEmpty(row.invoiceNo) ? PLACEHOLDER : row.invoiceNo,
+  invoiceDate: isEmpty(row.invoiceDate) ? PLACEHOLDER : row.invoiceDate,
+  vat: isEmpty(row.vat) || num(row.vat) === 0 ? PLACEHOLDER : row.vat,
+  kind: AGGREGATE_KIND,
+  status: 'pending',
+});
+
+/* خروج از «تجمیعی»: مقادیر پیش‌فرض (متفرقه/—) پاک می‌شوند تا ردیف معمولی سالم بماند */
+const clearAggregateDefaults = (row) => {
+  const next = { ...row, personType: 'legal' };
+  TEXT_FIELDS.forEach((field) => {
+    if (next[field] === AGGREGATE_NAME || isPlaceholder(next[field])) next[field] = '';
+  });
+  if (Number(next.kind) === AGGREGATE_KIND) next.kind = 1;
+  if (!next.country || next.country === PLACEHOLDER) next.country = DEFAULT_COUNTRY;
+  return next;
+};
+
 /* امضای محتوایی ردیف‌ها (بدون شناسه) برای تشخیص «تغییر نکرده» */
 const payloadSignature = (payload) => JSON.stringify(payload.map((row) => ({ ...row, id: undefined })));
 
 /* نگاشت ردیف API ↔ جدول */
-const rowFromApi = (item) => ({
-  id: item.id,
-  name: item.name || '',
-  firstName: item.first_name || '',
-  lastName: item.last_name || '',
-  personType: item.person_type || 'legal',
-  nationalId: item.national_id || '',
-  postalCode: item.postal_code || '',
-  country: item.country || '',
-  city: item.city || '',
-  address: item.address || '',
-  description: item.goods_service_desc || '',
-  amount: item.amount ? String(Number(item.amount)) : '',
-  vat: item.vat ? String(Number(item.vat)) : '',
-  kind: item.kind || 1,
-  invoiceDate: item.invoice_date || '',
-  invoiceNo: item.invoice_no || '',
-  moadianUid: item.moadian_uid || '',
-  status: item.moadian_status || 'pending',
-});
+const rowFromApi = (item) => {
+  const row = {
+    id: item.id,
+    name: item.name || '',
+    firstName: item.first_name || '',
+    lastName: item.last_name || '',
+    personType: item.person_type || 'legal',
+    nationalId: item.national_id || '',
+    postalCode: item.postal_code || '',
+    country: item.country || '',
+    city: item.city || '',
+    address: item.address || '',
+    description: item.goods_service_desc || '',
+    amount: item.amount ? String(Number(item.amount)) : '',
+    vat: item.vat ? String(Number(item.vat)) : '',
+    kind: item.kind || 1,
+    invoiceDate: item.invoice_date || '',
+    invoiceNo: item.invoice_no || '',
+    moadianUid: item.moadian_uid || '',
+    status: item.moadian_status || 'pending',
+  };
+  return row.personType === 'aggregate' ? aggregateDefaults(row) : row;
+};
+
+/* «—» فقط نشانهٔ نمایشی است و به سرور فرستاده نمی‌شود */
+const apiText = (value) => (isPlaceholder(value) ? '' : String(value ?? ''));
 
 const rowToApi = (row) => ({
   id: typeof row.id === 'number' ? row.id : null,
-  name: row.name || '',
-  first_name: row.firstName || '',
-  last_name: row.lastName || '',
+  name: apiText(row.name),
+  first_name: apiText(row.firstName),
+  last_name: apiText(row.lastName),
   person_type: row.personType || 'legal',
-  national_id: row.nationalId || '',
-  postal_code: row.postalCode || '',
-  country: row.country || '',
-  city: row.city || '',
-  address: row.address || '',
-  goods_service_desc: row.description || '',
+  national_id: apiText(row.nationalId),
+  postal_code: apiText(row.postalCode),
+  country: apiText(row.country),
+  city: apiText(row.city),
+  address: apiText(row.address),
+  goods_service_desc: apiText(row.description),
   amount: num(row.amount),
-  vat: num(row.vat),
+  vat: isPlaceholder(row.vat) ? 0 : num(row.vat),
   kind: Number(row.kind) || 1,
-  invoice_date: row.invoiceDate || null,
-  invoice_no: row.invoiceNo || '',
-  moadian_uid: row.moadianUid || '',
+  invoice_date: isPlaceholder(row.invoiceDate) ? null : (row.invoiceDate || null),
+  invoice_no: apiText(row.invoiceNo),
+  moadian_uid: apiText(row.moadianUid),
   moadian_status: row.status === 'registered' ? 'registered' : 'pending',
   direction: BACKEND_DIRECTION,
 });
@@ -218,6 +271,25 @@ const readJson = (key, fallback) => {
 };
 const writeJson = (key, value) => {
   try { window.localStorage.setItem(key, JSON.stringify(value)); } catch (error) { /* noop */ }
+};
+
+/* همهٔ ردیف‌های دوره‌های قبلی که در همین مرورگر ذخیره شده‌اند (حافظهٔ طرف‌های معامله) */
+const readStoredSeasonalRows = () => {
+  const collected = [];
+  try {
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index);
+      if (!key || !key.startsWith(ROWS_KEY_PREFIX)) continue;
+      const list = readJson(key, []);
+      if (!Array.isArray(list)) continue;
+      list.forEach((item) => {
+        if (item && typeof item === 'object' && !isEmpty(item.name || item.firstName || item.lastName)) {
+          collected.push(item);          // بدون پیش‌فرض‌سازی تا نوع اصلی/قدیمی حفظ شود
+        }
+      });
+    }
+  } catch (error) { /* noop */ }
+  return collected;
 };
 
 /* اعتبارسنجی قواعد‌محور (حالت آفلاین) — همان ساختار قواعد سرور */
@@ -238,7 +310,9 @@ const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE
     rules.forEach((rule) => {
       if (personType && !rule.person_types.includes(personType)) return;
       const uiField = FIELD_MAP[rule.field] || rule.field;
-      const text = String(row[uiField] ?? '').trim();
+      /* «—» نشانهٔ لازم‌نبودن است و در اعتبارسنجی مثل خالی حساب می‌شود */
+      const raw = row[uiField];
+      const text = isPlaceholder(raw) ? '' : String(raw ?? '').trim();
       if (rule.kind === 'required' || rule.kind === 'recommended') {
         if (!text) push(rule.field, rule.level, rule.message, rule.source);
         return;
@@ -260,7 +334,7 @@ const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE
     if (num(row.vat) > num(row.amount)) {
       push('vat', 'error', 'مالیات بر ارزش افزوده نمی‌تواند از مبلغ خرید بیشتر باشد.', SOURCE_LEGAL);
     }
-    if (row.invoiceDate && periodStart && periodEnd
+    if (row.invoiceDate && !isPlaceholder(row.invoiceDate) && periodStart && periodEnd
       && (row.invoiceDate < periodStart || row.invoiceDate > periodEnd)) {
       push('invoiceDate', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.', SOURCE_LEGAL);
     }
@@ -268,7 +342,7 @@ const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE
     if (row.personType !== 'aggregate' && row.status !== 'registered') {
       push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.', SOURCE_TTMS);
     }
-    if (row.invoiceNo) {
+    if (row.invoiceNo && !isPlaceholder(row.invoiceNo)) {
       const key = `${normalizeName(row.invoiceNo)}|${row.nationalId || row.name}`;
       if (seen.has(key)) {
         push('invoiceNo', 'error', `شماره فاکتور تکراری با ردیف ${toPersianDigits(seen.get(key))} ثبت شده است.`, SOURCE_INTERNAL);
@@ -500,6 +574,8 @@ const SeasonalReportPage = () => {
   const [quarter, setQuarter] = useState(() => readJson(SETTINGS_KEY, {}).quarter || 1);
   const [rows, setRows] = useState([emptyRow()]);
   const [parties] = useState(() => readJson(PARTIES_KEY, []));
+  /* ردیف‌های دوره‌های قبلیِ همین مرورگر برای حافظهٔ طرف‌ها (یک‌بار در شروع) */
+  const [storedRows] = useState(() => readStoredSeasonalRows());
   const [loadedKey, setLoadedKey] = useState('');
   const [reportId, setReportId] = useState(null);
   const [mode, setMode] = useState('loading');            // api | local
@@ -719,17 +795,23 @@ const SeasonalReportPage = () => {
     setRows((previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
-  /* تغییر نوع فروشنده: کشور پیش‌فرض «ایران» پر می‌شود و برای خارجی خالی می‌ماند */
+  /* تغییر نوع فروشنده: تجمیعی → نام‌ها «متفرقه» و بقیه «—»؛ خارجی → کشور خالی؛ بقیه → ایران */
   const changePersonType = (row, value) => {
     setRows((previous) => previous.map((item) => {
       if (item.id !== row.id) return item;
-      let country = item.country;
+      const base = item.personType === 'aggregate' && value !== 'aggregate'
+        ? clearAggregateDefaults(item)
+        : item;
+      if (value === 'aggregate') {
+        return aggregateDefaults(base, { forceNames: true });
+      }
+      let country = base.country;
       if (value === 'foreign') {
-        if (!country || country === DEFAULT_COUNTRY) country = '';
-      } else if (!country) {
+        if (!country || country === DEFAULT_COUNTRY || isPlaceholder(country)) country = '';
+      } else if (!country || isPlaceholder(country)) {
         country = DEFAULT_COUNTRY;
       }
-      return { ...item, personType: value, country };
+      return { ...base, personType: value, country };
     }));
   };
 
@@ -738,7 +820,11 @@ const SeasonalReportPage = () => {
   const applyParty = (id, party) => {
     setRows((previous) => previous.map((row) => {
       if (row.id !== id) return row;
-      const personType = party.personType || row.personType || 'legal';
+      /* ردیف تجمیعی: فقط نام نمایشی جایگزین می‌شود و نوع تغییر نمی‌کند */
+      if (row.personType === 'aggregate') {
+        return { ...row, name: party.name || partyDisplay(party) };
+      }
+      const personType = inferPersonType(party);
       const isNatural = personType === 'natural';
       let firstName = '';
       let lastName = '';
@@ -746,9 +832,10 @@ const SeasonalReportPage = () => {
       if (isNatural) {
         firstName = normalizeName(party.firstName || '');
         lastName = normalizeName(party.lastName || '');
-        if (!firstName && !lastName && name) {
-          const parts = name.split(/\s+/);
-          firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '';
+        if (!firstName && !lastName) {
+          /* داده‌های قدیمی فقط «نام کامل» دارند → تفکیک خودکار */
+          const parts = normalizeName(party.name || partyDisplay(party)).split(/\s+/).filter(Boolean);
+          firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : (parts[0] || '');
           lastName = parts.length > 1 ? parts[parts.length - 1] : '';
         }
         name = normalizeName([firstName, lastName].filter(Boolean).join(' '));
@@ -756,9 +843,11 @@ const SeasonalReportPage = () => {
         name = partyDisplay(party);
       }
       /* خارجی: کشور خودِ طرف (یا خالی تا کاربر بنویسد) — بقیه: پیش‌فرض «ایران» */
+      const partyCountry = isPlaceholder(party.country) ? '' : party.country;
       const country = personType === 'foreign'
-        ? (party.country || (row.personType === 'foreign' ? row.country : ''))
+        ? (partyCountry || (row.personType === 'foreign' && !isPlaceholder(row.country) ? row.country : ''))
         : DEFAULT_COUNTRY;
+      const text = (value, fallback = '') => (isPlaceholder(value) ? fallback : (value || fallback));
       return {
         ...row,
         personType,
@@ -766,10 +855,10 @@ const SeasonalReportPage = () => {
         firstName,
         lastName,
         country,
-        nationalId: party.nationalId || row.nationalId || '',
-        postalCode: party.postalCode || row.postalCode || '',
-        city: party.city || row.city || '',
-        address: party.address || row.address || '',
+        nationalId: text(party.nationalId, text(row.nationalId)),
+        postalCode: text(party.postalCode, text(row.postalCode)),
+        city: text(party.city, text(row.city)),
+        address: text(party.address, text(row.address)),
       };
     }));
   };
@@ -1059,55 +1148,53 @@ const SeasonalReportPage = () => {
   };
 
 
-  /* دفتر طرف‌های معامله: همهٔ ردیف‌های همین جدول (هر چهار نوع) + طرف‌های دوره‌های قبلی */
+  /* دفتر طرف‌های معامله: ردیف‌های همین جدول (هر چهار نوع) + فصل‌های قبلیِ ذخیره‌شده در همین مرورگر + حافظهٔ طرف‌ها */
   const partyDirectory = useMemo(() => {
     const map = new Map();
     const addParty = (party) => {
       const label = partyDisplay(party);
-      if (!label || label.length < 3) return;
+      if (!label || label.length < 3 || label === AGGREGATE_NAME || isPlaceholder(label)) return;
       const key = label.toLowerCase();
       const previous = map.get(key) || {};
+      const personType = party.personType || previous.personType || inferPersonType(party);
       map.set(key, {
         label,
-        personType: party.personType || previous.personType || 'legal',
+        personType,
         name: normalizeName(party.name) || previous.name || '',
         firstName: party.firstName || previous.firstName || '',
         lastName: party.lastName || previous.lastName || '',
-        nationalId: party.nationalId || previous.nationalId || '',
-        postalCode: party.postalCode || previous.postalCode || '',
-        country: party.country || previous.country || '',
-        city: party.city || previous.city || '',
-        address: party.address || previous.address || '',
+        nationalId: isPlaceholder(party.nationalId) ? (previous.nationalId || '') : (party.nationalId || previous.nationalId || ''),
+        postalCode: isPlaceholder(party.postalCode) ? (previous.postalCode || '') : (party.postalCode || previous.postalCode || ''),
+        country: isPlaceholder(party.country) ? (previous.country || '') : (party.country || previous.country || ''),
+        city: isPlaceholder(party.city) ? (previous.city || '') : (party.city || previous.city || ''),
+        address: isPlaceholder(party.address) ? (previous.address || '') : (party.address || previous.address || ''),
       });
     };
 
-    rows.forEach((row) => {
-      if (row.personType === 'natural') {
-        addParty({
-          personType: 'natural',
-          firstName: row.firstName,
-          lastName: row.lastName,
-          nationalId: row.nationalId,
-          postalCode: row.postalCode,
-          city: row.city,
-          address: row.address,
-          country: row.country,
-        });
-        return;
-      }
+    const addRow = (row) => {
+      if (!row || typeof row !== 'object') return;
+      const resolvedType = row.personType || inferPersonType(row);
+      if (resolvedType === 'aggregate') return;
+      const hasParts = !isEmpty(row.firstName) || !isEmpty(row.lastName);
       addParty({
-        personType: row.personType || 'legal',
-        name: row.name,
+        personType: resolvedType,
+        name: hasParts ? '' : (row.name || ''),
+        firstName: row.firstName,
+        lastName: row.lastName,
         nationalId: row.nationalId,
         postalCode: row.postalCode,
         city: row.city,
         address: row.address,
         country: row.country,
       });
-    });
+    };
+
+    /* فصل‌های دیگر که قبلاً در همین مرورگر وارد شده‌اند (حافظهٔ دائمی طرف‌ها) */
+    storedRows.forEach(addRow);
+    rows.forEach(addRow);
     parties.forEach(addParty);
     return [...map.values()];
-  }, [rows, parties]);
+  }, [rows, parties, storedRows]);
 
   const partyOptions = useMemo(() => {
     const names = partyDirectory.map((party) => partyDisplay(party).toLowerCase());
