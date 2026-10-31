@@ -265,6 +265,19 @@ beforeEach(() => {
       });
     }
     if (url.endsWith('/party-pivot-export/')) return Promise.resolve({ data: new Blob(['xlsx']) });
+    if (url.endsWith('/ttms-reference/')) {
+      return Promise.resolve({
+        data: {
+          package_version: 'ttms-fill-1.0',
+          template_reference: 'TTMS_96_New.mdb',
+          tables: { header: 'Kharid', detail: 'Kharid_Detail' },
+          defaults: { kala_type: 12, kala_name: 'کالا/خدمات', seller_type1_code: null, continue_radif: true },
+          kala_types: [{ value: 12, label: 'سایر کالا ها' }],
+          seller_status_codes: [{ value: 5, label: 'مودی مشمول' }],
+        },
+      });
+    }
+    if (url.endsWith('/export-runs/')) return Promise.resolve({ data: [] });
     if (url.endsWith('/reconciliations/')) return Promise.resolve({ data: reconciliationRuns });
     return Promise.resolve({ data: [] });
   });
@@ -559,6 +572,52 @@ test('ttms draft export asks for confirmation and downloads the unverified bundl
   expect(clickSpy.mock.instances[0].download).toBe('ttms-draft-purchase-7-q1.zip');
 
   confirmSpy.mockRestore();
+  clickSpy.mockRestore();
+  root.unmount();
+  container.remove();
+});
+
+test('ttms fill package dialog shows the mapping and builds a zip', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  window.URL.createObjectURL = jest.fn(() => 'blob:ttms-fill');
+  window.URL.revokeObjectURL = jest.fn();
+  const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click')
+    .mockImplementation(() => {});
+
+  const openButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('بستهٔ درج TTMS'));
+  expect(openButton).toBeTruthy();
+  expect(openButton.disabled).toBe(false);
+
+  await act(async () => { openButton.click(); await wait(320); });
+
+  expect(document.body.textContent).toContain('بستهٔ درج ردیف‌ها در فایل Access نسخهٔ TTMS');
+  expect(axiosInstance.get.mock.calls.some(([url]) => url.endsWith('/ttms-reference/'))).toBe(true);
+  expect(axiosInstance.get.mock.calls.some(([url]) => url.endsWith('/export-runs/')))
+    .toBe(true);
+
+  await act(async () => { await wait(260); });
+
+  const buildButton = Array.from(document.body.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('ساخت بستهٔ درج'));
+  expect(buildButton).toBeTruthy();
+  expect(buildButton.disabled).toBe(false);
+
+  await act(async () => { buildButton.click(); await wait(320); });
+
+  const buildCalls = axiosInstance.post.mock.calls
+    .filter(([url]) => url.endsWith('/ttms-package/'));
+  expect(buildCalls.length).toBe(1);
+  expect(buildCalls[0][1].options).toMatchObject({
+    kala_type: 12, seller_type1_code: null, continue_radif: true, dry_run: false,
+  });
+  expect(buildCalls[0][2]).toMatchObject({ responseType: 'blob' });
+  expect(clickSpy).toHaveBeenCalledTimes(1);
+  expect(clickSpy.mock.instances[0].download).toMatch(/^ttms-fill-purchase-\d+\.zip$/);
+  expect(document.body.textContent).toContain('بسته ساخته شد');
+
   clickSpy.mockRestore();
   root.unmount();
   container.remove();

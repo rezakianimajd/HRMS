@@ -9,6 +9,7 @@ import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import PrintIcon from '@mui/icons-material/Print';
 import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
@@ -27,6 +28,7 @@ import SeasonalReconcilePanel from './SeasonalReconcilePanel';
 import SeasonalPartyPivot from './SeasonalPartyPivot';
 import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
 import SeasonalFilterBuilder from './SeasonalFilterBuilder';
+import SeasonalTtmsDialog from './SeasonalTtmsDialog';
 import { rowsToTsv } from './seasonalGridEntry';
 import {
   combineExpressions, countConditions, describeExpression, emptyExpression, evaluateExpression,
@@ -621,6 +623,7 @@ const SeasonalReportPage = () => {
   });
   const [filterExpression, setFilterExpression] = useState(emptyExpression());
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [ttmsOpen, setTtmsOpen] = useState(false);
   const [viewsBusy, setViewsBusy] = useState(false);
   const savedSignatureRef = useRef('');    // امضای آخرین ردیف‌های ذخیره‌شده (بدون شناسه)
   const saveTimerRef = useRef(null);
@@ -2057,6 +2060,19 @@ const SeasonalReportPage = () => {
             <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={exportTtms}>
               خروجی TTMS
             </Button>
+            <Tooltip title="ساخت بستهٔ درج ردیف‌ها در فایل Access نسخهٔ TTMS (روی کپی، با بازبینی جمع‌ها)">
+              <span>
+                <Button
+                  variant="outlined"
+                  size="small"
+                  startIcon={<InsertDriveFileOutlinedIcon />}
+                  onClick={() => setTtmsOpen(true)}
+                  disabled={mode !== 'api' || !reportId}
+                >
+                  بستهٔ درج TTMS
+                </Button>
+              </span>
+            </Tooltip>
             <Button variant="contained" size="small" startIcon={<DownloadIcon />} onClick={exportExcel}>
               خروجی اکسل
             </Button>
@@ -2439,6 +2455,19 @@ const SeasonalReportPage = () => {
         onSaveView={saveCurrentView}
         onDeleteView={deleteSavedView}
         onToggleFavorite={toggleSavedViewFavorite}
+      />
+
+      <SeasonalTtmsDialog
+        open={ttmsOpen}
+        onClose={() => setTtmsOpen(false)}
+        apiBase={API_BASE}
+        reportId={reportId}
+        rowCount={filteredRows.length}
+        params={gridExpression.items.length
+          ? { expression: JSON.stringify(gridExpression) }
+          : {}}
+        prepare={flushSave}
+        onToast={setToast}
       />
 
       <Snackbar

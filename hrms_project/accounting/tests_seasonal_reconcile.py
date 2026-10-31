@@ -2,7 +2,10 @@
 
 اجرای واقعی روی سرور: ``manage.py test accounting.tests_seasonal_reconcile``.
 """
+import csv
 import io
+import json
+import zipfile
 from decimal import Decimal
 
 from django.core.files.uploadedfile import SimpleUploadedFile
@@ -437,4 +440,144 @@ class SavedViewTests(SeasonalBaseTest):
                           for index in range(31)]}
         too_many = self._serializer({'report': self.report.pk, 'name': 'زیاد', 'filters': many})
         self.assertFalse(too_many.is_valid())
+
+
+class TtmsPackageTests(SeasonalBaseTest):
+    """بستهٔ درج در فایل Access نسخهٔ TTMS: ساختار، نگاشت، فیلتر و تاریخچه."""
+
+    def setUp(self):
+        super().setUp()
+        self.report = self.make_report()
+        self.save_rows(self.report, [
+            self.row(invoice_no='P-1', amount=1000000, vat=100000),
+            self.natural_row(invoice_no='P-2', amount=500000, vat=50000),
+            self.row(invoice_no='P-3', name='Atlas GmbH', person_type='foreign',
+                     national_id='', postal_code='', country='ترکیه',
+                     amount=250000, vat=0),
+        ])
+
+    def _package(self, filters=None, options=None):
+        from accounting import seasonal_ttms
+
+        rows = rec.filtered_rows(self.report, 'purchase', filters or {})
+        content, filename, manifest = seasonal_ttms.build_package(
+            self.report, rows, options, filters,
+        )
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            files = {name: archive.read(name) for name in archive.namelist()}
+        return filename, manifest, files
+
+    def test_package_layout_and_ttms_mapping(self):
+        filename, manifest, files = self._package()
+        self.assertEqual(
+            set(files), {'rows.csv', 'manifest.json', 'README.txt', 'fill_ttms.ps1'},
+        )
+        self.assertTrue(filename.startswith('ttms-fill-purchase-1405-q1-'))
+        self.assertEqual(manifest['target']['hc_year_code'], 1405)
+        self.assertEqual(manifest['target']['hc_fasl_type_code'], 1)
+        self.assertEqual(manifest['target']['detail_table'], 'Kharid_Detail')
+        self.assertEqual(
+            manifest['totals'],
+            {'rows': 3, 'amount': 1750000, 'vat': 150000, 'total': 1900000},
+        )
+        self.assertEqual(len(manifest['checksum']['rows_file_sha256']), 64)
+
+        content = files['rows.csv'].decode('utf-8-sig')
+        rows = list(csv.DictReader(io.StringIO(content)))
+        self.assertEqual(len(rows), 3)
+        legal, natural, foreign = rows
+
+        # فروشندهٔ حقوقی: نوع ۲، شناسه ملی، نام شرکت در ستون نام خانوادگی/شرکت
+        self.assertEqual(legal['Radif'], '1')
+        self.assertEqual(legal['KalaType'], '12')
+        self.assertEqual(legal['HCForoushandeTypeCode'], '2')
+        self.assertEqual(legal['HCForoushandeType1Code'], '5')
+        self.assertEqual(legal['ForoushandeLastNameSherkatName'], 'شرکت آلفا تجارت')
+        self.assertEqual(legal['ForoushandeName'], '')
+        self.assertEqual(legal['ForoushandeNationalCode'], '10101010101')
+        self.assertEqual(legal['Price'], '1000000')
+        self.assertEqual(legal['MaliatArzeshAfzoodeh'], '100000')
+        self.assertTrue(legal['FactorDate'].startswith('1405/'))
+        self.assertEqual(legal['IsSent'], 'False')
+        self.assertEqual(legal['ForoushandeEconomicNO'], '')
+
+        # فروشندهٔ حقیقی: نوع ۱ و نام/نام خانوادگی جدا
+        self.assertEqual(natural['HCForoushandeTypeCode'], '1')
+        self.assertEqual(natural['ForoushandeName'], 'علی')
+        self.assertEqual(natural['ForoushandeLastNameSherkatName'], 'رضایی')
+        self.assertEqual(natural['ForoushandeNationalCode'], '0012345678')
+
+        # فروشندهٔ خارجی: وضعیت ۷ و نام در ستون شرکت
+        self.assertEqual(foreign['HCForoushandeType1Code'], '7')
+        self.assertEqual(foreign['ForoushandeLastNameSherkatName'], 'Atlas GmbH')
+
+        # اسکریپت PowerShell با BOM (لازم برای فارسی در PowerShell 5.1)
+        self.assertTrue(files['fill_ttms.ps1'].startswith(b'\xef\xbb\xbf'))
+        self.assertIn('Kharid_Detail', files['fill_ttms.ps1'].decode('utf-8-sig'))
+        readme = files['README.txt'].decode('utf-8-sig')
+        self.assertIn('fill_ttms.ps1', readme)
+        self.assertIn('tested-on-copy', readme)
+
+
+    def test_package_applies_filters_and_options(self):
+        from accounting import seasonal_ttms
+
+        filters = {
+            'expression': {'op': 'and', 'items': [
+                {'field': 'person_type', 'operator': 'eq', 'value': 'legal'},
+            ]},
+        }
+        _filename, manifest, files = self._package(
+            filters, options={'kala_type': 7, 'seller_type1_code': 6, 'continue_radif': False},
+        )
+        self.assertEqual(manifest['totals']['rows'], 1)
+        self.assertEqual(manifest['totals']['amount'], 1000000)
+        self.assertEqual(manifest['mapping']['kala_type'], 7)
+        self.assertEqual(manifest['mapping']['seller_type1_code'], 6)
+        self.assertIn('شخص حقوقی', manifest['report']['filters_label'])
+
+        rows = list(csv.DictReader(io.StringIO(files['rows.csv'].decode('utf-8-sig'))))
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]['KalaType'], '7')
+        self.assertEqual(rows[0]['HCForoushandeType1Code'], '6')
+
+        options = seasonal_ttms.normalize_options({'kala_type': 99, 'seller_type1_code': 3})
+        self.assertEqual(options['kala_type'], 12)      # مقدار نامعتبر → پیش‌فرض
+        self.assertIsNone(options['seller_type1_code'])
+
+    def test_export_run_serializer_labels_and_status(self):
+        from accounting.models import SeasonalExportRun
+        from accounting.serializers import SeasonalExportRunSerializer
+
+        _filename, manifest, _files = self._package()
+        run = SeasonalExportRun.objects.create(
+            company=self.company, report=self.report,
+            mapping_version=manifest['package']['version'],
+            package_name=manifest['package']['name'],
+            filters={'expression': {'op': 'and', 'items': [
+                {'field': 'kind', 'operator': 'eq', 'value': 1},
+            ]}},
+            options=manifest['options'],
+            row_count=manifest['totals']['rows'],
+            amount_total=manifest['totals']['amount'],
+            vat_total=manifest['totals']['vat'],
+            created_by_name='کاربر تست',
+        )
+        payload = SeasonalExportRunSerializer(run, context={'company': self.company}).data
+        self.assertEqual(payload['status'], 'generated')
+        self.assertEqual(payload['status_display'], 'ساخته شد (در انتظار اجرا)')
+        self.assertEqual(payload['totals']['total'], 1900000)
+        self.assertIn('نوع معامله', payload['filters_label'])
+        self.assertIn('سه‌ماهه اول', payload['report_label'])
+
+        run.status = SeasonalExportRun.Status.FILLED
+        run.filled_rows = 3
+        run.message = 'درج شد'
+        run.result = {'status': 'filled', 'inserted': 3}
+        run.save()
+        payload = SeasonalExportRunSerializer(run, context={'company': self.company}).data
+        self.assertEqual(payload['status_display'], 'روی فایل TTMS درج شد')
+        self.assertEqual(payload['filled_rows'], 3)
+        self.assertEqual(payload['result']['inserted'], 3)
+
         self.assertIn('filters', too_many.errors)

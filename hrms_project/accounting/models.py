@@ -1150,6 +1150,62 @@ class SeasonalReconciliation(AccountingBaseModel):
         return f'{self.report_id} — {self.file_name or "فایل دفاتر"}'
 
 
+class SeasonalExportRun(AccountingBaseModel):
+    """یک بار ساخت «بستهٔ درج در فایل Access نسخهٔ TTMS» برای گزارش فصلی.
+
+    سرور فقط بستهٔ zip (rows.csv + manifest.json + fill_ttms.ps1) را می‌سازد؛ درج
+    روی فایل Access در ویندوز کاربر انجام می‌شود و نتیجه (result.json) در همین
+    رکورد ثبت می‌گردد تا سابقهٔ «چه کسی، کِی، چند ردیف و با چه جمعی» بماند.
+    """
+
+    class Kind(models.TextChoices):
+        TTMS_ACCESS = 'ttms_access', _('بستهٔ درج در فایل TTMS')
+        CSV = 'csv', _('پیش‌نویس CSV')
+
+    class Status(models.TextChoices):
+        GENERATED = 'generated', _('ساخته شد (در انتظار اجرا)')
+        FILLED = 'filled', _('روی فایل TTMS درج شد')
+        DRY_RUN = 'dry_run', _('اجرای آزمایشی')
+        FAILED = 'failed', _('ناموفق')
+
+    report = models.ForeignKey(
+        SeasonalReport, on_delete=models.CASCADE, related_name='export_runs',
+        verbose_name=_('گزارش فصلی'),
+    )
+    kind = models.CharField(
+        max_length=12, choices=Kind.choices, default=Kind.TTMS_ACCESS,
+        verbose_name=_('نوع بسته'),
+    )
+    status = models.CharField(
+        max_length=12, choices=Status.choices, default=Status.GENERATED,
+        verbose_name=_('وضعیت'),
+    )
+    mapping_version = models.CharField(max_length=40, blank=True, verbose_name=_('نسخهٔ نگاشت'))
+    package_name = models.CharField(max_length=160, blank=True, verbose_name=_('نام بسته'))
+    target_name = models.CharField(max_length=200, blank=True, verbose_name=_('فایل هدف TTMS'))
+    filters = models.JSONField(default=dict, blank=True, verbose_name=_('فیلترهای اعمال‌شده'))
+    options = models.JSONField(default=dict, blank=True, verbose_name=_('گزینه‌های بسته'))
+    row_count = models.PositiveIntegerField(default=0, verbose_name=_('ردیف‌های بسته'))
+    amount_total = models.DecimalField(
+        max_digits=20, decimal_places=0, default=0, verbose_name=_('جمع مبلغ بسته'),
+    )
+    vat_total = models.DecimalField(
+        max_digits=20, decimal_places=0, default=0, verbose_name=_('جمع مالیات بسته'),
+    )
+    filled_rows = models.PositiveIntegerField(default=0, verbose_name=_('ردیف‌های درج‌شده'))
+    message = models.CharField(max_length=255, blank=True, verbose_name=_('پیام نتیجه'))
+    result = models.JSONField(default=dict, blank=True, verbose_name=_('نتیجهٔ اجرا'))
+    created_by_name = models.CharField(max_length=150, blank=True, verbose_name=_('سازنده'))
+
+    class Meta:
+        verbose_name = _('بستهٔ خروجی فصلی')
+        verbose_name_plural = _('بسته‌های خروجی فصلی')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.package_name or "بستهٔ TTMS"} — {self.get_status_display()}'
+
+
 class SeasonalSavedView(AccountingBaseModel):
     """نمای ذخیره‌شدهٔ فیلترهای گزارش فصلی (فیلتر ساده یا درخت شرط AND/OR).
 

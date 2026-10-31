@@ -10,7 +10,7 @@ from accounting.models import (
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
     ApprovalPolicy, ApprovalStep, FinancialStatementApproval,
-    SeasonalReport, SeasonalSavedView, SeasonalTransaction,
+    SeasonalReport, SeasonalSavedView, SeasonalTransaction, SeasonalExportRun,
 )
 
 
@@ -549,6 +549,49 @@ class SeasonalRowsWriteSerializer(serializers.Serializer):
     """بدنهٔ ذخیرهٔ گروهی ردیف‌ها: ``{'rows': [...]}``."""
 
     rows = serializers.ListField(child=serializers.DictField(), allow_empty=True)
+
+
+class SeasonalExportRunSerializer(BaseModelSerializer):
+    """تاریخچهٔ بسته‌های خروجی (درج در فایل TTMS) یک گزارش فصلی."""
+
+    report_label = serializers.SerializerMethodField()
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    filters_label = serializers.SerializerMethodField()
+    totals = serializers.SerializerMethodField()
+
+    class Meta(BaseModelSerializer.Meta):
+        model = SeasonalExportRun
+        fields = [
+            'id', 'report', 'report_label', 'kind', 'kind_display', 'status', 'status_display',
+            'mapping_version', 'package_name', 'target_name', 'filters', 'filters_label',
+            'options', 'row_count', 'amount_total', 'vat_total', 'filled_rows', 'message',
+            'result', 'totals', 'created_by_name', 'created_at', 'updated_at',
+        ]
+        read_only_fields = fields
+
+    def get_report_label(self, obj):
+        report = getattr(obj, 'report', None)
+        if not report:
+            return ''
+        year = getattr(getattr(report, 'fiscal_year', None), 'name', '')
+        return f'{year} — {report.get_quarter_display()}'
+
+    def get_filters_label(self, obj):
+        from accounting import seasonal_reconcile
+
+        try:
+            expression = seasonal_reconcile.normalize_expression(
+                (obj.filters or {}).get('expression') or {},
+            )
+        except Exception:
+            return 'بدون فیلتر'
+        return seasonal_reconcile.describe_expression(expression)
+
+    def get_totals(self, obj):
+        amount = int(obj.amount_total or 0)
+        vat = int(obj.vat_total or 0)
+        return {'amount': amount, 'vat': vat, 'total': amount + vat}
 
 
 class SeasonalSavedViewSerializer(BaseModelSerializer):

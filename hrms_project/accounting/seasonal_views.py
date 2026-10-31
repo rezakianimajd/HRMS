@@ -5,6 +5,9 @@
 - ``validate``: اعتبارسنجی قواعدِ خرید از ``seasonal_rules`` (سرور مرجع نهایی).
 - ``export``: اکسل مدیریتی سه‌شیتی خرید.
 - ``export_ttms``: بستهٔ «پیش‌نویس آزمایش‌نشده» TTMS (zip: csv + README).
+- ``ttms_package``: بستهٔ «درج در فایل Access نسخهٔ TTMS» (zip: rows.csv + manifest + اسکریپت).
+- ``export_runs`` / ``export_run_result``: تاریخچهٔ بسته‌ها و ثبت نتیجهٔ اجرای ویندوز.
+- ``ttms_reference``: نگاشت ستون‌های TTMS، نوع کالا و کدهای وضعیت فروشنده.
 - ``reference``: قواعد و الزامات هر نوع فروشنده برای هم‌سانی فرانت و بک.
 - ``status``: تغییر وضعیت پیش‌نویس ↔ آمادهٔ ارسال.
 """
@@ -14,24 +17,36 @@ import json
 
 from django.db.models import F
 from django.http import HttpResponse
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from rest_framework import filters, status as http_status
 from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from accounting import seasonal_reconcile, seasonal_rules
+from accounting import seasonal_reconcile, seasonal_rules, seasonal_ttms
 from accounting.models import (
-    FiscalYear, SeasonalReconciliation, SeasonalReport, SeasonalSavedView,
+    FiscalYear, SeasonalExportRun, SeasonalReconciliation, SeasonalReport, SeasonalSavedView,
 )
 from accounting.seasonal import (
     DIRECTION_PURCHASE, build_ttms_draft, build_workbook, control_totals,
     sync_rows, validate_report,
 )
 from accounting.serializers import (
-    SeasonalReportSerializer, SeasonalRowsWriteSerializer, SeasonalSavedViewSerializer,
+    SeasonalExportRunSerializer, SeasonalReportSerializer, SeasonalRowsWriteSerializer,
+    SeasonalSavedViewSerializer,
 )
 from accounting.views import CompanyScopedViewSet, _company
+
+
+def _user_name(request):
+    """نام نمایشی کاربر جاری (برای ثبت سازندهٔ نما/بسته)."""
+    user = getattr(request, 'user', None)
+    name = ''
+    if hasattr(user, 'get_full_name'):
+        name = user.get_full_name() or ''
+    return (name or getattr(user, 'username', '') or '')[:150]
+
 
 
 class SeasonalReportViewSet(CompanyScopedViewSet):
@@ -331,6 +346,113 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         return response
 
 
+
+    @action(detail=False, methods=['get'], url_path='ttms-reference')
+    def ttms_reference(self, request):
+        """نگاشت ستون‌های فایل TTMS، نوع کالا، کدهای وضعیت فروشنده و گزینه‌ها."""
+        return Response(seasonal_ttms.ttms_reference())
+
+    @action(detail=True, methods=['post'], url_path='ttms-package')
+    def ttms_package(self, request, pk=None):
+        """ساخت بستهٔ درج در فایل Access نسخهٔ TTMS برای ردیف‌های فیلترشده.
+
+        بدنهٔ درخواست: ``{'expression': {...}, 'options': {...}, 'target_name': '...'}``.
+        فیلتر می‌تواند در querystring هم بیاید (همان قالب گزارش تحلیلی و پیوت).
+        خروجی: zip شامل rows.csv + manifest.json + fill_ttms.ps1 + README.txt.
+        """
+        report = self.get_object()
+        body = request.data if isinstance(request.data, dict) else {}
+        params = request.query_params.dict() if hasattr(request.query_params, 'dict') else {}
+        for key in ('expression', 'filters', 'kind', 'moadian_status', 'person_type', 'search'):
+            value = body.get(key)
+            if value in (None, ''):
+                continue
+            params[key] = (json.dumps(value, ensure_ascii=False)
+                           if isinstance(value, (dict, list)) else value)
+        filters = seasonal_reconcile.filters_from_query(params)
+
+        rows = seasonal_reconcile.filtered_rows(report, DIRECTION_PURCHASE, filters)
+        if not rows:
+            return Response(
+                {'detail': 'با فیلترهای انتخابی هیچ ردیفی برای خروجی باقی نمی‌ماند.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        options = seasonal_ttms.normalize_options(body.get('options'))
+        content, filename, manifest = seasonal_ttms.build_package(
+            report, rows, options, filters,
+        )
+        totals = manifest['totals']
+        run = SeasonalExportRun.objects.create(
+            company=_company(request),
+            report=report,
+            kind=SeasonalExportRun.Kind.TTMS_ACCESS,
+            status=SeasonalExportRun.Status.GENERATED,
+            mapping_version=seasonal_ttms.PACKAGE_VERSION,
+            package_name=filename,
+            target_name=str(body.get('target_name') or '')[:200],
+            filters=filters,
+            options=options,
+            row_count=totals['rows'],
+            amount_total=totals['amount'],
+            vat_total=totals['vat'],
+            created_by_name=_user_name(request),
+        )
+
+        response = HttpResponse(content, content_type='application/zip')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        response['X-Export-Run'] = str(run.pk)
+        response['X-Export-Rows'] = str(totals['rows'])
+        response['X-TTMS-Status'] = seasonal_ttms.TEMPLATE_STATUS
+        response['X-TTMS-Mapping'] = seasonal_ttms.PACKAGE_VERSION
+        return response
+
+    @action(detail=True, methods=['get'], url_path='export-runs')
+    def export_runs(self, request, pk=None):
+        """تاریخچهٔ بسته‌های خروجی همان گزارش (جدیدترین‌ها اول)."""
+        report = self.get_object()
+        runs = report.export_runs.all()[:50]
+        return Response(
+            SeasonalExportRunSerializer(runs, many=True, context=self.get_serializer_context()).data,
+        )
+
+    @action(detail=True, methods=['post'], url_path=r'export-runs/(?P<run_id>[^/.]+)/result')
+    def export_run_result(self, request, pk=None, run_id=None):
+        """ثبت نتیجهٔ اجرای اسکریپت ویندوز (محتوای result.json) برای یک بسته."""
+        report = self.get_object()
+        run = get_object_or_404(SeasonalExportRun, pk=run_id, report=report)
+        payload = request.data if isinstance(request.data, dict) else {}
+        result = payload.get('result') if isinstance(payload.get('result'), dict) else payload
+        status = str(result.get('status') or '').strip().lower()
+        if status not in ('filled', 'dry_run', 'failed'):
+            return Response(
+                {'detail': 'وضعیت نتیجه باید filled، dry_run یا failed باشد.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        run.status = status
+        run.result = result
+        run.filled_rows = max(0, int(result.get('inserted') or 0))
+        target = str(result.get('target') or '').strip()
+        if target:
+            run.target_name = target[:200]
+        run.message = str(result.get('message') or '')[:255]
+        if status == 'filled' and result.get('observed'):
+            observed = result['observed']
+            try:
+                run.row_count = max(0, int(observed.get('rows') or run.row_count))
+                run.amount_total = observed.get('amount') or run.amount_total
+                run.vat_total = observed.get('vat') or run.vat_total
+            except (TypeError, ValueError):
+                pass
+        run.save(update_fields=[
+            'status', 'result', 'filled_rows', 'target_name', 'message',
+            'row_count', 'amount_total', 'vat_total', 'updated_at',
+        ])
+        return Response(
+            SeasonalExportRunSerializer(run, context=self.get_serializer_context()).data,
+        )
+
 class SeasonalSavedViewViewSet(CompanyScopedViewSet):
     """نماهای ذخیره‌شدهٔ فیلتر برای گزارش‌های فصلی شرکت جاری."""
 
@@ -354,10 +476,7 @@ class SeasonalSavedViewViewSet(CompanyScopedViewSet):
         return qs
 
     def perform_create(self, serializer):
-        user = getattr(self.request, 'user', None)
-        name = ((user.get_full_name() if hasattr(user, 'get_full_name') else '')
-                or getattr(user, 'username', '') or '')[:150]
-        serializer.save(company=_company(self.request), owner_name=name)
+        serializer.save(company=_company(self.request), owner_name=_user_name(self.request))
 
     @action(detail=True, methods=['post'])
     def touch(self, request, pk=None):
