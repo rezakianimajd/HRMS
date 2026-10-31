@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, FormControl, IconButton, InputLabel,
   MenuItem, Paper, Select, Snackbar, Stack, TextField, Tooltip, Typography,
@@ -157,6 +157,9 @@ const jalaliText = (value) => {
   const jalali = toJalali(value);
   return jalali === '—' ? '' : jalali;
 };
+
+/* امضای محتوایی ردیف‌ها (بدون شناسه) برای تشخیص «تغییر نکرده» */
+const payloadSignature = (payload) => JSON.stringify(payload.map((row) => ({ ...row, id: undefined })));
 
 /* نگاشت ردیف API ↔ جدول */
 const rowFromApi = (item) => ({
@@ -509,7 +512,9 @@ const SeasonalReportPage = () => {
   const [kindFilter, setKindFilter] = useState('all');
   const [sortBy, setSortBy] = useState('entry');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const savedPayloadRef = useRef('');
+  const savedSignatureRef = useRef('');    // امضای آخرین ردیف‌های ذخیره‌شده (بدون شناسه)
+  const saveTimerRef = useRef(null);
+  const lastRowElRef = useRef(null);       // آخرین ردیف جدول که فوکوس داشته
 
   const { data: referenceData } = useQuery({
     queryKey: ['seasonal-rules-reference'],
@@ -599,14 +604,14 @@ const SeasonalReportPage = () => {
             setRows([...migrated, emptyRow()]);
             setMode('api');
             setLoadedKey(key);
-            savedPayloadRef.current = '';
+            savedSignatureRef.current = '';
             return;
           }
         }
         setRows([...serverRows, emptyRow()]);
         setMode('api');
         setLoadedKey(key);
-        savedPayloadRef.current = JSON.stringify((data.transactions || []).map(rowToApi));
+        savedSignatureRef.current = payloadSignature((data.transactions || []).map(rowToApi));
       })
       .catch(fallbackToLocal);
 
@@ -614,42 +619,92 @@ const SeasonalReportPage = () => {
   }, [yearKey, quarter]);
 
 
-  /* ذخیرهٔ خودکار: سرور (با debounce) یا حافظهٔ محلی */
-  const filledForSave = useMemo(() => rows.filter((row) => !isBlankRow(row)), [rows]);
-  useEffect(() => {
-    if (!yearKey || loadedKey !== `${yearKey}|${quarter}` || mode === 'loading') return undefined;
-    writeJson(ROWS_KEY(yearKey, quarter), rows);
+  /* ذخیرهٔ «پایان ردیف»: تا زمانی که کاربر داخل یک ردیف است هیچ ذخیره‌ای انجام نمی‌شود؛
+     با رفتن به ردیف بعد یا خروج از جدول، همان یک بار ذخیره می‌شود */
+  const rowsRef = useRef(rows);
+  const saveContextRef = useRef({});
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  saveContextRef.current = { mode, reportId, yearKey, quarter, loadedKey };
 
-    if (mode !== 'api' || !reportId) {
-      setSaveState('saved');
-      return undefined;
+  const flushSave = useCallback(({ silent = false } = {}) => {
+    const { mode: currentMode, reportId: currentReportId, yearKey: currentYear, quarter: currentQuarter, loadedKey: currentLoaded } = saveContextRef.current;
+    if (!currentYear || currentLoaded !== `${currentYear}|${currentQuarter}` || currentMode === 'loading') {
+      return Promise.resolve();
     }
+    if (currentMode !== 'api' || !currentReportId) {
+      if (!silent) setSaveState('saved');          // حالت محلی: فقط حافظهٔ مرورگر
+      return Promise.resolve();
+    }
+    const payload = rowsRef.current.filter((row) => !isBlankRow(row)).map(rowToApi);
+    const signature = payloadSignature(payload);
+    if (signature === savedSignatureRef.current) return Promise.resolve();
 
-    const payload = filledForSave.map(rowToApi);
-    const serialized = JSON.stringify(payload);
-    if (serialized === savedPayloadRef.current) return undefined;
-
-    setSaveState('saving');
-    const timer = window.setTimeout(() => {
-      axiosInstance.post(`${API_BASE}/${reportId}/rows/`, { rows: payload })
-        .then(({ data }) => {
-          savedPayloadRef.current = JSON.stringify((data.transactions || []).map(rowToApi));
-          setSaveState('saved');
-          const serverRows = (data.transactions || []).map(rowFromApi);
-          setRows((previous) => {
-            /* شناسه‌های سرور را جایگزین می‌کنیم تا ذخیره‌های بعدی «ویرایش» شوند */
-            const tail = previous.filter((row) => isBlankRow(row)).slice(-1);
-            if (serverRows.length !== previous.filter((row) => !isBlankRow(row)).length) return previous;
-            return [...serverRows, ...(tail.length ? tail : [emptyRow()])];
-          });
-        })
-        .catch(() => {
+    savedSignatureRef.current = signature;          // جلوگیری از ارسال تکراری
+    if (!silent) setSaveState('saving');
+    return axiosInstance.post(`${API_BASE}/${currentReportId}/rows/`, { rows: payload })
+      .then(() => { if (!silent) setSaveState('saved'); })
+      .catch(() => {
+        savedSignatureRef.current = '';             // تلاش دوباره در پایان ردیف بعدی
+        if (!silent) {
           setSaveState('error');
           setToast('ذخیره در سرور انجام نشد؛ نسخهٔ محلی نگه داشته شد.');
-        });
-    }, 700);
-    return () => window.clearTimeout(timer);
-  }, [rows, yearKey, quarter, loadedKey, mode, reportId, filledForSave]);
+        }
+      });
+  }, []);
+
+  const scheduleSave = useCallback(() => {
+    if (saveTimerRef.current) window.clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = window.setTimeout(() => {
+      saveTimerRef.current = null;
+      flushSave();
+    }, 450);
+  }, [flushSave]);
+
+  const cancelScheduledSave = () => {
+    if (saveTimerRef.current) {
+      window.clearTimeout(saveTimerRef.current);
+      saveTimerRef.current = null;
+    }
+  };
+
+  useEffect(() => () => cancelScheduledSave(), []);
+
+  /* ذخیرهٔ نهایی هنگام بستن/خروج از صفحه (به‌صورت بهترین‌تلاش و بی‌صدا) */
+  useEffect(() => {
+    const handlePageHide = () => { flushSave({ silent: true }); };
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('beforeunload', handlePageHide);
+    return () => {
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('beforeunload', handlePageHide);
+      cancelScheduledSave();
+      flushSave({ silent: true });
+    };
+  }, [flushSave]);
+
+  /* تشخیص «رفتن به ردیف بعد» از روی حرکت فوکوس در جدول */
+  useEffect(() => {
+    const handleFocusIn = (event) => {
+      const rowEl = event.target?.closest?.('tbody tr') || null;
+      const previousRowEl = lastRowElRef.current;
+      cancelScheduledSave();
+      if (!rowEl) {
+        /* خروج از جدول: فیلتر، انتخاب سال/فصل، دکمه‌ها یا منوی بازشو */
+        if (previousRowEl) scheduleSave();
+        return;
+      }
+      lastRowElRef.current = rowEl;
+      if (previousRowEl && previousRowEl !== rowEl) scheduleSave();
+    };
+    document.addEventListener('focusin', handleFocusIn);
+    return () => document.removeEventListener('focusin', handleFocusIn);
+  }, [scheduleSave]);
+
+  /* نسخهٔ محلی همیشه نوشته می‌شود تا با بستن مرورگر داده از دست نرود */
+  useEffect(() => {
+    if (!yearKey || loadedKey !== `${yearKey}|${quarter}`) return;
+    writeJson(ROWS_KEY(yearKey, quarter), rows);
+  }, [rows, yearKey, quarter, loadedKey]);
 
   /* ردیف بعدی همیشه خودکار ساخته می‌شود */
   useEffect(() => {
@@ -830,8 +885,11 @@ const SeasonalReportPage = () => {
   /* اعتبارسنجی: سرور (مرجع نهایی) یا موتور قواعد محلی */
   const runValidation = () => {
     if (mode === 'api' && reportId) {
-      setSaveState('saving');
-      axiosInstance.post(`${API_BASE}/${reportId}/validate/`, { direction: BACKEND_DIRECTION })
+      /* ابتدا ردیف‌های در حال ویرایش ذخیره می‌شوند تا اعتبارسنجی روی همان داده باشد */
+      flushSave().then(() => {
+        setSaveState('saving');
+        return axiosInstance.post(`${API_BASE}/${reportId}/validate/`, { direction: BACKEND_DIRECTION });
+      })
         .then(({ data }) => {
           setIssues(data.issues || []);
           const summary = data.summary || {};
@@ -861,7 +919,8 @@ const SeasonalReportPage = () => {
   /* خروجی اکسل: از سرور (سه‌شیتی رسمی) یا تولید محلی */
   const exportExcel = () => {
     if (mode === 'api' && reportId) {
-      axiosInstance.get(`${API_BASE}/${reportId}/export/`, { responseType: 'blob' })
+      flushSave()
+        .then(() => axiosInstance.get(`${API_BASE}/${reportId}/export/`, { responseType: 'blob' }))
         .then((response) => {
           const blob = new Blob([response.data], {
             type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
@@ -946,7 +1005,8 @@ const SeasonalReportPage = () => {
       : true;
     if (!confirmed) return;
 
-    axiosInstance.get(`${API_BASE}/${reportId}/export-ttms/`, { responseType: 'blob' })
+    flushSave()
+      .then(() => axiosInstance.get(`${API_BASE}/${reportId}/export-ttms/`, { responseType: 'blob' }))
       .then((response) => {
         const blob = new Blob([response.data], { type: 'application/zip' });
         const link = document.createElement('a');
@@ -1441,8 +1501,6 @@ const SeasonalReportPage = () => {
             : mode === 'local'
               ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
               : 'در حال دریافت بازهٔ فصل…'}
-          {' · همهٔ ردیف‌ها «مشمول» و «نوع کالا/خدمات = سایر»'} 
-          {' · کشور پیش‌فرض «ایران» · نوع «تجمیعی» فقط مبلغ لازم دارد'}
         </Typography>
 
         <Typography

@@ -224,28 +224,48 @@ test('api rows render totals, persian digits and the moadian status dot', async 
   container.remove();
 });
 
-test('a ready empty row is always available and typing creates the next one, then saves to the api', async () => {
+test('a row is saved once when the user moves to the next row', async () => {
   const { root, container } = await renderPage();
 
   let bodyRows = Array.from(container.querySelectorAll('tbody tr'));
   expect(bodyRows).toHaveLength(1);
 
   const nameInput = bodyRows[0].querySelector('input[aria-label="نام شرکت"]');
-  await act(async () => { setNativeValue(nameInput, 'ش'); await wait(220); });
+  await act(async () => {
+    nameInput.focus();
+    setNativeValue(nameInput, 'ش');
+    await wait(220);
+  });
 
   bodyRows = Array.from(container.querySelectorAll('tbody tr'));
   expect(bodyRows).toHaveLength(2);
   expect(bodyRows[1].querySelector('input[aria-label="نام شرکت"]').value).toBe('');
 
-  /* ذخیرهٔ خودکار با debounce روی API */
-  await act(async () => { await wait(1100); });
+  /* تا وقتی داخل همان ردیف هستیم هیچ ذخیره‌ای انجام نمی‌شود (تایپ روان) */
+  await act(async () => { await wait(900); });
+  expect(axiosInstance.post.mock.calls.filter(([url]) => url.endsWith('/rows/'))).toHaveLength(0);
+
+  /* رفتن به ردیف بعد → همان یک بار ذخیره */
+  const nextInput = bodyRows[1].querySelector('input[aria-label="نام شرکت"]');
+  await act(async () => {
+    nextInput.focus();
+    await wait(900);
+  });
   const rowPosts = axiosInstance.post.mock.calls.filter(([url]) => url.endsWith('/rows/'));
-  expect(rowPosts.length).toBeGreaterThanOrEqual(1);
+  expect(rowPosts).toHaveLength(1);
   expect(rowPosts[0][1].rows[0].name).toBe('ش');
+
+  /* بدون تغییر جدید، رفتن به ردیف‌های دیگر دوباره ذخیره نمی‌کند */
+  await act(async () => {
+    bodyRows = Array.from(container.querySelectorAll('tbody tr'));
+    bodyRows[0].querySelector('input[aria-label="نام شرکت"]').focus();
+    await wait(900);
+  });
+  expect(axiosInstance.post.mock.calls.filter(([url]) => url.endsWith('/rows/'))).toHaveLength(1);
 
   root.unmount();
   container.remove();
-});
+}, 20000);
 
 
 test('suggestions come from every api row and fill city plus national id', async () => {
@@ -526,7 +546,9 @@ test('country defaults to Iran and the aggregate seller type needs only the amou
 
   /* نام اختیاری است و فقط مبلغ الزامی */
   expect(firstRow.querySelector('input[aria-label="نام شرکت"]').placeholder).toContain('اختیاری');
-  expect(container.textContent).toContain('نوع «تجمیعی» فقط مبلغ لازم دارد');
+  /* توضیحات اضافی کنار انتخاب سال/فصل حذف شده است */
+  expect(container.textContent).not.toContain('فقط مبلغ لازم دارد');
+  expect(container.textContent).not.toContain('کشور پیش‌فرض');
 
   root.unmount();
   container.remove();
