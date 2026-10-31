@@ -1112,3 +1112,41 @@ class SeasonalTransaction(AccountingBaseModel):
     def total(self):
         return (self.amount or 0) + (self.vat or 0)
 
+
+class SeasonalReconciliation(AccountingBaseModel):
+    """یک بار مغایرت‌گیری گزارش فصلی با فایل دفاتر (برای پیگیری و حسابرسی).
+
+    خلاصه و جزئیات نتیجه ذخیره می‌شود تا امکان «چه کسی، کِی، با چه فایلی و با چه
+    نتیجه‌ای» فراهم باشد؛ خودِ فایل آپلودی نگه‌داری نمی‌شود.
+    """
+
+    report = models.ForeignKey(
+        SeasonalReport, on_delete=models.CASCADE, related_name='reconciliations',
+        verbose_name=_('گزارش فصلی'),
+    )
+    direction = models.CharField(
+        max_length=10, choices=SeasonalTransaction.Direction.choices,
+        default=SeasonalTransaction.Direction.PURCHASE, verbose_name=_('جهت معامله'),
+    )
+    file_name = models.CharField(max_length=255, blank=True, verbose_name=_('نام فایل دفاتر'))
+    file_sheet = models.CharField(max_length=120, blank=True, verbose_name=_('شیت فایل'))
+    source_rows = models.PositiveIntegerField(default=0, verbose_name=_('ردیف‌های فایل'))
+    matched_count = models.PositiveIntegerField(default=0, verbose_name=_('ردیف‌های تطبیق‌یافته'))
+    error_count = models.PositiveIntegerField(default=0, verbose_name=_('خطاها'))
+    warning_count = models.PositiveIntegerField(default=0, verbose_name=_('هشدارها'))
+    amount_delta = models.DecimalField(
+        max_digits=20, decimal_places=2, default=0, verbose_name=_('اختلاف مبلغ کل'),
+    )
+    summary = models.JSONField(default=dict, blank=True, verbose_name=_('خلاصه'))
+    detail = models.JSONField(default=dict, blank=True, verbose_name=_('جزئیات'))
+    created_by_name = models.CharField(max_length=150, blank=True, verbose_name=_('اجراکننده'))
+
+    class Meta:
+        verbose_name = _('مغایرت‌گیری فصلی')
+        verbose_name_plural = _('مغایرت‌گیری‌های فصلی')
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f'{self.report_id} — {self.file_name or "فایل دفاتر"}'
+
+

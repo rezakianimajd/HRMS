@@ -8,14 +8,19 @@
 - ``reference``: قواعد و الزامات هر نوع فروشنده برای هم‌سانی فرانت و بک.
 - ``status``: تغییر وضعیت پیش‌نویس ↔ آمادهٔ ارسال.
 """
+from __future__ import annotations
+
+import json
+
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import filters, status as http_status
 from rest_framework.decorators import action
+from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from accounting import seasonal_rules
-from accounting.models import FiscalYear, SeasonalReport
+from accounting import seasonal_reconcile, seasonal_rules
+from accounting.models import FiscalYear, SeasonalReconciliation, SeasonalReport
 from accounting.seasonal import (
     DIRECTION_PURCHASE, build_ttms_draft, build_workbook, control_totals,
     sync_rows, validate_report,
@@ -146,6 +151,98 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         report.notes = request.data.get('notes', report.notes)
         report.save(update_fields=['status', 'notes', 'updated_at'])
         return Response(self.get_serializer(report).data)
+
+    @action(detail=True, methods=['get'])
+    def analytics(self, request, pk=None):
+        """گزارش تحلیلی فصل: شاخص‌ها، توزیع‌ها، پارتو طرف‌ها و یافته‌های کیفیت داده."""
+        report = self.get_object()
+        direction = self._direction(request) or DIRECTION_PURCHASE
+        return Response(seasonal_reconcile.build_analytics(report, direction))
+
+    @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser, JSONParser])
+    def reconcile(self, request, pk=None):
+        """مغایرت‌گیری با فایل دفاتر (xlsx/xlsm/csv/tsv) — خروجی JSON یا اکسل."""
+        report = self.get_object()
+        direction = self._direction(request) or DIRECTION_PURCHASE
+        upload = request.FILES.get('file')
+        if upload is None:
+            return Response(
+                {'detail': 'فایل دفاتر (xlsx/xlsm/csv/tsv) ارسال نشده است.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+
+        def _json_field(name):
+            value = request.data.get(name)
+            if isinstance(value, str) and value.strip():
+                try:
+                    return json.loads(value)
+                except ValueError:
+                    return {}
+            return value or {}
+
+        options = seasonal_reconcile.MatchOptions.from_payload(_json_field('options'))
+        mapping = _json_field('mapping') or None
+        try:
+            parsed = seasonal_reconcile.read_ledger_rows(upload, mapping=mapping)
+        except ValueError as error:
+            return Response({'detail': str(error)}, status=http_status.HTTP_400_BAD_REQUEST)
+
+        result = seasonal_reconcile.reconcile(
+            report, parsed.rows, options, direction, parsed.as_dict(),
+        )
+
+        user = getattr(request, 'user', None)
+        run = SeasonalReconciliation.objects.create(
+            company=_company(request),
+            report=report,
+            direction=direction,
+            file_name=(parsed.source or '')[:255],
+            file_sheet=(parsed.sheet or '')[:120],
+            source_rows=len(parsed.rows),
+            matched_count=result['summary']['matched']['count'],
+            error_count=result['summary']['counts']['errors'],
+            warning_count=result['summary']['counts']['warnings'],
+            amount_delta=result['summary']['amount_delta'],
+            summary=result['summary'],
+            detail={'items': result['items'][:1000], 'source': result['source']},
+            created_by_name=((user.get_full_name() if hasattr(user, 'get_full_name') else '')
+                             or getattr(user, 'username', '') or '')[:150],
+        )
+        result['run'] = {
+            'id': run.pk,
+            'created_at': timezone.localtime(run.created_at).isoformat() if run.created_at else '',
+        }
+
+        if (request.query_params.get('format') or '').lower() == 'xlsx':
+            workbook = seasonal_reconcile.build_reconciliation_workbook(result)
+            response = HttpResponse(
+                content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            )
+            stamp = timezone.localtime().strftime('%Y%m%d-%H%M')
+            filename = f'seasonal-reconcile-{report.fiscal_year_id}-q{report.quarter}-{stamp}.xlsx'
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            workbook.save(response)
+            return response
+        return Response(result)
+
+    @action(detail=True, methods=['get'])
+    def reconciliations(self, request, pk=None):
+        """تاریخچهٔ مغایرت‌گیری‌های این گزارش (۵۰ مورد آخر)."""
+        report = self.get_object()
+        runs = report.reconciliations.order_by('-created_at')[:50]
+        return Response([{
+            'id': run.pk,
+            'file_name': run.file_name,
+            'file_sheet': run.file_sheet,
+            'source_rows': run.source_rows,
+            'matched_count': run.matched_count,
+            'error_count': run.error_count,
+            'warning_count': run.warning_count,
+            'amount_delta': float(run.amount_delta or 0),
+            'created_at': timezone.localtime(run.created_at).isoformat() if run.created_at else '',
+            'created_by_name': run.created_by_name,
+            'summary': run.summary,
+        } for run in runs])
 
     @action(detail=True, methods=['get'])
     def export(self, request, pk=None):

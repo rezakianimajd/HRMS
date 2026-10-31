@@ -79,6 +79,62 @@ const apiReference = {
 
 const ROWS_KEY = 'hrms.seasonal.rows.7.q1';
 
+const analyticsFixture = {
+  totals: {
+    count: 1, amount: 1000000, vat: 90000, total: 1090000, average_invoice: 1000000,
+    registered: 1, pending: 0, registered_ratio: 1, vat_ratio: 0.09,
+  },
+  by_person_type: [{ key: 'legal', label: 'حقوقی', count: 1, amount: 1000000, share: 1 }],
+  by_kind: [{ key: 1, label: 'نوع 1', count: 1, amount: 1000000, share: 1 }],
+  by_month: [{ key: '1405-01', label: '1405/01', count: 1, amount: 1000000 }],
+  top_parties: [{
+    rank: 1, name: 'شرکت آلفا تجارت', person_type: 'legal', person_type_label: 'حقوقی',
+    national_id: '10101010101', count: 1, amount: 1000000, share: 1, cumulative_share: 1,
+  }],
+  concentration: { parties: 1, hhi: 1, top1_share: 1, top5_share: 1, pareto_parties: 1, pareto_ratio: 1 },
+  quality: {
+    missing_postal_code: 0, missing_invoice_date: 0, missing_invoice_no: 0,
+    aggregate_rows: 0, foreign_rows: 0,
+  },
+  insights: [{
+    level: 'info', title: 'تحلیل پارتو (۸۰/۲۰)',
+    detail: '۱ طرف معامله از ۱ طرف، ۸۰٪ مبلغ خرید را تشکیل می‌دهند.',
+  }],
+};
+
+const reconcileResult = {
+  summary: {
+    matched: { count: 1, amount: 1000000, average_confidence: 0.93 },
+    only_in_ledger: { count: 1, amount: 700000 },
+    only_in_seasonal: { count: 0, amount: 0 },
+    differences: { amount: 0, amount_minor: 0, date: 0, vat: 0, party: 0, invoice: 0 },
+    coverage: { seasonal_matched_ratio: 1, ledger_matched_ratio: 0.5 },
+    amount_delta: -700000,
+    counts: {
+      items: 2, matched: 1, difference: 0, amount_mismatch: 0,
+      missing_in_seasonal: 1, missing_in_ledger: 0, errors: 1, warnings: 0,
+    },
+  },
+  items: [
+    {
+      key: 'm-101-1', kind: 'matched', kind_label: 'تطبیق کامل', severity: 'info', confidence: 0.93,
+      seasonal: { id: 101, invoice_no: 'A-12', party_name: 'شرکت آلفا تجارت', amount: 1000000 },
+      ledger: { index: 1, invoice_no: 'A-12', party_name: 'شرکت آلفا تجارت', amount: 1000000 },
+    },
+    {
+      key: 'l-2', kind: 'missing_in_seasonal', kind_label: 'فقط در دفاتر', severity: 'error', confidence: 0,
+      seasonal: null, ledger: { index: 2, invoice_no: 'L-9', party_name: 'شرکت دلتا', amount: 700000 },
+    },
+  ],
+  suggested_rows: [{
+    name: 'شرکت دلتا', personType: 'legal', nationalId: '40404040404', amount: '700000',
+    vat: '70000', invoiceNo: 'L-9', invoiceDate: '2026-05-01', kind: 1, status: 'pending',
+  }],
+  source: { mapping: { invoice_no: 'شماره فاکتور', amount: 'مبلغ' }, warnings: [], rows: 2 },
+};
+
+let reconciliationRuns = [];
+
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const setNativeValue = (element, value) => {
@@ -138,11 +194,18 @@ beforeEach(() => {
         : Promise.resolve({ data: currentReport });
     }
     if (url.endsWith('/export/')) return Promise.resolve({ data: new Blob(['xlsx']) });
+    if (url.endsWith('/analytics/')) {
+      return apiShouldFail
+        ? Promise.reject(new Error('offline'))
+        : Promise.resolve({ data: analyticsFixture });
+    }
+    if (url.endsWith('/reconciliations/')) return Promise.resolve({ data: reconciliationRuns });
     return Promise.resolve({ data: [] });
   });
 
   axiosInstance.post.mockImplementation((url, body) => {
     if (url.endsWith('/validate/')) return Promise.resolve({ data: validateResponse });
+    if (url.includes('/reconcile/')) return Promise.resolve({ data: reconcileResult });
     if (url.endsWith('/rows/')) {
       const rows = (body?.rows || []).map((row, index) => ({
         ...API_ROW,
@@ -818,3 +881,95 @@ test('a large report renders only a window of rows and keeps the totals correct'
   root.unmount();
   container.remove();
 }, 20000);
+
+/* ---------- تب گزارش‌ها (تحلیل) و مغایرت‌گیری با دفاتر ---------- */
+
+const clickTab = async (container, label) => {
+  const tab = Array.from(container.querySelectorAll('[role="tab"]'))
+    .find((item) => item.textContent.includes(label));
+  expect(tab).toBeTruthy();
+  await act(async () => { tab.click(); await wait(420); });
+};
+
+test('analytics tab renders KPI cards, charts and insights from the api', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  await clickTab(container, 'گزارش‌ها و تحلیل');
+
+  expect(container.textContent).toContain('جمع مبلغ خرید');
+  expect(container.textContent).toContain('۱٬۰۰۰٬۰۰۰');
+  expect(container.textContent).toContain('روند ماهانه خرید');
+  expect(container.textContent).toContain('ترکیب بر اساس نوع طرف معامله');
+  expect(container.textContent).toContain('تحلیل پارتو');
+  expect(container.textContent).not.toContain('تحلیل محلی (سرور در دسترس نیست)');
+  expect(axiosInstance.get.mock.calls.some(([url]) => url.endsWith('/analytics/'))).toBe(true);
+
+  root.unmount();
+  container.remove();
+}, 20000);
+
+test('analytics tab falls back to a local analysis when the api is unavailable', async () => {
+  apiShouldFail = true;
+  await act(async () => { await wait(160); });
+  window.localStorage.clear();
+  window.localStorage.setItem(ROWS_KEY, JSON.stringify([{
+    id: 'r-local-9', name: 'شرکت محلی', personType: 'legal', city: 'شیراز',
+    nationalId: '10101010101', amount: '400000', vat: '40000', kind: 1,
+    invoiceDate: '2026-04-15', invoiceNo: 'L-9', status: 'pending',
+  }]));
+
+  const { root, container } = await renderPage();
+  await clickTab(container, 'گزارش‌ها و تحلیل');
+
+  expect(container.textContent).toContain('تحلیل محلی (سرور در دسترس نیست)');
+  expect(container.textContent).toContain('جمع مبلغ خرید');
+  expect(container.textContent).toContain('۴۰۰٬۰۰۰');
+
+  root.unmount();
+  container.remove();
+}, 20000);
+
+test('reconcile tab uploads the ledger file and can add the missing rows to the grid', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  await clickTab(container, 'مغایرت‌گیری با دفاتر');
+  expect(container.textContent).toContain('مغایرت‌گیری با اکسل دفاتر');
+
+  const fileInput = container.querySelector('input[aria-label="فایل دفاتر"]');
+  expect(fileInput).not.toBeNull();
+  const file = new File(['a,b\n1,2'], 'ledger.csv', { type: 'text/csv' });
+  await act(async () => {
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true });
+    fileInput.dispatchEvent(new Event('change', { bubbles: true }));
+    await wait(160);
+  });
+  expect(container.textContent).toContain('ledger.csv');
+
+  const runButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('اجرای مغایرت‌گیری'));
+  await act(async () => { runButton.click(); await wait(420); });
+
+  const reconcileCalls = axiosInstance.post.mock.calls.filter(([url]) => url.includes('/reconcile/'));
+  expect(reconcileCalls.length).toBe(1);
+  expect(container.textContent).toContain('تطبیق کامل');
+  expect(container.textContent).toContain('فقط در دفاتر');
+
+  const addButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('ردیف جاافتاده به جدول'));
+  expect(addButton).toBeTruthy();
+  await act(async () => { addButton.click(); await wait(420); });
+
+  const addedRow = Array.from(container.querySelectorAll('tbody tr')).find(
+    (tr) => tr.querySelector('input[aria-label="نام شرکت"]')?.value === 'شرکت دلتا',
+  );
+  expect(addedRow).toBeTruthy();
+  expect(addedRow.querySelector('input[aria-label="مبلغ"]').value).toBe('۷۰۰٬۰۰۰');
+  expect(container.textContent).toContain('از دفاتر به جدول اضافه شد');
+  expect(container.textContent).toContain('تعداد ردیف: ۲');
+
+  root.unmount();
+  container.remove();
+}, 25000);
+

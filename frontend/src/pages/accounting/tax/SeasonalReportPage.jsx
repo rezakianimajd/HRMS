@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, FormControl, IconButton, InputLabel,
-  MenuItem, Paper, Select, Snackbar, Stack, TextField, Tooltip, Typography,
+  MenuItem, Paper, Select, Snackbar, Stack, Tab, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -20,6 +20,8 @@ import { toJalali, getJalaliParts, toGregorian } from '../../../core/utils/dateU
 import {
   ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../../contracts/contractModuleUi';
+import SeasonalAnalyticsPanel from './SeasonalAnalyticsPanel';
+import SeasonalReconcilePanel from './SeasonalReconcilePanel';
 
 const API_BASE = '/accounting/tax/seasonal-reports';
 
@@ -588,6 +590,10 @@ const SeasonalReportPage = () => {
   const [kindFilter, setKindFilter] = useState('all');
   const [sortBy, setSortBy] = useState('entry');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState('data');
+  const [analytics, setAnalytics] = useState(null);
+  const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState(false);
   const savedSignatureRef = useRef('');    // امضای آخرین ردیف‌های ذخیره‌شده (بدون شناسه)
   const saveTimerRef = useRef(null);
   const lastRowElRef = useRef(null);       // آخرین ردیف جدول که فوکوس داشته
@@ -806,6 +812,46 @@ const SeasonalReportPage = () => {
       flushLocal();
     };
   }, [yearKey, quarter, loadedKey]);
+
+  /* تحلیل سرور: با ورود به تب گزارش‌ها (و پس از هر ذخیره) تازه می‌شود */
+  useEffect(() => {
+    if (activeTab !== 'analytics' || mode !== 'api' || !reportId) return undefined;
+    let cancelled = false;
+    setAnalyticsLoading(true);
+    axiosInstance.get(`${API_BASE}/${reportId}/analytics/`, { params: { direction: BACKEND_DIRECTION } })
+      .then(({ data }) => {
+        if (cancelled) return;
+        setAnalytics(data);
+        setAnalyticsError(false);
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setAnalytics(null);
+        setAnalyticsError(true);
+      })
+      .finally(() => { if (!cancelled) setAnalyticsLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, mode, reportId, saveState]);
+
+  /* افزودن ردیف‌های «فقط در دفاتر» به جدول ورود داده */
+  const addSuggestedRows = useCallback((suggested) => {
+    const rows_ = (suggested || []).map((row) => ({
+      ...emptyRow(),
+      ...row,
+      id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+      amount: row.amount ? String(row.amount) : '',
+      vat: row.vat ? String(row.vat) : '',
+      invoiceDate: row.invoiceDate || '',
+    }));
+    if (!rows_.length) return;
+    setRows((previous) => {
+      const fillers = previous.filter((item) => !isBlankRow(item));
+      const tail = previous.filter((item) => isBlankRow(item)).slice(-1);
+      return [...fillers, ...rows_, ...(tail.length ? tail : [emptyRow()])];
+    });
+    setActiveTab('data');
+    setToast(`${toPersianDigits(rows_.length)} ردیف از دفاتر به جدول اضافه شد — بازبینی و ذخیره لازم است`);
+  }, []);
 
   /* ردیف بعدی همیشه خودکار ساخته می‌شود */
   useEffect(() => {
@@ -1679,6 +1725,41 @@ const SeasonalReportPage = () => {
         </Typography>
       </Paper>
 
+      <Box sx={{ mb: 1 }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_event, value) => setActiveTab(value)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+          sx={{ minHeight: 34, '& .MuiTab-root': { minHeight: 34, fontSize: 11.5, py: 0.4 } }}
+        >
+          <Tab value="data" label="ورود داده" />
+          <Tab value="analytics" label="گزارش‌ها و تحلیل" />
+          <Tab value="reconcile" label="مغایرت‌گیری با دفاتر" />
+        </Tabs>
+      </Box>
+
+      {activeTab === 'analytics' ? (
+        <SeasonalAnalyticsPanel
+          analytics={analytics}
+          rows={filledRows}
+          loading={analyticsLoading}
+          error={analyticsError}
+        />
+      ) : null}
+
+      {activeTab === 'reconcile' ? (
+        <SeasonalReconcilePanel
+          reportId={reportId}
+          apiBase={API_BASE}
+          mode={mode}
+          onAddRows={addSuggestedRows}
+          onToast={setToast}
+        />
+      ) : null}
+
+      {activeTab === 'data' ? (
+        <>
       <ModuleToolbar
         theme={moduleTheme}
         search={search}
@@ -1769,6 +1850,8 @@ const SeasonalReportPage = () => {
           </Typography>
         </Box>
       </Paper>
+        </>
+      ) : null}
 
       <Snackbar
         open={Boolean(toast)}
