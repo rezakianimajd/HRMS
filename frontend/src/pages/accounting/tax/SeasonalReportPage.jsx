@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Autocomplete, Box, Button, FormControl, IconButton, InputLabel,
+  Alert, Autocomplete, Box, Button, Chip, FormControl, IconButton, InputLabel,
   MenuItem, Paper, Select, Snackbar, Stack, Tab, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
+import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -23,6 +24,8 @@ import {
 import SeasonalAnalyticsPanel from './SeasonalAnalyticsPanel';
 import SeasonalReconcilePanel from './SeasonalReconcilePanel';
 import SeasonalPartyPivot from './SeasonalPartyPivot';
+import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
+import { rowsToTsv } from './seasonalGridEntry';
 
 const API_BASE = '/accounting/tax/seasonal-reports';
 
@@ -600,6 +603,12 @@ const SeasonalReportPage = () => {
   const [pivotLoading, setPivotLoading] = useState(false);
   const [pivotExporting, setPivotExporting] = useState(false);
   const [pivotDimension, setPivotDimension] = useState('kind');
+  const [pasteOpen, setPasteOpen] = useState(false);
+  const [pasteSeed, setPasteSeed] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const historyRef = useRef({ past: [], future: [] });
+  const lastEditRef = useRef({ key: '', at: 0 });
+  const selectionAnchorRef = useRef(null);
   const [analyticsFilters, setAnalyticsFilters] = useState({
     kind: 'all', status: 'all', personType: 'all', search: '',
   });
@@ -927,6 +936,52 @@ const SeasonalReportPage = () => {
       .finally(() => setAnalyticsExporting(false));
   }, [mode, reportId, analyticsFilters, yearKey, quarter]);
 
+  /* ---- تاریخچهٔ ویرایش (Undo/Redo) و اعمال تغییرات ---- */
+  const applyRows = useCallback((updater, { history = true } = {}) => {
+    setRows((previous) => {
+      const next = typeof updater === 'function' ? updater(previous) : updater;
+      if (!next || next === previous) return previous;
+      if (history) {
+        historyRef.current.past.push(previous);
+        if (historyRef.current.past.length > 30) historyRef.current.past.shift();
+        historyRef.current.future = [];
+      }
+      return next;
+    });
+  }, []);
+
+  const undo = useCallback(() => {
+    const stack = historyRef.current;
+    if (!stack.past.length) return;
+    const previous = stack.past.pop();
+    setRows((current) => {
+      stack.future.push(current);
+      return previous;
+    });
+    setToast('آخرین تغییر برگشت داده شد');
+  }, []);
+
+  const redo = useCallback(() => {
+    const stack = historyRef.current;
+    if (!stack.future.length) return;
+    const next = stack.future.pop();
+    setRows((current) => {
+      stack.past.push(current);
+      return next;
+    });
+  }, []);
+
+  const updateCell = useCallback((id, field, value) => {
+    const now = Date.now();
+    const key = `${id}:${field}`;
+    const coalesce = lastEditRef.current.key === key && (now - lastEditRef.current.at) < 900;
+    lastEditRef.current = { key, at: now };
+    applyRows(
+      (previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+      { history: !coalesce },
+    );
+  }, [applyRows]);
+
   /* افزودن ردیف‌های «فقط در دفاتر» به جدول ورود داده */
   const addSuggestedRows = useCallback((suggested) => {
     const rows_ = (suggested || []).map((row) => ({
@@ -938,14 +993,14 @@ const SeasonalReportPage = () => {
       invoiceDate: row.invoiceDate || '',
     }));
     if (!rows_.length) return;
-    setRows((previous) => {
+    applyRows((previous) => {
       const fillers = previous.filter((item) => !isBlankRow(item));
       const tail = previous.filter((item) => isBlankRow(item)).slice(-1);
       return [...fillers, ...rows_, ...(tail.length ? tail : [emptyRow()])];
     });
     setActiveTab('data');
     setToast(`${toPersianDigits(rows_.length)} ردیف از دفاتر به جدول اضافه شد — بازبینی و ذخیره لازم است`);
-  }, []);
+  }, [applyRows]);
 
   /* ردیف بعدی همیشه خودکار ساخته می‌شود */
   useEffect(() => {
@@ -956,13 +1011,9 @@ const SeasonalReportPage = () => {
     ));
   }, [rows]);
 
-  const updateCell = useCallback((id, field, value) => {
-    setRows((previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
-  }, []);
-
   /* تغییر نوع فروشنده: تجمیعی → نام‌ها «متفرقه» و بقیه «—»؛ خارجی → کشور خالی؛ بقیه → ایران */
   const changePersonType = useCallback((row, value) => {
-    setRows((previous) => previous.map((item) => {
+    applyRows((previous) => previous.map((item) => {
       if (item.id !== row.id) return item;
       const base = item.personType === 'aggregate' && value !== 'aggregate'
         ? clearAggregateDefaults(item)
@@ -978,12 +1029,12 @@ const SeasonalReportPage = () => {
       }
       return { ...base, personType: value, country };
     }));
-  }, []);
+  }, [applyRows]);
 
   /* انتخاب طرف معامله از پیشنهادها برای همهٔ انواع: نوع، نام/نام خانوادگی، شناسه،
      کد پستی، کشور، شهر و آدرس از حافظهٔ همان طرف پر می‌شود */
   const applyParty = useCallback((id, party) => {
-    setRows((previous) => previous.map((row) => {
+    applyRows((previous) => previous.map((row) => {
       if (row.id !== id) return row;
       /* ردیف تجمیعی: فقط نام نمایشی جایگزین می‌شود و نوع تغییر نمی‌کند */
       if (row.personType === 'aggregate') {
@@ -1026,21 +1077,192 @@ const SeasonalReportPage = () => {
         address: text(party.address, text(row.address)),
       };
     }));
-  }, []);
+  }, [applyRows]);
 
   const removeRow = useCallback((id) => {
-    setRows((previous) => previous.filter((row) => row.id !== id));
-  }, []);
+    applyRows((previous) => previous.filter((row) => row.id !== id));
+  }, [applyRows]);
 
   const duplicateRow = useCallback((id) => {
-    setRows((previous) => {
+    applyRows((previous) => {
       const index = previous.findIndex((row) => row.id === id);
       if (index === -1) return previous;
       const copy = { ...previous[index], id: emptyRow().id, invoiceNo: '' };
       return [...previous.slice(0, index + 1), copy, ...previous.slice(index + 1)];
     });
     setToast('ردیف کپی شد — شماره فاکتور را وارد کنید');
+  }, [applyRows]);
+
+  /* ---- انتخاب چندگانه، عملیات گروهی و درج گروهی ---- */
+  const toggleSelection = useCallback((id, { extend = false } = {}) => {
+    setSelectedIds((previous) => {
+      if (extend && selectionAnchorRef.current) {
+        const ids = rowsRef.current.map((row) => row.id);
+        const from = ids.indexOf(selectionAnchorRef.current);
+        const to = ids.indexOf(id);
+        if (from >= 0 && to >= 0) {
+          const [start, end] = from <= to ? [from, to] : [to, from];
+          return ids.slice(start, end + 1);
+        }
+      }
+      selectionAnchorRef.current = id;
+      return previous.includes(id) ? previous.filter((item) => item !== id) : [...previous, id];
+    });
   }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds([]);
+    selectionAnchorRef.current = null;
+  }, []);
+
+  const bulkDelete = useCallback(() => {
+    if (!selectedIds.length) return;
+    const count = selectedIds.length;
+    applyRows((previous) => previous.filter((row) => !selectedIds.includes(row.id)));
+    clearSelection();
+    setToast(`${toPersianDigits(count)} ردیف حذف شد`);
+  }, [selectedIds, applyRows, clearSelection]);
+
+  const bulkDuplicate = useCallback(() => {
+    if (!selectedIds.length) return;
+    const count = selectedIds.length;
+    applyRows((previous) => {
+      const output = [];
+      previous.forEach((row) => {
+        output.push(row);
+        if (selectedIds.includes(row.id)) {
+          output.push({ ...row, id: emptyRow().id, invoiceNo: '' });
+        }
+      });
+      return output;
+    });
+    clearSelection();
+    setToast(`${toPersianDigits(count)} ردیف تکثیر شد — شمارهٔ فاکتورها را بازبینی کنید`);
+  }, [selectedIds, applyRows, clearSelection]);
+
+  const bulkSetField = useCallback((field, value) => {
+    if (!selectedIds.length) return;
+    const count = selectedIds.length;
+    applyRows((previous) => previous.map((row) => {
+      if (!selectedIds.includes(row.id)) return row;
+      if (field === 'personType') {
+        const country = value === 'foreign' ? '' : DEFAULT_COUNTRY;
+        return { ...row, personType: value, country };
+      }
+      if (field === 'amount' && value === 'vat10') {
+        return { ...row, vat: String(Math.round(num(row.amount) * 0.1)) };
+      }
+      return { ...row, [field]: value };
+    }));
+    setToast(`${toPersianDigits(count)} ردیف به‌روزرسانی شد`);
+  }, [selectedIds, applyRows]);
+
+  const appendBulkRows = useCallback((incoming, warnings) => {
+    if (!incoming?.length) return;
+    applyRows((previous) => {
+      const filled = previous.filter((row) => !isBlankRow(row));
+      const tail = previous.filter((row) => isBlankRow(row)).slice(-1);
+      return [...filled, ...incoming, ...(tail.length ? tail : [emptyRow()])];
+    });
+    setToast(`${toPersianDigits(incoming.length)} ردیف درج شد${
+      warnings?.length ? ` — ${toPersianDigits(warnings.length)} هشدار را بازبینی کنید` : ''}`);
+  }, [applyRows]);
+
+  /* حذف شناسه‌های حذف‌شده از انتخاب */
+  useEffect(() => {
+    setSelectedIds((previous) => {
+      if (!previous.length) return previous;
+      const alive = previous.filter((id) => rows.some((row) => row.id === id));
+      return alive.length === previous.length ? previous : alive;
+    });
+  }, [rows]);
+
+  /* ---- ناوبری کیبورد، کلیپ‌بورد و انتخاب ردیف ---- */
+  const rowAttributes = useCallback((row) => ({ 'data-row-id': row.id }), []);
+
+  const setNativeInputValue = (element, value) => {
+    const descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+    if (!descriptor || !descriptor.set) return;
+    descriptor.set.call(element, value);
+    element.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+
+  const handleGridKeyDown = useCallback((event) => {
+    const meta = event.ctrlKey || event.metaKey;
+    const key = String(event.key || '').toLowerCase();
+    if (meta && key === 'z') {
+      event.preventDefault();
+      if (event.shiftKey) redo(); else undo();
+      return;
+    }
+    if (meta && key === 'y') { event.preventDefault(); redo(); return; }
+
+    const target = event.target;
+    if (!target || !['INPUT', 'TEXTAREA'].includes(target.tagName)) return;
+    const cell = target.closest?.('td');
+    const tr = target.closest?.('tr');
+    if (!cell || !tr || tr.hasAttribute('data-spacer')) return;
+    const cells = Array.from(tr.querySelectorAll('td'));
+    const columnIndex = cells.indexOf(cell);
+    const bodyRows = Array.from(tr.parentElement.querySelectorAll('tr:not([data-spacer])'));
+    const rowIndex = bodyRows.indexOf(tr);
+    const focusCell = (index, column) => {
+      const rowEl = bodyRows[index];
+      const cellEl = rowEl?.querySelectorAll('td')[column];
+      const field = cellEl?.querySelector('input:not([type="hidden"]), [role="combobox"], button');
+      if (field) {
+        field.focus();
+        if (typeof field.select === 'function') field.select();
+      }
+    };
+    if (key === 'enter' && !event.altKey) {
+      event.preventDefault();
+      focusCell(event.shiftKey ? rowIndex - 1 : rowIndex + 1, columnIndex);
+      return;
+    }
+    if (key === 'arrowdown') { event.preventDefault(); focusCell(rowIndex + 1, columnIndex); return; }
+    if (key === 'arrowup') { event.preventDefault(); focusCell(rowIndex - 1, columnIndex); return; }
+    if (key === 'escape') { event.preventDefault(); target.blur(); return; }
+    if (meta && key === 'd') {
+      event.preventDefault();
+      const aboveCell = bodyRows[rowIndex - 1]?.querySelectorAll('td')[columnIndex];
+      const above = aboveCell?.querySelector('input:not([type="hidden"])');
+      const current = cell.querySelector('input:not([type="hidden"])');
+      if (above && current) setNativeInputValue(current, above.value);
+    }
+  }, [undo, redo]);
+
+  const handleGridPaste = useCallback((event) => {
+    const text = event.clipboardData?.getData('text/plain') || '';
+    if (!text.trim() || !/[\n\t]/.test(text.trim())) return;   // تک‌سلولی → رفتار پیش‌فرض
+    event.preventDefault();
+    setPasteSeed(text);
+    setPasteOpen(true);
+  }, []);
+
+  const handleGridCopy = useCallback((event) => {
+    if (!selectedIds.length) return;
+    const selectedRows = rowsRef.current.filter((row) => selectedIds.includes(row.id));
+    if (!selectedRows.length) return;
+    const tsv = rowsToTsv(selectedRows);
+    if (event.clipboardData) {
+      event.preventDefault();
+      event.clipboardData.setData('text/plain', tsv);
+    } else if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(tsv).catch(() => {});
+    }
+    setToast(`${toPersianDigits(selectedRows.length)} ردیف کپی شد (قابل چسباندن در اکسل)`);
+  }, [selectedIds, setToast]);
+
+  const handleRowMouseDown = useCallback((event) => {
+    if (!(event.ctrlKey || event.metaKey || event.shiftKey)) return;
+    if (event.target?.closest?.('button, a, input, [role="combobox"]')) return;
+    const tr = event.target?.closest?.('tbody tr');
+    const rowId = tr?.getAttribute?.('data-row-id');
+    if (!rowId) return;
+    event.preventDefault();
+    toggleSelection(rowId, { extend: event.shiftKey });
+  }, [toggleSelection]);
 
 
   /* ردیف‌های دارای داده و نگاشت شمارهٔ پایدار ردیف */
@@ -1450,9 +1672,29 @@ const SeasonalReportPage = () => {
       render: (row) => {
         const rowIssues = issuesForRow(row);
         const hasError = rowIssues.some((issue) => issue.level === 'error');
+        const selected = selectedIds.includes(row.id);
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4 }}>
-            <Typography noWrap sx={{ color: MUTED }}>{toPersianDigits((indexByIdRef.current.get(row.id) ?? 0) + 1)}</Typography>
+            <Box
+              role="button"
+              tabIndex={-1}
+              title={selected ? 'لغو انتخاب ردیف' : 'انتخاب ردیف (برای عملیات گروهی)'}
+              onClick={(event) => {
+                event.stopPropagation();
+                toggleSelection(row.id, { extend: event.shiftKey });
+              }}
+              sx={{
+                minWidth: 20, height: 18, px: 0.4, borderRadius: '4px', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                bgcolor: selected ? 'primary.main' : 'transparent',
+                color: selected ? '#fff' : MUTED,
+                border: '1px solid',
+                borderColor: selected ? 'primary.main' : 'rgba(148,163,184,0.5)',
+                fontSize: 9.5, fontWeight: 800, lineHeight: 1,
+              }}
+            >
+              {toPersianDigits((indexByIdRef.current.get(row.id) ?? 0) + 1)}
+            </Box>
             {rowIssues.length ? (
               <Tooltip title={rowIssues.map((issue) => issue.message).join(' • ')}>
                 <WarningAmberRoundedIcon sx={{ fontSize: 14, color: hasError ? '#dc2626' : '#d97706' }} />
@@ -1705,7 +1947,7 @@ const SeasonalReportPage = () => {
     },
   ], [
     cellFontPx, cellInputSx, cellSxFor, colLabel, applyParty, changePersonType,
-    duplicateRow, issuesForRow, partyOptions, removeRow, updateCell,
+    duplicateRow, issuesForRow, partyOptions, removeRow, updateCell, selectedIds, toggleSelection,
   ]);
 
 
@@ -1871,7 +2113,109 @@ const SeasonalReportPage = () => {
       ) : null}
 
       {activeTab === 'data' ? (
-        <>
+        <Box
+          onKeyDown={handleGridKeyDown}
+          onPaste={handleGridPaste}
+          onCopy={handleGridCopy}
+          onMouseDown={handleRowMouseDown}
+        >
+          <Box sx={{
+            display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center',
+            mb: 0.75, px: 0.25,
+          }}>
+            <Button
+              size="small"
+              variant="outlined"
+              startIcon={<ContentPasteIcon />}
+              onClick={() => { setPasteSeed(''); setPasteOpen(true); }}
+              sx={{ fontSize: 10.5 }}
+            >
+              درج گروهی (چسباندن از اکسل)
+            </Button>
+            <Button
+              size="small"
+              onClick={undo}
+              disabled={!historyRef.current.past.length}
+              sx={{ fontSize: 10.5 }}
+              title="Ctrl+Z"
+            >
+              بازگردانی
+            </Button>
+            <Button
+              size="small"
+              onClick={redo}
+              disabled={!historyRef.current.future.length}
+              sx={{ fontSize: 10.5 }}
+              title="Ctrl+Y"
+            >
+              تکرار
+            </Button>
+            <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
+              Enter ردیف بعد · Ctrl+D کپی از بالا · Ctrl+Z/Y بازگردانی · Ctrl+کلیک انتخاب ردیف · Ctrl+C کپی
+            </Typography>
+            <Box sx={{ flex: 1 }} />
+            {selectedIds.length ? (
+              <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+                <Chip
+                  size="small"
+                  color="primary"
+                  label={`${toPersianDigits(selectedIds.length)} ردیف انتخاب شده`}
+                  sx={{ fontSize: 10, height: 22 }}
+                />
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel id="bulk-kind-label" sx={{ fontSize: 10 }}>نوع معامله</InputLabel>
+                  <Select
+                    labelId="bulk-kind-label"
+                    label="نوع معامله"
+                    value=""
+                    onChange={(event) => bulkSetField('kind', Number(event.target.value))}
+                    sx={{ fontSize: 10.5, height: 26 }}
+                  >
+                    {KINDS.map((kind) => (
+                      <MenuItem key={kind} value={kind} sx={{ fontSize: 10.5 }}>
+                        {toPersianDigits(kind)}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 130 }}>
+                  <InputLabel id="bulk-status-label" sx={{ fontSize: 10 }}>وضعیت مودیان</InputLabel>
+                  <Select
+                    labelId="bulk-status-label"
+                    label="وضعیت مودیان"
+                    value=""
+                    onChange={(event) => bulkSetField('status', event.target.value)}
+                    sx={{ fontSize: 10.5, height: 26 }}
+                  >
+                    <MenuItem value="registered" sx={{ fontSize: 10.5 }}>درج‌شده</MenuItem>
+                    <MenuItem value="pending" sx={{ fontSize: 10.5 }}>درج‌نشده</MenuItem>
+                  </Select>
+                </FormControl>
+                <FormControl size="small" sx={{ minWidth: 120 }}>
+                  <InputLabel id="bulk-type-label" sx={{ fontSize: 10 }}>نوع طرف</InputLabel>
+                  <Select
+                    labelId="bulk-type-label"
+                    label="نوع طرف"
+                    value=""
+                    onChange={(event) => bulkSetField('personType', event.target.value)}
+                    sx={{ fontSize: 10.5, height: 26 }}
+                  >
+                    {PERSON_TYPES.map((type) => (
+                      <MenuItem key={type.value} value={type.value} sx={{ fontSize: 10.5 }}>
+                        {type.label}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+                <Button size="small" sx={{ fontSize: 10.5 }} onClick={() => bulkSetField('amount', 'vat10')}>
+                  ۱۰٪ مالیات
+                </Button>
+                <Button size="small" sx={{ fontSize: 10.5 }} onClick={bulkDuplicate}>تکثیر</Button>
+                <Button size="small" color="error" sx={{ fontSize: 10.5 }} onClick={bulkDelete}>حذف</Button>
+                <Button size="small" sx={{ fontSize: 10 }} onClick={clearSelection}>لغو انتخاب</Button>
+              </Stack>
+            ) : null}
+          </Box>
       <ModuleToolbar
         theme={moduleTheme}
         search={search}
@@ -1915,6 +2259,7 @@ const SeasonalReportPage = () => {
             emptyText="ردیفی با این مشخصات پیدا نشد."
             ariaLabel="جدول معاملات فصلی"
             virtualize
+            rowAttributes={rowAttributes}
           />
         </Box>
 
@@ -1962,8 +2307,16 @@ const SeasonalReportPage = () => {
           </Typography>
         </Box>
       </Paper>
-        </>
+        </Box>
       ) : null}
+
+      <SeasonalBulkPasteDialog
+        open={pasteOpen}
+        seedText={pasteSeed}
+        onClose={() => setPasteOpen(false)}
+        onApply={appendBulkRows}
+        makeRow={emptyRow}
+      />
 
       <Snackbar
         open={Boolean(toast)}

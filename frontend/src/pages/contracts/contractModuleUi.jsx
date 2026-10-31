@@ -145,9 +145,13 @@ export const ModulePager = ({ tableTheme, page, onPage, totalPages, pageNumbers,
 
 
 /* یک ردیف مستقل و memo‌شده: با تغییر یک ردیف، بقیهٔ ردیف‌ها دوباره رندر نمی‌شوند */
-const ModuleTableRow = React.memo(function ModuleTableRow({ row, index, columns, onRowClick }) {
+const ModuleTableRow = React.memo(function ModuleTableRow({
+  row, index, columns, onRowClick, rowAttributes,
+}) {
+  const attrs = rowAttributes ? rowAttributes(row) : undefined;
   return (
     <TableRow
+      {...attrs}
       hover={Boolean(onRowClick)}
       onClick={onRowClick ? () => onRowClick(row) : undefined}
       sx={onRowClick ? { cursor: 'pointer' } : undefined}
@@ -176,7 +180,7 @@ const spacerRow = (height, colSpan) => (
    با ``virtualize`` فقط ردیف‌های دیده‌شدنی رندر می‌شوند؛ برای جدول‌های چندصد/چندهزار ردیفی. */
 export const ModuleTable = ({
   tableTheme, columns, rows, rowKey, onRowClick, containerRef, tableHeight, rowHeight,
-  dimmed, emptyText, ariaLabel, virtualize = false, overscan = 6,
+  dimmed, emptyText, ariaLabel, virtualize = false, overscan = 6, rowAttributes,
 }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const rafRef = useRef(0);
@@ -279,6 +283,7 @@ export const ModuleTable = ({
                   index={index}
                   columns={columns}
                   onRowClick={onRowClick}
+                  rowAttributes={rowAttributes}
                 />
               );
             }),

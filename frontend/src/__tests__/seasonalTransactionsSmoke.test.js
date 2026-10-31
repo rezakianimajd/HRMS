@@ -175,7 +175,10 @@ const pivotFixture = {
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const setNativeValue = (element, value) => {
-  const descriptor = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value');
+  const prototype = element.tagName === 'TEXTAREA'
+    ? window.HTMLTextAreaElement.prototype
+    : window.HTMLInputElement.prototype;
+  const descriptor = Object.getOwnPropertyDescriptor(prototype, 'value');
   descriptor.set.call(element, value);
   element.dispatchEvent(new Event('input', { bubbles: true }));
 };
@@ -1154,4 +1157,69 @@ test('party pivot groups amounts per party, switches dimension and exports', asy
   root.unmount();
   container.remove();
 }, 30000);
+
+
+test('bulk paste dialog inserts pasted Excel rows with automatic column mapping', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  const openButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('درج گروهی'));
+  expect(openButton).toBeTruthy();
+  await act(async () => { openButton.click(); await wait(320); });
+
+  const textarea = document.querySelector('textarea[aria-label="محتوای درج گروهی"]');
+  expect(textarea).toBeTruthy();
+  await act(async () => {
+    setNativeValue(textarea, [
+      'نام شرکت\tشناسه ملی\tمبلغ',
+      'شرکت دلتا\t40404040404\t700000',
+      'شرکت اپسیلون\t505050505050\t900000',
+    ].join('\n'));
+    await wait(320);
+  });
+
+  expect(document.body.textContent).toContain('۲ ردیف × ۳ ستون شناسایی شد');
+  expect(document.body.textContent).toContain('آمادهٔ درج: ۲ ردیف');
+  /* شناسهٔ ملی ۱۲ رقمی باید هشدار بدهد */
+  expect(document.body.textContent).toContain('هشدار');
+
+  const insertButton = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('درج ۲ ردیف'));
+  expect(insertButton).toBeTruthy();
+  await act(async () => { insertButton.click(); await wait(420); });
+
+  const names = Array.from(container.querySelectorAll('input[aria-label="نام شرکت"]')).map((input) => input.value);
+  expect(names).toContain('شرکت دلتا');
+  expect(names).toContain('شرکت اپسیلون');
+  expect(container.textContent).toContain('۲ ردیف درج شد');
+  expect(container.textContent).toContain('تعداد ردیف: ۳');
+
+  root.unmount();
+  container.remove();
+}, 25000);
+
+test('typing in a cell can be undone with Ctrl+Z', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  const amountInput = container.querySelector('input[aria-label="مبلغ"]');
+  expect(amountInput.value).toBe('۱٬۰۰۰٬۰۰۰');
+
+  await act(async () => {
+    amountInput.focus();
+    setNativeValue(amountInput, '2000');
+    await wait(260);
+  });
+  expect(container.querySelector('input[aria-label="مبلغ"]').value).toBe('۲٬۰۰۰');
+
+  await act(async () => {
+    amountInput.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'z', ctrlKey: true, bubbles: true }));
+    await wait(260);
+  });
+  expect(container.querySelector('input[aria-label="مبلغ"]').value).toBe('۱٬۰۰۰٬۰۰۰');
+
+  root.unmount();
+  container.remove();
+}, 25000);
 
