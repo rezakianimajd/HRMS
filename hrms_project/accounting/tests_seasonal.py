@@ -1,8 +1,8 @@
 """تست‌های زیرماژول «معاملات فصلی خرید» (ماده ۱۶۹ مکرر).
 
 پوشش: بازهٔ فصل شمسی، ذخیرهٔ گروهی جهت‌محور، قواعد پویا بر اساس نوع فروشنده
-(حقوقی/حقیقی/خارجی)، مبالغ و عوارض، تاریخ و تکرار فاکتور، جمع‌های کنترل،
-خروجی اکسل خرید و بستهٔ «پیش‌نویس آزمایش‌نشده» TTMS.
+(حقوقی/حقیقی/خارجی/تجمیعی)، مبالغ و مالیات بر ارزش افزوده، تاریخ و تکرار فاکتور،
+جمع‌های کنترل، خروجی اکسل خرید و بستهٔ «پیش‌نویس آزمایش‌نشده» TTMS.
 
 اجرای واقعی: روی سرور (PostgreSQL) با ``manage.py test accounting.tests_seasonal``.
 """
@@ -62,7 +62,6 @@ class SeasonalBaseTest(TestCase):
             'goods_service_desc': 'خرید مواد اولیه',
             'amount': 1000000,
             'vat': 100000,
-            'duties': 20000,
             'kind': 1,
             'invoice_date': '2026-04-10',
             'invoice_no': 'P-12',
@@ -130,8 +129,7 @@ class PurchaseSyncTests(SeasonalBaseTest):
         rows = list(report.transactions.order_by('line_no'))
         self.assertEqual([row.line_no for row in rows], [1, 2])
         self.assertTrue(all(row.direction == 'purchase' for row in rows))
-        self.assertEqual(int(rows[0].duties), 20000)
-        self.assertEqual(int(rows[0].total), 1120000)     # مبلغ + ارزش افزوده + عوارض
+        self.assertEqual(int(rows[0].total), 1100000)     # مبلغ + مالیات بر ارزش افزوده
 
         # بارگذاری مجدد از API (سریالایزر گزارش با جهت خرید)
         payload = SeasonalReportSerializer(
@@ -140,7 +138,7 @@ class PurchaseSyncTests(SeasonalBaseTest):
         self.assertEqual(payload['direction'], 'purchase')
         self.assertEqual(payload['rows_count'], 2)
         self.assertEqual(len(payload['transactions']), 2)
-        self.assertEqual(payload['control_totals']['total'], 2240000)
+        self.assertEqual(payload['control_totals']['total'], 2200000)
 
         # ویرایش ردیف اول و حذف ردیف دوم
         first = rows[0]
@@ -154,7 +152,7 @@ class PurchaseSyncTests(SeasonalBaseTest):
         # یک ردیف فروش (برای آینده) مستقیماً در دیتابیس
         SeasonalTransaction.objects.create(
             company=self.company, report=report, direction='sale', line_no=1,
-            name='مشتری فروش', amount=Decimal('9'), vat=Decimal('0'), duties=Decimal('0'),
+            name='مشتری فروش', amount=Decimal('9'), vat=Decimal('0'),
         )
         self.save_rows(report, [self.row()])
         self.assertEqual(report.transactions.filter(direction='sale').count(), 1)
@@ -183,7 +181,7 @@ class PurchaseSyncTests(SeasonalBaseTest):
         report = self.make_report()
         saved = self.save_rows(report, [
             self.row(national_id='۱۰۱۰۱۰۱۰۱۰۱', postal_code='۱۲۳۴۵۶۷۸۹۰'),
-            {'name': '', 'invoice_no': '', 'amount': '', 'vat': '', 'duties': ''},
+            {'name': '', 'invoice_no': '', 'amount': '', 'vat': ''},
         ])
         self.assertEqual(saved, 1)
         row = report.transactions.first()
@@ -311,14 +309,20 @@ class PurchaseValidationTests(SeasonalBaseTest):
             self.assertIn(field, warnings)
 
     def test_invalid_amounts(self):
-        result = self.validate([self.row(invoice_no='A1', amount=1000, vat=5000, duties=0)])
+        result = self.validate([self.row(invoice_no='A1', amount=1000, vat=5000)])
         self.assertIn((1, 'vat'), self.error_fields(result))
 
-        result = self.validate([self.row(invoice_no='A2', amount=1000, vat=0, duties=5000)])
-        self.assertIn((1, 'duties'), self.error_fields(result))
-
-        result = self.validate([self.row(invoice_no='A3', amount=0, vat=0, duties=0)])
+        result = self.validate([self.row(invoice_no='A3', amount=0, vat=0)])
         self.assertIn((1, 'amount'), self.error_fields(result))
+
+    def test_duties_column_is_gone(self):
+        """عوارض شهرداری حذف شده است: فقط مالیات بر ارزش افزوده محاسبه می‌شود."""
+        self.assertNotIn('duties', [field.name for field in SeasonalTransaction._meta.get_fields()])
+        self.assertNotIn('عوارض', ' '.join(PURCHASE_COLUMNS))
+        self.assertNotIn('duties', seasonal_rules.FIELD_LABELS)
+        self.assertNotIn(
+            'duties', [item['internal'] for item in seasonal_rules.TTMS_DRAFT_MAPPING],
+        )
 
     def test_invoice_date_outside_quarter(self):
         result = self.validate([self.row(invoice_no='A4', invoice_date='2025-01-05')])
@@ -370,16 +374,16 @@ class PurchaseExportTests(SeasonalBaseTest):
         super().setUp()
         self.report = self.make_report()
         self.save_rows(self.report, [
-            self.row(invoice_no='P-1', amount=1000000, vat=100000, duties=20000),
-            self.natural_row(invoice_no='P-2', amount=500000, vat=50000, duties=0, kind=2),
+            self.row(invoice_no='P-1', amount=1000000, vat=100000),
+            self.natural_row(invoice_no='P-2', amount=500000, vat=50000, kind=2),
             self.row(invoice_no='P-3', name='Atlas GmbH', person_type='foreign',
                      national_id='', postal_code='', country='ترکیه',
-                     amount=250000, vat=0, duties=0, moadian_status='pending'),
+                     amount=250000, vat=0, moadian_status='pending'),
         ])
         # ردیف فروش (نباید در هیچ خروجی/جمعی بیاید)
         SeasonalTransaction.objects.create(
             company=self.company, report=self.report, direction='sale', line_no=1,
-            name='مشتری فروش', amount=Decimal('9000000'), vat=Decimal('0'), duties=Decimal('0'),
+            name='مشتری فروش', amount=Decimal('9000000'), vat=Decimal('0'),
         )
 
     def test_control_totals_purchase_only(self):
@@ -387,8 +391,7 @@ class PurchaseExportTests(SeasonalBaseTest):
         self.assertEqual(totals['count'], 3)
         self.assertEqual(totals['amount'], 1750000)
         self.assertEqual(totals['vat'], 150000)
-        self.assertEqual(totals['duties'], 20000)
-        self.assertEqual(totals['total'], 1920000)
+        self.assertEqual(totals['total'], 1900000)
         self.assertEqual(totals['registered'], 2)
         self.assertEqual(totals['pending'], 1)
         kinds = {item['kind']: item for item in totals['by_kind']}
@@ -416,9 +419,9 @@ class PurchaseExportTests(SeasonalBaseTest):
         self.assertEqual(data.cell(row=4, column=14).value, 'سایر')        # نوع کالا/خدمات
         self.assertEqual(data.cell(row=4, column=15).value, 1000000)
         self.assertEqual(data.cell(row=4, column=16).value, 100000)
-        self.assertEqual(data.cell(row=4, column=17).value, 20000)
-        self.assertEqual(data.cell(row=4, column=18).value, 1120000)
-        self.assertTrue(data.cell(row=4, column=20).value.startswith('1405/'))
+        self.assertEqual(data.cell(row=4, column=17).value, 1100000)      # جمع کل = مبلغ + مالیات
+        self.assertEqual(data.cell(row=4, column=18).value, 1)
+        self.assertTrue(data.cell(row=4, column=19).value.startswith('1405/'))
         # ردیف حقیقی: نام و نام خانوادگی جدا
         self.assertEqual(data.cell(row=5, column=4).value, 'علی')
         self.assertEqual(data.cell(row=5, column=5).value, 'رضایی')
@@ -429,12 +432,11 @@ class PurchaseExportTests(SeasonalBaseTest):
         total_row = 4 + 3
         self.assertEqual(data.cell(row=total_row, column=15).value, 1750000)
         self.assertEqual(data.cell(row=total_row, column=16).value, 150000)
-        self.assertEqual(data.cell(row=total_row, column=17).value, 20000)
-        self.assertEqual(data.cell(row=total_row, column=18).value, 1920000)
+        self.assertEqual(data.cell(row=total_row, column=17).value, 1900000)
 
         summary = workbook['خلاصه']
         summary_values = [cell.value for cell in summary['B']]
-        self.assertIn(1920000, summary_values)
+        self.assertIn(1900000, summary_values)
         self.assertIn(seasonal_rules.RULESET_VERSION, summary_values)
 
         issues = workbook['خطاها']
@@ -477,9 +479,9 @@ class PurchaseExportTests(SeasonalBaseTest):
 
 
 class LegacyCompatibilityTests(SeasonalBaseTest):
-    """مهاجرت ۰۰۲۶: داده‌های قبلی باید با پیش‌فرض «خرید» و عوارض صفر سالم بمانند."""
+    """مهاجرت ۰۰۲۶/۰۰۲۹: داده‌های قبلی با پیش‌فرض «خرید» سالم بمانند و ستون عوارض حذف شود."""
 
-    def test_existing_rows_default_to_purchase_with_zero_duties(self):
+    def test_existing_rows_default_to_purchase_and_have_no_duties(self):
         report = self.make_report()
         legacy = SeasonalTransaction.objects.create(
             company=self.company, report=report, line_no=1, name='ردیف قدیمی',
@@ -487,7 +489,7 @@ class LegacyCompatibilityTests(SeasonalBaseTest):
         )
         legacy.refresh_from_db()
         self.assertEqual(legacy.direction, SeasonalTransaction.Direction.PURCHASE)
-        self.assertEqual(legacy.duties, 0)
+        self.assertFalse(hasattr(legacy, 'duties'))
         self.assertEqual(legacy.country, '')
         self.assertEqual(int(legacy.total), 1100)
         totals = control_totals(report, 'purchase')

@@ -44,7 +44,6 @@ const API_ROW = {
   is_included: true,
   amount: '1000000',
   vat: '90000',
-  duties: '0',
   total: '1090000',
   kind: 1,
   invoice_date: '2026-04-10',
@@ -191,7 +190,6 @@ test('renders header, official columns, studio search bar and the api period ran
     'شرح کالا / خدمات',
     'مبلغ',
     'مالیات بر ارزش افزوده',
-    'عوارض',
     'جمع کل',
     'نوع',
     'تاریخ فاکتور',
@@ -365,21 +363,25 @@ test('falls back to the local storage when the api is unavailable', async () => 
 
 
 
-test('purchase grid shows seller type, duties total and required markers', async () => {
-  currentReport = apiReport([{ ...API_ROW, person_type: 'foreign', country: 'آلمان', economic_code: '', national_id: '', duties: '20000' }]);
+test('purchase grid shows seller type, vat total and required markers', async () => {
+  currentReport = apiReport([{ ...API_ROW, person_type: 'foreign', country: 'آلمان', economic_code: '', national_id: '' }]);
   const { root, container } = await renderPage();
 
   const firstRow = container.querySelectorAll('tbody tr')[0];
-  /* نوع فروشنده به‌صورت انتخاب‌گر با سه گزینه */
+  /* نوع فروشنده به‌صورت انتخاب‌گر با چهار گزینه */
   const personSelect = firstRow.querySelector('[aria-label="نوع فروشنده"]');
   expect(personSelect).not.toBeNull();
   expect(personSelect.textContent.trim()).toBe('خارجی');
   /* کشور برای فروشندهٔ خارجی در دسترس است */
   expect(firstRow.querySelector('input[placeholder="کشور"]')).not.toBeNull();
 
-  /* عوارض در جمع کل و در فوتر لحاظ می‌شود: ۱٬۰۰۰٬۰۰۰ + ۹۰٬۰۰۰ + ۲۰٬۰۰۰ */
-  expect(firstRow.textContent).toContain('۱٬۱۱۰٬۰۰۰');
-  expect(container.textContent).toContain('جمع عوارض: ۲۰٬۰۰۰');
+  /* فقط مالیات بر ارزش افزوده: جمع کل = ۱٬۰۰۰٬۰۰۰ + ۹۰٬۰۰۰ */
+  expect(firstRow.textContent).toContain('۱٬۰۹۰٬۰۰۰');
+  expect(container.textContent).toContain('جمع ارزش افزوده: ۹۰٬۰۰۰');
+  /* ستون عوارض کاملاً حذف شده است */
+  expect(container.textContent).not.toContain('عوارض');
+  expect(Array.from(container.querySelectorAll('thead th')).map((th) => th.textContent.trim()))
+    .not.toContain('عوارض');
 
   root.unmount();
   container.remove();
@@ -420,7 +422,7 @@ test('local rules engine flags a missing country for foreign sellers', async () 
   window.localStorage.setItem(ROWS_KEY, JSON.stringify([{
     id: 'r-foreign', name: 'فروشندهٔ خارجی', personType: 'foreign', country: '',
     city: '', address: '', economicCode: '', nationalId: '', postalCode: '',
-    description: 'خرید دستگاه', amount: '1000000', vat: '0', duties: '0',
+    description: 'خرید دستگاه', amount: '1000000', vat: '0',
     kind: 1, invoiceDate: '2026-04-15', invoiceNo: 'T-1', status: 'pending',
   }]));
 
@@ -509,7 +511,6 @@ test('country defaults to Iran and the aggregate seller type needs only the amou
     country: 'ایران',
     amount: '750000',
     vat: '0',
-    duties: '0',
     invoice_no: '',
   }]);
   const { root, container } = await renderPage();
@@ -554,3 +555,138 @@ test('a new row starts with Iran as country and switching to foreign clears it',
   container.remove();
 });
 
+/* ---------- حافظهٔ طرف معامله برای همهٔ انواع (حقوقی/حقیقی/خارجی/تجمیعی) ---------- */
+
+const NATURAL_ROW = {
+  ...API_ROW,
+  id: 201,
+  line_no: 1,
+  person_type: 'natural',
+  name: 'علی رضایی',
+  first_name: 'علی',
+  last_name: 'رضایی',
+  national_id: '0012345678',
+  city: 'شیراز',
+  address: 'خیابان زند، پلاک ۵',
+  invoice_no: 'N-1',
+};
+
+const FOREIGN_ROW = {
+  ...API_ROW,
+  id: 202,
+  line_no: 2,
+  person_type: 'foreign',
+  name: 'Atlas GmbH',
+  national_id: '',
+  country: 'آلمان',
+  city: 'هامبورگ',
+  invoice_no: 'F-1',
+};
+
+test('suggestions also list natural sellers and fill both name parts', async () => {
+  currentReport = apiReport([NATURAL_ROW]);
+  const { root, container } = await renderPage();
+
+  const readyNameInput = Array.from(container.querySelectorAll('tbody tr'))
+    .pop().querySelector('input[aria-label="نام شرکت"]');
+  await act(async () => {
+    readyNameInput.focus();
+    setNativeValue(readyNameInput, 'رضا');
+    await wait(320);
+  });
+
+  const options = Array.from(document.querySelectorAll('li[role="option"]')).map((item) => item.textContent);
+  expect(options.some((text) => text.includes('علی رضایی') && text.includes('حقیقی'))).toBe(true);
+
+  await act(async () => {
+    Array.from(document.querySelectorAll('li[role="option"]'))
+      .find((item) => item.textContent.includes('علی رضایی'))
+      .click();
+    await wait(300);
+  });
+
+  const naturalRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.querySelector('input[aria-label="نام"]'));
+  expect(naturalRow).toBeTruthy();
+  expect(naturalRow.querySelector('[aria-label="نوع فروشنده"]').textContent.trim()).toBe('حقیقی');
+  expect(naturalRow.querySelector('input[aria-label="نام"]').value).toBe('علی');
+  expect(naturalRow.querySelector('input[aria-label="نام خانوادگی"]').value).toBe('رضایی');
+  expect(naturalRow.querySelector('input[placeholder="کد ملی ۱۰ رقمی"]').value).toBe('۰۰۱۲۳۴۵۶۷۸');
+
+  root.unmount();
+  container.remove();
+});
+
+test('the family-name field of a natural row also suggests earlier natural sellers', async () => {
+  currentReport = apiReport([NATURAL_ROW]);
+  const { root, container } = await renderPage();
+
+  const readyRow = Array.from(container.querySelectorAll('tbody tr')).pop();
+  const personSelect = readyRow.querySelector('[aria-label="نوع فروشنده"]');
+  await act(async () => {
+    personSelect.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(200);
+  });
+  const naturalOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.trim() === 'حقیقی');
+  await act(async () => { naturalOption.click(); await wait(240); });
+
+  const naturalRow = Array.from(container.querySelectorAll('tbody tr')).pop();
+  const lastNameInput = naturalRow.querySelector('input[aria-label="نام خانوادگی"]');
+  await act(async () => {
+    lastNameInput.focus();
+    setNativeValue(lastNameInput, 'رضا');
+    await wait(320);
+  });
+
+  const options = Array.from(document.querySelectorAll('li[role="option"]')).map((item) => item.textContent);
+  expect(options.some((text) => text.includes('علی رضایی'))).toBe(true);
+
+  await act(async () => {
+    Array.from(document.querySelectorAll('li[role="option"]'))
+      .find((item) => item.textContent.includes('علی رضایی'))
+      .click();
+    await wait(300);
+  });
+
+  const filledRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.querySelector('input[aria-label="نام خانوادگی"]')?.value === 'رضایی');
+  expect(filledRow).toBeTruthy();
+  expect(filledRow.querySelector('input[aria-label="نام"]').value).toBe('علی');
+  expect(filledRow.querySelector('input[aria-label="نام خانوادگی"]').value).toBe('رضایی');
+  expect(filledRow.querySelector('input[placeholder="کد ملی ۱۰ رقمی"]').value).toBe('۰۰۱۲۳۴۵۶۷۸');
+
+  root.unmount();
+  container.remove();
+});
+
+test('selecting a foreign party restores its country instead of Iran', async () => {
+  currentReport = apiReport([FOREIGN_ROW]);
+  const { root, container } = await renderPage();
+
+  const readyRow = Array.from(container.querySelectorAll('tbody tr')).pop();
+  const nameInput = readyRow.querySelector('input[aria-label="نام شرکت"]');
+  await act(async () => {
+    nameInput.focus();
+    setNativeValue(nameInput, 'Atlas');
+    await wait(320);
+  });
+
+  const options = Array.from(document.querySelectorAll('li[role="option"]')).map((item) => item.textContent);
+  expect(options.some((text) => text.includes('Atlas GmbH') && text.includes('خارجی'))).toBe(true);
+
+  await act(async () => {
+    Array.from(document.querySelectorAll('li[role="option"]'))
+      .find((item) => item.textContent.includes('Atlas GmbH'))
+      .click();
+    await wait(300);
+  });
+
+  const foreignRow = Array.from(container.querySelectorAll('tbody tr'))
+    .find((row) => row.querySelector('[aria-label="نوع فروشنده"]')?.textContent.trim() === 'خارجی');
+  expect(foreignRow).toBeTruthy();
+  expect(foreignRow.querySelector('input[placeholder="کشور"]').value).toBe('آلمان');
+
+  root.unmount();
+  container.remove();
+});

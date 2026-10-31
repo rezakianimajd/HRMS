@@ -439,7 +439,7 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
             'economic_code', 'national_id', 'postal_code',
             'country', 'province', 'city', 'address', 'goods_service_desc',
             'goods_service_type', 'is_included',
-            'amount', 'vat', 'duties', 'total', 'kind', 'kind_display', 'invoice_date',
+            'amount', 'vat', 'total', 'kind', 'kind_display', 'invoice_date',
             'invoice_no', 'moadian_status', 'moadian_status_display', 'moadian_uid',
             'currency_code', 'fx_rate', 'source', 'created_at', 'updated_at',
         ]
@@ -461,20 +461,12 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
             raise serializers.ValidationError('مالیات بر ارزش افزوده نمی‌تواند منفی باشد.')
         return value
 
-    def validate_duties(self, value):
-        if value is None or value < 0:
-            raise serializers.ValidationError('عوارض نمی‌تواند منفی باشد.')
-        return value
-
     def validate(self, attrs):
         attrs = super().validate(attrs)
         amount = attrs.get('amount', getattr(self.instance, 'amount', 0)) or 0
         vat = attrs.get('vat', getattr(self.instance, 'vat', 0)) or 0
-        duties = attrs.get('duties', getattr(self.instance, 'duties', 0)) or 0
         if vat and amount and vat > amount:
             raise serializers.ValidationError({'vat': 'مالیات بر ارزش افزوده از مبلغ خرید بیشتر است.'})
-        if duties and amount and duties > amount:
-            raise serializers.ValidationError({'duties': 'عوارض از مبلغ خرید بیشتر است.'})
         invoice_date = attrs.get('invoice_date', getattr(self.instance, 'invoice_date', None))
         report = attrs.get('report', getattr(self.instance, 'report', None))
         if report and invoice_date:

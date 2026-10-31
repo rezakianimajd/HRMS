@@ -13,7 +13,7 @@
 وضعیت «تأییدنشده» علامت خورده‌اند و هیچ خروجی‌ای «تأییدشده» اعلام نمی‌شود.
 """
 
-RULESET_VERSION = 'draft-1405.1'
+RULESET_VERSION = 'draft-1405.3'
 RULESET_STATUS = 'unverified'          # unverified | verified
 
 SOURCE_LEGAL = 'ماده ۱۶۹ مکرر ق.م.م و آیین‌نامه — الزامات عمومی فهرست معاملات'
@@ -49,7 +49,6 @@ FIELD_LABELS = {
     'is_included': 'مشمول معاملات فصلی',
     'amount': 'مبلغ',
     'vat': 'مالیات بر ارزش افزوده',
-    'duties': 'عوارض',
     'total': 'جمع کل',
     'kind': 'نوع معامله',
     'invoice_date': 'تاریخ فاکتور',
@@ -210,7 +209,6 @@ TTMS_DRAFT_MAPPING = [
     {'internal': 'goods_service_desc', 'type': 'text', 'length': 300, 'requirement': 'توصیه‌شده', 'target_field': None},
     {'internal': 'amount', 'type': 'int', 'length': 18, 'requirement': 'الزامی', 'target_field': None},
     {'internal': 'vat', 'type': 'int', 'length': 18, 'requirement': 'اختیاری', 'target_field': None},
-    {'internal': 'duties', 'type': 'int', 'length': 18, 'requirement': 'اختیاری', 'target_field': None},
     {'internal': 'total', 'type': 'int', 'length': 18, 'requirement': 'محاسباتی', 'target_field': None},
     {'internal': 'kind', 'type': 'int', 'length': 2, 'requirement': 'الزامی (۱..۵)', 'target_field': None},
     {'internal': 'invoice_date', 'type': 'date-jalali', 'length': 10, 'requirement': 'توصیه‌شده', 'target_field': None},

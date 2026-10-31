@@ -62,7 +62,6 @@ const FIELD_MAP = {
   goods_service_desc: 'description',
   amount: 'amount',
   vat: 'vat',
-  duties: 'duties',
   kind: 'kind',
   invoice_date: 'invoiceDate',
   invoice_no: 'invoiceNo',
@@ -77,7 +76,7 @@ const SOURCE_INTERNAL = 'سیاست داخلی Kian EBP';
 /* آینهٔ محلی قواعد (فقط برای حالت آفلاین) — مرجع نهایی همان پاسخ سرور است */
 const LOCAL_REFERENCE = {
   direction: BACKEND_DIRECTION,
-  ruleset_version: 'draft-1405.2',
+  ruleset_version: 'draft-1405.3',
   ruleset_status: 'unverified',
   rules: [
     { kind: 'required', field: 'person_type', person_types: ['legal', 'natural', 'foreign'], level: 'error', source: SOURCE_INTERNAL, message: 'نوع فروشنده را انتخاب کنید.' },
@@ -112,19 +111,44 @@ const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   name: '', firstName: '', lastName: '', personType: 'legal', nationalId: '',
   postalCode: '', country: DEFAULT_COUNTRY, city: '', address: '',
-  description: '', amount: '', vat: '', duties: '', kind: 1, invoiceDate: '',
+  description: '', amount: '', vat: '', kind: 1, invoiceDate: '',
   invoiceNo: '', moadianUid: '', status: 'pending',
 });
 
 const num = (value) => Number(toEnglishDigits(String(value ?? '')).replace(/[^\d.-]/g, '')) || 0;
-const totalOf = (row) => num(row.amount) + num(row.vat) + num(row.duties);
+const totalOf = (row) => num(row.amount) + num(row.vat);
 const normalizeName = (value) => String(value || '').trim().replace(/\s+/g, ' ');
 const isEmpty = (value) => !String(value ?? '').trim();
+
+/* ---- حافظهٔ طرف‌های معامله (برای همهٔ انواع: حقوقی/حقیقی/خارجی/تجمیعی) ---- */
+const PERSON_TYPE_LABELS = PERSON_TYPES.reduce(
+  (acc, type) => ({ ...acc, [type.value]: type.label }), {},
+);
+
+/* عنوان نمایشی یک طرف: حقوقی/خارجی/تجمیعی «نام»، حقیقی «نام + نام خانوادگی» */
+const partyDisplay = (party) => normalizeName(
+  party?.label || party?.name || [party?.firstName, party?.lastName].filter(Boolean).join(' '),
+);
+
+/* رتبه‌بندی پیشنهادها بر اساس متن تایپ‌شده (شروع نام → شروع یک کلمه → شامل) */
+const filterPartyOptions = (options, term) => {
+  const clean = normalizeName(term).toLowerCase();
+  const candidates = options.filter((party) => partyDisplay(party).toLowerCase() !== clean);
+  if (!clean) return candidates.slice(-6).reverse();
+  const scored = [];
+  candidates.forEach((party) => {
+    const label = partyDisplay(party).toLowerCase();
+    if (label.startsWith(clean)) scored.push({ party, score: 0 });
+    else if (label.split(/\s+/).some((word) => word.startsWith(clean))) scored.push({ party, score: 1 });
+    else if (label.includes(clean)) scored.push({ party, score: 2 });
+  });
+  return scored.sort((a, b) => a.score - b.score).slice(0, 6).map((item) => item.party);
+};
 
 /* ردیف خالی (ردیف آمادهٔ ورود) — «کشور» حساب نمی‌شود چون پیش‌فرض «ایران» دارد */
 const TEXT_FIELDS = [
   'name', 'firstName', 'lastName', 'nationalId', 'postalCode', 'city', 'address',
-  'description', 'amount', 'vat', 'duties', 'invoiceNo', 'invoiceDate', 'moadianUid',
+  'description', 'amount', 'vat', 'invoiceNo', 'invoiceDate', 'moadianUid',
 ];
 const isBlankRow = (row) => TEXT_FIELDS.every((field) => isEmpty(row[field]));
 
@@ -149,7 +173,6 @@ const rowFromApi = (item) => ({
   description: item.goods_service_desc || '',
   amount: item.amount ? String(Number(item.amount)) : '',
   vat: item.vat ? String(Number(item.vat)) : '',
-  duties: item.duties ? String(Number(item.duties)) : '',
   kind: item.kind || 1,
   invoiceDate: item.invoice_date || '',
   invoiceNo: item.invoice_no || '',
@@ -171,7 +194,6 @@ const rowToApi = (row) => ({
   goods_service_desc: row.description || '',
   amount: num(row.amount),
   vat: num(row.vat),
-  duties: num(row.duties),
   kind: Number(row.kind) || 1,
   invoice_date: row.invoiceDate || null,
   invoice_no: row.invoiceNo || '',
@@ -229,20 +251,18 @@ const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE
       }
     });
 
-    if (!num(row.amount) && !num(row.vat) && !num(row.duties)) {
+    if (!num(row.amount) && !num(row.vat)) {
       push('amount', 'error', 'مبلغ خرید باید بزرگ‌تر از صفر باشد.', SOURCE_LEGAL);
     }
     if (num(row.vat) > num(row.amount)) {
       push('vat', 'error', 'مالیات بر ارزش افزوده نمی‌تواند از مبلغ خرید بیشتر باشد.', SOURCE_LEGAL);
     }
-    if (num(row.duties) > num(row.amount)) {
-      push('duties', 'error', 'عوارض نمی‌تواند از مبلغ خرید بیشتر باشد.', SOURCE_TTMS);
-    }
     if (row.invoiceDate && periodStart && periodEnd
       && (row.invoiceDate < periodStart || row.invoiceDate > periodEnd)) {
       push('invoiceDate', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.', SOURCE_LEGAL);
     }
-    if (row.status !== 'registered') {
+    /* ردیف «تجمیعی» فاکتور/سامانهٔ مودیان ندارد */
+    if (row.personType !== 'aggregate' && row.status !== 'registered') {
       push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.', SOURCE_TTMS);
     }
     if (row.invoiceNo) {
@@ -326,6 +346,60 @@ const DigitField = ({ value, onChange, placeholder, numeric, maxLength, sx }) =>
     placeholder={placeholder}
     inputProps={{ inputMode: numeric ? 'numeric' : 'text', dir: 'ltr', style: { textAlign: 'center' } }}
     sx={sx}
+  />
+);
+
+/* پیشنهاد طرف معامله از داده‌های قبلی — برای همهٔ انواع (حقوقی/حقیقی/خارجی/تجمیعی) */
+const PartyAutocomplete = ({
+  value, options, onInputChange, onSelect, placeholder, ariaLabel, sx, cellFontPx, noOptionsText,
+}) => (
+  <Autocomplete
+    freeSolo
+    size="small"
+    options={options}
+    filterOptions={(list) => filterPartyOptions(list, value)}
+    getOptionLabel={(option) => (typeof option === 'string' ? option : partyDisplay(option))}
+    inputValue={value ?? ''}
+    value={value ?? ''}
+    onInputChange={(_event, next, reason) => {
+      /* «reset» هنگام انتخاب گزینه رخ می‌دهد و نباید فیلد را با عنوان کامل بازنویسی کند */
+      if (reason === 'reset') return;
+      onInputChange(next);
+    }}
+    onChange={(_event, next) => {
+      if (next && typeof next !== 'string') onSelect(next);
+    }}
+    noOptionsText={noOptionsText || 'طرف جدید — با ادامهٔ تایپ ثبت می‌شود'}
+    renderOption={(props, option) => (
+      <Box component="li" {...props} key={`${option.personType}-${partyDisplay(option)}`} sx={{ gap: 1 }}>
+        <Box sx={{ minWidth: 0, flex: 1 }}>
+          <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
+            {`${partyDisplay(option)} — ${PERSON_TYPE_LABELS[option.personType] || 'نامشخص'} را می‌خواهی؟`}
+          </Typography>
+          <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
+            {[
+              option.nationalId,
+              [option.city, option.address].filter(Boolean).join(' · '),
+            ].filter(Boolean).join(' — ') || 'بدون شناسه/آدرس ثبت‌شده'}
+          </Typography>
+        </Box>
+      </Box>
+    )}
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        variant="standard"
+        placeholder={placeholder}
+        inputProps={{ ...params.inputProps, 'aria-label': ariaLabel }}
+        sx={{
+          '& .MuiInputBase-root': { minHeight: 26 },
+          '& .MuiInputBase-input': { py: 0.25, px: 0.25 },
+          '& .MuiInput-underline:before': { borderBottomColor: 'transparent' },
+          '& .MuiInput-underline:hover:before': { borderBottomColor: 'rgba(148,163,184,0.6)' },
+          ...(sx || {}),
+        }}
+      />
+    )}
   />
 );
 
@@ -604,21 +678,43 @@ const SeasonalReportPage = () => {
     }));
   };
 
-  /* انتخاب طرف معامله از پیشنهادها: شناسه/کد پستی/شهر/آدرس و (برای حقیقی) نام و نام خانوادگی پر می‌شود */
+  /* انتخاب طرف معامله از پیشنهادها برای همهٔ انواع: نوع، نام/نام خانوادگی، شناسه،
+     کد پستی، کشور، شهر و آدرس از حافظهٔ همان طرف پر می‌شود */
   const applyParty = (id, party) => {
     setRows((previous) => previous.map((row) => {
       if (row.id !== id) return row;
-      const parts = String(party.name || '').trim().split(/\s+/);
-      const isNatural = row.personType === 'natural';
+      const personType = party.personType || row.personType || 'legal';
+      const isNatural = personType === 'natural';
+      let firstName = '';
+      let lastName = '';
+      let name = normalizeName(party.name || '');
+      if (isNatural) {
+        firstName = normalizeName(party.firstName || '');
+        lastName = normalizeName(party.lastName || '');
+        if (!firstName && !lastName && name) {
+          const parts = name.split(/\s+/);
+          firstName = parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '';
+          lastName = parts.length > 1 ? parts[parts.length - 1] : '';
+        }
+        name = normalizeName([firstName, lastName].filter(Boolean).join(' '));
+      } else if (!name) {
+        name = partyDisplay(party);
+      }
+      /* خارجی: کشور خودِ طرف (یا خالی تا کاربر بنویسد) — بقیه: پیش‌فرض «ایران» */
+      const country = personType === 'foreign'
+        ? (party.country || (row.personType === 'foreign' ? row.country : ''))
+        : DEFAULT_COUNTRY;
       return {
         ...row,
-        name: party.name,
-        firstName: isNatural && !row.firstName ? (parts.length > 1 ? parts.slice(0, -1).join(' ') : parts[0] || '') : row.firstName,
-        lastName: isNatural && !row.lastName ? (parts.length > 1 ? parts[parts.length - 1] : '') : row.lastName,
-        nationalId: row.nationalId || party.nationalId || '',
-        postalCode: row.postalCode || party.postalCode || '',
-        city: row.city || party.city || '',
-        address: row.address || party.address || '',
+        personType,
+        name,
+        firstName,
+        lastName,
+        country,
+        nationalId: party.nationalId || row.nationalId || '',
+        postalCode: party.postalCode || row.postalCode || '',
+        city: party.city || row.city || '',
+        address: party.address || row.address || '',
       };
     }));
   };
@@ -695,10 +791,9 @@ const SeasonalReportPage = () => {
   const totals = useMemo(() => filledRows.reduce((acc, row) => ({
     amount: acc.amount + num(row.amount),
     vat: acc.vat + num(row.vat),
-    duties: acc.duties + num(row.duties),
     total: acc.total + totalOf(row),
     registered: acc.registered + (row.status === 'registered' ? 1 : 0),
-  }), { amount: 0, vat: 0, duties: 0, total: 0, registered: 0 }), [filledRows]);
+  }), { amount: 0, vat: 0, total: 0, registered: 0 }), [filledRows]);
 
   const issuesByRow = useMemo(() => {
     const map = new Map();
@@ -789,7 +884,7 @@ const SeasonalReportPage = () => {
       'ردیف', 'نوع فروشنده', 'نام شرکت / عنوان', 'نام', 'نام خانوادگی',
       'شناسه ملی / کد ملی', 'مشمول معاملات فصلی', 'کد پستی', 'کشور', 'شهر', 'آدرس',
       'شرح کالا / خدمات', 'نوع کالا یا خدمات', 'مبلغ خرید (ریال)',
-      'مالیات بر ارزش افزوده', 'عوارض', 'جمع کل', 'نوع معامله', 'تاریخ فاکتور',
+      'مالیات بر ارزش افزوده', 'جمع کل', 'نوع معامله', 'تاریخ فاکتور',
       'شماره فاکتور', 'وضعیت سامانه مودیان',
     ];
     const escape = (value) => String(value ?? '')
@@ -812,7 +907,6 @@ const SeasonalReportPage = () => {
         <td>سایر</td>
         <td>${num(row.amount)}</td>
         <td>${num(row.vat)}</td>
-        <td>${num(row.duties)}</td>
         <td>${totalOf(row)}</td>
         <td>${escape(row.kind)}</td>
         <td style="mso-number-format:'\\@'">${escape(jalaliText(row.invoiceDate))}</td>
@@ -826,7 +920,7 @@ const SeasonalReportPage = () => {
       <table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr><td colspan="13">جمع کل خرید</td><td>${totals.amount}</td><td>${totals.vat}</td>
-      <td>${totals.duties}</td><td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
+      <td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
     const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -882,7 +976,6 @@ const SeasonalReportPage = () => {
         <td>${toPersianDigits(row.nationalId)}</td>
         <td>${formatPersianNumber(num(row.amount))}</td>
         <td>${formatPersianNumber(num(row.vat))}</td>
-        <td>${formatPersianNumber(num(row.duties))}</td>
         <td>${formatPersianNumber(totalOf(row))}</td>
         <td>${jalaliText(row.invoiceDate)}</td>
         <td>${row.invoiceNo}</td>
@@ -898,7 +991,7 @@ const SeasonalReportPage = () => {
       <h3>صورت معاملات فصلی خرید — ${yearLabel} — ${quarterLabel}</h3>
       <p class="note">وضعیت قواعد/قالب TTMS: ${rulesetNote}</p>
       <table><thead><tr><th>ردیف</th><th>نوع</th><th>نام شرکت / عنوان</th><th>نام</th>
-      <th>نام خانوادگی</th><th>شناسه/کد ملی</th><th>مبلغ</th><th>مالیات</th><th>عوارض</th>
+      <th>نام خانوادگی</th><th>شناسه/کد ملی</th><th>مبلغ</th><th>مالیات</th>
       <th>جمع کل</th><th>تاریخ</th><th>شماره فاکتور</th>
       </tr></thead><tbody>${rowsHtml}</tbody></table></body></html>`);
     printable.document.close();
@@ -907,59 +1000,65 @@ const SeasonalReportPage = () => {
   };
 
 
-  /* دفتر طرف‌های معامله: همهٔ ردیف‌های همین جدول + طرف‌های دوره‌های قبلی */
+  /* دفتر طرف‌های معامله: همهٔ ردیف‌های همین جدول (هر چهار نوع) + طرف‌های دوره‌های قبلی */
   const partyDirectory = useMemo(() => {
     const map = new Map();
-    rows.forEach((row) => {
-      const key = normalizeName(row.name).toLowerCase();
-      if (!key) return;
-      const previous = map.get(key);
-      map.set(key, {
-        name: normalizeName(row.name),
-        nationalId: row.nationalId || previous?.nationalId || '',
-        postalCode: row.postalCode || previous?.postalCode || '',
-        city: row.city || previous?.city || '',
-        address: row.address || previous?.address || '',
-      });
-    });
-    parties.forEach((party) => {
-      const key = normalizeName(party.name).toLowerCase();
-      if (!key) return;
+    const addParty = (party) => {
+      const label = partyDisplay(party);
+      if (!label || label.length < 3) return;
+      const key = label.toLowerCase();
       const previous = map.get(key) || {};
       map.set(key, {
-        name: normalizeName(party.name),
-        nationalId: previous.nationalId || party.nationalId || '',
-        postalCode: previous.postalCode || party.postalCode || '',
-        city: previous.city || party.city || '',
-        address: previous.address || party.address || '',
+        label,
+        personType: party.personType || previous.personType || 'legal',
+        name: normalizeName(party.name) || previous.name || '',
+        firstName: party.firstName || previous.firstName || '',
+        lastName: party.lastName || previous.lastName || '',
+        nationalId: party.nationalId || previous.nationalId || '',
+        postalCode: party.postalCode || previous.postalCode || '',
+        country: party.country || previous.country || '',
+        city: party.city || previous.city || '',
+        address: party.address || previous.address || '',
+      });
+    };
+
+    rows.forEach((row) => {
+      if (row.personType === 'natural') {
+        addParty({
+          personType: 'natural',
+          firstName: row.firstName,
+          lastName: row.lastName,
+          nationalId: row.nationalId,
+          postalCode: row.postalCode,
+          city: row.city,
+          address: row.address,
+          country: row.country,
+        });
+        return;
+      }
+      addParty({
+        personType: row.personType || 'legal',
+        name: row.name,
+        nationalId: row.nationalId,
+        postalCode: row.postalCode,
+        city: row.city,
+        address: row.address,
+        country: row.country,
       });
     });
+    parties.forEach(addParty);
     return [...map.values()];
   }, [rows, parties]);
 
   const partyOptions = useMemo(() => {
-    const cleaned = partyDirectory
-      .map((party) => ({ ...party, name: normalizeName(party.name) }))
-      .filter((party) => party.name.length >= 3);
-    const names = cleaned.map((party) => party.name.toLowerCase());
-    return cleaned.filter((party, index) => !names.some((other, otherIndex) => (
-      otherIndex !== index && other.length > names[index].length && other.startsWith(names[index])
-    )));
+    const names = partyDirectory.map((party) => partyDisplay(party).toLowerCase());
+    /* برای شرکت‌ها نام کوتاه‌ترِ پیشوندی حذف می‌شود؛ نام اشخاص دست‌نخورده می‌ماند */
+    return partyDirectory.filter((party, index) => (
+      party.personType === 'natural' || !names.some((other, otherIndex) => (
+        otherIndex !== index && other.length > names[index].length && other.startsWith(names[index])
+      ))
+    ));
   }, [partyDirectory]);
-
-  const filterParties = (options, currentName) => {
-    const term = normalizeName(currentName).toLowerCase();
-    const candidates = options.filter((party) => normalizeName(party.name).toLowerCase() !== term);
-    if (!term) return candidates.slice(-6).reverse();
-    const scored = [];
-    candidates.forEach((party) => {
-      const name = normalizeName(party.name).toLowerCase();
-      if (name.startsWith(term)) scored.push({ party, score: 0 });
-      else if (name.split(/\s+/).some((word) => word.startsWith(term))) scored.push({ party, score: 1 });
-      else if (name.includes(term)) scored.push({ party, score: 2 });
-    });
-    return scored.sort((a, b) => a.score - b.score).slice(0, 6).map((item) => item.party);
-  };
 
   const partyOptionsJson = useMemo(() => JSON.stringify(partyOptions), [partyOptions]);
   useEffect(() => {
@@ -1023,72 +1122,43 @@ const SeasonalReportPage = () => {
       width: '16%',
       render: (row) => {
         if (row.personType === 'natural') {
+          /* حقیقی: دو فیلد جدا — هر دو هم پیشنهاد از حافظهٔ طرف‌ها می‌دهند */
           return (
             <Box sx={{ display: 'flex', gap: 0.75 }}>
-              <CellTextField
+              <PartyAutocomplete
                 value={row.firstName}
-                onChange={(value) => updateCell(row.id, 'firstName', value)}
+                options={partyOptions}
+                onInputChange={(value) => updateCell(row.id, 'firstName', value)}
+                onSelect={(party) => applyParty(row.id, party)}
                 placeholder="نام"
-                inputProps={{ 'aria-label': 'نام' }}
+                ariaLabel="نام"
                 sx={cellSxFor(row, 'first_name')}
+                cellFontPx={cellFontPx}
               />
-              <CellTextField
+              <PartyAutocomplete
                 value={row.lastName}
-                onChange={(value) => updateCell(row.id, 'lastName', value)}
+                options={partyOptions}
+                onInputChange={(value) => updateCell(row.id, 'lastName', value)}
+                onSelect={(party) => applyParty(row.id, party)}
                 placeholder="نام خانوادگی"
-                inputProps={{ 'aria-label': 'نام خانوادگی' }}
+                ariaLabel="نام خانوادگی"
                 sx={cellSxFor(row, 'last_name')}
+                cellFontPx={cellFontPx}
               />
             </Box>
           );
         }
-        if (row.personType === 'aggregate') {
-          /* تجمیعی: هیچ فیلد هویتی الزامی نیست؛ نام اختیاری */
-          return (
-            <CellTextField
-              value={row.name}
-              onChange={(value) => updateCell(row.id, 'name', value)}
-              placeholder="تجمیعی — نام اختیاری"
-              inputProps={{ 'aria-label': 'نام شرکت' }}
-              sx={cellInputSx}
-            />
-          );
-        }
+        /* حقوقی/خارجی/تجمیعی: یک فیلد نام — تجمیعی اختیاری است اما پیشنهاد هم دارد */
         return (
-          <Autocomplete
-            freeSolo
-            size="small"
-            options={partyOptions}
-            filterOptions={(options) => filterParties(options, row.name)}
-            getOptionLabel={(option) => (typeof option === 'string' ? option : option.name || '')}
-            inputValue={row.name}
+          <PartyAutocomplete
             value={row.name}
-            onInputChange={(_event, value) => updateCell(row.id, 'name', value)}
-            onChange={(_event, value) => {
-              if (value && typeof value !== 'string') applyParty(row.id, value);
-            }}
-            noOptionsText="فروشندهٔ جدید — با ادامهٔ تایپ ثبت می‌شود"
-            renderOption={(props, option) => (
-              <Box component="li" {...props} key={option.name} sx={{ gap: 1 }}>
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
-                    {`${option.name} را می‌خواهی؟`}
-                  </Typography>
-                  <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
-                    {[option.city, option.address].filter(Boolean).join(' · ') || 'بدون آدرس ثبت‌شده'}
-                  </Typography>
-                </Box>
-              </Box>
-            )}
-            renderInput={(params) => (
-              <TextField
-                {...params}
-                variant="standard"
-                placeholder="نام شرکت / عنوان…"
-                inputProps={{ ...params.inputProps, 'aria-label': 'نام شرکت' }}
-                sx={cellSxFor(row, 'name')}
-              />
-            )}
+            options={partyOptions}
+            onInputChange={(value) => updateCell(row.id, 'name', value)}
+            onSelect={(party) => applyParty(row.id, party)}
+            placeholder={row.personType === 'aggregate' ? 'تجمیعی — نام اختیاری' : 'نام شرکت / عنوان…'}
+            ariaLabel="نام شرکت"
+            sx={cellSxFor(row, 'name')}
+            cellFontPx={cellFontPx}
           />
         );
       },
@@ -1201,23 +1271,6 @@ const SeasonalReportPage = () => {
           onChange={(value) => updateCell(row.id, 'vat', value)}
           placeholder="ارزش افزوده"
           inputProps={{ 'aria-label': 'مالیات بر ارزش افزوده', style: { textAlign: 'center' } }}
-          sx={cellInputSx}
-        />
-      ),
-    },
-    {
-      key: 'duties',
-      label: 'عوارض',
-      width: '6%',
-      align: 'center',
-      render: (row) => (
-        <MoneyInput
-          variant="standard"
-          allowDecimals={false}
-          value={row.duties}
-          onChange={(value) => updateCell(row.id, 'duties', value)}
-          placeholder="عوارض"
-          inputProps={{ 'aria-label': 'عوارض', style: { textAlign: 'center' } }}
           sx={cellInputSx}
         />
       ),
@@ -1487,10 +1540,6 @@ const SeasonalReportPage = () => {
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'جمع ارزش افزوده: '}
             <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{formatPersianNumber(totals.vat)}</Box>
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            {'جمع عوارض: '}
-            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{formatPersianNumber(totals.duties)}</Box>
           </Typography>
           <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
             {'جمع کل: '}

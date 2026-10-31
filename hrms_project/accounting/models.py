@@ -1065,7 +1065,6 @@ class SeasonalTransaction(AccountingBaseModel):
     goods_service_desc = models.CharField(max_length=300, blank=True, verbose_name=_('شرح کالا / خدمات'))
     amount = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مبلغ (ریال)'))
     vat = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('مالیات بر ارزش افزوده'))
-    duties = models.DecimalField(max_digits=18, decimal_places=0, default=0, verbose_name=_('عوارض'))
     is_included = models.BooleanField(
         default=True, verbose_name=_('مشمول معاملات فصلی'),
         help_text=_('در این نسخه همهٔ ردیف‌ها مشمول هستند و این مقدار همیشه True است.'),
@@ -1111,5 +1110,5 @@ class SeasonalTransaction(AccountingBaseModel):
 
     @property
     def total(self):
-        return (self.amount or 0) + (self.vat or 0) + (self.duties or 0)
+        return (self.amount or 0) + (self.vat or 0)
 

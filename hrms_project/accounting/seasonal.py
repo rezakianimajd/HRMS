@@ -2,7 +2,7 @@
 
 - ``sync_rows``: ذخیرهٔ گروهی و اتمیک ردیف‌های یک جهت معامله (جایگزینی لیست).
 - ``validate_report``: اعتبارسنجی قواعدِ خرید از ``seasonal_rules`` (سرور مرجع نهایی).
-- ``control_totals``: جمع‌های کنترل یک جهت (مبلغ، ارزش افزوده، عوارض، جمع).
+- ``control_totals``: جمع‌های کنترل یک جهت (مبلغ، مالیات بر ارزش افزوده، جمع).
 - ``build_workbook``: خروجی اکسل مدیریتی سه‌شیتی مخصوص خرید.
 - ``build_ttms_draft``: بستهٔ «پیش‌نویس آزمایش‌نشده» برای TTMS + راهنمای نگاشت.
 """
@@ -35,7 +35,6 @@ PURCHASE_COLUMNS = [
     'نوع کالا یا خدمات',
     'مبلغ خرید (ریال)',
     'مالیات بر ارزش افزوده',
-    'عوارض',
     'جمع کل',
     'نوع معامله',
     'تاریخ فاکتور',
@@ -46,7 +45,7 @@ PURCHASE_COLUMNS = [
 ROW_FIELDS = (
     'name', 'first_name', 'last_name', 'person_type', 'national_id', 'postal_code',
     'country', 'province', 'city', 'address', 'goods_service_desc', 'amount', 'vat',
-    'duties', 'kind', 'invoice_date', 'invoice_no', 'moadian_status', 'moadian_uid',
+    'kind', 'invoice_date', 'invoice_no', 'moadian_status', 'moadian_uid',
     'currency_code', 'fx_rate',
 )
 
@@ -117,7 +116,6 @@ def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
             'goods_service_desc': _clean_text(raw.get('goods_service_desc'), 300),
             'amount': _to_decimal(raw.get('amount')),
             'vat': _to_decimal(raw.get('vat')),
-            'duties': _to_decimal(raw.get('duties')),
             'kind': int(raw.get('kind') or 1) if str(raw.get('kind') or '1').isdigit() else 1,
             'invoice_date': _parse_date(raw.get('invoice_date')),
             'invoice_no': _clean_text(raw.get('invoice_no'), 50),
@@ -137,7 +135,7 @@ def sync_rows(report, rows, direction=DIRECTION_PURCHASE):
         if item['person_type'] != SeasonalTransaction.PersonType.FOREIGN and not item['country']:
             item['country'] = seasonal_rules.DEFAULT_COUNTRY
         if not any([item['name'], item['first_name'], item['last_name'], item['invoice_no'],
-                    item['amount'], item['vat'], item['duties'], item['goods_service_desc']]):
+                    item['amount'], item['vat'], item['goods_service_desc']]):
             continue
         cleaned.append(item)
 
@@ -173,13 +171,12 @@ def _scoped_rows(report, direction=DIRECTION_PURCHASE):
 
 
 def control_totals(report, direction=DIRECTION_PURCHASE):
-    """جمع‌های کنترل یک جهت معامله: مبلغ، ارزش افزوده، عوارض و جمع کل."""
+    """جمع‌های کنترل یک جهت معامله: مبلغ، مالیات بر ارزش افزوده و جمع کل."""
     rows = _scoped_rows(report, direction)
     agg = rows.aggregate(
         count=Count('id'),
         amount=Sum('amount'),
         vat=Sum('vat'),
-        duties=Sum('duties'),
     )
     by_kind = [
         {
@@ -188,20 +185,18 @@ def control_totals(report, direction=DIRECTION_PURCHASE):
             'count': item['count'],
             'amount': float(item['amount'] or 0),
             'vat': float(item['vat'] or 0),
-            'duties': float(item['duties'] or 0),
-            'total': float((item['amount'] or 0) + (item['vat'] or 0) + (item['duties'] or 0)),
+            'total': float((item['amount'] or 0) + (item['vat'] or 0)),
         }
         for item in (
             rows.order_by()          # پاک‌کردن ordering پیش‌فرض مدل تا گروه‌بندی درست باشد
             .values('kind')
-            .annotate(count=Count('id'), amount=Sum('amount'), vat=Sum('vat'), duties=Sum('duties'))
+            .annotate(count=Count('id'), amount=Sum('amount'), vat=Sum('vat'))
             .order_by('kind')
         )
     ]
     registered = rows.filter(moadian_status=SeasonalTransaction.MoadianStatus.REGISTERED).count()
     amount = float(agg['amount'] or 0)
     vat = float(agg['vat'] or 0)
-    duties = float(agg['duties'] or 0)
     by_person_type = [
         {
             'person_type': item['person_type'] or 'unknown',
@@ -221,8 +216,7 @@ def control_totals(report, direction=DIRECTION_PURCHASE):
         'count': agg['count'] or 0,
         'amount': amount,
         'vat': vat,
-        'duties': duties,
-        'total': amount + vat + duties,
+        'total': amount + vat,
         'registered': registered,
         'pending': (agg['count'] or 0) - registered,
         'by_kind': by_kind,
@@ -275,16 +269,13 @@ def validate_report(report, direction=DIRECTION_PURCHASE):
                 if text:
                     add(row, rule['field'], rule['level'], rule['message'], rule['code'], rule['source'])
 
-        # ---- قواعد محاسباتی و میان‌فیلدی خرید ----
-        if not row.amount and not row.vat and not row.duties:
+        # ---- قواعد محاسباتی و میان‌فیلدی خرید (فقط مالیات بر ارزش افزوده) ----
+        if not row.amount and not row.vat:
             add(row, 'amount', 'error', 'مبلغ خرید باید بزرگ‌تر از صفر باشد.',
                 'amount_positive', seasonal_rules.SOURCE_LEGAL)
         if row.vat and row.amount and row.vat > row.amount:
             add(row, 'vat', 'error', 'مالیات بر ارزش افزوده نمی‌تواند از مبلغ خرید بیشتر باشد.',
                 'vat_le_amount', seasonal_rules.SOURCE_LEGAL)
-        if row.duties and row.amount and row.duties > row.amount:
-            add(row, 'duties', 'error', 'عوارض نمی‌تواند از مبلغ خرید بیشتر باشد.',
-                'duties_le_amount', seasonal_rules.SOURCE_TTMS)
         if row.invoice_date and not (period_start <= row.invoice_date <= period_end):
             add(row, 'invoice_date', 'error', 'تاریخ فاکتور بیرون از بازهٔ این فصل است.',
                 'invoice_date_in_period', seasonal_rules.SOURCE_LEGAL)
@@ -379,7 +370,6 @@ def _row_values(row):
         str(row.get_goods_service_type_display()),
         int(row.amount or 0),
         int(row.vat or 0),
-        int(row.duties or 0),
         int(row.total or 0),
         int(row.kind),
         _jalali_text(row.invoice_date),
@@ -389,7 +379,7 @@ def _row_values(row):
 
 
 def _build_data_sheet(workbook, report, rows, totals):
-    """شیت «داده» خرید: سرصفحه + ردیف‌ها + سطر جمع (مبلغ/ارزش افزوده/عوارض/جمع)."""
+    """شیت «داده» خرید: سرصفحه + ردیف‌ها + سطر جمع (مبلغ/ارزش افزوده/جمع)."""
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
@@ -437,12 +427,12 @@ def _build_data_sheet(workbook, report, rows, totals):
         for column, value in enumerate(_row_values(row), start=1):
             cell = ws.cell(row=excel_row, column=column, value=value)
             cell.border = border
-            if column in (6, 8, 20, 21):        # شناسه/کد پستی/تاریخ/شماره فاکتور به‌صورت متن
+            if column in (6, 8, 19, 20):        # شناسه/کد پستی/تاریخ/شماره فاکتور به‌صورت متن
                 cell.number_format = '@'
                 cell.alignment = center
-            elif column in (1, 2, 7, 14, 19, 22):
+            elif column in (1, 2, 7, 14, 18, 21):
                 cell.alignment = center
-            elif column in (15, 16, 17, 18):
+            elif column in (15, 16, 17):
                 cell.number_format = '#,##0'
                 cell.alignment = left
 
@@ -452,8 +442,7 @@ def _build_data_sheet(workbook, report, rows, totals):
     label.font = Font(bold=True)
     label.alignment = center
     for column, value in (
-        (15, totals['amount']), (16, totals['vat']),
-        (17, totals.get('duties', 0)), (18, totals['total']),
+        (15, totals['amount']), (16, totals['vat']), (17, totals['total']),
     ):
         cell = ws.cell(row=total_row, column=column, value=value)
         cell.font = Font(bold=True)
@@ -494,7 +483,6 @@ def _build_summary_sheet(workbook, report, totals, validation):
         ('تعداد ردیف خرید', totals['count']),
         ('جمع مبلغ خرید (ریال)', totals['amount']),
         ('جمع مالیات بر ارزش افزوده', totals['vat']),
-        ('جمع عوارض', totals.get('duties', 0)),
         ('جمع کل', totals['total']),
         ('درج‌شده در سامانه مودیان', totals['registered']),
         ('درج‌نشده در سامانه', totals['pending']),
@@ -503,14 +491,14 @@ def _build_summary_sheet(workbook, report, totals, validation):
     ):
         ws.append([label, value])
     ws.append([])
-    ws.append(['نوع معامله', 'تعداد', 'مبلغ', 'مالیات', 'عوارض', 'جمع کل'])
+    ws.append(['نوع معامله', 'تعداد', 'مبلغ', 'مالیات بر ارزش افزوده', 'جمع کل'])
     for cell in ws[ws.max_row]:
         cell.font = head_font
         cell.fill = head_fill
     for item in totals['by_kind']:
         ws.append([
             item['label'], item['count'], item['amount'],
-            item['vat'], item.get('duties', 0), item['total'],
+            item['vat'], item['total'],
         ])
     ws.append([])
     ws.append(['نوع فروشنده', 'تعداد', 'مبلغ'])
@@ -589,7 +577,7 @@ def _draft_value(row, internal):
         return 'درج‌شده در سامانه' if row.moadian_status == 'registered' else 'درج‌نشده'
     if internal == 'invoice_date':
         return _jalali_text(row.invoice_date)
-    if internal in ('amount', 'vat', 'duties', 'total', 'kind', 'line_no'):
+    if internal in ('amount', 'vat', 'total', 'kind', 'line_no'):
         value = getattr(row, internal, None)
         return int(value or 0)
     return str(getattr(row, internal, '') or '')
@@ -653,7 +641,6 @@ def build_ttms_draft(report, direction=DIRECTION_PURCHASE):
         f'  تعداد ردیف: {totals["count"]}',
         f'  جمع مبلغ: {totals["amount"]}',
         f'  جمع مالیات بر ارزش افزوده: {totals["vat"]}',
-        f'  جمع عوارض: {totals.get("duties", 0)}',
         f'  جمع کل: {totals["total"]}',
         '',
         'نگاشت ستون‌های پیش‌نویس:',
