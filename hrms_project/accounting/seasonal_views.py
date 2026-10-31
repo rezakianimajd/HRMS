@@ -361,15 +361,22 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         """نگاشت ستون‌های فایل TTMS، نوع کالا، کدهای وضعیت فروشنده و گزینه‌ها."""
         return Response(seasonal_ttms.ttms_reference())
 
-    @action(detail=True, methods=['post'], url_path='ttms-package')
-    def ttms_package(self, request, pk=None):
-        """ساخت بستهٔ درج در فایل Access نسخهٔ TTMS برای ردیف‌های فیلترشده.
+    @action(detail=False, methods=['get'], url_path='ttms-zones')
+    def ttms_zones(self, request):
+        """کدهای استان/شهر نسخهٔ TTMS (از جدول Zone) — شهرها به‌تفکیک استان."""
+        province = request.query_params.get('province')
+        if province:
+            return Response({
+                'province': province,
+                'cities': seasonal_ttms.zone_cities(province),
+            })
+        return Response({
+            'source': seasonal_ttms.ttms_reference()['zone_source'],
+            'provinces': seasonal_ttms.zone_provinces(),
+        })
 
-        بدنهٔ درخواست: ``{'expression': {...}, 'options': {...}, 'target_name': '...'}``.
-        فیلتر می‌تواند در querystring هم بیاید (همان قالب گزارش تحلیلی و پیوت).
-        خروجی: zip شامل rows.csv + manifest.json + fill_ttms.ps1 + README.txt.
-        """
-        report = self.get_object()
+    def _package_params(self, request):
+        """ادغام فیلترهای querystring و بدنهٔ درخواست + گزینه‌ها و اصلاح‌های کاربر."""
         body = request.data if isinstance(request.data, dict) else {}
         params = request.query_params.dict() if hasattr(request.query_params, 'dict') else {}
         for key in ('expression', 'filters', 'kind', 'moadian_status', 'person_type', 'search'):
@@ -379,6 +386,45 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
             params[key] = (json.dumps(value, ensure_ascii=False)
                            if isinstance(value, (dict, list)) else value)
         filters = seasonal_reconcile.filters_from_query(params)
+        return body, filters
+
+    @action(detail=True, methods=['post'], url_path='ttms-preview')
+    def ttms_preview(self, request, pk=None):
+        """پیش‌نمایش ردیف‌های خروجی TTMS (با فیلترهای فعلی و اصلاح‌های کاربر).
+
+        بدنه: ``{'expression': {...}, 'options': {...}, 'overrides': {...}, 'defaults': {...}}``
+        خروجی: ستون‌ها، ردیف‌های نگاشت‌شده، جمع‌ها، هشدارها و خطاهای اعتبارسنجی.
+        """
+        report = self.get_object()
+        body, filters = self._package_params(request)
+        rows = seasonal_reconcile.filtered_rows(report, DIRECTION_PURCHASE, filters)
+        if not rows:
+            return Response(
+                {'detail': 'با فیلترهای انتخابی هیچ ردیفی برای پیش‌نمایش باقی نمی‌ماند.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        payload = seasonal_ttms.preview(
+            report,
+            rows,
+            options=body.get('options'),
+            filters=filters,
+            overrides=body.get('overrides'),
+            defaults=body.get('defaults'),
+        )
+        payload['report']['id'] = report.pk
+        return Response(payload)
+
+
+    @action(detail=True, methods=['post'], url_path='ttms-package')
+    def ttms_package(self, request, pk=None):
+        """ساخت بستهٔ درج در فایل Access نسخهٔ TTMS برای ردیف‌های فیلترشده.
+
+        بدنهٔ درخواست: ``{'expression': {...}, 'options': {...}, 'target_name': '...'}``.
+        فیلتر می‌تواند در querystring هم بیاید (همان قالب گزارش تحلیلی و پیوت).
+        خروجی: zip شامل rows.csv + manifest.json + fill_ttms.ps1 + README.txt.
+        """
+        report = self.get_object()
+        body, filters = self._package_params(request)
 
         rows = seasonal_reconcile.filtered_rows(report, DIRECTION_PURCHASE, filters)
         if not rows:
@@ -388,9 +434,16 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
             )
 
         options = seasonal_ttms.normalize_options(body.get('options'))
-        content, filename, manifest = seasonal_ttms.build_package(
-            report, rows, options, filters,
-        )
+        try:
+            content, filename, manifest = seasonal_ttms.build_package(
+                report, rows, options, filters,
+                overrides=body.get('overrides'), defaults=body.get('defaults'),
+            )
+        except seasonal_ttms.OverridesError as error:
+            return Response(
+                {'detail': 'مقادیر اصلاح‌شده معتبر نیستند.', 'errors': error.errors},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
         totals = manifest['totals']
         run = SeasonalExportRun.objects.create(
             company=_company(request),
@@ -401,7 +454,7 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
             package_name=filename,
             target_name=str(body.get('target_name') or '')[:200],
             filters=filters,
-            options=options,
+            options={**options, 'overrides': manifest.get('overrides') or {}},
             row_count=totals['rows'],
             amount_total=totals['amount'],
             vat_total=totals['vat'],

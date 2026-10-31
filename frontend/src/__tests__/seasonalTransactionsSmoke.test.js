@@ -274,6 +274,7 @@ beforeEach(() => {
           defaults: { kala_type: 12, kala_name: 'کالا/خدمات', seller_type1_code: null, continue_radif: true },
           kala_types: [{ value: 12, label: 'سایر کالا ها' }],
           seller_status_codes: [{ value: 5, label: 'مودی مشمول' }],
+          provinces: [{ code: 10, name: 'تهران' }],
         },
       });
     }
@@ -593,6 +594,14 @@ test('ttms fill package dialog shows the mapping and builds a zip', async () => 
 
   await act(async () => { openButton.click(); await wait(320); });
 
+  const previewTab = Array.from(document.body.querySelectorAll('[role="tab"]'))
+    .find((tab) => tab.textContent.includes('پیش‌نمایش'));
+  expect(previewTab).toBeTruthy();
+  await act(async () => { previewTab.click(); await wait(360); });
+  expect(document.body.textContent).toContain('اعمال به همهٔ ردیف‌ها');
+  expect(axiosInstance.post.mock.calls.some(([url]) => url.endsWith('/ttms-preview/')))
+    .toBe(true);
+
   expect(document.body.textContent).toContain('بستهٔ درج ردیف‌ها در فایل Access نسخهٔ TTMS');
   expect(axiosInstance.get.mock.calls.some(([url]) => url.endsWith('/ttms-reference/'))).toBe(true);
   expect(axiosInstance.get.mock.calls.some(([url]) => url.endsWith('/export-runs/')))
@@ -606,6 +615,11 @@ test('ttms fill package dialog shows the mapping and builds a zip', async () => 
   expect(buildButton.disabled).toBe(false);
 
   await act(async () => { buildButton.click(); await wait(320); });
+
+  const previewCalls = axiosInstance.post.mock.calls
+    .filter(([url]) => url.endsWith('/ttms-preview/'));
+  expect(previewCalls.length).toBeGreaterThanOrEqual(1);
+  expect(previewCalls[0][1].options).toMatchObject({ kala_type: 12 });
 
   const buildCalls = axiosInstance.post.mock.calls
     .filter(([url]) => url.endsWith('/ttms-package/'));

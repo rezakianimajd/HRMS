@@ -2,8 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   Alert, Box, Button, Chip, Dialog, DialogActions, DialogContent, DialogTitle,
   Divider, FormControl, FormControlLabel, InputLabel, LinearProgress, MenuItem,
-  Select, Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow,
-  TextField, Tooltip, Typography,
+  Select, Stack, Switch, Tab, Table, TableBody, TableCell, TableHead, TableRow,
+  Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import CloudUploadOutlinedIcon from '@mui/icons-material/CloudUploadOutlined';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -12,6 +12,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../../core/api/axiosConfig';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
+import SeasonalTtmsPreview from './SeasonalTtmsPreview';
 
 const STATUS_COLORS = {
   generated: 'info',
@@ -58,6 +59,13 @@ const SeasonalTtmsDialog = ({
   const [lastRunId, setLastRunId] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef(null);
+  const [tab, setTab] = useState('options');
+  const [overrides, setOverrides] = useState({});
+  const [defaults, setDefaults] = useState({});
+  const [preview, setPreview] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [previewError, setPreviewError] = useState('');
+  const expressionParam = params?.expression || '';
 
   const referenceQuery = useQuery({
     queryKey: ['seasonal-ttms-reference'],
@@ -103,6 +111,81 @@ const SeasonalTtmsDialog = ({
 
   const kalaOptions = reference?.kala_types || [];
   const sellerOptions = reference?.seller_status_codes || [];
+  const provinces = reference?.provinces || [];
+
+  const optionsPayload = useCallback(() => ({
+    kala_type: kalaType,
+    kala_name: kalaName,
+    seller_type1_code: sellerStatus === 'auto' ? null : Number(sellerStatus),
+    continue_radif: continueRadif,
+    dry_run: dryRun,
+  }), [kalaType, kalaName, sellerStatus, continueRadif, dryRun]);
+
+  const setOverride = useCallback((key, column, value) => {
+    setOverrides((current) => {
+      const next = { ...current };
+      const row = { ...(next[key] || {}) };
+      if (value === '' || value === null || value === undefined) row[column] = null;
+      else row[column] = value;
+      if (Object.keys(row).length) next[key] = row;
+      else delete next[key];
+      return next;
+    });
+  }, []);
+
+  const setDefault = useCallback((column, value) => {
+    setDefaults((current) => {
+      if (!column) return {};
+      const next = { ...current };
+      if (value === '' || value === null || value === undefined) delete next[column];
+      else next[column] = value;
+      return next;
+    });
+  }, []);
+
+  const loadPreview = useCallback(async () => {
+    if (!reportId) {
+      setPreviewError('ابتدا گزارش فصل را از سرور دریافت کنید.');
+      return null;
+    }
+    setPreviewLoading(true);
+    setPreviewError('');
+    try {
+      if (typeof prepare === 'function') await prepare();
+      const response = await axiosInstance.post(`${apiBase}/${reportId}/ttms-preview/`, {
+        ...params,
+        options: optionsPayload(),
+        overrides,
+        defaults,
+      });
+      setPreview(response.data);
+      return response.data;
+    } catch (error) {
+      setPreviewError(
+        error?.response?.data?.detail || 'دریافت پیش‌نمایش ناموفق بود؛ اتصال به سرور را بررسی کنید.',
+      );
+      return null;
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [apiBase, defaults, optionsPayload, overrides, params, prepare, reportId]);
+
+  useEffect(() => {
+    if (open && tab === 'preview' && !preview && !previewLoading) loadPreview();
+  }, [open, tab, preview, previewLoading, loadPreview]);
+
+  useEffect(() => {
+    if (!open) {
+      setTab('options');
+      setPreview(null);
+      setPreviewError('');
+    }
+  }, [open]);
+
+  useEffect(() => {
+    setPreview(null);
+  }, [kalaType, kalaName, sellerStatus, continueRadif, dryRun, expressionParam]);
+
 
   const buildPackage = useCallback(async () => {
     if (!reportId) {
@@ -113,18 +196,24 @@ const SeasonalTtmsDialog = ({
     setMessage(null);
     try {
       if (typeof prepare === 'function') await prepare();
+      const fresh = await loadPreview();
+      if (fresh?.errors?.length) {
+        setBuilding(false);
+        setTab('preview');
+        setMessage({
+          severity: 'error',
+          text: `مقادیر اصلاح‌شده معتبر نیست: ${fresh.errors.slice(0, 3).map((item) => item.message).join(' | ')}`,
+        });
+        return;
+      }
       const response = await axiosInstance.post(
         `${apiBase}/${reportId}/ttms-package/`,
         {
           ...params,
           target_name: targetName,
-          options: {
-            kala_type: kalaType,
-            kala_name: kalaName,
-            seller_type1_code: sellerStatus === 'auto' ? null : Number(sellerStatus),
-            continue_radif: continueRadif,
-            dry_run: dryRun,
-          },
+          options: optionsPayload(),
+          overrides,
+          defaults,
         },
         { responseType: 'blob' },
       );
@@ -152,8 +241,8 @@ const SeasonalTtmsDialog = ({
       setBuilding(false);
     }
   }, [
-    apiBase, continueRadif, dryRun, kalaName, kalaType, onToast, params, prepare,
-    reportId, runsQuery, sellerStatus, targetName,
+    apiBase, defaults, loadPreview, onToast, optionsPayload, overrides, params,
+    prepare, reportId, runsQuery, targetName,
   ]);
 
   const registerResult = useCallback(async (file) => {
@@ -202,6 +291,44 @@ const SeasonalTtmsDialog = ({
           </Alert>
         ) : null}
 
+        <Tabs
+          value={tab}
+          onChange={(event, value) => setTab(value)}
+          sx={{ mb: 1.5, minHeight: 32 }}
+          variant="fullWidth"
+        >
+          <Tab value="options" label="تنظیمات بسته" sx={{ fontSize: 12, minHeight: 32 }} />
+          <Tab value="preview" label="پیش‌نمایش و اصلاح خروجی" sx={{ fontSize: 12, minHeight: 32 }} />
+        </Tabs>
+
+        {message ? (
+          <Alert severity={message.severity} sx={{ mb: 1.5, fontSize: 11.5 }}
+                 onClose={() => setMessage(null)}>
+            {message.text}
+          </Alert>
+        ) : null}
+
+        {building || uploading ? <LinearProgress sx={{ mb: 1.5 }} /> : null}
+
+        {tab === 'preview' ? (
+          <SeasonalTtmsPreview
+            apiBase={apiBase}
+            preview={preview}
+            loading={previewLoading}
+            error={previewError}
+            provinces={provinces}
+            kalaTypes={kalaOptions}
+            statusCodes={sellerOptions}
+            overrides={overrides}
+            defaults={defaults}
+            onOverride={setOverride}
+            onDefault={setDefault}
+            onRefresh={() => loadPreview()}
+          />
+        ) : null}
+
+        {tab === 'options' ? (
+        <>
         <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap sx={{ mb: 1.5 }}>
           <Chip size="small" color="primary" variant="outlined"
                 label={`ردیف‌های فیلترشدهٔ جدول: ${toPersianDigits(rowCount)}`} />
@@ -279,15 +406,6 @@ const SeasonalTtmsDialog = ({
           />
         </Stack>
 
-        {message ? (
-          <Alert severity={message.severity} sx={{ mt: 1, fontSize: 11.5 }} onClose={() => setMessage(null)}>
-            {message.text}
-          </Alert>
-        ) : null}
-
-        {building || uploading ? <LinearProgress sx={{ mt: 1.5 }} /> : null}
-
-
         <Divider sx={{ my: 1.5 }} />
 
         <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.75 }}>
@@ -347,6 +465,8 @@ const SeasonalTtmsDialog = ({
           {'پس از اجرای اسکریپت، فایل result.json را اینجا بارگذاری کنید تا نتیجه در تاریخچه ثبت شود. '
             + 'پیش‌نیاز اجرا: نصب Microsoft Access Database Engine (ACE) روی ویندوز.'}
         </Alert>
+        </>
+        ) : null}
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25, gap: 1, flexWrap: 'wrap' }}>
         <input

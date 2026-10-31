@@ -440,6 +440,7 @@ class SavedViewTests(SeasonalBaseTest):
                           for index in range(31)]}
         too_many = self._serializer({'report': self.report.pk, 'name': 'زیاد', 'filters': many})
         self.assertFalse(too_many.is_valid())
+        self.assertIn('filters', too_many.errors)
 
 
 class TtmsPackageTests(SeasonalBaseTest):
@@ -545,6 +546,62 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertEqual(options['kala_type'], 12)      # مقدار نامعتبر → پیش‌فرض
         self.assertIsNone(options['seller_type1_code'])
 
+    def test_preview_maps_rows_and_zone_codes(self):
+        from accounting import seasonal_ttms
+
+        rows = rec.filtered_rows(self.report, 'purchase', {})
+        payload = seasonal_ttms.preview(self.report, rows)
+
+        self.assertEqual(len(payload['rows']), 3)
+        self.assertEqual(payload['totals'], {'rows': 3, 'amount': 1750000,
+                                             'vat': 150000, 'total': 1900000})
+        self.assertTrue(payload['provinces'])
+        self.assertIn('StateCode', payload['editable'])
+
+        legal = payload['rows'][0]['values']
+        self.assertEqual(legal['StateCode'], 10)          # تهران
+        self.assertEqual(legal['CityCode'], 1001000)      # تهران
+        self.assertEqual(legal['HCForoushandeTypeCode'], 2)
+
+        codes = {item['code'] for item in payload['warnings']}
+        self.assertIn('state_code', codes)                # ردیف خارجی بدون استان
+
+    def test_preview_overrides_and_validation(self):
+        from accounting import seasonal_ttms
+
+        rows = rec.filtered_rows(self.report, 'purchase', {})
+        foreign_key = seasonal_ttms._row_key(rows[2])
+
+        payload = seasonal_ttms.preview(
+            self.report, rows, overrides={foreign_key: {'StateCode': '23', 'CityCode': 2301000}},
+        )
+        self.assertEqual(payload['rows'][2]['values']['StateCode'], 23)
+        self.assertEqual(payload['rows'][2]['values']['CityCode'], 2301000)
+
+        cleared = seasonal_ttms.preview(
+            self.report, rows, overrides={foreign_key: {'StateCode': ''}},
+        )
+        self.assertIsNone(cleared['rows'][2]['values']['StateCode'])
+
+        bad = seasonal_ttms.preview(
+            self.report, rows, overrides={foreign_key: {'ForoushandePostCode': '123'}},
+        )
+        self.assertTrue(bad['errors'])
+        self.assertEqual(bad['errors'][0]['column'], 'ForoushandePostCode')
+
+        with self.assertRaises(seasonal_ttms.OverridesError):
+            seasonal_ttms.build_package(
+                self.report, rows, overrides={foreign_key: {'HCForoushandeType1Code': 9}},
+            )
+
+        content, _name, manifest = seasonal_ttms.build_package(
+            self.report, rows, overrides={foreign_key: {'StateCode': 23}},
+        )
+        self.assertEqual(manifest['overrides']['rows'], 1)
+        with zipfile.ZipFile(io.BytesIO(content)) as archive:
+            parsed = list(csv.DictReader(io.StringIO(archive.read('rows.csv').decode('utf-8-sig'))))
+        self.assertEqual(parsed[2]['StateCode'], '23')
+
     def test_export_run_serializer_labels_and_status(self):
         from accounting.models import SeasonalExportRun
         from accounting.serializers import SeasonalExportRunSerializer
@@ -579,5 +636,3 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertEqual(payload['status_display'], 'روی فایل TTMS درج شد')
         self.assertEqual(payload['filled_rows'], 3)
         self.assertEqual(payload['result']['inserted'], 3)
-
-        self.assertIn('filters', too_many.errors)
