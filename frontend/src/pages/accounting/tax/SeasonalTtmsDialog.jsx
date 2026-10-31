@@ -186,6 +186,26 @@ const SeasonalTtmsDialog = ({
     setPreview(null);
   }, [kalaType, kalaName, sellerStatus, continueRadif, dryRun, expressionParam]);
 
+  const downloadPreviewCsv = useCallback(async () => {
+    if (!reportId) return;
+    setPreviewLoading(true);
+    setPreviewError('');
+    try {
+      const response = await axiosInstance.post(
+        `${apiBase}/${reportId}/ttms-preview/`,
+        { ...params, options: optionsPayload(), overrides, defaults, format: 'csv' },
+        { responseType: 'blob' },
+      );
+      const filename = filenameFromHeaders(response.headers, 'ttms-preview.csv');
+      downloadBlob(response.data, filename, 'text/csv;charset=utf-8');
+      onToast?.('فایل CSV پیش‌نمایش دانلود شد');
+    } catch (error) {
+      setPreviewError(error?.response?.data?.detail || 'دانلود CSV پیش‌نمایش ناموفق بود.');
+    } finally {
+      setPreviewLoading(false);
+    }
+  }, [apiBase, defaults, onToast, optionsPayload, overrides, params, reportId]);
+
 
   const buildPackage = useCallback(async () => {
     if (!reportId) {
@@ -319,11 +339,13 @@ const SeasonalTtmsDialog = ({
             provinces={provinces}
             kalaTypes={kalaOptions}
             statusCodes={sellerOptions}
+            currencies={reference?.currencies || []}
             overrides={overrides}
             defaults={defaults}
             onOverride={setOverride}
             onDefault={setDefault}
             onRefresh={() => loadPreview()}
+            onDownloadCsv={downloadPreviewCsv}
           />
         ) : null}
 
@@ -429,7 +451,7 @@ const SeasonalTtmsDialog = ({
             <Table size="small" stickyHeader>
               <TableHead>
                 <TableRow>
-                  {['زمان', 'ردیف‌ها', 'جمع مبلغ', 'وضعیت', 'فایل هدف', 'سازنده'].map((label) => (
+                  {['زمان', 'ردیف‌ها', 'درج‌شده', 'تکراری', 'جمع مبلغ', 'وضعیت', 'فایل هدف', 'سازنده'].map((label) => (
                     <TableCell key={label} sx={{ fontSize: 11, fontWeight: 800 }}>{label}</TableCell>
                   ))}
                 </TableRow>
@@ -441,6 +463,10 @@ const SeasonalTtmsDialog = ({
                       {run.created_at ? new Date(run.created_at).toLocaleString('fa-IR') : '—'}
                     </TableCell>
                     <TableCell sx={{ fontSize: 11 }}>{toPersianDigits(run.row_count || 0)}</TableCell>
+                    <TableCell sx={{ fontSize: 11 }}>{toPersianDigits(run.filled_rows || 0)}</TableCell>
+                    <TableCell sx={{ fontSize: 11 }}>
+                      {toPersianDigits(run.result?.skipped || 0)}
+                    </TableCell>
                     <TableCell sx={{ fontSize: 11 }}>
                       {formatPersianNumber(run.totals?.total || 0)}
                     </TableCell>

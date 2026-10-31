@@ -565,6 +565,9 @@ class TtmsPackageTests(SeasonalBaseTest):
 
         codes = {item['code'] for item in payload['warnings']}
         self.assertIn('state_code', codes)                # ردیف خارجی بدون استان
+        self.assertTrue(payload['currencies'])            # کدهای ارز جدول Arz
+        self.assertGreaterEqual(payload['needs_fix_count'], 1)
+        self.assertTrue(payload['rows'][0]['province_name'])
 
     def test_preview_overrides_and_validation(self):
         from accounting import seasonal_ttms

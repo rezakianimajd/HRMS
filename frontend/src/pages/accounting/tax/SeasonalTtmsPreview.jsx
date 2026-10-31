@@ -1,10 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, FormControl, InputLabel, LinearProgress, MenuItem,
-  Select, Stack, Table, TableBody, TableCell, TableHead, TableRow, TextField,
-  Tooltip, Typography,
+  Alert, Box, Button, Chip, FormControl, FormControlLabel, InputLabel, LinearProgress,
+  MenuItem, Select, Stack, Switch, Table, TableBody, TableCell, TableHead, TableRow,
+  TextField, Tooltip, Typography,
 } from '@mui/material';
 import RefreshIcon from '@mui/icons-material/Refresh';
+import DownloadIcon from '@mui/icons-material/Download';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../../core/api/axiosConfig';
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
@@ -13,15 +14,15 @@ const STATE_COLUMN = 'StateCode';
 const CITY_COLUMN = 'CityCode';
 const MAIN_COLUMNS = [
   STATE_COLUMN, CITY_COLUMN, 'KalaType', 'HCForoushandeType1Code',
-  'ForoushandePostCode', 'ForoushandeNationalCode', 'KalaKhadamatName',
-  'FactorNo', 'FactorDate',
+  'Price', 'MaliatArzeshAfzoodeh', 'ForoushandePostCode',
+  'ForoushandeNationalCode', 'KalaKhadamatName', 'FactorNo', 'FactorDate',
 ];
 const EXTRA_COLUMNS = [
   'HCForoushandeTypeCode', 'ForoushandeName', 'ForoushandeLastNameSherkatName',
-  'ForoushandeAddress', 'SanadNO', 'SanadDate', 'ArzType',
+  'ForoushandeAddress', 'ArzType', 'SanadNO', 'SanadDate',
 ];
 const BULK_COLUMNS = [STATE_COLUMN, CITY_COLUMN, 'KalaType', 'HCForoushandeType1Code',
-  'FactorDate', 'KalaKhadamatName'];
+  'ArzType', 'FactorDate', 'KalaKhadamatName'];
 
 const useProvinceCities = (apiBase, stateCode) => useQuery({
   queryKey: ['ttms-cities', stateCode],
@@ -58,9 +59,10 @@ const CitySelect = ({ apiBase, stateCode, value, onChange }) => {
 
 const SeasonalTtmsPreview = ({
   apiBase, preview, loading, error, provinces = [], kalaTypes = [], statusCodes = [],
-  overrides, defaults, onOverride, onDefault, onRefresh,
+  currencies = [], overrides, defaults, onOverride, onDefault, onRefresh, onDownloadCsv,
 }) => {
   const [showExtra, setShowExtra] = useState(false);
+  const [onlyNeedsFix, setOnlyNeedsFix] = useState(false);
   const [bulkColumn, setBulkColumn] = useState(STATE_COLUMN);
   const [bulkValue, setBulkValue] = useState('');
 
@@ -80,6 +82,8 @@ const SeasonalTtmsPreview = ({
   };
 
   const visibleColumns = showExtra ? [...MAIN_COLUMNS, ...EXTRA_COLUMNS] : MAIN_COLUMNS;
+  const allRows = preview?.rows || [];
+  const rows = onlyNeedsFix ? allRows.filter((row) => row.needs_fix) : allRows;
 
   const renderEditor = (row, column) => {
     const value = valueOf(row, column);
@@ -139,6 +143,20 @@ const SeasonalTtmsPreview = ({
         </Select>
       );
     }
+    if (column === 'ArzType') {
+      return (
+        <Select size="small" displayEmpty value={text}
+                onChange={(event) => onOverride(row.key, column, event.target.value)}
+                sx={{ fontSize: 11, minWidth: 140 }}>
+          <MenuItem value="" sx={{ fontSize: 11 }}>—</MenuItem>
+          {currencies.map((item) => (
+            <MenuItem key={item.code} value={String(item.code)} sx={{ fontSize: 11 }}>
+              {`${toPersianDigits(item.code)} — ${item.name}`}
+            </MenuItem>
+          ))}
+        </Select>
+      );
+    }
     return (
       <TextField
         size="small"
@@ -160,15 +178,23 @@ const SeasonalTtmsPreview = ({
     <Box>
       <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
         <Chip size="small" color="primary" variant="outlined"
-              label={`ردیف‌ها: ${toPersianDigits(preview?.rows?.length || 0)}`} />
+              label={`ردیف‌ها: ${toPersianDigits(allRows.length)}`} />
         {preview ? (
           <Chip size="small" variant="outlined"
                 label={`جمع مبلغ: ${formatPersianNumber(preview.totals?.amount || 0)}`} />
         ) : null}
+        {preview?.needs_fix_count ? (
+          <Chip size="small" color="warning" variant="outlined"
+                label={`نیازمند اصلاح: ${toPersianDigits(preview.needs_fix_count)}`} />
+        ) : null}
         <Box sx={{ flex: 1 }} />
+        <Button size="small" startIcon={<DownloadIcon sx={{ fontSize: 15 }} />}
+                onClick={onDownloadCsv} disabled={loading || !preview}>
+          دانلود CSV پیش‌نمایش
+        </Button>
         <Button size="small" startIcon={<RefreshIcon sx={{ fontSize: 15 }} />}
                 onClick={onRefresh} disabled={loading}>
-          به‌روزرسانی پیش‌نمایش
+          به‌روزرسانی
         </Button>
       </Stack>
 
@@ -236,6 +262,17 @@ const SeasonalTtmsPreview = ({
               </MenuItem>
             ))}
           </Select>
+        ) : bulkColumn === 'ArzType' ? (
+          <Select size="small" displayEmpty value={bulkValue}
+                  onChange={(event) => setBulkValue(event.target.value)}
+                  sx={{ fontSize: 11.5, minWidth: 200 }}>
+            <MenuItem value="" sx={{ fontSize: 11.5 }}>—</MenuItem>
+            {currencies.map((item) => (
+              <MenuItem key={item.code} value={String(item.code)} sx={{ fontSize: 11.5 }}>
+                {`${toPersianDigits(item.code)} — ${item.name}`}
+              </MenuItem>
+            ))}
+          </Select>
         ) : (
           <TextField size="small" label={label(bulkColumn)} value={bulkValue}
                      onChange={(event) => setBulkValue(event.target.value)}
@@ -274,6 +311,19 @@ const SeasonalTtmsPreview = ({
       {error ? <Alert severity="error" sx={{ mb: 1, fontSize: 11.5 }}>{error}</Alert> : null}
       {loading ? <LinearProgress sx={{ mb: 1 }} /> : null}
 
+      <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+        <FormControlLabel
+          control={<Switch size="small" checked={onlyNeedsFix}
+                           onChange={(event) => setOnlyNeedsFix(event.target.checked)} />}
+          label={<Typography sx={{ fontSize: 11.5 }}>فقط ردیف‌های نیازمند اصلاح</Typography>}
+        />
+        {onlyNeedsFix ? (
+          <Typography sx={{ fontSize: 10.5, color: 'text.secondary' }}>
+            {`${toPersianDigits(rows.length)} از ${toPersianDigits(allRows.length)} ردیف نمایش داده می‌شود.`}
+          </Typography>
+        ) : null}
+      </Stack>
+
       <Box sx={{
         maxHeight: 360, overflow: 'auto', border: '1px solid', borderColor: 'divider',
         borderRadius: 1,
@@ -281,7 +331,7 @@ const SeasonalTtmsPreview = ({
         <Table size="small" stickyHeader>
           <TableHead>
             <TableRow>
-              {['ردیف', 'طرف معامله', 'مبلغ', 'مالیات'].map((title) => (
+              {['ردیف', 'طرف معامله', 'استان/شهر (Zone)'].map((title) => (
                 <TableCell key={title} sx={{ fontSize: 10.5, fontWeight: 800, whiteSpace: 'nowrap' }}>
                   {title}
                 </TableCell>
@@ -294,12 +344,14 @@ const SeasonalTtmsPreview = ({
             </TableRow>
           </TableHead>
           <TableBody>
-            {(preview?.rows || []).map((row) => (
-              <TableRow key={row.key} hover>
+            {rows.map((row) => (
+              <TableRow key={row.key} hover sx={row.needs_fix ? { bgcolor: 'rgba(245, 158, 11, 0.07)' } : undefined}>
                 <TableCell sx={{ fontSize: 11 }}>{toPersianDigits(row.line_no)}</TableCell>
                 <TableCell sx={{ fontSize: 11, maxWidth: 180 }}>{row.party_name}</TableCell>
-                <TableCell sx={{ fontSize: 11 }}>{formatPersianNumber(row.amount)}</TableCell>
-                <TableCell sx={{ fontSize: 11 }}>{formatPersianNumber(row.vat)}</TableCell>
+                <TableCell sx={{ fontSize: 10.5, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+                  {row.province_name || row.province || '—'}
+                  {row.city_name ? ` / ${row.city_name}` : ''}
+                </TableCell>
                 {visibleColumns.map((column) => (
                   <TableCell key={column} sx={{ py: 0.5, px: 0.75 }}>
                     {renderEditor(row, column)}

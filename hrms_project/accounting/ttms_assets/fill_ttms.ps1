@@ -27,6 +27,10 @@
 .PARAMETER Force
     ادامهٔ کار حتی اگر بازبینی جمع‌ها اختلاف نشان دهد.
 
+.PARAMETER AllowDuplicates
+    درج ردیف‌هایی که با ردیف‌های موجود فایل یکسان‌اند (شمارهٔ فاکتور + شناسهٔ ملی + مبلغ).
+    پیش‌فرض: ردیف‌های تکراری درج نمی‌شوند تا اجرای دوباره باعث رکورد تکراری نشود.
+
 .EXAMPLE
     .\fill_ttms.ps1 -Target "C:\TTMS\TTMS_96_New.mdb"
 
@@ -39,7 +43,8 @@ param(
     [string]$OutputDir = '',
     [switch]$DryRun,
     [switch]$InPlace,
-    [switch]$Force
+    [switch]$Force,
+    [switch]$AllowDuplicates
 )
 
 $ErrorActionPreference = 'Stop'
@@ -61,6 +66,9 @@ $result = [ordered]@{
     output           = ''
     header_created   = $false
     inserted         = 0
+    skipped          = 0
+    duplicates       = @()
+    allow_duplicates = [bool]$AllowDuplicates
     expected         = [ordered]@{ rows = 0; amount = 0; vat = 0 }
     observed         = [ordered]@{ rows = 0; amount = 0; vat = 0 }
     verification     = [ordered]@{ rows = $false; amount = $false; vat = $false }
@@ -242,6 +250,11 @@ $continueRadif = $true
 if ($null -ne $manifest.options.continue_radif) { $continueRadif = [bool]$manifest.options.continue_radif }
 
 $inserted = 0
+$skipped = 0
+$expectedRows = 0
+$expectedPrice = 0.0
+$expectedVat = 0.0
+$duplicateNotes = New-Object System.Collections.Generic.List[string]
 $failure = $null
 $allVerified = $false
 
@@ -269,9 +282,36 @@ try {
     }
     $maxRs.Close()
 
+    # ردیف‌های موجود برای جلوگیری از درج تکراری (کلید: شمارهٔ فاکتور + شناسهٔ ملی + مبلغ)
+    $existing = @{}
+    $existingCount = 0
+    $rsExisting = $cn.Execute("SELECT FactorNo, ForoushandeNationalCode, Price FROM [$detailTable]")
+    while (-not $rsExisting.EOF) {
+        $fNo = [string]$rsExisting.Fields.Item('FactorNo').Value
+        $fNat = [string]$rsExisting.Fields.Item('ForoushandeNationalCode').Value
+        $fPrice = [string]$rsExisting.Fields.Item('Price').Value
+        if ($fNo.Trim() -ne '') {
+            $existing[($fNo.Trim() + '|' + $fNat.Trim() + '|' + $fPrice.Trim())] = $true
+            $existingCount = $existingCount + 1
+        }
+        $rsExisting.MoveNext()
+    }
+    $rsExisting.Close()
+    Write-Host ('ردیف‌های موجود در فایل TTMS: ' + $existingCount) -ForegroundColor DarkGray
+
     $radif = $maxRadif
     $columnList = ($columnNames -join ', ')
     foreach ($row in $rows) {
+        $rowFactorNo = ([string]$row.FactorNo).Trim()
+        $rowNational = ([string]$row.ForoushandeNationalCode).Trim()
+        $rowPrice = ([string]$row.Price).Trim()
+        $rowKey = $rowFactorNo + '|' + $rowNational + '|' + $rowPrice
+        if ($rowFactorNo -ne '' -and -not $AllowDuplicates -and $existing.ContainsKey($rowKey)) {
+            $skipped = $skipped + 1
+            $duplicateNotes.Add('فاکتور ' + $rowFactorNo + ' | شناسه ' + $rowNational + ' | مبلغ ' + $rowPrice)
+            continue
+        }
+
         $radif = $radif + 1
         $values = New-Object System.Collections.Generic.List[string]
         foreach ($name in $columnNames) {
@@ -298,7 +338,12 @@ try {
         $sql = "INSERT INTO [$detailTable] ($columnList) VALUES (" + ($values -join ', ') + ')'
         $cn.Execute($sql) | Out-Null
         $inserted = $inserted + 1
+        $expectedRows = $expectedRows + 1
+        $expectedPrice = $expectedPrice + (Get-Number $row.Price)
+        $expectedVat = $expectedVat + (Get-Number $row.MaliatArzeshAfzoodeh)
+        if ($rowFactorNo -ne '') { $existing[$rowKey] = $true }
     }
+
 
     $countAfter = Get-Number (Get-Scalar $cn "SELECT COUNT(*) AS C FROM [$detailTable]")
     $sumPriceAfter = Get-Number (Get-Scalar $cn "SELECT SUM(Price) AS S FROM [$detailTable]")
@@ -309,16 +354,21 @@ try {
     $deltaVat = $sumVatAfter - $sumVatBefore
 
     $result.inserted = $inserted
+    $result.skipped = $skipped
+    $result.duplicates = @($duplicateNotes)
+    $result.expected.rows = $expectedRows
+    $result.expected.amount = $expectedPrice
+    $result.expected.vat = $expectedVat
     $result.observed.rows = $deltaRows
     $result.observed.amount = $deltaPrice
     $result.observed.vat = $deltaVat
-    $result.verification.rows = ($deltaRows -eq $result.expected.rows)
-    $result.verification.amount = ([math]::Abs($deltaPrice - $result.expected.amount) -lt 1)
-    $result.verification.vat = ([math]::Abs($deltaVat - $result.expected.vat) -lt 1)
+    $result.verification.rows = ($deltaRows -eq $expectedRows)
+    $result.verification.amount = ([math]::Abs($deltaPrice - $expectedPrice) -lt 1)
+    $result.verification.vat = ([math]::Abs($deltaVat - $expectedVat) -lt 1)
     $allVerified = $result.verification.rows -and $result.verification.amount -and $result.verification.vat
 
     if (-not $allVerified -and -not $Force) {
-        throw ('بازبینی جمع‌ها موفق نبود؛ انتظار: ' + $result.expected.rows + ' ردیف / مبلغ ' + $result.expected.amount + ' / مالیات ' + $result.expected.vat +
+        throw ('بازبینی جمع‌ها موفق نبود؛ انتظار: ' + $expectedRows + ' ردیف / مبلغ ' + $expectedPrice + ' / مالیات ' + $expectedVat +
             ' — مشاهده: ' + $deltaRows + ' ردیف / مبلغ ' + $deltaPrice + ' / مالیات ' + $deltaVat)
     }
 
@@ -329,7 +379,11 @@ try {
     }
 } catch {
     try { $cn.RollbackTrans() } catch { }
+    $lineInfo = $_.InvocationInfo
     $failure = $_.Exception.Message
+    if ($lineInfo -and $lineInfo.ScriptLineNumber) {
+        $failure = $failure + ' (خط ' + $lineInfo.ScriptLineNumber + ': ' + ([string]$lineInfo.Line).Trim() + ')'
+    }
 } finally {
     try { $cn.Close() } catch { }
 }
@@ -350,6 +404,9 @@ if ($DryRun) {
     $result.status = 'filled'
     $result.message = 'ردیف‌ها در فایل کپی‌شده درج و جمع‌ها بازبینی شد.'
 }
+if ($skipped -gt 0) {
+    $result.message = 'ردیف‌های درج‌شده بازبینی شد؛ ' + $skipped + ' ردیف تکراری (از قبل موجود) درج نشد.'
+}
 
 $result.finished_at = (Get-Date).ToString('s')
 $result.duration_seconds = [math]::Round(((Get-Date) - $startedAt).TotalSeconds, 1)
@@ -358,6 +415,12 @@ Save-Result
 Write-Host ''
 Write-Host ('نتیجه: ' + $result.status) -ForegroundColor Green
 Write-Host ('ردیف‌های درج‌شده: ' + $inserted)
+if ($skipped -gt 0) {
+    Write-Host ('ردیف‌های تکراری (درج‌نشده): ' + $skipped) -ForegroundColor Yellow
+    foreach ($note in ($duplicateNotes | Select-Object -First 5)) {
+        Write-Host ('  - ' + $note) -ForegroundColor DarkYellow
+    }
+}
 Write-Host ('بازبینی تعداد: ' + $result.observed.rows + ' | مبلغ: ' + $result.observed.amount + ' | مالیات: ' + $result.observed.vat)
 if ($result.output) { Write-Host ('فایل پرشده: ' + $result.output) -ForegroundColor Cyan }
 Write-Host ('گزارش نتیجه: ' + $resultPath) -ForegroundColor Cyan

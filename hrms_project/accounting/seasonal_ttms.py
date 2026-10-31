@@ -44,6 +44,7 @@ DETAIL_TABLE = 'Kharid_Detail'
 ASSETS_DIR = Path(__file__).resolve().parent / 'ttms_assets'
 FILLER_SCRIPT = 'fill_ttms.ps1'
 ZONE_ASSET = 'zone_codes.json'
+ARZ_ASSET = 'arz_codes.json'
 
 # ستون‌هایی که کاربر می‌تواند در «پیش‌نمایش» اصلاح کند (بقیه فقط نمایشی است)
 EDITABLE_COLUMNS = [
@@ -58,6 +59,8 @@ EDITABLE_COLUMNS = [
     'ForoushandeLastNameSherkatName',
     'ForoushandeAddress',
     'KalaKhadamatName',
+    'Price',
+    'MaliatArzeshAfzoodeh',
     'FactorNo',
     'FactorDate',
     'SanadNO',
@@ -74,8 +77,11 @@ COLUMN_RANGES = {
     'HCForoushandeType1Code': (5, 7),
     'ArzType': (0, 32767),
     'SanadNO': (0, 2147483647),
+    'Price': (0, 10 ** 15),
+    'MaliatArzeshAfzoodeh': (0, 10 ** 15),
     'Radif': (0, 2147483647),
 }
+
 
 
 # نوع کالا در فایل TTMS (جدول KalaType)
@@ -256,6 +262,17 @@ def zone_cities(province_code=None):
     return list(_zones()[1].get(str(province_code), []))
 
 
+@lru_cache(maxsize=1)
+def currency_codes():
+    """کدهای ارز نسخهٔ TTMS (جدول ``Arz``) برای معاملات ارزی."""
+    path = ASSETS_DIR / ARZ_ASSET
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
+    return [{'code': int(code), 'name': name} for code, name in data.get('currencies', [])]
+
+
 def match_zone(province_text, city_text=''):
     """نام استان/شهر متنی → (کد استان، کد شهر) بر اساس جدول Zone."""
     _provinces, _cities, province_index, city_index = _zones()
@@ -331,10 +348,12 @@ def ttms_reference():
         'column_ranges': {key: list(value) for key, value in COLUMN_RANGES.items()},
         'zone_source': f'{TEMPLATE_REFERENCE} :: Zone',
         'provinces': zone_provinces(),
+        'currencies': currency_codes(),
         'workflow': [
             'بستهٔ zip را دانلود و در ویندوز از حالت فشرده خارج کنید.',
             'اسکریپت fill_ttms.ps1 را در PowerShell (نه CMD) با پارامتر -Target مسیر فایل Access اجرا کنید.',
             'اسکریپت فقط روی «کپی» فایل می‌نویسد؛ فایل اصلی دست‌نخورده می‌ماند.',
+            'ردیف‌های تکراری (شمارهٔ فاکتور + شناسهٔ ملی + مبلغ) به‌طور پیش‌فرض درج نمی‌شوند؛ برای درج اجباری از -AllowDuplicates استفاده کنید.',
             'فایل result.json را برای ثبت نتیجه در HRMS بارگذاری کنید.',
         ],
         'notes': [
@@ -568,48 +587,124 @@ def apply_overrides(payloads, keys, overrides=None, defaults=None):
     return payloads
 
 
-def _preview_warnings(payloads):
-    """هشدارهای کیفیت داده در خروجی TTMS (قابل اصلاح در پیش‌نمایش)."""
+def _zone_label(state_code, city_code):
+    """نام استان/شهر برای نمایش در پیش‌نمایش (از جدول Zone)."""
+    provinces, cities, _index, _city_index = _zones()
+    province_name = ''
+    for province in provinces:
+        if province['code'] == state_code:
+            province_name = province['name']
+            break
+    city_name = ''
+    for city in cities.get(str(state_code), []):
+        if city['code'] == city_code:
+            city_name = city['name']
+            break
+    return province_name, city_name
+
+
+def _quality_report(payloads, rows, report):
+    """هشدار/خطاهای کیفیت دادهٔ خروجی TTMS + ردیف‌های نیازمند اصلاح."""
+    provinces = {province['code'] for province in zone_provinces()}
+    city_index = {str(code): {city['code'] for city in items}
+                  for code, items in _zones()[1].items()}
+    period_start = _jalali_text(report.period_range[0])
+    period_end = _jalali_text(report.period_range[1])
     total = len(payloads)
-    missing_state = sum(1 for item in payloads if item.get('StateCode') in (None, ''))
-    missing_city = sum(1 for item in payloads if item.get('CityCode') in (None, ''))
-    missing_date = sum(1 for item in payloads if not item.get('FactorDate'))
-    missing_national = sum(1 for item in payloads if not item.get('ForoushandeNationalCode'))
-    bad_postal = sum(
-        1 for item in payloads
-        if item.get('ForoushandePostCode') and len(str(item['ForoushandePostCode'])) != 10
-    )
+
+    counters = {}
+    needs_fix = set()
+
+    def bump(code, key=None):
+        counters[code] = counters.get(code, 0) + 1
+        if key is not None:
+            needs_fix.add(key)
+
+    invoice_keys = {}
+    for index, payload in enumerate(payloads):
+        key = _row_key(rows[index]) if index < len(rows) else str(index + 1)
+        state = payload.get('StateCode')
+        city = payload.get('CityCode')
+        amount = _to_int(payload.get('Price'))
+        vat = _to_int(payload.get('MaliatArzeshAfzoodeh'))
+        date = str(payload.get('FactorDate') or '')
+        national = str(payload.get('ForoushandeNationalCode') or '')
+        postal = str(payload.get('ForoushandePostCode') or '')
+        person_type = getattr(rows[index], 'person_type', '') if index < len(rows) else ''
+
+        if state in (None, ''):
+            bump('state_code', key)
+        elif state not in provinces:
+            bump('state_unknown', key)
+        elif city not in (None, ''):
+            allowed = city_index.get(str(state))
+            if allowed and city not in allowed:
+                bump('city_mismatch', key)
+        if city in (None, ''):
+            bump('city_code', key)
+        if not date:
+            bump('factor_date', key)
+        elif period_start and date < period_start or (period_end and date > period_end):
+            bump('date_outside', key)
+        if not national:
+            bump('national_code', key)
+        elif person_type == 'legal' and len(national) != 11:
+            bump('national_length', key)
+        elif person_type == 'natural' and len(national) != 10:
+            bump('national_length', key)
+        if postal and len(postal) != 10:
+            bump('postal_code', key)
+        if amount <= 0:
+            bump('zero_amount', key)
+        elif vat > 0 and vat * 10 > amount + 10:
+            bump('vat_ratio', key)
+        invoice_no = str(payload.get('FactorNo') or '')
+        if not invoice_no:
+            bump('missing_invoice', key)
+        elif invoice_no and national:
+            invoice_keys.setdefault((invoice_no, national), []).append(key)
+
+    for keys in invoice_keys.values():
+        if len(keys) > 1:
+            for key in keys:
+                bump('duplicate_invoice', key)
+
+    messages = {
+        'state_code': ('کد استان ندارد؛ از ستون «استان» انتخاب کنید.', 'warning', 'StateCode'),
+        'state_unknown': ('کد استان در جدول Zone نسخهٔ TTMS وجود ندارد.', 'error', 'StateCode'),
+        'city_code': ('کد شهر ندارد (اختیاری است، ولی برای ارسال دقیق‌تر بهتر است).', 'info', 'CityCode'),
+        'city_mismatch': ('کد شهر با استان انتخاب‌شده هم‌خوان نیست.', 'warning', 'CityCode'),
+        'factor_date': ('تاریخ صورتحساب ندارد؛ پایان فصل جایگزین شده است.', 'warning', 'FactorDate'),
+        'date_outside': ('تاریخ صورتحساب بیرون از بازهٔ فصل است.', 'warning', 'FactorDate'),
+        'national_code': ('شناسهٔ ملی / کد ملی ندارد.', 'warning', 'ForoushandeNationalCode'),
+        'national_length': ('طول شناسهٔ ملی/کد ملی با نوع شخص نمی‌خواند (حقوقی ۱۱ / حقیقی ۱۰).',
+                            'warning', 'ForoushandeNationalCode'),
+        'postal_code': ('کد پستی ۱۰ رقمی نیست.', 'warning', 'ForoushandePostCode'),
+        'zero_amount': ('مبلغ صفر یا منفی است.', 'warning', 'Price'),
+        'vat_ratio': ('مالیات بیشتر از ۱۰٪ مبلغ است؛ بررسی کنید.', 'warning', 'MaliatArzeshAfzoodeh'),
+        'missing_invoice': ('شمارهٔ فاکتور ندارد.', 'warning', 'FactorNo'),
+        'duplicate_invoice': ('ترکیب شمارهٔ فاکتور و شناسهٔ ملی در این خروجی تکرار شده است.',
+                              'warning', 'FactorNo'),
+    }
+
     warnings = []
-    if missing_state:
+    for code, count in sorted(counters.items(), key=lambda item: item[0]):
+        message, level, column = messages.get(code, ('', 'warning', ''))
         warnings.append({
-            'code': 'state_code', 'level': 'warning', 'count': missing_state,
-            'column': 'StateCode',
-            'message': f'{missing_state} از {total} ردیف کد استان ندارد؛ از ستون «استان» انتخاب کنید.',
+            'code': code, 'level': level, 'count': count, 'column': column,
+            'message': f'{count} از {total} ردیف: {message}' if message else f'{count} ردیف',
         })
-    if missing_city:
-        warnings.append({
-            'code': 'city_code', 'level': 'info', 'count': missing_city, 'column': 'CityCode',
-            'message': f'{missing_city} ردیف کد شهر ندارد (اختیاری است، ولی برای ارسال دقیق‌تر بهتر است).',
-        })
-    if missing_date:
-        warnings.append({
-            'code': 'factor_date', 'level': 'warning', 'count': missing_date,
-            'column': 'FactorDate',
-            'message': f'{missing_date} ردیف تاریخ صورتحساب ندارد؛ پایان فصل جایگزین شده است.',
-        })
-    if missing_national:
-        warnings.append({
-            'code': 'national_code', 'level': 'warning', 'count': missing_national,
-            'column': 'ForoushandeNationalCode',
-            'message': f'{missing_national} ردیف شناسهٔ ملی / کد ملی ندارد.',
-        })
-    if bad_postal:
-        warnings.append({
-            'code': 'postal_code', 'level': 'warning', 'count': bad_postal,
-            'column': 'ForoushandePostCode',
-            'message': f'{bad_postal} ردیف کد پستی غیر ۱۰ رقمی دارد.',
-        })
-    return warnings
+    return warnings, needs_fix
+
+
+def _preview_warnings(payloads):
+    """سازگاری عقب‌رو: هشدارهای ساده بدون اطلاعات ردیف‌ها."""
+    return _quality_report(payloads, [], _FakePeriod())[0]
+
+
+class _FakePeriod:
+    period_range = ('', '')
+
 
 
 def _column_spec():
@@ -642,6 +737,8 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
     except Exception:                              # noqa: BLE001 — برچسب اختیاری است
         filters_label = ''
 
+    warnings, needs_fix = _quality_report(payloads, rows, report)
+
     preview_rows = []
     for index, payload in enumerate(payloads):
         row = rows[index]
@@ -652,6 +749,7 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
                 _text(getattr(row, 'last_name', '')),
             ) if part
         )
+        province_name, city_name = _zone_label(payload.get('StateCode'), payload.get('CityCode'))
         preview_rows.append({
             'key': keys[index],
             'line_no': payload.get('Radif'),
@@ -659,6 +757,9 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
             'person_type': getattr(row, 'person_type', ''),
             'province': _text(getattr(row, 'province', ''), 60),
             'city': _text(getattr(row, 'city', ''), 100),
+            'province_name': province_name,
+            'city_name': city_name,
+            'needs_fix': keys[index] in needs_fix,
             'amount': payload.get('Price'),
             'vat': payload.get('MaliatArzeshAfzoodeh'),
             'invoice_no': payload.get('FactorNo'),
@@ -669,6 +770,7 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
         'package_version': PACKAGE_VERSION,
         'template_status': TEMPLATE_STATUS,
         'zone_source': f'{TEMPLATE_REFERENCE} :: Zone',
+        'currency_source': f'{TEMPLATE_REFERENCE} :: Arz',
         'report': {
             'id': getattr(report, 'pk', None),
             'fiscal_year': getattr(getattr(report, 'fiscal_year', None), 'name', ''),
@@ -684,15 +786,38 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
         'columns': _column_spec(),
         'editable': list(EDITABLE_COLUMNS),
         'kala_types': [{'value': value, 'label': label} for value, label in KALA_TYPES],
+        'currencies': currency_codes(),
         'person_type_codes': {
             key: {'type_code': code, 'type1_code': extra}
             for key, (code, extra) in PERSON_TYPE_CODES.items()
         },
         'rows': preview_rows,
         'totals': _totals(payloads),
-        'warnings': _preview_warnings(payloads),
+        'warnings': warnings,
+        'needs_fix_count': len(needs_fix),
         'errors': errors + default_errors,
     }
+
+
+def preview_csv(report, rows, options=None, overrides=None, defaults=None):
+    """فایل ``rows.csv`` پیش‌نمایش (بدون ساخت zip) برای بازبینی در اکسل."""
+    options = normalize_options(options)
+    rows = list(rows)
+    payloads = build_rows(report, rows, options)
+    keys = [_row_key(row) for row in rows]
+    clean_overrides, errors = normalize_overrides(overrides, keys)
+    clean_defaults, default_errors = normalize_defaults(defaults)
+    problems = errors + default_errors
+    if problems:
+        raise OverridesError(problems)
+    apply_overrides(payloads, keys, clean_overrides, clean_defaults)
+
+    stamp = datetime.now().strftime('%Y%m%d-%H%M')
+    year_key = _jalali_year(report) or 'year'
+    quarter = getattr(report, 'quarter', '') or ''
+    filename = f'ttms-preview-{year_key}-q{quarter}-{stamp}.csv'
+    return _csv_text(payloads).encode('utf-8'), filename
+
 
 
 
@@ -804,6 +929,16 @@ def build_readme(manifest):
         '     سوییچ -InPlace را اضافه کنید (پیش از آن پشتیبان تهیه می‌شود).',
         '  4) نتیجهٔ اجرا در فایل result.json نوشته می‌شود؛ آن را در HRMS بارگذاری',
         '     کنید تا در تاریخچهٔ همان گزارش ثبت شود.',
+        '',
+        'جلوگیری از درج تکراری:',
+        '  ردیف‌هایی که ترکیب «شمارهٔ فاکتور + شناسهٔ ملی + مبلغ» آن‌ها از قبل در',
+        '  Kharid_Detail وجود دارد، به‌طور پیش‌فرض درج نمی‌شوند (اجرای دوباره بی‌خطر است).',
+        '  برای درج اجباری همهٔ ردیف‌ها، سوییچ -AllowDuplicates را اضافه کنید.',
+        '',
+        'کدهای مرجع:',
+        '  - استان/شهر از جدول Zone همان فایل TTMS (کد استان + کد شهر) پر می‌شود.',
+        '  - نوع کالا از جدول KalaType (۱۲ = سایر کالا ها).',
+        '  - نوع ارز از جدول Arz برای معاملات ارزی (ریالی خالی می‌ماند).',
         '',
         'پیش‌نیازها:',
         '  - Microsoft Access Database Engine (ACE) 2010/2016 یا Microsoft Access',

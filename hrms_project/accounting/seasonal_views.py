@@ -403,6 +403,24 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
                 {'detail': 'با فیلترهای انتخابی هیچ ردیفی برای پیش‌نمایش باقی نمی‌ماند.'},
                 status=http_status.HTTP_400_BAD_REQUEST,
             )
+
+        if str(body.get('format') or '').lower() == 'csv':
+            try:
+                content, filename = seasonal_ttms.preview_csv(
+                    report, rows,
+                    options=body.get('options'),
+                    overrides=body.get('overrides'),
+                    defaults=body.get('defaults'),
+                )
+            except seasonal_ttms.OverridesError as error:
+                return Response(
+                    {'detail': 'مقادیر اصلاح‌شده معتبر نیستند.', 'errors': error.errors},
+                    status=http_status.HTTP_400_BAD_REQUEST,
+                )
+            response = HttpResponse(content, content_type='text/csv; charset=utf-8')
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
         payload = seasonal_ttms.preview(
             report,
             rows,
