@@ -11,6 +11,7 @@ import {
 
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali } from '../../../core/utils/dateUtils';
+import { StudioCard, useStudio } from './seasonalStudioUi';
 
 const INK = '#0f172a';
 const MUTED = '#64748b';
@@ -179,34 +180,52 @@ const buildLocalAnalytics = (rows, filters = {}) => {
 };
 
 
-const KpiCard = ({ label, value, hint, color = INK }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      flex: '1 1 150px', minWidth: 148, px: 1.4, py: 1.1, borderRadius: '12px',
-      border: '1px solid var(--hrms-table-border-color, #e2e8f0)', bgcolor: 'background.paper',
-    }}
-  >
-    <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
-    <Typography noWrap sx={{ fontSize: 15.5, fontWeight: 900, color, mt: 0.25 }}>{value}</Typography>
-    {hint ? <Typography sx={{ fontSize: 10, color: MUTED }}>{hint}</Typography> : null}
-  </Paper>
-);
+const KpiCard = ({ label, value, hint, color = INK }) => {
+  const studio = useStudio();
+  return (
+    <Box
+      sx={{
+        position: 'relative',
+        flex: '1 1 150px',
+        minWidth: 148,
+        px: 1.35,
+        py: 0.9,
+        borderRadius: `${studio.radius.medium}px`,
+        border: `1px solid ${studio.border}`,
+        bgcolor: studio.surface,
+        boxShadow: studio.cardShadow,
+        overflow: 'hidden',
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          insetInlineStart: 0,
+          top: 0,
+          bottom: 0,
+          width: 3,
+          background: color,
+          opacity: 0.8,
+        },
+      }}
+    >
+      <Typography sx={{ fontSize: 10.5, color: MUTED }}>{label}</Typography>
+      <Typography noWrap sx={{ fontSize: 15, fontWeight: 900, color, mt: 0.2, fontVariantNumeric: 'tabular-nums' }}>
+        {value}
+      </Typography>
+      {hint ? <Typography sx={{ fontSize: 10, color: MUTED }}>{hint}</Typography> : null}
+    </Box>
+  );
+};
 
-const SectionPaper = ({ title, subtitle, children }) => (
-  <Paper
-    elevation={0}
-    sx={{
-      flex: '1 1 320px', minWidth: 300, px: 1.4, py: 1.2, borderRadius: '12px',
-      border: '1px solid var(--hrms-table-border-color, #e2e8f0)', bgcolor: 'background.paper',
-    }}
+const SectionPaper = ({ title, subtitle, children, actions }) => (
+  <StudioCard
+    title={title}
+    subtitle={subtitle}
+    dense
+    actions={actions}
+    sx={{ flex: '1 1 320px', minWidth: 300 }}
   >
-    <Stack direction="row" alignItems="baseline" spacing={1} sx={{ mb: 0.75 }}>
-      <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{title}</Typography>
-      {subtitle ? <Typography sx={{ fontSize: 10, color: MUTED }}>{subtitle}</Typography> : null}
-    </Stack>
     {children}
-  </Paper>
+  </StudioCard>
 );
 
 const SeasonalAnalyticsPanel = ({ analytics, rows, loading, error, filters = {}, onFilterChange, onExport, exporting = false }) => {

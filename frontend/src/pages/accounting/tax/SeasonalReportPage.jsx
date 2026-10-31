@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, Chip, FormControl, IconButton, InputLabel,
-  MenuItem, Paper, Select, Snackbar, Stack, Tab, Tabs, TextField, Tooltip, Typography,
+  MenuItem, Select, Snackbar, Stack, TextField, Tooltip, Typography,
 } from '@mui/material';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
@@ -14,26 +14,33 @@ import PrintIcon from '@mui/icons-material/Print';
 import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useQuery } from '@tanstack/react-query';
+import { alpha } from '@mui/material/styles';
 import axiosInstance from '../../../core/api/axiosConfig';
-import PageHeader from '../../../core/components/ui/PageHeader';
 import MoneyInput from '../../../core/components/ui/MoneyInput';
+
 import { MUTED } from '../../accounting/AccountingDashboardUI';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali, getJalaliParts, toGregorian } from '../../../core/utils/dateUtils';
 import {
   ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../../contracts/contractModuleUi';
-import SeasonalAnalyticsPanel from './SeasonalAnalyticsPanel';
-import SeasonalReconcilePanel from './SeasonalReconcilePanel';
-import SeasonalPartyPivot from './SeasonalPartyPivot';
 import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
 import SeasonalFilterBuilder from './SeasonalFilterBuilder';
-import SeasonalTtmsDialog from './SeasonalTtmsDialog';
 import { rowsToTsv } from './seasonalGridEntry';
+import {
+  StudioBadge, StudioCard, StudioHero, StudioPanelSkeleton, StudioStats,
+  StudioStatusBar, StudioTabs, useStudio,
+} from './seasonalStudioUi';
 import {
   combineExpressions, countConditions, describeExpression, emptyExpression, evaluateExpression,
   expressionFromSimple, normalizeExpression,
 } from './seasonalFilters';
+
+/* پنل‌ها و دیالوگ‌های سنگین فقط هنگام نیاز بارگذاری می‌شوند (سرعت بار اول) */
+const SeasonalAnalyticsPanel = lazy(() => import('./SeasonalAnalyticsPanel'));
+const SeasonalReconcilePanel = lazy(() => import('./SeasonalReconcilePanel'));
+const SeasonalPartyPivot = lazy(() => import('./SeasonalPartyPivot'));
+const SeasonalTtmsDialog = lazy(() => import('./SeasonalTtmsDialog'));
 
 const API_BASE = '/accounting/tax/seasonal-reports';
 
@@ -585,6 +592,7 @@ const StatusCell = ({ value, onChange, sx, fontSize }) => (
 
 const SeasonalReportPage = () => {
   const moduleTheme = useModuleTheme();
+  const studio = useStudio();
   const [yearKey, setYearKey] = useState(() => readJson(SETTINGS_KEY, {}).yearKey || '');
   const [quarter, setQuarter] = useState(() => readJson(SETTINGS_KEY, {}).quarter || 1);
   const [rows, setRows] = useState([emptyRow()]);
@@ -599,6 +607,7 @@ const SeasonalReportPage = () => {
   const [issues, setIssues] = useState([]);
   const [toast, setToast] = useState('');
   const [search, setSearch] = useState('');
+  const deferredSearch = useDeferredValue(search);
   const [statusFilter, setStatusFilter] = useState('all');
   const [kindFilter, setKindFilter] = useState('all');
   const [sortBy, setSortBy] = useState('entry');
@@ -1362,8 +1371,8 @@ const SeasonalReportPage = () => {
   /* درخت شرط جدول: فیلتر پیشرفته + فیلترهای سریع نوار ابزار */
   const gridExpression = useMemo(() => combineExpressions(
     filterExpression,
-    expressionFromSimple({ kind: kindFilter, status: statusFilter, search }),
-  ), [filterExpression, kindFilter, statusFilter, search]);
+    expressionFromSimple({ kind: kindFilter, status: statusFilter, search: deferredSearch }),
+  ), [filterExpression, kindFilter, statusFilter, deferredSearch]);
 
   const filteredRows = useMemo(() => {
     const list = evaluateExpression(filledRows, gridExpression);
@@ -2051,20 +2060,49 @@ const SeasonalReportPage = () => {
 
   return (
     <>
-      <PageHeader
-        icon={<CalendarViewMonthIcon sx={{ fontSize: 26 }} />}
+      <StudioHero
+        icon={<CalendarViewMonthIcon sx={{ fontSize: 24 }} />}
         title="معاملات فصلی خرید"
         subtitle="ماده ۱۶۹ مکرر — ثبت، اعتبارسنجی پویا و خروجی‌های خرید (فروش در نسخهٔ بعد)"
-        color="#d97706"
+        badges={[
+          <StudioBadge
+            key="period"
+            tone="accent"
+            label={period.start && period.end
+              ? `بازهٔ فصل: ${jalaliText(period.start)} تا ${jalaliText(period.end)}`
+              : mode === 'local'
+                ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
+                : 'در حال دریافت بازهٔ فصل…'}
+          />,
+          <StudioBadge
+            key="ruleset"
+            tone={rulesetStatus === 'verified' ? 'success' : 'warning'}
+            label={rulesetStatus === 'verified' ? 'قواعد تأییدشدهٔ قالب هدف' : 'قواعد/قالب TTMS تأییدنشده'}
+            title={`نسخهٔ قواعد: ${reference?.ruleset_version || 'نامشخص'}`}
+          />,
+          <StudioBadge
+            key="mode"
+            tone={mode === 'api' ? 'success' : 'default'}
+            label={mode === 'api' ? 'متصل به سرور' : mode === 'local' ? 'حالت محلی' : 'در حال بارگذاری'}
+          />,
+          saveState === 'saving' ? <StudioBadge key="save" tone="info" label="در حال ذخیره…" /> : null,
+          saveState === 'saved'
+            ? <StudioBadge key="saved" tone="success" label={mode === 'api' ? 'ذخیره شد' : 'ذخیرهٔ محلی'} />
+            : null,
+          saveState === 'error' ? <StudioBadge key="saveerr" tone="danger" label="ذخیره در سرور ناموفق بود" /> : null,
+          advancedFilterCount
+            ? <StudioBadge key="filter" tone="accent" label={`فیلتر پیشرفته (${toPersianDigits(advancedFilterCount)} شرط)`} />
+            : null,
+        ]}
         actions={(
-          <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+          <>
             <Tooltip title="ساخت شرط‌های ترکیبی (و / یا) روی نوع شخص، مبلغ، تاریخ، مالیات و… با ذخیرهٔ نما">
               <span>
                 <Button
                   variant={advancedFilterCount ? 'contained' : 'outlined'}
                   size="small"
                   color={advancedFilterCount ? 'warning' : 'primary'}
-                  startIcon={<FilterAltIcon />}
+                  startIcon={<FilterAltIcon sx={{ fontSize: 17 }} />}
                   onClick={() => setBuilderOpen(true)}
                   data-testid="open-filter-builder"
                 >
@@ -2079,21 +2117,15 @@ const SeasonalReportPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="outlined" size="small" startIcon={<RuleOutlinedIcon />} onClick={runValidation}>
+            <Button variant="outlined" size="small" startIcon={<RuleOutlinedIcon sx={{ fontSize: 17 }} />} onClick={runValidation}>
               اعتبارسنجی
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<PrintIcon />} onClick={printReport}>
-              چاپ
-            </Button>
-            <Button variant="outlined" size="small" startIcon={<DownloadIcon />} onClick={exportTtms}>
-              خروجی TTMS
             </Button>
             <Tooltip title="ساخت بستهٔ درج ردیف‌ها در فایل Access نسخهٔ TTMS (روی کپی، با بازبینی جمع‌ها)">
               <span>
                 <Button
                   variant="outlined"
                   size="small"
-                  startIcon={<InsertDriveFileOutlinedIcon />}
+                  startIcon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 17 }} />}
                   onClick={() => setTtmsOpen(true)}
                   disabled={mode !== 'api' || !reportId}
                 >
@@ -2101,115 +2133,112 @@ const SeasonalReportPage = () => {
                 </Button>
               </span>
             </Tooltip>
-            <Button variant="contained" size="small" startIcon={<DownloadIcon />} onClick={exportExcel}>
+            <Tooltip title="خروجی سازگار با TTMS (CSV پیش‌نویس)">
+              <span>
+                <Button variant="outlined" size="small" startIcon={<DownloadIcon sx={{ fontSize: 17 }} />} onClick={exportTtms}>
+                  خروجی TTMS
+                </Button>
+              </span>
+            </Tooltip>
+            <Button variant="outlined" size="small" startIcon={<PrintIcon sx={{ fontSize: 17 }} />} onClick={printReport}>
+              چاپ
+            </Button>
+            <Button variant="contained" size="small" startIcon={<DownloadIcon sx={{ fontSize: 17 }} />} onClick={exportExcel}>
               خروجی اکسل
             </Button>
-          </Stack>
+          </>
+        )}
+        periodControls={(
+          <>
+            <FormControl size="small" sx={{ minWidth: 190 }}>
+              <InputLabel id="seasonal-year-label">سال مالی</InputLabel>
+              <Select
+                labelId="seasonal-year-label"
+                label="سال مالی"
+                value={yearKey}
+                onChange={(event) => setYearKey(event.target.value)}
+                sx={{ fontSize: 12, borderRadius: '9px' }}
+              >
+                {years.length ? years.map((item) => (
+                  <MenuItem key={item.value} value={item.value} sx={{ fontSize: 12.5 }}>
+                    {item.label}
+                  </MenuItem>
+                )) : (
+                  <MenuItem value="" sx={{ fontSize: 12.5 }}>سال مالی موجود نیست</MenuItem>
+                )}
+              </Select>
+            </FormControl>
+            <FormControl size="small" sx={{ minWidth: 200 }}>
+              <InputLabel id="seasonal-quarter-label">فصل</InputLabel>
+              <Select
+                labelId="seasonal-quarter-label"
+                label="فصل"
+                value={quarter}
+                onChange={(event) => setQuarter(Number(event.target.value))}
+                sx={{ fontSize: 12, borderRadius: '9px' }}
+              >
+                {QUARTERS.map((item) => (
+                  <MenuItem key={item.value} value={item.value} sx={{ fontSize: 12.5 }}>
+                    {item.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            <Box sx={{ flex: 1 }} />
+            <Typography sx={{ fontSize: 10.5, color: 'text.disabled' }}>
+              {`نسخهٔ رابط: ${buildId}`}
+            </Typography>
+          </>
         )}
       />
 
-      <Paper
-        elevation={0}
-        sx={{
-          mb: 1.5,
-          px: moduleTheme.cardPadX,
-          py: 1,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1.5,
-          flexWrap: 'wrap',
-          bgcolor: 'background.paper',
-          border: `1px solid ${moduleTheme.cardBorderColor}`,
-          borderRadius: 'var(--hrms-card-radius, 14px)',
-        }}
-      >
-        <FormControl size="small" sx={{ minWidth: 200 }}>
-          <InputLabel id="seasonal-year-label">سال مالی</InputLabel>
-          <Select
-            labelId="seasonal-year-label"
-            label="سال مالی"
-            value={yearKey}
-            onChange={(event) => setYearKey(event.target.value)}
-            sx={{ fontSize: 12.5, borderRadius: '8px' }}
-          >
-            {years.length ? years.map((item) => (
-              <MenuItem key={item.value} value={item.value} sx={{ fontSize: 12.5 }}>
-                {item.label}
-              </MenuItem>
-            )) : (
-              <MenuItem value="" sx={{ fontSize: 12.5 }}>سال مالی موجود نیست</MenuItem>
-            )}
-          </Select>
-        </FormControl>
 
-        <FormControl size="small" sx={{ minWidth: 210 }}>
-          <InputLabel id="seasonal-quarter-label">فصل</InputLabel>
-          <Select
-            labelId="seasonal-quarter-label"
-            label="فصل"
-            value={quarter}
-            onChange={(event) => setQuarter(Number(event.target.value))}
-            sx={{ fontSize: 12.5, borderRadius: '8px' }}
-          >
-            {QUARTERS.map((item) => (
-              <MenuItem key={item.value} value={item.value} sx={{ fontSize: 12.5 }}>
-                {item.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
+      <StudioStats
+        items={[
+          {
+            key: 'rows',
+            label: 'تعداد ردیف',
+            value: toPersianDigits(filledRows.length),
+            hint: filteredRows.length !== filledRows.length
+              ? `${toPersianDigits(filteredRows.length)} ردیف پس از فیلتر`
+              : 'همهٔ ردیف‌های فصل',
+            color: '#6366f1',
+          },
+          { key: 'amount', label: 'جمع مبلغ', value: formatPersianNumber(totals.amount), color: '#0ea5e9' },
+          { key: 'vat', label: 'جمع ارزش افزوده', value: formatPersianNumber(totals.vat), color: '#8b5cf6' },
+          { key: 'total', label: 'جمع کل', value: formatPersianNumber(totals.total), color: '#d97706' },
+          {
+            key: 'registered',
+            label: 'درج‌شده در سامانه',
+            value: `${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
+            color: '#10b981',
+          },
+          {
+            key: 'validation',
+            label: 'اعتبارسنجی',
+            value: errorCount || warningCount
+              ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
+              : 'بدون خطا',
+            valueColor: errorCount ? '#dc2626' : (warningCount ? '#b45309' : '#047857'),
+            color: errorCount ? '#dc2626' : (warningCount ? '#f59e0b' : '#10b981'),
+          },
+        ]}
+      />
 
-        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-          {period.start && period.end
-            ? `بازهٔ فصل: ${jalaliText(period.start)} تا ${jalaliText(period.end)}`
-            : mode === 'local'
-              ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
-              : 'در حال دریافت بازهٔ فصل…'}
-        </Typography>
-
-        <Typography
-          sx={{
-            fontSize: 10.5,
-            color: rulesetStatus === 'verified' ? '#15803d' : '#b45309',
-            border: '1px dashed',
-            borderColor: rulesetStatus === 'verified' ? 'rgba(21,128,61,0.4)' : 'rgba(180,83,9,0.4)',
-            borderRadius: '6px',
-            px: 0.75,
-            py: 0.25,
-          }}
-          title={`نسخهٔ قواعد: ${reference?.ruleset_version || 'نامشخص'}`}
-        >
-          {rulesetStatus === 'verified'
-            ? 'قواعد تأییدشدهٔ قالب هدف'
-            : 'قواعد/قالب TTMS تأییدنشده'}
-        </Typography>
-
-        <Box sx={{ flex: 1 }} />
-
-        <Typography sx={{ fontSize: 11, color: 'text.secondary' }}>
-          {saveState === 'saving' ? 'در حال ذخیره…' : null}
-          {saveState === 'saved' ? (mode === 'api' ? 'ذخیره شد' : 'ذخیرهٔ محلی') : null}
-          {saveState === 'error' ? 'ذخیره در سرور ناموفق بود' : null}
-        </Typography>
-      </Paper>
-
-      <Box sx={{ mb: 1 }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_event, value) => setActiveTab(value)}
-          variant="scrollable"
-          allowScrollButtonsMobile
-          sx={{ minHeight: 34, '& .MuiTab-root': { minHeight: 34, fontSize: 11.5, py: 0.4 } }}
-        >
-          <Tab value="data" label="ورود داده" />
-          <Tab value="analytics" label="گزارش‌ها و تحلیل" />
-          <Tab value="reconcile" label="مغایرت‌گیری با دفاتر" />
-        </Tabs>
-      </Box>
+      <StudioTabs
+        value={activeTab}
+        onChange={setActiveTab}
+        tabs={[
+          { value: 'data', label: 'ورود داده' },
+          { value: 'analytics', label: 'گزارش‌ها و تحلیل' },
+          { value: 'reconcile', label: 'مغایرت‌گیری با دفاتر' },
+        ]}
+      />
 
       {activeTab === 'analytics' ? (
-        <>
-          <SeasonalAnalyticsPanel
+        <Suspense fallback={<StudioPanelSkeleton />}>
+          <>
+            <SeasonalAnalyticsPanel
             analytics={analytics}
             rows={filledRows}
             loading={analyticsLoading}
@@ -2231,17 +2260,20 @@ const SeasonalReportPage = () => {
               loading={pivotLoading}
             />
           </Box>
-        </>
+          </>
+        </Suspense>
       ) : null}
 
       {activeTab === 'reconcile' ? (
-        <SeasonalReconcilePanel
-          reportId={reportId}
-          apiBase={API_BASE}
-          mode={mode}
-          onAddRows={addSuggestedRows}
-          onToast={setToast}
-        />
+        <Suspense fallback={<StudioPanelSkeleton rows={2} />}>
+          <SeasonalReconcilePanel
+            reportId={reportId}
+            apiBase={API_BASE}
+            mode={mode}
+            onAddRows={addSuggestedRows}
+            onToast={setToast}
+          />
+        </Suspense>
       ) : null}
 
       {activeTab === 'data' ? (
@@ -2252,8 +2284,17 @@ const SeasonalReportPage = () => {
           onMouseDown={handleRowMouseDown}
         >
           <Box sx={{
-            display: 'flex', gap: 0.75, flexWrap: 'wrap', alignItems: 'center',
-            mb: 0.75, px: 0.25,
+            display: 'flex',
+            gap: 0.75,
+            flexWrap: 'wrap',
+            alignItems: 'center',
+            mb: 1,
+            px: 1,
+            py: 0.6,
+            borderRadius: `${studio.radius.medium}px`,
+            border: `1px solid ${studio.border}`,
+            bgcolor: alpha(studio.accent, 0.035),
+            '& .MuiButton-root': { height: 28, fontSize: 11, borderRadius: `${studio.radius.small}px` },
           }}>
             <Button
               size="small"
@@ -2373,14 +2414,10 @@ const SeasonalReportPage = () => {
       />
 
 
-      <Paper
-        elevation={0}
-        sx={{
-          bgcolor: 'background.paper',
-          border: `1px solid ${moduleTheme.cardBorderColor}`,
-          borderRadius: 'var(--hrms-card-radius, 14px)',
-          overflow: 'hidden',
-        }}
+      <StudioCard
+        title="جدول ردیف‌های خرید"
+        subtitle={`${toPersianDigits(filteredRows.length)} ردیف در نمایش · ${toPersianDigits(selectedIds.length)} انتخاب‌شده`}
+        noPadding
       >
         <Box>
           <ModuleTable
@@ -2398,53 +2435,31 @@ const SeasonalReportPage = () => {
           />
         </Box>
 
-        <Box
-          sx={{
-            px: moduleTheme.cardPadX,
-            py: 0.9,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 2.5,
-            flexWrap: 'wrap',
-            borderTop: '1px solid',
-            borderColor: 'var(--hrms-table-border-color, #e8edf4)',
-          }}
-        >
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            {'تعداد ردیف: '}
-            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{toPersianDigits(filledRows.length)}</Box>
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            {'جمع مبلغ: '}
-            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{formatPersianNumber(totals.amount)}</Box>
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            {'جمع ارزش افزوده: '}
-            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>{formatPersianNumber(totals.vat)}</Box>
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            {'جمع کل: '}
-            <Box component="span" sx={{ fontWeight: 900, color: 'text.primary' }}>{formatPersianNumber(totals.total)}</Box>
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary' }}>
-            {'درج‌شده در سامانه: '}
-            <Box component="span" sx={{ fontWeight: 800, color: 'text.primary' }}>
-              {`${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`}
-            </Box>
-          </Typography>
-          <Typography sx={{ fontSize: 11.5, color: 'text.secondary', ml: 'auto' }}>
-            {'اعتبارسنجی: '}
-            <Box component="span" sx={{ fontWeight: 800, color: errorCount ? '#dc2626' : (warningCount ? '#d97706' : 'text.primary') }}>
-              {errorCount || warningCount
+        <StudioStatusBar
+          items={[
+            { label: 'تعداد ردیف', value: toPersianDigits(filledRows.length) },
+            { label: 'جمع مبلغ', value: formatPersianNumber(totals.amount) },
+            { label: 'جمع ارزش افزوده', value: formatPersianNumber(totals.vat) },
+            { label: 'جمع کل', value: formatPersianNumber(totals.total) },
+            {
+              label: 'درج‌شده در سامانه',
+              value: `${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
+            },
+            {
+              label: 'اعتبارسنجی',
+              value: errorCount || warningCount
                 ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
-                : 'بدون خطا'}
-            </Box>
-          </Typography>
-          <Typography sx={{ fontSize: 10.5, color: 'text.disabled' }} title="شناسهٔ باندل در حال اجرا">
-            {`نسخهٔ رابط: ${buildId}`}
-          </Typography>
-        </Box>
-      </Paper>
+                : 'بدون خطا',
+              color: errorCount ? '#dc2626' : (warningCount ? '#b45309' : '#047857'),
+            },
+          ]}
+          trailing={(
+            <Typography sx={{ fontSize: 10.5, color: 'text.disabled' }} title="شناسهٔ باندل در حال اجرا">
+              {`نسخهٔ رابط: ${buildId}`}
+            </Typography>
+          )}
+        />
+      </StudioCard>
         </Box>
       ) : null}
 
@@ -2470,18 +2485,20 @@ const SeasonalReportPage = () => {
         onToggleFavorite={toggleSavedViewFavorite}
       />
 
-      <SeasonalTtmsDialog
-        open={ttmsOpen}
-        onClose={() => setTtmsOpen(false)}
-        apiBase={API_BASE}
-        reportId={reportId}
-        rowCount={filteredRows.length}
-        params={gridExpression.items.length
-          ? { expression: JSON.stringify(gridExpression) }
-          : {}}
-        prepare={flushSave}
-        onToast={setToast}
-      />
+      <Suspense fallback={null}>
+        <SeasonalTtmsDialog
+          open={ttmsOpen}
+          onClose={() => setTtmsOpen(false)}
+          apiBase={API_BASE}
+          reportId={reportId}
+          rowCount={filteredRows.length}
+          params={gridExpression.items.length
+            ? { expression: JSON.stringify(gridExpression) }
+            : {}}
+          prepare={flushSave}
+          onToast={setToast}
+        />
+      </Suspense>
 
       <Snackbar
         open={Boolean(toast)}

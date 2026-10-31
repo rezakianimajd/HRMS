@@ -63,47 +63,33 @@ if ($NoBuild) {
 } else {
     Push-Location (Join-Path $RepoRoot 'frontend')
     try {
+        # PUBLIC_URL=/assets باعث می‌شود همهٔ فایل‌ها (از جمله chunkهای lazy)
+        # با مسیر /assets/static/... سرو شوند؛ nginx مسیر / را از build می‌خواند
+        # و مسیر /static/ به Django (فایل‌های استاتیک) می‌رسد.
+        $env:PUBLIC_URL = '/assets'
         npm run build
         if ($LASTEXITCODE -ne 0) { throw 'بیلد فرانت‌اند ناموفق بود.' }
-    } finally { Pop-Location }
+    } finally {
+        Remove-Item Env:PUBLIC_URL -ErrorAction SilentlyContinue
+        Pop-Location
+    }
 }
 $buildDir = Join-Path $RepoRoot 'frontend\build'
 if (-not (Test-Path (Join-Path $buildDir 'index.html'))) { throw "پوشهٔ build پیدا نشد: $buildDir" }
 
-# دارایی‌های CRA را داخل build/assets می‌بریم تا صفحه مستقل از دسترسی
-# /var/www/hrms/static سرو شود. Nginx مسیر / را از همین build می‌خواند.
+# ساختار نهایی: build/assets/static/{js,css,media} + build/index.html
+# (index.html همین حالا به /assets/static/... اشاره می‌کند؛ بازنویسی لازم نیست)
 $staticDirLocal = Join-Path $buildDir 'static'
 $assetsDirLocal = Join-Path $buildDir 'assets'
 if (Test-Path $staticDirLocal) {
     Step '۱.۵/۴ آماده‌سازی دارایی‌های build/assets'
-    foreach ($part in @('js', 'css', 'media')) {
-        $source = Join-Path $staticDirLocal $part
-        $target = Join-Path $assetsDirLocal $part
-        if (-not (Test-Path $source)) { continue }
-        if (Test-Path $target) { Remove-Item -LiteralPath $target -Recurse -Force }
-        New-Item -ItemType Directory -Path $target -Force | Out-Null
-        Get-ChildItem -LiteralPath $source -File | Where-Object {
-            if ($part -eq 'media') { $true } else { $_.Name -match '^main\..+\.(js|css)$' }
-        } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $target -Force }
-    }
-
-    $utf8 = New-Object System.Text.UTF8Encoding($false)
-    $cssDir = Join-Path $assetsDirLocal 'css'
-    if (Test-Path $cssDir) {
-        Get-ChildItem -LiteralPath $cssDir -Filter '*.css' | ForEach-Object {
-            $css = [System.IO.File]::ReadAllText($_.FullName, [System.Text.Encoding]::UTF8)
-            $css = $css.Replace('/static/media/', '/assets/media/')
-            [System.IO.File]::WriteAllText($_.FullName, $css, $utf8)
-        }
-    }
-
-    $indexPath = Join-Path $buildDir 'index.html'
-    $indexHtml = [System.IO.File]::ReadAllText($indexPath, [System.Text.Encoding]::UTF8)
-    $indexHtml = $indexHtml.Replace('/static/js/', '/assets/js/').Replace('/static/css/', '/assets/css/')
-    [System.IO.File]::WriteAllText($indexPath, $indexHtml, $utf8)
-
+    $targetStatic = Join-Path $assetsDirLocal 'static'
+    if (Test-Path $targetStatic) { Remove-Item -LiteralPath $targetStatic -Recurse -Force }
+    New-Item -ItemType Directory -Path $assetsDirLocal -Force | Out-Null
+    Copy-Item -LiteralPath $staticDirLocal -Destination $targetStatic -Recurse -Force
     Remove-Item -LiteralPath $staticDirLocal -Recurse -Force
-    Ok 'دارایی‌ها به build/assets منتقل شدند.'
+    $fileCount = (Get-ChildItem -LiteralPath $targetStatic -Recurse -File | Measure-Object).Count
+    Ok "دارایی‌ها (شامل chunkهای lazy) به build/assets/static منتقل شدند: $fileCount فایل"
 } else {
     Warn 'پوشهٔ static در build وجود ندارد؛ فرض می‌شود دارایی‌ها از قبل در build/assets هستند.'
 }

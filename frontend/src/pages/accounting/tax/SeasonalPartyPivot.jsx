@@ -1,12 +1,14 @@
 import React, { useMemo } from 'react';
 import {
-  Box, Button, CircularProgress, FormControl, InputLabel, MenuItem, Paper, Select,
-  Table, TableBody, TableCell, TableContainer, TableFooter, TableHead, TableRow, Typography,
+  Box, Button, CircularProgress, FormControl, InputLabel, MenuItem, Select,
+  Stack, Table, TableBody, TableCell, TableContainer, TableFooter, TableHead, TableRow,
+  Typography,
 } from '@mui/material';
 import DownloadIcon from '@mui/icons-material/Download';
 
 import { formatPersianNumber, toPersianDigits } from '../../../core/utils/numberUtils';
 import { toJalali } from '../../../core/utils/dateUtils';
+import { StudioCard } from './seasonalStudioUi';
 
 const INK = '#0f172a';
 const MUTED = '#64748b';
@@ -135,46 +137,41 @@ const SeasonalPartyPivot = ({
   const totals = data.totals || {};
 
   return (
-    <Paper elevation={0} sx={{
-      borderRadius: '12px', border: '1px solid var(--hrms-table-border-color, #e2e8f0)',
-      bgcolor: 'background.paper', overflow: 'hidden',
-    }}>
-      <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center', px: 1.4, py: 1 }}>
-        <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>
-          جدول پیوت طرف حساب
-        </Typography>
-        <Typography sx={{ fontSize: 10, color: MUTED }}>
-          جمع مبلغ هر طرف حساب، تفکیک‌شده بر اساس ستون انتخابی
-        </Typography>
-        <Box sx={{ flex: 1 }} />
-        <FormControl size="small" sx={{ minWidth: 175 }}>
-          <InputLabel id="pivot-dimension-label" sx={{ fontSize: 11 }}>تفکیک ستون‌ها</InputLabel>
-          <Select
-            labelId="pivot-dimension-label"
-            label="تفکیک ستون‌ها"
-            value={dimension || data.dimension || 'kind'}
-            onChange={(event) => onDimensionChange?.(event.target.value)}
-            sx={{ fontSize: 11, height: 30 }}
+    <StudioCard
+      title="جدول پیوت طرف حساب"
+      subtitle="جمع مبلغ هر طرف حساب، تفکیک‌شده بر اساس ستون انتخابی"
+      actions={(
+        <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
+          <FormControl size="small" sx={{ minWidth: 165 }}>
+            <InputLabel id="pivot-dimension-label" sx={{ fontSize: 11 }}>تفکیک ستون‌ها</InputLabel>
+            <Select
+              labelId="pivot-dimension-label"
+              label="تفکیک ستون‌ها"
+              value={dimension || data.dimension || 'kind'}
+              onChange={(event) => onDimensionChange?.(event.target.value)}
+              sx={{ fontSize: 11, height: 30 }}
+            >
+              {DIMENSIONS.map((option) => (
+                <MenuItem key={option.value} value={option.value} sx={{ fontSize: 11 }}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
+          <Button
+            size="small"
+            variant="outlined"
+            startIcon={<DownloadIcon />}
+            onClick={() => onExport?.()}
+            disabled={exporting || offline || !onExport}
+            sx={{ fontSize: 10.5, height: 30 }}
+            title={offline ? 'خروجی اکسل پیوت پس از استقرار بک‌اند فعال می‌شود' : 'خروجی اکسل جدول پیوت'}
           >
-            {DIMENSIONS.map((option) => (
-              <MenuItem key={option.value} value={option.value} sx={{ fontSize: 11 }}>
-                {option.label}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <Button
-          size="small"
-          variant="outlined"
-          startIcon={<DownloadIcon />}
-          onClick={() => onExport?.()}
-          disabled={exporting || offline || !onExport}
-          sx={{ fontSize: 10.5 }}
-          title={offline ? 'خروجی اکسل پیوت پس از استقرار بک‌اند فعال می‌شود' : 'خروجی اکسل جدول پیوت'}
-        >
-          خروجی اکسل پیوت
-        </Button>
-      </Box>
+            خروجی اکسل پیوت
+          </Button>
+        </Stack>
+      )}
+    >
 
       {loading ? (
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 3 }}>
@@ -274,7 +271,7 @@ const SeasonalPartyPivot = ({
           {`فقط ${toPersianDigits(data.limit || 0)} طرف نخست نمایش داده شد؛ جمع‌ها برای همهٔ طرف‌ها است.`}
         </Typography>
       ) : null}
-    </Paper>
+    </StudioCard>
   );
 };
 

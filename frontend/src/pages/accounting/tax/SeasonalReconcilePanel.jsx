@@ -11,6 +11,7 @@ import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 
 import axiosInstance from '../../../core/api/axiosConfig';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
+import { useStudio } from './seasonalStudioUi';
 
 const INK = '#0f172a';
 const MUTED = '#64748b';
@@ -53,6 +54,7 @@ const StatBox = ({ label, value, hint, color = INK }) => (
 );
 
 const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast }) => {
+  const studio = useStudio();
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
   const [result, setResult] = useState(null);
@@ -165,8 +167,9 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
       <Paper elevation={0} sx={{
-        px: 1.5, py: 1.3, borderRadius: '12px',
-        border: '1px solid var(--hrms-table-border-color, #e2e8f0)', bgcolor: 'background.paper',
+        px: 1.5, py: 1.3, borderRadius: `${studio.radius.large}px`,
+        border: `1px solid ${studio.border}`, bgcolor: studio.surface,
+        boxShadow: studio.cardShadow,
       }}>
         <Typography sx={{ fontSize: 12.5, fontWeight: 800, color: INK }}>
           مغایرت‌گیری با اکسل دفاتر
@@ -313,8 +316,8 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
 
       {result?.items ? (
         <Paper elevation={0} sx={{
-          borderRadius: '12px', border: '1px solid var(--hrms-table-border-color, #e2e8f0)',
-          overflow: 'hidden', bgcolor: 'background.paper',
+          borderRadius: `${studio.radius.large}px`, border: `1px solid ${studio.border}`,
+          overflow: 'hidden', bgcolor: studio.surface, boxShadow: studio.cardShadow,
         }}>
           <TableContainer sx={{ maxHeight: 420 }}>
             <Table size="small" stickyHeader aria-label="جدول مغایرت‌ها">
