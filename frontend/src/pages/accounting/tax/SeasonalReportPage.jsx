@@ -167,7 +167,7 @@ const TEXT_FIELDS = [
   'name', 'firstName', 'lastName', 'nationalId', 'postalCode', 'city', 'address',
   'description', 'amount', 'vat', 'invoiceNo', 'invoiceDate', 'moadianUid',
 ];
-const isBlankRow = (row) => TEXT_FIELDS.every((field) => isEmpty(row[field]));
+const isBlankRow = (row) => !TEXT_FIELDS.some((field) => !isEmpty(row[field]));
 
 const jalaliText = (value) => {
   if (!value) return '';
@@ -776,11 +776,36 @@ const SeasonalReportPage = () => {
     return () => document.removeEventListener('focusin', handleFocusIn);
   }, [scheduleSave]);
 
-  /* نسخهٔ محلی همیشه نوشته می‌شود تا با بستن مرورگر داده از دست نرود */
+  /* نسخهٔ محلی با تأخیر نوشته می‌شود (JSON.stringify هزار ردیف در هر کلید، تایپ را کند می‌کند) */
+  const localWriteTimerRef = useRef(null);
   useEffect(() => {
-    if (!yearKey || loadedKey !== `${yearKey}|${quarter}`) return;
-    writeJson(ROWS_KEY(yearKey, quarter), rows);
+    if (!yearKey || loadedKey !== `${yearKey}|${quarter}`) return undefined;
+    if (localWriteTimerRef.current) window.clearTimeout(localWriteTimerRef.current);
+    localWriteTimerRef.current = window.setTimeout(() => {
+      localWriteTimerRef.current = null;
+      writeJson(ROWS_KEY(yearKey, quarter), rows);
+    }, 900);
+    return () => {
+      if (localWriteTimerRef.current) window.clearTimeout(localWriteTimerRef.current);
+    };
   }, [rows, yearKey, quarter, loadedKey]);
+
+  /* نوشتن فوری نسخهٔ محلی پیش از بستن صفحه/خروج از صفحه (بدون وابستگی به هر تغییر rows) */
+  useEffect(() => {
+    const flushLocal = () => {
+      if (!yearKey || loadedKey !== `${yearKey}|${quarter}`) return;
+      if (localWriteTimerRef.current) {
+        window.clearTimeout(localWriteTimerRef.current);
+        localWriteTimerRef.current = null;
+      }
+      writeJson(ROWS_KEY(yearKey, quarter), rowsRef.current);
+    };
+    window.addEventListener('pagehide', flushLocal);
+    return () => {
+      window.removeEventListener('pagehide', flushLocal);
+      flushLocal();
+    };
+  }, [yearKey, quarter, loadedKey]);
 
   /* ردیف بعدی همیشه خودکار ساخته می‌شود */
   useEffect(() => {
@@ -791,12 +816,12 @@ const SeasonalReportPage = () => {
     ));
   }, [rows]);
 
-  const updateCell = (id, field, value) => {
+  const updateCell = useCallback((id, field, value) => {
     setRows((previous) => previous.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
-  };
+  }, []);
 
   /* تغییر نوع فروشنده: تجمیعی → نام‌ها «متفرقه» و بقیه «—»؛ خارجی → کشور خالی؛ بقیه → ایران */
-  const changePersonType = (row, value) => {
+  const changePersonType = useCallback((row, value) => {
     setRows((previous) => previous.map((item) => {
       if (item.id !== row.id) return item;
       const base = item.personType === 'aggregate' && value !== 'aggregate'
@@ -813,11 +838,11 @@ const SeasonalReportPage = () => {
       }
       return { ...base, personType: value, country };
     }));
-  };
+  }, []);
 
   /* انتخاب طرف معامله از پیشنهادها برای همهٔ انواع: نوع، نام/نام خانوادگی، شناسه،
      کد پستی، کشور، شهر و آدرس از حافظهٔ همان طرف پر می‌شود */
-  const applyParty = (id, party) => {
+  const applyParty = useCallback((id, party) => {
     setRows((previous) => previous.map((row) => {
       if (row.id !== id) return row;
       /* ردیف تجمیعی: فقط نام نمایشی جایگزین می‌شود و نوع تغییر نمی‌کند */
@@ -861,11 +886,13 @@ const SeasonalReportPage = () => {
         address: text(party.address, text(row.address)),
       };
     }));
-  };
+  }, []);
 
-  const removeRow = (id) => setRows((previous) => previous.filter((row) => row.id !== id));
+  const removeRow = useCallback((id) => {
+    setRows((previous) => previous.filter((row) => row.id !== id));
+  }, []);
 
-  const duplicateRow = (id) => {
+  const duplicateRow = useCallback((id) => {
     setRows((previous) => {
       const index = previous.findIndex((row) => row.id === id);
       if (index === -1) return previous;
@@ -873,7 +900,7 @@ const SeasonalReportPage = () => {
       return [...previous.slice(0, index + 1), copy, ...previous.slice(index + 1)];
     });
     setToast('ردیف کپی شد — شماره فاکتور را وارد کنید');
-  };
+  }, []);
 
 
   /* ردیف‌های دارای داده و نگاشت شمارهٔ پایدار ردیف */
@@ -883,6 +910,9 @@ const SeasonalReportPage = () => {
     filledRows.forEach((row, index) => map.set(row.id, index));
     return map;
   }, [filledRows]);
+  /* شمارهٔ ردیف از طریق ref خوانده می‌شود تا ستون‌ها پایدار بمانند (رندر مجدد کل جدول) */
+  const indexByIdRef = useRef(indexById);
+  indexByIdRef.current = indexById;
 
   const filteredRows = useMemo(() => {
     const term = search.trim().toLowerCase();
@@ -950,7 +980,7 @@ const SeasonalReportPage = () => {
   }, [issues]);
   const errorCount = issues.filter((issue) => issue.level === 'error').length;
   const warningCount = issues.length - errorCount;
-  const issuesForRow = (row) => issuesByRow.get(String(row.id)) || [];
+  const issuesForRow = useCallback((row) => issuesByRow.get(String(row.id)) || [], [issuesByRow]);
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
@@ -1148,7 +1178,24 @@ const SeasonalReportPage = () => {
   };
 
 
-  /* دفتر طرف‌های معامله: ردیف‌های همین جدول (هر چهار نوع) + فصل‌های قبلیِ ذخیره‌شده در همین مرورگر + حافظهٔ طرف‌ها */
+  /* دفتر طرف‌های معامله: ردیف‌های همین جدول (هر چهار نوع) + فصل‌های قبلیِ ذخیره‌شده در همین مرورگر + حافظهٔ طرف‌ها
+     محاسبهٔ دفتر فقط وقتی هویت طرف‌ها تغییر کند انجام می‌شود، نه با هر کلید مبلغ/توضیحات */
+  /* اثر انگشت سبکِ هویت طرف‌ها: با هر کلید مبلغ/توضیحات تغییر نمی‌کند و ساخت رشتهٔ بزرگ هم ندارد */
+  const partySignature = useMemo(() => {
+    let hash = rows.length;
+    for (let index = 0; index < rows.length; index += 1) {
+      const row = rows[index];
+      const text = `${row.personType}|${row.name}|${row.firstName}|${row.lastName}|${row.nationalId}`
+        + `|${row.country}|${row.city}|${row.address}|${row.postalCode}`;
+      for (let position = 0; position < text.length; position += 1) {
+        hash = (hash * 33 + text.charCodeAt(position)) | 0;
+      }
+    }
+    return hash;
+  }, [rows]);
+  const rowsSnapshotRef = useRef(rows);
+  rowsSnapshotRef.current = rows;
+
   const partyDirectory = useMemo(() => {
     const map = new Map();
     const addParty = (party) => {
@@ -1191,24 +1238,36 @@ const SeasonalReportPage = () => {
 
     /* فصل‌های دیگر که قبلاً در همین مرورگر وارد شده‌اند (حافظهٔ دائمی طرف‌ها) */
     storedRows.forEach(addRow);
-    rows.forEach(addRow);
+    rowsSnapshotRef.current.forEach(addRow);
     parties.forEach(addParty);
     return [...map.values()];
-  }, [rows, parties, storedRows]);
+    /* rows از طریق ref خوانده می‌شود؛ کلید تغییر همان اثرانگشت هویتی است */
+  }, [partySignature, parties, storedRows]);
 
   const partyOptions = useMemo(() => {
-    const names = partyDirectory.map((party) => partyDisplay(party).toLowerCase());
-    /* برای شرکت‌ها نام کوتاه‌ترِ پیشوندی حذف می‌شود؛ نام اشخاص دست‌نخورده می‌ماند */
-    return partyDirectory.filter((party, index) => (
-      party.personType === 'natural' || !names.some((other, otherIndex) => (
-        otherIndex !== index && other.length > names[index].length && other.startsWith(names[index])
-      ))
-    ));
+    /* حذف نام‌های کوتاه‌ترِ پیشوندی برای شرکت‌ها (بر اساس مرتب‌سازی، بدون مقایسهٔ دوبه‌دو) */
+    const naturalParties = partyDirectory.filter((party) => party.personType === 'natural');
+    const companyParties = partyDirectory
+      .filter((party) => party.personType !== 'natural')
+      .sort((a, b) => partyDisplay(a).localeCompare(partyDisplay(b), 'fa'));
+    return [...naturalParties, ...companyParties.filter((party, index, list) => {
+      const next = list[index + 1];
+      return !(next && partyDisplay(next).toLowerCase().startsWith(partyDisplay(party).toLowerCase()));
+    })];
   }, [partyDirectory]);
 
   const partyOptionsJson = useMemo(() => JSON.stringify(partyOptions), [partyOptions]);
+  /* ذخیرهٔ حافظهٔ طرف‌ها با تأخیر (نه با هر کلید تایپ) */
+  const partiesWriteTimerRef = useRef(null);
   useEffect(() => {
-    writeJson(PARTIES_KEY, JSON.parse(partyOptionsJson));
+    if (partiesWriteTimerRef.current) window.clearTimeout(partiesWriteTimerRef.current);
+    partiesWriteTimerRef.current = window.setTimeout(() => {
+      partiesWriteTimerRef.current = null;
+      writeJson(PARTIES_KEY, JSON.parse(partyOptionsJson));
+    }, 800);
+    return () => {
+      if (partiesWriteTimerRef.current) window.clearTimeout(partiesWriteTimerRef.current);
+    };
   }, [partyOptionsJson]);
 
 
@@ -1220,17 +1279,17 @@ const SeasonalReportPage = () => {
     return set;
   }, [reference]);
 
-  const colLabel = (text, internalField) => (
+  const colLabel = useCallback((text, internalField) => (
     <Box component="span" sx={{ whiteSpace: 'nowrap' }}>
       {text}
       {requiredUnion.has(internalField) ? (
         <Box component="span" sx={{ color: '#dc2626', ml: 0.25 }}>*</Box>
       ) : null}
     </Box>
-  );
+  ), [requiredUnion]);
 
   /* فیلد اجباریِ خالی برای همین نوع فروشنده → خط زیرین قرمز در سلول */
-  const cellSxFor = (row, internalField) => {
+  const cellSxFor = useCallback((row, internalField) => {
     const required = requiredFor(reference, row.personType).includes(internalField);
     const uiField = FIELD_MAP[internalField];
     if (!required || !uiField || !isEmpty(row[uiField])) return cellInputSx;
@@ -1239,9 +1298,10 @@ const SeasonalReportPage = () => {
       '& .MuiInput-underline:before': { borderBottomColor: '#dc2626' },
       '& .MuiInput-underline:hover:before': { borderBottomColor: '#dc2626' },
     };
-  };
+  }, [reference, cellInputSx]);
 
-  const tableColumns = [
+  /* ستون‌ها یک‌بار ساخته می‌شوند؛ ستون‌های پایدار باعث می‌شوند با هر کلید فقط همان ردیف رندر شود */
+  const tableColumns = useMemo(() => [
     {
       key: 'row',
       label: 'ردیف',
@@ -1252,7 +1312,7 @@ const SeasonalReportPage = () => {
         const hasError = rowIssues.some((issue) => issue.level === 'error');
         return (
           <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0.4 }}>
-            <Typography noWrap sx={{ color: MUTED }}>{toPersianDigits((indexById.get(row.id) ?? 0) + 1)}</Typography>
+            <Typography noWrap sx={{ color: MUTED }}>{toPersianDigits((indexByIdRef.current.get(row.id) ?? 0) + 1)}</Typography>
             {rowIssues.length ? (
               <Tooltip title={rowIssues.map((issue) => issue.message).join(' • ')}>
                 <WarningAmberRoundedIcon sx={{ fontSize: 14, color: hasError ? '#dc2626' : '#d97706' }} />
@@ -1503,7 +1563,10 @@ const SeasonalReportPage = () => {
         </Stack>
       ),
     },
-  ];
+  ], [
+    cellFontPx, cellInputSx, cellSxFor, colLabel, applyParty, changePersonType,
+    duplicateRow, issuesForRow, partyOptions, removeRow, updateCell,
+  ]);
 
 
   return (
@@ -1658,6 +1721,7 @@ const SeasonalReportPage = () => {
             rowHeight={rowHeight}
             emptyText="ردیفی با این مشخصات پیدا نشد."
             ariaLabel="جدول معاملات فصلی"
+            virtualize
           />
         </Box>
 

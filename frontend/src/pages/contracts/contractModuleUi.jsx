@@ -144,96 +144,157 @@ export const ModulePager = ({ tableTheme, page, onPage, totalPages, pageNumbers,
 };
 
 
-/* جدول استاندارد (هدر چسبان + توکن‌های تم) */
-export const ModuleTable = ({ tableTheme, columns, rows, rowKey, onRowClick, containerRef, tableHeight, rowHeight, dimmed, emptyText, ariaLabel }) => (
-  <TableContainer
-    ref={containerRef}
-    sx={{
-      height: tableHeight ? { xs: 'auto', sm: `${tableHeight}px` } : 'auto',
-      maxHeight: tableHeight ? { xs: 'none', sm: `${tableHeight}px` } : 'none',
-      overflowY: 'auto',
-      opacity: dimmed ? 0.6 : 1,
-      transition: 'opacity .15s ease',
-    }}
-  >
-    <Table
-      size="small"
-      stickyHeader
-      aria-label={ariaLabel}
+/* یک ردیف مستقل و memo‌شده: با تغییر یک ردیف، بقیهٔ ردیف‌ها دوباره رندر نمی‌شوند */
+const ModuleTableRow = React.memo(function ModuleTableRow({ row, index, columns, onRowClick }) {
+  return (
+    <TableRow
+      hover={Boolean(onRowClick)}
+      onClick={onRowClick ? () => onRowClick(row) : undefined}
+      sx={onRowClick ? { cursor: 'pointer' } : undefined}
+    >
+      {columns.map((column) => (
+        <TableCell
+          key={column.key}
+          align={column.align || 'right'}
+          className={column.align === 'center' ? 'hrms-cell-center' : undefined}
+        >
+          {column.render(row, index)}
+        </TableCell>
+      ))}
+    </TableRow>
+  );
+});
+
+/* ردیف فاصله‌گذار برای حالت مجازی‌سازی (ارتفاع ثابت، بدون حاشیه و پدینگ) */
+const spacerRow = (height, colSpan) => (
+  <TableRow data-spacer="true" aria-hidden>
+    <TableCell colSpan={colSpan} style={{ height, padding: 0, border: 0 }} />
+  </TableRow>
+);
+
+/* جدول استاندارد (هدر چسبان + توکن‌های تم)
+   با ``virtualize`` فقط ردیف‌های دیده‌شدنی رندر می‌شوند؛ برای جدول‌های چندصد/چندهزار ردیفی. */
+export const ModuleTable = ({
+  tableTheme, columns, rows, rowKey, onRowClick, containerRef, tableHeight, rowHeight,
+  dimmed, emptyText, ariaLabel, virtualize = false, overscan = 6,
+}) => {
+  const [scrollTop, setScrollTop] = useState(0);
+  const rafRef = useRef(0);
+  const pendingScrollRef = useRef(0);
+
+  const handleScroll = (event) => {
+    pendingScrollRef.current = event.currentTarget.scrollTop;
+    if (rafRef.current) return;
+    rafRef.current = window.requestAnimationFrame(() => {
+      rafRef.current = 0;
+      setScrollTop(pendingScrollRef.current);
+    });
+  };
+  React.useEffect(() => () => {
+    if (rafRef.current) window.cancelAnimationFrame(rafRef.current);
+  }, []);
+
+  const total = rows.length;
+  const windowing = Boolean(virtualize) && rowHeight > 0 && tableHeight > 0 && total > overscan * 3;
+  let start = 0;
+  let end = total;
+  if (windowing) {
+    const visible = Math.ceil(tableHeight / rowHeight);
+    start = Math.max(0, Math.floor(scrollTop / rowHeight) - overscan);
+    end = Math.min(total, start + visible + overscan * 2);
+  }
+  const windowed = windowing && (start > 0 || end < total);
+  const visibleRows = windowed ? rows.slice(start, end) : rows;
+
+  return (
+    <TableContainer
+      ref={containerRef}
+      onScroll={handleScroll}
       sx={{
-        width: '100%',
-        minWidth: 860,
-        tableLayout: 'fixed',
-        '& td, & th': {
-          px: 1,
-          py: `${tableTheme.cellPadding}px`,
-          whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
-          borderBottom: tableTheme.divider,
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-        },
-        '& thead th': {
-          textAlign: 'center !important',
-          backgroundColor: 'var(--hrms-table-header-bg)',
-          height: `${tableTheme.headerHeight}px`,
-          fontSize: tableTheme.header.fontSize,
-          fontWeight: tableTheme.header.fontWeight,
-          color: tableTheme.header.color,
-        },
-        '& tbody td': {
-          height: `${tableTheme.rowHeight}px`,
-          fontSize: tableTheme.cell.fontSize,
-          fontWeight: tableTheme.cell.fontWeight,
-          color: tableTheme.cell.color,
-        },
-        '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
-        '& th.hrms-cell-center, & td.hrms-cell-center': { textAlign: 'center !important' },
-        ...tableTypographySx(tableTheme),
+        height: tableHeight ? { xs: 'auto', sm: `${tableHeight}px` } : 'auto',
+        maxHeight: tableHeight ? { xs: 'none', sm: `${tableHeight}px` } : 'none',
+        overflowY: 'auto',
+        opacity: dimmed ? 0.6 : 1,
+        transition: 'opacity .15s ease',
       }}
     >
-      <TableHead>
-        <TableRow>
-          {columns.map((column) => (
-            <TableCell
-              key={column.key}
-              align="center"
-              className={column.align === 'center' ? 'hrms-cell-center' : undefined}
-              sx={{ width: column.width }}
-            >
-              {column.label}
-            </TableCell>
-          ))}
-        </TableRow>
-      </TableHead>
-      <TableBody>
-        {rows.length ? rows.map((row, index) => (
-          <TableRow
-            key={rowKey ? rowKey(row, index) : index}
-            hover={Boolean(onRowClick)}
-            onClick={onRowClick ? () => onRowClick(row) : undefined}
-            sx={onRowClick ? { cursor: 'pointer' } : undefined}
-          >
+      <Table
+        size="small"
+        stickyHeader
+        aria-label={ariaLabel}
+        sx={{
+          width: '100%',
+          minWidth: 860,
+          tableLayout: 'fixed',
+          '& td, & th': {
+            px: 1,
+            py: `${tableTheme.cellPadding}px`,
+            whiteSpace: tableTheme.singleLine ? 'nowrap' : 'normal',
+            borderBottom: tableTheme.divider,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+          },
+          '& thead th': {
+            textAlign: 'center !important',
+            backgroundColor: 'var(--hrms-table-header-bg)',
+            height: `${tableTheme.headerHeight}px`,
+            fontSize: tableTheme.header.fontSize,
+            fontWeight: tableTheme.header.fontWeight,
+            color: tableTheme.header.color,
+          },
+          '& tbody td': {
+            height: `${tableTheme.rowHeight}px`,
+            fontSize: tableTheme.cell.fontSize,
+            fontWeight: tableTheme.cell.fontWeight,
+            color: tableTheme.cell.color,
+          },
+          '& tbody tr.MuiTableRow-hover:hover': { backgroundColor: tableTheme.hoverBg },
+          '& th.hrms-cell-center, & td.hrms-cell-center': { textAlign: 'center !important' },
+          ...tableTypographySx(tableTheme),
+        }}
+      >
+        <TableHead>
+          <TableRow>
             {columns.map((column) => (
               <TableCell
                 key={column.key}
-                align={column.align || 'right'}
+                align="center"
                 className={column.align === 'center' ? 'hrms-cell-center' : undefined}
+                sx={{ width: column.width }}
               >
-                {column.render(row, index)}
+                {column.label}
               </TableCell>
             ))}
           </TableRow>
-        )) : (
-          <TableRow>
-            <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
-              <Typography sx={{ fontSize: 11.5, color: MUTED }}>{emptyText || 'موردی برای نمایش نیست.'}</Typography>
-            </TableCell>
-          </TableRow>
-        )}
-      </TableBody>
-    </Table>
-  </TableContainer>
-);
+        </TableHead>
+        <TableBody>
+          {total ? [
+            windowed && start > 0 ? spacerRow(start * rowHeight, columns.length) : null,
+            ...visibleRows.map((row, offset) => {
+              const index = start + offset;
+              return (
+                <ModuleTableRow
+                  key={rowKey ? rowKey(row, index) : index}
+                  row={row}
+                  index={index}
+                  columns={columns}
+                  onRowClick={onRowClick}
+                />
+              );
+            }),
+            windowed && end < total ? spacerRow((total - end) * rowHeight, columns.length) : null,
+          ] : (
+            <TableRow>
+              <TableCell colSpan={columns.length} align="center" sx={{ py: 4 }}>
+                <Typography sx={{ fontSize: 11.5, color: MUTED }}>{emptyText || 'موردی برای نمایش نیست.'}</Typography>
+              </TableCell>
+            </TableRow>
+          )}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+};
 
 
 /* صفحهٔ اول مشترک ماژول‌های مالی: فهرست قراردادها با جمع‌های همان ماژول */
@@ -359,7 +420,8 @@ export const useRowHeight = (tableTheme, rowCount) => {
   const measure = () => {
     const host = ref.current;
     if (!host) return;
-    const rowEl = host.querySelector('tbody tr');
+    /* ردیف‌های فاصله‌گذار (حالت مجازی‌سازی) نباید در اندازه‌گیری دخالت کنند */
+    const rowEl = host.querySelector('tbody tr:not([data-spacer])');
     const headEl = host.querySelector('thead tr');
     const nextRow = rowEl ? Math.round(rowEl.getBoundingClientRect().height) : 0;
     const nextHead = headEl ? Math.round(headEl.getBoundingClientRect().height) : 0;

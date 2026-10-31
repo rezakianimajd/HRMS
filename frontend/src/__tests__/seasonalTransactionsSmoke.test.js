@@ -789,3 +789,32 @@ test('a natural seller typed in a previous quarter is suggested as «حقیقی�
   root.unmount();
   container.remove();
 }, 20000);
+
+
+test('a large report renders only a window of rows and keeps the totals correct', async () => {
+  const manyRows = Array.from({ length: 80 }, (_unused, index) => ({
+    ...API_ROW,
+    id: 900 + index,
+    line_no: index + 1,
+    name: `شرکت شماره ${index + 1}`,
+    invoice_no: `V-${index + 1}`,
+    amount: '1000',
+    vat: '100',
+  }));
+  currentReport = apiReport(manyRows);
+  const { root, container } = await renderPage();
+
+  /* مجازی‌سازی: فقط ردیف‌های دیده‌شدنی در DOM هستند */
+  const rendered = container.querySelectorAll('tbody tr:not([data-spacer])').length;
+  expect(rendered).toBeGreaterThan(5);
+  expect(rendered).toBeLessThan(manyRows.length);
+  expect(container.querySelectorAll('tbody tr[data-spacer]').length).toBeGreaterThan(0);
+
+  /* جمع‌ها و تعداد روی همهٔ ردیف‌ها محاسبه می‌شوند، نه فقط ردیف‌های دیده‌شده */
+  expect(container.textContent).toContain('تعداد ردیف: ۸۰');
+  expect(container.textContent).toContain('جمع مبلغ: ۸۰٬۰۰۰');
+  expect(container.textContent).toContain('جمع کل: ۸۸٬۰۰۰');
+
+  root.unmount();
+  container.remove();
+}, 20000);
