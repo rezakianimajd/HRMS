@@ -8,6 +8,7 @@ import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
 import PrintIcon from '@mui/icons-material/Print';
 import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
@@ -25,7 +26,12 @@ import SeasonalAnalyticsPanel from './SeasonalAnalyticsPanel';
 import SeasonalReconcilePanel from './SeasonalReconcilePanel';
 import SeasonalPartyPivot from './SeasonalPartyPivot';
 import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
+import SeasonalFilterBuilder from './SeasonalFilterBuilder';
 import { rowsToTsv } from './seasonalGridEntry';
+import {
+  combineExpressions, countConditions, describeExpression, emptyExpression, evaluateExpression,
+  expressionFromSimple, normalizeExpression,
+} from './seasonalFilters';
 
 const API_BASE = '/accounting/tax/seasonal-reports';
 
@@ -113,6 +119,7 @@ const ROWS_KEY_PREFIX = 'hrms.seasonal.rows.';
 const ROWS_KEY = (yearKey, quarter) => `${ROWS_KEY_PREFIX}${yearKey}.q${quarter}`;
 const PARTIES_KEY = 'hrms.seasonal.parties';
 const SETTINGS_KEY = 'hrms.seasonal.settings';
+const FILTERS_KEY = (yearKey, quarter) => `hrms.seasonal.filters.${yearKey}.q${quarter}`;
 
 const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -612,6 +619,9 @@ const SeasonalReportPage = () => {
   const [analyticsFilters, setAnalyticsFilters] = useState({
     kind: 'all', status: 'all', personType: 'all', search: '',
   });
+  const [filterExpression, setFilterExpression] = useState(emptyExpression());
+  const [builderOpen, setBuilderOpen] = useState(false);
+  const [viewsBusy, setViewsBusy] = useState(false);
   const savedSignatureRef = useRef('');    // امضای آخرین ردیف‌های ذخیره‌شده (بدون شناسه)
   const saveTimerRef = useRef(null);
   const lastRowElRef = useRef(null);       // آخرین ردیف جدول که فوکوس داشته
@@ -668,6 +678,70 @@ const SeasonalReportPage = () => {
   useEffect(() => {
     writeJson(SETTINGS_KEY, { yearKey, quarter });
   }, [yearKey, quarter]);
+
+  /* فیلتر فوق‌پیشرفته: در حافظهٔ همین مرورگر برای هر فصل نگه‌داری می‌شود */
+  useEffect(() => {
+    if (!yearKey) { setFilterExpression(emptyExpression()); return; }
+    setFilterExpression(normalizeExpression(readJson(FILTERS_KEY(yearKey, quarter), emptyExpression())));
+  }, [yearKey, quarter]);
+
+  useEffect(() => {
+    if (!yearKey) return;
+    writeJson(FILTERS_KEY(yearKey, quarter), filterExpression);
+  }, [yearKey, quarter, filterExpression]);
+
+  /* نماهای ذخیره‌شدهٔ فیلتر (سرور؛ در نبود سرور غیرفعال) */
+  const {
+    data: savedViewsData, refetch: refetchSavedViews, isFetching: viewsFetching,
+  } = useQuery({
+    queryKey: ['seasonal-saved-views', reportId],
+    queryFn: () => axiosInstance.get(`${API_BASE.replace('seasonal-reports', 'seasonal-views')}/`, {
+      params: { report: reportId },
+    }).then((response) => response.data),
+    enabled: Boolean(reportId) && mode === 'api',
+    staleTime: 60 * 1000,
+    retry: false,
+  });
+  const savedViews = useMemo(() => {
+    const list = Array.isArray(savedViewsData) ? savedViewsData : savedViewsData?.results || [];
+    return list;
+  }, [savedViewsData]);
+
+  const saveCurrentView = useCallback((name, expression) => {
+    if (!reportId) {
+      setToast('ذخیرهٔ نما پس از اتصال به سرور ممکن است.');
+      return;
+    }
+    setViewsBusy(true);
+    axiosInstance.post(`${API_BASE.replace('seasonal-reports', 'seasonal-views')}/`, {
+      report: reportId, name, filters: expression,
+    })
+      .then(() => {
+        setToast(`نمای «${name}» ذخیره شد`);
+        refetchSavedViews?.();
+      })
+      .catch(() => setToast('ذخیرهٔ نما انجام نشد (نام تکراری یا سرور در دسترس نیست).'))
+      .finally(() => setViewsBusy(false));
+  }, [reportId, refetchSavedViews]);
+
+  const deleteSavedView = useCallback((view) => {
+    setViewsBusy(true);
+    axiosInstance.delete(`${API_BASE.replace('seasonal-reports', 'seasonal-views')}/${view.id}/`)
+      .then(() => { setToast(`نمای «${view.name}» حذف شد`); refetchSavedViews?.(); })
+      .catch(() => setToast('حذف نما انجام نشد.'))
+      .finally(() => setViewsBusy(false));
+  }, [refetchSavedViews]);
+
+  const toggleSavedViewFavorite = useCallback((view) => {
+    setViewsBusy(true);
+    axiosInstance.post(
+      `${API_BASE.replace('seasonal-reports', 'seasonal-views')}/${view.id}/favorite/`,
+      { value: !view.is_favorite },
+    )
+      .then(() => refetchSavedViews?.())
+      .catch(() => setToast('تغییر وضعیت مورد علاقه انجام نشد.'))
+      .finally(() => setViewsBusy(false));
+  }, [refetchSavedViews]);
 
   /* بارگذاری گزارش دوره: از سرور، و در نبود سرور از حافظهٔ محلی */
   useEffect(() => {
@@ -831,16 +905,34 @@ const SeasonalReportPage = () => {
     };
   }, [yearKey, quarter, loadedKey]);
 
+  /* درخت شرط گزارش: فیلتر پیشرفته + فیلترهای سریع پنل تحلیلی */
+  const analyticsExpression = useMemo(() => combineExpressions(
+    filterExpression,
+    expressionFromSimple({
+      kind: analyticsFilters.kind,
+      status: analyticsFilters.status,
+      personType: analyticsFilters.personType,
+      search: analyticsFilters.search,
+    }),
+  ), [filterExpression, analyticsFilters]);
+
+  /* پارامترهای مشترک گزارش/پیوت/خروجی‌ها (سازگار با نسخهٔ قبلی API) */
+  const withFilters = useCallback((params) => {
+    const next = { ...params };
+    if (analyticsFilters.kind !== 'all') next.kind = analyticsFilters.kind;
+    if (analyticsFilters.status !== 'all') next.moadian_status = analyticsFilters.status;
+    if (analyticsFilters.personType !== 'all') next.person_type = analyticsFilters.personType;
+    if (analyticsFilters.search) next.search = analyticsFilters.search;
+    if (analyticsExpression.items.length) next.expression = JSON.stringify(analyticsExpression);
+    return next;
+  }, [analyticsFilters, analyticsExpression]);
+
   /* تحلیل سرور: با ورود به تب گزارش‌ها، هر فیلتر و پس از هر ذخیره تازه می‌شود */
   useEffect(() => {
     if (activeTab !== 'analytics' || mode !== 'api' || !reportId) return undefined;
     let cancelled = false;
     setAnalyticsLoading(true);
-    const params = { direction: BACKEND_DIRECTION };
-    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
-    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
-    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
-    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    const params = withFilters({ direction: BACKEND_DIRECTION });
     axiosInstance.get(`${API_BASE}/${reportId}/analytics/`, { params })
       .then(({ data }) => {
         if (cancelled) return;
@@ -854,35 +946,27 @@ const SeasonalReportPage = () => {
       })
       .finally(() => { if (!cancelled) setAnalyticsLoading(false); });
     return () => { cancelled = true; };
-  }, [activeTab, mode, reportId, saveState, analyticsFilters]);
+  }, [activeTab, mode, reportId, saveState, withFilters]);
 
   /* پیوت طرف حساب: با بُعد انتخابی و همان فیلترهای گزارش */
   useEffect(() => {
     if (activeTab !== 'analytics' || mode !== 'api' || !reportId) return undefined;
     let cancelled = false;
     setPivotLoading(true);
-    const params = { direction: BACKEND_DIRECTION, dimension: pivotDimension };
-    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
-    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
-    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
-    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    const params = withFilters({ direction: BACKEND_DIRECTION, dimension: pivotDimension });
     axiosInstance.get(`${API_BASE}/${reportId}/party-pivot/`, { params })
       .then(({ data }) => { if (!cancelled) setPivot(data); })
       .catch(() => { if (!cancelled) setPivot(null); })
       .finally(() => { if (!cancelled) setPivotLoading(false); });
     return () => { cancelled = true; };
-  }, [activeTab, mode, reportId, saveState, analyticsFilters, pivotDimension]);
+  }, [activeTab, mode, reportId, saveState, withFilters, pivotDimension]);
 
   const exportPivot = useCallback(() => {
     if (mode !== 'api' || !reportId) {
       setToast('خروجی اکسل پیوت پس از استقرار بک‌اند در دسترس است.');
       return;
     }
-    const params = { direction: BACKEND_DIRECTION, dimension: pivotDimension };
-    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
-    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
-    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
-    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    const params = withFilters({ direction: BACKEND_DIRECTION, dimension: pivotDimension });
     setPivotExporting(true);
     axiosInstance.get(`${API_BASE}/${reportId}/party-pivot-export/`, { params, responseType: 'blob' })
       .then((response) => {
@@ -900,7 +984,7 @@ const SeasonalReportPage = () => {
       })
       .catch(() => setToast('خروجی اکسل پیوت در دسترس نیست.'))
       .finally(() => setPivotExporting(false));
-  }, [mode, reportId, pivotDimension, analyticsFilters, yearKey, quarter]);
+  }, [mode, reportId, pivotDimension, withFilters, yearKey, quarter]);
 
   /* خروجی اکسل گزارش تحلیلی با همان فیلترها */
   const exportAnalytics = useCallback(() => {
@@ -908,11 +992,7 @@ const SeasonalReportPage = () => {
       setToast('خروجی اکسل گزارش پس از استقرار بک‌اند در دسترس است.');
       return;
     }
-    const params = { direction: BACKEND_DIRECTION };
-    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
-    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
-    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
-    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    const params = withFilters({ direction: BACKEND_DIRECTION });
     setAnalyticsExporting(true);
     axiosInstance.get(`${API_BASE}/${reportId}/analytics-export/`, { params, responseType: 'blob' })
       .then((response) => {
@@ -934,7 +1014,7 @@ const SeasonalReportPage = () => {
       })
       .catch(() => setToast('خروجی اکسل گزارش در دسترس نیست.'))
       .finally(() => setAnalyticsExporting(false));
-  }, [mode, reportId, analyticsFilters, yearKey, quarter]);
+  }, [mode, reportId, analyticsFilters, withFilters, yearKey, quarter]);
 
   /* ---- تاریخچهٔ ویرایش (Undo/Redo) و اعمال تغییرات ---- */
   const applyRows = useCallback((updater, { history = true } = {}) => {
@@ -1276,33 +1356,33 @@ const SeasonalReportPage = () => {
   const indexByIdRef = useRef(indexById);
   indexByIdRef.current = indexById;
 
+  /* درخت شرط جدول: فیلتر پیشرفته + فیلترهای سریع نوار ابزار */
+  const gridExpression = useMemo(() => combineExpressions(
+    filterExpression,
+    expressionFromSimple({ kind: kindFilter, status: statusFilter, search }),
+  ), [filterExpression, kindFilter, statusFilter, search]);
+
   const filteredRows = useMemo(() => {
-    const term = search.trim().toLowerCase();
-    let list = filledRows;
-    if (term) {
-      list = list.filter((row) => [
-        row.name, row.firstName, row.lastName, row.city, row.address, row.nationalId,
-        row.description, row.invoiceNo,
-      ].some((value) => String(value ?? '').toLowerCase().includes(term)));
-    }
-    if (statusFilter !== 'all') list = list.filter((row) => row.status === statusFilter);
-    if (kindFilter !== 'all') list = list.filter((row) => String(row.kind) === String(kindFilter));
+    const list = evaluateExpression(filledRows, gridExpression);
     const sorted = [...list];
     if (sortBy === 'amount') sorted.sort((a, b) => num(b.amount) - num(a.amount));
     else if (sortBy === 'total') sorted.sort((a, b) => totalOf(b) - totalOf(a));
     else if (sortBy === 'name') sorted.sort((a, b) => String(a.name).localeCompare(String(b.name), 'fa'));
     else sorted.sort((a, b) => (indexById.get(a.id) ?? 0) - (indexById.get(b.id) ?? 0));
     return sorted;
-  }, [filledRows, search, statusFilter, kindFilter, sortBy, indexById]);
+  }, [filledRows, gridExpression, sortBy, indexById]);
 
-  const editingLive = !search.trim() && statusFilter === 'all' && kindFilter === 'all' && sortBy === 'entry';
+  const editingLive = gridExpression.items.length === 0 && sortBy === 'entry';
   const displayRows = useMemo(() => {
     if (!editingLive) return filteredRows;
     const tail = rows[rows.length - 1];
     return tail && isBlankRow(tail) ? [...filteredRows, tail] : filteredRows;
   }, [editingLive, filteredRows, rows]);
 
-  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0);
+  const advancedFilterCount = countConditions(filterExpression);
+  const advancedFilterSummary = describeExpression(filterExpression);
+  const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0)
+    + advancedFilterCount;
   const statusLabelOf = (value) => (value === 'registered' ? 'درج شده' : 'درج نشده');
   const activeChips = [
     ...(statusFilter !== 'all'
@@ -1310,6 +1390,14 @@ const SeasonalReportPage = () => {
       : []),
     ...(kindFilter !== 'all'
       ? [{ key: 'kind', label: `نوع: ${toPersianDigits(kindFilter)}`, clear: () => setKindFilter('all') }]
+      : []),
+    ...(advancedFilterCount
+      ? [{
+        key: 'advanced',
+        label: `فیلتر پیشرفته (${toPersianDigits(advancedFilterCount)} شرط)`,
+        title: advancedFilterSummary,
+        clear: () => setFilterExpression(emptyExpression()),
+      }]
       : []),
   ];
   const filterOptions = [
@@ -2232,10 +2320,31 @@ const SeasonalReportPage = () => {
         filters={filterOptions}
         activeChips={activeChips}
         activeFilterCount={activeFilterCount}
-        onReset={() => { setSearch(''); setStatusFilter('all'); setKindFilter('all'); setSortBy('entry'); }}
+        onReset={() => {
+          setSearch(''); setStatusFilter('all'); setKindFilter('all'); setSortBy('entry');
+          setFilterExpression(emptyExpression());
+        }}
         filtersOpen={filtersOpen}
         setFiltersOpen={setFiltersOpen}
-      />
+      >
+        <Button
+          size="small"
+          variant={advancedFilterCount ? 'contained' : 'outlined'}
+          startIcon={<FilterAltIcon fontSize="small" />}
+          onClick={() => setBuilderOpen(true)}
+          sx={{ height: 32, fontSize: 12, whiteSpace: 'nowrap', px: 1.5 }}
+          data-testid="open-filter-builder"
+        >
+          فیلتر پیشرفته
+          {advancedFilterCount ? (
+            <Chip
+              size="small"
+              label={toPersianDigits(advancedFilterCount)}
+              sx={{ ml: 0.75, height: 18, fontSize: 10.5, fontWeight: 800 }}
+            />
+          ) : null}
+        </Button>
+      </ModuleToolbar>
 
 
       <Paper
@@ -2316,6 +2425,20 @@ const SeasonalReportPage = () => {
         onClose={() => setPasteOpen(false)}
         onApply={appendBulkRows}
         makeRow={emptyRow}
+      />
+
+      <SeasonalFilterBuilder
+        open={builderOpen}
+        onClose={() => setBuilderOpen(false)}
+        expression={filterExpression}
+        onApply={setFilterExpression}
+        rows={filledRows}
+        savedViews={savedViews}
+        viewsEnabled={mode === 'api' && Boolean(reportId)}
+        viewsBusy={viewsBusy || viewsFetching}
+        onSaveView={saveCurrentView}
+        onDeleteView={deleteSavedView}
+        onToggleFavorite={toggleSavedViewFavorite}
       />
 
       <Snackbar

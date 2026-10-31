@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import json
 
+from django.db.models import F
 from django.http import HttpResponse
 from django.utils import timezone
 from rest_framework import filters, status as http_status
@@ -20,12 +21,16 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
 from accounting import seasonal_reconcile, seasonal_rules
-from accounting.models import FiscalYear, SeasonalReconciliation, SeasonalReport
+from accounting.models import (
+    FiscalYear, SeasonalReconciliation, SeasonalReport, SeasonalSavedView,
+)
 from accounting.seasonal import (
     DIRECTION_PURCHASE, build_ttms_draft, build_workbook, control_totals,
     sync_rows, validate_report,
 )
-from accounting.serializers import SeasonalReportSerializer, SeasonalRowsWriteSerializer
+from accounting.serializers import (
+    SeasonalReportSerializer, SeasonalRowsWriteSerializer, SeasonalSavedViewSerializer,
+)
 from accounting.views import CompanyScopedViewSet, _company
 
 
@@ -324,4 +329,50 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         response['X-TTMS-Status'] = seasonal_rules.RULESET_STATUS
         response['X-TTMS-Warnings'] = ' | '.join(warnings).encode('ascii', 'ignore').decode() or 'unverified'
         return response
+
+
+class SeasonalSavedViewViewSet(CompanyScopedViewSet):
+    """نماهای ذخیره‌شدهٔ فیلتر برای گزارش‌های فصلی شرکت جاری."""
+
+    serializer_class = SeasonalSavedViewSerializer
+    queryset = SeasonalSavedView.objects.select_related('report', 'report__fiscal_year')
+    filter_backends = [filters.OrderingFilter]
+    ordering = ['-is_favorite', 'name']
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['company'] = _company(self.request)
+        return context
+
+    def get_queryset(self):
+        qs = super().get_queryset()
+        params = self.request.query_params
+        if params.get('report'):
+            qs = qs.filter(report_id=params['report'])
+        if (params.get('favorite') or '').lower() in ('1', 'true', 'yes'):
+            qs = qs.filter(is_favorite=True)
+        return qs
+
+    def perform_create(self, serializer):
+        user = getattr(self.request, 'user', None)
+        name = ((user.get_full_name() if hasattr(user, 'get_full_name') else '')
+                or getattr(user, 'username', '') or '')[:150]
+        serializer.save(company=_company(self.request), owner_name=name)
+
+    @action(detail=True, methods=['post'])
+    def touch(self, request, pk=None):
+        """ثبت استفاده از نما (برای مرتب‌سازی «پرکاربردترین‌ها»)."""
+        view = self.get_object()
+        SeasonalSavedView.objects.filter(pk=view.pk).update(use_count=F('use_count') + 1)
+        return Response({'id': view.pk, 'use_count': (view.use_count or 0) + 1})
+
+    @action(detail=True, methods=['post'])
+    def favorite(self, request, pk=None):
+        """علامت‌گذاری/برداشتن علامت «مورد علاقه»."""
+        view = self.get_object()
+        value = request.data.get('value')
+        view.is_favorite = bool(value) if value is not None else not view.is_favorite
+        view.save(update_fields=['is_favorite', 'updated_at'])
+        return Response(SeasonalSavedViewSerializer(view, context=self.get_serializer_context()).data)
+
 

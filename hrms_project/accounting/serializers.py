@@ -10,7 +10,7 @@ from accounting.models import (
     SourceTransaction, PostingBatch, PostingTemplate, PostingTemplateLine,
     AccountingSettings, CodingConfig, BankStatement, BankStatementLine, BankReconciliation,
     ApprovalPolicy, ApprovalStep, FinancialStatementApproval,
-    SeasonalReport, SeasonalTransaction,
+    SeasonalReport, SeasonalSavedView, SeasonalTransaction,
 )
 
 
@@ -549,4 +549,63 @@ class SeasonalRowsWriteSerializer(serializers.Serializer):
     """بدنهٔ ذخیرهٔ گروهی ردیف‌ها: ``{'rows': [...]}``."""
 
     rows = serializers.ListField(child=serializers.DictField(), allow_empty=True)
+
+
+class SeasonalSavedViewSerializer(BaseModelSerializer):
+    """نمای ذخیره‌شدهٔ فیلترها برای یک گزارش فصلی."""
+
+    report_label = serializers.SerializerMethodField()
+    filters_label = serializers.SerializerMethodField()
+
+    class Meta(BaseModelSerializer.Meta):
+        model = SeasonalSavedView
+        fields = [
+            'id', 'report', 'report_label', 'name', 'description', 'filters', 'filters_label',
+            'is_shared', 'is_favorite', 'owner_name', 'use_count', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'company', 'owner_name', 'use_count', 'created_at', 'updated_at']
+
+    def get_report_label(self, obj):
+        return f'{obj.report.fiscal_year_id} — فصل {obj.report.quarter}' if obj.report_id else ''
+
+    def get_filters_label(self, obj):
+        from accounting import seasonal_reconcile
+
+        try:
+            expression = seasonal_reconcile.normalize_expression(obj.filters or {})
+        except Exception:
+            return 'بدون فیلتر'
+        return seasonal_reconcile.describe_expression(expression)
+
+    def validate_filters(self, value):
+        from accounting import seasonal_reconcile
+
+        expression = seasonal_reconcile.normalize_expression(value or {})
+        if len(expression.get('items', [])) > 30:
+            raise serializers.ValidationError('حداکثر ۳۰ شرط در یک نما مجاز است.')
+        return expression
+
+    def validate_name(self, value):
+        value = (value or '').strip()
+        if not value:
+            raise serializers.ValidationError('نام نما الزامی است.')
+        return value[:120]
+
+    def validate(self, attrs):
+        attrs = super().validate(attrs)
+        report = attrs.get('report') or getattr(self.instance, 'report', None)
+        name = attrs.get('name') or getattr(self.instance, 'name', '')
+        company = self.context.get('company')
+        if report and name:
+            existing = SeasonalSavedView.objects.filter(report=report, name=name).exclude(
+                pk=getattr(self.instance, 'pk', None),
+            )
+            if company:
+                existing = existing.filter(company=company)
+            if existing.exists():
+                raise serializers.ValidationError(
+                    {'name': 'نمایی با این نام برای همین گزارش وجود دارد.'},
+                )
+        return attrs
+
 

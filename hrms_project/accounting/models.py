@@ -1150,3 +1150,35 @@ class SeasonalReconciliation(AccountingBaseModel):
         return f'{self.report_id} — {self.file_name or "فایل دفاتر"}'
 
 
+class SeasonalSavedView(AccountingBaseModel):
+    """نمای ذخیره‌شدهٔ فیلترهای گزارش فصلی (فیلتر ساده یا درخت شرط AND/OR).
+
+    هر نما به یک گزارش (فصل/سال) تعلق دارد تا فیلترهای همان فصل با یک کلیک
+    روی جدول، گزارش تحلیلی، پیوت طرف‌ها و خروجی‌ها اعمال شود.
+    """
+
+    report = models.ForeignKey(
+        SeasonalReport, on_delete=models.CASCADE, related_name='saved_views',
+        verbose_name=_('گزارش فصلی'),
+    )
+    name = models.CharField(max_length=120, verbose_name=_('نام نما'))
+    description = models.CharField(max_length=255, blank=True, verbose_name=_('توضیح'))
+    filters = models.JSONField(default=dict, blank=True, verbose_name=_('فیلترها'))
+    is_shared = models.BooleanField(default=True, verbose_name=_('اشتراکی'))
+    is_favorite = models.BooleanField(default=False, verbose_name=_('مورد علاقه'))
+    owner_name = models.CharField(max_length=150, blank=True, verbose_name=_('سازنده'))
+    use_count = models.PositiveIntegerField(default=0, verbose_name=_('تعداد استفاده'))
+
+    class Meta:
+        verbose_name = _('نمای ذخیره‌شدهٔ فصلی')
+        verbose_name_plural = _('نماهای ذخیره‌شدهٔ فصلی')
+        ordering = ['-is_favorite', 'name']
+        constraints = [
+            models.UniqueConstraint(fields=['report', 'name'], name='uniq_seasonal_view_name'),
+        ]
+
+    def __str__(self):
+        return f'{self.name} — {self.report_id}'
+
+
+

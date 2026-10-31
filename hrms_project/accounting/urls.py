@@ -44,6 +44,7 @@ router.register(r'settings', AccountingSettingsViewSet, basename='accounting-set
 router.register(r'coding-configs', CodingConfigViewSet, basename='coding-config')
 router.register(r'statement-approvals', FinancialStatementApprovalViewSet, basename='statement-approval')
 router.register(r'tax/seasonal-reports', seasonal_views.SeasonalReportViewSet, basename='seasonal-report')
+router.register(r'tax/seasonal-views', seasonal_views.SeasonalSavedViewViewSet, basename='seasonal-view')
 
 urlpatterns = [
     path('', include(router.urls)),

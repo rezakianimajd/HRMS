@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import csv
 import io
+import json
 import re
 import unicodedata
 from dataclasses import dataclass, field
@@ -233,9 +234,315 @@ def _rows_for(report, direction):
     return list(report.transactions.filter(direction=direction).order_by('line_no', 'id'))
 
 
+FILTER_FIELDS = {
+    'person_type': 'نوع طرف معامله',
+    'kind': 'نوع معامله',
+    'moadian_status': 'وضعیت سامانه مودیان',
+    'name': 'نام طرف',
+    'national_id': 'شناسه / کد ملی',
+    'invoice_no': 'شمارهٔ فاکتور',
+    'invoice_date': 'تاریخ فاکتور',
+    'amount': 'مبلغ',
+    'vat': 'مالیات بر ارزش افزوده',
+    'vat_ratio': 'نسبت مالیات به مبلغ',
+    'postal_code': 'کد پستی',
+    'city': 'شهر',
+    'province': 'استان',
+    'country': 'کشور',
+    'address': 'آدرس',
+    'description': 'شرح کالا / خدمات',
+    'aggregate': 'ردیف تجمیعی',
+    'duplicate': 'شمارهٔ فاکتور تکراری',
+}
+
+FILTER_OPERATORS = {
+    'eq': 'برابر باشد با',
+    'ne': 'برابر نباشد با',
+    'contains': 'شامل باشد',
+    'starts_with': 'شروع شود با',
+    'in': 'یکی از',
+    'between': 'بین',
+    'gt': 'بزرگ‌تر از',
+    'gte': 'بزرگ‌تر یا مساوی',
+    'lt': 'کوچک‌تر از',
+    'lte': 'کوچک‌تر یا مساوی',
+    'empty': 'خالی باشد',
+    'not_empty': 'خالی نباشد',
+    'is_true': 'بله',
+    'is_false': 'خیر',
+}
+
+_TEXT_FIELDS = ('name', 'national_id', 'invoice_no', 'postal_code', 'city', 'province',
+                'country', 'address', 'description')
+_VALUE_FREE_OPERATORS = ('empty', 'not_empty', 'is_true', 'is_false')
+_SEARCH_FIELDS = ('name', 'national_id', 'invoice_no', 'city', 'address', 'description')
+
+
+def expression_from_simple(simple):
+    """فیلتر ساده (کلیدهای قبلی) → درخت شرط AND."""
+    items = []
+    if simple.get('kind'):
+        items.append({'field': 'kind', 'operator': 'eq', 'value': simple['kind'], 'value2': None})
+    if simple.get('moadian_status'):
+        items.append({'field': 'moadian_status', 'operator': 'eq',
+                      'value': simple['moadian_status'], 'value2': None})
+    if simple.get('person_type'):
+        items.append({'field': 'person_type', 'operator': 'eq', 'value': simple['person_type'], 'value2': None})
+    if simple.get('search'):
+        term = simple['search']
+        items.append({'op': 'or', 'items': [
+            {'field': field, 'operator': 'contains', 'value': term, 'value2': None}
+            for field in _SEARCH_FIELDS
+        ]})
+    return {'op': 'and', 'items': items}
+
+
+def _simple_from_expression(expression):
+    """خلاصهٔ کلیدهای ساده از یک درخت شرط (برای سازگاری پاسخ API)."""
+    simple = {'kind': None, 'moadian_status': None, 'person_type': None, 'search': ''}
+    for item in (expression or {}).get('items', []):
+        if item.get('operator') != 'eq':
+            continue
+        field = item.get('field')
+        if field == 'kind':
+            try:
+                simple['kind'] = int(item.get('value'))
+            except (TypeError, ValueError):
+                simple['kind'] = None
+        elif field in ('moadian_status', 'person_type'):
+            simple[field] = item.get('value')
+    return simple
+
+
+def normalize_expression(expression):
+    """ورودی آزاد (درخت شرط) → ساختار استاندارد ``{'op', 'items'}`` با شرط‌های معتبر."""
+    if not isinstance(expression, dict):
+        return {'op': 'and', 'items': []}
+    raw_op = str(expression.get('op') or expression.get('match') or 'and').lower()
+    op = 'or' if raw_op in ('or', 'any') else 'and'
+    raw_items = expression.get('items')
+    if raw_items is None:
+        raw_items = expression.get('conditions') or []
+    items = []
+    for item in raw_items or []:
+        if not isinstance(item, dict):
+            continue
+        if item.get('op') or item.get('items') or item.get('conditions'):
+            child = normalize_expression(item)
+            if child['items']:
+                items.append(child)
+            continue
+        field = str(item.get('field') or '').strip()
+        operator = str(item.get('operator') or 'eq').strip().lower()
+        if field not in FILTER_FIELDS or operator not in FILTER_OPERATORS:
+            continue
+        value = item.get('value')
+        value2 = item.get('value2')
+        if isinstance(value, str):
+            value = value.strip() or None
+        if isinstance(value2, str):
+            value2 = value2.strip() or None
+        if operator in _VALUE_FREE_OPERATORS:
+            value = None
+            value2 = None
+        elif operator == 'between':
+            if value in (None, '') or value2 in (None, ''):
+                continue
+        elif value in (None, ''):
+            continue
+        items.append({'field': field, 'operator': operator, 'value': value, 'value2': value2})
+    return {'op': op, 'items': items}
+
+
+def _row_value(row, field, context):
+    """مقدار قابل مقایسهٔ یک فیلد در ردیف."""
+    if field == 'kind':
+        return int(row.kind or 1)
+    if field == 'person_type':
+        return row.person_type or ''
+    if field == 'moadian_status':
+        return row.moadian_status or 'pending'
+    if field == 'invoice_date':
+        return row.invoice_date
+    if field in ('amount', 'vat'):
+        return Decimal(str(getattr(row, field) or 0))
+    if field == 'vat_ratio':
+        amount = Decimal(str(row.amount or 0))
+        return (Decimal(str(row.vat or 0)) / amount) if amount else Decimal('0')
+    if field == 'aggregate':
+        return (row.person_type or '') == SeasonalTransaction.PersonType.AGGREGATE
+    if field == 'duplicate':
+        return normalize_invoice(row.invoice_no) in context.get('duplicates', set())
+    if field == 'description':
+        return normalize_text(row.goods_service_desc)
+    if field == 'address':
+        return normalize_text(row.address)
+    if field == 'name':
+        composed = row.name or ' '.join(part for part in [row.first_name, row.last_name] if part)
+        return normalize_text(composed)
+    if field in _TEXT_FIELDS:
+        return normalize_text(getattr(row, field, ''))
+    return ''
+
+
+def _as_decimal(value):
+    return parse_amount(value)
+
+
+def _as_list(value):
+    if isinstance(value, (list, tuple, set)):
+        return [normalize_text(item) for item in value if str(item).strip()]
+    text = normalize_text(value)
+    return [item.strip() for item in re.split(r'[،,;]', text) if item.strip()]
+
+
+def _match_condition(actual, condition):
+    operator = condition.get('operator')
+    field = condition.get('field')
+    value = condition.get('value')
+    value2 = condition.get('value2')
+
+    if operator == 'empty':
+        return not actual and actual != 0
+    if operator == 'not_empty':
+        return bool(actual) or actual == 0
+    if operator == 'is_true':
+        return bool(actual)
+    if operator == 'is_false':
+        return not bool(actual)
+
+    if field in ('amount', 'vat', 'vat_ratio', 'kind'):
+        left = _as_decimal(actual)
+        right = _as_decimal(value)
+        if field == 'kind':
+            left, right = int(left), int(right)
+        if operator == 'between':
+            return _as_decimal(value) <= left <= _as_decimal(value2)
+        return {
+            'eq': left == right, 'ne': left != right,
+            'gt': left > right, 'gte': left >= right,
+            'lt': left < right, 'lte': left <= right,
+            'in': left in {_as_decimal(item) for item in _as_list(value)},
+        }.get(operator, False)
+
+    if field == 'invoice_date':
+        left = actual
+        right = parse_date(value)
+        if operator == 'between':
+            other = parse_date(value2)
+            return bool(left and right and other and right <= left <= other)
+        if not left or not right:
+            return False
+        if field == 'invoice_date':
+            return {
+                'eq': left == right, 'ne': left != right,
+                'gt': left > right, 'gte': left >= right,
+                'lt': left < right, 'lte': left <= right,
+            }.get(operator, False)
+
+    text = normalize_text(actual).lower()
+    needle = normalize_text(value).lower()
+    if operator == 'contains':
+        return needle in text
+    if operator == 'starts_with':
+        return text.startswith(needle)
+    if operator == 'in':
+        return text in [item.lower() for item in _as_list(value)]
+    if operator == 'between':
+        return needle <= text <= normalize_text(value2).lower()
+    if operator == 'eq':
+        return text == needle
+    if operator == 'ne':
+        return text != needle
+    return False
+
+
+def _evaluate(expression, row, context):
+    items = (expression or {}).get('items') or []
+    if not items:
+        return True
+    op = expression.get('op', 'and')
+    results = []
+    for item in items:
+        if 'items' in item or item.get('op'):
+            results.append(_evaluate(item, row, context))
+        else:
+            results.append(_match_condition(_row_value(row, item.get('field'), context), item))
+    return all(results) if op == 'and' else any(results)
+
+
+def _duplicate_invoice_keys(rows):
+    buckets = {}
+    for row in rows:
+        key = normalize_invoice(row.invoice_no)
+        if key:
+            buckets[key] = buckets.get(key, 0) + 1
+    return {key for key, count in buckets.items() if count > 1}
+
+
+def _format_filter_value(field, value):
+    """نمایش خوانای مقدار شرط در متن فیلتر."""
+    text = str(value if value is not None else '').strip()
+    if field == 'person_type':
+        return dict(seasonal_rules.PERSON_TYPES).get(text, text)
+    if field == 'moadian_status':
+        return {'registered': 'درج‌شده', 'pending': 'درج‌نشده'}.get(text, text)
+    if field == 'kind':
+        return f'نوع {text}'
+    if field in ('amount', 'vat'):
+        try:
+            return f'{int(parse_amount(text)):,}'
+        except (InvalidOperation, ValueError, TypeError):
+            return text
+    return text
+
+
+def describe_expression(expression):
+    """متن فارسی خوانا از درخت شرط (برای نمایش و نام فایل خروجی)."""
+    items = (expression or {}).get('items') or []
+    if not items:
+        return 'بدون فیلتر'
+    parts = []
+    for item in items:
+        if 'items' in item or item.get('op'):
+            inner = describe_expression(item)
+            if inner != 'بدون فیلتر':
+                parts.append(f'({inner})')
+            continue
+        field = item.get('field')
+        label = FILTER_FIELDS.get(field, field)
+        operator = FILTER_OPERATORS.get(item.get('operator'), item.get('operator'))
+        if item.get('operator') == 'between':
+            parts.append(f'{label} {operator} {_format_filter_value(field, item.get("value"))}'
+                         f' و {_format_filter_value(field, item.get("value2"))}')
+        elif item.get('operator') in _VALUE_FREE_OPERATORS:
+            parts.append(f'{label} {operator}')
+        elif item.get('operator') == 'in':
+            values = _as_list(item.get('value'))
+            parts.append(f'{label} {operator} ' + '، '.join(
+                _format_filter_value(field, value) for value in values))
+        else:
+            parts.append(f'{label} {operator} {_format_filter_value(field, item.get("value"))}')
+    joiner = ' و ' if expression.get('op', 'and') == 'and' else ' یا '
+    return joiner.join(parts) if parts else 'بدون فیلتر'
+
+
 def _clean_filters(filters):
-    """فیلترهای گزارش: نوع معامله، وضعیت مودیان، نوع طرف و جستجوی متنی."""
+    """فیلترهای گزارش: پشتیبانی از فیلتر ساده و «درخت شرط» (AND/OR).
+
+    ورودی می‌تواند فرم سادهٔ قبلی باشد (``{'kind': 2, 'moadian_status': ...}``)
+    یا یک expression کامل: ``{'op': 'and', 'items': [{'field': 'amount', 'operator': 'gte', 'value': 1000}]}``.
+    خروجی هم کلیدهای ساده (سازگاری با پاسخ قبلی API) و هم ``expression`` را دارد.
+    """
     filters = filters or {}
+    if 'expression' in filters and isinstance(filters.get('expression'), dict):
+        expression = normalize_expression(filters['expression'])
+        simple = _simple_from_expression(expression)
+        return {**simple, 'expression': expression}
+    if filters.get('op') or filters.get('items') or filters.get('conditions'):
+        expression = normalize_expression(filters)
+        simple = _simple_from_expression(expression)
+        return {**simple, 'expression': expression}
 
     def pick(*keys):
         for key in keys:
@@ -262,38 +569,39 @@ def _clean_filters(filters):
         person_type = None
 
     search = normalize_text(filters.get('search') or '').strip()
-    return {
+    simple = {
         'kind': kind,
         'moadian_status': status,
         'person_type': person_type,
         'search': search,
     }
+    return {**simple, 'expression': expression_from_simple(simple)}
+
 
 
 def filters_from_query(params):
-    """QueryString درخواست → فیلترهای استاندارد گزارش."""
+    """QueryString درخواست → فیلترهای استاندارد گزارش (شامل درخت شرط JSON)."""
     if hasattr(params, 'dict'):
         params = params.dict()
+    raw = params.get('expression') or params.get('filters') or params.get('filter')
+    if isinstance(raw, str) and raw.strip():
+        try:
+            parsed = json.loads(raw)
+        except ValueError:
+            parsed = None
+        if isinstance(parsed, dict):
+            return _clean_filters(parsed)
     return _clean_filters(params)
 
 
 def _apply_filters(rows, filters):
-    result = rows
-    if filters.get('kind'):
-        result = [row for row in result if int(row.kind or 1) == int(filters['kind'])]
-    if filters.get('moadian_status'):
-        status = filters['moadian_status']
-        result = [row for row in result
-                  if (row.moadian_status or 'pending') == status]
-    if filters.get('person_type'):
-        result = [row for row in result if (row.person_type or '') == filters['person_type']]
-    if filters.get('search'):
-        term = filters['search'].lower()
-        result = [row for row in result if term in ' '.join(str(value or '') for value in [
-            row.name, row.first_name, row.last_name, row.national_id, row.invoice_no,
-            row.city, row.address, row.goods_service_desc,
-        ]).lower()]
-    return result
+    """اعمال درخت شرط روی ردیف‌ها (پشتیبانی از فیلتر سادهٔ قبلی هم ادامه دارد)."""
+    rows = list(rows)
+    expression = (filters or {}).get('expression')
+    if not expression or not expression.get('items'):
+        return rows
+    context = {'duplicates': _duplicate_invoice_keys(rows)}
+    return [row for row in rows if _evaluate(expression, row, context)]
 
 
 def filtered_rows(report, direction, filters=None):
@@ -448,7 +756,9 @@ def build_analytics(report, direction=seasonal_rules.DIRECTION, filters=None):
     return {
         'direction': direction,
         'filters': cleaned_filters,
-        'active_filters': bool(cleaned_filters['kind'] or cleaned_filters['moadian_status']
+        'filters_label': _filters_text(cleaned_filters),
+        'active_filters': bool(cleaned_filters.get('expression', {}).get('items')
+                               or cleaned_filters['kind'] or cleaned_filters['moadian_status']
                                or cleaned_filters['person_type'] or cleaned_filters['search']),
         'filter_options': _filter_options(base_rows),
         'unfiltered': {
@@ -1480,6 +1790,8 @@ ANALYTICS_ROW_HEADERS = [
 
 
 def _filters_text(filters):
+    if filters.get('expression') and filters['expression'].get('items'):
+        return describe_expression(filters['expression'])
     parts = []
     if filters.get('kind'):
         parts.append(f'نوع معامله = {filters["kind"]}')

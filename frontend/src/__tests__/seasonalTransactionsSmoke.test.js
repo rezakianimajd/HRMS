@@ -1199,6 +1199,47 @@ test('bulk paste dialog inserts pasted Excel rows with automatic column mapping'
   container.remove();
 }, 25000);
 
+test('advanced filter builder applies a preset and the chip clears it again', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+
+  const openButton = container.querySelector('[data-testid="open-filter-builder"]');
+  expect(openButton).toBeTruthy();
+  await act(async () => { openButton.click(); await wait(320); });
+
+  expect(document.body.textContent).toContain('فیلتر فوق‌پیشرفته');
+  const preset = Array.from(document.querySelectorAll('[data-testid="filter-preset"]'))
+    .find((chip) => chip.textContent.includes('بدون شمارهٔ فاکتور'));
+  expect(preset).toBeTruthy();
+  await act(async () => { preset.click(); await wait(260); });
+  expect(document.body.textContent).toContain('شمارهٔ فاکتور خالی باشد');
+  expect(document.body.textContent).toContain('۰ از ۱ ردیف با این فیلتر مطابق است');
+
+  const applyButton = document.querySelector('[data-testid="apply-filter"]');
+  await act(async () => { applyButton.click(); await wait(380); });
+
+  expect(container.querySelectorAll('input[aria-label="نام شرکت"]').length).toBe(0);
+  expect(container.textContent).toContain('ردیفی با این مشخصات پیدا نشد');
+  expect(container.textContent).toContain('فیلتر پیشرفته (۱ شرط)');
+
+  const clearChip = Array.from(container.querySelectorAll('.MuiChip-deleteIcon'))
+    .map((icon) => icon.closest('.MuiChip-root'))
+    .find((chip) => chip && chip.textContent.includes('فیلتر پیشرفته'));
+  expect(clearChip).toBeTruthy();
+  const deleteIcon = clearChip.querySelector('.MuiChip-deleteIcon');
+  expect(deleteIcon).toBeTruthy();
+  await act(async () => {
+    deleteIcon.dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    await wait(320);
+  });
+
+  expect(container.querySelectorAll('input[aria-label="نام شرکت"]').length).toBeGreaterThan(0);
+  expect(container.textContent).not.toContain('فیلتر پیشرفته (۱ شرط)');
+
+  root.unmount();
+  container.remove();
+}, 25000);
+
 test('typing in a cell can be undone with Ctrl+Z', async () => {
   currentReport = apiReport([API_ROW]);
   const { root, container } = await renderPage();

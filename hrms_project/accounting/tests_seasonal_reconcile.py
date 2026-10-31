@@ -296,4 +296,145 @@ class PartyPivotTests(SeasonalBaseTest):
         buffer = io.BytesIO()
         workbook.save(buffer)
         self.assertGreater(buffer.tell(), 3000)
+class FilterExpressionTests(SeasonalBaseTest):
+    """درخت شرط AND/OR: پاک‌سازی، تطبیق ردیف، گزارش تحلیلی و پیوت."""
 
+    def setUp(self):
+        super().setUp()
+        self.report = self.make_report()
+        sync_rows(self.report, [
+            self.row(invoice_no='F1', amount=3000000, vat=300000, kind=2, invoice_date='2026-04-10'),
+            self.natural_row(invoice_no='F2', amount=1200000, vat=120000, kind=3,
+                             invoice_date='2026-05-10', moadian_status='pending'),
+            {'person_type': 'aggregate', 'amount': 900000, 'vat': 0, 'invoice_no': 'F1'},
+            self.row(invoice_no='F3', name='شرکت مس البرز', national_id='30303030303',
+                     amount=45000000, vat=4500000, kind=2, invoice_date='2026-06-01'),
+        ])
+
+    def _ids(self, expression):
+        rows = rec.filtered_rows(self.report, 'purchase', {'expression': expression})
+        return [row.invoice_no or row.person_type for row in rows]
+
+    def test_normalize_expression_drops_invalid_conditions(self):
+        normalized = rec.normalize_expression({'op': 'any', 'items': [
+            {'field': 'unknown', 'operator': 'eq', 'value': 1},
+            {'field': 'amount', 'operator': 'between', 'value': 10},
+            {'field': 'name', 'operator': 'contains', 'value': '   '},
+            {'field': 'name', 'operator': 'contains', 'value': '  مس  '},
+            {'op': 'and', 'items': []},
+        ]})
+        self.assertEqual(normalized, {'op': 'or', 'items': [
+            {'field': 'name', 'operator': 'contains', 'value': 'مس', 'value2': None},
+        ]})
+
+    def test_and_or_expression_filters_rows(self):
+        expression = {'op': 'and', 'items': [
+            {'field': 'amount', 'operator': 'gte', 'value': '1000000'},
+            {'op': 'or', 'items': [
+                {'field': 'kind', 'operator': 'eq', 'value': 3},
+                {'field': 'name', 'operator': 'contains', 'value': 'مس'},
+            ]},
+        ]}
+        self.assertEqual(self._ids(expression), ['F2', 'F3'])
+
+    def test_date_between_accepts_jalali_and_numbers(self):
+        by_date = {'items': [{'field': 'invoice_date', 'operator': 'between',
+                              'value': '1405/01/25', 'value2': '1405/02/20'}]}
+        self.assertEqual(self._ids(by_date), ['F1', 'F2'])
+
+        by_vat = {'items': [{'field': 'vat', 'operator': 'gte', 'value': '۳۰۰٬۰۰۰'}]}
+        self.assertEqual(self._ids(by_vat), ['F1', 'F3'])
+
+    def test_duplicate_aggregate_and_empty_flags(self):
+        self.assertEqual(self._ids({'items': [
+            {'field': 'duplicate', 'operator': 'is_true'}]}), ['F1', 'aggregate'])
+        self.assertEqual(self._ids({'items': [
+            {'field': 'aggregate', 'operator': 'is_true'}]}), ['aggregate'])
+        self.assertEqual(self._ids({'items': [
+            {'field': 'invoice_no', 'operator': 'not_empty'},
+            {'field': 'aggregate', 'operator': 'is_false'},
+        ]}), ['F1', 'F2', 'F3'])
+
+    def test_expression_applies_to_analytics_and_pivot(self):
+        expression = {'op': 'and', 'items': [
+            {'field': 'kind', 'operator': 'eq', 'value': 2},
+            {'field': 'amount', 'operator': 'lt', 'value': 10000000},
+        ]}
+        analytics = rec.build_analytics(self.report, 'purchase', {'expression': expression})
+        self.assertEqual(analytics['totals']['count'], 1)
+        self.assertEqual(analytics['totals']['amount'], 3000000.0)
+        self.assertTrue(analytics['active_filters'])
+        self.assertEqual(analytics['filters']['kind'], 2)
+        self.assertIn('مبلغ کوچک‌تر از 10,000,000', analytics['filters_label'])
+
+        pivot = rec.build_party_pivot(self.report, 'purchase', {'expression': expression}, 'kind')
+        self.assertEqual(pivot['totals']['count'], 1)
+        self.assertEqual(pivot['totals']['parties'], 1)
+        self.assertIn('نوع معامله برابر باشد با نوع 2', pivot['filters_label'])
+
+        empty = rec.build_analytics(self.report, 'purchase', {'expression': {'items': []}})
+        self.assertFalse(empty['active_filters'])
+        self.assertEqual(empty['totals']['count'], 4)
+
+    def test_filters_from_query_parses_json_expression(self):
+        import json
+
+        params = {'expression': json.dumps({'items': [
+            {'field': 'person_type', 'operator': 'eq', 'value': 'natural'}]})}
+        cleaned = rec.filters_from_query(params)
+        self.assertEqual(cleaned['person_type'], 'natural')
+        self.assertEqual(cleaned['expression']['items'][0]['field'], 'person_type')
+
+        broken = rec.filters_from_query({'expression': '{oops'})
+        self.assertEqual(broken['expression']['items'], [])
+        self.assertIsNone(broken['kind'])
+
+
+
+class SavedViewTests(SeasonalBaseTest):
+    """نمای ذخیره‌شدهٔ فیلتر: اعتبارسنجی، یکتایی نام و برچسب خوانا."""
+
+    def setUp(self):
+        super().setUp()
+        self.report = self.make_report()
+
+    def _serializer(self, data):
+        from accounting.serializers import SeasonalSavedViewSerializer
+
+        return SeasonalSavedViewSerializer(data=data, context={'company': self.company})
+
+    def test_saved_view_validates_and_labels_filters(self):
+        serializer = self._serializer({
+            'report': self.report.pk,
+            'name': 'خریدهای بزرگ حقوقی',
+            'filters': {'op': 'and', 'items': [
+                {'field': 'amount', 'operator': 'gte', 'value': 5000000},
+                {'field': 'person_type', 'operator': 'eq', 'value': 'legal'},
+            ]},
+            'is_favorite': True,
+        })
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        view = serializer.save(company=self.company, owner_name='کاربر تست')
+        self.assertEqual(view.filters['op'], 'and')
+        self.assertEqual(len(view.filters['items']), 2)
+
+        payload = serializer.__class__(view, context={'company': self.company}).data
+        self.assertEqual(payload['filters_label'],
+                         'مبلغ بزرگ‌تر یا مساوی 5,000,000 و نوع طرف معامله برابر باشد با شخص حقوقی')
+        self.assertTrue(payload['is_favorite'])
+        self.assertIn('فصل 1', payload['report_label'])
+
+        duplicate = self._serializer({'report': self.report.pk, 'name': 'خریدهای بزرگ حقوقی'})
+        self.assertFalse(duplicate.is_valid())
+        self.assertIn('name', duplicate.errors)
+
+    def test_saved_view_requires_name_and_limits_conditions(self):
+        missing = self._serializer({'report': self.report.pk, 'name': '   '})
+        self.assertFalse(missing.is_valid())
+        self.assertIn('name', missing.errors)
+
+        many = {'items': [{'field': 'name', 'operator': 'contains', 'value': f'n{index}'}
+                          for index in range(31)]}
+        too_many = self._serializer({'report': self.report.pk, 'name': 'زیاد', 'filters': many})
+        self.assertFalse(too_many.is_valid())
+        self.assertIn('filters', too_many.errors)
