@@ -332,6 +332,17 @@ const SeasonalTtmsPreview = ({
         ) : null}
       </Stack>
 
+      {preview?.company_profile?.moady_name ? (
+        <Alert severity="info" sx={{ mb: 1.5, fontSize: 11 }}>
+          {'پروفایل مؤدی برای جدول Moshakhasat (یک‌بار در TTMS ثبت کنید): '}
+          {`نام: ${preview.company_profile.moady_name}`}
+          {preview.company_profile.national_code ? ` | شناسهٔ ملی: ${toPersianDigits(preview.company_profile.national_code)}` : ''}
+          {preview.company_profile.economic_code ? ` | کد اقتصادی: ${toPersianDigits(preview.company_profile.economic_code)}` : ''}
+          {preview.company_profile.registration_no ? ` | شمارهٔ ثبت: ${toPersianDigits(preview.company_profile.registration_no)}` : ''}
+          {preview.company_profile.tax_office_name ? ` | ادارهٔ کل: ${preview.company_profile.tax_office_name}` : ''}
+        </Alert>
+      ) : null}
+
       {preview?.warnings?.length ? (
         <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
           {preview.warnings.map((warning) => (

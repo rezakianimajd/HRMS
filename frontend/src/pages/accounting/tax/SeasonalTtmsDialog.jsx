@@ -51,6 +51,7 @@ const SeasonalTtmsDialog = ({
   const [kalaType, setKalaType] = useState(12);
   const [kalaName, setKalaName] = useState('کالا/خدمات');
   const [sellerStatus, setSellerStatus] = useState('auto');
+  const [taxOffice, setTaxOffice] = useState('');
   const [continueRadif, setContinueRadif] = useState(true);
   const [dryRun, setDryRun] = useState(false);
   const [targetName, setTargetName] = useState('');
@@ -112,6 +113,7 @@ const SeasonalTtmsDialog = ({
   const kalaOptions = reference?.kala_types || [];
   const sellerOptions = reference?.seller_status_codes || [];
   const provinces = reference?.provinces || [];
+  const taxOffices = reference?.tax_offices || [];
 
   const optionsPayload = useCallback(() => ({
     kala_type: kalaType,
@@ -119,7 +121,8 @@ const SeasonalTtmsDialog = ({
     seller_type1_code: sellerStatus === 'auto' ? null : Number(sellerStatus),
     continue_radif: continueRadif,
     dry_run: dryRun,
-  }), [kalaType, kalaName, sellerStatus, continueRadif, dryRun]);
+    tax_office_code: taxOffice ? Number(taxOffice) : null,
+  }), [kalaType, kalaName, sellerStatus, continueRadif, dryRun, taxOffice]);
 
   const setOverride = useCallback((key, column, value) => {
     setOverrides((current) => {
@@ -404,6 +407,25 @@ const SeasonalTtmsDialog = ({
             sx={{ minWidth: 200 }}
             inputProps={{ maxLength: 100, style: { fontSize: 12.5 } }}
           />
+
+          <FormControl size="small" sx={{ minWidth: 230 }}>
+            <InputLabel id="ttms-office-label">ادارهٔ کل امور مالیاتی (پروفایل TTMS)</InputLabel>
+            <Select
+              labelId="ttms-office-label"
+              label="ادارهٔ کل امور مالیاتی (پروفایل TTMS)"
+              displayEmpty
+              value={taxOffice}
+              onChange={(event) => setTaxOffice(event.target.value)}
+              sx={{ fontSize: 12.5 }}
+            >
+              <MenuItem value="" sx={{ fontSize: 12.5 }}>—</MenuItem>
+              {taxOffices.map((office) => (
+                <MenuItem key={office.code} value={String(office.code)} sx={{ fontSize: 12.5 }}>
+                  {`${toPersianDigits(office.code)} — ${office.name}`}
+                </MenuItem>
+              ))}
+            </Select>
+          </FormControl>
         </Stack>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.25} alignItems="center" sx={{ mb: 1 }}>

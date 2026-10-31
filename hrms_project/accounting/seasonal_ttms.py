@@ -45,6 +45,7 @@ ASSETS_DIR = Path(__file__).resolve().parent / 'ttms_assets'
 FILLER_SCRIPT = 'fill_ttms.ps1'
 ZONE_ASSET = 'zone_codes.json'
 ARZ_ASSET = 'arz_codes.json'
+TAX_OFFICE_ASSET = 'edarekoll_codes.json'
 
 # ستون‌هایی که کاربر می‌تواند در «پیش‌نمایش» اصلاح کند (بقیه فقط نمایشی است)
 EDITABLE_COLUMNS = [
@@ -213,6 +214,7 @@ DEFAULT_OPTIONS = {
     'continue_radif': True,
     'dry_run': False,
     'auto_zone': True,              # تشخیص خودکار کد استان/شهر از نام استان/شهر طرف معامله
+    'tax_office_code': None,        # ادارهٔ کل امور مالیاتی (جدول EdareKol)
 }
 
 
@@ -327,6 +329,40 @@ def currency_codes():
     return [{'code': int(code), 'name': name} for code, name in data.get('currencies', [])]
 
 
+@lru_cache(maxsize=1)
+def tax_offices():
+    """اداره‌های کل امور مالیاتی (جدول ``EdareKol``) برای پروفایل مؤدی در TTMS."""
+    path = ASSETS_DIR / TAX_OFFICE_ASSET
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return []
+    return [
+        {'code': int(code), 'name': name, 'province_code': int(province)}
+        for code, name, province in data.get('offices', [])
+    ]
+
+
+def suggested_tax_office(state_code):
+    """ادارهٔ کل پیشنهادی بر اساس کد استان (اولین ادارهٔ همان استان)."""
+    if state_code in (None, ''):
+        return None
+    for office in tax_offices():
+        if office['province_code'] == int(state_code):
+            return office
+    return None
+
+
+def _tax_office_name(code):
+    """نام ادارهٔ کل از روی کد آن."""
+    if code in (None, ''):
+        return ''
+    for office in tax_offices():
+        if office['code'] == int(code):
+            return office['name']
+    return ''
+
+
 def match_zone(province_text, city_text=''):
     """نام استان/شهر متنی → (کد استان، کد شهر) بر اساس جدول Zone."""
     _provinces, _cities, province_index, city_index = _zones()
@@ -368,6 +404,13 @@ def normalize_options(options=None):
             seller_type1_code = None
 
     kala_name = _text(options.get('kala_name'), 100) or DEFAULT_OPTIONS['kala_name']
+    tax_office_code = options.get('tax_office_code')
+    if tax_office_code in (None, '', 'auto'):
+        tax_office_code = None
+    else:
+        tax_office_code = _to_int(tax_office_code)
+        if not any(office['code'] == tax_office_code for office in tax_offices()):
+            tax_office_code = None
     return {
         'kala_type': kala_type,
         'kala_name': kala_name,
@@ -375,6 +418,7 @@ def normalize_options(options=None):
         'continue_radif': bool(options.get('continue_radif', True)),
         'dry_run': bool(options.get('dry_run', False)),
         'auto_zone': bool(options.get('auto_zone', True)),
+        'tax_office_code': tax_office_code,
     }
 
 
@@ -401,6 +445,7 @@ def ttms_reference():
         'zone_source': f'{TEMPLATE_REFERENCE} :: Zone',
         'provinces': zone_provinces(),
         'currencies': currency_codes(),
+        'tax_offices': tax_offices(),
         'workflow': [
             'بستهٔ zip را دانلود و در ویندوز از حالت فشرده خارج کنید.',
             'اسکریپت fill_ttms.ps1 را در PowerShell (نه CMD) با پارامتر -Target مسیر فایل Access اجرا کنید.',
@@ -682,6 +727,50 @@ CURRENCY_PAIRS = (
 )
 
 
+def company_profile(report):
+    """اطلاعات مؤدی (شرکت) برای تکمیل یک‌بارهٔ جدول ``Moshakhasat`` در TTMS.
+
+    TTMS پیش از ارسال، پروفایل مؤدی را در جدول Moshakhasat لازم دارد؛ این اطلاعات
+    در HRMS وجود دارد و در manifest/README بسته آورده می‌شود تا کاربر یک‌بار آن را
+    در خود TTMS ثبت کند (نوشتن مستقیم در این جدول به‌دلیل فیلدهای GUID اجباری
+    انجام نمی‌شود).
+    """
+    name, economic_code, national_id = _company_identity(report)
+    profile = {
+        'moady_name': _text(name, 250),
+        'national_code': _digits(national_id, 11),
+        'economic_code': _digits(economic_code, 20),
+        'registration_no': '',
+        'postal_code': '',
+        'address': '',
+        'tel_code': '',
+        'tel_no': '',
+        'fax_no': '',
+        'mobile_no': '',
+        'tax_office_code': None,
+        'tax_office_name': '',
+        'source': 'Company / CompanyProfile',
+    }
+    try:
+        from settings_app.models import CompanyProfile
+
+        record = CompanyProfile.objects.filter(company_id=getattr(report, 'company_id', None)).first()
+        if record:
+            profile.update({
+                'moady_name': _text(record.legal_name or name, 250),
+                'national_code': _digits(record.national_id, 11),
+                'economic_code': _digits(record.economic_code, 20),
+                'registration_no': _digits(record.registration_number, 13),
+                'postal_code': _digits(record.postal_code, 10),
+                'address': _text(record.address, 70),
+                'tel_no': _text(record.phone, 50),
+                'mobile_no': _digits(getattr(record, 'mobile', ''), 11),
+            })
+    except Exception:                              # noqa: BLE001 — پروفایل اختیاری است
+        pass
+    return profile
+
+
 def _apply_currency_defaults(payloads):
     """در معاملهٔ ارزی، «معادل ریالی» هر جزء ارزی از مقدار ریالی همان جزء پر می‌شود."""
     for payload in payloads:
@@ -953,6 +1042,7 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
         'totals': _totals(payloads),
         'warnings': warnings,
         'needs_fix_count': len(needs_fix),
+        'company_profile': {**company_profile(report), 'tax_office_code': options.get('tax_office_code')},
         'errors': errors + default_errors,
     }
 
@@ -1028,6 +1118,13 @@ def build_manifest(report, payloads, options=None, filters=None, package_name=''
             'hc_year_code': _jalali_year(report),
             'hc_fasl_type_code': getattr(report, 'quarter', None) or 0,
             'is_sent': False,
+            'tax_office_code': options.get('tax_office_code'),
+            'commission_header_table': 'HagholAmalKari',
+        },
+        'company_profile': {
+            **company_profile(report),
+            'tax_office_code': options.get('tax_office_code'),
+            'tax_office_name': _tax_office_name(options.get('tax_office_code')),
         },
         'options': options,
         'mapping': {
@@ -1103,6 +1200,21 @@ def build_readme(manifest):
         '  - استان/شهر از جدول Zone همان فایل TTMS (کد استان + کد شهر) پر می‌شود.',
         '  - نوع کالا از جدول KalaType (۱۲ = سایر کالا ها).',
         '  - نوع ارز از جدول Arz برای معاملات ارزی (ریالی خالی می‌ماند).',
+        '',
+        'پروفایل مؤدی (جدول Moshakhasat در TTMS):',
+        '  این اطلاعات را یک‌بار در خود TTMS ثبت کنید (نوشتن مستقیم انجام نمی‌شود):',
+        f"    نام مؤدی: {manifest.get('company_profile', {}).get('moady_name') or '—'}",
+        f"    شناسهٔ ملی: {manifest.get('company_profile', {}).get('national_code') or '—'}",
+        f"    کد اقتصادی: {manifest.get('company_profile', {}).get('economic_code') or '—'}",
+        f"    شمارهٔ ثبت: {manifest.get('company_profile', {}).get('registration_no') or '—'}",
+        f"    کد پستی: {manifest.get('company_profile', {}).get('postal_code') or '—'}",
+        f"    ادارهٔ کل: {manifest.get('company_profile', {}).get('tax_office_name') or '—'}",
+        '',
+        'نکته‌های تکمیلی TTMS:',
+        '  - ردیف‌های «حق‌العمل‌کاری» در TTMS سرصفحهٔ جداگانه (جدول HagholAmalKari) دارند؛',
+        '    پیش از ارسال، وجود سرصفحهٔ همان فصل را بررسی کنید.',
+        '  - «نرخ برابری ارز» و «شناسهٔ کالا» از نوع GUID هستند و در HRMS منبعی ندارند؛',
+        '    برای معاملات ارزی، نرخ را در خود TTMS تکمیل کنید.',
         '',
         'پیش‌نیازها:',
         '  - Microsoft Access Database Engine (ACE) 2010/2016 یا Microsoft Access',
