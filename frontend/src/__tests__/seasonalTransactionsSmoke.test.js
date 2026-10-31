@@ -100,6 +100,18 @@ const analyticsFixture = {
     level: 'info', title: 'تحلیل پارتو (۸۰/۲۰)',
     detail: '۱ طرف معامله از ۱ طرف، ۸۰٪ مبلغ خرید را تشکیل می‌دهند.',
   }],
+  filter_options: {
+    kind: [
+      { value: 1, label: 'نوع 1', count: 2 },
+      { value: 2, label: 'نوع 2', count: 1 },
+    ],
+    moadian_status: [
+      { value: 'registered', label: 'درج‌شده در سامانه', count: 2 },
+      { value: 'pending', label: 'درج‌نشده در سامانه', count: 1 },
+    ],
+    person_type: [{ value: 'legal', label: 'حقوقی', count: 3 }],
+    total: 3,
+  },
 };
 
 const reconcileResult = {
@@ -181,7 +193,7 @@ beforeEach(() => {
     addEventListener: () => {}, removeEventListener: () => {},
   }));
 
-  axiosInstance.get.mockImplementation((url) => {
+  axiosInstance.get.mockImplementation((url, config) => {
     if (url === '/accounting/fiscal-years/') return Promise.resolve({ data: fiscalYears });
     if (url === '/accounting/tax/seasonal-reports/reference/') {
       return apiShouldFail
@@ -195,10 +207,23 @@ beforeEach(() => {
     }
     if (url.endsWith('/export/')) return Promise.resolve({ data: new Blob(['xlsx']) });
     if (url.endsWith('/analytics/')) {
-      return apiShouldFail
-        ? Promise.reject(new Error('offline'))
-        : Promise.resolve({ data: analyticsFixture });
+      if (apiShouldFail) return Promise.reject(new Error('offline'));
+      const kind = config?.params?.kind;
+      const status = config?.params?.moadian_status;
+      if (kind || status) {
+        return Promise.resolve({
+          data: {
+            ...analyticsFixture,
+            filters: { kind: kind ? Number(kind) : null, moadian_status: status || null },
+            active_filters: true,
+            unfiltered: { count: 3, amount: 2000000, vat: 180000 },
+            totals: { ...analyticsFixture.totals, count: 2, amount: 500000, vat: 50000, total: 550000 },
+          },
+        });
+      }
+      return Promise.resolve({ data: { ...analyticsFixture, unfiltered: { count: 3 } } });
     }
+    if (url.endsWith('/analytics-export/')) return Promise.resolve({ data: new Blob(['xlsx']) });
     if (url.endsWith('/reconciliations/')) return Promise.resolve({ data: reconciliationRuns });
     return Promise.resolve({ data: [] });
   });
@@ -972,4 +997,67 @@ test('reconcile tab uploads the ledger file and can add the missing rows to the 
   root.unmount();
   container.remove();
 }, 25000);
+
+
+test('analytics filters by transaction kind and moadian status and can export the report', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+  await clickTab(container, 'گزارش‌ها و تحلیل');
+
+  /* انتخاب «نوع ۲» از فیلتر نوع معامله */
+  const kindCombobox = container.querySelector('[aria-labelledby="analytics-kind-label"]');
+  expect(kindCombobox).toBeTruthy();
+  await act(async () => {
+    kindCombobox.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(220);
+  });
+  const kindOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.trim() === 'نوع ۲ (۱)');
+  expect(kindOption).toBeTruthy();
+  await act(async () => { kindOption.click(); await wait(560); });
+
+  const kindCalls = axiosInstance.get.mock.calls
+    .filter(([url]) => url.endsWith('/analytics/'))
+    .map(([, config]) => config?.params || {});
+  expect(kindCalls.some((params) => String(params.kind) === '2')).toBe(true);
+  expect(container.textContent).toContain('۵۰۰٬۰۰۰');
+  expect(container.textContent).toContain('۲ ردیف از ۳');
+
+  /* فیلتر وضعیت مودیان: «درج‌نشده در سامانه» */
+  const statusCombobox = container.querySelector('[aria-labelledby="analytics-status-label"]');
+  expect(statusCombobox).toBeTruthy();
+  await act(async () => {
+    statusCombobox.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(220);
+  });
+  const pendingOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.includes('درج‌نشده'));
+  expect(pendingOption).toBeTruthy();
+  await act(async () => { pendingOption.click(); await wait(560); });
+
+  const statusCalls = axiosInstance.get.mock.calls
+    .filter(([url]) => url.endsWith('/analytics/'))
+    .map(([, config]) => config?.params || {});
+  expect(statusCalls.some((params) => params.moadian_status === 'pending' && String(params.kind) === '2')).toBe(true);
+
+  /* خروجی اکسل گزارش با همان فیلترها */
+  window.URL.createObjectURL = jest.fn(() => 'blob:analytics');
+  window.URL.revokeObjectURL = jest.fn();
+  const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  const exportButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('خروجی اکسل گزارش'));
+  expect(exportButton).toBeTruthy();
+  await act(async () => { exportButton.click(); await wait(360); });
+
+  const exportCalls = axiosInstance.get.mock.calls.filter(([url]) => url.endsWith('/analytics-export/'));
+  expect(exportCalls.length).toBe(1);
+  expect(String(exportCalls[0][1]?.params?.kind)).toBe('2');
+  expect(exportCalls[0][1]?.params?.moadian_status).toBe('pending');
+  expect(exportCalls[0][1]?.responseType).toBe('blob');
+  expect(clickSpy).toHaveBeenCalled();
+
+  clickSpy.mockRestore();
+  root.unmount();
+  container.remove();
+}, 30000);
 

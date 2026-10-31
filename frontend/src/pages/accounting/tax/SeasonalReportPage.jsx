@@ -594,6 +594,10 @@ const SeasonalReportPage = () => {
   const [analytics, setAnalytics] = useState(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(false);
+  const [analyticsExporting, setAnalyticsExporting] = useState(false);
+  const [analyticsFilters, setAnalyticsFilters] = useState({
+    kind: 'all', status: 'all', personType: 'all', search: '',
+  });
   const savedSignatureRef = useRef('');    // امضای آخرین ردیف‌های ذخیره‌شده (بدون شناسه)
   const saveTimerRef = useRef(null);
   const lastRowElRef = useRef(null);       // آخرین ردیف جدول که فوکوس داشته
@@ -813,12 +817,17 @@ const SeasonalReportPage = () => {
     };
   }, [yearKey, quarter, loadedKey]);
 
-  /* تحلیل سرور: با ورود به تب گزارش‌ها (و پس از هر ذخیره) تازه می‌شود */
+  /* تحلیل سرور: با ورود به تب گزارش‌ها، هر فیلتر و پس از هر ذخیره تازه می‌شود */
   useEffect(() => {
     if (activeTab !== 'analytics' || mode !== 'api' || !reportId) return undefined;
     let cancelled = false;
     setAnalyticsLoading(true);
-    axiosInstance.get(`${API_BASE}/${reportId}/analytics/`, { params: { direction: BACKEND_DIRECTION } })
+    const params = { direction: BACKEND_DIRECTION };
+    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
+    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
+    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
+    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    axiosInstance.get(`${API_BASE}/${reportId}/analytics/`, { params })
       .then(({ data }) => {
         if (cancelled) return;
         setAnalytics(data);
@@ -831,7 +840,41 @@ const SeasonalReportPage = () => {
       })
       .finally(() => { if (!cancelled) setAnalyticsLoading(false); });
     return () => { cancelled = true; };
-  }, [activeTab, mode, reportId, saveState]);
+  }, [activeTab, mode, reportId, saveState, analyticsFilters]);
+
+  /* خروجی اکسل گزارش تحلیلی با همان فیلترها */
+  const exportAnalytics = useCallback(() => {
+    if (mode !== 'api' || !reportId) {
+      setToast('خروجی اکسل گزارش پس از استقرار بک‌اند در دسترس است.');
+      return;
+    }
+    const params = { direction: BACKEND_DIRECTION };
+    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
+    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
+    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
+    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    setAnalyticsExporting(true);
+    axiosInstance.get(`${API_BASE}/${reportId}/analytics-export/`, { params, responseType: 'blob' })
+      .then((response) => {
+        const blob = new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        const suffix = [
+          analyticsFilters.kind !== 'all' ? `k${analyticsFilters.kind}` : '',
+          analyticsFilters.status !== 'all' ? analyticsFilters.status : '',
+        ].filter(Boolean).join('-');
+        link.download = `seasonal-analytics-${yearKey || 'year'}-q${quarter}${suffix ? `-${suffix}` : ''}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        setToast('اکسل گزارش تحلیلی ساخته شد');
+      })
+      .catch(() => setToast('خروجی اکسل گزارش در دسترس نیست.'))
+      .finally(() => setAnalyticsExporting(false));
+  }, [mode, reportId, analyticsFilters, yearKey, quarter]);
 
   /* افزودن ردیف‌های «فقط در دفاتر» به جدول ورود داده */
   const addSuggestedRows = useCallback((suggested) => {
@@ -1745,6 +1788,10 @@ const SeasonalReportPage = () => {
           rows={filledRows}
           loading={analyticsLoading}
           error={analyticsError}
+          filters={analyticsFilters}
+          onFilterChange={setAnalyticsFilters}
+          onExport={exportAnalytics}
+          exporting={analyticsExporting}
         />
       ) : null}
 

@@ -154,10 +154,34 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
 
     @action(detail=True, methods=['get'])
     def analytics(self, request, pk=None):
-        """گزارش تحلیلی فصل: شاخص‌ها، توزیع‌ها، پارتو طرف‌ها و یافته‌های کیفیت داده."""
+        """گزارش تحلیلی فصل (با فیلتر نوع معامله / وضعیت مودیان / نوع طرف / جستجو)."""
         report = self.get_object()
         direction = self._direction(request) or DIRECTION_PURCHASE
-        return Response(seasonal_reconcile.build_analytics(report, direction))
+        filters = seasonal_reconcile.filters_from_query(request.query_params)
+        return Response(seasonal_reconcile.build_analytics(report, direction, filters))
+
+    @action(detail=True, methods=['get'], url_path='analytics-export')
+    def analytics_export(self, request, pk=None):
+        """خروجی اکسل گزارش تحلیلی با همان فیلترهای تب گزارش‌ها."""
+        report = self.get_object()
+        direction = self._direction(request) or DIRECTION_PURCHASE
+        filters = seasonal_reconcile.filters_from_query(request.query_params)
+        analytics = seasonal_reconcile.build_analytics(report, direction, filters)
+        rows = seasonal_reconcile.filtered_rows(report, direction, filters)
+        workbook = seasonal_reconcile.build_analytics_workbook(analytics, rows)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        stamp = timezone.localtime().strftime('%Y%m%d-%H%M')
+        suffix = ''
+        if filters.get('kind'):
+            suffix += f'-kind{filters["kind"]}'
+        if filters.get('moadian_status'):
+            suffix += f'-{filters["moadian_status"]}'
+        filename = f'seasonal-analytics-{report.fiscal_year_id}-q{report.quarter}{suffix}-{stamp}.xlsx'
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        workbook.save(response)
+        return response
 
     @action(detail=True, methods=['post'], parser_classes=[MultiPartParser, FormParser, JSONParser])
     def reconcile(self, request, pk=None):

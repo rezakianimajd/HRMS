@@ -233,13 +233,110 @@ def _rows_for(report, direction):
     return list(report.transactions.filter(direction=direction).order_by('line_no', 'id'))
 
 
+def _clean_filters(filters):
+    """فیلترهای گزارش: نوع معامله، وضعیت مودیان، نوع طرف و جستجوی متنی."""
+    filters = filters or {}
+
+    def pick(*keys):
+        for key in keys:
+            value = filters.get(key)
+            if value not in (None, '', 'all', 'ALL'):
+                return value
+        return None
+
+    kind = pick('kind', 'transaction_kind')
+    try:
+        kind = int(kind) if kind is not None else None
+    except (TypeError, ValueError):
+        kind = None
+    if kind is not None and kind not in (1, 2, 3, 4, 5):
+        kind = None
+
+    status = pick('moadian_status', 'status', 'registered')
+    if status not in (None, 'registered', 'pending'):
+        status = None
+
+    person_type = pick('person_type')
+    allowed_types = {value for value, _label in seasonal_rules.PERSON_TYPES}
+    if person_type not in allowed_types:
+        person_type = None
+
+    search = normalize_text(filters.get('search') or '').strip()
+    return {
+        'kind': kind,
+        'moadian_status': status,
+        'person_type': person_type,
+        'search': search,
+    }
+
+
+def filters_from_query(params):
+    """QueryString درخواست → فیلترهای استاندارد گزارش."""
+    if hasattr(params, 'dict'):
+        params = params.dict()
+    return _clean_filters(params)
+
+
+def _apply_filters(rows, filters):
+    result = rows
+    if filters.get('kind'):
+        result = [row for row in result if int(row.kind or 1) == int(filters['kind'])]
+    if filters.get('moadian_status'):
+        status = filters['moadian_status']
+        result = [row for row in result
+                  if (row.moadian_status or 'pending') == status]
+    if filters.get('person_type'):
+        result = [row for row in result if (row.person_type or '') == filters['person_type']]
+    if filters.get('search'):
+        term = filters['search'].lower()
+        result = [row for row in result if term in ' '.join(str(value or '') for value in [
+            row.name, row.first_name, row.last_name, row.national_id, row.invoice_no,
+            row.city, row.address, row.goods_service_desc,
+        ]).lower()]
+    return result
+
+
+def filtered_rows(report, direction, filters=None):
+    """ردیف‌های همان گزارش بعد از اعمال فیلتر (برای نمایش و خروجی)."""
+    cleaned = _clean_filters(filters)
+    return _apply_filters(_rows_for(report, direction), cleaned)
+
+
+def _filter_options(rows):
+    """گزینه‌های فیلتر با تعداد هر گزینه (از کل ردیف‌های فصل)."""
+    kind_counts, status_counts, type_counts = {}, {}, {}
+    for row in rows:
+        kind = int(row.kind or 1)
+        kind_counts[kind] = kind_counts.get(kind, 0) + 1
+        status = row.moadian_status or 'pending'
+        status_counts[status] = status_counts.get(status, 0) + 1
+        person_type = row.person_type or 'unknown'
+        type_counts[person_type] = type_counts.get(person_type, 0) + 1
+    labels = dict(seasonal_rules.PERSON_TYPES)
+    return {
+        'kind': [{'value': kind, 'label': f'نوع {kind}', 'count': kind_counts[kind]}
+                 for kind in sorted(kind_counts)],
+        'moadian_status': [
+            {'value': 'registered', 'label': 'درج‌شده در سامانه', 'count': status_counts.get('registered', 0)},
+            {'value': 'pending', 'label': 'درج‌نشده در سامانه', 'count': status_counts.get('pending', 0)},
+        ],
+        'person_type': [{'value': key, 'label': labels.get(key, 'نامشخص'), 'count': value}
+                        for key, value in sorted(type_counts.items(), key=lambda item: -item[1])],
+        'total': len(rows),
+    }
+
+
+
+
 def _share(value, total) -> float:
     return round(float(value) / float(total), 4) if total else 0.0
 
 
-def build_analytics(report, direction=seasonal_rules.DIRECTION):
-    """کارت‌های شاخص، توزیع‌ها، پارتو طرف‌ها و یافته‌های کیفیت داده."""
-    rows = _rows_for(report, direction)
+def build_analytics(report, direction=seasonal_rules.DIRECTION, filters=None):
+    """کارت‌های شاخص، توزیع‌ها، پارتو طرف‌ها و یافته‌های کیفیت داده (با فیلتر)."""
+    cleaned_filters = _clean_filters(filters)
+    base_rows = _rows_for(report, direction)
+    rows = _apply_filters(base_rows, cleaned_filters)
     count = len(rows)
     amount = sum((row.amount or 0) for row in rows)
     vat = sum((row.vat or 0) for row in rows)
@@ -350,6 +447,15 @@ def build_analytics(report, direction=seasonal_rules.DIRECTION):
     period_start, period_end = (report.period_range or (None, None))
     return {
         'direction': direction,
+        'filters': cleaned_filters,
+        'active_filters': bool(cleaned_filters['kind'] or cleaned_filters['moadian_status']
+                               or cleaned_filters['person_type'] or cleaned_filters['search']),
+        'filter_options': _filter_options(base_rows),
+        'unfiltered': {
+            'count': len(base_rows),
+            'amount': float(sum((row.amount or 0) for row in base_rows)),
+            'vat': float(sum((row.vat or 0) for row in base_rows)),
+        },
         'report': {
             'id': report.pk,
             'fiscal_year': getattr(report.fiscal_year, 'name', ''),
@@ -1360,5 +1466,155 @@ def build_reconciliation_workbook(result):
 
 
 
+
+
+
+
+# ---------------------------------------------------------------------------
+# خروجی اکسل گزارش تحلیلی (با فیلتر)
+# ---------------------------------------------------------------------------
+ANALYTICS_ROW_HEADERS = [
+    'ردیف', 'نوع طرف معامله', 'نام طرف', 'شناسه/کد ملی', 'شمارهٔ فاکتور', 'تاریخ فاکتور',
+    'مبلغ', 'مالیات بر ارزش افزوده', 'جمع کل', 'نوع معامله', 'وضعیت سامانه مودیان', 'شرح کالا/خدمات',
+]
+
+
+def _filters_text(filters):
+    parts = []
+    if filters.get('kind'):
+        parts.append(f'نوع معامله = {filters["kind"]}')
+    if filters.get('moadian_status'):
+        parts.append('وضعیت مودیان = '
+                     + ('درج‌شده' if filters['moadian_status'] == 'registered' else 'درج‌نشده'))
+    if filters.get('person_type'):
+        parts.append('نوع طرف = ' + dict(seasonal_rules.PERSON_TYPES).get(filters['person_type'], ''))
+    if filters.get('search'):
+        parts.append(f'جستجو = {filters["search"]}')
+    return ' · '.join(parts) or 'بدون فیلتر'
+
+
+def _workbook_styles():
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+
+    return {
+        'head_font': Font(bold=True, color='FFFFFF'),
+        'head_fill': PatternFill('solid', fgColor='0F766E'),
+        'border': Border(*[Side(style='thin', color='CBD5E1')] * 4),
+        'center': Alignment(horizontal='center', vertical='center', wrap_text=True),
+        'right': Alignment(horizontal='right', vertical='center'),
+    }
+
+
+def build_analytics_workbook(analytics, rows):
+    """اکسل گزارش تحلیلی فیلترشده: خلاصه، ماهانه، توزیع‌ها، طرف‌ها، ردیف‌ها."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+
+    styles = _workbook_styles()
+    head_font, head_fill, border, center = (
+        styles['head_font'], styles['head_fill'], styles['border'], styles['center'],
+    )
+
+    workbook = Workbook()
+    summary = workbook.active
+    summary.title = 'خلاصه'
+    summary.sheet_view.rightToLeft = True
+    summary.append(['گزارش تحلیلی صورت معاملات فصلی خرید'])
+    summary['A1'].font = Font(bold=True, size=13)
+    summary.append([])
+    totals = analytics.get('totals', {})
+    report = analytics.get('report', {})
+    period = analytics.get('period', {})
+    unfiltered = analytics.get('unfiltered', {})
+    filters = analytics.get('filters', {})
+    for label, value in [
+        ('سال مالی', report.get('fiscal_year', '')),
+        ('فصل', report.get('quarter_label', '')),
+        ('بازهٔ فصل', f'{period.get("start_jalali", "")} تا {period.get("end_jalali", "")}'),
+        ('فیلتر اعمال‌شده', _filters_text(filters)),
+        ('تاریخ اجرا', datetime.now().strftime('%Y-%m-%d %H:%M')),
+        ('', ''),
+        ('تعداد ردیف (فیلترشده)', totals.get('count', 0)),
+        ('تعداد کل فصل', unfiltered.get('count', 0)),
+        ('جمع مبلغ خرید', totals.get('amount', 0)),
+        ('جمع مالیات بر ارزش افزوده', totals.get('vat', 0)),
+        ('جمع کل', totals.get('total', 0)),
+        ('نرخ مؤثر ارزش افزوده', totals.get('vat_ratio', 0)),
+        ('میانگین مبلغ فاکتور', totals.get('average_invoice', 0)),
+        ('درج‌شده در سامانه مودیان', totals.get('registered', 0)),
+        ('شاخص تمرکز HHI', analytics.get('concentration', {}).get('hhi', 0)),
+        ('سهم بزرگ‌ترین طرف', analytics.get('concentration', {}).get('top1_share', 0)),
+        ('نسخهٔ قواعد', analytics.get('ruleset', {}).get('version', '')),
+    ]:
+        summary.append([label, value])
+    summary.column_dimensions['A'].width = 34
+    summary.column_dimensions['B'].width = 34
+
+    def add_sheet(title, headers, data, widths=None, number_columns=()):
+        target = workbook.create_sheet(title)
+        target.sheet_view.rightToLeft = True
+        target.append(headers)
+        for index, header in enumerate(headers, start=1):
+            cell = target.cell(row=1, column=index)
+            cell.font = head_font
+            cell.fill = head_fill
+            cell.alignment = center
+            cell.border = border
+            target.column_dimensions[get_column_letter(index)].width = (
+                (widths or {}).get(index) or max(12, min(34, len(str(header)) + 6))
+            )
+        for row_number, values in enumerate(data, start=2):
+            target.append(values)
+            for column in number_columns:
+                target.cell(row=row_number, column=column).number_format = '#,##0'
+        target.freeze_panes = 'A2'
+        if data:
+            target.auto_filter.ref = f'A1:{get_column_letter(len(headers))}{len(data) + 1}'
+        return target
+
+    add_sheet('ماهانه', ['ماه شمسی', 'تعداد ردیف', 'مبلغ'], [
+        [entry['label'], entry['count'], entry['amount']] for entry in analytics.get('by_month', [])
+    ], number_columns=(3,))
+    add_sheet('نوع معامله', ['نوع', 'تعداد ردیف', 'مبلغ', 'مالیات'],
+              [[entry['label'], entry['count'], entry['amount'], entry.get('vat', 0)]
+               for entry in analytics.get('by_kind', [])], number_columns=(3, 4))
+    add_sheet('نوع طرف معامله', ['نوع طرف', 'تعداد ردیف', 'مبلغ', 'سهم'],
+              [[entry['label'], entry['count'], entry['amount'], entry.get('share', 0)]
+               for entry in analytics.get('by_person_type', [])], number_columns=(3, 4))
+    add_sheet('وضعیت مودیان', ['وضعیت', 'تعداد ردیف', 'مبلغ', 'سهم'],
+              [[entry['label'], entry['count'], entry['amount'], entry.get('share', 0)]
+               for entry in analytics.get('by_status', [])], number_columns=(3, 4))
+    add_sheet('طرف‌های برتر',
+              ['رتبه', 'نام طرف', 'نوع', 'شناسه/کد ملی', 'تعداد فاکتور', 'مبلغ', 'سهم', 'سهم تجمعی'],
+              [[party['rank'], party['name'], party['person_type_label'], party['national_id'],
+                party['count'], party['amount'], party['share'], party['cumulative_share']]
+               for party in analytics.get('top_parties', [])], number_columns=(6, 7, 8))
+
+    label_of_type = dict(seasonal_rules.PERSON_TYPES)
+    add_sheet('ردیف‌ها', ANALYTICS_ROW_HEADERS, [
+        [
+            index,
+            label_of_type.get(row.person_type, ''),
+            row.name or ' '.join(part for part in [row.first_name, row.last_name] if part),
+            row.national_id or '',
+            row.invoice_no or '',
+            _jalali_text(row.invoice_date),
+            float(row.amount or 0),
+            float(row.vat or 0),
+            float((row.amount or 0) + (row.vat or 0)),
+            int(row.kind or 1),
+            'درج‌شده' if row.moadian_status == SeasonalTransaction.MoadianStatus.REGISTERED else 'درج‌نشده',
+            row.goods_service_desc or '',
+        ]
+        for index, row in enumerate(rows, start=1)
+    ], widths={3: 30, 12: 40}, number_columns=(7, 8, 9))
+
+    summary.append([])
+    summary.append(['یافته‌های گزارش'])
+    for insight in analytics.get('insights', []) or [{'title': '—', 'detail': '—'}]:
+        summary.append([insight.get('title', ''), insight.get('detail', '')])
+
+    return workbook
 
 

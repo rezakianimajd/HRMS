@@ -1,5 +1,9 @@
 import React, { useMemo } from 'react';
-import { Box, Chip, CircularProgress, Paper, Stack, Typography } from '@mui/material';
+import {
+  Box, Button, Chip, CircularProgress, FormControl, InputLabel, MenuItem, Paper,
+  Select, Stack, Typography,
+} from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
 import {
   Bar, BarChart, CartesianGrid, Cell, Legend, Pie, PieChart,
   ResponsiveContainer, Tooltip as ChartTooltip, XAxis, YAxis,
@@ -18,10 +22,50 @@ const num = (value) => Number(value) || 0;
 const percent = (value) => `${toPersianDigits(Math.round(num(value) * 100))}٪`;
 const amountOf = (row) => num(String(row.amount ?? '').replace(/[^\d.-]/g, ''));
 const vatOf = (row) => num(String(row.vat ?? '').replace(/[^\d.-]/g, ''));
+const statusOf = (row) => (row.status === 'registered' ? 'registered' : 'pending');
+
+const matchesFilters = (row, filters = {}) => {
+  if (filters.kind && filters.kind !== 'all' && String(row.kind) !== String(filters.kind)) return false;
+  if (filters.status && filters.status !== 'all' && statusOf(row) !== filters.status) return false;
+  if (filters.personType && filters.personType !== 'all' && (row.personType || 'legal') !== filters.personType) return false;
+  const term = String(filters.search || '').trim().toLowerCase();
+  if (term) {
+    const haystack = [row.name, row.firstName, row.lastName, row.nationalId, row.invoiceNo,
+      row.city, row.address, row.description].map((value) => String(value ?? '')).join(' ').toLowerCase();
+    if (!haystack.includes(term)) return false;
+  }
+  return true;
+};
+
+/* گزینه‌های فیلتر (محلی) با تعداد هر گزینه */
+const buildFilterOptions = (rows) => {
+  const kinds = new Map();
+  const statuses = { registered: 0, pending: 0 };
+  const types = new Map();
+  rows.forEach((row) => {
+    const kind = Number(row.kind) || 1;
+    kinds.set(kind, (kinds.get(kind) || 0) + 1);
+    statuses[statusOf(row)] += 1;
+    const type = row.personType || 'legal';
+    types.set(type, (types.get(type) || 0) + 1);
+  });
+  return {
+    kind: [...kinds.entries()].sort((a, b) => a[0] - b[0])
+      .map(([value, count]) => ({ value, label: `نوع ${toPersianDigits(value)}`, count })),
+    moadian_status: [
+      { value: 'registered', label: 'درج‌شده در سامانه', count: statuses.registered },
+      { value: 'pending', label: 'درج‌نشده در سامانه', count: statuses.pending },
+    ],
+    person_type: [...types.entries()].sort((a, b) => b[1] - a[1])
+      .map(([value, count]) => ({ value, label: PERSON_LABELS[value] || 'نامشخص', count })),
+    total: rows.length,
+  };
+};
 
 /* تحلیل محلی (وقتی سرور در دسترس نیست): همان شکل پاسخ API */
-const buildLocalAnalytics = (rows) => {
-  const filled = (rows || []).filter((row) => String(row.amount ?? '').trim() || String(row.name ?? '').trim());
+const buildLocalAnalytics = (rows, filters = {}) => {
+  const all = (rows || []).filter((row) => String(row.amount ?? '').trim() || String(row.name ?? '').trim());
+  const filled = all.filter((row) => matchesFilters(row, filters));
   const amount = filled.reduce((sum, row) => sum + amountOf(row), 0);
   const vat = filled.reduce((sum, row) => sum + vatOf(row), 0);
   const registered = filled.filter((row) => row.status === 'registered').length;
@@ -85,6 +129,17 @@ const buildLocalAnalytics = (rows) => {
 
   return {
     offline: true,
+    filters,
+    active_filters: Boolean(
+      (filters.kind && filters.kind !== 'all') || (filters.status && filters.status !== 'all')
+      || (filters.personType && filters.personType !== 'all') || String(filters.search || '').trim(),
+    ),
+    filter_options: buildFilterOptions(all),
+    unfiltered: {
+      count: all.length,
+      amount: all.reduce((sum, row) => sum + amountOf(row), 0),
+      vat: all.reduce((sum, row) => sum + vatOf(row), 0),
+    },
     totals: {
       count: filled.length,
       amount,
@@ -154,8 +209,14 @@ const SectionPaper = ({ title, subtitle, children }) => (
   </Paper>
 );
 
-const SeasonalAnalyticsPanel = ({ analytics, rows, loading, error }) => {
-  const data = useMemo(() => analytics || buildLocalAnalytics(rows || []), [analytics, rows]);
+const SeasonalAnalyticsPanel = ({ analytics, rows, loading, error, filters = {}, onFilterChange, onExport, exporting = false }) => {
+  const data = useMemo(() => analytics || buildLocalAnalytics(rows || [], filters), [analytics, rows, filters]);
+  const filterOptions = useMemo(() => data.filter_options || { kind: [], moadian_status: [], person_type: [] },
+    [data]);
+  const activeFilters = Boolean(
+    (filters.kind && filters.kind !== 'all') || (filters.status && filters.status !== 'all')
+    || (filters.personType && filters.personType !== 'all'),
+  );
 
   if (loading && !analytics) {
     return (
@@ -164,6 +225,101 @@ const SeasonalAnalyticsPanel = ({ analytics, rows, loading, error }) => {
       </Box>
     );
   }
+
+  const filterBar = (
+    <Paper elevation={0} sx={{
+      px: 1.4, py: 1, borderRadius: '12px', display: 'flex', gap: 1, flexWrap: 'wrap',
+      alignItems: 'center', border: '1px solid var(--hrms-table-border-color, #e2e8f0)',
+      bgcolor: 'background.paper',
+    }}>
+      <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>فیلتر گزارش:</Typography>
+
+      <FormControl size="small" sx={{ minWidth: 150 }}>
+        <InputLabel id="analytics-kind-label" sx={{ fontSize: 11 }}>نوع معامله</InputLabel>
+        <Select
+          labelId="analytics-kind-label"
+          label="نوع معامله"
+          value={filters.kind || 'all'}
+          onChange={(event) => onFilterChange?.({ ...filters, kind: event.target.value })}
+          sx={{ fontSize: 11, height: 30 }}
+        >
+          <MenuItem value="all" sx={{ fontSize: 11 }}>
+            {`همه (${toPersianDigits(filterOptions.total || 0)})`}
+          </MenuItem>
+          {(filterOptions.kind || []).map((option) => (
+            <MenuItem key={option.value} value={String(option.value)} sx={{ fontSize: 11 }}>
+              {`${toPersianDigits(option.label)} (${toPersianDigits(option.count)})`}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl size="small" sx={{ minWidth: 190 }}>
+        <InputLabel id="analytics-status-label" sx={{ fontSize: 11 }}>وضعیت سامانه مودیان</InputLabel>
+        <Select
+          labelId="analytics-status-label"
+          label="وضعیت سامانه مودیان"
+          value={filters.status || 'all'}
+          onChange={(event) => onFilterChange?.({ ...filters, status: event.target.value })}
+          sx={{ fontSize: 11, height: 30 }}
+        >
+          <MenuItem value="all" sx={{ fontSize: 11 }}>همه</MenuItem>
+          {(filterOptions.moadian_status || []).map((option) => (
+            <MenuItem key={option.value} value={option.value} sx={{ fontSize: 11 }}>
+              {`${toPersianDigits(option.label)} (${toPersianDigits(option.count)})`}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      <FormControl size="small" sx={{ minWidth: 150 }}>
+        <InputLabel id="analytics-type-label" sx={{ fontSize: 11 }}>نوع طرف معامله</InputLabel>
+        <Select
+          labelId="analytics-type-label"
+          label="نوع طرف معامله"
+          value={filters.personType || 'all'}
+          onChange={(event) => onFilterChange?.({ ...filters, personType: event.target.value })}
+          sx={{ fontSize: 11, height: 30 }}
+        >
+          <MenuItem value="all" sx={{ fontSize: 11 }}>همه</MenuItem>
+          {(filterOptions.person_type || []).map((option) => (
+            <MenuItem key={option.value} value={option.value} sx={{ fontSize: 11 }}>
+              {`${option.label} (${toPersianDigits(option.count)})`}
+            </MenuItem>
+          ))}
+        </Select>
+      </FormControl>
+
+      {activeFilters ? (
+        <Button
+          size="small"
+          sx={{ fontSize: 10.5 }}
+          onClick={() => onFilterChange?.({ kind: 'all', status: 'all', personType: 'all', search: '' })}
+        >
+          پاک‌کردن فیلترها
+        </Button>
+      ) : null}
+
+      <Box sx={{ flex: 1 }} />
+
+      <Chip
+        size="small"
+        label={`${toPersianDigits(data.totals?.count || 0)} ردیف از ${toPersianDigits(data.unfiltered?.count || data.totals?.count || 0)}`}
+        sx={{ fontSize: 10, height: 22 }}
+      />
+      <Button
+        size="small"
+        variant="outlined"
+        startIcon={<DownloadIcon />}
+        onClick={() => onExport?.()}
+        disabled={exporting || Boolean(data.offline) || !onExport}
+        sx={{ fontSize: 10.5 }}
+        title={data.offline ? 'خروجی اکسل گزارش پس از استقرار بک‌اند فعال می‌شود' : 'خروجی اکسل گزارش با همین فیلترها'}
+      >
+        خروجی اکسل گزارش
+      </Button>
+    </Paper>
+  );
 
   const totals = data.totals || {};
   const monthData = (data.by_month || []).map((entry) => ({
@@ -181,6 +337,7 @@ const SeasonalAnalyticsPanel = ({ analytics, rows, loading, error }) => {
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1.25 }}>
+      {filterBar}
       {error ? (
         <Typography sx={{ fontSize: 11, color: '#b45309' }}>
           تحلیل سرور در دسترس نبود؛ نمودارها از داده‌های همین صفحه ساخته شد.

@@ -158,6 +158,57 @@ class ReconcileEngineTests(SeasonalBaseTest):
 class AnalyticsTests(SeasonalBaseTest):
     """شاخص‌های تحلیلی فصل."""
 
+    def test_analytics_filters_by_kind_and_status(self):
+        report = self.make_report()
+        sync_rows(report, [
+            self.row(invoice_no='K1', amount=1000000, vat=100000, kind=1),
+            self.row(invoice_no='K2', name='شرکت بتا', national_id='20202020202',
+                     amount=500000, vat=50000, kind=2, moadian_status='pending'),
+            self.row(invoice_no='K3', name='شرکت گاما', national_id='30303030303',
+                     amount=300000, vat=0, kind=2),
+        ])
+
+        only_kind2 = rec.build_analytics(report, 'purchase', {'kind': 2})
+        self.assertEqual(only_kind2['totals']['count'], 2)
+        self.assertEqual(only_kind2['totals']['amount'], 800000.0)
+        self.assertTrue(only_kind2['active_filters'])
+        self.assertEqual(only_kind2['unfiltered']['count'], 3)
+        self.assertEqual(only_kind2['filters']['kind'], 2)
+
+        pending = rec.build_analytics(report, 'purchase', {'moadian_status': 'pending'})
+        self.assertEqual(pending['totals']['count'], 1)
+        self.assertEqual(pending['totals']['amount'], 500000.0)
+
+        combined = rec.build_analytics(report, 'purchase', {'kind': '2', 'moadian_status': 'pending'})
+        self.assertEqual(combined['totals']['count'], 1)
+
+        self.assertEqual(len(rec.filtered_rows(report, 'purchase', {'kind': 2})), 2)
+        self.assertIsNone(rec.filters_from_query({'kind': '۹'})['kind'])
+
+    def test_filter_options_and_analytics_workbook(self):
+        report = self.make_report()
+        sync_rows(report, [
+            self.row(invoice_no='W1', amount=1000000, vat=100000, kind=1),
+            self.row(invoice_no='W2', name='شرکت بتا', national_id='20202020202',
+                     amount=500000, vat=50000, kind=2, moadian_status='pending'),
+        ])
+        analytics = rec.build_analytics(report, 'purchase', {'kind': 2})
+        options = analytics['filter_options']
+        self.assertTrue(any(option['value'] == 2 for option in options['kind']))
+        self.assertEqual(options['total'], 2)
+        self.assertEqual(analytics['filters']['kind'], 2)
+
+        rows = rec.filtered_rows(report, 'purchase', {'kind': 2})
+        workbook = rec.build_analytics_workbook(analytics, rows)
+        self.assertEqual(workbook.sheetnames, [
+            'خلاصه', 'ماهانه', 'نوع معامله', 'نوع طرف معامله', 'وضعیت مودیان', 'طرف‌های برتر', 'ردیف‌ها',
+        ])
+        self.assertEqual(workbook['ردیف‌ها'].max_row, 2)
+        self.assertEqual(workbook['نوع معامله'].cell(row=1, column=1).value, 'نوع')
+        buffer = io.BytesIO()
+        workbook.save(buffer)
+        self.assertGreater(buffer.tell(), 3000)
+
     def test_analytics_payload(self):
         report = self.make_report()
         sync_rows(report, [
