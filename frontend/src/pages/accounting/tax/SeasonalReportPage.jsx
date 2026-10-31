@@ -22,6 +22,7 @@ import {
 } from '../../contracts/contractModuleUi';
 import SeasonalAnalyticsPanel from './SeasonalAnalyticsPanel';
 import SeasonalReconcilePanel from './SeasonalReconcilePanel';
+import SeasonalPartyPivot from './SeasonalPartyPivot';
 
 const API_BASE = '/accounting/tax/seasonal-reports';
 
@@ -595,6 +596,10 @@ const SeasonalReportPage = () => {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsError, setAnalyticsError] = useState(false);
   const [analyticsExporting, setAnalyticsExporting] = useState(false);
+  const [pivot, setPivot] = useState(null);
+  const [pivotLoading, setPivotLoading] = useState(false);
+  const [pivotExporting, setPivotExporting] = useState(false);
+  const [pivotDimension, setPivotDimension] = useState('kind');
   const [analyticsFilters, setAnalyticsFilters] = useState({
     kind: 'all', status: 'all', personType: 'all', search: '',
   });
@@ -841,6 +846,52 @@ const SeasonalReportPage = () => {
       .finally(() => { if (!cancelled) setAnalyticsLoading(false); });
     return () => { cancelled = true; };
   }, [activeTab, mode, reportId, saveState, analyticsFilters]);
+
+  /* پیوت طرف حساب: با بُعد انتخابی و همان فیلترهای گزارش */
+  useEffect(() => {
+    if (activeTab !== 'analytics' || mode !== 'api' || !reportId) return undefined;
+    let cancelled = false;
+    setPivotLoading(true);
+    const params = { direction: BACKEND_DIRECTION, dimension: pivotDimension };
+    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
+    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
+    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
+    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    axiosInstance.get(`${API_BASE}/${reportId}/party-pivot/`, { params })
+      .then(({ data }) => { if (!cancelled) setPivot(data); })
+      .catch(() => { if (!cancelled) setPivot(null); })
+      .finally(() => { if (!cancelled) setPivotLoading(false); });
+    return () => { cancelled = true; };
+  }, [activeTab, mode, reportId, saveState, analyticsFilters, pivotDimension]);
+
+  const exportPivot = useCallback(() => {
+    if (mode !== 'api' || !reportId) {
+      setToast('خروجی اکسل پیوت پس از استقرار بک‌اند در دسترس است.');
+      return;
+    }
+    const params = { direction: BACKEND_DIRECTION, dimension: pivotDimension };
+    if (analyticsFilters.kind !== 'all') params.kind = analyticsFilters.kind;
+    if (analyticsFilters.status !== 'all') params.moadian_status = analyticsFilters.status;
+    if (analyticsFilters.personType !== 'all') params.person_type = analyticsFilters.personType;
+    if (analyticsFilters.search) params.search = analyticsFilters.search;
+    setPivotExporting(true);
+    axiosInstance.get(`${API_BASE}/${reportId}/party-pivot-export/`, { params, responseType: 'blob' })
+      .then((response) => {
+        const blob = new Blob([response.data], {
+          type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `seasonal-party-pivot-${yearKey || 'year'}-q${quarter}-${pivotDimension}.xlsx`;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(link.href);
+        setToast('اکسل پیوت طرف حساب ساخته شد');
+      })
+      .catch(() => setToast('خروجی اکسل پیوت در دسترس نیست.'))
+      .finally(() => setPivotExporting(false));
+  }, [mode, reportId, pivotDimension, analyticsFilters, yearKey, quarter]);
 
   /* خروجی اکسل گزارش تحلیلی با همان فیلترها */
   const exportAnalytics = useCallback(() => {
@@ -1783,16 +1834,30 @@ const SeasonalReportPage = () => {
       </Box>
 
       {activeTab === 'analytics' ? (
-        <SeasonalAnalyticsPanel
-          analytics={analytics}
-          rows={filledRows}
-          loading={analyticsLoading}
-          error={analyticsError}
-          filters={analyticsFilters}
-          onFilterChange={setAnalyticsFilters}
-          onExport={exportAnalytics}
-          exporting={analyticsExporting}
-        />
+        <>
+          <SeasonalAnalyticsPanel
+            analytics={analytics}
+            rows={filledRows}
+            loading={analyticsLoading}
+            error={analyticsError}
+            filters={analyticsFilters}
+            onFilterChange={setAnalyticsFilters}
+            onExport={exportAnalytics}
+            exporting={analyticsExporting}
+          />
+          <Box sx={{ mt: 1.25 }}>
+            <SeasonalPartyPivot
+              pivot={pivot}
+              rows={filledRows}
+              filters={analyticsFilters}
+              dimension={pivotDimension}
+              onDimensionChange={setPivotDimension}
+              onExport={exportPivot}
+              exporting={pivotExporting}
+              loading={pivotLoading}
+            />
+          </Box>
+        </>
       ) : null}
 
       {activeTab === 'reconcile' ? (

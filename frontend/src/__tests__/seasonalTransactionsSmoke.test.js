@@ -147,6 +147,31 @@ const reconcileResult = {
 
 let reconciliationRuns = [];
 
+const pivotFixture = {
+  dimension: 'kind',
+  dimension_label: 'نوع معامله',
+  columns: [
+    { key: 'kind_1', label: 'نوع ۱', order: 'kind_01' },
+    { key: 'kind_2', label: 'نوع ۲', order: 'kind_02' },
+  ],
+  rows: [{
+    rank: 1,
+    name: 'شرکت آلفا تجارت',
+    person_type: 'legal',
+    person_type_label: 'حقوقی',
+    national_id: '10101010101',
+    count: 2,
+    amount: 1000000,
+    vat: 90000,
+    total: 1090000,
+    share: 1,
+    cumulative_share: 1,
+    values: { kind_1: 900000, kind_2: 100000 },
+  }],
+  column_totals: { kind_1: 900000, kind_2: 100000 },
+  totals: { count: 2, parties: 1, amount: 1000000, vat: 90000, total: 1090000 },
+};
+
 const wait = (ms = 260) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const setNativeValue = (element, value) => {
@@ -224,6 +249,19 @@ beforeEach(() => {
       return Promise.resolve({ data: { ...analyticsFixture, unfiltered: { count: 3 } } });
     }
     if (url.endsWith('/analytics-export/')) return Promise.resolve({ data: new Blob(['xlsx']) });
+    if (url.endsWith('/party-pivot/')) {
+      const dim = config?.params?.dimension || 'kind';
+      return Promise.resolve({
+        data: {
+          ...pivotFixture,
+          dimension: dim,
+          columns: dim === 'month'
+            ? [{ key: '1405/01', label: '1405/01', order: '1405/01' }]
+            : pivotFixture.columns,
+        },
+      });
+    }
+    if (url.endsWith('/party-pivot-export/')) return Promise.resolve({ data: new Blob(['xlsx']) });
     if (url.endsWith('/reconciliations/')) return Promise.resolve({ data: reconciliationRuns });
     return Promise.resolve({ data: [] });
   });
@@ -1053,6 +1091,62 @@ test('analytics filters by transaction kind and moadian status and can export th
   expect(exportCalls.length).toBe(1);
   expect(String(exportCalls[0][1]?.params?.kind)).toBe('2');
   expect(exportCalls[0][1]?.params?.moadian_status).toBe('pending');
+  expect(exportCalls[0][1]?.responseType).toBe('blob');
+  expect(clickSpy).toHaveBeenCalled();
+
+  clickSpy.mockRestore();
+  root.unmount();
+  container.remove();
+}, 30000);
+
+
+test('party pivot groups amounts per party, switches dimension and exports', async () => {
+  currentReport = apiReport([API_ROW]);
+  const { root, container } = await renderPage();
+  await clickTab(container, 'گزارش‌ها و تحلیل');
+
+  /* جدول پیوت با جمع مبلغ هر طرف و ستون‌های نوع معامله */
+  expect(container.textContent).toContain('جدول پیوت طرف حساب');
+  expect(container.textContent).toContain('شرکت آلفا تجارت');
+  expect(container.textContent).toContain('نوع ۲');
+  expect(container.textContent).toContain('۱٬۰۰۰٬۰۰۰');
+  expect(container.textContent).toContain('جمع کل — ۱ طرف حساب');
+
+  const pivotCalls = axiosInstance.get.mock.calls
+    .filter(([url]) => url.endsWith('/party-pivot/'))
+    .map(([, config]) => config?.params || {});
+  expect(pivotCalls.some((params) => params.dimension === 'kind')).toBe(true);
+
+  /* تغییر بُعد ستون‌ها به «ماه شمسی» */
+  const dimensionSelect = container.querySelector('[aria-labelledby="pivot-dimension-label"]');
+  expect(dimensionSelect).toBeTruthy();
+  await act(async () => {
+    dimensionSelect.dispatchEvent(new window.MouseEvent('mousedown', { bubbles: true }));
+    await wait(220);
+  });
+  const monthOption = Array.from(document.querySelectorAll('li[role="option"]'))
+    .find((item) => item.textContent.trim() === 'ماه شمسی');
+  expect(monthOption).toBeTruthy();
+  await act(async () => { monthOption.click(); await wait(520); });
+
+  const monthCalls = axiosInstance.get.mock.calls
+    .filter(([url]) => url.endsWith('/party-pivot/'))
+    .map(([, config]) => config?.params || {});
+  expect(monthCalls.some((params) => params.dimension === 'month')).toBe(true);
+  expect(container.textContent).toContain('۱۴۰۵/۰۱');
+
+  /* خروجی اکسل پیوت */
+  window.URL.createObjectURL = jest.fn(() => 'blob:pivot');
+  window.URL.revokeObjectURL = jest.fn();
+  const clickSpy = jest.spyOn(window.HTMLAnchorElement.prototype, 'click').mockImplementation(() => {});
+  const exportButton = Array.from(container.querySelectorAll('button'))
+    .find((button) => button.textContent.includes('خروجی اکسل پیوت'));
+  expect(exportButton).toBeTruthy();
+  await act(async () => { exportButton.click(); await wait(360); });
+
+  const exportCalls = axiosInstance.get.mock.calls.filter(([url]) => url.endsWith('/party-pivot-export/'));
+  expect(exportCalls.length).toBe(1);
+  expect(exportCalls[0][1]?.params?.dimension).toBe('month');
   expect(exportCalls[0][1]?.responseType).toBe('blob');
   expect(clickSpy).toHaveBeenCalled();
 

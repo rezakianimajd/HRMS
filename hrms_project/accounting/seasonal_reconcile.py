@@ -1618,3 +1618,228 @@ def build_analytics_workbook(analytics, rows):
     return workbook
 
 
+
+# ---------------------------------------------------------------------------
+# جدول پیوت (Pivot) بر اساس طرف حساب
+# ---------------------------------------------------------------------------
+PIVOT_DIMENSIONS = {
+    'kind': 'نوع معامله',
+    'month': 'ماه شمسی',
+    'moadian_status': 'وضعیت سامانه مودیان',
+    'person_type': 'نوع طرف معامله',
+}
+
+
+def _pivot_column_of(row, dimension):
+    """(کلید ستون، برچسب، ترتیب) برای هر ردیف بر اساس بُعد انتخابی."""
+    if dimension == 'month':
+        key, label = _month_label(row.invoice_date)
+        return key, label, key
+    if dimension == 'moadian_status':
+        status = row.moadian_status or 'pending'
+        label = 'درج‌شده در سامانه' if status == 'registered' else 'درج‌نشده در سامانه'
+        return status, label, f'0{0 if status == "registered" else 1}'
+    if dimension == 'person_type':
+        person_type = row.person_type or 'unknown'
+        labels = dict(seasonal_rules.PERSON_TYPES)
+        return person_type, labels.get(person_type, 'نامشخص'), person_type
+    kind = int(row.kind or 1)
+    return f'kind_{kind}', f'نوع {kind}', f'kind_{kind:02d}'
+
+
+def build_party_pivot(report, direction=seasonal_rules.DIRECTION, filters=None,
+                      dimension='kind', limit=300):
+    """پیوت طرف حساب: جمع مبلغ هر طرف، تفکیک‌شده بر اساس بُعد انتخابی + جمع‌های کنترلی."""
+    cleaned = _clean_filters(filters)
+    dimension = dimension if dimension in PIVOT_DIMENSIONS else 'kind'
+    rows = _apply_filters(_rows_for(report, direction), cleaned)
+
+    columns = {}
+    parties = {}
+    for row in rows:
+        column_key, column_label, order = _pivot_column_of(row, dimension)
+        columns.setdefault(column_key, {'key': column_key, 'label': column_label, 'order': order})
+        party_key = normalize_name(row.name) or normalize_id(row.national_id) or f'row-{row.id}'
+        entry = parties.setdefault(party_key, {
+            'name': normalize_text(
+                row.name or ' '.join(part for part in [row.first_name, row.last_name] if part)
+            ) or 'بدون نام',
+            'person_type': row.person_type or 'unknown',
+            'national_id': row.national_id or '',
+            'count': 0,
+            'amount': Decimal('0'),
+            'vat': Decimal('0'),
+            'values': {},
+        })
+        amount = row.amount or 0
+        entry['count'] += 1
+        entry['amount'] += amount
+        entry['vat'] += row.vat or 0
+        entry['values'][column_key] = entry['values'].get(column_key, Decimal('0')) + amount
+        if not entry['national_id'] and row.national_id:
+            entry['national_id'] = row.national_id
+
+    column_list = sorted(columns.values(), key=lambda item: str(item['order']))
+    total_amount = sum((entry['amount'] for entry in parties.values()), Decimal('0'))
+    total_vat = sum((entry['vat'] for entry in parties.values()), Decimal('0'))
+    ordered = sorted(parties.values(), key=lambda item: item['amount'], reverse=True)
+
+    payload_rows = []
+    cumulative = Decimal('0')
+    labels = dict(seasonal_rules.PERSON_TYPES)
+    for index, entry in enumerate(ordered[:limit], start=1):
+        cumulative += entry['amount']
+        payload_rows.append({
+            'rank': index,
+            'name': entry['name'],
+            'person_type': entry['person_type'],
+            'person_type_label': labels.get(entry['person_type'], 'نامشخص'),
+            'national_id': entry['national_id'],
+            'count': entry['count'],
+            'amount': float(entry['amount']),
+            'vat': float(entry['vat']),
+            'total': float(entry['amount'] + entry['vat']),
+            'share': _share(entry['amount'], total_amount),
+            'cumulative_share': _share(cumulative, total_amount),
+            'values': {column['key']: float(entry['values'].get(column['key'], Decimal('0')))
+                       for column in column_list},
+        })
+
+    column_totals = {
+        column['key']: float(sum((entry['values'].get(column['key'], Decimal('0'))
+                                  for entry in parties.values()), Decimal('0')))
+        for column in column_list
+    }
+    period_start, period_end = (report.period_range or (None, None))
+    return {
+        'direction': direction,
+        'dimension': dimension,
+        'dimension_label': PIVOT_DIMENSIONS[dimension],
+        'dimensions': [{'value': key, 'label': label} for key, label in PIVOT_DIMENSIONS.items()],
+        'filters': cleaned,
+        'filters_label': _filters_text(cleaned),
+        'columns': column_list,
+        'rows': payload_rows,
+        'column_totals': column_totals,
+        'totals': {
+            'count': len(rows),
+            'parties': len(parties),
+            'amount': float(total_amount),
+            'vat': float(total_vat),
+            'total': float(total_amount + total_vat),
+        },
+        'truncated': len(parties) > limit,
+        'limit': limit,
+        'report': {
+            'id': report.pk,
+            'fiscal_year': getattr(report.fiscal_year, 'name', ''),
+            'quarter': report.quarter,
+            'quarter_label': str(report.get_quarter_display()),
+        },
+        'period': {
+            'start_jalali': _jalali_text(period_start),
+            'end_jalali': _jalali_text(period_end),
+        },
+        'ruleset': {'version': seasonal_rules.RULESET_VERSION, 'status': seasonal_rules.RULESET_STATUS},
+    }
+
+
+
+def build_party_pivot_workbook(pivot):
+    """اکسل پیوت طرف حساب: جدول ماتریسی (طرف × بُعد انتخابی) + جمع‌ها + خلاصه."""
+    from openpyxl import Workbook
+    from openpyxl.styles import Font
+    from openpyxl.utils import get_column_letter
+
+    styles = _workbook_styles()
+    head_font, head_fill, border, center = (
+        styles['head_font'], styles['head_fill'], styles['border'], styles['center'],
+    )
+
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = 'پیوت طرف حساب'
+    sheet.sheet_view.rightToLeft = True
+
+    columns = pivot.get('columns', [])
+    headers = ['ردیف', 'طرف حساب', 'نوع طرف', 'شناسه/کد ملی', 'تعداد فاکتور']
+    headers += [column['label'] for column in columns]
+    headers += ['جمع مبلغ', 'مالیات', 'جمع کل', 'سهم مبلغ']
+
+    sheet.append(headers)
+    for index, header in enumerate(headers, start=1):
+        cell = sheet.cell(row=1, column=index)
+        cell.font = head_font
+        cell.fill = head_fill
+        cell.alignment = center
+        cell.border = border
+        sheet.column_dimensions[get_column_letter(index)].width = max(12, min(30, len(str(header)) + 6))
+
+    for row_number, row in enumerate(pivot.get('rows', []), start=2):
+        sheet.append([
+            row['rank'],
+            row['name'],
+            row['person_type_label'],
+            row['national_id'],
+            row['count'],
+            *[row['values'].get(column['key'], 0) for column in columns],
+            row['amount'],
+            row['vat'],
+            row['total'],
+            row['share'],
+        ])
+        data_start = 6
+        for column in range(data_start, data_start + len(columns) + 3):
+            sheet.cell(row=row_number, column=column).number_format = '#,##0'
+        sheet.cell(row=row_number, column=data_start + len(columns) + 3).number_format = '0.0%'
+        sheet.cell(row=row_number, column=2).alignment = styles['right']
+
+    totals_row = 2 + len(pivot.get('rows', []))
+    column_totals = pivot.get('column_totals', {})
+    totals = pivot.get('totals', {})
+    sheet.cell(row=totals_row, column=1, value='جمع کل')
+    sheet.cell(row=totals_row, column=2, value=f'{len(pivot.get("rows", []))} طرف از {totals.get("parties", 0)}')
+    for offset, column in enumerate(columns, start=6):
+        sheet.cell(row=totals_row, column=offset, value=column_totals.get(column['key'], 0))
+    sheet.cell(row=totals_row, column=6 + len(columns), value=totals.get('amount', 0))
+    sheet.cell(row=totals_row, column=7 + len(columns), value=totals.get('vat', 0))
+    sheet.cell(row=totals_row, column=8 + len(columns), value=totals.get('total', 0))
+    sheet.cell(row=totals_row, column=9 + len(columns), value=1)
+    for index in range(1, len(headers) + 1):
+        cell = sheet.cell(row=totals_row, column=index)
+        cell.font = Font(bold=True)
+        cell.border = border
+        if index >= 6:
+            cell.number_format = '#,##0'
+    sheet.cell(row=totals_row, column=9 + len(columns)).number_format = '0.0%'
+
+    sheet.freeze_panes = 'C2'
+    if pivot.get('rows'):
+        sheet.auto_filter.ref = f'A1:{get_column_letter(len(headers))}{max(1, len(pivot["rows"]) + 1)}'
+
+    summary = workbook.create_sheet('خلاصه')
+    summary.sheet_view.rightToLeft = True
+    summary.append(['پیوت طرف حساب — صورت معاملات فصلی خرید'])
+    summary['A1'].font = Font(bold=True, size=13)
+    summary.append([])
+    report = pivot.get('report', {})
+    period = pivot.get('period', {})
+    for label, value in [
+        ('سال مالی', report.get('fiscal_year', '')),
+        ('فصل', report.get('quarter_label', '')),
+        ('بازهٔ فصل', f'{period.get("start_jalali", "")} تا {period.get("end_jalali", "")}'),
+        ('تفکیک ستون‌ها', pivot.get('dimension_label', '')),
+        ('فیلتر اعمال‌شده', pivot.get('filters_label', 'بدون فیلتر')),
+        ('تاریخ اجرا', datetime.now().strftime('%Y-%m-%d %H:%M')),
+        ('', ''),
+        ('تعداد ردیف', totals.get('count', 0)),
+        ('تعداد طرف حساب', totals.get('parties', 0)),
+        ('جمع مبلغ', totals.get('amount', 0)),
+        ('جمع مالیات', totals.get('vat', 0)),
+        ('جمع کل', totals.get('total', 0)),
+    ]:
+        summary.append([label, value])
+    summary.column_dimensions['A'].width = 30
+    summary.column_dimensions['B'].width = 34
+    return workbook
+

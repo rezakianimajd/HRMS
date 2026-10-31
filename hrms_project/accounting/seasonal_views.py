@@ -152,6 +152,34 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         report.save(update_fields=['status', 'notes', 'updated_at'])
         return Response(self.get_serializer(report).data)
 
+    @action(detail=True, methods=['get'], url_path='party-pivot')
+    def party_pivot(self, request, pk=None):
+        """جدول پیوت طرف حساب: جمع مبلغ هر طرف، تفکیک‌شده بر اساس نوع/ماه/وضعیت/نوع طرف."""
+        report = self.get_object()
+        direction = self._direction(request) or DIRECTION_PURCHASE
+        filters = seasonal_reconcile.filters_from_query(request.query_params)
+        dimension = request.query_params.get('dimension') or request.query_params.get('group_by') or 'kind'
+        return Response(seasonal_reconcile.build_party_pivot(report, direction, filters, dimension))
+
+    @action(detail=True, methods=['get'], url_path='party-pivot-export')
+    def party_pivot_export(self, request, pk=None):
+        """خروجی اکسل جدول پیوت طرف حساب با همان بُعد و فیلترها."""
+        report = self.get_object()
+        direction = self._direction(request) or DIRECTION_PURCHASE
+        filters = seasonal_reconcile.filters_from_query(request.query_params)
+        dimension = request.query_params.get('dimension') or request.query_params.get('group_by') or 'kind'
+        pivot = seasonal_reconcile.build_party_pivot(report, direction, filters, dimension)
+        workbook = seasonal_reconcile.build_party_pivot_workbook(pivot)
+        response = HttpResponse(
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        )
+        stamp = timezone.localtime().strftime('%Y%m%d-%H%M')
+        filename = (f'seasonal-party-pivot-{report.fiscal_year_id}-q{report.quarter}'
+                    f'-{pivot["dimension"]}-{stamp}.xlsx')
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        workbook.save(response)
+        return response
+
     @action(detail=True, methods=['get'])
     def analytics(self, request, pk=None):
         """گزارش تحلیلی فصل (با فیلتر نوع معامله / وضعیت مودیان / نوع طرف / جستجو)."""

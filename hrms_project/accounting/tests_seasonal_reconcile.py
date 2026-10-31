@@ -228,3 +228,72 @@ class AnalyticsTests(SeasonalBaseTest):
         self.assertTrue(analytics['insights'])
         self.assertEqual(analytics['ruleset']['version'], rec.seasonal_rules.RULESET_VERSION)
 
+
+
+class PartyPivotTests(SeasonalBaseTest):
+    """جدول پیوت طرف حساب: جمع مبلغ هر طرف + تفکیک ستون‌ها + خروجی اکسل."""
+
+    def setUp(self):
+        super().setUp()
+        self.report = self.make_report()
+        sync_rows(self.report, [
+            self.row(invoice_no='P1', amount=1000000, vat=100000, kind=1,
+                     invoice_date='2026-04-10'),
+            self.row(invoice_no='P2', amount=250000, vat=25000, kind=2,
+                     invoice_date='2026-05-10', moadian_status='pending'),
+            self.row(invoice_no='P3', name='شرکت بتا صنعت', national_id='20202020202',
+                     amount=500000, vat=50000, kind=2, invoice_date='2026-04-20'),
+            self.natural_row(invoice_no='P4', amount=200000, vat=20000, kind=1,
+                             invoice_date='2026-06-01'),
+        ])
+
+    def test_pivot_groups_amounts_per_party(self):
+        pivot = rec.build_party_pivot(self.report, 'purchase', None, 'kind')
+        self.assertEqual(pivot['dimension'], 'kind')
+        self.assertEqual([column['key'] for column in pivot['columns']], ['kind_1', 'kind_2'])
+        self.assertEqual(pivot['totals']['parties'], 3)
+        self.assertEqual(pivot['totals']['amount'], 1950000.0)
+        self.assertEqual(pivot['totals']['count'], 4)
+
+        first = pivot['rows'][0]
+        self.assertEqual(first['name'], 'شرکت آلفا تجارت')
+        self.assertEqual(first['count'], 2)
+        self.assertEqual(first['amount'], 1250000.0)
+        self.assertEqual(first['values']['kind_1'], 1000000.0)
+        self.assertEqual(first['values']['kind_2'], 250000.0)
+        self.assertEqual(pivot['column_totals']['kind_1'], 1200000.0)
+        self.assertEqual(pivot['column_totals']['kind_2'], 750000.0)
+        self.assertGreater(first['share'], 0.6)
+
+    def test_pivot_other_dimensions_and_filters(self):
+        by_month = rec.build_party_pivot(self.report, 'purchase', None, 'month')
+        self.assertTrue(all(column['key'].startswith('1405') for column in by_month['columns']))
+
+        by_status = rec.build_party_pivot(self.report, 'purchase', None, 'moadian_status')
+        self.assertEqual(by_status['column_totals']['registered'], 1700000.0)
+        self.assertEqual(by_status['column_totals']['pending'], 250000.0)
+
+        filtered = rec.build_party_pivot(self.report, 'purchase', {'moadian_status': 'pending'}, 'kind')
+        self.assertEqual(filtered['totals']['count'], 1)
+        self.assertEqual(filtered['totals']['parties'], 1)
+        self.assertEqual(filtered['rows'][0]['name'], 'شرکت آلفا تجارت')
+
+        fallback = rec.build_party_pivot(self.report, 'purchase', None, 'invalid-dimension')
+        self.assertEqual(fallback['dimension'], 'kind')
+
+    def test_pivot_workbook_layout(self):
+        pivot = rec.build_party_pivot(self.report, 'purchase', None, 'kind')
+        workbook = rec.build_party_pivot_workbook(pivot)
+        self.assertEqual(workbook.sheetnames, ['پیوت طرف حساب', 'خلاصه'])
+        sheet = workbook['پیوت طرف حساب']
+        self.assertEqual(sheet.cell(row=1, column=1).value, 'ردیف')
+        self.assertEqual(sheet.cell(row=1, column=2).value, 'طرف حساب')
+        self.assertEqual(sheet.cell(row=1, column=6).value, 'نوع 1')
+        self.assertEqual(sheet.cell(row=2, column=2).value, 'شرکت آلفا تجارت')
+        totals_row = 2 + len(pivot['rows'])
+        self.assertEqual(sheet.cell(row=totals_row, column=1).value, 'جمع کل')
+        self.assertEqual(sheet.cell(row=totals_row, column=6).value, 1200000.0)
+        buffer = io.BytesIO()
+        workbook.save(buffer)
+        self.assertGreater(buffer.tell(), 3000)
+
