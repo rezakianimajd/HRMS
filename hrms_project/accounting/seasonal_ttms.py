@@ -455,9 +455,8 @@ def build_readme(manifest):
 
 
 def filler_script():
-    """متن اسکریپت PowerShell از پوشهٔ ``ttms_assets``."""
-    path = ASSETS_DIR / FILLER_SCRIPT
-    return path.read_text(encoding='utf-8-sig')
+    """محتوای خام اسکریپت PowerShell از پوشهٔ ``ttms_assets`` (با BOM و CRLF)."""
+    return (ASSETS_DIR / FILLER_SCRIPT).read_bytes()
 
 
 def build_package(report, rows, options=None, filters=None):
@@ -483,10 +482,10 @@ def build_package(report, rows, options=None, filters=None):
         archive.writestr('manifest.json', manifest_text.encode('utf-8'))
         archive.writestr('README.txt', readme_text.encode('utf-8-sig'))
         try:
-            script_text = filler_script()
+            script_bytes = filler_script()
         except OSError:
-            script_text = ''
-        if script_text:
-            archive.writestr(FILLER_SCRIPT, script_text.encode('utf-8-sig'))
+            script_bytes = b''
+        if script_bytes:
+            archive.writestr(FILLER_SCRIPT, script_bytes)
     return buffer.getvalue(), package_name, manifest
 
