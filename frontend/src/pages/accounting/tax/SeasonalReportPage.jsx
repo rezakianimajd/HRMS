@@ -1384,6 +1384,13 @@ const SeasonalReportPage = () => {
 
   const advancedFilterCount = countConditions(filterExpression);
   const advancedFilterSummary = describeExpression(filterExpression);
+  /* شناسهٔ باندل در حال اجرا (برای تشخیص نسخهٔ کش‌شده در مرورگر) */
+  const buildId = useMemo(() => {
+    if (typeof document === 'undefined') return 'dev';
+    const script = document.querySelector('script[src*="js/main."]');
+    const match = script ? /main\.([a-z0-9]+)\.js/.exec(script.src) : null;
+    return match ? match[1] : 'dev';
+  }, []);
   const activeFilterCount = (statusFilter !== 'all' ? 1 : 0) + (kindFilter !== 'all' ? 1 : 0)
     + advancedFilterCount;
   const statusLabelOf = (value) => (value === 'registered' ? 'درج شده' : 'درج نشده');
@@ -2051,6 +2058,27 @@ const SeasonalReportPage = () => {
         color="#d97706"
         actions={(
           <Stack direction="row" spacing={1} useFlexGap flexWrap="wrap">
+            <Tooltip title="ساخت شرط‌های ترکیبی (و / یا) روی نوع شخص، مبلغ، تاریخ، مالیات و… با ذخیرهٔ نما">
+              <span>
+                <Button
+                  variant={advancedFilterCount ? 'contained' : 'outlined'}
+                  size="small"
+                  color={advancedFilterCount ? 'warning' : 'primary'}
+                  startIcon={<FilterAltIcon />}
+                  onClick={() => setBuilderOpen(true)}
+                  data-testid="open-filter-builder"
+                >
+                  فیلتر پیشرفته
+                  {advancedFilterCount ? (
+                    <Chip
+                      size="small"
+                      label={toPersianDigits(advancedFilterCount)}
+                      sx={{ ml: 0.75, height: 18, fontSize: 10.5, fontWeight: 800 }}
+                    />
+                  ) : null}
+                </Button>
+              </span>
+            </Tooltip>
             <Button variant="outlined" size="small" startIcon={<RuleOutlinedIcon />} onClick={runValidation}>
               اعتبارسنجی
             </Button>
@@ -2342,25 +2370,7 @@ const SeasonalReportPage = () => {
         }}
         filtersOpen={filtersOpen}
         setFiltersOpen={setFiltersOpen}
-      >
-        <Button
-          size="small"
-          variant={advancedFilterCount ? 'contained' : 'outlined'}
-          startIcon={<FilterAltIcon fontSize="small" />}
-          onClick={() => setBuilderOpen(true)}
-          sx={{ height: 32, fontSize: 12, whiteSpace: 'nowrap', px: 1.5 }}
-          data-testid="open-filter-builder"
-        >
-          فیلتر پیشرفته
-          {advancedFilterCount ? (
-            <Chip
-              size="small"
-              label={toPersianDigits(advancedFilterCount)}
-              sx={{ ml: 0.75, height: 18, fontSize: 10.5, fontWeight: 800 }}
-            />
-          ) : null}
-        </Button>
-      </ModuleToolbar>
+      />
 
 
       <Paper
@@ -2429,6 +2439,9 @@ const SeasonalReportPage = () => {
                 ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
                 : 'بدون خطا'}
             </Box>
+          </Typography>
+          <Typography sx={{ fontSize: 10.5, color: 'text.disabled' }} title="شناسهٔ باندل در حال اجرا">
+            {`نسخهٔ رابط: ${buildId}`}
           </Typography>
         </Box>
       </Paper>
