@@ -17,6 +17,7 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DescriptionIcon from '@mui/icons-material/Description';
 import DownloadIcon from '@mui/icons-material/Download';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
+import LayersOutlinedIcon from '@mui/icons-material/LayersOutlined';
 import PaymentsIcon from '@mui/icons-material/Payments';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
@@ -37,7 +38,9 @@ import ContractListPicker from '../../core/components/ui/ContractListPicker';
 import MoneyInput from '../../core/components/ui/MoneyInput';
 import PageHeader from '../../core/components/ui/PageHeader';
 import useCompany from '../../core/hooks/useCompany';
-import { KpiTile, SurfaceCard, INK, MUTED, SOFT_BG } from '../accounting/AccountingDashboardUI';
+import {
+  KpiTileLine, SurfaceCard, INK, MUTED, SOFT_BG,
+} from '../accounting/AccountingDashboardUI';
 import { AttachmentPicker } from './AddendumWorkspaceUI';
 import {
   StatementDetailDrawer, STATEMENT_ACCENT,
@@ -55,16 +58,17 @@ import {
   cumulativeRialFromForeign, displayAmount, fromRial, isRialCurrency, normalizeRate, rateOfStatement, toRial,
 } from './statementCurrency';
 import {
-  STATEMENT_KIND_DECREASE, STATEMENT_KIND_INCREASE, STATEMENT_KIND_STATEMENT,
-  adjustmentSummaryOf, isAdjustmentKind, latestNormalStatement, statementDisplayTitle, statementKindOf,
+  STATEMENT_KIND_DECREASE, STATEMENT_KIND_INCREASE, STATEMENT_KIND_MULTI, STATEMENT_KIND_STATEMENT,
+  adjustmentSummaryOf, isAdjustmentKind, isMultiKind, latestNormalStatement, statementDisplayTitle, statementKindOf,
 } from './statementKinds';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
 const KIND_OPTIONS = [
-  { key: STATEMENT_KIND_STATEMENT, label: 'صورت‌وضعیت (پیش‌فرض)', color: '#2563eb', icon: ReceiptLongIcon },
-  { key: STATEMENT_KIND_INCREASE, label: 'تعدیل افزایشی', color: '#15803d', icon: TrendingUpIcon },
-  { key: STATEMENT_KIND_DECREASE, label: 'تعدیل کاهشی', color: '#be123c', icon: TrendingDownIcon },
+  { key: STATEMENT_KIND_STATEMENT, label: 'صورت‌وضعیت عادی (پیش‌فرض)', color: '#2563eb', icon: ReceiptLongIcon },
+  { key: STATEMENT_KIND_MULTI, label: 'صورت‌وضعیت چند بندی', color: '#7c3aed', icon: LayersOutlinedIcon },
+  { key: STATEMENT_KIND_INCREASE, label: 'صورت‌وضعیت تعدیل (افزایشی)', color: '#15803d', icon: TrendingUpIcon },
+  { key: STATEMENT_KIND_DECREASE, label: 'صورت‌وضعیت تعدیل (کاهشی)', color: '#be123c', icon: TrendingDownIcon },
 ];
 
 const num = (v) => Math.max(0, Number(v) || 0);
@@ -717,6 +721,53 @@ const StatementEditorPage = () => {
         deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
         deductions_total: deductionsTotal,
         net_amount: Math.round(signedRial + additionsTotal - deductionsTotal),
+        bands: [],
+        currency: payload.currency || null,
+        exchange_rate: normalizeRate(rate),
+        is_approved: Boolean(payload.is_approved),
+        description: payload.description || '',
+      };
+    }
+    if (isMultiKind(kind)) {
+      // مبالغ هر بند در سمت سرور با زنجیرهٔ همان بند تسویه می‌شوند؛ اینجا فقط
+      // ورودی‌ها پاک‌سازی و جمع‌های نمایشی محاسبه می‌شوند.
+      const cleanBands = (Array.isArray(payload.bands) ? payload.bands : [])
+        .map((band) => ({
+          title: String(band.title || '').trim(),
+          amount: Math.max(0, Math.round(Number(band.amount) || 0)),
+          amount_foreign: Math.max(0, Number(band.amount_foreign) || 0),
+        }))
+        .filter((band) => band.title);
+      const amount = cleanBands.reduce((sum, band) => sum + band.amount, 0);
+      const foreignAmount = cleanBands.reduce((sum, band) => sum + band.amount_foreign, 0);
+      // مبنای «دوره قبل» هر بند از زنجیرهٔ همان بند می‌آید (نه از تجمعی سند).
+      const previousOfBand = (band) => Number(
+        (bandPreviousMap[bandKeyOf(band.title)] || {}).amount || 0,
+      );
+      const previous = cleanBands.reduce((sum, band) => sum + previousOfBand(band), 0);
+      const work = cleanBands.reduce(
+        (sum, band) => sum + Math.max(0, band.amount - previousOfBand(band)),
+        0,
+      );
+      const additionsTotalValue = additions.reduce((sum, item) => sum + item.amount, 0);
+      const deductionsTotalValue = deductions.reduce((sum, item) => sum + item.amount, 0);
+      return {
+        contract: Number(payload.contract) || null,
+        number,
+        kind,
+        date: payload.date || null,
+        amount,
+        foreign_amount: foreignAmount,
+        cumulative_previous_amount: previous,
+        work_done: work,
+        value_added_tax: 0,
+        other_additions: 0,
+        additions: additions.map(({ code, description, percent, amount: itemAmount, mode }) => ({ code, description, percent, amount: itemAmount, mode })),
+        additions_total: additionsTotalValue,
+        deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
+        deductions_total: deductionsTotalValue,
+        net_amount: Math.round(work + additionsTotalValue - deductionsTotalValue),
+        bands: cleanBands,
         currency: payload.currency || null,
         exchange_rate: normalizeRate(rate),
         is_approved: Boolean(payload.is_approved),
@@ -747,6 +798,7 @@ const StatementEditorPage = () => {
       deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
       deductions_total: deductionsTotal,
       net_amount: Math.round(work + additionsTotal - deductionsTotal),
+      bands: [],
       currency: payload.currency || null,
       exchange_rate: normalizeRate(rate),
       is_approved: Boolean(payload.is_approved),
@@ -884,8 +936,60 @@ const StatementEditorPage = () => {
     ...(otherAdditions ? [{ description: 'سایر اضافات', amount: otherAdditions }] : []),
   ];
   const deductionsTotal = deductions.reduce((sum, item) => sum + num(item.amount), 0);
-  const cumulativePrev = num(form.cumulative_previous_amount);
-  const cumulativeThis = num(form.amount);
+  const formKind = statementKindOf(form);
+  const isAdjustmentForm = formKind.isAdjustment;
+  const isMultiForm = Boolean(formKind.isMulti);
+  const bands = Array.isArray(form.bands) ? form.bands : [];
+  const bandKeyOf = (title) => String(title || '')
+    .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+  /** آخرین مبلغ تجمعی هر بند در اسناد قبلی همان قرارداد. */
+  const bandPreviousMap = (() => {
+    const map = {};
+    (Array.isArray(scopedList) ? scopedList : [])
+      .filter((row) => !isAdjustmentKind(row))
+      .filter((row) => !form.id || Number(row.id || 0) < Number(form.id))
+      .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
+      .forEach((row) => {
+        (Array.isArray(row.bands) ? row.bands : []).forEach((band) => {
+          const key = bandKeyOf(band.title);
+          if (!key) return;
+          map[key] = { amount: num(band.amount), amount_foreign: num(band.amount_foreign) };
+        });
+      });
+    return map;
+  })();
+  /** عنوان بندهای قابل انتخاب (بندهای همین قرارداد + بندهای فرم فعلی). */
+  const bandSuggestions = (() => {
+    const seen = new Set();
+    const list = [];
+    [...(Array.isArray(scopedList) ? scopedList : []), { bands }].forEach((row) => {
+      (Array.isArray(row.bands) ? row.bands : []).forEach((band) => {
+        const title = String(band?.title || '').trim();
+        const key = bandKeyOf(title);
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        list.push(title);
+      });
+    });
+    return list;
+  })();
+  const bandsTotals = bands.reduce((totals, band) => {
+    const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0, amount_foreign: 0 };
+    const amount = Math.max(0, num(band.amount));
+    const amountForeign = num(band.amount_foreign);
+    return {
+      amount: totals.amount + amount,
+      foreign: totals.foreign + amountForeign,
+      previous: totals.previous + num(previous.amount),
+      previousForeign: totals.previousForeign + num(previous.amount_foreign),
+      work: totals.work + Math.max(0, amount - num(previous.amount)),
+      workForeign: totals.workForeign + Math.max(0, amountForeign - num(previous.amount_foreign)),
+    };
+  }, {
+    amount: 0, foreign: 0, previous: 0, previousForeign: 0, work: 0, workForeign: 0,
+  });
+  const cumulativePrev = isMultiForm ? bandsTotals.previous : num(form.cumulative_previous_amount);
+  const cumulativeThis = isMultiForm ? bandsTotals.amount : num(form.amount);
   const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
   const formCurrencyLabel = normalizeCurrencyLabel(
     formCurrency?.name || formCurrency?.symbol || currencyLabel,
@@ -895,14 +999,16 @@ const StatementEditorPage = () => {
   const rate = rateOverride !== '' && rateOverride != null ? normalizeRate(rateOverride) : baseRate;
   const displayRate = isRial ? 1 : rate;
   const displayValue = (rialValue) => (displayRate > 1 ? fromRial(rialValue, displayRate) : num(rialValue));
-  const cumulativePrevForeign = form.cumulative_previous_foreign != null
-    ? num(form.cumulative_previous_foreign)
-    : (displayRate > 1 ? fromRial(cumulativePrev, displayRate) : cumulativePrev);
-  const cumulativeThisForeign = form.amount_foreign != null
-    ? num(form.amount_foreign)
-    : (displayRate > 1 ? fromRial(cumulativeThis, displayRate) : cumulativeThis);
-  const formKind = statementKindOf(form);
-  const isAdjustmentForm = formKind.isAdjustment;
+  const cumulativePrevForeign = isMultiForm
+    ? bandsTotals.previousForeign
+    : (form.cumulative_previous_foreign != null
+      ? num(form.cumulative_previous_foreign)
+      : (displayRate > 1 ? fromRial(cumulativePrev, displayRate) : cumulativePrev));
+  const cumulativeThisForeign = isMultiForm
+    ? bandsTotals.foreign
+    : (form.amount_foreign != null
+      ? num(form.amount_foreign)
+      : (displayRate > 1 ? fromRial(cumulativeThis, displayRate) : cumulativeThis));
   const adjustmentSign = formKind.sign;
   const adjustmentWorkRial = adjustmentSign * Math.abs(num(form.adjustment_work_done));
   const adjustmentWorkForeign = adjustmentSign * Math.abs(
@@ -916,10 +1022,10 @@ const StatementEditorPage = () => {
   const adjustmentCumulativeForeign = adjustmentPreviousForeign + adjustmentWorkForeign;
   const workDoneForeign = isAdjustmentForm
     ? adjustmentWorkForeign
-    : Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
+    : (isMultiForm ? bandsTotals.workForeign : Math.max(0, cumulativeThisForeign - cumulativePrevForeign));
   const workDone = isAdjustmentForm
     ? adjustmentWorkRial
-    : Math.max(0, cumulativeThis - cumulativePrev);
+    : (isMultiForm ? bandsTotals.work : Math.max(0, cumulativeThis - cumulativePrev));
   const netAmount = isAdjustmentForm
     ? adjustmentWorkRial + additionsTotal - deductionsTotal
     : workDone + additionsTotal - deductionsTotal;
@@ -1051,9 +1157,7 @@ const StatementEditorPage = () => {
   };
 
   const nextNumberForKind = (kind) => {
-    const rows = scopedList.filter((row) => (
-      kind === STATEMENT_KIND_STATEMENT ? !isAdjustmentKind(row) : isAdjustmentKind(row)
-    ));
+    const rows = scopedList.filter((row) => isAdjustmentKind(row) === isAdjustmentKind(kind));
     const maxNumber = rows.reduce((max, row) => {
       const normalized = normalizeStatementNumber(row.number);
       return /^\d+$/.test(normalized) ? Math.max(max, Number(normalized)) : max;
@@ -1064,17 +1168,22 @@ const StatementEditorPage = () => {
   const changeKind = (kind) => {
     setForm((previous) => {
       const adjustment = isAdjustmentKind(kind);
+      const multi = isMultiKind(kind);
       const priorAdjustment = adjustment
         ? adjustmentCumulativeFor(scopedList, { excludeId: previous.id })
         : 0;
       const priorAdjustmentForeign = adjustment
         ? adjustmentForeignCumulativeFor(scopedList, { excludeId: previous.id })
         : 0;
+      const existingBands = Array.isArray(previous.bands) ? previous.bands : [];
       return {
         ...previous,
         kind,
         amount: adjustment ? previous.cumulative_previous_amount : previous.amount,
         amount_foreign: adjustment ? previous.cumulative_previous_foreign : previous.amount_foreign,
+        bands: multi
+          ? (existingBands.length ? existingBands : [{ title: '', amount: 0, amount_foreign: 0 }])
+          : [],
         number: previous.id || normalizeStatementNumber(previous.number)
           ? previous.number
           : nextNumberForKind(kind),
@@ -1084,6 +1193,36 @@ const StatementEditorPage = () => {
         adjustment_work_foreign: adjustment ? previous.adjustment_work_foreign || 0 : 0,
       };
     });
+  };
+
+  const addBand = () => setField('bands', [...bands, { title: '', amount: 0, amount_foreign: 0 }]);
+  const removeBand = (index) => setField('bands', bands.filter((_, current) => current !== index));
+  const updateBandTitle = (index, value) => setField('bands', bands.map((band, current) => (
+    current === index ? { ...band, title: value } : band
+  )));
+  const updateBandAmount = (index, value) => setField('bands', bands.map((band, current) => {
+    if (current !== index) return band;
+    const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0, amount_foreign: 0 };
+    const amount = Math.max(0, Number(value) || 0);
+    if (isRial) {
+      const rounded = Math.round(amount);
+      return { ...band, amount: rounded, amount_foreign: rounded };
+    }
+    const previousRial = Number(previous.amount) || 0;
+    const previousForeign = Number(previous.amount_foreign) || 0;
+    return {
+      ...band,
+      amount_foreign: amount,
+      amount: Math.round(previousRial) + toRial(Math.max(0, amount - previousForeign), displayRate),
+    };
+  }));
+  const chooseBand = (title) => {
+    const previous = bandPreviousMap[bandKeyOf(title)] || { amount: 0, amount_foreign: 0 };
+    setField('bands', [...bands, {
+      title,
+      amount: Number(previous.amount) || 0,
+      amount_foreign: Number(previous.amount_foreign) || 0,
+    }]);
   };
 
   const changeCurrency = (currencyId) => {
@@ -1182,6 +1321,7 @@ const StatementEditorPage = () => {
       other_additions_mode: 'amount',
       additions: [],
       deductions: [],
+      bands: [],
       documents: [],
       pendingFiles: [],
       is_approved: false,
@@ -1208,9 +1348,6 @@ const StatementEditorPage = () => {
       Number(row.adjustment_foreign_work_done ?? row.foreign_work_done ?? 0)
       || fromRial(editAdjustmentWork, editRate),
     );
-    const percentOfWork = (value) => (
-      editWork > 0 ? Math.round((Number(value || 0) / editWork) * 10000) / 100 : 0
-    );
     const calculatedPrevious = previousCumulativeFor(
       allStatements.filter((item) => String(item.contract) === String(row.contract)),
       { excludeId: row.id },
@@ -1231,6 +1368,26 @@ const StatementEditorPage = () => {
       ...item,
       amount_foreign: fromRial(item.amount, editRate),
     }));
+    // فیلدهای ثابت قدیمی (ارزش افزوده/سایر اضافات) به ردیف‌های اضافات تبدیل
+    // می‌شوند تا با حذف فیلدهای ثابت، مبالغ قبلی از دست نروند.
+    const legacyAdditions = [
+      ...(Number(row.value_added_tax || 0) > 0 ? [{
+        code: 'vat',
+        description: 'ارزش افزوده',
+        percent: 0,
+        amount: Number(row.value_added_tax || 0),
+        amount_foreign: fromRial(Number(row.value_added_tax || 0), editRate),
+        mode: 'amount',
+      }] : []),
+      ...(Number(row.other_additions || 0) > 0 ? [{
+        code: 'other',
+        description: 'سایر اضافات',
+        percent: 0,
+        amount: Number(row.other_additions || 0),
+        amount_foreign: fromRial(Number(row.other_additions || 0), editRate),
+        mode: 'amount',
+      }] : []),
+    ];
     setForm({
       ...row,
       contract: String(row.contract || ''),
@@ -1243,16 +1400,23 @@ const StatementEditorPage = () => {
       adjustment_previous_foreign: Number(row.adjustment_foreign_previous_amount || 0),
       adjustment_work_done: editAdjustmentWork,
       adjustment_work_foreign: editAdjustmentWorkForeign,
-      value_added_tax: Number(row.value_added_tax || 0),
-      value_added_tax_foreign: fromRial(row.value_added_tax, editRate),
-      other_additions: Number(row.other_additions || 0),
-      other_additions_foreign: fromRial(row.other_additions, editRate),
-      value_added_tax_percent: percentOfWork(row.value_added_tax),
-      other_additions_percent: percentOfWork(row.other_additions),
+      value_added_tax: 0,
+      value_added_tax_foreign: 0,
+      other_additions: 0,
+      other_additions_foreign: 0,
+      value_added_tax_percent: 0,
+      other_additions_percent: 0,
       value_added_tax_mode: 'amount',
       other_additions_mode: 'amount',
-      additions: withForeignAmount(row.additions),
+      additions: [...withForeignAmount(row.additions), ...legacyAdditions],
       deductions: withForeignAmount(row.deductions),
+      bands: (Array.isArray(row.bands) ? row.bands : []).map((band) => ({
+        title: band.title || '',
+        amount: Number(band.amount) || 0,
+        amount_foreign: band.amount_foreign != null
+          ? Number(band.amount_foreign) || 0
+          : fromRial(Number(band.amount) || 0, editRate),
+      })),
       documents: Array.isArray(row.documents) ? row.documents : [],
       pendingFiles: [],
       is_approved: Boolean(row.is_approved),
@@ -1410,7 +1574,22 @@ const StatementEditorPage = () => {
       setError('مبلغ تعدیل این دوره را وارد کنید.');
       return;
     }
-    if (!isAdjustmentForm && cumulativeThis < cumulativePrev) {
+    if (isMultiForm) {
+      const filled = bands.filter((band) => String(band.title || '').trim());
+      if (!filled.length) {
+        setError('برای صورت‌وضعیت چند بندی، حداقل یک بند با عنوان و مبلغ وارد کنید.');
+        return;
+      }
+      const lowered = filled.find((band) => {
+        const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0 };
+        return Math.max(0, Number(band.amount) || 0) < (Number(previous.amount) || 0);
+      });
+      if (lowered) {
+        setError(`مبلغ تجمعی بند «${lowered.title}» نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.`);
+        return;
+      }
+    }
+    if (!isAdjustmentForm && !isMultiForm && cumulativeThis < cumulativePrev) {
       setError('مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.');
       return;
     }
@@ -1463,6 +1642,17 @@ const StatementEditorPage = () => {
         deductionsTotal={deductionsTotal}
         formKind={formKind}
         isAdjustmentForm={isAdjustmentForm}
+        isMultiForm={isMultiForm}
+        bandEditor={{
+          bands,
+          suggestions: bandSuggestions,
+          previousMap: bandPreviousMap,
+          onAdd: addBand,
+          onRemove: removeBand,
+          onTitle: updateBandTitle,
+          onAmount: updateBandAmount,
+          onChoose: chooseBand,
+        }}
         adjustmentPrevious={adjustmentPrevious}
         adjustmentPreviousForeign={adjustmentPreviousForeign}
         adjustmentCumulative={adjustmentCumulative}
@@ -1838,7 +2028,7 @@ const StatementEditorPage = () => {
 const StatementEditorView = ({
   onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
-  formKind, isAdjustmentForm, adjustmentPrevious, adjustmentPreviousForeign,
+  formKind, isAdjustmentForm, isMultiForm = false, bandEditor = null, adjustmentPrevious, adjustmentPreviousForeign,
   adjustmentCumulative, adjustmentCumulativeForeign,
   adjustmentWorkRial, adjustmentWorkForeign,
   cumulativePrev, cumulativePrevForeign, cumulativeThis, cumulativeThisForeign,
@@ -1853,33 +2043,10 @@ const StatementEditorView = ({
   const theme = useTheme();
   const displayRate = isRial ? 1 : rate;
   const update = (key, value) => setForm((previous) => ({ ...previous, [key]: value }));
-  const updateFixedAddition = (field, key, value) => {
-    const percentKey = `${field}_percent`;
-    const modeKey = `${field}_mode`;
-    const percentBase = Math.abs(Number(workDone) || 0);
-    setForm((previous) => {
-      if (key === 'percent') {
-        const percent = Math.max(0, Number(value) || 0);
-        const amount = Math.round((percentBase * percent) / 100);
-        return {
-          ...previous,
-          [percentKey]: percent,
-          [field]: amount,
-          [`${field}_foreign`]: fromRial(amount, displayRate),
-          [modeKey]: 'percent',
-        };
-      }
-      const amountForeign = Math.max(0, Number(value) || 0);
-      const amount = toRial(amountForeign, displayRate);
-      const percent = percentBase > 0 ? Math.round((amount / percentBase) * 10000) / 100 : 0;
-      return {
-        ...previous, [field]: amount, [`${field}_foreign`]: amountForeign, [percentKey]: percent, [modeKey]: 'amount',
-      };
-    });
-  };
   const documents = Array.isArray(form.documents) ? form.documents : [];
   const pendingFiles = Array.isArray(form.pendingFiles) ? form.pendingFiles : [];
   const totalDocs = documents.length + pendingFiles.length;
+  const netColor = isMultiForm ? formKind.color : (isAdjustmentForm ? formKind.color : GREEN);
   return (
     <Box sx={{ pb: 1 }}>
       <PageHeader
@@ -1900,23 +2067,26 @@ const StatementEditorView = ({
         )}
       />
 
-      <Grid container spacing={1.5} sx={{ mb: 1.5 }}>
+      <Box sx={{
+        display: 'grid', gap: 1, mb: 1.5,
+        gridTemplateColumns: { xs: 'repeat(2, minmax(0, 1fr))', md: 'repeat(4, minmax(0, 1fr))' },
+      }}>
         {isAdjustmentForm ? (
           <>
-            <Grid item xs={6} md={3}><KpiTile icon={formKind.key === STATEMENT_KIND_INCREASE ? TrendingUpIcon : TrendingDownIcon} label="مبلغ قابل پرداخت تعدیل" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="تعدیل تجمعی" value={compactMoney(adjustmentCumulativeForeign, formCurrencyLabel)} color={formKind.color} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(adjustmentCumulative, 'ریال')}`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="مبنای تجمعی صورت‌وضعیت" value={compactMoney(cumulativeThisForeign, formCurrencyLabel)} color={BLUE} size={17} hint="بدون تغییر با تعدیل" /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
+            <KpiTileLine dense icon={formKind.key === STATEMENT_KIND_INCREASE ? TrendingUpIcon : TrendingDownIcon} label="قابل پرداخت تعدیل" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={formKind.color} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} />
+            <KpiTileLine dense icon={PaymentsIcon} label="تعدیل تجمعی" value={compactMoney(adjustmentCumulativeForeign, formCurrencyLabel)} color={formKind.color} hint={isRial ? '' : `معادل ریالی ${compactMoney(adjustmentCumulative, 'ریال')}`} />
+            <KpiTileLine dense icon={TrendingUpIcon} label="مبنای تجمعی صورت‌وضعیت" value={compactMoney(cumulativeThisForeign, formCurrencyLabel)} color={BLUE} hint="بدون تغییر با تعدیل" />
+            <KpiTileLine dense icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} />
           </>
         ) : (
           <>
-            <Grid item xs={6} md={3}><KpiTile icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color="#0f766e" size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDoneForeign, formCurrencyLabel)} color={BLUE} size={16} hint={isRial ? '' : `معادل ریالی ${compactMoney(workDone, 'ریال')}`} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={CheckCircleIcon} label="پیشرفت قرارداد" value={`${toPersianDigits(progress.toFixed(0))}٪`} color={STATEMENT_ACCENT} hint={`کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} size={17} /></Grid>
-            <Grid item xs={6} md={3}><KpiTile icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} /></Grid>
+            <KpiTileLine dense icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={GREEN} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} />
+            <KpiTileLine dense icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDoneForeign, formCurrencyLabel)} color={BLUE} hint={isRial ? '' : `معادل ریالی ${compactMoney(workDone, 'ریال')}`} />
+            <KpiTileLine dense icon={isMultiForm ? LayersOutlinedIcon : CheckCircleIcon} label={isMultiForm ? `بندها (${formatPersianNumber((bandEditor?.bands || []).length)})` : 'پیشرفت قرارداد'} value={isMultiForm ? compactMoney(cumulativeThisForeign, formCurrencyLabel) : `${toPersianDigits(progress.toFixed(0))}٪`} color={isMultiForm ? formKind.color : STATEMENT_ACCENT} hint={isMultiForm ? 'تجمعی همهٔ بندها' : `کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} />
+            <KpiTileLine dense icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} />
           </>
         )}
-      </Grid>
+      </Box>
 
       <Stack spacing={1.5}>
         {error ? <Alert severity="error" onClose={() => setError('')} sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
@@ -1936,7 +2106,7 @@ const StatementEditorView = ({
               <Box>
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>اطلاعات پایه</Typography>
                 <Grid container spacing={1.1}>
-                  <Grid item xs={12}>
+                  <Grid item xs={12} sm={4}>
                     <FormControl size="small" fullWidth>
                       <InputLabel>نوع سند</InputLabel>
                       <Select value={form.kind || STATEMENT_KIND_STATEMENT} label="نوع سند" onChange={(event) => onKindChange(event.target.value)}>
@@ -1954,18 +2124,17 @@ const StatementEditorView = ({
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
                     <TextField size="small" fullWidth label={isAdjustmentForm ? 'شماره تعدیل' : 'شماره صورت‌وضعیت'}
                       value={toPersianDigits(form.number || '')}
                       onChange={(event) => update('number', toEnglishDigits(event.target.value))}
                       onBlur={(event) => update('number', normalizeStatementNumber(event.target.value))}
-                      placeholder="مثلاً ۰۳"
-                      helperText={isAdjustmentForm
-                        ? 'شماره تعدیل‌ها از ۰۱ شروع می‌شود؛ با تغییر نوع سند به‌صورت خودکار پیشنهاد می‌شود.'
-                        : 'شماره به‌صورت دو رقمی ذخیره می‌شود؛ مثلاً ۳ به ۰۳ تبدیل می‌شود.'} />
+                      placeholder="مثلاً ۰۳" />
                   </Grid>
-                  <Grid item xs={12} sm={6}><JalaliDatePicker fullWidth label={isAdjustmentForm ? 'تاریخ تعدیل' : 'تاریخ صورت‌وضعیت'} value={form.date || ''} onChange={(value) => update('date', value)} /></Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
+                    <JalaliDatePicker fullWidth label={isAdjustmentForm ? 'تاریخ تعدیل' : 'تاریخ صورت‌وضعیت'} value={form.date || ''} onChange={(value) => update('date', value)} />
+                  </Grid>
+                  <Grid item xs={12} sm={4}>
                     <FormControl size="small" fullWidth>
                       <InputLabel>واحد ارز</InputLabel>
                       <Select value={form.currency || ''} label="واحد ارز" onChange={(event) => onCurrencyChange(event.target.value)}>
@@ -1973,15 +2142,15 @@ const StatementEditorView = ({
                       </Select>
                     </FormControl>
                   </Grid>
-                  <Grid item xs={12} sm={6}>
+                  <Grid item xs={12} sm={4}>
                     <TextField size="small" fullWidth type="number" label="نرخ تبدیل به ریال" value={rateOverride}
                       inputProps={{ step: 'any', min: 0 }} disabled={isRial}
-                      helperText={isRial ? 'برای ریال نرخ تبدیل ۱ است.' : 'نرخ می‌تواند اعشار داشته باشد (تا ۶ رقم).'}
                       placeholder={formatPersianNumber(baseRate)} onChange={(event) => onRateChange(event.target.value)} />
                   </Grid>
-                  <Grid item xs={12}>
-                    <FormControlLabel control={<Switch checked={Boolean(form.is_approved)} onChange={(event) => update('is_approved', event.target.checked)} />}
-                      label={<Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{isAdjustmentForm ? 'این تعدیل تأیید شده است' : 'این صورت‌وضعیت تأیید شده است'}</Typography>} />
+                  <Grid item xs={12} sm={4}>
+                    <FormControlLabel sx={{ m: 0, height: '100%', alignItems: 'center' }}
+                      control={<Switch size="small" checked={Boolean(form.is_approved)} onChange={(event) => update('is_approved', event.target.checked)} />}
+                      label={<Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>تأیید صورت‌وضعیت</Typography>} />
                   </Grid>
                 </Grid>
               </Box>
@@ -1991,7 +2160,63 @@ const StatementEditorView = ({
                 <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK, mb: 0.7 }}>
                   {isAdjustmentForm ? 'تعدیل و مبالغ' : 'کارکرد و مبالغ'}
                 </Typography>
-                {isAdjustmentForm ? (
+                {isMultiForm ? (
+                  <Box>
+                    {(bandEditor?.bands || []).length ? (bandEditor.bands).map((band, index) => {
+                      const bandKey = String(band.title || '')
+                        .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+                      const previous = (bandEditor?.previousMap || {})[bandKey]
+                        || { amount: 0, amount_foreign: 0 };
+                      const previousRial = Number(previous.amount) || 0;
+                      const previousForeign = Number(previous.amount_foreign) || 0;
+                      const amountRial = Number(band.amount) || 0;
+                      const amountForeign = Number(band.amount_foreign) || 0;
+                      const workRial = Math.max(0, amountRial - previousRial);
+                      const workForeign = Math.max(0, amountForeign - previousForeign);
+                      return (
+                        <Box key={`band-${index}`} sx={{
+                          display: 'grid', gap: 0.6, mb: 0.6, alignItems: 'center',
+                          gridTemplateColumns: { xs: '1fr 1fr', sm: '1.3fr 1.2fr 0.8fr 0.8fr auto' },
+                        }}>
+                          <TextField size="small" fullWidth label="بند تجمعی" placeholder="مثلاً خرید یا بند الف"
+                            value={band.title || ''} onChange={(event) => bandEditor?.onTitle(index, event.target.value)} />
+                          <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                            label={`مبلغ تجمعی بند (${formCurrencyLabel})`}
+                            value={isRial ? amountRial : amountForeign}
+                            onChange={(value) => bandEditor?.onAmount(index, value)} />
+                          <MoneyInput size="small" fullWidth allowDecimals={false} label="دوره قبل (ریال)"
+                            value={previousRial} onChange={() => {}} InputProps={{ readOnly: true }} />
+                          <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد بند (ریال)"
+                            value={workRial} onChange={() => {}} InputProps={{ readOnly: true }} />
+                          <Stack direction="row" alignItems="center" spacing={0.3}>
+                            <Tooltip title={`کارکرد ارزی: ${formatPersianNumber(workForeign)} ${formCurrencyLabel}`}>
+                              <Chip size="small" label={formatPersianNumber(workForeign)}
+                                sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
+                            </Tooltip>
+                            <IconButton size="small" color="error" aria-label="حذف بند" onClick={() => bandEditor?.onRemove(index)}>
+                              <RemoveCircleIcon fontSize="small" />
+                            </IconButton>
+                          </Stack>
+                        </Box>
+                      );
+                    }) : <Typography sx={{ fontSize: 12, color: MUTED }}>هنوز بندی اضافه نشده است.</Typography>}
+                    {(bandEditor?.suggestions || []).length ? (
+                      <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.6 }}>
+                        {bandEditor.suggestions.map((title) => (
+                          <Chip key={title} size="small" label={title} onClick={() => bandEditor.onChoose(title)}
+                            sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
+                        ))}
+                      </Stack>
+                    ) : null}
+                    <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
+                      <Button size="small" startIcon={<AddCircleIcon />} onClick={() => bandEditor?.onAdd()}
+                        sx={{ color: formKind.color, fontSize: 12 }}>افزودن بند</Button>
+                      <Chip size="small"
+                        label={`جمع تجمعی بندها: ${formatPersianNumber(isRial ? cumulativeThis : cumulativeThisForeign)} ${formCurrencyLabel}`}
+                        sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
+                    </Stack>
+                  </Box>
+                ) : isAdjustmentForm ? (
                   <>
                     <Grid container spacing={1.1}>
                       <Grid item xs={12} sm={6}>
@@ -2033,15 +2258,6 @@ const StatementEditorView = ({
                           value={adjustmentCumulative} onChange={() => {}} InputProps={{ readOnly: true }} />
                       </Grid>
                     </Grid>
-                    <Box sx={{ mt: 1, p: 1.1, borderRadius: '12px', bgcolor: alpha(formKind.color, 0.05), border: `1px solid ${alpha(formKind.color, 0.16)}` }}>
-                      <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                        <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این تعدیل</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: formKind.color }}>{money(netAmountForeign, formCurrencyLabel)}</Typography></Box>
-                        <Box sx={{ textAlign: 'left' }}>
-                          <Typography sx={{ fontSize: 12, color: MUTED }}>{isRial ? 'واحد پول' : 'معادل ریالی'}</Typography>
-                          <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{isRial ? formCurrencyLabel : money(netAmount, 'ریال')}</Typography>
-                        </Box>
-                      </Stack>
-                    </Box>
                   </>
         ) : (
                   <>
@@ -2076,15 +2292,6 @@ const StatementEditorView = ({
                       value={workDone} onChange={() => {}} InputProps={{ readOnly: true }} />
                   </Grid>
                 </Grid>
-                <Box sx={{ mt: 1, p: 1.1, borderRadius: '12px', bgcolor: alpha('#0f766e', 0.05), border: `1px solid ${alpha('#0f766e', 0.16)}` }}>
-                  <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
-                    <Box><Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ قابل پرداخت این دوره</Typography><Typography sx={{ fontSize: 16, fontWeight: 900, color: '#0f766e' }}>{money(netAmountForeign, formCurrencyLabel)}</Typography></Box>
-                    <Box sx={{ textAlign: 'left' }}>
-                      <Typography sx={{ fontSize: 12, color: MUTED }}>{isRial ? 'واحد پول' : 'معادل ریالی'}</Typography>
-                      <Typography sx={{ fontSize: 12, fontWeight: 900, color: '#4338ca' }}>{isRial ? formCurrencyLabel : money(netAmount, 'ریال')}</Typography>
-                    </Box>
-                  </Stack>
-                </Box>
                   </>
                 )}
               </Box>
@@ -2095,35 +2302,6 @@ const StatementEditorView = ({
                   <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#0f766e' }}>اضافات</Typography>
                   <Chip size="small" label={`${formatPersianNumber(additionsTotalForeign)} ${formCurrencyLabel}`} sx={{ height: 19, fontSize: 12, bgcolor: '#ecfdf5', color: '#0f766e' }} />
                 </Stack>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
-                  {isAdjustmentForm
-                    ? 'درصد اضافات و کسورات بر مبنای مبلغ تعدیل همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.'
-                    : 'درصد اضافات بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.'}
-                </Typography>
-                <Grid container spacing={0.8} sx={{ mb: 0.8 }}>
-                  <Grid item xs={12} sm={6}>
-                    <Stack direction="row" spacing={0.6} alignItems="center">
-                      <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
-                        label={`ارزش افزوده (${formCurrencyLabel})`} value={form.value_added_tax_foreign ?? 0}
-                        onChange={(value) => updateFixedAddition('value_added_tax', 'amount', value)} />
-                      <TextField size="small" type="number" label="٪" value={form.value_added_tax_percent ?? 0}
-                        inputProps={{ step: 'any', min: 0 }}
-                        onChange={(event) => updateFixedAddition('value_added_tax', 'percent', event.target.value)}
-                        sx={{ width: 82, flex: '0 0 82px' }} />
-                    </Stack>
-                  </Grid>
-                  <Grid item xs={12} sm={6}>
-                    <Stack direction="row" spacing={0.6} alignItems="center">
-                      <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
-                        label={`سایر اضافات (${formCurrencyLabel})`} value={form.other_additions_foreign ?? 0}
-                        onChange={(value) => updateFixedAddition('other_additions', 'amount', value)} />
-                      <TextField size="small" type="number" label="٪" value={form.other_additions_percent ?? 0}
-                        inputProps={{ step: 'any', min: 0 }}
-                        onChange={(event) => updateFixedAddition('other_additions', 'percent', event.target.value)}
-                        sx={{ width: 82, flex: '0 0 82px' }} />
-                    </Stack>
-                  </Grid>
-                </Grid>
                 {additions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`addition-${index}`} sx={{ mb: 0.55 }}>
                     <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="شرح اضافه" value={item.description || ''} onChange={(event) => onUpdateAddition(index, 'description', event.target.value)} /></Grid>
@@ -2149,9 +2327,6 @@ const StatementEditorView = ({
                   <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: '#be123c' }}>کسورات</Typography>
                   <Chip size="small" label={`${formatPersianNumber(deductionsTotalForeign)} ${formCurrencyLabel}`} sx={{ height: 19, fontSize: 12, bgcolor: '#fff1f2', color: '#be123c' }} />
                 </Stack>
-                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 0.7 }}>
-                  درصد کسورات (از جمله پیش‌پرداخت) بر مبنای کارکرد همین دوره محاسبه می‌شود؛ مبلغ یا درصد را وارد کنید.
-                </Typography>
                 {deductions.map((item, index) => (
                   <Grid container spacing={0.55} alignItems="center" key={`deduction-${index}`} sx={{ mb: 0.55 }}>
                     <Grid item xs={12} sm={5}><TextField size="small" fullWidth placeholder="عنوان کسور" value={item.title || ''} onChange={(event) => onUpdateDeduction(index, 'title', event.target.value)} /></Grid>
@@ -2193,6 +2368,24 @@ const StatementEditorView = ({
               <Divider />
               <TextField size="small" fullWidth multiline rows={2} label="توضیحات" value={form.description || ''}
                 onChange={(event) => update('description', event.target.value)} />
+
+              <Box sx={{
+                p: 1.2, borderRadius: '12px',
+                bgcolor: alpha(netColor, 0.05), border: `1px solid ${alpha(netColor, 0.16)}`,
+              }}>
+                <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1}>
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>
+                      {isMultiForm ? 'مبلغ قابل پرداخت این صورت‌وضعیت' : (isAdjustmentForm ? 'مبلغ قابل پرداخت این تعدیل' : 'مبلغ قابل پرداخت این دوره')}
+                    </Typography>
+                    <Typography noWrap sx={{ fontSize: 17, fontWeight: 900, color: netColor }}>{money(netAmountForeign, formCurrencyLabel)}</Typography>
+                  </Box>
+                  <Box sx={{ textAlign: 'left', flexShrink: 0 }}>
+                    <Typography sx={{ fontSize: 12, color: MUTED }}>{isRial ? 'واحد پول' : 'معادل ریالی'}</Typography>
+                    <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 900, color: '#4338ca' }}>{isRial ? formCurrencyLabel : money(netAmount, 'ریال')}</Typography>
+                  </Box>
+                </Stack>
+              </Box>
             </Stack>
             </Paper>
           </Grid>

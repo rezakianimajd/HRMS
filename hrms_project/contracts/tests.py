@@ -821,6 +821,56 @@ class StatementCalculationTests(TestCase):
         self.assertEqual(second.cumulative_previous_amount, Decimal('2000000'))
         self.assertEqual(second.work_done, Decimal('3000000'))
 
+    def test_multi_band_statement_keeps_independent_cumulative_chains(self):
+        """هر بند زنجیرهٔ تجمعی خودش را دارد و بندها به اسناد بعدی منتقل می‌شوند."""
+        first = StatementSerializer(data=self._payload(
+            amount=0, number='01', kind='multi',
+            bands=[
+                {'title': 'خرید', 'amount': 1_000_000},
+                {'title': 'بند الف', 'amount': 500_000},
+            ],
+        ))
+        self.assertTrue(first.is_valid(), first.errors)
+        first_row = first.save(company=self.company)
+        self.assertEqual(first_row.kind, Statement.Kind.MULTI)
+        self.assertEqual(first_row.amount, Decimal('1500000'))
+        self.assertEqual(first_row.work_done, Decimal('1500000'))
+        self.assertEqual([band['work'] for band in first_row.bands], [1_000_000.0, 500_000.0])
+
+        second = StatementSerializer(data=self._payload(
+            amount=0, number='02', kind='multi', date='2025-09-01',
+            bands=[
+                {'title': 'خرید', 'amount': 1_600_000},
+                {'title': 'بند الف', 'amount': 900_000},
+            ],
+        ))
+        self.assertTrue(second.is_valid(), second.errors)
+        second_row = second.save(company=self.company)
+
+        from contracts.statement_totals import recalculate_contract_statements
+        recalculate_contract_statements(self.contract)
+        second_row.refresh_from_db()
+        self.assertEqual(second_row.cumulative_previous_amount, Decimal('1500000'))
+        self.assertEqual(second_row.work_done, Decimal('1000000'))
+        works = {band['title']: band['work'] for band in second_row.bands}
+        self.assertEqual(works['خرید'], 600_000.0)
+        self.assertEqual(works['بند الف'], 400_000.0)
+
+    def test_multi_band_rejects_lower_band_cumulative(self):
+        created = StatementSerializer(data=self._payload(
+            amount=0, number='01', kind='multi',
+            bands=[{'title': 'خرید', 'amount': 1_000_000}],
+        ))
+        self.assertTrue(created.is_valid(), created.errors)
+        created.save(company=self.company)
+
+        invalid = StatementSerializer(data=self._payload(
+            amount=0, number='02', kind='multi',
+            bands=[{'title': 'خرید', 'amount': 900_000}],
+        ))
+        self.assertFalse(invalid.is_valid())
+        self.assertIn('bands', invalid.errors)
+
 
 class ContractApprovalDecideTests(SimpleTestCase):
     """اقدام «تأیید/رد» مرحلهٔ گردش‌کار قرارداد.

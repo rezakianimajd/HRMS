@@ -1,6 +1,7 @@
 import { formatStatementNumber, toPersianDigits } from '../../core/utils/numberUtils';
 
 export const STATEMENT_KIND_STATEMENT = 'statement';
+export const STATEMENT_KIND_MULTI = 'multi';
 export const STATEMENT_KIND_INCREASE = 'increase';
 export const STATEMENT_KIND_DECREASE = 'decrease';
 
@@ -11,6 +12,16 @@ export const STATEMENT_KIND_META = {
     shortLabel: 'عادی',
     color: '#2563eb',
     isAdjustment: false,
+    isMulti: false,
+    sign: 1,
+  },
+  [STATEMENT_KIND_MULTI]: {
+    key: STATEMENT_KIND_MULTI,
+    label: 'صورت‌وضعیت چند بندی',
+    shortLabel: 'چند بندی',
+    color: '#7c3aed',
+    isAdjustment: false,
+    isMulti: true,
     sign: 1,
   },
   [STATEMENT_KIND_INCREASE]: {
@@ -19,6 +30,7 @@ export const STATEMENT_KIND_META = {
     shortLabel: 'افزایشی',
     color: '#15803d',
     isAdjustment: true,
+    isMulti: false,
     sign: 1,
   },
   [STATEMENT_KIND_DECREASE]: {
@@ -27,6 +39,7 @@ export const STATEMENT_KIND_META = {
     shortLabel: 'کاهشی',
     color: '#be123c',
     isAdjustment: true,
+    isMulti: false,
     sign: -1,
   },
 };
@@ -37,6 +50,9 @@ export const statementKindOf = (value) => {
 };
 
 export const isAdjustmentKind = (value) => statementKindOf(value).isAdjustment;
+
+/** آیا سند از نوع «صورت‌وضعیت چند بندی» است؟ */
+export const isMultiKind = (value) => Boolean(statementKindOf(value).isMulti);
 
 export const statementKindLabel = (row) => statementKindOf(row).label;
 

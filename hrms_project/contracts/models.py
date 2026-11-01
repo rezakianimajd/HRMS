@@ -281,6 +281,7 @@ class Statement(BaseModel):
 
     class Kind(models.TextChoices):
         STATEMENT = 'statement', _('صورت‌وضعیت')
+        MULTI = 'multi', _('صورت‌وضعیت چند بندی')
         INCREASE = 'increase', _('تعدیل افزایشی')
         DECREASE = 'decrease', _('تعدیل کاهشی')
 
@@ -288,7 +289,8 @@ class Statement(BaseModel):
     number = models.CharField(max_length=100, blank=True, verbose_name=_('شماره صورت‌وضعیت'))
     kind = models.CharField(
         max_length=20, choices=Kind.choices, default=Kind.STATEMENT,
-        verbose_name=_('نوع سند'), help_text=_('صورت‌وضعیت عادی، تعدیل افزایشی یا تعدیل کاهشی'),
+        verbose_name=_('نوع سند'),
+        help_text=_('صورت‌وضعیت عادی، چند بندی، تعدیل افزایشی یا تعدیل کاهشی'),
     )
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
     # «مبلغ» = مبلغ تجمعی این صورت‌وضعیت (کارکرد کل تا این دوره)
@@ -372,6 +374,10 @@ class Statement(BaseModel):
         max_digits=18, decimal_places=4, default=0,
         verbose_name=_('تعدیل تجمعی ارزی'),
     )
+    # زنجیرهٔ تجمعی «چند بندی»: هر بند زنجیرهٔ تجمعی مستقل خودش را دارد و
+    # مقادیر محاسبه‌شده (دوره قبل/کارکرد) هنگام ذخیره در همین فیلد نوشته می‌شوند.
+    # [{title, previous_amount, amount, previous_foreign, amount_foreign, work, work_foreign}]
+    bands = models.JSONField(default=list, blank=True, verbose_name=_('بندهای تجمعی'))
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 

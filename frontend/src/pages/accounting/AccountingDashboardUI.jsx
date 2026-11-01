@@ -135,6 +135,73 @@ export const KpiTile = ({
   return onClick ? <ButtonBase onClick={onClick} sx={{ width: '100%', height: '100%', borderRadius: '16px', display: 'block' }}>{content}</ButtonBase> : content;
 };
 
+/**
+ * نسخهٔ «تک‌خطی» کارت اطلاعات: آیکون، عنوان و مقدار در یک ردیف.
+ * برخلاف KpiTile (که ارتفاع چندخطی دارد) همهٔ کارت‌ها در یک نوار جا می‌شوند و
+ * ظاهر آن (سطح، حاشیه، شعاع، سایه، آیکون/عنوان) از استودیو تم تبعیت می‌کند.
+ */
+export const KpiTileLine = ({
+  icon: Icon, label, value, suffix, color = ACCOUNTING_BLUE, hint,
+  onClick, dense = false, sx,
+}) => {
+  const { tokens } = useDesignTokens();
+  const info = tokens.infoCards || {};
+  const showIcon = info.showIcon !== false && info.iconPosition !== 'hidden' && Boolean(Icon);
+  const showLabel = info.showLabel !== false && info.labelPosition !== 'hidden';
+  const iconAtEnd = info.iconPosition === 'end';
+  const valueFirst = info.valuePosition === 'start';
+  const surface = info.surface || 'solid';
+  const isGlass = surface === 'glass';
+  const content = (
+    <Paper elevation={0} sx={{
+      px: `${Math.max(8, Number(info.padding ?? 12) - 2)}px`,
+      py: dense ? '5px' : '7px',
+      minHeight: dense ? 36 : 42,
+      height: '100%',
+      display: 'flex', alignItems: 'center', gap: 0.75,
+      flexDirection: iconAtEnd ? 'row-reverse' : 'row',
+      minWidth: 0,
+      background: infoCardBackground(tokens, info),
+      border: isGlass ? `1px solid ${color}3d` : 'var(--hrms-info-card-border, 1px solid #e8edf4)',
+      borderRadius: 'var(--hrms-info-card-radius, 16px)',
+      boxShadow: shadowValue(tokens, info.shadow || 'none'),
+      backdropFilter: isGlass ? `blur(${info.glassBlur ?? 14}px)` : 'none',
+      WebkitBackdropFilter: isGlass ? `blur(${info.glassBlur ?? 14}px)` : 'none',
+      cursor: onClick ? 'pointer' : 'default',
+      '&:hover': onClick && !isGlass ? { borderColor: `${color}66` } : undefined,
+      ...sx,
+    }}>
+      {showIcon ? (
+        <Box sx={{
+          width: dense ? 22 : 24, height: dense ? 22 : 24, flexShrink: 0, borderRadius: '8px',
+          bgcolor: `${color}10`, border: `1px solid ${color}1f`, color,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <Icon sx={{ fontSize: dense ? 13 : 14 }} />
+        </Box>
+      ) : null}
+      {valueFirst ? (
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', gap: 0.4 }}>
+          <Typography noWrap sx={{ fontSize: dense ? 12 : 12.5, fontWeight: 900, color: INK }} title={hint || undefined}>{value}</Typography>
+          {suffix ? <Typography sx={{ fontSize: 11, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
+        </Box>
+      ) : null}
+      {showLabel ? (
+        <Typography noWrap sx={{ fontSize: dense ? 11 : 11.5, color: MUTED, flexShrink: 0, maxWidth: '52%' }}>{label}</Typography>
+      ) : null}
+      {valueFirst ? null : (
+        <Box sx={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'baseline', justifyContent: 'flex-end', gap: 0.4 }}>
+          <Typography noWrap sx={{ fontSize: dense ? 12 : 12.5, fontWeight: 900, color: INK }} title={hint || undefined}>{value}</Typography>
+          {suffix ? <Typography sx={{ fontSize: 11, color: MUTED, flexShrink: 0 }}>{suffix}</Typography> : null}
+        </Box>
+      )}
+    </Paper>
+  );
+  return onClick
+    ? <ButtonBase onClick={onClick} sx={{ width: '100%', height: '100%', borderRadius: '16px', display: 'block' }}>{content}</ButtonBase>
+    : content;
+};
+
 export const RatioRow = ({ label, value, max = 100, color = ACCOUNTING_BLUE, suffix = '٪' }) => (
   <Box>
     <Stack direction="row" alignItems="center" justifyContent="space-between" spacing={1} useFlexGap sx={{ mb: 0.45 }}>

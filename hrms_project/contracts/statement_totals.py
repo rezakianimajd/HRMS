@@ -50,6 +50,8 @@ def recalculate_contract_statements(contract):
     prior_foreign = Decimal('0')
     prior_adjustment = Decimal('0')
     prior_adjustment_foreign = Decimal('0')
+    # آخرین مبلغ تجمعی هر «بند» (کلید یکدست‌شده) در زنجیرهٔ قرارداد.
+    band_prior = {}
 
     with transaction.atomic():
         for row in rows:
@@ -100,6 +102,83 @@ def recalculate_contract_statements(contract):
                 )
                 prior_adjustment = adjustment_amount
                 prior_adjustment_foreign = adjustment_foreign_amount
+                continue
+
+            if row.kind == Statement.Kind.MULTI:
+                submitted_bands = row.bands if isinstance(row.bands, (list, tuple)) else []
+                bands = []
+                total_previous = Decimal('0')
+                total_amount = Decimal('0')
+                total_previous_foreign = Decimal('0')
+                total_foreign = Decimal('0')
+                total_work = Decimal('0')
+                total_work_foreign = Decimal('0')
+                for band in submitted_bands:
+                    if not isinstance(band, dict):
+                        continue
+                    title = ' '.join(str(band.get('title') or '').replace('\u200c', ' ').split())
+                    if not title:
+                        continue
+                    key = title.lower()
+                    previous_rial, previous_foreign = band_prior.get(
+                        key, (Decimal('0'), Decimal('0')),
+                    )
+                    band_rial = max(previous_rial, _decimal(band.get('amount')))
+                    band_foreign = max(previous_foreign, _decimal(band.get('amount_foreign')))
+                    band_work = band_rial - previous_rial
+                    band_work_foreign = band_foreign - previous_foreign
+                    bands.append({
+                        **band,
+                        'title': title,
+                        'previous_amount': float(previous_rial),
+                        'amount': float(band_rial),
+                        'previous_foreign': float(previous_foreign),
+                        'amount_foreign': float(band_foreign),
+                        'work': float(band_work),
+                        'work_foreign': float(band_work_foreign),
+                    })
+                    band_prior[key] = (band_rial, band_foreign)
+                    total_previous += previous_rial
+                    total_amount += band_rial
+                    total_previous_foreign += previous_foreign
+                    total_foreign += band_foreign
+                    total_work += band_work
+                    total_work_foreign += band_work_foreign
+
+                additions = _normalize_items(row.additions, total_work)
+                deductions = _normalize_items(row.deductions, total_work)
+                additions_total = sum(
+                    (_decimal(item.get('amount')) for item in additions),
+                    Decimal('0'),
+                ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)
+                deductions_total = sum(
+                    (_decimal(item.get('amount')) for item in deductions),
+                    Decimal('0'),
+                )
+                Statement.objects.filter(pk=row.pk).update(
+                    bands=bands,
+                    amount=total_amount,
+                    cumulative_previous_amount=total_previous,
+                    work_done=total_work,
+                    foreign_previous_amount=total_previous_foreign,
+                    foreign_amount=total_foreign,
+                    foreign_work_done=total_work_foreign,
+                    adjustment_previous_amount=prior_adjustment,
+                    adjustment_work_done=Decimal('0'),
+                    adjustment_amount=prior_adjustment,
+                    adjustment_foreign_previous_amount=prior_adjustment_foreign,
+                    adjustment_foreign_work_done=Decimal('0'),
+                    adjustment_foreign_amount=prior_adjustment_foreign,
+                    additions=additions,
+                    deductions=deductions,
+                    additions_total=additions_total,
+                    deductions_total=deductions_total,
+                    net_amount=total_work + additions_total - deductions_total,
+                    updated_at=timezone.now(),
+                )
+                prior_amount = max(prior_amount, total_amount)
+                prior_work += total_work
+                prior_foreign = max(prior_foreign, total_foreign)
                 continue
 
             amount = _decimal(row.amount)

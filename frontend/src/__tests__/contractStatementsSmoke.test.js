@@ -168,7 +168,7 @@ test('statements workspace renders KPI, cards, detail drawer and editor with att
     await wait(180);
   });
   const adjustmentOption = Array.from(document.querySelectorAll('[role="option"]'))
-    .find((element) => element.textContent.includes('تعدیل افزایشی'));
+    .find((element) => element.textContent.includes('تعدیل (افزایشی)'));
   expect(adjustmentOption).toBeTruthy();
   await act(async () => { adjustmentOption.click(); await wait(320); });
 
@@ -257,7 +257,7 @@ test('saving an increase adjustment keeps its additions and deductions', async (
   expect(editButton).toBeTruthy();
   await act(async () => { editButton.click(); await wait(320); });
 
-  await pickKindOption(container, 'تعدیل افزایشی');
+  await pickKindOption(container, 'تعدیل (افزایشی)');
   expect(container.textContent).toContain('تعدیل افزایشی این دوره');
 
   // فیلد «تعدیل افزایشی این دوره» باید قابل ویرایش باشد.
@@ -283,6 +283,73 @@ test('saving an increase adjustment keeps its additions and deductions', async (
   expect(payload.additions_total).toBe(20000000);
   expect(payload.deductions_total).toBe(10000000);
   expect(payload.net_amount).toBe(210000000);
+
+  root.unmount();
+  container.remove();
+});
+
+test('multi-band statement sends band rows with their own cumulative amounts', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  axiosInstance.post.mockReset();
+  axiosInstance.post.mockResolvedValue({ data: { ...statement, kind: 'multi', bands: [] } });
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={['/contracts-statements?contract=1']}>
+          <StatementEditorPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await wait(800);
+  });
+  for (let index = 0; index < 4; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  const newButton = buttonByText(container, 'صورت‌وضعیت جدید');
+  expect(newButton).toBeTruthy();
+  await act(async () => { newButton.click(); await wait(320); });
+
+  await pickKindOption(container, 'چند بندی');
+  expect(container.textContent).toContain('بند تجمعی');
+  expect(container.textContent).toContain('افزودن بند');
+  // فیلدهای ثابت قدیمی حذف شده‌اند و فقط چیپ‌های تعریف‌شده باقی مانده‌اند.
+  expect(container.textContent).not.toContain('سایر اضافات (');
+
+  const setInputValue = (input, value) => {
+    const setter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set;
+    setter.call(input, value);
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  };
+  const labelOf = (input) => input.closest('.MuiFormControl-root')?.textContent || '';
+
+  const bandTitleInput = Array.from(container.querySelectorAll('input'))
+    .find((input) => labelOf(input).includes('بند تجمعی'));
+  expect(bandTitleInput).toBeTruthy();
+  await act(async () => { setInputValue(bandTitleInput, 'خرید'); await wait(160); });
+
+  const bandAmountInput = Array.from(container.querySelectorAll('input'))
+    .find((input) => labelOf(input).includes('مبلغ تجمعی بند'));
+  expect(bandAmountInput).toBeTruthy();
+  await act(async () => { setInputValue(bandAmountInput, '5000000'); await wait(200); });
+
+  const saveButton = buttonByText(container, 'ذخیره صورت‌وضعیت چند بندی');
+  expect(saveButton).toBeTruthy();
+  await act(async () => { saveButton.click(); await wait(420); });
+
+  expect(axiosInstance.post).toHaveBeenCalled();
+  const [url, payload] = axiosInstance.post.mock.calls[0];
+  expect(url).toBe('/contract-statements/');
+  expect(payload.kind).toBe('multi');
+  expect(payload.bands).toHaveLength(1);
+  expect(payload.bands[0].title).toBe('خرید');
+  expect(payload.amount).toBe(5000000);
+  expect(payload.work_done).toBe(5000000);
 
   root.unmount();
   container.remove();
