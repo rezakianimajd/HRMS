@@ -530,14 +530,16 @@ class StatementSerializer(serializers.ModelSerializer):
         )
         attrs['amount'] = amount
         attrs['cumulative_previous_amount'] = previous
-        attrs['work_done'] = work_total
+        # کارکرد دورهٔ سطح اصلی فقط از زنجیرهٔ خودش می‌آید؛ کارکرد سطوح در
+        # levels ذخیره می‌شود و تنها در «خالص قابل پرداخت» جمع می‌شود.
+        attrs['work_done'] = own_work
         attrs['foreign_previous_amount'] = previous_foreign.quantize(
             Decimal('0.0001'), rounding=ROUND_HALF_UP,
         )
         attrs['foreign_amount'] = Decimal(str(foreign_amount)).quantize(
             Decimal('0.0001'), rounding=ROUND_HALF_UP,
         )
-        attrs['foreign_work_done'] = work_foreign_total.quantize(
+        attrs['foreign_work_done'] = own_work_foreign.quantize(
             Decimal('0.0001'), rounding=ROUND_HALF_UP,
         )
         attrs['adjustment_previous_amount'] = adjustment_previous

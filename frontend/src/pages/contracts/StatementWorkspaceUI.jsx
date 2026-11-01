@@ -87,7 +87,25 @@ export const rowMetrics = (row = {}) => {
     || additions.reduce((sum, item) => sum + n(item.amount), 0) + n(row.value_added_tax) + n(row.other_additions);
   const deductionsTotal = n(row.deductions_total) || deductions.reduce((sum, item) => sum + n(item.amount), 0);
   const net = n(row.net_amount) || work + additionsTotal - deductionsTotal;
-  return { amount, previous, work, additions, deductions, additionsTotal, deductionsTotal, net };
+  // سطوح، زنجیرهٔ تجمعی مستقل دارند؛ فقط برای نمایش جمع می‌شوند.
+  const levels = Array.isArray(row.levels) ? row.levels : [];
+  const levelsWork = levels.reduce((sum, level) => sum + n(level?.work), 0);
+  const levelsWorkForeign = levels.reduce((sum, level) => sum + n(level?.work_foreign), 0);
+  return {
+    amount,
+    previous,
+    work,
+    additions,
+    deductions,
+    additionsTotal,
+    deductionsTotal,
+    net,
+    levels,
+    levelsWork,
+    levelsWorkForeign,
+    totalWork: work + levelsWork,
+    totalWorkForeign: n(row.foreign_work_done) + levelsWorkForeign,
+  };
 };
 
 export const contractAmountOf = (contract) => {
@@ -262,7 +280,15 @@ export const StatementDetailDrawer = ({
                   <InfoLine label="تعدیل تجمعی" value={statementMoneyFor(row, row.adjustment_amount, row.adjustment_foreign_amount, currency, fallbackRate)} ltr strong color={kind.color} />
                 </>
               ) : (
-                <InfoLine label="کارکرد این دوره" value={statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)} ltr strong />
+                <>
+                  <InfoLine label={metrics.levels.length ? 'کارکرد سطح اصلی' : 'کارکرد این دوره'} value={statementMoneyFor(row, metrics.work, row.foreign_work_done, currency, fallbackRate)} ltr strong />
+                  {metrics.levels.length ? (
+                    <>
+                      <InfoLine label="جمع کارکرد سطوح" value={statementMoney(row, metrics.levelsWork, currency, fallbackRate)} ltr color={kind.color} />
+                      <InfoLine label="کارکرد کل (سطح اصلی + سطوح)" value={statementMoney(row, metrics.totalWork, currency, fallbackRate)} ltr strong color={kind.color} />
+                    </>
+                  ) : null}
+                </>
               )}
               <InfoLine label="جمع اضافات" value={statementMoney(row, metrics.additionsTotal, currency, fallbackRate)} ltr color={GREEN} />
               <InfoLine label="جمع کسورات" value={statementMoney(row, metrics.deductionsTotal, currency, fallbackRate)} ltr color={metrics.deductionsTotal ? RED : INK} />

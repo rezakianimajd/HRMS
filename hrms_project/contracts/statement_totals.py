@@ -178,10 +178,11 @@ def recalculate_contract_statements(contract):
                     levels=levels,
                     amount=own_amount,
                     cumulative_previous_amount=own_previous,
-                    work_done=total_work,
+                    # کارکرد دورهٔ سند = زنجیرهٔ مستقل سطح اصلی (بدون سطوح)
+                    work_done=own_work,
                     foreign_previous_amount=prior_foreign,
                     foreign_amount=own_foreign_amount,
-                    foreign_work_done=total_work_foreign,
+                    foreign_work_done=own_work_foreign,
                     adjustment_previous_amount=prior_adjustment,
                     adjustment_work_done=Decimal('0'),
                     adjustment_amount=prior_adjustment,

@@ -701,12 +701,13 @@ const StatementEditorPage = () => {
   const totals = useMemo(() => {
     const metrics = scopedList.map((row) => rowMetrics(row));
     const net = metrics.reduce((sum, item) => sum + item.net, 0);
-    const work = metrics.reduce((sum, item) => sum + item.work, 0);
+    // کارکرد دوره = سطح اصلی + سطوح (فقط برای نمایش جمع می‌شود)
+    const work = metrics.reduce((sum, item) => sum + item.totalWork, 0);
     const cumulative = lastStatement ? rowMetrics(lastStatement).amount : 0;
     const adjustments = adjustmentSummaryOf(scopedList);
     const foreignOf = (row, value) => displayAmount(row, value, selectedContractRate);
     const netForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).net), 0);
-    const workForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).work), 0);
+    const workForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).totalWork), 0);
     const cumulativeForeign = lastStatement ? foreignOf(lastStatement, cumulative) : 0;
     const paid = payments
       .filter((payment) => payment.statement)
@@ -766,7 +767,7 @@ const StatementEditorPage = () => {
     result = [...result].sort((a, b) => {
       if (sortBy === 'amount') return Number(b.amount || 0) - Number(a.amount || 0);
       if (sortBy === 'net') return rowMetrics(b).net - rowMetrics(a).net;
-      if (sortBy === 'work') return rowMetrics(b).work - rowMetrics(a).work;
+      if (sortBy === 'work') return rowMetrics(b).totalWork - rowMetrics(a).totalWork;
       return compareStatements(b, a);
     });
     return result;
@@ -886,6 +887,13 @@ const StatementEditorPage = () => {
       const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
       const previous = Math.max(0, Math.round(Number(payload.cumulative_previous_amount) || 0));
       const work = Math.max(0, amount - previous);
+      // کارکرد سطوح فقط در «خالص قابل پرداخت» با کارکرد سند جمع می‌شود.
+      const levelsWork = cleanLevels.reduce((sum, level) => {
+        const levelPrevious = Number(
+          (levelPreviousMap[levelKeyOf(level.title)] || {}).amount || 0,
+        );
+        return sum + Math.max(0, level.amount - levelPrevious);
+      }, 0);
       const valueAddedTax = Math.max(0, Math.round(Number(payload.value_added_tax) || 0));
       const otherAdditions = Math.max(0, Math.round(Number(payload.other_additions) || 0));
       const additionsTotalValue = additions.reduce((sum, item) => sum + item.amount, 0) + valueAddedTax + otherAdditions;
@@ -905,7 +913,7 @@ const StatementEditorPage = () => {
         additions_total: additionsTotalValue,
         deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
         deductions_total: deductionsTotalValue,
-        net_amount: Math.round(work + additionsTotalValue - deductionsTotalValue),
+        net_amount: Math.round(work + levelsWork + additionsTotalValue - deductionsTotalValue),
         levels: cleanLevels,
         currency: payload.currency || null,
         exchange_rate: normalizeRate(rate),
@@ -2085,7 +2093,7 @@ const StatementEditorPage = () => {
                   label: 'کارکرد دوره',
                   width: '11%',
                   align: 'center',
-                  render: (row) => moneyCell(rowMetrics(row).work, BLUE),
+                  render: (row) => moneyCell(rowMetrics(row).totalWork, BLUE),
                 },
                 {
                   key: 'additions',

@@ -841,11 +841,12 @@ class StatementCalculationTests(TestCase):
         self.assertTrue(first.is_valid(), first.errors)
         first_row = first.save(company=self.company)
         self.assertEqual(first_row.kind, Statement.Kind.MULTI)
-        # تجمعی سطح سند (بدون سطوح) و کارکرد کل سند
+        # تجمعی و کارکرد سطح سند مستقل از سطوح است
         self.assertEqual(first_row.amount, Decimal('0'))
-        self.assertEqual(first_row.work_done, Decimal('1500000'))
+        self.assertEqual(first_row.work_done, Decimal('0'))
         # مبنای VAT = کارکرد سطح اصلی (۰) + سطح تیک‌خورده (۱٬۰۰۰٬۰۰۰)
         self.assertEqual(first_row.additions_total, Decimal('100000'))
+        # خالص قابل پرداخت = سطح اصلی + همهٔ سطوح + اضافات − کسورات
         self.assertEqual(first_row.net_amount, Decimal('1600000'))
         levels = {level['title']: level for level in first_row.levels}
         self.assertEqual(levels['خرید']['work'], 1_000_000.0)
@@ -871,15 +872,17 @@ class StatementCalculationTests(TestCase):
         recalculate_contract_statements(self.contract)
         second_row.refresh_from_db()
         self.assertEqual(second_row.cumulative_previous_amount, Decimal('0'))
-        self.assertEqual(second_row.work_done, Decimal('1000000'))
+        self.assertEqual(second_row.work_done, Decimal('0'))
         works = {level['title']: level['work'] for level in second_row.levels}
         self.assertEqual(works['خرید'], 600_000.0)
         self.assertEqual(works['بند الف'], 400_000.0)
         # مبنا فقط کارکرد سطح تیک‌خورده است: ۱۰٪ × ۶۰۰٬۰۰۰
         self.assertEqual(second_row.additions_total, Decimal('60000'))
+        # خالص = سطح اصلی (۰) + سطوح (۱٬۰۰۰٬۰۰۰) + اضافات (۶۰٬۰۰۰)
+        self.assertEqual(second_row.net_amount, Decimal('1060000'))
 
     def test_multi_level_adds_own_work_to_level_work(self):
-        """کارکرد سطح سند و کارکرد سطوح با هم جمع می‌شوند."""
+        """کارکرد دورهٔ سند مستقل از سطوح است؛ جمع آن‌ها در مبلغ پرداختی می‌آید."""
         serializer = StatementSerializer(data=self._payload(
             amount=2_000_000, number='01', kind='multi',
             levels=[{'title': 'خرید', 'amount': 1_000_000}],
@@ -888,7 +891,10 @@ class StatementCalculationTests(TestCase):
         row = serializer.save(company=self.company)
         self.assertEqual(row.amount, Decimal('2000000'))
         self.assertEqual(row.cumulative_previous_amount, Decimal('0'))
-        self.assertEqual(row.work_done, Decimal('3000000'))
+        # کارکرد دوره فقط از زنجیرهٔ سطح اصلی (بدون سطوح)
+        self.assertEqual(row.work_done, Decimal('2000000'))
+        self.assertEqual(row.levels[0]['work'], 1_000_000.0)
+        # خالص قابل پرداخت = سطح اصلی + سطوح
         self.assertEqual(row.net_amount, Decimal('3000000'))
 
     def test_multi_level_blocks_simple_statements_afterwards(self):
