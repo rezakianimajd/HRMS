@@ -328,7 +328,7 @@ const PettyCashExpenseNewPage = () => {
   const activeLine = lines[activeRow] || emptyLine();
   const activeAccount = accountById.get(String(activeLine.account));
   const activeAuxs = ['aux1', 'aux2', 'aux3'].map((key) => auxById.get(String(activeLine[key])));
-  const activeCostCenter = costCenterById.get(String(activeLine.cost_center || ''));
+  const headerCostCenter = costCenterById.get(String(header.cost_center));
   const activeGross = Number(activeLine.debit) || 0;
 
   const gridCols = `40px 92px 74px 74px 74px 96px 112px minmax(130px, 1fr) minmax(170px, 1.5fr) ${amountColumn}px ${amountColumn}px 46px`;
@@ -577,8 +577,8 @@ const PettyCashExpenseNewPage = () => {
               value={activeAuxs[index] ? `${activeAuxs[index].code} — ${activeAuxs[index].name}` : '—'}
               color={activeAuxs[index] ? GREEN : MUTED} />
           ))}
-          <MetaPill label="مرکز هزینه" value={activeCostCenter ? `${activeCostCenter.code} — ${activeCostCenter.name}` : '—'}
-            color={activeCostCenter ? VIOLET : MUTED} />
+          <MetaPill label="مرکز هزینهٔ صورت" value={headerCostCenter ? `${headerCostCenter.code} — ${headerCostCenter.name}` : '—'}
+            color={headerCostCenter ? VIOLET : MUTED} />
           <MetaPill label="جمع ردیف" value={formatPersianNumber(activeGross)} color={CYAN} />
         </Stack>
       </SurfaceCard>
