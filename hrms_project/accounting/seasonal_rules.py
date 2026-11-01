@@ -109,11 +109,11 @@ RULES = [
     _rule('required', 'country', ('foreign',), 'error', SOURCE_TTMS,
           'برای شخص خارجی، کشور الزامی است (پشتیبانی قالب نسخهٔ هدف تأییدنشده).'),
 
-    # کد پستی: توصیه‌شده در سطح الزامات عمومی (غیر مسدودکننده)
+    # کد پستی: اختیاری است و هرگز خطا نیست؛ فقط هشدار
     _rule('recommended', 'postal_code', IRANIAN_TYPES, 'warning', SOURCE_LEGAL,
-          'کد پستی فروشنده ثبت نشده است.'),
-    _rule('digits', 'postal_code', IRANIAN_TYPES, 'error', SOURCE_LEGAL,
-          'کد پستی باید ۱۰ رقم باشد.', length=10),
+          'کد پستی فروشنده ثبت نشده است (اختیاری).'),
+    _rule('digits', 'postal_code', IRANIAN_TYPES, 'warning', SOURCE_LEGAL,
+          'کد پستی بهتر است ۱۰ رقم باشد (اختیاری).', length=10),
 
     # اقلام اطلاعاتی فاکتور (فعلاً هشدار؛ پس از تأیید قالب هدف به خطا ارتقا می‌یابد)
     _rule('recommended', 'invoice_no', ALL_TYPES, 'warning', SOURCE_TTMS,

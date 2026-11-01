@@ -234,7 +234,6 @@ def validate_report(report, direction=DIRECTION_PURCHASE):
     rows = list(_scoped_rows(report, direction).order_by('line_no', 'id'))
     period_start, period_end = report.period_range
     issues = []
-    seen = {}
 
     def add(row, field, level, message, code='', source=None):
         issues.append({
@@ -289,14 +288,7 @@ def validate_report(report, direction=DIRECTION_PURCHASE):
                     'برای فاکتور درج‌شده در سامانه مودیان، شناسهٔ یکتا بهتر است ثبت شود.',
                     'moadian_uid_recommended', seasonal_rules.SOURCE_TTMS)
 
-        if row.invoice_no:
-            key = (row.invoice_no.strip(), row.national_id.strip() or row.name.strip())
-            if key in seen:
-                add(row, 'invoice_no', 'error',
-                    f'شماره فاکتور تکراری با ردیف {seen[key]} ثبت شده است.',
-                    'duplicate_invoice', seasonal_rules.SOURCE_INTERNAL)
-            else:
-                seen[key] = row.line_no
+        # شماره فاکتور تکراری ایراد محسوب نمی‌شود (چند سطر/چند کالا با یک فاکتور رایج است).
 
     errors = sum(1 for issue in issues if issue['level'] == 'error')
     warnings = sum(1 for issue in issues if issue['level'] == 'warning')

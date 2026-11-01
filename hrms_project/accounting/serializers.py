@@ -475,7 +475,8 @@ class SeasonalTransactionSerializer(BaseModelSerializer):
                 raise serializers.ValidationError({
                     'invoice_date': 'تاریخ فاکتور بیرون از بازهٔ این فصل است.',
                 })
-        for field, length in (('national_id', 11), ('postal_code', 10)):
+        # کد پستی اختیاری است (فقط هشدار در قواعد)؛ فقط شناسهٔ ملی بررسی عددی می‌شود
+        for field, length in (('national_id', 11),):
             code = attrs.get(field)
             if code and (not str(code).isdigit() or len(str(code)) > length):
                 raise serializers.ValidationError({field: f'فقط رقم مجاز است (حداکثر {length} رقم).'})

@@ -32,7 +32,7 @@ import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
 import SeasonalFilterBuilder from './SeasonalFilterBuilder';
 import { rowsToTsv } from './seasonalGridEntry';
 import {
-  StudioCard, StudioInfoRow, StudioPanelSkeleton, StudioStatusBar, useStudio,
+  StudioCard, StudioPanelSkeleton, StudioStatusBar, useStudio,
 } from './seasonalStudioUi';
 import {
   combineExpressions, countConditions, describeExpression, emptyExpression, evaluateExpression,
@@ -113,8 +113,8 @@ const LOCAL_REFERENCE = {
     { kind: 'digits', field: 'national_id', person_types: ['natural'], level: 'error', length: 10, source: SOURCE_LEGAL, message: 'کد ملی شخص حقیقی باید ۱۰ رقم باشد.' },
     { kind: 'forbidden', field: 'national_id', person_types: ['foreign'], level: 'warning', source: SOURCE_TTMS, message: 'برای شخص خارجی، شناسه ملی/کد ملی ایرانی ثبت نمی‌شود.' },
     { kind: 'required', field: 'country', person_types: ['foreign'], level: 'error', source: SOURCE_TTMS, message: 'برای شخص خارجی، کشور الزامی است.' },
-    { kind: 'recommended', field: 'postal_code', person_types: ['legal', 'natural'], level: 'warning', source: SOURCE_LEGAL, message: 'کد پستی فروشنده ثبت نشده است.' },
-    { kind: 'digits', field: 'postal_code', person_types: ['legal', 'natural'], level: 'error', length: 10, source: SOURCE_LEGAL, message: 'کد پستی باید ۱۰ رقم باشد.' },
+    { kind: 'recommended', field: 'postal_code', person_types: ['legal', 'natural'], level: 'warning', source: SOURCE_LEGAL, message: 'کد پستی فروشنده ثبت نشده است (اختیاری).' },
+    { kind: 'digits', field: 'postal_code', person_types: ['legal', 'natural'], level: 'warning', length: 10, source: SOURCE_LEGAL, message: 'کد پستی بهتر است ۱۰ رقم باشد (اختیاری).' },
     { kind: 'recommended', field: 'invoice_no', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'شماره فاکتور وارد نشده است.' },
     { kind: 'recommended', field: 'invoice_date', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'تاریخ فاکتور وارد نشده است.' },
     { kind: 'recommended', field: 'goods_service_desc', person_types: ['legal', 'natural', 'foreign'], level: 'warning', source: SOURCE_TTMS, message: 'شرح کالا یا خدمات وارد نشده است.' },
@@ -324,7 +324,6 @@ const readStoredSeasonalRows = () => {
 const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE) => {
   const rules = reference.rules || LOCAL_REFERENCE.rules;
   const issues = [];
-  const seen = new Map();
 
   rows.forEach((row, index) => {
     if (isBlankRow(row)) return;
@@ -370,14 +369,7 @@ const localValidate = (rows, periodStart, periodEnd, reference = LOCAL_REFERENCE
     if (row.personType !== 'aggregate' && row.status !== 'registered') {
       push('status', 'warning', 'این فاکتور در سامانه مودیان درج نشده است.', SOURCE_TTMS);
     }
-    if (row.invoiceNo && !isPlaceholder(row.invoiceNo)) {
-      const key = `${normalizeName(row.invoiceNo)}|${row.nationalId || row.name}`;
-      if (seen.has(key)) {
-        push('invoiceNo', 'error', `شماره فاکتور تکراری با ردیف ${toPersianDigits(seen.get(key))} ثبت شده است.`, SOURCE_INTERNAL);
-      } else {
-        seen.set(key, lineNo);
-      }
-    }
+    /* شماره فاکتور تکراری ایراد نیست؛ چند سطر با یک فاکتور رایج است */
   });
 
   const errors = issues.filter((issue) => issue.level === 'error').length;
@@ -2232,89 +2224,68 @@ const SeasonalReportPage = () => {
         )}
       />
 
-      <StudioInfoRow
-        items={[
-          {
-            key: 'period',
-            text: period.start && period.end
+      <Paper sx={{ p: 1, mb: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
+        <Stack direction="row" alignItems="center" spacing={1.5} useFlexGap sx={{ flexWrap: 'wrap' }}>
+          <Tabs
+            value={activeTab}
+            onChange={(_event, value) => setActiveTab(value)}
+            variant="scrollable"
+            allowScrollButtonsMobile
+            sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, fontSize: 12, fontWeight: 700 } }}
+          >
+            <Tab
+              value="data"
+              label={(
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <TableChartIcon fontSize="small" />
+                  ورود داده
+                </Stack>
+              )}
+            />
+            <Tab
+              value="analytics"
+              label={(
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <InsightsIcon fontSize="small" />
+                  گزارش‌ها و تحلیل
+                </Stack>
+              )}
+            />
+            <Tab
+              value="reconcile"
+              label={(
+                <Stack direction="row" spacing={1} alignItems="center">
+                  <CompareArrowsIcon fontSize="small" />
+                  مغایرت‌گیری با دفاتر
+                </Stack>
+              )}
+            />
+          </Tabs>
+          <Box sx={{ flex: 1 }} />
+          <Typography sx={{ fontSize: 11, color: 'text.secondary', whiteSpace: 'nowrap' }}>
+            {period.start && period.end
               ? `بازهٔ فصل: ${jalaliText(period.start)} تا ${jalaliText(period.end)}`
               : mode === 'local'
                 ? 'حالت محلی (سرور در دسترس نیست)'
-                : 'بازهٔ فصل: در حال دریافت…',
-            color: '#0ea5e9',
-            minWidth: 240,
-          },
-          {
-            key: 'ruleset',
-            text: rulesetStatus === 'verified' ? 'قواعد قالب هدف: تأییدشده' : 'قواعد/قالب TTMS تأییدنشده',
-            color: rulesetStatus === 'verified' ? '#10b981' : '#f59e0b',
-            minWidth: 195,
-          },
-          { key: 'rows', text: `تعداد ردیف: ${toPersianDigits(filledRows.length)}`, color: '#6366f1' },
-          { key: 'amount', text: `جمع مبلغ: ${formatPersianNumber(totals.amount)}`, color: '#8b5cf6' },
-          { key: 'vat', text: `جمع ارزش افزوده: ${formatPersianNumber(totals.vat)}`, color: '#0ea5e9' },
-          { key: 'total', text: `جمع کل: ${formatPersianNumber(totals.total)}`, color: '#d97706', minWidth: 165 },
-          {
-            key: 'registered',
-            text: `درج‌شده در سامانه: ${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
-            color: '#10b981',
-            minWidth: 175,
-          },
-          {
-            key: 'validation',
-            text: errorCount || warningCount
-              ? `اعتبارسنجی: ${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
-              : 'اعتبارسنجی: بدون خطا',
-            color: errorCount ? '#ef4444' : (warningCount ? '#f59e0b' : '#10b981'),
-            minWidth: 190,
-          },
-        ]}
-        trailing={(
+                : 'بازهٔ فصل: در حال دریافت…'}
+          </Typography>
           <Typography
-            sx={{ fontSize: 10.5, color: 'text.disabled', whiteSpace: 'nowrap' }}
+            sx={{
+              fontSize: 10.5,
+              color: rulesetStatus === 'verified' ? '#15803d' : '#b45309',
+              whiteSpace: 'nowrap',
+            }}
+            title={`نسخهٔ قواعد: ${reference?.ruleset_version || 'نامشخص'}`}
+          >
+            {rulesetStatus === 'verified' ? 'قواعد قالب هدف: تأییدشده' : 'قواعد/قالب TTMS تأییدنشده'}
+          </Typography>
+          <Typography
+            sx={{ fontSize: 10, color: 'text.disabled', whiteSpace: 'nowrap' }}
             title="شناسهٔ باندل در حال اجرا"
           >
             {`نسخهٔ رابط: ${buildId}`}
           </Typography>
-        )}
-      />
-
-      <Paper sx={{ p: 1, mb: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
-        <Tabs
-          value={activeTab}
-          onChange={(_event, value) => setActiveTab(value)}
-          variant="scrollable"
-          allowScrollButtonsMobile
-          sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, fontSize: 12, fontWeight: 700 } }}
-        >
-          <Tab
-            value="data"
-            label={(
-              <Stack direction="row" spacing={1} alignItems="center">
-                <TableChartIcon fontSize="small" />
-                ورود داده
-              </Stack>
-            )}
-          />
-          <Tab
-            value="analytics"
-            label={(
-              <Stack direction="row" spacing={1} alignItems="center">
-                <InsightsIcon fontSize="small" />
-                گزارش‌ها و تحلیل
-              </Stack>
-            )}
-          />
-          <Tab
-            value="reconcile"
-            label={(
-              <Stack direction="row" spacing={1} alignItems="center">
-                <CompareArrowsIcon fontSize="small" />
-                مغایرت‌گیری با دفاتر
-              </Stack>
-            )}
-          />
-        </Tabs>
+        </Stack>
       </Paper>
 
 

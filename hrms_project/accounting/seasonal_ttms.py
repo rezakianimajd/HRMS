@@ -842,7 +842,6 @@ def _quality_report(payloads, rows, report):
         if key is not None:
             needs_fix.add(key)
 
-    invoice_keys = {}
     for index, payload in enumerate(payloads):
         key = _row_key(rows[index]) if index < len(rows) else str(index + 1)
         state = payload.get('StateCode')
@@ -898,13 +897,6 @@ def _quality_report(payloads, rows, report):
         invoice_no = str(payload.get('FactorNo') or '')
         if not invoice_no:
             bump('missing_invoice', key)
-        elif invoice_no and national:
-            invoice_keys.setdefault((invoice_no, national), []).append(key)
-
-    for keys in invoice_keys.values():
-        if len(keys) > 1:
-            for key in keys:
-                bump('duplicate_invoice', key)
 
     messages = {
         'state_code': ('کد استان ندارد؛ از ستون «استان» انتخاب کنید.', 'warning', 'StateCode'),
@@ -920,9 +912,6 @@ def _quality_report(payloads, rows, report):
         'zero_amount': ('مبلغ صفر یا منفی است.', 'warning', 'Price'),
         'vat_ratio': ('مالیات بیشتر از ۱۰٪ مبلغ است؛ بررسی کنید.', 'warning', 'MaliatArzeshAfzoodeh'),
         'missing_invoice': ('شمارهٔ فاکتور ندارد.', 'warning', 'FactorNo'),
-        'duplicate_invoice': ('ترکیب شمارهٔ فاکتور و شناسهٔ ملی در این خروجی تکرار شده است.',
-                              'warning', 'FactorNo'),
-        'discount_gt_amount': ('تخفیف بیشتر از مبلغ ردیف است؛ بررسی کنید.', 'warning', 'TakhfifPrice'),
         'return_row': ('ردیف به‌عنوان «برگشتی» علامت خورده است.', 'info', 'BargashtType'),
         'commission_row': ('ردیف «از طریق حق‌العمل‌کاری» علامت خورده است.', 'info', 'IsHagholAmalKari'),
         'currency_missing_amount': ('نوع ارز انتخاب شده ولی مبلغ ارزی خالی است.',

@@ -331,12 +331,27 @@ class PurchaseValidationTests(SeasonalBaseTest):
         result = self.validate([self.row(invoice_no='A5', invoice_date='2026-09-01')])
         self.assertIn((1, 'invoice_date'), self.error_fields(result))
 
-    def test_duplicate_invoice_number(self):
+    def test_duplicate_invoice_number_is_not_an_issue(self):
+        """شماره فاکتور تکراری ایراد نیست (چند سطر با یک فاکتور رایج است)."""
         result = self.validate([
             self.row(invoice_no='D-1'),
             self.row(id=None, invoice_no='D-1'),
         ])
-        self.assertIn((2, 'invoice_no'), self.error_fields(result))
+        self.assertEqual(result['summary']['errors'], 0, result['issues'])
+        self.assertNotIn((2, 'invoice_no'), self.error_fields(result))
+        self.assertNotIn('invoice_no', {field for _no, field in self.warning_fields(result)
+                                        if _no == 2 and field == 'invoice_no'})
+
+    def test_postal_code_is_warning_only(self):
+        """کد پستی اختیاری است: نه خالی‌بودن و نه غیر ۱۰ رقمی بودن خطا نیست."""
+        result = self.validate([self.row(postal_code='')])
+        self.assertEqual(result['summary']['errors'], 0, result['issues'])
+        self.assertIn((1, 'postal_code'), self.warning_fields(result))
+
+        result = self.validate([self.row(postal_code='123')])
+        self.assertEqual(result['summary']['errors'], 0, result['issues'])
+        self.assertIn((1, 'postal_code'), self.warning_fields(result))
+        self.assertNotIn((1, 'postal_code'), self.error_fields(result))
 
     def test_aggregate_row_needs_only_amount(self):
         result = self.validate([{'person_type': 'aggregate', 'amount': 750000}])
