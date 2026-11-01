@@ -138,7 +138,7 @@ const GROUP_ICONS = {
 
   'pettycash-home': <HomeOutlinedIcon />,
   'pettycash-operations': <ReceiptLongOutlinedIcon />,
-  'pettycash-config': <SettingsOutlinedIcon />,
+  'pettycash-reports': <AssessmentOutlinedIcon />,
 
   'accounting-home': <HomeOutlinedIcon />,
   'accounting-definitions': <CategoryOutlinedIcon />,

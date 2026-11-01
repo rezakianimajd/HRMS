@@ -200,6 +200,16 @@ const settingsMenu = [
     ],
   },
   {
+    id: 'settings-pettycash',
+    title: 'تنخواه',
+    color: '#f59e0b',
+    items: [
+      { id: 'settings-pettycash-definitions', title: 'تعاریف اولیه', icon: <AccountBalanceWalletIcon />, path: '/petty-cash/definitions', color: '#f59e0b', primary: true, ready: true },
+      { id: 'settings-pettycash-settings', title: 'تنظیمات تنخواه', icon: <SettingsIcon />, path: '/petty-cash/settings', color: '#64748b', primary: false, ready: true },
+      { id: 'settings-pettycash-approval', title: 'سیاست تأیید', icon: <RuleIcon />, path: '/petty-cash/policies', color: '#8b5cf6', primary: false, ready: true },
+    ],
+  },
+  {
     id: 'settings-assets',
     title: 'اموال و دارایی',
     color: '#f97316',
@@ -280,16 +290,6 @@ const pettycashMenu = [
       { id: 'petty-cash-report-settlements', title: 'تاریخچهٔ تسویه‌ها', icon: <HistoryIcon />, path: '/petty-cash/reports/settlements', color: '#10b981', primary: false, ready: true },
       { id: 'petty-cash-report-compliance', title: 'کنترل مستندات', icon: <VerifiedUserIcon />, path: '/petty-cash/reports/compliance', color: '#8b5cf6', primary: false, ready: true },
       { id: 'petty-cash-calendar', title: 'تقویم هزینه‌ها', icon: <CalendarMonthIcon />, path: '/petty-cash/calendar', color: '#ec4899', primary: false, ready: true },
-    ],
-  },
-  {
-    id: 'pettycash-config',
-    title: 'تنظیمات و تعاریف',
-    color: '#64748b',
-    items: [
-      { id: 'petty-cash-definitions', title: 'تعاریف اولیه', icon: <GridViewIcon />, path: '/petty-cash/definitions', color: '#0ea5e9', primary: true, ready: true },
-      { id: 'petty-cash-settings', title: 'تنظیمات ماژول', icon: <SettingsIcon />, path: '/petty-cash/settings', color: '#64748b', primary: false, ready: true },
-      { id: 'petty-cash-policies', title: 'سیاست تأیید', icon: <RuleIcon />, path: '/petty-cash/policies', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
 ];
