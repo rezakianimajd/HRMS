@@ -17,8 +17,8 @@ export const STATEMENT_KIND_META = {
   },
   [STATEMENT_KIND_MULTI]: {
     key: STATEMENT_KIND_MULTI,
-    label: 'صورت‌وضعیت چند بندی',
-    shortLabel: 'چند بندی',
+    label: 'صورت‌وضعیت چند سطحی',
+    shortLabel: 'چند سطحی',
     color: '#7c3aed',
     isAdjustment: false,
     isMulti: true,
@@ -51,7 +51,7 @@ export const statementKindOf = (value) => {
 
 export const isAdjustmentKind = (value) => statementKindOf(value).isAdjustment;
 
-/** آیا سند از نوع «صورت‌وضعیت چند بندی» است؟ */
+/** آیا سند از نوع «صورت‌وضعیت چند سطحی» است؟ */
 export const isMultiKind = (value) => Boolean(statementKindOf(value).isMulti);
 
 export const statementKindLabel = (row) => statementKindOf(row).label;

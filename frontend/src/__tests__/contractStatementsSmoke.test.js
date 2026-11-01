@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { act } from 'react-dom/test-utils';
 import { createRoot } from 'react-dom/client';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
@@ -288,7 +288,7 @@ test('saving an increase adjustment keeps its additions and deductions', async (
   container.remove();
 });
 
-test('multi-band statement sends band rows with their own cumulative amounts', async () => {
+test('multi-level statement sends level rows with their own cumulative amounts', async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const container = document.createElement('div');
   document.body.appendChild(container);
@@ -315,12 +315,12 @@ test('multi-band statement sends band rows with their own cumulative amounts', a
   expect(newButton).toBeTruthy();
   await act(async () => { newButton.click(); await wait(320); });
 
-  await pickKindOption(container, 'چند بندی');
-  expect(container.textContent).toContain('بند تجمعی');
-  expect(container.textContent).toContain('افزودن بند');
+  await pickKindOption(container, 'چند سطحی');
+  expect(container.textContent).toContain('عنوان سطح');
+  expect(container.textContent).toContain('افزودن سطح');
   expect(container.textContent).toContain('شامل اضافات');
   expect(container.textContent).toContain('شامل کسورات');
-  expect(container.textContent).toContain('کارکرد سطح سند (ریال)');
+  expect(container.textContent).toContain('معادل ریالی مبلغ تجمعی');
   // فیلدهای ثابت قدیمی حذف شده‌اند و فقط چیپ‌های تعریف‌شده باقی مانده‌اند.
   expect(container.textContent).not.toContain('سایر اضافات (');
 
@@ -332,16 +332,16 @@ test('multi-band statement sends band rows with their own cumulative amounts', a
   const labelOf = (input) => input.closest('.MuiFormControl-root')?.textContent || '';
 
   const bandTitleInput = Array.from(container.querySelectorAll('input'))
-    .find((input) => labelOf(input).includes('بند تجمعی'));
+    .find((input) => labelOf(input).includes('عنوان سطح'));
   expect(bandTitleInput).toBeTruthy();
   await act(async () => { setInputValue(bandTitleInput, 'خرید'); await wait(160); });
 
   const bandAmountInput = Array.from(container.querySelectorAll('input'))
-    .find((input) => labelOf(input).includes('مبلغ تجمعی بند'));
+    .find((input) => labelOf(input).includes('مبلغ تجمعی این سطح'));
   expect(bandAmountInput).toBeTruthy();
   await act(async () => { setInputValue(bandAmountInput, '5000000'); await wait(200); });
 
-  const saveButton = buttonByText(container, 'ذخیره صورت‌وضعیت چند بندی');
+  const saveButton = buttonByText(container, 'ذخیره صورت‌وضعیت چند سطحی');
   expect(saveButton).toBeTruthy();
   await act(async () => { saveButton.click(); await wait(420); });
 
@@ -349,11 +349,11 @@ test('multi-band statement sends band rows with their own cumulative amounts', a
   const [url, payload] = axiosInstance.post.mock.calls[0];
   expect(url).toBe('/contract-statements/');
   expect(payload.kind).toBe('multi');
-  expect(payload.bands).toHaveLength(1);
-  expect(payload.bands[0].title).toBe('خرید');
-  expect(payload.bands[0].amount).toBe(5000000);
-  expect(payload.bands[0].includes_additions).toBe(false);
-  expect(payload.bands[0].includes_deductions).toBe(false);
+  expect(payload.levels).toHaveLength(1);
+  expect(payload.levels[0].title).toBe('خرید');
+  expect(payload.levels[0].amount).toBe(5000000);
+  expect(payload.levels[0].includes_additions).toBe(false);
+  expect(payload.levels[0].includes_deductions).toBe(false);
   // مبلغ تجمعی سطح سند همان زنجیرهٔ صورت‌وضعیت عادی است (نه جمع بندها).
   expect(payload.cumulative_previous_amount).toBe(500000000);
 

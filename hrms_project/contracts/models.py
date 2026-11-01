@@ -281,7 +281,7 @@ class Statement(BaseModel):
 
     class Kind(models.TextChoices):
         STATEMENT = 'statement', _('صورت‌وضعیت')
-        MULTI = 'multi', _('صورت‌وضعیت چند بندی')
+        MULTI = 'multi', _('صورت‌وضعیت چند سطحی')
         INCREASE = 'increase', _('تعدیل افزایشی')
         DECREASE = 'decrease', _('تعدیل کاهشی')
 
@@ -290,7 +290,7 @@ class Statement(BaseModel):
     kind = models.CharField(
         max_length=20, choices=Kind.choices, default=Kind.STATEMENT,
         verbose_name=_('نوع سند'),
-        help_text=_('صورت‌وضعیت عادی، چند بندی، تعدیل افزایشی یا تعدیل کاهشی'),
+        help_text=_('صورت‌وضعیت عادی، چند سطحی، تعدیل افزایشی یا تعدیل کاهشی'),
     )
     date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ'))
     # «مبلغ» = مبلغ تجمعی این صورت‌وضعیت (کارکرد کل تا این دوره)
@@ -374,10 +374,12 @@ class Statement(BaseModel):
         max_digits=18, decimal_places=4, default=0,
         verbose_name=_('تعدیل تجمعی ارزی'),
     )
-    # زنجیرهٔ تجمعی «چند بندی»: هر بند زنجیرهٔ تجمعی مستقل خودش را دارد و
-    # مقادیر محاسبه‌شده (دوره قبل/کارکرد) هنگام ذخیره در همین فیلد نوشته می‌شوند.
-    # [{title, previous_amount, amount, previous_foreign, amount_foreign, work, work_foreign}]
-    bands = models.JSONField(default=list, blank=True, verbose_name=_('بندهای تجمعی'))
+    # زنجیرهٔ تجمعی «چند سطحی»: هر سطح دقیقاً مثل «کارکرد و مبالغ» خود سند است
+    # (ریالی و ارزی) با زنجیرهٔ تجمعی مستقل و انتقال مستقل به دورهٔ بعد.
+    # [{title, previous_amount, amount, previous_foreign, amount_foreign,
+    #   work, work_foreign, includes_additions, includes_deductions,
+    #   additions, deductions, additions_total, deductions_total, net_amount}]
+    levels = models.JSONField(default=list, blank=True, verbose_name=_('سطوح کارکرد'))
     is_approved = models.BooleanField(default=False, verbose_name=_('تأیید شده'))
     description = models.TextField(blank=True, verbose_name=_('توضیحات'))
 

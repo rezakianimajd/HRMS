@@ -50,8 +50,8 @@ def recalculate_contract_statements(contract):
     prior_foreign = Decimal('0')
     prior_adjustment = Decimal('0')
     prior_adjustment_foreign = Decimal('0')
-    # آخرین مبلغ تجمعی هر «بند» (کلید یکدست‌شده) در زنجیرهٔ قرارداد.
-    band_prior = {}
+    # آخرین مبلغ تجمعی هر «سطح» (کلید یکدست‌شده) در زنجیرهٔ قرارداد.
+    level_prior = {}
 
     with transaction.atomic():
         for row in rows:
@@ -105,7 +105,7 @@ def recalculate_contract_statements(contract):
                 continue
 
             if row.kind == Statement.Kind.MULTI:
-                # سطح سند مثل یک صورت‌وضعیت عادی محاسبه می‌شود؛ بندها بخش‌های
+                # سطح سند مثل یک صورت‌وضعیت عادی محاسبه می‌شود؛ سطوح بخش‌های
                 # مستقل کارکرد با زنجیرهٔ تجمعی و اضافات/کسورات اختیاری خودشان‌اند.
                 own_previous = max(prior_amount, prior_work)
                 own_amount = _decimal(row.amount)
@@ -127,69 +127,69 @@ def recalculate_contract_statements(contract):
                     (_decimal(item.get('amount')) for item in own_deductions), Decimal('0'),
                 )
 
-                submitted_bands = row.bands if isinstance(row.bands, (list, tuple)) else []
-                bands = []
-                band_work_total = Decimal('0')
-                band_work_foreign_total = Decimal('0')
-                band_additions_total = Decimal('0')
-                band_deductions_total = Decimal('0')
-                for band in submitted_bands:
-                    if not isinstance(band, dict):
+                submitted_levels = row.levels if isinstance(row.levels, (list, tuple)) else []
+                levels = []
+                level_work_total = Decimal('0')
+                level_work_foreign_total = Decimal('0')
+                level_additions_total = Decimal('0')
+                level_deductions_total = Decimal('0')
+                for level in submitted_levels:
+                    if not isinstance(level, dict):
                         continue
-                    title = ' '.join(str(band.get('title') or '').replace('\u200c', ' ').split())
+                    title = ' '.join(str(level.get('title') or '').replace('\u200c', ' ').split())
                     if not title:
                         continue
                     key = title.lower()
-                    previous_rial, previous_foreign = band_prior.get(
+                    previous_rial, previous_foreign = level_prior.get(
                         key, (Decimal('0'), Decimal('0')),
                     )
-                    band_rial = max(previous_rial, _decimal(band.get('amount')))
-                    band_foreign = max(previous_foreign, _decimal(band.get('amount_foreign')))
-                    band_work = band_rial - previous_rial
-                    band_work_foreign = band_foreign - previous_foreign
-                    includes_additions = bool(band.get('includes_additions'))
-                    includes_deductions = bool(band.get('includes_deductions'))
-                    band_additions = (
-                        _normalize_items(band.get('additions'), band_work) if includes_additions else []
+                    level_rial = max(previous_rial, _decimal(level.get('amount')))
+                    level_foreign = max(previous_foreign, _decimal(level.get('amount_foreign')))
+                    level_work = level_rial - previous_rial
+                    level_work_foreign = level_foreign - previous_foreign
+                    includes_additions = bool(level.get('includes_additions'))
+                    includes_deductions = bool(level.get('includes_deductions'))
+                    level_additions = (
+                        _normalize_items(level.get('additions'), level_work) if includes_additions else []
                     )
-                    band_deductions = (
-                        _normalize_items(band.get('deductions'), band_work) if includes_deductions else []
+                    level_deductions = (
+                        _normalize_items(level.get('deductions'), level_work) if includes_deductions else []
                     )
-                    band_additions_sum = sum(
-                        (_decimal(item.get('amount')) for item in band_additions), Decimal('0'),
+                    level_additions_sum = sum(
+                        (_decimal(item.get('amount')) for item in level_additions), Decimal('0'),
                     )
-                    band_deductions_sum = sum(
-                        (_decimal(item.get('amount')) for item in band_deductions), Decimal('0'),
+                    level_deductions_sum = sum(
+                        (_decimal(item.get('amount')) for item in level_deductions), Decimal('0'),
                     )
-                    bands.append({
-                        **band,
+                    levels.append({
+                        **level,
                         'title': title,
                         'includes_additions': includes_additions,
                         'includes_deductions': includes_deductions,
                         'previous_amount': float(previous_rial),
-                        'amount': float(band_rial),
+                        'amount': float(level_rial),
                         'previous_foreign': float(previous_foreign),
-                        'amount_foreign': float(band_foreign),
-                        'work': float(band_work),
-                        'work_foreign': float(band_work_foreign),
-                        'additions': band_additions,
-                        'deductions': band_deductions,
-                        'additions_total': float(band_additions_sum),
-                        'deductions_total': float(band_deductions_sum),
-                        'net_amount': float(band_work + band_additions_sum - band_deductions_sum),
+                        'amount_foreign': float(level_foreign),
+                        'work': float(level_work),
+                        'work_foreign': float(level_work_foreign),
+                        'additions': level_additions,
+                        'deductions': level_deductions,
+                        'additions_total': float(level_additions_sum),
+                        'deductions_total': float(level_deductions_sum),
+                        'net_amount': float(level_work + level_additions_sum - level_deductions_sum),
                     })
-                    band_prior[key] = (band_rial, band_foreign)
-                    band_work_total += band_work
-                    band_work_foreign_total += band_work_foreign
-                    band_additions_total += band_additions_sum
-                    band_deductions_total += band_deductions_sum
+                    level_prior[key] = (level_rial, level_foreign)
+                    level_work_total += level_work
+                    level_work_foreign_total += level_work_foreign
+                    level_additions_total += level_additions_sum
+                    level_deductions_total += level_deductions_sum
 
-                total_work = own_work + band_work_total
-                total_work_foreign = own_work_foreign + band_work_foreign_total
-                additions_total = own_additions_total + band_additions_total
-                deductions_total = own_deductions_total + band_deductions_total
+                total_work = own_work + level_work_total
+                total_work_foreign = own_work_foreign + level_work_foreign_total
+                additions_total = own_additions_total + level_additions_total
+                deductions_total = own_deductions_total + level_deductions_total
                 Statement.objects.filter(pk=row.pk).update(
-                    bands=bands,
+                    levels=levels,
                     amount=own_amount,
                     cumulative_previous_amount=own_previous,
                     work_done=total_work,

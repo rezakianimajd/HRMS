@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
@@ -66,7 +66,7 @@ const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
 const KIND_OPTIONS = [
   { key: STATEMENT_KIND_STATEMENT, label: 'صورت‌وضعیت عادی (پیش‌فرض)', color: '#2563eb', icon: ReceiptLongIcon },
-  { key: STATEMENT_KIND_MULTI, label: 'صورت‌وضعیت چند بندی', color: '#7c3aed', icon: LayersOutlinedIcon },
+  { key: STATEMENT_KIND_MULTI, label: 'صورت‌وضعیت چند سطحی', color: '#7c3aed', icon: LayersOutlinedIcon },
   { key: STATEMENT_KIND_INCREASE, label: 'صورت‌وضعیت تعدیل (افزایشی)', color: '#15803d', icon: TrendingUpIcon },
   { key: STATEMENT_KIND_DECREASE, label: 'صورت‌وضعیت تعدیل (کاهشی)', color: '#be123c', icon: TrendingDownIcon },
 ];
@@ -451,6 +451,28 @@ const adjustmentForeignCumulativeFor = (rows, { excludeId = null } = {}) => (
     .reduce((sum, row) => sum + num(row.adjustment_foreign_work_done ?? row.foreign_work_done), 0)
 );
 
+/** آیا قرارداد سند چند سطحی دارد؟ (پس از آن، اسناد جدید باید چند سطحی باشند) */
+const contractHasMultiLevels = (rows) => (Array.isArray(rows) ? rows : [])
+  .some((row) => isMultiKind(row));
+
+/** سطوح آخرین سند چند سطحی قرارداد را برای انتقال مستقل به سند جدید آماده می‌کند. */
+const seedLevelsFrom = (rows) => {
+  const prior = (Array.isArray(rows) ? rows : [])
+    .filter((row) => isMultiKind(row))
+    .sort((a, b) => Number(a.id || 0) - Number(b.id || 0));
+  const last = prior[prior.length - 1];
+  if (!last) return [];
+  return (Array.isArray(last.levels) ? last.levels : []).map((level) => ({
+    title: level.title || '',
+    amount: Number(level.amount) || 0,
+    amount_foreign: Number(level.amount_foreign) || 0,
+    includes_additions: Boolean(level.includes_additions),
+    includes_deductions: Boolean(level.includes_deductions),
+    additions: Array.isArray(level.additions) ? level.additions.map((item) => ({ ...item })) : [],
+    deductions: Array.isArray(level.deductions) ? level.deductions.map((item) => ({ ...item })) : [],
+  }));
+};
+
 const StatementEditorPage = () => {
   const qc = useQueryClient();
   const theme = useTheme();
@@ -628,7 +650,7 @@ const StatementEditorPage = () => {
     return result;
   }, [scopedList, search, statusFilter, sortBy]);
 
-  /* صفحه‌بندی و اندازه‌گیری جدول تک‌ردیفه (الگوی تضامین) */
+  /* صفحه‌سطحی و اندازه‌گیری جدول تک‌ردیفه (الگوی تضامین) */
   const scopedPageSize = moduleTheme.tableTheme.rowsPerPage;
   const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
     filtered.length, scopedPageSize, [search, statusFilter, sortBy, contractId, scopedPageSize],
@@ -721,7 +743,7 @@ const StatementEditorPage = () => {
         deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
         deductions_total: deductionsTotal,
         net_amount: Math.round(signedRial + additionsTotal - deductionsTotal),
-        bands: [],
+        levels: [],
         currency: payload.currency || null,
         exchange_rate: normalizeRate(rate),
         is_approved: Boolean(payload.is_approved),
@@ -729,9 +751,9 @@ const StatementEditorPage = () => {
       };
     }
     if (isMultiKind(kind)) {
-      // سطح سند مثل صورت‌وضعیت عادی است؛ بندها بخش‌های مستقل کارکرد با
+      // سطح سند مثل صورت‌وضعیت عادی است؛ سطوح بخش‌های مستقل کارکرد با
       // اضافات/کسورات اختیاری خودشان هستند.
-      const cleanBandItems = (items, type) => (Array.isArray(items) ? items : []).map((item) => (
+      const cleanLevelItems = (items, type) => (Array.isArray(items) ? items : []).map((item) => (
         type === 'addition'
           ? {
             code: item.code || '',
@@ -748,17 +770,17 @@ const StatementEditorPage = () => {
             mode: item.mode || 'amount',
           }
       ));
-      const cleanBands = (Array.isArray(payload.bands) ? payload.bands : [])
-        .map((band) => ({
-          title: String(band.title || '').trim(),
-          amount: Math.max(0, Math.round(Number(band.amount) || 0)),
-          amount_foreign: Math.max(0, Number(band.amount_foreign) || 0),
-          includes_additions: Boolean(band.includes_additions),
-          includes_deductions: Boolean(band.includes_deductions),
-          additions: band.includes_additions ? cleanBandItems(band.additions, 'addition') : [],
-          deductions: band.includes_deductions ? cleanBandItems(band.deductions, 'deduction') : [],
+      const cleanLevels = (Array.isArray(payload.levels) ? payload.levels : [])
+        .map((level) => ({
+          title: String(level.title || '').trim(),
+          amount: Math.max(0, Math.round(Number(level.amount) || 0)),
+          amount_foreign: Math.max(0, Number(level.amount_foreign) || 0),
+          includes_additions: Boolean(level.includes_additions),
+          includes_deductions: Boolean(level.includes_deductions),
+          additions: level.includes_additions ? cleanLevelItems(level.additions, 'addition') : [],
+          deductions: level.includes_deductions ? cleanLevelItems(level.deductions, 'deduction') : [],
         }))
-        .filter((band) => band.title);
+        .filter((level) => level.title);
       const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
       const previous = Math.max(0, Math.round(Number(payload.cumulative_previous_amount) || 0));
       const work = Math.max(0, amount - previous);
@@ -782,7 +804,7 @@ const StatementEditorPage = () => {
         deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
         deductions_total: deductionsTotalValue,
         net_amount: Math.round(work + additionsTotalValue - deductionsTotalValue),
-        bands: cleanBands,
+        levels: cleanLevels,
         currency: payload.currency || null,
         exchange_rate: normalizeRate(rate),
         is_approved: Boolean(payload.is_approved),
@@ -813,7 +835,7 @@ const StatementEditorPage = () => {
       deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
       deductions_total: deductionsTotal,
       net_amount: Math.round(work + additionsTotal - deductionsTotal),
-      bands: [],
+      levels: [],
       currency: payload.currency || null,
       exchange_rate: normalizeRate(rate),
       is_approved: Boolean(payload.is_approved),
@@ -954,33 +976,34 @@ const StatementEditorPage = () => {
   const formKind = statementKindOf(form);
   const isAdjustmentForm = formKind.isAdjustment;
   const isMultiForm = Boolean(formKind.isMulti);
-  const bands = Array.isArray(form.bands) ? form.bands : [];
-  const bandKeyOf = (title) => String(title || '')
+  const contractHasMulti = contractHasMultiLevels(scopedList);
+  const levels = Array.isArray(form.levels) ? form.levels : [];
+  const levelKeyOf = (title) => String(title || '')
     .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-  /** آخرین مبلغ تجمعی هر بند در اسناد قبلی همان قرارداد. */
-  const bandPreviousMap = (() => {
+  /** آخرین مبلغ تجمعی هر سطح در اسناد قبلی همان قرارداد. */
+  const levelPreviousMap = (() => {
     const map = {};
     (Array.isArray(scopedList) ? scopedList : [])
       .filter((row) => !isAdjustmentKind(row))
       .filter((row) => !form.id || Number(row.id || 0) < Number(form.id))
       .sort((a, b) => Number(a.id || 0) - Number(b.id || 0))
       .forEach((row) => {
-        (Array.isArray(row.bands) ? row.bands : []).forEach((band) => {
-          const key = bandKeyOf(band.title);
+        (Array.isArray(row.levels) ? row.levels : []).forEach((level) => {
+          const key = levelKeyOf(level.title);
           if (!key) return;
-          map[key] = { amount: num(band.amount), amount_foreign: num(band.amount_foreign) };
+          map[key] = { amount: num(level.amount), amount_foreign: num(level.amount_foreign) };
         });
       });
     return map;
   })();
-  /** عنوان بندهای قابل انتخاب (بندهای همین قرارداد + بندهای فرم فعلی). */
-  const bandSuggestions = (() => {
+  /** عنوان سطوحی قابل انتخاب (سطوحی همین قرارداد + سطوحی فرم فعلی). */
+  const levelSuggestions = (() => {
     const seen = new Set();
     const list = [];
-    [...(Array.isArray(scopedList) ? scopedList : []), { bands }].forEach((row) => {
-      (Array.isArray(row.bands) ? row.bands : []).forEach((band) => {
-        const title = String(band?.title || '').trim();
-        const key = bandKeyOf(title);
+    [...(Array.isArray(scopedList) ? scopedList : []), { levels }].forEach((row) => {
+      (Array.isArray(row.levels) ? row.levels : []).forEach((level) => {
+        const title = String(level?.title || '').trim();
+        const key = levelKeyOf(title);
         if (!key || seen.has(key)) return;
         seen.add(key);
         list.push(title);
@@ -988,13 +1011,13 @@ const StatementEditorPage = () => {
     });
     return list;
   })();
-  const bandsTotals = bands.reduce((totals, band) => {
-    const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0, amount_foreign: 0 };
-    const amount = Math.max(0, num(band.amount));
-    const amountForeign = num(band.amount_foreign);
-    const bandAdditionsTotal = (Array.isArray(band.additions) ? band.additions : [])
+  const levelsTotals = levels.reduce((totals, level) => {
+    const previous = levelPreviousMap[levelKeyOf(level.title)] || { amount: 0, amount_foreign: 0 };
+    const amount = Math.max(0, num(level.amount));
+    const amountForeign = num(level.amount_foreign);
+    const levelAdditionsTotal = (Array.isArray(level.additions) ? level.additions : [])
       .reduce((sum, item) => sum + num(item.amount), 0);
-    const bandDeductionsTotal = (Array.isArray(band.deductions) ? band.deductions : [])
+    const levelDeductionsTotal = (Array.isArray(level.deductions) ? level.deductions : [])
       .reduce((sum, item) => sum + num(item.amount), 0);
     return {
       amount: totals.amount + amount,
@@ -1003,8 +1026,8 @@ const StatementEditorPage = () => {
       previousForeign: totals.previousForeign + num(previous.amount_foreign),
       work: totals.work + Math.max(0, amount - num(previous.amount)),
       workForeign: totals.workForeign + Math.max(0, amountForeign - num(previous.amount_foreign)),
-      additions: totals.additions + (band.includes_additions ? bandAdditionsTotal : 0),
-      deductions: totals.deductions + (band.includes_deductions ? bandDeductionsTotal : 0),
+      additions: totals.additions + (level.includes_additions ? levelAdditionsTotal : 0),
+      deductions: totals.deductions + (level.includes_deductions ? levelDeductionsTotal : 0),
     };
   }, {
     amount: 0,
@@ -1050,15 +1073,15 @@ const StatementEditorPage = () => {
   const workDone = isAdjustmentForm
     ? adjustmentWorkRial
     : Math.max(0, cumulativeThis - cumulativePrev);
-  // در سند چند بندی، کارکرد و اضافات/کسورات بندها به سطح سند اضافه می‌شود.
-  const bandWorkRial = isMultiForm ? bandsTotals.work : 0;
-  const bandWorkForeign = isMultiForm ? bandsTotals.workForeign : 0;
-  const bandAdditionsRial = isMultiForm ? bandsTotals.additions : 0;
-  const bandDeductionsRial = isMultiForm ? bandsTotals.deductions : 0;
-  const totalWork = workDone + bandWorkRial;
-  const totalWorkForeign = workDoneForeign + bandWorkForeign;
-  const totalAdditions = additionsTotal + bandAdditionsRial;
-  const totalDeductions = deductionsTotal + bandDeductionsRial;
+  // در سند چند سطحی، کارکرد و اضافات/کسورات سطوح به سطح سند اضافه می‌شود.
+  const levelWorkRial = isMultiForm ? levelsTotals.work : 0;
+  const levelWorkForeign = isMultiForm ? levelsTotals.workForeign : 0;
+  const levelAdditionsRial = isMultiForm ? levelsTotals.additions : 0;
+  const levelDeductionsRial = isMultiForm ? levelsTotals.deductions : 0;
+  const totalWork = workDone + levelWorkRial;
+  const totalWorkForeign = workDoneForeign + levelWorkForeign;
+  const totalAdditions = additionsTotal + levelAdditionsRial;
+  const totalDeductions = deductionsTotal + levelDeductionsRial;
   const netAmount = isAdjustmentForm
     ? adjustmentWorkRial + additionsTotal - deductionsTotal
     : totalWork + totalAdditions - totalDeductions;
@@ -1199,6 +1222,10 @@ const StatementEditorPage = () => {
   };
 
   const changeKind = (kind) => {
+    if (contractHasMulti && !isMultiKind(kind) && !isAdjustmentKind(kind)) {
+      setError('برای این قرارداد صورت‌وضعیت چند سطحی ثبت شده است؛ سند جدید باید چند سطحی باشد.');
+      return;
+    }
     setForm((previous) => {
       const adjustment = isAdjustmentKind(kind);
       const multi = isMultiKind(kind);
@@ -1208,14 +1235,14 @@ const StatementEditorPage = () => {
       const priorAdjustmentForeign = adjustment
         ? adjustmentForeignCumulativeFor(scopedList, { excludeId: previous.id })
         : 0;
-      const existingBands = Array.isArray(previous.bands) ? previous.bands : [];
+      const existingLevels = Array.isArray(previous.levels) ? previous.levels : [];
       return {
         ...previous,
         kind,
         amount: adjustment ? previous.cumulative_previous_amount : previous.amount,
         amount_foreign: adjustment ? previous.cumulative_previous_foreign : previous.amount_foreign,
-        bands: multi
-          ? (existingBands.length ? existingBands : [emptyBand()])
+        levels: multi
+          ? (existingLevels.length ? existingLevels : [emptyLevel()])
           : [],
         number: previous.id || normalizeStatementNumber(previous.number)
           ? previous.number
@@ -1228,7 +1255,7 @@ const StatementEditorPage = () => {
     });
   };
 
-  const emptyBand = (title = '', amount = 0, amountForeign = 0) => ({
+  const emptyLevel = (title = '', amount = 0, amountForeign = 0) => ({
     title,
     amount,
     amount_foreign: amountForeign,
@@ -1237,63 +1264,63 @@ const StatementEditorPage = () => {
     additions: [],
     deductions: [],
   });
-  const addBand = () => setField('bands', [...bands, emptyBand()]);
-  const removeBand = (index) => setField('bands', bands.filter((_, current) => current !== index));
-  const updateBandTitle = (index, value) => setField('bands', bands.map((band, current) => (
-    current === index ? { ...band, title: value } : band
+  const addLevel = () => setField('levels', [...levels, emptyLevel()]);
+  const removeLevel = (index) => setField('levels', levels.filter((_, current) => current !== index));
+  const updateLevelTitle = (index, value) => setField('levels', levels.map((level, current) => (
+    current === index ? { ...level, title: value } : level
   )));
-  const updateBandAmount = (index, value) => setField('bands', bands.map((band, current) => {
-    if (current !== index) return band;
-    const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0, amount_foreign: 0 };
+  const updateLevelAmount = (index, value) => setField('levels', levels.map((level, current) => {
+    if (current !== index) return level;
+    const previous = levelPreviousMap[levelKeyOf(level.title)] || { amount: 0, amount_foreign: 0 };
     const amount = Math.max(0, Number(value) || 0);
     if (isRial) {
       const rounded = Math.round(amount);
-      return { ...band, amount: rounded, amount_foreign: rounded };
+      return { ...level, amount: rounded, amount_foreign: rounded };
     }
     const previousRial = Number(previous.amount) || 0;
     const previousForeign = Number(previous.amount_foreign) || 0;
     return {
-      ...band,
+      ...level,
       amount_foreign: amount,
       amount: Math.round(previousRial) + toRial(Math.max(0, amount - previousForeign), displayRate),
     };
   }));
-  const chooseBand = (title) => {
-    const previous = bandPreviousMap[bandKeyOf(title)] || { amount: 0, amount_foreign: 0 };
-    setField('bands', [...bands, emptyBand(
+  const chooseLevel = (title) => {
+    const previous = levelPreviousMap[levelKeyOf(title)] || { amount: 0, amount_foreign: 0 };
+    setField('levels', [...levels, emptyLevel(
       title,
       Number(previous.amount) || 0,
       Number(previous.amount_foreign) || 0,
     )]);
   };
-  const bandWorkOf = (band) => {
-    const previous = bandPreviousMap[bandKeyOf(band?.title)] || { amount: 0 };
-    return Math.max(0, num(band?.amount) - num(previous.amount));
+  const levelWorkOf = (level) => {
+    const previous = levelPreviousMap[levelKeyOf(level?.title)] || { amount: 0 };
+    return Math.max(0, num(level?.amount) - num(previous.amount));
   };
-  const toggleBandOption = (index, key, value) => setField('bands', bands.map((band, current) => (
-    current === index ? { ...band, [key]: value } : band
+  const toggleLevelOption = (index, key, value) => setField('levels', levels.map((level, current) => (
+    current === index ? { ...level, [key]: value } : level
   )));
-  const bandItemsOf = (band, kind) => (Array.isArray(band?.[kind]) ? band[kind] : []);
-  const addBandItem = (index, kind) => setField('bands', bands.map((band, current) => {
-    if (current !== index) return band;
+  const levelItemsOf = (level, kind) => (Array.isArray(level?.[kind]) ? level[kind] : []);
+  const addLevelItem = (index, kind) => setField('levels', levels.map((level, current) => {
+    if (current !== index) return level;
     const row = kind === 'additions'
       ? { code: '', description: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' }
       : { title: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' };
     return {
-      ...band,
-      [kind]: [...bandItemsOf(band, kind), row],
+      ...level,
+      [kind]: [...levelItemsOf(level, kind), row],
       [`includes_${kind}`]: true,
     };
   }));
-  const removeBandItem = (index, kind, rowIndex) => setField('bands', bands.map((band, current) => (
+  const removeLevelItem = (index, kind, rowIndex) => setField('levels', levels.map((level, current) => (
     current === index
-      ? { ...band, [kind]: bandItemsOf(band, kind).filter((_, position) => position !== rowIndex) }
-      : band
+      ? { ...level, [kind]: levelItemsOf(level, kind).filter((_, position) => position !== rowIndex) }
+      : level
   )));
-  const updateBandItem = (index, kind, rowIndex, key, value) => setField('bands', bands.map((band, current) => {
-    if (current !== index) return band;
-    const percentBase = bandWorkOf(band);
-    const rows = bandItemsOf(band, kind).map((item, position) => {
+  const updateLevelItem = (index, kind, rowIndex, key, value) => setField('levels', levels.map((level, current) => {
+    if (current !== index) return level;
+    const percentBase = levelWorkOf(level);
+    const rows = levelItemsOf(level, kind).map((item, position) => {
       if (position !== rowIndex) return item;
       if (key === 'percent') {
         const percent = Math.max(0, Number(value) || 0);
@@ -1308,12 +1335,12 @@ const StatementEditorPage = () => {
       }
       return { ...item, [key]: value };
     });
-    return { ...band, [kind]: rows };
+    return { ...level, [kind]: rows };
   }));
-  const chooseBandItem = (index, kind, definition) => setField('bands', bands.map((band, current) => {
-    if (current !== index) return band;
+  const chooseLevelItem = (index, kind, definition) => setField('levels', levels.map((level, current) => {
+    if (current !== index) return level;
     const percent = Number(definition.default_percent || 0);
-    const percentBase = bandWorkOf(band);
+    const percentBase = levelWorkOf(level);
     const amount = Math.round((percentBase * percent) / 100);
     const row = kind === 'additions'
       ? {
@@ -1332,8 +1359,8 @@ const StatementEditorPage = () => {
         mode: 'percent',
       };
     return {
-      ...band,
-      [kind]: [...bandItemsOf(band, kind), row],
+      ...level,
+      [kind]: [...levelItemsOf(level, kind), row],
       [`includes_${kind}`]: true,
     };
   }));
@@ -1410,10 +1437,13 @@ const StatementEditorPage = () => {
     const initialRate = normalizeRate(
       selectedContractRate > 1 ? selectedContractRate : (initialCurrency?.exchange_rate || selectedContract?.exchange_rate || 1),
     );
+    // پس از ثبت اولین سند چند سطحی، سند جدید هم چند سطحی است و سطوح قبلی
+    // (با تجمعی همان سطح) برای انتقال مستقل به این دوره آماده می‌شوند.
+    const forcedMulti = contractHasMultiLevels(scopedList);
     setForm({
       contract: contractId,
       number: '',
-      kind: STATEMENT_KIND_STATEMENT,
+      kind: forcedMulti ? STATEMENT_KIND_MULTI : STATEMENT_KIND_STATEMENT,
       date: newDate,
       amount: previousCumulative,
       amount_foreign: previousForeign,
@@ -1434,7 +1464,7 @@ const StatementEditorPage = () => {
       other_additions_mode: 'amount',
       additions: [],
       deductions: [],
-      bands: [],
+      levels: forcedMulti ? seedLevelsFrom(scopedList) : [],
       documents: [],
       pendingFiles: [],
       is_approved: false,
@@ -1523,21 +1553,21 @@ const StatementEditorPage = () => {
       other_additions_mode: 'amount',
       additions: [...withForeignAmount(row.additions), ...legacyAdditions],
       deductions: withForeignAmount(row.deductions),
-      bands: (Array.isArray(row.bands) ? row.bands : []).map((band) => ({
-        title: band.title || '',
-        amount: Number(band.amount) || 0,
-        amount_foreign: band.amount_foreign != null
-          ? Number(band.amount_foreign) || 0
-          : fromRial(Number(band.amount) || 0, editRate),
-        includes_additions: Boolean(band.includes_additions),
-        includes_deductions: Boolean(band.includes_deductions),
-        additions: (Array.isArray(band.additions) ? band.additions : []).map((item) => ({
+      levels: (Array.isArray(row.levels) ? row.levels : []).map((level) => ({
+        title: level.title || '',
+        amount: Number(level.amount) || 0,
+        amount_foreign: level.amount_foreign != null
+          ? Number(level.amount_foreign) || 0
+          : fromRial(Number(level.amount) || 0, editRate),
+        includes_additions: Boolean(level.includes_additions),
+        includes_deductions: Boolean(level.includes_deductions),
+        additions: (Array.isArray(level.additions) ? level.additions : []).map((item) => ({
           ...item,
           amount_foreign: item.amount_foreign != null
             ? Number(item.amount_foreign) || 0
             : fromRial(Number(item.amount) || 0, editRate),
         })),
-        deductions: (Array.isArray(band.deductions) ? band.deductions : []).map((item) => ({
+        deductions: (Array.isArray(level.deductions) ? level.deductions : []).map((item) => ({
           ...item,
           amount_foreign: item.amount_foreign != null
             ? Number(item.amount_foreign) || 0
@@ -1702,17 +1732,17 @@ const StatementEditorPage = () => {
       return;
     }
     if (isMultiForm) {
-      const filled = bands.filter((band) => String(band.title || '').trim());
+      const filled = levels.filter((level) => String(level.title || '').trim());
       if (!filled.length) {
-        setError('برای صورت‌وضعیت چند بندی، حداقل یک بند با عنوان و مبلغ وارد کنید.');
+        setError('برای صورت‌وضعیت چند سطحی، حداقل یک سطح با عنوان و مبلغ وارد کنید.');
         return;
       }
-      const lowered = filled.find((band) => {
-        const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0 };
-        return Math.max(0, Number(band.amount) || 0) < (Number(previous.amount) || 0);
+      const lowered = filled.find((level) => {
+        const previous = levelPreviousMap[levelKeyOf(level.title)] || { amount: 0 };
+        return Math.max(0, Number(level.amount) || 0) < (Number(previous.amount) || 0);
       });
       if (lowered) {
-        setError(`مبلغ تجمعی بند «${lowered.title}» نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.`);
+        setError(`مبلغ تجمعی سطح «${lowered.title}» نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.`);
         return;
       }
     }
@@ -1770,23 +1800,24 @@ const StatementEditorPage = () => {
         formKind={formKind}
         isAdjustmentForm={isAdjustmentForm}
         isMultiForm={isMultiForm}
+        lockSimpleKind={contractHasMulti}
         totalWork={totalWork}
         totalWorkForeign={totalWorkForeign}
-        bandTotals={bandsTotals}
-        bandEditor={{
-          bands,
-          suggestions: bandSuggestions,
-          previousMap: bandPreviousMap,
-          onAdd: addBand,
-          onRemove: removeBand,
-          onTitle: updateBandTitle,
-          onAmount: updateBandAmount,
-          onChoose: chooseBand,
-          onToggle: toggleBandOption,
-          onAddItem: addBandItem,
-          onRemoveItem: removeBandItem,
-          onUpdateItem: updateBandItem,
-          onChooseItem: chooseBandItem,
+        levelTotals={levelsTotals}
+        levelEditor={{
+          levels,
+          suggestions: levelSuggestions,
+          previousMap: levelPreviousMap,
+          onAdd: addLevel,
+          onRemove: removeLevel,
+          onTitle: updateLevelTitle,
+          onAmount: updateLevelAmount,
+          onChoose: chooseLevel,
+          onToggle: toggleLevelOption,
+          onAddItem: addLevelItem,
+          onRemoveItem: removeLevelItem,
+          onUpdateItem: updateLevelItem,
+          onChooseItem: chooseLevelItem,
           additionList,
           deductionList,
         }}
@@ -2165,8 +2196,9 @@ const StatementEditorPage = () => {
 const StatementEditorView = ({
   onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
-  formKind, isAdjustmentForm, isMultiForm = false, bandEditor = null,
-  totalWork = 0, totalWorkForeign = 0, bandTotals = null,
+  formKind, isAdjustmentForm, isMultiForm = false, levelEditor = null,
+  lockSimpleKind = false,
+  totalWork = 0, totalWorkForeign = 0, levelTotals = null,
   adjustmentPrevious, adjustmentPreviousForeign,
   adjustmentCumulative, adjustmentCumulativeForeign,
   adjustmentWorkRial, adjustmentWorkForeign,
@@ -2220,8 +2252,8 @@ const StatementEditorView = ({
         ) : (
           <>
             <KpiTileLine dense icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={GREEN} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} />
-            <KpiTileLine dense icon={TrendingUpIcon} label={isMultiForm ? 'کارکرد کل (سند + بندها)' : 'کارکرد این دوره'} value={compactMoney(totalWorkForeign, formCurrencyLabel)} color={BLUE} hint={isRial ? '' : `معادل ریالی ${compactMoney(totalWork, 'ریال')}`} />
-            <KpiTileLine dense icon={isMultiForm ? LayersOutlinedIcon : CheckCircleIcon} label={isMultiForm ? `بندها (${formatPersianNumber((bandEditor?.bands || []).length)})` : 'پیشرفت قرارداد'} value={isMultiForm ? compactMoney(bandTotals?.workForeign || 0, formCurrencyLabel) : `${toPersianDigits(progress.toFixed(0))}٪`} color={isMultiForm ? formKind.color : STATEMENT_ACCENT} hint={isMultiForm ? 'کارکرد بندها' : `کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} />
+            <KpiTileLine dense icon={TrendingUpIcon} label={isMultiForm ? 'کارکرد کل (سند + سطوح)' : 'کارکرد این دوره'} value={compactMoney(totalWorkForeign, formCurrencyLabel)} color={BLUE} hint={isRial ? '' : `معادل ریالی ${compactMoney(totalWork, 'ریال')}`} />
+            <KpiTileLine dense icon={isMultiForm ? LayersOutlinedIcon : CheckCircleIcon} label={isMultiForm ? `سطوح (${formatPersianNumber((levelEditor?.levels || []).length)})` : 'پیشرفت قرارداد'} value={isMultiForm ? compactMoney(levelTotals?.workForeign || 0, formCurrencyLabel) : `${toPersianDigits(progress.toFixed(0))}٪`} color={isMultiForm ? formKind.color : STATEMENT_ACCENT} hint={isMultiForm ? 'کارکرد سطوح' : `کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} />
             <KpiTileLine dense icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} />
           </>
         )}
@@ -2252,7 +2284,8 @@ const StatementEditorView = ({
                         {KIND_OPTIONS.map((option) => {
                           const OptionIcon = option.icon;
                           return (
-                            <MenuItem key={option.key} value={option.key}>
+                            <MenuItem key={option.key} value={option.key}
+                              disabled={lockSimpleKind && option.key === STATEMENT_KIND_STATEMENT}>
                               <Stack direction="row" alignItems="center" spacing={0.7}>
                                 <OptionIcon sx={{ fontSize: 17, color: option.color }} />
                                 <Typography sx={{ fontSize: 12, fontWeight: 800, color: option.color }}>{option.label}</Typography>
@@ -2313,165 +2346,191 @@ const StatementEditorView = ({
                           value={form.amount ?? 0} onChange={() => {}} InputProps={{ readOnly: true }} />
                       </Grid>
                       <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`مبلغ تجمعی دوره قبل (${formCurrencyLabel})`}
+                          value={form.cumulative_previous_foreign ?? cumulativePrevForeign}
+                          onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
                         <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ تجمعی دوره قبل (ریال)"
                           value={cumulativePrev} onChange={() => {}} InputProps={{ readOnly: true }} />
                       </Grid>
                       <Grid item xs={12} sm={6}>
-                        <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد سطح سند (ریال)"
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`کارکرد این دوره (${formCurrencyLabel})`}
+                          value={workDoneForeign} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد این دوره (ریال)"
                           value={workDone} onChange={() => {}} InputProps={{ readOnly: true }} />
                       </Grid>
                     </Grid>
                     <Divider sx={{ my: 1 }} />
                     <Stack direction="row" alignItems="center" sx={{ mb: 0.7 }}>
                       <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: formKind.color }}>
-                        بندهای کارکرد (هر بند زنجیرهٔ تجمعی مستقل)
+                        سطوح کارکرد (هر سطح زنجیرهٔ تجمعی مستقل)
                       </Typography>
                       <Chip size="small"
-                        label={`کارکرد بندها: ${formatPersianNumber(isRial ? (bandTotals?.work || 0) : (bandTotals?.workForeign || 0))} ${formCurrencyLabel}`}
+                        label={`کارکرد سطوح: ${formatPersianNumber(isRial ? (levelTotals?.work || 0) : (levelTotals?.workForeign || 0))} ${formCurrencyLabel}`}
                         sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
                     </Stack>
-                    {(bandEditor?.bands || []).length ? (bandEditor.bands).map((band, index) => {
-                      const bandKey = String(band.title || '')
+                    {(levelEditor?.levels || []).length ? (levelEditor.levels).map((level, index) => {
+                      const levelKey = String(level.title || '')
                         .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
-                      const previous = (bandEditor?.previousMap || {})[bandKey]
+                      const previous = (levelEditor?.previousMap || {})[levelKey]
                         || { amount: 0, amount_foreign: 0 };
                       const previousRial = Number(previous.amount) || 0;
                       const previousForeign = Number(previous.amount_foreign) || 0;
-                      const amountRial = Number(band.amount) || 0;
-                      const amountForeign = Number(band.amount_foreign) || 0;
+                      const amountRial = Number(level.amount) || 0;
+                      const amountForeign = Number(level.amount_foreign) || 0;
                       const workRial = Math.max(0, amountRial - previousRial);
                       const workForeign = Math.max(0, amountForeign - previousForeign);
-                      const bandAdditionsTotal = (Array.isArray(band.additions) ? band.additions : [])
+                      const levelAdditionsTotal = (Array.isArray(level.additions) ? level.additions : [])
                         .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-                      const bandDeductionsTotal = (Array.isArray(band.deductions) ? band.deductions : [])
+                      const levelDeductionsTotal = (Array.isArray(level.deductions) ? level.deductions : [])
                         .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
-                      const bandNet = workRial
-                        + (band.includes_additions ? bandAdditionsTotal : 0)
-                        - (band.includes_deductions ? bandDeductionsTotal : 0);
+                      const levelNet = workRial
+                        + (level.includes_additions ? levelAdditionsTotal : 0)
+                        - (level.includes_deductions ? levelDeductionsTotal : 0);
                       return (
-                        <Box key={`band-${index}`} sx={{
+                        <Box key={`level-${index}`} sx={{
                           p: 0.9, mb: 0.8, borderRadius: '12px',
                           border: `1px solid ${alpha(formKind.color, 0.16)}`,
                           bgcolor: alpha(formKind.color, 0.02),
                         }}>
-                          <Box sx={{
-                            display: 'grid', gap: 0.6, alignItems: 'center',
-                            gridTemplateColumns: { xs: '1fr 1fr', sm: '1.3fr 1.2fr 0.8fr 0.8fr auto' },
-                          }}>
-                          <TextField size="small" fullWidth label="بند تجمعی" placeholder="مثلاً خرید یا بند الف"
-                            value={band.title || ''} onChange={(event) => bandEditor?.onTitle(index, event.target.value)} />
-                          <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
-                            label={`مبلغ تجمعی بند (${formCurrencyLabel})`}
-                            value={isRial ? amountRial : amountForeign}
-                            onChange={(value) => bandEditor?.onAmount(index, value)} />
-                          <MoneyInput size="small" fullWidth allowDecimals={false} label="دوره قبل (ریال)"
-                            value={previousRial} onChange={() => {}} InputProps={{ readOnly: true }} />
-                          <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد بند (ریال)"
-                            value={workRial} onChange={() => {}} InputProps={{ readOnly: true }} />
-                          <Stack direction="row" alignItems="center" spacing={0.3}>
-                            <Tooltip title={`کارکرد ارزی: ${formatPersianNumber(workForeign)} ${formCurrencyLabel}`}>
-                              <Chip size="small" label={formatPersianNumber(workForeign)}
-                                sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
+                          <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mb: 0.7 }}>
+                            <TextField size="small" fullWidth label="عنوان سطح" placeholder="مثلاً خرید یا فاز یک"
+                              value={level.title || ''} onChange={(event) => levelEditor?.onTitle(index, event.target.value)} />
+                            <Tooltip title="حذف سطح">
+                              <IconButton size="small" color="error" aria-label="حذف سطح" onClick={() => levelEditor?.onRemove(index)}>
+                                <RemoveCircleIcon fontSize="small" />
+                              </IconButton>
                             </Tooltip>
-                            <IconButton size="small" color="error" aria-label="حذف بند" onClick={() => bandEditor?.onRemove(index)}>
-                              <RemoveCircleIcon fontSize="small" />
-                            </IconButton>
                           </Stack>
-                          </Box>
+                          <Grid container spacing={0.8}>
+                            <Grid item xs={12} sm={6}>
+                              <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                                label={`مبلغ تجمعی این سطح (${formCurrencyLabel})`}
+                                value={isRial ? amountRial : amountForeign}
+                                onChange={(value) => levelEditor?.onAmount(index, value)} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <MoneyInput size="small" fullWidth allowDecimals={false} label="معادل ریالی مبلغ تجمعی"
+                                value={amountRial} onChange={() => {}} InputProps={{ readOnly: true }} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                                label={`مبلغ تجمعی دوره قبل (${formCurrencyLabel})`}
+                                value={previousForeign} onChange={() => {}} InputProps={{ readOnly: true }} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ تجمعی دوره قبل (ریال)"
+                                value={previousRial} onChange={() => {}} InputProps={{ readOnly: true }} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                                label={`کارکرد این سطح (${formCurrencyLabel})`}
+                                value={workForeign} onChange={() => {}} InputProps={{ readOnly: true }} />
+                            </Grid>
+                            <Grid item xs={12} sm={6}>
+                              <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد این سطح (ریال)"
+                                value={workRial} onChange={() => {}} InputProps={{ readOnly: true }} />
+                            </Grid>
+                          </Grid>
 
                           <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 0.4 }}>
                             <FormControlLabel sx={{ m: 0 }}
-                              control={<Switch size="small" checked={Boolean(band.includes_additions)} onChange={(event) => bandEditor?.onToggle(index, 'includes_additions', event.target.checked)} />}
+                              control={<Switch size="small" checked={Boolean(level.includes_additions)} onChange={(event) => levelEditor?.onToggle(index, 'includes_additions', event.target.checked)} />}
                               label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: GREEN }}>شامل اضافات</Typography>} />
                             <FormControlLabel sx={{ m: 0 }}
-                              control={<Switch size="small" checked={Boolean(band.includes_deductions)} onChange={(event) => bandEditor?.onToggle(index, 'includes_deductions', event.target.checked)} />}
+                              control={<Switch size="small" checked={Boolean(level.includes_deductions)} onChange={(event) => levelEditor?.onToggle(index, 'includes_deductions', event.target.checked)} />}
                               label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: RED }}>شامل کسورات</Typography>} />
-                            <Chip size="small" label={`خالص بند: ${formatPersianNumber(bandNet)} ${isRial ? formCurrencyLabel : 'ریال'}`}
+                            <Chip size="small" label={`خالص سطح: ${formatPersianNumber(levelNet)} ${isRial ? formCurrencyLabel : 'ریال'}`}
                               sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.1), color: formKind.color }} />
                           </Stack>
 
-                          {band.includes_additions ? (
+                          {level.includes_additions ? (
                             <Box sx={{ mt: 0.5, pl: 1, borderLeft: `2px solid ${alpha(GREEN, 0.3)}` }}>
-                              {(Array.isArray(band.additions) ? band.additions : []).map((item, rowIndex) => (
-                                <Box key={`band-add-${rowIndex}`} sx={{
+                              {(Array.isArray(level.additions) ? level.additions : []).map((item, rowIndex) => (
+                                <Box key={`level-add-${rowIndex}`} sx={{
                                   display: 'grid', gap: 0.5, mt: 0.5, alignItems: 'center',
                                   gridTemplateColumns: { xs: '1fr 1fr', sm: '1.6fr 0.6fr 1fr auto' },
                                 }}>
                                   <TextField size="small" fullWidth placeholder="شرح اضافه" value={item.description || ''}
-                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'additions', rowIndex, 'description', event.target.value)} />
+                                    onChange={(event) => levelEditor?.onUpdateItem(index, 'additions', rowIndex, 'description', event.target.value)} />
                                   <TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0}
                                     inputProps={{ step: 'any', min: 0 }}
-                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'additions', rowIndex, 'percent', event.target.value)} />
+                                    onChange={(event) => levelEditor?.onUpdateItem(index, 'additions', rowIndex, 'percent', event.target.value)} />
                                   <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4} placeholder="مبلغ"
                                     value={item.amount_foreign ?? 0}
-                                    onChange={(value) => bandEditor?.onUpdateItem(index, 'additions', rowIndex, 'amount', value)} />
-                                  <IconButton size="small" color="error" aria-label="حذف اضافه بند"
-                                    onClick={() => bandEditor?.onRemoveItem(index, 'additions', rowIndex)}>
+                                    onChange={(value) => levelEditor?.onUpdateItem(index, 'additions', rowIndex, 'amount', value)} />
+                                  <IconButton size="small" color="error" aria-label="حذف اضافه سطح"
+                                    onClick={() => levelEditor?.onRemoveItem(index, 'additions', rowIndex)}>
                                     <RemoveCircleIcon fontSize="small" />
                                   </IconButton>
                                 </Box>
                               ))}
                               <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
-                                {(bandEditor?.additionList || []).map((definition) => (
-                                  <Chip key={`band-add-def-${definition.id}`} size="small"
+                                {(levelEditor?.additionList || []).map((definition) => (
+                                  <Chip key={`level-add-def-${definition.id}`} size="small"
                                     label={definition.description || definition.code}
-                                    onClick={() => bandEditor?.onChooseItem(index, 'additions', definition)}
+                                    onClick={() => levelEditor?.onChooseItem(index, 'additions', definition)}
                                     sx={{ height: 20, fontSize: 10.5, bgcolor: '#ecfdf5', color: GREEN }} />
                                 ))}
                               </Stack>
                               <Button size="small" startIcon={<AddCircleIcon />} sx={{ mt: 0.2, color: GREEN, fontSize: 11.5 }}
-                                onClick={() => bandEditor?.onAddItem(index, 'additions')}>افزودن اضافه بند</Button>
+                                onClick={() => levelEditor?.onAddItem(index, 'additions')}>افزودن اضافه سطح</Button>
                             </Box>
                           ) : null}
-                          {band.includes_deductions ? (
+                          {level.includes_deductions ? (
                             <Box sx={{ mt: 0.5, pl: 1, borderLeft: `2px solid ${alpha(RED, 0.3)}` }}>
-                              {(Array.isArray(band.deductions) ? band.deductions : []).map((item, rowIndex) => (
-                                <Box key={`band-ded-${rowIndex}`} sx={{
+                              {(Array.isArray(level.deductions) ? level.deductions : []).map((item, rowIndex) => (
+                                <Box key={`level-ded-${rowIndex}`} sx={{
                                   display: 'grid', gap: 0.5, mt: 0.5, alignItems: 'center',
                                   gridTemplateColumns: { xs: '1fr 1fr', sm: '1.6fr 0.6fr 1fr auto' },
                                 }}>
                                   <TextField size="small" fullWidth placeholder="عنوان کسور" value={item.title || ''}
-                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'deductions', rowIndex, 'title', event.target.value)} />
+                                    onChange={(event) => levelEditor?.onUpdateItem(index, 'deductions', rowIndex, 'title', event.target.value)} />
                                   <TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0}
                                     inputProps={{ step: 'any', min: 0 }}
-                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'deductions', rowIndex, 'percent', event.target.value)} />
+                                    onChange={(event) => levelEditor?.onUpdateItem(index, 'deductions', rowIndex, 'percent', event.target.value)} />
                                   <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4} placeholder="مبلغ"
                                     value={item.amount_foreign ?? 0}
-                                    onChange={(value) => bandEditor?.onUpdateItem(index, 'deductions', rowIndex, 'amount', value)} />
-                                  <IconButton size="small" color="error" aria-label="حذف کسور بند"
-                                    onClick={() => bandEditor?.onRemoveItem(index, 'deductions', rowIndex)}>
+                                    onChange={(value) => levelEditor?.onUpdateItem(index, 'deductions', rowIndex, 'amount', value)} />
+                                  <IconButton size="small" color="error" aria-label="حذف کسور سطح"
+                                    onClick={() => levelEditor?.onRemoveItem(index, 'deductions', rowIndex)}>
                                     <RemoveCircleIcon fontSize="small" />
                                   </IconButton>
                                 </Box>
                               ))}
                               <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
-                                {(bandEditor?.deductionList || []).map((definition) => (
-                                  <Chip key={`band-ded-def-${definition.id}`} size="small"
+                                {(levelEditor?.deductionList || []).map((definition) => (
+                                  <Chip key={`level-ded-def-${definition.id}`} size="small"
                                     label={definition.description || definition.code}
-                                    onClick={() => bandEditor?.onChooseItem(index, 'deductions', definition)}
+                                    onClick={() => levelEditor?.onChooseItem(index, 'deductions', definition)}
                                     sx={{ height: 20, fontSize: 10.5, bgcolor: '#fff1f2', color: RED }} />
                                 ))}
                               </Stack>
                               <Button size="small" startIcon={<AddCircleIcon />} sx={{ mt: 0.2, color: RED, fontSize: 11.5 }}
-                                onClick={() => bandEditor?.onAddItem(index, 'deductions')}>افزودن کسور بند</Button>
+                                onClick={() => levelEditor?.onAddItem(index, 'deductions')}>افزودن کسور سطح</Button>
                             </Box>
                           ) : null}
                         </Box>
                       );
-                    }) : <Typography sx={{ fontSize: 12, color: MUTED }}>هنوز بندی اضافه نشده است.</Typography>}
-                    {(bandEditor?.suggestions || []).length ? (
+                    }) : <Typography sx={{ fontSize: 12, color: MUTED }}>هنوز سطحی اضافه نشده است.</Typography>}
+                    {(levelEditor?.suggestions || []).length ? (
                       <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mb: 0.6 }}>
-                        {bandEditor.suggestions.map((title) => (
-                          <Chip key={title} size="small" label={title} onClick={() => bandEditor.onChoose(title)}
+                        {levelEditor.suggestions.map((title) => (
+                          <Chip key={title} size="small" label={title} onClick={() => levelEditor.onChoose(title)}
                             sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
                         ))}
                       </Stack>
                     ) : null}
                     <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
-                      <Button size="small" startIcon={<AddCircleIcon />} onClick={() => bandEditor?.onAdd()}
-                        sx={{ color: formKind.color, fontSize: 12 }}>افزودن بند</Button>
+                      <Button size="small" startIcon={<AddCircleIcon />} onClick={() => levelEditor?.onAdd()}
+                        sx={{ color: formKind.color, fontSize: 12 }}>افزودن سطح</Button>
                       <Chip size="small"
-                        label={`جمع تجمعی بندها: ${formatPersianNumber(isRial ? cumulativeThis : cumulativeThisForeign)} ${formCurrencyLabel}`}
+                        label={`جمع تجمعی سطوح: ${formatPersianNumber(isRial ? cumulativeThis : cumulativeThisForeign)} ${formCurrencyLabel}`}
                         sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
                     </Stack>
                   </Box>

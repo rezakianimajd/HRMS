@@ -821,11 +821,11 @@ class StatementCalculationTests(TestCase):
         self.assertEqual(second.cumulative_previous_amount, Decimal('2000000'))
         self.assertEqual(second.work_done, Decimal('3000000'))
 
-    def test_multi_band_statement_keeps_independent_cumulative_chains(self):
-        """سند چند بندی = صورت‌وضعیت عادی (کارکرد می‌تواند صفر باشد) + بندهای مستقل."""
+    def test_multi_level_statement_keeps_independent_cumulative_chains(self):
+        """سند چند سطحی = صورت‌وضعیت عادی (کارکرد می‌تواند صفر باشد) + سطوح مستقل."""
         first = StatementSerializer(data=self._payload(
             amount=0, number='01', kind='multi',
-            bands=[
+            levels=[
                 {
                     'title': 'خرید', 'amount': 1_000_000, 'includes_additions': True,
                     'additions': [{
@@ -845,15 +845,15 @@ class StatementCalculationTests(TestCase):
         # اضافات فقط برای بندی که «شامل اضافات» انتخاب شده: ۱۰٪ × ۱٬۰۰۰٬۰۰۰
         self.assertEqual(first_row.additions_total, Decimal('100000'))
         self.assertEqual(first_row.net_amount, Decimal('1600000'))
-        bands = {band['title']: band for band in first_row.bands}
-        self.assertEqual(bands['خرید']['work'], 1_000_000.0)
-        self.assertEqual(bands['خرید']['net_amount'], 1_100_000.0)
-        self.assertEqual(bands['بند الف']['work'], 500_000.0)
-        self.assertEqual(bands['بند الف']['additions'], [])
+        levels = {level['title']: level for level in first_row.levels}
+        self.assertEqual(levels['خرید']['work'], 1_000_000.0)
+        self.assertEqual(levels['خرید']['net_amount'], 1_100_000.0)
+        self.assertEqual(levels['بند الف']['work'], 500_000.0)
+        self.assertEqual(levels['بند الف']['additions'], [])
 
         second = StatementSerializer(data=self._payload(
             amount=0, number='02', kind='multi', date='2025-09-01',
-            bands=[
+            levels=[
                 {
                     'title': 'خرید', 'amount': 1_600_000, 'includes_additions': True,
                     'additions': [{
@@ -872,17 +872,17 @@ class StatementCalculationTests(TestCase):
         second_row.refresh_from_db()
         self.assertEqual(second_row.cumulative_previous_amount, Decimal('0'))
         self.assertEqual(second_row.work_done, Decimal('1000000'))
-        works = {band['title']: band['work'] for band in second_row.bands}
+        works = {level['title']: level['work'] for level in second_row.levels}
         self.assertEqual(works['خرید'], 600_000.0)
         self.assertEqual(works['بند الف'], 400_000.0)
         # اضافات بند بر مبنای کارکرد همان بند محاسبه می‌شود: ۱۰٪ × ۶۰۰٬۰۰۰
         self.assertEqual(second_row.additions_total, Decimal('60000'))
 
-    def test_multi_band_adds_own_work_to_band_work(self):
-        """کارکرد سطح سند و کارکرد بندها با هم جمع می‌شوند."""
+    def test_multi_level_adds_own_work_to_level_work(self):
+        """کارکرد سطح سند و کارکرد سطوح با هم جمع می‌شوند."""
         serializer = StatementSerializer(data=self._payload(
             amount=2_000_000, number='01', kind='multi',
-            bands=[{'title': 'خرید', 'amount': 1_000_000}],
+            levels=[{'title': 'خرید', 'amount': 1_000_000}],
         ))
         self.assertTrue(serializer.is_valid(), serializer.errors)
         row = serializer.save(company=self.company)
@@ -891,20 +891,35 @@ class StatementCalculationTests(TestCase):
         self.assertEqual(row.work_done, Decimal('3000000'))
         self.assertEqual(row.net_amount, Decimal('3000000'))
 
-    def test_multi_band_rejects_lower_band_cumulative(self):
+    def test_multi_level_blocks_simple_statements_afterwards(self):
+        """پس از ثبت سند چند سطحی، سند عادی جدید برای همان قرارداد مجاز نیست."""
         created = StatementSerializer(data=self._payload(
             amount=0, number='01', kind='multi',
-            bands=[{'title': 'خرید', 'amount': 1_000_000}],
+            levels=[{'title': 'خرید', 'amount': 400_000}],
+        ))
+        self.assertTrue(created.is_valid(), created.errors)
+        created.save(company=self.company)
+
+        simple = StatementSerializer(data=self._payload(
+            amount=5_000_001, number='02', kind='statement',
+        ))
+        self.assertFalse(simple.is_valid())
+        self.assertIn('kind', simple.errors)
+
+    def test_multi_level_rejects_lower_level_cumulative(self):
+        created = StatementSerializer(data=self._payload(
+            amount=0, number='01', kind='multi',
+            levels=[{'title': 'خرید', 'amount': 1_000_000}],
         ))
         self.assertTrue(created.is_valid(), created.errors)
         created.save(company=self.company)
 
         invalid = StatementSerializer(data=self._payload(
             amount=0, number='02', kind='multi',
-            bands=[{'title': 'خرید', 'amount': 900_000}],
+            levels=[{'title': 'خرید', 'amount': 900_000}],
         ))
         self.assertFalse(invalid.is_valid())
-        self.assertIn('bands', invalid.errors)
+        self.assertIn('levels', invalid.errors)
 
 
 class ContractApprovalDecideTests(SimpleTestCase):

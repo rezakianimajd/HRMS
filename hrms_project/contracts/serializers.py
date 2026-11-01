@@ -180,40 +180,41 @@ class InvoiceSerializer(serializers.ModelSerializer):
 
 
 # ---------------------------------------------------------------------------
-# صورت‌وضعیت چند بندی (multi-band): هر بند زنجیرهٔ تجمعی مستقل خودش را دارد.
+# صورت‌وضعیت چند سطحی (multi-level): هر سطح یک بلوک کامل «کارکرد و مبالغ»
+# با زنجیرهٔ تجمعی مستقل است.
 # ---------------------------------------------------------------------------
-BAND_KINDS = (Statement.Kind.STATEMENT, Statement.Kind.MULTI)
+LEVEL_KINDS = (Statement.Kind.STATEMENT, Statement.Kind.MULTI)
 ADJUSTMENT_KINDS = (Statement.Kind.INCREASE, Statement.Kind.DECREASE)
 
 
-def normalize_band_title(value):
-    """عنوان بند را برای تطبیق زنجیرهٔ تجمعی یکدست می‌کند."""
+def normalize_level_title(value):
+    """عنوان سطح را برای تطبیق زنجیرهٔ تجمعی یکدست می‌کند."""
     text = str(value or '').replace('\u200c', ' ')
     return ' '.join(text.split())
 
 
-def statement_band_key(value):
-    return normalize_band_title(value).lower()
+def statement_level_key(value):
+    return normalize_level_title(value).lower()
 
 
-def previous_band_cumulatives(contract, *, before_pk=None):
-    """آخرین مبلغ تجمعی هر بندِ ثبت‌شده در صورت‌وضعیت‌های چند بندی قبلی قرارداد."""
+def previous_level_cumulatives(contract, *, before_pk=None):
+    """آخرین مبلغ تجمعی (ریالی/ارزی) هر سطح در اسناد چند سطحی قبلی قرارداد."""
     if not contract:
         return {}
     queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.MULTI)
     if before_pk:
         queryset = queryset.filter(pk__lt=before_pk)
     cumulative = {}
-    for row in queryset.order_by('pk').only('bands'):
-        for band in row.bands or []:
-            if not isinstance(band, dict):
+    for row in queryset.order_by('pk').only('levels'):
+        for level in row.levels or []:
+            if not isinstance(level, dict):
                 continue
-            key = statement_band_key(band.get('title'))
+            key = statement_level_key(level.get('title'))
             if not key:
                 continue
             cumulative[key] = (
-                Decimal(str(band.get('amount') or 0)),
-                Decimal(str(band.get('amount_foreign') or 0)),
+                Decimal(str(level.get('amount') or 0)),
+                Decimal(str(level.get('amount_foreign') or 0)),
             )
     return cumulative
 
@@ -294,7 +295,7 @@ class StatementSerializer(serializers.ModelSerializer):
             'value_added_tax', 'other_additions',
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
-            'bands',
+            'levels',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'currency_exchange_rate',
             'is_approved', 'description', 'documents',
@@ -313,30 +314,30 @@ class StatementSerializer(serializers.ModelSerializer):
         return kind in (Statement.Kind.INCREASE, Statement.Kind.DECREASE)
 
     def _previous_cumulative(self, contract):
-        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی/چند بندی قبلی (تعدیل‌ها وارد زنجیره نمی‌شوند).
+        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی/چند سطحی قبلی (تعدیل‌ها وارد زنجیره نمی‌شوند).
 
-        در اسناد چند بندی، «کارکرد دوره» شامل کارکرد بندها هم هست؛ پس جمع
+        در اسناد چند سطحی، «کارکرد دوره» شامل کارکرد بندها هم هست؛ پس جمع
         کارکرد فقط از اسناد عادی گرفته می‌شود تا زنجیرهٔ تجمعی سطح سند
         دست‌نخورده بماند و مبنای دورهٔ بعد با کارکرد بندها بالا نرود.
         """
         if not contract:
             return Decimal('0')
         current_pk = getattr(self.instance, 'pk', None)
-        band_queryset = Statement.objects.filter(contract=contract, kind__in=BAND_KINDS)
+        level_queryset = Statement.objects.filter(contract=contract, kind__in=LEVEL_KINDS)
         work_queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.STATEMENT)
         if current_pk:
-            band_queryset = band_queryset.filter(pk__lt=current_pk)
+            level_queryset = level_queryset.filter(pk__lt=current_pk)
             work_queryset = work_queryset.filter(pk__lt=current_pk)
-        previous = band_queryset.order_by('-pk').only('amount').first()
+        previous = level_queryset.order_by('-pk').only('amount').first()
         previous_amount = Decimal(previous.amount or 0) if previous else Decimal('0')
         prior_work = work_queryset.aggregate(total=Sum('work_done'))['total'] or 0
         return max(previous_amount, Decimal(str(prior_work or 0)))
 
     def _previous_foreign_cumulative(self, contract):
-        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت عادی/چند بندی قبلی."""
+        """مبلغ تجمعی ارزی آخرین صورت‌وضعیت عادی/چند سطحی قبلی."""
         if not contract:
             return Decimal('0')
-        queryset = Statement.objects.filter(contract=contract, kind__in=BAND_KINDS)
+        queryset = Statement.objects.filter(contract=contract, kind__in=LEVEL_KINDS)
         current_pk = getattr(self.instance, 'pk', None)
         prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
         previous = prior.order_by('-pk').only('foreign_amount').first()
@@ -359,8 +360,20 @@ class StatementSerializer(serializers.ModelSerializer):
             Decimal(previous.adjustment_foreign_amount or 0),
         )
 
-    def _apply_multi_bands(self, attrs, contract, rate, is_foreign):
-        """صورت‌وضعیت چند بندی = یک صورت‌وضعیت عادی + چند «بخش کارکرد و مبالغ».
+    def _ensure_single_level_chain(self, contract):
+        """اگر قرارداد سند چند سطحی دارد، اسناد جدید هم باید چند سطحی باشند."""
+        if not contract:
+            return
+        if Statement.objects.filter(contract=contract, kind=Statement.Kind.MULTI).exists():
+            raise serializers.ValidationError({
+                'kind': (
+                    'برای این قرارداد صورت‌وضعیت چند سطحی ثبت شده است؛ اسناد بعدی هم '
+                    'باید چند سطحی باشند.'
+                ),
+            })
+
+    def _apply_multi_levels(self, attrs, contract, rate, is_foreign):
+        """صورت‌وضعیت چند سطحی = یک صورت‌وضعیت عادی + چند «بخش کارکرد و مبالغ».
 
         - سطح سند دقیقاً مثل صورت‌وضعیت عادی محاسبه می‌شود (کارکرد دوره می‌تواند صفر باشد).
         - هر بند زنجیرهٔ تجمعی مستقل خودش را دارد و می‌تواند به‌صورت اختیاری
@@ -427,106 +440,105 @@ class StatementSerializer(serializers.ModelSerializer):
             (Decimal(str(item.get('amount') or 0)) for item in own_deductions), Decimal('0'),
         )
 
-        submitted = attrs.get('bands', getattr(instance, 'bands', []) or [])
+        submitted = attrs.get('levels', getattr(instance, 'levels', []) or [])
         if not isinstance(submitted, (list, tuple)):
             submitted = []
         current_pk = getattr(instance, 'pk', None)
-        cumulative = previous_band_cumulatives(contract, before_pk=current_pk or None)
+        cumulative = previous_level_cumulatives(contract, before_pk=current_pk or None)
 
-        bands = []
+        levels = []
         seen = set()
-        band_work_total = Decimal('0')
-        band_work_foreign_total = Decimal('0')
-        band_additions_total = Decimal('0')
-        band_deductions_total = Decimal('0')
+        level_work_total = Decimal('0')
+        level_work_foreign_total = Decimal('0')
+        level_additions_total = Decimal('0')
+        level_deductions_total = Decimal('0')
 
         for item in submitted:
             if not isinstance(item, dict):
                 continue
-            title = normalize_band_title(item.get('title') or item.get('name'))
+            title = normalize_level_title(item.get('title') or item.get('name'))
             if not title:
                 continue
-            key = statement_band_key(title)
+            key = statement_level_key(title)
             if key in seen:
                 raise serializers.ValidationError({
-                    'bands': f'بند «{title}» در همین سند تکراری است؛ عنوان‌ها باید یکتا باشند.',
+                    'levels': f'بند «{title}» در همین سند تکراری است؛ عنوان‌ها باید یکتا باشند.',
                 })
             seen.add(key)
             previous_rial, previous_foreign = cumulative.get(key, (Decimal('0'), Decimal('0')))
             submitted_foreign = item.get('amount_foreign')
             if is_foreign and submitted_foreign not in (None, ''):
-                band_foreign = Decimal(str(submitted_foreign or 0)).quantize(
+                level_foreign = Decimal(str(submitted_foreign or 0)).quantize(
                     Decimal('0.0001'), rounding=ROUND_HALF_UP,
                 )
-                band_rial = previous_rial + ((band_foreign - previous_foreign) * rate).quantize(
+                level_rial = previous_rial + ((level_foreign - previous_foreign) * rate).quantize(
                     Decimal('1'), rounding=ROUND_HALF_UP,
                 )
             else:
-                band_rial = Decimal(str(item.get('amount') or 0)).quantize(Decimal('1'))
+                level_rial = Decimal(str(item.get('amount') or 0)).quantize(Decimal('1'))
                 if is_foreign:
-                    band_foreign = (
-                        previous_foreign + (band_rial - previous_rial) / rate
+                    level_foreign = (
+                        previous_foreign + (level_rial - previous_rial) / rate
                     ).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
                 else:
-                    band_foreign = band_rial
-            if band_rial < previous_rial:
+                    level_foreign = level_rial
+            if level_rial < previous_rial:
                 raise serializers.ValidationError({
-                    'bands': (
+                    'levels': (
                         f'مبلغ تجمعی بند «{title}» نمی‌تواند کمتر از مبلغ تجمعی دوره قبل '
                         f'({previous_rial}) باشد.'
                     ),
                 })
-            band_work = band_rial - previous_rial
-            band_work_foreign = max(Decimal('0'), band_foreign - previous_foreign)
+            level_work = level_rial - previous_rial
+            level_work_foreign = max(Decimal('0'), level_foreign - previous_foreign)
             includes_additions = bool(item.get('includes_additions'))
             includes_deductions = bool(item.get('includes_deductions'))
-            band_additions = normalize_percent_items(
-                item.get('additions'), band_work,
+            level_additions = normalize_percent_items(
+                item.get('additions'), level_work,
             ) if includes_additions else []
-            band_deductions = normalize_percent_items(
-                item.get('deductions'), band_work,
+            level_deductions = normalize_percent_items(
+                item.get('deductions'), level_work,
             ) if includes_deductions else []
-            band_additions_sum = sum(
-                (Decimal(str(row.get('amount') or 0)) for row in band_additions), Decimal('0'),
+            level_additions_sum = sum(
+                (Decimal(str(row.get('amount') or 0)) for row in level_additions), Decimal('0'),
             )
-            band_deductions_sum = sum(
-                (Decimal(str(row.get('amount') or 0)) for row in band_deductions), Decimal('0'),
+            level_deductions_sum = sum(
+                (Decimal(str(row.get('amount') or 0)) for row in level_deductions), Decimal('0'),
             )
-            bands.append({
+            levels.append({
                 **item,
                 'title': title,
                 'includes_additions': includes_additions,
                 'includes_deductions': includes_deductions,
                 'previous_amount': float(previous_rial),
-                'amount': float(band_rial),
+                'amount': float(level_rial),
                 'previous_foreign': float(previous_foreign),
-                'amount_foreign': float(band_foreign),
-                'work': float(band_work),
-                'work_foreign': float(band_work_foreign),
-                'additions': band_additions,
-                'deductions': band_deductions,
-                'additions_total': float(band_additions_sum),
-                'deductions_total': float(band_deductions_sum),
-                'net_amount': float(band_work + band_additions_sum - band_deductions_sum),
+                'amount_foreign': float(level_foreign),
+                'work': float(level_work),
+                'work_foreign': float(level_work_foreign),
+                'additions': level_additions,
+                'deductions': level_deductions,
+                'additions_total': float(level_additions_sum),
+                'deductions_total': float(level_deductions_sum),
+                'net_amount': float(level_work + level_additions_sum - level_deductions_sum),
             })
-            cumulative[key] = (band_rial, band_foreign)
-            band_work_total += band_work
-            band_work_foreign_total += band_work_foreign
-            band_additions_total += band_additions_sum
-            band_deductions_total += band_deductions_sum
-        # __MULTI_BANDS_TAIL__
-        if not bands:
+            cumulative[key] = (level_rial, level_foreign)
+            level_work_total += level_work
+            level_work_foreign_total += level_work_foreign
+            level_additions_total += level_additions_sum
+            level_deductions_total += level_deductions_sum
+        if not levels:
             raise serializers.ValidationError({
-                'bands': 'برای صورت‌وضعیت چند بندی، حداقل یک بند با عنوان و مبلغ لازم است.',
+                'levels': 'برای صورت‌وضعیت چند سطحی، حداقل یک بند با عنوان و مبلغ لازم است.',
             })
 
-        additions_total = own_additions_total + band_additions_total
-        deductions_total = own_deductions_total + band_deductions_total
-        work_total = own_work + band_work_total
-        work_foreign_total = own_work_foreign + band_work_foreign_total
+        additions_total = own_additions_total + level_additions_total
+        deductions_total = own_deductions_total + level_deductions_total
+        work_total = own_work + level_work_total
+        work_foreign_total = own_work_foreign + level_work_foreign_total
         adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)
 
-        attrs['bands'] = bands
+        attrs['levels'] = levels
         attrs['kind'] = Statement.Kind.MULTI
         attrs['number'] = normalize_statement_number(
             attrs.get('number', getattr(instance, 'number', '')),
@@ -569,7 +581,7 @@ class StatementSerializer(serializers.ModelSerializer):
             key in attrs for key in (
                 'amount', 'date', 'contract', 'additions', 'deductions', 'kind',
                 'value_added_tax', 'other_additions', 'currency', 'exchange_rate', 'foreign_amount',
-                'adjustment_work_done', 'adjustment_foreign_work_done', 'bands',
+                'adjustment_work_done', 'adjustment_foreign_work_done', 'levels',
             )
         ):
             return attrs
@@ -587,8 +599,12 @@ class StatementSerializer(serializers.ModelSerializer):
         is_foreign = rate > 1 and currency_code != 'IRR'
         kind = attrs.get('kind') or getattr(instance, 'kind', Statement.Kind.STATEMENT)
 
+        # پس از ثبت اولین سند چند سطحی، اسناد جدید این قرارداد باید چند سطحی باشند.
+        if kind == Statement.Kind.STATEMENT and instance is None:
+            self._ensure_single_level_chain(contract)
+
         if kind == Statement.Kind.MULTI:
-            return self._apply_multi_bands(attrs, contract, rate, is_foreign)
+            return self._apply_multi_levels(attrs, contract, rate, is_foreign)
 
         if self._is_adjustment_kind(kind):
             submitted_number = attrs.get('number', getattr(instance, 'number', ''))
