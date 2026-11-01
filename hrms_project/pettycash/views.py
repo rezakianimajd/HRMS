@@ -1853,7 +1853,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
         return Response({'results': results, 'count': len(results)})
 
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='by-category')
     def by_category(self, request):
         """هزینه به تفکیک سرفصل/دستهٔ هزینه."""
         company = self._company_or_error(request)
@@ -1889,7 +1889,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
             )
         return Response({'results': results, 'count': len(results)})
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get'], url_path='by-project')
     def by_project(self, request):
         """هزینه به تفکیک پروژه و مرکز هزینه."""
         company = self._company_or_error(request)

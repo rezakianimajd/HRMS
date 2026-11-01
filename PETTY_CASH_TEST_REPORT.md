@@ -80,7 +80,9 @@ python _run_petty_tests.py      # یا در سرور: python manage.py test pett
 | خطا | ریشه | اصلاح |
 |---|---|---|
 | `405 متد PATCH مجاز نیست` روی `/api/petty-cash-settings/current/` | دو اکشن DRF با `url_path='current'` تعریف شده بود؛ روتر فقط متد اولین اکشن (GET) را ثبت می‌کرد | ادغام در یک اکشن با `methods=['get','post','patch']` و تصمیم‌گیری بر اساس `request.method` |
-| تأیید زنده | `OPTIONS /api/petty-cash-settings/current/` → `Allow: GET, POST, PATCH, HEAD, OPTIONS` | ✅ |
+| `404` روی گزارش «هزینه به تفکیک سرفصل/پروژه» | DRF پیش‌فرض نام تابع را با `_` در مسیر می‌گذارد (`by_category`) ولی فرانت‌اند `by-category` صدا می‌زد | افزودن `url_path='by-category'` و `url_path='by-project'` به اکشن‌ها |
+| تأیید زنده | `OPTIONS /api/petty-cash-settings/current/` → `Allow: GET, POST, PATCH, HEAD, OPTIONS` · هر ۱۰ مسیر گزارش → `401` (وجود مسیر) | ✅ |
+| تست رگرسیون | `ReportRouteTests` با `resolve()` روی هر ۱۰ مسیر گزارش + بررسی متد PATCH تنظیمات (در مجموع ۲۳ تست) | ✅ |
 
 
 

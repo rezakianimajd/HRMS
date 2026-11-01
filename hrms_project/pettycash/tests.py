@@ -125,6 +125,40 @@ def _fake_user(pk=10, superuser=False, staff=False):
     return user
 
 
+class ReportRouteTests(SimpleTestCase):
+    """مسیرهای گزارش‌ها باید دقیقاً با آنچه فرانت‌اند صدا می‌زند یکی باشد (جلوگیری از 404)."""
+
+    PATHS = [
+        '/api/petty-cash-reports/details/',
+        '/api/petty-cash-reports/summary/',
+        '/api/petty-cash-reports/cashflow/',
+        '/api/petty-cash-reports/by-category/',
+        '/api/petty-cash-reports/by-project/',
+        '/api/petty-cash-reports/custodian-performance/',
+        '/api/petty-cash-reports/credit-vs-usage/',
+        '/api/petty-cash-reports/overdue/',
+        '/api/petty-cash-reports/settlements/',
+        '/api/petty-cash-reports/compliance-summary/',
+    ]
+
+    def test_all_report_paths_resolve(self):
+        from django.urls import Resolver404, resolve
+        from pettycash.views import PettyCashReportViewSet
+
+        for path in self.PATHS:
+            try:
+                match = resolve(path)
+            except Resolver404:
+                self.fail(f'مسیر گزارش وجود ندارد: {path}')
+            self.assertIs(match.func.cls, PettyCashReportViewSet, f'مسیر نامعتبر: {path}')
+
+    def test_settings_current_supports_patch(self):
+        from django.urls import resolve
+        match = resolve('/api/petty-cash-settings/current/')
+        self.assertIn('patch', match.func.actions)
+        self.assertIn('get', match.func.actions)
+
+
 class AccessControlTests(SimpleTestCase):
     def _settings(self, restrict=True, seniors=None):
         return SimpleNamespace(restrict_visibility=restrict, senior_manager_ids=seniors or [])
