@@ -729,27 +729,42 @@ const StatementEditorPage = () => {
       };
     }
     if (isMultiKind(kind)) {
-      // مبالغ هر بند در سمت سرور با زنجیرهٔ همان بند تسویه می‌شوند؛ اینجا فقط
-      // ورودی‌ها پاک‌سازی و جمع‌های نمایشی محاسبه می‌شوند.
+      // سطح سند مثل صورت‌وضعیت عادی است؛ بندها بخش‌های مستقل کارکرد با
+      // اضافات/کسورات اختیاری خودشان هستند.
+      const cleanBandItems = (items, type) => (Array.isArray(items) ? items : []).map((item) => (
+        type === 'addition'
+          ? {
+            code: item.code || '',
+            description: item.description || '',
+            percent: Number(item.percent) || 0,
+            amount: Math.max(0, Math.round(Number(item.amount) || 0)),
+            mode: item.mode || 'amount',
+          }
+          : {
+            title: item.title || '',
+            percent: Number(item.percent) || 0,
+            amount: Math.max(0, Math.round(Number(item.amount) || 0)),
+            note: item.note || '',
+            mode: item.mode || 'amount',
+          }
+      ));
       const cleanBands = (Array.isArray(payload.bands) ? payload.bands : [])
         .map((band) => ({
           title: String(band.title || '').trim(),
           amount: Math.max(0, Math.round(Number(band.amount) || 0)),
           amount_foreign: Math.max(0, Number(band.amount_foreign) || 0),
+          includes_additions: Boolean(band.includes_additions),
+          includes_deductions: Boolean(band.includes_deductions),
+          additions: band.includes_additions ? cleanBandItems(band.additions, 'addition') : [],
+          deductions: band.includes_deductions ? cleanBandItems(band.deductions, 'deduction') : [],
         }))
         .filter((band) => band.title);
-      const amount = cleanBands.reduce((sum, band) => sum + band.amount, 0);
-      const foreignAmount = cleanBands.reduce((sum, band) => sum + band.amount_foreign, 0);
-      // مبنای «دوره قبل» هر بند از زنجیرهٔ همان بند می‌آید (نه از تجمعی سند).
-      const previousOfBand = (band) => Number(
-        (bandPreviousMap[bandKeyOf(band.title)] || {}).amount || 0,
-      );
-      const previous = cleanBands.reduce((sum, band) => sum + previousOfBand(band), 0);
-      const work = cleanBands.reduce(
-        (sum, band) => sum + Math.max(0, band.amount - previousOfBand(band)),
-        0,
-      );
-      const additionsTotalValue = additions.reduce((sum, item) => sum + item.amount, 0);
+      const amount = Math.max(0, Math.round(Number(payload.amount) || 0));
+      const previous = Math.max(0, Math.round(Number(payload.cumulative_previous_amount) || 0));
+      const work = Math.max(0, amount - previous);
+      const valueAddedTax = Math.max(0, Math.round(Number(payload.value_added_tax) || 0));
+      const otherAdditions = Math.max(0, Math.round(Number(payload.other_additions) || 0));
+      const additionsTotalValue = additions.reduce((sum, item) => sum + item.amount, 0) + valueAddedTax + otherAdditions;
       const deductionsTotalValue = deductions.reduce((sum, item) => sum + item.amount, 0);
       return {
         contract: Number(payload.contract) || null,
@@ -757,11 +772,11 @@ const StatementEditorPage = () => {
         kind,
         date: payload.date || null,
         amount,
-        foreign_amount: foreignAmount,
+        foreign_amount: Math.max(0, Number(payload.amount_foreign) || 0),
         cumulative_previous_amount: previous,
         work_done: work,
-        value_added_tax: 0,
-        other_additions: 0,
+        value_added_tax: valueAddedTax,
+        other_additions: otherAdditions,
         additions: additions.map(({ code, description, percent, amount: itemAmount, mode }) => ({ code, description, percent, amount: itemAmount, mode })),
         additions_total: additionsTotalValue,
         deductions: deductions.map(({ title, description, percent, amount: itemAmount, note, mode }) => ({ title, description, percent, amount: itemAmount, note, mode })),
@@ -977,6 +992,10 @@ const StatementEditorPage = () => {
     const previous = bandPreviousMap[bandKeyOf(band.title)] || { amount: 0, amount_foreign: 0 };
     const amount = Math.max(0, num(band.amount));
     const amountForeign = num(band.amount_foreign);
+    const bandAdditionsTotal = (Array.isArray(band.additions) ? band.additions : [])
+      .reduce((sum, item) => sum + num(item.amount), 0);
+    const bandDeductionsTotal = (Array.isArray(band.deductions) ? band.deductions : [])
+      .reduce((sum, item) => sum + num(item.amount), 0);
     return {
       amount: totals.amount + amount,
       foreign: totals.foreign + amountForeign,
@@ -984,12 +1003,21 @@ const StatementEditorPage = () => {
       previousForeign: totals.previousForeign + num(previous.amount_foreign),
       work: totals.work + Math.max(0, amount - num(previous.amount)),
       workForeign: totals.workForeign + Math.max(0, amountForeign - num(previous.amount_foreign)),
+      additions: totals.additions + (band.includes_additions ? bandAdditionsTotal : 0),
+      deductions: totals.deductions + (band.includes_deductions ? bandDeductionsTotal : 0),
     };
   }, {
-    amount: 0, foreign: 0, previous: 0, previousForeign: 0, work: 0, workForeign: 0,
+    amount: 0,
+    foreign: 0,
+    previous: 0,
+    previousForeign: 0,
+    work: 0,
+    workForeign: 0,
+    additions: 0,
+    deductions: 0,
   });
-  const cumulativePrev = isMultiForm ? bandsTotals.previous : num(form.cumulative_previous_amount);
-  const cumulativeThis = isMultiForm ? bandsTotals.amount : num(form.amount);
+  const cumulativePrev = num(form.cumulative_previous_amount);
+  const cumulativeThis = num(form.amount);
   const formCurrency = currencyList.find((currency) => String(currency.id) === String(form.currency)) || null;
   const formCurrencyLabel = normalizeCurrencyLabel(
     formCurrency?.name || formCurrency?.symbol || currencyLabel,
@@ -999,16 +1027,12 @@ const StatementEditorPage = () => {
   const rate = rateOverride !== '' && rateOverride != null ? normalizeRate(rateOverride) : baseRate;
   const displayRate = isRial ? 1 : rate;
   const displayValue = (rialValue) => (displayRate > 1 ? fromRial(rialValue, displayRate) : num(rialValue));
-  const cumulativePrevForeign = isMultiForm
-    ? bandsTotals.previousForeign
-    : (form.cumulative_previous_foreign != null
-      ? num(form.cumulative_previous_foreign)
-      : (displayRate > 1 ? fromRial(cumulativePrev, displayRate) : cumulativePrev));
-  const cumulativeThisForeign = isMultiForm
-    ? bandsTotals.foreign
-    : (form.amount_foreign != null
-      ? num(form.amount_foreign)
-      : (displayRate > 1 ? fromRial(cumulativeThis, displayRate) : cumulativeThis));
+  const cumulativePrevForeign = form.cumulative_previous_foreign != null
+    ? num(form.cumulative_previous_foreign)
+    : (displayRate > 1 ? fromRial(cumulativePrev, displayRate) : cumulativePrev);
+  const cumulativeThisForeign = form.amount_foreign != null
+    ? num(form.amount_foreign)
+    : (displayRate > 1 ? fromRial(cumulativeThis, displayRate) : cumulativeThis);
   const adjustmentSign = formKind.sign;
   const adjustmentWorkRial = adjustmentSign * Math.abs(num(form.adjustment_work_done));
   const adjustmentWorkForeign = adjustmentSign * Math.abs(
@@ -1022,16 +1046,25 @@ const StatementEditorPage = () => {
   const adjustmentCumulativeForeign = adjustmentPreviousForeign + adjustmentWorkForeign;
   const workDoneForeign = isAdjustmentForm
     ? adjustmentWorkForeign
-    : (isMultiForm ? bandsTotals.workForeign : Math.max(0, cumulativeThisForeign - cumulativePrevForeign));
+    : Math.max(0, cumulativeThisForeign - cumulativePrevForeign);
   const workDone = isAdjustmentForm
     ? adjustmentWorkRial
-    : (isMultiForm ? bandsTotals.work : Math.max(0, cumulativeThis - cumulativePrev));
+    : Math.max(0, cumulativeThis - cumulativePrev);
+  // در سند چند بندی، کارکرد و اضافات/کسورات بندها به سطح سند اضافه می‌شود.
+  const bandWorkRial = isMultiForm ? bandsTotals.work : 0;
+  const bandWorkForeign = isMultiForm ? bandsTotals.workForeign : 0;
+  const bandAdditionsRial = isMultiForm ? bandsTotals.additions : 0;
+  const bandDeductionsRial = isMultiForm ? bandsTotals.deductions : 0;
+  const totalWork = workDone + bandWorkRial;
+  const totalWorkForeign = workDoneForeign + bandWorkForeign;
+  const totalAdditions = additionsTotal + bandAdditionsRial;
+  const totalDeductions = deductionsTotal + bandDeductionsRial;
   const netAmount = isAdjustmentForm
     ? adjustmentWorkRial + additionsTotal - deductionsTotal
-    : workDone + additionsTotal - deductionsTotal;
+    : totalWork + totalAdditions - totalDeductions;
   const netAmountForeign = isAdjustmentForm
     ? adjustmentWorkForeign + displayValue(additionsTotal) - displayValue(deductionsTotal)
-    : workDoneForeign + displayValue(additionsTotal) - displayValue(deductionsTotal);
+    : totalWorkForeign + displayValue(totalAdditions) - displayValue(totalDeductions);
   const formContract = contractList.find((contract) => String(contract.id) === String(form.contract))
     || (String(form.contract) === String(contractId) ? selectedContract : null);
   const formContractAmount = contractAmountOf(formContract);
@@ -1182,7 +1215,7 @@ const StatementEditorPage = () => {
         amount: adjustment ? previous.cumulative_previous_amount : previous.amount,
         amount_foreign: adjustment ? previous.cumulative_previous_foreign : previous.amount_foreign,
         bands: multi
-          ? (existingBands.length ? existingBands : [{ title: '', amount: 0, amount_foreign: 0 }])
+          ? (existingBands.length ? existingBands : [emptyBand()])
           : [],
         number: previous.id || normalizeStatementNumber(previous.number)
           ? previous.number
@@ -1195,7 +1228,16 @@ const StatementEditorPage = () => {
     });
   };
 
-  const addBand = () => setField('bands', [...bands, { title: '', amount: 0, amount_foreign: 0 }]);
+  const emptyBand = (title = '', amount = 0, amountForeign = 0) => ({
+    title,
+    amount,
+    amount_foreign: amountForeign,
+    includes_additions: false,
+    includes_deductions: false,
+    additions: [],
+    deductions: [],
+  });
+  const addBand = () => setField('bands', [...bands, emptyBand()]);
   const removeBand = (index) => setField('bands', bands.filter((_, current) => current !== index));
   const updateBandTitle = (index, value) => setField('bands', bands.map((band, current) => (
     current === index ? { ...band, title: value } : band
@@ -1218,12 +1260,83 @@ const StatementEditorPage = () => {
   }));
   const chooseBand = (title) => {
     const previous = bandPreviousMap[bandKeyOf(title)] || { amount: 0, amount_foreign: 0 };
-    setField('bands', [...bands, {
+    setField('bands', [...bands, emptyBand(
       title,
-      amount: Number(previous.amount) || 0,
-      amount_foreign: Number(previous.amount_foreign) || 0,
-    }]);
+      Number(previous.amount) || 0,
+      Number(previous.amount_foreign) || 0,
+    )]);
   };
+  const bandWorkOf = (band) => {
+    const previous = bandPreviousMap[bandKeyOf(band?.title)] || { amount: 0 };
+    return Math.max(0, num(band?.amount) - num(previous.amount));
+  };
+  const toggleBandOption = (index, key, value) => setField('bands', bands.map((band, current) => (
+    current === index ? { ...band, [key]: value } : band
+  )));
+  const bandItemsOf = (band, kind) => (Array.isArray(band?.[kind]) ? band[kind] : []);
+  const addBandItem = (index, kind) => setField('bands', bands.map((band, current) => {
+    if (current !== index) return band;
+    const row = kind === 'additions'
+      ? { code: '', description: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' }
+      : { title: '', percent: 0, amount: 0, amount_foreign: 0, mode: 'amount' };
+    return {
+      ...band,
+      [kind]: [...bandItemsOf(band, kind), row],
+      [`includes_${kind}`]: true,
+    };
+  }));
+  const removeBandItem = (index, kind, rowIndex) => setField('bands', bands.map((band, current) => (
+    current === index
+      ? { ...band, [kind]: bandItemsOf(band, kind).filter((_, position) => position !== rowIndex) }
+      : band
+  )));
+  const updateBandItem = (index, kind, rowIndex, key, value) => setField('bands', bands.map((band, current) => {
+    if (current !== index) return band;
+    const percentBase = bandWorkOf(band);
+    const rows = bandItemsOf(band, kind).map((item, position) => {
+      if (position !== rowIndex) return item;
+      if (key === 'percent') {
+        const percent = Math.max(0, Number(value) || 0);
+        const amount = Math.round((percentBase * percent) / 100);
+        return { ...item, percent, amount, amount_foreign: fromRial(amount, displayRate), mode: 'percent' };
+      }
+      if (key === 'amount') {
+        const amountForeign = Math.max(0, Number(value) || 0);
+        const amount = toRial(amountForeign, displayRate);
+        const percent = percentBase > 0 ? Math.round((amount / percentBase) * 10000) / 100 : 0;
+        return { ...item, amount_foreign: amountForeign, amount, percent, mode: 'amount' };
+      }
+      return { ...item, [key]: value };
+    });
+    return { ...band, [kind]: rows };
+  }));
+  const chooseBandItem = (index, kind, definition) => setField('bands', bands.map((band, current) => {
+    if (current !== index) return band;
+    const percent = Number(definition.default_percent || 0);
+    const percentBase = bandWorkOf(band);
+    const amount = Math.round((percentBase * percent) / 100);
+    const row = kind === 'additions'
+      ? {
+        code: definition.code,
+        description: definition.description,
+        percent,
+        amount,
+        amount_foreign: fromRial(amount, displayRate),
+        mode: 'percent',
+      }
+      : {
+        title: definition.description || definition.code,
+        percent,
+        amount,
+        amount_foreign: fromRial(amount, displayRate),
+        mode: 'percent',
+      };
+    return {
+      ...band,
+      [kind]: [...bandItemsOf(band, kind), row],
+      [`includes_${kind}`]: true,
+    };
+  }));
 
   const changeCurrency = (currencyId) => {
     const nextCurrency = currencyList.find((currency) => String(currency.id) === String(currencyId));
@@ -1416,6 +1529,20 @@ const StatementEditorPage = () => {
         amount_foreign: band.amount_foreign != null
           ? Number(band.amount_foreign) || 0
           : fromRial(Number(band.amount) || 0, editRate),
+        includes_additions: Boolean(band.includes_additions),
+        includes_deductions: Boolean(band.includes_deductions),
+        additions: (Array.isArray(band.additions) ? band.additions : []).map((item) => ({
+          ...item,
+          amount_foreign: item.amount_foreign != null
+            ? Number(item.amount_foreign) || 0
+            : fromRial(Number(item.amount) || 0, editRate),
+        })),
+        deductions: (Array.isArray(band.deductions) ? band.deductions : []).map((item) => ({
+          ...item,
+          amount_foreign: item.amount_foreign != null
+            ? Number(item.amount_foreign) || 0
+            : fromRial(Number(item.amount) || 0, editRate),
+        })),
       })),
       documents: Array.isArray(row.documents) ? row.documents : [],
       pendingFiles: [],
@@ -1589,7 +1716,7 @@ const StatementEditorPage = () => {
         return;
       }
     }
-    if (!isAdjustmentForm && !isMultiForm && cumulativeThis < cumulativePrev) {
+    if (!isAdjustmentForm && cumulativeThis < cumulativePrev) {
       setError('مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.');
       return;
     }
@@ -1643,6 +1770,9 @@ const StatementEditorPage = () => {
         formKind={formKind}
         isAdjustmentForm={isAdjustmentForm}
         isMultiForm={isMultiForm}
+        totalWork={totalWork}
+        totalWorkForeign={totalWorkForeign}
+        bandTotals={bandsTotals}
         bandEditor={{
           bands,
           suggestions: bandSuggestions,
@@ -1652,6 +1782,13 @@ const StatementEditorPage = () => {
           onTitle: updateBandTitle,
           onAmount: updateBandAmount,
           onChoose: chooseBand,
+          onToggle: toggleBandOption,
+          onAddItem: addBandItem,
+          onRemoveItem: removeBandItem,
+          onUpdateItem: updateBandItem,
+          onChooseItem: chooseBandItem,
+          additionList,
+          deductionList,
         }}
         adjustmentPrevious={adjustmentPrevious}
         adjustmentPreviousForeign={adjustmentPreviousForeign}
@@ -2028,7 +2165,9 @@ const StatementEditorPage = () => {
 const StatementEditorView = ({
   onClose, form, setForm, contract, company, currencyList, additionList, deductionList,
   additions, previewAdditions, deductions, additionsTotal, deductionsTotal,
-  formKind, isAdjustmentForm, isMultiForm = false, bandEditor = null, adjustmentPrevious, adjustmentPreviousForeign,
+  formKind, isAdjustmentForm, isMultiForm = false, bandEditor = null,
+  totalWork = 0, totalWorkForeign = 0, bandTotals = null,
+  adjustmentPrevious, adjustmentPreviousForeign,
   adjustmentCumulative, adjustmentCumulativeForeign,
   adjustmentWorkRial, adjustmentWorkForeign,
   cumulativePrev, cumulativePrevForeign, cumulativeThis, cumulativeThisForeign,
@@ -2081,8 +2220,8 @@ const StatementEditorView = ({
         ) : (
           <>
             <KpiTileLine dense icon={PaymentsIcon} label="قابل پرداخت این دوره" value={compactMoney(netAmountForeign, formCurrencyLabel)} color={GREEN} hint={isRial ? '' : `معادل ریالی ${compactMoney(netAmount, 'ریال')}`} />
-            <KpiTileLine dense icon={TrendingUpIcon} label="کارکرد این دوره" value={compactMoney(workDoneForeign, formCurrencyLabel)} color={BLUE} hint={isRial ? '' : `معادل ریالی ${compactMoney(workDone, 'ریال')}`} />
-            <KpiTileLine dense icon={isMultiForm ? LayersOutlinedIcon : CheckCircleIcon} label={isMultiForm ? `بندها (${formatPersianNumber((bandEditor?.bands || []).length)})` : 'پیشرفت قرارداد'} value={isMultiForm ? compactMoney(cumulativeThisForeign, formCurrencyLabel) : `${toPersianDigits(progress.toFixed(0))}٪`} color={isMultiForm ? formKind.color : STATEMENT_ACCENT} hint={isMultiForm ? 'تجمعی همهٔ بندها' : `کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} />
+            <KpiTileLine dense icon={TrendingUpIcon} label={isMultiForm ? 'کارکرد کل (سند + بندها)' : 'کارکرد این دوره'} value={compactMoney(totalWorkForeign, formCurrencyLabel)} color={BLUE} hint={isRial ? '' : `معادل ریالی ${compactMoney(totalWork, 'ریال')}`} />
+            <KpiTileLine dense icon={isMultiForm ? LayersOutlinedIcon : CheckCircleIcon} label={isMultiForm ? `بندها (${formatPersianNumber((bandEditor?.bands || []).length)})` : 'پیشرفت قرارداد'} value={isMultiForm ? compactMoney(bandTotals?.workForeign || 0, formCurrencyLabel) : `${toPersianDigits(progress.toFixed(0))}٪`} color={isMultiForm ? formKind.color : STATEMENT_ACCENT} hint={isMultiForm ? 'کارکرد بندها' : `کارکرد تجمعی ${compactMoney(cumulativeThisForeign, formCurrencyLabel)}`} />
             <KpiTileLine dense icon={InsertDriveFileIcon} label="مدارک پیوست" value={formatPersianNumber(totalDocs)} suffix="فایل" color={AMBER} hint={`${formatPersianNumber(documents.length)} ذخیره‌شده · ${formatPersianNumber(pendingFiles.length)} جدید`} />
           </>
         )}
@@ -2162,6 +2301,35 @@ const StatementEditorView = ({
                 </Typography>
                 {isMultiForm ? (
                   <Box>
+                    <Grid container spacing={1.1}>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
+                          label={`مبلغ تجمعی این صورت‌وضعیت (${formCurrencyLabel})`}
+                          value={form.amount_foreign ?? cumulativeThisForeign}
+                          onChange={(value) => onAmountChange('amount', value)} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="معادل ریالی مبلغ تجمعی"
+                          value={form.amount ?? 0} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ تجمعی دوره قبل (ریال)"
+                          value={cumulativePrev} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                      <Grid item xs={12} sm={6}>
+                        <MoneyInput size="small" fullWidth allowDecimals={false} label="کارکرد سطح سند (ریال)"
+                          value={workDone} onChange={() => {}} InputProps={{ readOnly: true }} />
+                      </Grid>
+                    </Grid>
+                    <Divider sx={{ my: 1 }} />
+                    <Stack direction="row" alignItems="center" sx={{ mb: 0.7 }}>
+                      <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: formKind.color }}>
+                        بندهای کارکرد (هر بند زنجیرهٔ تجمعی مستقل)
+                      </Typography>
+                      <Chip size="small"
+                        label={`کارکرد بندها: ${formatPersianNumber(isRial ? (bandTotals?.work || 0) : (bandTotals?.workForeign || 0))} ${formCurrencyLabel}`}
+                        sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.08), color: formKind.color }} />
+                    </Stack>
                     {(bandEditor?.bands || []).length ? (bandEditor.bands).map((band, index) => {
                       const bandKey = String(band.title || '')
                         .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
@@ -2173,11 +2341,23 @@ const StatementEditorView = ({
                       const amountForeign = Number(band.amount_foreign) || 0;
                       const workRial = Math.max(0, amountRial - previousRial);
                       const workForeign = Math.max(0, amountForeign - previousForeign);
+                      const bandAdditionsTotal = (Array.isArray(band.additions) ? band.additions : [])
+                        .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+                      const bandDeductionsTotal = (Array.isArray(band.deductions) ? band.deductions : [])
+                        .reduce((sum, item) => sum + (Number(item.amount) || 0), 0);
+                      const bandNet = workRial
+                        + (band.includes_additions ? bandAdditionsTotal : 0)
+                        - (band.includes_deductions ? bandDeductionsTotal : 0);
                       return (
                         <Box key={`band-${index}`} sx={{
-                          display: 'grid', gap: 0.6, mb: 0.6, alignItems: 'center',
-                          gridTemplateColumns: { xs: '1fr 1fr', sm: '1.3fr 1.2fr 0.8fr 0.8fr auto' },
+                          p: 0.9, mb: 0.8, borderRadius: '12px',
+                          border: `1px solid ${alpha(formKind.color, 0.16)}`,
+                          bgcolor: alpha(formKind.color, 0.02),
                         }}>
+                          <Box sx={{
+                            display: 'grid', gap: 0.6, alignItems: 'center',
+                            gridTemplateColumns: { xs: '1fr 1fr', sm: '1.3fr 1.2fr 0.8fr 0.8fr auto' },
+                          }}>
                           <TextField size="small" fullWidth label="بند تجمعی" placeholder="مثلاً خرید یا بند الف"
                             value={band.title || ''} onChange={(event) => bandEditor?.onTitle(index, event.target.value)} />
                           <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4}
@@ -2197,6 +2377,85 @@ const StatementEditorView = ({
                               <RemoveCircleIcon fontSize="small" />
                             </IconButton>
                           </Stack>
+                          </Box>
+
+                          <Stack direction="row" spacing={1.5} useFlexGap flexWrap="wrap" alignItems="center" sx={{ mt: 0.4 }}>
+                            <FormControlLabel sx={{ m: 0 }}
+                              control={<Switch size="small" checked={Boolean(band.includes_additions)} onChange={(event) => bandEditor?.onToggle(index, 'includes_additions', event.target.checked)} />}
+                              label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: GREEN }}>شامل اضافات</Typography>} />
+                            <FormControlLabel sx={{ m: 0 }}
+                              control={<Switch size="small" checked={Boolean(band.includes_deductions)} onChange={(event) => bandEditor?.onToggle(index, 'includes_deductions', event.target.checked)} />}
+                              label={<Typography sx={{ fontSize: 11.5, fontWeight: 800, color: RED }}>شامل کسورات</Typography>} />
+                            <Chip size="small" label={`خالص بند: ${formatPersianNumber(bandNet)} ${isRial ? formCurrencyLabel : 'ریال'}`}
+                              sx={{ height: 20, fontSize: 10.5, bgcolor: alpha(formKind.color, 0.1), color: formKind.color }} />
+                          </Stack>
+
+                          {band.includes_additions ? (
+                            <Box sx={{ mt: 0.5, pl: 1, borderLeft: `2px solid ${alpha(GREEN, 0.3)}` }}>
+                              {(Array.isArray(band.additions) ? band.additions : []).map((item, rowIndex) => (
+                                <Box key={`band-add-${rowIndex}`} sx={{
+                                  display: 'grid', gap: 0.5, mt: 0.5, alignItems: 'center',
+                                  gridTemplateColumns: { xs: '1fr 1fr', sm: '1.6fr 0.6fr 1fr auto' },
+                                }}>
+                                  <TextField size="small" fullWidth placeholder="شرح اضافه" value={item.description || ''}
+                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'additions', rowIndex, 'description', event.target.value)} />
+                                  <TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0}
+                                    inputProps={{ step: 'any', min: 0 }}
+                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'additions', rowIndex, 'percent', event.target.value)} />
+                                  <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4} placeholder="مبلغ"
+                                    value={item.amount_foreign ?? 0}
+                                    onChange={(value) => bandEditor?.onUpdateItem(index, 'additions', rowIndex, 'amount', value)} />
+                                  <IconButton size="small" color="error" aria-label="حذف اضافه بند"
+                                    onClick={() => bandEditor?.onRemoveItem(index, 'additions', rowIndex)}>
+                                    <RemoveCircleIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              ))}
+                              <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
+                                {(bandEditor?.additionList || []).map((definition) => (
+                                  <Chip key={`band-add-def-${definition.id}`} size="small"
+                                    label={definition.description || definition.code}
+                                    onClick={() => bandEditor?.onChooseItem(index, 'additions', definition)}
+                                    sx={{ height: 20, fontSize: 10.5, bgcolor: '#ecfdf5', color: GREEN }} />
+                                ))}
+                              </Stack>
+                              <Button size="small" startIcon={<AddCircleIcon />} sx={{ mt: 0.2, color: GREEN, fontSize: 11.5 }}
+                                onClick={() => bandEditor?.onAddItem(index, 'additions')}>افزودن اضافه بند</Button>
+                            </Box>
+                          ) : null}
+                          {band.includes_deductions ? (
+                            <Box sx={{ mt: 0.5, pl: 1, borderLeft: `2px solid ${alpha(RED, 0.3)}` }}>
+                              {(Array.isArray(band.deductions) ? band.deductions : []).map((item, rowIndex) => (
+                                <Box key={`band-ded-${rowIndex}`} sx={{
+                                  display: 'grid', gap: 0.5, mt: 0.5, alignItems: 'center',
+                                  gridTemplateColumns: { xs: '1fr 1fr', sm: '1.6fr 0.6fr 1fr auto' },
+                                }}>
+                                  <TextField size="small" fullWidth placeholder="عنوان کسور" value={item.title || ''}
+                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'deductions', rowIndex, 'title', event.target.value)} />
+                                  <TextField size="small" fullWidth type="number" placeholder="٪" value={item.percent ?? 0}
+                                    inputProps={{ step: 'any', min: 0 }}
+                                    onChange={(event) => bandEditor?.onUpdateItem(index, 'deductions', rowIndex, 'percent', event.target.value)} />
+                                  <MoneyInput size="small" fullWidth allowDecimals={!isRial} maxDecimals={4} placeholder="مبلغ"
+                                    value={item.amount_foreign ?? 0}
+                                    onChange={(value) => bandEditor?.onUpdateItem(index, 'deductions', rowIndex, 'amount', value)} />
+                                  <IconButton size="small" color="error" aria-label="حذف کسور بند"
+                                    onClick={() => bandEditor?.onRemoveItem(index, 'deductions', rowIndex)}>
+                                    <RemoveCircleIcon fontSize="small" />
+                                  </IconButton>
+                                </Box>
+                              ))}
+                              <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" sx={{ mt: 0.4 }}>
+                                {(bandEditor?.deductionList || []).map((definition) => (
+                                  <Chip key={`band-ded-def-${definition.id}`} size="small"
+                                    label={definition.description || definition.code}
+                                    onClick={() => bandEditor?.onChooseItem(index, 'deductions', definition)}
+                                    sx={{ height: 20, fontSize: 10.5, bgcolor: '#fff1f2', color: RED }} />
+                                ))}
+                              </Stack>
+                              <Button size="small" startIcon={<AddCircleIcon />} sx={{ mt: 0.2, color: RED, fontSize: 11.5 }}
+                                onClick={() => bandEditor?.onAddItem(index, 'deductions')}>افزودن کسور بند</Button>
+                            </Box>
+                          ) : null}
                         </Box>
                       );
                     }) : <Typography sx={{ fontSize: 12, color: MUTED }}>هنوز بندی اضافه نشده است.</Typography>}

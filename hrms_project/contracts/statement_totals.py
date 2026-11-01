@@ -105,14 +105,34 @@ def recalculate_contract_statements(contract):
                 continue
 
             if row.kind == Statement.Kind.MULTI:
+                # سطح سند مثل یک صورت‌وضعیت عادی محاسبه می‌شود؛ بندها بخش‌های
+                # مستقل کارکرد با زنجیرهٔ تجمعی و اضافات/کسورات اختیاری خودشان‌اند.
+                own_previous = max(prior_amount, prior_work)
+                own_amount = _decimal(row.amount)
+                own_work = max(Decimal('0'), own_amount - own_previous)
+                rate = _decimal(row.exchange_rate) or Decimal('1')
+                own_work_foreign = (
+                    (own_work / rate).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
+                    if rate > 0 else own_work
+                )
+                own_foreign_amount = (
+                    prior_foreign + own_work_foreign if rate > 1 else own_amount
+                ).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
+                own_additions = _normalize_items(row.additions, own_work)
+                own_deductions = _normalize_items(row.deductions, own_work)
+                own_additions_total = sum(
+                    (_decimal(item.get('amount')) for item in own_additions), Decimal('0'),
+                ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)
+                own_deductions_total = sum(
+                    (_decimal(item.get('amount')) for item in own_deductions), Decimal('0'),
+                )
+
                 submitted_bands = row.bands if isinstance(row.bands, (list, tuple)) else []
                 bands = []
-                total_previous = Decimal('0')
-                total_amount = Decimal('0')
-                total_previous_foreign = Decimal('0')
-                total_foreign = Decimal('0')
-                total_work = Decimal('0')
-                total_work_foreign = Decimal('0')
+                band_work_total = Decimal('0')
+                band_work_foreign_total = Decimal('0')
+                band_additions_total = Decimal('0')
+                band_deductions_total = Decimal('0')
                 for band in submitted_bands:
                     if not isinstance(band, dict):
                         continue
@@ -127,41 +147,54 @@ def recalculate_contract_statements(contract):
                     band_foreign = max(previous_foreign, _decimal(band.get('amount_foreign')))
                     band_work = band_rial - previous_rial
                     band_work_foreign = band_foreign - previous_foreign
+                    includes_additions = bool(band.get('includes_additions'))
+                    includes_deductions = bool(band.get('includes_deductions'))
+                    band_additions = (
+                        _normalize_items(band.get('additions'), band_work) if includes_additions else []
+                    )
+                    band_deductions = (
+                        _normalize_items(band.get('deductions'), band_work) if includes_deductions else []
+                    )
+                    band_additions_sum = sum(
+                        (_decimal(item.get('amount')) for item in band_additions), Decimal('0'),
+                    )
+                    band_deductions_sum = sum(
+                        (_decimal(item.get('amount')) for item in band_deductions), Decimal('0'),
+                    )
                     bands.append({
                         **band,
                         'title': title,
+                        'includes_additions': includes_additions,
+                        'includes_deductions': includes_deductions,
                         'previous_amount': float(previous_rial),
                         'amount': float(band_rial),
                         'previous_foreign': float(previous_foreign),
                         'amount_foreign': float(band_foreign),
                         'work': float(band_work),
                         'work_foreign': float(band_work_foreign),
+                        'additions': band_additions,
+                        'deductions': band_deductions,
+                        'additions_total': float(band_additions_sum),
+                        'deductions_total': float(band_deductions_sum),
+                        'net_amount': float(band_work + band_additions_sum - band_deductions_sum),
                     })
                     band_prior[key] = (band_rial, band_foreign)
-                    total_previous += previous_rial
-                    total_amount += band_rial
-                    total_previous_foreign += previous_foreign
-                    total_foreign += band_foreign
-                    total_work += band_work
-                    total_work_foreign += band_work_foreign
+                    band_work_total += band_work
+                    band_work_foreign_total += band_work_foreign
+                    band_additions_total += band_additions_sum
+                    band_deductions_total += band_deductions_sum
 
-                additions = _normalize_items(row.additions, total_work)
-                deductions = _normalize_items(row.deductions, total_work)
-                additions_total = sum(
-                    (_decimal(item.get('amount')) for item in additions),
-                    Decimal('0'),
-                ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)
-                deductions_total = sum(
-                    (_decimal(item.get('amount')) for item in deductions),
-                    Decimal('0'),
-                )
+                total_work = own_work + band_work_total
+                total_work_foreign = own_work_foreign + band_work_foreign_total
+                additions_total = own_additions_total + band_additions_total
+                deductions_total = own_deductions_total + band_deductions_total
                 Statement.objects.filter(pk=row.pk).update(
                     bands=bands,
-                    amount=total_amount,
-                    cumulative_previous_amount=total_previous,
+                    amount=own_amount,
+                    cumulative_previous_amount=own_previous,
                     work_done=total_work,
-                    foreign_previous_amount=total_previous_foreign,
-                    foreign_amount=total_foreign,
+                    foreign_previous_amount=prior_foreign,
+                    foreign_amount=own_foreign_amount,
                     foreign_work_done=total_work_foreign,
                     adjustment_previous_amount=prior_adjustment,
                     adjustment_work_done=Decimal('0'),
@@ -169,16 +202,16 @@ def recalculate_contract_statements(contract):
                     adjustment_foreign_previous_amount=prior_adjustment_foreign,
                     adjustment_foreign_work_done=Decimal('0'),
                     adjustment_foreign_amount=prior_adjustment_foreign,
-                    additions=additions,
-                    deductions=deductions,
+                    additions=own_additions,
+                    deductions=own_deductions,
                     additions_total=additions_total,
                     deductions_total=deductions_total,
                     net_amount=total_work + additions_total - deductions_total,
                     updated_at=timezone.now(),
                 )
-                prior_amount = max(prior_amount, total_amount)
-                prior_work += total_work
-                prior_foreign = max(prior_foreign, total_foreign)
+                prior_amount = max(prior_amount, own_amount)
+                prior_work += own_work
+                prior_foreign = max(prior_foreign, own_foreign_amount)
                 continue
 
             amount = _decimal(row.amount)

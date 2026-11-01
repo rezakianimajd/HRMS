@@ -822,25 +822,45 @@ class StatementCalculationTests(TestCase):
         self.assertEqual(second.work_done, Decimal('3000000'))
 
     def test_multi_band_statement_keeps_independent_cumulative_chains(self):
-        """هر بند زنجیرهٔ تجمعی خودش را دارد و بندها به اسناد بعدی منتقل می‌شوند."""
+        """سند چند بندی = صورت‌وضعیت عادی (کارکرد می‌تواند صفر باشد) + بندهای مستقل."""
         first = StatementSerializer(data=self._payload(
             amount=0, number='01', kind='multi',
             bands=[
-                {'title': 'خرید', 'amount': 1_000_000},
+                {
+                    'title': 'خرید', 'amount': 1_000_000, 'includes_additions': True,
+                    'additions': [{
+                        'code': 'vat', 'description': 'ارزش افزوده',
+                        'percent': 10, 'amount': 0, 'mode': 'percent',
+                    }],
+                },
                 {'title': 'بند الف', 'amount': 500_000},
             ],
         ))
         self.assertTrue(first.is_valid(), first.errors)
         first_row = first.save(company=self.company)
         self.assertEqual(first_row.kind, Statement.Kind.MULTI)
-        self.assertEqual(first_row.amount, Decimal('1500000'))
+        # تجمعی سطح سند (بدون بندها) و کارکرد کل سند
+        self.assertEqual(first_row.amount, Decimal('0'))
         self.assertEqual(first_row.work_done, Decimal('1500000'))
-        self.assertEqual([band['work'] for band in first_row.bands], [1_000_000.0, 500_000.0])
+        # اضافات فقط برای بندی که «شامل اضافات» انتخاب شده: ۱۰٪ × ۱٬۰۰۰٬۰۰۰
+        self.assertEqual(first_row.additions_total, Decimal('100000'))
+        self.assertEqual(first_row.net_amount, Decimal('1600000'))
+        bands = {band['title']: band for band in first_row.bands}
+        self.assertEqual(bands['خرید']['work'], 1_000_000.0)
+        self.assertEqual(bands['خرید']['net_amount'], 1_100_000.0)
+        self.assertEqual(bands['بند الف']['work'], 500_000.0)
+        self.assertEqual(bands['بند الف']['additions'], [])
 
         second = StatementSerializer(data=self._payload(
             amount=0, number='02', kind='multi', date='2025-09-01',
             bands=[
-                {'title': 'خرید', 'amount': 1_600_000},
+                {
+                    'title': 'خرید', 'amount': 1_600_000, 'includes_additions': True,
+                    'additions': [{
+                        'code': 'vat', 'description': 'ارزش افزوده',
+                        'percent': 10, 'amount': 0, 'mode': 'percent',
+                    }],
+                },
                 {'title': 'بند الف', 'amount': 900_000},
             ],
         ))
@@ -850,11 +870,26 @@ class StatementCalculationTests(TestCase):
         from contracts.statement_totals import recalculate_contract_statements
         recalculate_contract_statements(self.contract)
         second_row.refresh_from_db()
-        self.assertEqual(second_row.cumulative_previous_amount, Decimal('1500000'))
+        self.assertEqual(second_row.cumulative_previous_amount, Decimal('0'))
         self.assertEqual(second_row.work_done, Decimal('1000000'))
         works = {band['title']: band['work'] for band in second_row.bands}
         self.assertEqual(works['خرید'], 600_000.0)
         self.assertEqual(works['بند الف'], 400_000.0)
+        # اضافات بند بر مبنای کارکرد همان بند محاسبه می‌شود: ۱۰٪ × ۶۰۰٬۰۰۰
+        self.assertEqual(second_row.additions_total, Decimal('60000'))
+
+    def test_multi_band_adds_own_work_to_band_work(self):
+        """کارکرد سطح سند و کارکرد بندها با هم جمع می‌شوند."""
+        serializer = StatementSerializer(data=self._payload(
+            amount=2_000_000, number='01', kind='multi',
+            bands=[{'title': 'خرید', 'amount': 1_000_000}],
+        ))
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        row = serializer.save(company=self.company)
+        self.assertEqual(row.amount, Decimal('2000000'))
+        self.assertEqual(row.cumulative_previous_amount, Decimal('0'))
+        self.assertEqual(row.work_done, Decimal('3000000'))
+        self.assertEqual(row.net_amount, Decimal('3000000'))
 
     def test_multi_band_rejects_lower_band_cumulative(self):
         created = StatementSerializer(data=self._payload(

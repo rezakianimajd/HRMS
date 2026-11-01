@@ -318,6 +318,9 @@ test('multi-band statement sends band rows with their own cumulative amounts', a
   await pickKindOption(container, 'چند بندی');
   expect(container.textContent).toContain('بند تجمعی');
   expect(container.textContent).toContain('افزودن بند');
+  expect(container.textContent).toContain('شامل اضافات');
+  expect(container.textContent).toContain('شامل کسورات');
+  expect(container.textContent).toContain('کارکرد سطح سند (ریال)');
   // فیلدهای ثابت قدیمی حذف شده‌اند و فقط چیپ‌های تعریف‌شده باقی مانده‌اند.
   expect(container.textContent).not.toContain('سایر اضافات (');
 
@@ -348,8 +351,11 @@ test('multi-band statement sends band rows with their own cumulative amounts', a
   expect(payload.kind).toBe('multi');
   expect(payload.bands).toHaveLength(1);
   expect(payload.bands[0].title).toBe('خرید');
-  expect(payload.amount).toBe(5000000);
-  expect(payload.work_done).toBe(5000000);
+  expect(payload.bands[0].amount).toBe(5000000);
+  expect(payload.bands[0].includes_additions).toBe(false);
+  expect(payload.bands[0].includes_deductions).toBe(false);
+  // مبلغ تجمعی سطح سند همان زنجیرهٔ صورت‌وضعیت عادی است (نه جمع بندها).
+  expect(payload.cumulative_previous_amount).toBe(500000000);
 
   root.unmount();
   container.remove();

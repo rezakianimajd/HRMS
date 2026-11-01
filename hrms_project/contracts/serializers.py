@@ -313,17 +313,23 @@ class StatementSerializer(serializers.ModelSerializer):
         return kind in (Statement.Kind.INCREASE, Statement.Kind.DECREASE)
 
     def _previous_cumulative(self, contract):
-        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی/چند بندی قبلی (تعدیل‌ها وارد زنجیره نمی‌شوند)."""
+        """مبلغ تجمیعی آخرین صورت‌وضعیت عادی/چند بندی قبلی (تعدیل‌ها وارد زنجیره نمی‌شوند).
+
+        در اسناد چند بندی، «کارکرد دوره» شامل کارکرد بندها هم هست؛ پس جمع
+        کارکرد فقط از اسناد عادی گرفته می‌شود تا زنجیرهٔ تجمعی سطح سند
+        دست‌نخورده بماند و مبنای دورهٔ بعد با کارکرد بندها بالا نرود.
+        """
         if not contract:
             return Decimal('0')
-        queryset = Statement.objects.filter(contract=contract, kind__in=BAND_KINDS)
         current_pk = getattr(self.instance, 'pk', None)
-        prior = queryset.filter(pk__lt=current_pk) if current_pk else queryset
-        if not prior.exists():
-            return Decimal('0')
-        previous = prior.order_by('-pk').only('amount').first()
-        prior_work = prior.aggregate(total=Sum('work_done'))['total'] or 0
+        band_queryset = Statement.objects.filter(contract=contract, kind__in=BAND_KINDS)
+        work_queryset = Statement.objects.filter(contract=contract, kind=Statement.Kind.STATEMENT)
+        if current_pk:
+            band_queryset = band_queryset.filter(pk__lt=current_pk)
+            work_queryset = work_queryset.filter(pk__lt=current_pk)
+        previous = band_queryset.order_by('-pk').only('amount').first()
         previous_amount = Decimal(previous.amount or 0) if previous else Decimal('0')
+        prior_work = work_queryset.aggregate(total=Sum('work_done'))['total'] or 0
         return max(previous_amount, Decimal(str(prior_work or 0)))
 
     def _previous_foreign_cumulative(self, contract):
@@ -354,26 +360,85 @@ class StatementSerializer(serializers.ModelSerializer):
         )
 
     def _apply_multi_bands(self, attrs, contract, rate, is_foreign):
-        """زنجیرهٔ تجمعی هر بند را مستقل محاسبه و در همان بند ذخیره می‌کند.
+        """صورت‌وضعیت چند بندی = یک صورت‌وضعیت عادی + چند «بخش کارکرد و مبالغ».
 
-        هر بند «مبلغ تجمعی» خودش را دارد؛ کارکرد بند از تفاضل با آخرین
-        مبلغ تجمعی همان بند (در صورت‌وضعیت‌های چند بندی قبلی قرارداد) به‌دست
-        می‌آید، بنابراین دو یا چند تجمعی می‌توانند هم‌زمان در یک سند باشند.
+        - سطح سند دقیقاً مثل صورت‌وضعیت عادی محاسبه می‌شود (کارکرد دوره می‌تواند صفر باشد).
+        - هر بند زنجیرهٔ تجمعی مستقل خودش را دارد و می‌تواند به‌صورت اختیاری
+          اضافات و/یا کسورات مخصوص خودش را داشته باشد.
+        - خالص قابل پرداخت سند = خالص سطح سند + خالص همهٔ بندها.
         """
-        submitted = attrs.get('bands', getattr(self.instance, 'bands', []) or [])
+        instance = self.instance
+        previous = self._previous_cumulative(contract)
+        previous_foreign = self._previous_foreign_cumulative(contract)
+        try:
+            amount = Decimal(str(attrs.get('amount', getattr(instance, 'amount', 0)) or 0))
+        except Exception:  # noqa: BLE001
+            amount = Decimal('0')
+        amount = amount.quantize(Decimal('1'))
+        if is_foreign:
+            submitted_foreign = attrs.get('foreign_amount', None)
+            if submitted_foreign in (None, '') and instance is not None:
+                submitted_foreign = getattr(instance, 'foreign_amount', None)
+            if submitted_foreign not in (None, ''):
+                try:
+                    foreign_amount = Decimal(str(submitted_foreign or 0))
+                except Exception:  # noqa: BLE001
+                    foreign_amount = previous_foreign
+                if foreign_amount < previous_foreign:
+                    raise serializers.ValidationError({
+                        'foreign_amount': 'مبلغ تجمعی ارزی نمی‌تواند کمتر از مبلغ تجمعی ارزی دوره قبل باشد.',
+                    })
+                own_work_foreign = foreign_amount - previous_foreign
+                amount = previous + (own_work_foreign * rate).quantize(
+                    Decimal('1'), rounding=ROUND_HALF_UP,
+                )
+            else:
+                own_work_foreign = (amount - previous) / rate
+                foreign_amount = previous_foreign + own_work_foreign
+        else:
+            own_work_foreign = amount - previous
+            foreign_amount = amount
+        if amount < previous:
+            raise serializers.ValidationError({
+                'amount': 'مبلغ تجمعی این صورت‌وضعیت نمی‌تواند کمتر از مبلغ تجمعی دوره قبل باشد.',
+            })
+        own_work = amount - previous
+
+        own_additions = normalize_percent_items(
+            attrs['additions'] if 'additions' in attrs else getattr(instance, 'additions', []) or [],
+            own_work,
+        )
+        own_deductions = normalize_percent_items(
+            attrs['deductions'] if 'deductions' in attrs else getattr(instance, 'deductions', []) or [],
+            own_work,
+        )
+        value_added_tax = (
+            attrs['value_added_tax'] if 'value_added_tax' in attrs
+            else getattr(instance, 'value_added_tax', 0)
+        )
+        other_additions = (
+            attrs['other_additions'] if 'other_additions' in attrs
+            else getattr(instance, 'other_additions', 0)
+        )
+        own_additions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in own_additions), Decimal('0'),
+        ) + Decimal(str(value_added_tax or 0)) + Decimal(str(other_additions or 0))
+        own_deductions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in own_deductions), Decimal('0'),
+        )
+
+        submitted = attrs.get('bands', getattr(instance, 'bands', []) or [])
         if not isinstance(submitted, (list, tuple)):
             submitted = []
-        current_pk = getattr(self.instance, 'pk', None)
+        current_pk = getattr(instance, 'pk', None)
         cumulative = previous_band_cumulatives(contract, before_pk=current_pk or None)
 
         bands = []
         seen = set()
-        previous_total = Decimal('0')
-        amount_total = Decimal('0')
-        previous_foreign_total = Decimal('0')
-        foreign_total = Decimal('0')
-        work_total = Decimal('0')
-        work_foreign_total = Decimal('0')
+        band_work_total = Decimal('0')
+        band_work_foreign_total = Decimal('0')
+        band_additions_total = Decimal('0')
+        band_deductions_total = Decimal('0')
 
         for item in submitted:
             if not isinstance(item, dict):
@@ -413,67 +478,68 @@ class StatementSerializer(serializers.ModelSerializer):
                 })
             band_work = band_rial - previous_rial
             band_work_foreign = max(Decimal('0'), band_foreign - previous_foreign)
+            includes_additions = bool(item.get('includes_additions'))
+            includes_deductions = bool(item.get('includes_deductions'))
+            band_additions = normalize_percent_items(
+                item.get('additions'), band_work,
+            ) if includes_additions else []
+            band_deductions = normalize_percent_items(
+                item.get('deductions'), band_work,
+            ) if includes_deductions else []
+            band_additions_sum = sum(
+                (Decimal(str(row.get('amount') or 0)) for row in band_additions), Decimal('0'),
+            )
+            band_deductions_sum = sum(
+                (Decimal(str(row.get('amount') or 0)) for row in band_deductions), Decimal('0'),
+            )
             bands.append({
                 **item,
                 'title': title,
+                'includes_additions': includes_additions,
+                'includes_deductions': includes_deductions,
                 'previous_amount': float(previous_rial),
                 'amount': float(band_rial),
                 'previous_foreign': float(previous_foreign),
                 'amount_foreign': float(band_foreign),
                 'work': float(band_work),
                 'work_foreign': float(band_work_foreign),
+                'additions': band_additions,
+                'deductions': band_deductions,
+                'additions_total': float(band_additions_sum),
+                'deductions_total': float(band_deductions_sum),
+                'net_amount': float(band_work + band_additions_sum - band_deductions_sum),
             })
             cumulative[key] = (band_rial, band_foreign)
-            previous_total += previous_rial
-            amount_total += band_rial
-            previous_foreign_total += previous_foreign
-            foreign_total += band_foreign
-            work_total += band_work
-            work_foreign_total += band_work_foreign
+            band_work_total += band_work
+            band_work_foreign_total += band_work_foreign
+            band_additions_total += band_additions_sum
+            band_deductions_total += band_deductions_sum
         # __MULTI_BANDS_TAIL__
         if not bands:
             raise serializers.ValidationError({
                 'bands': 'برای صورت‌وضعیت چند بندی، حداقل یک بند با عنوان و مبلغ لازم است.',
             })
 
-        additions = normalize_percent_items(
-            attrs['additions'] if 'additions' in attrs else getattr(self.instance, 'additions', []) or [],
-            work_total,
-        )
-        deductions = normalize_percent_items(
-            attrs['deductions'] if 'deductions' in attrs else getattr(self.instance, 'deductions', []) or [],
-            work_total,
-        )
-        value_added_tax = (
-            attrs['value_added_tax'] if 'value_added_tax' in attrs
-            else getattr(self.instance, 'value_added_tax', 0)
-        )
-        other_additions = (
-            attrs['other_additions'] if 'other_additions' in attrs
-            else getattr(self.instance, 'other_additions', 0)
-        )
-        additions_total = sum(
-            (Decimal(str(item.get('amount') or 0)) for item in additions),
-            Decimal('0'),
-        ) + Decimal(str(value_added_tax or 0)) + Decimal(str(other_additions or 0))
-        deductions_total = sum(
-            (Decimal(str(item.get('amount') or 0)) for item in deductions),
-            Decimal('0'),
-        )
+        additions_total = own_additions_total + band_additions_total
+        deductions_total = own_deductions_total + band_deductions_total
+        work_total = own_work + band_work_total
+        work_foreign_total = own_work_foreign + band_work_foreign_total
         adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)
 
         attrs['bands'] = bands
         attrs['kind'] = Statement.Kind.MULTI
         attrs['number'] = normalize_statement_number(
-            attrs.get('number', getattr(self.instance, 'number', '')),
+            attrs.get('number', getattr(instance, 'number', '')),
         )
-        attrs['amount'] = amount_total
-        attrs['cumulative_previous_amount'] = previous_total
+        attrs['amount'] = amount
+        attrs['cumulative_previous_amount'] = previous
         attrs['work_done'] = work_total
-        attrs['foreign_previous_amount'] = previous_foreign_total.quantize(
+        attrs['foreign_previous_amount'] = previous_foreign.quantize(
             Decimal('0.0001'), rounding=ROUND_HALF_UP,
         )
-        attrs['foreign_amount'] = foreign_total.quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
+        attrs['foreign_amount'] = Decimal(str(foreign_amount)).quantize(
+            Decimal('0.0001'), rounding=ROUND_HALF_UP,
+        )
         attrs['foreign_work_done'] = work_foreign_total.quantize(
             Decimal('0.0001'), rounding=ROUND_HALF_UP,
         )
@@ -483,8 +549,8 @@ class StatementSerializer(serializers.ModelSerializer):
         attrs['adjustment_foreign_previous_amount'] = adjustment_previous_foreign
         attrs['adjustment_foreign_work_done'] = Decimal('0')
         attrs['adjustment_foreign_amount'] = adjustment_previous_foreign
-        attrs['additions'] = additions
-        attrs['deductions'] = deductions
+        attrs['additions'] = own_additions
+        attrs['deductions'] = own_deductions
         attrs['value_added_tax'] = value_added_tax
         attrs['other_additions'] = other_additions
         attrs['additions_total'] = additions_total
