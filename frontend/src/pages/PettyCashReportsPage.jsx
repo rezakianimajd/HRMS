@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -207,7 +207,7 @@ const PettyCashReportsPage = () => {
   const fundList = Array.isArray(funds) ? funds : funds?.results || [];
 
   const uses = (name) => (def.filters || []).includes(name);
-  const params = useMemo(() => {
+  const buildParams = () => {
     const p = {};
     if (uses('range')) {
       if (dateFrom) p.date_from = dateFrom;
@@ -216,9 +216,10 @@ const PettyCashReportsPage = () => {
     if (uses('fund') && fund) p.fund = fund;
     if (uses('custodian') && custodian) p.custodian = custodian;
     if (uses('status') && status) p.status = status;
-    if (uses('kind')) p.kind = kind;
+    if (uses('kind')) { p.kind = kind; }
     return p;
-  }, [key, dateFrom, dateTo, fund, custodian, status, kind]);
+  };
+  const params = buildParams();
 
   const { data, isLoading, isFetching, refetch, error } = useQuery({
     queryKey: ['pc-report', key, params],
