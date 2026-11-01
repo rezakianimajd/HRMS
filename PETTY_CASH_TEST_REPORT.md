@@ -75,6 +75,15 @@ python _run_petty_tests.py      # یا در سرور: python manage.py test pett
 
 
 
+## ۷. رفع خطاها (Hotfix)
+
+| خطا | ریشه | اصلاح |
+|---|---|---|
+| `405 متد PATCH مجاز نیست` روی `/api/petty-cash-settings/current/` | دو اکشن DRF با `url_path='current'` تعریف شده بود؛ روتر فقط متد اولین اکشن (GET) را ثبت می‌کرد | ادغام در یک اکشن با `methods=['get','post','patch']` و تصمیم‌گیری بر اساس `request.method` |
+| تأیید زنده | `OPTIONS /api/petty-cash-settings/current/` → `Allow: GET, POST, PATCH, HEAD, OPTIONS` | ✅ |
+
+
+
 ## ۶. ریسک‌های باقی‌مانده
 
 1. **مایگریشن‌ها اعمال شدند** (`0009`, `0010`) و پشتیبان پیش از اجرا در

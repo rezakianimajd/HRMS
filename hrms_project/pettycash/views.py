@@ -149,30 +149,26 @@ class PettyCashSettingsViewSet(BaseViewSet):
     serializer_class = PettyCashSettingsSerializer
     queryset = PettyCashSettings.objects.all()
 
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', 'post', 'patch'], url_path='current')
     def current(self, request):
+        """خواندن تنظیمات (GET) و به‌روزرسانی آن (POST/PATCH) در یک مسیر."""
         company = _company(request)
         if not company:
             return Response({'error': 'شرکت مشخص نیست'}, status=400)
         obj = services.get_settings(company)
+        if request.method in ('POST', 'PATCH'):
+            if not access.is_senior_manager(request.user, company):
+                return Response(
+                    {'error': 'تغییر تنظیمات تنخواه فقط توسط مدیر ارشد سیستم مجاز است.'},
+                    status=403,
+                )
+            serializer = PettyCashSettingsSerializer(obj, data=request.data, partial=True)
+            serializer.is_valid(raise_exception=True)
+            serializer.save()
+            services.audit('UPDATE', obj, user=request.user, description='به‌روزرسانی تنظیمات تنخواه')
+            return Response(serializer.data)
         return Response(PettyCashSettingsSerializer(obj).data)
 
-    @action(detail=False, methods=['post', 'patch'], url_path='current')
-    def update_current(self, request):
-        company = _company(request)
-        if not company:
-            return Response({'error': 'شرکت مشخص نیست'}, status=400)
-        if not access.is_senior_manager(request.user, company):
-            return Response(
-                {'error': 'تغییر تنظیمات تنخواه فقط توسط مدیر ارشد سیستم مجاز است.'},
-                status=403,
-            )
-        obj = services.get_settings(company)
-        serializer = PettyCashSettingsSerializer(obj, data=request.data, partial=True)
-        serializer.is_valid(raise_exception=True)
-        serializer.save()
-        services.audit('UPDATE', obj, user=request.user, description='به‌روزرسانی تنظیمات تنخواه')
-        return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
     def access_summary(self, request):
