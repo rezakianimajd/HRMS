@@ -263,6 +263,8 @@ const pettycashMenu = [
       { id: 'petty-cash-calendar', title: 'تقویم هزینه‌ها', icon: <CalendarMonthIcon />, path: '/petty-cash/calendar', color: '#ec4899', primary: false, ready: true },
       { id: 'petty-cash-expenses', title: 'صورت هزینه‌ها', icon: <ReceiptLongIcon />, path: '/petty-cash/expenses', color: '#10b981', primary: false, ready: true },
       { id: 'petty-cash-expense-new', title: 'صورت هزینه جدید', icon: <PostAddIcon />, path: '/petty-cash/expenses/new', color: '#6366f1', primary: false, ready: true },
+      { id: 'petty-cash-requests', title: 'درخواست‌ها', icon: <RequestQuoteIcon />, path: '/petty-cash/requests', color: '#f59e0b', primary: false, ready: true },
+      { id: 'petty-cash-settlements', title: 'تسویه‌ها', icon: <FactCheckIcon />, path: '/petty-cash/settlements', color: '#10b981', primary: false, ready: true },
       { id: 'petty-cash-categories', title: 'دسته‌بندی‌ها', icon: <CategoryIcon />, path: '/petty-cash/categories', color: '#f59e0b', primary: false, ready: true },
     ],
   },
@@ -272,7 +274,7 @@ const pettycashMenu = [
     color: '#64748b',
     items: [
       { id: 'petty-cash-policies', title: 'سیاست تأیید', icon: <RuleIcon />, path: '/petty-cash/policies', color: '#8b5cf6', primary: false, ready: true },
-      comingSoon('/petty-cash/settings', 'petty-cash-settings', 'تنظیمات', <SettingsIcon />, '#64748b'),
+      { id: 'petty-cash-settings', title: 'تنظیمات', icon: <SettingsIcon />, path: '/petty-cash/settings', color: '#64748b', primary: false, ready: true },
     ],
   },
 ];

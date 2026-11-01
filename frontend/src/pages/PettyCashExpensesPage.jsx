@@ -79,6 +79,17 @@ const PettyCashExpensesPage = () => {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['petty-expenses'] }); setSelected([]); setMsg({ ok: true, text: 'عملیات انبوه انجام شد' }); },
     onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }),
   });
+  const approve = useMutation({
+    mutationFn: (id) => axiosInstance.post(`/petty-cash-expense-statements/${id}/approve/`),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['petty-expenses'] }); setMsg({ ok: true, text: 'صورت تأیید شد' }); },
+    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }),
+  });
+  const reject = useMutation({
+    mutationFn: ({ id, note }) => axiosInstance.post(`/petty-cash-expense-statements/${id}/reject/`, { note }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['petty-expenses'] }); setMsg({ ok: true, text: 'صورت برگشت داده شد' }); },
+    onError: (e) => setMsg({ ok: false, text: e.response?.data?.error || 'خطا' }),
+  });
+
 
   const filtered = list.filter(s => {
     if (search && !`${s.number} ${s.fund_title} ${s.description} ${s.custodian_name}`.includes(search)) return false;
@@ -168,6 +179,15 @@ const PettyCashExpensesPage = () => {
                       ) : (
                         <>
                           {s.status === 'draft' && <Tooltip title="ارسال به حسابداری"><IconButton size="small" color="primary" onClick={() => submit.mutate(s.id)}><SendIcon fontSize="small" /></IconButton></Tooltip>}
+                          {s.status === 'submitted' && (
+                            <>
+                              <Tooltip title="تأیید"><IconButton size="small" color="success" onClick={() => approve.mutate(s.id)}><CheckCircleIcon fontSize="small" /></IconButton></Tooltip>
+                              <Tooltip title="برگشت"><IconButton size="small" color="error" onClick={() => {
+                                const note = window.prompt('علت برگشت صورت:');
+                                if (note) reject.mutate({ id: s.id, note });
+                              }}><UndoIcon fontSize="small" /></IconButton></Tooltip>
+                            </>
+                          )}
                           <Tooltip title="گزارش چاپی PDF"><IconButton size="small" color="secondary" onClick={() => downloadFile(`/petty-cash-expense-statements/${s.id}/pdf/`, { fallbackName: `petty-statement-${s.id}.pdf` }).catch(() => {})}><PrinterIcon fontSize="small" /></IconButton></Tooltip>
                           {s.status === 'draft' && <Tooltip title="حذف (نرم)"><IconButton size="small" color="error" onClick={() => softDelete.mutate(s.id)}><DeleteIcon fontSize="small" /></IconButton></Tooltip>}
                           <Tooltip title="تایم‌لاین"><IconButton size="small" color="info" onClick={() => openTimeline(s)}><HistoryIcon fontSize="small" /></IconButton></Tooltip>

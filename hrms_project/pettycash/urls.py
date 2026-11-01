@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from pettycash.views import (
     PettyCashFundViewSet, PettyCashTransactionViewSet, PettyCashCategoryViewSet,
     PettyCashExpenseStatementViewSet, PettyCashApprovalPolicyViewSet,
-    PettyCashApprovalStepViewSet,
+    PettyCashApprovalStepViewSet, PettyCashSettingsViewSet,
+    PettyCashRequestViewSet, PettyCashSettlementViewSet, PettyCashReportViewSet,
 )
 
 router = DefaultRouter()
@@ -13,6 +14,10 @@ router.register(r'petty-cash-categories', PettyCashCategoryViewSet, basename='pe
 router.register(r'petty-cash-expense-statements', PettyCashExpenseStatementViewSet, basename='petty-cash-expense-statement')
 router.register(r'petty-cash-approval-policies', PettyCashApprovalPolicyViewSet, basename='petty-cash-approval-policy')
 router.register(r'petty-cash-approval-steps', PettyCashApprovalStepViewSet, basename='petty-cash-approval-step')
+router.register(r'petty-cash-settings', PettyCashSettingsViewSet, basename='petty-cash-settings')
+router.register(r'petty-cash-requests', PettyCashRequestViewSet, basename='petty-cash-request')
+router.register(r'petty-cash-settlements', PettyCashSettlementViewSet, basename='petty-cash-settlement')
+router.register(r'petty-cash-reports', PettyCashReportViewSet, basename='petty-cash-report')
 
 urlpatterns = [
     path('', include(router.urls)),

@@ -1399,6 +1399,19 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
         if decision not in mapping:
             return Response({'error': 'تصمیم نامعتبر'}, status=400)
 
+        # کنترل‌های ماژول تنخواه (تفکیک وظایف + اعتبارسنجی) پیش از تغییر وضعیت
+        from pettycash import services as petty_services
+        try:
+            petty_settings = petty_services.get_settings(st.company)
+            if decision in ('approve', 'post'):
+                petty_services.assert_segregation(
+                    petty_settings, st.submitted_by_id, request.user,
+                    'تأیید' if decision == 'approve' else 'ثبت نهایی',
+                )
+                petty_services.validate_statement_for_submission(st)
+        except petty_services.PettyCashError as exc:
+            return Response({'error': str(exc)}, status=400)
+
         st.status = mapping[decision]
         st.history = [*st.history, {'step': mapping[decision], 'by': request.user.username, 'note': note, 'at': timezone.now().isoformat()}]
         st.save()
@@ -1474,13 +1487,12 @@ class SourceTransactionViewSet(CompanyScopedViewSet):
                         credit=Decimal(st.total),
                         line_no=line_no,
                     )
-                # از تنخواه کسر کن
-                from pettycash.models import PettyCashTransaction
-                PettyCashTransaction.objects.get_or_create(
-                    company_id=st.company_id, fund_id=st.fund_id, entry_type='debit',
-                    amount=st.total, title=f'صورت هزینه {st.number or st.pk}', date=st.date,
-                    defaults={'description': st.description},
-                )
+                # از تنخواه کسر کن — تنها از طریق سرویس مشترک (idempotent)
+                from pettycash import services as petty_services
+                try:
+                    petty_services.apply_statement_to_fund(st, user=request.user)
+                except petty_services.PettyCashError as exc:
+                    return Response({'error': str(exc)}, status=400)
             source.status = 'processed'
             source.save(update_fields=['status'])
             return Response({'status': 'posted', 'document_id': doc.id})
