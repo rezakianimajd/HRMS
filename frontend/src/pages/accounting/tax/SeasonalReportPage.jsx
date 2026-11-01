@@ -524,6 +524,10 @@ const PartyAutocomplete = ({
       if (next && typeof next !== 'string') onSelect(next);
     }}
     noOptionsText={noOptionsText || 'طرف جدید — با ادامهٔ تایپ ثبت می‌شود'}
+    componentsProps={{
+      /* فهرست پیشنهادها از عرض سلول آزاد می‌شود تا خوانا باشد */
+      paper: { sx: { minWidth: 340, maxWidth: 560, width: 'max-content' } },
+    }}
     renderOption={(props, option) => {
       const typeLabel = PERSON_TYPE_LABELS[option.personType] || 'نامشخص';
       const details = [
@@ -535,13 +539,16 @@ const PartyAutocomplete = ({
           component="li"
           {...props}
           key={`${option.personType}-${partyDisplay(option)}`}
-          sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl', textAlign: 'right' }}
+          sx={{
+            display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl', textAlign: 'right',
+            py: '8px !important', px: '12px !important',
+          }}
         >
           <Box sx={{ minWidth: 0, flex: 1 }}>
-            <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
+            <Typography noWrap sx={{ fontSize: `${cellFontPx + 2}px`, fontWeight: 800 }}>
               {partyDisplay(option)}
             </Typography>
-            <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
+            <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, color: 'text.secondary', mt: 0.2 }}>
               {details || 'بدون شناسه/آدرس ثبت‌شده'}
             </Typography>
           </Box>
@@ -549,7 +556,7 @@ const PartyAutocomplete = ({
             size="small"
             label={typeLabel}
             sx={{
-              height: 18, fontSize: `${Math.max(9.5, cellFontPx - 2)}px`, fontWeight: 800,
+              height: 22, fontSize: `${Math.max(11, cellFontPx - 0.5)}px`, fontWeight: 800,
               bgcolor: `${(PERSON_TYPES.find((type) => type.value === option.personType) || {}).color || '#6366f1'}14`,
               color: (PERSON_TYPES.find((type) => type.value === option.personType) || {}).color || '#6366f1',
             }}
@@ -1909,7 +1916,7 @@ const SeasonalReportPage = () => {
     {
       key: 'name',
       label: colLabel('نام و نام خانوادگی / نام شرکت', 'name'),
-      width: '18%',
+      width: '30%',
       align: 'right',
       render: (row) => {
         if (row.personType === 'natural') {
@@ -1923,7 +1930,7 @@ const SeasonalReportPage = () => {
                 onSelect={(party) => applyParty(row.id, party)}
                 placeholder="نام"
                 ariaLabel="نام"
-                sx={{ ...cellSxFor(row, 'first_name'), flex: 1, minWidth: 0 }}
+                sx={{ ...cellSxFor(row, 'first_name'), flex: '1 1 0', minWidth: 90 }}
                 cellFontPx={cellFontPx}
               />
               <PartyAutocomplete
@@ -1933,7 +1940,7 @@ const SeasonalReportPage = () => {
                 onSelect={(party) => applyParty(row.id, party)}
                 placeholder="نام خانوادگی"
                 ariaLabel="نام خانوادگی"
-                sx={{ ...cellSxFor(row, 'last_name'), flex: 1, minWidth: 0 }}
+                sx={{ ...cellSxFor(row, 'last_name'), flex: '1 1 0', minWidth: 90 }}
                 cellFontPx={cellFontPx}
               />
             </Box>
@@ -1957,7 +1964,7 @@ const SeasonalReportPage = () => {
     {
       key: 'personType',
       label: colLabel('نوع فروشنده', 'person_type'),
-      width: '7%',
+      width: '6%',
       align: 'center',
       render: (row) => (
         <CellSelect
@@ -1973,7 +1980,7 @@ const SeasonalReportPage = () => {
     {
       key: 'nationalId',
       label: colLabel('شناسه ملی / کد ملی', 'national_id'),
-      width: '9%',
+      width: '8%',
       align: 'center',
       render: (row) => (
         <DigitField
@@ -1989,7 +1996,7 @@ const SeasonalReportPage = () => {
     {
       key: 'country',
       label: colLabel('کشور', 'country'),
-      width: '7%',
+      width: '6%',
       render: (row) => (
         <GeoAutocomplete
           value={row.country}
@@ -2005,7 +2012,7 @@ const SeasonalReportPage = () => {
     {
       key: 'province',
       label: colLabel('استان', 'province'),
-      width: '7%',
+      width: '6%',
       render: (row) => (
         <GeoAutocomplete
           value={row.province}
@@ -2021,7 +2028,7 @@ const SeasonalReportPage = () => {
     {
       key: 'city',
       label: colLabel('شهر', 'city'),
-      width: '7%',
+      width: '6%',
       render: (row) => (
         <CityGeoField
           province={row.province}
@@ -2036,7 +2043,7 @@ const SeasonalReportPage = () => {
     {
       key: 'address',
       label: 'آدرس',
-      width: '11%',
+      width: '8%',
       render: (row) => (
         <CellTextField value={row.address} onChange={(value) => updateCell(row.id, 'address', value)}
           placeholder="آدرس" sx={cellInputSx} />
@@ -2045,7 +2052,7 @@ const SeasonalReportPage = () => {
     {
       key: 'description',
       label: 'شرح کالا / خدمات',
-      width: '12%',
+      width: '9%',
       render: (row) => (
         <CellTextField value={row.description} onChange={(value) => updateCell(row.id, 'description', value)}
           placeholder="شرح کالا یا خدمات" sx={cellInputSx} />
@@ -2054,7 +2061,7 @@ const SeasonalReportPage = () => {
     {
       key: 'amount',
       label: colLabel('مبلغ', 'amount'),
-      width: '9%',
+      width: '8%',
       align: 'center',
       render: (row) => (
         <MoneyInput
@@ -2071,7 +2078,7 @@ const SeasonalReportPage = () => {
     {
       key: 'vat',
       label: 'مالیات بر ارزش افزوده',
-      width: '8%',
+      width: '7%',
       align: 'center',
       render: (row) => (
         <MoneyInput
@@ -2088,7 +2095,7 @@ const SeasonalReportPage = () => {
     {
       key: 'total',
       label: 'جمع کل',
-      width: '8%',
+      width: '7%',
       align: 'center',
       render: (row) => (
         <Typography noWrap>{formatPersianNumber(totalOf(row))}</Typography>
@@ -2113,7 +2120,7 @@ const SeasonalReportPage = () => {
     {
       key: 'invoiceDate',
       label: colLabel('تاریخ فاکتور', 'invoice_date'),
-      width: '8%',
+      width: '7%',
       align: 'center',
       render: (row) => (
         <DateCell
@@ -2126,7 +2133,7 @@ const SeasonalReportPage = () => {
     {
       key: 'invoiceNo',
       label: colLabel('شماره فاکتور', 'invoice_no'),
-      width: '7%',
+      width: '6%',
       align: 'center',
       render: (row) => (
         <DigitField value={row.invoiceNo} onChange={(value) => updateCell(row.id, 'invoiceNo', value)}
