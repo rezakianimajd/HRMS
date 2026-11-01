@@ -60,6 +60,8 @@ import VerifiedUserOutlinedIcon from '@mui/icons-material/VerifiedUserOutlined';
 import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
 import StorefrontOutlinedIcon from '@mui/icons-material/StorefrontOutlined';
 import WarningAmberOutlinedIcon from '@mui/icons-material/WarningAmberOutlined';
+import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
+import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import useAuth from '../../hooks/useAuth';
 import useCompany from '../../hooks/useCompany';
 import CompanySwitcher from './CompanySwitcher';
@@ -224,6 +226,23 @@ const Layout = ({ children }) => {
   ]);
 
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [panelCollapsed, setPanelCollapsed] = useState(() => {
+    try {
+      return localStorage.getItem('hrms_sidebar_collapsed') === '1';
+    } catch (e) {
+      return false;
+    }
+  });
+  const togglePanel = () => setPanelCollapsed((prev) => {
+    const next = !prev;
+    try {
+      localStorage.setItem('hrms_sidebar_collapsed', next ? '1' : '0');
+    } catch (e) {
+      /* ignore storage errors */
+    }
+    return next;
+  });
+  const effectiveSidebarWidth = panelCollapsed ? RAIL_WIDTH : SIDEBAR_WIDTH;
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [userMenuAnchor, setUserMenuAnchor] = useState(null);
   const openLibrary = () => {
@@ -426,7 +445,7 @@ const Layout = ({ children }) => {
     openTab({ path: location.pathname, title: meta.title, color: meta.color });
   }, [location.pathname]);
 
-  const sidebarContent = (
+  const renderSidebarContent = (compact) => (
     <Box sx={{
       height: '100%',
       display: 'flex',
@@ -465,6 +484,26 @@ const Layout = ({ children }) => {
         </Tooltip>
 
         <Divider sx={{ width: 24, my: 1.25, flexShrink: 0 }} />
+
+        <Tooltip title={panelCollapsed ? 'باز کردن منو' : 'جمع کردن منو'} placement="left" arrow>
+          <IconButton
+            size="small"
+            onClick={togglePanel}
+            aria-label={panelCollapsed ? 'باز کردن منو' : 'جمع کردن منو'}
+            aria-expanded={!panelCollapsed}
+            sx={{
+              width: 36, height: 30, mb: 0.75, flexShrink: 0,
+              display: { xs: 'none', md: 'inline-flex' },
+              border: '1px solid', borderColor: 'divider', borderRadius: '9px',
+              color: ICON_COLOR, bgcolor: 'var(--hrms-region-sidebar-bg, #ffffff)',
+              '&:hover': { bgcolor: 'action.hover' },
+            }}
+          >
+            {panelCollapsed
+              ? <ChevronLeftIcon sx={{ fontSize: 18 }} />
+              : <ChevronRightIcon sx={{ fontSize: 18 }} />}
+          </IconButton>
+        </Tooltip>
 
         <Box sx={{
           width: '100%', flexShrink: 0,
@@ -610,6 +649,7 @@ const Layout = ({ children }) => {
       </Box>
 
       {/* ---------- پنل منو ---------- */}
+      {!compact && (
       <Box sx={{
         width: PANEL_WIDTH,
         flexShrink: 1,
@@ -704,6 +744,7 @@ const Layout = ({ children }) => {
       </Box>
 
       </Box>
+      )}
     </Box>
   );
 
@@ -758,22 +799,24 @@ const Layout = ({ children }) => {
         sx={{
           display: { xs: 'block', md: 'none' },
           '& .MuiDrawer-paper': {
-            width: { xs: 'calc(100vw - 20px)', sm: SIDEBAR_WIDTH },
-            maxWidth: SIDEBAR_WIDTH,
+            width: { xs: 'calc(100vw - 20px)', sm: effectiveSidebarWidth },
+            maxWidth: effectiveSidebarWidth,
             height: '100vh',
             boxSizing: 'border-box', border: 0,
+            transition: 'width 0.2s ease',
           },
         }}
       >
-        {mobileOpen ? sidebarContent : null}
+        {mobileOpen ? renderSidebarContent(false) : null}
       </Drawer>
 
       <Box sx={{
         display: { xs: 'none', md: 'block' },
-        width: SIDEBAR_WIDTH, flexShrink: 0, height: '100vh',
+        width: effectiveSidebarWidth, flexShrink: 0, height: '100vh',
         borderInlineEnd: '1px solid', borderColor: 'divider',
+        transition: 'width 0.2s ease',
       }}>
-        {sidebarContent}
+        {renderSidebarContent(panelCollapsed)}
       </Box>
 
       <Box
