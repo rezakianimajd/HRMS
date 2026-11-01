@@ -52,6 +52,8 @@ export const resolveTableTheme = (tokens) => {
     divider,
     dividerStyle,
     dividerWidth,
+    /* فونت جدول از استودیو تم (تنظیمات → ظاهر → تایپوگرافی) */
+    fontFamily: (source.typography && source.typography.family) || 'inherit',
     headerAlign: cfg.headerAlign || 'center',
     headerTextAlign: alignToText(cfg.headerAlign, 'center'),
     cellAlign: cfg.cellAlign || 'auto',
@@ -112,13 +114,19 @@ export const resolveTableTheme = (tokens) => {
 export const tableTypographySx = (theme) => {
   if (!theme) return {};
   return {
+    /* فونت همهٔ جدول (هدر، سلول، ورودی‌های داخل سلول) از استودیو تم */
+    '& .MuiInputBase-input, & .MuiSelect-select, & .MuiAutocomplete-input, & textarea': {
+      fontFamily: 'inherit !important',
+    },
     '& td .MuiTypography-root, & td .MuiChip-label, & td .MuiFormControlLabel-label': {
       fontSize: `${theme.cellFontSize}px !important`,
       fontWeight: `${theme.cellFontWeight} !important`,
+      fontFamily: 'inherit !important',
     },
     '& th .MuiTypography-root': {
       fontSize: `${theme.headerFontSize}px !important`,
       fontWeight: `${theme.headerFontWeight} !important`,
+      fontFamily: 'inherit !important',
     },
   };
 };

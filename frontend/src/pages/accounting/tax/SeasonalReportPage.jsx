@@ -431,7 +431,7 @@ const CellSelect = ({ value, onChange, options, ariaLabel, sx, fontSize }) => (
 );
 
 /* انتخاب/جستجوی درون‌سلولی (کشور، استان، شهر) — گزینه‌ها از سرور می‌آیند و تایپ آزاد هم مجاز است */
-const GeoAutocomplete = ({ value, options = [], onChange, placeholder, sx, title }) => (
+const GeoAutocomplete = ({ value, options = [], onChange, placeholder, sx, title, fontPx }) => (
   <Autocomplete
     freeSolo
     size="small"
@@ -453,18 +453,18 @@ const GeoAutocomplete = ({ value, options = [], onChange, placeholder, sx, title
         title={title}
         sx={{
           '& .MuiInputBase-root': { minHeight: 26 },
-          '& .MuiInputBase-input': { py: 0.25, px: 0.25, minWidth: 0, fontSize: 'inherit' },
+          '& .MuiInputBase-input': { py: 0.25, px: 0.25, minWidth: 0, fontSize: 'inherit', textAlign: 'right' },
           '& .MuiInput-underline:before': { borderBottomColor: 'transparent' },
           '& .MuiInput-underline:hover:before': { borderBottomColor: 'rgba(148,163,184,0.6)' },
         }}
-        inputProps={{ ...params.inputProps, style: { fontSize: 11.5 } }}
+        inputProps={{ ...params.inputProps, style: { fontSize: fontPx || 'inherit' } }}
       />
     )}
   />
 );
 
 /* شهر: گزینه‌ها بر اساس استانِ همان ردیف بارگذاری می‌شوند (کش‌شده و مشترک بین ردیف‌ها) */
-const CityGeoField = ({ province, value, onChange, placeholder = 'شهر', sx }) => {
+const CityGeoField = ({ province, value, onChange, placeholder = 'شهر', sx, fontPx }) => {
   const enabled = Boolean(province) && province !== PLACEHOLDER;
   const { data } = useQuery({
     queryKey: ['seasonal-geo-cities', province],
@@ -481,6 +481,7 @@ const CityGeoField = ({ province, value, onChange, placeholder = 'شهر', sx })
       onChange={onChange}
       placeholder={placeholder}
       sx={sx}
+      fontPx={fontPx}
       title={enabled ? undefined : 'ابتدا استان را انتخاب کنید (تایپ آزاد مجاز است)'}
     />
   );
@@ -503,10 +504,11 @@ const DigitField = ({ value, onChange, placeholder, numeric, maxLength, sx }) =>
 
 /* پیشنهاد طرف معامله از داده‌های قبلی — برای همهٔ انواع (حقوقی/حقیقی/خارجی/تجمیعی) */
 const PartyAutocomplete = ({
-  value, options, onInputChange, onSelect, placeholder, ariaLabel, sx, cellFontPx, noOptionsText,
+  value, options, onInputChange, onSelect, placeholder, ariaLabel, sx, cellFontPx = 12, noOptionsText,
 }) => (
   <Autocomplete
     freeSolo
+    disableClearable
     size="small"
     options={options}
     filterOptions={(list) => filterPartyOptions(list, value)}
@@ -522,21 +524,39 @@ const PartyAutocomplete = ({
       if (next && typeof next !== 'string') onSelect(next);
     }}
     noOptionsText={noOptionsText || 'طرف جدید — با ادامهٔ تایپ ثبت می‌شود'}
-    renderOption={(props, option) => (
-      <Box component="li" {...props} key={`${option.personType}-${partyDisplay(option)}`} sx={{ gap: 1 }}>
-        <Box sx={{ minWidth: 0, flex: 1 }}>
-          <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
-            {`${partyDisplay(option)} — ${PERSON_TYPE_LABELS[option.personType] || 'نامشخص'} را می‌خواهی؟`}
-          </Typography>
-          <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
-            {[
-              option.nationalId,
-              [option.city, option.address].filter(Boolean).join(' · '),
-            ].filter(Boolean).join(' — ') || 'بدون شناسه/آدرس ثبت‌شده'}
-          </Typography>
+    renderOption={(props, option) => {
+      const typeLabel = PERSON_TYPE_LABELS[option.personType] || 'نامشخص';
+      const details = [
+        option.nationalId,
+        [option.city, option.address].filter(Boolean).join(' · '),
+      ].filter(Boolean).join(' — ');
+      return (
+        <Box
+          component="li"
+          {...props}
+          key={`${option.personType}-${partyDisplay(option)}`}
+          sx={{ display: 'flex', alignItems: 'center', gap: 1, direction: 'rtl', textAlign: 'right' }}
+        >
+          <Box sx={{ minWidth: 0, flex: 1 }}>
+            <Typography noWrap sx={{ fontSize: `${cellFontPx}px`, fontWeight: 800 }}>
+              {partyDisplay(option)}
+            </Typography>
+            <Typography noWrap sx={{ fontSize: `${Math.max(10, cellFontPx - 1.5)}px`, color: 'text.secondary' }}>
+              {details || 'بدون شناسه/آدرس ثبت‌شده'}
+            </Typography>
+          </Box>
+          <Chip
+            size="small"
+            label={typeLabel}
+            sx={{
+              height: 18, fontSize: `${Math.max(9.5, cellFontPx - 2)}px`, fontWeight: 800,
+              bgcolor: `${(PERSON_TYPES.find((type) => type.value === option.personType) || {}).color || '#6366f1'}14`,
+              color: (PERSON_TYPES.find((type) => type.value === option.personType) || {}).color || '#6366f1',
+            }}
+          />
         </Box>
-      </Box>
-    )}
+      );
+    }}
     renderInput={(params) => (
       <TextField
         {...params}
@@ -545,7 +565,7 @@ const PartyAutocomplete = ({
         inputProps={{ ...params.inputProps, 'aria-label': ariaLabel }}
         sx={{
           '& .MuiInputBase-root': { minHeight: 26 },
-          '& .MuiInputBase-input': { py: 0.25, px: 0.25 },
+          '& .MuiInputBase-input': { py: 0.25, px: 0.25, textAlign: 'right', direction: 'rtl' },
           '& .MuiInput-underline:before': { borderBottomColor: 'transparent' },
           '& .MuiInput-underline:hover:before': { borderBottomColor: 'rgba(148,163,184,0.6)' },
           ...(sx || {}),
@@ -1528,16 +1548,20 @@ const SeasonalReportPage = () => {
   const yearLabel = years.find((item) => item.value === String(yearKey))?.label || 'سال مالی';
   const quarterLabel = QUARTERS.find((item) => item.value === quarter)?.label || '';
 
-  const cellFontPx = moduleTheme.tableTheme.cell.fontSize;
+  /* فونت جدول از استودیو تم: اندازهٔ سلول (px) و خانوادهٔ فونت مشترک */
+  const cellFontPx = Number.parseFloat(moduleTheme.tableTheme.cell.fontSize) || 12.5;
+  const cellFontLabel = `${cellFontPx}px`;
+  const cellFontFamily = moduleTheme.tableTheme.fontFamily || 'inherit';
   const cellInputSx = useMemo(() => {
     const size = `${cellFontPx}px`;
     return {
-      '& .MuiInputBase-root': { fontSize: size, minHeight: 26 },
-      '& .MuiInputBase-input': { fontSize: size, py: 0.25, px: 0.25 },
-      '& .MuiSelect-select': { fontSize: size, py: 0.25, px: 0.25 },
+      fontFamily: cellFontFamily,
+      '& .MuiInputBase-root': { fontSize: size, fontFamily: cellFontFamily, minHeight: 26 },
+      '& .MuiInputBase-input': { fontSize: size, fontFamily: cellFontFamily, py: 0.25, px: 0.25 },
+      '& .MuiSelect-select': { fontSize: size, fontFamily: cellFontFamily, py: 0.25, px: 0.25 },
       '& .MuiInput-underline:before': { borderBottomColor: 'transparent' },
     };
-  }, [cellFontPx]);
+  }, [cellFontPx, cellFontFamily]);
 
 
   /* اعتبارسنجی: سرور (مرجع نهایی) یا موتور قواعد محلی */
@@ -1885,12 +1909,13 @@ const SeasonalReportPage = () => {
     {
       key: 'name',
       label: colLabel('نام و نام خانوادگی / نام شرکت', 'name'),
-      width: '16%',
+      width: '18%',
+      align: 'right',
       render: (row) => {
         if (row.personType === 'natural') {
           /* حقیقی: دو فیلد جدا — هر دو هم پیشنهاد از حافظهٔ طرف‌ها می‌دهند */
           return (
-            <Box sx={{ display: 'flex', gap: 0.75 }}>
+            <Box sx={{ display: 'flex', gap: 0.75, alignItems: 'center', direction: 'rtl' }}>
               <PartyAutocomplete
                 value={row.firstName}
                 options={partyOptions}
@@ -1898,7 +1923,7 @@ const SeasonalReportPage = () => {
                 onSelect={(party) => applyParty(row.id, party)}
                 placeholder="نام"
                 ariaLabel="نام"
-                sx={cellSxFor(row, 'first_name')}
+                sx={{ ...cellSxFor(row, 'first_name'), flex: 1, minWidth: 0 }}
                 cellFontPx={cellFontPx}
               />
               <PartyAutocomplete
@@ -1908,7 +1933,7 @@ const SeasonalReportPage = () => {
                 onSelect={(party) => applyParty(row.id, party)}
                 placeholder="نام خانوادگی"
                 ariaLabel="نام خانوادگی"
-                sx={cellSxFor(row, 'last_name')}
+                sx={{ ...cellSxFor(row, 'last_name'), flex: 1, minWidth: 0 }}
                 cellFontPx={cellFontPx}
               />
             </Box>
@@ -1923,7 +1948,7 @@ const SeasonalReportPage = () => {
             onSelect={(party) => applyParty(row.id, party)}
             placeholder={row.personType === 'aggregate' ? 'تجمیعی — نام اختیاری' : 'نام شرکت / عنوان…'}
             ariaLabel="نام شرکت"
-            sx={cellSxFor(row, 'name')}
+            sx={{ ...cellSxFor(row, 'name'), minWidth: 0 }}
             cellFontPx={cellFontPx}
           />
         );
@@ -1941,7 +1966,7 @@ const SeasonalReportPage = () => {
           ariaLabel="نوع فروشنده"
           options={PERSON_TYPES}
           sx={cellInputSx}
-          fontSize={cellFontPx}
+          fontSize={cellFontLabel}
         />
       ),
     },
@@ -1972,6 +1997,7 @@ const SeasonalReportPage = () => {
           onChange={(value) => updateCell(row.id, 'country', value)}
           placeholder={row.personType === 'foreign' ? 'کشور' : '—'}
           sx={cellSxFor(row, 'country')}
+          fontPx={cellFontLabel}
           title="کشور را جستجو و انتخاب کنید"
         />
       ),
@@ -1987,6 +2013,7 @@ const SeasonalReportPage = () => {
           onChange={(value) => updateCell(row.id, 'province', value)}
           placeholder="استان"
           sx={cellSxFor(row, 'province')}
+          fontPx={cellFontLabel}
           title="استان را جستجو و انتخاب کنید (گزینه‌های شهر از همین استان می‌آید)"
         />
       ),
@@ -2002,6 +2029,7 @@ const SeasonalReportPage = () => {
           onChange={(value) => updateCell(row.id, 'city', value)}
           placeholder="شهر"
           sx={cellSxFor(row, 'city')}
+          fontPx={cellFontLabel}
         />
       ),
     },
@@ -2078,7 +2106,7 @@ const SeasonalReportPage = () => {
           ariaLabel="نوع معامله"
           options={KINDS.map((kind) => ({ value: kind, label: toPersianDigits(kind) }))}
           sx={cellInputSx}
-          fontSize={cellFontPx}
+          fontSize={cellFontLabel}
         />
       ),
     },
@@ -2115,7 +2143,7 @@ const SeasonalReportPage = () => {
           value={row.status}
           onChange={(value) => updateCell(row.id, 'status', value)}
           sx={cellInputSx}
-          fontSize={cellFontPx}
+          fontSize={cellFontLabel}
         />
       ),
     },

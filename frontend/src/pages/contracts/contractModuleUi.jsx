@@ -230,6 +230,7 @@ export const ModuleTable = ({
           width: '100%',
           minWidth: 860,
           tableLayout: 'fixed',
+          fontFamily: tableTheme.fontFamily || 'inherit',
           '& td, & th': {
             px: 1,
             py: `${tableTheme.cellPadding}px`,
@@ -237,9 +238,10 @@ export const ModuleTable = ({
             borderBottom: tableTheme.divider,
             overflow: 'hidden',
             textOverflow: 'ellipsis',
+            fontFamily: 'inherit',
           },
           '& thead th': {
-            textAlign: 'center !important',
+            textAlign: tableTheme.headerTextAlign,
             backgroundColor: 'var(--hrms-table-header-bg)',
             height: `${tableTheme.headerHeight}px`,
             fontSize: tableTheme.header.fontSize,
@@ -262,7 +264,7 @@ export const ModuleTable = ({
             {columns.map((column) => (
               <TableCell
                 key={column.key}
-                align="center"
+                align={column.align || 'center'}
                 className={column.align === 'center' ? 'hrms-cell-center' : undefined}
                 sx={{ width: column.width }}
               >
