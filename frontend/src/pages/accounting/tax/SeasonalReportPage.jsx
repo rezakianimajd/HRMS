@@ -5,7 +5,6 @@ import {
 } from '@mui/material';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
 import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
-import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -32,7 +31,7 @@ import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
 import SeasonalFilterBuilder from './SeasonalFilterBuilder';
 import { rowsToTsv } from './seasonalGridEntry';
 import {
-  StudioCard, StudioPanelSkeleton, StudioStatusBar, useStudio,
+  StudioPanelSkeleton, StudioStatusBar, useStudio,
 } from './seasonalStudioUi';
 import {
   combineExpressions, countConditions, describeExpression, emptyExpression, evaluateExpression,
@@ -2337,177 +2336,156 @@ const SeasonalReportPage = () => {
           onCopy={handleGridCopy}
           onMouseDown={handleRowMouseDown}
         >
-        <StudioCard title="جدول ردیف‌های خرید" noPadding>
-          <Box sx={{ px: 1, pt: 1 }}>
-          <Box sx={{
-            display: 'flex',
-            gap: 0.75,
-            flexWrap: 'wrap',
-            alignItems: 'center',
-            mb: 1,
-            px: 1,
-            py: 0.6,
-            borderRadius: `${studio.radius.medium}px`,
-            border: `1px solid ${studio.border}`,
-            bgcolor: alpha(studio.accent, 0.035),
-            '& .MuiButton-root': { height: 28, fontSize: 11, borderRadius: `${studio.radius.small}px` },
-          }}>
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<ContentPasteIcon />}
-              onClick={() => { setPasteSeed(''); setPasteOpen(true); }}
-              sx={{ fontSize: 10.5 }}
-            >
-              درج گروهی (چسباندن از اکسل)
-            </Button>
-            <Button
-              size="small"
-              onClick={undo}
-              disabled={!historyRef.current.past.length}
-              sx={{ fontSize: 10.5 }}
-              title="Ctrl+Z"
-            >
-              بازگردانی
-            </Button>
-            <Button
-              size="small"
-              onClick={redo}
-              disabled={!historyRef.current.future.length}
-              sx={{ fontSize: 10.5 }}
-              title="Ctrl+Y"
-            >
-              تکرار
-            </Button>
-            <Box sx={{ flex: 1 }} />
-            {selectedIds.length ? (
-              <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
-                <Chip
-                  size="small"
-                  color="primary"
-                  label={`${toPersianDigits(selectedIds.length)} ردیف انتخاب شده`}
-                  sx={{ fontSize: 10, height: 22 }}
-                />
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel id="bulk-kind-label" sx={{ fontSize: 10 }}>نوع معامله</InputLabel>
-                  <Select
-                    labelId="bulk-kind-label"
-                    label="نوع معامله"
-                    value=""
-                    onChange={(event) => bulkSetField('kind', Number(event.target.value))}
-                    sx={{ fontSize: 10.5, height: 26 }}
-                  >
-                    {KINDS.map((kind) => (
-                      <MenuItem key={kind} value={kind} sx={{ fontSize: 10.5 }}>
-                        {toPersianDigits(kind)}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 130 }}>
-                  <InputLabel id="bulk-status-label" sx={{ fontSize: 10 }}>وضعیت مودیان</InputLabel>
-                  <Select
-                    labelId="bulk-status-label"
-                    label="وضعیت مودیان"
-                    value=""
-                    onChange={(event) => bulkSetField('status', event.target.value)}
-                    sx={{ fontSize: 10.5, height: 26 }}
-                  >
-                    <MenuItem value="registered" sx={{ fontSize: 10.5 }}>درج‌شده</MenuItem>
-                    <MenuItem value="pending" sx={{ fontSize: 10.5 }}>درج‌نشده</MenuItem>
-                  </Select>
-                </FormControl>
-                <FormControl size="small" sx={{ minWidth: 120 }}>
-                  <InputLabel id="bulk-type-label" sx={{ fontSize: 10 }}>نوع طرف</InputLabel>
-                  <Select
-                    labelId="bulk-type-label"
-                    label="نوع طرف"
-                    value=""
-                    onChange={(event) => bulkSetField('personType', event.target.value)}
-                    sx={{ fontSize: 10.5, height: 26 }}
-                  >
-                    {PERSON_TYPES.map((type) => (
-                      <MenuItem key={type.value} value={type.value} sx={{ fontSize: 10.5 }}>
-                        {type.label}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Button size="small" sx={{ fontSize: 10.5 }} onClick={() => bulkSetField('amount', 'vat10')}>
-                  ۱۰٪ مالیات
-                </Button>
-                <Button size="small" sx={{ fontSize: 10.5 }} onClick={bulkDuplicate}>تکثیر</Button>
-                <Button size="small" color="error" sx={{ fontSize: 10.5 }} onClick={bulkDelete}>حذف</Button>
-                <Button size="small" sx={{ fontSize: 10 }} onClick={clearSelection}>لغو انتخاب</Button>
-              </Stack>
-            ) : null}
-          </Box>
-      <ModuleToolbar
-        theme={moduleTheme}
-        search={search}
-        onSearch={setSearch}
-        searchPlaceholder="جستجو در نام طرف معامله، شماره اقتصادی، شناسه ملی، شهر، آدرس، شرح کالا و شماره فاکتور…"
-        sort={sortBy}
-        sortOptions={[
-          { value: 'entry', label: 'ترتیب ورود' },
-          { value: 'amount', label: 'بیشترین مبلغ' },
-          { value: 'total', label: 'بیشترین جمع کل' },
-          { value: 'name', label: 'نام (الفبا)' },
-        ]}
-        onSort={setSortBy}
-        filters={filterOptions}
-        activeChips={activeChips}
-        activeFilterCount={activeFilterCount}
-        onReset={() => {
-          setSearch(''); setStatusFilter('all'); setKindFilter('all'); setSortBy('entry');
-          setFilterExpression(emptyExpression());
-        }}
-        filtersOpen={filtersOpen}
-        setFiltersOpen={setFiltersOpen}
-      />
-          </Box>
-
-        <Box>
-          <ModuleTable
-            tableTheme={moduleTheme.tableTheme}
-            columns={tableColumns}
-            rows={displayRows}
-            rowKey={(row) => row.id}
-            containerRef={tableRef}
-            tableHeight={displayRows.length ? tableHeight : 210}
-            rowHeight={rowHeight}
-            emptyText="ردیفی با این مشخصات پیدا نشد."
-            ariaLabel="جدول معاملات فصلی"
-            virtualize
-            rowAttributes={rowAttributes}
+          <ModuleToolbar
+            theme={moduleTheme}
+            search={search}
+            onSearch={setSearch}
+            searchPlaceholder="جستجو در نام طرف معامله، شماره اقتصادی، شناسه ملی، شهر، آدرس، شرح کالا و شماره فاکتور…"
+            sort={sortBy}
+            sortOptions={[
+              { value: 'entry', label: 'ترتیب ورود' },
+              { value: 'amount', label: 'بیشترین مبلغ' },
+              { value: 'total', label: 'بیشترین جمع کل' },
+              { value: 'name', label: 'نام (الفبا)' },
+            ]}
+            onSort={setSortBy}
+            filters={filterOptions}
+            activeChips={activeChips}
+            activeFilterCount={activeFilterCount}
+            onReset={() => {
+              setSearch(''); setStatusFilter('all'); setKindFilter('all'); setSortBy('entry');
+              setFilterExpression(emptyExpression());
+            }}
+            filtersOpen={filtersOpen}
+            setFiltersOpen={setFiltersOpen}
           />
-        </Box>
 
-        <StudioStatusBar
-          items={[
-            { label: 'تعداد ردیف', value: toPersianDigits(filledRows.length) },
-            { label: 'جمع مبلغ', value: formatPersianNumber(totals.amount) },
-            { label: 'جمع ارزش افزوده', value: formatPersianNumber(totals.vat) },
-            { label: 'جمع کل', value: formatPersianNumber(totals.total) },
-            {
-              label: 'درج‌شده در سامانه',
-              value: `${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
-            },
-            {
-              label: 'اعتبارسنجی',
-              value: errorCount || warningCount
-                ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
-                : 'بدون خطا',
-              color: errorCount ? '#dc2626' : (warningCount ? '#b45309' : '#047857'),
-            },
-          ]}
-          trailing={(
-            <Typography sx={{ fontSize: 10.5, color: 'text.disabled' }} title="شناسهٔ باندل در حال اجرا">
-              {`نسخهٔ رابط: ${buildId}`}
-            </Typography>
-          )}
-        />
-      </StudioCard>
+          <Paper
+            elevation={0}
+            sx={{
+              borderRadius: 'var(--hrms-table-radius, 16px)',
+              overflow: 'hidden',
+              border: '1px solid',
+              borderColor: moduleTheme.cardBorderColor,
+              bgcolor: 'background.paper',
+              boxShadow: 'none',
+            }}
+          >
+            <Box sx={{ px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px` }}>
+              {selectedIds.length ? (
+                <Box
+                  sx={{
+                    display: 'flex',
+                    gap: 0.75,
+                    flexWrap: 'wrap',
+                    alignItems: 'center',
+                    mb: 1,
+                    px: 1,
+                    py: 0.5,
+                    borderRadius: `${studio.radius.medium}px`,
+                    border: `1px solid ${studio.border}`,
+                    bgcolor: alpha(studio.accent, 0.035),
+                    '& .MuiButton-root': {
+                      height: 26, fontSize: 10.5, borderRadius: `${studio.radius.small}px`,
+                    },
+                  }}
+                >
+                  <Chip
+                    size="small"
+                    color="primary"
+                    label={`${toPersianDigits(selectedIds.length)} ردیف انتخاب شده`}
+                    sx={{ fontSize: 10, height: 22 }}
+                  />
+                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                    <InputLabel id="bulk-kind-label" sx={{ fontSize: 10 }}>نوع معامله</InputLabel>
+                    <Select
+                      labelId="bulk-kind-label"
+                      label="نوع معامله"
+                      value=""
+                      onChange={(event) => bulkSetField('kind', Number(event.target.value))}
+                      sx={{ fontSize: 10.5, height: 26 }}
+                    >
+                      {KINDS.map((kind) => (
+                        <MenuItem key={kind} value={kind} sx={{ fontSize: 10.5 }}>
+                          {toPersianDigits(kind)}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: 130 }}>
+                    <InputLabel id="bulk-status-label" sx={{ fontSize: 10 }}>وضعیت مودیان</InputLabel>
+                    <Select
+                      labelId="bulk-status-label"
+                      label="وضعیت مودیان"
+                      value=""
+                      onChange={(event) => bulkSetField('status', event.target.value)}
+                      sx={{ fontSize: 10.5, height: 26 }}
+                    >
+                      <MenuItem value="registered" sx={{ fontSize: 10.5 }}>درج‌شده</MenuItem>
+                      <MenuItem value="pending" sx={{ fontSize: 10.5 }}>درج‌نشده</MenuItem>
+                    </Select>
+                  </FormControl>
+                  <FormControl size="small" sx={{ minWidth: 120 }}>
+                    <InputLabel id="bulk-type-label" sx={{ fontSize: 10 }}>نوع طرف</InputLabel>
+                    <Select
+                      labelId="bulk-type-label"
+                      label="نوع طرف"
+                      value=""
+                      onChange={(event) => bulkSetField('personType', event.target.value)}
+                      sx={{ fontSize: 10.5, height: 26 }}
+                    >
+                      {PERSON_TYPES.map((type) => (
+                        <MenuItem key={type.value} value={type.value} sx={{ fontSize: 10.5 }}>
+                          {type.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                  <Button size="small" sx={{ fontSize: 10.5 }} onClick={() => bulkSetField('amount', 'vat10')}>
+                    ۱۰٪ مالیات
+                  </Button>
+                  <Box sx={{ flex: 1 }} />
+                  <Button size="small" sx={{ fontSize: 10.5 }} onClick={bulkDuplicate}>تکثیر</Button>
+                  <Button size="small" color="error" sx={{ fontSize: 10.5 }} onClick={bulkDelete}>حذف</Button>
+                  <Button size="small" sx={{ fontSize: 10 }} onClick={clearSelection}>لغو انتخاب</Button>
+                </Box>
+              ) : null}
+
+              <ModuleTable
+                tableTheme={moduleTheme.tableTheme}
+                columns={tableColumns}
+                rows={displayRows}
+                rowKey={(row) => row.id}
+                containerRef={tableRef}
+                tableHeight={displayRows.length ? tableHeight : 210}
+                rowHeight={rowHeight}
+                emptyText="ردیفی با این مشخصات پیدا نشد."
+                ariaLabel="جدول معاملات فصلی"
+                virtualize
+                rowAttributes={rowAttributes}
+              />
+            </Box>
+
+            <StudioStatusBar
+              items={[
+                { label: 'تعداد ردیف', value: toPersianDigits(filledRows.length) },
+                { label: 'جمع مبلغ', value: formatPersianNumber(totals.amount) },
+                { label: 'جمع ارزش افزوده', value: formatPersianNumber(totals.vat) },
+                { label: 'جمع کل', value: formatPersianNumber(totals.total) },
+                {
+                  label: 'درج‌شده در سامانه',
+                  value: `${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
+                },
+                {
+                  label: 'اعتبارسنجی',
+                  value: errorCount || warningCount
+                    ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
+                    : 'بدون خطا',
+                  color: errorCount ? '#dc2626' : (warningCount ? '#b45309' : '#047857'),
+                },
+              ]}
+            />
+          </Paper>
         </Box>
       ) : null}
 

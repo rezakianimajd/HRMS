@@ -1235,10 +1235,14 @@ test('bulk paste dialog inserts pasted Excel rows with automatic column mapping'
   currentReport = apiReport([API_ROW]);
   const { root, container } = await renderPage();
 
-  const openButton = Array.from(container.querySelectorAll('button'))
-    .find((button) => button.textContent.includes('درج گروهی'));
-  expect(openButton).toBeTruthy();
-  await act(async () => { openButton.click(); await wait(320); });
+  const nameInput = container.querySelector('input[aria-label="نام شرکت"]');
+  expect(nameInput).toBeTruthy();
+  await act(async () => {
+    const pasteEvent = new window.Event('paste', { bubbles: true, cancelable: true });
+    pasteEvent.clipboardData = { getData: () => 'نام شرکت\tمبلغ\nشرکت نمونه\t1000' };
+    nameInput.dispatchEvent(pasteEvent);
+    await wait(320);
+  });
 
   const textarea = document.querySelector('textarea[aria-label="محتوای درج گروهی"]');
   expect(textarea).toBeTruthy();
