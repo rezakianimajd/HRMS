@@ -2281,7 +2281,7 @@ const StatementEditorView = ({
                       const amountRial = Number(level.amount) || 0;
                       const amountForeign = Number(level.amount_foreign) || 0;
                       const workRial = Math.max(0, amountRial - previousRial);
-                      const workForeign = Math.max(0, amountForeign - previousForeign);
+                      const workForeign = Math.max(0, amountForeign - previousForeign);
                       return (
                         <Box key={`level-${index}`} sx={{
                           p: 0.9, mb: 0.8, borderRadius: '12px',
