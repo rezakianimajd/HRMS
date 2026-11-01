@@ -511,6 +511,7 @@ def overdue_statements(company, as_of=None):
                 'id': st.pk,
                 'number': st.number or st.pk,
                 'fund': st.fund.title,
+                'fund_id': st.fund_id,
                 'custodian': st.custodian.full_name if st.custodian else '',
                 'due_date': due.isoformat(),
                 'days_late': (as_of - due).days,

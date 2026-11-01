@@ -274,6 +274,7 @@ const pettycashMenu = [
     color: '#64748b',
     items: [
       { id: 'petty-cash-policies', title: 'سیاست تأیید', icon: <RuleIcon />, path: '/petty-cash/policies', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'petty-cash-definitions', title: 'تعاریف اولیه', icon: <PeopleIcon />, path: '/petty-cash/definitions', color: '#0ea5e9', primary: false, ready: true },
       { id: 'petty-cash-settings', title: 'تنظیمات', icon: <SettingsIcon />, path: '/petty-cash/settings', color: '#64748b', primary: false, ready: true },
     ],
   },

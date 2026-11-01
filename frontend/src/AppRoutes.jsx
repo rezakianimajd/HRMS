@@ -98,6 +98,7 @@ import PettyCashCalendarPage from './pages/PettyCashCalendarPage';
 import PettyCashRequestsPage from './pages/PettyCashRequestsPage';
 import PettyCashSettlementsPage from './pages/PettyCashSettlementsPage';
 import PettyCashSettingsPage from './pages/PettyCashSettingsPage';
+import PettyCashDefinitionsPage from './pages/PettyCashDefinitionsPage';
 import AccountingPage from './pages/AccountingPage';
 import AccountingDocumentsPage from './pages/AccountingDocumentsPage';
 import AccountingDocumentNewPage from './pages/AccountingDocumentNewPage';
@@ -235,6 +236,7 @@ const AppRoutes = () => {
       <Route path="/petty-cash/requests" element={<ProtectedLayout><PettyCashRequestsPage /></ProtectedLayout>} />
       <Route path="/petty-cash/settlements" element={<ProtectedLayout><PettyCashSettlementsPage /></ProtectedLayout>} />
       <Route path="/petty-cash/settings" element={<ProtectedLayout><PettyCashSettingsPage /></ProtectedLayout>} />
+      <Route path="/petty-cash/definitions" element={<ProtectedLayout><PettyCashDefinitionsPage /></ProtectedLayout>} />
       <Route path="/petty-cash/:tab" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/petty-cash" element={<ProtectedLayout><PettyCashPage /></ProtectedLayout>} />
       <Route path="/accounting/documents" element={<ProtectedLayout><AccountingDocumentsPage /></ProtectedLayout>} />

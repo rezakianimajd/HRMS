@@ -13,20 +13,31 @@ from pettycash.models import (
     PettyCashExpenseStatement, PettyCashExpenseStatementLine,
     PettyCashApprovalPolicy, PettyCashApprovalStep,
     PettyCashExpenseAttachment, PettyCashSettings,
-    PettyCashRequest, PettyCashSettlement,
+    PettyCashRequest, PettyCashSettlement, PettyCashCustodian,
 )
 from pettycash.serializers import (
     PettyCashFundSerializer, PettyCashTransactionSerializer, PettyCashCategorySerializer,
     PettyCashExpenseStatementSerializer, PettyCashApprovalPolicySerializer,
     PettyCashApprovalStepSerializer, PettyCashExpenseAttachmentSerializer,
     PettyCashSettingsSerializer, PettyCashRequestSerializer, PettyCashSettlementSerializer,
+    PettyCashCustodianSerializer,
 )
-from pettycash import services
+from pettycash import access, services
 from pettycash.services import PettyCashError
 
 
 def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
+
+
+def _fund_in_scope(request, fund):
+    """آیا تنخواه در دامنهٔ دید کاربر جاری است؟"""
+    if fund is None:
+        return False
+    company = _company(request)
+    fund_ids = access.accessible_fund_ids(company, request.user)
+    return fund_ids is None or fund.id in fund_ids
+
 
 
 def _notify(company, title, body, user_id=None, entity_type='petty_statement', entity_id=None, priority='normal'):
@@ -52,12 +63,12 @@ class BaseViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         qs = super().get_queryset()
         company = _company(self.request)
-        if company:
-            qs = qs.filter(company=company)
-        else:
+        if not company:
             # بدون شناسایی شرکت هیچ رکوردی نمایش داده نمی‌شود (جلوگیری از نشت داده بین شرکت‌ها)
-            qs = qs.none()
-        return qs
+            return qs.none()
+        qs = qs.filter(company=company)
+        return access.scope_queryset(qs, company, self.request.user)
+
 
     def perform_create(self, serializer):
         company = _company(self.request)
@@ -102,6 +113,14 @@ class PettyCashApprovalStepViewSet(BaseViewSet):
             value = self.request.query_params.get(key)
             if value:
                 qs = qs.filter(**{f'{key}_id': value})
+        company = _company(self.request)
+        fund_ids = access.accessible_fund_ids(company, self.request.user)
+        if fund_ids is not None:
+            qs = qs.filter(
+                Q(statement__fund_id__in=list(fund_ids))
+                | Q(request__fund_id__in=list(fund_ids))
+                | Q(settlement__fund_id__in=list(fund_ids))
+            ).distinct()
         return qs
 
     def perform_create(self, serializer):
@@ -143,12 +162,178 @@ class PettyCashSettingsViewSet(BaseViewSet):
         company = _company(request)
         if not company:
             return Response({'error': 'شرکت مشخص نیست'}, status=400)
+        if not access.is_senior_manager(request.user, company):
+            return Response(
+                {'error': 'تغییر تنظیمات تنخواه فقط توسط مدیر ارشد سیستم مجاز است.'},
+                status=403,
+            )
         obj = services.get_settings(company)
         serializer = PettyCashSettingsSerializer(obj, data=request.data, partial=True)
         serializer.is_valid(raise_exception=True)
         serializer.save()
         services.audit('UPDATE', obj, user=request.user, description='به‌روزرسانی تنظیمات تنخواه')
         return Response(serializer.data)
+
+    @action(detail=False, methods=['get'])
+    def access_summary(self, request):
+        """خلاصهٔ دسترسی کاربر جاری (برای مخفی/نمایش بخش‌های رابط کاربری)."""
+        company = _company(request)
+        if not company:
+            return Response({'error': 'شرکت مشخص نیست'}, status=400)
+        fund_ids = access.accessible_fund_ids(company, request.user)
+        assignments = access.assignments_for_user(company, request.user)
+        return Response({
+            'is_senior_manager': access.is_senior_manager(request.user, company),
+            'can_view_all': fund_ids is None,
+            'accessible_funds_count': None if fund_ids is None else len(fund_ids),
+            'has_role': assignments.exists(),
+            'can_create_expense': access.can_create_expense(company, request.user),
+            'can_approve': access.can_approve(company, request.user),
+            'can_view_reports': access.can_view_reports(company, request.user),
+            'roles': [
+                {
+                    'id': a.id, 'role': a.role, 'role_display': a.get_role_display(),
+                    'employee': a.employee.full_name if a.employee_id else '',
+                    'supervisor': (
+                        a.supervisor.employee.full_name
+                        if a.supervisor_id and a.supervisor.employee_id else ''
+                    ),
+                }
+                for a in assignments
+            ],
+        })
+
+
+class PettyCashCustodianViewSet(BaseViewSet):
+    """تعاریف اولیهٔ تنخواه‌داران و کمک‌تنخواه‌داران (تعریف/ویرایش فقط توسط مدیر ارشد)."""
+    serializer_class = PettyCashCustodianSerializer
+    queryset = PettyCashCustodian.objects.all()
+    parser_classes = [parsers.MultiPartParser, parsers.FormParser, parsers.JSONParser]
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = [
+        'employee__first_name', 'employee__last_name', 'employee__employee_id',
+        'note', 'supervisor__employee__first_name', 'supervisor__employee__last_name',
+    ]
+    ordering = ['employee__first_name', 'employee__last_name']
+
+    def get_queryset(self):
+        qs = (
+            super().get_queryset()
+            .select_related('employee', 'employee__department', 'supervisor', 'supervisor__employee', 'user')
+            .prefetch_related('funds')
+        )
+        company = _company(self.request)
+        # تنخواه‌دار فقط تعریف خودش را می‌بیند؛ مدیر ارشد همه را
+        if not access.is_senior_manager(self.request.user, company):
+            mine = access.assignments_for_user(company, self.request.user)
+            qs = qs.filter(id__in=list(mine.values_list('id', flat=True)))
+        role_q = self.request.query_params.get('role')
+        if role_q:
+            qs = qs.filter(role=role_q)
+        if self.request.query_params.get('active') == '1':
+            qs = qs.filter(is_active=True)
+        return qs
+
+    def _guard(self, request):
+        company = _company(request)
+        if not access.is_senior_manager(request.user, company):
+            raise DRFValidationError(
+                {'error': 'تعریف تنخواه‌داران فقط توسط مدیر ارشد سیستم مجاز است.'}
+            )
+        return company
+
+    def perform_create(self, serializer):
+        company = self._guard(self.request)
+        obj = serializer.save(company=company)
+        self._sync_funds(obj)
+        self._sync_user(obj)
+        services.audit(
+            'CREATE', obj, user=self.request.user,
+            description='تعریف تنخواه‌دار/کمک‌تنخواه‌دار',
+        )
+
+    def perform_update(self, serializer):
+        self._guard(self.request)
+        obj = serializer.save()
+        self._sync_funds(obj)
+        self._sync_user(obj)
+        services.audit('UPDATE', obj, user=self.request.user, description='ویرایش تعریف تنخواه‌دار')
+
+    def _ids(self, key):
+        data = self.request.data
+        raw = data.getlist(key) if hasattr(data, 'getlist') else (data.get(key) or [])
+        if isinstance(raw, str):
+            raw = [value for value in raw.split(',') if value]
+        result = []
+        for value in raw:
+            try:
+                result.append(int(value))
+            except (TypeError, ValueError):
+                continue
+        return result
+
+    def _sync_funds(self, obj):
+        if 'funds' in self.request.data:
+            obj.funds.set(self._ids('funds'))
+
+    def _sync_user(self, obj):
+        """اتصال خودکار کاربر سیستم از پروندهٔ پرسنلی در صورت خالی بودن."""
+        if obj.user_id or not obj.employee_id:
+            return
+        try:
+            from core.models.user import UserProfile
+            profile = (
+                UserProfile.objects
+                .filter(employee_id=obj.employee_id, user__isnull=False)
+                .select_related('user')
+                .first()
+            )
+        except Exception:  # noqa: BLE001
+            profile = None
+        if profile is not None:
+            obj.user_id = profile.user_id
+            obj.save(update_fields=['user', 'updated_at'])
+
+    @action(detail=False, methods=['get'])
+    def options(self, request):
+        """اطلاعات پایهٔ فرم تعریف تنخواه‌دار."""
+        company = _company(request)
+        return Response({
+            'roles': [{'value': v, 'label': str(l)} for v, l in PettyCashCustodian.Role.choices],
+            'supervisors': [
+                {'id': c.id, 'employee': c.employee_id, 'name': c.employee.full_name if c.employee_id else ''}
+                for c in PettyCashCustodian.objects
+                .filter(company=company, role=PettyCashCustodian.Role.CUSTODIAN)
+                .select_related('employee')
+            ],
+            'funds': list(PettyCashFund.objects.filter(company=company).values('id', 'code', 'title')),
+            'is_senior_manager': access.is_senior_manager(request.user, company),
+        })
+
+    @action(detail=False, methods=['get'])
+    def me(self, request):
+        """تعریف(های) کاربر جاری و تنخواه‌های قابل دسترس او."""
+        company = _company(request)
+        if not company:
+            return Response({'error': 'شرکت مشخص نیست'}, status=400)
+        assignments = access.assignments_for_user(company, request.user)
+        fund_ids = access.accessible_fund_ids(company, request.user)
+        funds = PettyCashFund.objects.filter(company=company)
+        if fund_ids is not None:
+            funds = funds.filter(id__in=list(fund_ids))
+        return Response({
+            'is_senior_manager': access.is_senior_manager(request.user, company),
+            'assignments': PettyCashCustodianSerializer(assignments, many=True).data,
+            'funds': [
+                {
+                    'id': f.id, 'code': f.code, 'title': f.title, 'kind': f.kind,
+                    'balance': float(services.fund_balance(f)),
+                    'limit': float(f.limit or 0),
+                }
+                for f in funds
+            ],
+        })
+
 
 
 
@@ -382,10 +567,21 @@ class PettyCashFundViewSet(BaseViewSet):
         company = _company(request)
         if not company:
             return Response({'error': 'شرکت مشخص نیست'}, status=400)
-        funds = PettyCashFund.objects.filter(company=company).select_related('custodian')
-        stmts = PettyCashExpenseStatement.objects.filter(company=company, is_deleted=False)
-        txns = PettyCashTransaction.objects.filter(company=company, is_void=False)
-        reqs = PettyCashRequest.objects.filter(company=company)
+        funds = access.scope_funds(
+            PettyCashFund.objects.filter(company=company).select_related('custodian'),
+            company, request.user,
+        )
+        stmts = access.scope_by_fund(
+            PettyCashExpenseStatement.objects.filter(company=company, is_deleted=False),
+            company, request.user,
+        )
+        txns = access.scope_by_fund(
+            PettyCashTransaction.objects.filter(company=company, is_void=False),
+            company, request.user,
+        )
+        reqs = access.scope_by_custodian(
+            PettyCashRequest.objects.filter(company=company), company, request.user,
+        )
 
         fund_id = request.query_params.get('fund')
         custodian_id = request.query_params.get('custodian')
@@ -431,6 +627,9 @@ class PettyCashFundViewSet(BaseViewSet):
             status=PettyCashExpenseStatement.Status.DRAFT,
         ).count()
         overdue = services.overdue_statements(company)
+        scope_ids = access.accessible_fund_ids(company, request.user)
+        if scope_ids is not None:
+            overdue = [row for row in overdue if row.get('fund_id') in scope_ids]
         near_limit = [
             {'id': f.id, 'title': f.title, 'balance': float(services.fund_balance(f)),
              'limit': float(f.limit or 0), 'percent': f.usage_percent}
@@ -838,6 +1037,10 @@ class PettyCashExpenseStatementViewSet(FinancialViewSet):
         if not company:
             raise DRFValidationError({'error': 'شرکت مشخص نیست.'})
         fund = serializer.validated_data['fund']
+        if not _fund_in_scope(self.request, fund):
+            raise DRFValidationError({'error': 'این تنخواه در دامنهٔ دسترسی شما نیست.'})
+        if not access.can_create_expense(company, self.request.user):
+            raise DRFValidationError({'error': 'اجازهٔ ثبت صورت هزینه برای شما تعریف نشده است.'})
         st = serializer.save(company=company, custodian=fund.custodian)
         services.audit('CREATE', st, user=self.request.user, description='ایجاد صورت هزینه')
 
@@ -1054,6 +1257,8 @@ class PettyCashTransactionViewSet(FinancialViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         data = serializer.validated_data
+        if not _fund_in_scope(request, data['fund']):
+            return Response({'error': 'این تنخواه در دامنهٔ دسترسی شما نیست.'}, status=403)
         try:
             tx, created = services.register_movement(
                 fund=data['fund'],
@@ -1120,6 +1325,8 @@ class PettyCashTransactionViewSet(FinancialViewSet):
         target = PettyCashFund.objects.filter(company=company, pk=target_id).first()
         if not source or not target:
             return Response({'error': 'تنخواه یافت نشد.'}, status=404)
+        if not (_fund_in_scope(request, source) and _fund_in_scope(request, target)):
+            return Response({'error': 'یکی از تنخواه‌ها در دامنهٔ دسترسی شما نیست.'}, status=403)
         try:
             with db_transaction.atomic():
                 out_tx, _ = services.register_movement(
@@ -1178,6 +1385,9 @@ class PettyCashRequestViewSet(FinancialViewSet):
         company = _company(self.request)
         if not company:
             raise DRFValidationError({'error': 'شرکت مشخص نیست.'})
+        fund = serializer.validated_data.get('fund')
+        if fund is not None and not _fund_in_scope(self.request, fund):
+            raise DRFValidationError({'error': 'این تنخواه در دامنهٔ دسترسی شما نیست.'})
         obj = serializer.save(company=company)
         services.audit('CREATE', obj, user=self.request.user, description='ایجاد درخواست تنخواه')
 
@@ -1361,6 +1571,9 @@ class PettyCashSettlementViewSet(FinancialViewSet):
         company = _company(self.request)
         if not company:
             raise DRFValidationError({'error': 'شرکت مشخص نیست.'})
+        fund = serializer.validated_data.get('fund')
+        if fund is not None and not _fund_in_scope(self.request, fund):
+            raise DRFValidationError({'error': 'این تنخواه در دامنهٔ دسترسی شما نیست.'})
         obj = serializer.save(company=company)
         services.audit('CREATE', obj, user=self.request.user, description='ایجاد تسویهٔ تنخواه')
 
@@ -1548,11 +1761,27 @@ class PettyCashReportViewSet(viewsets.ViewSet):
             writer.writerow(row)
         return response
 
+    def _scoped_funds(self, request, qs):
+        return access.scope_funds(qs, self._company_or_error(request), request.user)
+
+    def _scoped_by_fund(self, request, qs, field='fund_id'):
+        return access.scope_by_fund(qs, self._company_or_error(request), request.user, field=field)
+
+    def _scoped_overdue(self, request, company):
+        rows = services.overdue_statements(company)
+        fund_ids = access.accessible_fund_ids(company, request.user)
+        if fund_ids is None:
+            return rows
+        return [row for row in rows if row.get('fund_id') in fund_ids]
+
+
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """گزارش وضعیت تنخواه‌ها و مانده هر تنخواه‌دار."""
         company = self._company_or_error(request)
-        funds = PettyCashFund.objects.filter(company=company).select_related('custodian')
+        funds = self._scoped_funds(
+            request, PettyCashFund.objects.filter(company=company).select_related('custodian'),
+        )
         rows = []
         for fund in funds:
             status = services.imprest_status(fund)
@@ -1583,8 +1812,10 @@ class PettyCashReportViewSet(viewsets.ViewSet):
     def custodian_performance(self, request):
         """عملکرد تنخواه‌داران: مصرف، تعداد صورت، مانده و تسویه‌های معوق."""
         company = self._company_or_error(request)
-        funds = PettyCashFund.objects.filter(company=company).select_related('custodian')
-        overdue = services.overdue_statements(company)
+        funds = self._scoped_funds(
+            request, PettyCashFund.objects.filter(company=company).select_related('custodian'),
+        )
+        overdue = self._scoped_overdue(request, company)
         stats = {}
 
         def ensure(custodian):
@@ -1599,10 +1830,10 @@ class PettyCashReportViewSet(viewsets.ViewSet):
             row = ensure(fund.custodian)
             row['funds'] += 1
             row['balance'] += float(services.fund_balance(fund))
-        stmts = self._filtered(
+        stmts = self._scoped_by_fund(request, self._filtered(
             request,
             PettyCashExpenseStatement.objects.filter(company=company, is_deleted=False),
-        ).select_related('custodian').prefetch_related('lines')
+        )).select_related('custodian').prefetch_related('lines')
         for st in stmts:
             row = ensure(st.custodian)
             row['statements'] += 1
@@ -1637,6 +1868,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
             ).exclude(statement__status='draft'),
             date_field='expense_date',
         )
+        qs = self._scoped_by_fund(request, qs, field='statement__fund_id')
         rows = list(
             qs.values('category__name', 'account__code', 'account__name')
             .annotate(total=Sum('debit'), count=Count('id'))
@@ -1668,6 +1900,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
         qs = PettyCashExpenseStatementLine.objects.filter(
             company=company, statement__is_deleted=False,
         ).exclude(statement__status='draft')
+        qs = self._scoped_by_fund(request, qs, field='statement__fund_id')
         date_from = request.query_params.get('date_from')
         date_to = request.query_params.get('date_to')
         if date_from:
@@ -1709,6 +1942,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
             request,
             PettyCashTransaction.objects.filter(company=company, is_void=False),
         )
+        qs = self._scoped_by_fund(request, qs)
         credits = qs.filter(entry_type='credit').aggregate(s=Sum('amount'))['s'] or 0
         debits = qs.filter(entry_type='debit').aggregate(s=Sum('amount'))['s'] or 0
         results = [
@@ -1741,7 +1975,9 @@ class PettyCashReportViewSet(viewsets.ViewSet):
     def credit_vs_usage(self, request):
         """اعتبار در برابر مصرف هر تنخواه."""
         company = self._company_or_error(request)
-        funds = PettyCashFund.objects.filter(company=company).select_related('custodian')
+        funds = self._scoped_funds(
+            request, PettyCashFund.objects.filter(company=company).select_related('custodian'),
+        )
         results = []
         for fund in funds:
             status = services.imprest_status(fund)
@@ -1760,7 +1996,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
     def overdue(self, request):
         """تسویه‌های معوق و تأخیر در تسویه."""
         company = self._company_or_error(request)
-        results = services.overdue_statements(company)
+        results = self._scoped_overdue(request, company)
         if request.query_params.get('export') == 'csv':
             return self._csv(
                 'petty_cash_overdue.csv',
@@ -1778,6 +2014,7 @@ class PettyCashReportViewSet(viewsets.ViewSet):
             request,
             PettyCashSettlement.objects.filter(company=company).select_related('fund', 'custodian'),
         )
+        qs = access.scope_by_custodian(qs, company, request.user)
         results = [
             {
                 'id': s.pk, 'number': s.number or s.pk, 'date': s.date.isoformat(),

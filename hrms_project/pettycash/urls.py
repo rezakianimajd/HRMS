@@ -5,6 +5,7 @@ from pettycash.views import (
     PettyCashExpenseStatementViewSet, PettyCashApprovalPolicyViewSet,
     PettyCashApprovalStepViewSet, PettyCashSettingsViewSet,
     PettyCashRequestViewSet, PettyCashSettlementViewSet, PettyCashReportViewSet,
+    PettyCashCustodianViewSet,
 )
 
 router = DefaultRouter()
@@ -15,6 +16,7 @@ router.register(r'petty-cash-expense-statements', PettyCashExpenseStatementViewS
 router.register(r'petty-cash-approval-policies', PettyCashApprovalPolicyViewSet, basename='petty-cash-approval-policy')
 router.register(r'petty-cash-approval-steps', PettyCashApprovalStepViewSet, basename='petty-cash-approval-step')
 router.register(r'petty-cash-settings', PettyCashSettingsViewSet, basename='petty-cash-settings')
+router.register(r'petty-cash-custodians', PettyCashCustodianViewSet, basename='petty-cash-custodian')
 router.register(r'petty-cash-requests', PettyCashRequestViewSet, basename='petty-cash-request')
 router.register(r'petty-cash-settlements', PettyCashSettlementViewSet, basename='petty-cash-settlement')
 router.register(r'petty-cash-reports', PettyCashReportViewSet, basename='petty-cash-report')

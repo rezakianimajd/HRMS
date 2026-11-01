@@ -537,6 +537,14 @@ class PettyCashSettings(BaseModel):
         default=list, blank=True, verbose_name=_('روش‌های پرداخت مجاز'),
         help_text=_('فهرست کدها؛ خالی = همهٔ روش‌ها مجاز (cash, card, bank_transfer, cheque, other)'),
     )
+    restrict_visibility = models.BooleanField(
+        default=True, verbose_name=_('محدودسازی دسترسی تنخواه‌داران'),
+        help_text=_('با فعال بودن، هر تنخواه‌دار فقط تنخواه‌های خودش را می‌بیند؛ مدیر ارشد همیشه همه را می‌بیند.'),
+    )
+    senior_manager_ids = models.JSONField(
+        default=list, blank=True, verbose_name=_('شناسهٔ کاربران مدیر ارشد ناظر'),
+        help_text=_('کاربرانی که علاوه بر مدیر ارشد سیستم، همهٔ تنخواه‌ها را می‌بینند.'),
+    )
 
     class Meta:
         verbose_name = _('تنظیمات تنخواه')
@@ -547,6 +555,71 @@ class PettyCashSettings(BaseModel):
 
     def __str__(self):
         return f'تنظیمات تنخواه ({self.company_id})'
+
+
+class PettyCashCustodian(BaseModel):
+    """تعریف تنخواه‌دار / کمک‌تنخواه‌دار و دامنهٔ دسترسی او (تعاریف اولیهٔ ماژول تنخواه).
+
+    قاعدهٔ دسترسی:
+      * کمک‌تنخواه‌دار فقط تنخواه‌های تخصیص‌یافته به خودش و تنخواه‌های تنخواه‌دار مسئول را می‌بیند.
+      * تنخواه‌دار فقط تنخواه‌های خودش (و تنخواه‌های تعیین‌شده) را می‌بیند.
+      * مدیر ارشد سیستم (و کاربران معرفی‌شده در تنظیمات) همه را می‌بیند.
+    """
+
+    class Role(models.TextChoices):
+        CUSTODIAN = 'custodian', _('تنخواه‌دار')
+        ASSISTANT = 'assistant', _('کمک‌تنخواه‌دار')
+
+    employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.CASCADE,
+        related_name='petty_cash_assignments', verbose_name=_('پرسنل'),
+    )
+    user = models.ForeignKey(
+        'auth.User', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='+', db_constraint=False, verbose_name=_('کاربر سیستم'),
+        help_text=_('در صورت خالی بودن، از اتصال پروفایل کاربر به پروندهٔ پرسنلی استفاده می‌شود.'),
+    )
+    role = models.CharField(
+        max_length=20, choices=Role.choices, default=Role.CUSTODIAN, verbose_name=_('نقش'),
+    )
+    supervisor = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='assistants', verbose_name=_('تنخواه‌دار مسئول'),
+        help_text=_('برای کمک‌تنخواه‌دار: تنخواه‌داری که تحت پشتیبانی او است.'),
+    )
+    funds = models.ManyToManyField(
+        'PettyCashFund', blank=True, related_name='assigned_custodians',
+        verbose_name=_('تنخواه‌های مجاز'),
+        help_text=_('خالی = همهٔ تنخواه‌هایی که این شخص تنخواه‌دار آن‌ها است.'),
+    )
+    can_create_expense = models.BooleanField(default=True, verbose_name=_('ثبت صورت هزینه'))
+    can_view_reports = models.BooleanField(default=False, verbose_name=_('مشاهدهٔ گزارش‌ها'))
+    can_approve = models.BooleanField(
+        default=False, verbose_name=_('تأیید صورت هزینه'),
+        help_text=_('در صورت فعال بودن تفکیک وظایف، تأییدکننده نباید ثبت‌کننده باشد.'),
+    )
+    note = models.CharField(max_length=250, blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('تنخواه‌دار / کمک‌تنخواه‌دار')
+        verbose_name_plural = _('تعاریف تنخواه‌داران')
+        ordering = ['employee__first_name', 'employee__last_name']
+        indexes = [models.Index(fields=['company', 'role'])]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'employee'], name='uniq_petty_custodian_employee',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.employee.full_name if self.employee_id else ""} ({self.get_role_display()})'
+
+    @property
+    def effective_user_id(self):
+        if self.user_id:
+            return self.user_id
+        return None
+
 
 
 class PettyCashRequest(BaseModel):

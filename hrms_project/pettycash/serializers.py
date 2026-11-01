@@ -6,7 +6,7 @@ from pettycash.models import (
     PettyCashExpenseStatement, PettyCashExpenseStatementLine,
     PettyCashApprovalPolicy, PettyCashApprovalStep,
     PettyCashExpenseAttachment, PettyCashSettings,
-    PettyCashRequest, PettyCashSettlement,
+    PettyCashRequest, PettyCashSettlement, PettyCashCustodian,
 )
 
 
@@ -320,7 +320,8 @@ class PettyCashSettingsSerializer(serializers.ModelSerializer):
             'id', 'number_prefix', 'default_settlement_days', 'default_limit',
             'max_single_payment', 'require_attachment', 'require_invoice_number',
             'enforce_segregation_of_duties', 'allow_negative_balance',
-            'low_balance_alert_ratio', 'payment_methods', 'updated_at',
+            'low_balance_alert_ratio', 'payment_methods',
+            'restrict_visibility', 'senior_manager_ids', 'updated_at',
         ]
         read_only_fields = ['id', 'updated_at']
 
@@ -330,6 +331,58 @@ class PettyCashSettingsSerializer(serializers.ModelSerializer):
         if unknown:
             raise serializers.ValidationError(f'روش پرداخت نامعتبر: {", ".join(unknown)}')
         return value
+
+    def validate_senior_manager_ids(self, value):
+        if value in (None, ''):
+            return []
+        if not isinstance(value, list):
+            raise serializers.ValidationError('فهرست شناسهٔ کاربران معتبر نیست.')
+        try:
+            ids = [int(v) for v in value]
+        except (TypeError, ValueError):
+            raise serializers.ValidationError('شناسهٔ کاربر باید عدد باشد.')
+        from django.contrib.auth.models import User
+        existing = set(User.objects.filter(id__in=ids).values_list('id', flat=True))
+        missing = [str(i) for i in ids if i not in existing]
+        if missing:
+            raise serializers.ValidationError(f'کاربر یافت نشد: {", ".join(missing)}')
+        return ids
+
+
+class PettyCashCustodianSerializer(serializers.ModelSerializer):
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    department_name = serializers.CharField(source='employee.department.name', read_only=True)
+    role_display = serializers.CharField(source='get_role_display', read_only=True)
+    supervisor_name = serializers.CharField(source='supervisor.employee.full_name', read_only=True)
+    user_username = serializers.CharField(source='user.username', read_only=True)
+    funds = serializers.PrimaryKeyRelatedField(many=True, read_only=True)
+    funds_titles = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PettyCashCustodian
+        fields = [
+            'id', 'employee', 'employee_name', 'employee_code', 'department_name',
+            'user', 'user_username', 'role', 'role_display',
+            'supervisor', 'supervisor_name', 'funds', 'funds_titles',
+            'can_create_expense', 'can_view_reports', 'can_approve', 'note',
+            'is_active', 'created_at',
+        ]
+        read_only_fields = ['id', 'company', 'created_at', 'updated_at']
+
+    def get_funds_titles(self, obj):
+        return [{'id': fund.id, 'title': fund.title, 'code': fund.code} for fund in obj.funds.all()]
+
+    def validate(self, attrs):
+        role = attrs.get('role') or getattr(self.instance, 'role', None)
+        supervisor = attrs.get('supervisor') if 'supervisor' in attrs else getattr(self.instance, 'supervisor', None)
+        employee = attrs.get('employee') or getattr(self.instance, 'employee', None)
+        if role == PettyCashCustodian.Role.ASSISTANT and supervisor and employee and supervisor.employee_id == employee.id:
+            raise serializers.ValidationError({'supervisor': 'کمک‌تنخواه‌دار نمی‌تواند تنخواه‌دار مسئول خودش باشد.'})
+        if role == PettyCashCustodian.Role.CUSTODIAN and supervisor:
+            raise serializers.ValidationError({'supervisor': 'برای نقش تنخواه‌دار، تنخواه‌دار مسئول تعریف نمی‌شود.'})
+        return attrs
+
 
 
 class PettyCashRequestSerializer(serializers.ModelSerializer):

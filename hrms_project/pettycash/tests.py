@@ -6,11 +6,12 @@
 """
 from decimal import Decimal
 from types import SimpleNamespace
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from django.test import SimpleTestCase
 
-from pettycash import services
+from pettycash import access, services
+
 
 
 class MoneyHelpersTests(SimpleTestCase):
@@ -106,3 +107,76 @@ class SettlementSummaryTests(SimpleTestCase):
         self.assertEqual(summary['shortage'], 0.0)
         self.assertEqual(summary['overage'], 30000.0)
         self.assertEqual(summary['recharge_amount'], 0.0)
+
+
+class _FundList(list):
+    """جایگزین سبک برای values_list در تست‌های بدون دیتابیس."""
+
+    def values_list(self, *args, **kwargs):
+        return list(self)
+
+
+def _fake_user(pk=10, superuser=False, staff=False):
+    user = MagicMock()
+    user.pk = pk
+    user.is_authenticated = True
+    user.is_superuser = superuser
+    user.is_staff = staff
+    return user
+
+
+class AccessControlTests(SimpleTestCase):
+    def _settings(self, restrict=True, seniors=None):
+        return SimpleNamespace(restrict_visibility=restrict, senior_manager_ids=seniors or [])
+
+    def test_unrestricted_settings_returns_none(self):
+        with patch.object(access, 'get_settings', return_value=self._settings(False)):
+            self.assertIsNone(access.accessible_fund_ids(1, _fake_user()))
+
+    def test_superuser_sees_everything(self):
+        with patch.object(access, 'get_settings', return_value=self._settings(True)):
+            self.assertIsNone(access.accessible_fund_ids(1, _fake_user(superuser=True)))
+
+    def test_designated_senior_manager_ids(self):
+        user = _fake_user(pk=77)
+        settings_obj = self._settings(True, seniors=[77])
+        with patch.object(access, 'get_settings', return_value=settings_obj), \
+                patch.object(access, 'user_role', return_value='employee'):
+            self.assertTrue(access.is_senior_manager(user, 1))
+
+    def test_non_manager_without_assignment_sees_nothing(self):
+        with patch.object(access, 'get_settings', return_value=self._settings(True)), \
+                patch.object(access, 'is_senior_manager', return_value=False), \
+                patch.object(access, 'assignments_for_user', return_value=[]):
+            self.assertEqual(access.accessible_fund_ids(1, _fake_user()), set())
+
+    def test_custodian_scope_includes_own_and_assigned_and_supervisor_funds(self):
+        supervisor = SimpleNamespace(employee_id=2, funds=_FundList([60]))
+        assignment = SimpleNamespace(employee_id=1, funds=_FundList([30]), supervisor=supervisor)
+        fake_manager = MagicMock()
+        fake_manager.filter.return_value = _FundList([20, 21])
+        with patch.object(access, 'get_settings', return_value=self._settings(True)), \
+                patch.object(access, 'is_senior_manager', return_value=False), \
+                patch.object(access, 'assignments_for_user', return_value=[assignment]), \
+                patch.object(access, 'PettyCashFund', SimpleNamespace(objects=fake_manager)):
+            fund_ids = access.accessible_fund_ids(1, _fake_user())
+        self.assertEqual(fund_ids, {20, 21, 30, 60})
+
+    def test_scope_by_fund_filters_queryset(self):
+        qs = MagicMock()
+        qs.filter.return_value = 'filtered'
+        with patch.object(access, 'accessible_fund_ids', return_value={3, 4}):
+            self.assertEqual(access.scope_by_fund(qs, 1, _fake_user()), 'filtered')
+            qs.filter.assert_called_with(fund_id__in=[3, 4])
+
+    def test_scope_by_fund_empty_scope_returns_none_queryset(self):
+        qs = MagicMock()
+        qs.none.return_value = 'none'
+        with patch.object(access, 'accessible_fund_ids', return_value=set()):
+            self.assertEqual(access.scope_by_fund(qs, 1, _fake_user()), 'none')
+
+    def test_scope_skipped_when_unrestricted(self):
+        qs = MagicMock()
+        with patch.object(access, 'accessible_fund_ids', return_value=None):
+            self.assertIs(access.scope_by_fund(qs, 1, _fake_user()), qs)
+
