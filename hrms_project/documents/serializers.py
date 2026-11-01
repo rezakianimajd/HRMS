@@ -113,10 +113,11 @@ class DocumentUploadSerializer(serializers.ModelSerializer):
     class Meta:
         model = Document
         fields = [
-            'employee', 'title', 'document_type',
+            'id', 'employee', 'title', 'document_type',
             'issue_date', 'expiry_date', 'document_number',
             'file', 'version', 'description',
         ]
+        read_only_fields = ['id']
 
     def _upload_policy(self):
         """پسوندهای مجاز و سقف حجم را از پروفایل بایگانی همان شرکت می‌خواند."""
