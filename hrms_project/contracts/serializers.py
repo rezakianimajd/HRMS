@@ -417,14 +417,6 @@ class StatementSerializer(serializers.ModelSerializer):
             })
         own_work = amount - previous
 
-        own_additions = normalize_percent_items(
-            attrs['additions'] if 'additions' in attrs else getattr(instance, 'additions', []) or [],
-            own_work,
-        )
-        own_deductions = normalize_percent_items(
-            attrs['deductions'] if 'deductions' in attrs else getattr(instance, 'deductions', []) or [],
-            own_work,
-        )
         value_added_tax = (
             attrs['value_added_tax'] if 'value_added_tax' in attrs
             else getattr(instance, 'value_added_tax', 0)
@@ -432,12 +424,6 @@ class StatementSerializer(serializers.ModelSerializer):
         other_additions = (
             attrs['other_additions'] if 'other_additions' in attrs
             else getattr(instance, 'other_additions', 0)
-        )
-        own_additions_total = sum(
-            (Decimal(str(item.get('amount') or 0)) for item in own_additions), Decimal('0'),
-        ) + Decimal(str(value_added_tax or 0)) + Decimal(str(other_additions or 0))
-        own_deductions_total = sum(
-            (Decimal(str(item.get('amount') or 0)) for item in own_deductions), Decimal('0'),
         )
 
         submitted = attrs.get('levels', getattr(instance, 'levels', []) or [])
@@ -450,8 +436,7 @@ class StatementSerializer(serializers.ModelSerializer):
         seen = set()
         level_work_total = Decimal('0')
         level_work_foreign_total = Decimal('0')
-        level_additions_total = Decimal('0')
-        level_deductions_total = Decimal('0')
+        included_work_total = Decimal('0')
 
         for item in submitted:
             if not isinstance(item, dict):
@@ -462,7 +447,7 @@ class StatementSerializer(serializers.ModelSerializer):
             key = statement_level_key(title)
             if key in seen:
                 raise serializers.ValidationError({
-                    'levels': f'بند «{title}» در همین سند تکراری است؛ عنوان‌ها باید یکتا باشند.',
+                    'levels': f'سطح «{title}» در همین سند تکراری است؛ عنوان‌ها باید یکتا باشند.',
                 })
             seen.add(key)
             previous_rial, previous_foreign = cumulative.get(key, (Decimal('0'), Decimal('0')))
@@ -491,49 +476,49 @@ class StatementSerializer(serializers.ModelSerializer):
                 })
             level_work = level_rial - previous_rial
             level_work_foreign = max(Decimal('0'), level_foreign - previous_foreign)
-            includes_additions = bool(item.get('includes_additions'))
-            includes_deductions = bool(item.get('includes_deductions'))
-            level_additions = normalize_percent_items(
-                item.get('additions'), level_work,
-            ) if includes_additions else []
-            level_deductions = normalize_percent_items(
-                item.get('deductions'), level_work,
-            ) if includes_deductions else []
-            level_additions_sum = sum(
-                (Decimal(str(row.get('amount') or 0)) for row in level_additions), Decimal('0'),
-            )
-            level_deductions_sum = sum(
-                (Decimal(str(row.get('amount') or 0)) for row in level_deductions), Decimal('0'),
+            # تیک «شامل اضافات و کسورات» فقط کارکرد این سطح را به مبنای
+            # اضافات/کسورات خودِ سند اضافه می‌کند (محاسبهٔ جدا ندارد).
+            includes_charges = bool(
+                item.get('includes_charges')
+                or item.get('includes_additions')
+                or item.get('includes_deductions')
             )
             levels.append({
-                **item,
                 'title': title,
-                'includes_additions': includes_additions,
-                'includes_deductions': includes_deductions,
+                'includes_charges': includes_charges,
                 'previous_amount': float(previous_rial),
                 'amount': float(level_rial),
                 'previous_foreign': float(previous_foreign),
                 'amount_foreign': float(level_foreign),
                 'work': float(level_work),
                 'work_foreign': float(level_work_foreign),
-                'additions': level_additions,
-                'deductions': level_deductions,
-                'additions_total': float(level_additions_sum),
-                'deductions_total': float(level_deductions_sum),
-                'net_amount': float(level_work + level_additions_sum - level_deductions_sum),
             })
             cumulative[key] = (level_rial, level_foreign)
             level_work_total += level_work
             level_work_foreign_total += level_work_foreign
-            level_additions_total += level_additions_sum
-            level_deductions_total += level_deductions_sum
+            if includes_charges:
+                included_work_total += level_work
         if not levels:
             raise serializers.ValidationError({
-                'levels': 'برای صورت‌وضعیت چند سطحی، حداقل یک بند با عنوان و مبلغ لازم است.',
+                'levels': 'برای صورت‌وضعیت چند سطحی، حداقل یک سطح با عنوان و مبلغ لازم است.',
             })
 
-        additions_total = own_additions_total + level_additions_total
-        deductions_total = own_deductions_total + level_deductions_total
+        # مبنای درصدی اضافات/کسورات = کارکرد سطح اصلی + کارکرد سطوح تیک‌خورده
+        charges_base = own_work + included_work_total
+        own_additions = normalize_percent_items(
+            attrs['additions'] if 'additions' in attrs else getattr(instance, 'additions', []) or [],
+            charges_base,
+        )
+        own_deductions = normalize_percent_items(
+            attrs['deductions'] if 'deductions' in attrs else getattr(instance, 'deductions', []) or [],
+            charges_base,
+        )
+        additions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in own_additions), Decimal('0'),
+        ) + Decimal(str(value_added_tax or 0)) + Decimal(str(other_additions or 0))
+        deductions_total = sum(
+            (Decimal(str(item.get('amount') or 0)) for item in own_deductions), Decimal('0'),
+        )
         work_total = own_work + level_work_total
         work_foreign_total = own_work_foreign + level_work_foreign_total
         adjustment_previous, adjustment_previous_foreign = self._previous_adjustment_cumulative(contract)

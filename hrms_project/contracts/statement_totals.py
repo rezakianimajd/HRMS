@@ -118,21 +118,12 @@ def recalculate_contract_statements(contract):
                 own_foreign_amount = (
                     prior_foreign + own_work_foreign if rate > 1 else own_amount
                 ).quantize(Decimal('0.0001'), rounding=ROUND_HALF_UP)
-                own_additions = _normalize_items(row.additions, own_work)
-                own_deductions = _normalize_items(row.deductions, own_work)
-                own_additions_total = sum(
-                    (_decimal(item.get('amount')) for item in own_additions), Decimal('0'),
-                ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)
-                own_deductions_total = sum(
-                    (_decimal(item.get('amount')) for item in own_deductions), Decimal('0'),
-                )
 
                 submitted_levels = row.levels if isinstance(row.levels, (list, tuple)) else []
                 levels = []
                 level_work_total = Decimal('0')
                 level_work_foreign_total = Decimal('0')
-                level_additions_total = Decimal('0')
-                level_deductions_total = Decimal('0')
+                included_work_total = Decimal('0')
                 for level in submitted_levels:
                     if not isinstance(level, dict):
                         continue
@@ -147,47 +138,42 @@ def recalculate_contract_statements(contract):
                     level_foreign = max(previous_foreign, _decimal(level.get('amount_foreign')))
                     level_work = level_rial - previous_rial
                     level_work_foreign = level_foreign - previous_foreign
-                    includes_additions = bool(level.get('includes_additions'))
-                    includes_deductions = bool(level.get('includes_deductions'))
-                    level_additions = (
-                        _normalize_items(level.get('additions'), level_work) if includes_additions else []
-                    )
-                    level_deductions = (
-                        _normalize_items(level.get('deductions'), level_work) if includes_deductions else []
-                    )
-                    level_additions_sum = sum(
-                        (_decimal(item.get('amount')) for item in level_additions), Decimal('0'),
-                    )
-                    level_deductions_sum = sum(
-                        (_decimal(item.get('amount')) for item in level_deductions), Decimal('0'),
+                    # تیک «شامل اضافات و کسورات» فقط مبنا را بزرگ‌تر می‌کند.
+                    includes_charges = bool(
+                        level.get('includes_charges')
+                        or level.get('includes_additions')
+                        or level.get('includes_deductions')
                     )
                     levels.append({
-                        **level,
                         'title': title,
-                        'includes_additions': includes_additions,
-                        'includes_deductions': includes_deductions,
+                        'includes_charges': includes_charges,
                         'previous_amount': float(previous_rial),
                         'amount': float(level_rial),
                         'previous_foreign': float(previous_foreign),
                         'amount_foreign': float(level_foreign),
                         'work': float(level_work),
                         'work_foreign': float(level_work_foreign),
-                        'additions': level_additions,
-                        'deductions': level_deductions,
-                        'additions_total': float(level_additions_sum),
-                        'deductions_total': float(level_deductions_sum),
-                        'net_amount': float(level_work + level_additions_sum - level_deductions_sum),
                     })
                     level_prior[key] = (level_rial, level_foreign)
                     level_work_total += level_work
                     level_work_foreign_total += level_work_foreign
-                    level_additions_total += level_additions_sum
-                    level_deductions_total += level_deductions_sum
+                    if includes_charges:
+                        included_work_total += level_work
+
+                # اضافات/کسورات یک‌بار در سطح سند و بر مبنای کارکرد سطح اصلی
+                # + کارکرد سطوح تیک‌خورده محاسبه می‌شوند.
+                charges_base = own_work + included_work_total
+                own_additions = _normalize_items(row.additions, charges_base)
+                own_deductions = _normalize_items(row.deductions, charges_base)
+                additions_total = sum(
+                    (_decimal(item.get('amount')) for item in own_additions), Decimal('0'),
+                ) + _decimal(row.value_added_tax) + _decimal(row.other_additions)
+                deductions_total = sum(
+                    (_decimal(item.get('amount')) for item in own_deductions), Decimal('0'),
+                )
 
                 total_work = own_work + level_work_total
                 total_work_foreign = own_work_foreign + level_work_foreign_total
-                additions_total = own_additions_total + level_additions_total
-                deductions_total = own_deductions_total + level_deductions_total
                 Statement.objects.filter(pk=row.pk).update(
                     levels=levels,
                     amount=own_amount,

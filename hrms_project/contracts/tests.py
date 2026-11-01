@@ -822,45 +822,45 @@ class StatementCalculationTests(TestCase):
         self.assertEqual(second.work_done, Decimal('3000000'))
 
     def test_multi_level_statement_keeps_independent_cumulative_chains(self):
-        """سند چند سطحی = صورت‌وضعیت عادی (کارکرد می‌تواند صفر باشد) + سطوح مستقل."""
+        """سند چند سطحی = صورت‌وضعیت عادی (کارکرد می‌تواند صفر باشد) + سطوح مستقل.
+
+        تیک «شامل اضافات و کسورات» فقط کارکرد همان سطح را به مبنای درصد
+        اضافات/کسورات سطح سند اضافه می‌کند؛ محاسبهٔ جداگانه‌ای ندارد.
+        """
         first = StatementSerializer(data=self._payload(
             amount=0, number='01', kind='multi',
+            additions=[{
+                'code': 'vat', 'description': 'ارزش افزوده',
+                'percent': 10, 'amount': 0, 'mode': 'percent',
+            }],
             levels=[
-                {
-                    'title': 'خرید', 'amount': 1_000_000, 'includes_additions': True,
-                    'additions': [{
-                        'code': 'vat', 'description': 'ارزش افزوده',
-                        'percent': 10, 'amount': 0, 'mode': 'percent',
-                    }],
-                },
+                {'title': 'خرید', 'amount': 1_000_000, 'includes_charges': True},
                 {'title': 'بند الف', 'amount': 500_000},
             ],
         ))
         self.assertTrue(first.is_valid(), first.errors)
         first_row = first.save(company=self.company)
         self.assertEqual(first_row.kind, Statement.Kind.MULTI)
-        # تجمعی سطح سند (بدون بندها) و کارکرد کل سند
+        # تجمعی سطح سند (بدون سطوح) و کارکرد کل سند
         self.assertEqual(first_row.amount, Decimal('0'))
         self.assertEqual(first_row.work_done, Decimal('1500000'))
-        # اضافات فقط برای بندی که «شامل اضافات» انتخاب شده: ۱۰٪ × ۱٬۰۰۰٬۰۰۰
+        # مبنای VAT = کارکرد سطح اصلی (۰) + سطح تیک‌خورده (۱٬۰۰۰٬۰۰۰)
         self.assertEqual(first_row.additions_total, Decimal('100000'))
         self.assertEqual(first_row.net_amount, Decimal('1600000'))
         levels = {level['title']: level for level in first_row.levels}
         self.assertEqual(levels['خرید']['work'], 1_000_000.0)
-        self.assertEqual(levels['خرید']['net_amount'], 1_100_000.0)
+        self.assertTrue(levels['خرید']['includes_charges'])
         self.assertEqual(levels['بند الف']['work'], 500_000.0)
-        self.assertEqual(levels['بند الف']['additions'], [])
+        self.assertFalse(levels['بند الف']['includes_charges'])
 
         second = StatementSerializer(data=self._payload(
             amount=0, number='02', kind='multi', date='2025-09-01',
+            additions=[{
+                'code': 'vat', 'description': 'ارزش افزوده',
+                'percent': 10, 'amount': 0, 'mode': 'percent',
+            }],
             levels=[
-                {
-                    'title': 'خرید', 'amount': 1_600_000, 'includes_additions': True,
-                    'additions': [{
-                        'code': 'vat', 'description': 'ارزش افزوده',
-                        'percent': 10, 'amount': 0, 'mode': 'percent',
-                    }],
-                },
+                {'title': 'خرید', 'amount': 1_600_000, 'includes_charges': True},
                 {'title': 'بند الف', 'amount': 900_000},
             ],
         ))
@@ -875,7 +875,7 @@ class StatementCalculationTests(TestCase):
         works = {level['title']: level['work'] for level in second_row.levels}
         self.assertEqual(works['خرید'], 600_000.0)
         self.assertEqual(works['بند الف'], 400_000.0)
-        # اضافات بند بر مبنای کارکرد همان بند محاسبه می‌شود: ۱۰٪ × ۶۰۰٬۰۰۰
+        # مبنا فقط کارکرد سطح تیک‌خورده است: ۱۰٪ × ۶۰۰٬۰۰۰
         self.assertEqual(second_row.additions_total, Decimal('60000'))
 
     def test_multi_level_adds_own_work_to_level_work(self):
