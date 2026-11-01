@@ -1,22 +1,26 @@
 import React, { Suspense, lazy, useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert, Autocomplete, Box, Button, Chip, FormControl, IconButton, InputLabel,
-  MenuItem, Select, Snackbar, Stack, TextField, Tooltip, Typography,
+  MenuItem, Paper, Select, Snackbar, Stack, Tab, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
+import CompareArrowsIcon from '@mui/icons-material/CompareArrows';
 import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import InsightsIcon from '@mui/icons-material/Insights';
 import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutlined';
 import PrintIcon from '@mui/icons-material/Print';
 import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
+import TableChartIcon from '@mui/icons-material/TableChart';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useQuery } from '@tanstack/react-query';
 import { alpha } from '@mui/material/styles';
 import axiosInstance from '../../../core/api/axiosConfig';
 import MoneyInput from '../../../core/components/ui/MoneyInput';
+import PageHeader from '../../../core/components/ui/PageHeader';
 
 import { MUTED } from '../../accounting/AccountingDashboardUI';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
@@ -28,8 +32,7 @@ import SeasonalBulkPasteDialog from './SeasonalBulkPasteDialog';
 import SeasonalFilterBuilder from './SeasonalFilterBuilder';
 import { rowsToTsv } from './seasonalGridEntry';
 import {
-  StudioBadge, StudioCard, StudioHero, StudioPanelSkeleton, StudioStats,
-  StudioStatusBar, StudioTabs, useStudio,
+  StudioCard, StudioInfoRow, StudioPanelSkeleton, StudioStatusBar, useStudio,
 } from './seasonalStudioUi';
 import {
   combineExpressions, countConditions, describeExpression, emptyExpression, evaluateExpression,
@@ -2154,104 +2157,20 @@ const SeasonalReportPage = () => {
 
   return (
     <>
-      <StudioHero
-        icon={<CalendarViewMonthIcon sx={{ fontSize: 24 }} />}
+      <PageHeader
+        icon={<CalendarViewMonthIcon />}
         title="معاملات فصلی خرید"
-        subtitle="ماده ۱۶۹ مکرر — ثبت، اعتبارسنجی پویا و خروجی‌های خرید (فروش در نسخهٔ بعد)"
-        badges={[
-          <StudioBadge
-            key="period"
-            tone="accent"
-            label={period.start && period.end
-              ? `بازهٔ فصل: ${jalaliText(period.start)} تا ${jalaliText(period.end)}`
-              : mode === 'local'
-                ? 'حالت محلی (سرور در دسترس نیست) — داده‌ها در همین مرورگر ذخیره می‌شوند'
-                : 'در حال دریافت بازهٔ فصل…'}
-          />,
-          <StudioBadge
-            key="ruleset"
-            tone={rulesetStatus === 'verified' ? 'success' : 'warning'}
-            label={rulesetStatus === 'verified' ? 'قواعد تأییدشدهٔ قالب هدف' : 'قواعد/قالب TTMS تأییدنشده'}
-            title={`نسخهٔ قواعد: ${reference?.ruleset_version || 'نامشخص'}`}
-          />,
-          <StudioBadge
-            key="mode"
-            tone={mode === 'api' ? 'success' : 'default'}
-            label={mode === 'api' ? 'متصل به سرور' : mode === 'local' ? 'حالت محلی' : 'در حال بارگذاری'}
-          />,
-          saveState === 'saving' ? <StudioBadge key="save" tone="info" label="در حال ذخیره…" /> : null,
-          saveState === 'saved'
-            ? <StudioBadge key="saved" tone="success" label={mode === 'api' ? 'ذخیره شد' : 'ذخیرهٔ محلی'} />
-            : null,
-          saveState === 'error' ? <StudioBadge key="saveerr" tone="danger" label="ذخیره در سرور ناموفق بود" /> : null,
-          advancedFilterCount
-            ? <StudioBadge key="filter" tone="accent" label={`فیلتر پیشرفته (${toPersianDigits(advancedFilterCount)} شرط)`} />
-            : null,
-        ]}
+        color="#d97706"
         actions={(
-          <>
-            <Tooltip title="ساخت شرط‌های ترکیبی (و / یا) روی نوع شخص، مبلغ، تاریخ، مالیات و… با ذخیرهٔ نما">
-              <span>
-                <Button
-                  variant={advancedFilterCount ? 'contained' : 'outlined'}
-                  size="small"
-                  color={advancedFilterCount ? 'warning' : 'primary'}
-                  startIcon={<FilterAltIcon sx={{ fontSize: 17 }} />}
-                  onClick={() => setBuilderOpen(true)}
-                  data-testid="open-filter-builder"
-                >
-                  فیلتر پیشرفته
-                  {advancedFilterCount ? (
-                    <Chip
-                      size="small"
-                      label={toPersianDigits(advancedFilterCount)}
-                      sx={{ ml: 0.75, height: 18, fontSize: 10.5, fontWeight: 800 }}
-                    />
-                  ) : null}
-                </Button>
-              </span>
-            </Tooltip>
-            <Button variant="outlined" size="small" startIcon={<RuleOutlinedIcon sx={{ fontSize: 17 }} />} onClick={runValidation}>
-              اعتبارسنجی
-            </Button>
-            <Tooltip title="ساخت بستهٔ درج ردیف‌ها در فایل Access نسخهٔ TTMS (روی کپی، با بازبینی جمع‌ها)">
-              <span>
-                <Button
-                  variant="outlined"
-                  size="small"
-                  startIcon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 17 }} />}
-                  onClick={() => setTtmsOpen(true)}
-                  disabled={mode !== 'api' || !reportId}
-                >
-                  بستهٔ درج TTMS
-                </Button>
-              </span>
-            </Tooltip>
-            <Tooltip title="خروجی سازگار با TTMS (CSV پیش‌نویس)">
-              <span>
-                <Button variant="outlined" size="small" startIcon={<DownloadIcon sx={{ fontSize: 17 }} />} onClick={exportTtms}>
-                  خروجی TTMS
-                </Button>
-              </span>
-            </Tooltip>
-            <Button variant="outlined" size="small" startIcon={<PrintIcon sx={{ fontSize: 17 }} />} onClick={printReport}>
-              چاپ
-            </Button>
-            <Button variant="contained" size="small" startIcon={<DownloadIcon sx={{ fontSize: 17 }} />} onClick={exportExcel}>
-              خروجی اکسل
-            </Button>
-          </>
-        )}
-        periodControls={(
-          <>
-            <FormControl size="small" sx={{ minWidth: 190 }}>
+          <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
+            <FormControl size="small" sx={{ minWidth: 168 }}>
               <InputLabel id="seasonal-year-label">سال مالی</InputLabel>
               <Select
                 labelId="seasonal-year-label"
                 label="سال مالی"
                 value={yearKey}
                 onChange={(event) => setYearKey(event.target.value)}
-                sx={{ fontSize: 12, borderRadius: '9px' }}
+                sx={{ fontSize: 12.5, borderRadius: '8px' }}
               >
                 {years.length ? years.map((item) => (
                   <MenuItem key={item.value} value={item.value} sx={{ fontSize: 12.5 }}>
@@ -2262,14 +2181,14 @@ const SeasonalReportPage = () => {
                 )}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 200 }}>
+            <FormControl size="small" sx={{ minWidth: 158 }}>
               <InputLabel id="seasonal-quarter-label">فصل</InputLabel>
               <Select
                 labelId="seasonal-quarter-label"
                 label="فصل"
                 value={quarter}
                 onChange={(event) => setQuarter(Number(event.target.value))}
-                sx={{ fontSize: 12, borderRadius: '9px' }}
+                sx={{ fontSize: 12.5, borderRadius: '8px' }}
               >
                 {QUARTERS.map((item) => (
                   <MenuItem key={item.value} value={item.value} sx={{ fontSize: 12.5 }}>
@@ -2278,56 +2197,126 @@ const SeasonalReportPage = () => {
                 ))}
               </Select>
             </FormControl>
-            <Box sx={{ flex: 1 }} />
-            <Typography sx={{ fontSize: 10.5, color: 'text.disabled' }}>
-              {`نسخهٔ رابط: ${buildId}`}
-            </Typography>
-          </>
+            <Button
+              variant={advancedFilterCount ? 'contained' : 'outlined'}
+              size="small"
+              color={advancedFilterCount ? 'warning' : 'primary'}
+              startIcon={<FilterAltIcon sx={{ fontSize: 17 }} />}
+              onClick={() => setBuilderOpen(true)}
+              data-testid="open-filter-builder"
+            >
+              فیلتر پیشرفته
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<RuleOutlinedIcon sx={{ fontSize: 17 }} />} onClick={runValidation}>
+              اعتبارسنجی
+            </Button>
+            <Button
+              variant="outlined"
+              size="small"
+              startIcon={<InsertDriveFileOutlinedIcon sx={{ fontSize: 17 }} />}
+              onClick={() => setTtmsOpen(true)}
+              disabled={mode !== 'api' || !reportId}
+            >
+              بستهٔ درج TTMS
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<DownloadIcon sx={{ fontSize: 17 }} />} onClick={exportTtms}>
+              خروجی TTMS
+            </Button>
+            <Button variant="outlined" size="small" startIcon={<PrintIcon sx={{ fontSize: 17 }} />} onClick={printReport}>
+              چاپ
+            </Button>
+            <Button variant="contained" size="small" startIcon={<DownloadIcon sx={{ fontSize: 17 }} />} onClick={exportExcel}>
+              خروجی اکسل
+            </Button>
+          </Stack>
         )}
       />
 
-
-      <StudioStats
+      <StudioInfoRow
         items={[
           {
-            key: 'rows',
-            label: 'تعداد ردیف',
-            value: toPersianDigits(filledRows.length),
-            hint: filteredRows.length !== filledRows.length
-              ? `${toPersianDigits(filteredRows.length)} ردیف پس از فیلتر`
-              : 'همهٔ ردیف‌های فصل',
-            color: '#6366f1',
+            key: 'period',
+            text: period.start && period.end
+              ? `بازهٔ فصل: ${jalaliText(period.start)} تا ${jalaliText(period.end)}`
+              : mode === 'local'
+                ? 'حالت محلی (سرور در دسترس نیست)'
+                : 'بازهٔ فصل: در حال دریافت…',
+            color: '#0ea5e9',
+            minWidth: 240,
           },
-          { key: 'amount', label: 'جمع مبلغ', value: formatPersianNumber(totals.amount), color: '#0ea5e9' },
-          { key: 'vat', label: 'جمع ارزش افزوده', value: formatPersianNumber(totals.vat), color: '#8b5cf6' },
-          { key: 'total', label: 'جمع کل', value: formatPersianNumber(totals.total), color: '#d97706' },
+          {
+            key: 'ruleset',
+            text: rulesetStatus === 'verified' ? 'قواعد قالب هدف: تأییدشده' : 'قواعد/قالب TTMS تأییدنشده',
+            color: rulesetStatus === 'verified' ? '#10b981' : '#f59e0b',
+            minWidth: 195,
+          },
+          { key: 'rows', text: `تعداد ردیف: ${toPersianDigits(filledRows.length)}`, color: '#6366f1' },
+          { key: 'amount', text: `جمع مبلغ: ${formatPersianNumber(totals.amount)}`, color: '#8b5cf6' },
+          { key: 'vat', text: `جمع ارزش افزوده: ${formatPersianNumber(totals.vat)}`, color: '#0ea5e9' },
+          { key: 'total', text: `جمع کل: ${formatPersianNumber(totals.total)}`, color: '#d97706', minWidth: 165 },
           {
             key: 'registered',
-            label: 'درج‌شده در سامانه',
-            value: `${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
+            text: `درج‌شده در سامانه: ${toPersianDigits(totals.registered)} از ${toPersianDigits(filledRows.length)}`,
             color: '#10b981',
+            minWidth: 175,
           },
           {
             key: 'validation',
-            label: 'اعتبارسنجی',
-            value: errorCount || warningCount
-              ? `${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
-              : 'بدون خطا',
-            valueColor: errorCount ? '#dc2626' : (warningCount ? '#b45309' : '#047857'),
-            color: errorCount ? '#dc2626' : (warningCount ? '#f59e0b' : '#10b981'),
+            text: errorCount || warningCount
+              ? `اعتبارسنجی: ${toPersianDigits(errorCount)} خطا / ${toPersianDigits(warningCount)} هشدار`
+              : 'اعتبارسنجی: بدون خطا',
+            color: errorCount ? '#ef4444' : (warningCount ? '#f59e0b' : '#10b981'),
+            minWidth: 190,
           },
         ]}
+        trailing={(
+          <Typography
+            sx={{ fontSize: 10.5, color: 'text.disabled', whiteSpace: 'nowrap' }}
+            title="شناسهٔ باندل در حال اجرا"
+          >
+            {`نسخهٔ رابط: ${buildId}`}
+          </Typography>
+        )}
       />
 
-      <StudioTabs
-        value={activeTab}
-        onChange={setActiveTab}
-        tabs={[
-          { value: 'data', label: 'ورود داده' },
-          { value: 'analytics', label: 'گزارش‌ها و تحلیل' },
-          { value: 'reconcile', label: 'مغایرت‌گیری با دفاتر' },
-        ]}
-      />
+      <Paper sx={{ p: 1, mb: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.6)' }}>
+        <Tabs
+          value={activeTab}
+          onChange={(_event, value) => setActiveTab(value)}
+          variant="scrollable"
+          allowScrollButtonsMobile
+          sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, fontSize: 12, fontWeight: 700 } }}
+        >
+          <Tab
+            value="data"
+            label={(
+              <Stack direction="row" spacing={1} alignItems="center">
+                <TableChartIcon fontSize="small" />
+                ورود داده
+              </Stack>
+            )}
+          />
+          <Tab
+            value="analytics"
+            label={(
+              <Stack direction="row" spacing={1} alignItems="center">
+                <InsightsIcon fontSize="small" />
+                گزارش‌ها و تحلیل
+              </Stack>
+            )}
+          />
+          <Tab
+            value="reconcile"
+            label={(
+              <Stack direction="row" spacing={1} alignItems="center">
+                <CompareArrowsIcon fontSize="small" />
+                مغایرت‌گیری با دفاتر
+              </Stack>
+            )}
+          />
+        </Tabs>
+      </Paper>
+
 
       {activeTab === 'analytics' ? (
         <Suspense fallback={<StudioPanelSkeleton />}>
@@ -2377,6 +2366,8 @@ const SeasonalReportPage = () => {
           onCopy={handleGridCopy}
           onMouseDown={handleRowMouseDown}
         >
+        <StudioCard title="جدول ردیف‌های خرید" noPadding>
+          <Box sx={{ px: 1, pt: 1 }}>
           <Box sx={{
             display: 'flex',
             gap: 0.75,
@@ -2417,9 +2408,6 @@ const SeasonalReportPage = () => {
             >
               تکرار
             </Button>
-            <Typography sx={{ fontSize: 10, color: 'text.secondary' }}>
-              Enter ردیف بعد · Ctrl+D کپی از بالا · Ctrl+Z/Y بازگردانی · Ctrl+کلیک انتخاب ردیف · Ctrl+C کپی
-            </Typography>
             <Box sx={{ flex: 1 }} />
             {selectedIds.length ? (
               <Stack direction="row" spacing={0.75} alignItems="center" flexWrap="wrap" useFlexGap>
@@ -2506,13 +2494,8 @@ const SeasonalReportPage = () => {
         filtersOpen={filtersOpen}
         setFiltersOpen={setFiltersOpen}
       />
+          </Box>
 
-
-      <StudioCard
-        title="جدول ردیف‌های خرید"
-        subtitle={`${toPersianDigits(filteredRows.length)} ردیف در نمایش · ${toPersianDigits(selectedIds.length)} انتخاب‌شده`}
-        noPadding
-      >
         <Box>
           <ModuleTable
             tableTheme={moduleTheme.tableTheme}

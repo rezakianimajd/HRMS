@@ -408,6 +408,74 @@ export const StudioPanelSkeleton = ({ rows = 3 }) => {
   );
 };
 
+export const StudioInfoRow = ({ items = [], trailing }) => {
+  const studio = useStudio();
+  return (
+    <Box
+      sx={{
+        display: 'flex',
+        flexWrap: 'nowrap',
+        alignItems: 'stretch',
+        gap: 0.75,
+        mb: 1.5,
+        overflowX: 'auto',
+        pb: 0.25,
+      }}
+    >
+      {items.filter(Boolean).map((item, index) => {
+        const tone = item.color || studio.accent;
+        const rawText = item.text !== undefined
+          ? String(item.text)
+          : `${item.label ?? ''}: ${item.value ?? ''}`.trim();
+        const separator = rawText.indexOf(':');
+        const head = separator >= 0 ? `${rawText.slice(0, separator + 1)} ` : rawText;
+        const tail = separator >= 0 ? rawText.slice(separator + 1).trim() : '';
+        return (
+          <Box
+            key={item.key || item.label || item.text || index}
+            sx={{
+              flex: '1 1 0',
+              minWidth: item.minWidth || 138,
+              px: 1.1,
+              py: 0.55,
+              borderRadius: `${studio.radius.medium}px`,
+              bgcolor: alpha(tone, 0.08),
+              border: `1px solid ${alpha(tone, 0.26)}`,
+              boxShadow: `inset 3px 0 0 ${alpha(tone, 0.75)}`,
+              whiteSpace: 'nowrap',
+            }}
+            title={item.title}
+          >
+            <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
+              {item.icon ? (
+                <Box sx={{ display: 'flex', color: alpha(tone, 0.95), '& svg': { fontSize: 13.5 } }}>{item.icon}</Box>
+              ) : null}
+              <Typography sx={{ fontSize: 11, color: alpha(tone, 0.95), fontWeight: 800 }}>
+                {head}
+              </Typography>
+              {tail ? (
+                <Typography
+                  sx={{
+                    fontSize: 11.5,
+                    fontWeight: 900,
+                    color: item.valueColor || studio.ink,
+                    fontVariantNumeric: 'tabular-nums',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  {tail}
+                </Typography>
+              ) : null}
+            </Stack>
+          </Box>
+        );
+      })}
+      {trailing ? <Box sx={{ display: 'flex', alignItems: 'center', flex: '0 0 auto', pl: 0.5 }}>{trailing}</Box> : null}
+    </Box>
+  );
+};
+
 export const StudioCount = ({ count, color }) => (
   <Box
     component="span"
