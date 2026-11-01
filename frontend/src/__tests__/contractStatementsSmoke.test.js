@@ -341,6 +341,11 @@ test('multi-level statement sends level rows with their own cumulative amounts',
   expect(bandAmountInput).toBeTruthy();
   await act(async () => { setInputValue(bandAmountInput, '5000000'); await wait(200); });
 
+  // پیش‌نمایش باید سطوح و محاسبات چند سطحی را نشان دهد.
+  expect(container.textContent).toContain('کارکرد کل (سطح اصلی + سطوح)');
+  expect(container.textContent).toContain('مبنای اضافات و کسورات (سطح اصلی + سطوح «در مبنا»)');
+  expect(container.textContent).toContain('جمع کارکرد سطوح');
+
   const saveButton = buttonByText(container, 'ذخیره صورت‌وضعیت چند سطحی');
   expect(saveButton).toBeTruthy();
   await act(async () => { saveButton.click(); await wait(420); });

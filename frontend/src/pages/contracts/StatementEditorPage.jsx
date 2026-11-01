@@ -177,7 +177,12 @@ const printStatement = async () => {
 /* ------------------------------------------------------------------ */
 /* A4-style statement preview                                          */
 /* ------------------------------------------------------------------ */
-const StatementPreview = ({ form, contract, company, currencies, rate: rateProp }) => {
+const StatementPreview = ({
+  form, contract, company, currencies, rate: rateProp,
+  isMultiForm = false, levels = [], levelPreviousMap = {}, levelTotals = null,
+  totalWork = 0, totalWorkForeign = 0, chargesBase = 0, chargesBaseForeign = 0,
+  netAmount: netAmountProp = null, netAmountForeign: netAmountForeignProp = null,
+}) => {
   const rate = num(rateProp) || 1;
   const kind = statementKindOf(form);
   const isAdjustment = kind.isAdjustment;
@@ -202,7 +207,9 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
   const adjustmentAmount = adjustmentPrevious + adjustmentWork;
   const netAmount = isAdjustment
     ? adjustmentWork + additionsTotal - deductionsTotal
-    : workDone + additionsTotal - deductionsTotal;
+    : (isMultiForm && netAmountProp != null
+      ? num(netAmountProp)
+      : workDone + additionsTotal - deductionsTotal);
 
   const cur = currencies.find((c) => String(c.id) === String(form.currency)) || null;
   const currencyLabel = normalizeCurrencyLabel(cur?.name || cur?.symbol);
@@ -223,6 +230,40 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
   const adjustmentAmountForeign = rate > 1
     ? (adjustmentPreviousForeign || 0) + (adjustmentWorkForeign || 0)
     : null;
+
+  /** سطرهای سطوح کارکرد (هر سطح یک بلوک کامل «کارکرد و مبالغ») */
+  const levelRows = (isMultiForm && Array.isArray(levels) ? levels : []).map((level) => {
+    const key = String(level?.title || '')
+      .replace(/\u200c/g, ' ').replace(/\s+/g, ' ').trim().toLowerCase();
+    const previous = (levelPreviousMap || {})[key] || { amount: 0, amount_foreign: 0 };
+    const amountRial = num(level?.amount);
+    const previousRial = num(previous.amount);
+    const amountForeign = rate > 1
+      ? (level?.amount_foreign != null ? num(level.amount_foreign) : fx(amountRial))
+      : null;
+    const previousForeign = rate > 1 ? num(previous.amount_foreign) : null;
+    return {
+      title: level?.title || '—',
+      includesCharges: Boolean(level?.includes_charges),
+      amountRial,
+      previousRial,
+      workRial: Math.max(0, amountRial - previousRial),
+      amountForeign,
+      previousForeign,
+      workForeign: amountForeign != null && previousForeign != null
+        ? Math.max(0, amountForeign - previousForeign)
+        : null,
+    };
+  });
+  const levelsWorkTotal = isMultiForm ? num(levelTotals?.work) : 0;
+  const levelsWorkTotalForeign = rate > 1 && isMultiForm ? num(levelTotals?.workForeign) : null;
+  const grandWorkTotal = isMultiForm ? num(totalWork) : 0;
+  const grandWorkTotalForeign = rate > 1 && isMultiForm ? num(totalWorkForeign) : null;
+  const chargesBaseValue = isMultiForm ? num(chargesBase) : workDone;
+  const chargesBaseForeignValue = rate > 1 && isMultiForm ? num(chargesBaseForeign) : workDoneForeign;
+  const netForeignDisplay = isMultiForm && netAmountForeignProp != null
+    ? num(netAmountForeignProp)
+    : fx(netAmount);
 
   return (
     <Box id="statement-print-area" dir="rtl" sx={{
@@ -284,10 +325,88 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           <>
             <Row label="مبلغ تجمعی این صورت‌وضعیت" value={cumulativeThis} strong foreign={cumulativeThisForeign} foreignSymbol={currencyLabel} />
             <Row label="مبلغ تجمعی صورت‌وضعیت قبلی" value={cumulativePrev} foreign={cumulativePrevForeign} foreignSymbol={currencyLabel} />
-            <Row label="کارکرد دوره" value={workDone} highlight foreign={workDoneForeign} foreignSymbol={currencyLabel} />
+            <Row label={isMultiForm ? 'کارکرد سطح اصلی' : 'کارکرد دوره'} value={workDone} highlight foreign={workDoneForeign} foreignSymbol={currencyLabel} />
+            {isMultiForm ? (
+              <>
+                <Row label="جمع کارکرد سطوح" value={levelsWorkTotal} foreign={levelsWorkTotalForeign} foreignSymbol={currencyLabel} />
+                <Row label="کارکرد کل (سطح اصلی + سطوح)" value={grandWorkTotal} strong foreign={grandWorkTotalForeign} foreignSymbol={currencyLabel} />
+              </>
+            ) : null}
           </>
         )}
       </Box>
+
+      {/* سطوح کارکرد — صورت‌وضعیت چند سطحی */}
+      {isMultiForm ? (
+        <Box sx={{ mt: 1.5 }}>
+          <Typography variant="subtitle2" fontWeight={800} sx={{ color: kind.color, mb: 0.5 }}>
+            سطوح کارکرد
+          </Typography>
+          <Box sx={{ borderRadius: '10px', border: `1px solid ${kind.color}33`, overflow: 'hidden' }}>
+            <Box sx={{
+              display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 0.9fr',
+              bgcolor: `${kind.color}0f`, px: 1, py: 0.5,
+            }}>
+              {['عنوان سطح', `مبلغ تجمعی (${currencyLabel || 'ریال'})`, 'دوره قبل', 'کارکرد'].map((heading) => (
+                <Typography key={heading} variant="caption" sx={{ fontWeight: 800, fontSize: 11, color: '#334155' }}>{heading}</Typography>
+              ))}
+            </Box>
+            {levelRows.length === 0 ? (
+              <Typography variant="caption" color="textSecondary" sx={{ display: 'block', px: 1, py: 0.6 }}>
+                سطحی ثبت نشده است.
+              </Typography>
+            ) : levelRows.map((row, index) => (
+              <Box key={`preview-level-${index}`} sx={{
+                display: 'grid', gridTemplateColumns: '1.3fr 1fr 1fr 0.9fr',
+                px: 1, py: 0.45, alignItems: 'center', borderTop: '1px dashed #e2e8f0',
+              }}>
+                <Stack direction="row" spacing={0.5} alignItems="center" sx={{ minWidth: 0 }}>
+                  <Typography variant="caption" noWrap sx={{ fontWeight: 800, fontSize: 11.5 }}>{row.title}</Typography>
+                  <Chip size="small" label={row.includesCharges ? 'در مبنا' : 'مستقل'}
+                    sx={{
+                      height: 16, fontSize: 9.5,
+                      bgcolor: row.includesCharges ? `${kind.color}18` : '#f1f5f9',
+                      color: row.includesCharges ? kind.color : '#64748b',
+                    }} />
+                </Stack>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ fontSize: 11 }}>{formatPersianNumber(row.amountRial)}</Typography>
+                  {row.amountForeign != null ? (
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontSize: 10 }}>
+                      ≈ {formatPersianNumber(row.amountForeign)} {currencyLabel}
+                    </Typography>
+                  ) : null}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ fontSize: 11 }}>{formatPersianNumber(row.previousRial)}</Typography>
+                  {row.previousForeign != null ? (
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontSize: 10 }}>
+                      ≈ {formatPersianNumber(row.previousForeign)} {currencyLabel}
+                    </Typography>
+                  ) : null}
+                </Box>
+                <Box sx={{ minWidth: 0 }}>
+                  <Typography variant="caption" sx={{ fontSize: 11, fontWeight: 800, color: '#0ea5e9' }}>
+                    {formatPersianNumber(row.workRial)}
+                  </Typography>
+                  {row.workForeign != null ? (
+                    <Typography variant="caption" color="textSecondary" sx={{ display: 'block', fontSize: 10 }}>
+                      ≈ {formatPersianNumber(row.workForeign)} {currencyLabel}
+                    </Typography>
+                  ) : null}
+                </Box>
+              </Box>
+            ))}
+            <Box sx={{ px: 1, py: 0.6, borderTop: '1px solid #e2e8f0', bgcolor: '#f8fafc' }}>
+              <Row label="جمع کارکرد سطوح" value={levelsWorkTotal} foreign={levelsWorkTotalForeign} foreignSymbol={currencyLabel} />
+              <Row label="کارکرد کل (سطح اصلی + سطوح)" value={grandWorkTotal} strong
+                foreign={grandWorkTotalForeign} foreignSymbol={currencyLabel} />
+              <Row label="مبنای اضافات و کسورات (سطح اصلی + سطوح «در مبنا»)"
+                value={chargesBaseValue} foreign={chargesBaseForeignValue} foreignSymbol={currencyLabel} />
+            </Box>
+          </Box>
+        </Box>
+      ) : null}
 
       {/* Additions */}
       <Box sx={{ mt: 2 }}>
@@ -319,7 +438,11 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
 
       {/* Net payable */}
       <Box sx={{ borderRadius: '12px', p: 1.2, background: 'linear-gradient(135deg,#10b98114,#0ea5e912)', border: '1px solid #10b98140' }}>
-        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 0.8 }}>{isAdjustment ? `مبلغ قابل پرداخت ${kind.label}` : 'مبلغ قابل پرداخت این دوره'}</Typography>
+        <Typography variant="caption" color="textSecondary" sx={{ display: 'block', textAlign: 'center', mb: 0.8 }}>
+          {isAdjustment
+            ? `مبلغ قابل پرداخت ${kind.label}`
+            : (isMultiForm ? 'مبلغ قابل پرداخت (کارکرد سطح اصلی + سطوح + اضافات − کسورات)' : 'مبلغ قابل پرداخت این دوره')}
+        </Typography>
         <Grid container spacing={1}>
           <Grid item xs={6}>
             <Box sx={{ borderRadius: '10px', p: 1, background: '#05966912', border: '1px solid #05966933', textAlign: 'center' }}>
@@ -330,7 +453,7 @@ const StatementPreview = ({ form, contract, company, currencies, rate: rateProp 
           <Grid item xs={6}>
             <Box sx={{ borderRadius: '10px', p: 1, background: '#4338ca0f', border: '1px solid #4338ca33', textAlign: 'center' }}>
               <Typography variant="caption" color="textSecondary">{currencyLabel || 'ارز'}</Typography>
-              <Typography variant="body1" fontWeight={900} sx={{ color: '#4338ca', direction: 'rtl', fontSize: 15 }}>{fx(netAmount) != null ? formatPersianNumber(fx(netAmount)) : '—'}</Typography>
+              <Typography variant="body1" fontWeight={900} sx={{ color: '#4338ca', direction: 'rtl', fontSize: 15 }}>{netForeignDisplay != null ? formatPersianNumber(netForeignDisplay) : '—'}</Typography>
             </Box>
           </Grid>
         </Grid>
@@ -2542,7 +2665,17 @@ const StatementEditorView = ({
                 action={<Chip size="small" label="A4" sx={{ height: 20, fontSize: 12, bgcolor: SOFT_BG, color: MUTED }} />}
                 contentSx={{ p: 1 }}>
                 <StatementPreview form={{ ...form, amount: cumulativeThis, cumulative_previous_amount: cumulativePrev, work_done: workDone, additions: previewAdditions, deductions }}
-                  contract={contract} company={company} currencies={currencyList} rate={rate} />
+                  contract={contract} company={company} currencies={currencyList} rate={rate}
+                  isMultiForm={isMultiForm}
+                  levels={levelEditor?.levels || []}
+                  levelPreviousMap={levelEditor?.previousMap || {}}
+                  levelTotals={levelTotals}
+                  totalWork={totalWork}
+                  totalWorkForeign={totalWorkForeign}
+                  chargesBase={chargesBase}
+                  chargesBaseForeign={chargesBaseForeign}
+                  netAmount={netAmount}
+                  netAmountForeign={netAmountForeign} />
               </SurfaceCard>
             </Box>
           </Grid>
