@@ -133,7 +133,7 @@ const FILTERS_KEY = (yearKey, quarter) => `hrms.seasonal.filters.${yearKey}.q${q
 const emptyRow = () => ({
   id: `r-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
   name: '', firstName: '', lastName: '', personType: 'legal', nationalId: '',
-  postalCode: '', country: DEFAULT_COUNTRY, city: '', address: '',
+  postalCode: '', country: DEFAULT_COUNTRY, province: '', city: '', address: '',
   description: '', amount: '', vat: '', kind: 1, invoiceDate: '',
   invoiceNo: '', moadianUid: '', status: 'pending',
 });
@@ -207,6 +207,7 @@ const aggregateDefaults = (row, { forceNames = false } = {}) => ({
   nationalId: isEmpty(row.nationalId) ? PLACEHOLDER : row.nationalId,
   postalCode: isEmpty(row.postalCode) ? PLACEHOLDER : row.postalCode,
   country: isEmpty(row.country) || row.country === DEFAULT_COUNTRY ? PLACEHOLDER : row.country,
+  province: isEmpty(row.province) ? PLACEHOLDER : row.province,
   city: isEmpty(row.city) ? PLACEHOLDER : row.city,
   address: isEmpty(row.address) ? PLACEHOLDER : row.address,
   invoiceNo: isEmpty(row.invoiceNo) ? PLACEHOLDER : row.invoiceNo,
@@ -241,6 +242,7 @@ const rowFromApi = (item) => {
     nationalId: item.national_id || '',
     postalCode: item.postal_code || '',
     country: item.country || '',
+    province: item.province || '',
     city: item.city || '',
     address: item.address || '',
     description: item.goods_service_desc || '',
@@ -267,6 +269,7 @@ const rowToApi = (row) => ({
   national_id: apiText(row.nationalId),
   postal_code: apiText(row.postalCode),
   country: apiText(row.country),
+  province: apiText(row.province),
   city: apiText(row.city),
   address: apiText(row.address),
   goods_service_desc: apiText(row.description),
@@ -432,6 +435,62 @@ const CellSelect = ({ value, onChange, options, ariaLabel, sx, fontSize }) => (
     ))}
   </Select>
 );
+
+/* انتخاب/جستجوی درون‌سلولی (کشور، استان، شهر) — گزینه‌ها از سرور می‌آیند و تایپ آزاد هم مجاز است */
+const GeoAutocomplete = ({ value, options = [], onChange, placeholder, sx, title }) => (
+  <Autocomplete
+    freeSolo
+    size="small"
+    options={options}
+    value={value ?? ''}
+    onChange={(_event, next) => onChange(typeof next === 'string' ? next : (next ?? ''))}
+    noOptionsText="موردی یافت نشد"
+    clearOnBlur={false}
+    disableClearable
+    sx={{
+      '& .MuiAutocomplete-inputRoot': { py: 0, px: 0.25, minHeight: 26 },
+      ...(sx || {}),
+    }}
+    renderInput={(params) => (
+      <TextField
+        {...params}
+        variant="standard"
+        placeholder={placeholder}
+        title={title}
+        sx={{
+          '& .MuiInputBase-root': { minHeight: 26 },
+          '& .MuiInputBase-input': { py: 0.25, px: 0.25, minWidth: 0, fontSize: 'inherit' },
+          '& .MuiInput-underline:before': { borderBottomColor: 'transparent' },
+          '& .MuiInput-underline:hover:before': { borderBottomColor: 'rgba(148,163,184,0.6)' },
+        }}
+        inputProps={{ ...params.inputProps, style: { fontSize: 11.5 } }}
+      />
+    )}
+  />
+);
+
+/* شهر: گزینه‌ها بر اساس استانِ همان ردیف بارگذاری می‌شوند (کش‌شده و مشترک بین ردیف‌ها) */
+const CityGeoField = ({ province, value, onChange, placeholder = 'شهر', sx }) => {
+  const enabled = Boolean(province) && province !== PLACEHOLDER;
+  const { data } = useQuery({
+    queryKey: ['seasonal-geo-cities', province],
+    queryFn: async () => (await axiosInstance.get(`${API_BASE}/geo/`, { params: { province } })).data,
+    enabled,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  const options = (data?.cities || []).map((city) => city.name);
+  return (
+    <GeoAutocomplete
+      value={value}
+      options={options}
+      onChange={onChange}
+      placeholder={placeholder}
+      sx={sx}
+      title={enabled ? undefined : 'ابتدا استان را انتخاب کنید (تایپ آزاد مجاز است)'}
+    />
+  );
+};
 
 /* ورودی کد/شماره با نمایش ارقام فارسی و ذخیرهٔ ارقام لاتین */
 const DigitField = ({ value, onChange, placeholder, numeric, maxLength, sx }) => (
@@ -714,6 +773,23 @@ const SeasonalReportPage = () => {
     staleTime: 60 * 1000,
     retry: false,
   });
+
+  /* گزینه‌های جغرافیایی جدول (کشور/استان/شهر) — یک بار گرفته و کش می‌شوند */
+  const { data: geoData } = useQuery({
+    queryKey: ['seasonal-geo'],
+    queryFn: async () => (await axiosInstance.get(`${API_BASE}/geo/`)).data,
+    staleTime: 60 * 60 * 1000,
+    retry: false,
+  });
+  const countryOptions = useMemo(() => {
+    const list = geoData?.countries || [];
+    return list.length ? list : [DEFAULT_COUNTRY];
+  }, [geoData]);
+  const provinceNames = useMemo(
+    () => (geoData?.provinces || []).map((item) => item.name),
+    [geoData],
+  );
+
   const savedViews = useMemo(() => {
     const list = Array.isArray(savedViewsData) ? savedViewsData : savedViewsData?.results || [];
     return list;
@@ -1528,7 +1604,7 @@ const SeasonalReportPage = () => {
 
     const headers = [
       'ردیف', 'نوع فروشنده', 'نام شرکت / عنوان', 'نام', 'نام خانوادگی',
-      'شناسه ملی / کد ملی', 'مشمول معاملات فصلی', 'کد پستی', 'کشور', 'شهر', 'آدرس',
+      'شناسه ملی / کد ملی', 'مشمول معاملات فصلی', 'کد پستی', 'کشور', 'استان', 'شهر', 'آدرس',
       'شرح کالا / خدمات', 'نوع کالا یا خدمات', 'مبلغ خرید (ریال)',
       'مالیات بر ارزش افزوده', 'جمع کل', 'نوع معامله', 'تاریخ فاکتور',
       'شماره فاکتور', 'وضعیت سامانه مودیان',
@@ -1547,6 +1623,7 @@ const SeasonalReportPage = () => {
         <td>بله</td>
         <td style="mso-number-format:'\\@'">${escape(row.postalCode)}</td>
         <td>${escape(row.country)}</td>
+        <td>${escape(row.province)}</td>
         <td>${escape(row.city)}</td>
         <td>${escape(row.address)}</td>
         <td>${escape(row.description)}</td>
@@ -1566,7 +1643,7 @@ const SeasonalReportPage = () => {
       <table><thead><tr>${headers.map((header) => `<th>${header}</th>`).join('')}</tr></thead>
       <tbody>${body}</tbody>
       <tfoot><tr><td colspan="13">جمع کل خرید</td><td>${totals.amount}</td><td>${totals.vat}</td>
-      <td>${totals.total}</td><td colspan="4"></td></tr></tfoot></table></body></html>`;
+      <td>${totals.total}</td><td colspan="5"></td></tr></tfoot></table></body></html>`;
     const blob = new Blob([`\uFEFF${html}`], { type: 'application/vnd.ms-excel;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
@@ -1655,7 +1732,7 @@ const SeasonalReportPage = () => {
     for (let index = 0; index < rows.length; index += 1) {
       const row = rows[index];
       const text = `${row.personType}|${row.name}|${row.firstName}|${row.lastName}|${row.nationalId}`
-        + `|${row.country}|${row.city}|${row.address}|${row.postalCode}`;
+        + `|${row.country}|${row.province}|${row.city}|${row.address}|${row.postalCode}`;
       for (let position = 0; position < text.length; position += 1) {
         hash = (hash * 33 + text.charCodeAt(position)) | 0;
       }
@@ -1891,31 +1968,47 @@ const SeasonalReportPage = () => {
       ),
     },
     {
-      key: 'postalCode',
-      label: colLabel('کد پستی', 'postal_code'),
-      width: '6%',
-      align: 'center',
+      key: 'country',
+      label: colLabel('کشور', 'country'),
+      width: '7%',
       render: (row) => (
-        <DigitField value={row.postalCode} onChange={(value) => updateCell(row.id, 'postalCode', value)}
-          placeholder="۱۰ رقمی" numeric maxLength={10} sx={cellSxFor(row, 'postal_code')} />
+        <GeoAutocomplete
+          value={row.country}
+          options={countryOptions}
+          onChange={(value) => updateCell(row.id, 'country', value)}
+          placeholder={row.personType === 'foreign' ? 'کشور' : '—'}
+          sx={cellSxFor(row, 'country')}
+          title="کشور را جستجو و انتخاب کنید"
+        />
       ),
     },
     {
-      key: 'country',
-      label: colLabel('کشور', 'country'),
-      width: '5%',
+      key: 'province',
+      label: colLabel('استان', 'province'),
+      width: '7%',
       render: (row) => (
-        <CellTextField value={row.country} onChange={(value) => updateCell(row.id, 'country', value)}
-          placeholder={row.personType === 'foreign' ? 'کشور' : '—'} sx={cellSxFor(row, 'country')} />
+        <GeoAutocomplete
+          value={row.province}
+          options={provinceNames}
+          onChange={(value) => updateCell(row.id, 'province', value)}
+          placeholder="استان"
+          sx={cellSxFor(row, 'province')}
+          title="استان را جستجو و انتخاب کنید (گزینه‌های شهر از همین استان می‌آید)"
+        />
       ),
     },
     {
       key: 'city',
-      label: 'شهر',
-      width: '6%',
+      label: colLabel('شهر', 'city'),
+      width: '7%',
       render: (row) => (
-        <CellTextField value={row.city} onChange={(value) => updateCell(row.id, 'city', value)}
-          placeholder="شهر" sx={cellInputSx} />
+        <CityGeoField
+          province={row.province}
+          value={row.city}
+          onChange={(value) => updateCell(row.id, 'city', value)}
+          placeholder="شهر"
+          sx={cellSxFor(row, 'city')}
+        />
       ),
     },
     {
@@ -2054,7 +2147,8 @@ const SeasonalReportPage = () => {
     },
   ], [
     cellFontPx, cellInputSx, cellSxFor, colLabel, applyParty, changePersonType,
-    duplicateRow, issuesForRow, partyOptions, removeRow, updateCell, selectedIds, toggleSelection,
+    countryOptions, duplicateRow, issuesForRow, partyOptions, provinceNames,
+    removeRow, updateCell, selectedIds, toggleSelection,
   ]);
 
 

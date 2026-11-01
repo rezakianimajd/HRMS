@@ -361,6 +361,28 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
         """نگاشت ستون‌های فایل TTMS، نوع کالا، کدهای وضعیت فروشنده و گزینه‌ها."""
         return Response(seasonal_ttms.ttms_reference())
 
+    @action(detail=False, methods=['get'], url_path='geo')
+    def geo(self, request):
+        """کشور/استان/شهر برای انتخاب و جستجوی درون‌جدولی (فهرست کشورها + جدول Zone).
+
+        ``GET .../geo/`` → ``{countries, provinces}``
+        ``GET .../geo/?province=10`` (یا نام استان) → ``{province, cities}``
+        """
+        province = request.query_params.get('province')
+        if province in (None, ''):
+            return Response(seasonal_ttms.geo_options())
+        code = province
+        if not str(province).strip().isdigit():
+            name = str(province).strip()
+            match = next(
+                (item for item in seasonal_ttms.zone_provinces() if item['name'] == name),
+                None,
+            )
+            if match is None:
+                return Response({'province': province, 'cities': []})
+            code = match['code']
+        return Response(seasonal_ttms.geo_options(code))
+
     @action(detail=False, methods=['get'], url_path='ttms-zones')
     def ttms_zones(self, request):
         """کدهای استان/شهر نسخهٔ TTMS (از جدول Zone) — شهرها به‌تفکیک استان."""

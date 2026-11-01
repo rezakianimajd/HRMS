@@ -326,8 +326,8 @@ test('renders header, official columns, studio search bar and the api period ran
     'نام و نام خانوادگی / نام شرکت*',
     'نوع فروشنده*',
     'شناسه ملی / کد ملی*',
-    'کد پستی',
     'کشور*',
+    'استان',
     'شهر',
     'آدرس',
     'شرح کالا / خدمات',
@@ -749,7 +749,6 @@ test('an aggregate row records «متفرقه» for names and a dash for the oth
 
   /* بقیهٔ ستون‌ها «—» (لازم نیست ولی قابل ویرایش) */
   expect(firstRow.querySelector('input[placeholder="شناسه ملی ۱۱ رقمی"]').value).toBe('—');
-  expect(firstRow.querySelector('input[placeholder="۱۰ رقمی"]').value).toBe('—');
   expect(firstRow.querySelector('input[placeholder="—"]').value).toBe('—');
   expect(firstRow.querySelector('input[placeholder="شهر"]').value).toBe('—');
   expect(firstRow.querySelector('input[placeholder="آدرس"]').value).toBe('—');

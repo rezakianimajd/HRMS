@@ -4,7 +4,8 @@ import { toGregorian } from '../../../core/utils/dateUtils';
 /* فیلدهای گرید به ترتیب ستون‌ها (برای چسباندن بدون سرسطر) */
 export const GRID_FIELDS = [
   'name', 'firstName', 'lastName', 'personType', 'nationalId', 'postalCode', 'country',
-  'city', 'address', 'description', 'amount', 'vat', 'kind', 'invoiceDate', 'invoiceNo', 'status',
+  'province', 'city', 'address', 'description', 'amount', 'vat', 'kind', 'invoiceDate',
+  'invoiceNo', 'status',
 ];
 
 export const FIELD_LABELS = {
@@ -15,6 +16,7 @@ export const FIELD_LABELS = {
   nationalId: 'شناسه ملی / کد ملی',
   postalCode: 'کد پستی',
   country: 'کشور',
+  province: 'استان',
   city: 'شهر',
   address: 'آدرس',
   description: 'شرح کالا / خدمات',
@@ -35,6 +37,7 @@ const ALIASES = {
   nationalId: ['شناسه ملی', 'کد ملی', 'شناسه/کد ملی', 'شناسه ملی / کد ملی', 'کد اقتصادی', 'شماره اقتصادی'],
   postalCode: ['کد پستی'],
   country: ['کشور'],
+  province: ['استان', 'استان / ولایت'],
   city: ['شهر'],
   address: ['آدرس', 'نشانی'],
   description: ['شرح کالا', 'شرح کالا / خدمات', 'شرح', 'توضیحات'],

@@ -46,6 +46,7 @@ FILLER_SCRIPT = 'fill_ttms.ps1'
 ZONE_ASSET = 'zone_codes.json'
 ARZ_ASSET = 'arz_codes.json'
 TAX_OFFICE_ASSET = 'edarekoll_codes.json'
+COUNTRY_ASSET = 'country_names.json'
 
 # ستون‌هایی که کاربر می‌تواند در «پیش‌نمایش» اصلاح کند (بقیه فقط نمایشی است)
 EDITABLE_COLUMNS = [
@@ -361,6 +362,32 @@ def _tax_office_name(code):
         if office['code'] == int(code):
             return office['name']
     return ''
+
+
+@lru_cache(maxsize=1)
+def country_names():
+    """فهرست کشورها (نام فارسی) برای انتخاب/جستجو در جدول و نگاشت TTMS."""
+    path = ASSETS_DIR / COUNTRY_ASSET
+    try:
+        data = json.loads(path.read_text(encoding='utf-8'))
+    except (OSError, ValueError):
+        return ['ایران']
+    names = [str(name).strip() for name in data.get('countries', []) if str(name).strip()]
+    return names or ['ایران']
+
+
+def geo_options(province_code=None):
+    """گزینه‌های جغرافیایی مشترک رابط کاربری: کشورها، استان‌ها و شهرهای یک استان."""
+    provinces = zone_provinces()
+    if province_code not in (None, ''):
+        return {
+            'province': province_code,
+            'cities': zone_cities(province_code),
+        }
+    return {
+        'countries': country_names(),
+        'provinces': provinces,
+    }
 
 
 def match_zone(province_text, city_text=''):
