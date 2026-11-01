@@ -530,9 +530,10 @@ const PartyAutocomplete = ({
     }}
     renderOption={(props, option) => {
       const typeLabel = PERSON_TYPE_LABELS[option.personType] || 'نامشخص';
+      const place = [option.province, option.city].filter(Boolean).join(' · ');
       const details = [
         option.nationalId,
-        [option.city, option.address].filter(Boolean).join(' · '),
+        [place, option.address].filter(Boolean).join(' — '),
       ].filter(Boolean).join(' — ');
       return (
         <Box
@@ -1262,6 +1263,7 @@ const SeasonalReportPage = () => {
         country,
         nationalId: text(party.nationalId, text(row.nationalId)),
         postalCode: text(party.postalCode, text(row.postalCode)),
+        province: text(party.province, text(row.province)),
         city: text(party.city, text(row.city)),
         address: text(party.address, text(row.address)),
       };
@@ -1784,6 +1786,7 @@ const SeasonalReportPage = () => {
         nationalId: isPlaceholder(party.nationalId) ? (previous.nationalId || '') : (party.nationalId || previous.nationalId || ''),
         postalCode: isPlaceholder(party.postalCode) ? (previous.postalCode || '') : (party.postalCode || previous.postalCode || ''),
         country: isPlaceholder(party.country) ? (previous.country || '') : (party.country || previous.country || ''),
+        province: isPlaceholder(party.province) ? (previous.province || '') : (party.province || previous.province || ''),
         city: isPlaceholder(party.city) ? (previous.city || '') : (party.city || previous.city || ''),
         address: isPlaceholder(party.address) ? (previous.address || '') : (party.address || previous.address || ''),
       });
@@ -1801,6 +1804,7 @@ const SeasonalReportPage = () => {
         lastName: row.lastName,
         nationalId: row.nationalId,
         postalCode: row.postalCode,
+        province: row.province,
         city: row.city,
         address: row.address,
         country: row.country,

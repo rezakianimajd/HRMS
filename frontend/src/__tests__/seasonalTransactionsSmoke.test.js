@@ -37,6 +37,7 @@ const API_ROW = {
   person_type: 'legal',
   national_id: '10101010101',
   postal_code: '1234567890',
+  province: 'تهران',
   city: 'تهران',
   address: 'خیابان ولیعصر، پلاک ۱۲',
   goods_service_desc: 'خدمات مشاوره مالی',
@@ -411,11 +412,11 @@ test('a row is saved once when the user moves to the next row', async () => {
 }, 20000);
 
 
-test('suggestions come from every api row and fill city plus national id', async () => {
+test('suggestions come from every api row and fill province, city plus national id', async () => {
   currentReport = apiReport([
     API_ROW,
-    { ...API_ROW, id: 102, line_no: 2, name: 'شرکت آلفا صنعت', city: 'کرج', national_id: '20202020202', invoice_no: 'B-1' },
-    { ...API_ROW, id: 103, line_no: 3, name: 'فروشگاه بتا', city: 'اصفهان', invoice_no: 'C-1' },
+    { ...API_ROW, id: 102, line_no: 2, name: 'شرکت آلفا صنعت', province: 'البرز', city: 'کرج', national_id: '20202020202', invoice_no: 'B-1' },
+    { ...API_ROW, id: 103, line_no: 3, name: 'فروشگاه بتا', province: 'اصفهان', city: 'اصفهان', invoice_no: 'C-1' },
   ]);
   const { root, container } = await renderPage();
 
@@ -441,6 +442,7 @@ test('suggestions come from every api row and fill city plus national id', async
 
   const filled = Array.from(container.querySelectorAll('tbody tr'))
     .find((row) => row.querySelector('input[aria-label="نام شرکت"]')?.value === 'شرکت آلفا صنعت');
+  expect(filled.querySelector('input[placeholder="استان"]').value).toBe('البرز');
   expect(filled.querySelector('input[placeholder="شهر"]').value).toBe('کرج');
   expect(filled.querySelector('input[placeholder="شناسه ملی ۱۱ رقمی"]').value).toBe('۲۰۲۰۲۰۲۰۲۰۲');
 
