@@ -350,3 +350,47 @@ class DocumentManagementUrlTests(SimpleTestCase):
             reverse('managed-document-content', args=[1]),
             '/api/document-management/documents/1/content/',
         )
+
+
+class DocumentUploadPolicyTests(SimpleTestCase):
+    """سیاست آپلود مدرک پرسنل: سقف حجم و فرمت‌ها هم‌راستا با پروفایل بایگانی.
+
+    پیش‌تر سقف ۱۰ مگابایت بود و اسکن‌های بزرگ‌تر (۸۵ بایتی 400) رد می‌شدند؛
+    اکنون پیش‌فرض ۵۰ مگابایت و فرمت‌های اداری هم مجاز است.
+    """
+
+    def _upload(self, name, size, content_type='application/pdf'):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        return SimpleUploadedFile(name, b'x' * size, content_type=content_type)
+
+    def test_pdf_above_ten_megabytes_is_accepted(self):
+        from documents.serializers import DocumentUploadSerializer
+
+        serializer = DocumentUploadSerializer()
+        upload = self._upload('scan.pdf', 11 * 1024 * 1024)
+        self.assertIs(serializer.validate_file(upload), upload)
+
+    def test_office_and_archive_formats_are_accepted(self):
+        from documents.serializers import DocumentUploadSerializer
+
+        serializer = DocumentUploadSerializer()
+        for name in ('contract.doc', 'sheet.xls', 'slides.pptx', 'bundle.zip', 'notes.txt'):
+            upload = self._upload(name, 1024)
+            self.assertIs(serializer.validate_file(upload), upload)
+
+    def test_unsupported_extension_is_rejected(self):
+        from rest_framework import serializers as drf_serializers
+
+        from documents.serializers import DocumentUploadSerializer
+
+        serializer = DocumentUploadSerializer()
+        with self.assertRaises(drf_serializers.ValidationError):
+            serializer.validate_file(self._upload('script.exe', 1024))
+
+    def test_engine_ignores_invalid_employee_id(self):
+        """شناسهٔ غیرعددی (مثل undefined) نباید باعث خطای ۵۰۰ شود."""
+        from documents.engines.document_engine import DocumentEngine
+
+        self.assertEqual(list(DocumentEngine.get_documents('undefined')), [])
+        self.assertEqual(list(DocumentEngine.get_documents(None)), [])

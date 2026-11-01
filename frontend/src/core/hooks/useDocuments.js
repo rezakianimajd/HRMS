@@ -1,6 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../api/axiosConfig';
 
+/** شناسهٔ عددی معتبر (جلوگیری از درخواست‌هایی مثل /documents/employee/undefined/). */
+const hasNumericId = (value) => /^\d+$/.test(String(value ?? ''));
+
 const fetchDocsByEmployee = async (employeeId) => {
   const response = await axiosInstance.get(`/documents/employee/${employeeId}/`);
   return response.data;
@@ -27,7 +30,7 @@ export const useDocuments = (employeeId) => {
   return useQuery({
     queryKey: ['documents', employeeId],
     queryFn: () => fetchDocsByEmployee(employeeId),
-    enabled: !!employeeId,
+    enabled: hasNumericId(employeeId),
   });
 };
 
@@ -46,6 +49,8 @@ export const useUploadDocument = () => {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ['documents', data.employee] });
       queryClient.invalidateQueries({ queryKey: ['documents'] });
+      queryClient.invalidateQueries({ queryKey: ['company-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['dms-documents'] });
     },
   });
 };

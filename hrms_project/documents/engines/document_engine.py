@@ -71,8 +71,12 @@ class DocumentEngine:
         """
         Get all documents for an employee, filtered by company.
         """
+        try:
+            employee_pk = int(employee_id)
+        except (TypeError, ValueError):
+            return Document.objects.none()
         qs = Document.objects.select_related('document_type', 'employee').filter(
-            employee_id=employee_id, is_active=True
+            employee_id=employee_pk, is_active=True
         )
         if company:
             qs = qs.filter(company=company)

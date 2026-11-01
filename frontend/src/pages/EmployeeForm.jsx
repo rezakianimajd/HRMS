@@ -169,6 +169,22 @@ const describeSaveError = (err, t) => {
   return parts.length ? parts.join(' | ') : t('employees.save_error');
 };
 
+/** پیام دقیق خطای آپلود مدرک (حجم/فرمت/شبکه) برای نمایش کنار نام فایل. */
+const describeUploadError = (err) => {
+  const data = err?.response?.data;
+  if (!data) return err?.message || 'خطای شبکه در آپلود';
+  if (typeof data === 'string') return data.slice(0, 300);
+  if (data.detail) return String(data.detail);
+  const parts = [];
+  Object.entries(data).forEach(([key, value]) => {
+    const msg = Array.isArray(value)
+      ? value.join(' ، ')
+      : (value && typeof value === 'object' ? JSON.stringify(value) : String(value));
+    parts.push(key === 'file' ? msg : `${key}: ${msg}`);
+  });
+  return parts.length ? parts.join(' | ') : 'آپلود مدرک ناموفق بود.';
+};
+
 const EmployeeForm = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -285,15 +301,32 @@ const EmployeeForm = () => {
 
       if (pendingFiles.length > 0 && empId) {
         setUploading(true);
-        for (const f of pendingFiles) {
-          const fd = new FormData();
-          fd.append('employee', empId);
-          fd.append('title', f.name);
-          fd.append('document_type', f.docType || '');
-          fd.append('file', f);
-          await uploadDocMutation.mutateAsync(fd);
+        const failures = [];
+        try {
+          for (const f of [...pendingFiles]) {
+            const fd = new FormData();
+            fd.append('employee', empId);
+            fd.append('title', f.name);
+            fd.append('document_type', f.docType || '');
+            fd.append('file', f);
+            try {
+              await uploadDocMutation.mutateAsync(fd);
+              // فقط فایل‌های موفق از صف حذف می‌شوند تا تلاش دوباره تکراری نسازد.
+              setPendingFiles(prev => prev.filter(item => item !== f));
+            } catch (uploadError) {
+              failures.push(`${f.name}: ${describeUploadError(uploadError)}`);
+            }
+          }
+          queryClient.invalidateQueries({ queryKey: ['documents', empId] });
+        } finally {
+          setUploading(false);
         }
-        setUploading(false);
+        if (failures.length) {
+          // بقیهٔ اطلاعات پرسنل ذخیره شده است؛ فقط مدارک ناموفق باقی می‌مانند.
+          setError(`برخی مدارک ذخیره نشدند:\n${failures.join('\n')}`);
+          setSubmitting(false);
+          return;
+        }
       }
 
       if (empId) {
@@ -367,7 +400,7 @@ const EmployeeForm = () => {
         )}
       />
 
-      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '10px' }}>{error}</Alert>}
+      {error && <Alert severity="error" sx={{ mb: 2, borderRadius: '10px', whiteSpace: 'pre-line' }}>{error}</Alert>}
 
       <Paper sx={{
         mb: 2, p: 2,

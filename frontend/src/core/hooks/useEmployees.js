@@ -66,7 +66,7 @@ export const useEmployee = (id) => {
   return useQuery({
     queryKey: ['employee', id],
     queryFn: () => fetchEmployee(id),
-    enabled: !!id,
+    enabled: /^\d+$/.test(String(id ?? '')),
   });
 };
 

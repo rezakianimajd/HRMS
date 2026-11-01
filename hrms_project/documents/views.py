@@ -128,6 +128,11 @@ class DocumentViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='employee/(?P<employee_id>[^/.]+)')
     def by_employee(self, request, employee_id=None):
         """Get all documents for a specific employee."""
+        if not str(employee_id or '').isdigit():
+            return Response(
+                {'detail': 'شناسهٔ پرسنل نامعتبر است.'},
+                status=status.HTTP_404_NOT_FOUND,
+            )
         company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
         documents = DocumentEngine.get_documents(employee_id, company)
         serializer = DocumentListSerializer(documents, many=True)

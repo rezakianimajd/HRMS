@@ -177,7 +177,10 @@ const DocumentsTab = ({ employeeId }) => {
       queryClient.invalidateQueries({ queryKey: ['employees'] });
       queryClient.invalidateQueries({ queryKey: ['phonebook'] });
     } catch (err) {
-      // ignore
+      const data = err?.response?.data;
+      const message = data?.photo?.[0] || data?.detail
+        || `آپلود عکس ناموفق بود (${err?.response?.status || 'network'})`;
+      window.alert(message);
     } finally {
       setUploadingPhoto(false);
     }
