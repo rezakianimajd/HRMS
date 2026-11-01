@@ -210,6 +210,11 @@
   `/accounting/auxiliary-accounts/`, `/projects/`, `/accounting/cost-centers/`) و ارسال چندبخشی
   (`lines[i].field`) را مانند نسخهٔ قبلی حفظ می‌کند؛ فیلدهای `vat_amount`, `tax_amount`, `net_amount`,
   `project`, `cost_center`, `payment_method` نیز ارسال می‌شوند.
+- **ورود تاریخ** دقیقاً با همان متد «ورود اطلاعات معاملات فصلی خرید» انجام می‌شود: کامپوننت مشترک
+  `core/components/ui/JalaliMaskedDateInput.jsx` — ارقام فارسی، ماسک `YYYY/MM/DD`، درج خودکار اسلش
+  با تایپ ۸ رقم، تبدیل فوری به میلادی (`YYYY-MM-DD`) برای ارسال به API و بازنویسی مقدار معتبر در `blur`.
+  این کامپوننت هم برای «تاریخ صورت» (حالت outlined) و هم برای «تاریخ هزینه» هر ردیف گرید استفاده می‌شود.
+
 
 
 

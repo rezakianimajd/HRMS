@@ -18,7 +18,7 @@ import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { alpha, useTheme } from '@mui/material/styles';
 import { formatPersianNumber, toPersianDigits, toEnglishDigits } from '../core/utils/numberUtils';
-import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
+import JalaliMaskedDateInput from '../core/components/ui/JalaliMaskedDateInput';
 import PageHeader from '../core/components/ui/PageHeader';
 import CodePickerDialog from '../core/components/ui/CodePickerDialog';
 import InfoCard from '../core/components/ui/InfoCard';
@@ -386,8 +386,8 @@ const PettyCashExpenseNewPage = () => {
                 isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
                 renderInput={(params) => <TextField {...params} size="small" label="تنخواه" />}
                 sx={{ minWidth: 0 }} />
-              <JalaliDatePicker noHelper label="تاریخ صورت" value={header.date}
-                onChange={(value) => setHeaderField('date', value)} sx={{ ...fieldSx, width: '100%' }} />
+              <JalaliMaskedDateInput variant="outlined" label="تاریخ صورت" value={header.date}
+                onChange={(value) => setHeaderField('date', value)} sx={{ width: '100%' }} />
               <TextField size="small" label="شماره صورت" value="خودکار" InputProps={{ readOnly: true }} sx={fieldSx} />
               <Autocomplete size="small" options={projectList}
                 getOptionLabel={(option) => `${option.code || ''} — ${option.name || ''}`}
@@ -532,9 +532,9 @@ const PettyCashExpenseNewPage = () => {
                       onChange={(value) => setLine(index, 'invoice_number', value)} />
                   </Cell>
                   <Cell>
-                    <JalaliDatePicker noHelper value={line.expense_date}
+                    <JalaliMaskedDateInput value={line.expense_date}
                       onChange={(value) => setLine(index, 'expense_date', value)}
-                      sx={{ width: '100%', '& .MuiInputBase-root': { height: 32, fontSize: gridFont } }} />
+                      sx={{ '& .MuiInputBase-input': { fontSize: gridFont, textAlign: 'center' } }} />
                   </Cell>
                   <Cell>
                     <TextField size="small" fullWidth variant="standard" value={line.supplier}
