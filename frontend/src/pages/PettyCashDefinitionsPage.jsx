@@ -5,7 +5,7 @@ import {
   Box, Paper, Button, CircularProgress, Stack, Chip, TextField, MenuItem, Dialog,
   DialogTitle, DialogContent, DialogActions, Table, TableBody, TableCell, TableContainer,
   TableHead, TableRow, IconButton, Tooltip, Alert, Grid, Typography, Switch, Divider,
-  FormControlLabel, Autocomplete, Checkbox,
+  FormControlLabel, Autocomplete, Checkbox, Tabs, Tab,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -13,6 +13,7 @@ import GroupsIcon from '@mui/icons-material/Groups';
 import ShieldIcon from '@mui/icons-material/Shield';
 import SaveIcon from '@mui/icons-material/Save';
 import PageHeader from '../core/components/ui/PageHeader';
+import PettyCashFundsTab from './PettyCashFundsTab';
 
 const COLOR = '#0ea5e9';
 const COLOR_DARK = '#0284c7';
@@ -44,6 +45,7 @@ const emptyForm = () => ({
 
 const PettyCashDefinitionsPage = () => {
   const qc = useQueryClient();
+  const [tab, setTab] = useState('custodians');
   const [msg, setMsg] = useState(null);
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(null);
@@ -182,6 +184,20 @@ const PettyCashDefinitionsPage = () => {
         )}
       />
 
+      <Paper sx={{ ...glass, p: 1, mb: 2 }}>
+        <Tabs
+          value={tab}
+          onChange={(_, value) => setTab(value)}
+          variant="scrollable" scrollButtons="auto"
+          sx={{ minHeight: 42, '& .MuiTab-root': { fontWeight: 700, minHeight: 42, borderRadius: '10px' } }}
+        >
+          <Tab value="custodians" label="تنخواه‌داران و کمک‌تنخواه‌داران" />
+          <Tab value="funds" label="تعریف تنخواه‌ها" />
+        </Tabs>
+      </Paper>
+
+      {tab === 'funds' ? <PettyCashFundsTab /> : (
+        <>
       {msg && (
         <Alert severity={msg.ok ? 'success' : 'error'} sx={{ mb: 2, borderRadius: '12px' }} onClose={() => setMsg(null)}>
           {msg.text}
@@ -413,6 +429,8 @@ const PettyCashDefinitionsPage = () => {
           </Button>
         </DialogActions>
       </Dialog>
+        </>
+      )}
     </Box>
   );
 };

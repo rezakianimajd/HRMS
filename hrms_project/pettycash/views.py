@@ -2028,3 +2028,145 @@ class PettyCashReportViewSet(viewsets.ViewSet):
         ]
         return Response({'results': results, 'count': len(results)})
 
+
+    @action(detail=False, methods=['get'])
+    def details(self, request):
+        """گزارش دهی جزئیات: ریز صورت‌های هزینه یا ریز حرکات مالی با فیلتر و جمع کل."""
+        company = self._company_or_error(request)
+        kind = request.query_params.get('kind', 'statements')
+        date_from = request.query_params.get('date_from')
+        date_to = request.query_params.get('date_to')
+        fund_id = request.query_params.get('fund')
+        custodian_id = request.query_params.get('custodian')
+        project_id = request.query_params.get('project')
+        status_q = request.query_params.get('status')
+
+        rows = []
+        totals = {'count': 0, 'amount': 0.0}
+        if kind == 'transactions':
+            qs = PettyCashTransaction.objects.filter(
+                company=company, is_void=False,
+            ).select_related('fund', 'fund__custodian', 'project', 'cost_center', 'category')
+            if date_from:
+                qs = qs.filter(date__gte=date_from)
+            if date_to:
+                qs = qs.filter(date__lte=date_to)
+            if fund_id:
+                qs = qs.filter(fund_id=fund_id)
+            if custodian_id:
+                qs = qs.filter(fund__custodian_id=custodian_id)
+            if project_id:
+                qs = qs.filter(project_id=project_id)
+            qs = access.scope_by_fund(qs, company, request.user)
+            for tx in qs.order_by('date', 'id')[:2000]:
+                rows.append({
+                    'date': tx.date.isoformat(),
+                    'type': 'دریافت' if tx.entry_type == 'credit' else 'پرداخت',
+                    'number': tx.reference or tx.pk,
+                    'fund': tx.fund.title,
+                    'custodian': tx.fund.custodian.full_name if tx.fund.custodian_id else '',
+                    'project': tx.project.name if tx.project_id else '',
+                    'cost_center': tx.cost_center.name if tx.cost_center_id else '',
+                    'description': tx.title,
+                    'status': 'ابطال‌شده' if tx.is_void else 'ثبت‌شده',
+                    'payment_method': tx.get_payment_method_display(),
+                    'amount': float(tx.amount),
+                })
+                totals['count'] += 1
+                totals['amount'] += float(tx.amount)
+        else:
+            qs = PettyCashExpenseStatement.objects.filter(
+                company=company, is_deleted=False,
+            ).select_related('fund', 'fund__custodian', 'project', 'cost_center').prefetch_related('lines')
+            if date_from:
+                qs = qs.filter(date__gte=date_from)
+            if date_to:
+                qs = qs.filter(date__lte=date_to)
+            if fund_id:
+                qs = qs.filter(fund_id=fund_id)
+            if custodian_id:
+                qs = qs.filter(custodian_id=custodian_id)
+            if project_id:
+                qs = qs.filter(Q(project_id=project_id) | Q(lines__project_id=project_id)).distinct()
+            if status_q:
+                qs = qs.filter(status=status_q)
+            qs = access.scope_by_fund(qs, company, request.user)
+            as_of = timezone.localdate()
+            for st in qs.order_by('-date', '-id')[:2000]:
+                lines = list(st.lines.all())
+                rows.append({
+                    'date': st.date.isoformat(),
+                    'type': 'صورت هزینه',
+                    'number': st.number or st.pk,
+                    'fund': st.fund.title,
+                    'custodian': st.custodian.full_name if st.custodian_id else '',
+                    'project': st.project.name if st.project_id else (
+                        lines[0].project.name if lines and lines[0].project_id else ''
+                    ),
+                    'cost_center': st.cost_center.name if st.cost_center_id else '',
+                    'description': st.description or (lines[0].description if lines else ''),
+                    'status': st.get_status_display(),
+                    'payment_method': st.get_payment_method_display(),
+                    'lines_count': len(lines),
+                    'missing_documents': sum(1 for line in lines if not line.has_document),
+                    'due_date': st.due_date.isoformat() if st.due_date else '',
+                    'days_late': max((as_of - st.due_date).days, 0) if st.due_date else 0,
+                    'amount': float(st.total),
+                })
+                totals['count'] += 1
+                totals['amount'] += float(st.total)
+
+        if request.query_params.get('export') == 'csv':
+            headers = ['تاریخ', 'نوع', 'شماره', 'تنخواه', 'تنخواه‌دار', 'پروژه', 'مرکز هزینه',
+                       'شرح', 'وضعیت', 'روش پرداخت', 'مبلغ']
+            return self._csv(
+                f'petty_cash_details_{kind}.csv',
+                headers,
+                [[r.get('date'), r.get('type'), r.get('number'), r.get('fund'), r.get('custodian'),
+                  r.get('project'), r.get('cost_center'), r.get('description'), r.get('status'),
+                  r.get('payment_method'), r.get('amount')] for r in rows],
+            )
+        return Response({'kind': kind, 'results': rows, 'totals': totals, 'count': len(rows)})
+
+    @action(detail=False, methods=['get'], url_path='compliance-summary')
+    def compliance_summary(self, request):
+        """خلاصهٔ کنترل مستندات: فاقد پیوست / مغایرت مبلغ / خارج از سقف."""
+        company = self._company_or_error(request)
+        qs = PettyCashExpenseStatement.objects.filter(
+            company=company, is_deleted=False,
+        ).select_related('fund').prefetch_related('lines')
+        qs = access.scope_by_fund(qs, company, request.user)
+        settings_obj = services.get_settings(company)
+        missing_docs, amount_mismatch, over_limit = [], [], []
+        for st in qs[:2000]:
+            lines = list(st.lines.all())
+            if any(not line.has_document for line in lines):
+                missing_docs.append({
+                    'id': st.pk, 'number': st.number or st.pk, 'date': st.date.isoformat(),
+                    'fund': st.fund.title, 'amount': float(st.total),
+                    'status': st.get_status_display(),
+                })
+            for line in lines:
+                if line.net_amount is not None:
+                    expected = (line.net_amount or 0) + (line.vat_amount or 0) + (line.tax_amount or 0)
+                    if expected != (line.debit or 0):
+                        amount_mismatch.append({
+                            'id': st.pk, 'number': st.number or st.pk, 'line': line.line_no,
+                            'expected': float(expected), 'actual': float(line.debit or 0),
+                        })
+            if settings_obj and settings_obj.max_single_payment and st.total > settings_obj.max_single_payment:
+                over_limit.append({
+                    'id': st.pk, 'number': st.number or st.pk, 'date': st.date.isoformat(),
+                    'amount': float(st.total),
+                })
+        return Response({
+            'missing_document': missing_docs,
+            'amount_mismatch': amount_mismatch,
+            'over_limit': over_limit,
+            'counts': {
+                'missing_document': len(missing_docs),
+                'amount_mismatch': len(amount_mismatch),
+                'over_limit': len(over_limit),
+            },
+        })
+
