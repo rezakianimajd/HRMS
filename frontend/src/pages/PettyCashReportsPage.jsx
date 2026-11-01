@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
 import {
-  Box, Paper, Button, CircularProgress, Stack, Chip, TextField, MenuItem, Tabs, Tab,
+  Box, Paper, Button, CircularProgress, Stack, Chip, TextField, MenuItem,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Grid,
   Typography, Divider,
 } from '@mui/material';
@@ -168,12 +168,6 @@ const REPORT_DEFS = {
   },
 };
 
-const REPORT_ORDER = [
-  'details', 'summary', 'cashflow', 'by-category', 'by-project',
-  'custodians', 'credit-vs-usage', 'overdue', 'settlements', 'compliance',
-];
-
-
 const cellValue = (row, col) => {
   const value = row?.[col.key];
   if (value === null || value === undefined || value === '') return '—';
@@ -189,7 +183,6 @@ const cellValue = (row, col) => {
 
 const PettyCashReportsPage = () => {
   const { report } = useParams();
-  const navigate = useNavigate();
   const key = REPORT_DEFS[report] ? report : 'details';
   const def = REPORT_DEFS[key];
 
@@ -245,10 +238,10 @@ const PettyCashReportsPage = () => {
     <Box>
       <PageHeader
         icon={<AssessmentIcon />}
-        title="گزارشات تنخواه"
+        title={def.label}
+        badge={<Chip label="گزارشات تنخواه" color="primary" variant="outlined" sx={{ fontWeight: 700 }} />}
         actions={(
           <Stack direction="row" spacing={1} alignItems="center">
-            <Chip label={def.label} color="primary" variant="outlined" sx={{ fontWeight: 700 }} />
             <Button variant="outlined" size="small" startIcon={<RefreshIcon />} onClick={() => refetch()} disabled={isFetching}>
               به‌روزرسانی
             </Button>
@@ -259,18 +252,6 @@ const PettyCashReportsPage = () => {
           </Stack>
         )}
       />
-
-      <Paper sx={{ ...glass, p: 1, mb: 2 }}>
-        <Tabs
-          value={REPORT_ORDER.indexOf(key)}
-          onChange={(_, idx) => navigate(`/petty-cash/reports/${REPORT_ORDER[idx]}`)}
-          variant="scrollable" scrollButtons="auto"
-          sx={{ minHeight: 42, '& .MuiTab-root': { fontWeight: 700, minHeight: 42, borderRadius: '10px' } }}
-        >
-          {REPORT_ORDER.map(item => <Tab key={item} label={REPORT_DEFS[item].label} />)}
-        </Tabs>
-      </Paper>
-
 
       {(uses('range') || uses('fund') || uses('status') || uses('kind')) && (
         <Paper sx={{ ...glass, p: 1.5, mb: 2 }}>
