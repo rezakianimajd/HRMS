@@ -307,10 +307,21 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'insurance', 'first_name', 'last_name',
             'relation', 'relation_display',
+            'national_id', 'birth_date',
             'attachment', 'attachment_url', 'attachment_name',
             'attachment_size', 'attachment_size_display', 'has_attachment',
             'remove_attachment',
         ]
+
+    def validate_national_id(self, value):
+        normalized = str(value or '').translate(
+            str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789'),
+        ).strip()
+        if not normalized:
+            return ''
+        if not normalized.isdigit() or len(normalized) != 10:
+            raise serializers.ValidationError('کد ملی باید ۱۰ رقم باشد.')
+        return normalized
 
     def get_attachment_url(self, obj):
         if not obj.attachment:

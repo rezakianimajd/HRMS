@@ -91,3 +91,58 @@ test('supplementary insurance page renders theme-aware summary and policy cards'
   root.unmount();
   container.remove();
 });
+
+test('supplementary insurance dialogs expose standard fields including dependent identity', async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/insurance']}>
+            <SupplementaryInsurancePage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await wait(800);
+  });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => { await wait(180); });
+  }
+
+  const buttonByText = (host, text) => Array.from(host.querySelectorAll('button'))
+    .find((element) => element.textContent.trim() === text);
+
+  const newInsurance = buttonByText(container, 'بیمه جدید');
+  expect(newInsurance).toBeTruthy();
+  await act(async () => { newInsurance.click(); await wait(260); });
+
+  expect(document.body.textContent).toContain('افزودن بیمه تکمیلی');
+  expect(document.body.textContent).toContain('پرسنل و پوشش بیمه');
+  expect(document.body.textContent).toContain('نام بیمه تکمیلی *');
+  expect(document.body.textContent).toContain('دورهٔ پوشش');
+  expect(document.body.textContent).toContain('مبالغ بیمه');
+  expect(document.body.textContent).toContain('افراد تحت تکفل');
+  // توضیحات زیر فیلدها حذف شده‌اند
+  expect(document.body.textContent).not.toContain('مثلاً درمان، عمر، ازکارافتادگی');
+  expect(document.body.textContent).not.toContain('مثلاً طرح خانواده، طلایی، ویژه');
+
+  const addDependent = buttonByText(document.body, 'افزودن فرد');
+  expect(addDependent).toBeTruthy();
+  await act(async () => { addDependent.click(); await wait(260); });
+
+  expect(document.body.textContent).toContain('افزودن فرد تحت تکفل');
+  expect(document.body.textContent).toContain('کد ملی');
+  expect(document.body.textContent).toContain('تاریخ تولد');
+  expect(document.body.textContent).toContain('نام خانوادگی *');
+  expect(document.body.textContent).toContain('پیوست مدارک');
+  expect(document.body.textContent).not.toContain('مشخصات و مدارک پیوست فرد را وارد کنید');
+
+  root.unmount();
+  container.remove();
+});

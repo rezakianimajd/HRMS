@@ -1051,6 +1051,18 @@ class SupplementaryInsuranceDependent(models.Model):
             ('other', _('سایر')),
         ],
     )
+    national_id = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        verbose_name=_('کد ملی'),
+        help_text=_('کد ملی ده‌رقمی فرد تحت تکفل (اختیاری)'),
+    )
+    birth_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name=_('تاریخ تولد'),
+    )
     attachment = models.FileField(
         upload_to=supplementary_dependent_attachment_path,
         max_length=500,
