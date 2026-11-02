@@ -178,6 +178,9 @@ const InsuranceDetailDrawer = ({ row, onClose, onEdit, onDelete }) => {
                 action={<Chip size="small" label={`${toPersianDigits(dependents.filter(dependentHasAttachment).length)} پیوست`}
                   sx={{ height: 19, fontSize: 10, bgcolor: alpha('#be123c', 0.06), color: '#be123c' }} />} />
               <DependentRows dependents={dependents} emptyText="برای این بیمه فرد تحت تکفلی ثبت نشده است." />
+              <Typography sx={{ fontSize: 10, color: '#64748b', mt: 0.8, lineHeight: 1.9 }}>
+                این فهرست از بخش «خانواده» پروندهٔ پرسنلی خوانده و هم‌زمان با آن همگام می‌شود.
+              </Typography>
             </Paper>
           </Stack>
         </Box>

@@ -35,7 +35,7 @@ import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
 import SupplementaryInsurancePage from './pages/SupplementaryInsurancePage';
-import DependentsReportPage from './pages/DependentsReportPage';
+import FamilyReportPage from './pages/FamilyReportPage';
 import LoansPage from './pages/LoansPage';
 import CalendarPage from './pages/CalendarPage';
 import AssetsPage from './pages/AssetsPage';
@@ -220,7 +220,8 @@ const AppRoutes = () => {
       {/* Under-development modules (professional placeholders until shipped) */}
       {/* legacy routes removed - import cleanup */}
       <Route path="/insurance" element={<ProtectedLayout><SupplementaryInsurancePage /></ProtectedLayout>} />
-      <Route path="/insurance/dependents" element={<ProtectedLayout><DependentsReportPage /></ProtectedLayout>} />
+      <Route path="/reports/family" element={<ProtectedLayout><FamilyReportPage /></ProtectedLayout>} />
+      <Route path="/insurance/dependents" element={<ProtectedLayout><FamilyReportPage /></ProtectedLayout>} />
       <Route path="/loans" element={<ProtectedLayout><LoansPage /></ProtectedLayout>} />
       <Route path="/attendance" element={<ProtectedLayout><AttendancePage /></ProtectedLayout>} />
       <Route path="/leaves" element={<ProtectedLayout><LeavePage /></ProtectedLayout>} />

@@ -132,7 +132,7 @@ const menuConfig = [
     title: 'گزارشات',
     color: '#0ea5e9',
     items: [
-      { id: 'dependents-report', title: 'گزارش افراد تحت تکفل', icon: <FamilyRestroomIcon />, path: '/insurance/dependents', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'family-report', title: 'گزارش خانواده پرسنل', icon: <FamilyRestroomIcon />, path: '/reports/family', color: '#be185d', primary: false, ready: true },
     ],
   },
   {

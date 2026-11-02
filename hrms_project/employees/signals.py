@@ -6,7 +6,7 @@ from django.dispatch import receiver
 from django.contrib.auth.models import User
 from employees.models import (
     Employee, Department, WorkLocation, JobTitle, InsuranceList,
-    SupplementaryInsuranceDependent,
+    SupplementaryInsuranceDependent, EmployeeFamilyMember,
 )
 from core.models.audit_log import AuditLog
 
@@ -42,11 +42,15 @@ def log_employee_save(sender, instance, created, **kwargs):
 def sync_family_after_dependent_save(sender, instance, **kwargs):
     """انتقال خودکار فرد تحت تکفل بیمهٔ تکمیلی به پروندهٔ خانوادهٔ پرسنل."""
     try:
-        from employees.family_sync import sync_employee_family_from_insurance
-        insurance = getattr(instance, 'insurance', None)
-        employee = getattr(insurance, 'employee', None)
-        if employee is not None:
-            sync_employee_family_from_insurance(employee, insurance=insurance)
+        from employees.family_sync import sync_employee_family_from_insurance, sync_guard
+
+        with sync_guard() as allow:
+            if not allow:
+                return
+            insurance = getattr(instance, 'insurance', None)
+            employee = getattr(insurance, 'employee', None)
+            if employee is not None:
+                sync_employee_family_from_insurance(employee, insurance=insurance)
     except Exception:  # noqa: BLE001 — خطای همگام‌سازی نباید ذخیرهٔ بیمه را بشکند
         pass
 
@@ -56,13 +60,45 @@ def sync_family_after_dependent_delete(sender, instance, **kwargs):
     """حذف رکورد خانوادگی متناظر وقتی فرد تحت تکفل بیمه حذف می‌شود."""
     try:
         from employees.family_sync import (
-            remove_family_member_for_dependent, sync_employee_family_from_insurance,
+            remove_family_member_for_dependent, sync_employee_family_from_insurance, sync_guard,
         )
-        remove_family_member_for_dependent(instance)
-        insurance = getattr(instance, 'insurance', None)
-        employee = getattr(insurance, 'employee', None)
-        if employee is not None:
-            sync_employee_family_from_insurance(employee, insurance=insurance)
+
+        with sync_guard() as allow:
+            if not allow:
+                return
+            remove_family_member_for_dependent(instance)
+            insurance = getattr(instance, 'insurance', None)
+            employee = getattr(insurance, 'employee', None)
+            if employee is not None:
+                sync_employee_family_from_insurance(employee, insurance=insurance)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+@receiver(post_save, sender=EmployeeFamilyMember)
+def sync_insurance_after_family_save(sender, instance, **kwargs):
+    """انعکاس عضو خانواده (منبع اصلی) در بیمه‌های تکمیلی فعال پرسنل."""
+    try:
+        from employees.family_sync import sync_guard, sync_insurance_from_family
+
+        with sync_guard() as allow:
+            if not allow:
+                return
+            sync_insurance_from_family(instance)
+    except Exception:  # noqa: BLE001
+        pass
+
+
+@receiver(post_delete, sender=EmployeeFamilyMember)
+def remove_insurance_after_family_delete(sender, instance, **kwargs):
+    """حذف پوشش‌های بیمه‌ای متناظر با عضو خانوادهٔ حذف‌شده."""
+    try:
+        from employees.family_sync import remove_insurance_dependents_for_family, sync_guard
+
+        with sync_guard() as allow:
+            if not allow:
+                return
+            remove_insurance_dependents_for_family(instance)
     except Exception:  # noqa: BLE001
         pass
 

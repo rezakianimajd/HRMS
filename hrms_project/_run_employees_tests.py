@@ -14,6 +14,7 @@ try:
     suite = unittest.TestLoader().loadTestsFromNames([
         'employees.tests.SupplementaryDependentSerializerTests',
         'employees.tests.DependentsExportTests',
+        'employees.tests.FamilyReportExportTests',
         'employees.tests.FamilyMemberTests',
     ])
     result = unittest.TextTestRunner(verbosity=2, stream=buffer).run(suite)
@@ -22,4 +23,5 @@ except Exception:
     buffer.write(traceback.format_exc())
 with open(LOG, 'w', encoding='utf-8') as handle:
     handle.write(buffer.getvalue())
+
 

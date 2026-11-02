@@ -1071,6 +1071,15 @@ class SupplementaryInsuranceDependent(models.Model):
         verbose_name=_('پیوست'),
         help_text=_('مدارک هویتی یا بیمه‌ای فرد تحت تکفل'),
     )
+    family_member = models.ForeignKey(
+        'employees.EmployeeFamilyMember',
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='insurance_dependents',
+        verbose_name=_('عضو خانواده'),
+        help_text=_('عضو خانوادهٔ ثبت‌شده در پروندهٔ پرسنلی که این پوشش بیمه‌ای به او تعلق دارد'),
+    )
 
     class Meta:
         verbose_name = _('فرد تحت تکفل')

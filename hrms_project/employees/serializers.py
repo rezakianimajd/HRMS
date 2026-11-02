@@ -301,13 +301,14 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
     attachment_size = serializers.SerializerMethodField()
     attachment_size_display = serializers.SerializerMethodField()
     has_attachment = serializers.SerializerMethodField()
+    family_member = serializers.PrimaryKeyRelatedField(read_only=True)
 
     class Meta:
         model = SupplementaryInsuranceDependent
         fields = [
             'id', 'insurance', 'first_name', 'last_name',
             'relation', 'relation_display',
-            'national_id', 'birth_date',
+            'national_id', 'birth_date', 'family_member',
             'attachment', 'attachment_url', 'attachment_name',
             'attachment_size', 'attachment_size_display', 'has_attachment',
             'remove_attachment',
@@ -388,20 +389,39 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
     full_name = serializers.CharField(read_only=True)
     age = serializers.IntegerField(read_only=True, allow_null=True)
     employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+    employee_code = serializers.CharField(source='employee.employee_id', read_only=True)
+    employee_photo_url = serializers.SerializerMethodField()
+    employee_gender = serializers.CharField(source='employee.gender', read_only=True)
+    department_name = serializers.CharField(source='employee.department.name', read_only=True)
+    job_title_name = serializers.CharField(source='employee.job_title.name', read_only=True)
+    insurance_name = serializers.SerializerMethodField()
+    insurance_status = serializers.SerializerMethodField()
+    insurance_status_label = serializers.SerializerMethodField()
+    insurance_period = serializers.SerializerMethodField()
+    attachment_url = serializers.SerializerMethodField()
+    attachment_name = serializers.SerializerMethodField()
 
     class Meta:
         model = EmployeeFamilyMember
         fields = [
-            'id', 'employee', 'employee_name',
+            'id', 'employee', 'employee_name', 'employee_code',
+            'employee_photo_url', 'employee_gender', 'department_name', 'job_title_name',
             'first_name', 'last_name', 'full_name',
             'relation', 'relation_display',
             'national_id', 'birth_date', 'phone',
             'is_dependent', 'source', 'source_display', 'source_key',
-            'age', 'notes', 'is_active', 'created_at', 'updated_at',
+            'age', 'notes', 'is_active',
+            'insurance_name', 'insurance_status', 'insurance_status_label',
+            'insurance_period', 'attachment_url', 'attachment_name',
+            'created_at', 'updated_at',
         ]
         read_only_fields = [
-            'id', 'company', 'employee_name', 'full_name', 'relation_display',
-            'source_display', 'source_key', 'age', 'created_at', 'updated_at',
+            'id', 'company', 'employee_name', 'employee_code', 'employee_photo_url',
+            'employee_gender', 'department_name', 'job_title_name', 'full_name',
+            'relation_display', 'source_display', 'source_key', 'age',
+            'insurance_name', 'insurance_status', 'insurance_status_label',
+            'insurance_period', 'attachment_url', 'attachment_name',
+            'created_at', 'updated_at',
         ]
 
     def validate_national_id(self, value):
@@ -419,6 +439,59 @@ class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
         if not name:
             raise serializers.ValidationError('نام عضو خانواده الزامی است.')
         return name
+
+    def get_employee_photo_url(self, obj):
+        employee = getattr(obj, 'employee', None)
+        if employee and employee.photo:
+            request = self.context.get('request')
+            return request.build_absolute_uri(employee.photo.url) if request else employee.photo.url
+        return ''
+
+    def _preferred(self, obj):
+        cache = self.__dict__.setdefault('_preferred_cache', {})
+        if obj.pk not in cache:
+            from employees.family_export import _preferred_insurance
+            cache[obj.pk] = _preferred_insurance(obj)
+        return cache[obj.pk]
+
+    def get_insurance_name(self, obj):
+        insurance, _dependent = self._preferred(obj)
+        return getattr(insurance, 'insurance_name', '') or ''
+
+    def get_insurance_status(self, obj):
+        from employees.family_export import status_of
+
+        insurance, _dependent = self._preferred(obj)
+        if insurance is None:
+            return 'none'
+        return status_of(insurance.start_date, insurance.end_date)
+
+    def get_insurance_status_label(self, obj):
+        from employees.family_export import STATUS_LABELS
+
+        return STATUS_LABELS.get(self.get_insurance_status(obj), '')
+
+    def get_insurance_period(self, obj):
+        from employees.family_export import jalali
+
+        insurance, _dependent = self._preferred(obj)
+        if insurance is None or not insurance.start_date:
+            return ''
+        end = jalali(insurance.end_date) if insurance.end_date else 'اکنون'
+        return f'{jalali(insurance.start_date)} تا {end}'
+
+    def get_attachment_url(self, obj):
+        _insurance, dependent = self._preferred(obj)
+        attachment = getattr(dependent, 'attachment', None)
+        if not attachment:
+            return ''
+        request = self.context.get('request')
+        return request.build_absolute_uri(attachment.url) if request else attachment.url
+
+    def get_attachment_name(self, obj):
+        _insurance, dependent = self._preferred(obj)
+        attachment = getattr(dependent, 'attachment', None)
+        return str(getattr(attachment, 'name', '') or '').split('/')[-1] if attachment else ''
 
 
 class SupplementaryInsuranceSerializer(serializers.ModelSerializer):

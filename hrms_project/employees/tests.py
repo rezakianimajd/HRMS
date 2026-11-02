@@ -203,4 +203,162 @@ class FamilyMemberTests(SimpleTestCase):
 
         self.assertEqual(EmployeeFamilyMemberViewSet.queryset.model.__name__, 'EmployeeFamilyMember')
         self.assertTrue(hasattr(EmployeeFamilyMemberViewSet, 'sync_from_insurance'))
+        self.assertTrue(hasattr(EmployeeFamilyMemberViewSet, 'export_excel'))
+
+
+class FamilyReportExportTests(SimpleTestCase):
+    """گزارش «خانوادهٔ پرسنل»: منبع داده پروندهٔ پرسنلی و فیلترهای صفحه."""
+
+    @staticmethod
+    def _row(**overrides):
+        row = {
+            'employee_name': 'بیژن جعفری', 'employee_code': '1001',
+            'department': 'فنی', 'job_title': 'کارشناس',
+            'member_name': 'امین اله جعفری', 'relation': 'father', 'relation_label': 'پدر',
+            'national_id': '0012345678', 'birth_date': '1345/02/12', 'age': 60,
+            'is_dependent': True, 'dependent_label': 'بله',
+            'source': 'supplementary_insurance', 'source_label': 'بیمه تکمیلی',
+            'phone': '09120000000', 'notes': '',
+            'insurance_name': 'درمان تکمیلی', 'status': 'active', 'status_label': 'فعال',
+            'attachment': False, 'attachment_name': '',
+        }
+        row.update(overrides)
+        return row
+
+    def test_filters_apply_the_screen_options(self):
+        from employees.family_export import apply_family_filters
+
+        rows = [
+            self._row(),
+            self._row(member_name='سارا احمدی', relation='spouse', relation_label='همسر',
+                      source='manual', source_label='ثبت دستی', is_dependent=False,
+                      dependent_label='خیر', attachment=True, attachment_name='id.pdf'),
+            self._row(member_name='نیما رضایی', relation='child', relation_label='فرزند',
+                      national_id='', department='مالی', status='expired', status_label='منقضی'),
+        ]
+
+        result, labels = apply_family_filters(rows, {'relation': 'child'})
+        self.assertEqual([row['member_name'] for row in result], ['نیما رضایی'])
+        self.assertIn('نسبت: فرزند', labels)
+
+        result, labels = apply_family_filters(rows, {'source': 'manual', 'dependent': 'no'})
+        self.assertEqual([row['member_name'] for row in result], ['سارا احمدی'])
+        self.assertIn('منبع: ثبت دستی', labels)
+        self.assertIn('بدون تکفل', labels)
+
+        result, labels = apply_family_filters(rows, {'national_id': 'missing'})
+        self.assertEqual([row['member_name'] for row in result], ['نیما رضایی'])
+        self.assertIn('بدون کد ملی', labels)
+
+        result, _labels = apply_family_filters(rows, {'q': 'مالی'})
+        self.assertEqual([row['member_name'] for row in result], ['نیما رضایی'])
+
+        result, labels = apply_family_filters(rows, {'attachment': 'with', 'status': 'active'})
+        self.assertEqual([row['member_name'] for row in result], ['سارا احمدی'])
+        self.assertIn('دارای پیوست', labels)
+        self.assertIn('وضعیت بیمه: فعال', labels)
+
+        result, labels = apply_family_filters(rows, {})
+        self.assertEqual(len(result), 3)
+        self.assertEqual(labels, [])
+
+
+
+    def test_workbook_has_family_title_filters_and_headers(self):
+        from employees.family_export import HEADERS, build_family_workbook
+
+        workbook = build_family_workbook(
+            [self._row(), self._row(member_name='سارا احمدی')], ['نسبت: پدر'],
+        )
+        sheet = workbook.active
+        self.assertEqual(sheet.title, 'خانواده پرسنل')
+        self.assertTrue(sheet.sheet_view.rightToLeft)
+        self.assertIn('گزارش خانوادهٔ پرسنل', sheet['A1'].value)
+        self.assertIn('نسبت: پدر', sheet['A2'].value)
+        self.assertIn('تعداد ردیف: 2', sheet['A2'].value)
+
+        header_values = [sheet.cell(row=3, column=index).value for index in range(1, len(HEADERS) + 1)]
+        self.assertEqual(header_values, HEADERS)
+        self.assertIn('بیمهٔ تکمیلی', HEADERS)
+
+        self.assertEqual(sheet['A4'].value, 1)
+        self.assertEqual(sheet['F4'].value, 'امین اله جعفری')
+        self.assertEqual(sheet['H4'].value, '0012345678')
+        self.assertEqual(sheet['H4'].number_format, '@')
+        self.assertEqual(sheet.freeze_panes, 'C4')
+
+    def test_preferred_insurance_prefers_active_coverage(self):
+        from datetime import date, timedelta
+
+        from employees.family_export import _preferred_insurance, collect_family_rows
+
+        today = date.today()
+
+        class FakeInsurance:
+            def __init__(self, pk, start, end, name='بیمه'):
+                self.id = pk
+                self.start_date = start
+                self.end_date = end
+                self.insurance_name = name
+                self.insurance_type = 'درمان'
+                self.plan = 'خانواده'
+
+        class FakeDependent:
+            def __init__(self, insurance, attachment=None):
+                self.insurance = insurance
+                self.attachment = attachment
+
+        class FakeEmployee:
+            pk = 7
+            full_name = 'بیژن جعفری'
+            employee_id = '1001'
+            photo_url = ''
+            gender = 'male'
+
+            class department:
+                name = 'فنی'
+
+            class job_title:
+                name = 'کارشناس'
+
+        class FakeManager:
+            def __init__(self, items):
+                self._items = items
+
+            def all(self):
+                return self._items
+
+        class FakeMember:
+            pk = 3
+            employee = FakeEmployee()
+            first_name = 'امین اله'
+            last_name = 'جعفری'
+            full_name = 'امین اله جعفری'
+            relation = 'father'
+            national_id = '0012345678'
+            birth_date = date(1966, 5, 2)
+            phone = ''
+            notes = ''
+            is_dependent = True
+            source = 'supplementary_insurance'
+
+            def __init__(self, dependents):
+                self.insurance_dependents = FakeManager(dependents)
+
+        expired = FakeDependent(FakeInsurance(1, today - timedelta(days=400), today - timedelta(days=10), 'قدیمی'))
+        active = FakeDependent(FakeInsurance(2, today - timedelta(days=30), today + timedelta(days=200)))
+        member = FakeMember([expired, active])
+
+        insurance, dependent = _preferred_insurance(member)
+        self.assertEqual(insurance.id, 2)
+        self.assertIs(dependent, active)
+
+        row = collect_family_rows([member])[0]
+        self.assertEqual(row['member_name'], 'امین اله جعفری')
+        self.assertEqual(row['relation_label'], 'پدر')
+        self.assertEqual(row['status'], 'active')
+        self.assertEqual(row['status_label'], 'فعال')
+        self.assertEqual(row['insurance_name'], 'بیمه')
+        self.assertEqual(row['department'], 'فنی')
+        self.assertEqual(row['source_label'], 'بیمه تکمیلی')
 

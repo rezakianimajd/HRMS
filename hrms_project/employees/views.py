@@ -431,7 +431,9 @@ class EmployeeFamilyMemberViewSet(BaseCompanyViewSet):
     ordering = ['relation', 'first_name']
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('employee')
+        qs = super().get_queryset().select_related(
+            'employee', 'employee__department', 'employee__job_title',
+        ).prefetch_related('insurance_dependents__insurance')
         include_inactive = self.request.query_params.get('include_inactive') in ('1', 'true', 'yes')
         if not include_inactive:
             qs = qs.filter(is_active=True)
@@ -475,6 +477,34 @@ class EmployeeFamilyMemberViewSet(BaseCompanyViewSet):
             return Response({'detail': 'پرسنل یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
         summary = sync_employee_family_from_insurance(employee)
         return Response(summary, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['get'], url_path='export-excel')
+    def export_excel(self, request):
+        """خروجی اکسل «گزارش خانوادهٔ پرسنل» از داده‌های پروندهٔ پرسنلی."""
+        from employees.family_export import apply_family_filters, collect_family_rows, workbook_response
+
+        queryset = EmployeeFamilyMember.objects.select_related(
+            'employee', 'employee__department', 'employee__job_title',
+        ).prefetch_related('insurance_dependents__insurance').filter(is_active=True)
+
+        company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+        if company:
+            queryset = queryset.filter(company=company)
+
+        employee_id = request.query_params.get('employee') or request.query_params.get('employee_id')
+        if employee_id and str(employee_id).isdigit():
+            queryset = queryset.filter(employee_id=employee_id)
+
+        relation = (request.query_params.get('relation') or '').strip()
+        if relation and relation != 'all':
+            queryset = queryset.filter(relation=relation)
+
+        queryset = queryset.order_by(
+            'employee__last_name', 'employee__first_name', 'relation', 'first_name',
+        )
+        rows = collect_family_rows(queryset)
+        filtered_rows, labels = apply_family_filters(rows, request.query_params)
+        return workbook_response(filtered_rows, labels)
 
 
 class SupplementaryInsuranceViewSet(BaseCompanyViewSet):
