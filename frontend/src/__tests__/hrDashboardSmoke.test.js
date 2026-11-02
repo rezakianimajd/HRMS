@@ -63,6 +63,14 @@ const responses = {
   '/management/asset-inventory/': { by_type: [{ type: 'لپ‌تاپ', count: 30 }], by_status: [{ status: 'فعال', count: 25 }], total: 30 },
   '/management/loan-summary/': { active_count: 5, total_amount: 100000000, total_monthly_installments: 10000000, paid_count: 2 },
   '/management/absenteeism-summary/': { months: [{ label: 'مهر/۱۴۰۴', present_rate: 95, absenteeism_rate: 5, total: 100 }] },
+  '/benefit-type-definitions/upcoming/': {
+    count: 2,
+    days_ahead: 120,
+    results: [
+      { id: 1, code: 'eid_fitr', title: 'عید سعید فطر', next_date_jalali: '1405/03/10', days_remaining: 9, urgency: 'soon' },
+      { id: 2, code: 'nowruz_basket', title: 'سبد نوروزی', next_date_jalali: '1405/12/25', days_remaining: 96, urgency: 'later' },
+    ],
+  },
 };
 
 beforeEach(() => {
@@ -104,6 +112,9 @@ test('HR dashboard merges management analytics into overview, people and finance
   expect(container.textContent).toContain('داشبورد منابع انسانی');
   expect(container.textContent).toContain('سرمایه انسانی در یک نگاه');
   expect(container.textContent).toContain('مرکز هشدارها');
+  expect(container.textContent).toContain('تقویم مزایای رفاهی');
+  expect(container.textContent).toContain('عید سعید فطر');
+  expect(container.textContent).toContain('روز مانده');
   expect(container.textContent).toContain('تولدهای ۷ روز آینده');
   expect(container.textContent).toContain('سارا محمدی');
   expect(container.textContent).toContain('ترکیب جنسیتی');

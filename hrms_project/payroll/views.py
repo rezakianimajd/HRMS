@@ -3,10 +3,12 @@ from rest_framework import viewsets, filters
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django.db.models import Sum, Count
-from payroll.models import EmployeeTransaction, SalaryRecord, BenefitRecord, EmployeeLoan
+from payroll.models import (
+    BenefitRecord, BenefitTypeDefinition, EmployeeLoan, EmployeeTransaction, SalaryRecord,
+)
 from payroll.serializers import (
     TransactionSerializer, TransactionSummarySerializer, SalaryRecordSerializer,
-    BenefitRecordSerializer, EmployeeLoanSerializer,
+    BenefitRecordSerializer, BenefitTypeDefinitionSerializer, EmployeeLoanSerializer,
 )
 
 
@@ -189,6 +191,16 @@ class BenefitRecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(benefit_type=benefit_type)
         return qs
 
+    def get_serializer_context(self):
+        """نقشهٔ کد→عنوان انواع مزایا یک‌بار برای کل لیست (بدون N+1)."""
+        context = super().get_serializer_context()
+        company = _get_company(self.request)
+        queryset = BenefitTypeDefinition.objects.all()
+        if company:
+            queryset = queryset.filter(company=company)
+        context['benefit_type_map'] = {row.code: row.title for row in queryset.only('code', 'title')}
+        return context
+
     def perform_create(self, serializer):
         company = _get_company(self.request)
         obj = serializer.save(company=company)
@@ -238,6 +250,64 @@ class BenefitRecordViewSet(viewsets.ModelViewSet):
             qs = qs.filter(company=company)
         years = list(qs.values_list('year', flat=True).distinct().order_by('-year'))
         return Response(years)
+
+
+class BenefitTypeDefinitionViewSet(viewsets.ModelViewSet):
+    """تعاریف اولیهٔ انواع مزایا (کد، عنوان، تاریخ پیشنهادی)."""
+
+    serializer_class = BenefitTypeDefinitionSerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['code', 'title', 'note']
+    ordering_fields = ['code', 'title', 'suggested_date']
+    ordering = ['title']
+
+    def get_queryset(self):
+        qs = BenefitTypeDefinition.objects.all()
+        company = _get_company(self.request)
+        if company:
+            qs = qs.filter(company=company)
+        return qs
+
+    def perform_create(self, serializer):
+        serializer.save(company=_get_company(self.request))
+
+    @action(detail=False, methods=['get'])
+    def options(self, request):
+        """گزینه‌های سبک برای فیلد «نوع مزایا» در صفحهٔ پرداخت مزایا."""
+        from payroll.benefit_defaults import ensure_default_benefit_types
+
+        company = _get_company(request)
+        ensure_default_benefit_types(company)
+        queryset = self.get_queryset().filter(is_active=True).order_by('title')
+        return Response([
+            {'value': row.code, 'label': row.title, 'id': row.pk, 'suggested_date': row.suggested_date}
+            for row in queryset.only('id', 'code', 'title', 'suggested_date')
+        ])
+
+    @action(detail=False, methods=['get'])
+    def upcoming(self, request):
+        """نزدیک‌ترین تاریخ‌های پیشنهادی برای یادآوری در داشبورد."""
+        from payroll.benefit_defaults import ensure_default_benefit_types
+
+        ensure_default_benefit_types(_get_company(request))
+        try:
+            days_ahead = int(request.query_params.get('days') or 180)
+        except (TypeError, ValueError):
+            days_ahead = 180
+        try:
+            limit = int(request.query_params.get('limit') or 8)
+        except (TypeError, ValueError):
+            limit = 8
+
+        serializer = self.get_serializer(self.get_queryset().filter(is_active=True), many=True)
+        rows = [row for row in serializer.data if row.get('days_remaining') is not None]
+        rows = [row for row in rows if row['days_remaining'] <= days_ahead]
+        rows.sort(key=lambda row: row['days_remaining'])
+        return Response({
+            'count': len(rows),
+            'days_ahead': days_ahead,
+            'results': rows[:max(1, limit)],
+        })
 
 
 class EmployeeLoanViewSet(viewsets.ModelViewSet):

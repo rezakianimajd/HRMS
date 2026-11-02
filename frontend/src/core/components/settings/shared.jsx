@@ -28,6 +28,7 @@ export const ENDPOINTS = {
   documentTypes: '/documents/types/',
   contractTypes: '/contract-types/',
   organizations: '/organizations/',
+  benefitTypes: '/benefit-type-definitions/',
 };
 
 export const FIELD_LABELS = {

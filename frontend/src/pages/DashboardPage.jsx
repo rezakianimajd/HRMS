@@ -37,6 +37,7 @@ import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
 import AssignmentOutlinedIcon from '@mui/icons-material/AssignmentOutlined';
 import AccountTreeOutlinedIcon from '@mui/icons-material/AccountTreeOutlined';
 import RequestQuoteOutlinedIcon from '@mui/icons-material/RequestQuoteOutlined';
+import EventAvailableOutlinedIcon from '@mui/icons-material/EventAvailableOutlined';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
 import { KpiTile, ProgressBar, SurfaceCard, INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
@@ -571,6 +572,82 @@ const BirthdayPanel = ({ birthdays, navigate }) => {
   );
 };
 
+const BENEFIT_URGENCY_COLORS = {
+  today: RED,
+  soon: AMBER,
+  upcoming: BLUE,
+  later: TEAL,
+};
+
+/** یادآور تاریخ‌های پیشنهادی انواع مزایا (نزدیک‌ترین‌ها و روزهای باقی‌مانده). */
+const BenefitCalendarPanel = ({ data, navigate }) => {
+  const rows = asArray(data?.results);
+  const nearest = rows[0];
+
+  return (
+    <SurfaceCard
+      title="تقویم مزایای رفاهی"
+      icon={EventAvailableOutlinedIcon}
+      color={VIOLET}
+      action={(
+        <Stack direction="row" spacing={0.6} alignItems="center">
+          {nearest ? (
+            <Chip
+              size="small"
+              label={`نزدیک‌ترین: ${nearest.title} · ${num(nearest.days_remaining) === 0 ? 'امروز' : `${toPersianDigits(nearest.days_remaining)} روز`}`}
+              sx={{ height: 21, fontSize: 11, fontWeight: 800, bgcolor: alpha(VIOLET, 0.08), color: VIOLET }}
+            />
+          ) : null}
+          <Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/definitions')}
+            sx={{ fontSize: 11 }}>
+            تعاریف مزایا
+          </Button>
+        </Stack>
+      )}
+    >
+      {!rows.length ? (
+        <EmptyState
+          icon={CheckCircleOutlineIcon}
+          text="تاریخ پیشنهادی نزدیکی ثبت نشده است"
+          hint="برای هر نوع مزایا در تعاریف اولیه تاریخ پیشنهادی را وارد کنید."
+          color={TEAL}
+        />
+      ) : (
+        <Grid container spacing={1}>
+          {rows.map((row) => {
+            const color = BENEFIT_URGENCY_COLORS[row.urgency] || TEAL;
+            const days = num(row.days_remaining);
+            return (
+              <Grid item xs={12} sm={6} md={4} lg={2} key={row.id}>
+                <Box sx={{
+                  p: 1, borderRadius: '12px', height: '100%',
+                  border: `1px solid ${alpha(color, 0.18)}`,
+                  bgcolor: alpha(color, 0.045),
+                }}>
+                  <Stack direction="row" alignItems="center" spacing={0.5} sx={{ mb: 0.4 }}>
+                    <EventAvailableOutlinedIcon sx={{ fontSize: 15, color }} />
+                    <Typography noWrap sx={{ flex: 1, fontSize: 11.5, fontWeight: 800, color: INK }} title={row.title}>
+                      {row.title}
+                    </Typography>
+                  </Stack>
+                  <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+                    {row.next_date_jalali ? `تاریخ: ${toPersianDigits(row.next_date_jalali)}` : 'بدون تاریخ'}
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label={days === 0 ? 'امروز' : `${toPersianDigits(days)} روز مانده`}
+                    sx={{ mt: 0.5, height: 20, fontSize: 10.5, fontWeight: 800, bgcolor: alpha(color, 0.1), color }}
+                  />
+                </Box>
+              </Grid>
+            );
+          })}
+        </Grid>
+      )}
+    </SurfaceCard>
+  );
+};
+
 const DepartmentDistribution = ({ data, navigate }) => (
   <SurfaceCard title="توزیع نیرو در دپارتمان‌ها" icon={AccountTreeOutlinedIcon} color={BLUE}
     action={<Button size="small" endIcon={<ArrowForwardOutlinedIcon />} onClick={() => navigate('/dashboard?tab=people')}
@@ -694,6 +771,12 @@ const DashboardPage = () => {
   const activitiesQ = useQuery({ queryKey: ['dashboard-activities'], queryFn: () => axiosInstance.get('/dashboard/recent-activities/').then((response) => response.data), staleTime: 60 * 1000 });
   const genderQ = useQuery({ queryKey: ['dashboard-gender'], queryFn: () => axiosInstance.get('/reports/employees-by-gender/').then((response) => response.data), staleTime: 60 * 1000 });
   const birthdaysQ = useQuery({ queryKey: ['dashboard-birthdays'], queryFn: () => axiosInstance.get('/reports/upcoming-birthdays/').then((response) => response.data), staleTime: 60 * 1000 });
+  const benefitUpcomingQ = useQuery({
+    queryKey: ['benefit-types-upcoming', 120, 6],
+    queryFn: () => axiosInstance.get('/benefit-type-definitions/upcoming/', { params: { days: 120, limit: 6 } })
+      .then((response) => response.data),
+    staleTime: 5 * 60 * 1000,
+  });
   const kpisQ = useQuery({ queryKey: ['mgmt-kpis'], queryFn: () => axiosInstance.get('/management/kpis/').then((response) => response.data), staleTime: 60 * 1000 });
   const deptQ = useQuery({ queryKey: ['mgmt-dept'], queryFn: () => axiosInstance.get('/management/department-analytics/').then((response) => response.data), staleTime: 60 * 1000 });
   const costQ = useQuery({ queryKey: ['mgmt-cost'], queryFn: () => axiosInstance.get('/management/payroll-cost-trend/').then((response) => response.data), staleTime: 60 * 1000 });
@@ -979,6 +1062,7 @@ const DashboardPage = () => {
           <Grid item xs={12} lg={5}><ActivityFeed activities={activities} /></Grid>
           <Grid item xs={12} md={5}><BirthdayPanel birthdays={birthdays} navigate={navigate} /></Grid>
           <Grid item xs={12} md={7}><GenderPanel data={genderData} total={genderTotal} /></Grid>
+          <Grid item xs={12}><BenefitCalendarPanel data={benefitUpcomingQ.data} navigate={navigate} /></Grid>
           <Grid item xs={12}><DepartmentDistribution data={departmentData} navigate={navigate} /></Grid>
           <Grid item xs={12}><AttendancePanel months={absMonths} /></Grid>
         </Grid>

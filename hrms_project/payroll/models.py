@@ -265,8 +265,8 @@ class BenefitRecord(BaseModel):
     )
     benefit_type = models.CharField(
         max_length=30,
-        choices=BenefitType.choices,
         verbose_name=_('نوع مزایای رفاهی'),
+        help_text=_('کد نوع مزایا از تعاریف اولیهٔ منابع انسانی'),
     )
     gross_amount = models.DecimalField(
         max_digits=15, decimal_places=0, default=0,
@@ -293,7 +293,47 @@ class BenefitRecord(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.employee.full_name} - {self.get_benefit_type_display()} ({self.year}/{self.get_month_display()})"
+        return f"{self.employee.full_name} - {self.benefit_type} ({self.year}/{self.get_month_display()})"
+
+
+class BenefitTypeDefinition(BaseModel):
+    """تعریف نوع مزایای رفاهی: کد، عنوان و تاریخ پیشنهادی پرداخت.
+
+    این مدل «منبع یگانه» گزینه‌های فیلد «نوع مزایا» در صفحهٔ پرداخت مزایا و
+    مبنای یادآوری تاریخ‌های نزدیک در داشبورد منابع انسانی است.
+    """
+
+    code = models.CharField(
+        max_length=30,
+        verbose_name=_('کد'),
+        help_text=_('کد یکتا برای استفاده در رکوردهای پرداخت (مثلاً performance)'),
+    )
+    title = models.CharField(
+        max_length=150,
+        verbose_name=_('نوع مزایا'),
+    )
+    suggested_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name=_('تاریخ پیشنهادی'),
+        help_text=_('تاریخ پیشنهادی پرداخت این نوع مزایا (هر سال تکرار می‌شود)'),
+    )
+    note = models.CharField(
+        max_length=250,
+        blank=True,
+        verbose_name=_('توضیحات'),
+    )
+
+    class Meta:
+        verbose_name = _('نوع مزایا')
+        verbose_name_plural = _('انواع مزایا')
+        ordering = ['title']
+        constraints = [
+            models.UniqueConstraint(fields=['company', 'code'], name='unique_company_benefit_type_code'),
+        ]
+
+    def __str__(self):
+        return f'{self.code} - {self.title}'
 
 
 class EmployeeLoan(BaseModel):

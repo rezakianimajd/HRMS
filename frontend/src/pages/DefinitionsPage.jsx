@@ -12,8 +12,10 @@ import HubIcon from '@mui/icons-material/Hub';
 import LayersIcon from '@mui/icons-material/Layers';
 import ApartmentIcon from '@mui/icons-material/Apartment';
 import PublicIcon from '@mui/icons-material/Public';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import axiosInstance from '../core/api/axiosConfig';
 import { EntityManager, ENDPOINTS } from '../core/components/settings/shared';
+import BenefitTypesManager from '../core/components/settings/BenefitTypesManager';
 import {
   PageHeader, StatGrid, TabsCard, SOFT,
 } from '../core/components/settings/settingsUi';
@@ -64,6 +66,11 @@ const TABS = [
     key: 'organizations', endpointKey: 'organizations', label: 'سازمان‌های خارجی',
     icon: <CategoryIcon />, color: '#d69a74', group: 'مدارک و طرف‌های خارجی',
     desc: 'سازمان‌های مالیات، تأمین اجتماعی و ...',
+  },
+  {
+    key: 'benefitTypes', endpointKey: 'benefitTypes', label: 'انواع مزایا',
+    icon: <EventAvailableIcon />, color: '#8b5cf6', group: 'رفاه و مزایا',
+    desc: 'کد، نوع مزایا و تاریخ پیشنهادی پرداخت',
   },
 ];
 
@@ -187,7 +194,9 @@ const DefinitionsPage = () => {
 
       <StatGrid stats={stats} />
 
-      {MANAGER_PROPS[active.key] ? <EntityManager {...MANAGER_PROPS[active.key]} /> : null}
+      {active.key === 'benefitTypes'
+        ? <BenefitTypesManager />
+        : (MANAGER_PROPS[active.key] ? <EntityManager {...MANAGER_PROPS[active.key]} /> : null)}
     </Box>
   );
 };

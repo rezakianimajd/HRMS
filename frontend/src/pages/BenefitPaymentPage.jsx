@@ -89,6 +89,16 @@ const BenefitPaymentPage = () => {
   const [error, setError] = useState('');
   const [saved, setSaved] = useState(false);
 
+  // گزینه‌های «نوع مزایا» از تعاریف اولیهٔ منابع انسانی (با بازگشت به فهرست قدیمی)
+  const { data: benefitTypeOptions } = useQuery({
+    queryKey: ['benefit-type-options'],
+    queryFn: () => axiosInstance.get('/benefit-type-definitions/options/').then(r => r.data),
+    staleTime: 60 * 1000,
+  });
+  const typeOptions = (Array.isArray(benefitTypeOptions) && benefitTypeOptions.length)
+    ? benefitTypeOptions
+    : BENEFIT_TYPES;
+
   // پرسنل فعال برای لیست ورود
   const { data: sheet, isLoading, refetch } = useQuery({
     queryKey: ['benefit-payment-sheet', benefitType],
@@ -201,7 +211,7 @@ const BenefitPaymentPage = () => {
               <FormControl fullWidth size="small">
                 <InputLabel>نوع مزایا</InputLabel>
                 <Select value={benefitType} label="نوع مزایا" onChange={e => setBenefitType(e.target.value)}>
-                  {BENEFIT_TYPES.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
+                  {typeOptions.map(t => <MenuItem key={t.value} value={t.value}>{t.label}</MenuItem>)}
                 </Select>
               </FormControl>
             </Grid>
@@ -258,7 +268,7 @@ const BenefitPaymentPage = () => {
                         <TableCell>{toPersianDigits(r.mobile)}</TableCell>
                         <TableCell dir="ltr">{r.card_number || '—'}</TableCell>
                         <TableCell>{toJalali(r.card_expiry_date)}</TableCell>
-                        <TableCell>{BENEFIT_TYPES.find(t => t.value === (r.benefit_type || benefitType))?.label || '—'}</TableCell>
+                        <TableCell>{typeOptions.find(t => t.value === (r.benefit_type || benefitType))?.label || '—'}</TableCell>
                         <TableCell>
                           <TextField size="small" type="number" value={r.gross}
                             onChange={e => setCell(idx, 'gross', e.target.value)} sx={{ width: 120 }} />
