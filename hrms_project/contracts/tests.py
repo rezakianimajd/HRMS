@@ -1174,3 +1174,58 @@ class PaymentAllocationLogicTests(SimpleTestCase):
         self.assertIsNone(serializer.validated_data['statement'])
 
 
+class PaymentAllocationExcelTests(SimpleTestCase):
+    """خروجی اکسل قرارداد هم باید تقسیم پرداخت بین اسناد/سپرده‌ها را نشان دهد."""
+
+    class _Manager:
+        def __init__(self, rows):
+            self.rows = rows
+
+        def all(self):
+            return self.rows
+
+    def _payment(self, **overrides):
+        base = {
+            'id': 1, 'amount': 1000, 'statement_id': 5, 'invoice_id': None,
+            'allocations': self._Manager([]),
+            'payment_type': 'normal', 'reference': 'R-1', 'date': None, 'method': 'حواله', 'note': '',
+        }
+        base.update(overrides)
+        return SimpleNamespace(**base)
+
+    def test_allocations_drive_excel_links(self):
+        from contracts.excel_export import _payment_allocations
+
+        payment = self._payment(allocations=self._Manager([
+            SimpleNamespace(statement_id=5, invoice_id=None, kind='net', amount=600),
+            SimpleNamespace(statement_id=6, invoice_id=None, kind='retention', amount=400),
+        ]))
+        rows = _payment_allocations(payment)
+        self.assertEqual([row['kind'] for row in rows], ['net', 'retention'])
+        self.assertEqual([row['id'] for row in rows], [5, 6])
+        self.assertEqual(rows[1]['amount'], 400.0)
+
+    def test_legacy_payment_falls_back_to_single_link(self):
+        from contracts.excel_export import _payment_allocations
+
+        legacy = self._payment(id=2, amount=700, statement_id=7)
+        self.assertEqual(
+            _payment_allocations(legacy),
+            [{'target': 'statement', 'id': 7, 'kind': 'net', 'amount': 700.0}],
+        )
+
+    def test_payment_slots_describe_allocation_split(self):
+        from contracts.excel_export import _payment_slots
+
+        payment = self._payment(allocations=self._Manager([
+            SimpleNamespace(statement_id=5, invoice_id=None, kind='net', amount=600),
+            SimpleNamespace(statement_id=5, invoice_id=None, kind='insurance', amount=400),
+        ]))
+        bundle = {'payments': [payment], 'invoice_numbers': {}, 'statement_numbers': {5: '05'}}
+        slots = _payment_slots(bundle)
+        self.assertEqual(len(slots), 1)
+        self.assertEqual(slots[0]['amount'], 1000)
+        self.assertIn('خالص', slots[0]['linked'])
+        self.assertIn('سپرده حق بیمه', slots[0]['linked'])
+
+

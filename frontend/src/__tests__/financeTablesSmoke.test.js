@@ -27,12 +27,24 @@ test('finance tables render', () => {
     statement_kind: 'increase',
     payment_type: 'advance',
     payment_type_display: 'پیش‌پرداخت',
+    allocations: [
+      { id: 1, target_type: 'statement', statement: 3, kind: 'net', amount: 60, title: '03', kind_display: 'خالص صورت‌وضعیت' },
+      { id: 2, target_type: 'statement', statement: 3, kind: 'retention', amount: 40, title: '03', kind_display: 'سپرده حسن انجام کار' },
+    ],
+  };
+  const unlinked = {
+    id: 2, date: '2025-01-03', amount: 50, payment_type_display: 'علی‌الحساب', allocations: [],
   };
   expect(renderToString(<StatementsTable statements={[statement]} currencyLabel="ریال" />)).toContain('صورت');
   expect(renderToString(<AdvanceTable rows={[{ id: 1, step: 'مرحله اول', amount: 100 }]} total={100} amortized={10} remaining={90} currency="ریال" />)).toContain('پیش');
   expect(renderToString(<InvoicesTable invoices={[]} />)).toContain('فاکتور');
-  expect(renderToString(<PaymentsTable payments={[payment]} />)).toContain('تعدیل افزایشی ۰۳');
-  expect(renderToString(<PaymentsTable payments={[payment]} />)).toContain('پیش‌پرداخت');
+  const paymentsHtml = renderToString(<PaymentsTable payments={[payment, unlinked]} />);
+  expect(paymentsHtml).toContain('صورت‌وضعیت');
+  expect(paymentsHtml).toContain('03');
+  expect(paymentsHtml).toContain('خالص');
+  expect(paymentsHtml).toContain('حسن انجام کار');
+  expect(paymentsHtml).toContain('پیش‌پرداخت');
+  expect(paymentsHtml).toContain('بدون تخصیص');
   expect(renderToString(<AddendumsTable addendums={[]} />)).toContain('الحاقیه');
   expect(renderToString(<GuaranteesTable guarantees={[]} />)).toContain('تضمین');
 });

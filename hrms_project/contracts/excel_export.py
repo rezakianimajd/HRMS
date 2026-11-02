@@ -205,6 +205,43 @@ def _sum_of(items, *fields):
 # ----------------------------------------------------------------------------
 # «برگه» هر قرارداد: فهرست آیتم‌های هر نوع + جمع‌های مالی
 # ----------------------------------------------------------------------------
+PAYMENT_ALLOCATION_KIND_LABELS = {
+    'net': 'خالص',
+    'retention': 'سپرده حسن انجام کار',
+    'insurance': 'سپرده حق بیمه',
+}
+
+
+def _payment_allocations(payment):
+    """تخصیص‌های یک پرداخت (صورت‌وضعیت/فاکتور + سبد) با پشتیبانی از دادهٔ قدیمی."""
+    rows = []
+    for row in (getattr(payment, 'allocations', None).all() if hasattr(payment, 'allocations') else []):
+        statement_id = getattr(row, 'statement_id', None)
+        invoice_id = getattr(row, 'invoice_id', None)
+        if not statement_id and not invoice_id:
+            continue
+        rows.append({
+            'target': 'statement' if statement_id else 'invoice',
+            'id': statement_id or invoice_id,
+            'kind': getattr(row, 'kind', None) or 'net',
+            'amount': float(getattr(row, 'amount', 0) or 0),
+        })
+    if rows:
+        return rows
+    amount = float(getattr(payment, 'amount', 0) or 0)
+    statement_id = getattr(payment, 'statement_id', None)
+    invoice_id = getattr(payment, 'invoice_id', None)
+    if statement_id:
+        return [{'target': 'statement', 'id': statement_id, 'kind': 'net', 'amount': amount}]
+    if invoice_id:
+        return [{'target': 'invoice', 'id': invoice_id, 'kind': 'net', 'amount': amount}]
+    return []
+
+
+def _allocation_summary(rows):
+    return f"{len(rows)} تخصیص / {sum(row['amount'] for row in rows):,.0f}"
+
+
 def _bundle(contract):
     """آیتم‌های درون یک قرارداد + جمع‌های مالی آن."""
     invoices = sorted(_related_list(contract, 'invoices'), key=_sort_key)
@@ -213,14 +250,11 @@ def _bundle(contract):
     guarantees = sorted(_related_list(contract, 'guarantees'), key=_sort_key, reverse=True)
     addendums = sorted(_related_list(contract, 'addendums'), key=_sort_key)
     disputes = sorted(_related_list(contract, 'disputes'), key=_sort_key, reverse=True)
-    payments_by_invoice, payments_by_statement = {}, {}
+    allocations_by_invoice, allocations_by_statement = {}, {}
     for payment in payments:
-        invoice_id = getattr(payment, 'invoice_id', None)
-        statement_id = getattr(payment, 'statement_id', None)
-        if invoice_id:
-            payments_by_invoice.setdefault(invoice_id, []).append(payment)
-        if statement_id:
-            payments_by_statement.setdefault(statement_id, []).append(payment)
+        for row in _payment_allocations(payment):
+            target_map = allocations_by_invoice if row['target'] == 'invoice' else allocations_by_statement
+            target_map.setdefault(row['id'], []).append(row)
     return {
         'contract': contract,
         'invoices': invoices,
@@ -229,8 +263,8 @@ def _bundle(contract):
         'guarantees': guarantees,
         'addendums': addendums,
         'disputes': disputes,
-        'payments_by_invoice': payments_by_invoice,
-        'payments_by_statement': payments_by_statement,
+        'allocations_by_invoice': allocations_by_invoice,
+        'allocations_by_statement': allocations_by_statement,
         'invoice_numbers': {getattr(i, 'id', None): getattr(i, 'number', '') for i in invoices},
         'statement_numbers': {getattr(s, 'id', None): display_statement_number(getattr(s, 'number', '')) for s in statements},
         'invoice_total': _sum_of(invoices, 'total', 'amount'),
@@ -246,7 +280,7 @@ def _invoice_slots(bundle):
     """ستون‌های «فاکتور N»."""
     slots = []
     for invoice in bundle['invoices']:
-        linked = bundle['payments_by_invoice'].get(getattr(invoice, 'id', None), [])
+        linked = bundle['allocations_by_invoice'].get(getattr(invoice, 'id', None), [])
         slots.append({
             'number': _attr(invoice, 'number'),
             'subject': _attr(invoice, 'subject'),
@@ -256,7 +290,7 @@ def _invoice_slots(bundle):
             'vat': _num(getattr(invoice, 'vat', None)),
             'total': _num(getattr(invoice, 'total', None)),
             'status': 'پرداخت‌شده' if getattr(invoice, 'is_paid', False) else 'پرداخت‌نشده',
-            'payments': f"{len(linked)} پرداخت / {sum(float(getattr(p, 'amount', None) or 0) for p in linked):,.0f}",
+            'payments': _allocation_summary(linked),
             'description': _attr(invoice, 'description'),
         })
     return slots
@@ -266,7 +300,7 @@ def _statement_slots(bundle):
     """ستون‌های «صورت‌وضعیت N»."""
     slots = []
     for statement in bundle['statements']:
-        linked = bundle['payments_by_statement'].get(getattr(statement, 'id', None), [])
+        linked = bundle['allocations_by_statement'].get(getattr(statement, 'id', None), [])
         slots.append({
             'number': display_statement_number(getattr(statement, 'number', '')),
             'kind': _display(statement, 'kind'),
@@ -281,7 +315,7 @@ def _statement_slots(bundle):
             'deductions_total': _num(getattr(statement, 'deductions_total', None)),
             'net_amount': _num(getattr(statement, 'net_amount', None)),
             'status': 'تأییدشده' if getattr(statement, 'is_approved', False) else 'تأییدنشده',
-            'payments': f"{len(linked)} پرداخت / {sum(float(getattr(p, 'amount', None) or 0) for p in linked):,.0f}",
+            'payments': _allocation_summary(linked),
             'description': _attr(statement, 'description'),
         })
     return slots
@@ -305,21 +339,25 @@ def _statement_extra_slots(bundle, field, prefix):
 
 
 def _payment_slots(bundle):
-    """ستون‌های «پرداخت N»."""
+    """ستون‌های «پرداخت N» — تقسیم پرداخت بین اسناد و سپرده‌ها در ستون «پیوند» می‌آید."""
     slots = []
     for payment in bundle['payments']:
-        invoice_id = getattr(payment, 'invoice_id', None)
-        statement_id = getattr(payment, 'statement_id', None)
+        allocations = _payment_allocations(payment)
+        parts = []
+        for allocation in allocations:
+            if allocation['target'] == 'invoice':
+                target_text = _join('فاکتور', bundle['invoice_numbers'].get(allocation['id'], allocation['id']))
+            else:
+                target_text = _join('صورت‌وضعیت', bundle['statement_numbers'].get(allocation['id'], allocation['id']))
+            kind_label = PAYMENT_ALLOCATION_KIND_LABELS.get(allocation['kind'], 'خالص')
+            parts.append(f"{target_text} ({kind_label}: {allocation['amount']:,.0f})")
         slots.append({
             'type': _display(payment, 'payment_type'),
             'reference': _attr(payment, 'reference'),
             'date': _fa_date(getattr(payment, 'date', None)),
             'amount': _num(getattr(payment, 'amount', None)),
             'method': _attr(payment, 'method'),
-            'linked': _details(
-                _join('فاکتور', bundle['invoice_numbers'].get(invoice_id, invoice_id or '')),
-                _join('صورت‌وضعیت', bundle['statement_numbers'].get(statement_id, statement_id or '')),
-            ),
+            'linked': '؛ '.join(parts) if parts else 'بدون تخصیص',
             'note': _attr(payment, 'note'),
         })
     return slots

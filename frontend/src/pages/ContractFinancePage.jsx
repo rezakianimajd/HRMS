@@ -51,6 +51,9 @@ import {
   AddendumsTable, GuaranteesTable, InvoicesTable, PaymentsTable, statementMetrics, toNum,
 } from './contracts/ContractFinanceTables';
 import { statementDisplayTitle, statementKindOf } from './contracts/statementKinds';
+import {
+  paidByBucket, paidTotalsByKind, paymentAllocationRows, unlinkedPayments,
+} from './contracts/contractPaymentLinks';
 
 /* ---------- پالت معنایی تحلیل مالی ---------- */
 const CLR = {
@@ -389,7 +392,7 @@ const FinanceBreakdownTable = ({
         aria-label="جدول تفصیلی مالی قرارداد"
         sx={{
           width: '100%',
-          minWidth: 1180,
+          minWidth: 1400,
           tableLayout: 'auto',
           '& tbody tr:hover': { backgroundColor: tableTheme.hoverBg },
           ...tableTypographySx(tableTheme),
@@ -407,7 +410,7 @@ const FinanceBreakdownTable = ({
             <FinanceGroupHeader label="کارکرد" color={CLR.work} colSpan={1} />
             <FinanceGroupHeader label="اضافات" color={CLR.add} colSpan={1 + additionColumns.length + (hasOtherAddition ? 1 : 0)} />
             <FinanceGroupHeader label="کسورات" color={CLR.ded} colSpan={deductionColumns.length + (hasOtherDeduction ? 1 : 0)} />
-            <FinanceGroupHeader label="جمع" color={CLR.net} colSpan={5} />
+            <FinanceGroupHeader label="جمع" color={CLR.net} colSpan={7} />
           </TableRow>
           <TableRow>
             {subHead('صورت‌وضعیت', CLR.contract)}
@@ -431,12 +434,14 @@ const FinanceBreakdownTable = ({
             {subHead('جمع کسورات', CLR.ded)}
             {subHead('خالص قابل پرداخت', CLR.net)}
             {subHead('پرداخت‌شده', CLR.paid)}
+            {subHead('پرداخت حسن انجام کار', CLR.ded)}
+            {subHead('پرداخت حق بیمه', CLR.ded)}
             {subHead('مانده', CLR.balance)}
           </TableRow>
         </TableHead>
 
         <TableBody>
-          {rows.map(({ row, metrics, paid, balance, additions, deductions }) => {
+          {rows.map(({ row, metrics, paid, paidRetention, paidInsurance, balance, additions, deductions }) => {
             const kind = statementKindOf(row);
             return (
               <TableRow key={row.id} hover>
@@ -496,6 +501,12 @@ const FinanceBreakdownTable = ({
                 <TableCell align="center" sx={{ ...finCellBase, color: CLR.paid, fontWeight: 700 }}>
                   {formatPersianNumber(Math.round(paid))}
                 </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.ded, fontWeight: 700 }}>
+                  {paidRetention ? formatPersianNumber(Math.round(paidRetention)) : '—'}
+                </TableCell>
+                <TableCell align="center" sx={{ ...finCellBase, color: CLR.ded, fontWeight: 700 }}>
+                  {paidInsurance ? formatPersianNumber(Math.round(paidInsurance)) : '—'}
+                </TableCell>
                 <TableCell align="center" sx={{
                   ...finCellBase,
                   fontWeight: 800,
@@ -552,6 +563,12 @@ const FinanceBreakdownTable = ({
             </TableCell>
             <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.paid }}>
               {formatPersianNumber(Math.round(totals.paid))}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.ded }}>
+              {totals.paidRetention ? formatPersianNumber(Math.round(totals.paidRetention)) : '—'}
+            </TableCell>
+            <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: CLR.ded }}>
+              {totals.paidInsurance ? formatPersianNumber(Math.round(totals.paidInsurance)) : '—'}
             </TableCell>
             <TableCell align="center" sx={{ ...finCellBase, fontWeight: 900, color: totals.balance > 0 ? CLR.balance : CLR.ok }}>
               {formatPersianNumber(Math.round(totals.balance))}
@@ -804,7 +821,7 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
   const landingAggregates = useMemo(() => {
     const map = new Map();
     const ensure = (key) => {
-      if (!map.has(key)) map.set(key, { statements: 0, workDone: 0, net: 0, paid: 0 });
+      if (!map.has(key)) map.set(key, { statements: 0, workDone: 0, net: 0, paid: 0, netPaid: 0, deposits: 0 });
       return map.get(key);
     };
     statementsAll.forEach((row) => {
@@ -815,7 +832,12 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
       entry.net += metrics.net;
     });
     paymentsAll.forEach((row) => {
-      ensure(String(row.contract)).paid += toNum(row.amount);
+      const entry = ensure(String(row.contract));
+      entry.paid += toNum(row.amount);
+      paymentAllocationRows(row).forEach((allocation) => {
+        if (allocation.kind === 'net') entry.netPaid += allocation.amount;
+        else entry.deposits += allocation.amount;
+      });
     });
     return map;
   }, [statementsAll, paymentsAll]);
@@ -833,13 +855,15 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
           .some((value) => String(value).toLowerCase().includes(term));
       })
       .map((row) => {
-        const agg = landingAggregates.get(String(row.id)) || { statements: 0, workDone: 0, net: 0, paid: 0 };
+        const agg = landingAggregates.get(String(row.id)) || { statements: 0, workDone: 0, net: 0, paid: 0, netPaid: 0, deposits: 0 };
         return {
           contract: row,
           statements: agg.statements,
           workDone: agg.workDone,
           paid: agg.paid,
-          remaining: Math.max(agg.net - agg.paid, 0),
+          netPaid: agg.netPaid,
+          deposits: agg.deposits,
+          remaining: Math.max(agg.net - agg.netPaid, 0),
           amountLoaded: row.amount !== undefined && row.amount !== null,
           amount: toNum(row.effective_amount ?? row.amount),
           currency: normalizeCurrencyLabel(row.currency_name || row.currency_symbol),
@@ -952,12 +976,13 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
     : (statementRate || 1);
   const amountRial = contractAmount * displayRate;
 
-  const paidByStatement = useMemo(() => payments.reduce((map, row) => {
-    const key = String(row.statement ?? '');
-    if (!key || key === 'null') return map;
-    map[key] = (map[key] || 0) + toNum(row.amount);
-    return map;
-  }, {}), [payments]);
+  /**
+   * پرداخت‌های هر صورت‌وضعیت از «تخصیص‌های» پرداخت خوانده می‌شود (نه از
+   * `payment.statement`) تا یک پرداخت چندسندی/چندسبدی درست تقسیم شود.
+   */
+  const paidBuckets = useMemo(() => paidByBucket(payments), [payments]);
+  const paidByStatement = paidBuckets.net;
+  const paidByKindTotals = useMemo(() => paidTotalsByKind(payments), [payments]);
 
 
   /* ---- ستون‌های پویا: هر اضافه/کسورات موجود در صورت‌وضعیت‌ها یک ستون ---- */
@@ -1008,8 +1033,13 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
     deductions.__other = Math.max(0, metrics.deductionsTotal - listedDeductions);
 
     const paid = paidByStatement[String(row.id)] || 0;
-    return { row, metrics, additions, deductions, paid, balance: metrics.net - paid };
-  }), [statements, additionColumns, deductionColumns, paidByStatement, contract?.exchange_rate]);
+    const paidRetention = paidBuckets.retention[String(row.id)] || 0;
+    const paidInsurance = paidBuckets.insurance[String(row.id)] || 0;
+    return {
+      row, metrics, additions, deductions, paid, paidRetention, paidInsurance,
+      balance: metrics.net - paid,
+    };
+  }), [statements, additionColumns, deductionColumns, paidByStatement, paidBuckets, contract?.exchange_rate]);
 
   const hasOtherAddition = breakdownRows.some((item) => item.additions.__other > 0.5);
   const hasOtherDeduction = breakdownRows.some((item) => item.deductions.__other > 0.5);
@@ -1017,16 +1047,19 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
   const totals = useMemo(() => {
     const base = {
       gross: 0, vat: 0, additionsTotal: 0, deductionsTotal: 0, net: 0, paid: 0, balance: 0,
+      paidRetention: 0, paidInsurance: 0,
       additions: {}, deductions: {}, buckets: {},
     };
     DEDUCTION_KEYS.forEach(([key]) => { base.buckets[key] = 0; });
-    breakdownRows.forEach(({ metrics, additions, deductions, paid, balance }) => {
+    breakdownRows.forEach(({ metrics, additions, deductions, paid, paidRetention, paidInsurance, balance }) => {
       base.gross += metrics.gross;
       base.vat += metrics.vat;
       base.additionsTotal += metrics.additionsTotal;
       base.deductionsTotal += metrics.deductionsTotal;
       base.net += metrics.net;
       base.paid += paid;
+      base.paidRetention += paidRetention;
+      base.paidInsurance += paidInsurance;
       base.balance += balance;
       Object.entries(additions).forEach(([key, value]) => { base.additions[key] = (base.additions[key] || 0) + value; });
       Object.entries(deductions).forEach(([key, value]) => { base.deductions[key] = (base.deductions[key] || 0) + value; });
@@ -1186,12 +1219,12 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
         ? `${toPersianDigits(overpaid.length)} سند: پرداختی بیش از خالص`
         : 'پرداختی از خالص پیشی نگرفته است', overpaid.length);
 
-    const unlinked = payments.filter((row) => !row.statement);
+    const unlinked = unlinkedPayments(payments);
     const unlinkedSum = unlinked.reduce((sum, row) => sum + toNum(row.amount), 0);
-    push('unlinked', 'پرداخت‌های بدون اتصال به صورت‌وضعیت', unlinked.length ? 'warn' : 'ok',
+    push('unlinked', 'پرداخت‌های بدون تخصیص به صورت‌وضعیت/فاکتور', unlinked.length ? 'warn' : 'ok',
       unlinked.length
         ? `${toPersianDigits(unlinked.length)} پرداخت — ${money(unlinkedSum, currencyLabel)}`
-        : 'همهٔ پرداخت‌ها به صورت‌وضعیت متصل است', unlinked.length);
+        : 'همهٔ پرداخت‌ها به صورت‌وضعیت‌ها، فاکتورها یا سپرده‌ها تخصیص یافته‌اند', unlinked.length);
 
     const overrun = Math.max(0, totals.gross - amountRial);
     push('overrun', 'کارکرد بیش از مبلغ قرارداد', overrun > 1 ? 'danger' : 'ok',
@@ -1705,7 +1738,11 @@ const ContractFinancePage = ({ embedded = false, contract: contractProp = null }
                     </Box>
                   ) : <EmptyState icon={ReceiptLongIcon} text="صورت‌وضعیتی برای تحلیل ثبت نشده است." />}
                   <Typography sx={{ mt: 0.75, fontSize: 10.5, color: MUTED }}>
-                    جمع پرداخت‌ها {money(totalPaidAll, currencyLabel)} · از این مبلغ {money(totals.paid, currencyLabel)} به صورت‌وضعیت‌ها متصل است.
+                    جمع پرداخت‌ها {money(totalPaidAll, currencyLabel)} · از این مبلغ {money(paidByKindTotals.net, currencyLabel)} به خالص صورت‌وضعیت‌ها/فاکتورها
+                    {paidByKindTotals.retention || paidByKindTotals.insurance
+                      ? `، ${money(paidByKindTotals.retention, currencyLabel)} به سپرده حسن انجام کار و ${money(paidByKindTotals.insurance, currencyLabel)} به سپرده حق بیمه`
+                      : ''}
+                    {' '}تخصیص یافته است.
                   </Typography>
                 </AnalysisCard>
               </Grid>

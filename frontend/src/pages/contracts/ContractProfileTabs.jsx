@@ -25,6 +25,8 @@ import {
   AddendumsStudioCard, RelatedContractsStudioCard, TermsStudioCard,
 } from './ContractProfileStudioUI';
 import { statementDisplayTitle } from './statementKinds';
+import { bucketMeta } from './paymentAllocations';
+import { paidByBucket, paidTotalsByKind, paymentAllocationRows } from './contractPaymentLinks';
 
 const money = (value, currency = 'ریال') => `${formatPersianNumber(Number(value) || 0)} ${currency}`;
 const compactMoney = (value) => {
@@ -162,7 +164,10 @@ export const OverviewTab = ({ ctx }) => {
   const rial = financial?.rial || {};
 
   const netStatements = Number(rial.net || 0);
-  const paidRatio = netStatements > 0 ? Math.min(100, Math.round((totalPaid / netStatements) * 100)) : 0;
+  const allocationTotals = paidTotalsByKind(payments);
+  // سهم پرداخت‌های تخصیص‌یافته به «خالص» اسناد (بدون سپرده‌ها)
+  const netAllocated = allocationTotals.net;
+  const paidRatio = netStatements > 0 ? Math.min(100, Math.round((netAllocated / netStatements) * 100)) : 0;
   const approvedCount = statements.filter((row) => row.is_approved).length;
   const pendingNet = statements
     .filter((row) => !row.is_approved)
@@ -606,7 +611,10 @@ export const FinanceTab = ({ ctx }) => {
   const additions = Number(rial.additionsTotal || 0);
   const deductions = Number(rial.deductionsTotal || 0);
   const baseScale = Math.max(work, 1);
-  const paidRatio = netStatements > 0 ? Math.min(100, Math.round((totalPaid / netStatements) * 100)) : 0;
+  const allocationTotals = paidTotalsByKind(contract.payments || []);
+  // نسبت پرداخت به «خالص» صورت‌وضعیت‌ها فقط از تخصیص‌های خالص محاسبه می‌شود
+  const netAllocated = allocationTotals.net;
+  const paidRatio = netStatements > 0 ? Math.min(100, Math.round((netAllocated / netStatements) * 100)) : 0;
   const deductionRatio = work > 0 ? Math.min(100, Math.round((deductions / work) * 100)) : 0;
   const adjustmentCount = Number(financial?.adjustments?.count || 0);
   const adjustmentNetForeign = Number(financial?.adjustments?.netForeign || 0);
@@ -707,7 +715,7 @@ export const FinanceTab = ({ ctx }) => {
           <SectionCard title="شاخص‌های مالی" icon={DescriptionIcon} color={theme.palette.primary.main} sx={{ mb: 0 }}>
             <MetricRow label="نسبت پرداخت به خالص صورت‌وضعیت" value={`${toPersianDigits(paidRatio)}٪`}
               percent={paidRatio} color={theme.palette.success.main}
-              hint={`${formatPersianNumber(totalPaid)} از ${formatPersianNumber(netStatements)} ریال`} />
+              hint={`${formatPersianNumber(netAllocated)} از ${formatPersianNumber(netStatements)} ریال`} />
             <MetricRow label="نسبت کسورات به کارکرد" value={`${toPersianDigits(deductionRatio)}٪`}
               percent={deductionRatio} color={theme.palette.error.main}
               hint={`${formatPersianNumber(deductions)} ریال کسورات`} />
@@ -1108,32 +1116,53 @@ export const GuaranteesTab = ({ ctx }) => {
 
 
 /* ---------- صورت‌وضعیت‌ها ---------- */
-export const StatementsTab = ({ ctx }) => (
-  <Stack spacing={2}>
-    <Grid container spacing={1.5}>
-      <Grid item xs={12} sm={6} md={3}><DetailTile label="جمع صورت‌وضعیت‌ها (ریال)" value={formatPersianNumber(ctx.totalStatements)} /></Grid>
-      <Grid item xs={12} sm={6} md={3}><DetailTile label="تعدیل خالص (ریال)" value={formatPersianNumber(ctx.adjustmentNetRial)} /></Grid>
-      <Grid item xs={12} sm={6} md={3}><DetailTile label="تعداد صورت‌وضعیت" value={toPersianDigits((ctx.contract.statements || []).length)} /></Grid>
-      <Grid item xs={12} sm={6} md={3}><DetailTile label="تأییدشده" value={toPersianDigits((ctx.contract.statements || []).filter((row) => row.is_approved).length)} /></Grid>
-    </Grid>
-    <SectionCard title="فهرست صورت‌وضعیت‌ها" icon={DescriptionIcon} color={ctx.accent}>
-      <ProfileTable
-        ariaLabel="فهرست صورت‌وضعیت‌ها"
-        emptyText="صورت‌وضعیتی برای این قرارداد ثبت نشده است."
-        rows={(ctx.contract.statements || []).map((row) => ({ ...row, key: row.id }))}
-        columns={[
-          { key: 'number', label: 'شماره / نوع', width: '17%', render: (row) => <CellText strong>{statementDisplayTitle({ kind: row.kind, number: row.number })}</CellText> },
-          { key: 'date', label: 'تاریخ', width: '11%', render: (row) => <CellText>{dateLabel(row.date)}</CellText> },
-          { key: 'work_done', label: 'کارکرد', width: '15%', render: (row) => <CellText>{formatPersianNumber(row.work_done || 0)}</CellText> },
-          { key: 'additions_total', label: 'اضافات', width: '12%', render: (row) => <CellText color="#047857">{formatPersianNumber(row.additions_total || 0)}</CellText> },
-          { key: 'deductions_total', label: 'کسورات', width: '12%', render: (row) => <CellText color="#b91c1c">{formatPersianNumber(row.deductions_total || 0)}</CellText> },
-          { key: 'net_amount', label: 'خالص', width: '15%', render: (row) => <CellText strong>{formatPersianNumber(row.net_amount || 0)}</CellText> },
-          { key: 'is_approved', label: 'وضعیت', width: '13%', render: (row) => <CellText color={row.is_approved ? '#047857' : '#b45309'}>{row.is_approved ? 'تأییدشده' : 'در انتظار'}</CellText> },
-        ]}
-      />
-    </SectionCard>
-  </Stack>
-);
+export const StatementsTab = ({ ctx }) => {
+  const statements = ctx.contract.statements || [];
+  const payments = ctx.contract.payments || [];
+  const buckets = paidByBucket(payments);
+  return (
+    <Stack spacing={2}>
+      <Grid container spacing={1.5}>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="جمع صورت‌وضعیت‌ها (ریال)" value={formatPersianNumber(ctx.totalStatements)} /></Grid>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="تعدیل خالص (ریال)" value={formatPersianNumber(ctx.adjustmentNetRial)} /></Grid>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="تعداد صورت‌وضعیت" value={toPersianDigits(statements.length)} /></Grid>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="تأییدشده" value={toPersianDigits(statements.filter((row) => row.is_approved).length)} /></Grid>
+      </Grid>
+      <SectionCard title="فهرست صورت‌وضعیت‌ها" icon={DescriptionIcon} color={ctx.accent}>
+        <ProfileTable
+          ariaLabel="فهرست صورت‌وضعیت‌ها"
+          emptyText="صورت‌وضعیتی برای این قرارداد ثبت نشده است."
+          rows={statements.map((row) => ({ ...row, key: row.id }))}
+          columns={[
+            { key: 'number', label: 'شماره / نوع', width: '15%', render: (row) => <CellText strong>{statementDisplayTitle({ kind: row.kind, number: row.number })}</CellText> },
+            { key: 'date', label: 'تاریخ', width: '9%', render: (row) => <CellText>{dateLabel(row.date)}</CellText> },
+            { key: 'work_done', label: 'کارکرد', width: '12%', render: (row) => <CellText>{formatPersianNumber(row.work_done || 0)}</CellText> },
+            { key: 'additions_total', label: 'اضافات', width: '10%', render: (row) => <CellText color="#047857">{formatPersianNumber(row.additions_total || 0)}</CellText> },
+            { key: 'deductions_total', label: 'کسورات', width: '10%', render: (row) => <CellText color="#b91c1c">{formatPersianNumber(row.deductions_total || 0)}</CellText> },
+            { key: 'net_amount', label: 'خالص', width: '12%', render: (row) => <CellText strong>{formatPersianNumber(row.net_amount || 0)}</CellText> },
+            {
+              key: 'paid',
+              label: 'پرداخت‌شده',
+              width: '11%',
+              render: (row) => <CellText color="#2563eb">{formatPersianNumber(buckets.net[String(row.id)] || 0)}</CellText>,
+            },
+            {
+              key: 'remaining',
+              label: 'مانده',
+              width: '11%',
+              render: (row) => {
+                const paid = buckets.net[String(row.id)] || 0;
+                const remaining = Math.round(Number(row.net_amount || 0) - paid);
+                return <CellText color={remaining > 0 ? '#b45309' : '#047857'}>{formatPersianNumber(remaining)}</CellText>;
+              },
+            },
+            { key: 'is_approved', label: 'وضعیت', width: '10%', render: (row) => <CellText color={row.is_approved ? '#047857' : '#b45309'}>{row.is_approved ? 'تأییدشده' : 'در انتظار'}</CellText> },
+          ]}
+        />
+      </SectionCard>
+    </Stack>
+  );
+};
 
 
 /* ---------- فاکتورها ---------- */
@@ -1162,29 +1191,58 @@ export const InvoicesTab = ({ ctx }) => (
 );
 
 /* ---------- پرداخت‌ها ---------- */
-export const PaymentsTab = ({ ctx }) => (
-  <Stack spacing={2}>
-    <Grid container spacing={1.5}>
-      <Grid item xs={12} sm={4}><DetailTile label="جمع پرداخت‌ها" value={money(ctx.totalPaid, 'ریال')} /></Grid>
-      <Grid item xs={12} sm={4}><DetailTile label="تعداد پرداخت" value={toPersianDigits((ctx.contract.payments || []).length)} /></Grid>
-      <Grid item xs={12} sm={4}><DetailTile label="مانده مالی" value={money(ctx.remainingRial, 'ریال')} /></Grid>
-    </Grid>
-    <SectionCard title="فهرست پرداخت‌ها" icon={DescriptionIcon} color={ctx.accent}>
-      <ProfileTable
-        ariaLabel="فهرست پرداخت‌ها"
-        emptyText="پرداختی برای این قرارداد ثبت نشده است."
-        rows={(ctx.contract.payments || []).map((row) => ({ ...row, key: row.id }))}
-        columns={[
-          { key: 'date', label: 'تاریخ', width: '13%', render: (row) => <CellText>{dateLabel(row.date)}</CellText> },
-          { key: 'reference', label: 'مرجع', width: '20%', align: 'right', render: (row) => <CellText strong>{row.reference || '—'}</CellText> },
-          { key: 'method', label: 'روش', width: '16%', render: (row) => <CellText>{row.method || '—'}</CellText> },
-          { key: 'amount', label: 'مبلغ', width: '22%', render: (row) => <CellText strong>{money(row.amount, 'ریال')}</CellText> },
-          { key: 'note', label: 'توضیح', width: '29%', align: 'right', render: (row) => <CellText>{row.note || '—'}</CellText> },
-        ]}
-      />
-    </SectionCard>
-  </Stack>
-);
+export const PaymentsTab = ({ ctx }) => {
+  const payments = ctx.contract.payments || [];
+  const kindTotals = paidTotalsByKind(payments);
+  const deposits = kindTotals.retention + kindTotals.insurance;
+  return (
+    <Stack spacing={2}>
+      <Grid container spacing={1.5}>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="جمع پرداخت‌ها" value={money(ctx.totalPaid, 'ریال')} /></Grid>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="تخصیص به خالص صورت‌وضعیت/فاکتور" value={money(kindTotals.net, 'ریال')} /></Grid>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="پرداخت سپرده‌ها (حسن انجام کار + بیمه)" value={money(deposits, 'ریال')} /></Grid>
+        <Grid item xs={12} sm={6} md={3}><DetailTile label="مانده مالی" value={money(ctx.remainingRial, 'ریال')} /></Grid>
+      </Grid>
+      <SectionCard title="فهرست پرداخت‌ها" icon={DescriptionIcon} color={ctx.accent}>
+        <ProfileTable
+          ariaLabel="فهرست پرداخت‌ها"
+          emptyText="پرداختی برای این قرارداد ثبت نشده است."
+          rows={payments.map((row) => ({ ...row, key: row.id }))}
+          columns={[
+            { key: 'date', label: 'تاریخ', width: '11%', render: (row) => <CellText>{dateLabel(row.date)}</CellText> },
+            { key: 'reference', label: 'مرجع', width: '15%', align: 'right', render: (row) => <CellText strong>{row.reference || '—'}</CellText> },
+            { key: 'method', label: 'روش', width: '12%', render: (row) => <CellText>{row.method || '—'}</CellText> },
+            { key: 'amount', label: 'مبلغ', width: '16%', render: (row) => <CellText strong>{money(row.amount, 'ریال')}</CellText> },
+            {
+              key: 'allocations',
+              label: 'تخصیص',
+              width: '30%',
+              align: 'right',
+              render: (row) => {
+                const rows = paymentAllocationRows(row);
+                if (!rows.length) return <CellText color="#b45309">بدون تخصیص</CellText>;
+                return (
+                  <Stack spacing={0.25} sx={{ alignItems: 'flex-end' }}>
+                    {rows.map((allocation, index) => {
+                      const bucket = bucketMeta(allocation.kind);
+                      return (
+                        <CellText key={`${allocation.target}-${allocation.id}-${allocation.kind}-${index}`}>
+                          {`${allocation.target === 'invoice' ? 'فاکتور' : 'صورت‌وضعیت'} ${allocation.title || allocation.id
+                          } · ${bucket.shortLabel} · ${formatPersianNumber(allocation.amount)}`}
+                        </CellText>
+                      );
+                    })}
+                  </Stack>
+                );
+              },
+            },
+            { key: 'note', label: 'توضیح', width: '16%', align: 'right', render: (row) => <CellText>{row.note || '—'}</CellText> },
+          ]}
+        />
+      </SectionCard>
+    </Stack>
+  );
+};
 
 /* ---------- قراردادهای هم‌تراز ---------- */
 export const RelatedTab = ({ ctx }) => (

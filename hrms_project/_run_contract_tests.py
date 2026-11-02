@@ -13,6 +13,7 @@ try:
     django.setup()
     suite = unittest.TestLoader().loadTestsFromNames([
         'contracts.tests.PaymentAllocationLogicTests',
+        'contracts.tests.PaymentAllocationExcelTests',
         'contracts.tests.StatementNumberingTests',
         'contracts.tests.ContractSerializerFieldContractTests',
         'contracts.tests.ContractApprovalDecideTests',

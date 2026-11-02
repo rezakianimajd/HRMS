@@ -7,7 +7,9 @@ import TableRowsIcon from '@mui/icons-material/TableRows';
 import { formatPersianNumber, formatStatementNumber, toPersianDigits, normalizeCurrencyLabel } from '../../core/utils/numberUtils';
 import { toJalali } from '../../core/utils/dateUtils';
 import { EmptyState, INK, MUTED } from './ContractProfileUI';
-import { statementDisplayTitle, statementKindOf } from './statementKinds';
+import { statementKindOf } from './statementKinds';
+import { bucketMeta } from './paymentAllocations';
+import { paymentAllocationRows } from './contractPaymentLinks';
 
 export const toNum = (value) => {
   const number = Number(value);
@@ -305,27 +307,57 @@ export const PaymentsTable = ({ payments = [], currency = 'ریال' }) => (
     columns={[
       { key: 'date', label: 'تاریخ', width: 95 },
       { key: 'payment_type', label: 'نوع پرداخت', width: 105 },
-      { key: 'amount', label: 'مبلغ', width: 145 },
-      { key: 'method', label: 'روش پرداخت', width: 110 },
-      { key: 'reference', label: 'شماره پیگیری', width: 120 },
-      { key: 'invoice', label: 'فاکتور', width: 110 },
-      { key: 'statement', label: 'صورت‌وضعیت', width: 120 },
-      { key: 'note', label: 'توضیحات', width: 200, align: 'right' },
+      { key: 'amount', label: 'مبلغ', width: 140 },
+      { key: 'method', label: 'روش پرداخت', width: 105 },
+      { key: 'reference', label: 'شماره پیگیری', width: 115 },
+      { key: 'allocations', label: 'تخصیص (صورت‌وضعیت / فاکتور / سپرده)', width: 330, align: 'right' },
+      { key: 'note', label: 'توضیحات', width: 190, align: 'right' },
     ]}
     rows={payments}
     rowKey={(row) => row.id}
     emptyText="پرداختی برای این قرارداد ثبت نشده است."
-    minWidth={1085}
-    renderRow={(row) => [
-      <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
-      <Typography key="type" sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{row.payment_type_display || 'پرداخت عادی'}</Typography>,
-      <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
-      <Typography key="method" sx={{ fontSize: 12 }}>{row.method || '—'}</Typography>,
-      <Typography key="ref" sx={{ fontSize: 12, color: MUTED }}>{row.reference || '—'}</Typography>,
-      <Typography key="invoice" sx={{ fontSize: 12 }}>{row.invoice_number || '—'}</Typography>,
-      <Typography key="statement" sx={{ fontSize: 12 }}>{row.statement_number ? statementDisplayTitle({ kind: row.statement_kind, number: row.statement_number }) : '—'}</Typography>,
-      <Typography key="note" sx={{ fontSize: 12, color: MUTED, textAlign: 'right' }}>{row.note || '—'}</Typography>,
-    ]}
+    minWidth={1160}
+    renderRow={(row) => {
+      const allocations = paymentAllocationRows(row);
+      return [
+        <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
+        <Typography key="type" sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{row.payment_type_display || 'پرداخت عادی'}</Typography>,
+        <Typography key="amount" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
+        <Typography key="method" sx={{ fontSize: 12 }}>{row.method || '—'}</Typography>,
+        <Typography key="ref" sx={{ fontSize: 12, color: MUTED }}>{row.reference || '—'}</Typography>,
+        <Box key="allocations" sx={{ textAlign: 'right', minWidth: 0 }}>
+          {allocations.length ? (
+            <Stack spacing={0.3} sx={{ alignItems: 'flex-end' }}>
+              {allocations.map((allocation, index) => {
+                const bucket = bucketMeta(allocation.kind);
+                return (
+                  <Stack
+                    key={`${allocation.target}-${allocation.id}-${allocation.kind}-${index}`}
+                    direction="row"
+                    spacing={0.5}
+                    alignItems="center"
+                    sx={{ justifyContent: 'flex-end' }}
+                  >
+                    <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+                      {allocation.target === 'invoice' ? 'فاکتور' : 'صورت‌وضعیت'} {allocation.title || allocation.id}
+                    </Typography>
+                    <Chip
+                      size="small"
+                      label={bucket.shortLabel}
+                      sx={{ height: 18, fontSize: 9.5, fontWeight: 800, bgcolor: `${bucket.color}17`, color: bucket.color }}
+                    />
+                    <Typography sx={{ fontSize: 11, fontWeight: 800, color: INK }}>{money(allocation.amount)}</Typography>
+                  </Stack>
+                );
+              })}
+            </Stack>
+          ) : (
+            <Typography sx={{ fontSize: 11, color: MUTED }}>بدون تخصیص (علی‌الحساب آزاد)</Typography>
+          )}
+        </Box>,
+        <Typography key="note" sx={{ fontSize: 12, color: MUTED, textAlign: 'right' }}>{row.note || '—'}</Typography>,
+      ];
+    }}
   />
 );
 
