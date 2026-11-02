@@ -56,6 +56,7 @@ import RuleIcon from '@mui/icons-material/Rule';
 import HandshakeIcon from '@mui/icons-material/Handshake';
 import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 import AssessmentIcon from '@mui/icons-material/Assessment';
+import FamilyRestroomIcon from '@mui/icons-material/FamilyRestroom';
 import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
 import CalculateIcon from '@mui/icons-material/Calculate';
 import HubIcon from '@mui/icons-material/Hub';
@@ -124,6 +125,14 @@ const menuConfig = [
     items: [
       { id: 'insurance', title: 'بیمه تکمیلی', icon: <CardGiftcardIcon />, path: '/insurance', color: '#8b5cf6', primary: false, ready: true },
       { id: 'loans', title: 'وام و تسهیلات', icon: <PaymentsIcon />, path: '/loans', color: '#10b981', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'hr-reports',
+    title: 'گزارشات',
+    color: '#0ea5e9',
+    items: [
+      { id: 'dependents-report', title: 'گزارش افراد تحت تکفل', icon: <FamilyRestroomIcon />, path: '/insurance/dependents', color: '#8b5cf6', primary: false, ready: true },
     ],
   },
   {

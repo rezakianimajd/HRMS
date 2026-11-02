@@ -123,6 +123,7 @@ const GROUP_ICONS = {
   operations: <LoopOutlinedIcon />,
   payroll: <PaymentsOutlinedIcon />,
   welfare: <CardGiftcardOutlinedIcon />,
+  'hr-reports': <AssessmentOutlinedIcon />,
   documents: <FolderOutlinedIcon />,
   insights: <InsightsOutlinedIcon />,
 
