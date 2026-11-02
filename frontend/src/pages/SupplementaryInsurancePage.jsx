@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import { alpha, useTheme } from '@mui/material/styles';
 import AddIcon from '@mui/icons-material/Add';
-import AttachFileIcon from '@mui/icons-material/AttachFile';
+
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteIcon from '@mui/icons-material/Delete';
 import DownloadIcon from '@mui/icons-material/Download';
@@ -31,7 +31,7 @@ import {
 } from './contracts/contractModuleUi';
 import {
   INSURANCE_STATUS, dependentHasAttachment, matchesInsurance,
-  periodLabel, statusOf, summarizeInsurances,
+  statusOf, summarizeInsurances,
 } from './supplementaryInsuranceHelpers';
 import DependentRows from './supplementaryInsurance/DependentList';
 import DependentDialog from './supplementaryInsurance/DependentDialog';
@@ -650,147 +650,136 @@ const SupplementaryInsurancePage = () => {
           emptyText="بیمهٔ تکمیلی با این مشخصات پیدا نشد؛ فیلترها را تغییر دهید یا پوشش جدیدی ثبت کنید."
           columns={[
             {
-              key: 'row',
-              label: 'ردیف',
-              width: '4%',
+              key: 'photo',
+              label: 'عکس',
+              width: '5%',
               align: 'center',
-              render: (_row, index) => (
-                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
-                  {toPersianDigits(page * pageSize + index + 1)}
-                </Typography>
+              render: (row) => (
+                <EmployeeAvatar
+                  employee={{
+                    full_name: row.employee_name,
+                    photo_url: row.employee_photo_url,
+                    gender: row.employee_gender,
+                  }}
+                  size={32}
+                  sx={{ borderRadius: '9px' }}
+                />
               ),
             },
             {
               key: 'employee',
-              label: 'پرسنل',
-              width: '19%',
-              align: 'right',
-              render: (row) => (
-                <Stack direction="row" alignItems="center" spacing={0.75} sx={{ minWidth: 0 }}>
-                  <EmployeeAvatar
-                    employee={{
-                      full_name: row.employee_name,
-                      photo_url: row.employee_photo_url,
-                      gender: row.employee_gender,
-                    }}
-                    size={30}
-                    sx={{ borderRadius: '9px' }}
-                  />
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }} title={row.employee_name}>
-                      {row.employee_name || '—'}
-                    </Typography>
-                    <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                      {toPersianDigits(row.employee_code || '—')}
-                    </Typography>
-                  </Box>
-                </Stack>
-              ),
-            },
-            {
-              key: 'department',
-              label: 'واحد / عنوان شغلی',
+              label: 'نام و نام خانوادگی',
               width: '13%',
               align: 'right',
               render: (row) => (
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: INK }}>
-                    {row.department_name || '—'}
-                  </Typography>
-                  <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
-                    {row.job_title_name || '—'}
-                  </Typography>
-                </Box>
+                <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }} title={row.employee_name}>
+                  {row.employee_name || '—'}
+                </Typography>
+              ),
+            },
+            {
+              key: 'employee_code',
+              label: 'کد پرسنلی',
+              width: '7%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>
+                  {toPersianDigits(row.employee_code || '—')}
+                </Typography>
+              ),
+            },
+            {
+              key: 'job_title',
+              label: 'عنوان شغلی',
+              width: '10%',
+              align: 'right',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700, color: INK }} title={row.job_title_name}>
+                  {row.job_title_name || '—'}
+                </Typography>
               ),
             },
             {
               key: 'insurance',
-              label: 'بیمه / طرح',
-              width: '16%',
+              label: 'بیمه',
+              width: '11%',
               align: 'right',
               render: (row) => (
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }} title={row.insurance_name}>
-                    {row.insurance_name || 'بیمه تکمیلی'}
-                  </Typography>
-                  <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap" sx={{ mt: 0.2 }}>
-                    {row.plan ? (
-                      <Chip
-                        size="small"
-                        label={row.plan}
-                        sx={{ height: 18, fontSize: 9.5, fontWeight: 800, bgcolor: alpha(ACCENT, 0.07), color: ACCENT }}
-                      />
-                    ) : null}
-                    {row.insurance_type ? (
-                      <Chip
-                        size="small"
-                        label={row.insurance_type}
-                        sx={{ height: 18, fontSize: 9.5, fontWeight: 700, bgcolor: alpha(INK, 0.05), color: MUTED }}
-                      />
-                    ) : null}
-                  </Stack>
-                </Box>
+                <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }} title={row.insurance_name}>
+                  {row.insurance_name || 'بیمه تکمیلی'}
+                </Typography>
               ),
             },
-
             {
-              key: 'period',
-              label: 'دورهٔ پوشش',
-              width: '15%',
+              key: 'plan',
+              label: 'طرح',
+              width: '9%',
               align: 'center',
               render: (row) => (
-                <Box>
-                  <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: INK }}>{periodLabel(row)}</Typography>
-                  <StatusChip row={row} />
-                </Box>
+                row.plan ? (
+                  <Chip
+                    size="small"
+                    label={row.plan}
+                    sx={{ height: 19, fontSize: 9.5, fontWeight: 800, bgcolor: alpha(ACCENT, 0.07), color: ACCENT }}
+                  />
+                ) : (
+                  <Typography sx={{ fontSize: 11, color: MUTED }}>—</Typography>
+                )
+              ),
+            },
+            {
+              key: 'start_date',
+              label: 'تاریخ شروع',
+              width: '8%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: INK }}>
+                  {dateLabel(row.start_date)}
+                </Typography>
+              ),
+            },
+            {
+              key: 'end_date',
+              label: 'تاریخ پایان',
+              width: '8%',
+              align: 'center',
+              render: (row) => (
+                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: row.end_date ? INK : MUTED }}>
+                  {row.end_date ? dateLabel(row.end_date) : '—'}
+                </Typography>
               ),
             },
             {
               key: 'dependents',
-              label: 'تحت تکفل',
-              width: '11%',
+              label: 'افراد تحت تکفل',
+              width: '6%',
               align: 'center',
-              render: (row) => {
-                const dependents = row.dependents || [];
-                const attached = dependents.filter(dependentHasAttachment).length;
-                return (
-                  <Stack direction="row" spacing={0.35} useFlexGap flexWrap="wrap" justifyContent="center">
-                    <Chip
-                      size="small"
-                      icon={<PeopleAltIcon sx={{ fontSize: 11 }} />}
-                      label={toPersianDigits(dependents.length)}
-                      sx={{ height: 19, fontSize: 10, fontWeight: 800, bgcolor: alpha('#2563eb', 0.07), color: '#2563eb' }}
-                    />
-                    {attached ? (
-                      <Chip
-                        size="small"
-                        icon={<AttachFileIcon sx={{ fontSize: 11 }} />}
-                        label={toPersianDigits(attached)}
-                        sx={{ height: 19, fontSize: 10, fontWeight: 800, bgcolor: alpha('#be123c', 0.07), color: '#be123c' }}
-                      />
-                    ) : null}
-                  </Stack>
-                );
-              },
+              render: (row) => (
+                <Chip
+                  size="small"
+                  label={toPersianDigits((row.dependents || []).length)}
+                  sx={{ height: 19, fontSize: 10, fontWeight: 800, bgcolor: alpha('#2563eb', 0.07), color: '#2563eb' }}
+                />
+              ),
             },
             {
               key: 'monthly',
-              label: 'حق بیمه ماهانه',
-              width: '12%',
+              label: 'حق بیمه ماهیانه',
+              width: '8%',
               align: 'center',
               render: (row) => moneyCell(row.monthly_amount, ACCENT),
             },
             {
               key: 'total',
               label: 'مبلغ کل',
-              width: '12%',
+              width: '8%',
               align: 'center',
               render: (row) => moneyCell(row.total_amount, MUTED),
             },
             {
               key: 'actions',
               label: 'عملیات',
-              width: '8%',
+              width: '7%',
               align: 'center',
               render: (row) => (
                 <Stack

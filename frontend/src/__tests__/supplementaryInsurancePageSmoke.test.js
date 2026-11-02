@@ -88,6 +88,14 @@ test('supplementary insurance page renders theme-aware summary and policy cards'
   expect(container.textContent).toContain('طرح خانواده');
   expect(container.querySelector('img[src="https://example.test/maryam.jpg"]')).not.toBeNull();
 
+  // ستون‌های استاندارد جدول تک‌ردیفی (بدون ستون ردیف)
+  ['عکس', 'نام و نام خانوادگی', 'کد پرسنلی', 'عنوان شغلی', 'بیمه', 'طرح',
+    'تاریخ شروع', 'تاریخ پایان', 'افراد تحت تکفل', 'حق بیمه ماهیانه', 'مبلغ کل', 'عملیات']
+    .forEach((label) => {
+      expect(container.querySelector('thead').textContent).toContain(label);
+    });
+  expect(container.querySelector('thead').textContent).not.toContain('ردیف');
+
   root.unmount();
   container.remove();
 });
