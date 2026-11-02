@@ -2,7 +2,7 @@
 from decimal import Decimal
 
 from django.db import transaction
-from django.db.models import Sum, Value, DecimalField
+from django.db.models import Q, Sum, Value, DecimalField
 from django.db.models.functions import Coalesce
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
@@ -37,10 +37,19 @@ def _company(request):
 
 
 # جمع مبالغ تخصیص‌یافتهٔ هر سند (صورت‌وضعیت / فاکتور) — بدون کوئری اضافه در لیست‌ها.
+# سه سبد مجزا: خالص صورت‌وضعیت، سپرده حسن انجام کار و سپرده حق بیمه.
+_SUM_FIELD = DecimalField(max_digits=18, decimal_places=0)
 PAID_SUM = Coalesce(
-    Sum('payment_allocations__amount'),
-    Value(Decimal('0')),
-    output_field=DecimalField(max_digits=18, decimal_places=0),
+    Sum('payment_allocations__amount', filter=Q(payment_allocations__kind='net')),
+    Value(Decimal('0')), output_field=_SUM_FIELD,
+)
+RETENTION_PAID_SUM = Coalesce(
+    Sum('payment_allocations__amount', filter=Q(payment_allocations__kind='retention')),
+    Value(Decimal('0')), output_field=_SUM_FIELD,
+)
+INSURANCE_PAID_SUM = Coalesce(
+    Sum('payment_allocations__amount', filter=Q(payment_allocations__kind='insurance')),
+    Value(Decimal('0')), output_field=_SUM_FIELD,
 )
 
 
@@ -312,7 +321,11 @@ class InvoiceViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.annotate(paid_sum=PAID_SUM)
+        qs = qs.annotate(
+            paid_sum=PAID_SUM,
+            retention_paid_sum=RETENTION_PAID_SUM,
+            insurance_paid_sum=INSURANCE_PAID_SUM,
+        )
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
@@ -330,7 +343,11 @@ class StatementViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        qs = qs.annotate(paid_sum=PAID_SUM)
+        qs = qs.annotate(
+            paid_sum=PAID_SUM,
+            retention_paid_sum=RETENTION_PAID_SUM,
+            insurance_paid_sum=INSURANCE_PAID_SUM,
+        )
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)

@@ -1092,13 +1092,78 @@ class PaymentAllocationLogicTests(SimpleTestCase):
         self.assertEqual(_allocated_amount(statement), Decimal('3500'))
 
     def test_serializers_expose_allocation_and_remaining_fields(self):
-        from contracts.serializers import InvoiceSerializer, PaymentSerializer, StatementSerializer
+        from contracts.serializers import InvoiceSerializer, PaymentAllocationSerializer, PaymentSerializer, StatementSerializer
 
         self.assertIn('allocations', PaymentSerializer().fields)
         self.assertIn('allocated_amount', PaymentSerializer().fields)
+        for field in ('kind', 'kind_display'):
+            self.assertIn(field, PaymentAllocationSerializer().fields)
         for field in ('payable_amount', 'paid_amount', 'remaining_amount'):
             self.assertIn(field, StatementSerializer().fields)
             self.assertIn(field, InvoiceSerializer().fields)
+        for bucket in ('retention', 'insurance'):
+            for suffix in ('amount', 'paid_amount', 'remaining_amount'):
+                self.assertIn(f'{bucket}_{suffix}', StatementSerializer().fields)
+
+    def test_deductions_are_split_into_retention_and_insurance_buckets(self):
+        from contracts.serializers import statement_deduction_amount
+
+        statement = Statement(pk=11, contract_id=7, deductions=[
+            {'title': 'حسن انجام کار', 'amount': 5_000_000},
+            {'title': 'سپرده حسن انجام كار', 'amount': 1_000_000},
+            {'title': 'بیمه', 'amount': 2_000_000},
+            {'title': 'مالیات', 'amount': 900_000},
+        ])
+        self.assertEqual(statement_deduction_amount(statement, 'retention'), Decimal('6000000'))
+        self.assertEqual(statement_deduction_amount(statement, 'insurance'), Decimal('2000000'))
+        self.assertEqual(statement_deduction_amount(statement, 'net'), Decimal('0'))
+        self.assertEqual(statement_deduction_amount(None, 'retention'), Decimal('0'))
+
+    def test_allocation_kind_is_validated(self):
+        from rest_framework.serializers import ValidationError
+        from contracts.serializers import PaymentSerializer
+
+        statement = self._statement()
+        invoice = self._invoice()
+
+        cleaned = PaymentSerializer._validate_allocations(
+            [{'statement': statement, 'invoice': None, 'kind': 'retention', 'amount': 10}], None,
+        )
+        self.assertEqual(cleaned[0]['kind'], 'retention')
+
+        # فاکتور تنها سبد «خالص» دارد.
+        invoice_row = PaymentSerializer._validate_allocations(
+            [{'statement': None, 'invoice': invoice, 'kind': 'insurance', 'amount': 10}], None,
+        )
+        self.assertEqual(invoice_row[0]['kind'], 'net')
+
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations(
+                [{'statement': statement, 'invoice': None, 'kind': 'bogus', 'amount': 1}], None,
+            )
+
+    def test_same_statement_allowed_only_in_different_buckets(self):
+        from rest_framework.serializers import ValidationError
+        from contracts.serializers import PaymentSerializer
+
+        statement = self._statement()
+        cleaned = PaymentSerializer._validate_allocations(
+            [
+                {'statement': statement, 'invoice': None, 'kind': 'net', 'amount': 1000},
+                {'statement': statement, 'invoice': None, 'kind': 'retention', 'amount': 200},
+                {'statement': statement, 'invoice': None, 'kind': 'insurance', 'amount': 300},
+            ],
+            None,
+        )
+        self.assertEqual([row['kind'] for row in cleaned], ['net', 'retention', 'insurance'])
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations(
+                [
+                    {'statement': statement, 'invoice': None, 'kind': 'net', 'amount': 1000},
+                    {'statement': statement, 'invoice': None, 'amount': 500},
+                ],
+                None,
+            )
 
     def test_advance_payment_type_clears_allocations(self):
         from contracts.serializers import PaymentSerializer

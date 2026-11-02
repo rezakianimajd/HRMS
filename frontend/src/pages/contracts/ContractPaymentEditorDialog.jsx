@@ -22,7 +22,7 @@ import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '..
 import { statementDisplayTitle } from './statementKinds';
 import { PAYMENT_TYPES, paymentTypeOf } from './paymentTypes';
 import {
-  allocationKey, allocationsTotal, fillWithRemaining, numOf,
+  allocationKey, allocationsTotal, BUCKET_KEYS, bucketMeta, fillWithRemaining, numOf,
   targetKindLabel, targetPaid, targetPayable, targetRemaining,
 } from './paymentAllocations';
 
@@ -33,6 +33,17 @@ const BLUE = '#2563eb';
 const VIOLET = '#7c3aed';
 const GREEN = '#15803d';
 const RED = '#be123c';
+
+/**
+ * چهار گروه قابل انتخاب برای تخصیص پرداخت عادی/علی‌الحساب:
+ * خالص صورت‌وضعیت، فاکتور، سپرده حسن انجام کار و سپرده حق بیمه.
+ */
+const ALLOCATION_FIELDS = [
+  { target: 'statement', bucket: 'net', label: 'خالص صورت‌وضعیت‌ها', emptyText: 'صورت‌وضعیتی یافت نشد' },
+  { target: 'invoice', bucket: 'net', label: 'فاکتورها', emptyText: 'فاکتوری یافت نشد' },
+  { target: 'statement', bucket: 'retention', label: 'سپرده حسن انجام کار', emptyText: 'کسور حسن انجام کار ثبت نشده است' },
+  { target: 'statement', bucket: 'insurance', label: 'سپرده حق بیمه', emptyText: 'کسور بیمه ثبت نشده است' },
+];
 
 const fileSizeLabel = (bytes) => {
   const size = numOf(bytes);
@@ -108,11 +119,11 @@ const ContractPaymentEditorDialog = ({
     () => new Map(invoiceList.map((item) => [String(item.id), item])),
     [invoiceList],
   );
-  const sourceOf = (row) => (row.kind === 'invoice' ? invoiceById : statementById).get(String(row.id));
+  const sourceOf = (row) => (row.target === 'invoice' ? invoiceById : statementById).get(String(row.id));
 
   const statementOptions = useMemo(() => {
     const map = new Map(statementList.map((item) => [String(item.id), item]));
-    rows.filter((row) => row.kind === 'statement').forEach((row) => {
+    rows.filter((row) => row.target === 'statement').forEach((row) => {
       const source = statementById.get(String(row.id));
       if (source && !map.has(String(source.id))) map.set(String(source.id), source);
     });
@@ -121,37 +132,62 @@ const ContractPaymentEditorDialog = ({
 
   const invoiceOptions = useMemo(() => {
     const map = new Map(invoiceList.map((item) => [String(item.id), item]));
-    rows.filter((row) => row.kind === 'invoice').forEach((row) => {
+    rows.filter((row) => row.target === 'invoice').forEach((row) => {
       const source = invoiceById.get(String(row.id));
       if (source && !map.has(String(source.id))) map.set(String(source.id), source);
     });
     return [...map.values()];
   }, [invoiceList, invoiceById, rows]);
 
-  const selectedStatements = statementOptions
-    .filter((option) => rows.some((row) => row.kind === 'statement' && String(row.id) === String(option.id)));
-  const selectedInvoices = invoiceOptions
-    .filter((option) => rows.some((row) => row.kind === 'invoice' && String(row.id) === String(option.id)));
+  /** گزینه‌های سپرده‌ها فقط صورت‌وضعیت‌هایی هستند که کسور مربوط را دارند. */
+  const depositOptions = (bucket) => statementOptions.filter((option) => (
+    numOf(option[`${bucket}_amount`]) > 0
+    || rows.some((row) => row.target === 'statement' && row.bucket === bucket
+      && String(row.id) === String(option.id))
+  ));
+
+  const retentionOptions = depositOptions('retention');
+  const insuranceOptions = depositOptions('insurance');
+
+  const optionPool = (target, bucket) => {
+    if (target === 'invoice') return invoiceOptions;
+    if (bucket === 'retention') return retentionOptions;
+    if (bucket === 'insurance') return insuranceOptions;
+    return statementOptions;
+  };
+
+  const selectedFor = (target, bucket) => optionPool(target, bucket).filter((option) => (
+    rows.some((row) => row.target === target && row.bucket === bucket && String(row.id) === String(option.id))
+  ));
 
   const amount = numOf(form.amount);
   const allocated = allocationsTotal(rows);
   const unallocated = amount - allocated;
   const allocationRatio = amount > 0 ? Math.min(100, Math.round((allocated / amount) * 100)) : 0;
   const foreignEquivalent = exchangeRate > 1 && amount ? amount / exchangeRate : null;
+  const bucketTotals = BUCKET_KEYS.reduce((acc, key) => {
+    acc[key] = rows
+      .filter((row) => (row.target === 'invoice' ? 'net' : row.bucket) === key)
+      .reduce((sum, row) => sum + numOf(row.amount), 0);
+    return acc;
+  }, {});
 
-  const applyTargets = (kind, options) => {
+  const applyTargets = (target, bucket, options) => {
     setForm((previous) => {
       const current = previous.allocations || [];
       const selectedIds = new Set(options.map((option) => String(option.id)));
-      const kept = current.filter((row) => row.kind !== kind || selectedIds.has(String(row.id)));
+      const kept = current.filter((row) => (
+        row.target !== target || row.bucket !== bucket || selectedIds.has(String(row.id))
+      ));
       const known = new Set(kept.map((row) => row.key));
       const added = options
-        .filter((option) => !known.has(allocationKey(kind, option.id)))
+        .filter((option) => !known.has(allocationKey(target, option.id, bucket)))
         .map((option) => ({
-          key: allocationKey(kind, option.id),
-          kind,
+          key: allocationKey(target, option.id, bucket),
+          target,
+          bucket,
           id: String(option.id),
-          amount: String(Math.max(0, targetRemaining(kind, option))),
+          amount: String(Math.max(0, targetRemaining(target, bucket, option))),
         }));
       return { ...previous, allocations: [...kept, ...added] };
     });
@@ -174,23 +210,27 @@ const ContractPaymentEditorDialog = ({
     }),
   }));
 
-  const titleOf = (row) => {
-    const source = sourceOf(row);
-    if (!source) return `${targetKindLabel(row.kind)} ${toPersianDigits(row.id)}`;
-    if (row.kind === 'invoice') {
+  const targetTitle = (target, source, id) => {
+    if (!source) return `${targetKindLabel(target)} ${toPersianDigits(id)}`;
+    if (target === 'invoice') {
       return source.number || source.subject || `فاکتور ${toPersianDigits(source.id)}`;
     }
     return statementDisplayTitle(source) || `صورت‌وضعیت ${toPersianDigits(source.id)}`;
   };
 
-  const renderOption = (kind) => (props, option) => {
-    const remaining = targetRemaining(kind, option);
+  const titleOf = (row) => targetTitle(row.target, sourceOf(row), row.id);
+
+  const renderOption = (target, bucket) => (props, option) => {
+    const remaining = targetRemaining(target, bucket, option);
     return (
-      <Box component="li" {...props} key={`${kind}-${option.id}`} sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+      <Box
+        component="li"
+        {...props}
+        key={`${target}-${bucket}-${option.id}`}
+        sx={{ display: 'flex', gap: 1, alignItems: 'center' }}
+      >
         <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 700, color: INK }}>
-          {kind === 'invoice'
-            ? (option.number || option.subject || `فاکتور ${toPersianDigits(option.id)}`)
-            : (statementDisplayTitle(option) || `صورت‌وضعیت ${toPersianDigits(option.id)}`)}
+          {targetTitle(target, option, option.id)}
         </Typography>
         <Chip
           size="small"
@@ -365,59 +405,36 @@ const ContractPaymentEditorDialog = ({
                   />
                 )}
               >
-                <Grid container spacing={1.2} sx={{ mb: 1.1 }}>
-                  <Grid item xs={12} md={6}>
-                    <Autocomplete
-                      multiple
-                      size="small"
-                      disableCloseOnSelect
-                      options={statementOptions}
-                      value={selectedStatements}
-                      onChange={(event, value) => applyTargets('statement', value)}
-                      getOptionLabel={(option) => statementDisplayTitle(option) || `صورت‌وضعیت ${toPersianDigits(option.id)}`}
-                      isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
-                      renderOption={renderOption('statement')}
-                      renderTags={(value, getTagProps) => value.map((option, index) => {
-                        const { key, ...rest } = getTagProps({ index });
-                        return (
-                          <Chip
-                            key={key || `statement-${option.id}`}
-                            size="small"
-                            label={statementDisplayTitle(option) || `صورت‌وضعیت ${toPersianDigits(option.id)}`}
-                            {...rest}
-                            sx={tagSx}
-                          />
-                        );
-                      })}
-                      renderInput={(params) => <TextField {...params} label="صورت‌وضعیت‌ها" placeholder="چند سند" />}
-                    />
-                  </Grid>
-                  <Grid item xs={12} md={6}>
-                    <Autocomplete
-                      multiple
-                      size="small"
-                      disableCloseOnSelect
-                      options={invoiceOptions}
-                      value={selectedInvoices}
-                      onChange={(event, value) => applyTargets('invoice', value)}
-                      getOptionLabel={(option) => option.number || option.subject || `فاکتور ${toPersianDigits(option.id)}`}
-                      isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
-                      renderOption={renderOption('invoice')}
-                      renderTags={(value, getTagProps) => value.map((option, index) => {
-                        const { key, ...rest } = getTagProps({ index });
-                        return (
-                          <Chip
-                            key={key || `invoice-${option.id}`}
-                            size="small"
-                            label={option.number || option.subject || `فاکتور ${toPersianDigits(option.id)}`}
-                            {...rest}
-                            sx={tagSx}
-                          />
-                        );
-                      })}
-                      renderInput={(params) => <TextField {...params} label="فاکتورها" placeholder="چند سند" />}
-                    />
-                  </Grid>
+                <Grid container spacing={1.1} sx={{ mb: 1.1 }}>
+                  {ALLOCATION_FIELDS.map((field) => (
+                    <Grid item xs={12} md={6} key={`${field.target}-${field.bucket}`}>
+                      <Autocomplete
+                        multiple
+                        size="small"
+                        disableCloseOnSelect
+                        options={optionPool(field.target, field.bucket)}
+                        value={selectedFor(field.target, field.bucket)}
+                        onChange={(event, value) => applyTargets(field.target, field.bucket, value)}
+                        getOptionLabel={(option) => targetTitle(field.target, option, option.id)}
+                        isOptionEqualToValue={(a, b) => String(a.id) === String(b.id)}
+                        renderOption={renderOption(field.target, field.bucket)}
+                        noOptionsText={field.emptyText}
+                        renderTags={(value, getTagProps) => value.map((option, index) => {
+                          const { key, ...rest } = getTagProps({ index });
+                          return (
+                            <Chip
+                              key={key || `${field.target}-${field.bucket}-${option.id}`}
+                              size="small"
+                              label={targetTitle(field.target, option, option.id)}
+                              {...rest}
+                              sx={tagSx}
+                            />
+                          );
+                        })}
+                        renderInput={(params) => <TextField {...params} label={field.label} placeholder="چند سند" />}
+                      />
+                    </Grid>
+                  ))}
                 </Grid>
 
 
@@ -426,8 +443,7 @@ const ContractPaymentEditorDialog = ({
                     <Table size="small">
                       <TableHead>
                         <TableRow sx={{ bgcolor: alpha(VIOLET, 0.05) }}>
-                          <TableCell sx={headCellSx}>سند</TableCell>
-                          <TableCell align="center" sx={headCellSx}>نوع</TableCell>
+                          <TableCell sx={headCellSx}>سند / نوع مبلغ</TableCell>
                           <TableCell align="left" sx={headCellSx}>قابل پرداخت</TableCell>
                           <TableCell align="left" sx={headCellSx}>پرداخت‌شده</TableCell>
                           <TableCell align="left" sx={headCellSx}>مانده</TableCell>
@@ -438,27 +454,36 @@ const ContractPaymentEditorDialog = ({
                       <TableBody>
                         {rows.map((row) => {
                           const source = sourceOf(row);
-                          const payable = targetPayable(row.kind, source);
-                          const paid = targetPaid(row.kind, source);
-                          const remaining = targetRemaining(row.kind, source);
+                          const payable = targetPayable(row.target, row.bucket, source);
+                          const paid = targetPaid(row.target, row.bucket, source);
+                          const remaining = targetRemaining(row.target, row.bucket, source);
                           const over = numOf(row.amount) > Math.max(0, remaining);
+                          const bucket = bucketMeta(row.target === 'invoice' ? 'net' : row.bucket);
                           return (
                             <TableRow key={row.key} hover>
                               <TableCell sx={cellSx}>
                                 <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>
                                   {titleOf(row)}
                                 </Typography>
-                              </TableCell>
-                              <TableCell align="center" sx={cellSx}>
-                                <Chip
-                                  size="small"
-                                  label={targetKindLabel(row.kind)}
-                                  sx={{
-                                    height: 19, fontSize: 10, fontWeight: 800,
-                                    bgcolor: alpha(row.kind === 'invoice' ? BLUE : VIOLET, 0.09),
-                                    color: row.kind === 'invoice' ? BLUE : VIOLET,
-                                  }}
-                                />
+                                <Stack direction="row" spacing={0.4} sx={{ mt: 0.25 }}>
+                                  <Chip
+                                    size="small"
+                                    label={bucket.shortLabel}
+                                    sx={{
+                                      height: 18, fontSize: 9.5, fontWeight: 800,
+                                      bgcolor: alpha(bucket.color, 0.09), color: bucket.color,
+                                    }}
+                                  />
+                                  <Chip
+                                    size="small"
+                                    label={targetKindLabel(row.target)}
+                                    sx={{
+                                      height: 18, fontSize: 9.5, fontWeight: 800,
+                                      bgcolor: alpha(row.target === 'invoice' ? BLUE : VIOLET, 0.07),
+                                      color: row.target === 'invoice' ? BLUE : VIOLET,
+                                    }}
+                                  />
+                                </Stack>
                               </TableCell>
                               <TableCell align="left" sx={{ ...cellSx, color: MUTED }}>
                                 {formatPersianNumber(payable)}
@@ -689,6 +714,18 @@ const ContractPaymentEditorDialog = ({
               ) : null}
               <Divider sx={{ my: 0.8 }} />
               <SummaryRow label="جمع تخصیص" value={`${formatPersianNumber(allocated)} ریال`} strong color={VIOLET} />
+              {isAdvance ? null : BUCKET_KEYS.map((key) => {
+                const bucket = bucketMeta(key);
+                if (!bucketTotals[key]) return null;
+                return (
+                  <SummaryRow
+                    key={key}
+                    label={bucket.label}
+                    value={`${formatPersianNumber(bucketTotals[key])} ریال`}
+                    color={bucket.color}
+                  />
+                );
+              })}
               <SummaryRow
                 label="تخصیص‌نیافته"
                 value={`${formatPersianNumber(unallocated)} ریال`}

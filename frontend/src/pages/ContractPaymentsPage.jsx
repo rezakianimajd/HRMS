@@ -34,7 +34,7 @@ import { contractRateOf } from './contracts/contractFinanceSummary';
 import { adjustmentSummaryOf, statementDisplayTitle, statementKindOf } from './contracts/statementKinds';
 import ContractPaymentEditorDialog from './contracts/ContractPaymentEditorDialog';
 import { PAYMENT_TYPES, paymentTypeOf } from './contracts/paymentTypes';
-import { allocationsFromPayment, allocationsPayload, numOf } from './contracts/paymentAllocations';
+import { allocationsFromPayment, allocationsPayload, bucketMeta, numOf } from './contracts/paymentAllocations';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
   useModuleTableState, useModuleTheme, useRowHeight,
@@ -199,31 +199,33 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
                     />
                   </Stack>
                   <Stack spacing={0.4}>
-                    {asArray(row.allocations).map((allocation) => (
-                      <Stack
-                        key={allocation.id}
-                        direction="row"
-                        alignItems="center"
-                        spacing={0.7}
-                        sx={{ p: 0.55, px: 0.8, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}
-                      >
-                        <Chip
-                          size="small"
-                          label={allocation.target_type === 'invoice' ? 'فاکتور' : 'صورت‌وضعیت'}
-                          sx={{
-                            height: 18, fontSize: 9.5, fontWeight: 800,
-                            bgcolor: alpha(allocation.target_type === 'invoice' ? BLUE : VIOLET, 0.09),
-                            color: allocation.target_type === 'invoice' ? BLUE : VIOLET,
-                          }}
-                        />
-                        <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 700, color: INK }}>
-                          {allocation.title || '—'}
-                        </Typography>
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: VIOLET, direction: 'rtl' }}>
-                          {formatPersianNumber(allocation.amount || 0)}
-                        </Typography>
-                      </Stack>
-                    ))}
+                    {asArray(row.allocations).map((allocation) => {
+                      const bucket = bucketMeta(allocation.kind);
+                      return (
+                        <Stack
+                          key={allocation.id}
+                          direction="row"
+                          alignItems="center"
+                          spacing={0.7}
+                          sx={{ p: 0.55, px: 0.8, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}
+                        >
+                          <Chip
+                            size="small"
+                            label={allocation.kind_display || bucket.label}
+                            sx={{
+                              height: 18, fontSize: 9.5, fontWeight: 800,
+                              bgcolor: alpha(bucket.color, 0.09), color: bucket.color,
+                            }}
+                          />
+                          <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 700, color: INK }}>
+                            {allocation.title || '—'}
+                          </Typography>
+                          <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: VIOLET, direction: 'rtl' }}>
+                            {formatPersianNumber(allocation.amount || 0)}
+                          </Typography>
+                        </Stack>
+                      );
+                    })}
                   </Stack>
                 </Box>
               ) : null}

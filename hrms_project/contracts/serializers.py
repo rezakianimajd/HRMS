@@ -22,7 +22,7 @@ from contracts.numbering import normalize_statement_number
 # نمای‌های لیست با annotate(paid_sum=...) این مقدار را بدون کوئری اضافه می‌دهند
 # و در بقیهٔ مسیرها (مثلاً تو در توی قرارداد) یک aggregate ساده استفاده می‌شود.
 # ---------------------------------------------------------------------------
-def _allocated_amount(obj, annotation='paid_sum'):
+def _allocated_amount(obj, annotation='paid_sum', kind='net'):
     if obj is None:
         return Decimal('0')
     annotated = getattr(obj, annotation, None)
@@ -31,9 +31,48 @@ def _allocated_amount(obj, annotation='paid_sum'):
     cache = getattr(obj, '_prefetched_objects_cache', None) or {}
     rows = cache.get('payment_allocations')
     if rows is not None:
-        return sum((row.amount or 0) for row in rows)
-    total = obj.payment_allocations.aggregate(total=Sum('amount'))['total']
+        return sum(
+            (row.amount or 0) for row in rows
+            if (getattr(row, 'kind', 'net') or 'net') == kind
+        )
+    total = obj.payment_allocations.filter(kind=kind).aggregate(total=Sum('amount'))['total']
     return Decimal(str(total or 0))
+
+
+RETENTION_KEYWORDS = ('حسن',)
+INSURANCE_KEYWORDS = ('بیمه',)
+
+
+def normalize_fa_text(value):
+    return (
+        str(value or '')
+        .replace('ي', 'ی')
+        .replace('ك', 'ک')
+        .replace('\u200c', ' ')
+    )
+
+
+def statement_deduction_amount(statement, bucket):
+    """جمع کسورات صورت‌وضعیت برای سپردهٔ حسن انجام کار یا حق بیمه."""
+    if statement is None or bucket not in ('retention', 'insurance'):
+        return Decimal('0')
+    keywords = RETENTION_KEYWORDS if bucket == 'retention' else INSURANCE_KEYWORDS
+    total = Decimal('0')
+    for item in (statement.deductions or []):
+        if not isinstance(item, dict):
+            continue
+        title = normalize_fa_text(item.get('title') or item.get('description') or '')
+        if any(word in title for word in keywords):
+            total += Decimal(str(item.get('amount') or 0))
+    return total
+
+
+def statement_bucket_payable(statement, bucket='net'):
+    """مبلغ قابل پرداخت صورت‌وضعیت در هر سبد (خالص / حسن انجام کار / حق بیمه)."""
+    if bucket in ('retention', 'insurance'):
+        return statement_deduction_amount(statement, bucket)
+    return statement_payable_amount(statement)
+
 
 
 def statement_payable_amount(statement):
@@ -336,6 +375,12 @@ class StatementSerializer(serializers.ModelSerializer):
     paid_amount = serializers.SerializerMethodField()
     remaining_amount = serializers.SerializerMethodField()
     payable_amount = serializers.SerializerMethodField()
+    retention_amount = serializers.SerializerMethodField()
+    retention_paid_amount = serializers.SerializerMethodField()
+    retention_remaining_amount = serializers.SerializerMethodField()
+    insurance_amount = serializers.SerializerMethodField()
+    insurance_paid_amount = serializers.SerializerMethodField()
+    insurance_remaining_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Statement
@@ -351,6 +396,8 @@ class StatementSerializer(serializers.ModelSerializer):
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
             'payable_amount', 'paid_amount', 'remaining_amount',
+            'retention_amount', 'retention_paid_amount', 'retention_remaining_amount',
+            'insurance_amount', 'insurance_paid_amount', 'insurance_remaining_amount',
             'levels',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'currency_exchange_rate',
@@ -362,10 +409,32 @@ class StatementSerializer(serializers.ModelSerializer):
         return statement_payable_amount(obj)
 
     def get_paid_amount(self, obj):
-        return _allocated_amount(obj)
+        return _allocated_amount(obj, 'paid_sum', 'net')
 
     def get_remaining_amount(self, obj):
-        return statement_payable_amount(obj) - _allocated_amount(obj)
+        return statement_payable_amount(obj) - _allocated_amount(obj, 'paid_sum', 'net')
+
+    def get_retention_amount(self, obj):
+        return statement_deduction_amount(obj, 'retention')
+
+    def get_retention_paid_amount(self, obj):
+        return _allocated_amount(obj, 'retention_paid_sum', 'retention')
+
+    def get_retention_remaining_amount(self, obj):
+        return statement_deduction_amount(obj, 'retention') - _allocated_amount(
+            obj, 'retention_paid_sum', 'retention',
+        )
+
+    def get_insurance_amount(self, obj):
+        return statement_deduction_amount(obj, 'insurance')
+
+    def get_insurance_paid_amount(self, obj):
+        return _allocated_amount(obj, 'insurance_paid_sum', 'insurance')
+
+    def get_insurance_remaining_amount(self, obj):
+        return statement_deduction_amount(obj, 'insurance') - _allocated_amount(
+            obj, 'insurance_paid_sum', 'insurance',
+        )
 
     def validate_exchange_rate(self, value):
         if value is None:
@@ -1050,21 +1119,28 @@ class PaymentAllocationSerializer(serializers.ModelSerializer):
     invoice_payable_amount = serializers.SerializerMethodField()
     target_type = serializers.SerializerMethodField()
     title = serializers.SerializerMethodField()
+    kind_display = serializers.CharField(source='get_kind_display', read_only=True)
+    payable_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = PaymentAllocation
         fields = [
-            'id', 'payment', 'statement', 'invoice', 'amount',
+            'id', 'payment', 'statement', 'invoice', 'kind', 'kind_display', 'amount',
             'statement_number', 'statement_kind', 'statement_amount', 'statement_net_amount',
             'statement_payable_amount', 'invoice_number', 'invoice_subject', 'invoice_total',
-            'invoice_payable_amount', 'target_type', 'title',
+            'invoice_payable_amount', 'target_type', 'title', 'payable_amount',
         ]
         read_only_fields = [
-            'id', 'company', 'payment',
+            'id', 'company', 'payment', 'kind_display',
             'statement_number', 'statement_kind', 'statement_amount', 'statement_net_amount',
             'statement_payable_amount', 'invoice_number', 'invoice_subject', 'invoice_total',
-            'invoice_payable_amount', 'target_type', 'title',
+            'invoice_payable_amount', 'target_type', 'title', 'payable_amount',
         ]
+
+    def get_payable_amount(self, obj):
+        if obj.statement_id:
+            return statement_bucket_payable(obj.statement, obj.kind or 'net')
+        return invoice_payable_amount(getattr(obj, 'invoice', None))
 
     def get_target_type(self, obj):
         if obj.statement_id:
@@ -1160,19 +1236,28 @@ class PaymentSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     'هر تخصیص باید دقیقاً به یک صورت‌وضعیت یا یک فاکتور اشاره کند.',
                 )
+            kind = row.get('kind') or PaymentAllocation.Kind.NET
+            if invoice:
+                # فاکتور فقط یک مبلغ دارد؛ سبدهای سپرده مخصوص صورت‌وضعیت‌اند.
+                kind = PaymentAllocation.Kind.NET
+            if kind not in PaymentAllocation.Kind.values:
+                raise serializers.ValidationError('نوع مبلغ تخصیص معتبر نیست.')
             if contract:
                 if statement and statement.contract_id != contract.pk:
                     raise serializers.ValidationError('صورت‌وضعیت انتخاب‌شده به این قرارداد تعلق ندارد.')
                 if invoice and invoice.contract_id != contract.pk:
                     raise serializers.ValidationError('فاکتور انتخاب‌شده به این قرارداد تعلق ندارد.')
-            key = ('statement', statement.pk) if statement else ('invoice', invoice.pk)
+            key = ('statement', statement.pk, kind) if statement else ('invoice', invoice.pk, kind)
             if key in seen:
                 raise serializers.ValidationError('یک سند نمی‌تواند دو بار در تخصیص‌ها تکرار شود.')
             seen.add(key)
             amount = Decimal(str(row.get('amount') or 0))
             if amount < 0:
                 raise serializers.ValidationError('مبلغ تخصیص نمی‌تواند منفی باشد.')
-            cleaned.append({'statement': statement, 'invoice': invoice, 'amount': amount})
+            cleaned.append({
+                'statement': statement, 'invoice': invoice,
+                'kind': kind, 'amount': amount,
+            })
         return cleaned
 
     @staticmethod
@@ -1183,6 +1268,7 @@ class PaymentSerializer(serializers.ModelSerializer):
             PaymentAllocation(
                 company_id=payment.company_id, payment=payment,
                 statement=row.get('statement'), invoice=row.get('invoice'),
+                kind=row.get('kind') or PaymentAllocation.Kind.NET,
                 amount=row.get('amount') or 0,
             )
             for row in rows or []
@@ -1212,15 +1298,18 @@ class PaymentSerializer(serializers.ModelSerializer):
             rows.delete()
             PaymentAllocation.objects.create(
                 company_id=payment.company_id, payment=payment,
-                statement=statement, invoice=invoice, amount=amount,
+                statement=statement, invoice=invoice,
+                kind=PaymentAllocation.Kind.NET, amount=amount,
             )
         elif single.amount != amount \
                 or single.statement_id != getattr(statement, 'pk', None) \
-                or single.invoice_id != getattr(invoice, 'pk', None):
+                or single.invoice_id != getattr(invoice, 'pk', None) \
+                or single.kind != PaymentAllocation.Kind.NET:
             single.statement = statement
             single.invoice = invoice
+            single.kind = PaymentAllocation.Kind.NET
             single.amount = amount
-            single.save(update_fields=['statement', 'invoice', 'amount', 'updated_at'])
+            single.save(update_fields=['statement', 'invoice', 'kind', 'amount', 'updated_at'])
 
     def validate(self, attrs):
         payment_type = attrs.get(

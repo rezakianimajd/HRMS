@@ -206,8 +206,10 @@ test('contract payments page renders financial summary, linked details and detai
   expect(document.body.textContent).toContain('پیوست فایل‌ها');
   expect(document.body.textContent).toContain('انتخاب فایل پیوست');
   expect(document.body.textContent).toContain('تخصیص به صورت‌وضعیت و فاکتور');
-  expect(document.body.textContent).toContain('صورت‌وضعیت‌ها');
+  expect(document.body.textContent).toContain('خالص صورت‌وضعیت‌ها');
   expect(document.body.textContent).toContain('فاکتورها');
+  expect(document.body.textContent).toContain('سپرده حسن انجام کار');
+  expect(document.body.textContent).toContain('سپرده حق بیمه');
   expect(document.body.textContent).toContain('خلاصهٔ پرداخت');
 
   const advanceToggle = Array.from(document.querySelectorAll('.MuiDialog-root button'))
@@ -216,7 +218,8 @@ test('contract payments page renders financial summary, linked details and detai
   await act(async () => { advanceToggle.click(); await wait(220); });
   expect(document.body.textContent).toContain('ثبت پیش‌پرداخت جدید');
   expect(document.body.textContent).not.toContain('تخصیص به صورت‌وضعیت و فاکتور');
-  expect(document.body.textContent).not.toContain('صورت‌وضعیت‌ها');
+  expect(document.body.textContent).not.toContain('خالص صورت‌وضعیت‌ها');
+  expect(document.body.textContent).not.toContain('سپرده حق بیمه');
 
   const cancelButton = Array.from(document.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'انصراف');

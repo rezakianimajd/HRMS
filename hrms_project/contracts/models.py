@@ -659,6 +659,11 @@ class PaymentAllocation(BaseModel):
     و `Payment.invoice` فقط برای سازگاری با داده/کلاینت قدیمی نگه داشته شده‌اند.
     """
 
+    class Kind(models.TextChoices):
+        NET = 'net', _('خالص صورت‌وضعیت')
+        RETENTION = 'retention', _('سپرده حسن انجام کار')
+        INSURANCE = 'insurance', _('سپرده حق بیمه')
+
     payment = models.ForeignKey(
         Payment, on_delete=models.CASCADE, related_name='allocations',
         verbose_name=_('پرداخت'),
@@ -670,6 +675,11 @@ class PaymentAllocation(BaseModel):
     invoice = models.ForeignKey(
         Invoice, on_delete=models.CASCADE, null=True, blank=True,
         related_name='payment_allocations', verbose_name=_('فاکتور'),
+    )
+    kind = models.CharField(
+        max_length=20, choices=Kind.choices, default=Kind.NET,
+        verbose_name=_('نوع مبلغ'),
+        help_text=_('خالص صورت‌وضعیت، سپرده حسن انجام کار یا سپرده حق بیمه'),
     )
     amount = models.DecimalField(
         max_digits=18, decimal_places=0, default=0,
@@ -690,12 +700,12 @@ class PaymentAllocation(BaseModel):
                 name='payment_alloc_single_target',
             ),
             models.UniqueConstraint(
-                fields=['payment', 'statement'],
+                fields=['payment', 'statement', 'kind'],
                 condition=models.Q(statement__isnull=False),
                 name='payment_alloc_unique_statement',
             ),
             models.UniqueConstraint(
-                fields=['payment', 'invoice'],
+                fields=['payment', 'invoice', 'kind'],
                 condition=models.Q(invoice__isnull=False),
                 name='payment_alloc_unique_invoice',
             ),
@@ -703,7 +713,7 @@ class PaymentAllocation(BaseModel):
 
     def __str__(self):
         target = self.statement or self.invoice
-        return f'{self.payment_id} → {target} ({self.amount})'
+        return f'{self.payment_id} → {target} [{self.kind}] ({self.amount})'
 
 
 def payment_attachment_upload_path(instance, filename):
