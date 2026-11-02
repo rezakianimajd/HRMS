@@ -1,4 +1,4 @@
-import io
+﻿import io
 import os
 import traceback
 import unittest
@@ -14,6 +14,7 @@ try:
     suite = unittest.TestLoader().loadTestsFromNames([
         'employees.tests.SupplementaryDependentSerializerTests',
         'employees.tests.DependentsExportTests',
+        'employees.tests.FamilyMemberTests',
     ])
     result = unittest.TextTestRunner(verbosity=2, stream=buffer).run(suite)
     buffer.write(f"\nRUN={result.testsRun} FAIL={len(result.failures)} ERR={len(result.errors)}\n")
@@ -21,3 +22,4 @@ except Exception:
     buffer.write(traceback.format_exc())
 with open(LOG, 'w', encoding='utf-8') as handle:
     handle.write(buffer.getvalue())
+

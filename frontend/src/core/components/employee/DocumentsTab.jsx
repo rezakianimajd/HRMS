@@ -3,7 +3,8 @@ import { useTranslation } from 'react-i18next';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Box, Typography, Grid, Card, CardContent, CardActions,
-  IconButton, Tooltip, Chip, Button, CircularProgress, Paper, Avatar, Stack
+  IconButton, Tooltip, Chip, Button, CircularProgress, Paper, Avatar, Stack,
+  Alert, Snackbar,
 } from '@mui/material';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
@@ -20,6 +21,7 @@ import DocumentUploadModal from './DocumentUploadModal';
 import DocumentPreviewModal from './DocumentPreviewModal';
 import EmployeeAvatar from '../ui/EmployeeAvatar';
 import { toJalali } from '../../utils/dateUtils';
+import { toPersianDigits } from '../../utils/numberUtils';
 import FolderSharedIcon from '@mui/icons-material/FolderShared';
 import FolderIcon from '@mui/icons-material/Folder';
 
@@ -160,6 +162,7 @@ const DocumentsTab = ({ employeeId }) => {
   const [previewDoc, setPreviewDoc] = useState(null);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [deletingPhoto, setDeletingPhoto] = useState(false);
+  const [toast, setToast] = useState('');
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0];
@@ -316,7 +319,15 @@ const DocumentsTab = ({ employeeId }) => {
         <DocumentUploadModal
           employeeId={employeeId}
           onClose={() => setShowUpload(false)}
-          onSuccess={() => setShowUpload(false)}
+          onSuccess={(count) => {
+            setShowUpload(false);
+            setToast(count
+              ? `${toPersianDigits(count)} مدرک در پروندهٔ پرسنلی ذخیره شد`
+              : 'مدرک در پروندهٔ پرسنلی ذخیره شد');
+            // فهرست مدارک همین صفحه بلافاصله تازه می‌شود (بدون نیاز به رفرش).
+            queryClient.invalidateQueries({ queryKey: ['documents'] });
+            queryClient.refetchQueries({ queryKey: ['documents', String(employeeId ?? '')] });
+          }}
         />
       )}
       {previewDoc && (
@@ -325,6 +336,11 @@ const DocumentsTab = ({ employeeId }) => {
           onClose={() => setPreviewDoc(null)}
         />
       )}
+
+      <Snackbar open={Boolean(toast)} autoHideDuration={3500} onClose={() => setToast('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+        <Alert severity="success" onClose={() => setToast('')}>{toast}</Alert>
+      </Snackbar>
     </Box>
   );
 };

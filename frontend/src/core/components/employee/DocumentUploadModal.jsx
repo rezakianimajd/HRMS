@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
@@ -32,8 +32,12 @@ const fileSizeLabel = (size) => (
 
 const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const fileInputRef = useRef(null);
   const { data: docTypes } = useDocumentTypes();
-  const typeOptions = Array.isArray(docTypes) ? docTypes : (docTypes?.results || []);
+  const typeOptions = useMemo(
+    () => (Array.isArray(docTypes) ? docTypes : (docTypes?.results || [])),
+    [docTypes],
+  );
   const uploadMutation = useUploadDocument();
   const [form, setForm] = useState({
     title: '', document_type: '', issue_date: '', expiry_date: '',
@@ -48,6 +52,14 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
   const uploading = progress.total > 0;
 
   const handleChange = (field, value) => setForm(prev => ({ ...prev, [field]: value }));
+
+  // اگر نوع مدرک انتخاب نشده باشد، نخستین نوع تعریف‌شده خودکار انتخاب می‌شود
+  // تا دکمهٔ آپلود بدون پیام خطا بی‌نتیجه نماند.
+  useEffect(() => {
+    if (!form.document_type && typeOptions.length) {
+      setForm(prev => (prev.document_type ? prev : { ...prev, document_type: typeOptions[0].id }));
+    }
+  }, [typeOptions, form.document_type]);
 
   const addFiles = useCallback((incoming) => {
     const list = Array.from(incoming || []).filter(Boolean);
@@ -113,7 +125,7 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
       setError(`این مدارک ذخیره نشدند:\n${failures.join('\n')}`);
       return;
     }
-    onSuccess();
+    onSuccess(succeeded.length);
   };
 
   return (
@@ -123,6 +135,12 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
         {error && (
           <Alert severity="error" sx={{ mb: 2, whiteSpace: 'pre-line' }}>{error}</Alert>
         )}
+        {!typeOptions.length ? (
+          <Alert severity="warning" sx={{ mb: 2 }}>
+            هیچ «نوع مدرک» فعالی تعریف نشده است؛ ابتدا در تعاریف اولیه یک نوع مدرک بسازید تا امکان
+            ذخیرهٔ مدرک در پرونده فراهم شود.
+          </Alert>
+        ) : null}
         {uploading ? (
           <Box sx={{ mb: 2 }}>
             <Typography variant="caption" color="textSecondary">
@@ -146,10 +164,12 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          onClick={() => document.getElementById('file-input').click()}
+          onClick={() => fileInputRef.current?.click()}
         >
           <input
-            id="file-input" type="file" hidden multiple
+            ref={fileInputRef}
+            type="file" hidden multiple
+            onClick={(event) => event.stopPropagation()}
             onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
           />
           <Typography color="textSecondary">{t('documents.drag_drop')}</Typography>
@@ -209,7 +229,7 @@ const DocumentUploadModal = ({ employeeId, onClose, onSuccess }) => {
       </DialogContent>
       <DialogActions>
         <Button onClick={onClose} disabled={uploading}>{t('common.cancel')}</Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={uploading || !files.length}>
+        <Button variant="contained" onClick={handleSubmit} disabled={uploading || !files.length || !typeOptions.length}>
           {uploading
             ? <CircularProgress size={20} />
             : `${t('documents.upload')}${files.length > 1 ? ` (${files.length})` : ''}`}

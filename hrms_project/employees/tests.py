@@ -131,3 +131,76 @@ class DependentsExportTests(SimpleTestCase):
         self.assertEqual(age_of(date(2010, 5, 20), today), 16)
         self.assertEqual(age_of(date(2010, 5, 21), today), 15)
         self.assertIsNone(age_of(None, today))
+
+
+class FamilyMemberTests(SimpleTestCase):
+    """بخش «خانواده» پروندهٔ پرسنلی و همگام‌سازی با بیمهٔ تکمیلی."""
+
+    def test_model_fields_and_constraints(self):
+        from employees.models import EmployeeFamilyMember
+
+        fields = {field.name for field in EmployeeFamilyMember._meta.get_fields()}
+        for name in ('employee', 'first_name', 'last_name', 'relation', 'national_id',
+                     'birth_date', 'phone', 'is_dependent', 'source', 'source_key', 'notes'):
+            self.assertIn(name, fields)
+
+        constraint_names = {constraint.name for constraint in EmployeeFamilyMember._meta.constraints}
+        self.assertIn('uniq_employee_family_source_key', constraint_names)
+
+    def test_relation_choices_cover_insurance_relations(self):
+        from employees.family_sync import RELATION_MAP
+        from employees.models import EmployeeFamilyMember, SupplementaryInsuranceDependent
+
+        insurance_values = {choice[0] for choice in SupplementaryInsuranceDependent._meta.get_field('relation').choices}
+        family_values = {choice[0] for choice in EmployeeFamilyMember._meta.get_field('relation').choices}
+        for value in insurance_values:
+            self.assertIn(value, RELATION_MAP)
+            self.assertIn(RELATION_MAP[value], family_values)
+
+    def test_source_key_is_stable_per_dependent(self):
+        from employees.family_sync import dependent_source_key
+
+        class FakeDependent:
+            pk = 12
+            insurance_id = 5
+
+        self.assertEqual(dependent_source_key(FakeDependent()), 'supp-ins-5-12')
+
+    def test_full_name_and_age_properties(self):
+        from datetime import date
+
+        from employees.models import EmployeeFamilyMember
+
+        member = EmployeeFamilyMember(first_name='سارا', last_name='احمدی')
+        self.assertEqual(member.full_name, 'سارا احمدی')
+        self.assertIsNone(member.age)
+
+        today = date.today()
+        member.birth_date = date(today.year - 10, 1, 1)
+        expected = today.year - member.birth_date.year - (1 if (today.month, today.day) < (1, 1) else 0)
+        self.assertEqual(member.age, expected)
+
+    def test_serializer_exposes_display_fields_and_validates(self):
+        from rest_framework.serializers import ValidationError
+
+        from employees.serializers import EmployeeFamilyMemberSerializer
+
+        serializer = EmployeeFamilyMemberSerializer()
+        for field in ('relation', 'relation_display', 'source', 'source_display',
+                      'is_dependent', 'age', 'full_name', 'phone'):
+            self.assertIn(field, serializer.fields)
+
+        self.assertEqual(serializer.validate_national_id('۱۲۳۴۵۶۷۸۹۰'), '1234567890')
+        self.assertEqual(serializer.validate_national_id(''), '')
+        with self.assertRaises(ValidationError):
+            serializer.validate_national_id('12345')
+        with self.assertRaises(ValidationError):
+            serializer.validate_first_name('   ')
+        self.assertEqual(serializer.validate_first_name(' نیما '), 'نیما')
+
+    def test_viewset_routes_family_members_by_employee(self):
+        from employees.views import EmployeeFamilyMemberViewSet
+
+        self.assertEqual(EmployeeFamilyMemberViewSet.queryset.model.__name__, 'EmployeeFamilyMember')
+        self.assertTrue(hasattr(EmployeeFamilyMemberViewSet, 'sync_from_insurance'))
+

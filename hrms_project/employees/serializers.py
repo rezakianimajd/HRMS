@@ -6,7 +6,7 @@ from rest_framework import serializers
 from employees.models import (
     Employee, Department, WorkLocation, JobTitle, InsuranceList, ContractType,
     EmploymentChange, ContractVersion, WorkExperience,
-    SupplementaryInsurance, SupplementaryInsuranceDependent,
+    SupplementaryInsurance, SupplementaryInsuranceDependent, EmployeeFamilyMember,
 )
 
 
@@ -378,6 +378,47 @@ class SupplementaryInsuranceDependentSerializer(serializers.ModelSerializer):
         if remove_attachment:
             self._drop_attachment(instance)
         return super().update(instance, validated_data)
+
+
+class EmployeeFamilyMemberSerializer(serializers.ModelSerializer):
+    """عضو خانوادهٔ پرسنل (پروندهٔ پرسنلی ← خانواده)."""
+
+    relation_display = serializers.CharField(source='get_relation_display', read_only=True)
+    source_display = serializers.CharField(source='get_source_display', read_only=True)
+    full_name = serializers.CharField(read_only=True)
+    age = serializers.IntegerField(read_only=True, allow_null=True)
+    employee_name = serializers.CharField(source='employee.full_name', read_only=True)
+
+    class Meta:
+        model = EmployeeFamilyMember
+        fields = [
+            'id', 'employee', 'employee_name',
+            'first_name', 'last_name', 'full_name',
+            'relation', 'relation_display',
+            'national_id', 'birth_date', 'phone',
+            'is_dependent', 'source', 'source_display', 'source_key',
+            'age', 'notes', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'company', 'employee_name', 'full_name', 'relation_display',
+            'source_display', 'source_key', 'age', 'created_at', 'updated_at',
+        ]
+
+    def validate_national_id(self, value):
+        normalized = str(value or '').translate(
+            str.maketrans('۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789'),
+        ).replace(' ', '').strip()
+        if not normalized:
+            return ''
+        if not normalized.isdigit() or len(normalized) != 10:
+            raise serializers.ValidationError('کد ملی باید ۱۰ رقم باشد.')
+        return normalized
+
+    def validate_first_name(self, value):
+        name = str(value or '').strip()
+        if not name:
+            raise serializers.ValidationError('نام عضو خانواده الزامی است.')
+        return name
 
 
 class SupplementaryInsuranceSerializer(serializers.ModelSerializer):

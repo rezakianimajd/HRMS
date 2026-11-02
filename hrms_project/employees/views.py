@@ -13,7 +13,7 @@ from django.db.models import Q
 from employees.models import (
     Employee, Department, WorkLocation, JobTitle, InsuranceList, ContractType,
     EmploymentChange, ContractVersion, WorkExperience,
-    SupplementaryInsurance, SupplementaryInsuranceDependent,
+    SupplementaryInsurance, SupplementaryInsuranceDependent, EmployeeFamilyMember,
 )
 from employees.serializers import (
     EmployeeSerializer, EmployeeListSerializer, EmployeeCreateSerializer,
@@ -21,7 +21,9 @@ from employees.serializers import (
     ContractTypeSerializer, EmploymentChangeSerializer, ContractVersionSerializer,
     WorkExperienceSerializer,
     SupplementaryInsuranceSerializer, SupplementaryInsuranceDependentSerializer,
+    EmployeeFamilyMemberSerializer,
 )
+from employees.family_sync import sync_employee_family_from_insurance
 from employees.filters import EmployeeFilter
 from employees.engines.employee_engine import EmployeeEngine
 
@@ -412,6 +414,67 @@ class ContractVersionReadViewSet(viewsets.ReadOnlyModelViewSet):
         if employee_id:
             qs = qs.filter(employee_id=employee_id)
         return qs
+
+
+class EmployeeFamilyMemberViewSet(BaseCompanyViewSet):
+    """اعضای خانوادهٔ پرسنل در پروندهٔ پرسنلی.
+
+    فهرست هر پرسنل پیش از بازگرداندن، افراد تحت تکفل بیمهٔ تکمیلی را به‌صورت
+    خودکار همگام می‌کند تا اطلاعات واردشده در بیمه همیشه در پرونده دیده شود.
+    """
+    serializer_class = EmployeeFamilyMemberSerializer
+    queryset = EmployeeFamilyMember.objects.all()
+    pagination_class = None
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ['first_name', 'last_name', 'national_id', 'phone', 'notes']
+    ordering_fields = ['relation', 'first_name', 'birth_date', 'created_at']
+    ordering = ['relation', 'first_name']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related('employee')
+        include_inactive = self.request.query_params.get('include_inactive') in ('1', 'true', 'yes')
+        if not include_inactive:
+            qs = qs.filter(is_active=True)
+        employee_id = (
+            self.request.query_params.get('employee')
+            or self.request.query_params.get('employee_id')
+        )
+        if employee_id:
+            qs = qs.filter(employee_id=employee_id)
+        if self.request.query_params.get('dependents_only') in ('1', 'true', 'yes'):
+            qs = qs.filter(is_dependent=True)
+        return qs
+
+    def perform_destroy(self, instance):
+        """اعضای آمده از بیمهٔ تکمیلی غیرفعال می‌شوند تا همگام‌سازی دوباره نسازد."""
+        if instance.source == EmployeeFamilyMember.Source.SUPPLEMENTARY_INSURANCE:
+            instance.is_active = False
+            instance.save(update_fields=['is_active', 'updated_at'])
+            return
+        instance.delete()
+
+    def list(self, request, *args, **kwargs):
+        employee_id = request.query_params.get('employee') or request.query_params.get('employee_id')
+        if employee_id and str(employee_id).isdigit():
+            employee = Employee.objects.filter(pk=employee_id).first()
+            if employee:
+                try:
+                    sync_employee_family_from_insurance(employee)
+                except Exception:  # noqa: BLE001 — همگام‌سازی نباید فهرست را بشکند
+                    logger.exception('family sync failed for employee %s', employee_id)
+        return super().list(request, *args, **kwargs)
+
+    @action(detail=False, methods=['post'], url_path='sync-from-insurance')
+    def sync_from_insurance(self, request):
+        """انتقال دستی افراد تحت تکفل بیمهٔ تکمیلی به پروندهٔ خانواده."""
+        employee_id = request.data.get('employee') or request.query_params.get('employee')
+        if not str(employee_id or '').isdigit():
+            return Response({'detail': 'شناسهٔ پرسنل نامعتبر است.'}, status=status.HTTP_400_BAD_REQUEST)
+        employee = Employee.objects.filter(pk=employee_id).first()
+        if not employee:
+            return Response({'detail': 'پرسنل یافت نشد.'}, status=status.HTTP_404_NOT_FOUND)
+        summary = sync_employee_family_from_insurance(employee)
+        return Response(summary, status=status.HTTP_200_OK)
 
 
 class SupplementaryInsuranceViewSet(BaseCompanyViewSet):

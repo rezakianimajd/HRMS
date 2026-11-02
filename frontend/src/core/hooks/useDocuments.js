@@ -15,8 +15,11 @@ const fetchDocumentTypes = async () => {
 };
 
 const uploadDocument = async (formData) => {
+  // Content-Type توسط مرورگر (به‌همراه boundary) تنظیم می‌شود؛ تعیین دستی آن
+  // باعث خطای تجزیهٔ multipart در سرور و «ذخیره نشدن» مدرک می‌شد.
+  // مهلت بلندتر برای آپلود اسکن‌های حجیم در پروندهٔ پرسنلی.
   const response = await axiosInstance.post('/documents/', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 5 * 60 * 1000,
   });
   return response.data;
 };
@@ -28,7 +31,7 @@ const deleteDocument = async (id) => {
 
 export const useDocuments = (employeeId) => {
   return useQuery({
-    queryKey: ['documents', employeeId],
+    queryKey: ['documents', String(employeeId ?? '')],
     queryFn: () => fetchDocsByEmployee(employeeId),
     enabled: hasNumericId(employeeId),
   });
@@ -47,10 +50,15 @@ export const useUploadDocument = () => {
   return useMutation({
     mutationFn: uploadDocument,
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['documents', data.employee] });
+      // شناسهٔ پرسنل ممکن است رشته یا عدد باشد؛ کلیدها نرمال‌شده‌اند و
+      // پیشوند ['documents'] همهٔ فهرست‌های مدارک را تازه می‌کند.
+      if (data?.employee) {
+        queryClient.invalidateQueries({ queryKey: ['documents', String(data.employee)] });
+      }
       queryClient.invalidateQueries({ queryKey: ['documents'] });
       queryClient.invalidateQueries({ queryKey: ['company-documents'] });
       queryClient.invalidateQueries({ queryKey: ['dms-documents'] });
+      queryClient.invalidateQueries({ queryKey: ['dms-stats'] });
     },
   });
 };

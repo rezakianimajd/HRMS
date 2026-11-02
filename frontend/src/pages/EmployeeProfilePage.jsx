@@ -23,6 +23,7 @@ import StatusBadge from '../core/components/ui/StatusBadge';
 import BasicInfoTab from '../core/components/employee/BasicInfoTab';
 import EmploymentTab from '../core/components/employee/EmploymentTab';
 import DocumentsTab from '../core/components/employee/DocumentsTab';
+import FamilyTab from '../core/components/employee/FamilyTab';
 import ReceiptsTab from '../core/components/employee/ReceiptsTab';
 import WorkRecordTab from '../core/components/employee/WorkRecordTab';
 import EmploymentHistoryTab from '../core/components/employee/EmploymentHistoryTab';
@@ -175,6 +176,7 @@ const EmployeeProfilePage = () => {
           <Tab label="نمای کلی" />
           <Tab label="تایملاین" />
           <Tab label="اطلاعات فردی" />
+          <Tab label="خانواده" />
           <Tab label="اطلاعات شغلی" />
           <Tab label="دریافتی‌ها" />
           <Tab label="کارکرد" />
@@ -185,11 +187,12 @@ const EmployeeProfilePage = () => {
           {tabIndex === 0 && <OverviewTab employeeId={e.id} />}
           {tabIndex === 1 && <TimelineTab employeeId={e.id} />}
           {tabIndex === 2 && <BasicInfoTab employee={e} />}
-          {tabIndex === 3 && <EmploymentTab employee={e} />}
-          {tabIndex === 4 && <ReceiptsTab employeeId={e.id} />}
-          {tabIndex === 5 && <WorkRecordTab employeeId={e.id} />}
-          {tabIndex === 6 && <EmploymentHistoryTab employeeId={e.id} />}
-          {tabIndex === 7 && <DocumentsTab employeeId={e.id} />}
+          {tabIndex === 3 && <FamilyTab employeeId={e.id} />}
+          {tabIndex === 4 && <EmploymentTab employee={e} />}
+          {tabIndex === 5 && <ReceiptsTab employeeId={e.id} />}
+          {tabIndex === 6 && <WorkRecordTab employeeId={e.id} />}
+          {tabIndex === 7 && <EmploymentHistoryTab employeeId={e.id} />}
+          {tabIndex === 8 && <DocumentsTab employeeId={e.id} />}
         </Box>
       </Paper>
     </Box>

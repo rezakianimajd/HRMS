@@ -1079,6 +1079,120 @@ class SupplementaryInsuranceDependent(models.Model):
 
     def __str__(self):
         return f"{self.first_name} {self.last_name} ({self.get_relation_display()})"
+class EmployeeFamilyMember(BaseModel):
+    """عضو خانوادهٔ پرسنل — بخش «خانواده» در پروندهٔ پرسنلی.
+
+    اعضای خانوادهٔ ثبت‌شده در بیمهٔ تکمیلی (افراد تحت تکفل) به‌صورت خودکار
+    با `source=supplementary_insurance` و کلید یکتا (`source_key`) در همین
+    جدول بازتاب داده می‌شوند تا از ثبت تکراری جلوگیری شود.
+    """
+
+    class Relation(models.TextChoices):
+        SPOUSE = 'spouse', _('همسر')
+        CHILD = 'child', _('فرزند')
+        FATHER = 'father', _('پدر')
+        MOTHER = 'mother', _('مادر')
+        SIBLING = 'sibling', _('خواهر / برادر')
+        OTHER = 'other', _('سایر')
+
+    class Source(models.TextChoices):
+        MANUAL = 'manual', _('ثبت دستی')
+        SUPPLEMENTARY_INSURANCE = 'supplementary_insurance', _('بیمه تکمیلی')
+
+    employee = models.ForeignKey(
+        Employee,
+        on_delete=models.CASCADE,
+        related_name='family_members',
+        verbose_name=_('پرسنل'),
+    )
+    first_name = models.CharField(
+        max_length=100,
+        verbose_name=_('نام'),
+    )
+    last_name = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name=_('نام خانوادگی'),
+    )
+    relation = models.CharField(
+        max_length=20,
+        choices=Relation.choices,
+        default=Relation.SPOUSE,
+        verbose_name=_('نسبت'),
+    )
+    national_id = models.CharField(
+        max_length=10,
+        blank=True,
+        null=True,
+        verbose_name=_('کد ملی'),
+        help_text=_('کد ملی ده‌رقمی (اختیاری)'),
+    )
+    birth_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name=_('تاریخ تولد'),
+    )
+    phone = models.CharField(
+        max_length=25,
+        blank=True,
+        null=True,
+        verbose_name=_('تلفن همراه'),
+    )
+    is_dependent = models.BooleanField(
+        default=True,
+        verbose_name=_('تحت تکفل'),
+        help_text=_('آیا این عضو خانواده تحت تکفل پرسنل است؟'),
+    )
+    source = models.CharField(
+        max_length=30,
+        choices=Source.choices,
+        default=Source.MANUAL,
+        verbose_name=_('منبع ثبت'),
+    )
+    source_key = models.CharField(
+        max_length=120,
+        blank=True,
+        null=True,
+        verbose_name=_('کلید منبع'),
+        help_text=_('برای جلوگیری از ثبت تکراری اعضای منتقل‌شده از بیمهٔ تکمیلی'),
+    )
+    notes = models.TextField(
+        blank=True,
+        null=True,
+        verbose_name=_('توضیحات'),
+    )
+
+    class Meta:
+        verbose_name = _('عضو خانواده')
+        verbose_name_plural = _('اعضای خانواده')
+        ordering = ['relation', 'first_name', 'last_name']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['employee', 'source_key'],
+                name='uniq_employee_family_source_key',
+            ),
+        ]
+
+    def __str__(self):
+        return f'{self.full_name} ({self.get_relation_display()})'
+
+    @property
+    def full_name(self):
+        return f'{self.first_name or ""} {self.last_name or ""}'.strip()
+
+    @property
+    def age(self):
+        if not self.birth_date:
+            return None
+        today = date.today()
+        years = today.year - self.birth_date.year
+        if (today.month, today.day) < (self.birth_date.month, self.birth_date.day):
+            years -= 1
+        return years if years >= 0 else None
+
+
+
 
 
 class HRRequest(BaseModel):
