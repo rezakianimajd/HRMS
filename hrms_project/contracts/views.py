@@ -1,11 +1,15 @@
 """Views for the Contracts module."""
+from decimal import Decimal
+
 from django.db import transaction
+from django.db.models import Sum, Value, DecimalField
+from django.db.models.functions import Coalesce
 from rest_framework import viewsets, filters, parsers
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment, PaymentAttachment, ContractDispute,
+    Addendum, Guarantee, Payment, PaymentAttachment, PaymentAllocation, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
@@ -30,6 +34,14 @@ from contracts.statement_totals import recalculate_contract_statements
 
 def _company(request):
     return getattr(request, 'tenant', None) or getattr(request, 'company', None)
+
+
+# جمع مبالغ تخصیص‌یافتهٔ هر سند (صورت‌وضعیت / فاکتور) — بدون کوئری اضافه در لیست‌ها.
+PAID_SUM = Coalesce(
+    Sum('payment_allocations__amount'),
+    Value(Decimal('0')),
+    output_field=DecimalField(max_digits=18, decimal_places=0),
+)
 
 
 class BaseContractViewSet(viewsets.ModelViewSet):
@@ -97,6 +109,8 @@ class ContractViewSet(BaseContractViewSet):
         ).prefetch_related(
             'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
             'guarantees', 'guarantees__documents', 'payments', 'disputes', 'audit_logs',
+            'statements__payment_allocations', 'invoices__payment_allocations',
+            'payments__allocations',
         )
         party_id = self.request.query_params.get('party')
         if party_id:
@@ -298,6 +312,7 @@ class InvoiceViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.annotate(paid_sum=PAID_SUM)
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
@@ -315,6 +330,7 @@ class StatementViewSet(BaseContractViewSet):
 
     def get_queryset(self):
         qs = super().get_queryset()
+        qs = qs.annotate(paid_sum=PAID_SUM)
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
@@ -471,7 +487,9 @@ class PaymentViewSet(BaseContractViewSet):
     serializer_class = PaymentSerializer
     queryset = Payment.objects.select_related(
         'contract', 'currency', 'invoice', 'statement', 'statement__currency',
-    ).prefetch_related('attachments')
+    ).prefetch_related(
+        'attachments', 'allocations', 'allocations__statement', 'allocations__invoice',
+    )
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['reference', 'method', 'note', 'contract__subject', 'invoice__number', 'statement__number']
     ordering = ['-date']
@@ -484,12 +502,18 @@ class PaymentViewSet(BaseContractViewSet):
         return qs
 
     def perform_create(self, serializer):
-        obj = serializer.save(company=_company(self.request))
+        with transaction.atomic():
+            obj = serializer.save(company=_company(self.request))
         try:
             from accounting.integrations import enqueue_contract_payment
             enqueue_contract_payment(_company(self.request), obj)
         except Exception:
             pass
+        return obj
+
+    def perform_update(self, serializer):
+        with transaction.atomic():
+            obj = serializer.save()
         return obj
 
 

@@ -205,23 +205,18 @@ test('contract payments page renders financial summary, linked details and detai
   expect(document.body.textContent).toContain('ثبت پرداخت عادی جدید');
   expect(document.body.textContent).toContain('پیوست فایل‌ها');
   expect(document.body.textContent).toContain('انتخاب فایل پیوست');
+  expect(document.body.textContent).toContain('تخصیص به صورت‌وضعیت و فاکتور');
+  expect(document.body.textContent).toContain('صورت‌وضعیت‌ها');
+  expect(document.body.textContent).toContain('فاکتورها');
+  expect(document.body.textContent).toContain('خلاصهٔ پرداخت');
 
-  const typeInput = Array.from(document.querySelectorAll('input'))
-    .find((element) => element.value === 'normal');
-  expect(typeInput).toBeTruthy();
-  const typeSelect = typeInput.closest('.MuiInputBase-root')?.querySelector('[role="combobox"]')
-    || typeInput;
-  await act(async () => {
-    typeSelect.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true, button: 0 }));
-    await wait(180);
-  });
-  const advanceOption = Array.from(document.querySelectorAll('[role="option"]'))
-    .find((element) => element.textContent.includes('پیش‌پرداخت'));
-  expect(advanceOption).toBeTruthy();
-  await act(async () => { advanceOption.click(); await wait(220); });
+  const advanceToggle = Array.from(document.querySelectorAll('.MuiDialog-root button'))
+    .find((element) => element.textContent.trim() === 'پیش‌پرداخت');
+  expect(advanceToggle).toBeTruthy();
+  await act(async () => { advanceToggle.click(); await wait(220); });
   expect(document.body.textContent).toContain('ثبت پیش‌پرداخت جدید');
-  expect(document.body.textContent).toContain('به صورت‌وضعیت متصل نمی‌شود');
-  expect(document.body.textContent).not.toContain('صورت‌وضعیت مرتبط');
+  expect(document.body.textContent).not.toContain('تخصیص به صورت‌وضعیت و فاکتور');
+  expect(document.body.textContent).not.toContain('صورت‌وضعیت‌ها');
 
   const cancelButton = Array.from(document.querySelectorAll('button'))
     .find((element) => element.textContent.trim() === 'انصراف');

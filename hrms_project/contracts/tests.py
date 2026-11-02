@@ -1003,3 +1003,109 @@ class ContractSerializerFieldContractTests(SimpleTestCase):
         self.assertEqual(serializer.validated_data['category'], 'پیمانی')
         self.assertEqual(serializer.validated_data['project_name'], 'فاز ۲ توسعه')
 
+
+class PaymentAllocationLogicTests(SimpleTestCase):
+    """منطق تخصیص پرداخت به چند صورت‌وضعیت/فاکتور و محاسبهٔ مانده (بدون دیتابیس)."""
+
+    @staticmethod
+    def _statement(pk=1, contract_id=7):
+        return Statement(pk=pk, contract_id=contract_id, amount=10_000_000, net_amount=9_000_000)
+
+    @staticmethod
+    def _invoice(pk=2, contract_id=7):
+        return Invoice(pk=pk, contract_id=contract_id, amount=4_000_000, total=4_400_000)
+
+    def test_allocation_requires_exactly_one_target(self):
+        from rest_framework.serializers import ValidationError
+        from contracts.serializers import PaymentSerializer
+
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations(
+                [{'statement': self._statement(), 'invoice': self._invoice(), 'amount': 1000}], None,
+            )
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations([{'statement': None, 'invoice': None, 'amount': 1000}], None)
+
+    def test_duplicate_and_negative_rows_are_rejected(self):
+        from rest_framework.serializers import ValidationError
+        from contracts.serializers import PaymentSerializer
+
+        statement = self._statement()
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations(
+                [
+                    {'statement': statement, 'invoice': None, 'amount': 100},
+                    {'statement': statement, 'invoice': None, 'amount': 200},
+                ],
+                None,
+            )
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations([{'statement': statement, 'invoice': None, 'amount': -5}], None)
+
+    def test_target_must_belong_to_same_contract(self):
+        from rest_framework.serializers import ValidationError
+        from contracts.serializers import PaymentSerializer
+
+        contract = SimpleNamespace(pk=7)
+        foreign = self._statement(pk=9, contract_id=99)
+        with self.assertRaises(ValidationError):
+            PaymentSerializer._validate_allocations([{'statement': foreign, 'invoice': None, 'amount': 1}], contract)
+
+    def test_valid_rows_are_cleaned_and_amounts_are_decimal(self):
+        from contracts.serializers import PaymentSerializer
+
+        contract = SimpleNamespace(pk=7)
+        cleaned = PaymentSerializer._validate_allocations(
+            [
+                {'statement': self._statement(), 'invoice': None, 'amount': '1500000'},
+                {'statement': None, 'invoice': self._invoice(), 'amount': 500000},
+            ],
+            contract,
+        )
+        self.assertEqual(len(cleaned), 2)
+        self.assertEqual(cleaned[0]['amount'], Decimal('1500000'))
+        self.assertEqual(cleaned[0]['statement'].pk, 1)
+        self.assertIsNone(cleaned[0]['invoice'])
+        self.assertEqual(cleaned[1]['invoice'].pk, 2)
+
+    def test_payable_amounts_fall_back_to_gross_values(self):
+        from contracts.serializers import invoice_payable_amount, statement_payable_amount
+
+        self.assertEqual(statement_payable_amount(self._statement()), Decimal('9000000'))
+        self.assertEqual(
+            statement_payable_amount(Statement(pk=3, contract_id=7, amount=5_000_000, net_amount=0)),
+            Decimal('5000000'),
+        )
+        self.assertEqual(invoice_payable_amount(self._invoice()), Decimal('4400000'))
+        self.assertEqual(invoice_payable_amount(Invoice(pk=4, contract_id=7, amount=900, total=0)), Decimal('900'))
+
+    def test_allocated_amount_uses_prefetch_cache(self):
+        from contracts.serializers import _allocated_amount
+
+        statement = self._statement()
+        statement._prefetched_objects_cache = {
+            'payment_allocations': [
+                SimpleNamespace(amount=Decimal('1000')),
+                SimpleNamespace(amount=Decimal('2500')),
+            ],
+        }
+        self.assertEqual(_allocated_amount(statement), Decimal('3500'))
+
+    def test_serializers_expose_allocation_and_remaining_fields(self):
+        from contracts.serializers import InvoiceSerializer, PaymentSerializer, StatementSerializer
+
+        self.assertIn('allocations', PaymentSerializer().fields)
+        self.assertIn('allocated_amount', PaymentSerializer().fields)
+        for field in ('payable_amount', 'paid_amount', 'remaining_amount'):
+            self.assertIn(field, StatementSerializer().fields)
+            self.assertIn(field, InvoiceSerializer().fields)
+
+    def test_advance_payment_type_clears_allocations(self):
+        from contracts.serializers import PaymentSerializer
+
+        serializer = PaymentSerializer(data={'payment_type': Payment.Type.ADVANCE}, partial=True)
+        self.assertTrue(serializer.is_valid(), serializer.errors)
+        self.assertEqual(serializer.validated_data['allocations'], [])
+        self.assertIsNone(serializer.validated_data['statement'])
+
+

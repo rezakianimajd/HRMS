@@ -650,6 +650,62 @@ class Payment(BaseModel):
         return f'{self.date} - {self.amount}'
 
 
+class PaymentAllocation(BaseModel):
+    """تخصیص یک پرداخت به صورت‌وضعیت یا فاکتور.
+
+    یک پرداخت می‌تواند به چند صورت‌وضعیت / فاکتور تخصیص یابد (پرداخت عادی و
+    علی‌الحساب). «مانده» هر سند از جمع همین تخصیص‌ها محاسبه می‌شود، پس این
+    جدول **منبع یگانهٔ** مبالغ پرداخت‌شدهٔ اسناد است؛ کلیدهای `Payment.statement`
+    و `Payment.invoice` فقط برای سازگاری با داده/کلاینت قدیمی نگه داشته شده‌اند.
+    """
+
+    payment = models.ForeignKey(
+        Payment, on_delete=models.CASCADE, related_name='allocations',
+        verbose_name=_('پرداخت'),
+    )
+    statement = models.ForeignKey(
+        Statement, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='payment_allocations', verbose_name=_('صورت‌وضعیت'),
+    )
+    invoice = models.ForeignKey(
+        Invoice, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='payment_allocations', verbose_name=_('فاکتور'),
+    )
+    amount = models.DecimalField(
+        max_digits=18, decimal_places=0, default=0,
+        verbose_name=_('مبلغ تخصیص (ریال)'),
+    )
+
+    class Meta:
+        verbose_name = _('تخصیص پرداخت')
+        verbose_name_plural = _('تخصیص‌های پرداخت')
+        ordering = ['id']
+        constraints = [
+            models.CheckConstraint(
+                check=models.Q(statement__isnull=False) | models.Q(invoice__isnull=False),
+                name='payment_alloc_target_required',
+            ),
+            models.CheckConstraint(
+                check=models.Q(statement__isnull=True) | models.Q(invoice__isnull=True),
+                name='payment_alloc_single_target',
+            ),
+            models.UniqueConstraint(
+                fields=['payment', 'statement'],
+                condition=models.Q(statement__isnull=False),
+                name='payment_alloc_unique_statement',
+            ),
+            models.UniqueConstraint(
+                fields=['payment', 'invoice'],
+                condition=models.Q(invoice__isnull=False),
+                name='payment_alloc_unique_invoice',
+            ),
+        ]
+
+    def __str__(self):
+        target = self.statement or self.invoice
+        return f'{self.payment_id} → {target} ({self.amount})'
+
+
 def payment_attachment_upload_path(instance, filename):
     """مسیر فایل پیوست پرداخت در بایگانی قرارداد."""
     from core.engines.archive_storage_engine import resolve_upload_path

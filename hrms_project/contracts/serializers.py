@@ -6,7 +6,7 @@ from django.db.models import Sum
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment, PaymentAttachment, ContractDispute,
+    Addendum, Guarantee, Payment, PaymentAttachment, PaymentAllocation, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
@@ -14,6 +14,45 @@ from contracts.models import (
 )
 from contracts.accounting_mapping import account_brief, mapping_payload, missing_fields
 from contracts.numbering import normalize_statement_number
+
+
+# ---------------------------------------------------------------------------
+# مبالغ پرداخت‌شده و ماندهٔ اسناد
+# «تخصیص‌های پرداخت» منبع یگانهٔ مبلغ پرداخت‌شدهٔ هر صورت‌وضعیت/فاکتور هستند؛
+# نمای‌های لیست با annotate(paid_sum=...) این مقدار را بدون کوئری اضافه می‌دهند
+# و در بقیهٔ مسیرها (مثلاً تو در توی قرارداد) یک aggregate ساده استفاده می‌شود.
+# ---------------------------------------------------------------------------
+def _allocated_amount(obj, annotation='paid_sum'):
+    if obj is None:
+        return Decimal('0')
+    annotated = getattr(obj, annotation, None)
+    if annotated is not None:
+        return Decimal(str(annotated))
+    cache = getattr(obj, '_prefetched_objects_cache', None) or {}
+    rows = cache.get('payment_allocations')
+    if rows is not None:
+        return sum((row.amount or 0) for row in rows)
+    total = obj.payment_allocations.aggregate(total=Sum('amount'))['total']
+    return Decimal(str(total or 0))
+
+
+def statement_payable_amount(statement):
+    """مبلغ قابل پرداخت صورت‌وضعیت (خالص) با بازگشت به مبلغ تجمعی در داده‌های قدیمی."""
+    if statement is None:
+        return Decimal('0')
+    net = statement.net_amount
+    if net is None or Decimal(str(net)) == 0:
+        return Decimal(str(statement.amount or 0))
+    return Decimal(str(net))
+
+
+def invoice_payable_amount(invoice):
+    if invoice is None:
+        return Decimal('0')
+    total = getattr(invoice, 'total', None)
+    if total is None or Decimal(str(total)) == 0:
+        return Decimal(str(invoice.amount or 0))
+    return Decimal(str(total))
 
 
 class ContractTypeMasterSerializer(serializers.ModelSerializer):
@@ -168,6 +207,9 @@ class InvoiceSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    paid_amount = serializers.SerializerMethodField()
+    remaining_amount = serializers.SerializerMethodField()
+    payable_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -175,8 +217,18 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'id', 'contract', 'contract_subject', 'number', 'subject', 'date', 'due_date',
             'currency', 'currency_name', 'currency_symbol',
             'amount', 'vat', 'total', 'is_paid', 'description',
+            'payable_amount', 'paid_amount', 'remaining_amount',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_payable_amount(self, obj):
+        return invoice_payable_amount(obj)
+
+    def get_paid_amount(self, obj):
+        return _allocated_amount(obj)
+
+    def get_remaining_amount(self, obj):
+        return invoice_payable_amount(obj) - _allocated_amount(obj)
 
 
 # ---------------------------------------------------------------------------
@@ -281,6 +333,9 @@ class StatementSerializer(serializers.ModelSerializer):
         max_digits=18, decimal_places=4, read_only=True,
     )
     documents = ContractDocumentSerializer(many=True, read_only=True)
+    paid_amount = serializers.SerializerMethodField()
+    remaining_amount = serializers.SerializerMethodField()
+    payable_amount = serializers.SerializerMethodField()
 
     class Meta:
         model = Statement
@@ -295,12 +350,22 @@ class StatementSerializer(serializers.ModelSerializer):
             'value_added_tax', 'other_additions',
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
+            'payable_amount', 'paid_amount', 'remaining_amount',
             'levels',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'currency_exchange_rate',
             'is_approved', 'description', 'documents',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def get_payable_amount(self, obj):
+        return statement_payable_amount(obj)
+
+    def get_paid_amount(self, obj):
+        return _allocated_amount(obj)
+
+    def get_remaining_amount(self, obj):
+        return statement_payable_amount(obj) - _allocated_amount(obj)
 
     def validate_exchange_rate(self, value):
         if value is None:
@@ -962,6 +1027,68 @@ class PaymentAttachmentSerializer(serializers.ModelSerializer):
         return value
 
 
+class PaymentAllocationSerializer(serializers.ModelSerializer):
+    """یک ردیف تخصیص پرداخت به صورت‌وضعیت یا فاکتور."""
+
+    statement_number = serializers.CharField(source='statement.number', read_only=True)
+    statement_kind = serializers.CharField(source='statement.kind', read_only=True)
+    statement_amount = serializers.DecimalField(
+        source='statement.amount', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_net_amount = serializers.DecimalField(
+        source='statement.net_amount', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    statement_payable_amount = serializers.SerializerMethodField()
+    invoice_number = serializers.CharField(source='invoice.number', read_only=True)
+    invoice_subject = serializers.CharField(source='invoice.subject', read_only=True)
+    invoice_total = serializers.DecimalField(
+        source='invoice.total', max_digits=18, decimal_places=0,
+        read_only=True, allow_null=True,
+    )
+    invoice_payable_amount = serializers.SerializerMethodField()
+    target_type = serializers.SerializerMethodField()
+    title = serializers.SerializerMethodField()
+
+    class Meta:
+        model = PaymentAllocation
+        fields = [
+            'id', 'payment', 'statement', 'invoice', 'amount',
+            'statement_number', 'statement_kind', 'statement_amount', 'statement_net_amount',
+            'statement_payable_amount', 'invoice_number', 'invoice_subject', 'invoice_total',
+            'invoice_payable_amount', 'target_type', 'title',
+        ]
+        read_only_fields = [
+            'id', 'company', 'payment',
+            'statement_number', 'statement_kind', 'statement_amount', 'statement_net_amount',
+            'statement_payable_amount', 'invoice_number', 'invoice_subject', 'invoice_total',
+            'invoice_payable_amount', 'target_type', 'title',
+        ]
+
+    def get_target_type(self, obj):
+        if obj.statement_id:
+            return 'statement'
+        if obj.invoice_id:
+            return 'invoice'
+        return None
+
+    def get_title(self, obj):
+        statement = getattr(obj, 'statement', None)
+        if statement:
+            return statement.number or f'صورت‌وضعیت #{statement.pk}'
+        invoice = getattr(obj, 'invoice', None)
+        if invoice:
+            return invoice.number or invoice.subject or f'فاکتور #{invoice.pk}'
+        return '—'
+
+    def get_statement_payable_amount(self, obj):
+        return statement_payable_amount(getattr(obj, 'statement', None))
+
+    def get_invoice_payable_amount(self, obj):
+        return invoice_payable_amount(getattr(obj, 'invoice', None))
+
+
 class PaymentSerializer(serializers.ModelSerializer):
     currency_name = serializers.CharField(source='currency.name', read_only=True)
     currency_symbol = serializers.CharField(source='currency.symbol', read_only=True)
@@ -1002,6 +1129,11 @@ class PaymentSerializer(serializers.ModelSerializer):
     statement_currency_name = serializers.SerializerMethodField()
     attachments = PaymentAttachmentSerializer(many=True, read_only=True)
     attachment_count = serializers.SerializerMethodField()
+    allocations = PaymentAllocationSerializer(many=True, required=False)
+    allocated_amount = serializers.SerializerMethodField()
+
+    def get_allocated_amount(self, obj):
+        return sum((row.amount or 0) for row in obj.allocations.all())
 
     def get_statement_kind(self, obj):
         statement = getattr(obj, 'statement', None)
@@ -1016,15 +1148,119 @@ class PaymentSerializer(serializers.ModelSerializer):
         currency = getattr(statement, 'currency', None) if statement else None
         return getattr(currency, 'name', '') or ''
 
+    # ---------------- اعتبارسنجی و همگام‌سازی تخصیص‌ها ----------------
+    @staticmethod
+    def _validate_allocations(rows, contract):
+        cleaned = []
+        seen = set()
+        for row in rows or []:
+            statement = row.get('statement')
+            invoice = row.get('invoice')
+            if bool(statement) == bool(invoice):
+                raise serializers.ValidationError(
+                    'هر تخصیص باید دقیقاً به یک صورت‌وضعیت یا یک فاکتور اشاره کند.',
+                )
+            if contract:
+                if statement and statement.contract_id != contract.pk:
+                    raise serializers.ValidationError('صورت‌وضعیت انتخاب‌شده به این قرارداد تعلق ندارد.')
+                if invoice and invoice.contract_id != contract.pk:
+                    raise serializers.ValidationError('فاکتور انتخاب‌شده به این قرارداد تعلق ندارد.')
+            key = ('statement', statement.pk) if statement else ('invoice', invoice.pk)
+            if key in seen:
+                raise serializers.ValidationError('یک سند نمی‌تواند دو بار در تخصیص‌ها تکرار شود.')
+            seen.add(key)
+            amount = Decimal(str(row.get('amount') or 0))
+            if amount < 0:
+                raise serializers.ValidationError('مبلغ تخصیص نمی‌تواند منفی باشد.')
+            cleaned.append({'statement': statement, 'invoice': invoice, 'amount': amount})
+        return cleaned
+
+    @staticmethod
+    def _sync_allocations(payment, rows):
+        """تخصیص‌ها را از نو می‌سازد و کلیدهای تک‌مقداری قدیمی را همگام می‌کند."""
+        payment.allocations.all().delete()
+        created = [
+            PaymentAllocation(
+                company_id=payment.company_id, payment=payment,
+                statement=row.get('statement'), invoice=row.get('invoice'),
+                amount=row.get('amount') or 0,
+            )
+            for row in rows or []
+        ]
+        if created:
+            PaymentAllocation.objects.bulk_create(created)
+
+        first_statement = next((row.get('statement') for row in rows or [] if row.get('statement')), None)
+        first_invoice = next((row.get('invoice') for row in rows or [] if row.get('invoice')), None)
+        if payment.statement_id != getattr(first_statement, 'pk', None) \
+                or payment.invoice_id != getattr(first_invoice, 'pk', None):
+            payment.statement = first_statement
+            payment.invoice = first_invoice
+            payment.save(update_fields=['statement', 'invoice', 'updated_at'])
+
+    def _sync_legacy_target(self, payment):
+        """کلاینت قدیمی فقط `statement`/`invoice` می‌فرستد؛ یک تخصیص معادل ساخته می‌شود."""
+        statement = payment.statement if payment.statement_id else None
+        invoice = payment.invoice if payment.invoice_id else None
+        if payment.payment_type == Payment.Type.ADVANCE or not (statement or invoice):
+            payment.allocations.all().delete()
+            return
+        amount = payment.amount or 0
+        rows = payment.allocations.all()
+        single = rows.first() if rows.count() == 1 else None
+        if single is None:
+            rows.delete()
+            PaymentAllocation.objects.create(
+                company_id=payment.company_id, payment=payment,
+                statement=statement, invoice=invoice, amount=amount,
+            )
+        elif single.amount != amount \
+                or single.statement_id != getattr(statement, 'pk', None) \
+                or single.invoice_id != getattr(invoice, 'pk', None):
+            single.statement = statement
+            single.invoice = invoice
+            single.amount = amount
+            single.save(update_fields=['statement', 'invoice', 'amount', 'updated_at'])
+
     def validate(self, attrs):
         payment_type = attrs.get(
             'payment_type',
             getattr(self.instance, 'payment_type', Payment.Type.NORMAL),
         )
-        if payment_type != Payment.Type.NORMAL:
-            # پیش‌پرداخت و علی‌الحساب به صورت‌وضعیت متصل نمی‌شوند.
+        contract = attrs.get('contract', getattr(self.instance, 'contract', None))
+        if payment_type == Payment.Type.ADVANCE:
+            # پیش‌پرداخت به صورت‌وضعیت/فاکتور تخصیص نمی‌یابد.
             attrs['statement'] = None
+            attrs['allocations'] = []
+            return attrs
+
+        if 'allocations' in attrs:
+            attrs['allocations'] = self._validate_allocations(attrs.get('allocations'), contract)
+        for field in ('statement', 'invoice'):
+            target = attrs.get(field)
+            if target is not None and contract and target.contract_id != contract.pk:
+                raise serializers.ValidationError({field: 'این سند به قرارداد انتخابی تعلق ندارد.'})
         return attrs
+
+    def create(self, validated_data):
+        allocations = validated_data.pop('allocations', None)
+        payment = Payment.objects.create(**validated_data)
+        if allocations is None:
+            self._sync_legacy_target(payment)
+        else:
+            self._sync_allocations(payment, allocations)
+        return payment
+
+    def update(self, instance, validated_data):
+        allocations = validated_data.pop('allocations', None)
+        for field, value in validated_data.items():
+            setattr(instance, field, value)
+        instance.save()
+        if allocations is None:
+            self._sync_legacy_target(instance)
+        else:
+            self._sync_allocations(instance, allocations)
+        return instance
 
     class Meta:
         model = Payment
@@ -1039,9 +1275,13 @@ class PaymentSerializer(serializers.ModelSerializer):
             'date', 'currency', 'currency_name', 'currency_symbol',
             'payment_type', 'payment_type_display',
             'amount', 'reference', 'method', 'note',
+            'allocations', 'allocated_amount',
             'attachments', 'attachment_count',
         ]
-        read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at', 'attachments', 'attachment_count']
+        read_only_fields = [
+            'id', 'company', 'is_active', 'created_at', 'updated_at',
+            'attachments', 'attachment_count', 'allocated_amount',
+        ]
 
     def get_attachment_count(self, obj):
         return obj.attachments.count()

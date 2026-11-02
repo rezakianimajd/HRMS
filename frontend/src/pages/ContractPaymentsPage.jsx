@@ -2,20 +2,17 @@
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert, Avatar, Box, Button, Chip, CircularProgress, Dialog,
-  DialogActions, DialogContent, DialogTitle, Divider, Drawer, FormControl,
-  Grid, IconButton, InputLabel, MenuItem, Paper, Select,
-  Snackbar, Stack, Table,
-  TextField, Tooltip, Typography, alpha,
+  Alert, Box, Button, Chip, CircularProgress, Dialog,
+  DialogActions, DialogContent, DialogTitle, Divider, Drawer,
+  IconButton, Paper,
+  Snackbar, Stack,
+  Tooltip, Typography, alpha,
 } from '@mui/material';
 import PaymentsOutlinedIcon from '@mui/icons-material/PaymentsOutlined';
 import AddRoundedIcon from '@mui/icons-material/AddRounded';
 import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import AccountBalanceWalletOutlinedIcon from '@mui/icons-material/AccountBalanceWalletOutlined';
 import DescriptionOutlinedIcon from '@mui/icons-material/DescriptionOutlined';
-import CalendarMonthOutlinedIcon from '@mui/icons-material/CalendarMonthOutlined';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import RefreshOutlinedIcon from '@mui/icons-material/RefreshOutlined';
 import DownloadOutlinedIcon from '@mui/icons-material/DownloadOutlined';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
@@ -26,9 +23,7 @@ import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutl
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import axiosInstance from '../core/api/axiosConfig';
 import PageHeader from '../core/components/ui/PageHeader';
-import JalaliDatePicker from '../core/components/ui/JalaliDatePicker';
-import MoneyInput from '../core/components/ui/MoneyInput';
-import { INK, MUTED, SOFT_BG } from './accounting/AccountingDashboardUI';
+import { INK, MUTED } from './accounting/AccountingDashboardUI';
 import { formatPersianNumber, formatStatementNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
 import { getJalaliParts, toJalali } from '../core/utils/dateUtils';
 import {
@@ -37,6 +32,9 @@ import {
 } from '../core/theme/tokens';
 import { contractRateOf } from './contracts/contractFinanceSummary';
 import { adjustmentSummaryOf, statementDisplayTitle, statementKindOf } from './contracts/statementKinds';
+import ContractPaymentEditorDialog from './contracts/ContractPaymentEditorDialog';
+import { PAYMENT_TYPES, paymentTypeOf } from './contracts/paymentTypes';
+import { allocationsFromPayment, allocationsPayload, numOf } from './contracts/paymentAllocations';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
   useModuleTableState, useModuleTheme, useRowHeight,
@@ -48,47 +46,13 @@ const BLUE = '#2563eb';
 const VIOLET = '#7c3aed';
 const AMBER = '#b45309';
 const GREEN = '#15803d';
-const RED = '#be123c';
 const SLATE = '#475569';
 const PALETTE = [TEAL, BLUE, VIOLET, AMBER, '#0e7490', '#be185d', '#4f46e5', '#15803d'];
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
 
-const PAYMENT_TYPES = [
-  {
-    key: 'normal',
-    label: 'پرداخت عادی',
-    shortLabel: 'عادی',
-    color: TEAL,
-    hint: 'پرداخت بر اساس صورت‌وضعیت، فاکتور یا به‌صورت عمومی.',
-  },
-  {
-    key: 'advance',
-    label: 'پیش‌پرداخت',
-    shortLabel: 'پیش‌پرداخت',
-    color: AMBER,
-    hint: 'پرداخت قبل از انجام کار یا پیش از ثبت صورت‌وضعیت؛ به صورت‌وضعیت متصل نمی‌شود.',
-  },
-  {
-    key: 'on_account',
-    label: 'علی‌الحساب',
-    shortLabel: 'علی‌الحساب',
-    color: VIOLET,
-    hint: 'پرداخت بدون تخصیص به صورت‌وضعیت مشخص؛ برای تسویه/تخصیص در آینده.',
-  },
-];
-
-const PAYMENT_TYPE_META = PAYMENT_TYPES.reduce((acc, item) => {
-  acc[item.key] = item;
-  return acc;
-}, {});
-
-const paymentTypeOf = (row = {}) => (
-  PAYMENT_TYPE_META[row?.payment_type] || PAYMENT_TYPE_META.normal
-);
-
 const EMPTY = {
   id: null, contract: '', invoice: '', statement: '', date: '', currency: '',
-  amount: '', payment_type: 'normal', reference: '', method: '', note: '',
+  amount: '', payment_type: 'normal', reference: '', method: '', note: '', allocations: [],
 };
 
 const num = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
@@ -224,6 +188,45 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
             <Divider />
             <Box sx={{ my: 1.8 }}>
               <SectionHeading icon={LinkOutlinedIcon} title="پیوندهای پرونده" color={VIOLET} />
+              {asArray(row.allocations).length ? (
+                <Box sx={{ mb: 0.9 }}>
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.4 }}>
+                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>تخصیص این پرداخت</Typography>
+                    <Chip
+                      size="small"
+                      label={`${formatPersianNumber(asArray(row.allocations).length)} سند`}
+                      sx={{ height: 19, fontSize: 10, fontWeight: 800, bgcolor: alpha(VIOLET, 0.1), color: VIOLET }}
+                    />
+                  </Stack>
+                  <Stack spacing={0.4}>
+                    {asArray(row.allocations).map((allocation) => (
+                      <Stack
+                        key={allocation.id}
+                        direction="row"
+                        alignItems="center"
+                        spacing={0.7}
+                        sx={{ p: 0.55, px: 0.8, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}
+                      >
+                        <Chip
+                          size="small"
+                          label={allocation.target_type === 'invoice' ? 'فاکتور' : 'صورت‌وضعیت'}
+                          sx={{
+                            height: 18, fontSize: 9.5, fontWeight: 800,
+                            bgcolor: alpha(allocation.target_type === 'invoice' ? BLUE : VIOLET, 0.09),
+                            color: allocation.target_type === 'invoice' ? BLUE : VIOLET,
+                          }}
+                        />
+                        <Typography noWrap sx={{ flex: 1, minWidth: 0, fontSize: 11.5, fontWeight: 700, color: INK }}>
+                          {allocation.title || '—'}
+                        </Typography>
+                        <Typography sx={{ fontSize: 11.5, fontWeight: 900, color: VIOLET, direction: 'rtl' }}>
+                          {formatPersianNumber(allocation.amount || 0)}
+                        </Typography>
+                      </Stack>
+                    ))}
+                  </Stack>
+                </Box>
+              ) : null}
               <InfoLine label="فاکتور مرتبط" value={row.invoice_number || '—'} />
               <InfoLine label="صورت‌وضعیت / تعدیل مرتبط" value={paymentStatementTitle(row) || '—'} />
               {row.statement_amount ? (
@@ -308,322 +311,6 @@ const PaymentDetailDrawer = ({ payment, currency, contractRate = 1, contract, on
   );
 };
 
-
-const PaymentEditorDialog = ({
-  open, onClose, form, setForm, invoiceList, statementList, currencyList,
-  fallbackCurrency, error, saving, onSave, pendingFiles = [], existingAttachments = [],
-  onPickFiles, onRemovePending, onDeleteAttachment, attachmentBusy, contract, uploading,
-}) => {
-  const selectedCurrency = currencyList.find((item) => String(item.id) === String(form.currency));
-  const label = normalizeCurrencyLabel(selectedCurrency?.name || fallbackCurrency);
-  const typeMeta = paymentTypeOf(form);
-  const isNormalType = typeMeta.key === 'normal';
-  const referenceRate = Number(selectedCurrency?.exchange_rate) > 1 ? Number(selectedCurrency.exchange_rate) : 1;
-  const selectedStatement = statementList.find((item) => String(item.id) === String(form.statement));
-  const selectedKind = statementKindOf(selectedStatement);
-  const selectedAdjustmentAmount = Number(selectedStatement?.adjustment_amount || 0);
-  const hideReferenceForeign = Boolean(selectedStatement) && statementInfo(
-    { ...selectedStatement, statement: selectedStatement.id }, 1, label,
-  ).isRialStatement;
-  const referenceForeign = referenceRate > 1 && !hideReferenceForeign ? num(form.amount) / referenceRate : null;
-  const selectedStatementInfo = statementInfo(
-    selectedStatement ? { ...selectedStatement, statement: selectedStatement.id } : null,
-    1,
-    label,
-  );
-  const selectedStatementForeign = selectedStatementInfo.showForeign && selectedStatement?.amount
-    ? (selectedStatement.foreign_amount != null
-      ? num(selectedStatement.foreign_amount)
-      : num(selectedStatement.amount) / selectedStatementInfo.rate)
-    : null;
-  const selectedStatementNetForeign = selectedStatementInfo.showForeign && selectedStatement?.net_amount
-    ? num(selectedStatement.net_amount) / selectedStatementInfo.rate
-    : null;
-  const selectedStatementPayable = selectedStatement?.net_amount ?? selectedStatement?.amount;
-  return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{
-        display: 'flex', alignItems: 'center', gap: 1.2, px: 2.5, py: 1.7,
-        background: 'linear-gradient(120deg, rgba(15,118,110,0.13), rgba(37,99,235,0.06), rgba(255,255,255,0.5))',
-        borderBottom: `1px solid ${alpha(TEAL, 0.14)}`,
-      }}>
-        <Avatar sx={{ width: 42, height: 42, bgcolor: TEAL, color: '#fff' }}><PaymentsOutlinedIcon /></Avatar>
-        <Box sx={{ flex: 1 }}>
-          <Typography sx={{ fontSize: 13, fontWeight: 900, color: INK }}>
-            {form.id ? `ویرایش ${typeMeta.label}` : `ثبت ${typeMeta.label} جدید`}
-          </Typography>
-          <Typography sx={{ fontSize: 12, color: MUTED }}>{typeMeta.hint}</Typography>
-        </Box>
-        <IconButton onClick={onClose} size="small"><CloseOutlinedIcon /></IconButton>
-      </DialogTitle>
-
-      <DialogContent sx={{ p: 2.5, display: 'flex', flexDirection: 'column', gap: 1.8 }}>
-        <Box sx={{
-          display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1.4fr 1fr 1fr' }, gap: 0.8,
-          p: 1.1, borderRadius: '12px', bgcolor: SOFT_BG, border: '1px solid #e8eef2',
-        }}>
-          <Box>
-            <Typography sx={{ fontSize: 12, color: MUTED }}>قرارداد</Typography>
-            <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{contract?.subject || '—'}</Typography>
-          </Box>
-          <Box>
-            <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ پرداخت (ریال)</Typography>
-            <Typography sx={{ fontSize: 12, fontWeight: 900, color: TEAL }}>
-              {form.amount ? `${formatPersianNumber(form.amount)} ریال` : '—'}
-            </Typography>
-            {referenceForeign !== null ? (
-              <Typography sx={{ fontSize: 12, color: MUTED }}>≈ {formatPersianNumber(referenceForeign)} {label}</Typography>
-            ) : null}
-          </Box>
-          <Box>
-            <Typography sx={{ fontSize: 12, color: MUTED }}>پیوست‌ها</Typography>
-            <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
-              {formatPersianNumber(pendingFiles.length + existingAttachments.length)} فایل
-            </Typography>
-          </Box>
-        </Box>
-
-        {error ? <Alert severity="error" sx={{ borderRadius: '10px', fontSize: 12 }}>{error}</Alert> : null}
-
-        <Box>
-          <SectionHeading icon={CalendarMonthOutlinedIcon} title="اطلاعات اصلی" color={TEAL} />
-          <Grid container spacing={1.4}>
-            <Grid item xs={12} md={4}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>نوع پرداخت</InputLabel>
-                <Select value={form.payment_type || 'normal'} label="نوع پرداخت"
-                  onChange={(event) => {
-                    const nextType = event.target.value;
-                    setForm((previous) => ({
-                      ...previous,
-                      payment_type: nextType,
-                      ...(nextType === 'normal' ? {} : { statement: '' }),
-                    }));
-                  }}>
-                  {PAYMENT_TYPES.map((option) => (
-                    <MenuItem key={option.key} value={option.key}>{option.label}</MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-              <Typography sx={{ mt: 0.4, fontSize: 12, color: MUTED }}>{typeMeta.hint}</Typography>
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <JalaliDatePicker fullWidth label="تاریخ پرداخت" value={form.date} onChange={(value) => setForm((previous) => ({ ...previous, date: value }))} />
-            </Grid>
-            <Grid item xs={12} md={4}>
-              <FormControl size="small" fullWidth>
-                <InputLabel>فاکتور مرتبط</InputLabel>
-                <Select value={form.invoice || ''} label="فاکتور مرتبط" onChange={(event) => setForm((previous) => ({ ...previous, invoice: event.target.value }))}>
-                  <MenuItem value="">— بدون فاکتور —</MenuItem>
-                  {invoiceList.map((invoice) => <MenuItem key={invoice.id} value={invoice.id}>{invoice.number || invoice.subject || `فاکتور ${invoice.id}`}</MenuItem>)}
-                </Select>
-              </FormControl>
-            </Grid>
-            {isNormalType ? (
-              <Grid item xs={12}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>صورت‌وضعیت مرتبط</InputLabel>
-                  <Select value={form.statement || ''} label="صورت‌وضعیت مرتبط" onChange={(event) => setForm((previous) => ({ ...previous, statement: event.target.value }))}>
-                    <MenuItem value="">— بدون صورت‌وضعیت —</MenuItem>
-                    {statementList.map((statement) => {
-                      const info = statementInfo({ ...statement, statement: statement.id }, 1, label);
-                      const payable = statement.net_amount ?? statement.amount;
-                      const cumulativeForeign = info.showForeign && statement.amount
-                        ? (statement.foreign_amount != null
-                          ? num(statement.foreign_amount)
-                          : num(statement.amount) / info.rate)
-                        : null;
-                      return (
-                        <MenuItem key={statement.id} value={statement.id}>
-                          {statementDisplayTitle(statement) || `صورت‌وضعیت ${toPersianDigits(statement.id)}`} · قابل پرداخت {formatPersianNumber(payable || 0)} ریال
-                          {cumulativeForeign !== null ? ` · ${formatPersianNumber(cumulativeForeign)} ${info.currency}` : ''}
-                        </MenuItem>
-                      );
-                    })}
-                  </Select>
-                </FormControl>
-              </Grid>
-            ) : null}
-          </Grid>
-        </Box>
-        {selectedStatement ? (
-          <Box sx={{ p: 1.1, borderRadius: '12px', bgcolor: alpha(BLUE, 0.035), border: `1px solid ${alpha(BLUE, 0.13)}` }}>
-            <Stack direction="row" alignItems="center" spacing={0.8} sx={{ mb: 0.8 }}>
-              <LinkOutlinedIcon sx={{ fontSize: 17, color: BLUE }} />
-              <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 900, color: INK }}>
-                {statementDisplayTitle(selectedStatement) || toPersianDigits(selectedStatement.id)}
-              </Typography>
-              <Chip size="small" label={selectedKind.label}
-                sx={{ height: 19, fontSize: 12, bgcolor: alpha(selectedKind.color, 0.08), color: selectedKind.color }} />
-              <Chip size="small" label={selectedStatementInfo.showForeign ? selectedStatementInfo.currency : 'ریالی'}
-                sx={{ height: 19, fontSize: 12, bgcolor: alpha(BLUE, 0.08), color: BLUE }} />
-            </Stack>
-            <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 0.9 }}>
-              <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: '1px solid #e8eef2' }}>
-                <Typography sx={{ fontSize: 12, color: MUTED }}>مبلغ تجمعی صورت‌وضعیت {selectedKind.isAdjustment ? '(بدون تغییر)' : ''}</Typography>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: INK }}>
-                  {formatPersianNumber(selectedStatement.amount || 0)} ریال
-                </Typography>
-                {selectedStatementForeign !== null ? (
-                  <Typography sx={{ fontSize: 12, color: MUTED }}>
-                    ≈ {formatPersianNumber(selectedStatementForeign)} {selectedStatementInfo.currency}
-                  </Typography>
-                ) : null}
-                {selectedKind.isAdjustment ? (
-                  <Typography sx={{ fontSize: 12, color: selectedKind.color, fontWeight: 800 }}>
-                    تعدیل تجمعی: {formatPersianNumber(selectedAdjustmentAmount)} ریال
-                  </Typography>
-                ) : null}
-              </Box>
-              <Box sx={{ p: 0.8, borderRadius: '9px', bgcolor: '#fff', border: `1px solid ${alpha(selectedKind.color, 0.2)}` }}>
-                <Typography sx={{ fontSize: 12, color: MUTED }}>{selectedKind.isAdjustment ? 'مبلغ قابل پرداخت تعدیل' : 'مبلغ قابل پرداخت این دوره'}</Typography>
-                <Typography sx={{ fontSize: 12, fontWeight: 900, color: selectedKind.isAdjustment ? selectedKind.color : GREEN }}>
-                  {formatPersianNumber(selectedStatementPayable || 0)} ریال
-                </Typography>
-                {selectedStatementNetForeign !== null ? (
-                  <Typography sx={{ fontSize: 12, color: selectedKind.isAdjustment ? selectedKind.color : GREEN }}>
-                    ≈ {formatPersianNumber(selectedStatementNetForeign)} {selectedStatementInfo.currency}
-                  </Typography>
-                ) : null}
-              </Box>
-            </Box>
-          </Box>
-        ) : null}
-
-
-        <Divider />
-        <Box>
-          <SectionHeading icon={AccountBalanceWalletOutlinedIcon} title="مبلغ و واحد ارز" color={BLUE}
-            action={form.amount ? <Chip size="small" label={`${formatPersianNumber(form.amount)} ریال`} sx={{ height: 20, fontSize: 12, bgcolor: alpha(BLUE, 0.07), color: BLUE }} /> : null} />
-          <Grid container spacing={1.4}>
-            {hideReferenceForeign ? null : (
-              <Grid item xs={12} md={4}>
-                <FormControl size="small" fullWidth>
-                  <InputLabel>واحد ارز مرجع</InputLabel>
-                  <Select value={form.currency || ''} label="واحد ارز مرجع" onChange={(event) => setForm((previous) => ({ ...previous, currency: event.target.value }))}>
-                    <MenuItem value="">—</MenuItem>
-                    {currencyList.map((currency) => (
-                      <MenuItem key={currency.id} value={currency.id}>{normalizeCurrencyLabel(currency.name || currency.symbol)} ({currency.code})</MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-                <Typography sx={{ mt: 0.4, fontSize: 12, color: MUTED }}>پرداخت نهایی به ریال ثبت می‌شود؛ این واحد فقط برای نمایش معادل ارزی است.</Typography>
-              </Grid>
-            )}
-            <Grid item xs={12} md={hideReferenceForeign ? 12 : 8}>
-              <MoneyInput size="small" fullWidth allowDecimals={false} label="مبلغ پرداخت (ریال)" value={form.amount}
-                onChange={(value) => setForm((previous) => ({ ...previous, amount: value }))} />
-              {referenceForeign !== null ? (
-                <Typography sx={{ mt: 0.4, fontSize: 12, color: MUTED }}>معادل ارزی: {formatPersianNumber(referenceForeign)} {label}</Typography>
-              ) : null}
-            </Grid>
-          </Grid>
-        </Box>
-
-        <Divider />
-        <Box>
-          <SectionHeading icon={LinkOutlinedIcon} title="مرجع و روش پرداخت" color={VIOLET} />
-          <Grid container spacing={1.4}>
-            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="شماره مرجع / سند" value={form.reference || ''} onChange={(event) => setForm((previous) => ({ ...previous, reference: event.target.value }))} /></Grid>
-            <Grid item xs={12} md={6}><TextField size="small" fullWidth label="روش پرداخت" placeholder="مثلاً حواله، چک، انتقال بانکی" value={form.method || ''} onChange={(event) => setForm((previous) => ({ ...previous, method: event.target.value }))} /></Grid>
-            <Grid item xs={12}><TextField size="small" fullWidth label="توضیحات" multiline rows={2} value={form.note || ''} onChange={(event) => setForm((previous) => ({ ...previous, note: event.target.value }))} /></Grid>
-          </Grid>
-        </Box>
-
-        <Divider />
-        <Box>
-          <SectionHeading icon={AttachFileOutlinedIcon} title="پیوست فایل‌ها" color={TEAL}
-            action={<Chip size="small" label={`${formatPersianNumber(pendingFiles.length + existingAttachments.length)} فایل`}
-              sx={{ height: 19, fontSize: 12, bgcolor: alpha(TEAL, 0.07), color: TEAL }} />} />
-          <Box component="label" sx={{
-            display: 'flex', alignItems: 'center', gap: 1, p: 1.15, borderRadius: '12px',
-            border: `1px dashed ${alpha(TEAL, 0.28)}`, bgcolor: alpha(TEAL, 0.025), cursor: 'pointer',
-            transition: 'background-color .18s ease, border-color .18s ease',
-            '&:hover': { bgcolor: alpha(TEAL, 0.05), borderColor: alpha(TEAL, 0.45) },
-          }}>
-            <input type="file" hidden multiple
-              accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.zip,.rar"
-              onChange={(event) => { onPickFiles(event.target.files); event.target.value = ''; }} />
-            <Box sx={{
-              width: 34, height: 34, borderRadius: '10px', bgcolor: alpha(TEAL, 0.09), color: TEAL,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <AttachFileOutlinedIcon sx={{ fontSize: 19 }} />
-            </Box>
-            <Box sx={{ flex: 1 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: INK }}>انتخاب فایل پیوست</Typography>
-              <Typography sx={{ fontSize: 12, color: MUTED }}>رسید، حواله، سند بانکی، تصویر یا PDF — حداکثر ۱۰ فایل</Typography>
-            </Box>
-            <Typography sx={{ fontSize: 12, fontWeight: 800, color: TEAL, border: `1px solid ${alpha(TEAL, 0.3)}`, borderRadius: '8px', px: 1, py: 0.45 }}>
-              انتخاب
-            </Typography>
-          </Box>
-
-          {existingAttachments.length > 0 ? (
-            <Box sx={{ mt: 1 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های ذخیره‌شده</Typography>
-              <Stack spacing={0.5}>
-                {existingAttachments.map((attachment) => (
-                  <Stack key={attachment.id} direction="row" alignItems="center" spacing={0.6}
-                    sx={{ p: 0.7, borderRadius: '9px', border: '1px solid #e6edf1', bgcolor: '#fff' }}>
-                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 17, color: TEAL }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{attachment.title || attachment.file_name || 'فایل پیوست'}</Typography>
-                      <Typography sx={{ fontSize: 12, color: MUTED }}>{fileSizeLabel(attachment.size)}</Typography>
-                    </Box>
-                    {attachment.file_url ? (
-                      <Tooltip title="دانلود">
-                        <IconButton size="small" component="a" href={attachment.file_url} target="_blank" rel="noreferrer" sx={{ color: BLUE, p: 0.3 }}>
-                          <DownloadOutlinedIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      </Tooltip>
-                    ) : null}
-                    <Tooltip title="حذف فایل">
-                      <span>
-                        <IconButton size="small" disabled={attachmentBusy} onClick={() => onDeleteAttachment(attachment)} sx={{ color: RED, p: 0.3 }}>
-                          <DeleteOutlineIcon sx={{ fontSize: 15 }} />
-                        </IconButton>
-                      </span>
-                    </Tooltip>
-                  </Stack>
-                ))}
-              </Stack>
-            </Box>
-          ) : null}
-
-          {pendingFiles.length > 0 ? (
-            <Box sx={{ mt: 1 }}>
-              <Typography sx={{ fontSize: 12, fontWeight: 800, color: MUTED, mb: 0.5 }}>پیوست‌های جدید (پس از ذخیره بارگذاری می‌شوند)</Typography>
-              <Stack spacing={0.5}>
-                {pendingFiles.map((file, index) => (
-                  <Stack key={`${file.name}-${file.size}-${file.lastModified}`} direction="row" alignItems="center" spacing={0.6}
-                    sx={{ p: 0.7, borderRadius: '9px', border: `1px solid ${alpha(TEAL, 0.15)}`, bgcolor: alpha(TEAL, 0.025) }}>
-                    <InsertDriveFileOutlinedIcon sx={{ fontSize: 17, color: TEAL }} />
-                    <Box sx={{ flex: 1, minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 12, fontWeight: 700, color: INK }}>{file.name}</Typography>
-                      <Typography sx={{ fontSize: 12, color: MUTED }}>{fileSizeLabel(file.size)}</Typography>
-                    </Box>
-                    <IconButton size="small" onClick={() => onRemovePending(index)} sx={{ color: RED, p: 0.3 }}>
-                      <CloseOutlinedIcon sx={{ fontSize: 15 }} />
-                    </IconButton>
-                  </Stack>
-                ))}
-              </Stack>
-            </Box>
-          ) : null}
-        </Box>
-      </DialogContent>
-
-      <DialogActions sx={{ px: 2.5, py: 1.6, borderTop: '1px solid #e5ebf0' }}>
-        <Button onClick={onClose} sx={{ fontSize: 12 }}>انصراف</Button>
-        <Button variant="contained" onClick={onSave} disabled={saving} startIcon={saving ? <CircularProgress size={15} sx={{ color: '#fff' }} /> : <CheckCircleOutlineIcon />}
-          sx={{ fontSize: 12, px: 2.5, bgcolor: TEAL, '&:hover': { bgcolor: '#115e59' } }}>
-          {uploading ? 'در حال بارگذاری فایل‌ها…' : (saving ? 'در حال ذخیره…' : 'ذخیره پرداخت')}
-        </Button>
-      </DialogActions>
-    </Dialog>
-  );
-};
 
 
 const ContractPaymentsPage = () => {
@@ -805,6 +492,7 @@ const ContractPaymentsPage = () => {
       contract: contractId,
       date: new Date().toISOString().slice(0, 10),
       currency: selectedContract?.currency || '',
+      allocations: [],
     });
     setError('');
     setPendingFiles([]);
@@ -826,6 +514,7 @@ const ContractPaymentsPage = () => {
       reference: payment.reference || '',
       method: payment.method || '',
       note: payment.note || '',
+      allocations: allocationsFromPayment(payment),
     });
     setError('');
     setPendingFiles([]);
@@ -873,18 +562,27 @@ const ContractPaymentsPage = () => {
   };
 
 
-  const sanitize = (payload) => ({
-    contract: payload.contract || null,
-    invoice: payload.invoice || null,
-    statement: payload.statement || null,
-    date: payload.date || null,
-    currency: payload.currency || null,
-    amount: payload.amount === '' || payload.amount == null ? 0 : Number(payload.amount),
-    payment_type: payload.payment_type || 'normal',
-    reference: payload.reference || '',
-    method: payload.method || '',
-    note: payload.note || '',
-  });
+  const sanitize = (payload) => {
+    const isAdvance = (payload.payment_type || 'normal') === 'advance';
+    const allocationRows = isAdvance ? [] : (payload.allocations || []);
+    const allocations = allocationsPayload(allocationRows);
+    const firstStatement = allocations.find((row) => row.statement)?.statement || null;
+    const firstInvoice = allocations.find((row) => row.invoice)?.invoice || null;
+    return {
+      contract: payload.contract || null,
+      // کلیدهای تک‌مقداری برای سازگاری با نسخه‌های قدیمی؛ منبع اصلی `allocations` است.
+      invoice: firstInvoice,
+      statement: firstStatement,
+      date: payload.date || null,
+      currency: payload.currency || null,
+      amount: payload.amount === '' || payload.amount == null ? 0 : Number(payload.amount),
+      payment_type: payload.payment_type || 'normal',
+      reference: payload.reference || '',
+      method: payload.method || '',
+      note: payload.note || '',
+      allocations,
+    };
+  };
 
   const save = useMutation({
     mutationFn: (payload) => {
@@ -921,6 +619,9 @@ const ContractPaymentsPage = () => {
       }
       qc.invalidateQueries({ queryKey: ['contract-payments'] });
       qc.invalidateQueries({ queryKey: ['external-contracts'] });
+      // ماندهٔ صورت‌وضعیت‌ها و فاکتورها پس از ثبت پرداخت باید پویا تازه شود.
+      qc.invalidateQueries({ queryKey: ['statements-pay'] });
+      qc.invalidateQueries({ queryKey: ['invoices-pay'] });
       setDialog(false);
       setForm(EMPTY);
       setPendingFiles([]);
@@ -959,7 +660,16 @@ const ContractPaymentsPage = () => {
     setError('');
     if (!form.contract) { setError('قرارداد را انتخاب کنید'); return; }
     if (!form.date) { setError('تاریخ پرداخت را وارد کنید'); return; }
-    if (num(form.amount) <= 0) { setError('مبلغ پرداخت باید بزرگ‌تر از صفر باشد'); return; }
+    const amount = num(form.amount);
+    if (amount <= 0) { setError('مبلغ پرداخت باید بزرگ‌تر از صفر باشد'); return; }
+    if ((form.payment_type || 'normal') !== 'advance') {
+      const allocations = allocationsPayload(form.allocations || []);
+      const allocated = allocations.reduce((sum, row) => sum + numOf(row.amount), 0);
+      if (allocated > amount) {
+        setError('جمع مبالغ تخصیص‌یافته از مبلغ پرداخت بیشتر است');
+        return;
+      }
+    }
     save.mutate(form);
   };
 
@@ -1208,12 +918,29 @@ const ContractPaymentsPage = () => {
                   label: 'فاکتور / صورت‌وضعیت',
                   width: '19%',
                   align: 'center',
-                  render: (row) => (
-                    <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
-                      {row.invoice_number ? `فاکتور ${toPersianDigits(row.invoice_number)}` : '—'}
-                      {row.statement_number ? ` · ${statementDisplayTitle(row)}` : ''}
-                    </Typography>
-                  ),
+                  render: (row) => {
+                    const allocations = asArray(row.allocations);
+                    if (allocations.length > 1) {
+                      return (
+                        <Stack direction="row" spacing={0.4} justifyContent="center" alignItems="center" useFlexGap>
+                          <Chip
+                            size="small"
+                            label={`${formatPersianNumber(allocations.length)} سند`}
+                            sx={{ height: 19, fontSize: 10, fontWeight: 800, bgcolor: alpha(VIOLET, 0.09), color: VIOLET }}
+                          />
+                          <Typography noWrap sx={{ fontSize: 10.5, color: MUTED }}>
+                            {formatPersianNumber(row.allocated_amount || row.amount || 0)}
+                          </Typography>
+                        </Stack>
+                      );
+                    }
+                    return (
+                      <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+                        {row.invoice_number ? `فاکتور ${toPersianDigits(row.invoice_number)}` : '—'}
+                        {row.statement_number ? ` · ${statementDisplayTitle(row)}` : ''}
+                      </Typography>
+                    );
+                  },
                 },
                 {
                   key: 'actions',
@@ -1260,7 +987,7 @@ const ContractPaymentsPage = () => {
         onClose={() => setDetail(null)} onEdit={openEdit}
         onDelete={(row) => { setDeleteTarget(row); setDetail(null); }} />
 
-      <PaymentEditorDialog open={dialog} onClose={closeEditor} form={form} setForm={setForm}
+      <ContractPaymentEditorDialog open={dialog} onClose={closeEditor} form={form} setForm={setForm}
         invoiceList={invoiceList} statementList={statementList} currencyList={currencyList}
         fallbackCurrency={contractCurrency} error={error} saving={save.isPending || uploading} onSave={submit}
         contract={selectedContract} pendingFiles={pendingFiles} existingAttachments={existingAttachments}
