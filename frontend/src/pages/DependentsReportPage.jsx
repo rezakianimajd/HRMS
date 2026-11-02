@@ -14,6 +14,7 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import PageHeader from '../core/components/ui/PageHeader';
 import EmployeeAvatar from '../core/components/ui/EmployeeAvatar';
 import fetchAllPages from '../core/api/fetchAllPages';
+import downloadFile from '../core/utils/downloadUtils';
 import { formatPersianNumber, toPersianDigits } from '../core/utils/numberUtils';
 import { toJalali } from '../core/utils/dateUtils';
 import { KpiTile, INK, MUTED } from './accounting/AccountingDashboardUI';
@@ -22,7 +23,7 @@ import {
 } from './contracts/contractModuleUi';
 import {
   INSURANCE_STATUS, RELATION_LABELS, RELATION_OPTIONS,
-  dependentHasAttachment, dependentName, periodLabel, statusOf,
+  dependentHasAttachment, dependentName, statusOf,
 } from './supplementaryInsuranceHelpers';
 
 const ACCENT = '#8b5cf6';
@@ -104,6 +105,8 @@ const DependentsReportPage = () => {
   const [departmentFilter, setDepartmentFilter] = useState('all');
   const [sortBy, setSortBy] = useState('employee');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState('');
 
   const insurancesQuery = useQuery({
     queryKey: ['dependents-report-insurances'],
@@ -200,28 +203,27 @@ const DependentsReportPage = () => {
       : null,
   ].filter(Boolean);
 
-  const exportCsv = () => {
-    const headers = [
-      'پرسنل', 'کد پرسنلی', 'واحد', 'عنوان شغلی', 'بیمه', 'طرح', 'دورهٔ پوشش', 'وضعیت بیمه',
-      'نام فرد تحت تکفل', 'نسبت', 'کد ملی', 'تاریخ تولد', 'سن', 'پیوست',
-    ];
-    const body = filtered.map((row) => [
-      row.employeeName, row.employeeCode, row.department, row.jobTitle,
-      row.insuranceName, row.plan, periodLabel({ start_date: row.startDate, end_date: row.endDate }),
-      row.status.label, row.dependentName, row.relationLabel, row.nationalId,
-      row.birthDate, row.age ?? '', row.hasAttachment ? (row.attachmentName || 'دارد') : 'ندارد',
-    ]);
-    const csv = [headers, ...body]
-      .map((cells) => cells.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
-      .join('\n');
-    const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `dependents-report-${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    URL.revokeObjectURL(link.href);
+  const exportExcel = async () => {
+    if (exporting) return;
+    setExporting(true);
+    setExportError('');
+    try {
+      await downloadFile('/supplementary-insurance-dependents/export-excel/', {
+        params: {
+          q: search.trim(),
+          relation: relationFilter,
+          status: statusFilter,
+          department: departmentFilter,
+          attachment: attachmentFilter,
+          national_id: nationalIdFilter,
+        },
+        fallbackName: `dependents-report-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      });
+    } catch (error) {
+      setExportError(error?.message || 'تهیهٔ فایل اکسل انجام نشد.');
+    } finally {
+      setExporting(false);
+    }
   };
 
   if (insurancesQuery.isLoading) {
@@ -272,7 +274,14 @@ const DependentsReportPage = () => {
                 <PrintIcon fontSize="small" />
               </Button>
             </Tooltip>
-            <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportCsv}>خروجی</Button>
+            <Button
+              variant="outlined"
+              startIcon={exporting ? <CircularProgress size={14} /> : <DownloadIcon />}
+              onClick={exportExcel}
+              disabled={exporting}
+            >
+              {exporting ? 'در حال تهیه…' : 'خروجی اکسل'}
+            </Button>
           </>
         )}
       />
@@ -292,6 +301,12 @@ const DependentsReportPage = () => {
         </Grid>
       </Grid>
 
+
+      {exportError ? (
+        <Alert severity="error" sx={{ mb: 1.25, borderRadius: '12px' }} onClose={() => setExportError('')}>
+          {exportError}
+        </Alert>
+      ) : null}
 
       <ModuleToolbar
         theme={moduleTheme}

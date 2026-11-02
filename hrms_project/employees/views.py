@@ -443,3 +443,25 @@ class SupplementaryInsuranceDependentViewSet(viewsets.ModelViewSet):
         if insurance_id:
             qs = qs.filter(insurance_id=insurance_id)
         return qs
+
+    @action(detail=False, methods=['get'], url_path='export-excel')
+    def export_excel(self, request):
+        """خروجی اکسل گزارش افراد تحت تکفل (با همان فیلترهای صفحه)."""
+        from employees.dependents_export import (
+            apply_dependent_filters, collect_dependent_rows, workbook_response,
+        )
+
+        queryset = SupplementaryInsuranceDependent.objects.select_related(
+            'insurance', 'insurance__employee',
+            'insurance__employee__department', 'insurance__employee__job_title',
+        ).order_by(
+            'insurance__employee__last_name', 'insurance__employee__first_name', 'id',
+        )
+        company = getattr(request, 'tenant', None) or getattr(request, 'company', None)
+        if company:
+            queryset = queryset.filter(insurance__company=company)
+
+        rows = collect_dependent_rows(queryset)
+        rows, filter_labels = apply_dependent_filters(rows, request.query_params)
+        return workbook_response(rows, filter_labels)
+

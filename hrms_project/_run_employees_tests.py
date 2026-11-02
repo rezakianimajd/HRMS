@@ -13,6 +13,7 @@ try:
     django.setup()
     suite = unittest.TestLoader().loadTestsFromNames([
         'employees.tests.SupplementaryDependentSerializerTests',
+        'employees.tests.DependentsExportTests',
     ])
     result = unittest.TextTestRunner(verbosity=2, stream=buffer).run(suite)
     buffer.write(f"\nRUN={result.testsRun} FAIL={len(result.failures)} ERR={len(result.errors)}\n")

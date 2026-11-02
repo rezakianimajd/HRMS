@@ -123,6 +123,7 @@ test('dependents report lists every dependent with employee context and standard
   // فیلترهای استاندارد
   expect(container.textContent).toContain('کل افراد تحت تکفل');
   expect(container.textContent).toContain('دارای پیوست مدارک');
+  expect(container.textContent).toContain('خروجی اکسل');
 
   root.unmount();
   container.remove();
