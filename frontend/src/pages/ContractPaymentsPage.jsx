@@ -1,4 +1,4 @@
-﻿import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
@@ -35,6 +35,7 @@ import { adjustmentSummaryOf, statementDisplayTitle, statementKindOf } from './c
 import ContractPaymentEditorDialog from './contracts/ContractPaymentEditorDialog';
 import { PAYMENT_TYPES, paymentTypeOf } from './contracts/paymentTypes';
 import { allocationsFromPayment, allocationsPayload, bucketMeta, numOf } from './contracts/paymentAllocations';
+import { invalidateContractFinanceQueries } from './contracts/contractPaymentsSummary';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
   useModuleTableState, useModuleTheme, useRowHeight,
@@ -619,11 +620,9 @@ const ContractPaymentsPage = () => {
         }
         setUploading(false);
       }
-      qc.invalidateQueries({ queryKey: ['contract-payments'] });
-      qc.invalidateQueries({ queryKey: ['external-contracts'] });
-      // ماندهٔ صورت‌وضعیت‌ها و فاکتورها پس از ثبت پرداخت باید پویا تازه شود.
-      qc.invalidateQueries({ queryKey: ['statements-pay'] });
-      qc.invalidateQueries({ queryKey: ['invoices-pay'] });
+      // هر تغییر پرداخت باید همهٔ صفحه‌های وابسته (فاکتور، صورت‌وضعیت، پرونده،
+      // گزارش مالی، داشبورد و لیست قراردادها) را تازه کند.
+      invalidateContractFinanceQueries(qc);
       setDialog(false);
       setForm(EMPTY);
       setPendingFiles([]);
@@ -649,8 +648,7 @@ const ContractPaymentsPage = () => {
   const remove = useMutation({
     mutationFn: (id) => axiosInstance.delete(`/contract-payments/${id}/`),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['contract-payments'] });
-      qc.invalidateQueries({ queryKey: ['external-contracts'] });
+      invalidateContractFinanceQueries(qc);
       setDeleteTarget(null);
       setDetail(null);
       setToast('پرداخت حذف شد');

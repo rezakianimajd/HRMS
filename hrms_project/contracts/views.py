@@ -118,7 +118,8 @@ class ContractViewSet(BaseContractViewSet):
         ).prefetch_related(
             'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
             'guarantees', 'guarantees__documents', 'payments', 'disputes', 'audit_logs',
-            'statements__payment_allocations', 'invoices__payment_allocations',
+            'statements__payment_allocations', 'statements__payment_allocations__payment',
+            'invoices__payment_allocations', 'invoices__payment_allocations__payment',
             'payments__allocations',
         )
         party_id = self.request.query_params.get('party')
@@ -314,7 +315,7 @@ class ContractDocumentViewSet(BaseContractViewSet):
 
 class InvoiceViewSet(BaseContractViewSet):
     serializer_class = InvoiceSerializer
-    queryset = Invoice.objects.select_related('contract', 'currency')
+    queryset = Invoice.objects.select_related('contract', 'currency').prefetch_related('payment_allocations__payment')
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ['number', 'subject', 'description', 'contract__subject']
     ordering = ['-date']
@@ -334,7 +335,7 @@ class InvoiceViewSet(BaseContractViewSet):
 
 class StatementViewSet(BaseContractViewSet):
     serializer_class = StatementSerializer
-    queryset = Statement.objects.select_related('contract', 'currency').prefetch_related('documents')
+    queryset = Statement.objects.select_related('contract', 'currency').prefetch_related('documents', 'payment_allocations__payment')
     _recalc_fields = {
         'amount', 'date', 'contract', 'additions', 'deductions', 'kind',
         'value_added_tax', 'other_additions', 'cumulative_previous_amount', 'work_done',

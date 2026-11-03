@@ -1229,3 +1229,98 @@ class PaymentAllocationExcelTests(SimpleTestCase):
         self.assertIn('سپرده حق بیمه', slots[0]['linked'])
 
 
+
+
+class PaymentFlowFieldsTests(SimpleTestCase):
+    """پویایی پرداخت: وضعیت پرداخت و مبالغ مشتق‌شده در همهٔ خروجی‌ها."""
+
+    def test_serializers_expose_payment_status_fields(self):
+        from contracts.serializers import ContractSerializer, InvoiceSerializer
+
+        invoice_fields = InvoiceSerializer().fields
+        for name in ('payable_amount', 'paid_amount', 'remaining_amount',
+                     'payment_status', 'last_payment_date'):
+            self.assertIn(name, invoice_fields)
+
+        statement_fields = StatementSerializer().fields
+        for name in ('payable_amount', 'paid_amount', 'remaining_amount',
+                     'retention_paid_amount', 'insurance_paid_amount',
+                     'payment_status', 'last_payment_date'):
+            self.assertIn(name, statement_fields)
+
+        contract_fields = ContractSerializer().fields
+        for name in ('total_payable', 'total_paid', 'total_remaining'):
+            self.assertIn(name, contract_fields)
+
+    def test_payment_status_transitions(self):
+        from contracts.serializers import payment_status_of
+
+        self.assertEqual(payment_status_of(1000, 0), 'unpaid')
+        self.assertEqual(payment_status_of(1000, 400), 'partial')
+        self.assertEqual(payment_status_of(1000, 1000), 'paid')
+        self.assertEqual(payment_status_of(1000, 1500), 'paid')
+        self.assertEqual(payment_status_of(0, 0), 'unpaid')
+
+    def test_last_payment_date_uses_allocation_rows(self):
+        from contracts.serializers import invoice_last_payment_date
+
+        class FakePayment:
+            def __init__(self, date_value):
+                self.date = date_value
+
+        class FakeAllocation:
+            payment_id = 1
+
+            def __init__(self, date_value):
+                self.payment = FakePayment(date_value)
+
+        class FakeInvoice:
+            payment_allocations = None
+
+            def __init__(self, rows):
+                self._prefetched_objects_cache = {'payment_allocations': rows}
+
+        invoice = FakeInvoice([
+            FakeAllocation(date(2026, 2, 10)),
+            FakeAllocation(date(2026, 3, 5)),
+        ])
+        self.assertEqual(invoice_last_payment_date(invoice), '2026-03-05')
+
+        empty = FakeInvoice([])
+        self.assertIsNone(invoice_last_payment_date(empty))
+
+
+    def test_remaining_amount_is_clamped_and_overpayment_is_reported(self):
+        from decimal import Decimal
+        from types import SimpleNamespace
+
+        from contracts.serializers import InvoiceSerializer, StatementSerializer
+
+        class Row:
+            kind = 'net'
+            amount = Decimal('1200')
+
+        class FakeInvoice:
+            amount = Decimal('1000')
+            vat = Decimal('0')
+            total = Decimal('1000')
+            due_date = None
+            is_paid = False
+            _prefetched_objects_cache = {'payment_allocations': [Row()]}
+
+        class FakeStatement:
+            amount = Decimal('1000')
+            net_amount = Decimal('1000')
+            deductions = []
+            _prefetched_objects_cache = {'payment_allocations': [Row()]}
+
+        invoice_serializer = InvoiceSerializer()
+        self.assertEqual(invoice_serializer.get_remaining_amount(FakeInvoice()), 0)
+        self.assertEqual(invoice_serializer.get_overpaid_amount(FakeInvoice()), Decimal('200'))
+        self.assertEqual(invoice_serializer.get_payment_status(FakeInvoice()), 'paid')
+
+        statement_serializer = StatementSerializer()
+        self.assertEqual(statement_serializer.get_remaining_amount(FakeStatement()), 0)
+        self.assertEqual(statement_serializer.get_overpaid_amount(FakeStatement()), Decimal('200'))
+        self.assertEqual(statement_serializer.get_payment_status(FakeStatement()), 'paid')
+

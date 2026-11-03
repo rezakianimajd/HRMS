@@ -61,6 +61,9 @@ import {
   STATEMENT_KIND_DECREASE, STATEMENT_KIND_INCREASE, STATEMENT_KIND_MULTI, STATEMENT_KIND_STATEMENT,
   adjustmentSummaryOf, isAdjustmentKind, isMultiKind, latestNormalStatement, statementDisplayTitle, statementKindOf,
 } from './statementKinds';
+import {
+  paymentStatusOf, rowPaid, rowRemaining, invalidateContractFinanceQueries,
+} from './contractPaymentsSummary';
 
 const COLOR = '#6366f1';
 const COLOR_DARK = '#4f46e5';
@@ -709,21 +712,23 @@ const StatementEditorPage = () => {
     const netForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).net), 0);
     const workForeign = scopedList.reduce((sum, row) => sum + foreignOf(row, rowMetrics(row).totalWork), 0);
     const cumulativeForeign = lastStatement ? foreignOf(lastStatement, cumulative) : 0;
-    const paid = payments
-      .filter((payment) => payment.statement)
-      .reduce((sum, payment) => sum + (Number(payment.amount) || 0), 0);
+    // «پرداخت‌شده» و «مانده» از API خوانده می‌شوند (جمع تخصیص‌های پرداخت) تا با
+    // ثبت پرداخت در صفحهٔ پرداخت‌ها، این صفحه هم به‌صورت پویا به‌روز شود.
+    const paid = scopedList.reduce((sum, row) => sum + rowPaid(row), 0);
+    const remainingTotal = scopedList.reduce((sum, row) => sum + rowRemaining(row), 0);
     const paidForeign = selectedContractRate > 1 ? paid / selectedContractRate : paid;
+    const remainingForeign = selectedContractRate > 1 ? remainingTotal / selectedContractRate : remainingTotal;
     return {
       net, work, cumulative, paid, netForeign, workForeign, cumulativeForeign, paidForeign, adjustments,
-      outstanding: Math.max(0, net - paid),
-      outstandingForeign: Math.max(0, netForeign - paidForeign),
+      outstanding: remainingTotal || Math.max(0, net - paid),
+      outstandingForeign: remainingForeign || Math.max(0, netForeign - paidForeign),
       approvedCount: counts.approved,
       pendingCount: counts.pending,
       adjustmentCount: counts.adjustments,
       overContract: Math.max(0, cumulative - selectedContractAmount * selectedContractRate),
       overContractForeign: Math.max(0, cumulativeForeign - selectedContractAmount),
     };
-  }, [scopedList, payments, counts, selectedContractAmount, selectedContractRate, lastStatement]);
+  }, [scopedList, counts, selectedContractAmount, selectedContractRate, lastStatement]);
   const contractProgress = selectedContractAmount > 0
     ? Math.min(100, (totals.cumulativeForeign / selectedContractAmount) * 100)
     : 0;
@@ -819,7 +824,8 @@ const StatementEditorPage = () => {
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['contract-statements'] });
     qc.invalidateQueries({ queryKey: ['contract-statement-payments', contractId] });
-    qc.invalidateQueries({ queryKey: ['external-contracts'] });
+    // تغییر صورت‌وضعیت، ماندهٔ قرارداد و گزارش‌های مالی را هم تحت تأثیر می‌گذارد.
+    invalidateContractFinanceQueries(qc);
   };
 
   const withCalculationMode = (items) => (Array.isArray(items) ? items : []).map((item) => ({
@@ -2049,7 +2055,7 @@ const StatementEditorPage = () => {
                 {
                   key: 'number',
                   label: 'شماره',
-                  width: '9%',
+                  width: '8%',
                   align: 'center',
                   render: (row) => (
                     <Typography noWrap sx={{ fontSize: 12, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
@@ -2060,7 +2066,7 @@ const StatementEditorPage = () => {
                 {
                   key: 'kind',
                   label: 'نوع',
-                  width: '11%',
+                  width: '8%',
                   align: 'center',
                   render: (row) => {
                     const kind = statementKindOf(row);
@@ -2091,36 +2097,73 @@ const StatementEditorPage = () => {
                 {
                   key: 'work',
                   label: 'کارکرد دوره',
-                  width: '11%',
+                  width: '9%',
                   align: 'center',
                   render: (row) => moneyCell(rowMetrics(row).totalWork, BLUE),
                 },
                 {
                   key: 'additions',
                   label: 'اضافات',
-                  width: '10%',
+                  width: '8%',
                   align: 'center',
                   render: (row) => moneyCell(rowMetrics(row).additionsTotal, GREEN),
                 },
                 {
                   key: 'deductions',
                   label: 'کسورات',
-                  width: '10%',
+                  width: '8%',
                   align: 'center',
                   render: (row) => moneyCell(rowMetrics(row).deductionsTotal, RED),
                 },
                 {
                   key: 'net',
                   label: 'خالص قابل پرداخت',
-                  width: '12%',
+                  width: '10%',
                   align: 'center',
                   render: (row) => moneyCell(rowMetrics(row).net, GREEN),
+                },
+                {
+                  key: 'paid',
+                  label: 'پرداخت‌شده',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => moneyCell(rowPaid(row), BLUE),
+                },
+                {
+                  key: 'remaining',
+                  label: 'مانده',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => {
+                    const remaining = rowRemaining(row);
+                    return moneyCell(remaining, remaining ? AMBER : GREEN);
+                  },
+                },
+                {
+                  key: 'payment_status',
+                  label: 'پرداخت',
+                  width: '8%',
+                  align: 'center',
+                  render: (row) => {
+                    const status = paymentStatusOf(row);
+                    return (
+                      <Box sx={{ display: 'flex', justifyContent: 'center' }}>
+                        <Chip size="small" label={status.label}
+                          sx={{
+                            height: 20, fontSize: 10.5, fontWeight: 800,
+                            bgcolor: status.bg, color: status.color,
+                            border: `1px solid ${alpha(status.color, 0.28)}`,
+                            '& .MuiChip-label': { px: 0.8 },
+                          }} />
+                      </Box>
+                    );
+                  },
                 },
 
                 {
                   key: 'approved',
                   label: 'تأیید',
-                  width: '7%',
+                  width: '6%',
                   align: 'center',
                   render: (row) => (
                     <Box sx={{ display: 'flex', justifyContent: 'center' }}>

@@ -28,6 +28,7 @@ import { toJalali } from '../core/utils/dateUtils';
 import PageHeader from '../core/components/ui/PageHeader';
 import { INK, MUTED } from './accounting/AccountingDashboardUI';
 import { INVOICE_ACCENT, InvoiceDetailDrawer, InvoiceEditorDialog, invoiceMetrics, invoiceStatus } from './contracts/InvoiceWorkspaceUI';
+import { invalidateContractFinanceQueries } from './contracts/contractPaymentsSummary';
 import {
   ContractPickerLanding, ModulePager, ModuleTable, ModuleToolbar, moneyCell,
   useModuleTableState, useModuleTheme, useRowHeight,
@@ -96,6 +97,16 @@ const ContractInvoicesPage = () => {
     [allInvoices, contractId],
   );
   const paidByInvoice = useMemo(() => payments.reduce((map, payment) => {
+    const allocations = Array.isArray(payment.allocations) ? payment.allocations : [];
+    if (allocations.length) {
+      // منبع واقعی مبلغ پرداخت‌شده، تخصیص‌ها هستند (یک پرداخت می‌تواند چند سند را تسویه کند).
+      allocations.forEach((row) => {
+        if (!row.invoice) return;
+        const key = String(row.invoice);
+        map[key] = (map[key] || 0) + n(row.amount);
+      });
+      return map;
+    }
     if (!payment.invoice) return map;
     const key = String(payment.invoice);
     map[key] = (map[key] || 0) + n(payment.amount);
@@ -108,7 +119,7 @@ const ContractInvoicesPage = () => {
   );
 
   const counts = useMemo(() => {
-    const next = { all: scopedList.length, paid: 0, pending: 0, overdue: 0 };
+    const next = { all: scopedList.length, paid: 0, partial: 0, pending: 0, overdue: 0 };
     scopedList.forEach((row) => {
       const key = invoiceStatus(row, paidByInvoice[String(row.id)]).key;
       next[key] = (next[key] || 0) + 1;
@@ -158,11 +169,14 @@ const ContractInvoicesPage = () => {
   const statusOptions = [
     { value: 'all', label: `همه (${formatPersianNumber(counts.all)})` },
     { value: 'paid', label: `پرداخت‌شده (${formatPersianNumber(counts.paid)})` },
+    { value: 'partial', label: `پرداخت جزئی (${formatPersianNumber(counts.partial || 0)})` },
     { value: 'pending', label: `در انتظار (${formatPersianNumber(counts.pending)})` },
     { value: 'overdue', label: `سررسید گذشته (${formatPersianNumber(counts.overdue)})` },
   ];
   const activeFilterCount = statusFilter !== 'all' ? 1 : 0;
-  const statusLabelOf = (key) => ({ paid: 'پرداخت‌شده', pending: 'در انتظار پرداخت', overdue: 'سررسید گذشته' }[key] || key);
+  const statusLabelOf = (key) => ({
+    paid: 'پرداخت‌شده', partial: 'پرداخت جزئی', pending: 'در انتظار پرداخت', overdue: 'سررسید گذشته',
+  }[key] || key);
   const activeChips = statusFilter !== 'all'
     ? [{ key: 'status', label: `وضعیت: ${statusLabelOf(statusFilter)}`, clear: () => setStatusFilter('all') }]
     : [];
@@ -189,7 +203,8 @@ const ContractInvoicesPage = () => {
   const invalidateAll = () => {
     qc.invalidateQueries({ queryKey: ['contract-invoices'] });
     qc.invalidateQueries({ queryKey: ['contract-invoice-payments', contractId] });
-    qc.invalidateQueries({ queryKey: ['external-contracts'] });
+    // تغییر فاکتور، ماندهٔ قرارداد و گزارش‌های مالی را هم تحت تأثیر می‌گذارد.
+    invalidateContractFinanceQueries(qc);
   };
 
   const sanitize = (payload) => {
@@ -298,13 +313,13 @@ const ContractInvoicesPage = () => {
   };
 
   const exportCsv = () => {
-    const headers = ['شماره', 'شرح', 'تاریخ', 'سررسید', 'مبلغ', 'مالیات', 'کل', 'پرداخت‌شده', 'وضعیت', 'توضیحات'];
+    const headers = ['شماره', 'شرح', 'تاریخ', 'سررسید', 'مبلغ', 'مالیات', 'کل', 'پرداخت‌شده', 'مانده', 'وضعیت', 'توضیحات'];
     const rows = filtered.map((row) => {
       const paid = paidByInvoice[String(row.id)] || 0;
       const metrics = invoiceMetrics(row, paid);
       return [
         row.number || '', row.subject || '', row.date || '', row.due_date || '',
-        metrics.amount, metrics.vat, metrics.total, metrics.paid,
+        metrics.amount, metrics.vat, metrics.total, metrics.paid, metrics.outstanding,
         invoiceStatus(row, paid).label, row.description || '',
       ];
     });
@@ -542,14 +557,24 @@ const ContractInvoicesPage = () => {
                 {
                   key: 'paid',
                   label: 'پرداخت‌شده',
-                  width: '10%',
+                  width: '9%',
                   align: 'center',
                   render: (row) => moneyCell(invoiceMetrics(row, paidByInvoice[String(row.id)]).paid, GREEN),
                 },
                 {
+                  key: 'remaining',
+                  label: 'مانده',
+                  width: '9%',
+                  align: 'center',
+                  render: (row) => {
+                    const metrics = invoiceMetrics(row, paidByInvoice[String(row.id)]);
+                    return moneyCell(metrics.outstanding, metrics.outstanding ? AMBER : GREEN);
+                  },
+                },
+                {
                   key: 'status',
                   label: 'وضعیت',
-                  width: '9%',
+                  width: '8%',
                   align: 'center',
                   render: (row) => {
                     const status = invoiceStatus(row, paidByInvoice[String(row.id)]);

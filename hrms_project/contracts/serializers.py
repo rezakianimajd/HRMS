@@ -39,6 +39,35 @@ def _allocated_amount(obj, annotation='paid_sum', kind='net'):
     return Decimal(str(total or 0))
 
 
+def _allocation_rows(obj):
+    """ردیف‌های تخصیص سند؛ از کش prefetch یا کوئری مستقیم."""
+    cache = getattr(obj, '_prefetched_objects_cache', None) or {}
+    rows = cache.get('payment_allocations')
+    if rows is not None:
+        return list(rows)
+    return list(obj.payment_allocations.select_related('payment').all())
+
+
+def invoice_last_payment_date(obj):
+    """آخرین تاریخ پرداختِ ثبت‌شده روی فاکتور (از تخصیص‌ها)."""
+    dates = [
+        row.payment.date for row in _allocation_rows(obj)
+        if getattr(row, 'payment_id', None) and row.payment and row.payment.date
+    ]
+    return max(dates).isoformat() if dates else None
+
+
+def payment_status_of(payable, paid):
+    """وضعیت پرداخت سند: پرداخت‌نشده / پرداخت جزئی / تسویه‌شده."""
+    payable = Decimal(str(payable or 0))
+    paid = Decimal(str(paid or 0))
+    if paid <= 0:
+        return 'unpaid'
+    if payable <= 0 or paid >= payable:
+        return 'paid'
+    return 'partial'
+
+
 RETENTION_KEYWORDS = ('حسن',)
 INSURANCE_KEYWORDS = ('بیمه',)
 
@@ -248,7 +277,10 @@ class InvoiceSerializer(serializers.ModelSerializer):
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     paid_amount = serializers.SerializerMethodField()
     remaining_amount = serializers.SerializerMethodField()
+    overpaid_amount = serializers.SerializerMethodField()
     payable_amount = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    last_payment_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Invoice
@@ -256,7 +288,8 @@ class InvoiceSerializer(serializers.ModelSerializer):
             'id', 'contract', 'contract_subject', 'number', 'subject', 'date', 'due_date',
             'currency', 'currency_name', 'currency_symbol',
             'amount', 'vat', 'total', 'is_paid', 'description',
-            'payable_amount', 'paid_amount', 'remaining_amount',
+            'payable_amount', 'paid_amount', 'remaining_amount', 'overpaid_amount',
+            'payment_status', 'last_payment_date',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
@@ -267,7 +300,17 @@ class InvoiceSerializer(serializers.ModelSerializer):
         return _allocated_amount(obj)
 
     def get_remaining_amount(self, obj):
-        return invoice_payable_amount(obj) - _allocated_amount(obj)
+        # مانده هرگز منفی نمی‌شود؛ مبلغ اضافه‌پرداخت جداگانه گزارش می‌شود.
+        return max(Decimal('0'), invoice_payable_amount(obj) - _allocated_amount(obj))
+
+    def get_overpaid_amount(self, obj):
+        return max(Decimal('0'), _allocated_amount(obj) - invoice_payable_amount(obj))
+
+    def get_payment_status(self, obj):
+        return payment_status_of(invoice_payable_amount(obj), _allocated_amount(obj))
+
+    def get_last_payment_date(self, obj):
+        return invoice_last_payment_date(obj)
 
 
 # ---------------------------------------------------------------------------
@@ -381,6 +424,9 @@ class StatementSerializer(serializers.ModelSerializer):
     insurance_amount = serializers.SerializerMethodField()
     insurance_paid_amount = serializers.SerializerMethodField()
     insurance_remaining_amount = serializers.SerializerMethodField()
+    overpaid_amount = serializers.SerializerMethodField()
+    payment_status = serializers.SerializerMethodField()
+    last_payment_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Statement
@@ -395,13 +441,14 @@ class StatementSerializer(serializers.ModelSerializer):
             'value_added_tax', 'other_additions',
             'additions', 'additions_total',
             'deductions', 'deductions_total', 'net_amount',
-            'payable_amount', 'paid_amount', 'remaining_amount',
+            'payable_amount', 'paid_amount', 'remaining_amount', 'overpaid_amount',
             'retention_amount', 'retention_paid_amount', 'retention_remaining_amount',
             'insurance_amount', 'insurance_paid_amount', 'insurance_remaining_amount',
             'levels',
             'currency', 'currency_name', 'currency_symbol', 'exchange_rate',
             'currency_exchange_rate',
             'is_approved', 'description', 'documents',
+            'payment_status', 'last_payment_date',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
 
@@ -412,7 +459,10 @@ class StatementSerializer(serializers.ModelSerializer):
         return _allocated_amount(obj, 'paid_sum', 'net')
 
     def get_remaining_amount(self, obj):
-        return statement_payable_amount(obj) - _allocated_amount(obj, 'paid_sum', 'net')
+        return max(Decimal('0'), statement_payable_amount(obj) - _allocated_amount(obj, 'paid_sum', 'net'))
+
+    def get_overpaid_amount(self, obj):
+        return max(Decimal('0'), _allocated_amount(obj, 'paid_sum', 'net') - statement_payable_amount(obj))
 
     def get_retention_amount(self, obj):
         return statement_deduction_amount(obj, 'retention')
@@ -421,9 +471,9 @@ class StatementSerializer(serializers.ModelSerializer):
         return _allocated_amount(obj, 'retention_paid_sum', 'retention')
 
     def get_retention_remaining_amount(self, obj):
-        return statement_deduction_amount(obj, 'retention') - _allocated_amount(
+        return max(Decimal('0'), statement_deduction_amount(obj, 'retention') - _allocated_amount(
             obj, 'retention_paid_sum', 'retention',
-        )
+        ))
 
     def get_insurance_amount(self, obj):
         return statement_deduction_amount(obj, 'insurance')
@@ -432,9 +482,15 @@ class StatementSerializer(serializers.ModelSerializer):
         return _allocated_amount(obj, 'insurance_paid_sum', 'insurance')
 
     def get_insurance_remaining_amount(self, obj):
-        return statement_deduction_amount(obj, 'insurance') - _allocated_amount(
+        return max(Decimal('0'), statement_deduction_amount(obj, 'insurance') - _allocated_amount(
             obj, 'insurance_paid_sum', 'insurance',
-        )
+        ))
+
+    def get_payment_status(self, obj):
+        return payment_status_of(statement_payable_amount(obj), _allocated_amount(obj, 'paid_sum', 'net'))
+
+    def get_last_payment_date(self, obj):
+        return invoice_last_payment_date(obj)
 
     def validate_exchange_rate(self, value):
         if value is None:
@@ -1426,6 +1482,9 @@ class ContractSerializer(serializers.ModelSerializer):
 
     project_allocations_display = serializers.SerializerMethodField()
     guarantee_items_display = serializers.SerializerMethodField()
+    total_payable = serializers.SerializerMethodField()
+    total_paid = serializers.SerializerMethodField()
+    total_remaining = serializers.SerializerMethodField()
 
     documents = ContractDocumentSerializer(many=True, read_only=True)
     invoices = InvoiceSerializer(many=True, read_only=True)
@@ -1451,6 +1510,7 @@ class ContractSerializer(serializers.ModelSerializer):
             'payment_terms', 'delivery_terms', 'penalty_terms', 'insurance_terms',
             'description',
             'documents', 'invoices', 'statements', 'addendums', 'guarantees', 'payments', 'disputes', 'audit_logs',
+            'total_payable', 'total_paid', 'total_remaining',
             'created_at',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
@@ -1481,6 +1541,35 @@ class ContractSerializer(serializers.ModelSerializer):
 
     def get_has_addendum(self, obj):
         return bool(self._contract_effects(obj).get('addendum_count'))
+
+    def _payment_totals(self, obj):
+        """جمع «قابل پرداخت / پرداخت‌شده / مانده» قرارداد از اسناد و تخصیص‌ها."""
+        cached = getattr(obj, '_payment_totals_cache', None)
+        if cached is None:
+            payable = Decimal('0')
+            paid = Decimal('0')
+            for statement in obj.statements.all():
+                payable += statement_payable_amount(statement)
+                paid += _allocated_amount(statement, 'paid_sum', 'net')
+            for invoice in obj.invoices.all():
+                payable += invoice_payable_amount(invoice)
+                paid += _allocated_amount(invoice, 'paid_sum')
+            cached = {
+                'payable': payable,
+                'paid': paid,
+                'remaining': payable - paid,
+            }
+            obj._payment_totals_cache = cached
+        return cached
+
+    def get_total_payable(self, obj):
+        return float(self._payment_totals(obj)['payable'])
+
+    def get_total_paid(self, obj):
+        return float(self._payment_totals(obj)['paid'])
+
+    def get_total_remaining(self, obj):
+        return max(0.0, float(self._payment_totals(obj)['remaining']))
 
     def get_project_allocations_display(self, obj):
         allocs = obj.project_allocations or []

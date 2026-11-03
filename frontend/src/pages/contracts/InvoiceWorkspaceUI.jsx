@@ -31,6 +31,7 @@ const GREEN = '#0f766e';
 const AMBER = '#b45309';
 const RED = '#be123c';
 const BLUE = '#2563eb';
+const VIOLET = '#7c3aed';
 const n = (value) => Number(value) || 0;
 const clamp = (value) => Math.max(0, Math.min(100, Number(value) || 0));
 const today = () => new Date().toISOString().slice(0, 10);
@@ -39,7 +40,13 @@ export const invoiceMetrics = (row, linkedPaid = 0) => {
   const amount = Math.max(0, n(row.amount));
   const vat = Math.max(0, n(row.vat));
   const total = Math.max(0, n(row.total) || amount + vat);
-  const paid = row.is_paid && !linkedPaid ? total : Math.max(0, n(linkedPaid));
+  // «پرداخت‌شده» از API (جمع تخصیص‌های پرداخت) خوانده می‌شود تا با ثبت پرداخت
+  // در صفحهٔ پرداخت‌ها، همین صفحه هم به‌صورت پویا به‌روز شود.
+  const apiPaid = row?.paid_amount;
+  const hasApiPaid = apiPaid !== undefined && apiPaid !== null && apiPaid !== '';
+  const paid = hasApiPaid
+    ? Math.max(0, n(apiPaid))
+    : (row.is_paid && !linkedPaid ? total : Math.max(0, n(linkedPaid)));
   const outstanding = Math.max(0, total - paid);
   return { amount, vat, total, paid, outstanding, progress: total > 0 ? clamp((paid / total) * 100) : 0 };
 };
@@ -48,6 +55,9 @@ export const invoiceStatus = (row, linkedPaid = 0) => {
   const metrics = invoiceMetrics(row, linkedPaid);
   if (row.is_paid || (metrics.total > 0 && metrics.outstanding === 0)) {
     return { key: 'paid', label: 'پرداخت شده', color: GREEN, bg: '#ecfdf5', icon: CheckCircleIcon };
+  }
+  if (metrics.paid > 0) {
+    return { key: 'partial', label: 'پرداخت جزئی', color: VIOLET, bg: '#f5f3ff', icon: PaymentsIcon };
   }
   if (row.due_date && String(row.due_date).slice(0, 10) < today()) {
     return { key: 'overdue', label: 'سررسید گذشته', color: RED, bg: '#fff1f2', icon: EventBusyIcon };

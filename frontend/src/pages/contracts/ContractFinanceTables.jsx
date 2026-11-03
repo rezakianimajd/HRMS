@@ -10,6 +10,7 @@ import { EmptyState, INK, MUTED } from './ContractProfileUI';
 import { statementKindOf } from './statementKinds';
 import { bucketMeta } from './paymentAllocations';
 import { paymentAllocationRows } from './contractPaymentLinks';
+import { paymentStatusOf, rowPaid, rowRemaining } from './contractPaymentsSummary';
 
 export const toNum = (value) => {
   const number = Number(value);
@@ -276,29 +277,38 @@ export const InvoicesTable = ({ invoices = [], currency = 'ریال' }) => (
   <SimpleTable
     columns={[
       { key: 'number', label: 'شماره', width: 100 },
-      { key: 'subject', label: 'موضوع', width: 190, align: 'right' },
+      { key: 'subject', label: 'موضوع', width: 180, align: 'right' },
       { key: 'date', label: 'تاریخ', width: 95 },
       { key: 'due', label: 'سررسید', width: 95 },
-      { key: 'amount', label: 'مبلغ', width: 130 },
-      { key: 'vat', label: 'مالیات', width: 120 },
-      { key: 'total', label: 'جمع', width: 140 },
-      { key: 'status', label: 'وضعیت', width: 90 },
+      { key: 'amount', label: 'مبلغ', width: 125 },
+      { key: 'vat', label: 'مالیات', width: 110 },
+      { key: 'total', label: 'جمع', width: 130 },
+      { key: 'paid', label: 'پرداخت‌شده', width: 125 },
+      { key: 'remaining', label: 'مانده', width: 125 },
+      { key: 'status', label: 'وضعیت', width: 95 },
     ]}
     rows={invoices}
     rowKey={(row) => row.id}
     emptyText="فاکتوری برای این قرارداد ثبت نشده است."
-    minWidth={1080}
-    renderRow={(row) => [
-      <Typography key="number" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{toPersianDigits(row.number || '—')}</Typography>,
-      <Typography key="subject" sx={{ fontSize: 12, color: '#334155', textAlign: 'right' }}>{row.subject || '—'}</Typography>,
-      <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
-      <Typography key="due" sx={{ fontSize: 12, color: MUTED }}>{toJalali(row.due_date)}</Typography>,
-      <Typography key="amount" sx={{ fontSize: 12, fontWeight: 700 }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
-      <Typography key="vat" sx={{ fontSize: 12 }}>{money(row.vat)}</Typography>,
-      <Typography key="total" sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{money(row.total)}</Typography>,
-      <Chip key="status" size="small" label={row.is_paid ? 'پرداخت‌شده' : 'باز'}
-        sx={{ height: 20, fontSize: 12, bgcolor: row.is_paid ? '#eff6ff' : '#fffbeb', color: row.is_paid ? '#1d4ed8' : '#b45309' }} />,
-    ]}
+    minWidth={1280}
+    renderRow={(row) => {
+      const status = paymentStatusOf(row);
+      return [
+        <Typography key="number" sx={{ fontSize: 12, fontWeight: 800, color: INK }}>{toPersianDigits(row.number || '—')}</Typography>,
+        <Typography key="subject" sx={{ fontSize: 12, color: '#334155', textAlign: 'right' }}>{row.subject || '—'}</Typography>,
+        <Typography key="date" sx={{ fontSize: 12 }}>{toJalali(row.date)}</Typography>,
+        <Typography key="due" sx={{ fontSize: 12, color: MUTED }}>{toJalali(row.due_date)}</Typography>,
+        <Typography key="amount" sx={{ fontSize: 12, fontWeight: 700 }}>{money(row.amount)} <Box component="span" sx={{ fontSize: 12, color: MUTED }}>{currency}</Box></Typography>,
+        <Typography key="vat" sx={{ fontSize: 12 }}>{money(row.vat)}</Typography>,
+        <Typography key="total" sx={{ fontSize: 12, fontWeight: 900, color: INK }}>{money(row.total)}</Typography>,
+        <Typography key="paid" sx={{ fontSize: 12, fontWeight: 800, color: '#0f766e' }}>{money(rowPaid(row))}</Typography>,
+        <Typography key="remaining" sx={{ fontSize: 12, fontWeight: 800, color: rowRemaining(row) ? '#b45309' : '#0f766e' }}>
+          {money(rowRemaining(row))}
+        </Typography>,
+        <Chip key="status" size="small" label={status.label}
+          sx={{ height: 20, fontSize: 12, bgcolor: status.bg, color: status.color }} />,
+      ];
+    }}
   />
 );
 

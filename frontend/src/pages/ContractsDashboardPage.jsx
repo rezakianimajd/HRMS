@@ -476,8 +476,14 @@ const ContractsDashboardPage = () => {
         rate,
         currency: currencyLabelOf(contract),
         rialAmount: amount * rate,
-        invoiced: invoices.reduce((sum, invoice) => sum + num(invoice.total ?? invoice.amount), 0),
-        paid: payments.reduce((sum, payment) => sum + num(payment.amount), 0),
+        invoiced: (contract.total_payable !== undefined && contract.total_payable !== null)
+          ? num(contract.total_payable)
+          : invoices.reduce((sum, invoice) => sum + num(invoice.total ?? invoice.amount), 0),
+        // «پرداخت‌شده» از تخصیص‌های پرداخت در API محاسبه شده است؛ جمع پرداخت‌های
+        // خام فقط برای سازگاری با پاسخ‌های قدیمی استفاده می‌شود.
+        paid: (contract.total_paid !== undefined && contract.total_paid !== null)
+          ? num(contract.total_paid)
+          : payments.reduce((sum, payment) => sum + num(payment.amount), 0),
         overdue: invoices.filter((invoice) => !invoice.is_paid && invoice.due_date && num(daysUntil(invoice.due_date)) < 0).length,
         guarantees: asArray(contract.guarantees).filter((guarantee) => !guarantee.is_released),
       };

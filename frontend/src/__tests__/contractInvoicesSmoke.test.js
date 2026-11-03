@@ -104,7 +104,9 @@ test('invoice workspace renders KPI, invoice card, detail drawer and editor dial
   expect(container.textContent).toContain('شماره فاکتور');
   expect(container.textContent).toContain('INV-۱۰۰');
   expect(container.textContent).toContain('فاکتور تجهیزات کارگاه');
-  expect(container.textContent).toContain('سررسید گذشته');
+  // پرداخت جزئی ثبت‌شده روی فاکتور، وضعیت را از «سررسید گذشته» به «پرداخت جزئی» می‌برد.
+  expect(container.textContent).toContain('پرداخت جزئی');
+  expect(container.textContent).toContain('مانده');
   expect(container.textContent).toContain('جمع مبلغ:');
   expect(container.textContent).toContain('فهرست قراردادها');
 
