@@ -297,7 +297,6 @@ const CorrespondenceSettingsPage = () => {
       <PageHeader
         icon={<SettingsIcon />}
         title="تنظیمات مکاتبات اداری"
-        subtitle="انواع مکاتبه، سری‌های شماره‌گذاری و مخاطبین/سازمان‌های طرف مکاتبه"
         badge={(
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
             <Chip size="small" label={`${formatPersianNumber(categories.length)} نوع مکاتبه`}
@@ -368,16 +367,6 @@ const CorrespondenceSettingsPage = () => {
           emptyText="ردیفی ثبت نشده است."
           columns={columnsFor(activeType)}
         />
-        <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
-          sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
-          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-            {activeType === 'series'
-              ? 'شمارهٔ نامه‌ها هنگام «ثبت شماره» به‌صورت خودکار از این سری‌ها صادر می‌شود و هر سال شمسی از یک شروع می‌شود.'
-              : activeType === 'category'
-                ? 'نوع مکاتبه در فرم ثبت نامه و فیلترهای دفتر مکاتبات استفاده می‌شود.'
-                : 'مخاطبین در فرم نامه قابل انتخاب هستند و تعداد نامه‌های هر مخاطب نمایش داده می‌شود.'}
-          </Typography>
-        </Stack>
       </Paper>
 
 

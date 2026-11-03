@@ -1,13 +1,14 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
   DialogTitle, Divider, FormControlLabel, IconButton, MenuItem, Paper, Stack, Switch,
-  Tab, Tabs, TextField, Tooltip, Typography,
+  Tab, Table, TableBody, TableCell, TableRow, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
+import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
 import CloseIcon from '@mui/icons-material/Close';
@@ -23,7 +24,7 @@ import SendIcon from '@mui/icons-material/Send';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUtils';
+import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../core/utils/numberUtils';
 import PageHeader from '../../core/components/ui/PageHeader';
 import { MUTED } from '../accounting/AccountingDashboardUI';
 import {
@@ -100,55 +101,47 @@ const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results
 export const LETTER_PAGE_PRESETS = {
   all: {
     title: 'دفتر مکاتبات اداری',
-    subtitle: 'جستجو و مدیریت یکجای نامه‌های وارده، صادره و داخلی',
     icon: MailOutlineIcon,
     accent: ACCENT,
   },
   incoming: {
     title: 'نامه‌های وارده',
-    subtitle: 'نامه‌های دریافتی از سازمان‌ها و اشخاص؛ ارجاع، پیوست و پیگیری پاسخ',
     icon: InboxIcon,
     accent: INCOMING,
     direction: 'incoming',
   },
   outgoing: {
     title: 'نامه‌های صادره',
-    subtitle: 'نامه‌های ارسالی به سازمان‌ها و اشخاص؛ شماره‌گذاری و پیوست‌ها',
     icon: SendIcon,
     accent: OUTGOING,
     direction: 'outgoing',
   },
   internal: {
     title: 'مکاتبات داخلی',
-    subtitle: 'نامه‌ها و مکاتبات درون‌سازمانی',
     icon: MailOutlineIcon,
     accent: INTERNAL,
     direction: 'internal',
   },
   drafts: {
     title: 'پیش‌نویس‌های مکاتبات',
-    subtitle: 'نامه‌هایی که هنوز شماره نخورده یا نهایی نشده‌اند',
     icon: EditNoteIcon,
     accent: SLATE,
     status: 'draft',
   },
   referrals: {
     title: 'ارجاعات من',
-    subtitle: 'نامه‌هایی که برای شما ارجاع شده و در انتظار اقدام است',
     icon: ForwardToInboxIcon,
     accent: WARN,
     scope: 'referred',
   },
   overdue: {
     title: 'پیگیری معوقات',
-    subtitle: 'نامه‌های باز که مهلت پاسخ آن‌ها گذشته است',
     icon: WarningAmberIcon,
     accent: DANGER,
     overdue: true,
   },
   archive: {
     title: 'بایگانی مکاتبات',
-    subtitle: 'نامه‌های بسته‌شده و بایگانی‌شدهٔ دفتر مکاتبات',
     icon: ArchiveIcon,
     accent: '#334155',
     archived: true,
@@ -175,75 +168,196 @@ const cleanPayload = (form) => {
   return payload;
 };
 
-/** بخش‌بندی فرم با رنگ و جداکننده (ظاهر حرفه‌ای فرم ثبت نامه). */
-const FormSection = ({ icon: Icon, title, hint, color = ACCENT, children }) => (
+/** بخش‌بندی فرم با رنگ و جداکننده (بدون توضیح زیر عنوان). */
+const FormSection = ({ icon: Icon, title, color = ACCENT, children }) => (
   <Box sx={{ mb: 1.75 }}>
-    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1, minWidth: 0 }}>
+    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 0.75, minWidth: 0 }}>
       <Box sx={{
-        width: 26, height: 26, borderRadius: '8px', flex: '0 0 auto',
+        width: 28, height: 28, borderRadius: '8px', flex: '0 0 auto',
         display: 'grid', placeItems: 'center', bgcolor: alpha(color, 0.12), color,
       }}>
-        <Icon sx={{ fontSize: 15 }} />
+        <Icon sx={{ fontSize: 16 }} />
       </Box>
-      <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color, flex: '0 0 auto' }}>
+      <Typography noWrap sx={{ fontSize: 13, fontWeight: 900, color, flex: '0 0 auto' }}>
         {title}
       </Typography>
-      {hint ? (
-        <Typography noWrap sx={{ fontSize: 10, color: MUTED, flex: '1 1 auto', minWidth: 0 }}>
-          {hint}
-        </Typography>
-      ) : null}
-      <Divider sx={{ flex: 1, borderColor: alpha(color, 0.25) }} />
+      <Divider sx={{ flex: 1, borderColor: alpha(color, 0.3) }} />
     </Stack>
     {children}
   </Box>
 );
 
-const FormGrid = ({ children }) => (
-  <Box sx={{
-    display: 'grid',
-    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-    gap: 1.25,
-    minWidth: 0,
-  }}>
-    {children}
-  </Box>
-);
+const chunkArray = (items, size) => {
+  const rows = [];
+  for (let index = 0; index < items.length; index += size) {
+    rows.push(items.slice(index, index + size));
+  }
+  return rows;
+};
 
-/** یک خانهٔ اطلاعات در نمای جزئیات نامه. */
-const InfoCell = ({ label, value, span }) => (
-  <Box sx={{ minWidth: 0, gridColumn: span ? { xs: 'auto', sm: `span ${span}` } : undefined }}>
-    <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>{label}</Typography>
-    <Typography title={String(value || '')} sx={{
-      fontSize: 11.5, fontWeight: 800, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+/** جدول ورود اطلاعات (هم‌سبک با ورود اطلاعات جدول معاملات فصلی). */
+const FormTable = ({ children, columns = 3 }) => {
+  const cells = React.Children.toArray(children);
+  const rows = chunkArray(cells, columns);
+  return (
+    <Table size="small" sx={{
+      tableLayout: 'fixed',
+      '& td': {
+        border: '1px solid',
+        borderColor: 'divider',
+        px: 0.9,
+        py: 0.7,
+        verticalAlign: 'middle',
+        bgcolor: 'background.paper',
+      },
+      '& .MuiTextField-root': { width: '100%', m: 0 },
+      '& .MuiFormHelperText-root': { mx: 0.6, my: 0.2 },
     }}>
-      {value || '—'}
-    </Typography>
-  </Box>
-);
+      <TableBody>
+        {rows.map((row, rowIndex) => (
+          <TableRow key={`form-row-${rowIndex}`}>
+            {row.map((node, cellIndex) => (
+              <TableCell key={`form-cell-${rowIndex}-${cellIndex}`}>{node}</TableCell>
+            ))}
+            {Array.from({ length: columns - row.length }).map((_unused, padIndex) => (
+              <TableCell key={`form-pad-${rowIndex}-${padIndex}`} />
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
+
+/** جدول مشخصات در نمای جزئیات نامه (برچسب/مقدار، فونت خوانا). */
+const InfoTable = ({ rows, columns = 3 }) => {
+  const pairs = rows.filter(Boolean);
+  return (
+    <Table size="small" sx={{
+      tableLayout: 'fixed',
+      '& td': { border: '1px solid', borderColor: 'divider', px: 1.1, py: 0.9 },
+    }}>
+      <TableBody>
+        {chunkArray(pairs, columns).map((group, rowIndex) => (
+          <TableRow key={`info-row-${rowIndex}`}>
+            {group.map(([label, value]) => (
+              <Fragment key={`info-${rowIndex}-${label}`}>
+                <TableCell sx={{
+                  width: '16%',
+                  bgcolor: alpha(SLATE, 0.04),
+                  fontSize: 12,
+                  fontWeight: 800,
+                  color: 'text.secondary',
+                  whiteSpace: 'nowrap',
+                }}>
+                  {label}
+                </TableCell>
+                <TableCell sx={{
+                  fontSize: 12.5,
+                  fontWeight: 700,
+                  whiteSpace: 'pre-wrap',
+                  wordBreak: 'break-word',
+                }}>
+                  {value || '—'}
+                </TableCell>
+              </Fragment>
+            ))}
+            {Array.from({ length: columns - group.length }).map((_unused, padIndex) => (
+              <Fragment key={`info-pad-${rowIndex}-${padIndex}`}>
+                <TableCell />
+                <TableCell />
+              </Fragment>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  );
+};
 
 const InfoGroup = ({ icon: Icon, title, color = ACCENT, children }) => (
   <Box sx={{
     border: '1px solid', borderColor: dividerColor(color), borderRadius: '12px',
-    p: 1.25, mb: 1.25, minWidth: 0, bgcolor: alpha(color, 0.02),
+    mb: 1.5, minWidth: 0, overflow: 'hidden',
   }}>
-    <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mb: 0.9 }}>
-      <Icon sx={{ fontSize: 15, color }} />
-      <Typography sx={{ fontSize: 11.5, fontWeight: 900, color }}>{title}</Typography>
+    <Stack direction="row" alignItems="center" spacing={0.6}
+      sx={{ px: 1.25, py: 0.75, bgcolor: alpha(color, 0.07) }}>
+      <Icon sx={{ fontSize: 17, color }} />
+      <Typography sx={{ fontSize: 13, fontWeight: 900, color }}>{title}</Typography>
       <Divider sx={{ flex: 1, borderColor: dividerColor(color) }} />
     </Stack>
-    <Box sx={{
-      display: 'grid',
-      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
-      gap: 1,
-      minWidth: 0,
-    }}>
-      {children}
-    </Box>
+    {children}
   </Box>
 );
 
 const dividerColor = (color) => alpha(color, 0.22);
+
+/** ورودی ساعت با نمایش و پذیرش اعداد فارسی (HH:MM). */
+const PersianTimeInput = ({ value, onChange, label }) => {
+  const [text, setText] = useState(value ? timeLabel(value) : '');
+  const focusedRef = useRef(false);
+
+  useEffect(() => {
+    if (!focusedRef.current) setText(value ? timeLabel(value) : '');
+  }, [value]);
+
+  const handleChange = (event) => {
+    const digits = toEnglishDigits(String(event.target.value || ''))
+      .replace(/[^\d]/g, '')
+      .slice(0, 4);
+    let formatted = digits;
+    if (digits.length >= 3) formatted = `${digits.slice(0, 2)}:${digits.slice(2)}`;
+    setText(toPersianDigits(formatted));
+    if (digits.length === 4) {
+      const hour = Math.min(23, Number(digits.slice(0, 2)));
+      const minute = Math.min(59, Number(digits.slice(2)));
+      onChange(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+    } else if (!digits) {
+      onChange('');
+    }
+  };
+
+  return (
+    <TextField
+      size="small"
+      fullWidth
+      label={label}
+      value={text}
+      onChange={handleChange}
+      onFocus={() => { focusedRef.current = true; }}
+      onBlur={() => {
+        focusedRef.current = false;
+        setText(value ? timeLabel(value) : '');
+      }}
+      placeholder="۰۹:۳۰"
+      InputLabelProps={{ shrink: true }}
+      inputProps={{ inputMode: 'numeric', style: { textAlign: 'center', direction: 'ltr' } }}
+    />
+  );
+};
+
+/** یک خط متن جدول استاندارد (بدون شکستن خط، فونت از تم جدول). */
+const CellText = ({ children, title, weight = 700, color, mono }) => (
+  <Typography
+    noWrap
+    title={title || (typeof children === 'string' ? children : undefined)}
+    sx={{ color, fontSize: 'inherit', lineHeight: 1.6 }}
+  >
+    <Box
+      component="span"
+      sx={{
+        fontWeight: weight,
+        fontFamily: mono ? 'var(--hrms-table-number-font, inherit)' : 'inherit',
+      }}
+    >
+      {children}
+    </Box>
+  </Typography>
+);
+
+const joinParts = (...parts) => parts
+  .filter((part) => part !== null && part !== undefined && part !== '')
+  .join(' · ');
 
 
 const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations, users, contacts, onClose, onSaved }) => {
@@ -362,17 +476,13 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
           <MetaChip meta={DIRECTION_META[form.direction]} />
           {form.entry_method ? <MetaChip meta={ENTRY_METHOD_META[form.entry_method]} /> : null}
           <Box sx={{ flex: 1 }} />
-          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-            فیلدهای ستاره‌دار اجباری هستند
-          </Typography>
         </Stack>
       </DialogTitle>
       <DialogContent dividers sx={{ bgcolor: alpha(SLATE, 0.02) }}>
         {error ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: '10px' }}>{error}</Alert> : null}
 
-        <FormSection icon={InboxIcon} title="ثبت و ورود"
-          hint="نحوهٔ ورود نامه، زمان ورود و ثبت‌کننده" color={WARN}>
-          <FormGrid>
+        <FormSection icon={InboxIcon} title="ثبت و ورود" color={WARN}>
+          <FormTable>
             <TextField select size="small" label="جهت نامه" value={form.direction} onChange={set('direction')}>
               {Object.entries(DIRECTION_META).map(([value, item]) => (
                 <MenuItem key={value} value={value}>{item.label}</MenuItem>
@@ -387,13 +497,15 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
                   <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
                 ))}
             </TextField>
-            <TextField size="small" type="time" label="ساعت ورود" value={form.entry_time}
-              onChange={set('entry_time')} InputLabelProps={{ shrink: true }} />
-            <TextField size="small" type="date"
+            <PersianTimeInput label="ساعت ورود" value={form.entry_time}
+              onChange={(value) => setForm((prev) => ({ ...prev, entry_time: value }))} />
+            <JalaliMaskedDateInput variant="outlined"
               label={form.direction === 'outgoing' ? 'تاریخ ارسال' : 'تاریخ ورود'}
               value={form.direction === 'outgoing' ? form.sent_date : form.received_date}
-              onChange={set(form.direction === 'outgoing' ? 'sent_date' : 'received_date')}
-              InputLabelProps={{ shrink: true }} />
+              onChange={(value) => setForm((prev) => ({
+                ...prev,
+                [form.direction === 'outgoing' ? 'sent_date' : 'received_date']: value,
+              }))} />
             <TextField select size="small" label="ثبت‌کنندهٔ ورود" value={form.entered_by}
               onChange={set('entered_by')}>
               <MenuItem value="">—</MenuItem>
@@ -402,52 +514,46 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
               ))}
             </TextField>
             <TextField size="small" label="نام ثبت‌کننده (متن آزاد)" value={form.entered_by_name}
-              onChange={set('entered_by_name')} helperText="اگر ثبت‌کننده کاربر سامانه نیست" />
-          </FormGrid>
+              onChange={set('entered_by_name')} />
+          </FormTable>
         </FormSection>
 
-        <FormSection icon={EditNoteIcon} title="شماره‌های ثبت"
-          hint="شمارهٔ نامه، شمارهٔ ثبت ورود به شرکت و شمارهٔ ثبت ورود به واحد" color={INCOMING}>
-          <FormGrid>
-            <TextField select size="small" label="سری شماره‌گذاری" value={form.series} onChange={set('series')}
-              helperText={form.series
-                ? `پیش‌نمایش: ${(meta?.series || []).find((row) => row.id === Number(form.series))?.preview || '—'}`
-                : 'در صورت خالی بودن، سری پیش‌فرض استفاده می‌شود'}>
+        <FormSection icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
+          <FormTable>
+            <TextField select size="small" label="سری شماره‌گذاری" value={form.series} onChange={set('series')}>
               <MenuItem value="">سری پیش‌فرض</MenuItem>
               {seriesOptions.map((row) => (
                 <MenuItem key={row.id} value={row.id}>{row.title}</MenuItem>
               ))}
             </TextField>
-            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')}
-              helperText="خالی بگذارید تا خودکار صادر شود" />
+            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')} />
             <TextField size="small" label="شماره اندیکاتور" value={form.indicator_no}
               onChange={set('indicator_no')} />
             <TextField size="small" label="ترنسمیتال" value={form.transmittal_no}
               onChange={set('transmittal_no')} />
             <TextField size="small" label="شماره نامه طرف مقابل" value={form.external_number}
               onChange={set('external_number')} />
-            <TextField size="small" type="date" label="تاریخ نامه" value={form.letter_date}
-              onChange={set('letter_date')} InputLabelProps={{ shrink: true }} />
+            <JalaliMaskedDateInput variant="outlined" label="تاریخ نامه" value={form.letter_date}
+              onChange={(value) => setForm((prev) => ({ ...prev, letter_date: value }))} />
             <TextField size="small" label="شماره ثبت ورود به شرکت" value={form.company_reg_no}
               onChange={set('company_reg_no')} />
-            <TextField size="small" type="date" label="تاریخ ثبت ورود به شرکت"
-              value={form.company_reg_date} onChange={set('company_reg_date')}
-              InputLabelProps={{ shrink: true }} />
+            <JalaliMaskedDateInput variant="outlined" label="تاریخ ثبت ورود به شرکت"
+              value={form.company_reg_date}
+              onChange={(value) => setForm((prev) => ({ ...prev, company_reg_date: value }))} />
             <TextField size="small" label="شماره ثبت ورود به واحد" value={form.unit_reg_no}
               onChange={set('unit_reg_no')} />
-            <TextField size="small" type="date" label="تاریخ ثبت ورود به واحد"
-              value={form.unit_reg_date} onChange={set('unit_reg_date')}
-              InputLabelProps={{ shrink: true }} />
+            <JalaliMaskedDateInput variant="outlined" label="تاریخ ثبت ورود به واحد"
+              value={form.unit_reg_date}
+              onChange={(value) => setForm((prev) => ({ ...prev, unit_reg_date: value }))} />
             <TextField size="small" label="واحد ثبت‌کننده / گیرنده" value={form.unit_name}
-              onChange={set('unit_name')} helperText="مثال: دبیرخانه، واحد مالی" />
-            <TextField size="small" type="date" label="مهلت پاسخ" value={form.due_date}
-              onChange={set('due_date')} InputLabelProps={{ shrink: true }} />
-          </FormGrid>
+              onChange={set('unit_name')} />
+            <JalaliMaskedDateInput variant="outlined" label="مهلت پاسخ" value={form.due_date}
+              onChange={(value) => setForm((prev) => ({ ...prev, due_date: value }))} />
+          </FormTable>
         </FormSection>
 
-        <FormSection icon={SendIcon} title="طرفین مکاتبه"
-          hint="ارسال‌کننده، طرف حساب (مثلاً پیمانکار) و گیرنده" color={OUTGOING}>
-          <FormGrid>
+        <FormSection icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
+          <FormTable>
             <TextField select size="small" label="سازمان ارسال‌کننده" value={form.sender_organization}
               onChange={set('sender_organization')}>
               <MenuItem value="">—</MenuItem>
@@ -458,7 +564,7 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
             <TextField size="small" label="نام ارسال‌کننده" value={form.sender_name}
               onChange={set('sender_name')} />
             <TextField size="small" label="سمت ارسال‌کننده" value={form.sender_title}
-              onChange={set('sender_title')} helperText="مثال: ناظر پروژه، کارشناس بیمه" />
+              onChange={set('sender_title')} />
             <TextField select size="small" label="طرف حساب (سازمان)" value={form.organization}
               onChange={set('organization')}>
               <MenuItem value="">—</MenuItem>
@@ -477,12 +583,11 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
             </TextField>
             <TextField size="small" label="گیرنده" value={form.receiver_name}
               onChange={set('receiver_name')} />
-          </FormGrid>
+          </FormTable>
         </FormSection>
 
-        <FormSection icon={MailOutlineIcon} title="مشخصات نامه"
-          hint="موضوع، نوع، متن و اولویت" color={INTERNAL}>
-          <FormGrid>
+        <FormSection icon={MailOutlineIcon} title="مشخصات نامه" color={INTERNAL}>
+          <FormTable>
             <TextField select size="small" label="نوع مکاتبه" value={form.category} onChange={set('category')}>
               <MenuItem value="">—</MenuItem>
               {categories.map((row) => (
@@ -500,20 +605,20 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
                 <MenuItem key={value} value={value}>{item.label}</MenuItem>
               ))}
             </TextField>
-            <TextField size="small" label="موضوع نامه" value={form.subject} onChange={set('subject')}
-              sx={{ gridColumn: { xs: 'auto', md: 'span 2' } }} />
-            <TextField size="small" multiline minRows={2} label="خلاصه / چکیده" value={form.summary}
-              onChange={set('summary')} sx={{ gridColumn: '1 / -1' }} />
+            <TextField size="small" label="موضوع نامه" value={form.subject} onChange={set('subject')} />
+          </FormTable>
+          <FormTable columns={1}>
+            <TextField size="small" label="خلاصه / چکیده" value={form.summary}
+              onChange={set('summary')} />
             <TextField size="small" multiline minRows={4} label="متن نامه" value={form.body}
-              onChange={set('body')} sx={{ gridColumn: '1 / -1' }} />
-          </FormGrid>
+              onChange={set('body')} />
+          </FormTable>
         </FormSection>
 
-        <FormSection icon={ArchiveIcon} title="مالی، قرارداد و بایگانی"
-          hint="اطلاعات تکمیلی و بایگانی" color={SLATE}>
-          <FormGrid>
+        <FormSection icon={ArchiveIcon} title="مالی، قرارداد و بایگانی" color={SLATE}>
+          <FormTable>
             <TextField size="small" type="number" label="مبلغ (اختیاری)" value={form.amount}
-              onChange={set('amount')} helperText="برای نامه‌های مالی" />
+              onChange={set('amount')} />
             <TextField size="small" label="شماره قرارداد مرتبط" value={form.contract_number}
               onChange={set('contract_number')} />
             <TextField size="small" label="شماره بایگانی" value={form.archive_ref}
@@ -526,8 +631,8 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
               ))}
             </TextField>
             <TextField size="small" label="نام تنظیم‌کننده (متن آزاد)" value={form.drafter_name}
-              onChange={set('drafter_name')} helperText="اگر تنظیم‌کننده کاربر سامانه نیست" />
-          </FormGrid>
+              onChange={set('drafter_name')} />
+          </FormTable>
         </FormSection>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}
@@ -538,7 +643,7 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
           </Button>
           <input ref={fileRef} type="file" multiple hidden data-testid="letter-files"
             onChange={(event) => setFiles(Array.from(event.target.files || []))} />
-          <Typography sx={{ fontSize: 11, color: MUTED }}>
+          <Typography sx={{ fontSize: 12, color: MUTED }}>
             {files.length
               ? `${toPersianDigits(files.length)} فایل انتخاب شد`
               : 'فایل اسکن نامه / پیوست‌ها را انتخاب کنید'}
@@ -549,7 +654,7 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
               <Switch size="small" checked={form.register}
                 onChange={(event) => setForm((prev) => ({ ...prev, register: event.target.checked }))} />
             )}
-            label={<Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>ثبت شماره و نهایی‌سازی</Typography>}
+            label={<Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>ثبت شماره و نهایی‌سازی</Typography>}
           />
         </Stack>
       </DialogContent>
@@ -597,7 +702,7 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
       </DialogTitle>
       <DialogContent dividers>
         <FormSection icon={ForwardToInboxIcon} title="گیرنده و مهلت" color={WARN}>
-          <Stack spacing={1.25}>
+          <FormTable columns={1}>
             <TextField select size="small" label="ارجاع به کاربر" value={toUser}
               onChange={(event) => setToUser(event.target.value)}>
               <MenuItem value="">—</MenuItem>
@@ -606,20 +711,18 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
               ))}
             </TextField>
             <TextField size="small" label="یا واحد / شخص خارج از سامانه" value={toName}
-              onChange={(event) => setToName(event.target.value)}
-              helperText="مثال: واحد مالی، دبیرخانه، مدیرعامل" />
-            <TextField size="small" type="date" label="مهلت اقدام" value={dueDate}
-              onChange={(event) => setDueDate(event.target.value)} InputLabelProps={{ shrink: true }} />
-          </Stack>
+              onChange={(event) => setToName(event.target.value)} />
+            <JalaliMaskedDateInput variant="outlined" label="مهلت اقدام" value={dueDate}
+              onChange={(value) => setDueDate(value)} />
+          </FormTable>
         </FormSection>
         <FormSection icon={EditNoteIcon} title="دستور و توضیح" color={INCOMING}>
-          <Stack spacing={1.25}>
+          <FormTable columns={1}>
             <TextField size="small" multiline minRows={2} label="دستور / اقدام درخواستی"
-              value={instruction} onChange={(event) => setInstruction(event.target.value)}
-              helperText="مثال: بررسی و اعلام نظر فنی تا پایان هفته" />
+              value={instruction} onChange={(event) => setInstruction(event.target.value)} />
             <TextField size="small" multiline minRows={2} label="توضیح تکمیلی" value={note}
               onChange={(event) => setNote(event.target.value)} />
-          </Stack>
+          </FormTable>
         </FormSection>
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
@@ -675,20 +778,20 @@ const CompleteReferralDialog = ({ open, referral, onClose, onSubmit, pending }) 
       <DialogContent dividers>
         {referral?.instruction ? (
           <Alert severity="info" sx={{ mb: 1.25, borderRadius: '10px' }}>
-            <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>دستور ارجاع:</Typography>
-            <Typography sx={{ fontSize: 11.5, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
+            <Typography sx={{ fontSize: 12.5, fontWeight: 700 }}>دستور ارجاع:</Typography>
+            <Typography sx={{ fontSize: 12.5, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
           </Alert>
         ) : null}
-        <Stack spacing={1.25}>
+        <FormTable columns={1}>
           <TextField size="small" multiline minRows={2} label="پاسخ / جوابیهٔ اقدام‌کننده"
             value={response} onChange={(event) => setResponse(event.target.value)} />
           <TextField size="small" multiline minRows={2} label="نتیجهٔ نهایی"
             value={result} onChange={(event) => setResult(event.target.value)} />
           <TextField size="small" multiline minRows={2} label="یادداشت نتیجه"
             value={resultNote} onChange={(event) => setResultNote(event.target.value)} />
-          <TextField size="small" type="date" label="تاریخ پاسخ" value={answeredOn}
-            onChange={(event) => setAnsweredOn(event.target.value)} InputLabelProps={{ shrink: true }} />
-        </Stack>
+          <JalaliMaskedDateInput variant="outlined" label="تاریخ پاسخ" value={answeredOn}
+            onChange={(value) => setAnsweredOn(value)} />
+        </FormTable>
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
@@ -1076,7 +1179,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       <PageHeader
         icon={<PageIcon />}
         title={preset.title}
-        subtitle={preset.subtitle}
         badge={(
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
             <Chip size="small" label={`${formatPersianNumber(total)} مکاتبه`}
@@ -1140,7 +1242,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           gridTemplateColumns: { xs: 'minmax(0,1fr)', sm: 'repeat(2, minmax(0,1fr))', md: 'repeat(3, minmax(0,1fr))', lg: 'repeat(6, minmax(0,1fr))' },
           gap: 1, mb: 1.25, minWidth: 0,
         }}>
-          <KpiTile label="کل مکاتبات" value={formatPersianNumber(totals.all || 0)} hint="دفتر وارده و صادره"
+          <KpiTile label="کل مکاتبات" value={formatPersianNumber(totals.all || 0)}
             color={SLATE} icon={MailOutlineIcon} />
           <KpiTile label="نامه‌های وارده" value={formatPersianNumber(totals.incoming || 0)}
             hint={`این ماه: ${formatPersianNumber(totals.incoming_this_month || 0)}`} color={INCOMING}
@@ -1151,8 +1253,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           <KpiTile label="در جریان" value={formatPersianNumber(totals.open || 0)}
             hint={`پیش‌نویس: ${formatPersianNumber(totals.drafts || 0)}`} color={WARN}
             icon={EditNoteIcon} onClick={() => setStatusFilter('in_progress')} />
-          <KpiTile label="معوق (مهلت پاسخ)" value={formatPersianNumber(totals.overdue || 0)}
-            hint="نیازمند پیگیری" color={DANGER} icon={WarningAmberIcon}
+          <KpiTile label="معوق (مهلت پاسخ)" value={formatPersianNumber(totals.overdue || 0)} color={DANGER} icon={WarningAmberIcon}
             onClick={() => setOverdueOnly(true)} />
           <KpiTile label="ارجاعات من" value={formatPersianNumber(myReferralCount)}
             hint={`معوق: ${formatPersianNumber(totals.my_overdue_referrals || 0)}`} color={INTERNAL}
@@ -1167,7 +1268,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               {formatPersianNumber(totals.overdue)} مکاتبه از مهلت پاسخ گذشته است.
             </Typography>
             <Button size="small" variant="text" onClick={() => setOverdueOnly(true)}
-              sx={{ fontSize: 11.5, fontWeight: 800, py: 0 }}>
+              sx={{ fontSize: 12.5, fontWeight: 800, py: 0 }}>
               نمایش معوقات
             </Button>
           </Stack>
@@ -1230,179 +1331,168 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
           columns={[
             {
-              key: 'row', label: 'ردیف', width: '3%', align: 'center',
+              key: 'row', label: 'ردیف', width: '2.5%', align: 'center',
               render: (_row, index) => (
-                <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: MUTED }}>
+                <CellText weight={700} color={MUTED}>
                   {toPersianDigits(page * pageSize + index + 1)}
-                </Typography>
+                </CellText>
               ),
             },
             {
               key: 'number', label: 'شماره نامه',
-              width: mode === 'incoming' ? '8%' : '9%',
+              width: mode === 'incoming' ? '9%' : '9.5%',
               align: 'center',
-              render: (row) => (
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap title={row.letter.number}
-                    sx={{ fontSize: 11.5, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                    {row.letter.number ? toPersianDigits(row.letter.number) : 'بدون شماره'}
-                  </Typography>
-                  {row.letter.indicator_no ? (
-                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
-                      اندیکاتور {toPersianDigits(row.letter.indicator_no)}
-                    </Typography>
-                  ) : null}
-                </Box>
-              ),
+              render: (row) => {
+                const numberText = row.letter.number ? toPersianDigits(row.letter.number) : 'بدون شماره';
+                const indicatorText = row.letter.indicator_no
+                  ? `اندیکاتور ${toPersianDigits(row.letter.indicator_no)}` : '';
+                return (
+                  <CellText mono weight={800} title={joinParts(numberText, indicatorText)}>
+                    {joinParts(numberText, indicatorText)}
+                  </CellText>
+                );
+              },
             },
             ...(mode === 'incoming' ? [
               {
-                key: 'company_reg', label: 'ثبت شرکت', width: '8%', align: 'center',
+                key: 'company_reg', label: 'ثبت شرکت', width: '8.5%', align: 'center',
                 render: (row) => (
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography noWrap
-                      title={row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : ''}
-                      sx={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : '—'}
-                    </Typography>
-                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
-                      {row.letter.company_reg_date ? dateLabel(row.letter.company_reg_date) : '—'}
-                    </Typography>
-                  </Box>
+                  <CellText mono weight={800} title={joinParts(
+                    row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : '',
+                    row.letter.company_reg_date ? dateLabel(row.letter.company_reg_date) : '',
+                  )}>
+                    {joinParts(
+                      row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : '—',
+                      row.letter.company_reg_date ? dateLabel(row.letter.company_reg_date) : '',
+                    )}
+                  </CellText>
                 ),
               },
               {
-                key: 'unit_reg', label: 'ثبت واحد', width: '8%', align: 'center',
+                key: 'unit_reg', label: 'ثبت واحد', width: '8.5%', align: 'center',
                 render: (row) => (
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography noWrap title={row.letter.unit_name || ''}
-                      sx={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                      {row.letter.unit_reg_no ? toPersianDigits(row.letter.unit_reg_no) : '—'}
-                    </Typography>
-                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
-                      {row.letter.unit_reg_date ? dateLabel(row.letter.unit_reg_date) : (row.letter.unit_name || '—')}
-                    </Typography>
-                  </Box>
+                  <CellText mono weight={800} title={joinParts(
+                    row.letter.unit_reg_no ? toPersianDigits(row.letter.unit_reg_no) : '',
+                    row.letter.unit_reg_date ? dateLabel(row.letter.unit_reg_date) : '',
+                    row.letter.unit_name || '',
+                  )}>
+                    {joinParts(
+                      row.letter.unit_reg_no ? toPersianDigits(row.letter.unit_reg_no) : '—',
+                      row.letter.unit_reg_date ? dateLabel(row.letter.unit_reg_date) : '',
+                    )}
+                  </CellText>
                 ),
               },
             ] : []),
             {
-              key: 'subject', label: 'موضوع', width: mode === 'incoming' ? '16%' : '22%',
+              key: 'subject', label: 'موضوع', width: mode === 'incoming' ? '13%' : '22%',
               render: (row) => (
-                <Box sx={{ minWidth: 0 }}>
-                  <Typography noWrap title={row.letter.subject} sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                    {row.letter.subject || '—'}
-                  </Typography>
-                  <Typography noWrap sx={{ fontSize: 9.5, color: MUTED }}>
-                    {row.letter.summary || row.letter.category_title || '—'}
-                  </Typography>
-                </Box>
+                <CellText weight={800}
+                  title={joinParts(row.letter.subject, row.letter.summary, row.letter.category_title)}>
+                  {row.letter.subject || '—'}
+                </CellText>
               ),
             },
             ...(mode === 'incoming' ? [
               {
-                key: 'sender', label: 'ارسال‌کننده', width: '10%',
-                render: (row) => (
-                  <Box sx={{ minWidth: 0 }}>
-                    <Typography noWrap
-                      title={row.letter.sender_organization_name || row.letter.sender_name}
-                      sx={{ fontSize: 11, fontWeight: 800 }}>
-                      {row.letter.sender_organization_name || row.letter.sender_name || '—'}
-                    </Typography>
-                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
-                      {row.letter.sender_title || row.letter.sender_name || '—'}
-                    </Typography>
-                  </Box>
-                ),
+                key: 'sender', label: 'ارسال‌کننده', width: '8%',
+                render: (row) => {
+                  const primary = row.letter.sender_organization_name || row.letter.sender_name || '—';
+                  const secondary = row.letter.sender_title
+                    || (row.letter.sender_organization_name ? row.letter.sender_name : '');
+                  return (
+                    <CellText weight={800} title={joinParts(
+                      row.letter.sender_organization_name,
+                      row.letter.sender_name,
+                      row.letter.sender_title,
+                    )}>
+                      {joinParts(primary, secondary)}
+                    </CellText>
+                  );
+                },
               },
             ] : []),
             {
               key: 'party', label: mode === 'incoming' ? 'طرف حساب' : 'طرف مکاتبه',
-              width: mode === 'incoming' ? '9%' : '13%',
-              render: (row) => (
-                <Typography noWrap
-                  title={row.letter.organization_name || row.letter.correspondent_name
-                    || row.letter.sender_name || row.letter.receiver_name}
-                  sx={{ fontSize: 11, fontWeight: 700 }}>
-                  {row.letter.organization_name || row.letter.correspondent_name
-                    || row.letter.sender_name || row.letter.receiver_name || '—'}
-                </Typography>
-              ),
+              width: mode === 'incoming' ? '8%' : '13%',
+              render: (row) => {
+                const partyText = row.letter.organization_name || row.letter.correspondent_name
+                  || row.letter.sender_name || row.letter.receiver_name || '—';
+                return (
+                  <CellText weight={700} title={partyText}>{partyText}</CellText>
+                );
+              },
             },
             ...(mode === 'incoming' ? [
               {
-                key: 'entry', label: 'نحوهٔ ورود', width: '7%', align: 'center',
-                render: (row) => (
-                  <Box sx={{ minWidth: 0 }}>
-                    <Chip size="small" label={row.letter.entry_method_display || '—'}
-                      sx={chipSx(ENTRY_METHOD_META[row.letter.entry_method]?.color || SLATE)} />
-                    <Typography noWrap sx={{ fontSize: 9, color: MUTED, mt: 0.2 }}>
-                      {row.letter.entry_time ? timeLabel(row.letter.entry_time) : '—'}
-                      {row.letter.entered_by_label ? ` · ${row.letter.entered_by_label}` : ''}
-                    </Typography>
-                  </Box>
-                ),
+                key: 'entry', label: 'نحوهٔ ورود', width: '13%',
+                render: (row) => {
+                  const entryMeta = ENTRY_METHOD_META[row.letter.entry_method];
+                  const entryText = joinParts(
+                    row.letter.entry_method_display || '',
+                    row.letter.entry_time ? timeLabel(row.letter.entry_time) : '',
+                    row.letter.entered_by_label || '',
+                  );
+                  return (
+                    <CellText weight={800} color={entryMeta?.color || SLATE} title={entryText}>
+                      {entryText || '—'}
+                    </CellText>
+                  );
+                },
               },
             ] : []),
             {
               key: 'date', label: 'تاریخ نامه',
-              width: mode === 'incoming' ? '6.5%' : '8%',
+              width: mode === 'incoming' ? '6.5%' : '7%',
               align: 'center',
               render: (row) => (
-                <Typography noWrap sx={{ fontSize: 11, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
-                  {dateLabel(row.letter.letter_date)}
-                </Typography>
+                <CellText mono weight={700}>{dateLabel(row.letter.letter_date)}</CellText>
               ),
             },
             {
               key: 'due', label: 'مهلت پاسخ',
-              width: mode === 'incoming' ? '7%' : '9%',
+              width: mode === 'incoming' ? '5%' : '8%',
               align: 'center',
               render: (row) => (
                 row.letter.due_date ? (
                   <Chip size="small" label={daysLabel(row.days)} sx={chipSx(daysColor(row.days))} />
-                ) : <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>
+                ) : <CellText color={MUTED}>—</CellText>
               ),
             },
             ...(mode === 'incoming' ? [] : [
               {
-                key: 'type', label: 'نوع / جهت', width: '7%', align: 'center',
+                key: 'type', label: 'نوع / جهت', width: '6.5%', align: 'center',
                 render: (row) => (
-                  <Stack spacing={0.25} alignItems="center">
+                  <Tooltip title={row.letter.category_title || ''}>
                     <Chip size="small" label={row.directionMeta.label}
                       sx={chipSx(row.directionMeta.color, row.directionMeta.bg)} />
-                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
-                      {row.letter.category_title || '—'}
-                    </Typography>
-                  </Stack>
+                  </Tooltip>
                 ),
               },
             ]),
             {
               key: 'referral', label: 'آخرین ارجاع',
-              width: mode === 'incoming' ? '7%' : '8%',
+              width: mode === 'incoming' ? '6.5%' : '7.5%',
               align: 'center',
               render: (row) => {
                 const last = row.letter.last_referral;
-                if (!last) return <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>;
+                if (!last) return <CellText color={MUTED}>—</CellText>;
+                const referralMeta = REFERRAL_STATUS_META[last.status];
+                const referralName = last.to_user_name || last.to_name || '—';
                 return (
-                  <Tooltip title={`${last.to_user_name || last.to_name || ''} — ${dateLabel(last.referred_on)}`}>
-                    <Box sx={{ minWidth: 0 }}>
-                      <Typography noWrap sx={{ fontSize: 10, fontWeight: 800 }}>
-                        {last.to_user_name || last.to_name || '—'}
-                      </Typography>
-                      <Typography noWrap
-                        sx={{ fontSize: 9, color: REFERRAL_STATUS_META[last.status]?.color || MUTED }}>
-                        {REFERRAL_STATUS_META[last.status]?.label || ''}
-                      </Typography>
-                    </Box>
-                  </Tooltip>
+                  <CellText
+                    weight={800}
+                    color={referralMeta?.color || MUTED}
+                    title={joinParts(referralName, referralMeta?.label, dateLabel(last.referred_on))}
+                  >
+                    {referralName}
+                  </CellText>
                 );
               },
             },
             {
               key: 'status', label: 'وضعیت',
-              width: mode === 'incoming' ? '6.5%' : '8%',
+              width: mode === 'incoming' ? '4.5%' : '7%',
               align: 'center',
               render: (row) => (
                 <Chip size="small" label={row.statusMeta.label}
@@ -1411,25 +1501,25 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             ...(mode === 'incoming' ? [] : [
               {
-                key: 'priority', label: 'اولویت', width: '5.5%', align: 'center',
+                key: 'priority', label: 'اولویت', width: '5%', align: 'center',
                 render: (row) => (
                   <Chip size="small" label={PRIORITY_META[row.letter.priority]?.label || '—'}
                     sx={chipSx(PRIORITY_META[row.letter.priority]?.color || SLATE)} />
                 ),
               },
               {
-                key: 'attachments', label: 'پیوست', width: '4.5%', align: 'center',
+                key: 'attachments', label: 'پیوست', width: '4%', align: 'center',
                 render: (row) => (
                   row.letter.attachment_count ? (
                     <Chip size="small" label={toPersianDigits(row.letter.attachment_count)}
                       sx={chipSx(INTERNAL)} />
-                  ) : <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>
+                  ) : <CellText color={MUTED}>—</CellText>
                 ),
               },
             ]),
             {
               key: 'actions', label: 'عملیات',
-              width: mode === 'incoming' ? '5%' : '8%',
+              width: mode === 'incoming' ? '4.5%' : '6.5%',
               align: 'center',
               render: (row) => (
                 <Stack direction="row" spacing={0.1} useFlexGap justifyContent="center"
@@ -1517,7 +1607,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   <Typography noWrap title={activeLetter.subject} sx={{ fontSize: 15, fontWeight: 900 }}>
                     {activeLetter.subject || 'بدون موضوع'}
                   </Typography>
-                  <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+                  <Typography noWrap sx={{ fontSize: 12.5, color: MUTED, fontWeight: 600 }}>
                     {activeLetter.number ? `شماره: ${toPersianDigits(activeLetter.number)}` : 'بدون شماره'}
                     {activeLetter.indicator_no ? ` · اندیکاتور: ${activeLetter.indicator_no}` : ''}
                     {activeLetter.transmittal_no ? ` · ترنسمیتال: ${activeLetter.transmittal_no}` : ''}
@@ -1582,9 +1672,9 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
 
             <Tabs value={drawerTab} onChange={(_event, value) => setDrawerTab(value)}
               sx={{
-                minHeight: 34, px: 1.5,
+                minHeight: 38, px: 1.5,
                 borderBottom: '1px solid', borderColor: 'divider',
-                '& .MuiTab-root': { minHeight: 34, py: 0.4, fontSize: 11.5, fontWeight: 800 },
+                '& .MuiTab-root': { minHeight: 38, py: 0.4, fontSize: 12.5, fontWeight: 800 },
                 '& .MuiTabs-indicator': { bgcolor: ACCENT, height: 2.5, borderRadius: 2 },
               }}>
               <Tab value="info" label="مشخصات" />
@@ -1597,56 +1687,66 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               {drawerTab === 'info' ? (
                 <Box sx={{ minWidth: 0 }}>
                   <InfoGroup icon={InboxIcon} title="ثبت و ورود" color={WARN}>
-                    <InfoCell label="نحوهٔ ورود" value={activeLetter.entry_method_display} />
-                    <InfoCell label="ساعت ورود"
-                      value={activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''} />
-                    <InfoCell label="ثبت‌کنندهٔ ورود" value={activeLetter.entered_by_label} />
-                    <InfoCell label="تاریخ ورود" value={dateLabel(activeLetter.received_date)} />
-                    <InfoCell label="واحد ثبت‌کننده" value={activeLetter.unit_name} />
-                    <InfoCell label="تاریخ نامه" value={dateLabel(activeLetter.letter_date)} />
+                    <InfoTable rows={[
+                      ['نحوهٔ ورود', activeLetter.entry_method_display],
+                      ['ساعت ورود', activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''],
+                      ['ثبت‌کنندهٔ ورود', activeLetter.entered_by_label],
+                      ['تاریخ ورود', dateLabel(activeLetter.received_date)],
+                      ['واحد ثبت‌کننده', activeLetter.unit_name],
+                      ['تاریخ نامه', dateLabel(activeLetter.letter_date)],
+                    ]} />
                   </InfoGroup>
 
                   <InfoGroup icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
-                    <InfoCell label="شماره نامه"
-                      value={activeLetter.number ? toPersianDigits(activeLetter.number) : ''} />
-                    <InfoCell label="شماره اندیکاتور" value={activeLetter.indicator_no} />
-                    <InfoCell label="ترنسمیتال" value={activeLetter.transmittal_no} />
-                    <InfoCell label="شماره ثبت ورود به شرکت"
-                      value={activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''} />
-                    <InfoCell label="تاریخ ثبت ورود به شرکت" value={dateLabel(activeLetter.company_reg_date)} />
-                    <InfoCell label="شماره ثبت ورود به واحد"
-                      value={activeLetter.unit_reg_no ? toPersianDigits(activeLetter.unit_reg_no) : ''} />
-                    <InfoCell label="تاریخ ثبت ورود به واحد" value={dateLabel(activeLetter.unit_reg_date)} />
-                    <InfoCell label="شماره نامه طرف مقابل" value={activeLetter.external_number} />
-                    <InfoCell label="پاسخ به نامه" value={activeLetter.reply_number} />
+                    <InfoTable rows={[
+                      ['شماره نامه', activeLetter.number ? toPersianDigits(activeLetter.number) : ''],
+                      ['شماره اندیکاتور', activeLetter.indicator_no],
+                      ['ترنسمیتال', activeLetter.transmittal_no],
+                      ['شماره ثبت ورود به شرکت',
+                        activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''],
+                      ['تاریخ ثبت ورود به شرکت', dateLabel(activeLetter.company_reg_date)],
+                      ['شماره ثبت ورود به واحد',
+                        activeLetter.unit_reg_no ? toPersianDigits(activeLetter.unit_reg_no) : ''],
+                      ['تاریخ ثبت ورود به واحد', dateLabel(activeLetter.unit_reg_date)],
+                      ['شماره نامه طرف مقابل', activeLetter.external_number],
+                      ['پاسخ به نامه', activeLetter.reply_number],
+                    ]} />
                   </InfoGroup>
 
                   <InfoGroup icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
-                    <InfoCell label="سازمان ارسال‌کننده" value={activeLetter.sender_organization_name} />
-                    <InfoCell label="نام ارسال‌کننده" value={activeLetter.sender_name} />
-                    <InfoCell label="سمت ارسال‌کننده" value={activeLetter.sender_title} />
-                    <InfoCell label="طرف حساب (سازمان)" value={activeLetter.organization_name} />
-                    <InfoCell label="مخاطب" value={activeLetter.correspondent_name} />
-                    <InfoCell label="گیرنده" value={activeLetter.receiver_name} />
+                    <InfoTable rows={[
+                      ['سازمان ارسال‌کننده', activeLetter.sender_organization_name],
+                      ['نام ارسال‌کننده', activeLetter.sender_name],
+                      ['سمت ارسال‌کننده', activeLetter.sender_title],
+                      ['طرف حساب (سازمان)', activeLetter.organization_name],
+                      ['مخاطب', activeLetter.correspondent_name],
+                      ['گیرنده', activeLetter.receiver_name],
+                    ]} />
                   </InfoGroup>
 
                   <InfoGroup icon={MailOutlineIcon} title="مشخصات و بایگانی" color={INTERNAL}>
-                    <InfoCell label="نوع مکاتبه" value={activeLetter.category_title} />
-                    <InfoCell label="اولویت" value={activeLetter.priority_display} />
-                    <InfoCell label="محرمانگی" value={activeLetter.confidentiality_display} />
-                    <InfoCell label="مهلت پاسخ" value={activeLetter.due_date
-                      ? `${dateLabel(activeLetter.due_date)} (${daysLabel(daysBetween(activeLetter.due_date))})`
-                      : ''} />
-                    <InfoCell label="شماره قرارداد" value={activeLetter.contract_number} />
-                    <InfoCell label="شماره بایگانی" value={activeLetter.archive_ref} />
-                    <InfoCell label="تنظیم‌کننده" value={activeLetter.drafter_name} />
-                    <InfoCell label="ثبت‌کننده" value={activeLetter.created_by_name} />
-                    <InfoCell label="مبلغ" value={activeLetter.amount
-                      ? `${money(activeLetter.amount)} ${activeLetter.currency || 'ریال'}` : ''} />
-                    <InfoCell label="خلاصه" value={activeLetter.summary} span={3} />
-                    {activeLetter.body ? (
-                      <InfoCell label="متن نامه" value={activeLetter.body} span={3} />
-                    ) : null}
+                    <InfoTable rows={[
+                      ['نوع مکاتبه', activeLetter.category_title],
+                      ['اولویت', activeLetter.priority_display],
+                      ['محرمانگی', activeLetter.confidentiality_display],
+                      ['مهلت پاسخ', activeLetter.due_date
+                        ? `${dateLabel(activeLetter.due_date)} (${daysLabel(daysBetween(activeLetter.due_date))})`
+                        : ''],
+                      ['شماره قرارداد', activeLetter.contract_number],
+                      ['شماره بایگانی', activeLetter.archive_ref],
+                      ['تنظیم‌کننده', activeLetter.drafter_name],
+                      ['ثبت‌کننده', activeLetter.created_by_name],
+                      ['مبلغ', activeLetter.amount
+                        ? `${money(activeLetter.amount)} ${activeLetter.currency || 'ریال'}` : ''],
+                    ]} />
+                  </InfoGroup>
+
+                  <InfoGroup icon={EditNoteIcon} title="موضوع و متن" color={SLATE}>
+                    <InfoTable columns={1} rows={[
+                      ['موضوع', activeLetter.subject],
+                      ['خلاصه', activeLetter.summary],
+                      ['متن نامه', activeLetter.body],
+                    ]} />
                   </InfoGroup>
                 </Box>
               ) : null}
@@ -1665,49 +1765,49 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                         <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
                           <Chip size="small" label={`سطح ${toPersianDigits(referral.seq)}`} sx={chipSx(SLATE)} />
                           <MetaChip meta={meta} />
-                          <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+                          <Typography noWrap sx={{ fontSize: 12, color: MUTED }}>
                             {referral.from_user_name ? `از ${referral.from_user_name}` : ''}
                             {(referral.from_user_name && (referral.to_user_name || referral.to_name)) ? ' → ' : ''}
                             {referral.to_user_name || referral.to_name || ''}
                           </Typography>
                           <Box sx={{ flex: 1 }} />
-                          <Typography sx={{ fontSize: 10, color: MUTED }}>
+                          <Typography sx={{ fontSize: 11.5, color: MUTED }}>
                             {dateLabel(referral.referred_on)}
                           </Typography>
                         </Stack>
 
                         {referral.instruction ? (
                           <Box sx={{ mt: 0.75 }}>
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>دستور / اقدام درخواستی</Typography>
-                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>دستور / اقدام درخواستی</Typography>
+                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
                           </Box>
                         ) : null}
                         {referral.note ? (
                           <Box sx={{ mt: 0.5 }}>
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>توضیح</Typography>
-                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.note}</Typography>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: MUTED }}>توضیح</Typography>
+                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.note}</Typography>
                           </Box>
                         ) : null}
                         {referral.due_date ? (
-                          <Typography sx={{ fontSize: 10, mt: 0.4, color: daysColor(referralDays) }}>
+                          <Typography sx={{ fontSize: 11.5, mt: 0.4, color: daysColor(referralDays) }}>
                             مهلت اقدام: {dateLabel(referral.due_date)} ({daysLabel(referralDays)})
                           </Typography>
                         ) : null}
 
                         {referral.response ? (
                           <Box sx={{ mt: 0.75, p: 0.75, borderRadius: '8px', bgcolor: alpha(OK, 0.05) }}>
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: OK }}>پاسخ / جوابیه</Typography>
-                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.response}</Typography>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: OK }}>پاسخ / جوابیه</Typography>
+                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.response}</Typography>
                           </Box>
                         ) : null}
                         {referral.result ? (
                           <Box sx={{ mt: 0.5, p: 0.75, borderRadius: '8px', bgcolor: alpha(INCOMING, 0.05) }}>
-                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: INCOMING }}>نتیجه</Typography>
-                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.result}</Typography>
+                            <Typography sx={{ fontSize: 11.5, fontWeight: 700, color: INCOMING }}>نتیجه</Typography>
+                            <Typography sx={{ fontSize: 12, whiteSpace: 'pre-wrap' }}>{referral.result}</Typography>
                           </Box>
                         ) : null}
                         {referral.result_note && !referral.result ? (
-                          <Typography sx={{ fontSize: 10.5, color: OK, mt: 0.3 }}>
+                          <Typography sx={{ fontSize: 11.5, color: OK, mt: 0.3 }}>
                             یادداشت نتیجه: {referral.result_note}
                           </Typography>
                         ) : null}
@@ -1715,7 +1815,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                         <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
                           sx={{ mt: 0.6 }}>
                           {referral.answered_on ? (
-                            <Typography sx={{ fontSize: 9.5, color: MUTED }}>
+                            <Typography sx={{ fontSize: 11.5, color: MUTED }}>
                               پاسخ در {dateLabel(referral.answered_on)}
                               {referral.answered_by_name ? ` توسط ${referral.answered_by_name}` : ''}
                             </Typography>
@@ -1723,7 +1823,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                           {!['done', 'canceled'].includes(referral.status) ? (
                             <Button size="small" variant="contained" startIcon={<TaskAltIcon />}
                               onClick={() => setCompleteReferral(referral)}
-                              sx={{ fontSize: 10.5, py: 0.2, bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>
+                              sx={{ fontSize: 11.5, py: 0.2, bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>
                               ثبت پاسخ و نتیجه
                             </Button>
                           ) : null}
@@ -1731,7 +1831,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       </Box>
                     );
                   }) : (
-                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>
+                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>
                       هنوز ارجاعی برای این نامه ثبت نشده است.
                     </Typography>
                   )}
@@ -1750,10 +1850,10 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       sx={{ p: 0.75, borderRadius: '10px', border: '1px solid', borderColor: 'divider', minWidth: 0 }}>
                       <AttachFileIcon sx={{ fontSize: 16, color: INTERNAL }} />
                       <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography noWrap title={file.title} sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                        <Typography noWrap title={file.title} sx={{ fontSize: 12.5, fontWeight: 800 }}>
                           {file.title || 'پیوست'}
                         </Typography>
-                        <Typography noWrap sx={{ fontSize: 9.5, color: MUTED }}>
+                        <Typography noWrap sx={{ fontSize: 11.5, color: MUTED }}>
                           {file.kind_display} · {toPersianDigits(Math.max(1, Math.round((file.size || 0) / 1024)))} کیلوبایت
                         </Typography>
                       </Box>
@@ -1765,7 +1865,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       </Tooltip>
                     </Stack>
                   )) : (
-                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>پیوستی ثبت نشده است.</Typography>
+                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>پیوستی ثبت نشده است.</Typography>
                   )}
                 </Stack>
               ) : null}
@@ -1795,19 +1895,19 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                         bgcolor: EVENT_META[event.action]?.color || SLATE,
                       }} />
                       <Box sx={{ minWidth: 0, flex: 1 }}>
-                        <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                        <Typography sx={{ fontSize: 12.5, fontWeight: 800 }}>
                           {EVENT_META[event.action]?.label || event.action}
                         </Typography>
                         {event.note ? (
-                          <Typography sx={{ fontSize: 10.5, whiteSpace: 'pre-wrap' }}>{event.note}</Typography>
+                          <Typography sx={{ fontSize: 11.5, whiteSpace: 'pre-wrap' }}>{event.note}</Typography>
                         ) : null}
-                        <Typography sx={{ fontSize: 9.5, color: MUTED }}>
+                        <Typography sx={{ fontSize: 11.5, color: MUTED }}>
                           {event.actor_name || '—'} · {dateTimeLabel(event.created_at)}
                         </Typography>
                       </Box>
                     </Stack>
                   )) : (
-                    <Typography sx={{ fontSize: 11.5, color: MUTED }}>رویدادی ثبت نشده است.</Typography>
+                    <Typography sx={{ fontSize: 12.5, color: MUTED }}>رویدادی ثبت نشده است.</Typography>
                   )}
                 </Stack>
               ) : null}

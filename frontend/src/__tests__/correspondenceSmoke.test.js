@@ -193,7 +193,8 @@ test('dedicated incoming page is scoped to incoming letters and has no extra fil
   const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
 
   expect(container.textContent).toContain('نامه‌های وارده');
-  expect(container.textContent).toContain('نامه‌های دریافتی از سازمان‌ها و اشخاص');
+  // توضیحات زیر عنوان در این ماژول حذف شده است
+  expect(container.textContent).not.toContain('نامه‌های دریافتی از سازمان‌ها و اشخاص');
   expect(container.querySelector('input[placeholder*="نامه‌های وارده"]')).toBeTruthy();
   expect(container.textContent).not.toContain('کل مکاتبات');
 

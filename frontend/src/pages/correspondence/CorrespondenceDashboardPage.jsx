@@ -63,7 +63,6 @@ const CorrespondenceDashboardPage = () => {
       <PageHeader
         icon={<DashboardIcon />}
         title="داشبورد مکاتبات اداری"
-        subtitle="نمای کلی دفتر وارده و صادره، ارجاعات باز و معوقات پاسخ"
         badge={(
           <Chip size="small" label={`${formatPersianNumber(totals.all || 0)} مکاتبه ثبت‌شده`}
             sx={{ height: 23, fontWeight: 800, bgcolor: alpha(ACCENT, 0.1), color: '#0369a1' }} />
@@ -118,8 +117,7 @@ const CorrespondenceDashboardPage = () => {
         gap: 1.25, minWidth: 0,
       }}>
         <SectionPaper>
-          <SectionTitle icon={DashboardIcon} title="روند مکاتبات (۶ ماه اخیر)"
-            hint="تعداد نامه‌های وارده و صادره در هر ماه" />
+          <SectionTitle icon={DashboardIcon} title="روند مکاتبات (۶ ماه اخیر)" />
           {trend.length ? (
             <Stack spacing={0.75}>
               {trend.map((row) => {
@@ -168,7 +166,6 @@ const CorrespondenceDashboardPage = () => {
 
         <SectionPaper>
           <SectionTitle icon={ForwardToInboxIcon} title="ارجاعات باز من" color={WARN}
-            hint="نامه‌هایی که برای شما ارجاع شده و در انتظار اقدام است"
             action={(
               <Button size="small" variant="text" endIcon={<ArrowBackIcon sx={{ fontSize: 14 }} />}
                 onClick={() => go('/correspondence/referrals')} sx={{ fontSize: 11 }}>
@@ -268,7 +265,6 @@ const CorrespondenceDashboardPage = () => {
 
         <SectionPaper>
           <SectionTitle icon={WarningAmberIcon} title="معوقات پاسخ" color={DANGER}
-            hint="نامه‌های باز که مهلت پاسخ آن‌ها گذشته است"
             action={(
               <Button size="small" variant="text" onClick={() => go('/correspondence/overdue')} sx={{ fontSize: 11 }}>
                 همه
