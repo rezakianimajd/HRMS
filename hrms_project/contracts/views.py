@@ -187,6 +187,29 @@ class ContractViewSet(BaseContractViewSet):
         contract = self.get_object()
         return Response(guarantee_compliance(contract))
 
+    @action(detail=False, methods=['get'], url_path='guarantees-overview')
+    def guarantees_overview(self, request):
+        """نمای کلی وضعیت تضامین همهٔ قراردادها (صفحهٔ پایش تضامین)."""
+        from contracts.guarantee_overview import contract_overview_row, summarize
+        from contracts.guarantee_status import guarantee_compliance
+
+        queryset = self.get_queryset().filter(is_active=True).prefetch_related('guarantees')
+        only_with_guarantee = request.query_params.get('only_registered') in ('1', 'true', 'yes')
+        rows = []
+        for contract in queryset.iterator(chunk_size=200):
+            guarantees = list(contract.guarantees.all())
+            items = getattr(contract, 'guarantee_items', None) or []
+            if not guarantees and not items and not getattr(contract, 'guarantee_amount', 0):
+                continue
+            if only_with_guarantee and not guarantees:
+                continue
+            compliance = guarantee_compliance(contract, guarantees=guarantees)
+            rows.append(contract_overview_row(contract, compliance))
+
+        rows.sort(key=lambda row: (row['coverage_percent'], str(row['contract_number'])))
+        return Response({'results': rows, 'summary': summarize(rows)})
+
+
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
         """خروجی اکسل جامع قراردادها — تک‌شیت و **یک ردیف برای هر قرارداد**.

@@ -1093,6 +1093,9 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     instrument_type_display = serializers.CharField(source='get_instrument_type_display', read_only=True)
     last_action_display = serializers.CharField(source='get_last_action_display', read_only=True)
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
+    contract_number = serializers.CharField(source='contract.number', read_only=True)
+    contract_party = serializers.CharField(source='contract.party.name', read_only=True)
+    contract_status_display = serializers.CharField(source='contract.get_status_display', read_only=True)
     contract_guarantee_label = serializers.SerializerMethodField()
     documents = ContractDocumentSerializer(many=True, read_only=True)
     actions = GuaranteeActionSerializer(many=True, read_only=True)
@@ -1105,7 +1108,8 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     class Meta:
         model = Guarantee
         fields = [
-            'id', 'contract', 'contract_subject', 'contract_guarantee_index', 'contract_guarantee_label',
+            'id', 'contract', 'contract_subject', 'contract_number', 'contract_party',
+            'contract_status_display', 'contract_guarantee_index', 'contract_guarantee_label',
             'guarantee_type', 'guarantee_type_display',
             'instrument_type', 'instrument_type_display', 'number', 'amount',
             'issue_date', 'expiry_date', 'bank', 'is_released', 'release_date',

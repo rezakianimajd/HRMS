@@ -1525,3 +1525,115 @@ class GuaranteeReleaseCoverageTests(SimpleTestCase):
         self.assertEqual(advance['balance'], 50_000_000.0)
         self.assertTrue(any('کامل تأمین نشده' in w for w in result['warnings']))
 
+
+class GuaranteeOverviewTests(SimpleTestCase):
+    """نمای کلی پایش تضامین قراردادها (بدون نیاز به دیتابیس)."""
+
+    @staticmethod
+    def _compliance():
+        return {
+            'effective_amount': 1_000_000_000,
+            'requirements': [
+                {
+                    'type': 'advance',
+                    'items': [{'is_released': False, 'days_to_expiry': 12, 'expiry_date': '2026-11-15'}],
+                },
+                {
+                    'type': 'performance',
+                    'items': [{'is_released': True, 'days_to_expiry': 4, 'expiry_date': '2026-11-07'}],
+                },
+            ],
+            'summary': {
+                'required_total': 250_000_000.0,
+                'provided_total': 200_000_000.0,
+                'fulfilled_total': 200_000_000.0,
+                'released_total': 50_000_000.0,
+                'balance_total': 50_000_000.0,
+                'coverage_percent': 80.0,
+                'required_count': 2,
+                'provided_count': 1,
+                'released_count': 1,
+                'partial_count': 1,
+                'missing_count': 0,
+                'registered_count': 2,
+            },
+            'warnings': ['تضمین «ضمانت پیش‌پرداخت» کامل تأمین نشده است.'],
+        }
+
+    @staticmethod
+    def _contract():
+        class FakeParty:
+            name = 'شرکت پیمانکار'
+
+        class FakeContract:
+            id = 7
+            number = 'C-MON-1'
+            subject = 'قرارداد پایش'
+            status = 'active'
+            party = FakeParty()
+
+        return FakeContract()
+
+    def test_contract_row_uses_compliance_and_skips_released_for_next_expiry(self):
+        from contracts.guarantee_overview import contract_overview_row
+
+        row = contract_overview_row(self._contract(), self._compliance())
+        self.assertEqual(row['contract'], 7)
+        self.assertEqual(row['contract_number'], 'C-MON-1')
+        self.assertEqual(row['party_name'], 'شرکت پیمانکار')
+        self.assertEqual(row['required_total'], 250_000_000.0)
+        self.assertEqual(row['provided_total'], 200_000_000.0)
+        self.assertEqual(row['released_total'], 50_000_000.0)
+        self.assertEqual(row['balance_total'], 50_000_000.0)
+        self.assertEqual(row['coverage_percent'], 80.0)
+        self.assertEqual(row['guarantee_count'], 2)
+        self.assertEqual(row['warnings_count'], 1)
+        # نزدیک‌ترین سررسید فقط از تضامین آزادنشده گرفته می‌شود.
+        self.assertEqual(row['next_expiry'], '2026-11-15')
+        self.assertEqual(row['next_expiry_days'], 12)
+
+    def test_summary_aggregates_contracts_and_flags(self):
+        from contracts.guarantee_overview import contract_overview_row, summarize
+
+        row = contract_overview_row(self._contract(), self._compliance())
+        totals = summarize([row])
+        self.assertEqual(totals['contracts'], 1)
+        self.assertEqual(totals['guarantees'], 2)
+        self.assertEqual(totals['required_total'], 250_000_000.0)
+        self.assertEqual(totals['fulfilled_total'], 200_000_000.0)
+        self.assertEqual(totals['balance_total'], 50_000_000.0)
+        self.assertEqual(totals['coverage_percent'], 80.0)
+        self.assertEqual(totals['partial_contracts'], 1)
+        self.assertEqual(totals['expiring_30'], 1)
+        self.assertEqual(totals['missing_contracts'], 0)
+
+    def test_summary_marks_expired_and_missing_contracts(self):
+        from contracts.guarantee_overview import summarize
+
+        rows = [
+            {'next_expiry_days': -3, 'missing_count': 1, 'required_count': 2, 'guarantee_count': 1,
+             'required_total': 100.0, 'fulfilled_total': 40.0, 'balance_total': 60.0},
+            {'next_expiry_days': 90, 'partial_count': 0, 'missing_count': 0, 'required_count': 1,
+             'guarantee_count': 2, 'required_total': 100.0, 'fulfilled_total': 100.0,
+             'balance_total': 0.0},
+        ]
+        totals = summarize(rows)
+        self.assertEqual(totals['expired'], 1)
+        self.assertEqual(totals['expiring_30'], 0)
+        self.assertEqual(totals['missing_contracts'], 1)
+        self.assertEqual(totals['covered_contracts'], 1)
+        self.assertEqual(totals['coverage_percent'], 70.0)
+
+    def test_guarantee_serializer_exposes_contract_context(self):
+        from contracts.serializers import GuaranteeSerializer
+
+        fields = GuaranteeSerializer().fields
+        for name in ('contract_number', 'contract_party', 'contract_status_display'):
+            self.assertIn(name, fields)
+
+    def test_overview_endpoint_is_registered(self):
+        from contracts.views import ContractViewSet
+
+        self.assertTrue(hasattr(ContractViewSet, 'guarantees_overview'))
+
+

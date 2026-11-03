@@ -20,6 +20,7 @@ try:
         'contracts.tests.PaymentFlowFieldsTests',
         'contracts.tests.GuaranteeLifecycleTests',
         'contracts.tests.GuaranteeReleaseCoverageTests',
+        'contracts.tests.GuaranteeOverviewTests',
     ])
     result = unittest.TextTestRunner(verbosity=2, stream=buffer).run(suite)
     buffer.write(f"\nRUN={result.testsRun} FAIL={len(result.failures)} ERR={len(result.errors)}\n")
