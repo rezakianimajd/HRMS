@@ -32,10 +32,35 @@ ACTION_LABELS = {
     'extended': 'تمدید',
     'reduced': 'تقلیل',
     'returned': 'استرداد',
+    'released': 'آزادسازی',
     'executed': 'اجرا / ضبط',
     'canceled': 'ابطال',
     'number_changed': 'تغییر شماره',
 }
+
+# علت‌های آزادسازی تضمین (تسویه پیش‌پرداخت، اختتام قرارداد و…)
+RELEASE_REASONS = {
+    'advance_settled': 'تسویه پیش‌پرداخت',
+    'contract_closed': 'اختتام قرارداد',
+    'obligation_fulfilled': 'انجام کامل تعهدات',
+    'warranty_expired': 'پایان دوره تضمین / نگهداری',
+    'other': 'سایر',
+}
+
+
+def release_reason_label(value) -> str:
+    return RELEASE_REASONS.get(str(value or '').strip(), '')
+
+
+def compose_release_note(reason=None, note='') -> str:
+    """متن توضیح آزادسازی از «علت» + یادداشت کاربر."""
+    parts = []
+    label = release_reason_label(reason)
+    if label:
+        parts.append(f'علت آزادسازی: {label}')
+    if note and str(note).strip():
+        parts.append(str(note).strip())
+    return ' — '.join(parts)
 
 
 class GuaranteeActionError(ValueError):

@@ -584,26 +584,34 @@ class GuaranteeViewSet(BaseContractViewSet):
         from datetime import date
 
         from contracts.guarantee_actions import (
-            GuaranteeActionError, action_expiry_field, action_number_field, resolve_reduced_amount,
+            GuaranteeActionError, action_expiry_field, action_number_field,
+            compose_release_note, resolve_reduced_amount,
         )
 
         obj = self.get_object()
         action = request.data.get('action')
-        valid = {'returned', 'executed', 'canceled', 'extended', 'reduced'}
+        valid = {'returned', 'released', 'executed', 'canceled', 'extended', 'reduced'}
         if action not in valid:
             return Response({'error': 'اقدام نامعتبر است.'}, status=400)
 
         previous = self._snapshot(obj)
         action_date = request.data.get('date') or date.today().isoformat()
         note = str(request.data.get('note') or '').strip()
+        if action in ('released', 'returned'):
+            note = compose_release_note(request.data.get('release_reason'), note)
+            if not note:
+                note = 'آزادسازی تضمین پس از انجام تعهدات'
         new_number = str(request.data.get('new_number') or '').strip()
         new_expiry = request.data.get('new_expiry_date') or None
 
         update_fields = ['last_action', 'last_action_date', 'updated_at']
 
-        if action in ('returned', 'executed', 'canceled'):
+        if action in ('returned', 'released', 'executed', 'canceled'):
             obj.is_released = True
             update_fields.append('is_released')
+            if action in ('returned', 'released'):
+                obj.release_date = action_date
+                update_fields.append('release_date')
 
         if action == 'extended':
             obj.is_released = False

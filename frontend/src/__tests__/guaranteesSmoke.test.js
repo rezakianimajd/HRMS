@@ -318,6 +318,19 @@ test('undertaking guarantee shows reduction history and renamed number in the dr
     .find((button) => button.textContent.trim() === 'تقلیل');
   expect(reduceButton).toBeTruthy();
 
+  // گزینهٔ «آزادسازی» با علت‌های آماده (تسویه پیش‌پرداخت / اختتام قرارداد)
+  const releaseButton = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'آزادسازی');
+  expect(releaseButton).toBeTruthy();
+  await act(async () => {
+    releaseButton.click();
+    await new Promise((resolve) => setTimeout(resolve, 250));
+  });
+  expect(document.body.textContent).toContain('علت آزادسازی');
+  expect(document.body.textContent).toContain('تسویه پیش‌پرداخت');
+  expect(document.body.textContent).toContain('اختتام قرارداد');
+  expect(document.body.textContent).toContain('دیگر به‌عنوان کمبود پوشش');
+
   root.unmount();
   container.remove();
 });

@@ -10,6 +10,7 @@ import { SectionCard, ProgressBar, EmptyState, INK, MUTED, SOFT_BG } from './Con
 
 const STATUS_STYLE = {
   provided: { color: '#2563eb', bg: '#eff6ff', icon: <CheckCircleRoundedIcon sx={{ fontSize: 17 }} /> },
+  released: { color: '#0f766e', bg: '#ecfdf5', icon: <LockIcon sx={{ fontSize: 17 }} /> },
   partial: { color: '#d97706', bg: '#fffbeb', icon: <HourglassBottomIcon sx={{ fontSize: 17 }} /> },
   missing: { color: '#e11d48', bg: '#fff1f2', icon: <CancelRoundedIcon sx={{ fontSize: 17 }} /> },
 };

@@ -428,18 +428,39 @@ class ContractGuaranteeStatusTests(TestCase):
         self.assertTrue(any('کامل تأمین نشده' in w for w in result['warnings']))
         self.assertTrue(any('هنوز اورده/ثبت نشده' in w for w in result['warnings']))
 
-    def test_released_guarantee_does_not_count_as_coverage(self):
+    def test_released_guarantee_counts_as_fulfilled_without_shortage(self):
         from contracts.guarantee_status import guarantee_compliance
 
         self._guarantee(guarantee_type='advance', amount=200_000_000, is_released=True,
                         number='AD-0')
         result = guarantee_compliance(self.contract)
         advance = next(r for r in result['requirements'] if r['type'] == 'advance')
+        # آزادسازی یعنی تعهد انجام شده؛ پوشش فعال صفر است اما کمبود گزارش نمی‌شود.
         self.assertEqual(advance['provided'], 0.0)
         self.assertEqual(advance['released_total'], 200_000_000.0)
-        self.assertEqual(advance['status'], 'missing')
+        self.assertEqual(advance['fulfilled'], 200_000_000.0)
+        self.assertEqual(advance['status'], 'released')
+        self.assertEqual(advance['status_label'], 'آزادشده پس از انجام تعهدات')
+        self.assertEqual(advance['balance'], 0.0)
+        self.assertEqual(advance['coverage_percent'], 100.0)
         self.assertEqual(advance['released_count'], 1)
         self.assertEqual(result['summary']['provided_total'], 0.0)
+        self.assertEqual(result['summary']['released_count'], 1)
+        self.assertFalse(any('هنوز اورده/ثبت نشده' in w for w in result['warnings']))
+        self.assertFalse(any('کامل تأمین نشده' in w for w in result['warnings']))
+
+    def test_released_guarantee_is_not_a_shortage_in_partial_case(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        self._guarantee(guarantee_type='advance', amount=100_000_000, number='AD-A')
+        self._guarantee(guarantee_type='advance', amount=50_000_000, is_released=True, number='AD-B')
+        result = guarantee_compliance(self.contract)
+        advance = next(r for r in result['requirements'] if r['type'] == 'advance')
+        self.assertEqual(advance['provided'], 100_000_000.0)
+        self.assertEqual(advance['released_total'], 50_000_000.0)
+        self.assertEqual(advance['status'], 'partial')
+        self.assertEqual(advance['balance'], 50_000_000.0)
+        self.assertTrue(any('کامل تأمین نشده' in w for w in result['warnings']))
 
     def test_extra_guarantee_is_listed_as_unrequired(self):
         from contracts.guarantee_status import guarantee_compliance
@@ -1339,6 +1360,21 @@ class GuaranteeLifecycleTests(SimpleTestCase):
         labels = dict(Guarantee.InstrumentType.choices)
         self.assertEqual(labels['undertaking_guarantee'], 'ضمانت‌نامه تعهدی')
 
+    def test_release_action_and_reasons_are_available(self):
+        from contracts.guarantee_actions import RELEASE_REASONS, compose_release_note, release_reason_label
+        from contracts.models import Guarantee, GuaranteeAction
+
+        lifecycle = dict(Guarantee.LifecycleAction.choices)
+        self.assertEqual(lifecycle.get('released'), 'آزادسازی')
+        self.assertIn('released', {choice[0] for choice in GuaranteeAction.Action.choices})
+        self.assertEqual(release_reason_label('advance_settled'), 'تسویه پیش‌پرداخت')
+        self.assertEqual(release_reason_label('contract_closed'), 'اختتام قرارداد')
+        self.assertIn('advance_settled', RELEASE_REASONS)
+        note = compose_release_note('contract_closed', 'پس از صورت‌وضعیت نهایی')
+        self.assertIn('اختتام قرارداد', note)
+        self.assertIn('پس از صورت‌وضعیت نهایی', note)
+        self.assertEqual(compose_release_note(None, ''), '')
+
     def test_lifecycle_actions_include_reduction(self):
         from contracts.models import Guarantee
 
@@ -1416,3 +1452,76 @@ class GuaranteeLifecycleTests(SimpleTestCase):
 
         for name in ('history', 'lifecycle', 'release'):
             self.assertTrue(hasattr(GuaranteeViewSet, name))
+
+
+class GuaranteeReleaseCoverageTests(SimpleTestCase):
+    """آزادسازی تضمین نباید به‌عنوان کمبود پوشش گزارش شود (بدون نیاز به دیتابیس)."""
+
+    class FakeContract:
+        amount = 1_000_000_000
+        guarantee_type = 'other'
+        guarantee_amount = 0
+        guarantee_items = [
+            {'type': 'advance', 'amount': 200_000_000},
+            {'type': 'performance', 'percent': 5},
+        ]
+
+    class FakeGuarantee:
+        def __init__(self, **kwargs):
+            self.id = kwargs.get('id')
+            self.contract_guarantee_index = kwargs.get('contract_guarantee_index')
+            self.number = kwargs.get('number', '')
+            self.guarantee_type = kwargs.get('guarantee_type', 'other')
+            self.instrument_type = kwargs.get('instrument_type', 'bank_guarantee')
+            self.amount = kwargs.get('amount', 0)
+            self.is_released = kwargs.get('is_released', False)
+            self.expiry_date = kwargs.get('expiry_date')
+            self.issue_date = None
+            self.release_date = kwargs.get('release_date')
+            self.note = ''
+            self.bank = ''
+
+    def test_fully_released_requirement_is_not_a_shortage(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        guarantees = [
+            self.FakeGuarantee(id=1, number='AD-1', guarantee_type='advance',
+                               amount=200_000_000, is_released=True),
+        ]
+        result = guarantee_compliance(
+            self.FakeContract(), guarantees=guarantees, effective_amount=1_000_000_000,
+        )
+        advance = next(r for r in result['requirements'] if r['type'] == 'advance')
+        self.assertEqual(advance['provided'], 0.0)
+        self.assertEqual(advance['released_total'], 200_000_000.0)
+        self.assertEqual(advance['fulfilled'], 200_000_000.0)
+        self.assertEqual(advance['status'], 'released')
+        self.assertEqual(advance['status_label'], 'آزادشده پس از انجام تعهدات')
+        self.assertEqual(advance['balance'], 0.0)
+        self.assertEqual(advance['coverage_percent'], 100.0)
+        self.assertEqual(result['summary']['released_count'], 1)
+        # هیچ هشدار کمبودی برای قلم آزادشده («پیش‌پرداخت») نباید صادر شود.
+        advance_warnings = [w for w in result["warnings"] if "پیش‌پرداخت" in w]
+        self.assertEqual(advance_warnings, [])
+        # قلم «حسن انجام کار» هنوز تأمین نشده؛ فقط همان کمبود گزارش می‌شود.
+        self.assertEqual(result['summary']['missing_count'], 1)
+        self.assertTrue(any('حسن انجام کار' in w for w in result['warnings']))
+
+    def test_partial_release_still_shows_real_shortage(self):
+        from contracts.guarantee_status import guarantee_compliance
+
+        guarantees = [
+            self.FakeGuarantee(id=2, number='AD-2', guarantee_type='advance', amount=100_000_000),
+            self.FakeGuarantee(id=3, number='AD-3', guarantee_type='advance',
+                               amount=50_000_000, is_released=True),
+        ]
+        result = guarantee_compliance(
+            self.FakeContract(), guarantees=guarantees, effective_amount=1_000_000_000,
+        )
+        advance = next(r for r in result['requirements'] if r['type'] == 'advance')
+        self.assertEqual(advance['provided'], 100_000_000.0)
+        self.assertEqual(advance['released_total'], 50_000_000.0)
+        self.assertEqual(advance['status'], 'partial')
+        self.assertEqual(advance['balance'], 50_000_000.0)
+        self.assertTrue(any('کامل تأمین نشده' in w for w in result['warnings']))
+

@@ -200,15 +200,20 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
         released = [row for row in matched if row['is_released']]
         provided = round(sum(row['amount'] for row in active), 2)
         released_total = round(sum(row['amount'] for row in released), 2)
+        # مبلغ «تأمین‌شدهٔ کل» شامل تضامین آزادشده هم هست؛ آزادسازی یعنی تعهد
+        # انجام شده است و نباید به‌عنوان کمبود پوشش گزارش شود.
+        fulfilled = round(provided + released_total, 2)
         required = round(requirement['required'] or 0.0, 2)
-        balance = round(max(required - provided, 0.0), 2)
+        balance = round(max(required - fulfilled, 0.0), 2)
         if required > 0:
-            coverage = round(min(provided / required * 100.0, 100.0), 1)
+            coverage = round(min(fulfilled / required * 100.0, 100.0), 1)
         else:
-            coverage = 100.0 if provided else 0.0
+            coverage = 100.0 if fulfilled else 0.0
 
         if required > 0 and provided >= required - TOLERANCE:
             status, status_label = 'provided', 'تأمین شده'
+        elif required > 0 and fulfilled >= required - TOLERANCE:
+            status, status_label = 'released', 'آزادشده پس از انجام تعهدات'
         elif required > 0 and provided > 0:
             status, status_label = 'partial', 'ناقص — نیازمند تکمیل'
         elif required > 0:
@@ -220,6 +225,7 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
 
         requirement.update({
             'provided': provided,
+            'fulfilled': fulfilled,
             'released_total': released_total,
             'balance': balance,
             'coverage_percent': coverage,
@@ -235,7 +241,7 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
             warnings.append(f'تضمین «{label}» کامل تأمین نشده است؛ کمبود {balance:,.0f}.')
         elif status == 'missing':
             warnings.append(f'تضمین «{label}» هنوز اورده/ثبت نشده است.')
-        if released_total > 0 and status != 'provided':
+        if released_total > 0 and status not in ('provided', 'released'):
             warnings.append(
                 f'در تضمین «{label}» مبلغ {released_total:,.0f} آزاد شده و پوشش را کم کرده است.'
             )
@@ -258,12 +264,14 @@ def guarantee_compliance(contract, guarantees=None, effective_amount=None):
         'summary': {
             'required_total': required_total,
             'provided_total': provided_total,
+            'fulfilled_total': round(provided_total + released_total, 2),
             'released_total': released_total,
-            'balance_total': round(max(required_total - provided_total, 0.0), 2),
-            'coverage_percent': round(provided_total / required_total * 100.0, 1)
-                if required_total else (100.0 if provided_total else 0.0),
+            'balance_total': round(sum(row['balance'] for row in requirements), 2),
+            'coverage_percent': round((provided_total + released_total) / required_total * 100.0, 1)
+                if required_total else (100.0 if (provided_total + released_total) else 0.0),
             'required_count': len(requirements),
             'provided_count': len([row for row in requirements if row['status'] == 'provided']),
+            'released_count': len([row for row in requirements if row['status'] == 'released']),
             'partial_count': len([row for row in requirements if row['status'] == 'partial']),
             'missing_count': len([row for row in requirements if row['status'] == 'missing']),
             'registered_count': len(items),

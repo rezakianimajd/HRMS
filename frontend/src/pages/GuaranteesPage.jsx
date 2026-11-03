@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../core/api/axiosConfig';
@@ -87,30 +87,43 @@ const STATUS_META = {
   expiring: { label: 'نزدیک انقضا', color: '#b45309', bg: '#fffbeb' },
   expired: { label: 'منقضی', color: '#be123c', bg: '#fff1f2' },
   returned: { label: 'استرداد شده', color: '#475569', bg: '#f1f5f9' },
+  released: { label: 'آزادشده', color: '#0f766e', bg: '#ecfdf5' },
   executed: { label: 'اجرا / ضبط شده', color: '#be123c', bg: '#fff1f2' },
   canceled: { label: 'ابطال شده', color: '#7c3aed', bg: '#f5f3ff' },
 };
 
 const ACTION_META = {
-  returned: { label: 'استرداد', color: '#0f766e', icon: UndoIcon },
+  released: { label: 'آزادسازی', color: '#0f766e', icon: LockOpenIcon },
+  returned: { label: 'استرداد', color: '#475569', icon: UndoIcon },
   executed: { label: 'اجرا / ضبط', color: '#be123c', icon: GavelIcon },
   canceled: { label: 'ابطال', color: '#b45309', icon: BlockIcon },
   extended: { label: 'تمدید', color: '#2563eb', icon: UpdateIcon },
   reduced: { label: 'تقلیل', color: '#7c3aed', icon: TrendingDownIcon },
 };
 
+// علت‌های آزادسازی تضمین (هم‌راستا با contracts/guarantee_actions.py)
+const RELEASE_REASON_OPTIONS = [
+  { value: '', label: 'انتخاب علت (اختیاری)' },
+  { value: 'advance_settled', label: 'تسویه پیش‌پرداخت' },
+  { value: 'contract_closed', label: 'اختتام قرارداد' },
+  { value: 'obligation_fulfilled', label: 'انجام کامل تعهدات' },
+  { value: 'warranty_expired', label: 'پایان دوره تضمین / نگهداری' },
+  { value: 'other', label: 'سایر' },
+];
+
 /** فهرست اقدامات مجاز برای هر ابزار تضمین. */
 const allowedActions = (instrumentType) => {
+  const base = ['released'];
   if (instrumentType === 'check' || instrumentType === 'promissory') {
-    return ['returned', 'executed'];
+    return [...base, 'returned', 'executed'];
   }
   if (instrumentType === 'bank_guarantee' || instrumentType === 'undertaking_guarantee') {
-    const actions = ['canceled'];
+    const actions = [...base, 'canceled'];
     if (EXTENDABLE_INSTRUMENTS.includes(instrumentType)) actions.push('extended');
     if (REDUCIBLE_INSTRUMENTS.includes(instrumentType)) actions.push('reduced');
     return [...actions, 'executed'];
   }
-  return ['returned', 'executed', 'canceled', 'extended', 'reduced'];
+  return [...base, 'returned', 'executed', 'canceled', 'extended', 'reduced'];
 };
 
 const dateLabel = (value) => (value ? toJalali(value) : '—');
@@ -124,6 +137,7 @@ const daysUntil = (value) => {
 };
 
 const statusOf = (row) => {
+  if (row.last_action === 'released') return { key: 'released', ...STATUS_META.released };
   if (row.last_action === 'returned' || (!row.last_action && row.is_released)) {
     return { key: 'returned', ...STATUS_META.returned };
   }
@@ -993,6 +1007,7 @@ const GuaranteesPage = () => {
   const [reductionAmount, setReductionAmount] = useState('');
   const [newNumber, setNewNumber] = useState('');
   const [actionNote, setActionNote] = useState('');
+  const [releaseReason, setReleaseReason] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -1333,6 +1348,7 @@ const GuaranteesPage = () => {
     setReductionAmount('');
     setNewNumber('');
     setActionNote('');
+    setReleaseReason('');
   };
 
   const closeActionDialog = () => {
@@ -1342,6 +1358,7 @@ const GuaranteesPage = () => {
     setReductionAmount('');
     setNewNumber('');
     setActionNote('');
+    setReleaseReason('');
   };
   const currencyByContract = useMemo(() => {
     const map = new Map();
@@ -1917,6 +1934,26 @@ const GuaranteesPage = () => {
               <JalaliDatePicker fullWidth label="تاریخ انقضای جدید" value={newExpiry} onChange={setNewExpiry} />
             ) : null}
 
+            {(actionDialog?.action === 'released' || actionDialog?.action === 'returned') ? (
+              <>
+                <TextField
+                  select fullWidth size="small" label="علت آزادسازی" SelectProps={{ native: true }}
+                  value={releaseReason}
+                  onChange={(event) => setReleaseReason(event.target.value)}
+                >
+                  {RELEASE_REASON_OPTIONS.map((option) => (
+                    <option key={option.value || 'none'} value={option.value}>{option.label}</option>
+                  ))}
+                </TextField>
+                <Alert severity="success" sx={{ borderRadius: '10px', py: 0.2 }}>
+                  <Typography sx={{ fontSize: 11, lineHeight: 1.9 }}>
+                    با ثبت آزادسازی، این تضمین «آزادشده» علامت می‌خورد و دیگر به‌عنوان کمبود پوشش
+                    در پروندهٔ قرارداد هشدار داده نمی‌شود (مثال: تسویهٔ پیش‌پرداخت یا اختتام قرارداد).
+                  </Typography>
+                </Alert>
+              </>
+            ) : null}
+
             {actionDialog?.action === 'reduced' ? (
               <>
                 <MoneyInput
@@ -1963,6 +2000,7 @@ const GuaranteesPage = () => {
               new_expiry_date: newExpiry || null,
               reduction_amount: actionDialog.action === 'reduced' ? reductionAmount || null : null,
               new_number: newNumber || '',
+              release_reason: releaseReason || '',
               note: actionNote || '',
             })}>
             {applyLifecycle.isLoading ? <CircularProgress size={18} color="inherit" /> : 'تأیید'}

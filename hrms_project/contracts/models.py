@@ -571,6 +571,7 @@ class Guarantee(BaseModel):
 
     class LifecycleAction(models.TextChoices):
         RETURNED = 'returned', _('استرداد')
+        RELEASED = 'released', _('آزادسازی')
         EXECUTED = 'executed', _('اجرا / ضبط')
         CANCELED = 'canceled', _('ابطال')
         EXTENDED = 'extended', _('تمدید')
@@ -627,6 +628,7 @@ class GuaranteeAction(BaseModel):
         EXTENDED = 'extended', _('تمدید')
         REDUCED = 'reduced', _('تقلیل')
         RETURNED = 'returned', _('استرداد')
+        RELEASED = 'released', _('آزادسازی')
         EXECUTED = 'executed', _('اجرا / ضبط')
         CANCELED = 'canceled', _('ابطال')
         NUMBER_CHANGED = 'number_changed', _('تغییر شماره')
