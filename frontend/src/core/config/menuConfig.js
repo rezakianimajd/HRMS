@@ -33,6 +33,10 @@ import CategoryIcon from '@mui/icons-material/Category';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import HistoryIcon from '@mui/icons-material/History';
 import SettingsIcon from '@mui/icons-material/Settings';
+import InboxIcon from '@mui/icons-material/MoveToInbox';
+import SendIcon from '@mui/icons-material/Send';
+import AltRouteIcon from '@mui/icons-material/AltRoute';
+import ContactsIcon from '@mui/icons-material/Contacts';
 import SystemUpdateAltIcon from '@mui/icons-material/SystemUpdateAlt';
 import BackupIcon from '@mui/icons-material/Backup';
 import UploadFileIcon from '@mui/icons-material/UploadFile';
@@ -807,6 +811,48 @@ export function buildDocumentsMenu(folders = []) {
   ));
 }
 
+const correspondenceMenu = [
+  {
+    id: 'correspondence-home',
+    title: 'میزکار مکاتبات',
+    color: '#0ea5e9',
+    items: [
+      { id: 'correspondence-dashboard', title: 'داشبورد مکاتبات', icon: <DashboardIcon />, path: '/correspondence', color: '#0ea5e9', primary: true, ready: true },
+    ],
+  },
+  {
+    id: 'correspondence-registry',
+    title: 'دفتر وارده و صادره',
+    color: '#0284c7',
+    items: [
+      { id: 'correspondence-incoming', title: 'نامه‌های وارده', icon: <InboxIcon />, path: '/correspondence/letters?direction=incoming', color: '#0284c7', primary: true, ready: true },
+      { id: 'correspondence-outgoing', title: 'نامه‌های صادره', icon: <SendIcon />, path: '/correspondence/letters?direction=outgoing', color: '#0f766e', primary: false, ready: true },
+      { id: 'correspondence-internal', title: 'مکاتبات داخلی', icon: <MailOutlineIcon />, path: '/correspondence/letters?direction=internal', color: '#7c3aed', primary: false, ready: true },
+      { id: 'correspondence-new', title: 'ثبت نامه جدید', icon: <PostAddIcon />, path: '/correspondence/letters?new=1', color: '#10b981', primary: false, ready: true },
+      { id: 'correspondence-drafts', title: 'پیش‌نویس‌ها', icon: <EditNoteIcon />, path: '/correspondence/letters?status=draft', color: '#64748b', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'correspondence-followup',
+    title: 'ارجاع و پیگیری',
+    color: '#f59e0b',
+    items: [
+      { id: 'correspondence-referrals', title: 'ارجاعات من', icon: <AltRouteIcon />, path: '/correspondence/letters?scope=referred', color: '#f59e0b', primary: false, ready: true },
+      { id: 'correspondence-overdue', title: 'پیگیری معوقات', icon: <NotificationsActiveIcon />, path: '/correspondence/letters?overdue=1', color: '#be123c', primary: false, ready: true },
+      { id: 'correspondence-archive', title: 'بایگانی مکاتبات', icon: <FolderSharedIcon />, path: '/correspondence/letters?archived=1', color: '#475569', primary: false, ready: true },
+    ],
+  },
+  {
+    id: 'correspondence-admin',
+    title: 'تعاریف و مخاطبین',
+    color: '#8b5cf6',
+    items: [
+      { id: 'correspondence-directory', title: 'مخاطبین و سازمان‌ها', icon: <ContactsIcon />, path: '/correspondence/settings?tab=contacts', color: '#8b5cf6', primary: false, ready: true },
+      { id: 'correspondence-settings', title: 'تنظیمات مکاتبات', icon: <SettingsIcon />, path: '/correspondence/settings', color: '#64748b', primary: false, ready: true },
+    ],
+  },
+];
+
 export function getMenuForApp(appSlug, options = {}) {
   if (appSlug === 'documents') {
     return options.folders?.length ? buildDocumentsMenu(options.folders) : documentsMenu;
@@ -818,6 +864,7 @@ export function getMenuForApp(appSlug, options = {}) {
   if (appSlug === 'accounting') return accountingMenu;
   if (appSlug === 'procurement') return procurementMenu;
   if (appSlug === 'treasury') return treasuryMenu;
+  if (appSlug === 'correspondence') return correspondenceMenu;
   return menuConfig;
 }
 

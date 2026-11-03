@@ -31,6 +31,9 @@ import OrgChartPage from './pages/OrgChartPage';
 import DefinitionsPage from './pages/DefinitionsPage';
 import DataEntryPage from './pages/DataEntryPage';
 import CorrespondencesPage from './pages/CorrespondencesPage';
+import CorrespondenceDashboardPage from './pages/correspondence/CorrespondenceDashboardPage';
+import CorrespondenceLettersPage from './pages/correspondence/CorrespondenceLettersPage';
+import CorrespondenceSettingsPage from './pages/correspondence/CorrespondenceSettingsPage';
 import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
@@ -209,6 +212,9 @@ const AppRoutes = () => {
       <Route path="/company-profile" element={<ProtectedLayout><CompanyProfilePage /></ProtectedLayout>} />
       <Route path="/data-entry" element={<Navigate to="/payslips" replace />} />
       <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
+      <Route path="/correspondence" element={<ProtectedLayout><CorrespondenceDashboardPage /></ProtectedLayout>} />
+      <Route path="/correspondence/letters" element={<ProtectedLayout><CorrespondenceLettersPage /></ProtectedLayout>} />
+      <Route path="/correspondence/settings" element={<ProtectedLayout><CorrespondenceSettingsPage /></ProtectedLayout>} />
       <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
       <Route path="/scoring" element={<ProtectedLayout><ScoringPage /></ProtectedLayout>} />
       <Route path="/employees" element={<ProtectedLayout><EmployeeListPage /></ProtectedLayout>} />

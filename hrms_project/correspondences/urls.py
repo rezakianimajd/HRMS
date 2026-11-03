@@ -3,6 +3,8 @@ from rest_framework.routers import DefaultRouter
 from correspondences.views import (
     IncomingLetterViewSet, OutgoingLetterViewSet, AnnouncementViewSet, FormViewSet,
     OrganizationViewSet, OrganizationalLetterViewSet,
+    LetterViewSet, LetterCategoryViewSet, LetterSeriesViewSet, CorrespondentViewSet,
+    LetterReferralViewSet, LetterAttachmentViewSet,
 )
 
 router = DefaultRouter()
@@ -12,6 +14,14 @@ router.register(r'announcements', AnnouncementViewSet, basename='announcement')
 router.register(r'forms', FormViewSet, basename='form')
 router.register(r'organizations', OrganizationViewSet, basename='organization')
 router.register(r'organizational-letters', OrganizationalLetterViewSet, basename='organizational-letter')
+
+# مکاتبات اداری حرفه‌ای (دفتر وارده/صادره، ارجاع، پیوست، انواع و شماره‌گذاری)
+router.register(r'letters', LetterViewSet, basename='letter')
+router.register(r'letter-categories', LetterCategoryViewSet, basename='letter-category')
+router.register(r'letter-series', LetterSeriesViewSet, basename='letter-series')
+router.register(r'correspondents', CorrespondentViewSet, basename='correspondent')
+router.register(r'letter-referrals', LetterReferralViewSet, basename='letter-referral')
+router.register(r'letter-attachments', LetterAttachmentViewSet, basename='letter-attachment')
 
 urlpatterns = [
     path('', include(router.urls)),
