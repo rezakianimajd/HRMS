@@ -241,7 +241,7 @@ class LetterViewSet(BaseLetterViewSet):
     queryset = Letter.objects.all()
     search_fields = [
         'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject', 'summary',
-        'sender_name', 'receiver_name', 'contract_number', 'organization__name',
+        'sender_name', 'receiver_name', 'drafter_name', 'contract_number', 'organization__name',
         'correspondent__name',
     ]
     ordering_fields = ['letter_date', 'created_at', 'due_date', 'priority', 'status', 'number']

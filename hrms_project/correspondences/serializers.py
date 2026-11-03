@@ -285,7 +285,7 @@ class LetterSerializer(serializers.ModelSerializer):
             'subject', 'summary', 'body',
             'letter_date', 'received_date', 'sent_date', 'due_date',
             'organization', 'organization_name', 'correspondent', 'correspondent_name',
-            'sender_name', 'receiver_name', 'drafter', 'drafter_name', 'created_by',
+            'sender_name', 'receiver_name', 'drafter', 'drafter_name', 'source_ref', 'created_by',
             'created_by_name', 'priority', 'priority_display', 'confidentiality',
             'confidentiality_display', 'status', 'status_display',
             'amount', 'currency', 'archive_ref', 'contract_number', 'tags',
@@ -298,7 +298,7 @@ class LetterSerializer(serializers.ModelSerializer):
             'id', 'created_by', 'created_by_name', 'closed_at', 'archived_at',
             'direction_display', 'status_display', 'priority_display', 'confidentiality_display',
             'category_title', 'category_color', 'series_title', 'organization_name',
-            'correspondent_name', 'drafter_name', 'reply_number', 'attachment_count',
+            'correspondent_name', 'drafter_name', 'reply_number', 'source_ref', 'attachment_count',
             'referral_count', 'reply_count', 'pending_referrals', 'last_referral',
             'is_overdue', 'days_to_due', 'created_at', 'updated_at',
         ]
@@ -310,7 +310,7 @@ class LetterSerializer(serializers.ModelSerializer):
         return user.get_full_name() or user.get_username()
 
     def get_drafter_name(self, obj):
-        return self._user_name(obj.drafter)
+        return obj.drafter_name or self._user_name(obj.drafter)
 
     def get_created_by_name(self, obj):
         return self._user_name(obj.created_by)

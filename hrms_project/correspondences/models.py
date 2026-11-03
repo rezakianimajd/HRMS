@@ -324,6 +324,14 @@ class Letter(BaseModel):
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='drafted_letters', verbose_name=_('تنظیم‌کننده نامه'),
     )
+    drafter_name = models.CharField(
+        max_length=200, blank=True, verbose_name=_('نام تنظیم‌کننده (متن آزاد)'),
+        help_text=_('برای مواردی که تنظیم‌کننده کاربر سامانه نیست'),
+    )
+    source_ref = models.CharField(
+        max_length=120, blank=True, verbose_name=_('شناسه منبع'),
+        help_text=_('برای ورود داده‌های تاریخی و جلوگیری از تکرار'),
+    )
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='created_letters', verbose_name=_('ثبت‌کننده'),
@@ -358,6 +366,13 @@ class Letter(BaseModel):
             models.Index(fields=['company', 'direction', 'status']),
             models.Index(fields=['company', 'letter_date']),
             models.Index(fields=['company', 'due_date']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['company', 'source_ref'],
+                condition=~models.Q(source_ref=''),
+                name='uniq_letter_company_source_ref',
+            ),
         ]
 
     def __str__(self):

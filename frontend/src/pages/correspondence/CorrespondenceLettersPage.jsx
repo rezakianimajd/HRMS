@@ -27,7 +27,7 @@ import { formatPersianNumber, toPersianDigits } from '../../core/utils/numberUti
 import PageHeader from '../../core/components/ui/PageHeader';
 import { MUTED } from '../accounting/AccountingDashboardUI';
 import {
-  ModulePager, ModuleTable, ModuleToolbar, useModuleTableState, useModuleTheme, useRowHeight,
+  ModulePager, ModuleTable, ModuleToolbar, useModuleTheme, useRowHeight,
 } from '../contracts/contractModuleUi';
 import {
   ACCENT, CONFIDENTIALITY_META, DANGER, DIRECTION_META, EVENT_META, INCOMING, INTERNAL, KpiTile,
@@ -60,6 +60,7 @@ const EMPTY_LETTER = {
   sender_name: '',
   receiver_name: '',
   drafter: '',
+  drafter_name: '',
   priority: 'normal',
   confidentiality: 'normal',
   subject: '',
@@ -123,6 +124,7 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
         sender_name: initial.sender_name || '',
         receiver_name: initial.receiver_name || '',
         drafter: initial.drafter || '',
+        drafter_name: initial.drafter_name || '',
         priority: initial.priority || 'normal',
         confidentiality: initial.confidentiality || 'normal',
         subject: initial.subject || '',
@@ -252,6 +254,8 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
           </TextField>
           <TextField size="small" label="فرستنده" value={form.sender_name} onChange={set('sender_name')} />
           <TextField size="small" label="گیرنده" value={form.receiver_name} onChange={set('receiver_name')} />
+          <TextField size="small" label="نام تنظیم‌کننده (متن آزاد)" value={form.drafter_name}
+            onChange={set('drafter_name')} helperText="اگر تنظیم‌کننده کاربر سامانه نیست" />
           <TextField size="small" type="number" label="مبلغ (اختیاری)" value={form.amount}
             onChange={set('amount')} helperText="برای نامه‌های مالی" />
           <TextField select size="small" label="اولویت" value={form.priority} onChange={set('priority')}>
@@ -399,8 +403,29 @@ const CorrespondenceLettersPage = () => {
     setDrawerTab('info');
   }, [drawerLetter?.id]);
 
+  const pageSize = moduleTheme.tableTheme.rowsPerPage;
+  const [page, setPage] = useState(0);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search.trim()), 350);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    setPage(0);
+  }, [debouncedSearch, direction, statusFilter, scope, overdueOnly, archivedOnly,
+    categoryFilter, priorityFilter, sortBy, pageSize]);
+
+  const orderingMap = {
+    newest: '-letter_date',
+    oldest: 'letter_date',
+    due: 'due_date',
+    number: 'number',
+  };
+
   const listParams = useMemo(() => {
-    const params = { page_size: 500 };
+    const params = { page: page + 1, page_size: pageSize, ordering: orderingMap[sortBy] };
     if (direction !== 'all') params.direction = direction;
     if (statusFilter !== 'all') params.status = statusFilter;
     if (scope !== 'all') params.scope = scope;
@@ -408,8 +433,11 @@ const CorrespondenceLettersPage = () => {
     if (archivedOnly) params.archived = '1';
     if (categoryFilter !== 'all') params.category = categoryFilter;
     if (priorityFilter !== 'all') params.priority = priorityFilter;
+    if (debouncedSearch) params.search = debouncedSearch;
     return params;
-  }, [direction, statusFilter, scope, overdueOnly, archivedOnly, categoryFilter, priorityFilter]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page, pageSize, sortBy, direction, statusFilter, scope, overdueOnly, archivedOnly,
+    categoryFilter, priorityFilter, debouncedSearch]);
 
   const { data: rawLetters, isLoading, isFetching, refetch } = useQuery({
     queryKey: [...LETTERS_KEY, listParams],
@@ -417,6 +445,21 @@ const CorrespondenceLettersPage = () => {
     placeholderData: (previous) => previous,
   });
   const letters = useMemo(() => asList(rawLetters), [rawLetters]);
+  const total = useMemo(
+    () => (typeof rawLetters?.count === 'number' ? rawLetters.count : letters.length),
+    [rawLetters, letters.length],
+  );
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  useEffect(() => {
+    if (page > totalPages - 1) setPage(Math.max(0, totalPages - 1));
+  }, [page, totalPages]);
+  const pageNumbers = useMemo(() => {
+    const size = 5;
+    const start = Math.max(0, Math.min(page - 2, totalPages - size));
+    const end = Math.min(totalPages, start + size);
+    return Array.from({ length: Math.max(0, end - start) }, (_unused, index) => start + index);
+  }, [page, totalPages]);
+
 
   const { data: meta } = useQuery({
     queryKey: META_KEY,
@@ -514,45 +557,13 @@ const CorrespondenceLettersPage = () => {
     };
   }), [letters]);
 
-  const filtered = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const result = rows.filter((row) => {
-      if (!query) return true;
-      const letter = row.letter;
-      return [
-        letter.number, letter.subject, letter.summary, letter.indicator_no, letter.transmittal_no,
-        letter.external_number, letter.sender_name, letter.receiver_name,
-        letter.organization_name, letter.correspondent_name, letter.contract_number,
-        letter.created_by_name, letter.drafter_name,
-      ].some((value) => String(value || '').toLowerCase().includes(query));
-    });
-    return [...result].sort((a, b) => {
-      if (sortBy === 'oldest') {
-        return String(a.letter.letter_date).localeCompare(String(b.letter.letter_date));
-      }
-      if (sortBy === 'due') return (a.days ?? 999999) - (b.days ?? 999999);
-      if (sortBy === 'number') {
-        return String(a.letter.number || '').localeCompare(String(b.letter.number || ''), 'fa');
-      }
-      return String(b.letter.letter_date).localeCompare(String(a.letter.letter_date));
-    });
-  }, [rows, search, sortBy]);
-
   const counts = useMemo(() => letters.reduce((acc, letter) => {
     acc[letter.direction] = (acc[letter.direction] || 0) + 1;
     acc[letter.status] = (acc[letter.status] || 0) + 1;
     return acc;
   }, {}), [letters]);
 
-  const pageSize = moduleTheme.tableTheme.rowsPerPage;
-  const { page, setPage, totalPages, pageNumbers } = useModuleTableState(
-    filtered.length, pageSize, [search, sortBy, listParams, pageSize],
-  );
-  const pagedRows = useMemo(
-    () => filtered.slice(page * pageSize, (page + 1) * pageSize),
-    [filtered, page, pageSize],
-  );
-  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, pagedRows.length);
+  const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(moduleTheme.tableTheme, rows.length);
 
   const totals = stats?.totals || {};
   const myReferralCount = totals.my_referrals ?? asList(myReferrals).length;
@@ -808,7 +819,7 @@ const CorrespondenceLettersPage = () => {
           tableHeight={tableHeight}
           rowHeight={rowHeight}
           dimmed={isFetching}
-          rows={pagedRows}
+          rows={rows}
           rowKey={(row) => row.letter.id}
           onRowClick={(row) => { setDrawerLetter(row.letter); setComment(''); }}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
@@ -979,18 +990,18 @@ const CorrespondenceLettersPage = () => {
           onPage={setPage}
           totalPages={totalPages}
           pageNumbers={pageNumbers}
-          total={filtered.length}
+          total={total}
           pageSize={pageSize}
           unit="مکاتبه"
         />
         <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
           sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
-          <Chip size="small" label={`وارده: ${formatPersianNumber(counts.incoming || 0)}`} sx={chipSx(INCOMING)} />
-          <Chip size="small" label={`صادره: ${formatPersianNumber(counts.outgoing || 0)}`} sx={chipSx(OUTGOING)} />
-          <Chip size="small" label={`داخلی: ${formatPersianNumber(counts.internal || 0)}`} sx={chipSx(INTERNAL)} />
-          <Chip size="small" label={`پیش‌نویس: ${formatPersianNumber(counts.draft || 0)}`} sx={chipSx(SLATE)} />
-          <Chip size="small" label={`در جریان: ${formatPersianNumber(counts.in_progress || 0)}`} sx={chipSx(WARN)} />
-          <Chip size="small" label={`بایگانی: ${formatPersianNumber(counts.archived || 0)}`} sx={chipSx('#334155')} />
+          <Chip size="small" label={`وارده: ${formatPersianNumber(stats?.by_direction?.incoming ?? counts.incoming ?? 0)}`} sx={chipSx(INCOMING)} />
+          <Chip size="small" label={`صادره: ${formatPersianNumber(stats?.by_direction?.outgoing ?? counts.outgoing ?? 0)}`} sx={chipSx(OUTGOING)} />
+          <Chip size="small" label={`داخلی: ${formatPersianNumber(stats?.by_direction?.internal ?? counts.internal ?? 0)}`} sx={chipSx(INTERNAL)} />
+          <Chip size="small" label={`پیش‌نویس: ${formatPersianNumber(stats?.by_status?.draft ?? counts.draft ?? 0)}`} sx={chipSx(SLATE)} />
+          <Chip size="small" label={`در جریان: ${formatPersianNumber(stats?.by_status?.in_progress ?? counts.in_progress ?? 0)}`} sx={chipSx(WARN)} />
+          <Chip size="small" label={`بایگانی: ${formatPersianNumber(stats?.by_status?.archived ?? counts.archived ?? 0)}`} sx={chipSx('#334155')} />
           <Chip size="small" label={`ارجاعات من: ${formatPersianNumber(myReferralCount)}`} sx={chipSx(INTERNAL)} />
           {totals.urgent ? (
             <Chip size="small" label={`فوری/زیاد: ${formatPersianNumber(totals.urgent)}`} sx={chipSx(DANGER)} />

@@ -133,3 +133,119 @@ class LettersMetaTests(SimpleTestCase):
         self.assertEqual(match.kwargs.get('pk'), '5')
         match = resolve('/api/letter-series/3/preview/')
         self.assertEqual(match.func.__name__, 'LetterSeriesViewSet')
+
+
+class LegacyExcelParsingTests(SimpleTestCase):
+    """تبدیل داده‌های اکسل واحد مکاتبات به ردیف‌های استاندارد."""
+
+    def test_parse_jalali_supports_slash_and_compact_formats(self):
+        from correspondences.legacy import parse_jalali
+
+        try:
+            from jdatetime import date as jdate
+        except Exception:  # noqa: BLE001
+            self.skipTest('jdatetime نصب نیست')
+        expected = jdate(1404, 6, 15).togregorian()
+        self.assertEqual(parse_jalali('1404/06/15'), expected)
+        self.assertEqual(parse_jalali(14040615), expected)
+        self.assertIsNone(parse_jalali('05/ص م /5524'))
+        self.assertIsNone(parse_jalali(''))
+
+    def test_parse_amount_handles_separators_and_text(self):
+        from correspondences.legacy import parse_amount
+
+        self.assertEqual(parse_amount('2,235,080,000'), 2235080000)
+        self.assertEqual(parse_amount('۲۲۳۵۰۸۰۰۰۰'), 2235080000)
+        self.assertIsNone(parse_amount('جهت صدور سند'))
+
+    def test_incoming_row_extracts_referrals(self):
+        from correspondences.legacy import parse_incoming_row
+
+        row = [''] * 20
+        row[3] = '1404/06/15'
+        row[4] = '1404-100-135'
+        row[5] = 'شرکت ساز و کار'
+        row[6] = 'معرفی شرکت جهت اخذ ردیف پیمان'
+        row[7] = '1404/06/05'
+        row[8] = 'ساز و کار هوشمند فاوا'
+        row[9] = 'آقای اسدنژاد'
+        row[10] = '1404/06/16'
+        row[11] = 'خ.پژوه'
+        parsed = parse_incoming_row(row, 2)
+        self.assertEqual(parsed['direction'], 'incoming')
+        self.assertEqual(parsed['number'], '1404-100-135')
+        self.assertEqual(parsed['organization_name'], 'شرکت ساز و کار')
+        self.assertEqual(len(parsed['referrals']), 1)
+        self.assertEqual(parsed['referrals'][0]['to_name'], 'خ.پژوه')
+        self.assertIsNotNone(parsed['referrals'][0]['referred_on'])
+        self.assertEqual(parsed['status'], 'registered')
+        self.assertEqual(parsed['source_ref'], 'incoming:2')
+
+    def test_empty_incoming_row_is_skipped(self):
+        from correspondences.legacy import parse_incoming_row
+
+        self.assertIsNone(parse_incoming_row([''] * 20, 5))
+
+    def test_contract_row_detects_number_and_company(self):
+        from correspondences.legacy import parse_contract_row
+
+        row = [''] * 17
+        row[1] = '1404/05/20'
+        row[2] = 'جهان پیمان کاسپین'
+        row[3] = 'C-KPSMI-03-002'
+        row[4] = 'الحاقیه 2 محوطه سازی قرارداد 002'
+        parsed = parse_contract_row(row, 3)
+        self.assertEqual(parsed['direction'], 'internal')
+        self.assertEqual(parsed['status'], 'archived')
+        self.assertEqual(parsed['contract_number'], 'C-KPSMI-03-002')
+        self.assertEqual(parsed['organization_name'], 'جهان پیمان کاسپین')
+        self.assertIsNotNone(parsed['letter_date'])
+
+    def test_university_row_reads_amount_and_default_receiver(self):
+        from correspondences.legacy import parse_university_row
+
+        row = [''] * 12
+        row[0] = '5'
+        row[2] = '1404/05/26'
+        row[3] = '1404/05/25'
+        row[4] = 'بابت فیش بیمه درمان تکمیلی'
+        row[5] = '2235080000'
+        parsed = parse_university_row(row, 6)
+        self.assertEqual(parsed['direction'], 'outgoing')
+        self.assertEqual(parsed['amount'], 2235080000)
+        self.assertEqual(parsed['receiver_name'], 'دانشگاه خاتم')
+        self.assertEqual(parsed['category_code'], 'finance')
+
+    def test_outgoing_row_maps_drafter_and_receiver(self):
+        from correspondences.legacy import parse_outgoing_row
+
+        row = [''] * 11
+        row[0] = '3894'
+        row[2] = '1404/05/08'
+        row[3] = '04/ص م  /5000'
+        row[4] = 'معرفی شرکت نظم و امنیت'
+        row[5] = 'تامین اجتماعی شعبه رودهن'
+        row[6] = 'آقای اسدنژاد'
+        parsed = parse_outgoing_row(row, 2)
+        self.assertEqual(parsed['direction'], 'outgoing')
+        self.assertEqual(parsed['drafter_name'], 'آقای اسدنژاد')
+        self.assertEqual(parsed['organization_name'], 'تامین اجتماعی شعبه رودهن')
+        self.assertIn('legacy-incoming:3894', parsed['tags'])
+
+    def test_bundled_legacy_bundle_is_valid(self):
+        import gzip
+        import json
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parent / 'data' / 'legacy_letters.json.gz'
+        self.assertTrue(path.exists(), 'بستهٔ دادهٔ مکاتبات موجود نیست')
+        with gzip.open(path, 'rt', encoding='utf-8') as handle:
+            rows = json.load(handle)
+        self.assertGreater(len(rows), 5000)
+        refs = {row['source_ref'] for row in rows}
+        self.assertEqual(len(refs), len(rows), 'شناسه منبع تکراری در بستهٔ داده')
+        required = {'source_ref', 'direction', 'subject', 'letter_date', 'sheet'}
+        for row in rows[:200]:
+            self.assertTrue(required.issubset(row.keys()))
+            self.assertIn(row['direction'], ('incoming', 'outgoing', 'internal'))
+
