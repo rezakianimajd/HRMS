@@ -1,6 +1,8 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import useAuth from './core/hooks/useAuth';
+import { useApplication } from './core/context/ApplicationContext';
+import { getModuleLandingPath } from './core/constants/moduleIcons';
 import Layout from './core/components/ui/Layout';
 import Login from './pages/Login';
 import DashboardPage from './pages/DashboardPage';
@@ -162,11 +164,20 @@ import TreasuryGuaranteesPage from './pages/treasury/TreasuryGuaranteesPage';
 import TreasuryForecastPage from './pages/treasury/TreasuryForecastPage';
 
 /**
+ * هدایت صفحهٔ خانه به داشبورد همان ماژول فعال (نه همیشه داشبورد منابع انسانی).
+ * مثال: در ماژول مکاتبات، «/» به «/correspondence» می‌رود.
+ */
+const ModuleHomeRedirect = () => {
+  const { currentApp } = useApplication();
+  return <Navigate to={getModuleLandingPath(currentApp?.slug)} replace />;
+};
+
+
+/**
  * Protected route wrapper - redirects to login if not authenticated.
  */
 const ProtectedRoute = ({ children }) => {
   const { isAuthenticated, loading } = useAuth();
-
   if (loading) {
     return <div className="loading-container">Loading...</div>;
   }
@@ -373,9 +384,9 @@ const AppRoutes = () => {
       <Route path="/data-import" element={<ProtectedLayout><DataImportPage /></ProtectedLayout>} />
       <Route path="/appearance" element={<ProtectedLayout><AppearancePage /></ProtectedLayout>} />
 
-      {/* Default redirect */}
-      <Route path="/" element={<Navigate to="/dashboard" replace />} />
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      {/* Default redirect — به داشبورد ماژول فعال */}
+      <Route path="/" element={<ModuleHomeRedirect />} />
+      <Route path="*" element={<ModuleHomeRedirect />} />
     </Routes>
   );
 };

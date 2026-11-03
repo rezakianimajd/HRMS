@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import CorrespondenceLettersPage from '../pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceDashboardPage from '../pages/correspondence/CorrespondenceDashboardPage';
+import { getModuleLandingPath, MODULE_ICONS } from '../core/constants/moduleIcons';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -167,5 +168,12 @@ test('dashboard page shows KPI tiles, trend and follow-up sections', async () =>
 
   root.unmount();
   container.remove();
+});
+
+
+test('correspondence module opens its own dashboard (not the HRMS one)', () => {
+  expect(getModuleLandingPath('correspondence')).toBe('/correspondence');
+  expect(getModuleLandingPath('hrms')).toBe('/dashboard');
+  expect(MODULE_ICONS.correspondence).toBeTruthy();
 });
 
