@@ -142,6 +142,8 @@ const KpiTile = ({ label, value, hint, color, icon: Icon, onClick }) => (
       display: 'flex',
       alignItems: 'center',
       gap: 1,
+      minWidth: 0,
+      overflow: 'hidden',
       cursor: onClick ? 'pointer' : 'default',
       transition: 'box-shadow .15s ease, transform .15s ease',
       '&:hover': onClick ? { boxShadow: `0 6px 18px ${alpha(color, 0.14)}`, transform: 'translateY(-1px)' } : undefined,
@@ -404,7 +406,7 @@ const ContractGuaranteesMonitorPage = () => {
 
 
   return (
-    <Box sx={{ pb: 1 }}>
+    <Box sx={{ pb: 1, minWidth: 0 }}>
       <PageHeader
         icon={<VerifiedUserIcon />}
         title="پایش تضامین قراردادها"
@@ -445,8 +447,13 @@ const ContractGuaranteesMonitorPage = () => {
 
       <Box sx={{
         display: 'grid',
-        gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', md: 'repeat(3, 1fr)', lg: 'repeat(6, 1fr)' },
-        gap: 1, mb: 1.25,
+        gridTemplateColumns: {
+          xs: 'minmax(0, 1fr)',
+          sm: 'repeat(2, minmax(0, 1fr))',
+          md: 'repeat(3, minmax(0, 1fr))',
+          lg: 'repeat(6, minmax(0, 1fr))',
+        },
+        gap: 1, mb: 1.25, minWidth: 0,
       }}>
         <KpiTile label="کل مبلغ تضامین" value={compactMoney(totals.all, currency)}
           hint={`${formatPersianNumber(rows.length)} سند`} color={SLATE} icon={VerifiedUserIcon} />
@@ -502,47 +509,60 @@ const ContractGuaranteesMonitorPage = () => {
 
       {watchList.length ? (
         <Paper elevation={0} sx={{
-          p: 1.25, mb: 1.25, borderRadius: '16px', border: '1px solid',
+          p: 1.25, mb: 1.25, borderRadius: '16px', border: '1px solid', overflow: 'hidden',
           borderColor: alpha(ACCENT, 0.28), bgcolor: alpha(ACCENT, 0.03), boxShadow: 'none',
         }}>
-          <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 0.85 }}>
-            <EventBusyIcon sx={{ fontSize: 17, color: WARN }} />
-            <Typography sx={{ fontSize: 12.5, fontWeight: 900 }}>سررسیدهای پیشرو تضامین</Typography>
-            <Chip size="small" label="تا ۶۰ روز" sx={chipSx(WARN)} />
-            <Typography sx={{ fontSize: 10.5, color: MUTED }}>
-              برای دیدن جزئیات هر سند روی آن کلیک کنید.
+          <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap"
+            sx={{ mb: 0.85, minWidth: 0 }}>
+            <EventBusyIcon sx={{ fontSize: 17, color: WARN, flex: '0 0 auto' }} />
+            <Typography noWrap sx={{ fontSize: 12.5, fontWeight: 900, flex: '0 0 auto' }}>
+              سررسیدهای پیشرو تضامین
+            </Typography>
+            <Chip size="small" label="تا ۶۰ روز" sx={{ ...chipSx(WARN), flex: '0 0 auto' }} />
+            <Typography noWrap sx={{ fontSize: 10.5, color: MUTED, flex: '1 1 auto', minWidth: 0 }}>
+              نزدیک‌ترین سررسیدهای تضامین آزادنشده — برای جزئیات کلیک کنید.
             </Typography>
           </Stack>
           <Box sx={{
             display: 'grid',
-            gridTemplateColumns: { xs: '1fr', sm: 'repeat(2, 1fr)', lg: 'repeat(3, 1fr)' },
+            gridTemplateColumns: { xs: 'minmax(0, 1fr)', sm: 'repeat(2, minmax(0, 1fr))', lg: 'repeat(3, minmax(0, 1fr))' },
             gap: 0.75,
+            minWidth: 0,
           }}>
             {watchList.map((row) => (
-              <Stack
+              <Box
                 key={`watch-${row.g.id}`}
-                direction="row"
-                spacing={0.85}
-                alignItems="center"
                 onClick={() => navigate(`/external-contracts/${row.g.contract}`)}
                 sx={{
-                  p: 0.75, borderRadius: '10px', cursor: 'pointer', bgcolor: 'background.paper',
-                  border: '1px solid', borderColor: alpha(daysColor(row.days), 0.22),
+                  display: 'flex', alignItems: 'center', gap: 0.75,
+                  minWidth: 0, overflow: 'hidden',
+                  px: 0.75, py: 0.55, borderRadius: '10px', cursor: 'pointer',
+                  bgcolor: 'background.paper', border: '1px solid',
+                  borderColor: alpha(daysColor(row.days), 0.22),
                   '&:hover': { bgcolor: alpha(daysColor(row.days), 0.06) },
                 }}
               >
-                <Chip size="small" label={daysLabel(row.days)} sx={chipSx(daysColor(row.days))} />
-                <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography noWrap title={`${row.number} — ${row.g.guarantee_type_display || ''}`}
-                    sx={{ fontSize: 11.5, fontWeight: 800 }}>
+                <Chip size="small" label={daysLabel(row.days)}
+                  sx={{ ...chipSx(daysColor(row.days)), height: 19, fontSize: 10, flex: '0 0 auto' }} />
+                <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
+                  <Typography noWrap
+                    title={`${row.g.guarantee_type_display || 'تضمین'} · ${row.number} · ${row.g.contract_subject || ''}`}
+                    sx={{ fontSize: 11, fontWeight: 800, lineHeight: 1.5 }}>
                     {row.g.guarantee_type_display || 'تضمین'} · {row.number}
                   </Typography>
-                  <Typography noWrap title={row.g.contract_subject} sx={{ fontSize: 10.5, color: MUTED }}>
-                    {row.g.contract_subject || '—'} · سررسید {dateLabel(row.due)} · {compactMoney(row.amount, currency)}
+                  <Typography noWrap title={`${row.g.contract_subject || '—'} — سررسید ${dateLabel(row.due)}`}
+                    sx={{ fontSize: 10, color: MUTED, lineHeight: 1.5 }}>
+                    {row.g.contract_subject || '—'} · {dateLabel(row.due)}
                   </Typography>
                 </Box>
-                <LockOpenIcon sx={{ fontSize: 15, color: alpha(daysColor(row.days), 0.7) }} />
-              </Stack>
+                <Typography noWrap title={`${money(row.amount)} ${currency}`}
+                  sx={{
+                    flex: '0 0 auto', maxWidth: '30%', fontSize: 10, fontWeight: 800,
+                    color: daysColor(row.days), fontFamily: 'var(--hrms-table-number-font, inherit)',
+                  }}>
+                  {money(row.amount)}
+                </Typography>
+              </Box>
             ))}
           </Box>
         </Paper>
