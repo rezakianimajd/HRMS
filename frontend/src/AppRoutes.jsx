@@ -224,7 +224,14 @@ const AppRoutes = () => {
       <Route path="/data-entry" element={<Navigate to="/payslips" replace />} />
       <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
       <Route path="/correspondence" element={<ProtectedLayout><CorrespondenceDashboardPage /></ProtectedLayout>} />
-      <Route path="/correspondence/letters" element={<ProtectedLayout><CorrespondenceLettersPage /></ProtectedLayout>} />
+      <Route path="/correspondence/letters" element={<ProtectedLayout><CorrespondenceLettersPage mode="all" /></ProtectedLayout>} />
+      <Route path="/correspondence/incoming" element={<ProtectedLayout><CorrespondenceLettersPage mode="incoming" /></ProtectedLayout>} />
+      <Route path="/correspondence/outgoing" element={<ProtectedLayout><CorrespondenceLettersPage mode="outgoing" /></ProtectedLayout>} />
+      <Route path="/correspondence/internal" element={<ProtectedLayout><CorrespondenceLettersPage mode="internal" /></ProtectedLayout>} />
+      <Route path="/correspondence/drafts" element={<ProtectedLayout><CorrespondenceLettersPage mode="drafts" /></ProtectedLayout>} />
+      <Route path="/correspondence/referrals" element={<ProtectedLayout><CorrespondenceLettersPage mode="referrals" /></ProtectedLayout>} />
+      <Route path="/correspondence/overdue" element={<ProtectedLayout><CorrespondenceLettersPage mode="overdue" /></ProtectedLayout>} />
+      <Route path="/correspondence/archive" element={<ProtectedLayout><CorrespondenceLettersPage mode="archive" /></ProtectedLayout>} />
       <Route path="/correspondence/settings" element={<ProtectedLayout><CorrespondenceSettingsPage /></ProtectedLayout>} />
       <Route path="/assistant" element={<ProtectedLayout><AssistantPage /></ProtectedLayout>} />
       <Route path="/scoring" element={<ProtectedLayout><ScoringPage /></ProtectedLayout>} />

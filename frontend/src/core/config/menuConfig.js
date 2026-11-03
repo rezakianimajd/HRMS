@@ -825,11 +825,12 @@ const correspondenceMenu = [
     title: 'دفتر وارده و صادره',
     color: '#0284c7',
     items: [
-      { id: 'correspondence-incoming', title: 'نامه‌های وارده', icon: <InboxIcon />, path: '/correspondence/letters?direction=incoming', color: '#0284c7', primary: true, ready: true },
-      { id: 'correspondence-outgoing', title: 'نامه‌های صادره', icon: <SendIcon />, path: '/correspondence/letters?direction=outgoing', color: '#0f766e', primary: false, ready: true },
-      { id: 'correspondence-internal', title: 'مکاتبات داخلی', icon: <MailOutlineIcon />, path: '/correspondence/letters?direction=internal', color: '#7c3aed', primary: false, ready: true },
-      { id: 'correspondence-new', title: 'ثبت نامه جدید', icon: <PostAddIcon />, path: '/correspondence/letters?new=1', color: '#10b981', primary: false, ready: true },
-      { id: 'correspondence-drafts', title: 'پیش‌نویس‌ها', icon: <EditNoteIcon />, path: '/correspondence/letters?status=draft', color: '#64748b', primary: false, ready: true },
+      { id: 'correspondence-all', title: 'همه مکاتبات', icon: <MailOutlineIcon />, path: '/correspondence/letters', color: '#0ea5e9', primary: false, ready: true },
+      { id: 'correspondence-incoming', title: 'نامه‌های وارده', icon: <InboxIcon />, path: '/correspondence/incoming', color: '#0284c7', primary: true, ready: true },
+      { id: 'correspondence-outgoing', title: 'نامه‌های صادره', icon: <SendIcon />, path: '/correspondence/outgoing', color: '#0f766e', primary: false, ready: true },
+      { id: 'correspondence-internal', title: 'مکاتبات داخلی', icon: <MailOutlineIcon />, path: '/correspondence/internal', color: '#7c3aed', primary: false, ready: true },
+      { id: 'correspondence-new', title: 'ثبت نامه جدید', icon: <PostAddIcon />, path: '/correspondence/incoming?new=1', color: '#10b981', primary: false, ready: true },
+      { id: 'correspondence-drafts', title: 'پیش‌نویس‌ها', icon: <EditNoteIcon />, path: '/correspondence/drafts', color: '#64748b', primary: false, ready: true },
     ],
   },
   {
@@ -837,9 +838,9 @@ const correspondenceMenu = [
     title: 'ارجاع و پیگیری',
     color: '#f59e0b',
     items: [
-      { id: 'correspondence-referrals', title: 'ارجاعات من', icon: <AltRouteIcon />, path: '/correspondence/letters?scope=referred', color: '#f59e0b', primary: false, ready: true },
-      { id: 'correspondence-overdue', title: 'پیگیری معوقات', icon: <NotificationsActiveIcon />, path: '/correspondence/letters?overdue=1', color: '#be123c', primary: false, ready: true },
-      { id: 'correspondence-archive', title: 'بایگانی مکاتبات', icon: <FolderSharedIcon />, path: '/correspondence/letters?archived=1', color: '#475569', primary: false, ready: true },
+      { id: 'correspondence-referrals', title: 'ارجاعات من', icon: <AltRouteIcon />, path: '/correspondence/referrals', color: '#f59e0b', primary: false, ready: true },
+      { id: 'correspondence-overdue', title: 'پیگیری معوقات', icon: <NotificationsActiveIcon />, path: '/correspondence/overdue', color: '#be123c', primary: false, ready: true },
+      { id: 'correspondence-archive', title: 'بایگانی مکاتبات', icon: <FolderSharedIcon />, path: '/correspondence/archive', color: '#475569', primary: false, ready: true },
     ],
   },
   {

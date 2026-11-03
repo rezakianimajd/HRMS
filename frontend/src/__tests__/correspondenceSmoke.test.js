@@ -177,3 +177,27 @@ test('correspondence module opens its own dashboard (not the HRMS one)', () => {
   expect(MODULE_ICONS.correspondence).toBeTruthy();
 });
 
+test('dedicated incoming page is scoped to incoming letters and has no extra filters', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  expect(container.textContent).toContain('نامه‌های وارده');
+  expect(container.textContent).toContain('نامه‌های دریافتی از سازمان‌ها و اشخاص');
+  expect(container.querySelector('input[placeholder*="نامه‌های وارده"]')).toBeTruthy();
+  // در صفحهٔ اختصاصی، کارت‌های خلاصهٔ دفتر کل نمایش داده نمی‌شوند
+  expect(container.textContent).not.toContain('کل مکاتبات');
+
+  root.unmount();
+  container.remove();
+});
+
+test('drafts page shows its own professional header', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="drafts" />);
+
+  expect(container.textContent).toContain('پیش‌نویس‌های مکاتبات');
+  expect(container.textContent).toContain('مکاتبه جدید');
+
+  root.unmount();
+  container.remove();
+});
+
+

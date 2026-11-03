@@ -74,10 +74,10 @@ const CorrespondenceDashboardPage = () => {
               onClick={() => refetch()}>
               به‌روزرسانی
             </Button>
-            <Button variant="outlined" startIcon={<InboxIcon />} onClick={() => go('direction=incoming&new=1')}>
+            <Button variant="outlined" startIcon={<InboxIcon />} onClick={() => go('/correspondence/incoming?new=1')}>
               نامه وارده
             </Button>
-            <Button variant="contained" startIcon={<SendIcon />} onClick={() => go('direction=outgoing&new=1')}
+            <Button variant="contained" startIcon={<SendIcon />} onClick={() => go('/correspondence/outgoing?new=1')}
               sx={{ bgcolor: OUTGOING, '&:hover': { bgcolor: '#115e59' } }}>
               نامه صادره
             </Button>
@@ -95,21 +95,21 @@ const CorrespondenceDashboardPage = () => {
       }}>
         <KpiTile label="نامه‌های وارده" value={formatPersianNumber(totals.incoming || 0)}
           hint={`این ماه: ${formatPersianNumber(totals.incoming_this_month || 0)}`}
-          color={INCOMING} icon={InboxIcon} onClick={() => go('direction=incoming')} />
+          color={INCOMING} icon={InboxIcon} onClick={() => go('/correspondence/incoming')} />
         <KpiTile label="نامه‌های صادره" value={formatPersianNumber(totals.outgoing || 0)}
           hint={`این ماه: ${formatPersianNumber(totals.outgoing_this_month || 0)}`}
-          color={OUTGOING} icon={SendIcon} onClick={() => go('direction=outgoing')} />
+          color={OUTGOING} icon={SendIcon} onClick={() => go('/correspondence/outgoing')} />
         <KpiTile label="مکاتبات داخلی" value={formatPersianNumber(totals.internal || 0)}
           hint="نامه‌های داخلی" color={INTERNAL} icon={MailOutlineIcon}
-          onClick={() => go('direction=internal')} />
+          onClick={() => go('/correspondence/internal')} />
         <KpiTile label="در جریان" value={formatPersianNumber(totals.open || 0)}
           hint={`پیش‌نویس: ${formatPersianNumber(totals.drafts || 0)}`} color={WARN}
-          icon={EditNoteIcon} onClick={() => go('status=in_progress')} />
+          icon={EditNoteIcon} onClick={() => go('/correspondence/letters?status=in_progress')} />
         <KpiTile label="معوقات پاسخ" value={formatPersianNumber(totals.overdue || 0)}
-          hint="از مهلت گذشته" color={DANGER} icon={WarningAmberIcon} onClick={() => go('overdue=1')} />
+          hint="از مهلت گذشته" color={DANGER} icon={WarningAmberIcon} onClick={() => go('/correspondence/overdue')} />
         <KpiTile label="ارجاعات باز من" value={formatPersianNumber(totals.my_referrals || 0)}
           hint={`معوق: ${formatPersianNumber(totals.my_overdue_referrals || 0)}`}
-          color={INTERNAL} icon={AltRouteIcon} onClick={() => go('scope=referred')} />
+          color={INTERNAL} icon={AltRouteIcon} onClick={() => go('/correspondence/referrals')} />
       </Box>
 
       <Box sx={{
@@ -171,7 +171,7 @@ const CorrespondenceDashboardPage = () => {
             hint="نامه‌هایی که برای شما ارجاع شده و در انتظار اقدام است"
             action={(
               <Button size="small" variant="text" endIcon={<ArrowBackIcon sx={{ fontSize: 14 }} />}
-                onClick={() => go('scope=referred')} sx={{ fontSize: 11 }}>
+                onClick={() => go('/correspondence/referrals')} sx={{ fontSize: 11 }}>
                 همه
               </Button>
             )} />
@@ -179,7 +179,7 @@ const CorrespondenceDashboardPage = () => {
             {referrals.length ? referrals.map((referral) => {
               const days = daysBetween(referral.due_date);
               return (
-                <MiniRow key={referral.id} onClick={() => go('scope=referred')}>
+                <MiniRow key={referral.id} onClick={() => go('/correspondence/referrals')}>
                   <Chip size="small" label={REFERRAL_STATUS_META[referral.status]?.label || '—'}
                     sx={chipSx(REFERRAL_STATUS_META[referral.status]?.color || WARN)} />
                   <Box sx={{ minWidth: 0, flex: 1 }}>
@@ -207,7 +207,7 @@ const CorrespondenceDashboardPage = () => {
         <SectionPaper>
           <SectionTitle icon={InboxIcon} title="آخرین نامه‌های وارده" color={INCOMING}
             action={(
-              <Button size="small" variant="text" onClick={() => go('direction=incoming')}
+              <Button size="small" variant="text" onClick={() => go('/correspondence/incoming')}
                 sx={{ fontSize: 11 }}>
                 همه
               </Button>
@@ -215,7 +215,7 @@ const CorrespondenceDashboardPage = () => {
           <Stack spacing={0.6}>
             {recentLetters.filter((row) => row.direction === 'incoming').length
               ? recentLetters.filter((row) => row.direction === 'incoming').slice(0, 5).map((row) => (
-                <MiniRow key={row.id} onClick={() => go('direction=incoming')}>
+                <MiniRow key={row.id} onClick={() => go('/correspondence/incoming')}>
                   <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 800, width: 78, color: INCOMING }}>
                     {row.number ? toPersianDigits(row.number) : 'بدون شماره'}
                   </Typography>
@@ -238,7 +238,7 @@ const CorrespondenceDashboardPage = () => {
         <SectionPaper>
           <SectionTitle icon={SendIcon} title="آخرین نامه‌های صادره" color={OUTGOING}
             action={(
-              <Button size="small" variant="text" onClick={() => go('direction=outgoing')}
+              <Button size="small" variant="text" onClick={() => go('/correspondence/outgoing')}
                 sx={{ fontSize: 11 }}>
                 همه
               </Button>
@@ -246,7 +246,7 @@ const CorrespondenceDashboardPage = () => {
           <Stack spacing={0.6}>
             {recentLetters.filter((row) => row.direction === 'outgoing').length
               ? recentLetters.filter((row) => row.direction === 'outgoing').slice(0, 5).map((row) => (
-                <MiniRow key={row.id} onClick={() => go('direction=outgoing')}>
+                <MiniRow key={row.id} onClick={() => go('/correspondence/outgoing')}>
                   <Typography noWrap sx={{ fontSize: 10.5, fontWeight: 800, width: 78, color: OUTGOING }}>
                     {row.number ? toPersianDigits(row.number) : 'بدون شماره'}
                   </Typography>
@@ -270,7 +270,7 @@ const CorrespondenceDashboardPage = () => {
           <SectionTitle icon={WarningAmberIcon} title="معوقات پاسخ" color={DANGER}
             hint="نامه‌های باز که مهلت پاسخ آن‌ها گذشته است"
             action={(
-              <Button size="small" variant="text" onClick={() => go('overdue=1')} sx={{ fontSize: 11 }}>
+              <Button size="small" variant="text" onClick={() => go('/correspondence/overdue')} sx={{ fontSize: 11 }}>
                 همه
               </Button>
             )} />
@@ -278,7 +278,7 @@ const CorrespondenceDashboardPage = () => {
             {(stats?.recent?.overdue || []).length ? (stats?.recent?.overdue || []).map((row) => {
               const days = daysBetween(row.due_date);
               return (
-                <MiniRow key={row.id} onClick={() => go('overdue=1')}>
+                <MiniRow key={row.id} onClick={() => go('/correspondence/overdue')}>
                   <Chip size="small" label={daysLabel(days)} sx={chipSx(DANGER)} />
                   <Box sx={{ minWidth: 0, flex: 1 }}>
                     <Typography noWrap title={row.subject} sx={{ fontSize: 11, fontWeight: 700 }}>

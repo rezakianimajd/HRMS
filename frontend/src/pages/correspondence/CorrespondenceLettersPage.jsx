@@ -74,6 +74,68 @@ const EMPTY_LETTER = {
 
 const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
 
+/**
+ * هر آیتم منوی مکاتبات صفحهٔ مستقل خودش را دارد تا کاربر بدون فیلترِ اضافه
+ * (مثلاً «جهت» که از قبل مشخص است) وارد فهرست مربوطه شود.
+ */
+export const LETTER_PAGE_PRESETS = {
+  all: {
+    title: 'دفتر مکاتبات اداری',
+    subtitle: 'جستجو و مدیریت یکجای نامه‌های وارده، صادره و داخلی',
+    icon: MailOutlineIcon,
+    accent: ACCENT,
+  },
+  incoming: {
+    title: 'نامه‌های وارده',
+    subtitle: 'نامه‌های دریافتی از سازمان‌ها و اشخاص؛ ارجاع، پیوست و پیگیری پاسخ',
+    icon: InboxIcon,
+    accent: INCOMING,
+    direction: 'incoming',
+  },
+  outgoing: {
+    title: 'نامه‌های صادره',
+    subtitle: 'نامه‌های ارسالی به سازمان‌ها و اشخاص؛ شماره‌گذاری و پیوست‌ها',
+    icon: SendIcon,
+    accent: OUTGOING,
+    direction: 'outgoing',
+  },
+  internal: {
+    title: 'مکاتبات داخلی',
+    subtitle: 'نامه‌ها و مکاتبات درون‌سازمانی',
+    icon: MailOutlineIcon,
+    accent: INTERNAL,
+    direction: 'internal',
+  },
+  drafts: {
+    title: 'پیش‌نویس‌های مکاتبات',
+    subtitle: 'نامه‌هایی که هنوز شماره نخورده یا نهایی نشده‌اند',
+    icon: EditNoteIcon,
+    accent: SLATE,
+    status: 'draft',
+  },
+  referrals: {
+    title: 'ارجاعات من',
+    subtitle: 'نامه‌هایی که برای شما ارجاع شده و در انتظار اقدام است',
+    icon: ForwardToInboxIcon,
+    accent: WARN,
+    scope: 'referred',
+  },
+  overdue: {
+    title: 'پیگیری معوقات',
+    subtitle: 'نامه‌های باز که مهلت پاسخ آن‌ها گذشته است',
+    icon: WarningAmberIcon,
+    accent: DANGER,
+    overdue: true,
+  },
+  archive: {
+    title: 'بایگانی مکاتبات',
+    subtitle: 'نامه‌های بسته‌شده و بایگانی‌شدهٔ دفتر مکاتبات',
+    icon: ArchiveIcon,
+    accent: '#334155',
+    archived: true,
+  },
+};
+
 const userLabel = (row) => {
   if (!row) return '';
   const full = [row.first_name, row.last_name].filter(Boolean).join(' ').trim();
@@ -361,16 +423,17 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
   );
 };
 
-const CorrespondenceLettersPage = () => {
+const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const moduleTheme = useModuleTheme();
   const qc = useQueryClient();
   const [searchParams] = useSearchParams();
+  const preset = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
 
-  const [direction, setDirection] = useState(searchParams.get('direction') || 'all');
-  const [statusFilter, setStatusFilter] = useState(searchParams.get('status') || 'all');
-  const [scope, setScope] = useState(searchParams.get('scope') || 'all');
-  const [overdueOnly, setOverdueOnly] = useState(searchParams.get('overdue') === '1');
-  const [archivedOnly, setArchivedOnly] = useState(searchParams.get('archived') === '1');
+  const [direction, setDirection] = useState(preset.direction || 'all');
+  const [statusFilter, setStatusFilter] = useState(preset.status || 'all');
+  const [scope, setScope] = useState(preset.scope || 'all');
+  const [overdueOnly, setOverdueOnly] = useState(Boolean(preset.overdue));
+  const [archivedOnly, setArchivedOnly] = useState(Boolean(preset.archived));
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -388,11 +451,20 @@ const CorrespondenceLettersPage = () => {
   const uploadRef = useRef(null);
 
   useEffect(() => {
-    setDirection(searchParams.get('direction') || 'all');
-    setStatusFilter(searchParams.get('status') || 'all');
-    setScope(searchParams.get('scope') || 'all');
-    setOverdueOnly(searchParams.get('overdue') === '1');
-    setArchivedOnly(searchParams.get('archived') === '1');
+    const next = LETTER_PAGE_PRESETS[mode] || LETTER_PAGE_PRESETS.all;
+    setDirection(next.direction || 'all');
+    setStatusFilter(next.status || 'all');
+    setScope(next.scope || 'all');
+    setOverdueOnly(Boolean(next.overdue));
+    setArchivedOnly(Boolean(next.archived));
+    setCategoryFilter('all');
+    setPriorityFilter('all');
+    setSearch('');
+    setSortBy('newest');
+    setFiltersOpen(false);
+  }, [mode]);
+
+  useEffect(() => {
     if (searchParams.get('new') === '1') {
       setFormLetter(null);
       setFormOpen(true);
@@ -402,6 +474,7 @@ const CorrespondenceLettersPage = () => {
   useEffect(() => {
     setDrawerTab('info');
   }, [drawerLetter?.id]);
+
 
   const pageSize = moduleTheme.tableTheme.rowsPerPage;
   const [page, setPage] = useState(0);
@@ -604,43 +677,38 @@ const CorrespondenceLettersPage = () => {
   const openNew = (presetDirection) => {
     setFormLetter(null);
     setFormOpen(true);
-    if (presetDirection) setDirection(presetDirection);
+    if (presetDirection && !preset.direction) setDirection(presetDirection);
   };
 
   const resetFilters = () => {
     setSearch('');
-    setDirection('all');
-    setStatusFilter('all');
-    setScope('all');
-    setOverdueOnly(false);
-    setArchivedOnly(false);
+    setDirection(preset.direction || 'all');
+    setStatusFilter(preset.status || 'all');
+    setScope(preset.scope || 'all');
+    setOverdueOnly(Boolean(preset.overdue));
+    setArchivedOnly(Boolean(preset.archived));
     setCategoryFilter('all');
     setPriorityFilter('all');
     setSortBy('newest');
   };
 
   const activeFilterCount = [
-    direction !== 'all', statusFilter !== 'all', scope !== 'all', overdueOnly, archivedOnly,
+    !preset.direction && direction !== 'all',
+    !preset.status && statusFilter !== 'all',
     categoryFilter !== 'all', priorityFilter !== 'all',
   ].filter(Boolean).length;
 
   const activeChips = [
-    direction !== 'all' && {
+    !preset.direction && direction !== 'all' && {
       key: 'direction',
       label: `جهت: ${DIRECTION_META[direction]?.label || direction}`,
       clear: () => setDirection('all'),
     },
-    statusFilter !== 'all' && {
+    !preset.status && statusFilter !== 'all' && {
       key: 'status',
       label: `وضعیت: ${STATUS_META[statusFilter]?.label || statusFilter}`,
       clear: () => setStatusFilter('all'),
     },
-    scope !== 'all' && {
-      key: 'scope', label: scope === 'referred' ? 'ارجاعات من' : 'نامه‌های من',
-      clear: () => setScope('all'),
-    },
-    overdueOnly && { key: 'overdue', label: 'فقط معوق', clear: () => setOverdueOnly(false) },
-    archivedOnly && { key: 'archived', label: 'بایگانی', clear: () => setArchivedOnly(false) },
     categoryFilter !== 'all' && {
       key: 'category',
       label: `نوع: ${(meta?.categories || []).find((row) => row.id === Number(categoryFilter))?.name || ''}`,
@@ -652,26 +720,79 @@ const CorrespondenceLettersPage = () => {
     },
   ].filter(Boolean);
 
+  const pageFilters = [];
+  if (!preset.direction) {
+    pageFilters.push({
+      label: 'جهت',
+      value: direction,
+      options: [
+        { value: 'all', label: 'همهٔ جهات' },
+        ...Object.entries(DIRECTION_META).map(([value, item]) => ({ value, label: item.label })),
+      ],
+      onChange: setDirection,
+    });
+  }
+  if (!preset.status) {
+    pageFilters.push({
+      label: 'وضعیت',
+      value: statusFilter,
+      options: [
+        { value: 'all', label: 'همهٔ وضعیت‌ها' },
+        ...Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label })),
+      ],
+      onChange: setStatusFilter,
+    });
+  }
+  pageFilters.push({
+    label: 'نوع مکاتبه',
+    value: categoryFilter,
+    options: [
+      { value: 'all', label: 'همهٔ انواع' },
+      ...(meta?.categories || []).map((row) => ({ value: row.id, label: row.name })),
+    ],
+    onChange: setCategoryFilter,
+  });
+  pageFilters.push({
+    label: 'اولویت',
+    value: priorityFilter,
+    options: [
+      { value: 'all', label: 'همهٔ اولویت‌ها' },
+      ...Object.entries(PRIORITY_META).map(([value, item]) => ({ value, label: item.label })),
+    ],
+    onChange: setPriorityFilter,
+  });
+
+  const pageAccent = preset.accent || ACCENT;
+  const PageIcon = preset.icon || MailOutlineIcon;
+
   if (isLoading) {
-    return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress sx={{ color: ACCENT }} /></Box>;
+    return <Box sx={{ py: 9, textAlign: 'center' }}><CircularProgress sx={{ color: pageAccent }} /></Box>;
   }
 
   return (
     <Box sx={{ pb: 1, minWidth: 0 }}>
       <PageHeader
-        icon={<MailOutlineIcon />}
-        title="دفتر مکاتبات اداری"
-        subtitle="ثبت، شماره‌گذاری، ارجاع، پیگیری، پیوست و بایگانی نامه‌های وارده، صادره و داخلی"
+        icon={<PageIcon />}
+        title={preset.title}
+        subtitle={preset.subtitle}
         badge={(
           <Stack direction="row" spacing={0.6} useFlexGap flexWrap="wrap">
-            <Chip size="small" label={`${formatPersianNumber(totals.all || 0)} مکاتبه`}
-              sx={{ height: 23, fontWeight: 800, bgcolor: alpha(ACCENT, 0.1), color: '#0369a1' }} />
-            <Chip size="small" label={`وارده ${formatPersianNumber(totals.incoming || 0)}`}
-              sx={{ height: 23, fontWeight: 800, bgcolor: alpha(INCOMING, 0.1), color: INCOMING }} />
-            <Chip size="small" label={`صادره ${formatPersianNumber(totals.outgoing || 0)}`}
-              sx={{ height: 23, fontWeight: 800, bgcolor: alpha(OUTGOING, 0.1), color: OUTGOING }} />
-            {totals.overdue ? (
+            <Chip size="small" label={`${formatPersianNumber(total)} مکاتبه`}
+              sx={{ height: 23, fontWeight: 800, bgcolor: alpha(pageAccent, 0.1), color: pageAccent }} />
+            {mode === 'all' ? (
+              <>
+                <Chip size="small" label={`وارده ${formatPersianNumber(totals.incoming || 0)}`}
+                  sx={{ height: 23, fontWeight: 800, bgcolor: alpha(INCOMING, 0.1), color: INCOMING }} />
+                <Chip size="small" label={`صادره ${formatPersianNumber(totals.outgoing || 0)}`}
+                  sx={{ height: 23, fontWeight: 800, bgcolor: alpha(OUTGOING, 0.1), color: OUTGOING }} />
+              </>
+            ) : null}
+            {totals.overdue && mode !== 'overdue' ? (
               <Chip size="small" label={`معوق ${formatPersianNumber(totals.overdue)}`}
+                sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DANGER, 0.1), color: DANGER }} />
+            ) : null}
+            {mode === 'referrals' && totals.my_overdue_referrals ? (
+              <Chip size="small" label={`ارجاع معوق ${formatPersianNumber(totals.my_overdue_referrals)}`}
                 sx={{ height: 23, fontWeight: 800, bgcolor: alpha(DANGER, 0.1), color: DANGER }} />
             ) : null}
           </Stack>
@@ -687,39 +808,57 @@ const CorrespondenceLettersPage = () => {
               </span>
             </Tooltip>
             <Button variant="outlined" startIcon={<DownloadIcon />} onClick={exportExcel}>خروجی اکسل</Button>
-            <Button variant="outlined" startIcon={<InboxIcon />} onClick={() => openNew('incoming')}>وارده جدید</Button>
-            <Button variant="contained" startIcon={<SendIcon />} onClick={() => openNew('outgoing')}
-              sx={{ bgcolor: OUTGOING, '&:hover': { bgcolor: '#115e59' } }}>
-              نامه صادره
-            </Button>
+            {mode === 'all' ? (
+              <>
+                <Button variant="outlined" startIcon={<InboxIcon />}
+                  onClick={() => openNew('incoming')}>
+                  وارده جدید
+                </Button>
+                <Button variant="contained" startIcon={<SendIcon />} onClick={() => openNew('outgoing')}
+                  sx={{ bgcolor: OUTGOING, '&:hover': { bgcolor: '#115e59' } }}>
+                  نامه صادره
+                </Button>
+              </>
+            ) : (
+              <Button variant="contained" startIcon={<PageIcon />}
+                onClick={() => openNew(preset.direction || 'incoming')}
+                sx={{ bgcolor: pageAccent, '&:hover': { bgcolor: alpha(pageAccent, 0.85) } }}>
+                {preset.direction === 'outgoing' ? 'نامه صادره جدید'
+                  : preset.direction === 'internal' ? 'مکاتبه داخلی جدید'
+                    : preset.direction === 'incoming' ? 'نامه وارده جدید' : 'مکاتبه جدید'}
+              </Button>
+            )}
           </>
         )}
       />
 
-      <Box sx={{
-        display: 'grid',
-        gridTemplateColumns: { xs: 'minmax(0,1fr)', sm: 'repeat(2, minmax(0,1fr))', md: 'repeat(3, minmax(0,1fr))', lg: 'repeat(6, minmax(0,1fr))' },
-        gap: 1, mb: 1.25, minWidth: 0,
-      }}>
-        <KpiTile label="کل مکاتبات" value={formatPersianNumber(totals.all || 0)} hint="دفتر وارده و صادره"
-          color={SLATE} icon={MailOutlineIcon} />
-        <KpiTile label="نامه‌های وارده" value={formatPersianNumber(totals.incoming || 0)}
-          hint={`این ماه: ${formatPersianNumber(totals.incoming_this_month || 0)}`} color={INCOMING}
-          icon={InboxIcon} onClick={() => setDirection('incoming')} />
-        <KpiTile label="نامه‌های صادره" value={formatPersianNumber(totals.outgoing || 0)}
-          hint={`این ماه: ${formatPersianNumber(totals.outgoing_this_month || 0)}`} color={OUTGOING}
-          icon={SendIcon} onClick={() => setDirection('outgoing')} />
-        <KpiTile label="در جریان" value={formatPersianNumber(totals.open || 0)}
-          hint={`پیش‌نویس: ${formatPersianNumber(totals.drafts || 0)}`} color={WARN}
-          icon={EditNoteIcon} onClick={() => setStatusFilter('in_progress')} />
-        <KpiTile label="معوق (مهلت پاسخ)" value={formatPersianNumber(totals.overdue || 0)}
-          hint="نیازمند پیگیری" color={DANGER} icon={WarningAmberIcon} onClick={() => setOverdueOnly(true)} />
-        <KpiTile label="ارجاعات من" value={formatPersianNumber(myReferralCount)}
-          hint={`معوق: ${formatPersianNumber(totals.my_overdue_referrals || 0)}`} color={INTERNAL}
-          icon={ForwardToInboxIcon} onClick={() => setScope('referred')} />
-      </Box>
+      {mode === 'all' ? (
+        <Box sx={{
+          display: 'grid',
+          gridTemplateColumns: { xs: 'minmax(0,1fr)', sm: 'repeat(2, minmax(0,1fr))', md: 'repeat(3, minmax(0,1fr))', lg: 'repeat(6, minmax(0,1fr))' },
+          gap: 1, mb: 1.25, minWidth: 0,
+        }}>
+          <KpiTile label="کل مکاتبات" value={formatPersianNumber(totals.all || 0)} hint="دفتر وارده و صادره"
+            color={SLATE} icon={MailOutlineIcon} />
+          <KpiTile label="نامه‌های وارده" value={formatPersianNumber(totals.incoming || 0)}
+            hint={`این ماه: ${formatPersianNumber(totals.incoming_this_month || 0)}`} color={INCOMING}
+            icon={InboxIcon} onClick={() => setDirection('incoming')} />
+          <KpiTile label="نامه‌های صادره" value={formatPersianNumber(totals.outgoing || 0)}
+            hint={`این ماه: ${formatPersianNumber(totals.outgoing_this_month || 0)}`} color={OUTGOING}
+            icon={SendIcon} onClick={() => setDirection('outgoing')} />
+          <KpiTile label="در جریان" value={formatPersianNumber(totals.open || 0)}
+            hint={`پیش‌نویس: ${formatPersianNumber(totals.drafts || 0)}`} color={WARN}
+            icon={EditNoteIcon} onClick={() => setStatusFilter('in_progress')} />
+          <KpiTile label="معوق (مهلت پاسخ)" value={formatPersianNumber(totals.overdue || 0)}
+            hint="نیازمند پیگیری" color={DANGER} icon={WarningAmberIcon}
+            onClick={() => setOverdueOnly(true)} />
+          <KpiTile label="ارجاعات من" value={formatPersianNumber(myReferralCount)}
+            hint={`معوق: ${formatPersianNumber(totals.my_overdue_referrals || 0)}`} color={INTERNAL}
+            icon={ForwardToInboxIcon} onClick={() => setScope('referred')} />
+        </Box>
+      ) : null}
 
-      {totals.overdue ? (
+      {totals.overdue && mode !== 'overdue' ? (
         <Alert severity="error" icon={<WarningAmberIcon />} sx={{ mb: 1, borderRadius: '12px', py: 0.35 }}>
           <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
             <Typography sx={{ fontSize: 12 }}>
@@ -732,6 +871,7 @@ const CorrespondenceLettersPage = () => {
           </Stack>
         </Alert>
       ) : null}
+
       {error ? (
         <Alert severity="error" sx={{ mb: 1, borderRadius: '12px', py: 0.35 }}
           onClose={() => setError('')}>
@@ -749,7 +889,9 @@ const CorrespondenceLettersPage = () => {
         theme={moduleTheme}
         search={search}
         onSearch={setSearch}
-        searchPlaceholder="جستجو در شماره، موضوع، طرف مکاتبه، اندیکاتور، ترنسمیتال یا تنظیم‌کننده…"
+        searchPlaceholder={mode === 'all'
+          ? 'جستجو در شماره، موضوع، طرف مکاتبه، اندیکاتور یا تنظیم‌کننده…'
+          : `جستجو در ${preset.title}…`}
         sort={sortBy}
         sortOptions={[
           { value: 'newest', label: 'جدیدترین تاریخ' },
@@ -758,44 +900,7 @@ const CorrespondenceLettersPage = () => {
           { value: 'number', label: 'شماره نامه' },
         ]}
         onSort={setSortBy}
-        filters={[
-          {
-            label: 'جهت',
-            value: direction,
-            options: [
-              { value: 'all', label: 'همهٔ جهات' },
-              ...Object.entries(DIRECTION_META).map(([value, item]) => ({ value, label: item.label })),
-            ],
-            onChange: setDirection,
-          },
-          {
-            label: 'وضعیت',
-            value: statusFilter,
-            options: [
-              { value: 'all', label: 'همهٔ وضعیت‌ها' },
-              ...Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label })),
-            ],
-            onChange: setStatusFilter,
-          },
-          {
-            label: 'نوع مکاتبه',
-            value: categoryFilter,
-            options: [
-              { value: 'all', label: 'همهٔ انواع' },
-              ...(meta?.categories || []).map((row) => ({ value: row.id, label: row.name })),
-            ],
-            onChange: setCategoryFilter,
-          },
-          {
-            label: 'اولویت',
-            value: priorityFilter,
-            options: [
-              { value: 'all', label: 'همهٔ اولویت‌ها' },
-              ...Object.entries(PRIORITY_META).map(([value, item]) => ({ value, label: item.label })),
-            ],
-            onChange: setPriorityFilter,
-          },
-        ]}
+        filters={pageFilters}
         activeChips={activeChips}
         activeFilterCount={activeFilterCount}
         onReset={resetFilters}
@@ -994,12 +1099,20 @@ const CorrespondenceLettersPage = () => {
         />
         <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
           sx={{ pt: 1.25, mt: 1.25, borderTop: '1px dashed', borderColor: 'divider' }}>
-          <Chip size="small" label={`وارده: ${formatPersianNumber(stats?.by_direction?.incoming ?? counts.incoming ?? 0)}`} sx={chipSx(INCOMING)} />
-          <Chip size="small" label={`صادره: ${formatPersianNumber(stats?.by_direction?.outgoing ?? counts.outgoing ?? 0)}`} sx={chipSx(OUTGOING)} />
-          <Chip size="small" label={`داخلی: ${formatPersianNumber(stats?.by_direction?.internal ?? counts.internal ?? 0)}`} sx={chipSx(INTERNAL)} />
-          <Chip size="small" label={`پیش‌نویس: ${formatPersianNumber(stats?.by_status?.draft ?? counts.draft ?? 0)}`} sx={chipSx(SLATE)} />
+          {!preset.direction ? (
+            <>
+              <Chip size="small" label={`وارده: ${formatPersianNumber(stats?.by_direction?.incoming ?? counts.incoming ?? 0)}`} sx={chipSx(INCOMING)} />
+              <Chip size="small" label={`صادره: ${formatPersianNumber(stats?.by_direction?.outgoing ?? counts.outgoing ?? 0)}`} sx={chipSx(OUTGOING)} />
+              <Chip size="small" label={`داخلی: ${formatPersianNumber(stats?.by_direction?.internal ?? counts.internal ?? 0)}`} sx={chipSx(INTERNAL)} />
+            </>
+          ) : null}
+          {!preset.status ? (
+            <Chip size="small" label={`پیش‌نویس: ${formatPersianNumber(stats?.by_status?.draft ?? counts.draft ?? 0)}`} sx={chipSx(SLATE)} />
+          ) : null}
           <Chip size="small" label={`در جریان: ${formatPersianNumber(stats?.by_status?.in_progress ?? counts.in_progress ?? 0)}`} sx={chipSx(WARN)} />
-          <Chip size="small" label={`بایگانی: ${formatPersianNumber(stats?.by_status?.archived ?? counts.archived ?? 0)}`} sx={chipSx('#334155')} />
+          {!preset.archived ? (
+            <Chip size="small" label={`بایگانی: ${formatPersianNumber(stats?.by_status?.archived ?? counts.archived ?? 0)}`} sx={chipSx('#334155')} />
+          ) : null}
           <Chip size="small" label={`ارجاعات من: ${formatPersianNumber(myReferralCount)}`} sx={chipSx(INTERNAL)} />
           {totals.urgent ? (
             <Chip size="small" label={`فوری/زیاد: ${formatPersianNumber(totals.urgent)}`} sx={chipSx(DANGER)} />
@@ -1292,7 +1405,7 @@ const CorrespondenceLettersPage = () => {
       <LetterFormDialog
         open={formOpen}
         initial={formLetter}
-        presetDirection={direction !== 'all' ? direction : 'incoming'}
+        presetDirection={preset.direction || (direction !== 'all' ? direction : 'incoming')}
         meta={meta}
         organizations={organizations}
         users={users}
