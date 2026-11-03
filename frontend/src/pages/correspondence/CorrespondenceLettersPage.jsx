@@ -417,15 +417,14 @@ const CorrespondenceLettersPage = () => {
   }, [debouncedSearch, direction, statusFilter, scope, overdueOnly, archivedOnly,
     categoryFilter, priorityFilter, sortBy, pageSize]);
 
-  const orderingMap = {
-    newest: '-letter_date',
-    oldest: 'letter_date',
-    due: 'due_date',
-    number: 'number',
-  };
-
   const listParams = useMemo(() => {
-    const params = { page: page + 1, page_size: pageSize, ordering: orderingMap[sortBy] };
+    const ordering = {
+      newest: '-letter_date',
+      oldest: 'letter_date',
+      due: 'due_date',
+      number: 'number',
+    }[sortBy] || '-letter_date';
+    const params = { page: page + 1, page_size: pageSize, ordering };
     if (direction !== 'all') params.direction = direction;
     if (statusFilter !== 'all') params.status = statusFilter;
     if (scope !== 'all') params.scope = scope;
@@ -435,7 +434,6 @@ const CorrespondenceLettersPage = () => {
     if (priorityFilter !== 'all') params.priority = priorityFilter;
     if (debouncedSearch) params.search = debouncedSearch;
     return params;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, pageSize, sortBy, direction, statusFilter, scope, overdueOnly, archivedOnly,
     categoryFilter, priorityFilter, debouncedSearch]);
 
