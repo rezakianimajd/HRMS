@@ -7,6 +7,7 @@ import axiosInstance from '../core/api/axiosConfig';
 import CorrespondenceLettersPage from '../pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceDashboardPage from '../pages/correspondence/CorrespondenceDashboardPage';
 import { getModuleLandingPath, MODULE_ICONS } from '../core/constants/moduleIcons';
+import { toJalali } from '../core/utils/dateUtils';
 
 jest.mock('../core/api/axiosConfig', () => ({
   __esModule: true,
@@ -206,6 +207,10 @@ test('dedicated incoming page is scoped to incoming letters and has no extra fil
   expect(container.textContent).toContain('نحوهٔ ورود');
   expect(container.textContent).toContain('شرکت ناظر');
   expect(container.textContent).toContain('د-۸۸');
+  // تاریخ‌ها و ساعت‌ها شمسی و با اعداد فارسی
+  expect(container.textContent).toContain(toJalali(letters[0].letter_date));
+  expect(container.textContent).toContain('۰۹:۳۰');
+  expect(container.textContent).not.toContain('09:30');
 
   root.unmount();
   container.remove();

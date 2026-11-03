@@ -32,7 +32,7 @@ import {
 import {
   ACCENT, CONFIDENTIALITY_META, DANGER, DIRECTION_META, EVENT_META, INCOMING, INTERNAL, KpiTile,
   OK, OUTGOING, PRIORITY_META, REFERRAL_STATUS_META, SLATE, STATUS_META, WARN, chipSx,
-  dateLabel, daysBetween, daysColor, daysLabel, money, MetaChip,
+  dateLabel, dateTimeLabel, daysBetween, daysColor, daysLabel, money, timeLabel, MetaChip,
 } from './correspondenceUi';
 
 const LETTERS_KEY = ['correspondence-letters'];
@@ -1337,7 +1337,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     <Chip size="small" label={row.letter.entry_method_display || '—'}
                       sx={chipSx(ENTRY_METHOD_META[row.letter.entry_method]?.color || SLATE)} />
                     <Typography noWrap sx={{ fontSize: 9, color: MUTED, mt: 0.2 }}>
-                      {row.letter.entry_time ? String(row.letter.entry_time).slice(0, 5) : '—'}
+                      {row.letter.entry_time ? timeLabel(row.letter.entry_time) : '—'}
                       {row.letter.entered_by_label ? ` · ${row.letter.entered_by_label}` : ''}
                     </Typography>
                   </Box>
@@ -1599,7 +1599,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   <InfoGroup icon={InboxIcon} title="ثبت و ورود" color={WARN}>
                     <InfoCell label="نحوهٔ ورود" value={activeLetter.entry_method_display} />
                     <InfoCell label="ساعت ورود"
-                      value={activeLetter.entry_time ? String(activeLetter.entry_time).slice(0, 5) : ''} />
+                      value={activeLetter.entry_time ? timeLabel(activeLetter.entry_time) : ''} />
                     <InfoCell label="ثبت‌کنندهٔ ورود" value={activeLetter.entered_by_label} />
                     <InfoCell label="تاریخ ورود" value={dateLabel(activeLetter.received_date)} />
                     <InfoCell label="واحد ثبت‌کننده" value={activeLetter.unit_name} />
@@ -1802,7 +1802,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                           <Typography sx={{ fontSize: 10.5, whiteSpace: 'pre-wrap' }}>{event.note}</Typography>
                         ) : null}
                         <Typography sx={{ fontSize: 9.5, color: MUTED }}>
-                          {event.actor_name || '—'} · {dateLabel(event.created_at)}
+                          {event.actor_name || '—'} · {dateTimeLabel(event.created_at)}
                         </Typography>
                       </Box>
                     </Stack>

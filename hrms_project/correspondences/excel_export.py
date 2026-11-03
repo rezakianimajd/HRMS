@@ -39,15 +39,20 @@ HEADERS = [
 ]
 
 
+PERSIAN_DIGITS = str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹')
+
+
 def _jalali(value):
     if not value:
         return ''
     if jdate is None:
-        return value.isoformat()
-    try:
-        return jdate.fromgregorian(date=value).strftime('%Y/%m/%d')
-    except Exception:  # noqa: BLE001
-        return value.isoformat()
+        text = value.isoformat()
+    else:
+        try:
+            text = jdate.fromgregorian(date=value).strftime('%Y/%m/%d')
+        except Exception:  # noqa: BLE001
+            text = value.isoformat()
+    return text.translate(PERSIAN_DIGITS)
 
 
 def _user_name(user):

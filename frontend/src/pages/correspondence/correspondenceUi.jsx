@@ -67,6 +67,24 @@ export const EVENT_META = {
 
 export const dateLabel = (value) => (value ? toJalali(value) : '—');
 
+/** ساعت با اعداد فارسی: «۰۹:۳۰». */
+export const timeLabel = (value) => {
+  if (!value) return '';
+  const text = String(value);
+  const match = text.match(/(\d{1,2}):(\d{2})/);
+  if (!match) return toPersianDigits(text);
+  return `${toPersianDigits(match[1].padStart(2, '0'))}:${toPersianDigits(match[2])}`;
+};
+
+/** تاریخ و ساعت شمسی با اعداد فارسی: «۱۴۰۵/۰۸/۱۲ — ۱۴:۳۵». */
+export const dateTimeLabel = (value) => {
+  if (!value) return '—';
+  const text = String(value);
+  const day = toJalali(text.slice(0, 10));
+  const match = text.match(/[T ](\d{2}):(\d{2})/);
+  return match ? `${day} — ${toPersianDigits(match[1])}:${toPersianDigits(match[2])}` : day;
+};
+
 export const money = (value) => formatPersianNumber(Math.round(Number(value) || 0));
 
 export const compactMoney = (value, currency = '') => {

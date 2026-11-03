@@ -145,6 +145,16 @@ from rest_framework import status as http_status  # noqa: E402,F401
 FINAL_STATUSES = ('closed', 'archived', 'canceled')
 OPEN_REFERRAL_STATUSES = ('pending', 'in_progress')
 
+try:  # تاریخ شمسی برای برچسب‌های گزارش
+    from jdatetime import date as _jdate
+except Exception:  # noqa: BLE001
+    _jdate = None
+
+JALALI_MONTHS = [
+    'فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور',
+    'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند',
+]
+
 
 def _truthy(value):
     return str(value).lower() in ('1', 'true', 'yes', 'on')
@@ -560,13 +570,26 @@ class LetterViewSet(BaseLetterViewSet):
         )
         trend_map = {}
         for row in trend_rows:
-            key = row['bucket'].strftime('%Y-%m') if row['bucket'] else '—'
-            trend_map.setdefault(key, {'incoming': 0, 'outgoing': 0, 'internal': 0})[
-                row['direction']
-            ] = row['c']
+            bucket = row['bucket']
+            if bucket:
+                day = bucket.date() if hasattr(bucket, 'date') else bucket
+                if _jdate is not None:
+                    jalali = _jdate.fromgregorian(date=day)
+                    key = f'{jalali.year:04d}-{jalali.month:02d}'
+                    label = f'{JALALI_MONTHS[jalali.month - 1]} {jalali.year}'
+                else:
+                    key = day.strftime('%Y-%m')
+                    label = key
+            else:
+                key, label = '—', '—'
+            entry = trend_map.setdefault(
+                key, {'incoming': 0, 'outgoing': 0, 'internal': 0, 'label': label},
+            )
+            entry[row['direction']] = row['c']
         trend = [
             {
                 'period': key,
+                'label': trend_map[key].get('label', key),
                 'incoming': trend_map[key].get('incoming', 0),
                 'outgoing': trend_map[key].get('outgoing', 0),
                 'internal': trend_map[key].get('internal', 0),

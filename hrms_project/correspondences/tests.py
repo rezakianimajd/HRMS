@@ -338,3 +338,33 @@ class IncomingLetterSpecializationTests(SimpleTestCase):
         self.assertGreater(len(with_time), 500)
         self.assertGreater(len(with_person), 500)
 
+
+
+class PersianDisplayFormattingTests(SimpleTestCase):
+    """نمایش تمام تاریخ‌ها/ساعت‌ها به شمسی و با اعداد فارسی."""
+
+    def test_excel_export_dates_use_persian_digits(self):
+        from datetime import date
+
+        from correspondences.excel_export import _jalali
+
+        text = _jalali(date(2026, 3, 25))
+        self.assertEqual(text, '۱۴۰۵/۰۱/۰۵')
+        self.assertTrue(all(char in '۰۱۲۳۴۵۶۷۸۹/' for char in text))
+
+    def test_jalali_month_labels_are_complete(self):
+        from correspondences.views import JALALI_MONTHS
+
+        self.assertEqual(len(JALALI_MONTHS), 12)
+        self.assertEqual(JALALI_MONTHS[0], 'فروردین')
+        self.assertEqual(JALALI_MONTHS[-1], 'اسفند')
+
+    def test_stats_trend_builds_jalali_labels(self):
+        import inspect
+
+        from correspondences import views
+
+        source = inspect.getsource(views.LetterViewSet.stats)
+        self.assertIn("'label': trend_map[key].get('label', key)", source)
+        self.assertIn('_jdate.fromgregorian', source)
+

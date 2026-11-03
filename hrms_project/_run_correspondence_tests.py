@@ -18,6 +18,7 @@ try:
         'correspondences.tests.LettersMetaTests',
         'correspondences.tests.LegacyExcelParsingTests',
         'correspondences.tests.IncomingLetterSpecializationTests',
+        'correspondences.tests.PersianDisplayFormattingTests',
     ])
     result = unittest.TextTestRunner(verbosity=2, stream=buffer).run(suite)
     buffer.write(f"\nRUN={result.testsRun} FAIL={len(result.failures)} ERR={len(result.errors)}\n")

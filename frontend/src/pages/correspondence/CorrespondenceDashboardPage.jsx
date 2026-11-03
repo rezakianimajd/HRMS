@@ -128,7 +128,7 @@ const CorrespondenceDashboardPage = () => {
                   <Stack key={row.period} direction="row" alignItems="center" spacing={1}
                     sx={{ minWidth: 0 }}>
                     <Typography noWrap sx={{ fontSize: 10.5, width: 62, color: MUTED }}>
-                      {row.period}
+                      {toPersianDigits(row.label || row.period)}
                     </Typography>
                     <Box sx={{
                       flex: 1, minWidth: 0, height: 8, borderRadius: 4,
