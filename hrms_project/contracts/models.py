@@ -565,6 +565,7 @@ class Guarantee(BaseModel):
         CHECK = 'check', _('چک')
         PROMISSORY = 'promissory', _('سفته')
         BANK_GUARANTEE = 'bank_guarantee', _('ضمانت‌نامه بانکی')
+        UNDERTAKING_GUARANTEE = 'undertaking_guarantee', _('ضمانت‌نامه تعهدی')
         CHECK_AND_GUARANTEE = 'check_and_guarantee', _('چک + ضمانت‌نامه')
         PROMISSORY_AND_GUARANTEE = 'promissory_and_guarantee', _('سفته + ضمانت‌نامه')
 
@@ -573,6 +574,7 @@ class Guarantee(BaseModel):
         EXECUTED = 'executed', _('اجرا / ضبط')
         CANCELED = 'canceled', _('ابطال')
         EXTENDED = 'extended', _('تمدید')
+        REDUCED = 'reduced', _('تقلیل')
 
     contract = models.ForeignKey(Contract, on_delete=models.CASCADE, related_name='guarantees', verbose_name=_('قرارداد'))
     contract_guarantee_index = models.PositiveIntegerField(
@@ -611,6 +613,66 @@ class Guarantee(BaseModel):
 
     def __str__(self):
         return f'{self.get_guarantee_type_display()} - {self.number or "—"}'
+
+
+class GuaranteeAction(BaseModel):
+    """تاریخچهٔ اقدامات یک تضمین (تمدید، تقلیل، تغییر شماره و ...).
+
+    هر اقدام با مقادیر «قبل» و «بعد» ثبت می‌شود تا هم شمارش تمدید/تقلیل و هم
+    ردیابی تغییر شمارهٔ ضمانت‌نامه در طول زمان ممکن باشد.
+    """
+
+    class Action(models.TextChoices):
+        REGISTERED = 'registered', _('ثبت تضمین')
+        EXTENDED = 'extended', _('تمدید')
+        REDUCED = 'reduced', _('تقلیل')
+        RETURNED = 'returned', _('استرداد')
+        EXECUTED = 'executed', _('اجرا / ضبط')
+        CANCELED = 'canceled', _('ابطال')
+        NUMBER_CHANGED = 'number_changed', _('تغییر شماره')
+        UPDATED = 'updated', _('ویرایش')
+        OTHER = 'other', _('سایر')
+
+    guarantee = models.ForeignKey(
+        Guarantee, on_delete=models.CASCADE, related_name='actions',
+        verbose_name=_('تضمین'),
+    )
+    action = models.CharField(
+        max_length=20, choices=Action.choices, default=Action.OTHER,
+        verbose_name=_('اقدام'),
+    )
+    date = models.DateField(null=True, blank=True, verbose_name=_('تاریخ اقدام'))
+    previous_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('مبلغ قبلی (ریال)'),
+    )
+    new_amount = models.DecimalField(
+        max_digits=18, decimal_places=0, null=True, blank=True,
+        verbose_name=_('مبلغ جدید (ریال)'),
+    )
+    previous_expiry_date = models.DateField(
+        null=True, blank=True, verbose_name=_('انقضای قبلی'),
+    )
+    new_expiry_date = models.DateField(
+        null=True, blank=True, verbose_name=_('انقضای جدید'),
+    )
+    previous_number = models.CharField(
+        max_length=100, blank=True, verbose_name=_('شمارهٔ قبلی'),
+    )
+    new_number = models.CharField(
+        max_length=100, blank=True, verbose_name=_('شمارهٔ جدید'),
+    )
+    note = models.TextField(blank=True, verbose_name=_('توضیحات'))
+
+    class Meta:
+        verbose_name = _('سابقهٔ اقدام تضمین')
+        verbose_name_plural = _('سوابق اقدامات تضامین')
+        ordering = ['-date', '-id']
+        indexes = [models.Index(fields=['guarantee', 'action'], name='guar_action_idx')]
+
+    def __str__(self):
+        return f'{self.get_action_display()} — {self.guarantee_id}'
+
 
 
 class Payment(BaseModel):

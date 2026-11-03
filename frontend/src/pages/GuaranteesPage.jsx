@@ -25,6 +25,7 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import FirstPageIcon from '@mui/icons-material/FirstPage';
 import GavelIcon from '@mui/icons-material/Gavel';
+import HistoryIcon from '@mui/icons-material/History';
 import LastPageIcon from '@mui/icons-material/LastPage';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
@@ -37,8 +38,10 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import ScheduleIcon from '@mui/icons-material/Schedule';
 import SearchIcon from '@mui/icons-material/Search';
 import SortIcon from '@mui/icons-material/Sort';
+import TrendingDownIcon from '@mui/icons-material/TrendingDown';
 import UndoIcon from '@mui/icons-material/Undo';
 import UpdateIcon from '@mui/icons-material/Update';
+import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import { formatPersianNumber, normalizeCurrencyLabel, toPersianDigits } from '../core/utils/numberUtils';
@@ -70,9 +73,14 @@ const INSTRUMENT_META = {
   check: { label: 'چک', color: '#b45309', icon: ReceiptLongIcon },
   promissory: { label: 'سفته', color: '#7c3aed', icon: NoteAltIcon },
   bank_guarantee: { label: 'ضمانت‌نامه بانکی', color: '#0f766e', icon: AccountBalanceIcon },
+  undertaking_guarantee: { label: 'ضمانت‌نامه تعهدی', color: '#0e7490', icon: VerifiedUserIcon },
   check_and_guarantee: { label: 'چک + ضمانت‌نامه', color: '#2563eb', icon: AccountBalanceWalletIcon },
   promissory_and_guarantee: { label: 'سفته + ضمانت‌نامه', color: '#be185d', icon: AccountBalanceWalletIcon },
 };
+
+// ابزارهایی که عملیات تمدید و تقلیل برای آن‌ها مجاز است (هم‌راستا با بک‌اند)
+const EXTENDABLE_INSTRUMENTS = ['bank_guarantee', 'undertaking_guarantee'];
+const REDUCIBLE_INSTRUMENTS = ['bank_guarantee', 'undertaking_guarantee'];
 
 const STATUS_META = {
   active: { label: 'معتبر', color: '#0f766e', bg: '#ecfdf5' },
@@ -88,6 +96,21 @@ const ACTION_META = {
   executed: { label: 'اجرا / ضبط', color: '#be123c', icon: GavelIcon },
   canceled: { label: 'ابطال', color: '#b45309', icon: BlockIcon },
   extended: { label: 'تمدید', color: '#2563eb', icon: UpdateIcon },
+  reduced: { label: 'تقلیل', color: '#7c3aed', icon: TrendingDownIcon },
+};
+
+/** فهرست اقدامات مجاز برای هر ابزار تضمین. */
+const allowedActions = (instrumentType) => {
+  if (instrumentType === 'check' || instrumentType === 'promissory') {
+    return ['returned', 'executed'];
+  }
+  if (instrumentType === 'bank_guarantee' || instrumentType === 'undertaking_guarantee') {
+    const actions = ['canceled'];
+    if (EXTENDABLE_INSTRUMENTS.includes(instrumentType)) actions.push('extended');
+    if (REDUCIBLE_INSTRUMENTS.includes(instrumentType)) actions.push('reduced');
+    return [...actions, 'executed'];
+  }
+  return ['returned', 'executed', 'canceled', 'extended', 'reduced'];
 };
 
 const dateLabel = (value) => (value ? toJalali(value) : '—');
@@ -205,9 +228,23 @@ const GuaranteeArchiveTable = ({
                 </Box>
               </TableCell>
               <TableCell align="right">
-                <Typography noWrap title={numberFor(row)} sx={{ fontSize: 12, fontWeight: 800 }}>
-                  {toPersianDigits(numberFor(row))}
-                </Typography>
+                <Stack spacing={0.15} alignItems="flex-start">
+                  <Typography noWrap title={numberFor(row)} sx={{ fontSize: 12, fontWeight: 800 }}>
+                    {toPersianDigits(numberFor(row))}
+                  </Typography>
+                  {(row.extension_count || row.reduction_count) ? (
+                    <Stack direction="row" spacing={0.25} useFlexGap flexWrap="wrap">
+                      {row.extension_count ? (
+                        <Chip size="small" label={`تمدید ${toPersianDigits(row.extension_count)}`}
+                          sx={{ height: 16, fontSize: 9.5, fontWeight: 800, bgcolor: alpha('#2563eb', 0.08), color: '#2563eb' }} />
+                      ) : null}
+                      {row.reduction_count ? (
+                        <Chip size="small" label={`تقلیل ${toPersianDigits(row.reduction_count)}`}
+                          sx={{ height: 16, fontSize: 9.5, fontWeight: 800, bgcolor: alpha('#7c3aed', 0.08), color: '#7c3aed' }} />
+                      ) : null}
+                    </Stack>
+                  ) : null}
+                </Stack>
               </TableCell>
               <TableCell align="right">
                 <Typography noWrap title={row.contract_guarantee_label || row.guarantee_type_display}
@@ -546,11 +583,7 @@ const InstrumentPill = ({ row }) => {
 
 const LifecycleActions = ({ row, onAction, compact = false }) => {
   if (!canAct(row)) return null;
-  const actions = row.instrument_type === 'check' || row.instrument_type === 'promissory'
-    ? ['returned', 'executed']
-    : row.instrument_type === 'bank_guarantee'
-      ? ['canceled', 'extended', 'executed']
-      : ['returned', 'executed', 'canceled', 'extended'];
+  const actions = allowedActions(row.instrument_type);
   return (
     <Stack direction="row" spacing={0.15}>
       {actions.map((action) => {
@@ -639,9 +672,6 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
               {row.is_released ? <InfoLine label="تاریخ آزادسازی" value={dateLabel(row.release_date)} /> : null}
             </Paper>
 
-  );
-};
-
             <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
               <SectionHeading icon={DescriptionIcon} title="شناسه‌های ابزار" color="#64748b" />
               <InfoLine label="شماره اصلی" value={numberFor(row)} strong />
@@ -666,18 +696,73 @@ const GuaranteeDetailDrawer = ({ row, onClose, onEdit, onDelete, onAction, curre
               </Paper>
             ) : null}
 
+            <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
+              <SectionHeading icon={HistoryIcon} title="تاریخچهٔ اقدامات" color="#7c3aed"
+                action={(
+                  <Stack direction="row" spacing={0.4} useFlexGap flexWrap="wrap">
+                    <Chip size="small" label={`تمدید ${toPersianDigits(row.extension_count || 0)} بار`}
+                      sx={{ height: 19, fontSize: 11, fontWeight: 800, bgcolor: alpha('#2563eb', 0.08), color: '#2563eb' }} />
+                    <Chip size="small" label={`تقلیل ${toPersianDigits(row.reduction_count || 0)} بار`}
+                      sx={{ height: 19, fontSize: 11, fontWeight: 800, bgcolor: alpha('#7c3aed', 0.08), color: '#7c3aed' }} />
+                  </Stack>
+                )} />
+              {(row.actions || []).length ? (
+                <Stack spacing={0.5}>
+                  {row.actions.map((action) => {
+                    const meta = ACTION_META[action.action] || {
+                      label: action.action_display || 'اقدام', color: '#64748b', icon: UpdateIcon,
+                    };
+                    const ActionIcon = meta.icon;
+                    const amountChanged = action.previous_amount != null && Number(action.previous_amount) !== Number(action.new_amount);
+                    const numberChanged = Boolean(action.new_number) && action.new_number !== action.previous_number;
+                    return (
+                      <Box key={action.id} sx={{
+                        p: 0.8, borderRadius: '10px', bgcolor: '#fff',
+                        border: `1px solid ${alpha(meta.color, 0.18)}`,
+                      }}>
+                        <Stack direction="row" alignItems="center" spacing={0.6}>
+                          <ActionIcon sx={{ fontSize: 15, color: meta.color }} />
+                          <Typography sx={{ flex: 1, fontSize: 12, fontWeight: 800, color: INK }}>
+                            {meta.label}
+                          </Typography>
+                          <Typography sx={{ fontSize: 11, color: MUTED }}>{dateLabel(action.date)}</Typography>
+                        </Stack>
+                        {amountChanged ? (
+                          <Typography sx={{ mt: 0.3, fontSize: 11, color: '#475569' }}>
+                            مبلغ: {formatPersianNumber(action.previous_amount)} → {formatPersianNumber(action.new_amount)} {currency}
+                          </Typography>
+                        ) : null}
+                        {numberChanged ? (
+                          <Typography sx={{ mt: 0.15, fontSize: 11, color: '#475569', direction: 'rtl' }}>
+                            شماره: {action.previous_number || '—'} → {action.new_number}
+                          </Typography>
+                        ) : null}
+                        {action.new_expiry_date && action.new_expiry_date !== action.previous_expiry_date ? (
+                          <Typography sx={{ mt: 0.15, fontSize: 11, color: '#475569' }}>
+                            انقضا: {dateLabel(action.previous_expiry_date)} → {dateLabel(action.new_expiry_date)}
+                          </Typography>
+                        ) : null}
+                        {action.note ? (
+                          <Typography sx={{ mt: 0.15, fontSize: 11, color: MUTED }}>{action.note}</Typography>
+                        ) : null}
+                      </Box>
+                    );
+                  })}
+                </Stack>
+              ) : (
+                <Typography sx={{ fontSize: 12, color: MUTED }}>
+                  هنوز اقدامی (تمدید، تقلیل، تغییر شماره…) برای این تضمین ثبت نشده است.
+                </Typography>
+              )}
+            </Paper>
+
             {canAct(row) ? (
               <Paper elevation={0} sx={{ p: 1.4, borderRadius: '14px', border: `1px solid ${theme.palette.divider}` }}>
                 <SectionHeading icon={LockOpenIcon} title="اقدامات چرخهٔ عمر" color="#2563eb" />
                 <Stack direction="row" spacing={0.7} useFlexGap flexWrap="wrap">
                   {Object.entries(ACTION_META).map(([key, action]) => {
                     const ActionIcon = action.icon;
-                    const allowed = row.instrument_type === 'check' || row.instrument_type === 'promissory'
-                      ? ['returned', 'executed'].includes(key)
-                      : row.instrument_type === 'bank_guarantee'
-                        ? ['canceled', 'extended', 'executed'].includes(key)
-                        : true;
-                    if (!allowed) return null;
+                    if (!allowedActions(row.instrument_type).includes(key)) return null;
                     return (
                       <Button key={key} size="small" variant="outlined" startIcon={<ActionIcon />}
                         onClick={() => onAction({ row, action: key })}
@@ -904,6 +989,10 @@ const GuaranteesPage = () => {
   const [form, setForm] = useState(EMPTY);
   const [actionDialog, setActionDialog] = useState(null);
   const [newExpiry, setNewExpiry] = useState('');
+  const [actionDate, setActionDate] = useState('');
+  const [reductionAmount, setReductionAmount] = useState('');
+  const [newNumber, setNewNumber] = useState('');
+  const [actionNote, setActionNote] = useState('');
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -1232,8 +1321,27 @@ const GuaranteesPage = () => {
     if (contractId) qc.invalidateQueries({ queryKey: ['contract-guarantees-status', contractId] });
   };
   const openLifecycle = (row, action) => {
-    setActionDialog({ id: row.id, action, instrument: row.instrument_type });
+    setActionDialog({
+      id: row.id,
+      action,
+      instrument: row.instrument_type,
+      amount: Number(row.amount) || 0,
+      number: numberFor(row),
+    });
     setNewExpiry('');
+    setActionDate('');
+    setReductionAmount('');
+    setNewNumber('');
+    setActionNote('');
+  };
+
+  const closeActionDialog = () => {
+    setActionDialog(null);
+    setNewExpiry('');
+    setActionDate('');
+    setReductionAmount('');
+    setNewNumber('');
+    setActionNote('');
   };
   const currencyByContract = useMemo(() => {
     const map = new Map();
@@ -1324,16 +1432,23 @@ const GuaranteesPage = () => {
   });
 
   const applyLifecycle = useMutation({
-    mutationFn: ({ id, action, new_expiry_date }) =>
-      axiosInstance.post(`/contract-guarantees/${id}/lifecycle/`, { action, new_expiry_date }),
-    onSuccess: () => {
+    mutationFn: ({ id, action, ...payload }) =>
+      axiosInstance.post(`/contract-guarantees/${id}/lifecycle/`, { action, ...payload }),
+    onSuccess: (_data, variables) => {
       invalidateAll();
-      setActionDialog(null);
-      setNewExpiry('');
+      closeActionDialog();
       setDetail(null);
-      setToast('وضعیت تضمین به‌روزرسانی شد');
+      setToast(ACTION_META[variables.action]?.label
+        ? `${ACTION_META[variables.action].label} تضمین ثبت شد`
+        : 'وضعیت تضمین به‌روزرسانی شد');
     },
-    onError: () => setToast('به‌روزرسانی وضعیت انجام نشد'),
+    onError: (event) => {
+      const data = event?.response?.data;
+      const message = typeof data === 'string'
+        ? data
+        : (data?.error || (data && Object.values(data).flat()[0]) || 'به‌روزرسانی وضعیت انجام نشد');
+      setToast(String(message));
+    },
   });
 
   const remove = useMutation({
@@ -1450,7 +1565,8 @@ const GuaranteesPage = () => {
 
   const needsInstrument = (type) => type === 'check' || type === 'check_and_guarantee';
   const needsPromissory = (type) => type === 'promissory' || type === 'promissory_and_guarantee';
-  const needsGuarantee = (type) => type === 'bank_guarantee' || type === 'check_and_guarantee' || type === 'promissory_and_guarantee';
+  const needsGuarantee = (type) => type === 'bank_guarantee' || type === 'undertaking_guarantee'
+    || type === 'check_and_guarantee' || type === 'promissory_and_guarantee';
 
   const exportCsv = () => {
     const headers = ['شماره قرارداد', 'موضوع قرارداد', 'نوع تضمین', 'ابزار', 'شماره', 'مبلغ', 'بانک', 'تاریخ صدور', 'سررسید', 'وضعیت', 'ضمانت قرارداد'];
@@ -1777,7 +1893,7 @@ const GuaranteesPage = () => {
 
       <GuaranteeDetailDrawer row={detail} onClose={() => setDetail(null)}
         onEdit={openEdit} onDelete={setConfirmDelete}
-        onAction={({ row, action }) => { setActionDialog({ id: row.id, action, instrument: row.instrument_type }); setNewExpiry(''); }}
+        onAction={({ row, action }) => openLifecycle(row, action)}
         currency={currencyLabel} accent={accent} />
 
       <GuaranteeEditorDialog
@@ -1789,20 +1905,66 @@ const GuaranteesPage = () => {
         currencyLabel={currencyLabel} onAddFiles={addGuaranteeFiles} onRemovePending={removePendingFile}
       />
 
-      <Dialog open={Boolean(actionDialog)} onClose={() => { setActionDialog(null); setNewExpiry(''); }} maxWidth="xs" fullWidth>
+      <Dialog open={Boolean(actionDialog)} onClose={closeActionDialog} maxWidth="xs" fullWidth>
         <DialogTitle sx={{ fontWeight: 900, fontSize: 14 }}>
           {ACTION_META[actionDialog?.action]?.label || 'اقدام'}
         </DialogTitle>
         <DialogContent>
-          {actionDialog?.action === 'extended' ? (
-            <JalaliDatePicker fullWidth label="تاریخ انقضای جدید" value={newExpiry} onChange={setNewExpiry} />
-          ) : null}
+          <Stack spacing={1.2} sx={{ mt: 0.5 }}>
+            <JalaliDatePicker fullWidth label="تاریخ اقدام" value={actionDate} onChange={setActionDate} />
+
+            {actionDialog?.action === 'extended' ? (
+              <JalaliDatePicker fullWidth label="تاریخ انقضای جدید" value={newExpiry} onChange={setNewExpiry} />
+            ) : null}
+
+            {actionDialog?.action === 'reduced' ? (
+              <>
+                <MoneyInput
+                  fullWidth
+                  label={`مبلغ تقلیل (${currencyLabel})`}
+                  value={reductionAmount}
+                  onChange={setReductionAmount}
+                />
+                <Alert severity="info" sx={{ borderRadius: '10px', py: 0.2 }}>
+                  <Typography sx={{ fontSize: 11 }}>
+                    مبلغ فعلی: {formatPersianNumber(actionDialog?.amount || 0)} {currencyLabel}
+                    {Number(reductionAmount) > 0 ? ` → مبلغ جدید: ${formatPersianNumber(Math.max(0, Number(actionDialog?.amount || 0) - Number(reductionAmount)))} ${currencyLabel}` : ''}
+                  </Typography>
+                </Alert>
+              </>
+            ) : null}
+
+            {(actionDialog?.action === 'extended' || actionDialog?.action === 'reduced') ? (
+              <TextField
+                fullWidth size="small"
+                label="شمارهٔ جدید تضمین (اختیاری)"
+                value={newNumber}
+                onChange={(event) => setNewNumber(event.target.value)}
+                helperText="در صورت تغییر شمارهٔ ضمانت‌نامه/چک/سفته در این اقدام، شمارهٔ جدید را وارد کنید."
+              />
+            ) : null}
+
+            <TextField
+              fullWidth size="small" multiline rows={2}
+              label="توضیحات (اختیاری)"
+              value={actionNote}
+              onChange={(event) => setActionNote(event.target.value)}
+            />
+          </Stack>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => { setActionDialog(null); setNewExpiry(''); }}>انصراف</Button>
+          <Button onClick={closeActionDialog}>انصراف</Button>
           <Button variant="contained" disabled={applyLifecycle.isLoading}
             color={actionDialog?.action === 'executed' ? 'error' : actionDialog?.action === 'canceled' ? 'warning' : 'primary'}
-            onClick={() => applyLifecycle.mutate({ id: actionDialog.id, action: actionDialog.action, new_expiry_date: newExpiry || null })}>
+            onClick={() => applyLifecycle.mutate({
+              id: actionDialog.id,
+              action: actionDialog.action,
+              date: actionDate || null,
+              new_expiry_date: newExpiry || null,
+              reduction_amount: actionDialog.action === 'reduced' ? reductionAmount || null : null,
+              new_number: newNumber || '',
+              note: actionNote || '',
+            })}>
             {applyLifecycle.isLoading ? <CircularProgress size={18} color="inherit" /> : 'تأیید'}
           </Button>
         </DialogActions>

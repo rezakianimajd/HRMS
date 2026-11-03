@@ -209,3 +209,116 @@ test('contract guarantees workspace scopes the table to a contract and opens the
 
   root.unmount();
 });
+
+test('undertaking guarantee shows reduction history and renamed number in the drawer', async () => {
+  const undertaking = {
+    id: 31,
+    contract: 1,
+    contract_subject: contract.subject,
+    guarantee_type: 'performance',
+    guarantee_type_display: 'ضمانت حسن انجام کار',
+    instrument_type: 'undertaking_guarantee',
+    instrument_type_display: 'ضمانت‌نامه تعهدی',
+    number: 'UG-2026-02',
+    amount: 3500000,
+    issue_date: '2025-06-01',
+    expiry_date: '2027-06-01',
+    bank: 'صندوق تعهدی',
+    guarantee_number: 'UG-2026-02',
+    guarantee_expiry_date: '2027-06-01',
+    last_action: 'reduced',
+    last_action_display: 'تقلیل',
+    last_action_date: '2026-02-01',
+    is_released: false,
+    extension_count: 2,
+    reduction_count: 1,
+    action_count: 4,
+    actions: [
+      {
+        id: 101, action: 'extended', action_display: 'تمدید', date: '2025-12-01',
+        previous_amount: 5000000, new_amount: 5000000,
+        previous_expiry_date: '2026-06-01', new_expiry_date: '2027-06-01',
+        previous_number: 'UG-2025-01', new_number: 'UG-2025-09', note: 'تمدید یک‌ساله',
+      },
+      {
+        id: 102, action: 'reduced', action_display: 'تقلیل', date: '2026-02-01',
+        previous_amount: 5000000, new_amount: 3500000,
+        previous_expiry_date: '2027-06-01', new_expiry_date: '2027-06-01',
+        previous_number: 'UG-2025-09', new_number: 'UG-2026-02', note: 'تقلیل پس از تحویل بخشی از کار',
+      },
+    ],
+  };
+
+  axiosInstance.get.mockImplementation((url) => {
+    if (url === '/external-contracts/') return Promise.resolve({ data: [contract] });
+    if (url === '/contract-guarantees/') return Promise.resolve({ data: [undertaking] });
+    if (url === '/external-contracts/1/guarantees-status/') {
+      return Promise.resolve({
+        data: {
+          effective_amount: contract.amount,
+          requirements: [], summary: {
+            required_total: 0, provided_total: 0, balance_total: 0, released_total: 0,
+            coverage_percent: 0, provided_count: 0, partial_count: 0, missing_count: 0,
+          },
+          warnings: [],
+        },
+      });
+    }
+    if (url === '/external-contracts/1/') return Promise.resolve({ data: contract });
+    return Promise.resolve({ data: [] });
+  });
+
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  const container = document.createElement('div');
+  document.body.appendChild(container);
+  const root = createRoot(container);
+  await act(async () => {
+    root.render(
+      <QueryClientProvider client={client}>
+        <ApplicationProvider>
+          <MemoryRouter initialEntries={['/contracts-guarantees?contract=1']}>
+            <GuaranteesPage />
+          </MemoryRouter>
+        </ApplicationProvider>
+      </QueryClientProvider>,
+    );
+    await new Promise((resolve) => setTimeout(resolve, 400));
+  });
+  for (let index = 0; index < 4; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+    });
+  }
+
+  expect(container.textContent).toContain('ضمانت‌نامه تعهدی');
+  expect(container.textContent).toContain('UG-۲۰۲۶-۰۲');
+  expect(container.textContent).toContain('تمدید ۲');
+  expect(container.textContent).toContain('تقلیل ۱');
+
+  const row = Array.from(container.querySelectorAll('tbody tr'))
+    .find((item) => item.textContent.includes('UG-۲۰۲۶-۰۲'));
+  expect(row).toBeTruthy();
+  await act(async () => { row.click(); });
+  for (let index = 0; index < 3; index += 1) {
+    // eslint-disable-next-line no-await-in-loop
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    });
+  }
+
+  expect(document.body.textContent).toContain('تاریخچهٔ اقدامات');
+  expect(document.body.textContent).toContain('تمدید ۲ بار');
+  expect(document.body.textContent).toContain('تقلیل ۱ بار');
+  expect(document.body.textContent).toContain('تقلیل پس از تحویل بخشی از کار');
+  expect(document.body.textContent).toContain('UG-2025-09');
+  expect(document.body.textContent).toContain('UG-2026-02');
+
+  const reduceButton = Array.from(document.querySelectorAll('button'))
+    .find((button) => button.textContent.trim() === 'تقلیل');
+  expect(reduceButton).toBeTruthy();
+
+  root.unmount();
+  container.remove();
+});
+

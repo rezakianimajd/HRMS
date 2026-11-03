@@ -1324,3 +1324,95 @@ class PaymentFlowFieldsTests(SimpleTestCase):
         self.assertEqual(statement_serializer.get_overpaid_amount(FakeStatement()), Decimal('200'))
         self.assertEqual(statement_serializer.get_payment_status(FakeStatement()), 'paid')
 
+
+
+
+class GuaranteeLifecycleTests(SimpleTestCase):
+    """ضمانت‌نامهٔ تعهدی، تقلیل و تاریخچهٔ اقدامات تضامین."""
+
+    def test_instrument_types_include_undertaking_guarantee(self):
+        from contracts.models import Guarantee
+
+        values = {choice[0] for choice in Guarantee.InstrumentType.choices}
+        self.assertIn('bank_guarantee', values)
+        self.assertIn('undertaking_guarantee', values)
+        labels = dict(Guarantee.InstrumentType.choices)
+        self.assertEqual(labels['undertaking_guarantee'], 'ضمانت‌نامه تعهدی')
+
+    def test_lifecycle_actions_include_reduction(self):
+        from contracts.models import Guarantee
+
+        values = {choice[0] for choice in Guarantee.LifecycleAction.choices}
+        self.assertIn('extended', values)
+        self.assertIn('reduced', values)
+        self.assertEqual(dict(Guarantee.LifecycleAction.choices)['reduced'], 'تقلیل')
+
+    def test_guarantee_action_model_has_history_fields(self):
+        from contracts.models import GuaranteeAction
+
+        fields = {field.name for field in GuaranteeAction._meta.get_fields()}
+        for name in ('guarantee', 'action', 'date', 'previous_amount', 'new_amount',
+                     'previous_expiry_date', 'new_expiry_date',
+                     'previous_number', 'new_number', 'note'):
+            self.assertIn(name, fields)
+        self.assertEqual(GuaranteeAction._meta.ordering, ['-date', '-id'])
+        action_values = {choice[0] for choice in GuaranteeAction.Action.choices}
+        for name in ('registered', 'extended', 'reduced', 'returned', 'executed',
+                     'canceled', 'number_changed', 'updated'):
+            self.assertIn(name, action_values)
+
+    def test_serializer_exposes_history_and_counts(self):
+        from contracts.serializers import GuaranteeActionSerializer, GuaranteeSerializer
+
+        fields = GuaranteeSerializer().fields
+        for name in ('actions', 'action_count', 'extension_count', 'reduction_count',
+                     'last_extension_date', 'last_reduction_date'):
+            self.assertIn(name, fields)
+
+        action_fields = GuaranteeActionSerializer().fields
+        for name in ('action', 'action_display', 'previous_amount', 'new_amount',
+                     'previous_number', 'new_number', 'date'):
+            self.assertIn(name, action_fields)
+
+    def test_reduction_amount_resolution(self):
+        from decimal import Decimal
+
+        from contracts.guarantee_actions import GuaranteeActionError, resolve_reduced_amount
+
+        self.assertEqual(resolve_reduced_amount(1000, reduction_amount=250), Decimal('750'))
+        self.assertEqual(resolve_reduced_amount(1000, new_amount=400), Decimal('400'))
+        self.assertEqual(resolve_reduced_amount('1000', new_amount='0'), Decimal('0'))
+
+        with self.assertRaises(GuaranteeActionError):
+            resolve_reduced_amount(1000)
+        with self.assertRaises(GuaranteeActionError):
+            resolve_reduced_amount(1000, reduction_amount=0)
+        with self.assertRaises(GuaranteeActionError):
+            resolve_reduced_amount(1000, reduction_amount=1500)
+        with self.assertRaises(GuaranteeActionError):
+            resolve_reduced_amount(1000, new_amount=1000)
+        with self.assertRaises(GuaranteeActionError):
+            resolve_reduced_amount(1000, new_amount=-5)
+        with self.assertRaises(GuaranteeActionError):
+            resolve_reduced_amount(1000, new_amount='abc')
+
+    def test_reduction_is_allowed_for_bank_and_undertaking_guarantees(self):
+        from contracts.guarantee_actions import (
+            action_expiry_field, action_number_field, supports_extension, supports_reduction,
+        )
+
+        for instrument in ('bank_guarantee', 'undertaking_guarantee'):
+            self.assertTrue(supports_reduction(instrument))
+            self.assertTrue(supports_extension(instrument))
+            self.assertEqual(action_number_field(instrument), 'guarantee_number')
+            self.assertEqual(action_expiry_field(instrument), 'guarantee_expiry_date')
+
+        self.assertFalse(supports_reduction('check'))
+        self.assertEqual(action_number_field('check'), 'check_number')
+        self.assertEqual(action_expiry_field('promissory'), 'promissory_due_date')
+
+    def test_viewset_exposes_history_and_lifecycle_actions(self):
+        from contracts.views import GuaranteeViewSet
+
+        for name in ('history', 'lifecycle', 'release'):
+            self.assertTrue(hasattr(GuaranteeViewSet, name))

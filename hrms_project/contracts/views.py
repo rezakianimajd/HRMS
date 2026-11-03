@@ -117,7 +117,7 @@ class ContractViewSet(BaseContractViewSet):
             'party', 'signatory', 'project', 'currency', 'contract_type_master',
         ).prefetch_related(
             'documents', 'invoices', 'statements', 'addendums', 'addendums__documents',
-            'guarantees', 'guarantees__documents', 'payments', 'disputes', 'audit_logs',
+            'guarantees', 'guarantees__documents', 'guarantees__actions', 'payments', 'disputes', 'audit_logs',
             'statements__payment_allocations', 'statements__payment_allocations__payment',
             'invoices__payment_allocations', 'invoices__payment_allocations__payment',
             'payments__allocations',
@@ -444,60 +444,220 @@ class GuaranteeViewSet(BaseContractViewSet):
     search_fields = ['number', 'bank', 'contract__subject']
     ordering = ['-expiry_date']
 
+    # نگاشت فیلد شماره/انقضا بر اساس ابزار تضمین در contracts/guarantee_actions.py است.
+
     def get_queryset(self):
-        qs = super().get_queryset().select_related('contract', 'contract__party').prefetch_related('documents')
+        qs = super().get_queryset().select_related(
+            'contract', 'contract__party',
+        ).prefetch_related('documents', 'actions')
         contract_id = self.request.query_params.get('contract')
         if contract_id:
             qs = qs.filter(contract_id=contract_id)
         guarantee_type = self.request.query_params.get('guarantee_type')
         if guarantee_type:
             qs = qs.filter(guarantee_type=guarantee_type)
+        instrument_type = self.request.query_params.get('instrument_type')
+        if instrument_type:
+            qs = qs.filter(instrument_type=instrument_type)
         only_active = self.request.query_params.get('active')
         if only_active in ('true', '1'):
             qs = qs.filter(is_released=False)
         return qs
+
+    # ------------------------------------------------------------------ سابقهٔ اقدامات
+    def _log_action(self, obj, action, *, date_value=None, previous=None, new=None, note=''):
+        """ثبت یک ردیف تاریخچه برای تضمین (مقادیر قبل/بعد)."""
+        from datetime import date as date_cls
+
+        from contracts.models import GuaranteeAction
+
+        previous = previous or {}
+        new = new or {}
+        try:
+            GuaranteeAction.objects.create(
+                company_id=obj.company_id,
+                guarantee=obj,
+                action=action,
+                date=date_value or date_cls.today(),
+                previous_amount=previous.get('amount'),
+                new_amount=new.get('amount'),
+                previous_expiry_date=previous.get('expiry_date'),
+                new_expiry_date=new.get('expiry_date'),
+                previous_number=(previous.get('number') or '')[:100],
+                new_number=(new.get('number') or '')[:100],
+                note=note or '',
+            )
+        except Exception:  # noqa: BLE001 — تاریخچه نباید عملیات اصلی را بشکند
+            logger.exception('guarantee action log failed for %s', obj.pk)
+
+    @staticmethod
+    def _drop_action_cache(obj):
+        """حذف کش پیش‌واکشی تاریخچه تا پاسخ اقدام، مقادیر تازه را برگرداند."""
+        cache = getattr(obj, '_prefetched_objects_cache', None)
+        if cache:
+            cache.pop('actions', None)
+
+
+    @staticmethod
+    def _snapshot(obj):
+        return {
+            'amount': obj.amount,
+            'expiry_date': obj.expiry_date,
+            'number': obj.number or '',
+        }
+
+    def perform_create(self, serializer):
+        obj = serializer.save(company=_company(self.request))
+        self._log_action(
+            obj, 'registered',
+            date_value=obj.issue_date,
+            new=self._snapshot(obj),
+            note='ثبت تضمین در سیستم',
+        )
+
+    def perform_update(self, serializer):
+        previous = self._snapshot(serializer.instance)
+        obj = serializer.save()
+        current = self._snapshot(obj)
+        changes = []
+        if previous['number'] != current['number']:
+            changes.append('شماره')
+        if previous['amount'] != current['amount']:
+            changes.append('مبلغ')
+        if previous['expiry_date'] != current['expiry_date']:
+            changes.append('تاریخ انقضا')
+        if not changes:
+            return
+        if 'شماره' in changes:
+            self._log_action(
+                obj, 'number_changed',
+                previous=previous, new=current, note='تغییر شمارهٔ تضمین',
+            )
+        self._log_action(
+            obj, 'updated',
+            previous=previous, new=current, note='ویرایش: ' + '، '.join(changes),
+        )
+
+    @action(detail=True, methods=['get'])
+    def history(self, request, pk=None):
+        """تاریخچهٔ اقدامات تضمین (تمدید/تقلیل/تغییر شماره/استرداد/…)."""
+        from contracts.models import GuaranteeAction
+        from contracts.serializers import GuaranteeActionSerializer
+        obj = self.get_object()
+        # کوئری تازه (نه کش پیش‌واکشی) تا تاریخچه بلافاصله پس از هر اقدام درست باشد.
+        rows = GuaranteeAction.objects.filter(guarantee_id=obj.pk)
+        serializer = GuaranteeActionSerializer(rows, many=True)
+        summary = {
+            'total': rows.count(),
+            'extended': rows.filter(action='extended').count(),
+            'reduced': rows.filter(action='reduced').count(),
+        }
+        return Response({'results': serializer.data, 'summary': summary})
 
     @action(detail=True, methods=['post'])
     def release(self, request, pk=None):
         """Release a guarantee and record the release date."""
         from datetime import date
         obj = self.get_object()
+        previous = self._snapshot(obj)
+        action_date = request.data.get('release_date') or date.today().isoformat()
         obj.is_released = True
-        obj.release_date = request.data.get('release_date') or date.today().isoformat()
+        obj.release_date = action_date
         obj.last_action = 'returned'
-        obj.last_action_date = date.today().isoformat()
+        obj.last_action_date = action_date
         obj.save(update_fields=['is_released', 'release_date', 'last_action', 'last_action_date', 'updated_at'])
+        self._log_action(
+            obj, 'returned', date_value=action_date,
+            previous=previous, new=previous, note=request.data.get('note') or 'استرداد تضمین',
+        )
+        self._drop_action_cache(obj)
         return Response(GuaranteeSerializer(obj, context={'request': request}).data)
+
 
     @action(detail=True, methods=['post'])
     def lifecycle(self, request, pk=None):
-        """Apply a lifecycle action (returned/executed/canceled/extended)."""
+        """اقدامات چرخهٔ عمر: استرداد / اجرا / ابطال / تمدید / تقلیل.
+
+        در «تمدید» و «تقلیل» می‌توان شمارهٔ جدید تضمین را (اختیاری) ثبت کرد؛
+        تغییر شماره در تاریخچهٔ تضمین ذخیره می‌شود.
+        """
         from datetime import date
+
+        from contracts.guarantee_actions import (
+            GuaranteeActionError, action_expiry_field, action_number_field, resolve_reduced_amount,
+        )
+
         obj = self.get_object()
         action = request.data.get('action')
-        valid = {'returned', 'executed', 'canceled', 'extended'}
+        valid = {'returned', 'executed', 'canceled', 'extended', 'reduced'}
         if action not in valid:
             return Response({'error': 'اقدام نامعتبر است.'}, status=400)
 
-        if action != 'extended':
+        previous = self._snapshot(obj)
+        action_date = request.data.get('date') or date.today().isoformat()
+        note = str(request.data.get('note') or '').strip()
+        new_number = str(request.data.get('new_number') or '').strip()
+        new_expiry = request.data.get('new_expiry_date') or None
+
+        update_fields = ['last_action', 'last_action_date', 'updated_at']
+
+        if action in ('returned', 'executed', 'canceled'):
             obj.is_released = True
-        else:
+            update_fields.append('is_released')
+
+        if action == 'extended':
             obj.is_released = False
+            update_fields.append('is_released')
+            if new_expiry:
+                obj.expiry_date = new_expiry
+                update_fields.append('expiry_date')
+                expiry_field = action_expiry_field(obj.instrument_type)
+                if expiry_field:
+                    setattr(obj, expiry_field, new_expiry)
+                    update_fields.append(expiry_field)
+
+        if action == 'reduced':
+            try:
+                target_amount = resolve_reduced_amount(
+                    obj.amount,
+                    reduction_amount=request.data.get('reduction_amount'),
+                    new_amount=request.data.get('new_amount'),
+                )
+            except GuaranteeActionError as error:
+                return Response({'error': str(error)}, status=400)
+            obj.amount = target_amount
+            update_fields.append('amount')
+            # تقلیل تضمین را آزاد نمی‌کند؛ فقط سقف تعهد کاهش می‌یابد.
+            if obj.is_released and obj.last_action in ('returned', 'executed', 'canceled'):
+                obj.is_released = False
+                update_fields.append('is_released')
+
+        if new_number and new_number != previous['number']:
+            obj.number = new_number
+            update_fields.append('number')
+            number_field = action_number_field(obj.instrument_type)
+            if number_field:
+                setattr(obj, number_field, new_number)
+                update_fields.append(number_field)
 
         obj.last_action = action
-        obj.last_action_date = request.data.get('date') or date.today().isoformat()
+        obj.last_action_date = action_date
+        obj.save(update_fields=list(dict.fromkeys(update_fields)))
 
-        # For extension, optionally push the expiry date forward.
-        new_expiry = request.data.get('new_expiry_date')
-        if action == 'extended' and new_expiry:
-            obj.expiry_date = new_expiry
-            if obj.instrument_type in ('bank_guarantee', 'check_and_guarantee', 'promissory_and_guarantee'):
-                obj.guarantee_expiry_date = new_expiry
-
-        update_fields = ['is_released', 'last_action', 'last_action_date', 'updated_at']
-        if action == 'extended' and new_expiry:
-            update_fields += ['expiry_date', 'guarantee_expiry_date']
-        obj.save(update_fields=update_fields)
+        current = self._snapshot(obj)
+        if new_number and new_number != previous['number']:
+            self._log_action(
+                obj, 'number_changed', date_value=action_date,
+                previous=previous, new=current,
+                note='شمارهٔ جدید در ' + {
+                    'extended': 'تمدید', 'reduced': 'تقلیل',
+                }.get(action, 'اقدام'),
+            )
+        self._log_action(
+            obj, action, date_value=action_date,
+            previous=previous, new=current, note=note,
+        )
+        self._drop_action_cache(obj)
         return Response(GuaranteeSerializer(obj, context={'request': request}).data)
 
 

@@ -6,7 +6,7 @@ from django.db.models import Sum
 from rest_framework import serializers
 from contracts.models import (
     ContractParty, Contract, ContractDocument, Invoice, Statement,
-    Addendum, Guarantee, Payment, PaymentAttachment, PaymentAllocation, ContractDispute,
+    Addendum, Guarantee, GuaranteeAction, Payment, PaymentAttachment, PaymentAllocation, ContractDispute,
     ContractTypeMaster, SupplierEvaluation,
     ContractTemplate, ContractDraft, ContractApproval,
     ContractApprovalWorkflow, ContractApprovalStep,
@@ -1072,6 +1072,22 @@ class AddendumSerializer(serializers.ModelSerializer):
         return attrs
 
 
+class GuaranteeActionSerializer(serializers.ModelSerializer):
+    """یک ردیف از تاریخچهٔ اقدامات تضمین (تمدید/تقلیل/تغییر شماره/…)."""
+
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+
+    class Meta:
+        model = GuaranteeAction
+        fields = [
+            'id', 'guarantee', 'action', 'action_display', 'date',
+            'previous_amount', 'new_amount',
+            'previous_expiry_date', 'new_expiry_date',
+            'previous_number', 'new_number', 'note', 'created_at',
+        ]
+        read_only_fields = fields
+
+
 class GuaranteeSerializer(serializers.ModelSerializer):
     guarantee_type_display = serializers.CharField(source='get_guarantee_type_display', read_only=True)
     instrument_type_display = serializers.CharField(source='get_instrument_type_display', read_only=True)
@@ -1079,6 +1095,12 @@ class GuaranteeSerializer(serializers.ModelSerializer):
     contract_subject = serializers.CharField(source='contract.subject', read_only=True)
     contract_guarantee_label = serializers.SerializerMethodField()
     documents = ContractDocumentSerializer(many=True, read_only=True)
+    actions = GuaranteeActionSerializer(many=True, read_only=True)
+    action_count = serializers.SerializerMethodField()
+    extension_count = serializers.SerializerMethodField()
+    reduction_count = serializers.SerializerMethodField()
+    last_extension_date = serializers.SerializerMethodField()
+    last_reduction_date = serializers.SerializerMethodField()
 
     class Meta:
         model = Guarantee
@@ -1091,8 +1113,42 @@ class GuaranteeSerializer(serializers.ModelSerializer):
             'promissory_number', 'promissory_due_date',
             'guarantee_number', 'guarantee_expiry_date',
             'last_action', 'last_action_display', 'last_action_date', 'note', 'documents',
+            'actions', 'action_count', 'extension_count', 'reduction_count',
+            'last_extension_date', 'last_reduction_date',
         ]
         read_only_fields = ['id', 'company', 'is_active', 'created_at', 'updated_at']
+
+    def _action_rows(self, obj):
+        cache = getattr(obj, '_prefetched_objects_cache', None) or {}
+        rows = cache.get('actions')
+        if rows is not None:
+            return list(rows)
+        return list(obj.actions.all())
+
+    def _count(self, obj, action):
+        return sum(1 for row in self._action_rows(obj) if row.action == action)
+
+    def _last_date(self, obj, action):
+        dates = [
+            row.date for row in self._action_rows(obj)
+            if row.action == action and row.date
+        ]
+        return max(dates).isoformat() if dates else None
+
+    def get_action_count(self, obj):
+        return len(self._action_rows(obj))
+
+    def get_extension_count(self, obj):
+        return self._count(obj, GuaranteeAction.Action.EXTENDED)
+
+    def get_reduction_count(self, obj):
+        return self._count(obj, GuaranteeAction.Action.REDUCED)
+
+    def get_last_extension_date(self, obj):
+        return self._last_date(obj, GuaranteeAction.Action.EXTENDED)
+
+    def get_last_reduction_date(self, obj):
+        return self._last_date(obj, GuaranteeAction.Action.REDUCED)
 
     def get_contract_guarantee_label(self, obj):
         items = obj.contract.guarantee_items if obj.contract else []
