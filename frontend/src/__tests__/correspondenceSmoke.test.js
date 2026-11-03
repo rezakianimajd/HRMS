@@ -36,10 +36,21 @@ const letters = [
     subject: 'معرفی شرکت جهت اخذ ردیف پیمان', summary: 'معرفی و ارسال مدارک', letter_date: iso(-3),
     received_date: iso(-2), due_date: iso(5), organization: 1, organization_name: 'شرکت ساز و کار',
     sender_name: 'آقای اسدنژاد', status: 'in_progress', priority: 'urgent', confidentiality: 'normal',
+    entry_method: 'manual', entry_method_display: 'دستی', entry_time: '09:30:00',
+    entered_by_name: 'خانم حقیقی', entered_by_label: 'خانم حقیقی',
+    company_reg_no: '140400123', company_reg_date: iso(-2),
+    unit_reg_no: 'د-88', unit_reg_date: iso(-2), unit_name: 'دبیرخانه',
+    sender_organization_name: 'شرکت ناظر', sender_title: 'ناظر پروژه',
     category: 1, category_title: 'درخواست', attachment_count: 2, referral_count: 1,
     last_referral: { id: 9, seq: 1, to_name: 'واحد مالی', to_user_name: '', referred_on: iso(-1), status: 'pending' },
     events: [{ id: 1, action: 'created', action_display: 'ایجاد', note: '', actor_name: 'مدیر', created_at: iso(-3) }],
-    referrals: [], attachments: [], days_to_due: 5, is_overdue: false,
+    referrals: [{
+      id: 9, seq: 1, from_user_name: 'مدیر مکاتبات', to_name: 'واحد مالی', to_user_name: '',
+      referred_on: iso(-1), due_date: iso(3), instruction: 'بررسی و اعلام نظر', note: '',
+      status: 'pending', status_display: 'در انتظار اقدام', response: '', result: '',
+      result_note: '', answered_on: null, answered_by_name: '', is_overdue: false,
+    }],
+    attachments: [], days_to_due: 5, is_overdue: false,
   },
   {
     id: 2, direction: 'outgoing', number: 'ص/1404/007', indicator_no: '', subject: 'ارسال الحاقیه شماره ۳',
@@ -183,8 +194,38 @@ test('dedicated incoming page is scoped to incoming letters and has no extra fil
   expect(container.textContent).toContain('نامه‌های وارده');
   expect(container.textContent).toContain('نامه‌های دریافتی از سازمان‌ها و اشخاص');
   expect(container.querySelector('input[placeholder*="نامه‌های وارده"]')).toBeTruthy();
-  // در صفحهٔ اختصاصی، کارت‌های خلاصهٔ دفتر کل نمایش داده نمی‌شوند
   expect(container.textContent).not.toContain('کل مکاتبات');
+
+  // ستون‌های تخصصی دفتر وارده
+  const table = container.querySelector('[aria-label="فهرست مکاتبات اداری"]');
+  expect(table).toBeTruthy();
+  expect(container.textContent).toContain('ثبت شرکت');
+  expect(container.textContent).toContain('ثبت واحد');
+  expect(container.textContent).toContain('ارسال‌کننده');
+  expect(container.textContent).toContain('طرف حساب');
+  expect(container.textContent).toContain('نحوهٔ ورود');
+  expect(container.textContent).toContain('شرکت ناظر');
+  expect(container.textContent).toContain('د-۸۸');
+
+  root.unmount();
+  container.remove();
+});
+
+test('letter detail opens as a centered dialog with grouped sections', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+  const table = container.querySelector('[aria-label="فهرست مکاتبات اداری"]');
+  const rows = table.querySelectorAll('tbody tr');
+  await act(async () => {
+    rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(300);
+  });
+
+  expect(document.querySelector('[role="dialog"]')).toBeTruthy();
+  expect(document.body.textContent).toContain('ثبت و ورود');
+  expect(document.body.textContent).toContain('شماره‌های ثبت');
+  expect(document.body.textContent).toContain('طرفین مکاتبه');
+  expect(document.body.textContent).toContain('شماره ثبت ورود به شرکت');
+  expect(document.body.textContent).toContain('نحوهٔ ورود');
 
   root.unmount();
   container.remove();

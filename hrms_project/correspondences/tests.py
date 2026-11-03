@@ -249,3 +249,92 @@ class LegacyExcelParsingTests(SimpleTestCase):
             self.assertTrue(required.issubset(row.keys()))
             self.assertIn(row['direction'], ('incoming', 'outgoing', 'internal'))
 
+
+
+class IncomingLetterSpecializationTests(SimpleTestCase):
+    """فیلدهای تخصصی دفتر وارده: نحوهٔ ورود، دو شمارهٔ ثبت و ارجاع کامل."""
+
+    def test_letter_serializer_exposes_incoming_fields(self):
+        from correspondences.serializers import LetterSerializer
+
+        fields = LetterSerializer().fields
+        for name in (
+            'entry_method', 'entry_method_display', 'entry_time', 'entered_by', 'entered_by_label',
+            'entered_by_name', 'company_reg_no', 'company_reg_date', 'unit_reg_no', 'unit_reg_date',
+            'unit_name', 'sender_organization', 'sender_organization_name', 'sender_title',
+        ):
+            self.assertIn(name, fields, f'فیلد {name} در سریالایزر نامه نیست')
+
+    def test_letter_model_entry_method_choices(self):
+        from correspondences.models import Letter
+
+        values = dict(Letter.ENTRY_METHODS)
+        self.assertIn('automation', values)
+        self.assertIn('manual', values)
+        self.assertEqual(Letter._meta.get_field('entry_method').default, 'manual')
+
+    def test_referral_serializer_exposes_full_history_fields(self):
+        from correspondences.serializers import LetterReferralSerializer
+
+        fields = LetterReferralSerializer().fields
+        for name in ('instruction', 'response', 'result', 'result_note', 'answered_on',
+                     'answered_by', 'answered_by_name'):
+            self.assertIn(name, fields, f'فیلد {name} در سریالایزر ارجاع نیست')
+
+    def test_referral_viewset_has_complete_action(self):
+        from correspondences.views import LetterReferralViewSet
+
+        self.assertTrue(hasattr(LetterReferralViewSet, 'complete'))
+
+    def test_urls_expose_referral_complete_endpoint(self):
+        from django.urls import resolve
+
+        match = resolve('/api/letter-referrals/12/complete/')
+        self.assertEqual(match.func.__name__, 'LetterReferralViewSet')
+        self.assertEqual(match.kwargs.get('pk'), '12')
+
+    def test_meta_includes_entry_methods(self):
+        import inspect
+
+        from correspondences import views
+
+        source = inspect.getsource(views.LetterViewSet.meta)
+        self.assertIn('entry_methods', source)
+
+
+    def test_parse_entry_time_extracts_hour_and_person(self):
+        from correspondences.legacy import parse_entry_time
+
+        entry_time, person = parse_entry_time('14:35 آقای اسدنژاد')
+        self.assertEqual((entry_time.hour, entry_time.minute), (14, 35))
+        self.assertEqual(person, 'آقای اسدنژاد')
+        self.assertEqual(parse_entry_time('10')[0].hour, 10)
+        self.assertEqual(parse_entry_time('13:30آملکی'), (parse_entry_time('13:30')[0], 'آملکی'))
+        self.assertIsNone(parse_entry_time('')[0])
+
+    def test_incoming_row_captures_entry_time_and_registrar(self):
+        from correspondences.legacy import parse_incoming_row
+
+        row = [''] * 20
+        row[0] = '09:15 خانم حقیقی'
+        row[3] = '1404/06/15'
+        row[6] = 'موضوع آزمون'
+        parsed = parse_incoming_row(row, 7)
+        self.assertEqual(parsed['entry_method'], 'manual')
+        self.assertEqual(parsed['entry_time'].hour, 9)
+        self.assertEqual(parsed['entry_time'].minute, 15)
+        self.assertEqual(parsed['entered_by_name'], 'خانم حقیقی')
+
+    def test_bundle_contains_entry_metadata(self):
+        import gzip
+        import json
+        from pathlib import Path
+
+        path = Path(__file__).resolve().parent / 'data' / 'legacy_letters.json.gz'
+        with gzip.open(path, 'rt', encoding='utf-8') as handle:
+            rows = json.load(handle)
+        with_time = [row for row in rows if row.get('entry_time')]
+        with_person = [row for row in rows if row.get('entered_by_name')]
+        self.assertGreater(len(with_time), 500)
+        self.assertGreater(len(with_person), 500)
+

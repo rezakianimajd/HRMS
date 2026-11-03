@@ -4,7 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import axiosInstance from '../../core/api/axiosConfig';
 import {
   Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
-  DialogTitle, Drawer, FormControlLabel, IconButton, MenuItem, Paper, Stack, Switch,
+  DialogTitle, Divider, FormControlLabel, IconButton, MenuItem, Paper, Stack, Switch,
   Tab, Tabs, TextField, Tooltip, Typography,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
@@ -55,9 +55,20 @@ const EMPTY_LETTER = {
   received_date: '',
   sent_date: '',
   due_date: '',
+  entry_method: 'manual',
+  entry_time: '',
+  entered_by: '',
+  entered_by_name: '',
+  company_reg_no: '',
+  company_reg_date: '',
+  unit_reg_no: '',
+  unit_reg_date: '',
+  unit_name: '',
   organization: '',
   correspondent: '',
+  sender_organization: '',
   sender_name: '',
+  sender_title: '',
   receiver_name: '',
   drafter: '',
   drafter_name: '',
@@ -70,6 +81,14 @@ const EMPTY_LETTER = {
   contract_number: '',
   archive_ref: '',
   register: false,
+};
+
+const ENTRY_METHOD_META = {
+  automation: { label: 'اتوماسیون', color: OUTGOING },
+  manual: { label: 'دستی', color: WARN },
+  email: { label: 'پست الکترونیک', color: INCOMING },
+  post: { label: 'پست / مرسوله', color: INTERNAL },
+  other: { label: 'سایر', color: SLATE },
 };
 
 const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
@@ -156,6 +175,77 @@ const cleanPayload = (form) => {
   return payload;
 };
 
+/** بخش‌بندی فرم با رنگ و جداکننده (ظاهر حرفه‌ای فرم ثبت نامه). */
+const FormSection = ({ icon: Icon, title, hint, color = ACCENT, children }) => (
+  <Box sx={{ mb: 1.75 }}>
+    <Stack direction="row" alignItems="center" spacing={0.75} sx={{ mb: 1, minWidth: 0 }}>
+      <Box sx={{
+        width: 26, height: 26, borderRadius: '8px', flex: '0 0 auto',
+        display: 'grid', placeItems: 'center', bgcolor: alpha(color, 0.12), color,
+      }}>
+        <Icon sx={{ fontSize: 15 }} />
+      </Box>
+      <Typography noWrap sx={{ fontSize: 12, fontWeight: 900, color, flex: '0 0 auto' }}>
+        {title}
+      </Typography>
+      {hint ? (
+        <Typography noWrap sx={{ fontSize: 10, color: MUTED, flex: '1 1 auto', minWidth: 0 }}>
+          {hint}
+        </Typography>
+      ) : null}
+      <Divider sx={{ flex: 1, borderColor: alpha(color, 0.25) }} />
+    </Stack>
+    {children}
+  </Box>
+);
+
+const FormGrid = ({ children }) => (
+  <Box sx={{
+    display: 'grid',
+    gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+    gap: 1.25,
+    minWidth: 0,
+  }}>
+    {children}
+  </Box>
+);
+
+/** یک خانهٔ اطلاعات در نمای جزئیات نامه. */
+const InfoCell = ({ label, value, span }) => (
+  <Box sx={{ minWidth: 0, gridColumn: span ? { xs: 'auto', sm: `span ${span}` } : undefined }}>
+    <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>{label}</Typography>
+    <Typography title={String(value || '')} sx={{
+      fontSize: 11.5, fontWeight: 800, whiteSpace: 'pre-wrap', wordBreak: 'break-word',
+    }}>
+      {value || '—'}
+    </Typography>
+  </Box>
+);
+
+const InfoGroup = ({ icon: Icon, title, color = ACCENT, children }) => (
+  <Box sx={{
+    border: '1px solid', borderColor: dividerColor(color), borderRadius: '12px',
+    p: 1.25, mb: 1.25, minWidth: 0, bgcolor: alpha(color, 0.02),
+  }}>
+    <Stack direction="row" alignItems="center" spacing={0.6} sx={{ mb: 0.9 }}>
+      <Icon sx={{ fontSize: 15, color }} />
+      <Typography sx={{ fontSize: 11.5, fontWeight: 900, color }}>{title}</Typography>
+      <Divider sx={{ flex: 1, borderColor: dividerColor(color) }} />
+    </Stack>
+    <Box sx={{
+      display: 'grid',
+      gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' },
+      gap: 1,
+      minWidth: 0,
+    }}>
+      {children}
+    </Box>
+  </Box>
+);
+
+const dividerColor = (color) => alpha(color, 0.22);
+
+
 const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations, users, contacts, onClose, onSaved }) => {
   const qc = useQueryClient();
   const [form, setForm] = useState({ ...EMPTY_LETTER, direction: presetDirection || 'incoming' });
@@ -181,9 +271,20 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
         received_date: safeDate(initial.received_date),
         sent_date: safeDate(initial.sent_date),
         due_date: safeDate(initial.due_date),
+        entry_method: initial.entry_method || 'manual',
+        entry_time: initial.entry_time || '',
+        entered_by: initial.entered_by || '',
+        entered_by_name: initial.entered_by_name || '',
+        company_reg_no: initial.company_reg_no || '',
+        company_reg_date: safeDate(initial.company_reg_date),
+        unit_reg_no: initial.unit_reg_no || '',
+        unit_reg_date: safeDate(initial.unit_reg_date),
+        unit_name: initial.unit_name || '',
         organization: initial.organization || '',
         correspondent: initial.correspondent || '',
+        sender_organization: initial.sender_organization || '',
         sender_name: initial.sender_name || '',
+        sender_title: initial.sender_title || '',
         receiver_name: initial.receiver_name || '',
         drafter: initial.drafter || '',
         drafter_name: initial.drafter_name || '',
@@ -245,99 +346,190 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
   const seriesOptions = (meta?.series || []).filter((row) => row.direction === form.direction);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
-      <DialogTitle sx={{ fontSize: 14, fontWeight: 900, pb: 1 }}>
-        {initial ? `ویرایش نامه ${initial.number || '(پیش‌نویس)'}` : 'ثبت نامهٔ جدید'}
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth
+      PaperProps={{ sx: { borderRadius: '18px' } }}>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap">
+          <Box sx={{
+            width: 30, height: 30, borderRadius: '9px', display: 'grid', placeItems: 'center',
+            bgcolor: alpha(ACCENT, 0.12), color: ACCENT,
+          }}>
+            <InboxIcon sx={{ fontSize: 17 }} />
+          </Box>
+          <Typography sx={{ fontSize: 14, fontWeight: 900 }}>
+            {initial ? `ویرایش نامه ${initial.number || '(پیش‌نویس)'}` : 'ثبت نامهٔ جدید'}
+          </Typography>
+          <MetaChip meta={DIRECTION_META[form.direction]} />
+          {form.entry_method ? <MetaChip meta={ENTRY_METHOD_META[form.entry_method]} /> : null}
+          <Box sx={{ flex: 1 }} />
+          <Typography sx={{ fontSize: 10.5, color: MUTED }}>
+            فیلدهای ستاره‌دار اجباری هستند
+          </Typography>
+        </Stack>
       </DialogTitle>
-      <DialogContent dividers>
+      <DialogContent dividers sx={{ bgcolor: alpha(SLATE, 0.02) }}>
         {error ? <Alert severity="error" sx={{ mb: 1.5, borderRadius: '10px' }}>{error}</Alert> : null}
-        <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: '1fr 1fr 1fr' }, gap: 1.25 }}>
-          <TextField select size="small" label="جهت نامه" value={form.direction} onChange={set('direction')}>
-            {Object.entries(DIRECTION_META).map(([value, item]) => (
-              <MenuItem key={value} value={value}>{item.label}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="نوع مکاتبه" value={form.category} onChange={set('category')}>
-            <MenuItem value="">—</MenuItem>
-            {categories.map((row) => (
-              <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="سری شماره‌گذاری" value={form.series} onChange={set('series')}
-            helperText={form.series
-              ? `پیش‌نمایش: ${(meta?.series || []).find((row) => row.id === Number(form.series))?.preview || '—'}`
-              : 'در صورت خالی بودن، سری پیش‌فرض استفاده می‌شود'}>
-            <MenuItem value="">سری پیش‌فرض</MenuItem>
-            {seriesOptions.map((row) => (
-              <MenuItem key={row.id} value={row.id}>{row.title}</MenuItem>
-            ))}
-          </TextField>
-          <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')}
-            helperText="خالی بگذارید تا خودکار صادر شود" />
-          <TextField size="small" label="شماره اندیکاتور" value={form.indicator_no} onChange={set('indicator_no')} />
-          <TextField size="small" label="ترنسمیتال" value={form.transmittal_no} onChange={set('transmittal_no')} />
-          <TextField size="small" type="date" label="تاریخ نامه" value={form.letter_date}
-            onChange={set('letter_date')} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date"
-            label={form.direction === 'outgoing' ? 'تاریخ ارسال' : 'تاریخ ورود'}
-            value={form.direction === 'outgoing' ? form.sent_date : form.received_date}
-            onChange={set(form.direction === 'outgoing' ? 'sent_date' : 'received_date')}
-            InputLabelProps={{ shrink: true }} />
-          <TextField size="small" type="date" label="مهلت پاسخ" value={form.due_date}
-            onChange={set('due_date')} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" label="شماره نامه طرف مقابل" value={form.external_number}
-            onChange={set('external_number')} />
-          <TextField size="small" label="شماره قرارداد مرتبط" value={form.contract_number}
-            onChange={set('contract_number')} />
-          <TextField size="small" label="شماره بایگانی" value={form.archive_ref} onChange={set('archive_ref')} />
 
-          <TextField select size="small" label="سازمان / طرف مکاتبه" value={form.organization}
-            onChange={set('organization')}>
-            <MenuItem value="">—</MenuItem>
-            {(organizations || []).map((row) => (
-              <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="مخاطب" value={form.correspondent} onChange={set('correspondent')}>
-            <MenuItem value="">—</MenuItem>
-            {(contacts || []).map((row) => (
-              <MenuItem key={row.id} value={row.id}>
-                {row.name}{row.title ? ` — ${row.title}` : ''}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="تنظیم‌کننده نامه" value={form.drafter} onChange={set('drafter')}>
-            <MenuItem value="">خودم</MenuItem>
-            {(users || []).map((row) => (
-              <MenuItem key={row.id} value={row.id}>
-                {userLabel(row)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField size="small" label="فرستنده" value={form.sender_name} onChange={set('sender_name')} />
-          <TextField size="small" label="گیرنده" value={form.receiver_name} onChange={set('receiver_name')} />
-          <TextField size="small" label="نام تنظیم‌کننده (متن آزاد)" value={form.drafter_name}
-            onChange={set('drafter_name')} helperText="اگر تنظیم‌کننده کاربر سامانه نیست" />
-          <TextField size="small" type="number" label="مبلغ (اختیاری)" value={form.amount}
-            onChange={set('amount')} helperText="برای نامه‌های مالی" />
-          <TextField select size="small" label="اولویت" value={form.priority} onChange={set('priority')}>
-            {Object.entries(PRIORITY_META).map(([value, item]) => (
-              <MenuItem key={value} value={value}>{item.label}</MenuItem>
-            ))}
-          </TextField>
-          <TextField select size="small" label="محرمانگی" value={form.confidentiality}
-            onChange={set('confidentiality')}>
-            {Object.entries(CONFIDENTIALITY_META).map(([value, item]) => (
-              <MenuItem key={value} value={value}>{item.label}</MenuItem>
-            ))}
-          </TextField>
-          <TextField size="small" label="موضوع نامه" value={form.subject} onChange={set('subject')}
-            sx={{ gridColumn: { xs: 'auto', md: 'span 2' } }} />
-          <TextField size="small" multiline minRows={2} label="خلاصه / چکیده" value={form.summary}
-            onChange={set('summary')} sx={{ gridColumn: '1 / -1' }} />
-          <TextField size="small" multiline minRows={4} label="متن نامه" value={form.body}
-            onChange={set('body')} sx={{ gridColumn: '1 / -1' }} />
-        </Box>
+        <FormSection icon={InboxIcon} title="ثبت و ورود"
+          hint="نحوهٔ ورود نامه، زمان ورود و ثبت‌کننده" color={WARN}>
+          <FormGrid>
+            <TextField select size="small" label="جهت نامه" value={form.direction} onChange={set('direction')}>
+              {Object.entries(DIRECTION_META).map(([value, item]) => (
+                <MenuItem key={value} value={value}>{item.label}</MenuItem>
+              ))}
+            </TextField>
+            <TextField select size="small" label="نحوهٔ ورود" value={form.entry_method}
+              onChange={set('entry_method')}>
+              {(meta?.entry_methods?.length
+                ? meta.entry_methods
+                : Object.entries(ENTRY_METHOD_META).map(([value, item]) => ({ value, label: item.label })))
+                .map((item) => (
+                  <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+                ))}
+            </TextField>
+            <TextField size="small" type="time" label="ساعت ورود" value={form.entry_time}
+              onChange={set('entry_time')} InputLabelProps={{ shrink: true }} />
+            <TextField size="small" type="date"
+              label={form.direction === 'outgoing' ? 'تاریخ ارسال' : 'تاریخ ورود'}
+              value={form.direction === 'outgoing' ? form.sent_date : form.received_date}
+              onChange={set(form.direction === 'outgoing' ? 'sent_date' : 'received_date')}
+              InputLabelProps={{ shrink: true }} />
+            <TextField select size="small" label="ثبت‌کنندهٔ ورود" value={form.entered_by}
+              onChange={set('entered_by')}>
+              <MenuItem value="">—</MenuItem>
+              {(users || []).map((row) => (
+                <MenuItem key={row.id} value={row.id}>{userLabel(row)}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="نام ثبت‌کننده (متن آزاد)" value={form.entered_by_name}
+              onChange={set('entered_by_name')} helperText="اگر ثبت‌کننده کاربر سامانه نیست" />
+          </FormGrid>
+        </FormSection>
+
+        <FormSection icon={EditNoteIcon} title="شماره‌های ثبت"
+          hint="شمارهٔ نامه، شمارهٔ ثبت ورود به شرکت و شمارهٔ ثبت ورود به واحد" color={INCOMING}>
+          <FormGrid>
+            <TextField select size="small" label="سری شماره‌گذاری" value={form.series} onChange={set('series')}
+              helperText={form.series
+                ? `پیش‌نمایش: ${(meta?.series || []).find((row) => row.id === Number(form.series))?.preview || '—'}`
+                : 'در صورت خالی بودن، سری پیش‌فرض استفاده می‌شود'}>
+              <MenuItem value="">سری پیش‌فرض</MenuItem>
+              {seriesOptions.map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.title}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="شماره نامه" value={form.number} onChange={set('number')}
+              helperText="خالی بگذارید تا خودکار صادر شود" />
+            <TextField size="small" label="شماره اندیکاتور" value={form.indicator_no}
+              onChange={set('indicator_no')} />
+            <TextField size="small" label="ترنسمیتال" value={form.transmittal_no}
+              onChange={set('transmittal_no')} />
+            <TextField size="small" label="شماره نامه طرف مقابل" value={form.external_number}
+              onChange={set('external_number')} />
+            <TextField size="small" type="date" label="تاریخ نامه" value={form.letter_date}
+              onChange={set('letter_date')} InputLabelProps={{ shrink: true }} />
+            <TextField size="small" label="شماره ثبت ورود به شرکت" value={form.company_reg_no}
+              onChange={set('company_reg_no')} />
+            <TextField size="small" type="date" label="تاریخ ثبت ورود به شرکت"
+              value={form.company_reg_date} onChange={set('company_reg_date')}
+              InputLabelProps={{ shrink: true }} />
+            <TextField size="small" label="شماره ثبت ورود به واحد" value={form.unit_reg_no}
+              onChange={set('unit_reg_no')} />
+            <TextField size="small" type="date" label="تاریخ ثبت ورود به واحد"
+              value={form.unit_reg_date} onChange={set('unit_reg_date')}
+              InputLabelProps={{ shrink: true }} />
+            <TextField size="small" label="واحد ثبت‌کننده / گیرنده" value={form.unit_name}
+              onChange={set('unit_name')} helperText="مثال: دبیرخانه، واحد مالی" />
+            <TextField size="small" type="date" label="مهلت پاسخ" value={form.due_date}
+              onChange={set('due_date')} InputLabelProps={{ shrink: true }} />
+          </FormGrid>
+        </FormSection>
+
+        <FormSection icon={SendIcon} title="طرفین مکاتبه"
+          hint="ارسال‌کننده، طرف حساب (مثلاً پیمانکار) و گیرنده" color={OUTGOING}>
+          <FormGrid>
+            <TextField select size="small" label="سازمان ارسال‌کننده" value={form.sender_organization}
+              onChange={set('sender_organization')}>
+              <MenuItem value="">—</MenuItem>
+              {(organizations || []).map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="نام ارسال‌کننده" value={form.sender_name}
+              onChange={set('sender_name')} />
+            <TextField size="small" label="سمت ارسال‌کننده" value={form.sender_title}
+              onChange={set('sender_title')} helperText="مثال: ناظر پروژه، کارشناس بیمه" />
+            <TextField select size="small" label="طرف حساب (سازمان)" value={form.organization}
+              onChange={set('organization')}>
+              <MenuItem value="">—</MenuItem>
+              {(organizations || []).map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField select size="small" label="مخاطب" value={form.correspondent}
+              onChange={set('correspondent')}>
+              <MenuItem value="">—</MenuItem>
+              {(contacts || []).map((row) => (
+                <MenuItem key={row.id} value={row.id}>
+                  {row.name}{row.title ? ` — ${row.title}` : ''}
+                </MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="گیرنده" value={form.receiver_name}
+              onChange={set('receiver_name')} />
+          </FormGrid>
+        </FormSection>
+
+        <FormSection icon={MailOutlineIcon} title="مشخصات نامه"
+          hint="موضوع، نوع، متن و اولویت" color={INTERNAL}>
+          <FormGrid>
+            <TextField select size="small" label="نوع مکاتبه" value={form.category} onChange={set('category')}>
+              <MenuItem value="">—</MenuItem>
+              {categories.map((row) => (
+                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
+              ))}
+            </TextField>
+            <TextField select size="small" label="اولویت" value={form.priority} onChange={set('priority')}>
+              {Object.entries(PRIORITY_META).map(([value, item]) => (
+                <MenuItem key={value} value={value}>{item.label}</MenuItem>
+              ))}
+            </TextField>
+            <TextField select size="small" label="محرمانگی" value={form.confidentiality}
+              onChange={set('confidentiality')}>
+              {Object.entries(CONFIDENTIALITY_META).map(([value, item]) => (
+                <MenuItem key={value} value={value}>{item.label}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="موضوع نامه" value={form.subject} onChange={set('subject')}
+              sx={{ gridColumn: { xs: 'auto', md: 'span 2' } }} />
+            <TextField size="small" multiline minRows={2} label="خلاصه / چکیده" value={form.summary}
+              onChange={set('summary')} sx={{ gridColumn: '1 / -1' }} />
+            <TextField size="small" multiline minRows={4} label="متن نامه" value={form.body}
+              onChange={set('body')} sx={{ gridColumn: '1 / -1' }} />
+          </FormGrid>
+        </FormSection>
+
+        <FormSection icon={ArchiveIcon} title="مالی، قرارداد و بایگانی"
+          hint="اطلاعات تکمیلی و بایگانی" color={SLATE}>
+          <FormGrid>
+            <TextField size="small" type="number" label="مبلغ (اختیاری)" value={form.amount}
+              onChange={set('amount')} helperText="برای نامه‌های مالی" />
+            <TextField size="small" label="شماره قرارداد مرتبط" value={form.contract_number}
+              onChange={set('contract_number')} />
+            <TextField size="small" label="شماره بایگانی" value={form.archive_ref}
+              onChange={set('archive_ref')} />
+            <TextField select size="small" label="تنظیم‌کننده نامه" value={form.drafter}
+              onChange={set('drafter')}>
+              <MenuItem value="">خودم</MenuItem>
+              {(users || []).map((row) => (
+                <MenuItem key={row.id} value={row.id}>{userLabel(row)}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="نام تنظیم‌کننده (متن آزاد)" value={form.drafter_name}
+              onChange={set('drafter_name')} helperText="اگر تنظیم‌کننده کاربر سامانه نیست" />
+          </FormGrid>
+        </FormSection>
+
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5}
           alignItems={{ xs: 'stretch', sm: 'center' }} sx={{ mt: 1.5 }} useFlexGap>
           <Button variant="outlined" size="small" startIcon={<AttachFileIcon />}
@@ -376,6 +568,7 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
   const [toUser, setToUser] = useState('');
   const [toName, setToName] = useState('');
   const [dueDate, setDueDate] = useState('');
+  const [instruction, setInstruction] = useState('');
   const [note, setNote] = useState('');
 
   useEffect(() => {
@@ -383,40 +576,126 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
     setToUser('');
     setToName('');
     setDueDate('');
+    setInstruction('');
     setNote('');
   }, [open]);
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
-      <DialogTitle sx={{ fontSize: 14, fontWeight: 900 }}>
-        ارجاع نامه {letter?.number ? `— ${letter.number}` : ''}
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+      PaperProps={{ sx: { borderRadius: '16px' } }}>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
+          <Box sx={{
+            width: 28, height: 28, borderRadius: '8px', display: 'grid', placeItems: 'center',
+            bgcolor: alpha(WARN, 0.12), color: WARN,
+          }}>
+            <ForwardToInboxIcon sx={{ fontSize: 16 }} />
+          </Box>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 900 }}>ارجاع نامه</Typography>
+          {letter?.number ? <Chip size="small" label={letter.number} sx={chipSx(SLATE)} /> : null}
+        </Stack>
       </DialogTitle>
       <DialogContent dividers>
-        <Stack spacing={1.25}>
-          <TextField select size="small" label="ارجاع به کاربر" value={toUser}
-            onChange={(event) => setToUser(event.target.value)}>
-            <MenuItem value="">—</MenuItem>
-            {(users || []).map((row) => (
-              <MenuItem key={row.id} value={row.id}>
-                {userLabel(row)}
-              </MenuItem>
-            ))}
-          </TextField>
-          <TextField size="small" label="یا واحد / شخص خارج از سامانه" value={toName}
-            onChange={(event) => setToName(event.target.value)}
-            helperText="مثال: واحد مالی، دبیرخانه، مدیرعامل" />
-          <TextField size="small" type="date" label="مهلت اقدام" value={dueDate}
-            onChange={(event) => setDueDate(event.target.value)} InputLabelProps={{ shrink: true }} />
-          <TextField size="small" multiline minRows={2} label="دستور / توضیح" value={note}
-            onChange={(event) => setNote(event.target.value)} />
-        </Stack>
+        <FormSection icon={ForwardToInboxIcon} title="گیرنده و مهلت" color={WARN}>
+          <Stack spacing={1.25}>
+            <TextField select size="small" label="ارجاع به کاربر" value={toUser}
+              onChange={(event) => setToUser(event.target.value)}>
+              <MenuItem value="">—</MenuItem>
+              {(users || []).map((row) => (
+                <MenuItem key={row.id} value={row.id}>{userLabel(row)}</MenuItem>
+              ))}
+            </TextField>
+            <TextField size="small" label="یا واحد / شخص خارج از سامانه" value={toName}
+              onChange={(event) => setToName(event.target.value)}
+              helperText="مثال: واحد مالی، دبیرخانه، مدیرعامل" />
+            <TextField size="small" type="date" label="مهلت اقدام" value={dueDate}
+              onChange={(event) => setDueDate(event.target.value)} InputLabelProps={{ shrink: true }} />
+          </Stack>
+        </FormSection>
+        <FormSection icon={EditNoteIcon} title="دستور و توضیح" color={INCOMING}>
+          <Stack spacing={1.25}>
+            <TextField size="small" multiline minRows={2} label="دستور / اقدام درخواستی"
+              value={instruction} onChange={(event) => setInstruction(event.target.value)}
+              helperText="مثال: بررسی و اعلام نظر فنی تا پایان هفته" />
+            <TextField size="small" multiline minRows={2} label="توضیح تکمیلی" value={note}
+              onChange={(event) => setNote(event.target.value)} />
+          </Stack>
+        </FormSection>
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
         <Button size="small" variant="contained" disabled={pending || (!toUser && !toName.trim())}
-          onClick={() => onSubmit({ to_user: toUser || undefined, to_name: toName, due_date: dueDate || undefined, note })}
+          onClick={() => onSubmit({
+            to_user: toUser || undefined,
+            to_name: toName,
+            due_date: dueDate || undefined,
+            instruction,
+            note,
+          })}
           sx={{ bgcolor: WARN, '&:hover': { bgcolor: '#92400e' } }}>
           ثبت ارجاع
+        </Button>
+      </DialogActions>
+    </Dialog>
+  );
+};
+
+/** ثبت پاسخ و نتیجهٔ یک ارجاع (تاریخچهٔ کامل اقدام). */
+const CompleteReferralDialog = ({ open, referral, onClose, onSubmit, pending }) => {
+  const [response, setResponse] = useState('');
+  const [result, setResult] = useState('');
+  const [resultNote, setResultNote] = useState('');
+  const [answeredOn, setAnsweredOn] = useState('');
+
+  useEffect(() => {
+    if (!open) return;
+    setResponse('');
+    setResult('');
+    setResultNote('');
+    setAnsweredOn(new Date().toISOString().slice(0, 10));
+  }, [open]);
+
+  return (
+    <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth
+      PaperProps={{ sx: { borderRadius: '16px' } }}>
+      <DialogTitle sx={{ pb: 1 }}>
+        <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
+          <Box sx={{
+            width: 28, height: 28, borderRadius: '8px', display: 'grid', placeItems: 'center',
+            bgcolor: alpha(OK, 0.12), color: OK,
+          }}>
+            <TaskAltIcon sx={{ fontSize: 16 }} />
+          </Box>
+          <Typography sx={{ fontSize: 13.5, fontWeight: 900 }}>ثبت پاسخ و نتیجهٔ ارجاع</Typography>
+          {referral?.to_user_name || referral?.to_name ? (
+            <Chip size="small" label={referral.to_user_name || referral.to_name} sx={chipSx(SLATE)} />
+          ) : null}
+        </Stack>
+      </DialogTitle>
+      <DialogContent dividers>
+        {referral?.instruction ? (
+          <Alert severity="info" sx={{ mb: 1.25, borderRadius: '10px' }}>
+            <Typography sx={{ fontSize: 11.5, fontWeight: 700 }}>دستور ارجاع:</Typography>
+            <Typography sx={{ fontSize: 11.5, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
+          </Alert>
+        ) : null}
+        <Stack spacing={1.25}>
+          <TextField size="small" multiline minRows={2} label="پاسخ / جوابیهٔ اقدام‌کننده"
+            value={response} onChange={(event) => setResponse(event.target.value)} />
+          <TextField size="small" multiline minRows={2} label="نتیجهٔ نهایی"
+            value={result} onChange={(event) => setResult(event.target.value)} />
+          <TextField size="small" multiline minRows={2} label="یادداشت نتیجه"
+            value={resultNote} onChange={(event) => setResultNote(event.target.value)} />
+          <TextField size="small" type="date" label="تاریخ پاسخ" value={answeredOn}
+            onChange={(event) => setAnsweredOn(event.target.value)} InputLabelProps={{ shrink: true }} />
+        </Stack>
+      </DialogContent>
+      <DialogActions sx={{ px: 2, py: 1.25 }}>
+        <Button size="small" onClick={onClose}>انصراف</Button>
+        <Button size="small" variant="contained" disabled={pending || (!response.trim() && !result.trim())}
+          onClick={() => onSubmit({ response, result, result_note: resultNote, answered_on: answeredOn })}
+          sx={{ bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>
+          ثبت اقدام
         </Button>
       </DialogActions>
     </Dialog>
@@ -435,6 +714,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [overdueOnly, setOverdueOnly] = useState(Boolean(preset.overdue));
   const [archivedOnly, setArchivedOnly] = useState(Boolean(preset.archived));
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [entryMethodFilter, setEntryMethodFilter] = useState('all');
   const [priorityFilter, setPriorityFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState('newest');
@@ -444,6 +724,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const [formOpen, setFormOpen] = useState(false);
   const [formLetter, setFormLetter] = useState(null);
   const [referLetter, setReferLetter] = useState(null);
+  const [completeReferral, setCompleteReferral] = useState(null);
   const [comment, setComment] = useState('');
   const [error, setError] = useState('');
   const [toast, setToast] = useState('');
@@ -459,6 +740,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     setArchivedOnly(Boolean(next.archived));
     setCategoryFilter('all');
     setPriorityFilter('all');
+    setEntryMethodFilter('all');
     setSearch('');
     setSortBy('newest');
     setFiltersOpen(false);
@@ -488,7 +770,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   useEffect(() => {
     setPage(0);
   }, [debouncedSearch, direction, statusFilter, scope, overdueOnly, archivedOnly,
-    categoryFilter, priorityFilter, sortBy, pageSize]);
+    categoryFilter, priorityFilter, entryMethodFilter, sortBy, pageSize]);
 
   const listParams = useMemo(() => {
     const ordering = {
@@ -505,10 +787,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     if (archivedOnly) params.archived = '1';
     if (categoryFilter !== 'all') params.category = categoryFilter;
     if (priorityFilter !== 'all') params.priority = priorityFilter;
+    if (entryMethodFilter !== 'all') params.entry_method = entryMethodFilter;
     if (debouncedSearch) params.search = debouncedSearch;
     return params;
   }, [page, pageSize, sortBy, direction, statusFilter, scope, overdueOnly, archivedOnly,
-    categoryFilter, priorityFilter, debouncedSearch]);
+    categoryFilter, priorityFilter, entryMethodFilter, debouncedSearch]);
 
   const { data: rawLetters, isLoading, isFetching, refetch } = useQuery({
     queryKey: [...LETTERS_KEY, listParams],
@@ -604,16 +887,17 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     onError: (err) => setError(err?.response?.data?.detail || 'انجام عملیات ممکن نشد.'),
   });
 
-  const referralDone = useMutation({
-    mutationFn: ({ id, result_note }) => axiosInstance
-      .patch(`/letter-referrals/${id}/`, { status: 'done', result_note })
+  const referralComplete = useMutation({
+    mutationFn: ({ id, payload }) => axiosInstance
+      .post(`/letter-referrals/${id}/complete/`, payload)
       .then((response) => response.data),
     onSuccess: () => {
       refreshAll();
       qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-      setToast('اقدام ارجاع ثبت شد.');
+      setToast('پاسخ و نتیجهٔ ارجاع ثبت شد.');
+      setCompleteReferral(null);
     },
-    onError: () => setError('ثبت اقدام ارجاع انجام نشد.'),
+    onError: (err) => setError(err?.response?.data?.detail || 'ثبت پاسخ ارجاع انجام نشد.'),
   });
 
   const rows = useMemo(() => letters.map((letter) => {
@@ -689,6 +973,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     setArchivedOnly(Boolean(preset.archived));
     setCategoryFilter('all');
     setPriorityFilter('all');
+    setEntryMethodFilter('all');
     setSortBy('newest');
   };
 
@@ -696,6 +981,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     !preset.direction && direction !== 'all',
     !preset.status && statusFilter !== 'all',
     categoryFilter !== 'all', priorityFilter !== 'all',
+    ['incoming', 'all'].includes(mode) && entryMethodFilter !== 'all',
   ].filter(Boolean).length;
 
   const activeChips = [
@@ -717,6 +1003,11 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     priorityFilter !== 'all' && {
       key: 'priority', label: `اولویت: ${PRIORITY_META[priorityFilter]?.label || ''}`,
       clear: () => setPriorityFilter('all'),
+    },
+    ['incoming', 'all'].includes(mode) && entryMethodFilter !== 'all' && {
+      key: 'entry_method',
+      label: `نحوهٔ ورود: ${ENTRY_METHOD_META[entryMethodFilter]?.label || entryMethodFilter}`,
+      clear: () => setEntryMethodFilter('all'),
     },
   ].filter(Boolean);
 
@@ -741,6 +1032,17 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         ...Object.entries(STATUS_META).map(([value, item]) => ({ value, label: item.label })),
       ],
       onChange: setStatusFilter,
+    });
+  }
+  if (['incoming', 'all'].includes(mode)) {
+    pageFilters.push({
+      label: 'نحوهٔ ورود',
+      value: entryMethodFilter,
+      options: [
+        { value: 'all', label: 'همه' },
+        ...Object.entries(ENTRY_METHOD_META).map(([value, item]) => ({ value, label: item.label })),
+      ],
+      onChange: setEntryMethodFilter,
     });
   }
   pageFilters.push({
@@ -928,7 +1230,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
           columns={[
             {
-              key: 'row', label: 'ردیف', width: '3.5%', align: 'center',
+              key: 'row', label: 'ردیف', width: '3%', align: 'center',
               render: (_row, index) => (
                 <Typography noWrap sx={{ fontSize: 11, fontWeight: 700, color: MUTED }}>
                   {toPersianDigits(page * pageSize + index + 1)}
@@ -936,7 +1238,9 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               ),
             },
             {
-              key: 'number', label: 'شماره نامه', width: '9%', align: 'center',
+              key: 'number', label: 'شماره نامه',
+              width: mode === 'incoming' ? '8%' : '9%',
+              align: 'center',
               render: (row) => (
                 <Box sx={{ minWidth: 0 }}>
                   <Typography noWrap title={row.letter.number}
@@ -951,8 +1255,39 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 </Box>
               ),
             },
+            ...(mode === 'incoming' ? [
+              {
+                key: 'company_reg', label: 'ثبت شرکت', width: '8%', align: 'center',
+                render: (row) => (
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography noWrap
+                      title={row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : ''}
+                      sx={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : '—'}
+                    </Typography>
+                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
+                      {row.letter.company_reg_date ? dateLabel(row.letter.company_reg_date) : '—'}
+                    </Typography>
+                  </Box>
+                ),
+              },
+              {
+                key: 'unit_reg', label: 'ثبت واحد', width: '8%', align: 'center',
+                render: (row) => (
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography noWrap title={row.letter.unit_name || ''}
+                      sx={{ fontSize: 11, fontWeight: 800, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
+                      {row.letter.unit_reg_no ? toPersianDigits(row.letter.unit_reg_no) : '—'}
+                    </Typography>
+                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
+                      {row.letter.unit_reg_date ? dateLabel(row.letter.unit_reg_date) : (row.letter.unit_name || '—')}
+                    </Typography>
+                  </Box>
+                ),
+              },
+            ] : []),
             {
-              key: 'subject', label: 'موضوع', width: '22%',
+              key: 'subject', label: 'موضوع', width: mode === 'incoming' ? '16%' : '22%',
               render: (row) => (
                 <Box sx={{ minWidth: 0 }}>
                   <Typography noWrap title={row.letter.subject} sx={{ fontSize: 11.5, fontWeight: 800 }}>
@@ -964,8 +1299,26 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 </Box>
               ),
             },
+            ...(mode === 'incoming' ? [
+              {
+                key: 'sender', label: 'ارسال‌کننده', width: '10%',
+                render: (row) => (
+                  <Box sx={{ minWidth: 0 }}>
+                    <Typography noWrap
+                      title={row.letter.sender_organization_name || row.letter.sender_name}
+                      sx={{ fontSize: 11, fontWeight: 800 }}>
+                      {row.letter.sender_organization_name || row.letter.sender_name || '—'}
+                    </Typography>
+                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
+                      {row.letter.sender_title || row.letter.sender_name || '—'}
+                    </Typography>
+                  </Box>
+                ),
+              },
+            ] : []),
             {
-              key: 'party', label: 'طرف مکاتبه', width: '13%',
+              key: 'party', label: mode === 'incoming' ? 'طرف حساب' : 'طرف مکاتبه',
+              width: mode === 'incoming' ? '9%' : '13%',
               render: (row) => (
                 <Typography noWrap
                   title={row.letter.organization_name || row.letter.correspondent_name
@@ -976,8 +1329,25 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 </Typography>
               ),
             },
+            ...(mode === 'incoming' ? [
+              {
+                key: 'entry', label: 'نحوهٔ ورود', width: '7%', align: 'center',
+                render: (row) => (
+                  <Box sx={{ minWidth: 0 }}>
+                    <Chip size="small" label={row.letter.entry_method_display || '—'}
+                      sx={chipSx(ENTRY_METHOD_META[row.letter.entry_method]?.color || SLATE)} />
+                    <Typography noWrap sx={{ fontSize: 9, color: MUTED, mt: 0.2 }}>
+                      {row.letter.entry_time ? String(row.letter.entry_time).slice(0, 5) : '—'}
+                      {row.letter.entered_by_label ? ` · ${row.letter.entered_by_label}` : ''}
+                    </Typography>
+                  </Box>
+                ),
+              },
+            ] : []),
             {
-              key: 'date', label: 'تاریخ نامه', width: '8%', align: 'center',
+              key: 'date', label: 'تاریخ نامه',
+              width: mode === 'incoming' ? '6.5%' : '8%',
+              align: 'center',
               render: (row) => (
                 <Typography noWrap sx={{ fontSize: 11, fontFamily: 'var(--hrms-table-number-font, inherit)' }}>
                   {dateLabel(row.letter.letter_date)}
@@ -985,27 +1355,33 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               ),
             },
             {
-              key: 'due', label: 'مهلت پاسخ', width: '9%', align: 'center',
+              key: 'due', label: 'مهلت پاسخ',
+              width: mode === 'incoming' ? '7%' : '9%',
+              align: 'center',
               render: (row) => (
                 row.letter.due_date ? (
                   <Chip size="small" label={daysLabel(row.days)} sx={chipSx(daysColor(row.days))} />
                 ) : <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>
               ),
             },
+            ...(mode === 'incoming' ? [] : [
+              {
+                key: 'type', label: 'نوع / جهت', width: '7%', align: 'center',
+                render: (row) => (
+                  <Stack spacing={0.25} alignItems="center">
+                    <Chip size="small" label={row.directionMeta.label}
+                      sx={chipSx(row.directionMeta.color, row.directionMeta.bg)} />
+                    <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
+                      {row.letter.category_title || '—'}
+                    </Typography>
+                  </Stack>
+                ),
+              },
+            ]),
             {
-              key: 'type', label: 'نوع / جهت', width: '7%', align: 'center',
-              render: (row) => (
-                <Stack spacing={0.25} alignItems="center">
-                  <Chip size="small" label={row.directionMeta.label}
-                    sx={chipSx(row.directionMeta.color, row.directionMeta.bg)} />
-                  <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
-                    {row.letter.category_title || '—'}
-                  </Typography>
-                </Stack>
-              ),
-            },
-            {
-              key: 'referral', label: 'آخرین ارجاع', width: '8%', align: 'center',
+              key: 'referral', label: 'آخرین ارجاع',
+              width: mode === 'incoming' ? '7%' : '8%',
+              align: 'center',
               render: (row) => {
                 const last = row.letter.last_referral;
                 if (!last) return <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>;
@@ -1025,30 +1401,36 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               },
             },
             {
-              key: 'status', label: 'وضعیت', width: '8%', align: 'center',
+              key: 'status', label: 'وضعیت',
+              width: mode === 'incoming' ? '6.5%' : '8%',
+              align: 'center',
               render: (row) => (
                 <Chip size="small" label={row.statusMeta.label}
                   sx={chipSx(row.statusMeta.color, row.statusMeta.bg)} />
               ),
             },
+            ...(mode === 'incoming' ? [] : [
+              {
+                key: 'priority', label: 'اولویت', width: '5.5%', align: 'center',
+                render: (row) => (
+                  <Chip size="small" label={PRIORITY_META[row.letter.priority]?.label || '—'}
+                    sx={chipSx(PRIORITY_META[row.letter.priority]?.color || SLATE)} />
+                ),
+              },
+              {
+                key: 'attachments', label: 'پیوست', width: '4.5%', align: 'center',
+                render: (row) => (
+                  row.letter.attachment_count ? (
+                    <Chip size="small" label={toPersianDigits(row.letter.attachment_count)}
+                      sx={chipSx(INTERNAL)} />
+                  ) : <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>
+                ),
+              },
+            ]),
             {
-              key: 'priority', label: 'اولویت', width: '5.5%', align: 'center',
-              render: (row) => (
-                <Chip size="small" label={PRIORITY_META[row.letter.priority]?.label || '—'}
-                  sx={chipSx(PRIORITY_META[row.letter.priority]?.color || SLATE)} />
-              ),
-            },
-            {
-              key: 'attachments', label: 'پیوست', width: '4.5%', align: 'center',
-              render: (row) => (
-                row.letter.attachment_count ? (
-                  <Chip size="small" label={toPersianDigits(row.letter.attachment_count)}
-                    sx={chipSx(INTERNAL)} />
-                ) : <Typography sx={{ fontSize: 10, color: MUTED }}>—</Typography>
-              ),
-            },
-            {
-              key: 'actions', label: 'عملیات', width: '8%', align: 'center',
+              key: 'actions', label: 'عملیات',
+              width: mode === 'incoming' ? '5%' : '8%',
+              align: 'center',
               render: (row) => (
                 <Stack direction="row" spacing={0.1} useFlexGap justifyContent="center"
                   onClick={(event) => event.stopPropagation()}>
@@ -1120,24 +1502,26 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         </Stack>
       </Paper>
 
-      <Drawer
-        anchor="left"
+      <Dialog
         open={Boolean(drawerLetter)}
         onClose={() => setDrawerLetter(null)}
-        PaperProps={{ sx: { width: { xs: '100%', sm: 560 }, maxWidth: '100%' } }}
+        maxWidth="lg"
+        fullWidth
+        PaperProps={{ sx: { borderRadius: '18px', height: { xs: '96%', md: '90%' } } }}
       >
         {activeLetter ? (
           <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', minWidth: 0 }}>
             <Box sx={{ p: 1.75, borderBottom: '1px solid', borderColor: 'divider' }}>
               <Stack direction="row" alignItems="flex-start" spacing={1} sx={{ minWidth: 0 }}>
                 <Box sx={{ minWidth: 0, flex: 1 }}>
-                  <Typography noWrap title={activeLetter.subject} sx={{ fontSize: 14, fontWeight: 900 }}>
+                  <Typography noWrap title={activeLetter.subject} sx={{ fontSize: 15, fontWeight: 900 }}>
                     {activeLetter.subject || 'بدون موضوع'}
                   </Typography>
                   <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
                     {activeLetter.number ? `شماره: ${toPersianDigits(activeLetter.number)}` : 'بدون شماره'}
                     {activeLetter.indicator_no ? ` · اندیکاتور: ${activeLetter.indicator_no}` : ''}
                     {activeLetter.transmittal_no ? ` · ترنسمیتال: ${activeLetter.transmittal_no}` : ''}
+                    {activeLetter.entry_method_display ? ` · ورود: ${activeLetter.entry_method_display}` : ''}
                   </Typography>
                 </Box>
                 <IconButton size="small" onClick={() => setDrawerLetter(null)} aria-label="بستن">
@@ -1211,60 +1595,59 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
 
             <Box sx={{ p: 1.75, overflowY: 'auto', flex: 1, minWidth: 0 }}>
               {drawerTab === 'info' ? (
-                <Box sx={{
-                  display: 'grid',
-                  gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
-                  gap: 1, minWidth: 0,
-                }}>
-                  {[
-                    ['تاریخ نامه', dateLabel(activeLetter.letter_date)],
-                    [activeLetter.direction === 'outgoing' ? 'تاریخ ارسال' : 'تاریخ ورود',
-                      dateLabel(activeLetter.direction === 'outgoing'
-                        ? activeLetter.sent_date : activeLetter.received_date)],
-                    ['مهلت پاسخ', activeLetter.due_date
+                <Box sx={{ minWidth: 0 }}>
+                  <InfoGroup icon={InboxIcon} title="ثبت و ورود" color={WARN}>
+                    <InfoCell label="نحوهٔ ورود" value={activeLetter.entry_method_display} />
+                    <InfoCell label="ساعت ورود"
+                      value={activeLetter.entry_time ? String(activeLetter.entry_time).slice(0, 5) : ''} />
+                    <InfoCell label="ثبت‌کنندهٔ ورود" value={activeLetter.entered_by_label} />
+                    <InfoCell label="تاریخ ورود" value={dateLabel(activeLetter.received_date)} />
+                    <InfoCell label="واحد ثبت‌کننده" value={activeLetter.unit_name} />
+                    <InfoCell label="تاریخ نامه" value={dateLabel(activeLetter.letter_date)} />
+                  </InfoGroup>
+
+                  <InfoGroup icon={EditNoteIcon} title="شماره‌های ثبت" color={INCOMING}>
+                    <InfoCell label="شماره نامه"
+                      value={activeLetter.number ? toPersianDigits(activeLetter.number) : ''} />
+                    <InfoCell label="شماره اندیکاتور" value={activeLetter.indicator_no} />
+                    <InfoCell label="ترنسمیتال" value={activeLetter.transmittal_no} />
+                    <InfoCell label="شماره ثبت ورود به شرکت"
+                      value={activeLetter.company_reg_no ? toPersianDigits(activeLetter.company_reg_no) : ''} />
+                    <InfoCell label="تاریخ ثبت ورود به شرکت" value={dateLabel(activeLetter.company_reg_date)} />
+                    <InfoCell label="شماره ثبت ورود به واحد"
+                      value={activeLetter.unit_reg_no ? toPersianDigits(activeLetter.unit_reg_no) : ''} />
+                    <InfoCell label="تاریخ ثبت ورود به واحد" value={dateLabel(activeLetter.unit_reg_date)} />
+                    <InfoCell label="شماره نامه طرف مقابل" value={activeLetter.external_number} />
+                    <InfoCell label="پاسخ به نامه" value={activeLetter.reply_number} />
+                  </InfoGroup>
+
+                  <InfoGroup icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
+                    <InfoCell label="سازمان ارسال‌کننده" value={activeLetter.sender_organization_name} />
+                    <InfoCell label="نام ارسال‌کننده" value={activeLetter.sender_name} />
+                    <InfoCell label="سمت ارسال‌کننده" value={activeLetter.sender_title} />
+                    <InfoCell label="طرف حساب (سازمان)" value={activeLetter.organization_name} />
+                    <InfoCell label="مخاطب" value={activeLetter.correspondent_name} />
+                    <InfoCell label="گیرنده" value={activeLetter.receiver_name} />
+                  </InfoGroup>
+
+                  <InfoGroup icon={MailOutlineIcon} title="مشخصات و بایگانی" color={INTERNAL}>
+                    <InfoCell label="نوع مکاتبه" value={activeLetter.category_title} />
+                    <InfoCell label="اولویت" value={activeLetter.priority_display} />
+                    <InfoCell label="محرمانگی" value={activeLetter.confidentiality_display} />
+                    <InfoCell label="مهلت پاسخ" value={activeLetter.due_date
                       ? `${dateLabel(activeLetter.due_date)} (${daysLabel(daysBetween(activeLetter.due_date))})`
-                      : '—'],
-                    ['نوع مکاتبه', activeLetter.category_title || '—'],
-                    ['سازمان / طرف مکاتبه', activeLetter.organization_name || '—'],
-                    ['مخاطب', activeLetter.correspondent_name || '—'],
-                    ['فرستنده', activeLetter.sender_name || '—'],
-                    ['گیرنده', activeLetter.receiver_name || '—'],
-                    ['تنظیم‌کننده', activeLetter.drafter_name || '—'],
-                    ['ثبت‌کننده', activeLetter.created_by_name || '—'],
-                    ['شماره قرارداد', activeLetter.contract_number || '—'],
-                    ['شماره بایگانی', activeLetter.archive_ref || '—'],
-                    ['شماره نامه طرف مقابل', activeLetter.external_number || '—'],
-                    ['پاسخ به نامه', activeLetter.reply_number || '—'],
-                  ].map(([label, value]) => (
-                    <Box key={label} sx={{ minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>{label}</Typography>
-                      <Typography noWrap title={String(value)} sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                        {value}
-                      </Typography>
-                    </Box>
-                  ))}
-                  {activeLetter.amount ? (
-                    <Box sx={{ minWidth: 0, gridColumn: { xs: 'auto', sm: 'span 2' } }}>
-                      <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>مبلغ</Typography>
-                      <Typography sx={{ fontSize: 12.5, fontWeight: 900, color: OK }}>
-                        {money(activeLetter.amount)} {activeLetter.currency || 'ریال'}
-                      </Typography>
-                    </Box>
-                  ) : null}
-                  <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
-                    <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED, mb: 0.4 }}>خلاصه</Typography>
-                    <Typography sx={{ fontSize: 11.5, whiteSpace: 'pre-wrap' }}>
-                      {activeLetter.summary || '—'}
-                    </Typography>
-                  </Box>
-                  {activeLetter.body ? (
-                    <Box sx={{ gridColumn: '1 / -1', minWidth: 0 }}>
-                      <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED, mb: 0.4 }}>متن نامه</Typography>
-                      <Typography sx={{ fontSize: 11.5, whiteSpace: 'pre-wrap' }}>
-                        {activeLetter.body}
-                      </Typography>
-                    </Box>
-                  ) : null}
+                      : ''} />
+                    <InfoCell label="شماره قرارداد" value={activeLetter.contract_number} />
+                    <InfoCell label="شماره بایگانی" value={activeLetter.archive_ref} />
+                    <InfoCell label="تنظیم‌کننده" value={activeLetter.drafter_name} />
+                    <InfoCell label="ثبت‌کننده" value={activeLetter.created_by_name} />
+                    <InfoCell label="مبلغ" value={activeLetter.amount
+                      ? `${money(activeLetter.amount)} ${activeLetter.currency || 'ریال'}` : ''} />
+                    <InfoCell label="خلاصه" value={activeLetter.summary} span={3} />
+                    {activeLetter.body ? (
+                      <InfoCell label="متن نامه" value={activeLetter.body} span={3} />
+                    ) : null}
+                  </InfoGroup>
                 </Box>
               ) : null}
 
@@ -1272,48 +1655,79 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 <Stack spacing={1}>
                   {(activeLetter.referrals || []).length ? (activeLetter.referrals || []).map((referral) => {
                     const meta = REFERRAL_STATUS_META[referral.status] || REFERRAL_STATUS_META.pending;
+                    const referralDays = daysBetween(referral.due_date);
                     return (
                       <Box key={referral.id} sx={{
-                        p: 1, borderRadius: '10px', border: '1px solid', borderColor: 'divider',
-                        minWidth: 0,
+                        p: 1.1, borderRadius: '12px', border: '1px solid',
+                        borderColor: alpha(meta.color, 0.25), minWidth: 0,
+                        bgcolor: alpha(meta.color, 0.03),
                       }}>
                         <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap">
                           <Chip size="small" label={`سطح ${toPersianDigits(referral.seq)}`} sx={chipSx(SLATE)} />
-                          <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 800 }}>
-                            {referral.to_user_name || referral.to_name || '—'}
-                          </Typography>
                           <MetaChip meta={meta} />
+                          <Typography noWrap sx={{ fontSize: 11, color: MUTED }}>
+                            {referral.from_user_name ? `از ${referral.from_user_name}` : ''}
+                            {(referral.from_user_name && (referral.to_user_name || referral.to_name)) ? ' → ' : ''}
+                            {referral.to_user_name || referral.to_name || ''}
+                          </Typography>
                           <Box sx={{ flex: 1 }} />
                           <Typography sx={{ fontSize: 10, color: MUTED }}>
                             {dateLabel(referral.referred_on)}
                           </Typography>
                         </Stack>
+
+                        {referral.instruction ? (
+                          <Box sx={{ mt: 0.75 }}>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>دستور / اقدام درخواستی</Typography>
+                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.instruction}</Typography>
+                          </Box>
+                        ) : null}
                         {referral.note ? (
-                          <Typography sx={{ fontSize: 11, mt: 0.5, whiteSpace: 'pre-wrap' }}>
-                            {referral.note}
-                          </Typography>
+                          <Box sx={{ mt: 0.5 }}>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: MUTED }}>توضیح</Typography>
+                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.note}</Typography>
+                          </Box>
                         ) : null}
                         {referral.due_date ? (
-                          <Typography sx={{
-                            fontSize: 10, mt: 0.3, color: daysColor(daysBetween(referral.due_date)),
-                          }}>
-                            مهلت: {dateLabel(referral.due_date)} ({daysLabel(daysBetween(referral.due_date))})
+                          <Typography sx={{ fontSize: 10, mt: 0.4, color: daysColor(referralDays) }}>
+                            مهلت اقدام: {dateLabel(referral.due_date)} ({daysLabel(referralDays)})
                           </Typography>
                         ) : null}
-                        {referral.result_note ? (
+
+                        {referral.response ? (
+                          <Box sx={{ mt: 0.75, p: 0.75, borderRadius: '8px', bgcolor: alpha(OK, 0.05) }}>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: OK }}>پاسخ / جوابیه</Typography>
+                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.response}</Typography>
+                          </Box>
+                        ) : null}
+                        {referral.result ? (
+                          <Box sx={{ mt: 0.5, p: 0.75, borderRadius: '8px', bgcolor: alpha(INCOMING, 0.05) }}>
+                            <Typography sx={{ fontSize: 9.5, fontWeight: 700, color: INCOMING }}>نتیجه</Typography>
+                            <Typography sx={{ fontSize: 11, whiteSpace: 'pre-wrap' }}>{referral.result}</Typography>
+                          </Box>
+                        ) : null}
+                        {referral.result_note && !referral.result ? (
                           <Typography sx={{ fontSize: 10.5, color: OK, mt: 0.3 }}>
-                            نتیجه: {referral.result_note}
+                            یادداشت نتیجه: {referral.result_note}
                           </Typography>
                         ) : null}
-                        {!['done', 'canceled'].includes(referral.status) ? (
-                          <Button size="small" variant="text" sx={{ mt: 0.4, fontSize: 11 }}
-                            onClick={() => referralDone.mutate({
-                              id: referral.id,
-                              result_note: 'اقدام انجام شد.',
-                            })}>
-                            ثبت اقدام انجام‌شده
-                          </Button>
-                        ) : null}
+
+                        <Stack direction="row" alignItems="center" spacing={1} useFlexGap flexWrap="wrap"
+                          sx={{ mt: 0.6 }}>
+                          {referral.answered_on ? (
+                            <Typography sx={{ fontSize: 9.5, color: MUTED }}>
+                              پاسخ در {dateLabel(referral.answered_on)}
+                              {referral.answered_by_name ? ` توسط ${referral.answered_by_name}` : ''}
+                            </Typography>
+                          ) : null}
+                          {!['done', 'canceled'].includes(referral.status) ? (
+                            <Button size="small" variant="contained" startIcon={<TaskAltIcon />}
+                              onClick={() => setCompleteReferral(referral)}
+                              sx={{ fontSize: 10.5, py: 0.2, bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}>
+                              ثبت پاسخ و نتیجه
+                            </Button>
+                          ) : null}
+                        </Stack>
                       </Box>
                     );
                   }) : (
@@ -1400,7 +1814,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             </Box>
           </Box>
         ) : null}
-      </Drawer>
+      </Dialog>
 
       <LetterFormDialog
         open={formOpen}
@@ -1412,6 +1826,14 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         contacts={contacts}
         onClose={() => { setFormOpen(false); setFormLetter(null); }}
         onSaved={(letter) => setDrawerLetter(letter)}
+      />
+
+      <CompleteReferralDialog
+        open={Boolean(completeReferral)}
+        referral={completeReferral}
+        pending={referralComplete.isPending}
+        onClose={() => setCompleteReferral(null)}
+        onSubmit={(payload) => referralComplete.mutate({ id: completeReferral.id, payload })}
       />
 
       <ReferDialog

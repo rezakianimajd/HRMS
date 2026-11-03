@@ -286,6 +286,13 @@ class Letter(BaseModel):
         ('confidential', _('محرمانه')),
         ('secret', _('سری')),
     ]
+    ENTRY_METHODS = [
+        ('automation', _('اتوماسیون')),
+        ('manual', _('دستی')),
+        ('email', _('پست الکترونیک')),
+        ('post', _('پست / مرسوله')),
+        ('other', _('سایر')),
+    ]
 
     direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES, verbose_name=_('جهت'))
     number = models.CharField(max_length=60, blank=True, verbose_name=_('شماره نامه'))
@@ -310,15 +317,47 @@ class Letter(BaseModel):
     due_date = models.DateField(null=True, blank=True, verbose_name=_('مهلت پاسخ'),
                                help_text=_('برای پیگیری معوقات'))
 
+    # --- نحوهٔ ورود و دو شمارهٔ ثبت (دفتر وارده) ---
+    entry_method = models.CharField(
+        max_length=20, default='manual', choices=ENTRY_METHODS, verbose_name=_('نحوهٔ ورود'),
+    )
+    entry_time = models.TimeField(null=True, blank=True, verbose_name=_('ساعت ورود'))
+    entered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='entered_letters', verbose_name=_('ثبت‌کنندهٔ ورود'),
+    )
+    entered_by_name = models.CharField(
+        max_length=200, blank=True, verbose_name=_('نام ثبت‌کنندهٔ ورود'),
+        help_text=_('اگر ثبت‌کننده کاربر سامانه نیست'),
+    )
+    company_reg_no = models.CharField(
+        max_length=60, blank=True, verbose_name=_('شماره ثبت ورود به شرکت'),
+    )
+    company_reg_date = models.DateField(
+        null=True, blank=True, verbose_name=_('تاریخ ثبت ورود به شرکت'),
+    )
+    unit_reg_no = models.CharField(
+        max_length=60, blank=True, verbose_name=_('شماره ثبت ورود به واحد'),
+    )
+    unit_reg_date = models.DateField(
+        null=True, blank=True, verbose_name=_('تاریخ ثبت ورود به واحد'),
+    )
+    unit_name = models.CharField(max_length=150, blank=True, verbose_name=_('واحد ثبت‌کننده'))
+
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, null=True, blank=True,
-        related_name='office_letters', verbose_name=_('سازمان'),
+        related_name='office_letters', verbose_name=_('طرف حساب (سازمان)'),
     )
     correspondent = models.ForeignKey(
         Correspondent, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='letters', verbose_name=_('مخاطب'),
     )
-    sender_name = models.CharField(max_length=200, blank=True, verbose_name=_('فرستنده'))
+    sender_organization = models.ForeignKey(
+        Organization, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sent_letters', verbose_name=_('سازمان ارسال‌کننده'),
+    )
+    sender_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام ارسال‌کننده'))
+    sender_title = models.CharField(max_length=150, blank=True, verbose_name=_('سمت ارسال‌کننده'))
     receiver_name = models.CharField(max_length=200, blank=True, verbose_name=_('گیرنده'))
     drafter = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
@@ -450,10 +489,21 @@ class LetterReferral(BaseModel):
     to_name = models.CharField(max_length=200, blank=True, verbose_name=_('واحد / شخص خارج از سامانه'))
     referred_on = models.DateField(verbose_name=_('تاریخ ارجاع'))
     due_date = models.DateField(null=True, blank=True, verbose_name=_('مهلت اقدام'))
-    note = models.TextField(blank=True, verbose_name=_('دستور / توضیح'))
+    instruction = models.TextField(
+        blank=True, verbose_name=_('دستور / اقدام درخواستی'),
+        help_text=_('دستور مقام ارجاع‌دهنده به گیرندهٔ ارجاع'),
+    )
+    note = models.TextField(blank=True, verbose_name=_('توضیح ارجاع'))
     status = models.CharField(max_length=20, default='pending', choices=STATUS_CHOICES,
                               verbose_name=_('وضعیت'))
-    result_note = models.TextField(blank=True, verbose_name=_('نتیجهٔ اقدام'))
+    response = models.TextField(blank=True, verbose_name=_('پاسخ / جوابیهٔ اقدام‌کننده'))
+    result = models.TextField(blank=True, verbose_name=_('نتیجهٔ نهایی'))
+    result_note = models.TextField(blank=True, verbose_name=_('یادداشت نتیجه'))
+    answered_on = models.DateField(null=True, blank=True, verbose_name=_('تاریخ پاسخ'))
+    answered_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='answered_referrals', verbose_name=_('پاسخ‌دهنده'),
+    )
     done_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان اقدام'))
 
     class Meta:

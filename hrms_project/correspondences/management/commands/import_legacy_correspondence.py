@@ -110,6 +110,8 @@ class Command(BaseCommand):
             for key in ('letter_date', 'received_date', 'sent_date'):
                 if item.get(key):
                     item[key] = item[key].isoformat()
+            if item.get('entry_time'):
+                item['entry_time'] = item['entry_time'].isoformat()
             item['referrals'] = [
                 {
                     'to_name': referral.get('to_name'),

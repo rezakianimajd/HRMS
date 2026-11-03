@@ -197,6 +197,7 @@ class LetterAttachmentSerializer(serializers.ModelSerializer):
 class LetterReferralSerializer(serializers.ModelSerializer):
     from_user_name = serializers.SerializerMethodField()
     to_user_name = serializers.SerializerMethodField()
+    answered_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
     letter_number = serializers.CharField(source='letter.number', read_only=True)
@@ -208,10 +209,11 @@ class LetterReferralSerializer(serializers.ModelSerializer):
         model = LetterReferral
         fields = [
             'id', 'letter', 'letter_number', 'letter_subject', 'seq', 'from_user', 'from_user_name',
-            'to_user', 'to_user_name', 'to_name', 'referred_on', 'due_date', 'note', 'status',
-            'status_display', 'result_note', 'done_at', 'is_overdue', 'created_at',
+            'to_user', 'to_user_name', 'to_name', 'referred_on', 'due_date', 'instruction', 'note',
+            'status', 'status_display', 'response', 'result', 'result_note', 'answered_on',
+            'answered_by', 'answered_by_name', 'done_at', 'is_overdue', 'created_at',
         ]
-        read_only_fields = ['id', 'seq', 'referred_on', 'done_at', 'created_at',
+        read_only_fields = ['id', 'seq', 'referred_on', 'done_at', 'created_at', 'answered_by_name',
                             'from_user_name', 'to_user_name', 'status_display', 'is_overdue',
                             'letter_number', 'letter_subject']
 
@@ -226,6 +228,9 @@ class LetterReferralSerializer(serializers.ModelSerializer):
 
     def get_to_user_name(self, obj):
         return self._name(obj.to_user)
+
+    def get_answered_by_name(self, obj):
+        return self._name(obj.answered_by)
 
 
 class LetterEventSerializer(serializers.ModelSerializer):
@@ -261,6 +266,13 @@ class LetterSerializer(serializers.ModelSerializer):
     series_title = serializers.CharField(source='series.title', read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
     correspondent_name = serializers.CharField(source='correspondent.name', read_only=True)
+    sender_organization_name = serializers.CharField(
+        source='sender_organization.name', read_only=True,
+    )
+    entry_method_display = serializers.CharField(
+        source='get_entry_method_display', read_only=True,
+    )
+    entered_by_label = serializers.SerializerMethodField()
     drafter_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     reply_number = serializers.CharField(source='reply_to.number', read_only=True)
@@ -284,7 +296,11 @@ class LetterSerializer(serializers.ModelSerializer):
             'transmittal_no', 'series', 'series_title', 'category', 'category_title', 'category_color',
             'subject', 'summary', 'body',
             'letter_date', 'received_date', 'sent_date', 'due_date',
+            'entry_method', 'entry_method_display', 'entry_time', 'entered_by', 'entered_by_label',
+            'entered_by_name', 'company_reg_no', 'company_reg_date', 'unit_reg_no',
+            'unit_reg_date', 'unit_name',
             'organization', 'organization_name', 'correspondent', 'correspondent_name',
+            'sender_organization', 'sender_organization_name', 'sender_title',
             'sender_name', 'receiver_name', 'drafter', 'drafter_name', 'source_ref', 'created_by',
             'created_by_name', 'priority', 'priority_display', 'confidentiality',
             'confidentiality_display', 'status', 'status_display',
@@ -298,7 +314,8 @@ class LetterSerializer(serializers.ModelSerializer):
             'id', 'created_by', 'created_by_name', 'closed_at', 'archived_at',
             'direction_display', 'status_display', 'priority_display', 'confidentiality_display',
             'category_title', 'category_color', 'series_title', 'organization_name',
-            'correspondent_name', 'drafter_name', 'reply_number', 'source_ref', 'attachment_count',
+            'correspondent_name', 'sender_organization_name', 'entry_method_display',
+            'entered_by_label', 'drafter_name', 'reply_number', 'source_ref', 'attachment_count',
             'referral_count', 'reply_count', 'pending_referrals', 'last_referral',
             'is_overdue', 'days_to_due', 'created_at', 'updated_at',
         ]
@@ -308,6 +325,9 @@ class LetterSerializer(serializers.ModelSerializer):
         if not user:
             return ''
         return user.get_full_name() or user.get_username()
+
+    def get_entered_by_label(self, obj):
+        return obj.entered_by_name or self._user_name(obj.entered_by)
 
     def get_drafter_name(self, obj):
         return obj.drafter_name or self._user_name(obj.drafter)

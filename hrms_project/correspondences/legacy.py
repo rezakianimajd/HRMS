@@ -9,7 +9,7 @@
    `source_ref` داده‌ها را به‌صورت تکرارناپذیر وارد می‌کند.
 """
 import re
-from datetime import date, datetime
+from datetime import date, datetime, time
 from decimal import Decimal, InvalidOperation
 
 import openpyxl
@@ -123,6 +123,26 @@ def strip_time(value):
     return text.strip(' -')
 
 
+TIME_VALUE = re.compile(r'(?<!\d)(\d{1,2}):(\d{2})(?!\d)')
+
+
+def parse_entry_time(value):
+    """از ستون «ساعت» هم ساعت ورود و هم نام ثبت‌کننده را بیرون می‌کشد."""
+    text = clean_text(value)
+    if not text:
+        return None, ''
+    match = TIME_VALUE.search(text)
+    if match:
+        hour, minute = int(match.group(1)), int(match.group(2))
+        if 0 <= hour <= 23 and 0 <= minute <= 59:
+            person = clean_text(f'{text[:match.start()]} {text[match.end():]}').strip(' -')
+            return time(hour, minute), person
+        return None, ''
+    if text.isdigit() and len(text) <= 2 and int(text) <= 23:
+        return time(int(text), 0), ''
+    return None, text
+
+
 def first_date(*values):
     for value in values:
         parsed = parse_jalali(value)
@@ -164,6 +184,7 @@ def parse_incoming_row(row, excel_row):
     number = _text(row, 4)
     if not subject and not number:
         return None
+    entry_time, entered_by = parse_entry_time(_cell(row, 0))
     referrals = []
     for target_col, date_col in REFERRAL_SLOTS:
         target = _text(row, target_col)
@@ -180,6 +201,9 @@ def parse_incoming_row(row, excel_row):
         'subject': subject or f'نامه وارده شماره {number}',
         'letter_date': letter_date,
         'received_date': received,
+        'entry_method': 'manual',
+        'entry_time': entry_time,
+        'entered_by_name': entered_by,
         'sender_name': _text(row, 8),
         'receiver_name': _text(row, 9),
         'organization_name': _text(row, 5),
@@ -304,6 +328,7 @@ def parse_bank_row(row, excel_row):
         return None
     party = _text(row, 5)
     note = strip_time(_cell(row, 1))
+    entry_time, entered_by = parse_entry_time(_cell(row, 1))
     tags = [_row_tag('bank', excel_row)]
     if note:
         tags.append(f'legacy-time:{note}')
@@ -314,6 +339,9 @@ def parse_bank_row(row, excel_row):
         'subject': description or f'مکاتبه بانکی شماره {number}',
         'letter_date': first_date(_cell(row, 3), _cell(row, 2)),
         'received_date': parse_jalali(_cell(row, 2)),
+        'entry_method': 'manual',
+        'entry_time': entry_time,
+        'entered_by_name': entered_by or note,
         'organization_name': party,
         'receiver_name': note,
         'summary': description,
@@ -469,6 +497,12 @@ def load_bundle(path):
                 item['amount'] = Decimal(str(amount))
             except InvalidOperation:
                 item['amount'] = None
+        entry_time = item.get('entry_time')
+        if entry_time:
+            try:
+                item['entry_time'] = time.fromisoformat(str(entry_time))
+            except ValueError:
+                item['entry_time'] = None
         referrals = []
         for referral in item.get('referrals') or []:
             referred_on = referral.get('referred_on')
@@ -532,6 +566,9 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
             letter_date=row['letter_date'],
             received_date=row.get('received_date'),
             sent_date=row.get('sent_date'),
+            entry_method=row.get('entry_method') or 'manual',
+            entry_time=row.get('entry_time'),
+            entered_by_name=(row.get('entered_by_name') or '')[:200],
             organization=org,
             sender_name=(row.get('sender_name') or '')[:200],
             receiver_name=(row.get('receiver_name') or '')[:200],

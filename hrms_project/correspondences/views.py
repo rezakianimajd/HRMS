@@ -241,16 +241,17 @@ class LetterViewSet(BaseLetterViewSet):
     queryset = Letter.objects.all()
     search_fields = [
         'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject', 'summary',
-        'sender_name', 'receiver_name', 'drafter_name', 'contract_number', 'organization__name',
-        'correspondent__name',
+        'sender_name', 'sender_title', 'receiver_name', 'drafter_name', 'contract_number',
+        'company_reg_no', 'unit_reg_no', 'unit_name',
+        'organization__name', 'correspondent__name', 'sender_organization__name',
     ]
     ordering_fields = ['letter_date', 'created_at', 'due_date', 'priority', 'status', 'number']
     ordering = ['-letter_date', '-id']
 
     def get_queryset(self):
         qs = super().get_queryset().select_related(
-            'organization', 'correspondent', 'category', 'series', 'drafter', 'created_by',
-            'reply_to',
+            'organization', 'sender_organization', 'correspondent', 'category', 'series',
+            'drafter', 'created_by', 'entered_by', 'reply_to',
         ).prefetch_related('attachments', 'referrals', 'events', 'replies')
         params = self.request.query_params
         user = getattr(self.request, 'user', None)
@@ -260,10 +261,14 @@ class LetterViewSet(BaseLetterViewSet):
             qs = qs.filter(direction=direction)
 
         for field in ('category', 'series', 'priority', 'confidentiality', 'organization',
-                      'correspondent'):
+                      'correspondent', 'sender_organization'):
             value = params.get(field)
             if value:
                 qs = qs.filter(**{f'{field}_id': value})
+
+        entry_method = params.get('entry_method')
+        if entry_method:
+            qs = qs.filter(entry_method=entry_method)
 
         status_param = params.get('status')
         if status_param:
@@ -378,7 +383,7 @@ class LetterViewSet(BaseLetterViewSet):
 
     @action(detail=True, methods=['post'])
     def refer(self, request, pk=None):
-        """ارجاع نامه به کاربر/واحد با مهلت اقدام و یادداشت."""
+        """ارجاع نامه به کاربر/واحد همراه با دستور، مهلت اقدام و توضیح."""
         letter = self.get_object()
         to_user_id = request.data.get('to_user') or None
         to_name = (request.data.get('to_name') or '').strip()
@@ -397,25 +402,29 @@ class LetterViewSet(BaseLetterViewSet):
         due_date = request.data.get('due_date') or None
         if isinstance(due_date, str) and not due_date.strip():
             due_date = None
+        instruction = (request.data.get('instruction') or '').strip()
+        note = (request.data.get('note') or '').strip()
         last_seq = letter.referrals.order_by('-seq').values_list('seq', flat=True).first() or 0
         referral = LetterReferral.objects.create(
             company=company, letter=letter, seq=last_seq + 1,
             from_user=request.user, to_user=to_user, to_name=to_name,
             referred_on=date_cls.today(), due_date=due_date or None,
-            note=request.data.get('note') or '', status='pending',
+            instruction=instruction, note=note, status='pending',
         )
         if letter.status in ('draft', 'registered'):
             letter.status = 'in_progress'
         letter.save(update_fields=['status', 'updated_at'])
         _log_event(
             letter, 'referred', request.user,
-            note=request.data.get('note') or '',
-            meta={'to': _user_name(to_user) or to_name, 'due_date': str(due_date or '')},
+            note=instruction or note,
+            meta={'to': _user_name(to_user) or to_name, 'due_date': str(due_date or ''),
+                  'instruction': instruction, 'note': note},
         )
         return Response({
             'letter': self.get_serializer(letter).data,
             'referral': LetterReferralSerializer(referral, context={'request': request}).data,
         }, status=http_status.HTTP_201_CREATED)
+
 
     @action(detail=True, methods=['post'])
     def reply(self, request, pk=None):
@@ -658,6 +667,9 @@ class LetterViewSet(BaseLetterViewSet):
             'confidentialities': [
                 {'value': v, 'label': l} for v, l in Letter.CONFIDENTIALITY_CHOICES
             ],
+            'entry_methods': [
+                {'value': v, 'label': l} for v, l in Letter.ENTRY_METHODS
+            ],
             'categories': LetterCategorySerializer(
                 LetterCategory.objects.filter(company=company, is_active=True), many=True,
             ).data if company else [],
@@ -692,7 +704,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
     ordering = ['-referred_on', '-id']
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('letter', 'from_user', 'to_user')
+        qs = super().get_queryset().select_related('letter', 'from_user', 'to_user', 'answered_by')
         params = self.request.query_params
         user = getattr(self.request, 'user', None)
         if _truthy(params.get('mine')) and user and user.is_authenticated:
@@ -719,17 +731,60 @@ class LetterReferralViewSet(BaseLetterViewSet):
     def perform_update(self, serializer):
         referral = serializer.instance
         previous_status = referral.status
-        new_status = serializer.validated_data.get('status', previous_status)
+        data = serializer.validated_data
+        new_status = data.get('status', previous_status)
+        extra = {}
+        if data.get('response') or data.get('result'):
+            extra.setdefault('answered_by', self.request.user)
+            extra.setdefault('answered_on', date_cls.today())
+            if previous_status not in ('done', 'returned', 'canceled'):
+                extra['status'] = new_status = 'done'
         if new_status in ('done', 'returned') and not referral.done_at:
-            serializer.save(done_at=timezone.now())
-        else:
-            serializer.save()
-        if new_status != previous_status:
+            extra['done_at'] = timezone.now()
+        serializer.save(**extra)
+        changed = new_status != previous_status or extra.get('answered_by')
+        if changed:
+            summary = '، '.join(
+                part for part in (
+                    f'وضعیت: {new_status}' if new_status != previous_status else '',
+                    f'پاسخ: {data.get("response")}' if data.get('response') else '',
+                    f'نتیجه: {data.get("result")}' if data.get('result') else '',
+                ) if part
+            )
             _log_event(
                 referral.letter, 'referral_done', self.request.user,
-                note=f'وضعیت ارجاع: {new_status}',
+                note=summary[:500],
                 meta={'referral_id': referral.id, 'status': new_status},
             )
+
+    @action(detail=True, methods=['post'])
+    def complete(self, request, pk=None):
+        """ثبت پاسخ و نتیجهٔ یک ارجاع (اقدام انجام‌شده)."""
+        referral = self.get_object()
+        response = (request.data.get('response') or '').strip()
+        result = (request.data.get('result') or '').strip()
+        result_note = (request.data.get('result_note') or '').strip()
+        if not response and not result and not result_note:
+            return Response(
+                {'detail': 'حداقل پاسخ یا نتیجهٔ اقدام را وارد کنید.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        answered_on = request.data.get('answered_on') or date_cls.today().isoformat()
+        referral.response = response
+        referral.result = result
+        if result_note:
+            referral.result_note = result_note
+        referral.answered_on = answered_on
+        referral.answered_by = request.user if getattr(request.user, 'is_authenticated', False) else None
+        referral.status = 'done'
+        referral.done_at = timezone.now()
+        referral.save()
+        _log_event(
+            referral.letter, 'referral_done', request.user,
+            note=(result or response or result_note)[:500],
+            meta={'referral_id': referral.id, 'action': 'complete', 'answered_on': str(answered_on)},
+        )
+        return Response(LetterReferralSerializer(referral, context={'request': request}).data)
 
 
 class LetterAttachmentViewSet(BaseLetterViewSet):
