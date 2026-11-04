@@ -276,6 +276,26 @@ test('drafts page shows its own professional header', async () => {
   container.remove();
 });
 
+test('letters table supports grid-style inline row editing', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  const editButton = container.querySelector('[aria-label="ویرایش ردیف"]');
+  expect(editButton).toBeTruthy();
+  await act(async () => {
+    editButton.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(220);
+  });
+
+  expect(container.querySelector('[aria-label="ذخیرهٔ ردیف"]')).toBeTruthy();
+  expect(container.querySelector('[aria-label="انصراف از ویرایش"]')).toBeTruthy();
+  expect(container.textContent).toContain('ذخیرهٔ تغییرات');
+  // ورودی‌های درجا داخل همان ردیف ظاهر می‌شوند
+  expect(container.querySelectorAll('tbody input').length).toBeGreaterThan(3);
+
+  root.unmount();
+  container.remove();
+});
+
 test('workdesk page renders cartable counters, referrals and actions', async () => {
   const { container, root } = await renderPage(<CorrespondenceWorkdeskPage />);
 

@@ -4,10 +4,12 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import axiosInstance from '../../api/axiosConfig';
 import {
-  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Collapse, Menu, MenuItem,
+  Box, Drawer, Divider, Typography, Avatar, IconButton, Tooltip, Collapse, Menu, MenuItem, Badge,
 } from '@mui/material';
 import { alpha } from '@mui/material/styles';
 import BusinessIcon from '@mui/icons-material/Business';
+import MoveToInboxOutlinedIcon from '@mui/icons-material/MoveToInboxOutlined';
+import { toPersianDigits } from '../../utils/numberUtils';
 import LogoutIcon from '@mui/icons-material/Logout';
 import SettingsIcon from '@mui/icons-material/Settings';
 import SearchIcon from '@mui/icons-material/Search';
@@ -184,6 +186,7 @@ const groupIcon = (id) => GROUP_ICONS[id] || <FolderOutlinedIcon />;
 
 // رنگ یک‌دست آیکون‌های سایدبار (خاکستری تیره در تم روشن و خاکستری روشن در تم تاریک)
 const ICON_COLOR = 'text.secondary';
+const WORKDESK_ACCENT = '#0f766e';
 
 /**
  * چیدمان اصلی برنامه با سایدبار دوستونهٔ سفید:
@@ -258,6 +261,27 @@ const Layout = ({ children }) => {
     queryFn: () => axiosInstance.get('/settings/company-profile/').then(r => r.data).catch(() => null),
     staleTime: 0,
   });
+
+  /**
+   * کارتابل شخصی: فضای هر کاربر برای نامه‌های ارجاع‌شده به خودش.
+   * این میان‌بر مستقل از ماژول فعال است تا کاربرانی که به ماژول مکاتبات
+   * دسترسی ندارند هم فقط ارجاعات خودشان را ببینند.
+   */
+  const workdeskActive = location.pathname === '/my-workdesk'
+    || location.pathname.startsWith('/my-workdesk/');
+  const { data: workdeskCounts } = useQuery({
+    queryKey: ['workdesk-rail-counts'],
+    queryFn: () => axiosInstance
+      .get('/letter-referrals/cartable/', { params: { limit: 1, status: 'open' } })
+      .then((response) => response.data?.counts || {})
+      .catch(() => ({})),
+    enabled: Boolean(user),
+    staleTime: 60000,
+    refetchInterval: 120000,
+    retry: false,
+  });
+  const unseenReferrals = Number(workdeskCounts?.unseen || 0);
+  const openReferrals = Number(workdeskCounts?.pending || 0);
 
   // آیا مسیر آیتم با آدرس جاری (شامل کوئری) هم‌خوانی دارد؟
   const pathMatches = (path) => {
@@ -335,7 +359,13 @@ const Layout = ({ children }) => {
     await logout();
   };
 
+  // مسیرهای شخصی که در منوی ماژول‌ها نیستند ولی باید عنوان/رنگ داشته باشند.
+  const EXTRA_ROUTE_META = {
+    '/my-workdesk': { title: 'کارتابل من', color: WORKDESK_ACCENT },
+  };
+
   const findMenuMeta = (path) => {
+    if (EXTRA_ROUTE_META[path]) return EXTRA_ROUTE_META[path];
     const allMenus = [menu, menuConfig];
     for (const m of allMenus) {
       for (const g of m) {
@@ -566,6 +596,45 @@ const Layout = ({ children }) => {
             sx={{ color: ICON_COLOR }}
           >
             <SearchIcon sx={{ fontSize: 20 }} />
+          </IconButton>
+        </Tooltip>
+
+        {/* فضای شخصی هر کاربر: نامه‌های ارجاع‌شده به خودش */}
+        <Tooltip
+          title={openReferrals
+            ? `کارتابل من — ${toPersianDigits(openReferrals)} ارجاع باز`
+            : 'کارتابل من'}
+          placement="left"
+          arrow
+        >
+          <IconButton
+            size="small"
+            onClick={() => navigateTo('/my-workdesk')}
+            aria-label="کارتابل من"
+            aria-current={workdeskActive ? 'page' : undefined}
+            sx={{
+              mt: 0.35,
+              color: workdeskActive ? WORKDESK_ACCENT : ICON_COLOR,
+              bgcolor: workdeskActive ? alpha(WORKDESK_ACCENT, 0.12) : 'transparent',
+              border: '1px solid',
+              borderColor: workdeskActive ? alpha(WORKDESK_ACCENT, 0.35) : 'transparent',
+              '&:hover': { bgcolor: alpha(WORKDESK_ACCENT, 0.08), color: WORKDESK_ACCENT },
+            }}
+          >
+            <Badge
+              color="error"
+              badgeContent={unseenReferrals}
+              max={99}
+              invisible={!unseenReferrals}
+              sx={{
+                '& .MuiBadge-badge': {
+                  fontSize: 9, height: 15, minWidth: 15, px: 0.4, fontWeight: 900,
+                  border: '2px solid', borderColor: 'var(--hrms-region-sidebar-bg, #ffffff)',
+                },
+              }}
+            >
+              <MoveToInboxOutlinedIcon sx={{ fontSize: 20 }} />
+            </Badge>
           </IconButton>
         </Tooltip>
         <NotificationBell compact iconColor={ICON_COLOR} />

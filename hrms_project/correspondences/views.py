@@ -215,6 +215,16 @@ def _employee_of_user(user, company):
     return qs.first()
 
 
+def _user_of_employee(employee):
+    """کاربر سامانه‌ای که به این پرسنل وصل است (UserProfile.employee_id)."""
+    if not employee:
+        return None
+    from core.models import UserProfile
+
+    profile = UserProfile.objects.filter(employee_id=employee.id).select_related('user').first()
+    return profile.user if profile and profile.user else None
+
+
 def _create_referral(letter, request, parent=None):
     """ارجاع نامه از روی داده‌های درخواست. خروجی: (referral, error_response)."""
     data = request.data
@@ -247,6 +257,9 @@ def _create_referral(letter, request, parent=None):
                                   status=http_status.HTTP_400_BAD_REQUEST)
     if not to_employee and to_user:
         to_employee = _employee_of_user(to_user, company)
+    if to_employee and not to_user:
+        # اتصال به کاربر سامانه تا ارجاع در «کارتابل من» همان کاربر دیده شود.
+        to_user = _user_of_employee(to_employee)
     purpose = data.get('purpose') or 'action'
     if purpose not in dict(LetterReferral.PURPOSES):
         purpose = 'action'
@@ -926,6 +939,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
         company = _get_company(self.request)
         employee = _user_employee(user, company)
         if _truthy(params.get('mine')) and user and user.is_authenticated:
+            employee = _user_employee(user, company) or _employee_of_user(user, company)
             qs = qs.filter(Q(to_user=user) | (Q(to_employee=employee) if employee else Q(pk__in=[])))
         letter_id = params.get('letter')
         if letter_id:
@@ -956,7 +970,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
         user = getattr(request, 'user', None)
         if not user or not user.is_authenticated:
             return Response({'counts': {}, 'results': [], 'total': 0})
-        employee = _user_employee(user, company)
+        employee = _user_employee(user, company) or _employee_of_user(user, company)
         base = LetterReferral.objects.filter(
             company=company, letter__is_active=True,
         ).select_related(

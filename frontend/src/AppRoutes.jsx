@@ -226,6 +226,7 @@ const AppRoutes = () => {
       <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
       <Route path="/correspondence" element={<ProtectedLayout><CorrespondenceDashboardPage /></ProtectedLayout>} />
       <Route path="/correspondence/letters" element={<ProtectedLayout><CorrespondenceLettersPage mode="all" /></ProtectedLayout>} />
+      <Route path="/my-workdesk" element={<ProtectedLayout><CorrespondenceWorkdeskPage /></ProtectedLayout>} />
       <Route path="/correspondence/workdesk" element={<ProtectedLayout><CorrespondenceWorkdeskPage /></ProtectedLayout>} />
       <Route path="/correspondence/incoming" element={<ProtectedLayout><CorrespondenceLettersPage mode="incoming" /></ProtectedLayout>} />
       <Route path="/correspondence/outgoing" element={<ProtectedLayout><CorrespondenceLettersPage mode="outgoing" /></ProtectedLayout>} />

@@ -68,7 +68,6 @@ import NumbersIcon from '@mui/icons-material/Numbers';
 import GridViewIcon from '@mui/icons-material/GridView';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
-import AssignmentIndIcon from '@mui/icons-material/AssignmentInd';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import PlaylistAddIcon from '@mui/icons-material/PlaylistAdd';
 import CalendarViewMonthIcon from '@mui/icons-material/CalendarViewMonth';
@@ -819,15 +818,6 @@ const correspondenceMenu = [
     color: '#0ea5e9',
     items: [
       { id: 'correspondence-dashboard', title: 'داشبورد مکاتبات', icon: <DashboardIcon />, path: '/correspondence', color: '#0ea5e9', primary: true, ready: true },
-    ],
-  },
-  {
-    id: 'correspondence-workdesk',
-    title: 'کارتابل و درخواست‌ها',
-    color: '#f59e0b',
-    items: [
-      { id: 'correspondence-my-workdesk', title: 'کارتابل من', icon: <AssignmentIndIcon />, path: '/correspondence/workdesk', color: '#f59e0b', primary: true, ready: true },
-      { id: 'correspondence-my-requests', title: 'درخواست‌های من', icon: <PlaylistAddCheckIcon />, path: '/correspondence/workdesk?tab=requests', color: '#7c3aed', primary: false, ready: true },
     ],
   },
   {

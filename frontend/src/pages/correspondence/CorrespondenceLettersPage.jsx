@@ -22,6 +22,7 @@ import MailOutlineIcon from '@mui/icons-material/MailOutline';
 import PrintOutlinedIcon from '@mui/icons-material/PrintOutlined';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import ReplyIcon from '@mui/icons-material/Reply';
+import SaveIcon from '@mui/icons-material/Save';
 import SendIcon from '@mui/icons-material/Send';
 import TaskAltIcon from '@mui/icons-material/TaskAlt';
 import VisibilityOutlinedIcon from '@mui/icons-material/VisibilityOutlined';
@@ -210,10 +211,19 @@ const inlineSx = {
   '& .MuiAutocomplete-inputRoot': { py: 0.25, px: 0.25 },
 };
 
-const InlineText = ({ value, onChange, placeholder, align = 'right' }) => (
+const InlineText = ({ value, onChange, placeholder, align = 'right', onEnter, onEscape }) => (
   <TextField
     value={value ?? ''}
     onChange={(event) => onChange(event.target.value)}
+    onKeyDown={(event) => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        onEnter?.();
+      } else if (event.key === 'Escape') {
+        event.preventDefault();
+        onEscape?.();
+      }
+    }}
     size="small"
     variant="standard"
     fullWidth
@@ -224,7 +234,7 @@ const InlineText = ({ value, onChange, placeholder, align = 'right' }) => (
   />
 );
 
-const InlineSelect = ({ value, onChange, options }) => (
+const InlineSelect = ({ value, onChange, options, onEscape }) => (
   <TextField
     select
     size="small"
@@ -232,6 +242,12 @@ const InlineSelect = ({ value, onChange, options }) => (
     fullWidth
     value={value ?? ''}
     onChange={(event) => onChange(event.target.value)}
+    onKeyDown={(event) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onEscape?.();
+      }
+    }}
     InputProps={{ disableUnderline: true }}
     sx={inlineSx}
   >
@@ -242,10 +258,11 @@ const InlineSelect = ({ value, onChange, options }) => (
   </TextField>
 );
 
-const InlineDate = ({ value, onChange }) => (
+const InlineDate = ({ value, onChange, onEnter }) => (
   <JalaliMaskedDateInput
     value={value || ''}
     onChange={(next) => onChange(next || '')}
+    onEnter={onEnter}
     variant="standard"
     sx={inlineSx}
   />
@@ -1091,97 +1108,188 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     refetchReferrals();
   };
 
-  /* ---------- ویرایش درجا در جدول ---------- */
-  const [inlineEdit, setInlineEdit] = useState(false);
-  const [editingId, setEditingId] = useState(null);
-  const [draft, setDraft] = useState({});
-  const [savingRow, setSavingRow] = useState(false);
+  /* ---------- ویرایش درجا در جدول (الگوی گرید ورود اطلاعات) ---------- */
+  const [editRowId, setEditRowId] = useState(null);
+  const [drafts, setDrafts] = useState({});
+  const [savingIds, setSavingIds] = useState([]);
+  const [bulkSaving, setBulkSaving] = useState(false);
 
-  const cancelRowEdit = () => {
-    setEditingId(null);
-    setDraft({});
-  };
+  const EDITABLE_FIELDS = [
+    'number', 'indicator_no', 'transmittal_no', 'external_number',
+    'company_reg_no', 'company_reg_date', 'unit_reg_no', 'unit_reg_date', 'unit_name',
+    'subject', 'category', 'delivery_type', 'entry_method', 'entry_time',
+    'delivered_by', 'delivered_by_name',
+    'sender_employee', 'sender_name', 'sender_title', 'sender_party',
+    'party_account', 'receiver_employee', 'receiver_name',
+    'letter_date', 'due_date', 'priority', 'status',
+  ];
+  const NULLABLE_FIELDS = [
+    'category', 'sender_employee', 'receiver_employee', 'sender_party', 'party_account',
+    'delivered_by', 'company_reg_date', 'unit_reg_date', 'due_date', 'entry_time',
+  ];
 
-  const toggleInlineEdit = () => {
-    setInlineEdit((previous) => {
-      if (previous) cancelRowEdit();
-      return !previous;
+  const seedDraft = (letter) => ({
+    number: letter.number || '',
+    indicator_no: letter.indicator_no || '',
+    transmittal_no: letter.transmittal_no || '',
+    external_number: letter.external_number || '',
+    company_reg_no: letter.company_reg_no || '',
+    company_reg_date: safeDate(letter.company_reg_date),
+    unit_reg_no: letter.unit_reg_no || '',
+    unit_reg_date: safeDate(letter.unit_reg_date),
+    unit_name: letter.unit_name || '',
+    subject: letter.subject || '',
+    category: letter.category || '',
+    delivery_type: letter.delivery_type || 'in_person',
+    entry_method: letter.entry_method || 'manual',
+    entry_time: letter.entry_time ? String(letter.entry_time).slice(0, 5) : '',
+    delivered_by: letter.delivered_by || '',
+    delivered_by_name: letter.delivered_by_name || '',
+    sender_employee: letter.sender_employee || '',
+    sender_name: letter.sender_name || '',
+    sender_title: letter.sender_title || '',
+    sender_party: letter.sender_party || '',
+    party_account: letter.party_account || '',
+    receiver_employee: letter.receiver_employee || '',
+    receiver_name: letter.receiver_name || '',
+    letter_date: safeDate(letter.letter_date),
+    due_date: safeDate(letter.due_date),
+    priority: letter.priority || 'normal',
+    status: letter.status || 'registered',
+  });
+
+  /** فقط تفاوت‌های ردیف با مقادیر اصلی به سرور فرستاده می‌شود (PATCH سبک). */
+  const buildPatch = (letter, draftValues) => {
+    const original = seedDraft(letter);
+    const payload = {};
+    EDITABLE_FIELDS.forEach((key) => {
+      const next = draftValues[key] ?? '';
+      const before = original[key] ?? '';
+      if (String(next) === String(before)) return;
+      if (next === '') {
+        if (!NULLABLE_FIELDS.includes(key)) return;
+        payload[key] = null;
+        return;
+      }
+      payload[key] = next;
     });
+    return payload;
   };
+
+  const letterById = (id) => letters.find((row) => row.letter.id === id)?.letter || null;
 
   const startRowEdit = (letter) => {
-    setEditingId(letter.id);
-    setDraft({
-      number: letter.number || '',
-      indicator_no: letter.indicator_no || '',
-      transmittal_no: letter.transmittal_no || '',
-      external_number: letter.external_number || '',
-      company_reg_no: letter.company_reg_no || '',
-      company_reg_date: safeDate(letter.company_reg_date),
-      unit_reg_no: letter.unit_reg_no || '',
-      unit_reg_date: safeDate(letter.unit_reg_date),
-      unit_name: letter.unit_name || '',
-      subject: letter.subject || '',
-      category: letter.category || '',
-      delivery_type: letter.delivery_type || 'in_person',
-      entry_method: letter.entry_method || 'manual',
-      entry_time: letter.entry_time ? String(letter.entry_time).slice(0, 5) : '',
-      delivered_by: letter.delivered_by || '',
-      delivered_by_name: letter.delivered_by_name || '',
-      sender_employee: letter.sender_employee || '',
-      sender_name: letter.sender_name || '',
-      sender_title: letter.sender_title || '',
-      sender_party: letter.sender_party || '',
-      party_account: letter.party_account || '',
-      receiver_employee: letter.receiver_employee || '',
-      receiver_name: letter.receiver_name || '',
-      letter_date: safeDate(letter.letter_date),
-      due_date: safeDate(letter.due_date),
-      priority: letter.priority || 'normal',
-      status: letter.status || 'registered',
-    });
+    setDrafts((previous) => (previous[letter.id] ? previous : {
+      ...previous,
+      [letter.id]: seedDraft(letter),
+    }));
+    setEditRowId(letter.id);
   };
 
-  const patchDraft = (key) => (value) => setDraft((previous) => ({ ...previous, [key]: value }));
+  const patchDraft = (key) => (value) => setDrafts((previous) => {
+    if (!editRowId) return previous;
+    const current = previous[editRowId] || seedDraft(letterById(editRowId) || {});
+    return { ...previous, [editRowId]: { ...current, [key]: value } };
+  });
 
-  const saveRowEdit = async () => {
-    if (!editingId) return;
-    setSavingRow(true);
-    setError('');
+  const discardRow = (id) => {
+    setDrafts((previous) => {
+      const next = { ...previous };
+      delete next[id];
+      return next;
+    });
+    setEditRowId((previous) => (previous === id ? null : previous));
+  };
+
+  const discardAll = () => {
+    setDrafts({});
+    setEditRowId(null);
+  };
+
+  const applyPatch = async (id) => {
+    const letter = letterById(id);
+    const draftValues = drafts[id];
+    if (!letter || !draftValues) return { id, ok: false, empty: true };
+    const payload = buildPatch(letter, draftValues);
+    if (!Object.keys(payload).length) {
+      discardRow(id);
+      return { id, ok: true, empty: true };
+    }
+    setSavingIds((previous) => (previous.includes(id) ? previous : [...previous, id]));
     try {
-      const payload = {};
-      Object.entries(draft).forEach(([key, value]) => {
-        if (value === '' || value === null || value === undefined) return;
-        payload[key] = value;
+      await axiosInstance.patch(`/letters/${id}/`, payload);
+      setDrafts((previous) => {
+        const next = { ...previous };
+        delete next[id];
+        return next;
       });
-      const nullable = ['sender_employee', 'receiver_employee', 'sender_party', 'party_account',
-        'delivered_by', 'category'];
-      nullable.forEach((key) => {
-        if (!payload[key]) payload[key] = null;
-      });
-      ['company_reg_date', 'unit_reg_date', 'due_date'].forEach((key) => {
-        if (!payload[key]) payload[key] = null;
-      });
-      if (!payload.letter_date) payload.letter_date = safeDate(
-        letters.find((row) => row.letter.id === editingId)?.letter?.letter_date,
-      );
-      await axiosInstance.patch(`/letters/${editingId}/`, payload);
-      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-      refreshAll();
-      setToast('تغییرات ردیف ذخیره شد.');
-      cancelRowEdit();
+      return { id, ok: true, empty: false };
     } catch (requestError) {
       const details = requestError?.response?.data;
       const firstError = details && typeof details === 'object'
-        ? Object.entries(details).map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(' ') : value}`)[0]
+        ? Object.entries(details)
+          .map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(' ') : value}`)[0]
         : '';
       setError(firstError || details?.detail || 'ذخیرهٔ تغییرات ردیف ممکن نشد.');
+      return { id, ok: false, empty: false };
     } finally {
-      setSavingRow(false);
+      setSavingIds((previous) => previous.filter((item) => item !== id));
     }
   };
 
-  const rowEditing = (letter) => inlineEdit && editingId === letter.id;
+  const afterSave = (saved, failed) => {
+    if (!saved && !failed) return;
+    qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
+    refreshAll();
+    if (!saved) return;
+    setToast(failed
+      ? `${toPersianDigits(saved)} ردیف ذخیره شد و ${toPersianDigits(failed)} ردیف خطا داشت.`
+      : `${toPersianDigits(saved)} ردیف ذخیره شد.`);
+  };
+
+  const saveRowEdit = async (id) => {
+    if (!id) return;
+    const result = await applyPatch(id);
+    if (result.ok) setEditRowId((previous) => (previous === id ? null : previous));
+    afterSave(result.ok && !result.empty ? 1 : 0, result.ok ? 0 : 1);
+  };
+
+  const saveAllEdits = async () => {
+    const ids = Object.keys(drafts).map(Number);
+    if (!ids.length) return;
+    setBulkSaving(true);
+    let saved = 0;
+    let failed = 0;
+    for (const id of ids) {
+      // eslint-disable-next-line no-await-in-loop
+      const result = await applyPatch(id);
+      if (result.ok && !result.empty) saved += 1;
+      if (!result.ok) failed += 1;
+    }
+    setBulkSaving(false);
+    setEditRowId(null);
+    afterSave(saved, failed);
+  };
+
+  const rowEditing = (letter) => editRowId === letter.id;
+  const rowDirty = (letter) => Boolean(drafts[letter.id]);
+  const dirtyCount = Object.keys(drafts).length;
+  const draft = (editRowId && drafts[editRowId]) || {};
+
+  /** کلیک تکی = پروندهٔ نامه، دوبار کلیک = ویرایش درجا (بدون باز شدن هم‌زمان پرونده). */
+  const rowClickTimer = useRef(0);
+  const handleRowClick = (row) => {
+    if (editRowId) return;
+    window.clearTimeout(rowClickTimer.current);
+    rowClickTimer.current = window.setTimeout(() => {
+      setDrawerLetter(row.letter);
+      setComment('');
+    }, 220);
+  };
+  const handleRowDoubleClick = (row) => {
+    window.clearTimeout(rowClickTimer.current);
+    startRowEdit(row.letter);
+  };
 
   const letterAction = useMutation({
     mutationFn: ({ id, action, payload }) => axiosInstance
@@ -1422,18 +1530,37 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         )}
         actions={(
           <>
-            <Tooltip title={inlineEdit
-              ? 'بستن حالت ویرایش جدول'
-              : 'ویرایش سریع ردیف‌ها داخل جدول'}>
-              <Button
-                variant={inlineEdit ? 'contained' : 'outlined'}
-                startIcon={<EditOutlinedIcon />}
-                onClick={toggleInlineEdit}
-                sx={inlineEdit ? { bgcolor: ACCENT, '&:hover': { bgcolor: alpha(ACCENT, 0.85) } } : undefined}
-              >
-                {inlineEdit ? 'پایان ویرایش جدول' : 'ویرایش در جدول'}
-              </Button>
-            </Tooltip>
+            {dirtyCount ? (
+              <>
+                <Tooltip title="ذخیرهٔ همهٔ ردیف‌های ویرایش‌شده در جدول">
+                  <span>
+                    <Button
+                      variant="contained"
+                      startIcon={<SaveIcon />}
+                      disabled={bulkSaving}
+                      onClick={saveAllEdits}
+                      sx={{ bgcolor: OK, '&:hover': { bgcolor: '#115e59' } }}
+                    >
+                      {bulkSaving
+                        ? 'در حال ذخیره…'
+                        : `ذخیرهٔ تغییرات (${toPersianDigits(dirtyCount)})`}
+                    </Button>
+                  </span>
+                </Tooltip>
+                <Button variant="text" onClick={discardAll} disabled={bulkSaving}>
+                  انصراف از ویرایش
+                </Button>
+              </>
+            ) : (
+              <Tooltip title="برای ویرایش، روی ردیف دوبار کلیک کنید (Enter: ذخیره، Esc: انصراف)">
+                <Chip
+                  size="small"
+                  icon={<EditOutlinedIcon sx={{ fontSize: 14 }} />}
+                  label="ویرایش: دوبار کلیک روی ردیف"
+                  sx={{ height: 26, fontWeight: 700, bgcolor: alpha(ACCENT, 0.08), color: ACCENT }}
+                />
+              </Tooltip>
+            )}
             <Tooltip title="به‌روزرسانی">
               <span>
                 <Button variant="outlined" disabled={isFetching} onClick={refreshAll}
@@ -1542,13 +1669,27 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         setFiltersOpen={setFiltersOpen}
       />
 
-      <Paper elevation={0} sx={{
-        borderRadius: 'var(--hrms-table-radius, 16px)',
-        overflow: 'hidden',
-        px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
-        border: '1px solid', borderColor: moduleTheme.cardBorderColor,
-        bgcolor: 'background.paper', boxShadow: 'none',
-      }}>
+      <Paper elevation={0}
+        onKeyDown={(event) => {
+          if (!editRowId) return;
+          const target = event.target;
+          if (event.key === 'Escape') {
+            event.preventDefault();
+            discardRow(editRowId);
+            return;
+          }
+          if (event.key === 'Enter' && !event.shiftKey && target?.tagName === 'INPUT') {
+            event.preventDefault();
+            saveRowEdit(editRowId);
+          }
+        }}
+        sx={{
+          borderRadius: 'var(--hrms-table-radius, 16px)',
+          overflow: 'hidden',
+          px: `${moduleTheme.cardPadX}px`, py: `${moduleTheme.cardPadY}px`,
+          border: '1px solid', borderColor: moduleTheme.cardBorderColor,
+          bgcolor: 'background.paper', boxShadow: 'none',
+        }}>
         <ModuleTable
           tableTheme={moduleTheme.tableTheme}
           ariaLabel="فهرست مکاتبات اداری"
@@ -1558,21 +1699,34 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           dimmed={isFetching}
           rows={rows}
           rowKey={(row) => row.letter.id}
-          onRowClick={(row) => {
-            if (inlineEdit) return;
-            setDrawerLetter(row.letter);
-            setComment('');
-          }}
+          onRowClick={handleRowClick}
+          rowAttributes={(row) => ({
+            onDoubleClick: (event) => {
+              event.preventDefault();
+              handleRowDoubleClick(row);
+            },
+          })}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
           minWidth={mode === 'incoming' ? 1720 : 1380}
           tableLayout="auto"
           columns={[
             {
               key: 'row', label: 'ردیف', width: '2.5%', align: 'center',
-              render: (_row, index) => (
-                <CellText weight={700} color={MUTED}>
-                  {toPersianDigits(page * pageSize + index + 1)}
-                </CellText>
+              render: (letterRow, index) => (
+                <Stack direction="row" alignItems="center" justifyContent="center" spacing={0.4}>
+                  <CellText weight={700} color={MUTED}>
+                    {toPersianDigits(page * pageSize + index + 1)}
+                  </CellText>
+                  {rowEditing(letterRow.letter) ? (
+                    <Tooltip title="در حال ویرایش">
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: ACCENT }} />
+                    </Tooltip>
+                  ) : rowDirty(letterRow.letter) ? (
+                    <Tooltip title="تغییرات ذخیره‌نشده">
+                      <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: OK }} />
+                    </Tooltip>
+                  ) : null}
+                </Stack>
               ),
             },
             {
@@ -1691,12 +1845,13 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                           label="" placeholder="پرسنل فرستنده"
                           variant="standard" size="small" sx={inlineSx}
                           value={personValue(draft.sender_employee, draft.sender_name)}
-                          onChange={(option) => setDraft((previous) => ({
-                            ...previous,
-                            sender_employee: option?.id || '',
-                            sender_name: option?.full_name || previous.sender_name,
-                            sender_title: option?.job_title || previous.sender_title,
-                          }))}
+                          onChange={(option) => {
+                            patchDraft('sender_employee')(option?.id || '');
+                            if (option) {
+                              patchDraft('sender_name')(option.full_name || '');
+                              if (option.job_title) patchDraft('sender_title')(option.job_title);
+                            }
+                          }}
                         />
                         <PartyPicker
                           label="" placeholder="طرف حساب فرستنده"
@@ -1894,22 +2049,25 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               width: mode === 'incoming' ? '4.5%' : '6.5%',
               align: 'center',
               render: (row) => {
+                const rowSaving = savingIds.includes(row.letter.id);
                 if (rowEditing(row.letter)) {
                   return (
                     <Stack direction="row" spacing={0.1} useFlexGap justifyContent="center"
                       onClick={(event) => event.stopPropagation()}>
-                      <Tooltip title="ذخیرهٔ ردیف">
+                      <Tooltip title="ذخیرهٔ ردیف (Enter)">
                         <span>
-                          <IconButton size="small" disabled={savingRow} onClick={saveRowEdit}
+                          <IconButton size="small" disabled={rowSaving}
+                            onClick={() => saveRowEdit(row.letter.id)}
                             aria-label="ذخیرهٔ ردیف">
-                            {savingRow
+                            {rowSaving
                               ? <CircularProgress size={14} />
                               : <CheckCircleOutlineIcon sx={{ fontSize: 16, color: OK }} />}
                           </IconButton>
                         </span>
                       </Tooltip>
-                      <Tooltip title="انصراف از ویرایش">
-                        <IconButton size="small" onClick={cancelRowEdit} aria-label="انصراف از ویرایش">
+                      <Tooltip title="انصراف از ویرایش (Esc)">
+                        <IconButton size="small" aria-label="انصراف از ویرایش"
+                          onClick={() => discardRow(row.letter.id)}>
                           <CloseIcon sx={{ fontSize: 16 }} />
                         </IconButton>
                       </Tooltip>
@@ -1919,14 +2077,21 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 return (
                 <Stack direction="row" spacing={0.1} useFlexGap justifyContent="center"
                   onClick={(event) => event.stopPropagation()}>
-                  {inlineEdit ? (
-                    <Tooltip title="ویرایش این ردیف">
+                  <Tooltip title={rowDirty(row.letter) ? 'ادامهٔ ویرایش (تغییرات ذخیره‌نشده)' : 'ویرایش این ردیف'}>
+                    <span>
                       <IconButton size="small" aria-label="ویرایش ردیف"
+                        disabled={rowSaving}
                         onClick={() => startRowEdit(row.letter)}>
-                        <EditOutlinedIcon sx={{ fontSize: 15, color: ACCENT }} />
+                        {rowSaving
+                          ? <CircularProgress size={14} />
+                          : (
+                            <EditOutlinedIcon
+                              sx={{ fontSize: 15, color: rowDirty(row.letter) ? OK : ACCENT }}
+                            />
+                          )}
                       </IconButton>
-                    </Tooltip>
-                  ) : null}
+                    </span>
+                  </Tooltip>
                   <Tooltip title="مشاهدهٔ پرونده">
                     <IconButton size="small" aria-label="مشاهدهٔ نامه"
                       onClick={() => { setDrawerLetter(row.letter); setComment(''); }}>
