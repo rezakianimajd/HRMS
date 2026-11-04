@@ -1148,9 +1148,10 @@ class MatchOptions:
         }
 
 
-def _seasonal_records(report, direction):
+def _seasonal_records(report, direction, rows=None):
     records = []
-    for row in _rows_for(report, direction):
+    source = _rows_for(report, direction) if rows is None else rows
+    for row in source:
         name = row.name or ' '.join(part for part in [row.first_name, row.last_name] if part)
         records.append({
             'id': row.id,
@@ -1417,6 +1418,7 @@ ITEM_LABELS = {
     'amount_mismatch': 'مغایرت مبلغ',
     'missing_in_ledger': 'فقط در فصلی',
     'missing_in_seasonal': 'فقط در دفاتر',
+    'out_of_scope': 'خارج از دامنه',
 }
 
 _ITEM_ORDER = {
@@ -1425,6 +1427,7 @@ _ITEM_ORDER = {
     'missing_in_seasonal': 2,
     'missing_in_ledger': 3,
     'matched': 4,
+    'out_of_scope': 5,
 }
 
 
@@ -1503,8 +1506,14 @@ def _match_items(seasonal, ledger, options):
     return items, used_seasonal, used_ledger, records_by_id, rows_by_index
 
 
-def _summary_of(seasonal, ledger, items, used_seasonal, used_ledger, records_by_id, rows_by_index):
-    """خلاصهٔ کنترلی مغایرت‌گیری (جمع‌ها، پوشش، اختلاف‌ها، تکراری‌ها)."""
+def _summary_of(seasonal, ledger, items, used_seasonal, used_ledger, records_by_id, rows_by_index,
+                extra_ledger_used=None):
+    """خلاصهٔ کنترلی مغایرت‌گیری (جمع‌ها، پوشش، اختلاف‌ها، تکراری‌ها).
+
+    ``extra_ledger_used`` ردیف‌های دفاتری است که به ردیف‌های خارج از دامنه
+    تطبیق داده شده‌اند؛ این‌ها «فقط در دفاتر» محسوب نمی‌شوند.
+    """
+    extra_ledger_used = extra_ledger_used or set()
     seasonal_totals = _totals_of(seasonal)
     ledger_totals = _totals_of(ledger)
     matched = [item for item in items if item['kind'] in ('matched', 'difference', 'amount_mismatch')]
@@ -1522,7 +1531,13 @@ def _summary_of(seasonal, ledger, items, used_seasonal, used_ledger, records_by_
         'matched': {**_totals_of(matched_seasonal), 'average_confidence': average_confidence},
         'matched_ledger': _totals_of(matched_ledger),
         'only_in_seasonal': _totals_of([record for record in seasonal if record['id'] not in used_seasonal]),
-        'only_in_ledger': _totals_of([row for row in ledger if row['index'] not in used_ledger]),
+        'only_in_ledger': _totals_of([
+            row for row in ledger
+            if row['index'] not in used_ledger and row['index'] not in extra_ledger_used
+        ]),
+        'out_of_scope': _totals_of([
+            row for row in ledger if row['index'] in extra_ledger_used
+        ]),
         'differences': {
             'amount': sum(1 for item in matched if item['evidence'].get('amount_state') == 'different'),
             'amount_minor': sum(1 for item in matched
@@ -1547,20 +1562,47 @@ def _summary_of(seasonal, ledger, items, used_seasonal, used_ledger, records_by_
             'amount_mismatch': count_kind('amount_mismatch'),
             'missing_in_seasonal': count_kind('missing_in_seasonal'),
             'missing_in_ledger': count_kind('missing_in_ledger'),
+            'out_of_scope': count_kind('out_of_scope'),
             'errors': len([item for item in items if item['severity'] == 'error']),
             'warnings': len([item for item in items if item['severity'] == 'warning']),
         },
     }
 
 
-def reconcile(report, ledger_rows, options=None, direction=seasonal_rules.DIRECTION, source_info=None):
+def _scope_info(cleaned, total_rows, scoped_rows):
+    """اطلاعات دامنهٔ مغایرت‌گیری (برای نمایش در پاسخ و اکسل)."""
+    expression = (cleaned or {}).get('expression') or {}
+    active = bool(expression.get('items'))
+    return {
+        'active': active,
+        'expression': expression if active else {'op': 'and', 'items': []},
+        'label': describe_expression(expression) if active else 'همهٔ ردیف‌ها',
+        'total_rows': total_rows,
+        'scoped_rows': scoped_rows,
+        'excluded_rows': max(0, total_rows - scoped_rows),
+    }
+
+
+def reconcile(report, ledger_rows, options=None, direction=seasonal_rules.DIRECTION, source_info=None,
+              filters=None):
     """تطبیق ردیف‌های فصلی با فایل دفاتر و ساخت گزارش مغایرت قابل توضیح.
+
+    ``filters`` اجازه می‌دهد فقط بخشی از ردیف‌ها مغایرت‌گیری شود (مثلاً فقط
+    درج‌شده‌ها در سامانه یا فقط نوع ۲ و ۳ درج‌نشده). ردیف‌های فایل دفاتر که به
+    ردیف‌های خارج از دامنه تطبیق پیدا کنند، به‌جای «فقط در دفاتر»، با نشان
+    «خارج از دامنه» گزارش می‌شوند تا خطای کاذب ساخته نشود.
 
     مراحل: blocking (فهرست کاندیدها) → scoring (شواهد وزن‌دار) → انتساب یک‌به‌یک
     حریصانه بر اساس اطمینان → طبقه‌بندی (تطبیق/اختلاف جزئی/مغایرت مبلغ/فقط یک طرف).
     """
     options = options or MatchOptions()
-    seasonal = _seasonal_records(report, direction)
+    cleaned = _clean_filters(filters) if filters else {}
+    expression = (cleaned or {}).get('expression') or {}
+    all_rows = _rows_for(report, direction)
+    scope_active = bool(expression.get('items'))
+    scoped_rows = _apply_filters(all_rows, cleaned) if scope_active else all_rows
+    scoped_ids = {row.id for row in scoped_rows}
+    seasonal = _seasonal_records(report, direction, rows=scoped_rows)
     ledger = [dict(row) for row in ledger_rows]
 
     items, used_seasonal, used_ledger, records_by_id, rows_by_index = _match_items(
@@ -1572,9 +1614,39 @@ def reconcile(report, ledger_rows, options=None, direction=seasonal_rules.DIRECT
         items.append(_only_item(record, None, 'missing_in_ledger',
                                 'این ردیف در فایل دفاتر پیدا نشد.', 'warning'))
 
+    # ردیف‌های دفاتر که با ردیف‌های خارج از دامنه تطبیق دارند (پرهیز از خطای کاذب)
+    out_of_scope_ledger = set()
+    if scope_active and len(scoped_ids) < len(all_rows):
+        others = _seasonal_records(
+            report, direction, rows=[row for row in all_rows if row.id not in scoped_ids],
+        )
+        if others:
+            other_index = _build_index(others)
+            candidates = []
+            for row in ledger:
+                if row['index'] in used_ledger:
+                    continue
+                for record in _candidates(other_index, row):
+                    result = _score_pair(record, row, options)
+                    if result['accepted']:
+                        candidates.append((result['confidence'], record, row, result['evidence']))
+            candidates.sort(key=lambda entry: entry[0], reverse=True)
+            used_other = set()
+            for confidence, record, row, evidence in candidates:
+                if row['index'] in used_ledger or row['index'] in out_of_scope_ledger:
+                    continue
+                if record['id'] in used_other:
+                    continue
+                used_other.add(record['id'])
+                out_of_scope_ledger.add(row['index'])
+                item = _item(record, row, [], confidence, evidence, 'out_of_scope', 'info')
+                item['message'] = ('این ردیف در دفاتر با ردیفی تطبیق دارد که خارج از دامنهٔ '
+                                   'مغایرت‌گیری است؛ به‌عنوان مغایرت ثبت نشد.')
+                items.append(item)
+
     suggested_rows = []
     for row in ledger:
-        if row['index'] in used_ledger:
+        if row['index'] in used_ledger or row['index'] in out_of_scope_ledger:
             continue
         suggested_rows.append(_suggested_row(row))
         items.append(_only_item(None, row, 'missing_in_seasonal',
@@ -1584,8 +1656,11 @@ def reconcile(report, ledger_rows, options=None, direction=seasonal_rules.DIRECT
         _ITEM_ORDER.get(item['kind'], 9),
         -float((item['seasonal'] or item['ledger'] or {}).get('amount') or 0),
     ))
-    summary = _summary_of(seasonal, ledger, items, used_seasonal, used_ledger,
-                          records_by_id, rows_by_index)
+    scoped_ledger = [row for row in ledger if row['index'] not in out_of_scope_ledger]
+    summary = _summary_of(seasonal, scoped_ledger, items, used_seasonal, used_ledger,
+                          records_by_id, rows_by_index, extra_ledger_used=out_of_scope_ledger)
+    scope = _scope_info(cleaned, len(all_rows), len(scoped_rows))
+    summary['scope'] = scope
     return {
         'direction': direction,
         'report': {
@@ -1594,6 +1669,7 @@ def reconcile(report, ledger_rows, options=None, direction=seasonal_rules.DIRECT
             'quarter': report.quarter,
             'quarter_label': str(report.get_quarter_display()),
         },
+        'scope': scope,
         'source': source_info or {},
         'options': options.as_dict(),
         'summary': summary,
@@ -1698,6 +1774,7 @@ def build_reconciliation_workbook(result):
     sheet.append(['گزارش مغایرت‌گیری صورت معاملات فصلی خرید'])
     sheet['A1'].font = Font(bold=True, size=13)
     sheet.append([])
+    scope = result.get('scope') or summary.get('scope') or {}
     for label, value in [
         ('سال مالی', report.get('fiscal_year', '')),
         ('فصل', report.get('quarter_label', '')),
@@ -1706,6 +1783,9 @@ def build_reconciliation_workbook(result):
         ('سطر سرصفحه', source.get('header_row', '')),
         ('تعداد ردیف فایل', source.get('rows', ledger_totals.get('count', 0))),
         ('تاریخ اجرا', datetime.now().strftime('%Y-%m-%d %H:%M')),
+        ('دامنهٔ مغایرت‌گیری', scope.get('label', 'همهٔ ردیف‌ها')),
+        ('ردیف‌های در دامنه', scope.get('scoped_rows', seasonal_totals.get('count', 0))),
+        ('ردیف‌های خارج از دامنه', scope.get('excluded_rows', 0)),
         ('', ''),
         ('ردیف‌های فصلی', seasonal_totals.get('count', 0)),
         ('مبلغ فصلی', seasonal_totals.get('amount', 0)),
@@ -1720,6 +1800,7 @@ def build_reconciliation_workbook(result):
         ('مبلغ فقط در فصلی', only_seasonal.get('amount', 0)),
         ('فقط در دفاتر', only_ledger.get('count', 0)),
         ('مبلغ فقط در دفاتر', only_ledger.get('amount', 0)),
+        ('ردیف‌های خارج از دامنه در دفاتر', counts.get('out_of_scope', 0)),
         ('مغایرت مبلغ', differences.get('amount', 0)),
         ('اختلاف تاریخ', differences.get('date', 0)),
         ('اختلاف ارزش افزوده', differences.get('vat', 0)),
@@ -1741,6 +1822,8 @@ def build_reconciliation_workbook(result):
     _sheet_items(workbook, 'فقط در دفاتر',
                  [item for item in items if item['kind'] == 'missing_in_seasonal'], styles)
     _sheet_items(workbook, 'تطبیق‌شده', [item for item in items if item['kind'] == 'matched'], styles)
+    _sheet_items(workbook, 'خارج از دامنه',
+                 [item for item in items if item['kind'] == 'out_of_scope'], styles)
 
     mapping = workbook.create_sheet('نگاشت ستون‌ها')
     mapping.sheet_view.rightToLeft = True

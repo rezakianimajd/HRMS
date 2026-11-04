@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Divider,
+  Alert, Box, Button, Chip, CircularProgress, Divider, MenuItem,
   Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Typography,
 } from '@mui/material';
@@ -8,6 +8,7 @@ import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import DownloadIcon from '@mui/icons-material/Download';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
+import FilterListIcon from '@mui/icons-material/FilterList';
 
 import axiosInstance from '../../../core/api/axiosConfig';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
@@ -21,6 +22,7 @@ const KIND_COLORS = {
   missing_in_seasonal: '#b91c1c',
   missing_in_ledger: '#7c3aed',
   matched: '#15803d',
+  out_of_scope: '#64748b',
 };
 const KIND_LABELS = {
   amount_mismatch: 'مغایرت مبلغ',
@@ -28,6 +30,7 @@ const KIND_LABELS = {
   missing_in_seasonal: 'فقط در دفاتر',
   missing_in_ledger: 'فقط در فصلی',
   matched: 'تطبیق کامل',
+  out_of_scope: 'خارج از دامنه',
 };
 const FIELD_FA = {
   invoice_no: 'شمارهٔ فاکتور',
@@ -69,6 +72,10 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
     name_threshold: '86',
     min_score: '55',
   });
+  /* دامنهٔ مغایرت‌گیری: فقط بخشی از ردیف‌های فصلی */
+  const [scopeStatus, setScopeStatus] = useState('all');     // all | registered | pending
+  const [scopeKinds, setScopeKinds] = useState([]);          // [2, 3]
+  const [scopeSearch, setScopeSearch] = useState('');
   const inputRef = useRef(null);
 
   const loadRuns = useCallback(() => {
@@ -87,6 +94,52 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
     name_threshold: Math.min(0.99, Math.max(0.5, num(options.name_threshold) / 100)),
     min_score: Math.min(0.9, Math.max(0.2, num(options.min_score) / 100)),
   }), [options]);
+
+  /** درخت شرط دامنه: وضعیت سامانه + نوع‌های معامله + جستجو (همه با AND). */
+  const scopeExpression = useMemo(() => {
+    const items = [];
+    if (scopeStatus !== 'all') {
+      items.push({ field: 'moadian_status', operator: 'eq', value: scopeStatus });
+    }
+    if (scopeKinds.length) {
+      items.push({ field: 'kind', operator: 'in', value: [...scopeKinds].sort((a, b) => a - b) });
+    }
+    const term = scopeSearch.trim();
+    if (term) {
+      items.push({
+        op: 'or',
+        items: [
+          { field: 'name', operator: 'contains', value: term },
+          { field: 'national_id', operator: 'contains', value: term },
+          { field: 'invoice_no', operator: 'contains', value: term },
+        ],
+      });
+    }
+    return { op: 'and', items };
+  }, [scopeStatus, scopeKinds, scopeSearch]);
+
+  const scopeActive = scopeExpression.items.length > 0;
+
+  const scopeLabel = useMemo(() => {
+    const parts = [];
+    if (scopeStatus === 'registered') parts.push('درج‌شده در سامانه');
+    if (scopeStatus === 'pending') parts.push('درج‌نشده در سامانه');
+    if (scopeKinds.length) {
+      parts.push(`نوع ${[...scopeKinds].sort((a, b) => a - b).map((kind) => toPersianDigits(kind)).join(' و ')}`);
+    }
+    if (scopeSearch.trim()) parts.push(`جستجو: ${scopeSearch.trim()}`);
+    return parts.length ? parts.join(' · ') : 'همهٔ ردیف‌ها';
+  }, [scopeStatus, scopeKinds, scopeSearch]);
+
+  const resetScope = () => {
+    setScopeStatus('all');
+    setScopeKinds([]);
+    setScopeSearch('');
+  };
+
+  const toggleKind = (kind) => setScopeKinds((previous) => (
+    previous.includes(kind) ? previous.filter((item) => item !== kind) : [...previous, kind]
+  ));
 
   const pickFile = (selected) => {
     if (!selected) return;
@@ -111,6 +164,7 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
     const form = new FormData();
     form.append('file', file);
     form.append('options', JSON.stringify(optionsPayload));
+    form.append('filters', JSON.stringify(scopeExpression));
     setLoading(true);
     setError('');
     axiosInstance.post(
@@ -137,7 +191,12 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
         setResult(response.data);
         setKindFilter('all');
         loadRuns();
-        if (onToast) onToast('مغایرت‌گیری انجام شد');
+        if (onToast) {
+          const scoped = response.data?.scope?.scoped_rows;
+          onToast(response.data?.scope?.active && !scoped
+            ? 'مغایرت‌گیری انجام شد؛ اما هیچ ردیفی با دامنهٔ انتخابی مطابق نبود.'
+            : 'مغایرت‌گیری انجام شد');
+        }
       })
       .catch((requestError) => {
         const detail = requestError?.response?.data?.detail;
@@ -161,6 +220,7 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
       { key: 'missing_in_seasonal', label: `فقط در دفاتر (${toPersianDigits(counts.missing_in_seasonal || 0)})` },
       { key: 'missing_in_ledger', label: `فقط در فصلی (${toPersianDigits(counts.missing_in_ledger || 0)})` },
       { key: 'matched', label: `تطبیق کامل (${toPersianDigits(counts.matched || 0)})` },
+      { key: 'out_of_scope', label: `خارج از دامنه (${toPersianDigits(counts.out_of_scope || 0)})` },
     ];
   }, [summary]);
 
@@ -223,6 +283,87 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
           <Button size="small" variant="outlined" sx={{ fontSize: 10.5 }}>انتخاب فایل</Button>
         </Box>
 
+        {/* ---------- دامنهٔ مغایرت‌گیری ---------- */}
+        <Box sx={{
+          mt: 1.2, p: 1, borderRadius: '10px',
+          border: '1px solid', borderColor: scopeActive ? '#0ea5e9' : '#e2e8f0',
+          bgcolor: scopeActive ? 'rgba(14,165,233,0.04)' : 'transparent',
+        }}>
+          <Stack direction="row" alignItems="center" spacing={0.75} useFlexGap flexWrap="wrap" sx={{ mb: 0.8 }}>
+            <FilterListIcon sx={{ fontSize: 16, color: '#0ea5e9' }} />
+            <Typography sx={{ fontSize: 11.5, fontWeight: 800, color: INK }}>
+              دامنهٔ مغایرت‌گیری
+            </Typography>
+            <Chip
+              size="small"
+              label={scopeLabel}
+              sx={{
+                height: 20, fontSize: 9.5, fontWeight: 700,
+                bgcolor: scopeActive ? 'rgba(14,165,233,0.12)' : 'rgba(100,116,139,0.1)',
+                color: scopeActive ? '#0369a1' : MUTED,
+              }}
+            />
+            <Box sx={{ flex: 1 }} />
+            {scopeActive ? (
+              <Button size="small" variant="text" onClick={resetScope} sx={{ fontSize: 10, py: 0 }}>
+                بازنشانی دامنه
+              </Button>
+            ) : null}
+          </Stack>
+
+          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', alignItems: 'center' }}>
+            <TextField
+              select
+              size="small"
+              label="وضعیت سامانهٔ مودیان"
+              value={scopeStatus}
+              onChange={(event) => setScopeStatus(event.target.value)}
+              sx={{ width: 180, '& .MuiInputBase-input': { fontSize: 11 } }}
+            >
+              <MenuItem value="all" sx={{ fontSize: 11 }}>همه</MenuItem>
+              <MenuItem value="registered" sx={{ fontSize: 11 }}>فقط درج‌شده</MenuItem>
+              <MenuItem value="pending" sx={{ fontSize: 11 }}>فقط درج‌نشده</MenuItem>
+            </TextField>
+
+            <Stack direction="row" spacing={0.5} useFlexGap flexWrap="wrap" alignItems="center">
+              <Typography sx={{ fontSize: 10.5, color: MUTED }}>نوع معامله:</Typography>
+              {[1, 2, 3, 4, 5].map((kind) => {
+                const selected = scopeKinds.includes(kind);
+                return (
+                  <Chip
+                    key={kind}
+                    size="small"
+                    clickable
+                    label={`نوع ${toPersianDigits(kind)}`}
+                    onClick={() => toggleKind(kind)}
+                    variant={selected ? 'filled' : 'outlined'}
+                    sx={{
+                      height: 22, fontSize: 10,
+                      ...(selected
+                        ? { bgcolor: '#0ea5e9', color: '#fff' }
+                        : { color: MUTED }),
+                    }}
+                  />
+                );
+              })}
+            </Stack>
+
+            <TextField
+              size="small"
+              label="جستجو (نام / شناسهٔ ملی / شمارهٔ فاکتور)"
+              value={scopeSearch}
+              onChange={(event) => setScopeSearch(event.target.value)}
+              sx={{ width: 250, '& .MuiInputBase-input': { fontSize: 11 } }}
+            />
+          </Box>
+
+          <Typography sx={{ fontSize: 9.5, color: MUTED, mt: 0.6, lineHeight: 1.7 }}>
+            با انتخاب دامنه، فقط همین ردیف‌ها با فایل دفاتر تطبیق داده می‌شوند. ردیف‌های دفاتر که به
+            اسنادِ خارج از دامنه مربوط‌اند با برچسب «خارج از دامنه» جدا می‌شوند و مغایرت
+            محسوب نمی‌شوند (مثلاً وقتی فقط نوع ۲ و ۳ درج‌نشده را بررسی می‌کنید).
+          </Typography>
+        </Box>
+
         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1.2, alignItems: 'center' }}>
           {[
             ['amount_tolerance', 'تحمل اختلاف مبلغ (ریال)', 165],
@@ -269,6 +410,28 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
 
       {summary ? (
         <>
+          {result?.scope?.active ? (
+            <Stack direction="row" spacing={0.75} useFlexGap flexWrap="wrap" alignItems="center">
+              <Chip
+                size="small"
+                icon={<FilterListIcon sx={{ fontSize: 13 }} />}
+                label={`دامنه: ${result.scope.label}`}
+                sx={{ height: 24, fontSize: 10, fontWeight: 800, bgcolor: 'rgba(14,165,233,0.12)', color: '#0369a1' }}
+              />
+              <Chip
+                size="small"
+                label={`${toPersianDigits(result.scope.scoped_rows)} از ${toPersianDigits(result.scope.total_rows)} ردیف فصلی`}
+                sx={{ height: 24, fontSize: 10 }}
+              />
+              {summary.counts?.out_of_scope ? (
+                <Chip
+                  size="small"
+                  label={`خارج از دامنه: ${toPersianDigits(summary.counts.out_of_scope)} ردیف دفاتر`}
+                  sx={{ height: 24, fontSize: 10, bgcolor: 'rgba(100,116,139,0.12)', color: MUTED }}
+                />
+              ) : null}
+            </Stack>
+          ) : null}
           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
             <StatBox label="تطبیق‌یافته" value={toPersianDigits(summary.matched?.count || 0)}
                      hint={`اطمینان میانگین ${percent(summary.matched?.average_confidence)}`} color="#15803d" />
@@ -409,6 +572,11 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
                 <Typography sx={{ fontSize: 9.5, color: MUTED }}>
                   {`${toPersianDigits(run.source_rows)} ردیف · تطبیق ${toPersianDigits(run.matched_count)}`}
                 </Typography>
+                {run.summary?.scope?.active ? (
+                  <Typography noWrap sx={{ fontSize: 9, color: '#0369a1' }}>
+                    {`دامنه: ${run.summary.scope.label}`}
+                  </Typography>
+                ) : null}
                 <Typography sx={{ fontSize: 9.5, color: run.error_count ? '#dc2626' : MUTED }}>
                   {`${toPersianDigits(run.error_count)} خطا / ${toPersianDigits(run.warning_count)} هشدار`}
                 </Typography>

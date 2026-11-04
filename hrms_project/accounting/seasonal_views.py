@@ -263,13 +263,15 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
 
         options = seasonal_reconcile.MatchOptions.from_payload(_json_field('options'))
         mapping = _json_field('mapping') or None
+        # دامنهٔ مغایرت‌گیری: فیلتر روی ردیف‌های فصلی (وضعیت سامانه، نوع معامله، جستجو…)
+        scope_filters = _json_field('filters') or _json_field('scope') or None
         try:
             parsed = seasonal_reconcile.read_ledger_rows(upload, mapping=mapping)
         except ValueError as error:
             return Response({'detail': str(error)}, status=http_status.HTTP_400_BAD_REQUEST)
 
         result = seasonal_reconcile.reconcile(
-            report, parsed.rows, options, direction, parsed.as_dict(),
+            report, parsed.rows, options, direction, parsed.as_dict(), filters=scope_filters,
         )
 
         user = getattr(request, 'user', None)
@@ -285,7 +287,8 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
             warning_count=result['summary']['counts']['warnings'],
             amount_delta=result['summary']['amount_delta'],
             summary=result['summary'],
-            detail={'items': result['items'][:1000], 'source': result['source']},
+            detail={'items': result['items'][:1000], 'source': result['source'],
+                    'scope': result.get('scope') or {}},
             created_by_name=((user.get_full_name() if hasattr(user, 'get_full_name') else '')
                              or getattr(user, 'username', '') or '')[:150],
         )

@@ -7,8 +7,10 @@ import io
 import json
 import zipfile
 from decimal import Decimal
+from types import SimpleNamespace
 
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import SimpleTestCase
 
 from accounting import seasonal_reconcile as rec
 from accounting.seasonal import sync_rows
@@ -78,6 +80,65 @@ class LedgerReaderTests(SeasonalBaseTest):
             rec.read_ledger_rows(SimpleUploadedFile('ledger.xls', b'binary'))
 
 
+class ScopeFilterTests(SimpleTestCase):
+    """دامنهٔ مغایرت‌گیری: ساخت درخت شرط، اعمال روی ردیف‌ها و برچسب خوانا (بدون دیتابیس)."""
+
+    @staticmethod
+    def _row(kind=1, status='pending', name='شرکت آلفا', invoice_no='1001'):
+        return SimpleNamespace(
+            id=kind * 10, kind=kind, moadian_status=status, name=name,
+            first_name='', last_name='', person_type='legal',
+            national_id='10101010101', invoice_no=invoice_no, invoice_date=None,
+            amount=Decimal('1000'), vat=Decimal('100'), postal_code='',
+            city='', province='', country='', address='', goods_service_desc='',
+        )
+
+    def test_status_and_kind_scope_filters_rows(self):
+        filters = rec._clean_filters({'op': 'and', 'items': [
+            {'field': 'moadian_status', 'operator': 'eq', 'value': 'pending'},
+            {'field': 'kind', 'operator': 'in', 'value': [2, 3]},
+        ]})
+        rows = [
+            self._row(kind=1, status='pending'),
+            self._row(kind=2, status='pending'),
+            self._row(kind=3, status='registered'),
+            self._row(kind=3, status='pending'),
+        ]
+        scoped = rec._apply_filters(rows, filters)
+        self.assertEqual([row.kind for row in scoped], [2, 3])
+
+        info = rec._scope_info(filters, len(rows), len(scoped))
+        self.assertTrue(info['active'])
+        self.assertEqual(info['scoped_rows'], 2)
+        self.assertEqual(info['excluded_rows'], 2)
+        self.assertIn('درج‌نشده', info['label'])
+        self.assertIn('نوع', info['label'])
+
+    def test_search_scope_matches_name_id_and_invoice(self):
+        filters = rec._clean_filters({'op': 'and', 'items': [{
+            'op': 'or',
+            'items': [
+                {'field': 'name', 'operator': 'contains', 'value': 'بتا'},
+                {'field': 'national_id', 'operator': 'contains', 'value': '999'},
+                {'field': 'invoice_no', 'operator': 'contains', 'value': '2002'},
+            ],
+        }]})
+        rows = [
+            self._row(name='شرکت آلفا', invoice_no='1001'),
+            self._row(name='شرکت بتا صنعت', invoice_no='1002'),
+            self._row(name='شرکت گاما', invoice_no='2002'),
+        ]
+        scoped = rec._apply_filters(rows, filters)
+        self.assertEqual([row.invoice_no for row in scoped], ['1002', '2002'])
+
+    def test_empty_scope_is_reported_as_all_rows(self):
+        cleaned = rec._clean_filters({'op': 'and', 'items': []})
+        info = rec._scope_info(cleaned, 12, 12)
+        self.assertFalse(info['active'])
+        self.assertEqual(info['label'], 'همهٔ ردیف‌ها')
+        self.assertEqual(info['excluded_rows'], 0)
+
+
 class ReconcileEngineTests(SeasonalBaseTest):
     """موتور تطبیق: تطبیق کامل، مغایرت مبلغ، فقط یک طرف و پیشنهاد افزودن ردیف."""
 
@@ -107,6 +168,33 @@ class ReconcileEngineTests(SeasonalBaseTest):
             line(2, 3, '1002', 'شرکت بتا صنعت', '20202020202', '510000', '50000'),
             line(3, 4, '1004', 'شرکت دلتا', '40404040404', '700000', '70000'),
         ]
+
+    def test_scope_limits_rows_and_marks_out_of_scope_ledger(self):
+        """دامنهٔ باریک: فقط ردیف‌های در دامنه مغایرت‌گیری می‌شوند و بقیه «خارج از دامنه»."""
+        from accounting.models import SeasonalTransaction
+
+        SeasonalTransaction.objects.filter(report=self.report, invoice_no='1003').update(
+            kind=2, moadian_status='pending',
+        )
+        filters = {'op': 'and', 'items': [
+            {'field': 'kind', 'operator': 'eq', 'value': 2},
+            {'field': 'moadian_status', 'operator': 'eq', 'value': 'pending'},
+        ]}
+        result = rec.reconcile(self.report, self.ledger(), rec.MatchOptions(), 'purchase',
+                               filters=filters)
+        summary = result['summary']
+        self.assertTrue(result['scope']['active'])
+        self.assertEqual(result['scope']['total_rows'], 3)
+        self.assertEqual(result['scope']['scoped_rows'], 1)
+        self.assertEqual(summary['seasonal']['count'], 1)
+        # ۱۰۰۱ و ۱۰۰۲ فصلی هستند اما خارج از دامنه → مغایرت «فقط در دفاتر» نمی‌سازند
+        self.assertEqual(summary['counts']['out_of_scope'], 2)
+        self.assertEqual(summary['counts']['missing_in_seasonal'], 1)
+        self.assertEqual(summary['counts']['missing_in_ledger'], 1)
+        self.assertEqual(summary['only_in_ledger']['count'], 1)
+        out_item = [item for item in result['items'] if item['kind'] == 'out_of_scope'][0]
+        self.assertEqual(out_item['severity'], 'info')
+        self.assertIn('خارج از دامنه', out_item['message'])
 
     def test_matching_classifies_rows(self):
         result = rec.reconcile(self.report, self.ledger(), rec.MatchOptions(), 'purchase')
