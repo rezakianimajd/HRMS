@@ -227,14 +227,11 @@ test('dedicated incoming page is scoped to incoming letters and has no extra fil
   expect(container.querySelector('input[placeholder*="نامه‌های وارده"]')).toBeTruthy();
   expect(container.textContent).not.toContain('کل مکاتبات');
 
-  // ستون‌های تخصصی دفتر وارده
-  const table = container.querySelector('[aria-label="فهرست مکاتبات اداری"]');
-  expect(table).toBeTruthy();
-  expect(container.textContent).toContain('ثبت شرکت');
-  expect(container.textContent).toContain('ثبت واحد');
-  expect(container.textContent).toContain('ارسال‌کننده');
-  expect(container.textContent).toContain('طرف حساب');
-  expect(container.textContent).toContain('نحوهٔ ورود');
+  // ستون‌های تخصصی دفتر وارده (طراحی جدید: ستون‌های تجمیعی و دوسطری)
+  expect(container.textContent).toContain('ثبت شرکت / واحد');
+  expect(container.textContent).toContain('فرستنده');
+  expect(container.textContent).toContain('آخرین ارجاع');
+  expect(container.textContent).toContain('مهلت پاسخ');
   expect(container.textContent).toContain('شرکت ناظر');
   expect(container.textContent).toContain('د-۸۸');
   // تاریخ‌ها و ساعت‌ها شمسی و با اعداد فارسی
