@@ -1099,15 +1099,23 @@ test('reconcile tab uploads the ledger file and can add the missing rows to the 
   const addButton = Array.from(container.querySelectorAll('button'))
     .find((button) => button.textContent.includes('ردیف جاافتاده به جدول'));
   expect(addButton).toBeTruthy();
-  await act(async () => { addButton.click(); await wait(420); });
+  await act(async () => { addButton.click(); await wait(220); });
+
+  // تأیید افزودن (دیالوگ محافظ در برابر کلیک اشتباه)
+  const confirmAdd = Array.from(document.querySelectorAll('[role="dialog"] button'))
+    .find((button) => button.textContent.includes('تأیید و افزودن'));
+  expect(confirmAdd).toBeTruthy();
+  await act(async () => { confirmAdd.click(); await wait(420); });
 
   const addedRow = Array.from(container.querySelectorAll('tbody tr')).find(
     (tr) => tr.querySelector('input[aria-label="نام شرکت"]')?.value === 'شرکت دلتا',
   );
   expect(addedRow).toBeTruthy();
   expect(addedRow.querySelector('input[aria-label="مبلغ"]').value).toBe('۷۰۰٬۰۰۰');
-  expect(container.textContent).toContain('از دفاتر به جدول اضافه شد');
+  expect(document.body.textContent).toContain('از دفاتر به جدول اضافه شد');
   expect(container.textContent).toContain('تعداد ردیف: ۲');
+  // امکان بازگردانی ردیف‌های افزوده‌شده
+  expect(container.textContent).toContain('بازگردانی');
 
   root.unmount();
   container.remove();

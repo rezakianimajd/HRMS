@@ -25,7 +25,7 @@ from rest_framework.decorators import action
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 
-from accounting import seasonal_reconcile, seasonal_rules, seasonal_ttms
+from accounting import seasonal_cleanup, seasonal_reconcile, seasonal_rules, seasonal_ttms
 from accounting.models import (
     FiscalYear, SeasonalExportRun, SeasonalReconciliation, SeasonalReport, SeasonalSavedView,
 )
@@ -322,11 +322,64 @@ class SeasonalReportViewSet(CompanyScopedViewSet):
             'matched_count': run.matched_count,
             'error_count': run.error_count,
             'warning_count': run.warning_count,
+            'suggested_count': len([
+                item for item in ((run.detail or {}).get('items') or [])
+                if isinstance(item, dict) and item.get('kind') == 'missing_in_seasonal'
+            ]),
             'amount_delta': float(run.amount_delta or 0),
             'created_at': timezone.localtime(run.created_at).isoformat() if run.created_at else '',
             'created_by_name': run.created_by_name,
             'summary': run.summary,
         } for run in runs])
+
+    @action(detail=True, methods=['post'], url_path='undo-suggested')
+    def undo_suggested(self, request, pk=None):
+        """بازگردانی ردیف‌هایی که از «جاافتاده‌ها»ی مغایرت‌گیری به جدول اضافه شده‌اند.
+
+        فقط ردیف‌هایی حذف می‌شوند که دقیقاً با ردیف‌های «فقط در دفاتر» همان اجرای
+        مغایرت‌گیری (شمارهٔ فاکتور/شناسه + مبلغ + مالیات) بخوانند؛ ردیف‌های دستی
+        کاربر دست‌نخورده می‌مانند. با ``dry_run`` فقط پیش‌نمایش داده می‌شود.
+        """
+        report = self.get_object()
+        if report.is_locked:
+            return Response(
+                {'detail': 'این فصل ارسال شده است و قابل ویرایش نیست.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        direction = self._direction(request) or DIRECTION_PURCHASE
+        run_id = request.data.get('run') or request.query_params.get('run')
+        runs = report.reconciliations.filter(direction=direction)
+        run = runs.filter(pk=run_id).first() if run_id else runs.order_by('-created_at').first()
+        if run is None:
+            return Response(
+                {'detail': 'اجرای مغایرت‌گیری برای بازگردانی پیدا نشد.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        keys = seasonal_cleanup.suggested_keys(run)
+        if not keys:
+            return Response(
+                {'detail': 'این اجرا ردیف «فقط در دفاتر» ندارد؛ چیزی برای بازگردانی نیست.'},
+                status=http_status.HTTP_400_BAD_REQUEST,
+            )
+        raw_dry = request.data.get('dry_run') or request.query_params.get('dry_run') or ''
+        dry_run = str(raw_dry).lower() in ('1', 'true', 'yes', 'on')
+        outcome = seasonal_cleanup.remove_suggested_rows(report, keys, direction, dry_run=dry_run)
+        return Response({
+            'run': run.pk,
+            'dry_run': dry_run,
+            'candidates': len(keys),
+            'matched': len(outcome['matched']),
+            'deleted': outcome['deleted'],
+            'remaining': outcome['remaining'],
+            'rows': [{
+                'id': row.pk,
+                'line_no': row.line_no,
+                'name': row.name,
+                'invoice_no': row.invoice_no,
+                'amount': float(row.amount or 0),
+                'vat': float(row.vat or 0),
+            } for row in outcome['matched'][:300]],
+        })
 
     @action(detail=True, methods=['get'])
     def export(self, request, pk=None):

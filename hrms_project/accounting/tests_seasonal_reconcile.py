@@ -139,6 +139,66 @@ class ScopeFilterTests(SimpleTestCase):
         self.assertEqual(info['excluded_rows'], 0)
 
 
+class SuggestedUndoKeyTests(SimpleTestCase):
+    """کلیدهای «جاافتاده‌ها» برای بازگردانی ردیف‌های افزوده‌شده (بدون دیتابیس)."""
+
+    def test_suggested_keys_extracts_only_missing_in_seasonal(self):
+        from accounting.seasonal_cleanup import suggested_keys
+
+        run = SimpleNamespace(detail={'items': [
+            {'kind': 'missing_in_seasonal', 'ledger': {
+                'invoice_no': '۱۰۰۴', 'national_id': '40404040404',
+                'party_name': 'شرکت دلتا', 'amount': 700000, 'vat': 70000,
+            }},
+            {'kind': 'matched', 'ledger': {'invoice_no': '1001'}},
+            {'kind': 'missing_in_ledger', 'seasonal': {'invoice_no': '1003'}},
+        ]})
+        keys = suggested_keys(run)
+        self.assertEqual(len(keys), 1)
+        self.assertEqual(keys[0]['invoice_no'], '1004')
+        self.assertEqual(keys[0]['amount'], Decimal('700000'))
+        self.assertEqual(keys[0]['vat'], Decimal('70000'))
+        self.assertEqual(suggested_keys(None), [])
+        self.assertEqual(suggested_keys(SimpleNamespace(detail={})), [])
+
+    def test_row_must_match_invoice_amount_and_vat(self):
+        from accounting.seasonal_cleanup import _key_matches_row
+
+        key = {
+            'invoice_no': '1004', 'national_id': '', 'name': '',
+            'amount': Decimal('700000'), 'vat': Decimal('70000'),
+        }
+        row = SimpleNamespace(
+            invoice_no='1004', national_id='', name='شرکت دلتا',
+            amount=Decimal('700000'), vat=Decimal('70000'),
+        )
+        self.assertTrue(_key_matches_row(key, row))
+        row.amount = Decimal('700001')
+        self.assertFalse(_key_matches_row(key, row))
+        row.amount = Decimal('700000')
+        row.vat = Decimal('0')
+        self.assertFalse(_key_matches_row(key, row))
+        row.vat = Decimal('70000')
+        row.invoice_no = '9999'
+        self.assertFalse(_key_matches_row(key, row))
+
+    def test_rows_without_invoice_need_national_id_and_name(self):
+        from accounting.seasonal_cleanup import _key_matches_row
+
+        key = {
+            'invoice_no': '', 'national_id': '40404040404',
+            'name': rec.normalize_name('شرکت دلتا'),
+            'amount': Decimal('500'), 'vat': Decimal('0'),
+        }
+        row = SimpleNamespace(
+            invoice_no='', national_id='40404040404', name='شرکت دلتا',
+            amount=Decimal('500'), vat=Decimal('0'),
+        )
+        self.assertTrue(_key_matches_row(key, row))
+        row.national_id = '11111111111'
+        self.assertFalse(_key_matches_row(key, row))
+
+
 class ReconcileEngineTests(SeasonalBaseTest):
     """موتور تطبیق: تطبیق کامل، مغایرت مبلغ، فقط یک طرف و پیشنهاد افزودن ردیف."""
 
@@ -195,6 +255,40 @@ class ReconcileEngineTests(SeasonalBaseTest):
         out_item = [item for item in result['items'] if item['kind'] == 'out_of_scope'][0]
         self.assertEqual(out_item['severity'], 'info')
         self.assertIn('خارج از دامنه', out_item['message'])
+
+    def test_undo_suggested_keeps_manual_rows(self):
+        """بازگردانی فقط ردیف‌های افزوده‌شده را حذف می‌کند و ردیف دستی کاربر را نگه می‌دارد."""
+        from accounting import seasonal_cleanup
+        from accounting.models import SeasonalReconciliation, SeasonalTransaction
+
+        sync_rows(self.report, [
+            self.row(invoice_no='2001', name='شرکت آلفا تجارت', amount=900000, vat=90000),
+            self.row(invoice_no='1004', name='شرکت دلتا', national_id='40404040404',
+                     amount=700000, vat=70000),
+        ])
+        ledger = [{
+            'index': 1, 'file_row': 2, 'invoice_no': '1004', 'invoice_no_key': '1004',
+            'invoice_date': None, 'party_name': 'شرکت دلتا',
+            'name_key': rec.normalize_name('شرکت دلتا'), 'national_id': '40404040404',
+            'amount': Decimal('700000'), 'vat': Decimal('70000'), 'total': Decimal('770000'),
+        }]
+        result = rec.reconcile(self.report, ledger, rec.MatchOptions(), 'purchase')
+        run = SeasonalReconciliation.objects.create(
+            report=self.report, direction='purchase', file_name='ledger.csv',
+            summary=result['summary'], detail={'items': result['items']},
+        )
+        keys = seasonal_cleanup.suggested_keys(run)
+        self.assertEqual(len(keys), 1)
+
+        preview = seasonal_cleanup.remove_suggested_rows(self.report, keys, 'purchase', dry_run=True)
+        self.assertEqual(len(preview['matched']), 1)
+        self.assertEqual(SeasonalTransaction.objects.filter(report=self.report).count(), 2)
+
+        outcome = seasonal_cleanup.remove_suggested_rows(self.report, keys, 'purchase')
+        self.assertEqual(outcome['deleted'], 1)
+        remaining = list(SeasonalTransaction.objects.filter(report=self.report).order_by('line_no'))
+        self.assertEqual([row.invoice_no for row in remaining], ['2001'])
+        self.assertEqual([row.line_no for row in remaining], [1])
 
     def test_matching_classifies_rows(self):
         result = rec.reconcile(self.report, self.ledger(), rec.MatchOptions(), 'purchase')

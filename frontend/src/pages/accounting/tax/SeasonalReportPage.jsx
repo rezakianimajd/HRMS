@@ -14,6 +14,7 @@ import InsertDriveFileOutlinedIcon from '@mui/icons-material/InsertDriveFileOutl
 import PrintIcon from '@mui/icons-material/Print';
 import RuleOutlinedIcon from '@mui/icons-material/RuleOutlined';
 import TableChartIcon from '@mui/icons-material/TableChart';
+import UndoIcon from '@mui/icons-material/Undo';
 import WarningAmberRoundedIcon from '@mui/icons-material/WarningAmberRounded';
 import { useQuery } from '@tanstack/react-query';
 import { alpha } from '@mui/material/styles';
@@ -682,6 +683,10 @@ const SeasonalReportPage = () => {
   const [storedRows] = useState(() => readStoredSeasonalRows());
   const [loadedKey, setLoadedKey] = useState('');
   const [reportId, setReportId] = useState(null);
+  const [reloadToken, setReloadToken] = useState(0);
+  /* ردیف‌هایی که از «جاافتاده‌های» مغایرت‌گیری به جدول اضافه شده‌اند (برای بازگردانی) */
+  const [suggestedAdded, setSuggestedAdded] = useState(null);   // { count, runId }
+  const suggestedAddedRef = useRef(null);
   const [mode, setMode] = useState('loading');            // api | local
   const [saveState, setSaveState] = useState('idle');     // idle | saving | saved | error
   const [period, setPeriod] = useState({ start: '', end: '' });
@@ -900,7 +905,7 @@ const SeasonalReportPage = () => {
       .catch(fallbackToLocal);
 
     return () => { cancelled = true; };
-  }, [yearKey, quarter]);
+  }, [yearKey, quarter, reloadToken]);
 
 
   /* ذخیرهٔ «پایان ردیف»: تا زمانی که کاربر داخل یک ردیف است هیچ ذخیره‌ای انجام نمی‌شود؛
@@ -1173,7 +1178,8 @@ const SeasonalReportPage = () => {
   }, [applyRows]);
 
   /* افزودن ردیف‌های «فقط در دفاتر» به جدول ورود داده */
-  const addSuggestedRows = useCallback((suggested) => {
+  const lastSuggestedRef = useRef([]);
+  const addSuggestedRows = useCallback((suggested, runId = null) => {
     const rows_ = (suggested || []).map((row) => ({
       ...emptyRow(),
       ...row,
@@ -1183,6 +1189,9 @@ const SeasonalReportPage = () => {
       invoiceDate: row.invoiceDate || '',
     }));
     if (!rows_.length) return;
+    lastSuggestedRef.current = rows_;
+    suggestedAddedRef.current = { count: rows_.length, runId: runId || null };
+    setSuggestedAdded({ count: rows_.length, runId: runId || null });
     applyRows((previous) => {
       const fillers = previous.filter((item) => !isBlankRow(item));
       const tail = previous.filter((item) => isBlankRow(item)).slice(-1);
@@ -1191,6 +1200,44 @@ const SeasonalReportPage = () => {
     setActiveTab('data');
     setToast(`${toPersianDigits(rows_.length)} ردیف از دفاتر به جدول اضافه شد — بازبینی و ذخیره لازم است`);
   }, [applyRows]);
+
+  /** بازگردانی (حذف) ردیف‌هایی که همین حالا از «جاافتاده‌ها» اضافه شده‌اند. */
+  const undoAddedSuggested = useCallback(() => {
+    const ids = new Set((lastSuggestedRef.current || []).map((row) => row.id));
+    if (!ids.size) return 0;
+    lastSuggestedRef.current = [];
+    applyRows((previous) => previous.filter((row) => !ids.has(row.id)));
+    setToast('ردیف‌های افزوده‌شده از جدول حذف شدند');
+    return ids.size;
+  }, [applyRows]);
+
+  /** بارگذاری دوبارهٔ ردیف‌ها از سرور (پس از بازگردانی سمت سرور). */
+  const reloadRows = useCallback(() => setReloadToken((value) => value + 1), []);
+
+  /** حذف ردیف‌های افزوده‌شده از جدول + (اگر ذخیره شده بود) از سرور. */
+  const undoSuggestedRows = useCallback(async () => {
+    const info = suggestedAddedRef.current;
+    const removed = undoAddedSuggested();
+    setSuggestedAdded(null);
+    suggestedAddedRef.current = null;
+    const { mode: currentMode, reportId: currentReportId } = saveContextRef.current;
+    if (currentMode !== 'api' || !currentReportId || !info?.runId) {
+      setToast(`${toPersianDigits(removed)} ردیف از جدول حذف شد`);
+      return;
+    }
+    try {
+      const { data } = await axiosInstance.post(
+        `${API_BASE}/${currentReportId}/undo-suggested/`, { run: info.runId },
+      );
+      if (data?.deleted) reloadRows();
+      setToast(data?.deleted
+        ? `${toPersianDigits(removed)} ردیف از جدول و ${toPersianDigits(data.deleted)} ردیف از سرور حذف شد`
+        : `${toPersianDigits(removed)} ردیف از جدول حذف شد (چیزی روی سرور ذخیره نشده بود)`);
+    } catch (error) {
+      setToast(error?.response?.data?.detail
+        || `${toPersianDigits(removed)} ردیف از جدول حذف شد؛ سرور تغییری نکرد`);
+    }
+  }, [undoAddedSuggested, reloadRows]);
 
   /* ردیف بعدی همیشه خودکار ساخته می‌شود */
   useEffect(() => {
@@ -2363,6 +2410,7 @@ const SeasonalReportPage = () => {
             apiBase={API_BASE}
             mode={mode}
             onAddRows={addSuggestedRows}
+            onRowsChanged={reloadRows}
             onToast={setToast}
           />
         </Suspense>
@@ -2375,6 +2423,20 @@ const SeasonalReportPage = () => {
           onCopy={handleGridCopy}
           onMouseDown={handleRowMouseDown}
         >
+          {suggestedAdded?.count ? (
+            <Alert
+              severity="info"
+              sx={{ mb: 1, py: 0.25, fontSize: 11, borderRadius: '10px' }}
+              action={(
+                <Button size="small" color="inherit" startIcon={<UndoIcon />}
+                  onClick={undoSuggestedRows} sx={{ fontSize: 10.5 }}>
+                  بازگردانی
+                </Button>
+              )}
+            >
+              {`${toPersianDigits(suggestedAdded.count)} ردیف از دفاتر به جدول اضافه شد. اگر ناخواسته بود، با «بازگردانی» حذف کنید (ردیف‌های دستی شما دست‌نخورده می‌مانند).`}
+            </Alert>
+          ) : null}
           <ModuleToolbar
             theme={moduleTheme}
             search={search}

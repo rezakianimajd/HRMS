@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  Alert, Box, Button, Chip, CircularProgress, Divider, MenuItem,
+  Alert, Box, Button, Chip, CircularProgress, Dialog, DialogActions, DialogContent,
+  DialogTitle, Divider, MenuItem,
   Paper, Stack, Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
   TextField, Typography,
 } from '@mui/material';
@@ -9,6 +10,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import FilterListIcon from '@mui/icons-material/FilterList';
+import UndoIcon from '@mui/icons-material/Undo';
 
 import axiosInstance from '../../../core/api/axiosConfig';
 import { formatPersianNumber, toEnglishDigits, toPersianDigits } from '../../../core/utils/numberUtils';
@@ -56,7 +58,7 @@ const StatBox = ({ label, value, hint, color = INK }) => (
   </Paper>
 );
 
-const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast }) => {
+const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onRowsChanged, onToast }) => {
   const studio = useStudio();
   const [file, setFile] = useState(null);
   const [dragOver, setDragOver] = useState(false);
@@ -76,6 +78,10 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
   const [scopeStatus, setScopeStatus] = useState('all');     // all | registered | pending
   const [scopeKinds, setScopeKinds] = useState([]);          // [2, 3]
   const [scopeSearch, setScopeSearch] = useState('');
+  /* افزودن/بازگردانی ردیف‌های جاافتاده */
+  const [pendingAdd, setPendingAdd] = useState(null);
+  const [undoRun, setUndoRun] = useState(null);          // اجرایی که باید بازگردانی شود
+  const [undoBusy, setUndoBusy] = useState(false);
   const inputRef = useRef(null);
 
   const loadRuns = useCallback(() => {
@@ -140,6 +146,38 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
   const toggleKind = (kind) => setScopeKinds((previous) => (
     previous.includes(kind) ? previous.filter((item) => item !== kind) : [...previous, kind]
   ));
+
+  /* ---------- افزودن / بازگردانی ردیف‌های جاافتاده ---------- */
+  const confirmAddSuggested = () => {
+    const rows = pendingAdd || [];
+    if (rows.length) {
+      onAddRows?.(rows, result?.run?.id || null);
+    }
+    setPendingAdd(null);
+  };
+
+  /** بازگردانی سمت سرور برای یک اجرای مشخص (از تاریخچه). */
+  const undoRunSuggested = () => {
+    if (!undoRun) return;
+    const runId = undoRun.id;
+    if (mode !== 'api' || !reportId) {
+      setUndoRun(null);
+      if (onToast) onToast('بازگردانی سمت سرور فقط در حالت متصل به سرور ممکن است.');
+      return;
+    }
+    setUndoBusy(true);
+    axiosInstance.post(`${apiBase}/${reportId}/undo-suggested/`, { run: runId })
+      .then(({ data }) => {
+        if (onToast) onToast(`${toPersianDigits(data.deleted || 0)} ردیف افزوده‌شده حذف شد`);
+        onRowsChanged?.();
+        loadRuns();
+      })
+      .catch((requestError) => {
+        const detail = requestError?.response?.data?.detail;
+        if (onToast) onToast(detail || 'بازگردانی انجام نشد.');
+      })
+      .finally(() => { setUndoBusy(false); setUndoRun(null); });
+  };
 
   const pickFile = (selected) => {
     if (!selected) return;
@@ -468,7 +506,7 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
                 color="success"
                 startIcon={<AddCircleOutlineIcon />}
                 sx={{ fontSize: 10.5 }}
-                onClick={() => onAddRows?.(result.suggested_rows)}
+                onClick={() => setPendingAdd(result.suggested_rows)}
               >
                 {`افزودن ${toPersianDigits(result.suggested_rows.length)} ردیف جاافتاده به جدول`}
               </Button>
@@ -583,11 +621,69 @@ const SeasonalReconcilePanel = ({ reportId, apiBase, mode, onAddRows, onToast })
                 <Typography noWrap sx={{ fontSize: 9, color: MUTED }}>
                   {(run.created_at || '').replace('T', ' ').slice(0, 16)}
                 </Typography>
+                {run.suggested_count ? (
+                  <Button
+                    size="small"
+                    color="error"
+                    startIcon={<UndoIcon sx={{ fontSize: 13 }} />}
+                    onClick={() => setUndoRun(run)}
+                    sx={{ fontSize: 9.5, py: 0, mt: 0.2 }}
+                  >
+                    {`حذف ${toPersianDigits(run.suggested_count)} ردیف افزوده‌شده`}
+                  </Button>
+                ) : null}
               </Paper>
             ))}
           </Stack>
         </Box>
       ) : null}
+
+      {/* تأیید افزودن ردیف‌های جاافتاده (جلوگیری از کلیک اشتباه) */}
+      <Dialog open={Boolean(pendingAdd)} onClose={() => setPendingAdd(null)}
+        maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '14px' } }}>
+        <DialogTitle sx={{ fontSize: 13, fontWeight: 900, pb: 1 }}>
+          افزودن ردیف‌های جاافتاده به جدول
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ fontSize: 11.5, lineHeight: 1.9 }}>
+            {`${toPersianDigits((pendingAdd || []).length)} ردیف «فقط در دفاتر» به جدول معاملات اضافه می‌شود.`}
+            {' '}
+            این کار جدول را تغییر می‌دهد؛ اگر ناخواسته بود، بلافاصله با دکمهٔ «بازگردانی» قابل حذف است
+            (ردیف‌های دستی شما دست‌نخورده می‌مانند).
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1 }}>
+          <Button size="small" onClick={() => setPendingAdd(null)}>انصراف</Button>
+          <Button size="small" variant="contained" color="success"
+            startIcon={<AddCircleOutlineIcon />} onClick={confirmAddSuggested}>
+            تأیید و افزودن
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* تأیید حذف ردیف‌های افزوده‌شدهٔ یک اجرا */}
+      <Dialog open={Boolean(undoRun)} onClose={() => (undoBusy ? null : setUndoRun(null))}
+        maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: '14px' } }}>
+        <DialogTitle sx={{ fontSize: 13, fontWeight: 900, pb: 1 }}>
+          بازگردانی ردیف‌های افزوده‌شده
+        </DialogTitle>
+        <DialogContent dividers>
+          <Typography sx={{ fontSize: 11.5, lineHeight: 1.9 }}>
+            {`${toPersianDigits(undoRun?.suggested_count || 0)} ردیف از «فقط در دفاتر» این اجرا حذف می‌شود.`}
+            {' '}
+            فقط ردیف‌هایی پاک می‌شوند که شمارهٔ فاکتور/شناسه، مبلغ و مالیات آن‌ها دقیقاً با همان ردیف‌های
+            دفاتر بخواند؛ ردیف‌های دستیِ خودتان حذف نمی‌شوند.
+          </Typography>
+        </DialogContent>
+        <DialogActions sx={{ px: 2, py: 1 }}>
+          <Button size="small" disabled={undoBusy} onClick={() => setUndoRun(null)}>انصراف</Button>
+          <Button size="small" variant="contained" color="error" disabled={undoBusy}
+            startIcon={undoBusy ? <CircularProgress size={13} color="inherit" /> : <UndoIcon />}
+            onClick={undoRunSuggested}>
+            حذف ردیف‌های افزوده‌شده
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };
