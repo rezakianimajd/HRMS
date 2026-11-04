@@ -57,14 +57,23 @@ def invoice_last_payment_date(obj):
     return max(dates).isoformat() if dates else None
 
 
-def payment_status_of(payable, paid):
-    """وضعیت پرداخت سند: پرداخت‌نشده / پرداخت جزئی / تسویه‌شده."""
+def payment_status_of(payable, paid, zero_payable_is_paid=False):
+    """وضعیت پرداخت سند: پرداخت‌نشده / پرداخت جزئی / تسویه‌شده.
+
+    ``zero_payable_is_paid`` برای صورت‌وضعیت‌هایی است که با کسر پیش‌پرداخت یا
+    علی‌الحساب، «قابل پرداخت» آن‌ها صفر شده است؛ چنین سندی مشمول پرداخت
+    نیست و باید «پرداخت‌شده» نمایش داده شود.
+    """
     payable = Decimal(str(payable or 0))
     paid = Decimal(str(paid or 0))
+    if payable <= 0:
+        if zero_payable_is_paid:
+            return 'paid'
+        return 'paid' if paid > 0 else 'unpaid'
+    if paid >= payable:
+        return 'paid'
     if paid <= 0:
         return 'unpaid'
-    if payable <= 0 or paid >= payable:
-        return 'paid'
     return 'partial'
 
 
@@ -104,14 +113,43 @@ def statement_bucket_payable(statement, bucket='net'):
 
 
 
+def _statement_is_calculated(statement):
+    """آیا مبالغ این صورت‌وضعیت با «موتور محاسبه» ساخته شده است؟
+
+    دادهٔ قدیمی/واردشده ممکن است `net_amount = 0` داشته باشد بدون آن‌که
+    محاسبه شده باشد؛ در چنین ردیفی صفر یعنی «قابل پرداخت ناشناخته». اما اگر
+    کارکرد، کسورات/اضافات یا زنجیرهٔ تجمعی پر شده باشد، صفر یک مقدار
+    محاسبه‌شده است (مثلاً کسر کامل پیش‌پرداخت و علی‌الحساب).
+    """
+    if statement is None:
+        return False
+    for field in ('work_done', 'cumulative_previous_amount', 'deductions_total',
+                  'additions_total', 'adjustment_amount', 'adjustment_work_done'):
+        if Decimal(str(getattr(statement, field, 0) or 0)) != 0:
+            return True
+    for field in ('deductions', 'additions', 'levels'):
+        if getattr(statement, field, None):
+            return True
+    return False
+
+
 def statement_payable_amount(statement):
-    """مبلغ قابل پرداخت صورت‌وضعیت (خالص) با بازگشت به مبلغ تجمعی در داده‌های قدیمی."""
+    """مبلغ قابل پرداخت صورت‌وضعیت (خالص).
+
+    «صفرِ محاسبه‌شده» (کسر پیش‌پرداخت/علی‌الحساب که کل کارکرد را پوشش می‌دهد)
+    باید صفر بماند تا نه مانده‌ای برای سند ساخته شود و نه در جمع‌های تجمعی
+    قرارداد تکرار شود؛ فقط دادهٔ محاسبه‌نشدهٔ قدیمی به مبلغ تجمعی برمی‌گردد.
+    """
     if statement is None:
         return Decimal('0')
-    net = statement.net_amount
-    if net is None or Decimal(str(net)) == 0:
-        return Decimal(str(statement.amount or 0))
-    return Decimal(str(net))
+    net = getattr(statement, 'net_amount', None)
+    gross = Decimal(str(getattr(statement, 'amount', 0) or 0))
+    if net is None:
+        return gross
+    net = Decimal(str(net))
+    if net == 0 and not _statement_is_calculated(statement):
+        return gross
+    return net
 
 
 def invoice_payable_amount(invoice):
@@ -487,7 +525,11 @@ class StatementSerializer(serializers.ModelSerializer):
         ))
 
     def get_payment_status(self, obj):
-        return payment_status_of(statement_payable_amount(obj), _allocated_amount(obj, 'paid_sum', 'net'))
+        return payment_status_of(
+            statement_payable_amount(obj),
+            _allocated_amount(obj, 'paid_sum', 'net'),
+            zero_payable_is_paid=True,
+        )
 
     def get_last_payment_date(self, obj):
         return invoice_last_payment_date(obj)

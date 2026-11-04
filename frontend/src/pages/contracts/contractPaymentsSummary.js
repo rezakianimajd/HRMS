@@ -9,7 +9,7 @@
 export const numOf = (value) => (Number.isFinite(Number(value)) ? Number(value) : 0);
 
 export const PAYMENT_STATUS = {
-  paid: { key: 'paid', label: 'تسویه‌شده', color: '#0f766e', bg: '#ecfdf5' },
+  paid: { key: 'paid', label: 'پرداخت‌شده', color: '#0f766e', bg: '#ecfdf5' },
   partial: { key: 'partial', label: 'پرداخت جزئی', color: '#b45309', bg: '#fffbeb' },
   unpaid: { key: 'unpaid', label: 'پرداخت‌نشده', color: '#be123c', bg: '#fff1f2' },
 };

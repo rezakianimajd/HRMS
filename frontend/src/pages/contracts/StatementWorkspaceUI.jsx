@@ -86,11 +86,22 @@ export const rowMetrics = (row = {}) => {
   const additionsTotal = n(row.additions_total)
     || additions.reduce((sum, item) => sum + n(item.amount), 0) + n(row.value_added_tax) + n(row.other_additions);
   const deductionsTotal = n(row.deductions_total) || deductions.reduce((sum, item) => sum + n(item.amount), 0);
-  const net = n(row.net_amount) || work + additionsTotal - deductionsTotal;
   // سطوح، زنجیرهٔ تجمعی مستقل دارند؛ فقط برای نمایش جمع می‌شوند.
   const levels = Array.isArray(row.levels) ? row.levels : [];
   const levelsWork = levels.reduce((sum, level) => sum + n(level?.work), 0);
   const levelsWorkForeign = levels.reduce((sum, level) => sum + n(level?.work_foreign), 0);
+  /**
+   * «خالص قابل پرداخت»: صفرِ محاسبه‌شده (کسر کامل پیش‌پرداخت/علی‌الحساب) صفر
+   * می‌ماند؛ فقط ردیف قدیمیِ محاسبه‌نشده به مبلغ تجمعی برمی‌گردد.
+   */
+  const hasCalculation = work !== 0 || previous !== 0 || n(row.deductions_total) !== 0
+    || n(row.additions_total) !== 0 || additions.length > 0 || deductions.length > 0
+    || levels.length > 0 || n(row.adjustment_amount) !== 0;
+  const recomputedNet = work + additionsTotal - deductionsTotal;
+  const serverNet = row.net_amount;
+  const net = (serverNet === null || serverNet === undefined)
+    ? recomputedNet
+    : (hasCalculation ? n(serverNet) : Math.max(0, amount));
   return {
     amount,
     previous,

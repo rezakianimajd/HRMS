@@ -293,6 +293,24 @@ test('letters table supports grid-style inline row editing', async () => {
   container.remove();
 });
 
+test('letters table rows are selectable like a data grid', async () => {
+  const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
+
+  const selector = container.querySelector('[title*="انتخاب ردیف"]');
+  expect(selector).toBeTruthy();
+  await act(async () => {
+    selector.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+    await wait(160);
+  });
+
+  expect(container.textContent).toContain('ردیف انتخاب شده');
+  expect(container.textContent).toContain('انتخاب همهٔ صفحه');
+  expect(container.textContent).toContain('لغو انتخاب');
+
+  root.unmount();
+  container.remove();
+});
+
 test('workdesk page renders cartable counters, referrals and actions', async () => {
   const { container, root } = await renderPage(<CorrespondenceWorkdeskPage />);
 

@@ -1100,6 +1100,35 @@ class PaymentAllocationLogicTests(SimpleTestCase):
         self.assertEqual(invoice_payable_amount(self._invoice()), Decimal('4400000'))
         self.assertEqual(invoice_payable_amount(Invoice(pk=4, contract_id=7, amount=900, total=0)), Decimal('900'))
 
+    def test_calculated_zero_payable_stays_zero(self):
+        """کسر کامل پیش‌پرداخت/علی‌الحساب → قابل پرداخت صفر (نه مبلغ تجمعی)."""
+        from contracts.serializers import statement_payable_amount
+
+        fully_deducted = Statement(
+            pk=5, contract_id=7, amount=10_000_000, net_amount=0,
+            work_done=2_000_000, cumulative_previous_amount=8_000_000,
+            deductions=[
+                {'title': 'کسر پیش‌پرداخت', 'amount': 1_000_000},
+                {'title': 'کسر علی‌الحساب', 'amount': 1_500_000},
+            ],
+            deductions_total=2_500_000,
+        )
+        fully_deducted._prefetched_objects_cache = {'payment_allocations': []}
+        self.assertEqual(statement_payable_amount(fully_deducted), Decimal('0'))
+
+        from contracts.serializers import StatementSerializer
+        serializer = StatementSerializer()
+        self.assertEqual(serializer.get_payable_amount(fully_deducted), Decimal('0'))
+        self.assertEqual(serializer.get_remaining_amount(fully_deducted), Decimal('0'))
+        self.assertEqual(serializer.get_payment_status(fully_deducted), 'paid')
+
+    def test_zero_payable_status_can_be_treated_as_paid(self):
+        from contracts.serializers import payment_status_of
+
+        self.assertEqual(payment_status_of(0, 0, zero_payable_is_paid=True), 'paid')
+        self.assertEqual(payment_status_of(0, 0), 'unpaid')
+        self.assertEqual(payment_status_of(0, 500), 'paid')
+
     def test_allocated_amount_uses_prefetch_cache(self):
         from contracts.serializers import _allocated_amount
 
