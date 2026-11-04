@@ -1280,71 +1280,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
   const dirtyCount = Object.keys(drafts).length;
   const draft = (editRowId && drafts[editRowId]) || {};
 
-  /* ---------- انتخاب ردیف‌ها (عملیات گروهی) ---------- */
-  const [selectedIds, setSelectedIds] = useState([]);
-  const selectionAnchorRef = useRef(null);
-  const [bulkBusy, setBulkBusy] = useState(false);
-
-  const clearSelection = () => {
-    setSelectedIds([]);
-    selectionAnchorRef.current = null;
-  };
-
-  /* با تغییر صفحه/فیلترها، انتخاب‌ها پاک می‌شوند تا عملیات گروهی روی ردیف‌های دیده‌شده باشد. */
-  useEffect(() => {
-    setSelectedIds([]);
-    selectionAnchorRef.current = null;
-  }, [listParams]);
-
-  /** کلیک = افزودن/حذف انتخاب، Shift+کلیک = انتخاب بازه تا ردیف قبلی. */
-  const toggleSelection = (id, { extend = false } = {}) => {
-    const index = rows.findIndex((row) => row.letter.id === id);
-    setSelectedIds((previous) => {
-      if (extend && selectionAnchorRef.current !== null) {
-        const anchorIndex = rows.findIndex((row) => row.letter.id === selectionAnchorRef.current);
-        if (anchorIndex >= 0 && index >= 0) {
-          const [from, to] = anchorIndex <= index ? [anchorIndex, index] : [index, anchorIndex];
-          const next = new Set(previous);
-          rows.slice(from, to + 1).forEach((row) => next.add(row.letter.id));
-          return [...next];
-        }
-      }
-      selectionAnchorRef.current = id;
-      return previous.includes(id)
-        ? previous.filter((item) => item !== id)
-        : [...previous, id];
-    });
-  };
-
-  const selectPageRows = () => {
-    setSelectedIds(rows.map((row) => row.letter.id));
-    selectionAnchorRef.current = rows[0]?.letter?.id ?? null;
-  };
-
-  const runBulkAction = async (action) => {
-    if (!selectedIds.length || bulkBusy) return;
-    setBulkBusy(true);
-    let done = 0;
-    let failed = 0;
-    for (const id of selectedIds) {
-      try {
-        // eslint-disable-next-line no-await-in-loop
-        await axiosInstance.post(`/letters/${id}/${action}/`, {});
-        done += 1;
-      } catch (requestError) {
-        failed += 1;
-      }
-    }
-    setBulkBusy(false);
-    clearSelection();
-    refreshAll();
-    qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
-    const label = action === 'archive' ? 'بایگانی' : 'بسته';
-    setToast(failed
-      ? `${toPersianDigits(done)} سند ${label} شد و ${toPersianDigits(failed)} سند خطا داشت.`
-      : `${toPersianDigits(done)} سند ${label} شد.`);
-  };
-
   /** کلیک تکی = پروندهٔ نامه، دوبار کلیک = ویرایش درجا (بدون باز شدن هم‌زمان پرونده). */
   const rowClickTimer = useRef(0);
   const handleRowClick = (row) => {
@@ -1759,46 +1694,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           border: '1px solid', borderColor: moduleTheme.cardBorderColor,
           bgcolor: 'background.paper', boxShadow: 'none',
         }}>
-        {selectedIds.length ? (
-          <Stack
-            direction="row"
-            spacing={0.75}
-            useFlexGap
-            alignItems="center"
-            flexWrap="wrap"
-            sx={{
-              mb: 1, px: 1, py: 0.6, borderRadius: '10px',
-              border: '1px dashed', borderColor: alpha(ACCENT, 0.45),
-              bgcolor: alpha(ACCENT, 0.05),
-            }}
-          >
-            <Chip
-              size="small"
-              label={`${toPersianDigits(selectedIds.length)} ردیف انتخاب شده`}
-              sx={chipSx(ACCENT)}
-            />
-            <Button size="small" variant="outlined" startIcon={<ArchiveIcon />}
-              disabled={bulkBusy} onClick={() => runBulkAction('archive')}
-              sx={{ fontSize: 11.5, py: 0.1 }}>
-              بایگانی
-            </Button>
-            <Button size="small" variant="outlined" startIcon={<DoneAllIcon />}
-              disabled={bulkBusy} onClick={() => runBulkAction('close')}
-              sx={{ fontSize: 11.5, py: 0.1 }}>
-              بستن پرونده
-            </Button>
-            <Button size="small" variant="text" disabled={bulkBusy}
-              onClick={selectPageRows} sx={{ fontSize: 11.5 }}>
-              انتخاب همهٔ صفحه
-            </Button>
-            <Box sx={{ flex: 1 }} />
-            {bulkBusy ? <CircularProgress size={16} /> : null}
-            <Button size="small" variant="text" onClick={clearSelection}
-              sx={{ fontSize: 11.5 }}>
-              لغو انتخاب
-            </Button>
-          </Stack>
-        ) : null}
         <ModuleTable
           tableTheme={moduleTheme.tableTheme}
           ariaLabel="فهرست مکاتبات اداری"
@@ -1816,50 +1711,38 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
           })}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
-          minWidth={mode === 'incoming' ? 1360 : 1180}
+          minWidth={mode === 'incoming' ? 1120 : 1040}
           tableLayout="fixed"
           columns={[
-            /* ── انتخاب ردیف (کلیک = انتخاب، Shift+کلیک = انتخاب بازه) ── */
-            {
-              key: 'select', label: 'ردیف', width: '3%', align: 'center',
-              render: (letterRow, index) => {
-                const selected = selectedIds.includes(letterRow.letter.id);
-                const rowNumber = page * pageSize + index + 1;
-                return (
-                  <Box
-                    role="button"
-                    tabIndex={-1}
-                    title={selected ? 'لغو انتخاب ردیف' : 'انتخاب ردیف (Shift+کلیک برای انتخاب بازه)'}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      toggleSelection(letterRow.letter.id, { extend: event.shiftKey });
-                    }}
-                    sx={{
-                      minWidth: 26, height: 20, px: 0.4, mx: 'auto',
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      borderRadius: '5px', cursor: 'pointer',
-                      fontVariantNumeric: 'tabular-nums', fontSize: 11, fontWeight: 800,
-                      lineHeight: 1, userSelect: 'none',
-                      border: '1px solid',
-                      borderColor: selected ? 'primary.main' : 'divider',
-                      bgcolor: selected ? 'primary.main' : 'transparent',
-                      color: selected ? '#fff' : MUTED,
-                    }}
-                  >
-                    {toPersianDigits(rowNumber)}
-                  </Box>
-                );
+            /* ── تاریخ ورود (فقط دفتر وارده) ── */
+            ...(mode === 'incoming' ? [
+              {
+                key: 'received_date', label: 'تاریخ ورود', width: '10%', align: 'center',
+                render: (row) => {
+                  const { letter } = row;
+                  const received = letter.received_date ? dateLabel(letter.received_date) : '—';
+                  const meta = joinParts(
+                    letter.entry_time ? `ساعت ورود ${timeLabel(letter.entry_time)}` : '',
+                    letter.entered_by_label ? `ثبت‌کننده: ${letter.entered_by_label}` : '',
+                    letter.entry_method_display || '',
+                  );
+                  return (
+                    <CellText mono weight={700} title={meta || undefined}>
+                      {received}
+                    </CellText>
+                  );
+                },
               },
-            },
+            ] : []),
             /* ── شمارهٔ نامه ── */
             {
-              key: 'number', label: 'شماره نامه', width: '11%', align: 'center',
+              key: 'number', label: 'شماره نامه', width: '14%', align: 'center',
               render: (row) => {
                 const { letter } = row;
                 if (rowEditing(letter)) {
                   return (
                     <InlineText value={draft.number} onChange={patchDraft('number')}
-                      placeholder="شماره" align="center" />
+                      placeholder="شماره نامه" align="center" />
                   );
                 }
                 const numberText = letter.number ? toPersianDigits(letter.number) : 'بدون شماره';
@@ -1869,15 +1752,48 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   letter.external_number ? toPersianDigits(letter.external_number) : '',
                 );
                 return (
-                  <CellText mono weight={800} title={joinParts(numberText, meta)}>
+                  <CellText mono weight={800} title={meta || undefined}>
                     {numberText}
                   </CellText>
                 );
               },
             },
-            /* ── موضوع ── */
+            /* ── طرف حساب / طرف مکاتبه ── */
             {
-              key: 'subject', label: 'موضوع', width: mode === 'incoming' ? '18%' : '22%',
+              key: 'party', label: mode === 'incoming' ? 'طرف حساب' : 'طرف مکاتبه', width: '20%',
+              render: (row) => {
+                const { letter } = row;
+                if (rowEditing(letter)) {
+                  return (
+                    <PartyPicker
+                      label="" placeholder="طرف حساب"
+                      variant="standard" size="small" sx={inlineSx}
+                      value={partyValue(draft.party_account, letter.party_account_name)}
+                      onChange={(party) => patchDraft('party_account')(party?.id || '')}
+                    />
+                  );
+                }
+                const primary = letter.party_account_name
+                  || letter.organization_name
+                  || letter.correspondent_name
+                  || letter.sender_party_name
+                  || letter.sender_name
+                  || letter.receiver_name || '—';
+                const meta = joinParts(
+                  letter.correspondent_name && letter.correspondent_name !== primary
+                    ? letter.correspondent_name : '',
+                  letter.receiver_name && letter.receiver_name !== primary
+                    ? `گیرنده: ${letter.receiver_name}` : '',
+                  letter.sender_name && letter.sender_name !== primary ? letter.sender_name : '',
+                );
+                return (
+                  <CellText weight={700} title={meta || undefined}>{primary}</CellText>
+                );
+              },
+            },
+            /* ── موضوع نامه ── */
+            {
+              key: 'subject', label: 'موضوع نامه', width: '24%',
               render: (row) => {
                 const { letter } = row;
                 if (rowEditing(letter)) {
@@ -1888,212 +1804,83 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                 }
                 const meta = joinParts(
                   letter.category_title,
+                  letter.summary ? String(letter.summary).slice(0, 120) : '',
                   letter.unit_name,
-                  letter.unit_reg_no ? `واحد ${toPersianDigits(letter.unit_reg_no)}` : '',
-                  letter.summary ? String(letter.summary).slice(0, 90) : '',
                 );
                 return (
-                  <CellText weight={700} title={joinParts(letter.subject, meta)}>
-                    {letter.subject || '—'}
-                  </CellText>
+                  <CellText weight={700} title={meta || undefined}>{letter.subject || '—'}</CellText>
                 );
               },
             },
-            /* ── فرستنده (وارده) ── */
-            ...(mode === 'incoming' ? [
-              {
-                key: 'sender', label: 'فرستنده', width: '12%',
-                render: (row) => {
-                  const { letter } = row;
-                  if (rowEditing(letter)) {
-                    return (
-                      <PersonnelPicker
-                        label="" placeholder="پرسنل فرستنده"
-                        variant="standard" size="small" sx={inlineSx}
-                        value={personValue(draft.sender_employee, draft.sender_name)}
-                        onChange={(option) => {
-                          patchDraft('sender_employee')(option?.id || '');
-                          if (option) {
-                            patchDraft('sender_name')(option.full_name || '');
-                            if (option.job_title) patchDraft('sender_title')(option.job_title);
-                          }
-                        }}
-                      />
-                    );
-                  }
-                  const primary = letter.sender_party_name
-                    || letter.sender_organization_name
-                    || letter.sender_name || '—';
-                  return (
-                    <CellText weight={700} title={joinParts(
-                      letter.sender_party_name, letter.sender_organization_name,
-                      letter.sender_name, letter.sender_title,
-                    )}>
-                      {primary}
-                    </CellText>
-                  );
-                },
-              },
-              {
-                key: 'registry', label: 'ثبت شرکت / واحد', width: '9%', align: 'center',
-                render: (row) => {
-                  const { letter } = row;
-                  const companyLine = letter.company_reg_no
-                    ? toPersianDigits(letter.company_reg_no) : '';
-                  const unitLine = letter.unit_reg_no ? `واحد ${toPersianDigits(letter.unit_reg_no)}` : '';
-                  return (
-                    <CellText mono weight={700} title={joinParts(
-                      companyLine ? `ثبت شرکت: ${companyLine} — ${dateLabel(letter.company_reg_date)}` : '',
-                      unitLine ? `${unitLine} — ${dateLabel(letter.unit_reg_date)}` : '',
-                      letter.unit_name,
-                    )}>
-                      {joinParts(companyLine, unitLine) || '—'}
-                    </CellText>
-                  );
-                },
-              },
-            ] : []),
-            /* ── طرف مکاتبه (صادره/داخلی) ── */
-            ...(mode === 'incoming' ? [] : [
-              {
-                key: 'party', label: 'طرف مکاتبه', width: '15%',
-                render: (row) => {
-                  const { letter } = row;
-                  if (rowEditing(letter)) {
-                    return (
-                      <PartyPicker
-                        label="" placeholder="طرف حساب"
-                        variant="standard" size="small" sx={inlineSx}
-                        value={partyValue(draft.party_account, letter.party_account_name)}
-                        onChange={(party) => patchDraft('party_account')(party?.id || '')}
-                      />
-                    );
-                  }
-                  const primary = letter.party_account_name
-                    || letter.organization_name || letter.correspondent_name
-                    || letter.sender_name || letter.receiver_name || '—';
-                  return (
-                    <CellText weight={700} title={joinParts(primary, letter.receiver_name)}>
-                      {primary}
-                    </CellText>
-                  );
-                },
-              },
-            ]),
             /* ── تاریخ نامه ── */
             {
-              key: 'date', label: 'تاریخ نامه', width: mode === 'incoming' ? '8%' : '9%',
-              align: 'center',
+              key: 'date', label: 'تاریخ نامه', width: '11%', align: 'center',
               render: (row) => {
                 const { letter } = row;
                 if (rowEditing(letter)) {
                   return <InlineDate value={draft.letter_date} onChange={patchDraft('letter_date')} />;
                 }
                 return (
-                  <CellText mono weight={700} title={letter.received_date
-                    ? `تاریخ ورود: ${dateLabel(letter.received_date)}` : undefined}>
+                  <CellText mono weight={700}
+                    title={letter.due_date ? `مهلت پاسخ: ${dateLabel(letter.due_date)}` : undefined}>
                     {dateLabel(letter.letter_date)}
                   </CellText>
                 );
               },
             },
-            /* ── ساعت ورود (وارده) ── */
+            /* ── ارجاع (آخرین ارجاع) — وارده ── */
             ...(mode === 'incoming' ? [
               {
-                key: 'entry_time', label: 'ساعت', width: '5%', align: 'center',
-                render: (row) => (
-                  <CellText mono weight={700} title={row.letter.entered_by_label || ''}>
-                    {row.letter.entry_time ? timeLabel(row.letter.entry_time) : '—'}
-                  </CellText>
-                ),
-              },
-            ] : []),
-            /* ── مهلت پاسخ ── */
-            {
-              key: 'due', label: 'مهلت پاسخ', width: mode === 'incoming' ? '8%' : '9%',
-              align: 'center',
-              render: (row) => {
-                const { letter } = row;
-                if (rowEditing(letter)) {
-                  return <InlineDate value={draft.due_date} onChange={patchDraft('due_date')} />;
-                }
-                if (!letter.due_date) return <CellText color={MUTED}>—</CellText>;
-                return (
-                  <Tooltip title={dateLabel(letter.due_date)}>
-                    <Chip size="small" label={daysLabel(row.days)} sx={chipSx(daysColor(row.days))} />
-                  </Tooltip>
-                );
-              },
-            },
-            /* ── آخرین ارجاع (وارده) ── */
-            ...(mode === 'incoming' ? [
-              {
-                key: 'referral', label: 'آخرین ارجاع', width: '8%',
+                key: 'referral', label: 'ارجاع', width: '12%',
                 render: (row) => {
                   const last = row.letter.last_referral;
-                  if (!last) return <CellText color={MUTED}>—</CellText>;
+                  if (!last) return <CellText color={MUTED}>بدون ارجاع</CellText>;
                   const referralMeta = REFERRAL_STATUS_META[last.status];
                   const target = last.to_employee_name || last.to_user_name || last.to_name || '—';
+                  const meta = joinParts(
+                    referralMeta?.label,
+                    dateLabel(last.referred_on),
+                    last.instruction,
+                  );
                   return (
-                    <CellText weight={700} color={referralMeta?.color || undefined}
-                      title={joinParts(target, referralMeta?.label, last.instruction)}>
+                    <CellText weight={700} color={referralMeta?.color || undefined} title={meta || undefined}>
                       {target}
                     </CellText>
                   );
                 },
               },
             ] : []),
-            /* ── نوع / جهت (صادره و داخلی) ── */
+            /* ── مهلت پاسخ و وضعیت — صادره/داخلی ── */
             ...(mode === 'incoming' ? [] : [
               {
-                key: 'type', label: 'نوع / جهت', width: '7%', align: 'center',
-                render: (row) => (
-                  <Tooltip title={row.letter.category_title || ''}>
-                    <Chip size="small" label={row.directionMeta.label}
-                      sx={chipSx(row.directionMeta.color, row.directionMeta.bg)} />
-                  </Tooltip>
-                ),
+                key: 'due', label: 'مهلت پاسخ', width: '11%', align: 'center',
+                render: (row) => {
+                  const { letter } = row;
+                  if (rowEditing(letter)) {
+                    return <InlineDate value={draft.due_date} onChange={patchDraft('due_date')} />;
+                  }
+                  if (!letter.due_date) return <CellText color={MUTED}>—</CellText>;
+                  return (
+                    <Tooltip title={dateLabel(letter.due_date)}>
+                      <Chip size="small" label={daysLabel(row.days)} sx={chipSx(daysColor(row.days))} />
+                    </Tooltip>
+                  );
+                },
               },
-            ]),
-            /* ── وضعیت ── */
-            {
-              key: 'status', label: 'وضعیت', width: mode === 'incoming' ? '6%' : '7%', align: 'center',
-              render: (row) => (rowEditing(row.letter) ? (
-                <InlineSelect value={draft.status} onChange={patchDraft('status')}
-                  options={meta?.statuses || []} />
-              ) : (
-                <Chip size="small" label={row.statusMeta.label}
-                  sx={chipSx(row.statusMeta.color, row.statusMeta.bg)} />
-              )),
-            },
-            /* ── اولویت ── */
-            {
-              key: 'priority', label: 'اولویت', width: '4%', align: 'center',
-              render: (row) => (rowEditing(row.letter) ? (
-                <InlineSelect value={draft.priority} onChange={patchDraft('priority')}
-                  options={meta?.priorities || []} />
-              ) : (
-                <Tooltip title={PRIORITY_META[row.letter.priority]?.label || ''}>
-                  <Chip size="small" label={PRIORITY_META[row.letter.priority]?.label || '—'}
-                    sx={chipSx(PRIORITY_META[row.letter.priority]?.color || SLATE)} />
-                </Tooltip>
-              )),
-            },
-            /* ── پیوست (صادره و داخلی) ── */
-            ...(mode === 'incoming' ? [] : [
               {
-                key: 'attachments', label: 'پیوست', width: '5%', align: 'center',
-                render: (row) => (
-                  row.letter.attachment_count ? (
-                    <Chip size="small" label={toPersianDigits(row.letter.attachment_count)}
-                      sx={chipSx(INTERNAL)} />
-                  ) : <CellText color={MUTED}>—</CellText>
-                ),
+                key: 'status', label: 'وضعیت', width: '11%', align: 'center',
+                render: (row) => (rowEditing(row.letter) ? (
+                  <InlineSelect value={draft.status} onChange={patchDraft('status')}
+                    options={meta?.statuses || []} />
+                ) : (
+                  <Chip size="small" label={row.statusMeta.label}
+                    sx={chipSx(row.statusMeta.color, row.statusMeta.bg)} />
+                )),
               },
             ]),
             /* ── عملیات ── */
             {
-              key: 'actions', label: 'عملیات', width: '8%', align: 'center',
+              key: 'actions', label: 'عملیات', width: '9%', align: 'center',
               render: (row) => {
                 const { letter } = row;
                 const rowSaving = savingIds.includes(letter.id);
@@ -2108,14 +1895,14 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                             onClick={() => saveRowEdit(letter.id)}>
                             {rowSaving
                               ? <CircularProgress size={14} />
-                              : <CheckCircleOutlineIcon sx={{ fontSize: 16, color: OK }} />}
+                              : <CheckCircleOutlineIcon sx={{ fontSize: 17, color: OK }} />}
                           </IconButton>
                         </span>
                       </Tooltip>
                       <Tooltip title="انصراف (Esc)">
                         <IconButton size="small" aria-label="انصراف از ویرایش"
                           onClick={() => discardRow(letter.id)}>
-                          <CloseIcon sx={{ fontSize: 16 }} />
+                          <CloseIcon sx={{ fontSize: 17 }} />
                         </IconButton>
                       </Tooltip>
                     </Stack>
@@ -2127,7 +1914,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     <Tooltip title="مشاهدهٔ پرونده">
                       <IconButton size="small" aria-label="مشاهدهٔ نامه"
                         onClick={() => { setDrawerLetter(letter); setComment(''); }}>
-                        <VisibilityOutlinedIcon sx={{ fontSize: 16 }} />
+                        <VisibilityOutlinedIcon sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
                     <Tooltip title={rowDirty(letter) ? 'ادامهٔ ویرایش' : 'ویرایش سریع ردیف'}>
@@ -2139,7 +1926,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                             ? <CircularProgress size={14} />
                             : (
                               <EditOutlinedIcon
-                                sx={{ fontSize: 16, color: rowDirty(letter) ? OK : ACCENT }}
+                                sx={{ fontSize: 17, color: rowDirty(letter) ? OK : ACCENT }}
                               />
                             )}
                         </IconButton>
@@ -2148,7 +1935,7 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     <Tooltip title="بیشتر">
                       <IconButton size="small" aria-label="عملیات بیشتر"
                         onClick={(event) => setRowMenu({ anchorEl: event.currentTarget, letter })}>
-                        <MoreVertIcon sx={{ fontSize: 16 }} />
+                        <MoreVertIcon sx={{ fontSize: 17 }} />
                       </IconButton>
                     </Tooltip>
                   </Stack>

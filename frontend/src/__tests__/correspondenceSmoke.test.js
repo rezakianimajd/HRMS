@@ -227,16 +227,19 @@ test('dedicated incoming page is scoped to incoming letters and has no extra fil
   expect(container.querySelector('input[placeholder*="نامه‌های وارده"]')).toBeTruthy();
   expect(container.textContent).not.toContain('کل مکاتبات');
 
-  // ستون‌های تخصصی دفتر وارده (طراحی جدید: ستون‌های تجمیعی و دوسطری)
-  expect(container.textContent).toContain('ثبت شرکت / واحد');
-  expect(container.textContent).toContain('فرستنده');
-  expect(container.textContent).toContain('آخرین ارجاع');
-  expect(container.textContent).toContain('مهلت پاسخ');
-  expect(container.textContent).toContain('شرکت ناظر');
-  expect(container.textContent).toContain('د-۸۸');
-  // تاریخ‌ها و ساعت‌ها شمسی و با اعداد فارسی
+  // ستون‌های دفتر وارده (چیدمان استاندارد و ساده)
+  expect(container.textContent).toContain('تاریخ ورود');
+  expect(container.textContent).toContain('شماره نامه');
+  expect(container.textContent).toContain('طرف حساب');
+  expect(container.textContent).toContain('موضوع نامه');
+  expect(container.textContent).toContain('تاریخ نامه');
+  expect(container.textContent).toContain('ارجاع');
+  expect(container.textContent).toContain('عملیات');
+  expect(container.textContent).toContain('شرکت ساز و کار');
+  expect(container.textContent).toContain('معرفی شرکت جهت اخذ ردیف پیمان');
+  // تاریخ‌ها شمسی و با اعداد فارسی
+  expect(container.textContent).toContain(toJalali(letters[0].received_date));
   expect(container.textContent).toContain(toJalali(letters[0].letter_date));
-  expect(container.textContent).toContain('۰۹:۳۰');
   expect(container.textContent).not.toContain('09:30');
 
   root.unmount();
@@ -293,19 +296,13 @@ test('letters table supports grid-style inline row editing', async () => {
   container.remove();
 });
 
-test('letters table rows are selectable like a data grid', async () => {
+test('letters table shows the standard incoming column set', async () => {
   const { container, root } = await renderPage(<CorrespondenceLettersPage mode="incoming" />);
 
-  const selector = container.querySelector('[title*="انتخاب ردیف"]');
-  expect(selector).toBeTruthy();
-  await act(async () => {
-    selector.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-    await wait(160);
-  });
-
-  expect(container.textContent).toContain('ردیف انتخاب شده');
-  expect(container.textContent).toContain('انتخاب همهٔ صفحه');
-  expect(container.textContent).toContain('لغو انتخاب');
+  const headers = [...container.querySelectorAll('thead th')].map((cell) => cell.textContent.trim());
+  expect(headers).toEqual([
+    'تاریخ ورود', 'شماره نامه', 'طرف حساب', 'موضوع نامه', 'تاریخ نامه', 'ارجاع', 'عملیات',
+  ]);
 
   root.unmount();
   container.remove();
