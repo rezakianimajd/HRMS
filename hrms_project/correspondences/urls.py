@@ -5,6 +5,7 @@ from correspondences.views import (
     OrganizationViewSet, OrganizationalLetterViewSet,
     LetterViewSet, LetterCategoryViewSet, LetterSeriesViewSet, CorrespondentViewSet,
     LetterReferralViewSet, LetterAttachmentViewSet,
+    LetterRequestViewSet, LetterRequestTypeViewSet,
 )
 
 router = DefaultRouter()
@@ -22,6 +23,8 @@ router.register(r'letter-series', LetterSeriesViewSet, basename='letter-series')
 router.register(r'correspondents', CorrespondentViewSet, basename='correspondent')
 router.register(r'letter-referrals', LetterReferralViewSet, basename='letter-referral')
 router.register(r'letter-attachments', LetterAttachmentViewSet, basename='letter-attachment')
+router.register(r'letter-request-types', LetterRequestTypeViewSet, basename='letter-request-type')
+router.register(r'letter-requests', LetterRequestViewSet, basename='letter-request')
 
 urlpatterns = [
     path('', include(router.urls)),

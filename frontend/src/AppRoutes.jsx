@@ -36,6 +36,7 @@ import CorrespondencesPage from './pages/CorrespondencesPage';
 import CorrespondenceDashboardPage from './pages/correspondence/CorrespondenceDashboardPage';
 import CorrespondenceLettersPage from './pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceSettingsPage from './pages/correspondence/CorrespondenceSettingsPage';
+import CorrespondenceWorkdeskPage from './pages/correspondence/CorrespondenceWorkdeskPage';
 import AssistantPage from './pages/AssistantPage';
 import ScoringPage from './pages/ScoringPage';
 import Settings from './modules/settings/Settings';
@@ -225,6 +226,7 @@ const AppRoutes = () => {
       <Route path="/correspondences" element={<ProtectedLayout><CorrespondencesPage /></ProtectedLayout>} />
       <Route path="/correspondence" element={<ProtectedLayout><CorrespondenceDashboardPage /></ProtectedLayout>} />
       <Route path="/correspondence/letters" element={<ProtectedLayout><CorrespondenceLettersPage mode="all" /></ProtectedLayout>} />
+      <Route path="/correspondence/workdesk" element={<ProtectedLayout><CorrespondenceWorkdeskPage /></ProtectedLayout>} />
       <Route path="/correspondence/incoming" element={<ProtectedLayout><CorrespondenceLettersPage mode="incoming" /></ProtectedLayout>} />
       <Route path="/correspondence/outgoing" element={<ProtectedLayout><CorrespondenceLettersPage mode="outgoing" /></ProtectedLayout>} />
       <Route path="/correspondence/internal" element={<ProtectedLayout><CorrespondenceLettersPage mode="internal" /></ProtectedLayout>} />

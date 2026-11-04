@@ -293,6 +293,16 @@ class Letter(BaseModel):
         ('post', _('پست / مرسوله')),
         ('other', _('سایر')),
     ]
+    DELIVERY_TYPES = [
+        ('in_person', _('حضوری / دستی')),
+        ('post', _('پست / مرسوله')),
+        ('email', _('پست الکترونیک')),
+        ('fax', _('دورنگار')),
+        ('courier', _('پیک')),
+        ('scanner', _('اسکنر / بارگذاری')),
+        ('automation', _('اتوماسیون اداری')),
+        ('other', _('سایر')),
+    ]
 
     direction = models.CharField(max_length=20, choices=DIRECTION_CHOICES, verbose_name=_('جهت'))
     number = models.CharField(max_length=60, blank=True, verbose_name=_('شماره نامه'))
@@ -344,6 +354,20 @@ class Letter(BaseModel):
     )
     unit_name = models.CharField(max_length=150, blank=True, verbose_name=_('واحد ثبت‌کننده'))
 
+    # --- تحویل نامه (نوع تحویل، تحویل‌دهنده) ---
+    delivery_type = models.CharField(
+        max_length=20, default='in_person', choices=DELIVERY_TYPES,
+        verbose_name=_('نوع تحویل'),
+    )
+    delivered_by = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='delivered_office_letters', db_constraint=False,
+        verbose_name=_('تحویل‌دهنده'),
+    )
+    delivered_by_name = models.CharField(
+        max_length=200, blank=True, verbose_name=_('نام تحویل‌دهنده (متن آزاد)'),
+    )
+
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='office_letters', verbose_name=_('طرف حساب (سازمان)'),
@@ -359,6 +383,28 @@ class Letter(BaseModel):
     sender_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام ارسال‌کننده'))
     sender_title = models.CharField(max_length=150, blank=True, verbose_name=_('سمت ارسال‌کننده'))
     receiver_name = models.CharField(max_length=200, blank=True, verbose_name=_('گیرنده'))
+
+    # --- پرسنل مرتبط (فرستنده/گیرنده/تحویل‌دهنده) و طرف‌های قرارداد ---
+    sender_employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sent_office_letters', db_constraint=False,
+        verbose_name=_('فرستنده (پرسنل)'),
+    )
+    receiver_employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='received_office_letters', db_constraint=False,
+        verbose_name=_('گیرنده (پرسنل)'),
+    )
+    sender_party = models.ForeignKey(
+        'contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sent_letters', db_constraint=False,
+        verbose_name=_('ارسال‌کننده (طرف حساب)'),
+    )
+    party_account = models.ForeignKey(
+        'contracts.ContractParty', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='office_letters', db_constraint=False,
+        verbose_name=_('طرف حساب'),
+    )
     drafter = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='drafted_letters', verbose_name=_('تنظیم‌کننده نامه'),
@@ -470,21 +516,45 @@ class LetterReferral(BaseModel):
     STATUS_CHOICES = [
         ('pending', _('در انتظار اقدام')),
         ('in_progress', _('در حال اقدام')),
+        ('forwarded', _('ارجاع داده شد')),
         ('done', _('اقدام شد')),
         ('returned', _('برگشت داده شد')),
         ('canceled', _('لغو')),
+    ]
+    PURPOSES = [
+        ('action', _('اقدام / انجام کار')),
+        ('info', _('اطلاع / مشاهده')),
+        ('comment', _('اظهارنظر')),
     ]
 
     letter = models.ForeignKey(Letter, on_delete=models.CASCADE, related_name='referrals',
                                verbose_name=_('نامه'))
     seq = models.PositiveSmallIntegerField(default=1, verbose_name=_('سطح ارجاع'))
+    parent = models.ForeignKey(
+        'self', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='children', verbose_name=_('ارجاع والد'),
+    )
+    purpose = models.CharField(
+        max_length=20, default='action', choices=PURPOSES, verbose_name=_('نوع ارجاع'),
+        help_text=_('اقدام (نیازمند انجام کار) یا اطلاع (صرفاً مشاهده)'),
+    )
     from_user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='sent_referrals', verbose_name=_('ارجاع‌دهنده'),
     )
+    from_employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='sent_letter_referrals', db_constraint=False,
+        verbose_name=_('ارجاع‌دهنده (پرسنل)'),
+    )
     to_user = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
         related_name='received_referrals', verbose_name=_('ارجاع‌شونده'),
+    )
+    to_employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='letter_referrals', db_constraint=False,
+        verbose_name=_('ارجاع‌شونده (پرسنل)'),
     )
     to_name = models.CharField(max_length=200, blank=True, verbose_name=_('واحد / شخص خارج از سامانه'))
     referred_on = models.DateField(verbose_name=_('تاریخ ارجاع'))
@@ -494,6 +564,8 @@ class LetterReferral(BaseModel):
         help_text=_('دستور مقام ارجاع‌دهنده به گیرندهٔ ارجاع'),
     )
     note = models.TextField(blank=True, verbose_name=_('توضیح ارجاع'))
+    margin_note = models.TextField(blank=True, verbose_name=_('حاشیه / یادداشت گیرنده'))
+    seen_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان مشاهده'))
     status = models.CharField(max_length=20, default='pending', choices=STATUS_CHOICES,
                               verbose_name=_('وضعیت'))
     response = models.TextField(blank=True, verbose_name=_('پاسخ / جوابیهٔ اقدام‌کننده'))
@@ -523,6 +595,15 @@ class LetterReferral(BaseModel):
             return False
         return self.due_date < _date.today()
 
+    @property
+    def target_label(self):
+        """نام گیرندهٔ ارجاع (کاربر، پرسنل یا واحد خارج از سامانه)."""
+        if self.to_user_id:
+            return self.to_user.get_full_name() or self.to_user.get_username()
+        if self.to_employee_id:
+            return self.to_employee.full_name
+        return self.to_name or '—'
+
 
 class LetterEvent(BaseModel):
     """تاریخچهٔ اقدامات روی نامه (ایجاد، ثبت شماره، ارجاع، پاسخ، بایگانی...)."""
@@ -539,6 +620,10 @@ class LetterEvent(BaseModel):
         ('archived', _('بایگانی')),
         ('closed', _('بسته شد')),
         ('commented', _('یادداشت')),
+        ('referral_seen', _('مشاهدهٔ ارجاع')),
+        ('referral_note', _('حاشیهٔ ارجاع')),
+        ('referral_forwarded', _('ارجاع به سطح بعد')),
+        ('request_created', _('ثبت درخواست')),
     ]
 
     letter = models.ForeignKey(Letter, on_delete=models.CASCADE, related_name='events',
@@ -558,4 +643,157 @@ class LetterEvent(BaseModel):
 
     def __str__(self):
         return f"{self.letter_id} - {self.get_action_display()}"
+
+
+# ---------------------------------------------------------------------------
+# کارتابل درخواست‌ها (مرخصی، وام، گواهی اشتغال ...) — آماده برای گردش‌کار
+# ---------------------------------------------------------------------------
+
+
+class LetterRequestType(BaseModel):
+    """نوع درخواست کارتابل؛ تعریف‌ها قابل توسعه‌اند (مرخصی، وام، ...)."""
+
+    code = models.CharField(max_length=40, verbose_name=_('کد'))
+    name = models.CharField(max_length=150, verbose_name=_('عنوان'))
+    icon = models.CharField(max_length=40, blank=True, default='', verbose_name=_('آیکون'))
+    color = models.CharField(max_length=20, blank=True, default='#0ea5e9', verbose_name=_('رنگ'))
+    description = models.TextField(blank=True, verbose_name=_('توضیحات'))
+    requires_attachment = models.BooleanField(default=False, verbose_name=_('نیازمند پیوست'))
+    approval_levels = models.PositiveSmallIntegerField(default=1, verbose_name=_('تعداد سطوح تأیید'))
+    order = models.PositiveIntegerField(default=0, verbose_name=_('ترتیب'))
+
+    class Meta:
+        verbose_name = _('نوع درخواست')
+        verbose_name_plural = _('انواع درخواست')
+        unique_together = [('company', 'code')]
+        ordering = ['order', 'name']
+
+    def __str__(self):
+        return self.name
+
+
+class LetterRequest(BaseModel):
+    """درخواست اداری پرسنل در کارتابل مکاتبات (مرخصی/وام/گواهی/...)."""
+
+    STATUS_CHOICES = [
+        ('draft', _('پیش‌نویس')),
+        ('submitted', _('ثبت‌شده / در انتظار بررسی')),
+        ('in_review', _('در حال بررسی')),
+        ('approved', _('تأییدشده')),
+        ('rejected', _('ردشده')),
+        ('canceled', _('لغوشده')),
+    ]
+    PRIORITY_CHOICES = Letter.PRIORITY_CHOICES
+    OPEN_STATUSES = ('draft', 'submitted', 'in_review')
+
+    number = models.CharField(max_length=60, blank=True, verbose_name=_('شماره درخواست'))
+    request_type = models.ForeignKey(
+        LetterRequestType, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='requests', verbose_name=_('نوع درخواست'),
+    )
+    request_type_title = models.CharField(
+        max_length=150, blank=True, verbose_name=_('عنوان نوع (در زمان ثبت)'),
+    )
+    subject = models.CharField(max_length=300, verbose_name=_('موضوع'))
+    description = models.TextField(blank=True, verbose_name=_('شرح درخواست'))
+    requester = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='letter_requests', verbose_name=_('درخواست‌دهنده'),
+    )
+    requester_employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='letter_requests', db_constraint=False,
+        verbose_name=_('پرسنل درخواست‌دهنده'),
+    )
+    requester_name = models.CharField(max_length=200, blank=True, verbose_name=_('نام درخواست‌دهنده'))
+    status = models.CharField(
+        max_length=20, default='submitted', choices=STATUS_CHOICES, verbose_name=_('وضعیت'),
+    )
+    priority = models.CharField(
+        max_length=20, default='normal', choices=PRIORITY_CHOICES, verbose_name=_('اولویت'),
+    )
+    requested_on = models.DateField(null=True, blank=True, verbose_name=_('تاریخ درخواست'))
+    due_date = models.DateField(null=True, blank=True, verbose_name=_('مهلت بررسی'))
+    payload = models.JSONField(
+        default=dict, blank=True, verbose_name=_('اطلاعات تکمیلی'),
+        help_text=_('فیلدهای اختصاصی هر نوع درخواست (مثلاً تعداد روز مرخصی یا مبلغ وام)'),
+    )
+
+    # --- زمینهٔ گردش‌کار (برای اتوماسیون آینده) ---
+    current_step = models.PositiveSmallIntegerField(default=1, verbose_name=_('گام جاری'))
+    total_steps = models.PositiveSmallIntegerField(default=1, verbose_name=_('تعداد گام‌ها'))
+    current_assignee = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='assigned_letter_requests', verbose_name=_('کارشناس جاری'),
+    )
+    current_assignee_employee = models.ForeignKey(
+        'employees.Employee', on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='assigned_letter_requests', db_constraint=False,
+        verbose_name=_('پرسنل مسئول جاری'),
+    )
+    decided_on = models.DateField(null=True, blank=True, verbose_name=_('تاریخ تصمیم'))
+    decision_note = models.TextField(blank=True, verbose_name=_('یادداشت تصمیم'))
+    attachment = models.FileField(
+        upload_to='correspondences/requests/%Y/%m/', null=True, blank=True,
+        verbose_name=_('پیوست'),
+    )
+    closed_at = models.DateTimeField(null=True, blank=True, verbose_name=_('زمان بستن'))
+
+    class Meta:
+        verbose_name = _('درخواست کارتابل')
+        verbose_name_plural = _('درخواست‌های کارتابل')
+        ordering = ['-created_at', '-id']
+        indexes = [
+            models.Index(fields=['company', 'status']),
+            models.Index(fields=['company', 'requester']),
+        ]
+
+    def __str__(self):
+        return f"{self.number or 'بدون شماره'} - {self.subject}"
+
+    @property
+    def is_open(self):
+        return self.status in self.OPEN_STATUSES
+
+    @property
+    def is_overdue(self):
+        from datetime import date as _date
+        if not self.due_date or self.status not in self.OPEN_STATUSES:
+            return False
+        return self.due_date < _date.today()
+
+
+class LetterRequestEvent(BaseModel):
+    """تاریخچهٔ درخواست کارتابل (ایجاد، ارجاع، یادداشت، تأیید/رد)."""
+
+    ACTIONS = [
+        ('created', _('ایجاد')),
+        ('submitted', _('ثبت')),
+        ('assigned', _('ارجاع')),
+        ('noted', _('یادداشت')),
+        ('approved', _('تأیید')),
+        ('rejected', _('رد')),
+        ('returned', _('برگشت')),
+        ('canceled', _('لغو')),
+    ]
+
+    request = models.ForeignKey(
+        LetterRequest, on_delete=models.CASCADE, related_name='events',
+        verbose_name=_('درخواست'),
+    )
+    action = models.CharField(max_length=30, choices=ACTIONS, verbose_name=_('اقدام'))
+    actor = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+        related_name='letter_request_events', verbose_name=_('اقدام‌کننده'),
+    )
+    note = models.TextField(blank=True, verbose_name=_('توضیح'))
+    meta = models.JSONField(default=dict, blank=True, verbose_name=_('اطلاعات تکمیلی'))
+
+    class Meta:
+        verbose_name = _('رویداد درخواست')
+        verbose_name_plural = _('رویدادهای درخواست')
+        ordering = ['-created_at', '-id']
+
+    def __str__(self):
+        return f"{self.request_id} - {self.get_action_display()}"
 

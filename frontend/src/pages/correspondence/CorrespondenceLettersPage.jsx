@@ -11,9 +11,11 @@ import { alpha } from '@mui/material/styles';
 import JalaliMaskedDateInput from '../../core/components/ui/JalaliMaskedDateInput';
 import ArchiveIcon from '@mui/icons-material/Archive';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
+import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import DownloadIcon from '@mui/icons-material/Download';
 import EditNoteIcon from '@mui/icons-material/EditNote';
+import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import ForwardToInboxIcon from '@mui/icons-material/ForwardToInbox';
 import InboxIcon from '@mui/icons-material/MoveToInbox';
 import MailOutlineIcon from '@mui/icons-material/MailOutline';
@@ -35,12 +37,14 @@ import {
   OK, OUTGOING, PRIORITY_META, REFERRAL_STATUS_META, SLATE, STATUS_META, WARN, chipSx,
   dateLabel, dateTimeLabel, daysBetween, daysColor, daysLabel, money, timeLabel, MetaChip,
 } from './correspondenceUi';
+import {
+  PartyPicker, PersonnelPicker, partyValue, personValue,
+} from './correspondenceLookups';
 
 const LETTERS_KEY = ['correspondence-letters'];
 const META_KEY = ['correspondence-meta'];
 const STATS_KEY = ['correspondence-stats'];
 const REFERRALS_KEY = ['correspondence-my-referrals'];
-const ORGANIZATIONS_KEY = ['correspondence-organizations'];
 const USERS_KEY = ['correspondence-users'];
 const CONTACTS_KEY = ['correspondence-contacts'];
 
@@ -71,6 +75,13 @@ const EMPTY_LETTER = {
   sender_name: '',
   sender_title: '',
   receiver_name: '',
+  sender_employee: '',
+  receiver_employee: '',
+  sender_party: '',
+  party_account: '',
+  delivery_type: 'in_person',
+  delivered_by: '',
+  delivered_by_name: '',
   drafter: '',
   drafter_name: '',
   priority: 'normal',
@@ -90,6 +101,23 @@ const ENTRY_METHOD_META = {
   email: { label: 'پست الکترونیک', color: INCOMING },
   post: { label: 'پست / مرسوله', color: INTERNAL },
   other: { label: 'سایر', color: SLATE },
+};
+
+const DELIVERY_TYPE_META = {
+  in_person: { label: 'حضوری / دستی', color: WARN },
+  post: { label: 'پست / مرسوله', color: INTERNAL },
+  email: { label: 'پست الکترونیک', color: INCOMING },
+  fax: { label: 'دورنگار', color: SLATE },
+  courier: { label: 'پیک', color: OUTGOING },
+  scanner: { label: 'اسکنر / بارگذاری', color: ACCENT },
+  automation: { label: 'اتوماسیون اداری', color: OK },
+  other: { label: 'سایر', color: '#64748b' },
+};
+
+const REFERRAL_PURPOSE_META = {
+  action: { label: 'اقدام / انجام کار', color: WARN },
+  info: { label: 'اطلاع / مشاهده', color: INCOMING },
+  comment: { label: 'اظهارنظر', color: INTERNAL },
 };
 
 const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
@@ -167,6 +195,61 @@ const cleanPayload = (form) => {
   else delete payload.amount;
   return payload;
 };
+
+/**
+ * ویرایش درجا در جدول (همان الگوی «ورود اطلاعات فصلی»):
+ * در حالت ویرایش، سلول‌های قابل تغییر به ورودی کوچک تبدیل می‌شوند و
+ * تنها همان ردیف با «ذخیره» به سرور فرستاده می‌شود.
+ */
+const inlineSx = {
+  minWidth: 0,
+  '& .MuiInputBase-root': { fontSize: 11.5 },
+  '& .MuiInputBase-input': { py: 0.4, height: '18px' },
+  '& .MuiInputLabel-root': { display: 'none' },
+  '& .MuiFormHelperText-root': { display: 'none' },
+  '& .MuiAutocomplete-inputRoot': { py: 0.25, px: 0.25 },
+};
+
+const InlineText = ({ value, onChange, placeholder, align = 'right' }) => (
+  <TextField
+    value={value ?? ''}
+    onChange={(event) => onChange(event.target.value)}
+    size="small"
+    variant="standard"
+    fullWidth
+    placeholder={placeholder}
+    inputProps={{ style: { textAlign: align, padding: 0 } }}
+    InputProps={{ disableUnderline: true }}
+    sx={inlineSx}
+  />
+);
+
+const InlineSelect = ({ value, onChange, options }) => (
+  <TextField
+    select
+    size="small"
+    variant="standard"
+    fullWidth
+    value={value ?? ''}
+    onChange={(event) => onChange(event.target.value)}
+    InputProps={{ disableUnderline: true }}
+    sx={inlineSx}
+  >
+    <MenuItem value="">—</MenuItem>
+    {(options || []).map((option) => (
+      <MenuItem key={option.value} value={option.value}>{option.label}</MenuItem>
+    ))}
+  </TextField>
+);
+
+const InlineDate = ({ value, onChange }) => (
+  <JalaliMaskedDateInput
+    value={value || ''}
+    onChange={(next) => onChange(next || '')}
+    variant="standard"
+    sx={inlineSx}
+  />
+);
 
 /** بخش‌بندی فرم با رنگ و جداکننده (بدون توضیح زیر عنوان). */
 const FormSection = ({ icon: Icon, title, color = ACCENT, children }) => (
@@ -360,7 +443,7 @@ const joinParts = (...parts) => parts
   .join(' · ');
 
 
-const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations, users, contacts, onClose, onSaved }) => {
+const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contacts, onClose, onSaved }) => {
   const qc = useQueryClient();
   const [form, setForm] = useState({ ...EMPTY_LETTER, direction: presetDirection || 'incoming' });
   const [files, setFiles] = useState([]);
@@ -488,6 +571,15 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
                 <MenuItem key={value} value={value}>{item.label}</MenuItem>
               ))}
             </TextField>
+            <TextField select size="small" label="نوع تحویل" value={form.delivery_type}
+              onChange={set('delivery_type')}>
+              {(meta?.delivery_types?.length
+                ? meta.delivery_types
+                : Object.entries(DELIVERY_TYPE_META).map(([value, item]) => ({ value, label: item.label })))
+                .map((item) => (
+                  <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
+                ))}
+            </TextField>
             <TextField select size="small" label="نحوهٔ ورود" value={form.entry_method}
               onChange={set('entry_method')}>
               {(meta?.entry_methods?.length
@@ -497,7 +589,7 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
                   <MenuItem key={item.value} value={item.value}>{item.label}</MenuItem>
                 ))}
             </TextField>
-            <PersianTimeInput label="ساعت ورود" value={form.entry_time}
+            <PersianTimeInput label="ساعت تحویل" value={form.entry_time}
               onChange={(value) => setForm((prev) => ({ ...prev, entry_time: value }))} />
             <JalaliMaskedDateInput variant="outlined"
               label={form.direction === 'outgoing' ? 'تاریخ ارسال' : 'تاریخ ورود'}
@@ -515,6 +607,18 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
             </TextField>
             <TextField size="small" label="نام ثبت‌کننده (متن آزاد)" value={form.entered_by_name}
               onChange={set('entered_by_name')} />
+            <PersonnelPicker
+              label="تحویل‌دهنده (پرسنل)"
+              value={personValue(form.delivered_by, form.delivered_by_name)}
+              onChange={(option) => setForm((prev) => ({
+                ...prev,
+                delivered_by: option ? option.id : '',
+                delivered_by_name: option ? option.full_name : '',
+              }))}
+            />
+            <TextField size="small" label="نام تحویل‌دهنده (خارج از سامانه)"
+              value={form.delivered_by_name}
+              onChange={set('delivered_by_name')} />
           </FormTable>
         </FormSection>
 
@@ -553,25 +657,48 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
         </FormSection>
 
         <FormSection icon={SendIcon} title="طرفین مکاتبه" color={OUTGOING}>
+          <FormTable columns={1}>
+            <PersonnelPicker
+              label="فرستنده (پرسنل منابع انسانی)"
+              value={personValue(form.sender_employee, form.sender_name)}
+              onChange={(option) => setForm((prev) => ({
+                ...prev,
+                sender_employee: option ? option.id : '',
+                sender_name: option ? option.full_name : prev.sender_name,
+                sender_title: option?.job_title || prev.sender_title,
+              }))}
+            />
+            <PartyPicker
+              label="ارسال‌کننده (طرف حساب از مدیریت قراردادها)"
+              value={partyValue(form.sender_party, form.sender_party_name)}
+              onChange={(party) => setForm((prev) => ({
+                ...prev,
+                sender_party: party?.id || '',
+                sender_party_name: party?.name || '',
+              }))}
+            />
+            <PartyPicker
+              label="طرف حساب (از مدیریت قراردادها)"
+              value={partyValue(form.party_account, form.party_account_name)}
+              onChange={(party) => setForm((prev) => ({
+                ...prev,
+                party_account: party?.id || '',
+                party_account_name: party?.name || '',
+              }))}
+            />
+          </FormTable>
           <FormTable>
-            <TextField select size="small" label="سازمان ارسال‌کننده" value={form.sender_organization}
-              onChange={set('sender_organization')}>
-              <MenuItem value="">—</MenuItem>
-              {(organizations || []).map((row) => (
-                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-              ))}
-            </TextField>
-            <TextField size="small" label="نام ارسال‌کننده" value={form.sender_name}
-              onChange={set('sender_name')} />
             <TextField size="small" label="سمت ارسال‌کننده" value={form.sender_title}
               onChange={set('sender_title')} />
-            <TextField select size="small" label="طرف حساب (سازمان)" value={form.organization}
-              onChange={set('organization')}>
-              <MenuItem value="">—</MenuItem>
-              {(organizations || []).map((row) => (
-                <MenuItem key={row.id} value={row.id}>{row.name}</MenuItem>
-              ))}
-            </TextField>
+            <PersonnelPicker
+              label="گیرنده (پرسنل)"
+              value={personValue(form.receiver_employee, form.receiver_name)}
+              onChange={(option) => setForm((prev) => ({
+                ...prev,
+                receiver_employee: option ? option.id : '',
+                receiver_name: option ? option.full_name : '',
+              }))}
+            />
             <TextField select size="small" label="مخاطب" value={form.correspondent}
               onChange={set('correspondent')}>
               <MenuItem value="">—</MenuItem>
@@ -581,8 +708,6 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
                 </MenuItem>
               ))}
             </TextField>
-            <TextField size="small" label="گیرنده" value={form.receiver_name}
-              onChange={set('receiver_name')} />
           </FormTable>
         </FormSection>
 
@@ -669,17 +794,19 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, organizations,
   );
 };
 
-const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
-  const [toUser, setToUser] = useState('');
+const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
+  const [toEmployee, setToEmployee] = useState(null);
   const [toName, setToName] = useState('');
+  const [purpose, setPurpose] = useState('action');
   const [dueDate, setDueDate] = useState('');
   const [instruction, setInstruction] = useState('');
   const [note, setNote] = useState('');
 
   useEffect(() => {
     if (!open) return;
-    setToUser('');
+    setToEmployee(null);
     setToName('');
+    setPurpose('action');
     setDueDate('');
     setInstruction('');
     setNote('');
@@ -703,15 +830,19 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
       <DialogContent dividers>
         <FormSection icon={ForwardToInboxIcon} title="گیرنده و مهلت" color={WARN}>
           <FormTable columns={1}>
-            <TextField select size="small" label="ارجاع به کاربر" value={toUser}
-              onChange={(event) => setToUser(event.target.value)}>
-              <MenuItem value="">—</MenuItem>
-              {(users || []).map((row) => (
-                <MenuItem key={row.id} value={row.id}>{userLabel(row)}</MenuItem>
-              ))}
-            </TextField>
+            <PersonnelPicker
+              label="ارجاع به پرسنل (جستجو در منابع انسانی)"
+              value={toEmployee}
+              onChange={(option) => setToEmployee(option)}
+            />
             <TextField size="small" label="یا واحد / شخص خارج از سامانه" value={toName}
               onChange={(event) => setToName(event.target.value)} />
+            <TextField select size="small" label="نوع ارجاع" value={purpose}
+              onChange={(event) => setPurpose(event.target.value)}>
+              {Object.entries(REFERRAL_PURPOSE_META).map(([value, item]) => (
+                <MenuItem key={value} value={value}>{item.label}</MenuItem>
+              ))}
+            </TextField>
             <JalaliMaskedDateInput variant="outlined" label="مهلت اقدام" value={dueDate}
               onChange={(value) => setDueDate(value)} />
           </FormTable>
@@ -727,10 +858,12 @@ const ReferDialog = ({ open, letter, users, onClose, onSubmit, pending }) => {
       </DialogContent>
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
-        <Button size="small" variant="contained" disabled={pending || (!toUser && !toName.trim())}
+        <Button size="small" variant="contained"
+          disabled={pending || (!toEmployee && !toName.trim())}
           onClick={() => onSubmit({
-            to_user: toUser || undefined,
+            to_employee: toEmployee?.id || undefined,
             to_name: toName,
+            purpose,
             due_date: dueDate || undefined,
             instruction,
             note,
@@ -932,11 +1065,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       params: { mine: 1, open_only: 1, page_size: 100 },
     }).then((response) => response.data),
   });
-  const { data: rawOrganizations } = useQuery({
-    queryKey: ORGANIZATIONS_KEY,
-    queryFn: () => axiosInstance.get('/organizations/', { params: { page_size: 500 } })
-      .then((response) => response.data),
-  });
   const { data: rawUsers } = useQuery({
     queryKey: USERS_KEY,
     queryFn: () => axiosInstance.get('/users/').then((response) => response.data),
@@ -947,7 +1075,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       .then((response) => response.data),
   });
 
-  const organizations = useMemo(() => asList(rawOrganizations), [rawOrganizations]);
   const users = useMemo(() => rawUsers?.users || asList(rawUsers), [rawUsers]);
   const contacts = useMemo(() => asList(rawContacts), [rawContacts]);
 
@@ -963,6 +1090,98 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
     refetchStats();
     refetchReferrals();
   };
+
+  /* ---------- ویرایش درجا در جدول ---------- */
+  const [inlineEdit, setInlineEdit] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [draft, setDraft] = useState({});
+  const [savingRow, setSavingRow] = useState(false);
+
+  const cancelRowEdit = () => {
+    setEditingId(null);
+    setDraft({});
+  };
+
+  const toggleInlineEdit = () => {
+    setInlineEdit((previous) => {
+      if (previous) cancelRowEdit();
+      return !previous;
+    });
+  };
+
+  const startRowEdit = (letter) => {
+    setEditingId(letter.id);
+    setDraft({
+      number: letter.number || '',
+      indicator_no: letter.indicator_no || '',
+      transmittal_no: letter.transmittal_no || '',
+      external_number: letter.external_number || '',
+      company_reg_no: letter.company_reg_no || '',
+      company_reg_date: safeDate(letter.company_reg_date),
+      unit_reg_no: letter.unit_reg_no || '',
+      unit_reg_date: safeDate(letter.unit_reg_date),
+      unit_name: letter.unit_name || '',
+      subject: letter.subject || '',
+      category: letter.category || '',
+      delivery_type: letter.delivery_type || 'in_person',
+      entry_method: letter.entry_method || 'manual',
+      entry_time: letter.entry_time ? String(letter.entry_time).slice(0, 5) : '',
+      delivered_by: letter.delivered_by || '',
+      delivered_by_name: letter.delivered_by_name || '',
+      sender_employee: letter.sender_employee || '',
+      sender_name: letter.sender_name || '',
+      sender_title: letter.sender_title || '',
+      sender_party: letter.sender_party || '',
+      party_account: letter.party_account || '',
+      receiver_employee: letter.receiver_employee || '',
+      receiver_name: letter.receiver_name || '',
+      letter_date: safeDate(letter.letter_date),
+      due_date: safeDate(letter.due_date),
+      priority: letter.priority || 'normal',
+      status: letter.status || 'registered',
+    });
+  };
+
+  const patchDraft = (key) => (value) => setDraft((previous) => ({ ...previous, [key]: value }));
+
+  const saveRowEdit = async () => {
+    if (!editingId) return;
+    setSavingRow(true);
+    setError('');
+    try {
+      const payload = {};
+      Object.entries(draft).forEach(([key, value]) => {
+        if (value === '' || value === null || value === undefined) return;
+        payload[key] = value;
+      });
+      const nullable = ['sender_employee', 'receiver_employee', 'sender_party', 'party_account',
+        'delivered_by', 'category'];
+      nullable.forEach((key) => {
+        if (!payload[key]) payload[key] = null;
+      });
+      ['company_reg_date', 'unit_reg_date', 'due_date'].forEach((key) => {
+        if (!payload[key]) payload[key] = null;
+      });
+      if (!payload.letter_date) payload.letter_date = safeDate(
+        letters.find((row) => row.letter.id === editingId)?.letter?.letter_date,
+      );
+      await axiosInstance.patch(`/letters/${editingId}/`, payload);
+      qc.invalidateQueries({ queryKey: ['correspondence-letter'] });
+      refreshAll();
+      setToast('تغییرات ردیف ذخیره شد.');
+      cancelRowEdit();
+    } catch (requestError) {
+      const details = requestError?.response?.data;
+      const firstError = details && typeof details === 'object'
+        ? Object.entries(details).map(([field, value]) => `${field}: ${Array.isArray(value) ? value.join(' ') : value}`)[0]
+        : '';
+      setError(firstError || details?.detail || 'ذخیرهٔ تغییرات ردیف ممکن نشد.');
+    } finally {
+      setSavingRow(false);
+    }
+  };
+
+  const rowEditing = (letter) => inlineEdit && editingId === letter.id;
 
   const letterAction = useMutation({
     mutationFn: ({ id, action, payload }) => axiosInstance
@@ -1203,6 +1422,18 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         )}
         actions={(
           <>
+            <Tooltip title={inlineEdit
+              ? 'بستن حالت ویرایش جدول'
+              : 'ویرایش سریع ردیف‌ها داخل جدول'}>
+              <Button
+                variant={inlineEdit ? 'contained' : 'outlined'}
+                startIcon={<EditOutlinedIcon />}
+                onClick={toggleInlineEdit}
+                sx={inlineEdit ? { bgcolor: ACCENT, '&:hover': { bgcolor: alpha(ACCENT, 0.85) } } : undefined}
+              >
+                {inlineEdit ? 'پایان ویرایش جدول' : 'ویرایش در جدول'}
+              </Button>
+            </Tooltip>
             <Tooltip title="به‌روزرسانی">
               <span>
                 <Button variant="outlined" disabled={isFetching} onClick={refreshAll}
@@ -1327,8 +1558,14 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
           dimmed={isFetching}
           rows={rows}
           rowKey={(row) => row.letter.id}
-          onRowClick={(row) => { setDrawerLetter(row.letter); setComment(''); }}
+          onRowClick={(row) => {
+            if (inlineEdit) return;
+            setDrawerLetter(row.letter);
+            setComment('');
+          }}
           emptyText="مکاتبه‌ای با این شرایط یافت نشد."
+          minWidth={mode === 'incoming' ? 1720 : 1380}
+          tableLayout="auto"
           columns={[
             {
               key: 'row', label: 'ردیف', width: '2.5%', align: 'center',
@@ -1340,9 +1577,19 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             {
               key: 'number', label: 'شماره نامه',
-              width: mode === 'incoming' ? '9%' : '9.5%',
+              width: mode === 'incoming' ? '8%' : '9.5%',
               align: 'center',
               render: (row) => {
+                if (rowEditing(row.letter)) {
+                  return (
+                    <Stack spacing={0.1}>
+                      <InlineText value={draft.number} onChange={patchDraft('number')}
+                        placeholder="شماره" align="center" />
+                      <InlineText value={draft.indicator_no} onChange={patchDraft('indicator_no')}
+                        placeholder="اندیکاتور" align="center" />
+                    </Stack>
+                  );
+                }
                 const numberText = row.letter.number ? toPersianDigits(row.letter.number) : 'بدون شماره';
                 const indicatorText = row.letter.indicator_no
                   ? `اندیکاتور ${toPersianDigits(row.letter.indicator_no)}` : '';
@@ -1355,8 +1602,36 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             ...(mode === 'incoming' ? [
               {
-                key: 'company_reg', label: 'ثبت شرکت', width: '8.5%', align: 'center',
-                render: (row) => (
+                key: 'transmittal', label: 'ترقیم / شمارهٔ بیرونی', width: '7%', align: 'center',
+                render: (row) => (rowEditing(row.letter) ? (
+                  <Stack spacing={0.1}>
+                    <InlineText value={draft.transmittal_no} onChange={patchDraft('transmittal_no')}
+                      placeholder="ترقیم" align="center" />
+                    <InlineText value={draft.external_number} onChange={patchDraft('external_number')}
+                      placeholder="شمارهٔ بیرونی" align="center" />
+                  </Stack>
+                ) : (
+                  <CellText mono weight={700} title={joinParts(
+                    row.letter.transmittal_no, row.letter.external_number)}>
+                    {joinParts(
+                      row.letter.transmittal_no ? toPersianDigits(row.letter.transmittal_no) : '',
+                      row.letter.external_number ? toPersianDigits(row.letter.external_number) : '',
+                    ) || '—'}
+                  </CellText>
+                )),
+              },
+            ] : []),
+            ...(mode === 'incoming' ? [
+              {
+                key: 'company_reg', label: 'ثبت شرکت', width: '8%', align: 'center',
+                render: (row) => (rowEditing(row.letter) ? (
+                  <Stack spacing={0.1}>
+                    <InlineText value={draft.company_reg_no} onChange={patchDraft('company_reg_no')}
+                      placeholder="شمارهٔ ثبت" align="center" />
+                    <InlineDate value={draft.company_reg_date}
+                      onChange={patchDraft('company_reg_date')} />
+                  </Stack>
+                ) : (
                   <CellText mono weight={800} title={joinParts(
                     row.letter.company_reg_no ? toPersianDigits(row.letter.company_reg_no) : '',
                     row.letter.company_reg_date ? dateLabel(row.letter.company_reg_date) : '',
@@ -1366,11 +1641,20 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       row.letter.company_reg_date ? dateLabel(row.letter.company_reg_date) : '',
                     )}
                   </CellText>
-                ),
+                )),
               },
               {
-                key: 'unit_reg', label: 'ثبت واحد', width: '8.5%', align: 'center',
-                render: (row) => (
+                key: 'unit_reg', label: 'ثبت واحد', width: '8%', align: 'center',
+                render: (row) => (rowEditing(row.letter) ? (
+                  <Stack spacing={0.1}>
+                    <InlineText value={draft.unit_reg_no} onChange={patchDraft('unit_reg_no')}
+                      placeholder="شمارهٔ ثبت واحد" align="center" />
+                    <InlineDate value={draft.unit_reg_date}
+                      onChange={patchDraft('unit_reg_date')} />
+                    <InlineText value={draft.unit_name} onChange={patchDraft('unit_name')}
+                      placeholder="نام واحد" align="center" />
+                  </Stack>
+                ) : (
                   <CellText mono weight={800} title={joinParts(
                     row.letter.unit_reg_no ? toPersianDigits(row.letter.unit_reg_no) : '',
                     row.letter.unit_reg_date ? dateLabel(row.letter.unit_reg_date) : '',
@@ -1381,27 +1665,56 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                       row.letter.unit_reg_date ? dateLabel(row.letter.unit_reg_date) : '',
                     )}
                   </CellText>
-                ),
+                )),
               },
             ] : []),
             {
-              key: 'subject', label: 'موضوع', width: mode === 'incoming' ? '13%' : '22%',
-              render: (row) => (
+              key: 'subject', label: 'موضوع', width: mode === 'incoming' ? '12%' : '20%',
+              render: (row) => (rowEditing(row.letter) ? (
+                <InlineText value={draft.subject} onChange={patchDraft('subject')}
+                  placeholder="موضوع نامه" />
+              ) : (
                 <CellText weight={800}
                   title={joinParts(row.letter.subject, row.letter.summary, row.letter.category_title)}>
                   {row.letter.subject || '—'}
                 </CellText>
-              ),
+              )),
             },
             ...(mode === 'incoming' ? [
               {
-                key: 'sender', label: 'ارسال‌کننده', width: '8%',
+                key: 'sender', label: 'ارسال‌کننده', width: '10%',
                 render: (row) => {
-                  const primary = row.letter.sender_organization_name || row.letter.sender_name || '—';
+                  if (rowEditing(row.letter)) {
+                    return (
+                      <Stack spacing={0.25}>
+                        <PersonnelPicker
+                          label="" placeholder="پرسنل فرستنده"
+                          variant="standard" size="small" sx={inlineSx}
+                          value={personValue(draft.sender_employee, draft.sender_name)}
+                          onChange={(option) => setDraft((previous) => ({
+                            ...previous,
+                            sender_employee: option?.id || '',
+                            sender_name: option?.full_name || previous.sender_name,
+                            sender_title: option?.job_title || previous.sender_title,
+                          }))}
+                        />
+                        <PartyPicker
+                          label="" placeholder="طرف حساب فرستنده"
+                          variant="standard" size="small" sx={inlineSx}
+                          value={partyValue(draft.sender_party, row.letter.sender_party_name)}
+                          onChange={(party) => patchDraft('sender_party')(party?.id || '')}
+                        />
+                      </Stack>
+                    );
+                  }
+                  const primary = row.letter.sender_party_name
+                    || row.letter.sender_organization_name
+                    || row.letter.sender_name || '—';
                   const secondary = row.letter.sender_title
-                    || (row.letter.sender_organization_name ? row.letter.sender_name : '');
+                    || (primary !== row.letter.sender_name ? row.letter.sender_name : '');
                   return (
                     <CellText weight={800} title={joinParts(
+                      row.letter.sender_party_name,
                       row.letter.sender_organization_name,
                       row.letter.sender_name,
                       row.letter.sender_title,
@@ -1416,7 +1729,18 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               key: 'party', label: mode === 'incoming' ? 'طرف حساب' : 'طرف مکاتبه',
               width: mode === 'incoming' ? '8%' : '13%',
               render: (row) => {
-                const partyText = row.letter.organization_name || row.letter.correspondent_name
+                if (rowEditing(row.letter)) {
+                  return (
+                    <PartyPicker
+                      label="" placeholder="طرف حساب"
+                      variant="standard" size="small" sx={inlineSx}
+                      value={partyValue(draft.party_account, row.letter.party_account_name)}
+                      onChange={(party) => patchDraft('party_account')(party?.id || '')}
+                    />
+                  );
+                }
+                const partyText = row.letter.party_account_name || row.letter.sender_party_name
+                  || row.letter.organization_name || row.letter.correspondent_name
                   || row.letter.sender_name || row.letter.receiver_name || '—';
                 return (
                   <CellText weight={700} title={partyText}>{partyText}</CellText>
@@ -1425,8 +1749,19 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             ...(mode === 'incoming' ? [
               {
-                key: 'entry', label: 'نحوهٔ ورود', width: '13%',
+                key: 'entry', label: 'نحوهٔ ورود', width: '9%',
                 render: (row) => {
+                  if (rowEditing(row.letter)) {
+                    return (
+                      <Stack spacing={0.1}>
+                        <InlineSelect value={draft.entry_method}
+                          onChange={patchDraft('entry_method')}
+                          options={meta?.entry_methods || []} />
+                        <InlineText value={draft.entry_time} onChange={patchDraft('entry_time')}
+                          placeholder="ساعت ورود HH:MM" align="center" />
+                      </Stack>
+                    );
+                  }
                   const entryMeta = ENTRY_METHOD_META[row.letter.entry_method];
                   const entryText = joinParts(
                     row.letter.entry_method_display || '',
@@ -1440,24 +1775,55 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   );
                 },
               },
+              {
+                key: 'delivery', label: 'تحویل / تحویل‌دهنده', width: '9%',
+                render: (row) => {
+                  if (rowEditing(row.letter)) {
+                    return (
+                      <Stack spacing={0.1}>
+                        <InlineSelect value={draft.delivery_type}
+                          onChange={patchDraft('delivery_type')}
+                          options={meta?.delivery_types || []} />
+                        <InlineText value={draft.delivered_by_name}
+                          onChange={patchDraft('delivered_by_name')}
+                          placeholder="نام تحویل‌دهنده" />
+                      </Stack>
+                    );
+                  }
+                  const deliveryMeta = DELIVERY_TYPE_META[row.letter.delivery_type];
+                  const deliveryText = joinParts(
+                    row.letter.delivery_type_display || deliveryMeta?.label || '',
+                    row.letter.delivered_by_label || row.letter.delivered_by_name || '',
+                  );
+                  return (
+                    <CellText weight={800} color={deliveryMeta?.color || SLATE} title={deliveryText}>
+                      {deliveryText || '—'}
+                    </CellText>
+                  );
+                },
+              },
             ] : []),
             {
               key: 'date', label: 'تاریخ نامه',
-              width: mode === 'incoming' ? '6.5%' : '7%',
+              width: mode === 'incoming' ? '7%' : '7%',
               align: 'center',
-              render: (row) => (
+              render: (row) => (rowEditing(row.letter) ? (
+                <InlineDate value={draft.letter_date} onChange={patchDraft('letter_date')} />
+              ) : (
                 <CellText mono weight={700}>{dateLabel(row.letter.letter_date)}</CellText>
-              ),
+              )),
             },
             {
               key: 'due', label: 'مهلت پاسخ',
-              width: mode === 'incoming' ? '5%' : '8%',
+              width: mode === 'incoming' ? '7%' : '8%',
               align: 'center',
-              render: (row) => (
+              render: (row) => (rowEditing(row.letter) ? (
+                <InlineDate value={draft.due_date} onChange={patchDraft('due_date')} />
+              ) : (
                 row.letter.due_date ? (
                   <Chip size="small" label={daysLabel(row.days)} sx={chipSx(daysColor(row.days))} />
                 ) : <CellText color={MUTED}>—</CellText>
-              ),
+              )),
             },
             ...(mode === 'incoming' ? [] : [
               {
@@ -1492,21 +1858,27 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
             },
             {
               key: 'status', label: 'وضعیت',
-              width: mode === 'incoming' ? '4.5%' : '7%',
+              width: mode === 'incoming' ? '7%' : '7%',
               align: 'center',
-              render: (row) => (
+              render: (row) => (rowEditing(row.letter) ? (
+                <InlineSelect value={draft.status} onChange={patchDraft('status')}
+                  options={meta?.statuses || []} />
+              ) : (
                 <Chip size="small" label={row.statusMeta.label}
                   sx={chipSx(row.statusMeta.color, row.statusMeta.bg)} />
-              ),
+              )),
+            },
+            {
+              key: 'priority', label: 'اولویت', width: '6%', align: 'center',
+              render: (row) => (rowEditing(row.letter) ? (
+                <InlineSelect value={draft.priority} onChange={patchDraft('priority')}
+                  options={meta?.priorities || []} />
+              ) : (
+                <Chip size="small" label={PRIORITY_META[row.letter.priority]?.label || '—'}
+                  sx={chipSx(PRIORITY_META[row.letter.priority]?.color || SLATE)} />
+              )),
             },
             ...(mode === 'incoming' ? [] : [
-              {
-                key: 'priority', label: 'اولویت', width: '5%', align: 'center',
-                render: (row) => (
-                  <Chip size="small" label={PRIORITY_META[row.letter.priority]?.label || '—'}
-                    sx={chipSx(PRIORITY_META[row.letter.priority]?.color || SLATE)} />
-                ),
-              },
               {
                 key: 'attachments', label: 'پیوست', width: '4%', align: 'center',
                 render: (row) => (
@@ -1521,9 +1893,40 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
               key: 'actions', label: 'عملیات',
               width: mode === 'incoming' ? '4.5%' : '6.5%',
               align: 'center',
-              render: (row) => (
+              render: (row) => {
+                if (rowEditing(row.letter)) {
+                  return (
+                    <Stack direction="row" spacing={0.1} useFlexGap justifyContent="center"
+                      onClick={(event) => event.stopPropagation()}>
+                      <Tooltip title="ذخیرهٔ ردیف">
+                        <span>
+                          <IconButton size="small" disabled={savingRow} onClick={saveRowEdit}
+                            aria-label="ذخیرهٔ ردیف">
+                            {savingRow
+                              ? <CircularProgress size={14} />
+                              : <CheckCircleOutlineIcon sx={{ fontSize: 16, color: OK }} />}
+                          </IconButton>
+                        </span>
+                      </Tooltip>
+                      <Tooltip title="انصراف از ویرایش">
+                        <IconButton size="small" onClick={cancelRowEdit} aria-label="انصراف از ویرایش">
+                          <CloseIcon sx={{ fontSize: 16 }} />
+                        </IconButton>
+                      </Tooltip>
+                    </Stack>
+                  );
+                }
+                return (
                 <Stack direction="row" spacing={0.1} useFlexGap justifyContent="center"
                   onClick={(event) => event.stopPropagation()}>
+                  {inlineEdit ? (
+                    <Tooltip title="ویرایش این ردیف">
+                      <IconButton size="small" aria-label="ویرایش ردیف"
+                        onClick={() => startRowEdit(row.letter)}>
+                        <EditOutlinedIcon sx={{ fontSize: 15, color: ACCENT }} />
+                      </IconButton>
+                    </Tooltip>
+                  ) : null}
                   <Tooltip title="مشاهدهٔ پرونده">
                     <IconButton size="small" aria-label="مشاهدهٔ نامه"
                       onClick={() => { setDrawerLetter(row.letter); setComment(''); }}>
@@ -1555,7 +1958,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                     </Tooltip>
                   ) : null}
                 </Stack>
-              ),
+                );
+              },
             },
           ]}
         />
@@ -1921,7 +2325,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
         initial={formLetter}
         presetDirection={preset.direction || (direction !== 'all' ? direction : 'incoming')}
         meta={meta}
-        organizations={organizations}
         users={users}
         contacts={contacts}
         onClose={() => { setFormOpen(false); setFormLetter(null); }}
@@ -1939,7 +2342,6 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
       <ReferDialog
         open={Boolean(referLetter)}
         letter={referLetter}
-        users={users}
         pending={letterAction.isPending}
         onClose={() => setReferLetter(null)}
         onSubmit={(payload) => {

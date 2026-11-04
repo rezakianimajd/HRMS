@@ -181,6 +181,7 @@ const spacerRow = (height, colSpan) => (
 export const ModuleTable = ({
   tableTheme, columns, rows, rowKey, onRowClick, containerRef, tableHeight, rowHeight,
   dimmed, emptyText, ariaLabel, virtualize = false, overscan = 6, rowAttributes,
+  minWidth = 860, tableLayout = 'fixed',
 }) => {
   const [scrollTop, setScrollTop] = useState(0);
   const rafRef = useRef(0);
@@ -228,8 +229,8 @@ export const ModuleTable = ({
         aria-label={ariaLabel}
         sx={{
           width: '100%',
-          minWidth: 860,
-          tableLayout: 'fixed',
+          minWidth,
+          tableLayout,
           fontFamily: tableTheme.fontFamily || 'inherit',
           '& td, & th': {
             px: 1,

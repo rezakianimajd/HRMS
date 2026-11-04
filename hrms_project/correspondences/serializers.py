@@ -15,6 +15,15 @@ def _clean(data):
     return cleaned
 
 
+def _employee_label(employee):
+    """«نام و نام خانوادگی (کد پرسنلی)» برای نمایش در جدول و کارتابل."""
+    if not employee:
+        return ''
+    name = getattr(employee, 'full_name', '') or ''
+    code = getattr(employee, 'employee_id', '') or ''
+    return f'{name} ({code})' if code else name
+
+
 class IncomingLetterSerializer(serializers.ModelSerializer):
     employee_names = serializers.SerializerMethodField()
     priority_display = serializers.CharField(source='get_priority_display', read_only=True)
@@ -199,23 +208,39 @@ class LetterReferralSerializer(serializers.ModelSerializer):
     to_user_name = serializers.SerializerMethodField()
     answered_by_name = serializers.SerializerMethodField()
     status_display = serializers.CharField(source='get_status_display', read_only=True)
+    purpose_display = serializers.CharField(source='get_purpose_display', read_only=True)
     is_overdue = serializers.BooleanField(read_only=True)
     letter_number = serializers.CharField(source='letter.number', read_only=True)
     letter_subject = serializers.CharField(source='letter.subject', read_only=True)
+    letter_direction = serializers.CharField(source='letter.direction', read_only=True)
+    letter_priority = serializers.CharField(source='letter.priority', read_only=True)
+    letter_status = serializers.CharField(source='letter.status', read_only=True)
+    to_employee_name = serializers.CharField(source='to_employee.full_name', read_only=True)
+    to_employee_code = serializers.CharField(source='to_employee.employee_id', read_only=True)
+    from_employee_name = serializers.CharField(source='from_employee.full_name', read_only=True)
+    target_label = serializers.CharField(read_only=True)
 
     class Meta:
         from correspondences.models import LetterReferral
 
         model = LetterReferral
         fields = [
-            'id', 'letter', 'letter_number', 'letter_subject', 'seq', 'from_user', 'from_user_name',
-            'to_user', 'to_user_name', 'to_name', 'referred_on', 'due_date', 'instruction', 'note',
-            'status', 'status_display', 'response', 'result', 'result_note', 'answered_on',
-            'answered_by', 'answered_by_name', 'done_at', 'is_overdue', 'created_at',
+            'id', 'letter', 'letter_number', 'letter_subject', 'letter_direction',
+            'letter_priority', 'letter_status', 'seq', 'parent', 'purpose', 'purpose_display',
+            'from_user', 'from_user_name', 'from_employee', 'from_employee_name',
+            'to_user', 'to_user_name', 'to_employee', 'to_employee_name', 'to_employee_code',
+            'to_name', 'target_label', 'referred_on', 'due_date', 'instruction', 'note',
+            'margin_note', 'seen_at', 'status', 'status_display', 'response', 'result',
+            'result_note', 'answered_on', 'answered_by', 'answered_by_name', 'done_at',
+            'is_overdue', 'created_at',
         ]
-        read_only_fields = ['id', 'seq', 'referred_on', 'done_at', 'created_at', 'answered_by_name',
-                            'from_user_name', 'to_user_name', 'status_display', 'is_overdue',
-                            'letter_number', 'letter_subject']
+        read_only_fields = [
+            'id', 'seq', 'referred_on', 'done_at', 'created_at', 'answered_by_name',
+            'from_user_name', 'to_user_name', 'status_display', 'purpose_display',
+            'is_overdue', 'letter_number', 'letter_subject', 'letter_direction',
+            'letter_priority', 'letter_status', 'to_employee_name', 'to_employee_code',
+            'from_employee_name', 'target_label',
+        ]
 
     @staticmethod
     def _name(user):
@@ -227,7 +252,7 @@ class LetterReferralSerializer(serializers.ModelSerializer):
         return self._name(obj.from_user)
 
     def get_to_user_name(self, obj):
-        return self._name(obj.to_user)
+        return self._name(obj.to_user) or _employee_label(obj.to_employee)
 
     def get_answered_by_name(self, obj):
         return self._name(obj.answered_by)
@@ -269,6 +294,17 @@ class LetterSerializer(serializers.ModelSerializer):
     sender_organization_name = serializers.CharField(
         source='sender_organization.name', read_only=True,
     )
+    delivery_type_display = serializers.CharField(
+        source='get_delivery_type_display', read_only=True,
+    )
+    delivered_by_label = serializers.SerializerMethodField()
+    sender_employee_label = serializers.SerializerMethodField()
+    receiver_employee_label = serializers.SerializerMethodField()
+    sender_party_name = serializers.CharField(source='sender_party.name', read_only=True)
+    party_account_name = serializers.CharField(source='party_account.name', read_only=True)
+    sender_label = serializers.SerializerMethodField()
+    party_label = serializers.SerializerMethodField()
+    receiver_label = serializers.SerializerMethodField()
     entry_method_display = serializers.CharField(
         source='get_entry_method_display', read_only=True,
     )
@@ -302,6 +338,11 @@ class LetterSerializer(serializers.ModelSerializer):
             'organization', 'organization_name', 'correspondent', 'correspondent_name',
             'sender_organization', 'sender_organization_name', 'sender_title',
             'sender_name', 'receiver_name', 'drafter', 'drafter_name', 'source_ref', 'created_by',
+            'sender_employee', 'sender_employee_label', 'receiver_employee',
+            'receiver_employee_label', 'sender_party', 'sender_party_name', 'party_account',
+            'party_account_name', 'sender_label', 'party_label', 'receiver_label',
+            'delivery_type', 'delivery_type_display', 'delivered_by', 'delivered_by_label',
+            'delivered_by_name',
             'created_by_name', 'priority', 'priority_display', 'confidentiality',
             'confidentiality_display', 'status', 'status_display',
             'amount', 'currency', 'archive_ref', 'contract_number', 'tags',
@@ -318,6 +359,9 @@ class LetterSerializer(serializers.ModelSerializer):
             'entered_by_label', 'drafter_name', 'reply_number', 'source_ref', 'attachment_count',
             'referral_count', 'reply_count', 'pending_referrals', 'last_referral',
             'is_overdue', 'days_to_due', 'created_at', 'updated_at',
+            'delivery_type_display', 'delivered_by_label', 'sender_employee_label',
+            'receiver_employee_label', 'sender_party_name', 'party_account_name',
+            'sender_label', 'party_label', 'receiver_label',
         ]
 
     @staticmethod
@@ -334,6 +378,35 @@ class LetterSerializer(serializers.ModelSerializer):
 
     def get_created_by_name(self, obj):
         return self._user_name(obj.created_by)
+
+    def get_delivered_by_label(self, obj):
+        return obj.delivered_by_name or _employee_label(obj.delivered_by)
+
+    def get_sender_employee_label(self, obj):
+        return _employee_label(obj.sender_employee)
+
+    def get_receiver_employee_label(self, obj):
+        return _employee_label(obj.receiver_employee)
+
+    def get_sender_label(self, obj):
+        return (
+            (obj.sender_party.name if obj.sender_party_id else '')
+            or (obj.sender_organization.name if obj.sender_organization_id else '')
+            or self.get_sender_employee_label(obj)
+            or obj.sender_name
+            or ''
+        )
+
+    def get_party_label(self, obj):
+        return (
+            (obj.party_account.name if obj.party_account_id else '')
+            or (obj.organization.name if obj.organization_id else '')
+            or (obj.correspondent.name if obj.correspondent_id else '')
+            or ''
+        )
+
+    def get_receiver_label(self, obj):
+        return self.get_receiver_employee_label(obj) or obj.receiver_name or ''
 
     def get_attachment_count(self, obj):
         cached = getattr(obj, '_prefetched_objects_cache', {}).get('attachments')
@@ -375,4 +448,103 @@ class LetterSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError({'amount': 'مبلغ نمی‌تواند منفی باشد.'})
         return attrs
 
+
+class LetterRequestTypeSerializer(serializers.ModelSerializer):
+    """نوع درخواست کارتابل (مرخصی، وام، گواهی اشتغال ...)."""
+
+    class Meta:
+        from correspondences.models import LetterRequestType
+
+        model = LetterRequestType
+        fields = [
+            'id', 'code', 'name', 'icon', 'color', 'description', 'requires_attachment',
+            'approval_levels', 'order', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+
+class LetterRequestEventSerializer(serializers.ModelSerializer):
+    action_display = serializers.CharField(source='get_action_display', read_only=True)
+    actor_name = serializers.SerializerMethodField()
+
+    class Meta:
+        from correspondences.models import LetterRequestEvent
+
+        model = LetterRequestEvent
+        fields = ['id', 'request', 'action', 'action_display', 'actor', 'actor_name',
+                  'note', 'meta', 'created_at']
+        read_only_fields = fields
+
+    def get_actor_name(self, obj):
+        user = obj.actor
+        if not user:
+            return ''
+        return user.get_full_name() or user.get_username()
+
+
+class LetterRequestSerializer(serializers.ModelSerializer):
+    """درخواست کارتابل: مشخصات، گردش‌کار و تاریخچه."""
+
+    request_type_title_display = serializers.CharField(
+        source='request_type.name', read_only=True,
+    )
+    request_type_color = serializers.CharField(source='request_type.color', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+    priority_display = serializers.CharField(source='get_priority_display', read_only=True)
+    requester_employee_name = serializers.CharField(
+        source='requester_employee.full_name', read_only=True,
+    )
+    requester_employee_code = serializers.CharField(
+        source='requester_employee.employee_id', read_only=True,
+    )
+    requester_display = serializers.SerializerMethodField()
+    assignee_name = serializers.SerializerMethodField()
+    is_open = serializers.BooleanField(read_only=True)
+    is_overdue = serializers.BooleanField(read_only=True)
+    events = LetterRequestEventSerializer(many=True, read_only=True)
+
+    class Meta:
+        from correspondences.models import LetterRequest
+
+        model = LetterRequest
+        fields = [
+            'id', 'number', 'request_type', 'request_type_title', 'request_type_title_display',
+            'request_type_color', 'subject', 'description', 'requester', 'requester_name',
+            'requester_employee', 'requester_employee_name', 'requester_employee_code',
+            'requester_display', 'status', 'status_display', 'priority', 'priority_display',
+            'requested_on', 'due_date', 'payload', 'current_step', 'total_steps',
+            'current_assignee', 'current_assignee_employee', 'assignee_name',
+            'decided_on', 'decision_note', 'attachment', 'closed_at',
+            'is_open', 'is_overdue', 'events', 'is_active', 'created_at', 'updated_at',
+        ]
+        read_only_fields = [
+            'id', 'number', 'requester', 'requester_name', 'current_step', 'decided_on',
+            'closed_at', 'is_open', 'is_overdue', 'events', 'created_at', 'updated_at',
+            'request_type_color', 'status_display', 'priority_display',
+            'requester_employee_name', 'requester_employee_code', 'requester_display',
+            'assignee_name', 'request_type_title_display',
+        ]
+
+    @staticmethod
+    def _user_name(user):
+        if not user:
+            return ''
+        return user.get_full_name() or user.get_username()
+
+    def get_requester_display(self, obj):
+        return _employee_label(obj.requester_employee) or obj.requester_name \
+            or self._user_name(obj.requester)
+
+    def get_assignee_name(self, obj):
+        return _employee_label(obj.current_assignee_employee) or self._user_name(obj.current_assignee)
+
+    def to_internal_value(self, data):
+        return super().to_internal_value(_clean(data))
+
+    def validate(self, attrs):
+        request_type = attrs.get('request_type', getattr(self.instance, 'request_type', None))
+        attachment = attrs.get('attachment', getattr(self.instance, 'attachment', None))
+        if request_type and request_type.requires_attachment and not attachment:
+            raise serializers.ValidationError({'attachment': 'این نوع درخواست نیازمند پیوست است.'})
+        return attrs
 

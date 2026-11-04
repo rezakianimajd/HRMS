@@ -133,12 +133,13 @@ from rest_framework.response import Response  # noqa: E402
 
 from correspondences.models import (  # noqa: E402
     Correspondent, Letter, LetterAttachment, LetterCategory, LetterEvent, LetterReferral,
-    LetterSeries,
+    LetterRequest, LetterRequestEvent, LetterRequestType, LetterSeries,
 )
-from correspondences.numbering import allocate_number, preview_number  # noqa: E402
+from correspondences.numbering import allocate_number, preview_number, request_number  # noqa: E402
 from correspondences.serializers import (  # noqa: E402
     CorrespondentSerializer, LetterAttachmentSerializer, LetterCategorySerializer,
-    LetterEventSerializer, LetterReferralSerializer, LetterSeriesSerializer, LetterSerializer,
+    LetterEventSerializer, LetterReferralSerializer, LetterRequestSerializer,
+    LetterRequestTypeSerializer, LetterSeriesSerializer, LetterSerializer,
 )
 from rest_framework import status as http_status  # noqa: E402,F401
 
@@ -172,6 +173,110 @@ def _log_event(letter, action, user=None, note='', meta=None):
         actor=user if getattr(user, 'is_authenticated', False) else None,
         note=note or '', meta=meta or {},
     )
+
+
+def _user_employee(user, company):
+    """پرسنل متصل به کاربر جاری (از طریق UserProfile.employee_id)."""
+    if not user or not getattr(user, 'is_authenticated', False) or not company:
+        return None
+    from employees.models import Employee
+
+    profile = getattr(user, 'profile', None)
+    employee_id = getattr(profile, 'employee_id', None)
+    if not employee_id:
+        return None
+    return Employee.objects.filter(
+        company=company, id=employee_id, is_active=True,
+    ).select_related('department', 'job_title').first()
+
+
+def _employee_of_user(user, company):
+    """پرسنل متناظر با یک کاربر (برای ذخیرهٔ گیرندهٔ ارجاع)."""
+    if not user:
+        return None
+    from employees.models import Employee
+
+    profile = getattr(user, 'profile', None)
+    employee_id = getattr(profile, 'employee_id', None)
+    if employee_id:
+        employee = Employee.objects.filter(
+            company=company, id=employee_id, is_active=True,
+        ).first()
+        if employee:
+            return employee
+    full_name = (user.get_full_name() or '').strip()
+    if not full_name:
+        return None
+    parts = full_name.split(' ', 1)
+    first, last = parts[0], (parts[1] if len(parts) > 1 else '')
+    qs = Employee.objects.filter(company=company, is_active=True, first_name=first)
+    if last:
+        qs = qs.filter(last_name=last)
+    return qs.first()
+
+
+def _create_referral(letter, request, parent=None):
+    """ارجاع نامه از روی داده‌های درخواست. خروجی: (referral, error_response)."""
+    data = request.data
+    company = letter.company
+    to_user_id = data.get('to_user') or None
+    to_employee_id = data.get('to_employee') or None
+    to_name = (data.get('to_name') or '').strip()
+    if not to_user_id and not to_employee_id and not to_name:
+        return None, Response(
+            {'detail': 'گیرندهٔ ارجاع (پرسنل، کاربر یا واحد) را مشخص کنید.'},
+            status=http_status.HTTP_400_BAD_REQUEST,
+        )
+    to_user = None
+    if to_user_id:
+        from django.contrib.auth import get_user_model
+
+        to_user = get_user_model().objects.filter(id=to_user_id).first()
+        if not to_user:
+            return None, Response({'detail': 'کاربر گیرنده یافت نشد.'},
+                                  status=http_status.HTTP_400_BAD_REQUEST)
+    to_employee = None
+    if to_employee_id:
+        from employees.models import Employee
+
+        to_employee = Employee.objects.filter(
+            company=company, id=to_employee_id, is_active=True,
+        ).first()
+        if not to_employee:
+            return None, Response({'detail': 'پرسنل انتخاب‌شده یافت نشد.'},
+                                  status=http_status.HTTP_400_BAD_REQUEST)
+    if not to_employee and to_user:
+        to_employee = _employee_of_user(to_user, company)
+    purpose = data.get('purpose') or 'action'
+    if purpose not in dict(LetterReferral.PURPOSES):
+        purpose = 'action'
+    due_date = data.get('due_date') or None
+    if isinstance(due_date, str) and not due_date.strip():
+        due_date = None
+    instruction = (data.get('instruction') or '').strip()
+    note = (data.get('note') or '').strip()
+    last_seq = letter.referrals.order_by('-seq').values_list('seq', flat=True).first() or 0
+    referral = LetterReferral.objects.create(
+        company=company, letter=letter, seq=last_seq + 1, parent=parent,
+        purpose=purpose, from_user=request.user,
+        from_employee=_user_employee(request.user, company),
+        to_user=to_user, to_employee=to_employee, to_name=to_name,
+        referred_on=date_cls.today(), due_date=due_date or None,
+        instruction=instruction, note=note, status='pending',
+    )
+    if letter.status in ('draft', 'registered'):
+        letter.status = 'in_progress'
+        letter.save(update_fields=['status', 'updated_at'])
+    target = _user_name(to_user) or (to_employee.full_name if to_employee else to_name)
+    _log_event(
+        letter, 'referred', request.user,
+        note=instruction or note,
+        meta={'to': target, 'to_employee': to_employee_id or '',
+              'purpose': purpose, 'due_date': str(due_date or ''),
+              'instruction': instruction, 'note': note,
+              'parent': parent.id if parent else ''},
+    )
+    return referral, None
 
 
 class BaseLetterViewSet(viewsets.ModelViewSet):
@@ -252,8 +357,12 @@ class LetterViewSet(BaseLetterViewSet):
     search_fields = [
         'number', 'external_number', 'indicator_no', 'transmittal_no', 'subject', 'summary',
         'sender_name', 'sender_title', 'receiver_name', 'drafter_name', 'contract_number',
-        'company_reg_no', 'unit_reg_no', 'unit_name',
+        'company_reg_no', 'unit_reg_no', 'unit_name', 'delivered_by_name',
         'organization__name', 'correspondent__name', 'sender_organization__name',
+        'sender_party__name', 'party_account__name',
+        'sender_employee__first_name', 'sender_employee__last_name',
+        'receiver_employee__first_name', 'receiver_employee__last_name',
+        'delivered_by__first_name', 'delivered_by__last_name',
     ]
     ordering_fields = ['letter_date', 'created_at', 'due_date', 'priority', 'status', 'number']
     ordering = ['-letter_date', '-id']
@@ -262,6 +371,8 @@ class LetterViewSet(BaseLetterViewSet):
         qs = super().get_queryset().select_related(
             'organization', 'sender_organization', 'correspondent', 'category', 'series',
             'drafter', 'created_by', 'entered_by', 'reply_to',
+            'sender_employee', 'receiver_employee', 'delivered_by', 'sender_party',
+            'party_account',
         ).prefetch_related('attachments', 'referrals', 'events', 'replies')
         params = self.request.query_params
         user = getattr(self.request, 'user', None)
@@ -271,7 +382,8 @@ class LetterViewSet(BaseLetterViewSet):
             qs = qs.filter(direction=direction)
 
         for field in ('category', 'series', 'priority', 'confidentiality', 'organization',
-                      'correspondent', 'sender_organization'):
+                      'correspondent', 'sender_organization', 'delivery_type',
+                      'sender_employee', 'receiver_employee', 'sender_party', 'party_account'):
             value = params.get(field)
             if value:
                 qs = qs.filter(**{f'{field}_id': value})
@@ -393,43 +505,11 @@ class LetterViewSet(BaseLetterViewSet):
 
     @action(detail=True, methods=['post'])
     def refer(self, request, pk=None):
-        """ارجاع نامه به کاربر/واحد همراه با دستور، مهلت اقدام و توضیح."""
+        """ارجاع نامه به کاربر/پرسنل/واحد همراه با دستور، مهلت اقدام و نوع ارجاع."""
         letter = self.get_object()
-        to_user_id = request.data.get('to_user') or None
-        to_name = (request.data.get('to_name') or '').strip()
-        if not to_user_id and not to_name:
-            return Response({'detail': 'گیرندهٔ ارجاع (کاربر یا واحد) را مشخص کنید.'},
-                            status=http_status.HTTP_400_BAD_REQUEST)
-        company = letter.company
-        to_user = None
-        if to_user_id:
-            from django.contrib.auth import get_user_model
-
-            to_user = get_user_model().objects.filter(id=to_user_id).first()
-        if to_user_id and not to_user:
-            return Response({'detail': 'کاربر گیرنده یافت نشد.'},
-                            status=http_status.HTTP_400_BAD_REQUEST)
-        due_date = request.data.get('due_date') or None
-        if isinstance(due_date, str) and not due_date.strip():
-            due_date = None
-        instruction = (request.data.get('instruction') or '').strip()
-        note = (request.data.get('note') or '').strip()
-        last_seq = letter.referrals.order_by('-seq').values_list('seq', flat=True).first() or 0
-        referral = LetterReferral.objects.create(
-            company=company, letter=letter, seq=last_seq + 1,
-            from_user=request.user, to_user=to_user, to_name=to_name,
-            referred_on=date_cls.today(), due_date=due_date or None,
-            instruction=instruction, note=note, status='pending',
-        )
-        if letter.status in ('draft', 'registered'):
-            letter.status = 'in_progress'
-        letter.save(update_fields=['status', 'updated_at'])
-        _log_event(
-            letter, 'referred', request.user,
-            note=instruction or note,
-            meta={'to': _user_name(to_user) or to_name, 'due_date': str(due_date or ''),
-                  'instruction': instruction, 'note': note},
-        )
+        referral, error = _create_referral(letter, request)
+        if error:
+            return error
         return Response({
             'letter': self.get_serializer(letter).data,
             'referral': LetterReferralSerializer(referral, context={'request': request}).data,
@@ -693,12 +773,118 @@ class LetterViewSet(BaseLetterViewSet):
             'entry_methods': [
                 {'value': v, 'label': l} for v, l in Letter.ENTRY_METHODS
             ],
+            'delivery_types': [
+                {'value': v, 'label': l} for v, l in Letter.DELIVERY_TYPES
+            ],
+            'referral_purposes': [
+                {'value': v, 'label': l} for v, l in LetterReferral.PURPOSES
+            ],
             'categories': LetterCategorySerializer(
                 LetterCategory.objects.filter(company=company, is_active=True), many=True,
             ).data if company else [],
             'series': LetterSeriesSerializer(series_rows, many=True).data,
             'defaults': defaults,
         })
+
+    @action(detail=False, methods=['get'])
+    def personnel(self, request):
+        """جستجوی پرسنل (منابع انسانی) برای فیلدهای فرستنده/گیرنده/تحویل‌دهنده و ارجاع."""
+        company = _get_company(request)
+        if not company:
+            return Response([])
+        from employees.models import Employee
+
+        qs = Employee.objects.filter(company=company, is_active=True).select_related(
+            'department', 'job_title',
+        )
+        q = (request.query_params.get('q') or '').strip()
+        if q:
+            qs = qs.filter(
+                Q(first_name__icontains=q) | Q(last_name__icontains=q)
+                | Q(employee_id__icontains=q) | Q(national_id__icontains=q)
+                | Q(department__name__icontains=q)
+                | Q(job_title__name__icontains=q)
+            )
+        try:
+            limit = min(50, max(1, int(request.query_params.get('limit') or 20)))
+        except (TypeError, ValueError):
+            limit = 20
+        rows = [
+            {
+                'id': emp.id,
+                'employee_id': emp.employee_id,
+                'full_name': emp.full_name,
+                'label': f'{emp.full_name} ({emp.employee_id})' if emp.employee_id else emp.full_name,
+                'department': getattr(emp.department, 'name', '') or '',
+                'job_title': getattr(emp.job_title, 'name', '') or '',
+                'mobile': emp.mobile or '',
+            }
+            for emp in qs.order_by('first_name', 'last_name')[:limit]
+        ]
+        return Response(rows)
+
+    @action(detail=False, methods=['get'])
+    def parties(self, request):
+        """جستجوی طرف‌های حساب/قرارداد (مدیریت قراردادها) برای ارسال‌کننده و طرف حساب."""
+        company = _get_company(request)
+        from contracts.models import ContractParty
+
+        qs = ContractParty.objects.filter(is_active=True)
+        if company:
+            qs = qs.filter(company=company)
+        q = (request.query_params.get('q') or '').strip()
+        if q:
+            qs = qs.filter(
+                Q(name__icontains=q) | Q(national_id__icontains=q)
+                | Q(registration_number__icontains=q)
+                | Q(economic_code__icontains=q)
+                | Q(contact_person__icontains=q)
+                | Q(mobile__icontains=q) | Q(phone__icontains=q)
+            )
+        try:
+            limit = min(50, max(1, int(request.query_params.get('limit') or 20)))
+        except (TypeError, ValueError):
+            limit = 20
+        rows = [
+            {
+                'id': party.id,
+                'name': party.name,
+                'label': party.name,
+                'party_type': party.party_type,
+                'party_type_display': party.get_party_type_display(),
+                'person_type': party.person_type,
+                'national_id': party.national_id or '',
+                'contact_person': party.contact_person or '',
+                'mobile': party.mobile or '',
+            }
+            for party in qs.order_by('name')[:limit]
+        ]
+        return Response(rows)
+
+    @action(detail=False, methods=['post'], url_path='quick-party')
+    def quick_party(self, request):
+        """ثبت سریع طرف حساب جدید (در صورت نبود در مدیریت قراردادها)."""
+        name = (request.data.get('name') or '').strip()
+        if not name:
+            return Response({'detail': 'نام طرف حساب را وارد کنید.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        company = _get_company(request)
+        from contracts.models import ContractParty
+
+        party = ContractParty.objects.filter(company=company, name__iexact=name).first()
+        created = False
+        if not party:
+            party = ContractParty.objects.create(
+                company=company, name=name,
+                party_type=request.data.get('party_type') or 'other',
+            )
+            created = True
+        return Response({
+            'id': party.id,
+            'name': party.name,
+            'label': party.name,
+            'created': created,
+        }, status=http_status.HTTP_201_CREATED if created else http_status.HTTP_200_OK)
 
     @action(detail=False, methods=['get'], url_path='export-excel')
     def export_excel(self, request):
@@ -718,20 +904,29 @@ class LetterViewSet(BaseLetterViewSet):
 
 
 class LetterReferralViewSet(BaseLetterViewSet):
-    """ارجاعات نامه‌ها: کارتابل من، تکمیل اقدام و ثبت نتیجه."""
+    """ارجاعات نامه‌ها: کارتابل من، مشاهده، حاشیه، دستور، ارجاع بعدی و تکمیل اقدام."""
 
     serializer_class = LetterReferralSerializer
     queryset = LetterReferral.objects.all()
-    search_fields = ['letter__number', 'letter__subject', 'to_name', 'note', 'result_note']
+    search_fields = [
+        'letter__number', 'letter__subject', 'letter__sender_name', 'to_name',
+        'instruction', 'note', 'margin_note', 'result_note', 'result',
+        'to_employee__first_name', 'to_employee__last_name',
+    ]
     ordering_fields = ['referred_on', 'due_date', 'status', 'seq']
     ordering = ['-referred_on', '-id']
 
     def get_queryset(self):
-        qs = super().get_queryset().select_related('letter', 'from_user', 'to_user', 'answered_by')
+        qs = super().get_queryset().select_related(
+            'letter', 'from_user', 'to_user', 'answered_by',
+            'to_employee', 'from_employee', 'letter__category', 'letter__organization',
+        )
         params = self.request.query_params
         user = getattr(self.request, 'user', None)
+        company = _get_company(self.request)
+        employee = _user_employee(user, company)
         if _truthy(params.get('mine')) and user and user.is_authenticated:
-            qs = qs.filter(to_user=user)
+            qs = qs.filter(Q(to_user=user) | (Q(to_employee=employee) if employee else Q(pk__in=[])))
         letter_id = params.get('letter')
         if letter_id:
             qs = qs.filter(letter_id=letter_id)
@@ -740,6 +935,9 @@ class LetterReferralViewSet(BaseLetterViewSet):
             values = [item for item in status_param.split(',') if item]
             if values:
                 qs = qs.filter(status__in=values)
+        purpose = params.get('purpose')
+        if purpose:
+            qs = qs.filter(purpose=purpose)
         if _truthy(params.get('open_only')):
             qs = qs.filter(status__in=OPEN_REFERRAL_STATUSES)
         if _truthy(params.get('overdue')):
@@ -750,6 +948,157 @@ class LetterReferralViewSet(BaseLetterViewSet):
         if direction:
             qs = qs.filter(letter__direction=direction)
         return qs
+
+    @action(detail=False, methods=['get'])
+    def cartable(self, request):
+        """کارتابل من: ارجاعات کاربر/پرسنل او + شمارش‌ها (اقدام/اطلاع/معوق)."""
+        company = _get_company(request)
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            return Response({'counts': {}, 'results': [], 'total': 0})
+        employee = _user_employee(user, company)
+        base = LetterReferral.objects.filter(
+            company=company, letter__is_active=True,
+        ).select_related(
+            'letter', 'from_user', 'to_user', 'to_employee', 'from_employee',
+            'letter__category',
+        )
+        target = Q(to_user=user)
+        if employee:
+            target = target | Q(to_employee=employee)
+        base = base.filter(target)
+
+        counts = {
+            'total': base.count(),
+            'action': base.filter(purpose='action').count(),
+            'info': base.filter(purpose='info').count(),
+            'comment': base.filter(purpose='comment').count(),
+            'pending': base.filter(status__in=OPEN_REFERRAL_STATUSES).count(),
+            'done': base.filter(status='done').count(),
+            'overdue': base.filter(
+                status__in=OPEN_REFERRAL_STATUSES, due_date__lt=date_cls.today(),
+            ).count(),
+            'unseen': base.filter(seen_at__isnull=True).count(),
+        }
+
+        qs = base
+        status_param = request.query_params.get('status')
+        if status_param == 'open':
+            qs = qs.filter(status__in=OPEN_REFERRAL_STATUSES)
+        elif status_param:
+            values = [item for item in status_param.split(',') if item]
+            if values:
+                qs = qs.filter(status__in=values)
+        purpose = request.query_params.get('purpose')
+        if purpose:
+            qs = qs.filter(purpose=purpose)
+        if _truthy(request.query_params.get('overdue')):
+            qs = qs.filter(status__in=OPEN_REFERRAL_STATUSES,
+                           due_date__lt=date_cls.today())
+        if _truthy(request.query_params.get('unseen')):
+            qs = qs.filter(seen_at__isnull=True)
+        search = (request.query_params.get('search') or '').strip()
+        if search:
+            qs = qs.filter(
+                Q(letter__number__icontains=search) | Q(letter__subject__icontains=search)
+                | Q(letter__sender_name__icontains=search)
+                | Q(instruction__icontains=search) | Q(note__icontains=search)
+                | Q(to_name__icontains=search)
+                | Q(to_employee__first_name__icontains=search)
+                | Q(to_employee__last_name__icontains=search)
+            )
+        try:
+            limit = min(200, max(1, int(request.query_params.get('limit') or 50)))
+        except (TypeError, ValueError):
+            limit = 50
+        try:
+            offset = max(0, int(request.query_params.get('offset') or 0))
+        except (TypeError, ValueError):
+            offset = 0
+        qs = qs.order_by('-referred_on', '-id')
+        total = qs.count()
+        rows = qs[offset:offset + limit]
+        return Response({
+            'counts': counts,
+            'total': total,
+            'results': LetterReferralSerializer(
+                rows, many=True, context={'request': request},
+            ).data,
+        })
+
+    @action(detail=True, methods=['post'])
+    def seen(self, request, pk=None):
+        """علامت‌گذاری ارجاع به‌عنوان مشاهده‌شده (رسید مطالعه)."""
+        referral = self.get_object()
+        if not referral.seen_at:
+            referral.seen_at = timezone.now()
+            referral.save(update_fields=['seen_at', 'updated_at'])
+            _log_event(
+                referral.letter, 'referral_seen', request.user,
+                note='ارجاع مشاهده شد.', meta={'referral_id': referral.id},
+            )
+        return Response(self.get_serializer(referral).data)
+
+    @action(detail=True, methods=['post'])
+    def note(self, request, pk=None):
+        """ثبت حاشیه/یادداشت روی ارجاع (بدون تغییر وضعیت)."""
+        referral = self.get_object()
+        text = (request.data.get('note') or request.data.get('margin_note') or '').strip()
+        if not text:
+            return Response({'detail': 'متن حاشیه را وارد کنید.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        referral.margin_note = (
+            f'{referral.margin_note}\n{text}'.strip() if referral.margin_note else text
+        )
+        if not referral.seen_at:
+            referral.seen_at = timezone.now()
+        referral.save(update_fields=['margin_note', 'seen_at', 'updated_at'])
+        _log_event(
+            referral.letter, 'referral_note', request.user, note=text[:500],
+            meta={'referral_id': referral.id},
+        )
+        return Response(self.get_serializer(referral).data)
+
+    @action(detail=True, methods=['post'])
+    def instruction(self, request, pk=None):
+        """ثبت/ویرایش دستور روی ارجاع."""
+        referral = self.get_object()
+        text = (request.data.get('instruction') or '').strip()
+        if not text:
+            return Response({'detail': 'متن دستور را وارد کنید.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        referral.instruction = text
+        if not referral.seen_at:
+            referral.seen_at = timezone.now()
+        referral.save(update_fields=['instruction', 'seen_at', 'updated_at'])
+        _log_event(
+            referral.letter, 'referral_note', request.user,
+            note=f'دستور: {text[:480]}',
+            meta={'referral_id': referral.id, 'kind': 'instruction'},
+        )
+        return Response(self.get_serializer(referral).data)
+
+    @action(detail=True, methods=['post'])
+    def forward(self, request, pk=None):
+        """ارجاع به سطح بعد (با حفظ زنجیرهٔ ارجاع) و بستن ارجاع جاری."""
+        referral = self.get_object()
+        child, error = _create_referral(referral.letter, request, parent=referral)
+        if error:
+            return error
+        referral.status = 'forwarded'
+        referral.done_at = timezone.now()
+        if not referral.seen_at:
+            referral.seen_at = timezone.now()
+        referral.save(update_fields=['status', 'done_at', 'seen_at', 'updated_at'])
+        _log_event(
+            referral.letter, 'referral_forwarded', request.user,
+            note=(request.data.get('instruction') or '')[:500],
+            meta={'referral_id': referral.id, 'child_id': child.id},
+        )
+        return Response({
+            'referral': self.get_serializer(referral).data,
+            'child': LetterReferralSerializer(child, context={'request': request}).data,
+        }, status=http_status.HTTP_201_CREATED)
 
     def perform_update(self, serializer):
         referral = serializer.instance
@@ -831,7 +1180,203 @@ class LetterAttachmentViewSet(BaseLetterViewSet):
         )
 
 
+class LetterRequestTypeViewSet(BaseLetterViewSet):
+    """انواع درخواست کارتابل (مرخصی، وام، گواهی اشتغال ...)."""
+
+    serializer_class = LetterRequestTypeSerializer
+    queryset = LetterRequestType.objects.all()
+    search_fields = ['name', 'code', 'description']
+    ordering = ['order', 'name']
+
+
+class LetterRequestViewSet(BaseLetterViewSet):
+    """کارتابل درخواست‌های پرسنل: ثبت، مشاهده، ارجاع، تأیید/رد و لغو."""
+
+    serializer_class = LetterRequestSerializer
+    queryset = LetterRequest.objects.all()
+    search_fields = ['number', 'subject', 'description', 'requester_name',
+                     'request_type__name']
+    ordering_fields = ['created_at', 'requested_on', 'due_date', 'status', 'priority']
+    ordering = ['-created_at']
+
+    def get_queryset(self):
+        qs = super().get_queryset().select_related(
+            'request_type', 'requester', 'requester_employee',
+            'current_assignee', 'current_assignee_employee',
+        ).prefetch_related('events')
+        params = self.request.query_params
+        user = getattr(self.request, 'user', None)
+        company = _get_company(self.request)
+        employee = _user_employee(user, company)
+
+        scope = params.get('scope')
+        if scope == 'mine' and user and user.is_authenticated:
+            qs = qs.filter(requester=user)
+        elif scope == 'assigned' and user and user.is_authenticated:
+            target = Q(current_assignee=user)
+            if employee:
+                target = target | Q(current_assignee_employee=employee)
+            qs = qs.filter(target)
+
+        request_type = params.get('request_type')
+        if request_type:
+            qs = qs.filter(request_type_id=request_type)
+        status_param = params.get('status')
+        if status_param:
+            values = [item for item in status_param.split(',') if item]
+            if values:
+                qs = qs.filter(status__in=values)
+        if _truthy(params.get('open_only')):
+            qs = qs.filter(status__in=LetterRequest.OPEN_STATUSES)
+        if _truthy(params.get('overdue')):
+            qs = qs.filter(status__in=LetterRequest.OPEN_STATUSES,
+                           due_date__lt=date_cls.today())
+        search = (params.get('search') or '').strip()
+        if search:
+            qs = qs.filter(
+                Q(number__icontains=search) | Q(subject__icontains=search)
+                | Q(description__icontains=search)
+                | Q(requester_name__icontains=search)
+                | Q(request_type__name__icontains=search)
+            )
+        return qs.distinct()
+
+    def _log_request(self, instance, action, note='', meta=None):
+        LetterRequestEvent.objects.create(
+            company=instance.company, request=instance, action=action,
+            actor=(self.request.user
+                   if getattr(self.request.user, 'is_authenticated', False) else None),
+            note=note or '', meta=meta or {},
+        )
+
+    def perform_create(self, serializer):
+        company = _get_company(self.request)
+        user = getattr(self.request, 'user', None)
+        employee = _user_employee(user, company)
+        request_type = serializer.validated_data.get('request_type')
+        status = self.request.data.get('status') or 'submitted'
+        if status not in dict(LetterRequest.STATUS_CHOICES):
+            status = 'submitted'
+        instance = serializer.save(
+            company=company,
+            number=request_number(company),
+            requester=user if getattr(user, 'is_authenticated', False) else None,
+            requester_employee=employee,
+            requester_name=employee.full_name if employee else _user_name(user),
+            request_type_title=(request_type.name if request_type else ''),
+            requested_on=serializer.validated_data.get('requested_on') or date_cls.today(),
+            total_steps=(request_type.approval_levels if request_type else 1) or 1,
+            status=status,
+        )
+        self._log_request(
+            instance, 'created', note=instance.subject[:200],
+            meta={'request_type': instance.request_type_id or '', 'status': instance.status},
+        )
 
 
 
+
+
+
+    @action(detail=True, methods=['post'])
+    def submit(self, request, pk=None):
+        """ثبت نهایی درخواست پیش‌نویس."""
+        instance = self.get_object()
+        if instance.status != 'draft':
+            return Response({'detail': 'این درخواست قبلاً ثبت شده است.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        instance.status = 'submitted'
+        instance.requested_on = instance.requested_on or date_cls.today()
+        instance.save(update_fields=['status', 'requested_on', 'updated_at'])
+        self._log_request(instance, 'submitted', note=instance.subject[:200])
+        return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['post'])
+    def approve(self, request, pk=None):
+        """تأیید درخواست در گام جاری."""
+        instance = self.get_object()
+        if instance.status in ('approved', 'rejected', 'canceled'):
+            return Response({'detail': 'این درخواست بسته شده است.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        note = (request.data.get('decision_note') or request.data.get('note') or '').strip()
+        instance.status = 'approved'
+        instance.decided_on = date_cls.today()
+        instance.decision_note = note
+        instance.current_step = instance.total_steps or 1
+        instance.closed_at = timezone.now()
+        instance.save(update_fields=[
+            'status', 'decided_on', 'decision_note', 'current_step', 'closed_at', 'updated_at',
+        ])
+        self._log_request(instance, 'approved', note=note)
+        return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['post'])
+    def reject(self, request, pk=None):
+        """رد درخواست."""
+        instance = self.get_object()
+        if instance.status in ('approved', 'rejected', 'canceled'):
+            return Response({'detail': 'این درخواست بسته شده است.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        note = (request.data.get('decision_note') or request.data.get('note') or '').strip()
+        instance.status = 'rejected'
+        instance.decided_on = date_cls.today()
+        instance.decision_note = note
+        instance.closed_at = timezone.now()
+        instance.save(update_fields=[
+            'status', 'decided_on', 'decision_note', 'closed_at', 'updated_at',
+        ])
+        self._log_request(instance, 'rejected', note=note)
+        return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['post'])
+    def cancel(self, request, pk=None):
+        """لغو درخواست توسط درخواست‌دهنده."""
+        instance = self.get_object()
+        if instance.status in ('approved', 'rejected', 'canceled'):
+            return Response({'detail': 'امکان لغو این درخواست وجود ندارد.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        note = (request.data.get('note') or '').strip()
+        instance.status = 'canceled'
+        instance.decision_note = note or instance.decision_note
+        instance.closed_at = timezone.now()
+        instance.save(update_fields=['status', 'decision_note', 'closed_at', 'updated_at'])
+        self._log_request(instance, 'canceled', note=note)
+        return Response(self.get_serializer(instance).data)
+
+    @action(detail=True, methods=['post'])
+    def assign(self, request, pk=None):
+        """ارجاع درخواست به کارشناس/پرسنل بعدی (آمادهٔ گردش‌کار چندسطحی)."""
+        instance = self.get_object()
+        to_employee_id = request.data.get('to_employee') or None
+        to_user_id = request.data.get('to_user') or None
+        note = (request.data.get('note') or '').strip()
+        if not to_employee_id and not to_user_id:
+            return Response({'detail': 'گیرندهٔ ارجاع را مشخص کنید.'},
+                            status=http_status.HTTP_400_BAD_REQUEST)
+        from django.contrib.auth import get_user_model
+
+        from employees.models import Employee
+
+        employee = None
+        if to_employee_id:
+            employee = Employee.objects.filter(
+                company=instance.company, id=to_employee_id, is_active=True,
+            ).first()
+        user = None
+        if to_user_id:
+            user = get_user_model().objects.filter(id=to_user_id).first()
+        if not employee and user:
+            employee = _employee_of_user(user, instance.company)
+        instance.current_assignee = user
+        instance.current_assignee_employee = employee
+        if instance.status in ('submitted', 'draft'):
+            instance.status = 'in_review'
+        instance.save(update_fields=[
+            'current_assignee', 'current_assignee_employee', 'status', 'updated_at',
+        ])
+        self._log_request(
+            instance, 'assigned', note=note,
+            meta={'to_employee': to_employee_id or '', 'to_user': to_user_id or ''},
+        )
+        return Response(self.get_serializer(instance).data)
 

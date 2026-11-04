@@ -368,3 +368,91 @@ class PersianDisplayFormattingTests(SimpleTestCase):
         self.assertIn("'label': trend_map[key].get('label', key)", source)
         self.assertIn('_jdate.fromgregorian', source)
 
+
+
+class WorkdeskSchemaTests(SimpleTestCase):
+    """ساختار دادهٔ کارتابل: پرسنل/طرف حساب، تحویل نامه و درخواست‌ها."""
+
+    def test_letter_exposes_personnel_and_contract_party_fields(self):
+        from correspondences.models import Letter
+
+        names = {field.name for field in Letter._meta.get_fields()}
+        for field in (
+            'sender_employee', 'receiver_employee', 'delivered_by', 'sender_party',
+            'party_account', 'delivery_type', 'delivered_by_name',
+        ):
+            self.assertIn(field, names)
+
+    def test_delivery_types_cover_operational_channels(self):
+        from correspondences.models import Letter
+
+        values = dict(Letter.DELIVERY_TYPES)
+        for code in ('in_person', 'post', 'email', 'fax', 'courier', 'scanner', 'other'):
+            self.assertIn(code, values)
+        self.assertEqual(values['in_person'], 'حضوری / دستی')
+
+    def test_referral_supports_personnel_purpose_and_margin(self):
+        from correspondences.models import LetterReferral
+
+        names = {field.name for field in LetterReferral._meta.get_fields()}
+        for field in ('to_employee', 'from_employee', 'purpose', 'parent', 'margin_note',
+                      'seen_at'):
+            self.assertIn(field, names)
+        purposes = dict(LetterReferral.PURPOSES)
+        self.assertEqual(purposes['action'], 'اقدام / انجام کار')
+        self.assertEqual(purposes['info'], 'اطلاع / مشاهده')
+        statuses = dict(LetterReferral.STATUS_CHOICES)
+        self.assertIn('forwarded', statuses)
+
+    def test_referral_target_label_prefers_personnel(self):
+        import inspect
+
+        from correspondences.models import LetterReferral
+
+        referral = LetterReferral(to_name='واحد مالی')
+        self.assertEqual(referral.target_label, 'واحد مالی')
+        source = inspect.getsource(LetterReferral.target_label.fget)
+        self.assertIn('to_employee', source)
+        self.assertIn('to_user', source)
+
+    def test_request_model_defaults_are_workflow_ready(self):
+        from correspondences.models import LetterRequest
+
+        field_names = {field.name for field in LetterRequest._meta.get_fields()}
+        for field in ('current_step', 'total_steps', 'current_assignee',
+                      'current_assignee_employee', 'payload', 'events', 'status'):
+            self.assertIn(field, field_names)
+        self.assertEqual(LetterRequest._meta.get_field('status').default, 'submitted')
+        self.assertEqual(LetterRequest._meta.get_field('current_step').default, 1)
+        self.assertIn('in_review', dict(LetterRequest.STATUS_CHOICES))
+
+    def test_serializers_expose_lookup_labels(self):
+        from correspondences.serializers import (
+            LetterReferralSerializer, LetterRequestSerializer, LetterSerializer,
+        )
+
+        letter_fields = LetterSerializer().fields
+        for name in ('sender_label', 'party_label', 'receiver_label',
+                     'sender_employee_label', 'receiver_employee_label',
+                     'delivery_type_display', 'delivered_by_label'):
+            self.assertIn(name, letter_fields)
+
+        referral_fields = LetterReferralSerializer().fields
+        for name in ('purpose', 'purpose_display', 'to_employee', 'to_employee_name',
+                     'target_label', 'margin_note', 'seen_at'):
+            self.assertIn(name, referral_fields)
+
+        request_fields = LetterRequestSerializer().fields
+        for name in ('number', 'request_type_title_display', 'requester_display',
+                     'assignee_name', 'events', 'is_overdue'):
+            self.assertIn(name, request_fields)
+
+    def test_request_number_format_is_jalali_and_padded(self):
+        from correspondences.numbering import render_number
+
+        # شمارهٔ درخواست با همان قالب شماره‌گذاری شمسی ساخته می‌شود
+        self.assertEqual(
+            render_number('درخ/{year}/{seq}', year=1405, seq=12, padding=4),
+            'درخ/1405/0012',
+        )
+

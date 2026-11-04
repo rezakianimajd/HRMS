@@ -3,7 +3,8 @@ from django.contrib import admin
 
 from correspondences.models import (
     Announcement, Correspondent, Form, IncomingLetter, Letter, LetterAttachment, LetterCategory,
-    LetterEvent, LetterReferral, LetterSeries, Organization, OrganizationalLetter, OutgoingLetter,
+    LetterEvent, LetterReferral, LetterRequest, LetterRequestEvent, LetterRequestType,
+    LetterSeries, Organization, OrganizationalLetter, OutgoingLetter,
 )
 
 
@@ -61,6 +62,28 @@ class LetterEventAdmin(admin.ModelAdmin):
     list_display = ('letter', 'action', 'actor', 'note', 'created_at')
     list_filter = ('action',)
     search_fields = ('letter__number', 'note')
+
+
+@admin.register(LetterRequestType)
+class LetterRequestTypeAdmin(admin.ModelAdmin):
+    list_display = ('name', 'code', 'approval_levels', 'requires_attachment', 'order', 'is_active')
+    list_filter = ('is_active',)
+    search_fields = ('name', 'code')
+
+
+@admin.register(LetterRequest)
+class LetterRequestAdmin(admin.ModelAdmin):
+    list_display = ('number', 'subject', 'request_type', 'requester_name', 'status',
+                    'priority', 'requested_on', 'due_date')
+    list_filter = ('status', 'priority', 'request_type')
+    search_fields = ('number', 'subject', 'requester_name')
+
+
+@admin.register(LetterRequestEvent)
+class LetterRequestEventAdmin(admin.ModelAdmin):
+    list_display = ('request', 'action', 'actor', 'created_at')
+    list_filter = ('action',)
+    search_fields = ('request__number', 'note')
 
 
 admin.site.register(IncomingLetter)

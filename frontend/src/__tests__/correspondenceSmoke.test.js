@@ -6,6 +6,7 @@ import { MemoryRouter } from 'react-router-dom';
 import axiosInstance from '../core/api/axiosConfig';
 import CorrespondenceLettersPage from '../pages/correspondence/CorrespondenceLettersPage';
 import CorrespondenceDashboardPage from '../pages/correspondence/CorrespondenceDashboardPage';
+import CorrespondenceWorkdeskPage from '../pages/correspondence/CorrespondenceWorkdeskPage';
 import { getModuleLandingPath, MODULE_ICONS } from '../core/constants/moduleIcons';
 import { toJalali } from '../core/utils/dateUtils';
 
@@ -85,6 +86,31 @@ const meta = {
   defaults: { incoming: { series: null, number_preview: '' }, outgoing: { series: 1, number_preview: 'ص/1404/008' } },
 };
 
+const cartable = {
+  counts: { total: 2, action: 1, info: 1, comment: 0, pending: 1, done: 1, overdue: 1, unseen: 1 },
+  total: 1,
+  results: [{
+    id: 11, letter: 1, letter_number: '1404-100-135',
+    letter_subject: 'معرفی شرکت جهت اخذ ردیف پیمان', letter_direction: 'incoming',
+    letter_priority: 'urgent', letter_status: 'in_progress', seq: 1, parent: null,
+    purpose: 'action', purpose_display: 'اقدام / انجام کار',
+    from_user_name: 'مدیر مکاتبات', from_employee_name: 'مدیر مکاتبات',
+    to_user_name: '', to_employee: 5, to_employee_name: 'خانم حقیقی',
+    to_employee_code: '1024', to_name: '', target_label: 'خانم حقیقی',
+    referred_on: iso(-1), due_date: iso(-2), instruction: 'بررسی و اعلام نظر',
+    note: 'فوری پیگیری شود', margin_note: '', seen_at: null, status: 'pending',
+    status_display: 'در انتظار اقدام', response: '', result: '', result_note: '',
+    answered_on: null, answered_by_name: '', done_at: null, is_overdue: true,
+  }],
+};
+
+const requestTypes = {
+  results: [
+    { id: 1, code: 'leave', name: 'مرخصی استحقاقی', requires_attachment: false, approval_levels: 2 },
+    { id: 2, code: 'loan', name: 'وام کارکنان', requires_attachment: true, approval_levels: 3 },
+  ],
+};
+
 const wait = (ms = 250) => new Promise((resolve) => setTimeout(resolve, ms));
 
 beforeEach(() => {
@@ -101,6 +127,9 @@ beforeEach(() => {
     if (url === '/organizations/') return Promise.resolve({ data: { results: [{ id: 1, name: 'شرکت ساز و کار' }] } });
     if (url === '/users/') return Promise.resolve({ data: [{ id: 1, username: 'admin', first_name: 'مدیر', last_name: 'سیستم' }] });
     if (url === '/correspondents/') return Promise.resolve({ data: { results: [] } });
+    if (url === '/letter-referrals/cartable/') return Promise.resolve({ data: cartable });
+    if (url === '/letter-request-types/') return Promise.resolve({ data: requestTypes });
+    if (url === '/letter-requests/') return Promise.resolve({ data: { results: [] } });
     return Promise.resolve({ data: [] });
   });
 });
@@ -242,6 +271,23 @@ test('drafts page shows its own professional header', async () => {
 
   expect(container.textContent).toContain('پیش‌نویس‌های مکاتبات');
   expect(container.textContent).toContain('مکاتبه جدید');
+
+  root.unmount();
+  container.remove();
+});
+
+test('workdesk page renders cartable counters, referrals and actions', async () => {
+  const { container, root } = await renderPage(<CorrespondenceWorkdeskPage />);
+
+  expect(container.textContent).toContain('کارتابل من');
+  expect(container.textContent).toContain('نیازمند اقدام');
+  expect(container.textContent).toContain('برای اطلاع');
+  expect(container.textContent).toContain('دیده‌نشده');
+  expect(container.textContent).toContain('معرفی شرکت جهت اخذ ردیف پیمان');
+  expect(container.textContent).toContain('بررسی و اعلام نظر');
+  expect(container.textContent).toContain('در انتظار اقدام');
+  expect(container.querySelector('[aria-label="مشاهدهٔ ارجاع"]')).toBeTruthy();
+  expect(container.querySelector('[aria-label="ثبت نتیجه"]')).toBeTruthy();
 
   root.unmount();
   container.remove();

@@ -110,3 +110,26 @@ def allocate_number(series, letter_date=None):
         series.next_number = current.next_number
         series.last_year = current.last_year
     return number
+
+
+def request_number(company, when=None, prefix='درخ'):
+    """شمارهٔ بعدی درخواست کارتابل: «درخ/1405/0001» (سالانه)."""
+    from django.db import transaction
+
+    from correspondences.models import LetterRequest
+
+    year = jalali_year(when)
+    head = f'{prefix}/{year}/'
+    with transaction.atomic():
+        last = (
+            LetterRequest.objects.filter(company=company, number__startswith=head)
+            .order_by('-id').values_list('number', flat=True).first()
+        )
+        try:
+            seq = int(str(last).rsplit('/', 1)[-1]) + 1 if last else 1
+        except (TypeError, ValueError):
+            seq = LetterRequest.objects.filter(
+                company=company, number__startswith=head,
+            ).count() + 1
+    return f'{head}{seq:04d}'
+
