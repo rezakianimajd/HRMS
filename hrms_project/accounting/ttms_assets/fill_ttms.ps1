@@ -83,6 +83,10 @@ $result = [ordered]@{
     message          = ''
     errors           = @()
 }
+# --- نتیجهٔ حداقلی از همان ابتدا نوشته می‌شود تا اگر اجرا نیمه‌کاره ماند یا
+#     خطای پیش‌بینی‌نشده رخ داد، همیشه یک result.json برای بارگذاری وجود داشته باشد.
+$result.message = 'اجرا شروع شد ولی به پایان نرسید؛ جزئیات در fill_ttms.log است.'
+$result.finished_at = $startedAt.ToString('s')
 
 function Save-Result {
     param([string]$Path = $resultPath)
@@ -163,6 +167,13 @@ function Get-Number {
 Write-Host '=== درج ردیف‌های صورت معاملات فصلی در فایل TTMS ===' -ForegroundColor Cyan
 Write-Host ('پوشهٔ بسته: ' + $PackageDir)
 if ($DryRun) { Write-Host 'حالت: اجرای آزمایشی (بدون تغییر ماندگار)' -ForegroundColor Yellow }
+
+# ---------------------------------------------------------------------------
+# ۰) از این‌جا به بعد کل اجرا در یک try/catch بیرونی است تا هیچ خطایی بی‌صدا
+#    اسکریپت را رها نکند و همیشه result.json نوشته شود.
+# ---------------------------------------------------------------------------
+try {
+Save-Result
 
 # ---------------------------------------------------------------------------
 # ۱) اعتبارسنجی بسته
@@ -359,8 +370,10 @@ $rowErrors = New-Object System.Collections.Generic.List[string]
 $failure = $null
 $allVerified = $false
 
-$cn.BeginTrans()
+$beganTrans = $false
 try {
+    $cn.BeginTrans()
+    $beganTrans = $true
     $headerCount = [int](Get-Number (Get-Scalar $cn ("SELECT COUNT(*) AS C FROM [$headerTable] WHERE HCYearCode=$yearCode AND HCFaslTypeCode=$seasonCode")))
     if ($headerCount -eq 0) {
         $guid = [guid]::NewGuid().ToString()
@@ -492,7 +505,7 @@ try {
         $cn.CommitTrans()
     }
 } catch {
-    try { $cn.RollbackTrans() } catch { }
+    if ($beganTrans) { try { $cn.RollbackTrans() } catch { } }
     $lineInfo = $_.InvocationInfo
     $failure = $_.Exception.Message
     if ($lineInfo -and $lineInfo.ScriptLineNumber) {
@@ -567,3 +580,11 @@ Write-Host ('گزارش نتیجه: ' + $resultPath) -ForegroundColor Cyan
 Write-Host 'این فایل result.json را در HRMS بارگذاری کنید تا نتیجه در تاریخچهٔ گزارش ثبت شود.'
 try { Stop-Transcript | Out-Null } catch { }
 exit 0
+} catch {
+    $detail = $_.Exception.Message
+    $lineInfo = $_.InvocationInfo
+    if ($lineInfo -and $lineInfo.ScriptLineNumber) {
+        $detail = $detail + ' (خط ' + $lineInfo.ScriptLineNumber + ': ' + ([string]$lineInfo.Line).Trim() + ')'
+    }
+    Stop-WithError ('خطای پیش‌بینی‌نشده در اجرای اسکریپت: ' + $detail) 9
+}

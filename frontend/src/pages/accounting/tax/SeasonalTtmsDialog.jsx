@@ -61,6 +61,8 @@ const SeasonalTtmsDialog = ({
   const [message, setMessage] = useState(null);
   const [lastRunId, setLastRunId] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [manualStatus, setManualStatus] = useState('filled');
+  const [manualInserted, setManualInserted] = useState('');
   const fileInputRef = useRef(null);
   const [tab, setTab] = useState('options');
   const [overrides, setOverrides] = useState({});
@@ -110,9 +112,14 @@ const SeasonalTtmsDialog = ({
       setMessage(null);
       setTargetName('');
       setTemplateFile(null);
+      setManualInserted('');
       if (templateInputRef.current) templateInputRef.current.value = '';
     }
   }, [open]);
+
+  useEffect(() => {
+    if (open) setManualInserted(rowCount ? String(rowCount) : '');
+  }, [open, rowCount]);
 
   const kalaOptions = reference?.kala_types || [];
   const sellerOptions = reference?.seller_status_codes || [];
@@ -357,6 +364,44 @@ const SeasonalTtmsDialog = ({
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
   }, [apiBase, lastRunId, onToast, reportId, runsQuery]);
+
+  const registerManualResult = useCallback(async () => {
+    if (!lastRunId) {
+      setMessage({ severity: 'warning', text: 'ابتدا بسته را بسازید تا شمارهٔ اجرا مشخص شود.' });
+      return;
+    }
+    const inserted = Math.max(0, Number(manualInserted) || 0);
+    setUploading(true);
+    try {
+      await axiosInstance.post(
+        `${apiBase}/${reportId}/export-runs/${lastRunId}/result/`,
+        {
+          result: {
+            status: manualStatus,
+            mode: 'manual',
+            inserted,
+            skipped: 0,
+            message: 'ثبت دستی نتیجه از پنل HRMS (بدون فایل result.json)',
+            finished_at: new Date().toISOString(),
+          },
+        },
+      );
+      setMessage({
+        severity: manualStatus === 'failed' ? 'warning' : 'success',
+        text: `نتیجه به‌صورت دستی ثبت شد: ${STATUS_LABELS[manualStatus] || manualStatus}`
+          + (manualStatus === 'filled' ? ` — ${toPersianDigits(inserted)} ردیف` : ''),
+      });
+      onToast?.('نتیجهٔ اجرای TTMS ثبت شد');
+      runsQuery.refetch?.();
+    } catch (error) {
+      const detail = error?.response?.data?.detail;
+      setMessage({ severity: 'error', text: detail || 'ثبت نتیجهٔ دستی ناموفق بود.' });
+    } finally {
+      setUploading(false);
+    }
+  }, [
+    apiBase, lastRunId, manualInserted, manualStatus, onToast, reportId, runsQuery,
+  ]);
 
 
   return (
@@ -620,6 +665,43 @@ const SeasonalTtmsDialog = ({
             + 'اسکریپت ردیف‌ها را در یک کپی «.filled-<زمان>» درج می‌کند؛ فایل اصلی دست‌نخورده می‌ماند '
             + 'و مسیر کپی در output_path.txt نوشته می‌شود. پیش‌نیاز اجرا: Microsoft Access Database Engine (ACE).'}
         </Alert>
+
+        <Box sx={{ mt: 1, p: 1.25, border: '1px dashed', borderColor: 'divider', borderRadius: 1.5 }}>
+          <Typography sx={{ fontSize: 11.5, fontWeight: 800, mb: 0.75 }}>
+            فایل result.json در دسترس نیست؟ نتیجه را دستی ثبت کنید
+          </Typography>
+          <Stack direction="row" spacing={1} alignItems="center" flexWrap="wrap" useFlexGap>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel id="ttms-manual-status-label">وضعیت</InputLabel>
+              <Select
+                labelId="ttms-manual-status-label"
+                label="وضعیت"
+                value={manualStatus}
+                onChange={(event) => setManualStatus(event.target.value)}
+                sx={{ fontSize: 11.5, height: 32 }}
+              >
+                <MenuItem value="filled" sx={{ fontSize: 11.5 }}>درج شد (filled)</MenuItem>
+                <MenuItem value="dry_run" sx={{ fontSize: 11.5 }}>اجرای آزمایشی (dry_run)</MenuItem>
+                <MenuItem value="failed" sx={{ fontSize: 11.5 }}>ناموفق (failed)</MenuItem>
+              </Select>
+            </FormControl>
+            <TextField
+              size="small"
+              type="number"
+              label="ردیف‌های درج‌شده"
+              value={manualInserted}
+              onChange={(event) => setManualInserted(event.target.value)}
+              sx={{ width: 150, '& input': { fontSize: 11.5 } }}
+            />
+            <Button size="small" variant="outlined" onClick={registerManualResult}
+                    disabled={!lastRunId || uploading}>
+              ثبت نتیجه
+            </Button>
+          </Stack>
+          <Typography sx={{ fontSize: 10, color: 'text.secondary', mt: 0.5 }}>
+            برای وقتی که اسکریپت اجرا شده ولی فایل نتیجه ساخته نشده است؛ نتیجه در تاریخچهٔ همین فصل ثبت می‌شود.
+          </Typography>
+        </Box>
         </>
         ) : null}
       </DialogContent>

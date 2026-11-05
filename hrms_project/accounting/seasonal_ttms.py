@@ -55,9 +55,26 @@ RUNNER_CMD_CONTENT = (
     '@echo off\r\n'
     'chcp 65001 >nul\r\n'
     'setlocal\r\n'
+    'if exist "%~dp0result.json" del /q "%~dp0result.json"\r\n'
     'echo === TTMS fill ===\r\n'
     'powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0fill_ttms.ps1" %*\r\n'
     'set EXITCODE=%ERRORLEVEL%\r\n'
+    'if exist "%~dp0result.json" goto havesult\r\n'
+    'echo.\r\n'
+    'echo [warn] no result.json yet; retrying with -Command (some policies block -File silently)...\r\n'
+    'powershell -NoProfile -ExecutionPolicy Bypass -Command "& \'%~dp0fill_ttms.ps1\' %*"\r\n'
+    'set EXITCODE=%ERRORLEVEL%\r\n'
+    'if exist "%~dp0result.json" goto havesult\r\n'
+    'echo.\r\n'
+    'echo [warn] result.json was not created by the script; writing a fallback result file...\r\n'
+    'powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Join-Path \'%~dp0\' \'result.json\';'
+    ' $o = [ordered]@{ status = \'failed\'; package_version = \'ttms-fill-1.0\';'
+    ' message = (\'fill_ttms.ps1 did not finish (exit \' + $env:EXITCODE + \'). Check fill_ttms.log or run: run_fill.cmd -Inspect\');'
+    ' inserted = 0; skipped = 0; errors = @(\'result.json was not created by fill_ttms.ps1\');'
+    ' finished_at = (Get-Date).ToString(\'s\') };'
+    ' ($o | ConvertTo-Json -Depth 5) | Set-Content -LiteralPath $p -Encoding UTF8;'
+    ' Write-Host (\'fallback result.json: \' + $p)"\r\n'
+    ':havesult\r\n'
     'echo.\r\n'
     'echo result.json in this folder can be uploaded back to HRMS.\r\n'
     'echo Original Access file is unchanged: open the *.filled-* copy (see output_path.txt).\r\n'
@@ -1236,9 +1253,20 @@ def build_readme(manifest):
         '  4) نتیجهٔ اجرا در فایل result.json نوشته می‌شود و وضعیت آن یکی از سه مقدار',
         '     filled (درج موفق)، dry_run (اجرای آزمایشی) یا failed (خطا) است؛ فقط',
         '     result.json را در HRMS بارگذاری کنید (manifest.json فایل نتیجه نیست).',
-        '     گزارش کامل اجرا نیز در fill_ttms.log ذخیره می‌شود.',
+        '     result.json از همان لحظهٔ شروع ساخته می‌شود؛ پس اگر اجرا نیمه‌کاره هم',
+        '     بماند بازهم یک فایل نتیجه (با status=failed و پیام خطا) برای بارگذاری',
+        '     وجود دارد. گزارش کامل اجرا در fill_ttms.log ذخیره می‌شود.',
+        '  5) اگر به هر دلیلی result.json ساخته نشد (مثلاً اسکریپت اصلاً اجرا نشد)،',
+        '     خود run_fill.cmd یک result.json حداقلی می‌سازد. در نهایت اگر بازهم ممکن',
+        '     نبود، در HRMS دکمهٔ «ثبت نتیجه» (ثبت دستی) در همان دیالوگ TTMS استفاده',
+        '     کنید: وضعیت (filled/failed) و تعداد ردیف‌های درج‌شده را وارد کنید.',
         '',
         'عیب‌یابی «فایل پر نشد / خالی است»:',
+        '  - همیشه run_fill.cmd را اجرا کنید (نه مستقیم fill_ttms.ps1)؛ این لانچر',
+        '    اگر اجرای اول فایل نتیجه نسازد، خودکار با روش دیگری (-Command) دوباره',
+        '    تلاش می‌کند و در بدترین حالت یک result.json حداقلی می‌سازد تا بتوانید',
+        '    نتیجه را در HRMS ثبت کنید. همچنین در HRMS دکمهٔ «ثبت نتیجه» (دستی) وجود',
+        '    دارد؛ اگر هیچ فایلی ساخته نشد، وضعیت و تعداد ردیف را همان‌جا ثبت کنید.',
         '  - فایل اصلی هرگز تغییر نمی‌کند؛ همیشه نسخهٔ «.filled-<زمان>» را باز کنید',
         '    (مسیر دقیق: output_path.txt).',
         '  - اگر در خروجی «ردیف‌های تکراری (درج‌نشده)» بزرگ‌تر از صفر و درج‌شده صفر',

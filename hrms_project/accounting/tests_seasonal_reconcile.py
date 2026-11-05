@@ -910,9 +910,20 @@ class ResultStatusTests(SimpleTestCase):
         self.assertIn('fill_ttms.log', script)
         self.assertIn("$result.status = 'dry_run'", script)
         self.assertIn("$result.status = 'failed'", script)
+        # نتیجه از همان ابتدا نوشته می‌شود و کل اجرا در try/catch بیرونی است
+        self.assertRegex(script, r'try \{\s*\r?\n\s*Save-Result')
+        self.assertIn('خطای پیش‌بینی‌نشده در اجرای اسکریپت', script)
+        self.assertIn('$beganTrans', script)
 
     def test_runner_cmd_forwards_arguments(self):
         from accounting import seasonal_ttms
 
-        self.assertIn('%*', seasonal_ttms.RUNNER_CMD_CONTENT)
-        self.assertIn(seasonal_ttms.FILLER_SCRIPT, seasonal_ttms.RUNNER_CMD_CONTENT)
+        content = seasonal_ttms.RUNNER_CMD_CONTENT
+        self.assertIn('%*', content)
+        self.assertIn(seasonal_ttms.FILLER_SCRIPT, content)
+        # اگر -File بی‌صدا اجرا نشد، دوباره با -Command تلاش می‌شود
+        self.assertIn('-Command "& ', content)
+        # نتیجهٔ قدیمی پاک می‌شود و در نهایت فایل نتیجهٔ جانشین ساخته می‌شود
+        self.assertIn('del /q', content)
+        self.assertIn('result.json was not created by the script', content)
+        self.assertIn("status = 'failed'", content)
