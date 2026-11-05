@@ -42,7 +42,7 @@ import {
   dateLabel, dateTimeLabel, daysBetween, daysColor, daysLabel, money, timeLabel, MetaChip,
 } from './correspondenceUi';
 import {
-  PartyPicker, PersonnelPicker, partyValue, personValue,
+  PartyPicker, PersonnelPicker, MultiPersonnelPicker, partyValue, personValue,
 } from './correspondenceLookups';
 
 const LETTERS_KEY = ['correspondence-letters'];
@@ -817,6 +817,7 @@ const LetterFormDialog = ({ open, initial, presetDirection, meta, users, contact
 
 const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
   const [toEmployee, setToEmployee] = useState(null);
+  const [extraEmployees, setExtraEmployees] = useState([]);
   const [toName, setToName] = useState('');
   const [purpose, setPurpose] = useState('action');
   const [dueDate, setDueDate] = useState('');
@@ -826,6 +827,7 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
   useEffect(() => {
     if (!open) return;
     setToEmployee(null);
+    setExtraEmployees([]);
     setToName('');
     setPurpose('action');
     setDueDate('');
@@ -856,6 +858,12 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
               value={toEmployee}
               onChange={(option) => setToEmployee(option)}
             />
+            <MultiPersonnelPicker
+              label="گیرندگان دیگر (ارجاع هم‌زمان به چند نفر)"
+              value={extraEmployees}
+              onChange={(options) => setExtraEmployees(options || [])}
+              helperText="اختیاری؛ برای ارجاع چندنفره، نفرات دیگر را اضافه کنید."
+            />
             <TextField size="small" label="یا واحد / شخص خارج از سامانه" value={toName}
               onChange={(event) => setToName(event.target.value)} />
             <TextField select size="small" label="نوع ارجاع" value={purpose}
@@ -880,9 +888,10 @@ const ReferDialog = ({ open, letter, onClose, onSubmit, pending }) => {
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
         <Button size="small" variant="contained"
-          disabled={pending || (!toEmployee && !toName.trim())}
+          disabled={pending || (!toEmployee && !toName.trim() && !extraEmployees.length)}
           onClick={() => onSubmit({
             to_employee: toEmployee?.id || undefined,
+            to_employees: extraEmployees.map((item) => item.id),
             to_name: toName,
             purpose,
             due_date: dueDate || undefined,
@@ -1843,7 +1852,8 @@ const CorrespondenceLettersPage = ({ mode = 'all' }) => {
                   const last = row.letter.last_referral;
                   if (!last) return <CellText color={MUTED}>بدون ارجاع</CellText>;
                   const referralMeta = REFERRAL_STATUS_META[last.status];
-                  const target = last.to_employee_name || last.to_user_name || last.to_name || '—';
+                  const target = last.target_label || last.to_employee_name
+                    || last.to_user_name || last.to_name || '—';
                   const meta = joinParts(
                     referralMeta?.label,
                     dateLabel(last.referred_on),

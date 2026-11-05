@@ -8,7 +8,6 @@ import {
 import AddLinkIcon from '@mui/icons-material/AddLink';
 import AutoFixHighIcon from '@mui/icons-material/AutoFixHigh';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
-import EditOutlinedIcon from '@mui/icons-material/EditOutlined';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import axiosInstance from '../../core/api/axiosConfig';
@@ -75,18 +74,39 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
   const summary = summaryQuery.data || {};
 
   const query = search.trim().toLowerCase();
-  const visibleAliases = useMemo(() => {
-    if (!query) return aliases;
-    return aliases.filter((row) => [row.raw_name, row.target_label, row.scope_display]
-      .some((value) => String(value || '').toLowerCase().includes(query)));
-  }, [aliases, query]);
   const visibleUnmapped = useMemo(() => {
     if (!query) return unmapped;
     return unmapped.filter((row) => String(row.raw_name || '').toLowerCase().includes(query));
   }, [unmapped, query]);
 
+  // یک نام می‌تواند چند مقصد داشته باشد (ارجاع به چند نفر) → گروه‌بندی می‌کنیم
+  const groups = useMemo(() => {
+    const map = new Map();
+    aliases.forEach((row) => {
+      const key = `${row.normalized || row.raw_name}|${row.scope}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          key, raw_name: row.raw_name, scope: row.scope,
+          scope_display: row.scope_display, items: [], applied: 0,
+        });
+      }
+      const group = map.get(key);
+      group.items.push(row);
+      group.applied += row.applied_count || 0;
+    });
+    return [...map.values()];
+  }, [aliases]);
+
+  const visibleGroups = useMemo(() => {
+    if (!query) return groups;
+    return groups.filter((group) => [
+      group.raw_name, group.scope_display,
+      ...group.items.map((item) => item.target_label),
+    ].some((value) => String(value || '').toLowerCase().includes(query)));
+  }, [groups, query]);
+
   const { ref: tableRef, rowHeight, tableHeight } = useRowHeight(
-    theme.tableTheme, Math.max(1, visibleAliases.length),
+    theme.tableTheme, Math.max(1, visibleGroups.length),
   );
 
   const refresh = useCallback(() => {
@@ -96,12 +116,12 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
     qc.invalidateQueries({ queryKey: ['correspondence-meta'] });
   }, [qc]);
 
-  const openCreate = (rawName = '') => {
+  const openCreate = useCallback((rawName = '') => {
     setDialog({ ...EMPTY_FORM, raw_name: rawName, open: true });
     setError('');
-  };
+  }, []);
 
-  const openEdit = (row) => {
+  const openEdit = useCallback((row) => {
     setDialog({
       open: true,
       id: row.id,
@@ -115,7 +135,19 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
       apply_now: true,
     });
     setError('');
-  };
+  }, []);
+
+  /** افزودن مقصد دیگر به یک نام موجود (ارجاع هم‌زمان به چند نفر). */
+  const openAddTarget = useCallback((group) => {
+    setDialog({
+      ...EMPTY_FORM,
+      open: true,
+      raw_name: group.raw_name,
+      scope: group.scope,
+      note: '',
+    });
+    setError('');
+  }, []);
 
   const save = useMutation({
     mutationFn: async () => {
@@ -153,11 +185,18 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
     onSuccess: () => { refresh(); onToast?.('نگاشت حذف شد.'); },
   });
 
-  const applyOne = useMutation({
-    mutationFn: (id) => axiosInstance.post(`${API}${id}/apply/`, {}),
-    onSuccess: (response) => {
+  const applyGroup = useMutation({
+    mutationFn: async (group) => {
+      let total = 0;
+      for (const item of group.items) {
+        const response = await axiosInstance.post(`${API}${item.id}/apply/`, {});
+        total += response.data.total || 0;
+      }
+      return total;
+    },
+    onSuccess: (total) => {
       refresh();
-      onToast?.(`${formatPersianNumber(response.data.total || 0)} ردیف اصلاح و متصل شد.`);
+      onToast?.(`${formatPersianNumber(total)} ردیف اصلاح شد.`);
     },
   });
 
@@ -183,41 +222,55 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
         </Typography>
       </Box>
     ) },
-    { key: 'target', label: 'نگاشت به', width: '30%', render: (row) => (
-      <Box sx={{ minWidth: 0 }}>
-        <Typography noWrap sx={{ fontSize: 11.5, fontWeight: 700 }}>{row.target_label}</Typography>
-        <Typography noWrap sx={{ fontSize: 9.5, color: 'text.secondary' }}>
-          {row.target_kind_display}
-        </Typography>
-      </Box>
+    { key: 'target', label: 'مقصد(ها)', width: '34%', render: (row) => (
+      <Stack direction="row" spacing={0.4} flexWrap="wrap" useFlexGap>
+        {row.items.map((item, index) => (
+          <Chip
+            key={item.id}
+            size="small"
+            color={index === 0 ? 'primary' : 'default'}
+            variant={index === 0 ? 'filled' : 'outlined'}
+            label={`${item.target_label}${index === 0 ? ' ★' : ''}`}
+            onDelete={() => remove.mutate(item.id)}
+            onClick={() => openEdit(item)}
+            sx={{ fontSize: 9.5, height: 21 }}
+          />
+        ))}
+        {row.items.length > 1 ? (
+          <Chip size="small" label={`${toPersianDigits(row.items.length)} نفر`}
+            sx={chipSx(SLATE)} />
+        ) : null}
+      </Stack>
     ) },
     { key: 'applied', label: 'اصلاح‌شده', width: '12%', align: 'center', render: (row) => (
-      <Chip size="small" label={toPersianDigits(row.applied_count || 0)}
-        sx={chipSx(row.applied_count ? '#16a34a' : SLATE)} />
+      <Chip size="small" label={toPersianDigits(row.applied || 0)}
+        sx={chipSx(row.applied ? '#16a34a' : SLATE)} />
     ) },
-    { key: 'actions', label: 'عملیات', width: '20%', align: 'center', render: (row) => (
+    { key: 'actions', label: 'عملیات', width: '22%', align: 'center', render: (row) => (
       <Stack direction="row" spacing={0.2} justifyContent="center">
+        <Tooltip title="افزودن مقصد دیگر (چندنفره)">
+          <IconButton size="small" aria-label="افزودن مقصد" onClick={() => openAddTarget(row)}>
+            <AddLinkIcon sx={{ fontSize: 15, color: '#7c3aed' }} />
+          </IconButton>
+        </Tooltip>
         <Tooltip title="اعمال روی داده‌های موجود">
           <span>
-            <IconButton size="small" aria-label="اعمال" disabled={applyOne.isPending}
-              onClick={() => applyOne.mutate(row.id)}>
+            <IconButton size="small" aria-label="اعمال" disabled={applyGroup.isPending}
+              onClick={() => applyGroup.mutate(row)}>
               <PlayCircleOutlineIcon sx={{ fontSize: 15, color: '#0369a1' }} />
             </IconButton>
           </span>
         </Tooltip>
-        <Tooltip title="ویرایش">
-          <IconButton size="small" aria-label="ویرایش" onClick={() => openEdit(row)}>
-            <EditOutlinedIcon sx={{ fontSize: 15 }} />
-          </IconButton>
-        </Tooltip>
-        <Tooltip title="حذف">
-          <IconButton size="small" aria-label="حذف" onClick={() => remove.mutate(row.id)}>
+        <Tooltip title="حذف همهٔ مقصدهای این نام">
+          <IconButton size="small" aria-label="حذف" onClick={() => row.items.forEach(
+            (item) => remove.mutate(item.id),
+          )}>
             <DeleteOutlineIcon sx={{ fontSize: 15, color: '#be123c' }} />
           </IconButton>
         </Tooltip>
       </Stack>
     ) },
-  ]), [applyOne, remove]);
+  ]), [applyGroup, remove, openEdit, openAddTarget]);
 
   const loading = aliasesQuery.isLoading || summaryQuery.isLoading;
 
@@ -265,8 +318,8 @@ const CorrespondenceNameMappingTab = ({ search = '', onToast }) => {
               containerRef={tableRef}
               tableHeight={tableHeight}
               rowHeight={rowHeight}
-              rows={visibleAliases}
-              rowKey={(row) => row.id}
+              rows={visibleGroups}
+              rowKey={(row) => row.key}
               emptyText="هنوز نگاشتی ثبت نشده است؛ از فهرست «نام‌های بدون نگاشت» انتخاب کنید."
               columns={columns}
             />

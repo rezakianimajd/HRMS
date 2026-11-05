@@ -144,6 +144,62 @@ export const PersonnelPicker = ({
     />
   );
 };
+/** انتخاب چند پرسنل (ارجاع هم‌زمان به چند نفر). */
+export const MultiPersonnelPicker = ({
+  value = [], onChange, label = 'گیرندگان دیگر (چند نفر)', size = 'small',
+  variant = 'outlined', disabled = false, helperText = '', sx,
+}) => {
+  const { options, loading, setQuery } = useLookup('/letters/personnel/');
+  const merged = useMemo(() => {
+    const chosen = (value || []).map(personOption).filter(Boolean);
+    const rest = options.map(personOption)
+      .filter((option) => !chosen.some((item) => item.id === option.id));
+    return [...chosen, ...rest];
+  }, [options, value]);
+
+  return (
+    <Autocomplete
+      multiple
+      size={size}
+      sx={sx}
+      disabled={disabled}
+      options={merged}
+      loading={loading}
+      value={(value || []).map(personOption).filter(Boolean)}
+      onChange={(_event, next) => onChange?.(next || [])}
+      onInputChange={(_event, text, reason) => {
+        if (reason === 'input') setQuery(text);
+      }}
+      getOptionLabel={(option) => option?.label || option?.full_name || ''}
+      isOptionEqualToValue={(a, b) => a?.id === b?.id}
+      noOptionsText="پرسنلی یافت نشد"
+      loadingText="در حال جستجو…"
+      renderOption={(props, option) => (
+        <Box component="li" {...props} key={option.id}>
+          <PickOption
+            primary={option.full_name}
+            secondary={[option.job_title, option.department].filter(Boolean).join(' · ')}
+            badge={option.employee_id}
+          />
+        </Box>
+      )}
+      renderTags={(selected, getTagProps) => selected.map((option, index) => (
+        <Chip
+          size="small"
+          label={option.full_name || option.label}
+          {...getTagProps({ index })}
+          key={option.id}
+          sx={{ height: 20, fontSize: 10.5 }}
+        />
+      ))}
+      renderInput={(params) => (
+        <TextField {...params} variant={variant} label={label} helperText={helperText} />
+      )}
+    />
+  );
+};
+
+
 
 /** انتخاب طرف حساب از مدیریت قراردادها؛ امکان ثبت سریع نام جدید. */
 export const PartyPicker = ({

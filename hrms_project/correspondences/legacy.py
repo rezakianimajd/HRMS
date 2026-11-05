@@ -527,7 +527,7 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
     rows = list(rows)
     stats = summarize(rows)
     stats.update({'created': 0, 'skipped': 0, 'referrals_created': 0, 'events_created': 0,
-                  'aliases_applied': 0})
+                  'aliases_applied': 0, 'multi_recipient_referrals': 0})
     if dry_run:
         if logger:
             logger(f'[dry-run] {stats["total"]} ردیف آمادهٔ ورود: {stats["by_sheet"]}')
@@ -621,25 +621,37 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
         for item in Letter.objects.filter(company=company, source_ref__in=created_refs)
     }
     referrals = []
+    referral_extras = []
     for row in pending:
         letter = letters.get(row['source_ref'])
         if not letter:
             continue
         for index, referral in enumerate(row.get('referrals') or [], start=1):
             to_name = (referral.get('to_name') or '')[:200]
-            to_employee_id = resolver.employee_id('referral', to_name)
+            to_employee_ids = resolver.employee_ids('referral', to_name)
             referrals.append(LetterReferral(
                 company=company, letter=letter, seq=index,
                 to_name=to_name,
-                to_employee_id=to_employee_id,
+                to_employee_id=(to_employee_ids[0] if to_employee_ids else None),
                 referred_on=referral.get('referred_on') or letter.letter_date,
                 status='done',
                 result_note='ارجاع تاریخی (واردشده از فایل اکسل)',
                 done_at=now,
             ))
+            referral_extras.append(to_employee_ids[1:])
     if referrals:
         LetterReferral.objects.bulk_create(referrals, batch_size=300)
         stats['referrals_created'] = len(referrals)
+        through = LetterReferral.to_employees.through
+        multi_rows = [
+            through(letterreferral_id=item.id, employee_id=employee_id)
+            for item, extra_ids in zip(referrals, referral_extras)
+            for employee_id in extra_ids
+            if item.id and employee_id != item.to_employee_id
+        ]
+        if multi_rows:
+            through.objects.bulk_create(multi_rows, ignore_conflicts=True, batch_size=300)
+            stats['multi_recipient_referrals'] = len(multi_rows)
 
     if create_events and letters:
         events = []

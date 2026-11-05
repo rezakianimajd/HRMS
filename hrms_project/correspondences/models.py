@@ -302,14 +302,17 @@ class CorrespondenceNameAlias(BaseModel):
         related_name='name_aliases', verbose_name=_('مخاطب'),
     )
     note = models.TextField(blank=True, verbose_name=_('یادداشت'))
+    order = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_('ترتیب'),
+        help_text=_('در نگاشت‌های چندنفره، مقصد با ترتیب کمتر «گیرندهٔ اصلی» است.'),
+    )
     applied_count = models.PositiveIntegerField(default=0, verbose_name=_('تعداد اصلاح‌شده'))
     last_applied_at = models.DateTimeField(null=True, blank=True, verbose_name=_('آخرین اعمال'))
 
     class Meta:
         verbose_name = _('نگاشت نام مکاتبات')
         verbose_name_plural = _('نگاشت نام‌های مکاتبات')
-        ordering = ['-applied_count', 'raw_name']
-        unique_together = [('company', 'normalized', 'scope')]
+        ordering = ['normalized', 'scope', 'order', 'id']
         indexes = [models.Index(fields=['company', 'scope', 'normalized'])]
 
     def __str__(self):
@@ -332,6 +335,14 @@ class CorrespondenceNameAlias(BaseModel):
         if not targets.get(self.target_kind):
             raise ValidationError({'target_kind': _('مقصد نگاشت را انتخاب کنید.')})
 
+    @property
+    def target_ids(self):
+        return {
+            'employee': self.employee_id,
+            'party': self.party_id,
+            'correspondent': self.correspondent_id,
+        }
+
     def save(self, *args, **kwargs):
         from correspondences.matching import normalize_name
 
@@ -340,6 +351,10 @@ class CorrespondenceNameAlias(BaseModel):
                             ('correspondent', 'correspondent')):
             if self.target_kind != kind:
                 setattr(self, f'{field}_id', None)
+        if self._state.adding and not self.order and self.company_id and self.normalized:
+            self.order = CorrespondenceNameAlias.objects.filter(
+                company_id=self.company_id, normalized=self.normalized, scope=self.scope,
+            ).count()
         return super().save(*args, **kwargs)
 
     @property
@@ -654,6 +669,12 @@ class LetterReferral(BaseModel):
         related_name='letter_referrals', db_constraint=False,
         verbose_name=_('ارجاع‌شونده (پرسنل)'),
     )
+    to_employees = models.ManyToManyField(
+        'employees.Employee', blank=True,
+        related_name='multi_letter_referrals', db_constraint=False,
+        verbose_name=_('ارجاع‌شونده‌های دیگر (پرسنل)'),
+        help_text=_('برای ارجاع‌هایی که هم‌زمان به چند نفر ارجاع داده شده‌اند'),
+    )
     to_name = models.CharField(max_length=200, blank=True, verbose_name=_('واحد / شخص خارج از سامانه'))
     referred_on = models.DateField(verbose_name=_('تاریخ ارجاع'))
     due_date = models.DateField(null=True, blank=True, verbose_name=_('مهلت اقدام'))
@@ -695,12 +716,21 @@ class LetterReferral(BaseModel):
 
     @property
     def target_label(self):
-        """نام گیرندهٔ ارجاع (کاربر، پرسنل یا واحد خارج از سامانه)."""
+        """نام گیرنده(های) ارجاع: کاربر، پرسنل (چند نفر) یا واحد خارج از سامانه."""
+        names = []
         if self.to_user_id:
-            return self.to_user.get_full_name() or self.to_user.get_username()
+            names.append(self.to_user.get_full_name() or self.to_user.get_username())
         if self.to_employee_id:
-            return self.to_employee.full_name
-        return self.to_name or '—'
+            names.append(self.to_employee.full_name)
+        if self.pk:
+            names.extend(
+                emp.full_name for emp in self.to_employees.all()
+                if emp.id != self.to_employee_id
+            )
+        if not names and self.to_name:
+            names.append(self.to_name)
+        unique = list(dict.fromkeys(name for name in names if name))
+        return '، '.join(unique) if unique else '—'
 
 
 class LetterEvent(BaseModel):

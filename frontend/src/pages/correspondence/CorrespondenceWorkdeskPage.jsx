@@ -25,7 +25,7 @@ import {
   ACCENT, DANGER, INCOMING, INTERNAL, KpiTile, OK, REFERRAL_STATUS_META, SLATE, WARN,
   chipSx, dateLabel, dateTimeLabel, daysColor, daysLabel,
 } from './correspondenceUi';
-import { PersonnelPicker } from './correspondenceLookups';
+import { MultiPersonnelPicker, PersonnelPicker } from './correspondenceLookups';
 import CorrespondenceRequestsPanel from './CorrespondenceRequestsPanel';
 
 /**
@@ -151,10 +151,12 @@ const ReferralForwardDialog = ({ open, onClose, onSubmit, pending }) => {
   const [dueDate, setDueDate] = useState('');
   const [instruction, setInstruction] = useState('');
   const [note, setNote] = useState('');
+  const [extraEmployees, setExtraEmployees] = useState([]);
 
   useEffect(() => {
     if (!open) return;
     setToEmployee(null);
+    setExtraEmployees([]);
     setToName('');
     setPurpose('action');
     setDueDate('');
@@ -173,6 +175,9 @@ const ReferralForwardDialog = ({ open, onClose, onSubmit, pending }) => {
         <FormTable>
           <PersonnelPicker label="ارجاع به پرسنل" value={toEmployee}
             onChange={(option) => setToEmployee(option)} />
+          <MultiPersonnelPicker label="گیرندگان دیگر (چند نفر)" value={extraEmployees}
+            onChange={(options) => setExtraEmployees(options || [])}
+            helperText="اختیاری؛ برای ارجاع هم‌زمان به چند نفر." />
           <TextField size="small" label="یا واحد / شخص خارج از سامانه" value={toName}
             onChange={(event) => setToName(event.target.value)} />
           <TextField select size="small" label="نوع ارجاع" value={purpose}
@@ -195,9 +200,10 @@ const ReferralForwardDialog = ({ open, onClose, onSubmit, pending }) => {
       <DialogActions sx={{ px: 2, py: 1.25 }}>
         <Button size="small" onClick={onClose}>انصراف</Button>
         <Button size="small" variant="contained"
-          disabled={pending || (!toEmployee && !toName.trim())}
+          disabled={pending || (!toEmployee && !toName.trim() && !extraEmployees.length)}
           onClick={() => onSubmit({
             to_employee: toEmployee?.id || undefined,
+            to_employees: extraEmployees.map((item) => item.id),
             to_name: toName,
             purpose,
             due_date: dueDate || undefined,

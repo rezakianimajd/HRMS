@@ -219,23 +219,31 @@ class CorrespondenceNameAliasSerializer(serializers.ModelSerializer):
                 {'correspondent': 'مخاطب مقصد را انتخاب کنید.'},
             )
         raw_name = attrs.get('raw_name') or getattr(self.instance, 'raw_name', '')
-        if not normalize_name(raw_name):
+        normalized = normalize_name(raw_name)
+        if not normalized:
             raise serializers.ValidationError({'raw_name': 'نام خام معتبر نیست.'})
 
-        # یکتایی (شرکت، کلید نرمال‌شده، دامنه)
+        # چند مقصد برای یک نام مجاز است (ارجاع به چند نفر) اما مقصد تکراری نه
         from correspondences.models import CorrespondenceNameAlias
 
         company = getattr(self.instance, 'company', None) or self.context.get('company')
         scope = attrs.get('scope') or getattr(self.instance, 'scope', 'any')
         if company:
             duplicates = CorrespondenceNameAlias.objects.filter(
-                company=company, scope=scope, normalized=normalize_name(raw_name),
+                company=company, scope=scope, normalized=normalized,
+                target_kind=target_kind,
             )
+            if employee:
+                duplicates = duplicates.filter(employee=employee)
+            elif party:
+                duplicates = duplicates.filter(party=party)
+            elif correspondent:
+                duplicates = duplicates.filter(correspondent=correspondent)
             if self.instance:
                 duplicates = duplicates.exclude(pk=self.instance.pk)
             if duplicates.exists():
                 raise serializers.ValidationError({
-                    'raw_name': 'برای این نام در همین دامنه قبلاً نگاشت ثبت شده است.',
+                    'raw_name': 'این مقصد برای همین نام قبلاً ثبت شده است؛ مقصد دیگری انتخاب کنید.',
                 })
         return attrs
 
@@ -288,6 +296,7 @@ class LetterReferralSerializer(serializers.ModelSerializer):
     letter_status = serializers.CharField(source='letter.status', read_only=True)
     to_employee_name = serializers.CharField(source='to_employee.full_name', read_only=True)
     to_employee_code = serializers.CharField(source='to_employee.employee_id', read_only=True)
+    to_employees_names = serializers.SerializerMethodField()
     from_employee_name = serializers.CharField(source='from_employee.full_name', read_only=True)
     target_label = serializers.CharField(read_only=True)
 
@@ -300,6 +309,7 @@ class LetterReferralSerializer(serializers.ModelSerializer):
             'letter_priority', 'letter_status', 'seq', 'parent', 'purpose', 'purpose_display',
             'from_user', 'from_user_name', 'from_employee', 'from_employee_name',
             'to_user', 'to_user_name', 'to_employee', 'to_employee_name', 'to_employee_code',
+            'to_employees', 'to_employees_names',
             'to_name', 'target_label', 'referred_on', 'due_date', 'instruction', 'note',
             'margin_note', 'seen_at', 'status', 'status_display', 'response', 'result',
             'result_note', 'answered_on', 'answered_by', 'answered_by_name', 'done_at',
@@ -310,8 +320,11 @@ class LetterReferralSerializer(serializers.ModelSerializer):
             'from_user_name', 'to_user_name', 'status_display', 'purpose_display',
             'is_overdue', 'letter_number', 'letter_subject', 'letter_direction',
             'letter_priority', 'letter_status', 'to_employee_name', 'to_employee_code',
-            'from_employee_name', 'target_label',
+            'from_employee_name', 'target_label', 'to_employees_names',
         ]
+
+    def get_to_employees_names(self, obj):
+        return [employee.full_name for employee in obj.to_employees.all()]
 
     @staticmethod
     def _name(user):

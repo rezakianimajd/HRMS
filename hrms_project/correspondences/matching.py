@@ -10,6 +10,7 @@
 import re
 import unicodedata
 from difflib import SequenceMatcher
+from functools import lru_cache
 
 # ---------------------------------------------------------------------------
 # نرمال‌سازی متن فارسی
@@ -60,11 +61,16 @@ def _fold(value):
     return _SPACE.sub(' ', text).strip()
 
 
-def normalize_name(value):
-    """کلید نرمال‌شدهٔ نام (بدون القاب، علائم، اختلاف ي/ك)."""
-    tokens = [token for token in _fold(value).split(' ') if token]
+@lru_cache(maxsize=8192)
+def _normalize_cached(text):
+    tokens = [token for token in _fold(text).split(' ') if token]
     tokens = [token for token in tokens if token not in HONORIFICS]
     return ' '.join(tokens).lower()
+
+
+def normalize_name(value):
+    """کلید نرمال‌شدهٔ نام (بدون القاب، علائم، اختلاف ي/ك) — با کش برای سرعت."""
+    return _normalize_cached(str(value or ''))
 
 
 def name_tokens(value):

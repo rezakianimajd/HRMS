@@ -294,7 +294,6 @@ class NameMappingTests(SimpleTestCase):
         self.assertEqual([row['item'] for row in rows[1:]], [])
 
     def test_alias_resolver_prefers_scope_then_any(self):
-        from decimal import Decimal
         from types import SimpleNamespace
 
         from correspondences.mapping import AliasResolver
@@ -302,17 +301,22 @@ class NameMappingTests(SimpleTestCase):
         referral_alias = SimpleNamespace(
             target_kind='employee', employee_id=11, party_id=None, correspondent_id=None,
         )
+        second_alias = SimpleNamespace(
+            target_kind='employee', employee_id=12, party_id=None, correspondent_id=None,
+        )
         any_alias = SimpleNamespace(
             target_kind='party', employee_id=None, party_id=22, correspondent_id=None,
         )
         resolver = AliasResolver({
-            ('referral', 'حسینی'): referral_alias,
-            ('any', 'حسینی'): any_alias,
+            ('referral', 'حسینی'): [referral_alias, second_alias],
+            ('any', 'حسینی'): [any_alias],
         })
         self.assertEqual(resolver.employee_id('referral', 'خ.حسینی'), 11)
+        # ارجاع چندنفره: همهٔ پرسنل‌ها به‌ترتیب نگاشت برمی‌گردند
+        self.assertEqual(resolver.employee_ids('referral', 'خ.حسینی'), [11, 12])
         # در دامنهٔ دیگر، نگاشت «همه» استفاده می‌شود
         self.assertEqual(resolver.party_id('sender', 'حسینی'), 22)
-        self.assertIsNone(resolver.employee_id('sender', 'حسینی'))
+        self.assertEqual(resolver.employee_ids('sender', 'حسینی'), [])
         self.assertIsNone(resolver.employee_id('referral', 'نام ناشناس'))
         self.assertIsNone(resolver.employee_id('referral', ''))
 

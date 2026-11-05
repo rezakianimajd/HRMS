@@ -233,8 +233,15 @@ def _create_referral(letter, request, parent=None):
     company = letter.company
     to_user_id = data.get('to_user') or None
     to_employee_id = data.get('to_employee') or None
+    extra_employee_ids = data.get('to_employees') or []
+    if isinstance(extra_employee_ids, str):
+        extra_employee_ids = [item for item in extra_employee_ids.split(',') if item.strip()]
+    extra_employee_ids = [
+        int(item) for item in extra_employee_ids
+        if str(item).strip().isdigit()
+    ]
     to_name = (data.get('to_name') or '').strip()
-    if not to_user_id and not to_employee_id and not to_name:
+    if not to_user_id and not to_employee_id and not to_name and not extra_employee_ids:
         return None, Response(
             {'detail': 'گیرندهٔ ارجاع (پرسنل، کاربر یا واحد) را مشخص کنید.'},
             status=http_status.HTTP_400_BAD_REQUEST,
@@ -257,6 +264,10 @@ def _create_referral(letter, request, parent=None):
         if not to_employee:
             return None, Response({'detail': 'پرسنل انتخاب‌شده یافت نشد.'},
                                   status=http_status.HTTP_400_BAD_REQUEST)
+    if not to_employee and extra_employee_ids and not to_user_id and not to_name:
+        # اگر فقط «نفرات دیگر» انتخاب شده باشند، اولین نفر گیرندهٔ اصلی می‌شود
+        to_employee_id = extra_employee_ids[0]
+        extra_employee_ids = extra_employee_ids[1:]
     if not to_employee and to_user:
         to_employee = _employee_of_user(to_user, company)
     if to_employee and not to_user:
@@ -282,7 +293,25 @@ def _create_referral(letter, request, parent=None):
     if letter.status in ('draft', 'registered'):
         letter.status = 'in_progress'
         letter.save(update_fields=['status', 'updated_at'])
-    target = _user_name(to_user) or (to_employee.full_name if to_employee else to_name)
+    # گیرندگان دیگر (ارجاع هم‌زمان به چند نفر)
+    if extra_employee_ids:
+        from employees.models import Employee
+
+        extra_ids = [
+            emp_id for emp_id in dict.fromkeys(extra_employee_ids)
+            if emp_id != (to_employee.id if to_employee else None)
+        ]
+        employees = Employee.objects.filter(company=company, id__in=extra_ids, is_active=True)
+        referral.to_employees.set(employees)
+    names = []
+    primary_name = _user_name(to_user) or (to_employee.full_name if to_employee else '')
+    if primary_name:
+        names.append(primary_name)
+    for first_name, last_name in referral.to_employees.values_list('first_name', 'last_name'):
+        full_name = f'{first_name} {last_name}'.strip()
+        if full_name and full_name not in names:
+            names.append(full_name)
+    target = '، '.join(names) or to_name
     _log_event(
         letter, 'referred', request.user,
         note=instruction or note,
@@ -927,6 +956,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
         'letter__number', 'letter__subject', 'letter__sender_name', 'to_name',
         'instruction', 'note', 'margin_note', 'result_note', 'result',
         'to_employee__first_name', 'to_employee__last_name',
+        'to_employees__first_name', 'to_employees__last_name',
     ]
     ordering_fields = ['referred_on', 'due_date', 'status', 'seq']
     ordering = ['-referred_on', '-id']
@@ -935,14 +965,19 @@ class LetterReferralViewSet(BaseLetterViewSet):
         qs = super().get_queryset().select_related(
             'letter', 'from_user', 'to_user', 'answered_by',
             'to_employee', 'from_employee', 'letter__category', 'letter__organization',
-        )
+        ).prefetch_related('to_employees').distinct()
         params = self.request.query_params
         user = getattr(self.request, 'user', None)
         company = _get_company(self.request)
         employee = _user_employee(user, company)
         if _truthy(params.get('mine')) and user and user.is_authenticated:
             employee = _user_employee(user, company) or _employee_of_user(user, company)
-            qs = qs.filter(Q(to_user=user) | (Q(to_employee=employee) if employee else Q(pk__in=[])))
+            if employee:
+                qs = qs.filter(
+                    Q(to_user=user) | Q(to_employee=employee) | Q(to_employees=employee),
+                )
+            else:
+                qs = qs.filter(to_user=user)
         letter_id = params.get('letter')
         if letter_id:
             qs = qs.filter(letter_id=letter_id)
@@ -978,11 +1013,11 @@ class LetterReferralViewSet(BaseLetterViewSet):
         ).select_related(
             'letter', 'from_user', 'to_user', 'to_employee', 'from_employee',
             'letter__category',
-        )
+        ).prefetch_related('to_employees')
         target = Q(to_user=user)
         if employee:
-            target = target | Q(to_employee=employee)
-        base = base.filter(target)
+            target = target | Q(to_employee=employee) | Q(to_employees=employee)
+        base = base.filter(target).distinct()
 
         counts = {
             'total': base.count(),

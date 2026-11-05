@@ -44,18 +44,36 @@ def _apply_employee(alias, dry_run=False):
 
     if 'referral' in scopes:
         rows = list(
-            LetterReferral.objects.filter(
-                company=company, to_employee__isnull=True,
-            ).exclude(to_name=''),
+            LetterReferral.objects.filter(company=company).exclude(to_name='').prefetch_related(
+                'to_employees',
+            ),
         )
         matched = [row for row in rows if _matches(row.to_name, normalized)]
-        if matched and not dry_run:
-            for row in matched:
-                row.to_employee = employee
-                row.to_name = full_name[:200]
-            LetterReferral.objects.bulk_update(matched, ['to_employee', 'to_name'],
-                                               batch_size=300)
-        counts['referrals'] = len(matched)
+        primary, extras = [], []
+        for row in matched:
+            existing = set(row.to_employees.values_list('id', flat=True))
+            if row.to_employee_id == employee.id or employee.id in existing:
+                continue
+            if row.to_employee_id or existing:
+                # ارجاع قبلاً به یک/چند نفر وصل شده؛ این مقصد «نفر بعدی» است
+                extras.append(row)
+            else:
+                primary.append(row)
+        if not dry_run:
+            if primary:
+                for row in primary:
+                    row.to_employee = employee
+                    row.to_name = full_name[:200]
+                LetterReferral.objects.bulk_update(primary, ['to_employee', 'to_name'],
+                                                   batch_size=300)
+            if extras:
+                through = LetterReferral.to_employees.through
+                through.objects.bulk_create(
+                    [through(letterreferral_id=row.id, employee_id=employee.id)
+                     for row in extras],
+                    ignore_conflicts=True, batch_size=300,
+                )
+        counts['referrals'] = len(primary) + len(extras)
 
     for scope in scopes:
         link_field, name_field = LETTER_FIELDS.get(scope, (None, None))
@@ -200,37 +218,55 @@ def apply_all(company, dry_run=False, aliases=None):
 
 
 def load_alias_map(company):
-    """نگاشت‌های فعال شرکت به‌صورت ``{(scope, normalized): alias}``."""
+    """نگاشت‌های فعال شرکت به‌صورت ``{(scope, normalized): [alias, ...]}``."""
     from correspondences.models import CorrespondenceNameAlias
 
     mapping = {}
     rows = CorrespondenceNameAlias.objects.filter(
         company=company, is_active=True,
-    ).select_related('employee', 'party', 'correspondent')
+    ).select_related('employee', 'party', 'correspondent').order_by('order', 'id')
     for alias in rows:
-        mapping[(alias.scope, alias.normalized)] = alias
+        mapping.setdefault((alias.scope, alias.normalized), []).append(alias)
     return mapping
 
 
 class AliasResolver:
-    """تشخیص مقصد نام‌ها هنگام ورود داده‌های اکسل."""
+    """تشخیص مقصد نام‌ها هنگام ورود داده‌های اکسل (با پشتیبانی چند مقصد)."""
 
     def __init__(self, alias_map=None):
         self.alias_map = alias_map or {}
 
-    def alias_for(self, scope, raw_name):
+    def aliases_for(self, scope, raw_name):
         normalized = normalize_name(raw_name)
         if not normalized:
-            return None
-        return (self.alias_map.get((scope, normalized))
-                or self.alias_map.get(('any', normalized)))
+            return []
+        rows = self.alias_map.get((scope, normalized))
+        if rows:
+            return list(rows)
+        return list(self.alias_map.get(('any', normalized)) or [])
+
+    def alias_for(self, scope, raw_name):
+        rows = self.aliases_for(scope, raw_name)
+        return rows[0] if rows else None
+
+    def _target_ids(self, kind, scope, raw_name):
+        ids = []
+        for alias in self.aliases_for(scope, raw_name):
+            if alias.target_kind != kind:
+                continue
+            target = {'employee': alias.employee_id, 'party': alias.party_id,
+                      'correspondent': alias.correspondent_id}.get(kind)
+            if target and target not in ids:
+                ids.append(target)
+        return ids
 
     def _target_id(self, kind, scope, raw_name):
-        alias = self.alias_for(scope, raw_name)
-        if not alias or alias.target_kind != kind:
-            return None
-        return {'employee': alias.employee_id, 'party': alias.party_id,
-                'correspondent': alias.correspondent_id}.get(kind)
+        ids = self._target_ids(kind, scope, raw_name)
+        return ids[0] if ids else None
+
+    def employee_ids(self, scope, raw_name):
+        """همهٔ پرسنل‌های نگاشت‌شده (اولی = گیرندهٔ اصلی، بقیه = نفرات دیگر)."""
+        return self._target_ids('employee', scope, raw_name)
 
     def employee_id(self, scope, raw_name):
         return self._target_id('employee', scope, raw_name)
