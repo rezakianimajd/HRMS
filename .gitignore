@@ -72,6 +72,8 @@ _build.log
 _*.txt
 _*.log
 _*.json
+_*.tgz
+_letters_pack/
 # بسته‌های به‌روزرسانی محلی
 updates/
 

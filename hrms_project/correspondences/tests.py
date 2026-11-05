@@ -361,6 +361,42 @@ class NameMappingTests(SimpleTestCase):
         with self.assertRaises(RuntimeError):
             importer.read_bytes('file', r'C:\definitely-not-here\x.pdf')
 
+    def test_looks_like_link_filters_plain_text(self):
+        from correspondences import attachment_import as importer
+
+        self.assertFalse(importer.looks_like_link('معرفی شرکت جهت اخذ ردیف پیمان'))
+        self.assertFalse(importer.looks_like_link('1404/06/15'))
+        self.assertFalse(importer.looks_like_link(''))
+        self.assertTrue(importer.looks_like_link('../S.mousavi/اسکن/a.pdf'))
+        self.assertTrue(importer.looks_like_link(r'\\192.168.1.6\share\a.pdf'))
+        self.assertTrue(importer.looks_like_link('D:\\scans\\x.jpg'))
+        self.assertTrue(importer.looks_like_link('https://x.test/a.pdf'))
+
+    def test_parse_link_decodes_encoded_relative_paths(self):
+        from correspondences import attachment_import as importer
+
+        kind, value, name = importer.parse_link(
+            'scan%20mali/اسکن%20های%20جدید/3857-2.pdf', r'D:\Group\Accounting',
+        )
+        self.assertEqual(kind, 'file')
+        self.assertIn('scan mali', value)
+        self.assertIn('اسکن های جدید', value)
+        self.assertEqual(name, '3857-2.pdf')
+
+    def test_find_by_tail_recovers_broken_relative_links(self):
+        import tempfile
+        from pathlib import Path
+
+        from correspondences import attachment_import as importer
+
+        with tempfile.TemporaryDirectory() as tmp:
+            target = Path(tmp) / 'Everyone' / 'S.mousavi' / 'اسکن' / 'x.pdf'
+            target.parent.mkdir(parents=True)
+            target.write_bytes(b'%PDF-1.4')
+            found = importer.find_by_tail('../S.mousavi/اسکن/x.pdf', [str(Path(tmp) / 'Everyone')])
+            self.assertEqual(found, str(target))
+            self.assertEqual(importer.find_by_tail('../nope/y.pdf', [str(Path(tmp))]), '')
+
     def test_my_name_variants_cover_user_and_employee(self):
         from types import SimpleNamespace
 

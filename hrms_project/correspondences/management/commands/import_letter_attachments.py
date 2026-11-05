@@ -46,9 +46,15 @@ class Command(BaseCommand):
     help = 'بارگذاری پیوست نامه‌ها از فایل اکسل با استفاده از هایپرلینک هر ردیف'
 
     def add_arguments(self, parser):
-        parser.add_argument('--file', required=True, help='مسیر فایل اکسل')
+        parser.add_argument('--file', default=None, help='مسیر فایل اکسل')
+        parser.add_argument('--manifest', default=None,
+                            help='مسیر فایل JSON خروجی اسکریپت export_letter_attachments')
         parser.add_argument('--company', default=None, help='شناسهٔ شرکت (در صورت نبود اسکیما)')
         parser.add_argument('--sheet', default=None, help='نام شیت (پیش‌فرض: اولین شیت)')
+        parser.add_argument('--sheet-code', default=None, dest='sheet_code',
+                            help='کد شیت برای تطبیق شناسهٔ منبع (پیش‌فرض از نام شیت حدس زده می‌شود)')
+        parser.add_argument('--fallback-dir', default=None, dest='fallback_dir',
+                            help='پوشهٔ جانشین برای لینک‌های شکسته (چند مقدار با کاما)')
         parser.add_argument('--base-dir', default=None,
                             help='پوشهٔ مبنا برای مسیرهای نسبی (پیش‌فرض: پوشهٔ فایل اکسل)')
         parser.add_argument('--kind', default='letter',
@@ -97,8 +103,118 @@ class Command(BaseCommand):
         names = {Path(item.file.name).name for item in letter.attachments.all() if item.file}
         return titles | names
 
-    # ------------------------------------------------------------------ اجرا
+    def _sheet_code(self, title):
+        """کد شیت بر اساس نام آن (هم‌خوان با ``legacy.SHEET_CODES``)."""
+        from correspondences import legacy
+
+        canonical = str(title or '').strip()
+        return legacy.SHEET_CODES.get(canonical, canonical.replace(' ', '-') or 'sheet')
+
     def handle(self, *args, **options):
+        raw_dirs = options.get('fallback_dir') or ''
+        options['fallback_dirs'] = [item.strip() for item in str(raw_dirs).split(',') if item.strip()]
+        if options.get('manifest'):
+            if options.get('file'):
+                raise CommandError('فقط یکی از --file یا --manifest را بدهید.')
+            return self._handle_manifest(options)
+        if not options.get('file'):
+            raise CommandError('یکی از --file یا --manifest الزامی است.')
+        return self._handle_excel(options)
+
+    def _handle_manifest(self, options):
+        """اجرای درون‌ریزی از فهرست آماده‌شده (JSON) بدون نیاز به اکسل."""
+        import json
+
+        from correspondences.models import LetterAttachment
+
+        path = Path(options['manifest']).expanduser()
+        if not path.exists():
+            raise CommandError(f'فایل فهرست پیدا نشد: {path}')
+        payload = json.loads(path.read_text(encoding='utf-8'))
+        items = payload.get('items') or []
+        if not items:
+            raise CommandError('فهرست خالی است.')
+
+        company = self._company(options)
+        base_dir = path.parent
+        stats = {'items': 0, 'linked': 0, 'created': 0, 'skipped': 0,
+                 'missing': 0, 'failed': 0, 'no_file': 0, 'dry_run': bool(options['dry_run'])}
+        limit = options.get('limit')
+
+        with transaction.atomic():
+            for item in items:
+                if limit and stats['items'] >= limit:
+                    break
+                stats['items'] += 1
+                keys = {
+                    'source': str(item.get('source_ref') or '').strip(),
+                    'number': str(item.get('number') or '').strip(),
+                    'indicator': str(item.get('indicator') or '').strip(),
+                    'external': str(item.get('external') or '').strip(),
+                    'subject': str(item.get('subject') or '').strip(),
+                    'title': str(item.get('title') or '').strip(),
+                }
+                letter = self._find_letter(company, keys)
+                if not letter:
+                    stats['missing'] += 1
+                    if not options['skip_missing']:
+                        self.stderr.write(f'  {keys["source"]}: نامه پیدا نشد '
+                                          f'({keys["number"] or keys["subject"][:40]})')
+                    continue
+                stats['linked'] += 1
+                existing = self._existing_titles(letter)
+                for order, entry in enumerate(item.get('files') or [], start=1):
+                    relative = entry.get('path') or ''
+                    if not relative:
+                        continue
+                    source = Path(relative)
+                    if not source.is_absolute():
+                        source = base_dir / relative
+                    if not source.exists():
+                        stats['no_file'] += 1
+                        self.stderr.write(f'  {keys["source"]}: فایل یافت نشد {source}')
+                        continue
+                    name = importer.safe_filename(entry.get('name') or source.name)
+                    title = (entry.get('title') or keys['title'] or Path(name).stem or name)[:190]
+                    if order > 1:
+                        title = f'{title} ({order})'
+                    if title in existing or name in existing:
+                        stats['skipped'] += 1
+                        continue
+                    if options['dry_run']:
+                        stats['created'] += 1
+                        self.stdout.write(f'  [dry-run] {keys["source"]} → '
+                                          f'{letter.number or letter.id}: {name}')
+                        continue
+                    try:
+                        content, _resolved = importer.read_bytes('file', str(source))
+                    except RuntimeError as exc:
+                        stats['failed'] += 1
+                        self.stderr.write(f'  {keys["source"]}: {exc}')
+                        continue
+                    attachment = LetterAttachment(
+                        company=company, letter=letter, title=title,
+                        kind=entry.get('kind') or importer.guess_kind(name, options['kind']),
+                        size=len(content),
+                    )
+                    attachment.file.save(name, ContentFile(content), save=False)
+                    attachment.save()
+                    existing.add(title)
+                    existing.add(name)
+                    stats['created'] += 1
+
+            if options['dry_run']:
+                transaction.set_rollback(True)
+
+        self.stdout.write(self.style.SUCCESS(
+            f'ردیف فهرست: {stats["items"]} | نامهٔ شناسایی‌شده: {stats["linked"]} | '
+            f'پیوست ثبت‌شده: {stats["created"]} | تکراری: {stats["skipped"]} | '
+            f'نامهٔ پیدانشده: {stats["missing"]} | فایل غایب: {stats["no_file"]} | '
+            f'خطا: {stats["failed"]}'
+            + ('  (اجرای آزمایشی: چیزی ذخیره نشد)' if stats['dry_run'] else ''),
+        ))
+
+    def _handle_excel(self, options):
         from openpyxl import load_workbook
 
         from correspondences.models import LetterAttachment
@@ -110,13 +226,19 @@ class Command(BaseCommand):
         kind_default = options['kind']
 
         workbook = load_workbook(path, data_only=True)
-        sheet = workbook[options['sheet']] if options.get('sheet') else workbook.worksheets[0]
+        wanted = (options.get('sheet') or '').strip()
+        sheet = next(
+            (item for item in workbook.worksheets if item.title.strip() == wanted),
+            workbook.worksheets[0],
+        ) if wanted else workbook.worksheets[0]
         company = self._company(options)
+        sheet_code = (options.get('sheet_code') or '').strip() or self._sheet_code(sheet.title)
 
         header_row = None
         headers = {}
         for row_index in range(1, min(sheet.max_row, 12) + 1):
-            values = [_normalize_header(cell.value) for cell in sheet[row_index]]
+            row_cells = next(sheet.iter_rows(min_row=row_index, max_row=row_index, max_col=40))
+            values = [_normalize_header(cell.value) for cell in row_cells]
             known = KEY_ALIASES['number'] + KEY_ALIASES['indicator']
             if any(_normalize_header(alias) in values for alias in known):
                 header_row = row_index
@@ -132,7 +254,7 @@ class Command(BaseCommand):
             for row_index in range(header_row + 1, sheet.max_row + 1):
                 if options['limit'] and stats['rows'] >= options['limit']:
                     break
-                cells = list(sheet[row_index])
+                cells = list(next(sheet.iter_rows(min_row=row_index, max_row=row_index, max_col=40)))
                 row_map = {}
                 for name, index in headers.items():
                     if index < len(cells):
@@ -143,11 +265,15 @@ class Command(BaseCommand):
                     target = ''
                     if getattr(cell, 'hyperlink', None) and cell.hyperlink.target:
                         target = cell.hyperlink.target
-                    elif isinstance(cell.value, str) and importer.parse_link(cell.value)[0] != 'none':
+                    elif isinstance(cell.value, str) and importer.looks_like_link(cell.value):
                         target = cell.value
                     if not target:
                         continue
                     link_kind, value, _filename = importer.parse_link(target, base_dir)
+                    if link_kind == 'file' and not Path(value).exists():
+                        fallback = importer.find_by_tail(target, options.get('fallback_dirs') or [])
+                        if fallback:
+                            value = fallback
                     if link_kind != 'none':
                         links.append((link_kind, value))
                 if not links:
@@ -155,7 +281,8 @@ class Command(BaseCommand):
                 stats['rows'] += 1
 
                 keys = {key: _pick(row_map, key) for key in
-                        ('indicator', 'number', 'external', 'source', 'subject', 'title')}
+                        ('indicator', 'number', 'external', 'subject', 'title')}
+                keys['source'] = f'{sheet_code}:{row_index}'
                 letter = self._find_letter(company, keys)
                 if not letter:
                     stats['missing'] += 1

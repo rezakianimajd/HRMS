@@ -18,6 +18,23 @@ from urllib.parse import unquote, urlparse
 
 FILE_SIZE_LIMIT = 80 * 1024 * 1024        # حداکثر حجم هر پیوست (۸۰ مگابایت)
 _LINK_RE = re.compile(r'^(file|https?|ftp)://', re.IGNORECASE)
+_LINK_TEXT_RE = re.compile(
+    r'(\.(pdf|jpe?g|png|tiff?|bmp|gif|xlsx?|docx?|zip|csv|txt)\b'
+    r'|^(file|https?)://'
+    r'|[\\/]\.\.[\\/]'
+    r'|^[A-Za-z]:[\\/]'
+    r'|^\\\\[^\\]+\\'
+    r')',
+    re.IGNORECASE,
+)
+
+
+def looks_like_link(text):
+    """آیا مقدار یک سلول شبیه مسیر/آدرس فایل است؟ (برای تفکیک از متن عادی)"""
+    value = str(text or '').strip()
+    if not value or len(value) > 500:
+        return False
+    return bool(_LINK_TEXT_RE.search(value))
 
 
 def parse_link(raw, base_dir=None):
@@ -39,9 +56,10 @@ def parse_link(raw, base_dir=None):
     if _LINK_RE.match(text):
         return 'url', text, Path(unquote(urlparse(text).path)).name
     # مسیر ویندوزی/شبکه‌ای یا مسیر نسبی
-    candidate = Path(text)
+    plain = unquote(text) if '%' in text else text
+    candidate = Path(plain)
     if not candidate.is_absolute() and base_dir:
-        candidate = Path(base_dir) / text
+        candidate = Path(base_dir) / plain
     return 'file', str(candidate), candidate.name
 
 
@@ -116,3 +134,24 @@ def read_bytes(kind, value, timeout=60):
 def fingerprint(content):
     """اثر انگشت محتوا برای جلوگیری از بارگذاری تکراری."""
     return hashlib.sha256(content).hexdigest()
+
+
+def find_by_tail(raw, fallback_dirs):
+    """جست‌وجوی فایل با «دنبالهٔ مسیر» در پوشه‌های جانشین.
+
+    برای لینک‌های شکسته‌ای که با ``../`` نوشته شده‌اند (مثلاً
+    ``../S.mousavi/اسکن/x.pdf`` که در واقع داخل ``Everyone/S.mousavi/...`` است)
+    دنبالهٔ مسیر بدون بخش‌های ``..`` زیر هر پوشهٔ جانشین بررسی می‌شود.
+    """
+    text = str(raw or '').replace('%20', ' ').strip()
+    parts = [part for part in re.split(r'[\\/]+', text) if part and part not in ('.', '..')]
+    if parts and re.match(r'^[A-Za-z]:$', parts[0]):
+        parts = parts[1:]
+    if not parts:
+        return ''
+    for base in fallback_dirs or ():
+        candidate = Path(str(base))
+        for attempt in (candidate.joinpath(*parts), candidate.joinpath(*parts[1:])):
+            if attempt.is_file():
+                return str(attempt)
+    return ''
