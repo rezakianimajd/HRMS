@@ -47,6 +47,7 @@ const TAB_OPTIONS = [
   { value: 'info', label: 'برای اطلاع', purpose: 'info' },
   { value: 'comment', label: 'اظهارنظر', purpose: 'comment' },
   { value: 'all', label: 'همهٔ ارجاعات', purpose: '' },
+  { value: 'history', label: 'ارجاعات قبلی', purpose: '', archive: true },
 ];
 
 const asList = (payload) => (Array.isArray(payload) ? payload : payload?.results || []);
@@ -409,15 +410,21 @@ const CorrespondenceWorkdeskPage = () => {
   }, [search]);
 
   const activeTab = TAB_OPTIONS[tab] || TAB_OPTIONS[0];
+  const archiveTab = Boolean(activeTab.archive);
+
+  // تب «ارجاعات قبلی» همهٔ وضعیت‌ها را نشان می‌دهد (بدون فیلتر باز/دیده‌نشده)
+  useEffect(() => {
+    if (archiveTab) setUnseenOnly(false);
+  }, [archiveTab]);
 
   const listParams = useMemo(() => {
     const params = { limit: 200 };
     if (activeTab.purpose) params.purpose = activeTab.purpose;
-    if (openOnly) params.status = 'open';
-    if (unseenOnly) params.unseen = 1;
+    if (openOnly && !archiveTab) params.status = 'open';
+    if (unseenOnly && !archiveTab) params.unseen = 1;
     if (debouncedSearch) params.search = debouncedSearch;
     return params;
-  }, [activeTab.purpose, openOnly, unseenOnly, debouncedSearch]);
+  }, [activeTab.purpose, archiveTab, openOnly, unseenOnly, debouncedSearch]);
 
   const { data: cartable, isLoading, isFetching, refetch } = useQuery({
     queryKey: [...WORKDESK_KEY, listParams],
@@ -689,7 +696,14 @@ const CorrespondenceWorkdeskPage = () => {
               '& .MuiTab-root': { minHeight: 34, fontSize: 12.5, fontWeight: 800 },
             }}>
             {TAB_OPTIONS.map((option) => (
-              <Tab key={option.value} label={option.label} />
+              <Tab
+                key={option.value}
+                label={option.archive
+                  ? `ارجاعات قبلی (${formatPersianNumber(counts.closed || 0)})`
+                  : option.value === 'all'
+                    ? `همهٔ ارجاعات (${formatPersianNumber(counts.total || 0)})`
+                    : `${option.label} (${formatPersianNumber(counts[option.purpose] || 0)})`}
+              />
             ))}
           </Tabs>
 
@@ -707,11 +721,12 @@ const CorrespondenceWorkdeskPage = () => {
             onSort={setSortBy}
             filters={[{
               label: 'دامنهٔ نمایش',
-              value: openOnly ? 'open' : 'all',
+              value: archiveTab ? 'all' : (openOnly ? 'open' : 'all'),
               options: [
                 { value: 'open', label: 'فقط ارجاعات باز' },
                 { value: 'all', label: 'همهٔ وضعیت‌ها' },
               ],
+              disabled: archiveTab,
               onChange: (value) => setOpenOnly(value === 'open'),
             }]}
             activeChips={unseenOnly ? [{

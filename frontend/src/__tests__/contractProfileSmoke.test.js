@@ -167,7 +167,7 @@ test('contract profile shows the compact card, single-row quick access and the a
   const tabLabels = Array.from(container.querySelectorAll('.MuiTab-root')).map((tab) => tab.textContent.trim());
   expect(tabLabels).toEqual([
     'نمای کلی', 'تایم‌لاین', 'تحلیل مالی', 'مشخصات قرارداد', 'مشخصات مالی', 'الحاقیه‌ها', 'تضامین',
-    'صورت‌وضعیت', 'فاکتورها', 'پرداخت‌ها', 'قراردادهای هم‌تراز', 'مدارک',
+    'صورت‌وضعیت', 'فاکتورها', 'پرداخت‌ها', 'قراردادهای هم‌تراز', 'مکاتبات', 'مدارک',
   ]);
 
   // تب پیش‌فرض (نمای کلی بازطراحی‌شده)

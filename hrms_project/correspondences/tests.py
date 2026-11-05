@@ -320,6 +320,23 @@ class NameMappingTests(SimpleTestCase):
         self.assertIsNone(resolver.employee_id('referral', 'نام ناشناس'))
         self.assertIsNone(resolver.employee_id('referral', ''))
 
+    def test_my_name_variants_cover_user_and_employee(self):
+        from types import SimpleNamespace
+
+        from correspondences.views import _my_name_variants
+
+        user = SimpleNamespace(get_full_name=lambda: 'سیده زهرا حسینی', username='z.hosseini')
+        employee = SimpleNamespace(
+            full_name='سیده زهرا حسینی', first_name='زهرا', last_name='حسینی',
+        )
+        variants = _my_name_variants(user, employee)
+        self.assertIn('سیده زهرا حسینی', variants)
+        self.assertIn('زهرا حسینی', variants)
+        self.assertIn('z hosseini', variants)
+        # بدون پرسنل هم نام کاربر استفاده می‌شود
+        only_user = _my_name_variants(user, None)
+        self.assertIn('سیده زهرا حسینی', only_user)
+
     def test_alias_resolver_resolves_party_correspondent_organization(self):
         from types import SimpleNamespace
 

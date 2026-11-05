@@ -217,6 +217,53 @@ def _employee_of_user(user, company):
     return qs.first()
 
 
+def _my_name_variants(user, employee):
+    """همهٔ شکل‌های نرمال‌شدهٔ نام کاربر/پرسنل (برای تطبیق ارجاع‌های متنی)."""
+    from correspondences.matching import normalize_name
+
+    variants = set()
+    if employee:
+        variants.add(normalize_name(getattr(employee, 'full_name', '')))
+        variants.add(normalize_name(
+            f"{getattr(employee, 'first_name', '')} {getattr(employee, 'last_name', '')}",
+        ))
+    full_name = ''
+    if user is not None:
+        try:
+            full_name = user.get_full_name() or ''
+        except Exception:                              # noqa: BLE001 — کاربر سفارشی
+            full_name = ''
+    if full_name:
+        variants.add(normalize_name(full_name))
+    if user is not None:
+        variants.add(normalize_name(getattr(user, 'username', '')))
+    return {value for value in variants if value}
+
+
+def _raw_referral_names_for(company, normalized_names):
+    """نام‌های خام ارجاع‌ها که نرمال‌شده‌شان با نام‌های من یکی است."""
+    from correspondences.matching import normalize_name
+    from correspondences.models import LetterReferral
+
+    raw_names = LetterReferral.objects.filter(company=company).exclude(
+        to_name='',
+    ).values_list('to_name', flat=True).distinct()
+    return [raw for raw in raw_names if normalize_name(raw) in normalized_names]
+
+
+def _my_referral_filter(user, employee, company):
+    """شرط «ارجاع‌های من»: کاربر، پرسنل، پرسنل‌های چندنفره و نام‌های متنی همنام."""
+    target = Q(to_user=user)
+    if employee:
+        target = target | Q(to_employee=employee) | Q(to_employees=employee)
+    names = _my_name_variants(user, employee)
+    if names and company:
+        raw_names = _raw_referral_names_for(company, names)
+        if raw_names:
+            target = target | Q(to_name__in=raw_names)
+    return target
+
+
 def _user_of_employee(employee):
     """کاربر سامانه‌ای که به این پرسنل وصل است (UserProfile.employee_id)."""
     if not employee:
@@ -435,6 +482,13 @@ class LetterViewSet(BaseLetterViewSet):
         entry_method = params.get('entry_method')
         if entry_method:
             qs = qs.filter(entry_method=entry_method)
+
+        # همهٔ نامه‌های یک طرف حساب (طرف حساب نامه یا ارسال‌کننده) — برای پروندهٔ قرارداد
+        party_id = params.get('party')
+        if party_id:
+            qs = qs.filter(
+                Q(party_account_id=party_id) | Q(sender_party_id=party_id),
+            ).distinct()
 
         status_param = params.get('status')
         if status_param:
@@ -972,12 +1026,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
         employee = _user_employee(user, company)
         if _truthy(params.get('mine')) and user and user.is_authenticated:
             employee = _user_employee(user, company) or _employee_of_user(user, company)
-            if employee:
-                qs = qs.filter(
-                    Q(to_user=user) | Q(to_employee=employee) | Q(to_employees=employee),
-                )
-            else:
-                qs = qs.filter(to_user=user)
+            qs = qs.filter(_my_referral_filter(user, employee, company)).distinct()
         letter_id = params.get('letter')
         if letter_id:
             qs = qs.filter(letter_id=letter_id)
@@ -1014,9 +1063,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
             'letter', 'from_user', 'to_user', 'to_employee', 'from_employee',
             'letter__category',
         ).prefetch_related('to_employees')
-        target = Q(to_user=user)
-        if employee:
-            target = target | Q(to_employee=employee) | Q(to_employees=employee)
+        target = _my_referral_filter(user, employee, company)
         base = base.filter(target).distinct()
 
         open_qs = base.filter(status__in=OPEN_REFERRAL_STATUSES)
@@ -1027,6 +1074,7 @@ class LetterReferralViewSet(BaseLetterViewSet):
             'comment': base.filter(purpose='comment').count(),
             'pending': open_qs.count(),
             'done': base.filter(status='done').count(),
+            'closed': base.exclude(status__in=OPEN_REFERRAL_STATUSES).count(),
             'overdue': open_qs.filter(due_date__lt=date_cls.today()).count(),
             # «دیده‌نشده» فقط برای ارجاع‌های باز معنا دارد؛ ارجاع‌های تمام‌شده
             # (مثل ارجاع‌های تاریخی واردشده از اکسل) نباید شمارنده را بالا ببرند.

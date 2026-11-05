@@ -29,6 +29,7 @@ import {
   AddendumsTab, DocumentsTab, FinanceTab, GuaranteesTab, IdentityTab, InvoicesTab,
   OverviewTab, PaymentsTab, RelatedTab, StatementsTab, TimelineTab,
 } from './contracts/ContractProfileTabs';
+import ContractCorrespondenceTab from './contracts/ContractCorrespondenceTab';
 import ContractFinancePage from './ContractFinancePage';
 
 const JALALI_MONTHS = ['فروردین', 'اردیبهشت', 'خرداد', 'تیر', 'مرداد', 'شهریور', 'مهر', 'آبان', 'آذر', 'دی', 'بهمن', 'اسفند'];
@@ -305,6 +306,7 @@ const ContractProfilePage = () => {
     { key: 'invoices', label: 'فاکتورها', content: <InvoicesTab ctx={ctx} /> },
     { key: 'payments', label: 'پرداخت‌ها', content: <PaymentsTab ctx={ctx} /> },
     { key: 'related', label: 'قراردادهای هم‌تراز', content: <RelatedTab ctx={ctx} /> },
+    { key: 'correspondence', label: 'مکاتبات', content: <ContractCorrespondenceTab ctx={ctx} /> },
     { key: 'documents', label: 'مدارک', content: <DocumentsTab ctx={ctx} /> },
   ];
 
