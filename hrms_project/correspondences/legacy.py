@@ -635,6 +635,7 @@ def import_rows(rows, company, *, dry_run=False, create_events=True, logger=prin
                 to_employee_id=(to_employee_ids[0] if to_employee_ids else None),
                 referred_on=referral.get('referred_on') or letter.letter_date,
                 status='done',
+                seen_at=now,
                 result_note='ارجاع تاریخی (واردشده از فایل اکسل)',
                 done_at=now,
             ))

@@ -601,15 +601,18 @@ const Layout = ({ children }) => {
 
         {/* فضای شخصی هر کاربر: نامه‌های ارجاع‌شده به خودش */}
         <Tooltip
-          title={openReferrals
-            ? `کارتابل من — ${toPersianDigits(openReferrals)} ارجاع باز`
-            : 'کارتابل من'}
+          title={unseenReferrals
+            ? `کارتابل من — ${toPersianDigits(unseenReferrals)} ارجاع جدید`
+              + (openReferrals ? ` (${toPersianDigits(openReferrals)} ارجاع باز)` : '')
+            : (openReferrals
+              ? `کارتابل من — ${toPersianDigits(openReferrals)} ارجاع باز`
+              : 'کارتابل من')}
           placement="left"
           arrow
         >
           <IconButton
             size="small"
-            onClick={() => navigateTo('/my-workdesk')}
+            onClick={() => navigateTo(unseenReferrals ? '/my-workdesk?filter=unseen' : '/my-workdesk')}
             aria-label="کارتابل من"
             aria-current={workdeskActive ? 'page' : undefined}
             sx={{
@@ -623,7 +626,7 @@ const Layout = ({ children }) => {
           >
             <Badge
               color="error"
-              badgeContent={unseenReferrals}
+              badgeContent={unseenReferrals ? toPersianDigits(unseenReferrals) : ''}
               max={99}
               invisible={!unseenReferrals}
               sx={{

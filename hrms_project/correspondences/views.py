@@ -1019,17 +1019,19 @@ class LetterReferralViewSet(BaseLetterViewSet):
             target = target | Q(to_employee=employee) | Q(to_employees=employee)
         base = base.filter(target).distinct()
 
+        open_qs = base.filter(status__in=OPEN_REFERRAL_STATUSES)
         counts = {
             'total': base.count(),
             'action': base.filter(purpose='action').count(),
             'info': base.filter(purpose='info').count(),
             'comment': base.filter(purpose='comment').count(),
-            'pending': base.filter(status__in=OPEN_REFERRAL_STATUSES).count(),
+            'pending': open_qs.count(),
             'done': base.filter(status='done').count(),
-            'overdue': base.filter(
-                status__in=OPEN_REFERRAL_STATUSES, due_date__lt=date_cls.today(),
-            ).count(),
-            'unseen': base.filter(seen_at__isnull=True).count(),
+            'overdue': open_qs.filter(due_date__lt=date_cls.today()).count(),
+            # «دیده‌نشده» فقط برای ارجاع‌های باز معنا دارد؛ ارجاع‌های تمام‌شده
+            # (مثل ارجاع‌های تاریخی واردشده از اکسل) نباید شمارنده را بالا ببرند.
+            'unseen': open_qs.filter(seen_at__isnull=True).count(),
+            'unseen_all': base.filter(seen_at__isnull=True).count(),
         }
 
         qs = base

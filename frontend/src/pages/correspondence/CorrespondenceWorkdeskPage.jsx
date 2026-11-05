@@ -381,6 +381,14 @@ const CorrespondenceWorkdeskPage = () => {
     if (searchParams.get('tab') === 'requests') setRequestTab(true);
   }, [searchParams]);
 
+  // اگر از نشان «ارجاع جدید» سایدبار آمده باشیم، فقط ارجاع‌های باز و دیده‌نشده را نشان بده
+  useEffect(() => {
+    if (searchParams.get('filter') === 'unseen') {
+      setUnseenOnly(true);
+      setOpenOnly(true);
+    }
+  }, [searchParams]);
+
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [openOnly, setOpenOnly] = useState(true);
