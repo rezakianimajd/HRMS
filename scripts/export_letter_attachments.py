@@ -151,8 +151,11 @@ def main(argv=None):
             stats['files_ok'] += 1
             stats['bytes'] += source.stat().st_size
             stored = f"f{len(items):05d}_{len(entry['files']) + 1}{source.suffix.lower()}"
-            if not args.dry_run:
-                shutil.copy2(source, files_dir / stored)
+            destination = files_dir / stored
+            if not args.dry_run and not (
+                destination.is_file() and destination.stat().st_size == source.stat().st_size
+            ):
+                shutil.copy2(source, destination)
             entry['files'].append({
                 'path': f'files/{stored}',
                 'name': importer.safe_filename(filename or source.name),
