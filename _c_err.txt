@@ -1,8 +1,0 @@
-PASS src/__tests__/contractProfileSmoke.test.js (6.952 s)
-  √ contract profile shows the compact card, single-row quick access and the archive tabs (4958 ms)
-
-Test Suites: 1 passed, 1 total
-Tests:       1 passed, 1 total
-Snapshots:   0 total
-Time:        7.545 s, estimated 8 s
-Ran all test suites matching /contractProfileSmoke/i.

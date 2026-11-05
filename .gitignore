@@ -68,6 +68,10 @@ _chk.txt
 _chk2.txt
 _mm.txt
 _build.log
+# لاگ‌های موقت تست‌ها/اسکریپت‌های محلی
+_*.txt
+_*.log
+_*.json
 # بسته‌های به‌روزرسانی محلی
 updates/
 
