@@ -47,7 +47,8 @@ param(
     [switch]$InPlace,
     [switch]$Force,
     [switch]$AllowDuplicates,
-    [switch]$Inspect
+    [switch]$Inspect,
+    [switch]$PadInvoiceNo
 )
 
 $ErrorActionPreference = 'Stop'
@@ -164,6 +165,42 @@ function Get-Number {
     return [double]$Value
 }
 
+function ConvertTo-LatinDigits {
+    param([string]$Value)
+    if (-not $Value) { return '' }
+    $builder = New-Object System.Text.StringBuilder
+    foreach ($ch in $Value.ToCharArray()) {
+        $code = [int]$ch
+        if ($code -ge 0x06F0 -and $code -le 0x06F9) {
+            [void]$builder.Append([char]([int][char]'0' + ($code - 0x06F0)))
+        } elseif ($code -ge 0x0660 -and $code -le 0x0669) {
+            [void]$builder.Append([char]([int][char]'0' + ($code - 0x0660)))
+        } else {
+            [void]$builder.Append($ch)
+        }
+    }
+    return $builder.ToString()
+}
+
+function Format-InvoiceNo {
+    param([string]$Value)
+    $text = (ConvertTo-LatinDigits ([string]$Value)).Trim()
+    if ($text -match '^[0-9]+$' -and $text.Length -lt 10) {
+        return $text.PadLeft(10, '0')
+    }
+    return $text
+}
+
+# ستون‌هایی که طبق الزام TTMS (از زمستان ۱۴۰۰) باید خالی بمانند
+$LOCKED_DUTY_COLUMNS = @(
+    'AvarezArzeshAfzoodeh',
+    'SayerAvarez',
+    'Arz_AvarezArzeshAfzoodeh',
+    'Arz_SayerAvarez',
+    'MoadelRialiAvarezArzeshAfzoodeh',
+    'MoadelRialiSayerAvarez'
+)
+
 Write-Host '=== درج ردیف‌های صورت معاملات فصلی در فایل TTMS ===' -ForegroundColor Cyan
 Write-Host ('پوشهٔ بسته: ' + $PackageDir)
 if ($DryRun) { Write-Host 'حالت: اجرای آزمایشی (بدون تغییر ماندگار)' -ForegroundColor Yellow }
@@ -248,6 +285,42 @@ foreach ($required in @('Radif', 'KalaKhadamatName', 'Price', 'MaliatArzeshAfzoo
         Stop-WithError ('ستون الزامی در rows.csv وجود ندارد: ' + $required) 2
     }
 }
+
+# ---------------------------------------------------------------------------
+# ۱.۵) اعمال اجبارهای پذیرش TTMS روی ردیف‌های CSV
+#      الف) «عوارض ارزش افزوده» و «سایر عوارض» (ریالی و ارزی) باید خالی بمانند؛
+#          از زمستان ۱۴۰۰ درج هر عددی در این بخش خطای TTMS است.
+#      ب) با سوییچ -PadInvoiceNo شمارهٔ فاکتورهای کوتاه عددی با صفر تکمیل می‌شوند
+#          (رفع خطای «شماره فاکتور کامل نیست») و ارقام فارسی به لاتین تبدیل می‌شوند.
+# ---------------------------------------------------------------------------
+$forcedDutyValues = 0
+$paddedInvoices = 0
+foreach ($row in $rows) {
+    $propertyNames = @($row.PSObject.Properties | ForEach-Object { $_.Name })
+    foreach ($dutyColumn in $LOCKED_DUTY_COLUMNS) {
+        if ($propertyNames -contains $dutyColumn) {
+            $current = [string]$row.$dutyColumn
+            if ($current.Trim() -ne '') {
+                $forcedDutyValues = $forcedDutyValues + 1
+                $row.$dutyColumn = ''
+            }
+        }
+    }
+    if ($PadInvoiceNo -and ($propertyNames -contains 'FactorNo')) {
+        $original = [string]$row.FactorNo
+        $formatted = Format-InvoiceNo $original
+        if ($formatted -ne $original) { $paddedInvoices = $paddedInvoices + 1 }
+        $row.FactorNo = $formatted
+    }
+}
+if ($forcedDutyValues -gt 0) {
+    Write-Host ('توجه: ' + $forcedDutyValues + ' مقدار «عوارض ارزش افزوده/سایر عوارض» خالی شد (الزام TTMS).') -ForegroundColor Yellow
+}
+if ($paddedInvoices -gt 0) {
+    Write-Host ('شمارهٔ فاکتور ' + $paddedInvoices + ' ردیف با صفر تکمیل شد (حداقل ۱۰ رقم).') -ForegroundColor Yellow
+}
+$result.forced_duties = $forcedDutyValues
+$result.padded_invoices = $paddedInvoices
 
 # ---------------------------------------------------------------------------
 # ۲) آماده‌سازی فایل کاری (کپی) و پشتیبان

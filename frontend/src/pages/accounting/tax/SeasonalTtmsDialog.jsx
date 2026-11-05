@@ -53,6 +53,7 @@ const SeasonalTtmsDialog = ({
   const [sellerStatus, setSellerStatus] = useState('auto');
   const [taxOffice, setTaxOffice] = useState('');
   const [continueRadif, setContinueRadif] = useState(true);
+  const [padInvoiceNo, setPadInvoiceNo] = useState(false);
   const [dryRun, setDryRun] = useState(false);
   const [targetName, setTargetName] = useState('');
   const [templateFile, setTemplateFile] = useState(null);
@@ -105,6 +106,7 @@ const SeasonalTtmsDialog = ({
     setKalaName(defaults.kala_name || 'کالا/خدمات');
     setSellerStatus(defaults.seller_type1_code ? String(defaults.seller_type1_code) : 'auto');
     setContinueRadif(defaults.continue_radif !== false);
+    setPadInvoiceNo(Boolean(defaults.pad_invoice_no));
   }, [reference]);
 
   useEffect(() => {
@@ -133,7 +135,8 @@ const SeasonalTtmsDialog = ({
     continue_radif: continueRadif,
     dry_run: dryRun,
     tax_office_code: taxOffice ? Number(taxOffice) : null,
-  }), [kalaType, kalaName, sellerStatus, continueRadif, dryRun, taxOffice]);
+    pad_invoice_no: padInvoiceNo,
+  }), [kalaType, kalaName, sellerStatus, continueRadif, dryRun, taxOffice, padInvoiceNo]);
 
   const setOverride = useCallback((key, column, value) => {
     setOverrides((current) => {
@@ -557,6 +560,13 @@ const SeasonalTtmsDialog = ({
                              onChange={(event) => setDryRun(event.target.checked)} />}
             label={<Typography sx={{ fontSize: 11.5 }}>اجرای آزمایشی (Dry-run)</Typography>}
           />
+          <Tooltip title={'شمارهٔ فاکتور کمتر از ۱۰ رقم را TTMS با پیام «شماره فاکتور کامل نیست» رد می‌کند؛ این گزینه شماره‌های کوتاه عددی را با صفر تکمیل می‌کند.'}>
+            <FormControlLabel
+              control={<Switch size="small" checked={padInvoiceNo}
+                               onChange={(event) => setPadInvoiceNo(event.target.checked)} />}
+              label={<Typography sx={{ fontSize: 11.5 }}>تکمیل شمارهٔ فاکتور کوتاه با صفر</Typography>}
+            />
+          </Tooltip>
         </Stack>
 
         {/* فایل Access مشتری: داخل بسته قرار می‌گیرد و با دابل‌کلیک پر می‌شود */}

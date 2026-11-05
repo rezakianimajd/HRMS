@@ -99,8 +99,6 @@ EDITABLE_COLUMNS = [
     'KalaKhadamatName',
     'Price',
     'MaliatArzeshAfzoodeh',
-    'AvarezArzeshAfzoodeh',
-    'SayerAvarez',
     'TakhfifPrice',
     'MaliatMaksoore',
     'BargashtType',
@@ -109,8 +107,6 @@ EDITABLE_COLUMNS = [
     'ArzType',
     'Arz_Price',
     'Arz_MaliatArzeshAfzoodeh',
-    'Arz_AvarezArzeshAfzoodeh',
-    'Arz_SayerAvarez',
     'Arz_TakhfifPrice',
     'Arz_MaliatMaksoore',
     'MoadelRialiPrice',
@@ -120,6 +116,23 @@ EDITABLE_COLUMNS = [
     'SanadNO',
     'SanadDate',
 ]
+
+# ستون‌هایی که هرگز مقدار نمی‌گیرند (قفل‌شده)؛ دلیل: بخشنامهٔ سازمان امور مالیاتی
+# «از فصل زمستان ۱۴۰۰ به بعد امکان تفکیک ارزش افزوده و ارسال بخشی تحت عنوان عوارض
+# ارزش افزوده وجود ندارد و باید تنها مالیات ارزش افزوده مقدار داشته باشد. همچنین
+# از درج هرگونه عددی در بخش عوارض ارزش افزوده (ریالی و ارزی) خودداری نمایید.»
+LOCKED_COLUMNS = {
+    'AvarezArzeshAfzoodeh': ('عوارض ارزش افزوده باید خالی بماند (الزام TTMS از زمستان ۱۴۰۰)؛ '
+                             'فقط مالیات بر ارزش افزوده مقدار می‌گیرد.'),
+    'SayerAvarez': ('سایر عوارض باید خالی بماند (الزام TTMS از زمستان ۱۴۰۰).'),
+    'Arz_AvarezArzeshAfzoodeh': 'عوارض ارزش افزودهٔ ارزی باید خالی بماند.',
+    'Arz_SayerAvarez': 'سایر عوارض ارزی باید خالی بماند.',
+    'MoadelRialiAvarezArzeshAfzoodeh': 'معادل ریالی عوارض ارزی هم باید خالی بماند.',
+    'MoadelRialiSayerAvarez': 'معادل ریالی سایر عوارض ارزی هم باید خالی بماند.',
+}
+
+# حداقل رقم لازم برای «شمارهٔ صورتحساب» در TTMS (خطای «شماره فاکتور کامل نیست»)
+INVOICE_MIN_DIGITS = 10
 
 # محدودهٔ مجاز ستون‌های عددی فایل TTMS (بر اساس نوع فیلد در Access)
 COLUMN_RANGES = {
@@ -193,8 +206,8 @@ DETAIL_COLUMNS = [
     ('BargashtType', 'bool', None, 'برگشتی', 'برای ردیف‌های برگشتی «بله»'),
     ('Price', 'int', None, 'مبلغ کالا یا خدمات (ریال)', 'مبلغ ردیف گزارش فصلی'),
     ('MaliatArzeshAfzoodeh', 'int', None, 'مالیات بر ارزش افزوده', 'مالیات ردیف گزارش فصلی'),
-    ('AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزش افزوده', 'پیش‌فرض صفر؛ قابل اصلاح'),
-    ('SayerAvarez', 'int', None, 'سایر عوارض', 'پیش‌فرض صفر؛ قابل اصلاح'),
+    ('AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزش افزوده', 'قفل: باید خالی بماند (الزام TTMS)'),
+    ('SayerAvarez', 'int', None, 'سایر عوارض', 'قفل: باید خالی بماند (الزام TTMS)'),
     ('TakhfifPrice', 'int', None, 'تخفیف', 'پیش‌فرض صفر؛ قابل اصلاح'),
     ('MaliatMaksoore', 'int', None, 'مالیات مکسوره', 'پیش‌فرض صفر؛ قابل اصلاح'),
     ('HCForoushandeTypeCode', 'int', None, 'نوع فروشنده (۱ حقیقی / ۲ حقوقی)', 'خودکار از نوع شخص'),
@@ -212,8 +225,8 @@ DETAIL_COLUMNS = [
     ('ArzType', 'int', None, 'نوع ارز (جدول Arz)', 'برای معاملات ریالی خالی'),
     ('Arz_Price', 'int', None, 'مبلغ ارزی', 'فقط برای معاملات ارزی'),
     ('Arz_MaliatArzeshAfzoodeh', 'int', None, 'مالیات ارزی', 'فقط برای معاملات ارزی'),
-    ('Arz_AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزی', 'فقط برای معاملات ارزی'),
-    ('Arz_SayerAvarez', 'int', None, 'سایر عوارض ارزی', 'فقط برای معاملات ارزی'),
+    ('Arz_AvarezArzeshAfzoodeh', 'int', None, 'عوارض ارزی', 'قفل: باید خالی بماند'),
+    ('Arz_SayerAvarez', 'int', None, 'سایر عوارض ارزی', 'قفل: باید خالی بماند'),
     ('Arz_TakhfifPrice', 'int', None, 'تخفیف ارزی', 'فقط برای معاملات ارزی'),
     ('Arz_MaliatMaksoore', 'int', None, 'مالیات مکسورهٔ ارزی', 'فقط برای معاملات ارزی'),
     ('ArzBarabari_Price', 'guid', None, 'نرخ برابری ارز مبلغ (GUID)', 'مرجع نرخ ارز TTMS؛ خارج از دامنهٔ HRMS'),
@@ -250,6 +263,7 @@ DEFAULT_OPTIONS = {
     'dry_run': False,
     'auto_zone': True,              # تشخیص خودکار کد استان/شهر از نام استان/شهر طرف معامله
     'tax_office_code': None,        # ادارهٔ کل امور مالیاتی (جدول EdareKol)
+    'pad_invoice_no': False,        # تکمیل شمارهٔ فاکتورهای کوتاه با صفر تا ۱۰ رقم
 }
 
 
@@ -263,8 +277,15 @@ def _text(value, limit=None):
     return text[:limit] if limit else text
 
 
+# ارقام فارسی/عربی → ASCII (TTMS فقط ارقام لاتین را می‌پذیرد)
+_DIGIT_TRANSLATION = str.maketrans(
+    '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩', '01234567890123456789',
+)
+
+
 def _digits(value, limit=None):
-    text = ''.join(ch for ch in str(value if value is not None else '') if ch.isdigit())
+    text = str(value if value is not None else '').translate(_DIGIT_TRANSLATION)
+    text = ''.join(ch for ch in text if ch.isdigit())
     return text[:limit] if limit else text
 
 
@@ -273,6 +294,57 @@ def _to_int(value):
         return int(Decimal(str(value if value not in (None, '') else 0).replace(',', '').strip() or 0))
     except (InvalidOperation, ValueError, TypeError):
         return 0
+
+
+def _flag(value):
+    """تبدیل ورودی‌های مختلف (True/'true'/'1'/بله) به بولین."""
+    if isinstance(value, bool):
+        return value
+    if value is None:
+        return False
+    if isinstance(value, (int, float)):
+        return value != 0
+    return str(value).strip().lower() in ('1', 'true', 'yes', 'on', 'بله', 'دارد')
+
+
+def invoice_number(value, pad=False):
+    """شمارهٔ صورتحساب نرمال‌شده؛ با ``pad`` شماره‌های کوتاه با صفر تکمیل می‌شوند.
+
+    TTMS شماره‌ای را که کمتر از :data:`INVOICE_MIN_DIGITS` رقم داشته باشد با خطای
+    «شماره فاکتور کامل نیست» رد می‌کند. ارقام فارسی/عربی همیشه به لاتین تبدیل
+    می‌شوند (TTMS فقط ارقام لاتین را می‌پذیرد).
+    """
+    text = _text(value, COLUMN_LENGTHS['FactorNo'])
+    digits = _digits(text)
+    plain = text.replace(' ', '').translate(_DIGIT_TRANSLATION)
+    if digits and digits == plain:
+        if pad and len(digits) < INVOICE_MIN_DIGITS:
+            return digits.zfill(INVOICE_MIN_DIGITS)
+        return digits
+    return text
+
+
+def national_id_ok(value):
+    """اعتبار کد ملی ۱۰ رقمی (شخص حقیقی) با رقم کنترل."""
+    digits = _digits(value)
+    if len(digits) != 10 or digits == '0' * 10:
+        return False
+    if len(set(digits)) == 1:
+        return False
+    total = sum(int(digits[index]) * (10 - index) for index in range(9))
+    remainder = total % 11
+    control = int(digits[9])
+    return control == remainder if remainder < 2 else control == 11 - remainder
+
+
+def legal_id_ok(value):
+    """بررسی شکل شناسهٔ ملی ۱۱ رقمی (شخص حقوقی).
+
+    رقم کنترل شناسهٔ ملی بین نسخه‌های مختلف متفاوت پیاده‌سازی می‌شود؛ برای جلوگیری
+    از رد اشتباه، فقط طول و غیرتکراری‌بودن بررسی می‌شود و اعتبار نهایی با TTMS است.
+    """
+    digits = _digits(value)
+    return len(digits) == 11 and len(set(digits)) > 1
 
 
 def _jalali(value, fallback=None):
@@ -480,6 +552,7 @@ def normalize_options(options=None):
         'dry_run': bool(options.get('dry_run', False)),
         'auto_zone': bool(options.get('auto_zone', True)),
         'tax_office_code': tax_office_code,
+        'pad_invoice_no': _flag(options.get('pad_invoice_no', False)),
     }
 
 
@@ -502,6 +575,8 @@ def ttms_reference():
         'columns': _column_spec(),
         'coverage': column_coverage(),
         'editable': list(EDITABLE_COLUMNS),
+        'locked_columns': dict(LOCKED_COLUMNS),
+        'invoice_min_digits': INVOICE_MIN_DIGITS,
         'column_ranges': {key: list(value) for key, value in COLUMN_RANGES.items()},
         'zone_source': f'{TEMPLATE_REFERENCE} :: Zone',
         'provinces': zone_provinces(),
@@ -519,6 +594,11 @@ def ttms_reference():
             'کد استان/شهر از جدول Zone همان فایل TTMS خوانده و از نام استان/شهر طرف معامله تشخیص داده می‌شود؛ در پیش‌نمایش قابل اصلاح است.',
             'کد اقتصادی فروشنده طبق دستور کارفرما ارسال نمی‌شود.',
             'همهٔ ردیف‌ها با نوع کالای «سایر» و «مشمول معاملات فصلی» گزارش می‌شوند.',
+            'ستون‌های «عوارض ارزش افزوده» و «سایر عوارض» (ریالی و ارزی) همیشه خالی ارسال می‌شوند؛ '
+            'طبق اعلام سازمان از زمستان ۱۴۰۰ فقط مالیات بر ارزش افزوده مقدار می‌گیرد.',
+            f'شمارهٔ فاکتور باید حداقل {INVOICE_MIN_DIGITS} رقم باشد؛ در غیر این صورت TTMS پیام '
+            '«شماره فاکتور کامل نیست» می‌دهد (گزینهٔ تکمیل با صفر در تنظیمات بسته موجود است).',
+            'وضعیت مؤدی ۶/۷ فقط برای اشخاص حقیقی مجاز است؛ برای حقوقی/خارجی/تجمیعی وضعیت ۵ بگذارید.',
         ],
     }
 
@@ -567,8 +647,8 @@ def row_payload(row, options=None, fallback_date=None):
         'KalaKhadamatName': description,
         'Price': _to_int(getattr(row, 'amount', 0)),
         'MaliatArzeshAfzoodeh': _to_int(getattr(row, 'vat', 0)),
-        'AvarezArzeshAfzoodeh': 0,
-        'SayerAvarez': 0,
+        'AvarezArzeshAfzoodeh': None,             # قفل: طبق الزام TTMS خالی می‌ماند
+        'SayerAvarez': None,                      # قفل: طبق الزام TTMS خالی می‌ماند
         'TakhfifPrice': 0,
         'MaliatMaksoore': 0,
         'HCForoushandeTypeCode': type_code,
@@ -606,7 +686,8 @@ def row_payload(row, options=None, fallback_date=None):
         'ForoushandeTell': '',
         'KalaCode': None,
         'BargashtType': False,
-        'FactorNo': _text(getattr(row, 'invoice_no', ''), COLUMN_LENGTHS['FactorNo']),
+        'FactorNo': invoice_number(getattr(row, 'invoice_no', ''),
+                                   pad=options.get('pad_invoice_no', False)),
         'FactorDate': factor_date,
         'SanadNO': None,
         'SanadDate': '',
@@ -677,6 +758,8 @@ def _clean_override_value(column, value):
     """اعتبارسنجی/تبدیل یک مقدار اصلاح‌شده → ``(value, error)``."""
     label = COLUMN_LABELS.get(column, column)
     kind = COLUMN_KINDS.get(column)
+    if column in LOCKED_COLUMNS:
+        return None, f'«{label}» قابل ویرایش نیست: {LOCKED_COLUMNS[column]}'
     if kind == 'bool':
         if isinstance(value, bool):
             return value, None
@@ -731,6 +814,11 @@ def normalize_overrides(raw, keys=None):
             continue
         bucket = {}
         for column, value in values.items():
+            if column in LOCKED_COLUMNS:
+                errors.append({'row': key, 'column': column,
+                               'message': f'«{COLUMN_LABELS.get(column, column)}» قابل ویرایش نیست: '
+                                          f'{LOCKED_COLUMNS[column]}'})
+                continue
             if column not in EDITABLE_COLUMNS:
                 continue
             if isinstance(value, str) and not value.strip():
@@ -751,6 +839,11 @@ def normalize_defaults(raw):
     raw = raw if isinstance(raw, dict) else {}
     clean, errors = {}, []
     for column, value in raw.items():
+        if column in LOCKED_COLUMNS:
+            errors.append({'row': '*', 'column': column,
+                           'message': f'«{COLUMN_LABELS.get(column, column)}» قابل ویرایش نیست: '
+                                      f'{LOCKED_COLUMNS[column]}'})
+            continue
         if column not in EDITABLE_COLUMNS:
             continue
         if value is None or (isinstance(value, str) and not value.strip()):
@@ -931,6 +1024,28 @@ def _quality_report(payloads, rows, report):
         invoice_no = str(payload.get('FactorNo') or '')
         if not invoice_no:
             bump('missing_invoice', key)
+        else:
+            invoice_digits = _digits(invoice_no)
+            if invoice_no != invoice_digits or len(invoice_digits) < INVOICE_MIN_DIGITS:
+                bump('invoice_incomplete', key)
+
+        # ---- قواعد سخت‌گیرانهٔ TTMS (همان پیام‌هایی که سامانه در بازبینی می‌دهد) ----
+        if payload.get('AvarezArzeshAfzoodeh') not in (None, '', 0):
+            bump('duties_not_empty', key)
+        seller_type = payload.get('HCForoushandeTypeCode')
+        seller_status = payload.get('HCForoushandeType1Code')
+        if seller_type == 2 and seller_status in (6, 7):
+            bump('seller_status_mismatch', key)
+        if person_type == 'natural':
+            if not national:
+                bump('national_missing', key)
+            elif not national_id_ok(national):
+                bump('national_invalid', key)
+        elif person_type in ('legal', 'aggregate'):
+            if not national:
+                bump('national_missing', key)
+            elif not legal_id_ok(national):
+                bump('national_invalid', key)
 
     messages = {
         'state_code': ('کد استان ندارد؛ از ستون «استان» انتخاب کنید.', 'warning', 'StateCode'),
@@ -946,6 +1061,30 @@ def _quality_report(payloads, rows, report):
         'zero_amount': ('مبلغ صفر یا منفی است.', 'warning', 'Price'),
         'vat_ratio': ('مالیات بیشتر از ۱۰٪ مبلغ است؛ بررسی کنید.', 'warning', 'MaliatArzeshAfzoodeh'),
         'missing_invoice': ('شمارهٔ فاکتور ندارد.', 'warning', 'FactorNo'),
+        'invoice_incomplete': (
+            f'شمارهٔ فاکتور کامل نیست (کمتر از {INVOICE_MIN_DIGITS} رقم یا شامل حرف/علامت)؛ '
+            'TTMS آن را با پیام «شماره فاکتور کامل نیست» رد می‌کند. شمارهٔ واقعی را وارد کنید '
+            'یا گزینهٔ «تکمیل شمارهٔ فاکتور کوتاه با صفر» را فعال کنید.',
+            'error', 'FactorNo',
+        ),
+        'national_missing': (
+            'شناسهٔ ملی/کد ملی ندارد؛ TTMS با پیام «فرمت کد ملی اشتباه است یا فاقد اطلاعات است» رد می‌کند.',
+            'error', 'ForoushandeNationalCode',
+        ),
+        'national_invalid': (
+            'شناسهٔ ملی/کد ملی نامعتبر است (کد ملی حقیقی ۱۰ رقم با رقم کنترل درست، شناسهٔ حقوقی ۱۱ رقم)؛ '
+            'TTMS آن را با پیام «کد/شناسه ملی و کد اقتصادی نامعتبر است» رد می‌کند.',
+            'error', 'ForoushandeNationalCode',
+        ),
+        'seller_status_mismatch': (
+            'نوع شخص با وضعیت مؤدی هماهنگ نیست (وضعیت ۶/۷ فقط برای شخص حقیقی مجاز است)؛ TTMS با پیام '
+            '«نوع شخص با نوع فروشنده هماهنگی ندارد» رد می‌کند — در گزینه‌ها «وضعیت مؤدی» را روی ۵ بگذارید.',
+            'error', 'HCForoushandeType1Code',
+        ),
+        'duties_not_empty': (
+            'عوارض ارزش افزوده مقدار دارد؛ طبق الزام TTMS (از زمستان ۱۴۰۰) این بخش باید خالی بماند.',
+            'error', 'AvarezArzeshAfzoodeh',
+        ),
         'return_row': ('ردیف به‌عنوان «برگشتی» علامت خورده است.', 'info', 'BargashtType'),
         'commission_row': ('ردیف «از طریق حق‌العمل‌کاری» علامت خورده است.', 'info', 'IsHagholAmalKari'),
         'currency_missing_amount': ('نوع ارز انتخاب شده ولی مبلغ ارزی خالی است.',
@@ -986,6 +1125,8 @@ def _column_spec():
             'label': label,
             'note': COLUMN_NOTES.get(name, ''),
             'editable': name in EDITABLE_COLUMNS,
+            'locked': name in LOCKED_COLUMNS,
+            'lock_reason': LOCKED_COLUMNS.get(name, ''),
             'supported': kind != 'guid',
             'range': list(COLUMN_RANGES[name]) if name in COLUMN_RANGES else None,
         }
@@ -994,14 +1135,16 @@ def _column_spec():
 
 
 def column_coverage():
-    """خلاصهٔ پوشش ستون‌های Kharid_Detail: کامل / قابل اصلاح / خارج از دامنهٔ HRMS."""
+    """خلاصهٔ پوشش ستون‌های Kharid_Detail: کامل / قابل اصلاح / قفل / خارج از دامنهٔ HRMS."""
     editable = set(EDITABLE_COLUMNS)
-    coverage = {'total': len(DETAIL_COLUMNS), 'editable': [], 'auto': [],
+    coverage = {'total': len(DETAIL_COLUMNS), 'editable': [], 'auto': [], 'locked': [],
                 'out_of_scope': []}
     for name, kind, _length, label, note in DETAIL_COLUMNS:
         entry = {'name': name, 'label': label, 'note': note}
         if kind == 'guid':
             coverage['out_of_scope'].append(entry)
+        elif name in LOCKED_COLUMNS:
+            coverage['locked'].append({**entry, 'reason': LOCKED_COLUMNS[name]})
         elif name in editable:
             coverage['editable'].append(entry)
         else:
@@ -1009,6 +1152,7 @@ def column_coverage():
     coverage['counts'] = {
         'editable': len(coverage['editable']),
         'auto': len(coverage['auto']),
+        'locked': len(coverage['locked']),
         'out_of_scope': len(coverage['out_of_scope']),
     }
     return coverage
@@ -1082,6 +1226,8 @@ def preview(report, rows, options=None, filters=None, overrides=None, defaults=N
         'columns': _column_spec(),
         'coverage': column_coverage(),
         'editable': list(EDITABLE_COLUMNS),
+        'locked_columns': dict(LOCKED_COLUMNS),
+        'invoice_min_digits': INVOICE_MIN_DIGITS,
         'kala_types': [{'value': value, 'label': label} for value, label in KALA_TYPES],
         'currencies': currency_codes(),
         'person_type_codes': {
@@ -1281,6 +1427,26 @@ def build_readme(manifest):
         '  ردیف‌هایی که ترکیب «شمارهٔ فاکتور + شناسهٔ ملی + مبلغ» آن‌ها از قبل در',
         '  Kharid_Detail وجود دارد، به‌طور پیش‌فرض درج نمی‌شوند (اجرای دوباره بی‌خطر است).',
         '  برای درج اجباری همهٔ ردیف‌ها، سوییچ -AllowDuplicates را اضافه کنید.',
+        '',
+        'اجبارهای پذیرش TTMS که خود اسکریپت اعمال می‌کند:',
+        '  - «عوارض ارزش افزوده» و «سایر عوارض» (ریالی و ارزی) هنگام درج خالی می‌شوند،',
+        '    حتی اگر در rows.csv عدد داشته باشند (الزام سامانه از زمستان ۱۴۰۰).',
+        '  - با سوییچ -PadInvoiceNo شمارهٔ فاکتورهای کوتاه عددی با صفر به ۱۰ رقم تکمیل',
+        '    و ارقام فارسی/عربی به لاتین تبدیل می‌شوند (رفع «شماره فاکتور کامل نیست»).',
+        '    مثال: run_fill.cmd -PadInvoiceNo',
+        '',
+        'قواعد پذیرش TTMS در این بسته (بر اساس بازخورد سامانه):',
+        '  - ستون‌های «عوارض ارزش افزوده» و «سایر عوارض» (ریالی و ارزی) همیشه خالی (NULL)',
+        '    ارسال می‌شوند؛ از زمستان ۱۴۰۰ درج هر عددی در این بخش خطای سامانه است و فقط',
+        '    «مالیات بر ارزش افزوده» مقدار می‌گیرد.',
+        f'  - شمارهٔ صورتحساب باید حداقل {INVOICE_MIN_DIGITS} رقم و فقط عدد باشد؛ در غیر این صورت',
+        '    TTMS پیام «شماره فاکتور کامل نیست» می‌دهد (برای تکمیل خودکار با صفر، گزینهٔ',
+        '    «تکمیل شمارهٔ فاکتور کوتاه با صفر» را در تنظیمات بستهٔ HRMS فعال کنید).',
+        '  - کد ملی اشخاص حقیقی باید ۱۰ رقم با رقم کنترل درست و شناسهٔ ملی اشخاص حقوقی',
+        '    ۱۱ رقم باشد؛ در غیر این صورت پیام «فرمت کد ملی اشتباه است یا فاقد اطلاعات است»',
+        '    یا «کد/شناسه ملی و کد اقتصادی نامعتبر است» دریافت می‌شود.',
+        '  - وضعیت مؤدی ۶ و ۷ فقط با شخص حقیقی مجاز است؛ برای حقوقی/خارجی/تجمیعی وضعیت ۵',
+        '    بگذارید تا خطای «نوع شخص با نوع فروشنده هماهنگی ندارد» رخ ندهد.',
         '',
         'کدهای مرجع:',
         '  - استان/شهر از جدول Zone همان فایل TTMS (کد استان + کد شهر) پر می‌شود.',

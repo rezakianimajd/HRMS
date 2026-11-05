@@ -20,7 +20,7 @@ const MAIN_COLUMNS = [
   'ForoushandeNationalCode', 'KalaKhadamatName', 'FactorNo', 'FactorDate',
 ];
 const EXTRA_COLUMNS = [
-  'TakhfifPrice', 'SayerAvarez', 'AvarezArzeshAfzoodeh', 'MaliatMaksoore',
+  'TakhfifPrice', 'MaliatMaksoore',
   'BargashtType', 'IsHagholAmalKari', 'Sarjam',
   'ForoushandeTell', 'ForoushandePerCityCode',
   'HCForoushandeTypeCode', 'ForoushandeName', 'ForoushandeLastNameSherkatName',
@@ -97,6 +97,7 @@ const SeasonalTtmsPreview = ({
       total: list.length,
       auto: list.filter((column) => !column.editable && column.supported),
       editable: list.filter((column) => column.editable),
+      locked: list.filter((column) => column.locked),
       outside: list.filter((column) => !column.supported),
     };
   }, [preview]);
@@ -344,18 +345,28 @@ const SeasonalTtmsPreview = ({
       ) : null}
 
       {preview?.warnings?.length ? (
-        <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
-          {preview.warnings.map((warning) => (
-            <Chip
-              key={warning.code}
-              size="small"
-              color={warning.level === 'warning' ? 'warning' : 'info'}
-              variant="outlined"
-              label={warning.message}
-              sx={{ fontSize: 10.5 }}
-            />
-          ))}
-        </Stack>
+        <>
+          {preview.warnings.some((item) => item.level === 'error') ? (
+            <Alert severity="error" sx={{ mb: 1, fontSize: 11.5 }}>
+              {'این ردیف‌ها با قواعد پذیرش TTMS مغایرند و سامانه آن‌ها را برمی‌گرداند؛ '
+                + 'پیش از ساخت بسته اصلاح کنید (جزئیات زیر هر پیام آمده است).'}
+            </Alert>
+          ) : null}
+          <Stack direction="row" spacing={0.75} flexWrap="wrap" useFlexGap sx={{ mb: 1 }}>
+            {preview.warnings.map((warning) => (
+              <Chip
+                key={warning.code}
+                size="small"
+                color={warning.level === 'error'
+                  ? 'error'
+                  : (warning.level === 'warning' ? 'warning' : 'info')}
+                variant={warning.level === 'error' ? 'filled' : 'outlined'}
+                label={warning.message}
+                sx={{ fontSize: 10.5 }}
+              />
+            ))}
+          </Stack>
+        </>
       ) : null}
 
       {error ? <Alert severity="error" sx={{ mb: 1, fontSize: 11.5 }}>{error}</Alert> : null}
@@ -429,7 +440,7 @@ const SeasonalTtmsPreview = ({
                    sx={{ mt: 1, border: '1px solid', borderColor: 'divider', borderRadius: 1, '&:before': { display: 'none' } }}>
           <AccordionSummary expandIcon={<ExpandMoreIcon sx={{ fontSize: 18 }} />} sx={{ minHeight: 34 }}>
             <Typography sx={{ fontSize: 11.5, fontWeight: 800 }}>
-              {`پوشش ستون‌های Kharid_Detail: ${toPersianDigits(coverage.total)} ستون — خودکار ${toPersianDigits(coverage.auto.length)} / قابل اصلاح ${toPersianDigits(coverage.editable.length)} / خارج از دامنه ${toPersianDigits(coverage.outside.length)}`}
+              {`پوشش ستون‌های Kharid_Detail: ${toPersianDigits(coverage.total)} ستون — خودکار ${toPersianDigits(coverage.auto.length)} / قابل اصلاح ${toPersianDigits(coverage.editable.length)} / قفل ${toPersianDigits(coverage.locked.length)} / خارج از دامنه ${toPersianDigits(coverage.outside.length)}`}
             </Typography>
           </AccordionSummary>
           <AccordionDetails sx={{ pt: 0 }}>
@@ -450,9 +461,11 @@ const SeasonalTtmsPreview = ({
                         <Chip
                           size="small"
                           sx={{ height: 18, fontSize: 10 }}
-                          color={column.supported ? (column.editable ? 'primary' : 'success') : 'default'}
+                          color={column.locked ? 'default'
+                            : (column.supported ? (column.editable ? 'primary' : 'success') : 'default')}
                           variant="outlined"
-                          label={column.supported ? (column.editable ? 'قابل اصلاح' : 'خودکار') : 'خارج از دامنه'}
+                          label={column.locked ? 'قفل'
+                            : (column.supported ? (column.editable ? 'قابل اصلاح' : 'خودکار') : 'خارج از دامنه')}
                         />
                       </TableCell>
                       <TableCell sx={{ fontSize: 10.5, py: 0.25, color: 'text.secondary' }}>

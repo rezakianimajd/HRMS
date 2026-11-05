@@ -755,6 +755,44 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertGreaterEqual(payload['needs_fix_count'], 1)
         self.assertTrue(payload['rows'][0]['province_name'])
 
+    def test_duties_are_always_empty_and_invoice_rules_are_reported(self):
+        """عوارض ارزش افزوده هرگز مقدار نمی‌گیرد و قواعد پذیرش TTMS در پیش‌نمایش دیده می‌شود."""
+        from accounting import seasonal_ttms
+
+        rows = rec.filtered_rows(self.report, 'purchase', {})
+        payload = seasonal_ttms.preview(self.report, rows)
+        for item in payload['rows']:
+            self.assertIsNone(item['values']['AvarezArzeshAfzoodeh'])
+            self.assertIsNone(item['values']['SayerAvarez'])
+
+        codes = {item['code'] for item in payload['warnings']}
+        self.assertNotIn('duties_not_empty', codes)
+        # شمارهٔ فاکتورهای کوتاه (P-1/P-2/P-3) و شناسهٔ ملی حقیقی نامعتبر باید خطا شوند
+        self.assertIn('invoice_incomplete', codes)
+        self.assertIn('national_invalid', codes)
+        levels = {item['code']: item['level'] for item in payload['warnings']}
+        self.assertEqual(levels['invoice_incomplete'], 'error')
+        self.assertEqual(levels['national_invalid'], 'error')
+
+        padded = seasonal_ttms.preview(self.report, rows, options={'pad_invoice_no': True})
+        # شمارهٔ فاکتورهای حاوی حرف با صفر تکمیل نمی‌شوند؛ فقط شماره‌های عددی کوتاه
+        self.assertIn('invoice_incomplete', {item['code'] for item in padded['warnings']})
+        numeric = seasonal_ttms.row_payload(rows[0], {'pad_invoice_no': True})
+        self.assertEqual(len(seasonal_ttms.invoice_number('۱۲۳', pad=True)), 10)
+        self.assertEqual(numeric['FactorNo'], 'P-1')
+
+    def test_legal_seller_with_status_7_is_flagged(self):
+        from accounting import seasonal_ttms
+
+        rows = rec.filtered_rows(self.report, 'purchase', {})
+        payload = seasonal_ttms.preview(
+            self.report, rows, options={'seller_type1_code': 7},
+        )
+        codes = {item['code'] for item in payload['warnings']}
+        self.assertIn('seller_status_mismatch', codes)
+        legal_row = payload['rows'][0]
+        self.assertTrue(legal_row['needs_fix'])
+
     def test_currency_and_discount_fields(self):
         from accounting import seasonal_ttms
 
@@ -857,6 +895,72 @@ class TtmsPackageTests(SeasonalBaseTest):
         self.assertEqual(payload['result']['inserted'], 3)
 
 
+class TtmsPolicyHelperTests(SimpleTestCase):
+    """قواعد پذیرش TTMS: قفل عوارض، کد ملی/شناسه، شمارهٔ فاکتور (بدون دیتابیس)."""
+
+    def test_duties_columns_are_locked(self):
+        from accounting import seasonal_ttms
+
+        for column in (
+            'AvarezArzeshAfzoodeh', 'SayerAvarez',
+            'Arz_AvarezArzeshAfzoodeh', 'Arz_SayerAvarez',
+        ):
+            self.assertIn(column, seasonal_ttms.LOCKED_COLUMNS)
+            self.assertNotIn(column, seasonal_ttms.EDITABLE_COLUMNS)
+
+        _, errors = seasonal_ttms.normalize_defaults({'AvarezArzeshAfzoodeh': 5000})
+        self.assertTrue(errors)
+        self.assertIn('قابل ویرایش نیست', errors[0]['message'])
+
+        _, errors = seasonal_ttms.normalize_overrides({'1': {'SayerAvarez': 10}}, ['1'])
+        self.assertTrue(errors)
+
+    def test_national_id_checksum(self):
+        from accounting import seasonal_ttms
+
+        self.assertTrue(seasonal_ttms.national_id_ok('0013542419'))
+        self.assertTrue(seasonal_ttms.national_id_ok('۰۴۹۹۳۷۰۸۹۹'))
+        self.assertFalse(seasonal_ttms.national_id_ok('0012345678'))
+        self.assertFalse(seasonal_ttms.national_id_ok('1111111111'))
+        self.assertFalse(seasonal_ttms.national_id_ok('12345'))
+        self.assertFalse(seasonal_ttms.national_id_ok(''))
+
+        self.assertTrue(seasonal_ttms.legal_id_ok('10101010101'))
+        self.assertFalse(seasonal_ttms.legal_id_ok('1010101010'))
+        self.assertFalse(seasonal_ttms.legal_id_ok('00000000000'))
+
+    def test_invoice_number_padding(self):
+        from accounting import seasonal_ttms
+
+        self.assertEqual(seasonal_ttms.INVOICE_MIN_DIGITS, 10)
+        self.assertEqual(seasonal_ttms.invoice_number('1234'), '1234')
+        self.assertEqual(seasonal_ttms.invoice_number('1234', pad=True), '0000001234')
+        self.assertEqual(seasonal_ttms.invoice_number('۱۲۳۴', pad=True), '0000001234')
+        # شماره‌های بلند یا شامل حرف دست‌نخورده می‌مانند
+        self.assertEqual(seasonal_ttms.invoice_number('1234567890', pad=True), '1234567890')
+        self.assertEqual(seasonal_ttms.invoice_number('A-99', pad=True), 'A-99')
+
+    def test_payload_never_fills_duties_and_honours_pad_option(self):
+        from types import SimpleNamespace
+
+        from accounting import seasonal_ttms
+
+        row = SimpleNamespace(
+            pk=1, line_no=1, person_type='legal', name='شرکت آلفا', first_name='',
+            last_name='', national_id='10101010101', postal_code='1234567890',
+            province='تهران', city='تهران', address='', goods_service_desc='خرید',
+            amount=1000000, vat=100000, invoice_no='12', invoice_date=None,
+        )
+        payload = seasonal_ttms.row_payload(row, {'pad_invoice_no': True})
+        self.assertEqual(payload['AvarezArzeshAfzoodeh'], None)
+        self.assertEqual(payload['SayerAvarez'], None)
+        self.assertEqual(payload['FactorNo'], '0000000012')
+        self.assertEqual(payload['MaliatArzeshAfzoodeh'], 100000)
+
+        padded = seasonal_ttms.row_payload(row, {'pad_invoice_no': False})
+        self.assertEqual(padded['FactorNo'], '12')
+
+
 class ResultStatusTests(SimpleTestCase):
     """نرمال‌سازی وضعیت result.json اسکریپت ویندوز (بدون نیاز به دیتابیس)."""
 
@@ -914,6 +1018,10 @@ class ResultStatusTests(SimpleTestCase):
         self.assertRegex(script, r'try \{\s*\r?\n\s*Save-Result')
         self.assertIn('خطای پیش‌بینی‌نشده در اجرای اسکریپت', script)
         self.assertIn('$beganTrans', script)
+        # اجبارهای پذیرش TTMS روی خود فایل Access
+        self.assertIn('[switch]$PadInvoiceNo', script)
+        self.assertIn('$LOCKED_DUTY_COLUMNS', script)
+        self.assertIn('function Format-InvoiceNo', script)
 
     def test_runner_cmd_forwards_arguments(self):
         from accounting import seasonal_ttms
