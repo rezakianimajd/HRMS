@@ -276,12 +276,15 @@ const Layout = ({ children }) => {
       .then((response) => response.data?.counts || {})
       .catch(() => ({})),
     enabled: Boolean(user),
-    staleTime: 60000,
-    refetchInterval: 120000,
+    staleTime: 30000,
+    refetchInterval: 30000,
+    refetchOnWindowFocus: true,
     retry: false,
   });
   const unseenReferrals = Number(workdeskCounts?.unseen || 0);
   const openReferrals = Number(workdeskCounts?.pending || 0);
+  // نشان روی ریل: تعداد ارجاع‌های «باز» من — همان چیزی که در کارتابل دیده می‌شود
+  const referralBadge = openReferrals || unseenReferrals;
 
   // آیا مسیر آیتم با آدرس جاری (شامل کوئری) هم‌خوانی دارد؟
   const pathMatches = (path) => {
@@ -601,19 +604,17 @@ const Layout = ({ children }) => {
 
         {/* فضای شخصی هر کاربر: نامه‌های ارجاع‌شده به خودش */}
         <Tooltip
-          title={unseenReferrals
-            ? `کارتابل من — ${toPersianDigits(unseenReferrals)} ارجاع جدید`
-              + (openReferrals ? ` (${toPersianDigits(openReferrals)} ارجاع باز)` : '')
-            : (openReferrals
-              ? `کارتابل من — ${toPersianDigits(openReferrals)} ارجاع باز`
-              : 'کارتابل من')}
+          title={referralBadge
+            ? `کارتابل من — ${toPersianDigits(openReferrals || referralBadge)} ارجاع باز`
+              + (unseenReferrals ? ` (${toPersianDigits(unseenReferrals)} دیده‌نشده)` : '')
+            : 'کارتابل من — ارجاع بازی ندارید'}
           placement="left"
           arrow
         >
           <IconButton
             size="small"
-            onClick={() => navigateTo(unseenReferrals ? '/my-workdesk?filter=unseen' : '/my-workdesk')}
-            aria-label="کارتابل من"
+            onClick={() => navigateTo('/my-workdesk')}
+            aria-label={referralBadge ? `کارتابل من (${referralBadge} ارجاع باز)` : 'کارتابل من'}
             aria-current={workdeskActive ? 'page' : undefined}
             sx={{
               mt: 0.35,
@@ -626,9 +627,9 @@ const Layout = ({ children }) => {
           >
             <Badge
               color="error"
-              badgeContent={unseenReferrals ? toPersianDigits(unseenReferrals) : ''}
+              badgeContent={referralBadge ? toPersianDigits(referralBadge) : ''}
               max={99}
-              invisible={!unseenReferrals}
+              invisible={!referralBadge}
               sx={{
                 '& .MuiBadge-badge': {
                   fontSize: 9, height: 15, minWidth: 15, px: 0.4, fontWeight: 900,

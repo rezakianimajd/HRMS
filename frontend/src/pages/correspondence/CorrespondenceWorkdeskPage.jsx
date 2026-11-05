@@ -465,6 +465,7 @@ const CorrespondenceWorkdeskPage = () => {
     qc.invalidateQueries({ queryKey: ['correspondence-stats'] });
     qc.invalidateQueries({ queryKey: ['correspondence-my-referrals'] });
     qc.invalidateQueries({ queryKey: WORKDESK_KEY });
+    qc.invalidateQueries({ queryKey: ['workdesk-rail-counts'] });
   };
 
   const referralAction = useMutation({
